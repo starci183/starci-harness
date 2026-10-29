@@ -5590,6 +5590,17 @@ BE_PERSISTENCE_NO_RAW_SQL:
   owner: op-retry
   kind: check-finding
 
+BE_EVENT_BUS_LITE_SHAPE:
+  title: "A lite event payload without dedupeKey, or a subscription that is not static"
+  title_vi: "Payload event của bản lite thiếu dedupeKey, hoặc đăng ký consumer không tĩnh"
+  meaning_vi: "File `<path>` khai một event (lớp kế thừa BaseEvent trong modules/events) mà kiểu payload không có `dedupeKey`, hoặc gọi `subscribe` với tên hàng đợi không phải hằng `*_TOPIC_QUEUE` import từ `@modules/platform/event-bus`, hay với options không phải object literal của giá trị literal."
+  causes_vi:
+    - "Vi phạm R336: event bus pgmq giao ít nhất một lần và không theo thứ tự, nên inbox của consumer claim (consumer, dedupeKey); thiếu dedupeKey thì không khử trùng được."
+    - "Một đăng ký tính tên hàng đợi lúc chạy, nên không ai thấy được nó trong hằng và migration (R258)."
+  nextStep_vi: "Thêm `readonly dedupeKey: string` (khoá nghiệp vụ, như id đơn hàng) vào kiểu payload hoặc kế thừa `EventPayload`; khai hằng `<TOPIC>_<CONSUMER>_TOPIC_QUEUE` trong platform/event-bus, tạo hàng đợi, hàng đợi `__dead` và bind_topic trong migration, rồi subscribe bằng hằng đó."
+  owner: op-retry
+  kind: check-finding
+
 BE_JOBS_SCHEDULER_OWNER:
   title: "A schedule outside the platform/jobs tick scheduler"
   title_vi: "Lịch chạy định kỳ nằm ngoài bộ lập lịch tick của platform/jobs"

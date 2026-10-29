@@ -1263,6 +1263,7 @@ slots:
         - application-stacks.yaml
       allows:
         - application-stacks.yaml
+        - images/db/Dockerfile
         - <env>/README.md
         - <env>/environment.json
         - <env>/infra/swarm/**
@@ -1396,7 +1397,7 @@ slots:
       - app
     editions:
       - lite
-    path: db/Dockerfile
+    path: .starcistacks/images/db/Dockerfile
     presence: required
     tracked: tracked
     managedBy: db-image
@@ -2511,7 +2512,7 @@ slots:
       why: "the EventBus and EventConsumer ports on pgmq (ruling lite-pgmq-bus-bullmq-jobs): publish
         sends the envelope to its topic in the publisher's transaction, so no outbox or relay runs; each consumer
         group reads its own queue bound to the event's name with a visibility timeout, archives a handled message,
-        lets a failed one reappear and buries one past its attempts in the dead-letter queue. Jobs stay on BullMQ
+        lets a failed one reappear and buries one past its maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ
         (platform/queue). No Kafka (contexts/code/be/event-bus.md)"
     requires:
       - index.ts

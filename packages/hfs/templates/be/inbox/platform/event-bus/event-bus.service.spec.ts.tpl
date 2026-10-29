@@ -7,13 +7,14 @@ import { EventBusService } from "./event-bus.service"
 
 // The statements callDbFunction of platform/database sends for the bus functions of the migration.
 const SEND = "SELECT * FROM event_bus_send($1, $2)"
-const DEAD_LETTERS = "SELECT * FROM event_bus_dead_letters($1)"
-const REQUEUE = "SELECT * FROM event_bus_requeue($1)"
+const DEAD_LETTERS = "SELECT * FROM event_bus_dead_letters($1, $2)"
+const REQUEUE = "SELECT * FROM event_bus_requeue($1, $2)"
+const QUEUE = "spec_delivery_recorded__mailer"
 
 class ReceiptRecordedEvent extends BaseEvent {
-    readonly eventId = "receipt-1"
+    readonly eventId = "event-1"
     readonly eventName = "spec.delivery-recorded"
-    readonly payload = { receiptId: "receipt-1" }
+    readonly payload = { dedupeKey: "receipt-1", receiptId: "receipt-1" }
 }
 
 describe("EventBusService", () => {
@@ -60,19 +61,20 @@ describe("EventBusService", () => {
         expect(transaction.rollbacks).toBe(1)
     })
 
-    it("lists buried deliveries and requeues one by its dead-letter id", async () => {
+    it("lists a consumer's dead letters and requeues one by its dead-letter id", async () => {
         const primary = mockEntityManager({
             query: [
-                [DEAD_LETTERS, [{ msg_id: "7", message: { queue: "spec_delivery_recorded_mailer", reason: "attempts", message: { eventId: "receipt-1" } } }]],
+                [DEAD_LETTERS, [{ msg_id: "7", message: { reason: "max-deliveries", readCount: 6, message: { eventId: "event-1" } } }]],
                 [REQUEUE, [{ event_bus_requeue: true }]],
             ],
         })
         const subject = await build(primary)
 
-        await expect(subject.deadLetters(10)).resolves.toEqual([
-            { id: "7", queue: "spec_delivery_recorded_mailer", reason: "attempts", message: { eventId: "receipt-1" } },
+        await expect(subject.deadLetters(QUEUE, 10)).resolves.toEqual([
+            { id: "7", reason: "max-deliveries", readCount: 6, message: { eventId: "event-1" } },
         ])
-        await expect(subject.requeue("7")).resolves.toBe(true)
-        expect(primary.query).toHaveBeenCalledWith(REQUEUE, ["7"])
+        await expect(subject.requeue(QUEUE, "7")).resolves.toBe(true)
+        expect(primary.query).toHaveBeenCalledWith(DEAD_LETTERS, [QUEUE, 10])
+        expect(primary.query).toHaveBeenCalledWith(REQUEUE, [QUEUE, "7"])
     })
 })

@@ -20,12 +20,13 @@ with check (source <> '');
 revoke all on table public.inbox from public, anon, authenticated;
 grant select, insert on table public.inbox to app_be;
 
--- The event bus is pgmq (ruling lite-pgmq-bus-bullmq-jobs): a publish sends the typed envelope to every queue bound to the event's
--- name in the publisher's own transaction, so a rolled-back change sends nothing and no relay runs. Each consumer group reads its
--- own queue with a visibility timeout, archives a handled message, and buries one past its attempts in the dead-letter queue.
+-- The event bus is pgmq (ruling lite-pgmq-bus-bullmq-jobs; it installs into its own schema pgmq): a publish sends the typed envelope
+-- once to its topic, the event name, in the publisher's own transaction, and pgmq copies it into every consumer queue bound to that
+-- name, so a rolled-back change sends nothing and no relay runs. A reactor's migration declares its consumer: pgmq.create of
+-- '<topic>__<consumer>' and of its dead-letter queue '<topic>__<consumer>__dead', then pgmq.bind_topic('<topic>', '<topic>__<consumer>')
+-- (R258). Each consumer reads its own queue with a visibility timeout, archives a handled message, and moves one past its
+-- maxDeliveries to its dead-letter queue.
 create extension if not exists pgmq;
-
-select pgmq.create('event_bus_dead_letter');
 
 -- The claim of one delivery and the bus operations, called through callDbFunction of platform/database (R334). The bus functions are
 -- security definer over pgmq, so the application role holds no grant on the pgmq schema; a read names only a queue bound to a topic.
@@ -69,31 +70,52 @@ $$;
 
 create function public.event_bus_bury(p_queue text, p_msg_id bigint, p_read_ct integer, p_message jsonb, p_reason text)
 returns boolean
-language sql
+language plpgsql
 security definer
 set search_path = pg_catalog, pg_temp
 as $$
-    select pgmq.send('event_bus_dead_letter', jsonb_build_object('queue', p_queue, 'readCount', p_read_ct, 'reason', p_reason, 'message', p_message));
-    select pgmq.delete(p_queue, p_msg_id)
+begin
+    if not exists (select 1 from pgmq.topic_bindings as b where b.queue_name = p_queue) then
+        raise exception 'event_bus_bury: % is no consumer queue bound to a topic', p_queue;
+    end if;
+    perform pgmq.send(p_queue || '__dead', jsonb_build_object('readCount', p_read_ct, 'reason', p_reason, 'message', p_message));
+    return pgmq.archive(p_queue, p_msg_id);
+end
 $$;
 
-create function public.event_bus_dead_letters(p_batch integer)
+create function public.event_bus_dead_letters(p_queue text, p_batch integer)
 returns table (msg_id bigint, message jsonb)
-language sql
+language plpgsql
 security definer
 set search_path = pg_catalog, pg_temp
 as $$
-    select d.msg_id, d.message from pgmq.q_event_bus_dead_letter as d order by d.msg_id limit p_batch
+begin
+    if not exists (select 1 from pgmq.topic_bindings as b where b.queue_name = p_queue) then
+        raise exception 'event_bus_dead_letters: % is no consumer queue bound to a topic', p_queue;
+    end if;
+    return query execute format('select d.msg_id, d.message from pgmq.%I as d order by d.msg_id limit $1', 'q_' || p_queue || '__dead') using p_batch;
+end
 $$;
 
-create function public.event_bus_requeue(p_msg_id bigint)
+create function public.event_bus_requeue(p_queue text, p_msg_id bigint)
 returns boolean
-language sql
+language plpgsql
 security definer
 set search_path = pg_catalog, pg_temp
 as $$
-    select pgmq.send(d.message ->> 'queue', d.message -> 'message') from pgmq.q_event_bus_dead_letter as d where d.msg_id = p_msg_id;
-    select pgmq.delete('event_bus_dead_letter', p_msg_id)
+declare
+    v_dead jsonb;
+begin
+    if not exists (select 1 from pgmq.topic_bindings as b where b.queue_name = p_queue) then
+        raise exception 'event_bus_requeue: % is no consumer queue bound to a topic', p_queue;
+    end if;
+    execute format('delete from pgmq.%I as d where d.msg_id = $1 returning d.message', 'q_' || p_queue || '__dead') into v_dead using p_msg_id;
+    if v_dead is null then
+        return false;
+    end if;
+    perform pgmq.send(p_queue, v_dead -> 'message');
+    return true;
+end
 $$;
 
 revoke all on function public.inbox_claim_event(text, text) from public;
@@ -106,7 +128,7 @@ revoke all on function public.event_bus_archive(text, bigint) from public;
 grant execute on function public.event_bus_archive(text, bigint) to app_be;
 revoke all on function public.event_bus_bury(text, bigint, integer, jsonb, text) from public;
 grant execute on function public.event_bus_bury(text, bigint, integer, jsonb, text) to app_be;
-revoke all on function public.event_bus_dead_letters(integer) from public;
-grant execute on function public.event_bus_dead_letters(integer) to app_be;
-revoke all on function public.event_bus_requeue(bigint) from public;
-grant execute on function public.event_bus_requeue(bigint) to app_be;
+revoke all on function public.event_bus_dead_letters(text, integer) from public;
+grant execute on function public.event_bus_dead_letters(text, integer) to app_be;
+revoke all on function public.event_bus_requeue(text, bigint) from public;
+grant execute on function public.event_bus_requeue(text, bigint) to app_be;

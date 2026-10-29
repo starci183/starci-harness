@@ -132,7 +132,7 @@ pins:
 # Base images an app's Dockerfiles build FROM (R190); the image tag is pinned here and nowhere else.
 images:
   node: {version: 22.14.0-alpine3.21, why: "the base image of every back-end and front-end Dockerfile"}
-  postgres: {version: 17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f, why: "the Docker Official image the managed db/Dockerfile of a lite app builds FROM (PG_VERSION 17.11-1.pgdg13+2), adding postgresql-17-pgvector 0.8.7-1.pgdg13+1 from PGDG and the pgmq 1.13.1 release source (sha256 67221f28…27f7, ruling lite-pgmq-bus-bullmq-jobs); hfs sync DB_BASE_IMAGE, PGVECTOR_PACKAGE and PGMQ render it"}
+  postgres: {version: 17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f, why: "the Docker Official image the managed .starcistacks/images/db/Dockerfile of a lite app builds FROM (PG_VERSION 17.11-1.pgdg13+2), adding postgresql-17-pgvector 0.8.7-1.pgdg13+1 from PGDG and the pgmq 1.13.1 release source (sha256 67221f28…27f7, ruling lite-pgmq-bus-bullmq-jobs); hfs sync DB_BASE_IMAGE, PGVECTOR_PACKAGE and PGMQ render it"}
 # Runtime peers a driver needs and npm does not install for it (R111): an app whose root package.json depends on every
 # package of `when` (at `major` when named) also declares `requires`. A missing peer passes the type check and the unit
 # specs and fails only when the app boots, so an entry is added the day such a boot failure is found.

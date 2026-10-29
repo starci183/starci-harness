@@ -29,7 +29,7 @@ components:
     volumes: [db-data]
     image: "{{project}}/db:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
     compose: infra/swarm/stack.yaml
-    purpose: The app's own PostgreSQL, the official postgres image plus pgvector built from db/Dockerfile, migrated by starci app db migrate.
+    purpose: The app's own PostgreSQL, the official postgres image plus pgvector built from .starcistacks/images/db/Dockerfile, migrated by starci app db migrate.
     required: true
   ingress:
     role: ingress

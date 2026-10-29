@@ -1,4 +1,4 @@
-// R276: lite runs exactly its own PostgreSQL (the db component, the image its managed db/Dockerfile builds) with pgvector, admits only the backing services available to its edition,
+// R276: lite runs exactly its own PostgreSQL (the db component, the image its managed .starcistacks/images/db/Dockerfile builds) with pgvector, admits only the backing services available to its edition,
 // and runs a declared Redis as one service with AOF fsynced at least every second on a named volume and no eviction
 // (ruling:R212/case-10, owner:lite-vector-is-pgvector); sidecar SQLite persists on declared named volumes.
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
@@ -45,7 +45,7 @@ function imageIssues(components, services, { catalog, declared }) {
       const service = serviceOfImage(catalog, entry.image);
       if (DATABASE_IMAGE.test(repositoryOf(entry.image)))
         errors.push({ code: 'STACKS_LITE_SELFHOSTED_DB', at: `${prefix}.${id}.image`,
-          message: 'lite runs one database, the db component of the image db/Dockerfile builds (the official postgres image plus pgvector); no other Postgres or Mongo image' });
+          message: 'lite runs one database, the db component of the image .starcistacks/images/db/Dockerfile builds (the official postgres image plus pgvector); no other Postgres or Mongo image' });
       else if (service !== null && !judgedInEdition(catalog[service], 'lite'))
         errors.push({ code: 'STACKS_LITE_SELFHOSTED_DB', at: `${prefix}.${id}.image`,
           message: `lite must not run ${service}; vector search uses pgvector in the db service (owner:lite-vector-is-pgvector)` });

@@ -27,7 +27,7 @@ function treeFindings(files, allowed, prefix) {
   for (const file of files.filter((f) => f.startsWith(prefix))) {
     const rel = file.slice(prefix.length);
     if (rel.endsWith('.enc') && !INSIDE_SECRETS.test(rel)) findings.push(shapeFinding(file, `${file} is a sealed secret outside <env>/secrets/<slug>.enc; move it to .starcistacks/<env>/secrets/`));
-    else if (!allowed.some((expression) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc, seeds}); move or delete it`));
+    else if (!allowed.some((expression) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml, images/db/Dockerfile in lite and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc, seeds}); move or delete it`));
   }
   return findings;
 }

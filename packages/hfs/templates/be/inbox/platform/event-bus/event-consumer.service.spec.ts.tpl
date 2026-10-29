@@ -12,7 +12,7 @@ import { EventConsumerService } from "./event-consumer.service"
 const READ = "SELECT * FROM event_bus_read($1, $2, $3)"
 const ARCHIVE = "SELECT * FROM event_bus_archive($1, $2)"
 const BURY = "SELECT * FROM event_bus_bury($1, $2, $3, $4, $5)"
-const QUEUE = "spec_delivery_recorded_mailer"
+const QUEUE = "spec_delivery_recorded__mailer"
 
 class ReceiptRecordedEvent extends BaseEvent {
     static readonly eventName = "spec.delivery-recorded"
@@ -21,18 +21,25 @@ class ReceiptRecordedEvent extends BaseEvent {
 
     constructor(
         readonly eventId: string,
-        readonly payload: { readonly receiptId: string },
+        readonly payload: { readonly dedupeKey: string; readonly receiptId: string },
     ) {
         super()
     }
 
     static parse(envelope: unknown): ParsedEvent<ReceiptRecordedEvent> {
         if (typeof envelope !== "object" || envelope === null || !("eventId" in envelope) || typeof envelope.eventId !== "string") return null
-        return new ReceiptRecordedEvent(envelope.eventId, { receiptId: envelope.eventId })
+        if (!("payload" in envelope) || typeof envelope.payload !== "object" || envelope.payload === null || !("dedupeKey" in envelope.payload)) return null
+        const dedupeKey = envelope.payload.dedupeKey
+        return typeof dedupeKey === "string" ? new ReceiptRecordedEvent(envelope.eventId, { dedupeKey, receiptId: dedupeKey }) : null
     }
 }
 
-const envelope = { metadata: { correlationId: "request-1" }, eventId: "receipt-1", eventName: "spec.delivery-recorded", payload: { receiptId: "receipt-1" } }
+const envelope = {
+    metadata: { correlationId: "request-1" },
+    eventId: "event-1",
+    eventName: "spec.delivery-recorded",
+    payload: { dedupeKey: "receipt-1", receiptId: "receipt-1" },
+}
 
 class RecordingConsumer implements EventConsumer<ReceiptRecordedEvent> {
     readonly event = ReceiptRecordedEvent
@@ -54,14 +61,14 @@ describe("EventConsumerService", () => {
             providers: [
                 EventConsumerService,
                 { provide: PRIMARY_ENTITY_MANAGER, useValue: primary },
-                { provide: MODULE_OPTIONS_TOKEN, useValue: { attempts: 3 } },
+                { provide: MODULE_OPTIONS_TOKEN, useValue: {} },
                 { provide: LOGGER, useValue: logger },
             ],
         }).compile()
         return module.get(EventConsumerService)
     }
 
-    it("delivers a committed event once to the consumer and archives it", async () => {
+    it("delivers a committed event once to the consumer with its inbox claim keys and archives it", async () => {
         const primary = mockEntityManager({
             query: [
                 [READ, [{ msg_id: "1", read_ct: 1, message: envelope }]],
@@ -71,10 +78,10 @@ describe("EventConsumerService", () => {
         const subject = await build(primary)
         const consumer = new RecordingConsumer()
 
-        await expect(subject.drain({ queue: QUEUE, consumer })).resolves.toBe(1)
+        await expect(subject.drain({ queue: QUEUE, consumer, maxDeliveries: 5 })).resolves.toBe(1)
 
         expect(consumer.deliveries).toEqual([
-            { correlationId: "request-1", eventId: "receipt-1", event: expect.any(ReceiptRecordedEvent), attempt: 1 },
+            { correlationId: "request-1", eventId: "event-1", consumer: QUEUE, dedupeKey: "receipt-1", event: expect.any(ReceiptRecordedEvent), attempt: 1 },
         ])
         expect(primary.query).toHaveBeenCalledWith(READ, [QUEUE, 30, 10])
         expect(primary.query).toHaveBeenCalledWith(ARCHIVE, [QUEUE, "1"])
@@ -86,25 +93,37 @@ describe("EventConsumerService", () => {
         const consumer = new RecordingConsumer()
         consumer.failing = true
 
-        await subject.drain({ queue: QUEUE, consumer })
+        await subject.drain({ queue: QUEUE, consumer, maxDeliveries: 5 })
 
         expect(primary.query).toHaveBeenCalledTimes(1)
         expect(logger.error).toHaveBeenCalled()
     })
 
     it.each([
-        ["attempts", { msg_id: "1", read_ct: 4, message: envelope }],
+        ["max-deliveries", { msg_id: "1", read_ct: 4, message: envelope }],
         ["malformed", { msg_id: "1", read_ct: 1, message: { eventId: 42 } }],
+        ["malformed", { msg_id: "1", read_ct: 1, message: { ...envelope, payload: { dedupeKey: " ", receiptId: "receipt-1" } } }],
         ["malformed", { msg_id: "1", read_ct: 1, message: { ...envelope, metadata: { correlationId: "unsafe\nid" } } }],
-    ])("buries a delivery in the dead-letter queue: %s", async (reason, row) => {
+    ])("moves a delivery to the consumer's dead-letter queue: %s", async (reason, row) => {
         const primary = mockEntityManager({ query: [[READ, [row]], [BURY, [{ event_bus_bury: true }]]] })
         const subject = await build(primary)
         const consumer = new RecordingConsumer()
 
-        await subject.drain({ queue: QUEUE, consumer })
+        await subject.drain({ queue: QUEUE, consumer, maxDeliveries: 3 })
 
         expect(consumer.deliveries).toEqual([])
         expect(primary.query).toHaveBeenCalledWith(BURY, [QUEUE, "1", row.read_ct, JSON.stringify(row.message), reason])
+    })
+
+    it("takes the default delivery budget of a subscription that names none", async () => {
+        const primary = mockEntityManager({ query: [[READ, [{ msg_id: "1", read_ct: 6, message: envelope }]], [BURY, [{ event_bus_bury: true }]]] })
+        const subject = await build(primary)
+        const consumer = new RecordingConsumer()
+        subject.subscribe(QUEUE, consumer)
+
+        await subject.drain({ queue: QUEUE, consumer, maxDeliveries: 5 })
+
+        expect(primary.query).toHaveBeenCalledWith(BURY, [QUEUE, "1", 6, JSON.stringify(envelope), "max-deliveries"])
     })
 
     it("delivers a redelivery again, leaving its dedupe to the consumer's inbox claim", async () => {
@@ -117,8 +136,8 @@ describe("EventConsumerService", () => {
         const subject = await build(primary)
         const consumer = new RecordingConsumer()
 
-        await subject.drain({ queue: QUEUE, consumer })
+        await subject.drain({ queue: QUEUE, consumer, maxDeliveries: 5 })
 
-        expect(consumer.deliveries.map((delivery) => delivery.attempt)).toEqual([2])
+        expect(consumer.deliveries.map((delivery) => [delivery.consumer, delivery.dedupeKey, delivery.attempt])).toEqual([[QUEUE, "receipt-1", 2]])
     })
 })

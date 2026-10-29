@@ -30,7 +30,7 @@ import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
-import { DB_DOCKERFILE, DB_IMAGE_APP } from '../db/image.mjs';
+import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { ciWorkflowCommands } from './ci-commands.mjs';
@@ -160,7 +160,7 @@ function trailingNewline(text) {
 }
 
 /**
- * The base image of a lite app's managed db/Dockerfile (contexts/stack/pins.yaml images postgres, ruling:lite-official-postgres-image): the
+ * The base image of a lite app's managed .starcistacks/images/db/Dockerfile (contexts/stack/pins.yaml images postgres, ruling:lite-official-postgres-image): the
  * Docker Official postgres image by digest, to which the Dockerfile adds PGVECTOR_PACKAGE from PGDG and the PGMQ release.
  */
 export const DB_BASE_IMAGE = 'postgres:17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f';
@@ -175,7 +175,7 @@ export const PGMQ = Object.freeze({
   source: 'https://github.com/pgmq/pgmq/archive/refs/tags/v1.13.1.tar.gz',
   sha256: '67221f288f42f95c002a64df40f7d660e765e32df8ada0f2672ba915a14827f7',
 });
-/** The local tag the development db container and the drift scratch database run, built from the app's db/Dockerfile. */
+/** The local tag the development db container and the drift scratch database run, built from the app's .starcistacks/images/db/Dockerfile. */
 export const dbLocalImage = project => `${project}-db:local`;
 /** The digest-pinned image of a lite app's declared Redis, in every environment that runs it (ruling:R212/case-10). */
 export const REDIS_IMAGE = 'redis:7@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f';
@@ -396,7 +396,7 @@ export function variables(app, scope, presets, sonarKey, manifest = loadSlotMani
     project: app.project,
     appBinary: APP_BINARY,
     appScripts: appScripts(app, source),
-    // A lite app's own database runs in development as one container of the image its db/Dockerfile builds (ruling:lite-official-postgres-image).
+    // A lite app's own database runs in development as one container of the image its .starcistacks/images/db/Dockerfile builds (ruling:lite-db-image-in-stacks).
     dbImage: dbLocalImage(app.project),
     dbBaseImage: DB_BASE_IMAGE,
     pgvectorPackage: PGVECTOR_PACKAGE,
@@ -587,6 +587,12 @@ export async function renderRepo(root, { presets, parseYaml, notices, manifest =
 
 /** The folders a lite app's sync retires (ruling lite-self-hosted-postgres-passport-minio): the generated Supabase row types nothing reads any more. */
 const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
+/** The files a lite app's sync retires, each with the reason --check prints. */
+const LITE_RETIRED_FILES = Object.freeze({
+  [RETIRED_DB_DOCKERFILE]: `the db image moved to ${DB_DOCKERFILE} (ruling lite-db-image-in-stacks)`,
+});
+/** Why a retired file goes: a retired file's own reason, else the folder's. */
+const retiredReason = (file) => LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';
 
 /** The app-relative files of the retired folders that still exist under `root` of a lite app; sync --write deletes them, --check reports them. */
 export function retiredFiles(root, hfs) {
@@ -600,6 +606,7 @@ export function retiredFiles(root, hfs) {
     else found.push(rel);
   };
   for (const dir of LITE_RETIRED_DIRS) walk(dir);
+  for (const file of Object.keys(LITE_RETIRED_FILES)) walk(file);
   return found;
 }
 
@@ -618,7 +625,7 @@ function syncOptions(argv) {
 function reportSyncCheck(root, targets, out, retired = []) {
   const results = checkTargets(root, targets);
   const bad = results.filter(item => item.status !== 'ok');
-  for (const file of retired) out(`HFS_SYNC_DRIFT ${file}: retired, the lite edition generates no database types; run "npx starci app sync --write" to delete it`);
+  for (const file of retired) out(`HFS_SYNC_DRIFT ${file}: retired, ${retiredReason(file)}; run "npx starci app sync --write" to delete it`);
   for (const result of bad) {
     const found = result.actualHash ? `, found ${result.actualHash.slice(0, 12)}` : '';
     const where = result.difference ? ` (line ${result.difference.line}: expected ${JSON.stringify(result.difference.expected)}, found ${JSON.stringify(result.difference.actual)})` : '';

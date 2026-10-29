@@ -9,7 +9,7 @@ import type { EventBus } from "./event-bus.port"
 /** One row of event_bus_dead_letters: pgmq returns the bigint id as text. */
 interface DeadLetterRow {
     readonly msg_id: string
-    readonly message: { readonly queue?: unknown; readonly reason?: unknown; readonly message?: unknown }
+    readonly message: { readonly reason?: unknown; readonly readCount?: unknown; readonly message?: unknown }
 }
 
 /** The one row event_bus_requeue answers. */
@@ -18,11 +18,11 @@ interface RequeueRow {
 }
 
 @Injectable()
-/** Sends a typed event to its pgmq topic inside the publisher's transaction; no outbox and no relay stand between them. */
+/** Sends a typed event once to its pgmq topic inside the publisher's transaction; no outbox and no relay stand between them. */
 export class EventBusService implements EventBus {
     constructor(@InjectPrimaryEntityManager() private readonly entityManager: EntityManager) {}
 
-    /** The send commits or rolls back with the change; every queue bound to the event's name receives it once. */
+    /** The send commits or rolls back with the change; pgmq copies it into every consumer queue bound to the event's name. */
     async publish(event: BaseEvent, tx: EntityManager, correlationId: string): Promise<void> {
         if (!isCorrelationId(correlationId)) throw new EventBusError({ code: EventBusErrorCode.CorrelationInvalid })
         const envelope: EventEnvelope = {
@@ -34,18 +34,18 @@ export class EventBusService implements EventBus {
         await callDbFunction(tx, "event_bus_send", [event.eventName, JSON.stringify(envelope)])
     }
 
-    async deadLetters(limit: number): Promise<ReadonlyArray<DeadLetter>> {
-        const rows = await callDbFunction<DeadLetterRow>(this.entityManager, "event_bus_dead_letters", [limit])
+    async deadLetters(queue: string, limit: number): Promise<ReadonlyArray<DeadLetter>> {
+        const rows = await callDbFunction<DeadLetterRow>(this.entityManager, "event_bus_dead_letters", [queue, limit])
         return rows.map((row) => ({
             id: row.msg_id,
-            queue: String(row.message.queue),
             reason: String(row.message.reason),
+            readCount: Number(row.message.readCount),
             message: row.message.message,
         }))
     }
 
-    async requeue(id: string): Promise<boolean> {
-        const [row] = await callDbFunction<RequeueRow>(this.entityManager, "event_bus_requeue", [id])
+    async requeue(queue: string, id: string): Promise<boolean> {
+        const [row] = await callDbFunction<RequeueRow>(this.entityManager, "event_bus_requeue", [queue, id])
         return row?.event_bus_requeue === true
     }
 }

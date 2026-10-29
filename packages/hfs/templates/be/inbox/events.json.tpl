@@ -1,7 +1,7 @@
 {
   "events": {
     "@@provider@@.delivery-recorded": {
-      "payload": { "receiptId": "string" },
+      "payload": { "dedupeKey": "string", "receiptId": "string" },
       "version": 1
     }
   },

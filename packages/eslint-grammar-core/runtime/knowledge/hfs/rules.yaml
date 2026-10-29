@@ -4700,7 +4700,7 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-full-fixtures.spec.mjs, edition: full}
   - id: R276
     code: "STACKS_LITE_SELFHOSTED_DB"
-    law: "Lite runs exactly one database, its db component of the image its managed db/Dockerfile builds (the digest-pinned official postgres image plus pgvector, ruling:lite-official-postgres-image) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector, ruling:lite-self-hosted-postgres-passport-minio). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
+    law: "Lite runs exactly one database, its db component of the image its managed .starcistacks/images/db/Dockerfile builds (the digest-pinned official postgres image plus pgvector, ruling:lite-official-postgres-image) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector, ruling:lite-self-hosted-postgres-passport-minio). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["STACKS_LITE_SELFHOSTED_DB", "STACKS_SIDECAR_VOLUME_UNDECLARED", "STACKS_SIDECAR_DB_UNSUPPORTED", "STACKS_LITE_REDIS_PERSISTENCE"]
@@ -5872,3 +5872,21 @@ rules:
         source: owner
         quote: "chạy postgresql thuần image chính chủ nhé ko phải supebase"
         ruling: "The lite db image carries no pg_cron, so recurring work moves to a Nest schedule tick of platform/jobs under an advisory lock and a minute claim (ruling lite-official-postgres-image)."
+  - id: R336
+    code: "BE_EVENT_BUS_LITE_SHAPE"
+    law: "On the lite event bus (pgmq, delivery at least once and unordered), every event payload type declares dedupeKey, the business key a consumer inbox claims as (consumer, dedupeKey), and a reactor subscribes with a *_TOPIC_QUEUE constant imported from platform/event-bus and literal options, so every subscription is static data. The payload type is a literal, EventPayload, or an interface or type alias of the event file that declares dedupeKey or extends EventPayload (ruling lite-pgmq-bus-bullmq-jobs)."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_EVENT_BUS_LITE_SHAPE"]
+    enforcers:
+      - {kind: eslint-be, id: event-dedupe-key}
+      - {kind: eslint-be, id: event-subscription-static}
+    editions: [lite]
+    docs: [contexts/code/be/event-bus.md]
+    proves:
+      - packages/eslint-canon-be/src/event-bus-lite.spec.ts
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/inbox/delivery-recorded.event.ts.tpl, edition: lite}
+      - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}
+    witness:
+      - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}

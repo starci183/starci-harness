@@ -363,7 +363,8 @@ const checkIgnoreRules = ({ repo, root, add }) => {
   }
 };
 // Custody layout (modules/schemas/stacks-layout.yaml custody, the product repositories' secrets-guard).
-const envDirs = (repo, root) => fs.readdirSync(path.join(repo, root), { withFileTypes: true }).filter((entry) => entry.isDirectory());
+// The images folder holds the managed db image of a lite app (slot app.db.image), never custody or an environment.
+const envDirs = (repo, root) => fs.readdirSync(path.join(repo, root), { withFileTypes: true }).filter((entry) => entry.isDirectory() && entry.name !== 'images');
 const checkCustodyLayout = ({ repo, own, add }) => {
   if (!own.rooted) return;
   const root = STACK_ROOT;

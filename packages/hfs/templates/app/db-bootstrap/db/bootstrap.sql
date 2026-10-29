@@ -1,6 +1,6 @@
 -- Managed by starci app sync (slot app.db.bootstrap); do not edit: run "npx starci app sync --write".
 -- The pre-migration bootstrap of a lite app's self-hosted PostgreSQL (ruling lite-self-hosted-postgres-passport-minio), run on the official
--- postgres image of db/Dockerfile (ruling lite-official-postgres-image). Migrations written for Supabase reference objects GoTrue and Supabase
+-- postgres image of .starcistacks/images/db/Dockerfile (ruling lite-official-postgres-image). Migrations written for Supabase reference objects GoTrue and Supabase
 -- Storage created: the browser roles, the `auth` schema (auth.users, auth.identities, auth.sessions, auth.uid/jwt/role) and the `storage`
 -- schema (storage.buckets, storage.objects). A lite app runs neither GoTrue nor storage-api: auth is the app's own (integrations/passport) and
 -- storage is the S3 endpoint of integrations/object-storage. This file gives the migrations those objects, EMPTY, and the `extensions` schema

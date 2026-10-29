@@ -2271,6 +2271,15 @@ rules:
       - BE_JOBS_SCHEDULER_OWNER
     enforcers:
       - {kind: eslint-be, id: jobs-scheduler-owner}
+  - id: R336
+    code: BE_EVENT_BUS_LITE_SHAPE
+    law: "On the lite event bus (pgmq, delivery at least once and unordered), every event payload type declares dedupeKey, the business key a consumer inbox claims as (consumer, dedupeKey), and a reactor subscribes with a *_TOPIC_QUEUE constant imported from platform/event-bus and literal options, so every subscription is static data."
+    editions: [lite]
+    failureCodes:
+      - BE_EVENT_BUS_LITE_SHAPE
+    enforcers:
+      - {kind: eslint-be, id: event-dedupe-key}
+      - {kind: eslint-be, id: event-subscription-static}
 
 # Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

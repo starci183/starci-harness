@@ -85,7 +85,7 @@ properties:
         command: {type: string, minLength: 1}
   backing:
     description: >-
-      The self-hosted database of a lite app: its db component (the image its managed db/Dockerfile builds), a Docker container in
+      The self-hosted database of a lite app: its db component (the image its managed .starcistacks/images/db/Dockerfile builds), a Docker container in
       development and a Swarm service in production. Every other dependency is a Docker component too.
     type: object
     additionalProperties:

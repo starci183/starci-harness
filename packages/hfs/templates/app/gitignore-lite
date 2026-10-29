@@ -7,12 +7,13 @@ schema.gql
 .next/
 next-env.d.ts
 # .starcistacks custody at the app root: modules/schemas/stacks-layout.yaml custody.gitignoreRules, in order. Only the
-# declaration, runbooks, key lists, seeds, the rendered environment, the infra definitions and sealed *.enc are tracked.
+# declaration, runbooks, key lists, seeds, the rendered environment, the infra definitions, the db image and sealed *.enc are tracked.
 .starcistacks/**
 !.starcistacks/**/
 !.starcistacks/**/KEYS.md
 !.starcistacks/**/.gitkeep
 !.starcistacks/application-stacks.yaml
+!.starcistacks/images/db/Dockerfile
 !.starcistacks/*/README.md
 !.starcistacks/*/environment.json
 !.starcistacks/*/seeds/**

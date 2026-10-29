@@ -15,7 +15,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 ## Backing services
 
 - PostgreSQL is self-hosted: the `db` service in Docker in dev and on the Swarm stack in production, migrated by
-  `starci app db migrate --url-env <NAME>`. Its image is the managed `db/Dockerfile`: the Docker Official `postgres` image
+  `starci app db migrate --url-env <NAME>`. Its image is the managed `.starcistacks/images/db/Dockerfile`: the Docker Official `postgres` image
   pinned by digest plus pgvector from PGDG and pgmq from its pinned release (verified by sha256), so its extensions are
   pgvector, pgmq and the image's contrib set (pgcrypto, pg_trgm, unaccent, uuid-ossp, btree_gist), with no pg_cron, pg_net
   or supabase_vault; the local container (`npm run db:create`), the drift scratch database and the release image all build
@@ -95,7 +95,7 @@ optional `db` block (`forceRls`, `appRole`), set every connection's `provider` t
 (it renders `db/bootstrap.sql`, the db scripts, codegen and CI, and removes a leftover `supabase/types/`); restore the
 data with `starci app db migrate --url-env DATABASE_URL --execute` on an empty database after `pg_restore` of the hosted
 dump, which keeps the `supabase_migrations.schema_migrations` history the migrate verb reads. On hfs 4.11 the db service
-moves to the official image: `npx starci app sync --write` writes `db/Dockerfile` and the db scripts, the stack's db
+moves to the official image: `npx starci app sync --write` writes `.starcistacks/images/db/Dockerfile` (ruling `lite-db-image-in-stacks`; it removes a `db/Dockerfile` an earlier sync wrote) and the db scripts, the stack's db
 component and service take the app's own `db` image (`deploy.images.db: {app: db}`, pushed with the release), and a
 migration that needs what the Supabase image carried is rewritten in a new forward migration: a `pg_net` call becomes an
 outbound call of the back end through its integration (BE-INFRA-2), a `pgmq` queue becomes a BullMQ queue of

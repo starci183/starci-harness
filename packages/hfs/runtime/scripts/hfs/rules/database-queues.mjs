@@ -1,7 +1,7 @@
 // R258: pgmq is the event bus (ruling:lite-pgmq-bus-bullmq-jobs) and jobs run on BullMQ, so the active migrations leave no pgmq queue
 // for a queue constant, and every pgmq queue they leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under
-// platform/event-bus. A topic binding names a declared queue and a literal pattern, and pgmq grants reach only the q_ and a_ tables
-// of declared queues, for the application role alone.
+// platform/event-bus, beside its dead-letter queue `<queue>__dead`. A topic binding names a declared queue and a literal pattern,
+// and pgmq grants reach only the q_ and a_ tables of declared queues, for the application role alone.
 // Initialize PostgreSQL's WASM parser at module load; the exported finder itself is synchronous.
 // SQL and TypeScript ASTs keep comments, quoted identifiers and inert string literals out of the inventory.
 import pg from 'libpg-query';
@@ -12,6 +12,8 @@ import { DB_PGMQ_DECLARED, isActiveMigration } from './database-constants.mjs';
 
 await pg.loadModule();
 
+/** The suffix of a consumer queue's dead-letter queue (templates/be/inbox/platform/event-bus DEAD_QUEUE_SUFFIX). */
+const DEAD_SUFFIX = '__dead';
 const TABLE_PRIVILEGES = ['select', 'insert', 'update', 'delete', 'truncate', 'references', 'trigger', 'maintain'];
 const sqlName = (nodes) => strings(nodes).join('.');
 const callName = (call) => sqlName(call.funcname);
@@ -193,10 +195,14 @@ function queueState({ repoRoot, files = [], all = files, repo = {} }) {
 
 function validateQueues(state, inScope) {
   for (const [queue, file] of state.created) {
+    if (queue.endsWith(DEAD_SUFFIX) && state.topics.has(queue.slice(0, -DEAD_SUFFIX.length))) continue;
     if (state.constants.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq queue ${queue} is the queue constant of ${state.constants.get(queue)}, and jobs run on BullMQ (ruling:lite-pgmq-bus-bullmq-jobs): drop it with pgmq.drop_queue in a later migration`);
     else if (!state.topics.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq queue ${queue} has no event-bus owner: name it in a literal *_TOPIC_QUEUE constant under platform/event-bus, or drop it with pgmq.drop_queue in a later migration`);
   }
-  for (const [topic, file] of state.topics) if (!state.created.has(topic)) problem(state, DB_PGMQ_DECLARED, file, `event-bus topic queue ${topic} has no pgmq.create in an active migration`);
+  for (const [topic, file] of state.topics) {
+    if (!state.created.has(topic)) problem(state, DB_PGMQ_DECLARED, file, `event-bus topic queue ${topic} has no pgmq.create in an active migration`);
+    else if (!state.created.has(`${topic}${DEAD_SUFFIX}`)) problem(state, DB_PGMQ_DECLARED, file, `event-bus topic queue ${topic} has no dead-letter queue: pgmq.create('${topic}${DEAD_SUFFIX}') in an active migration`);
+  }
   for (const { node, file, created, executed } of state.grants) grantCheck({ ...state, created: executed ? created : state.created }, node, file);
   return state.findings.filter((finding) => inScope(finding.path));
 }

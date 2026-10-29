@@ -53,6 +53,9 @@ versioning:
 # 3.11.0 (ruling:lite-official-postgres-image, 2026-10-29) is, like 3.9.0, a change for lite only: it ADDS the managed app.db.image slot
 # (db/Dockerfile, written by `starci app sync --write`), narrows ruleParams.db.extensions to the extensions that image carries, and gives
 # @nestjs/schedule and cron one owner, platform/jobs (R335).
+# 3.12.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
+# admits pgmq, the event bus, ruleParams.db.queueOutbox is retired with the pg_cron half of R258, the lite event-bus functions replace
+# event_bus_write in ruleParams.be.dbFunctions, and app.db.image moves to .starcistacks/images/db/Dockerfile (db/ keeps schema and data).
 
 # Field meaning, per slot.
 #   id          stable name, never changes meaning inside a major.
@@ -871,7 +874,7 @@ slots:
     # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
-      allows: [application-stacks.yaml, "<env>/README.md", "<env>/environment.json", "<env>/infra/swarm/**", "<env>/infra/metadata.json",
+      allows: [application-stacks.yaml, images/db/Dockerfile, "<env>/README.md", "<env>/environment.json", "<env>/infra/swarm/**", "<env>/infra/metadata.json",
                "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.enc", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
       forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
     rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY]
@@ -932,7 +935,7 @@ slots:
     rules: [HFS_PLAINTEXT_SECRET]
 
   # ----- app root: the database of a lite app (ruling:lite-self-hosted-postgres-passport-minio): a self-hosted PostgreSQL in the app's
-  # stack (the `db` service, built from the managed db/Dockerfile: the official postgres image plus pgvector, ruling:lite-official-postgres-image), migrated by
+  # stack (the `db` service, built from the managed .starcistacks/images/db/Dockerfile: the official postgres image plus pgvector and pgmq, ruling:lite-db-image-in-stacks), migrated by
   # `starci app db migrate --url-env <NAME>`. A full app keeps its TypeORM migrations under be/ and has no such folder.
   - id: app.db
     profiles: [app]
@@ -985,10 +988,11 @@ slots:
   - id: app.db.image
     profiles: [app]
     editions: [lite]
-    # The managed image of the db service (templates/app/db-image, ruling:lite-official-postgres-image): FROM the digest-pinned official
-    # postgres image plus postgresql-17-pgvector from PGDG. The stack's db service, the local db container and the scratch database
-    # of `starci app db drift` all build it.
-    path: "db/Dockerfile"
+    # The managed image of the db service (templates/app/db-image, rulings lite-official-postgres-image and lite-db-image-in-stacks): FROM
+    # the digest-pinned official postgres image plus postgresql-17-pgvector from PGDG and the sha256-verified pgmq release. It lives with
+    # the stacks; the stack's db service, the local db container, the scratch database of `starci app db drift` and the squash replay
+    # all build it.
+    path: ".starcistacks/images/db/Dockerfile"
     presence: required
     tracked: tracked
     managedBy: db-image
@@ -1788,7 +1792,7 @@ slots:
         the EventBus and EventConsumer ports on pgmq (ruling:lite-pgmq-bus-bullmq-jobs): publish sends the envelope to its
         topic in the publisher's transaction, so no outbox or relay runs; each consumer group reads its own queue bound to the
         event's name with a visibility timeout, archives a handled message, lets a failed one reappear and buries one past its
-        attempts in the dead-letter queue. Jobs stay on BullMQ (platform/queue). No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)
+        maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ (platform/queue). No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)
     requires: [index.ts, event-bus.module.ts, event-bus.port.ts, event-bus.contracts.ts, event-bus.service.ts, event-bus.service.spec.ts]
     tests: unit-beside
     coverage: required

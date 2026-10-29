@@ -294,14 +294,15 @@ liteAdapter:
   summary: >-
     Under lite the event bus keeps typed events, the vendored contract, publish(event, tx, correlationId) in the domain transaction,
     the inbox and thin consumers; Kafka is replaced by pgmq topics in the db service. Publish sends the envelope to its topic
-    (the event name) in the publisher's transaction, so no outbox or relay stands between them. Each consumer group of an
-    event has its own pgmq queue `<service>__<event>__<group>`, created and bound to the event's name by a db migration, named
-    by a literal `<GROUP>_TOPIC_QUEUE` constant under platform/event-bus (its owner, R258), so each group keeps its own cursor;
-    the application role reaches pgmq only through the security-definer event_bus_* functions of the migration.
+    (the event name) in the publisher's transaction, so no outbox or relay stands between them. Each consumer of an event has its
+    own pgmq queue `<topic>__<consumer>` and dead-letter queue `<topic>__<consumer>__dead`, created and bound to the event's name
+    by a db migration and named by a literal `<TOPIC>_<CONSUMER>_TOPIC_QUEUE` constant under platform/event-bus (its owner, R258);
+    every payload carries a business dedupeKey the consumer inbox claims, and subscriptions are static (R336); the application
+    role reaches pgmq only through the security-definer event_bus_* functions of the migration (contexts/code/be/event-bus.md BE-EVENT-BUS-6).
   ports:
     - {port: EventBus.publish (platform/event-bus), adapter: "event_bus_send: pgmq.send_topic of the envelope in the domain transaction"}
-    - {port: EventConsumer (platform/event-bus), adapter: "event_bus_read with a visibility timeout, the inbox claim on the event id in the dispatched command, event_bus_archive on success, a failed delivery left to reappear, event_bus_bury into the dead-letter queue past the attempts"}
-    - {port: EventBus.deadLetters and requeue (platform/event-bus), adapter: "event_bus_dead_letters and event_bus_requeue over the dead-letter queue"}
+    - {port: EventConsumer (platform/event-bus), adapter: "event_bus_read with a visibility timeout, the inbox claim on (consumer, dedupeKey) in the dispatched command, event_bus_archive on success, a failed delivery left to reappear, event_bus_bury into <queue>__dead past maxDeliveries (default 5)"}
+    - {port: EventBus.deadLetters and requeue (platform/event-bus), adapter: "event_bus_dead_letters and event_bus_requeue over a consumer's dead-letter queue"}
   forbids: [kafkajs]
   proof: >-
     Unit specs as full; declaring event-bus requires integration specs titled `event-bus/<scenario>: ...` for every declared

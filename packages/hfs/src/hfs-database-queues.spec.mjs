@@ -19,7 +19,8 @@ const CONSTANT = "export const RECEIPTS_QUEUE = 'receipts' as const;";
 const TOPIC = 'billing__receipt_paid__mailer';
 const TOPIC_FILE = 'be/src/modules/platform/event-bus/event-bus.contracts.ts';
 const TOPIC_CONSTANT = `export const RECEIPT_PAID_MAILER_TOPIC_QUEUE = '${TOPIC}' as const;`;
-const CREATE_TOPIC = `select pgmq.create('${TOPIC}');`;
+const CREATE_DEAD = `select pgmq.create('${TOPIC}__dead');`;
+const CREATE_TOPIC = `select pgmq.create('${TOPIC}'); ${CREATE_DEAD}`;
 const topicMigration = (sql) => ({ [TOPIC_FILE]: TOPIC_CONSTANT, [MIGRATION]: `${CREATE_TOPIC}\n${sql}` });
 const codes = (findings) => [...new Set(findings.map((finding) => finding.code))].sort();
 const BIND_TOPIC = `select pgmq.bind_topic('billing.receipt-paid', '${TOPIC}');`;
@@ -70,6 +71,8 @@ const pgmqFailures = [
   ['a topic queue constant outside platform/event-bus owns nothing', { 'be/src/modules/platform/queue/queue.contracts.ts': TOPIC_CONSTANT, [MIGRATION]: CREATE_TOPIC }],
   ['an event-bus topic queue constant with no pgmq queue', { [TOPIC_FILE]: TOPIC_CONSTANT }],
   ['an event-bus topic queue constant whose pgmq queue was dropped', { [TOPIC_FILE]: TOPIC_CONSTANT, [MIGRATION]: CREATE_TOPIC, [NEXT]: `select pgmq.drop_queue('${TOPIC}');` }],
+  ['an event-bus topic queue with no dead-letter queue', { [TOPIC_FILE]: TOPIC_CONSTANT, [MIGRATION]: `select pgmq.create('${TOPIC}');` }],
+  ['a dead-letter queue of no topic queue', { [MIGRATION]: "select pgmq.create('receipts__dead');" }],
   ['a dynamic event-bus topic queue constant', { [TOPIC_FILE]: 'export const RECEIPT_PAID_MAILER_TOPIC_QUEUE = topicName();' }],
 ];
 
@@ -107,7 +110,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(judge(t, edition, { [QUEUE]: CONSTANT }), []);
     assert.deepEqual(judge(t, edition, {
       [TOPIC_FILE]: TOPIC_CONSTANT,
-      [MIGRATION]: `-- select pgmq.create('inert');\nselect "pgmq"."create"(queue_name => '${TOPIC}'::text);\ngrant select, insert, update, delete on pgmq.q_${TOPIC}, pgmq.a_${TOPIC} to app_be;`,
+      [MIGRATION]: `-- select pgmq.create('inert');\nselect "pgmq"."create"(queue_name => '${TOPIC}'::text);\n${CREATE_DEAD}\ngrant select, insert, update, delete on pgmq.q_${TOPIC}, pgmq.a_${TOPIC} to app_be;`,
     }), []);
     assert.deepEqual(judge(t, edition, { [TOPIC_FILE.slice(3)]: TOPIC_CONSTANT, [MIGRATION]: CREATE_TOPIC }), []);
   });
@@ -166,7 +169,7 @@ for (const edition of ['lite', 'full']) {
   test(`${edition}: static migration DO declaration and non-secret SQL payload strings pass`, (t) => {
     assert.deepEqual(judge(t, edition, {
       [TOPIC_FILE]: TOPIC_CONSTANT,
-      [MIGRATION]: `do $$begin perform pgmq.create('${TOPIC}'); end$$;`,
+      [MIGRATION]: `do $$begin perform pgmq.create('${TOPIC}'); perform pgmq.create('${TOPIC}__dead'); end$$;`,
     }), []);
   });
 
@@ -197,7 +200,7 @@ for (const edition of ['lite', 'full']) {
       [NEXT]: "select cron.schedule('current-tick', '* * * * *', 'select 1');",
     });
     assert.deepEqual(databaseQueueDeclarations(context), {
-      queues: [TOPIC],
+      queues: [TOPIC, `${TOPIC}__dead`],
       cron: [{ name: 'current-tick', schedule: '* * * * *', command: 'select 1' }],
       grants: [],
       findings: [],
@@ -224,7 +227,7 @@ for (const edition of ['lite', 'full']) {
       [NEXT]: `revoke insert on pgmq.q_${TOPIC} from receipt_be; revoke grant option for select on pgmq.q_${TOPIC} from receipt_be;`,
     }, { appRole: 'receipt_be' });
     assert.deepEqual(databaseQueueDeclarations(context), {
-      queues: [TOPIC], cron: [],
+      queues: [TOPIC, `${TOPIC}__dead`], cron: [],
       grants: [
         { privileges: ['select'], tables: [`pgmq.q_${TOPIC}`], roles: ['receipt_be'], grantOption: false },
         { privileges: ['select'], tables: [`pgmq.a_${TOPIC}`], roles: ['receipt_be'], grantOption: false },
