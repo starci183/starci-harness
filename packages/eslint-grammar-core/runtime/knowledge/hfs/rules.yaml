@@ -4117,7 +4117,7 @@ rules:
     witness:
       - {path: packages/eslint/be/app-composition-coverage.spec.mjs, edition: lite, codes: [BE_APP_COMPOSITION_BUDGET]}
       - {path: packages/eslint/be/app-composition-coverage.spec.mjs, edition: full, codes: [BE_APP_COMPOSITION_BUDGET]}
-    law: "Each app file stays within the line budget its `be.app.*` slot names (`budget`, keyed by the slot entry the file matches): `main.ts` 80, `<app>.env.ts` 150, `<app>.options.ts` 200, `compose/<area>.ts` 120, `app.module.ts` 250. The budget is absolute, not a ratchet: an entrypoint that outgrows it moves typed, fail-fast parsing into `<app>.env.ts`; an app root that outgrows it moves an area into a new `compose/<area>.ts` group, never into the env or options file."
+    law: "Each app file stays within the line budget its `be.app.*` slot names (`budget`, keyed by the slot entry the file matches): `main.ts` 80, `<app>.env.ts` 150, `<app>.options.ts` 200, `compose/<area>.ts` 120, `app.module.ts` 250, counted in lines excluding import declarations (a multi-line import counts none of its lines). The budget is absolute, not a ratchet: an entrypoint that outgrows it moves typed, fail-fast parsing into `<app>.env.ts`; an app root that outgrows it moves an area into a new `compose/<area>.ts` group, never into the env or options file."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_APP_COMPOSITION_BUDGET"]
@@ -5690,31 +5690,6 @@ rules:
         source: owner
         quote: "nhớ làm langchain nhé update .claude lun là call thẳng từ code phải dùng langchain với embeded context"
         ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): the LangChain clients point at the gateway's base URL with its virtual key."
-  - id: R333
-    code: "BE_ENTITY_SCHEMA_DRIFT"
-    law: "Every TypeORM entity column of an app's entity list (be/src/platform/database/entities.ts) matches the schema its SQL migrations build: `starci app db drift` applies db/bootstrap.sql and every active db/migrations/*.sql to a scratch database (a container of the app's db image, or the empty database --url-env names), reads information_schema.columns and pg_catalog, and refuses a missing table, a missing column, a type that differs once both are normalised to PostgreSQL's format_type names (an enum by its type name), and a nullability that differs. A database column no entity maps is fine. A host that cannot provide the scratch database gets no verdict (exit 2, needs a database), never a green."
-    kinds: [check]
-    gates: [ci]
-    failureCodes: ["BE_ENTITY_SCHEMA_DRIFT"]
-    enforcers:
-      - {kind: hfs, id: db-drift, at: packages/hfs/db/drift.mjs}
-    editions: [lite]
-    editionWhy: "The owner ruling of 2026-10-29 maps lite tables with TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false, so only lite entities can drift from a schema they do not create; full entities ship with their own TypeORM migrations."
-    docs: [contexts/code/be/persistence.md]
-    templateNa: "The entities and the migrations are the product's tables; the check judges whichever an app writes, and a template scaffolds no table."
-    proves:
-      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
-      - {path: packages/hfs/src/db-drift-docker.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
-    exemplifiedBy:
-      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
-    witness:
-      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "lite persistence moves to TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false"
-        ruling: "Lite entities only map tables the migrations create, so each entity column is checked against the migrated schema by starci app db drift, which CI runs in the build job and the release gate runs as its db-drift row."
   - id: R328
     code: "BE_AUTH_PASSPORT_OWNER"
     law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are imported only by integrations/passport, the one owner of the Google OAuth 2.0 strategy (state and PKCE), the local email and password strategy (bcrypt) and the app's own access tokens; bcrypt and every Supabase client are owned nowhere."
@@ -5785,7 +5760,7 @@ rules:
         ruling: "The refresh token of the lite identity rotates and lives only in an httpOnly cookie; the browser holds no credential."
   - id: R331
     code: "BE_STORAGE_OWNER"
-    law: "The S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) is imported only by integrations/storage, the ObjectStorage port over S3-compatible storage (MinIO in lite) with presigned PUT and GET; no module imports minio."
+    law: "The S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) is imported only by integrations/object-storage, the ObjectStorage port over S3-compatible storage (MinIO in lite) with presigned PUT and GET; no module imports minio."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_STORAGE_OWNER"]
@@ -5796,7 +5771,7 @@ rules:
     proves:
       - packages/eslint-canon-be/src/auth-passport.spec.ts
     exemplifiedBy:
-      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/storage/storage.client.ts, edition: lite}
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/object-storage.client.ts, edition: lite}
     witness:
       - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, editions: [lite, full], codes: [BE_STORAGE_OWNER]}
     cases:
@@ -5828,6 +5803,31 @@ rules:
         quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
         ruling: "The lite database is self-hosted PostgreSQL in the app stack; its migrations live in db/migrations and starci app db migrate applies them."
   - id: R333
+    code: "BE_ENTITY_SCHEMA_DRIFT"
+    law: "Every TypeORM entity column of an app's entity list (be/src/modules/platform/database/entities.ts) matches the schema its SQL migrations build: `starci app db drift` applies db/bootstrap.sql and every active db/migrations/*.sql to a scratch database (a container of the app's db image, or the empty database --url-env names), reads information_schema.columns and pg_catalog, and refuses a missing table, a missing column, a type that differs once both are normalised to PostgreSQL's format_type names (an enum by its type name), and a nullability that differs. A database column no entity maps is fine. A host that cannot provide the scratch database gets no verdict (exit 2, needs a database), never a green."
+    kinds: [check]
+    gates: [ci]
+    failureCodes: ["BE_ENTITY_SCHEMA_DRIFT"]
+    enforcers:
+      - {kind: hfs, id: db-drift, at: packages/hfs/db/drift.mjs}
+    editions: [lite]
+    editionWhy: "The owner ruling of 2026-10-29 maps lite tables with TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false, so only lite entities can drift from a schema they do not create; full entities ship with their own TypeORM migrations."
+    docs: [contexts/code/be/persistence.md]
+    templateNa: "The entities and the migrations are the product's tables; the check judges whichever an app writes, and a template scaffolds no table."
+    proves:
+      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
+      - {path: packages/hfs/src/db-drift-docker.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
+    witness:
+      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "lite persistence moves to TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false"
+        ruling: "Lite entities only map tables the migrations create, so each entity column is checked against the migrated schema by starci app db drift, which CI runs in the build job and the release gate runs as its db-drift row."
+  - id: R334
     code: "BE_PERSISTENCE_NO_RAW_SQL"
     law: "Lite domain and feature code reads and writes through TypeORM entities on the injected EntityManager (find, findOne, findBy, count, exists, insert, save, update, delete, upsert, increment, and createQueryBuilder(Entity, alias) with named parameters for joins, aggregates, FOR UPDATE / SKIP LOCKED and jsonb or vector operators; never a table-name builder, a builder with no entity or a Repository); no .query( call and no sql template outside platform/database; a database function TypeORM cannot express is called through the callDbFunction, advisoryXactLock and notify helpers of platform/database, and callDbFunction names only a function ruleParams.be.dbFunctions or hfs.json sides.be.dbFunctions lists with a reason. Entities only map tables db/migrations created (synchronize stays false); entity-versus-schema drift is BE_ENTITY_SCHEMA_DRIFT of starci app db drift."
     kinds: [lint]

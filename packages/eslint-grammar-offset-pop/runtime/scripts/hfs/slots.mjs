@@ -222,7 +222,7 @@ function createScopeResolver(manifest, repo) {
     trackingOf,
     /** True only for a path a slot owns and requires to be committed. */
     isTracked: (p) => trackingOf(p) === 'tracked',
-    // The app's own database functions (hfs.json sides.be.dbFunctions) join the canon's list (R333).
+    // The app's own database functions (hfs.json sides.be.dbFunctions) join the canon's list (R334).
     ruleParams: () => withDeclaredDbFunctions(ruleParams(manifest, profile, edition), repo.dbFunctions),
     allowedImports: (tier) => manifest.tiers[profile]?.[tier]?.mayImport ?? null,
   });
