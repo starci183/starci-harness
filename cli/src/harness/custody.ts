@@ -19,13 +19,13 @@ import { projectOf } from "./work.js"
  * materialize` decrypts with, and hands them to that one test run's child environment: a command check's run, or a worker's own
  * through `starci test live` (core/test/live.ts); a worker's report of a run custody stopped is judged by the harness's own run
  * (CUSTODY_RECHECK). Never a file, an argument, a log line or
- * evidence: the run's output has every handed value scrubbed. A declared key no member of the environment holds (or holds empty)
- * is CUSTODY_KEY_MISSING, an owner-gated block that spends no try (core/task/verify.ts); a declaration the harness cannot read is
+ * evidence: the run's output has every handed value scrubbed. A declared key no member of the environment holds (or holds empty or
+ * blank) is CUSTODY_KEY_MISSING, an owner-gated block that spends no try (core/task/verify.ts); a declaration the harness cannot read is
  * CUSTODY_KEYS_UNRESOLVED, the same block filed as the harness's defect; a run that still reports a key custody holds as not
  * declared is the harness's failure too, VERIFY_INFRA with no verdict.
  */
 
-/** A declared key no sealed member of the environment holds, or holds empty: the owner seals it, the verify spends no try meanwhile. */
+/** A declared key no sealed member of the environment holds, or holds empty or blank: the owner seals it, the verify spends no try meanwhile. */
 export const CUSTODY_KEY_MISSING = "CUSTODY_KEY_MISSING"
 
 /** The environment's custody holds the key but cannot be opened here (no age identity, sops refused): the owner's to fix too. */
@@ -222,8 +222,9 @@ export const declaredKeys = (files: readonly string[], root: string): DeclaredKe
 }
 
 /**
- * The main checkout of a work tree: an Op worktree or a clean checkout reads the app's custody, and its age identity (kept in
- * the main checkout's git-ignored `.claude/`), from the repository it was cut from.
+ * The main checkout of a work tree: an Op worktree or a clean checkout reads the age identity custody opens with (kept in the
+ * main checkout's git-ignored `.claude/`) from the repository it was cut from. The sealed members are tracked files, read in
+ * the work tree itself (`holdersOf`).
  */
 const mainCheckout = (root: string): string => {
     const dotGit = join(root, ".git")
@@ -234,18 +235,23 @@ const mainCheckout = (root: string): string => {
 }
 
 /** The environment whose custody a test run reads: `dev` when it has sealed members, else the one environment that has any. */
-const custodyEnvironment = (app: string): string => {
-    const stacks = join(app, ".starcistacks")
+const custodyEnvironment = (tree: string): string => {
+    const stacks = join(tree, ".starcistacks")
     if (existsSync(join(stacks, TEST_ENVIRONMENT, "secrets")) || !existsSync(stacks)) return TEST_ENVIRONMENT
     const withSecrets = readdirSync(stacks, { withFileTypes: true }).filter((entry) => entry.isDirectory() && existsSync(join(stacks, entry.name, "secrets")))
     return withSecrets.length === 1 && withSecrets[0] !== undefined ? withSecrets[0].name : TEST_ENVIRONMENT
 }
 
-/** Where a work tree's custody lives, and which sealed member holds each of `keys` (read from the envelopes: names only, nothing decrypted). */
-const holdersOf = async (root: string, keys: readonly string[]): Promise<{ readonly app: string; readonly environment: string; readonly directory: string; readonly holder: ReadonlyMap<string, string> }> => {
-    const app = mainCheckout(root)
-    const environment = custodyEnvironment(app)
-    const directory = join(app, ".starcistacks", environment, "secrets")
+/**
+ * Where the custody of the work tree a run executes lives, and which sealed member holds each of `keys` (read from the
+ * envelopes: names only, nothing decrypted). The members are read in `tree` itself, the checkout of the branch head or
+ * candidate the suite runs from, so a member sealed on a workflow's branch and not yet on main is found; `app` is the main
+ * checkout whose age identity opens them.
+ */
+const holdersOf = async (tree: string, keys: readonly string[]): Promise<{ readonly app: string; readonly environment: string; readonly directory: string; readonly holder: ReadonlyMap<string, string> }> => {
+    const app = mainCheckout(tree)
+    const environment = custodyEnvironment(tree)
+    const directory = join(tree, ".starcistacks", environment, "secrets")
     const holder = new Map<string, string>()
     if (!existsSync(directory)) return { app, environment, directory, holder }
     const store = await import("@starci/hfs/runtime/scripts/hfs/secret-store.mjs")
@@ -270,13 +276,13 @@ export interface Custody {
 }
 
 /**
- * The declared keys of the live spec files (in the checkout `checkout`), read from the app's custody for one run. A declaration
- * the reader cannot reduce to key names refuses CUSTODY_KEYS_UNRESOLVED before anything runs, naming each `spec:line`. Each key
- * is looked up by name in the sealed members' envelopes, then only the members holding one are decrypted and only the named keys
- * kept. A key no member holds, or one held empty, refuses CUSTODY_KEY_MISSING ("custody lacks OPENROUTER_API_KEY in dev"); a
- * member that cannot be opened refuses CUSTODY_UNREADABLE. Undefined when the specs declare no key.
+ * The declared keys of the live spec files of the checkout `checkout` a run executes, read from that checkout's custody for one
+ * run. A declaration the reader cannot reduce to key names refuses CUSTODY_KEYS_UNRESOLVED before anything runs, naming each
+ * `spec:line`. Each key is looked up by name in the sealed members' envelopes, then only the members holding one are decrypted
+ * and only the named keys kept. A key no member holds, or one held empty or blank, refuses CUSTODY_KEY_MISSING ("custody lacks
+ * OPENROUTER_API_KEY in dev"); a member that cannot be opened refuses CUSTODY_UNREADABLE. Undefined when the specs declare no key.
  */
-export const custodyFor = async (liveSpecs: readonly string[], root: string, checkout: string): Promise<Custody | undefined> => {
+export const custodyFor = async (liveSpecs: readonly string[], checkout: string): Promise<Custody | undefined> => {
     const declared = declaredKeys(liveSpecs, checkout)
     if (declared.unresolved.length > 0) {
         throw new Refusal(
@@ -286,7 +292,7 @@ export const custodyFor = async (liveSpecs: readonly string[], root: string, che
     }
     const keys = declared.keys
     if (keys.length === 0) return undefined
-    const { app, environment, directory, holder } = await holdersOf(root, keys)
+    const { app, environment, directory, holder } = await holdersOf(checkout, keys)
     const lacks = (missing: readonly string[]): Refusal =>
         new Refusal(CUSTODY_KEY_MISSING, `custody lacks ${missing.join(", ")} in ${environment}: the live suite declares ${missing.length === 1 ? "it" : "them"}, and no sealed member of .starcistacks/${environment}/secrets holds ${missing.length === 1 ? "it" : "them"} with a value`)
     const missing = keys.filter((key) => !holder.has(key))
@@ -304,8 +310,8 @@ export const custodyFor = async (liveSpecs: readonly string[], root: string, che
         }
         for (const [key, file] of holder) if (file === member && typeof map[key] === "string") env[key] = map[key]
     }
-    // A key sealed by name with no value reaches the suite as undeclared: it is the owner's to fill, like one never sealed.
-    const empty = keys.filter((key) => (env[key] ?? "") === "")
+    // A key sealed by name with no value, or only blanks, is no credential: it is the owner's to fill, like one never sealed.
+    const empty = keys.filter((key) => (env[key] ?? "").trim() === "")
     if (empty.length > 0) throw lacks(empty)
     const values = Object.values(env)
     const members = [...new Set(holder.values())].map((file) => file.replace(/\.enc$/, "")).join(", ")
@@ -324,15 +330,15 @@ export const undeclaredIn = (output: string): string[] => [
 ]
 
 /**
- * Refuses with VERIFY_INFRA when a failed test run (its scrubbed `output`) reports as not declared a key the app's custody of
- * `root` holds: the harness did not hand over what it had (a declaration it did not read, a spec it did not take for live), so the
- * red is not the task's. It opens one harness-defect ticket, deduped by CUSTODY_KEY_NOT_HANDED, and the caller reaches no verdict
- * (core/task/verify.ts returns the task to reported with no try spent; a wave fails and judges no task).
+ * Refuses with VERIFY_INFRA when a failed test run (its scrubbed `output`) reports as not declared a key the custody of the
+ * checkout `tree` it ran from holds: the harness did not hand over what it had (a declaration it did not read, a spec it did not
+ * take for live), so the red is not the task's. It opens one harness-defect ticket, deduped by CUSTODY_KEY_NOT_HANDED, and the
+ * caller reaches no verdict (core/task/verify.ts returns the task to reported with no try spent; a wave fails and judges no task).
  */
-export const assertKeysHanded = async (output: string, root: string): Promise<void> => {
+export const assertKeysHanded = async (output: string, tree: string): Promise<void> => {
     const named = undeclaredIn(output)
     if (named.length === 0) return
-    const { environment, holder } = await holdersOf(root, named)
+    const { environment, holder } = await holdersOf(tree, named)
     if (holder.size === 0) return
     const held = [...holder.keys()].sort((left, right) => left.localeCompare(right))
     const { ticket } = openTicket({
@@ -343,7 +349,7 @@ export const assertKeysHanded = async (output: string, root: string): Promise<vo
         tried: "the verify reached no verdict and spent no try; every later step verifies again and goes on once the harness hands the key",
         proposedDefault: null,
         options: [],
-        project: await projectOf(root, false),
+        project: await projectOf(tree, false),
         workflow: null,
         by: "verify",
         code: CUSTODY_KEY_NOT_HANDED,

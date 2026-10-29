@@ -311,18 +311,20 @@ harness never runs.
 
 ### Custody into a live suite
 
-A command check whose scoped jest run holds an opt-in live suite (`useSandbox`, named by
-the task's command or its own changed spec), and a worker's own run of one through `starci test live <spec...> [--run
+A command check whose scoped jest run holds an opt-in live suite (a spec calling `useSandbox(...)` or
+`useSandbox<Client>(...)`, named by the task's command or its own changed spec), and a worker's own run of one through `starci test live <spec...> [--run
 <suite>]` (`core/test/live.ts`, made by the same `prepareSuite` of `harness/run-checks.ts` under a heavy-command slot,
 the worker seeing only key names), reads the keys the suite's world declares from the app's
-custody, the sealed members of `.starcistacks/<env>/secrets` (`dev`, else the one environment that has secrets), with the
-@starci/hfs code `app secret materialize` decrypts with, read in the app's main checkout where its age identity lives, and
+custody, the sealed members of `.starcistacks/<env>/secrets` (`dev`, else the one environment that has secrets) in the
+checkout the run executes (a wave's branch head, a verify's candidate, the worker's worktree), so a member sealed on a
+workflow's branch is found before it reaches main, opened with the @starci/hfs code `app secret materialize` decrypts with
+and the age identity of the app's main checkout, and
 hands them to that test run's child environment alone (`harness/custody.ts`): never a file, an argument or a log, and
 every handed value is scrubbed from the run's output before it becomes evidence. The keys are read from each
 `useSandbox(...)` call's options with the TypeScript compiler (the app's, else the CLI's): a literal array of strings, or
 a `const` holding one in the spec or in a relative module it imports it from (`as const`, a type annotation or
 `ReadonlyArray` alike), spreads included; an object element (`{ alias, resolve }`, a pool key the spec resolves itself)
-is no custody name. A declared key no member holds, or holds empty, refuses `CUSTODY_KEY_MISSING` ("custody lacks
+is no custody name. A declared key no member holds, or holds empty or blank, refuses `CUSTODY_KEY_MISSING` ("custody lacks
 OPENROUTER_API_KEY in dev"), one custody cannot open here `CUSTODY_UNREADABLE`, and a call whose keys reduce to anything
 but string literals `CUSTODY_KEYS_UNRESOLVED` naming its `spec:line`, before the suite runs; each ends the task
 `awaiting_owner` (from `verifying` in its verify, from `done` in the wave that runs its deferred tests), never red, its
