@@ -89,6 +89,27 @@ export const refExists = async (cwd: string, ref: string): Promise<boolean> => g
 export const isAncestor = async (cwd: string, ancestor: string, descendant: string): Promise<boolean> =>
     gitSucceeds(cwd, ["merge-base", "--is-ancestor", ancestor, descendant])
 
+/**
+ * The base a change check compares against when none is given: the branch base. On `main` or a detached HEAD it is `origin/main`
+ * when that exists, else HEAD (the working tree's own changes). On any other branch it is the latest fork point of the branch
+ * from `main` or `origin/main`, whichever merge-base is newer, so a lane cut from a local main that runs ahead of origin is
+ * judged on its own work, never on main's unpushed commits; HEAD when neither exists.
+ */
+export const branchBase = async (cwd: string): Promise<string> => {
+    const branch = await currentBranch(cwd)
+    const remote = (await refExists(cwd, "origin/main")) ? "origin/main" : "HEAD"
+    if (branch === undefined || branch === "main") return remote
+    const forks: string[] = []
+    for (const trunk of ["main", "origin/main"]) {
+        if (!(await refExists(cwd, trunk))) continue
+        const run = await captureGit(["merge-base", "HEAD", trunk], cwd)
+        if (run.exitCode === 0 && run.stdout.trim() !== "") forks.push(run.stdout.trim())
+    }
+    let newest: string | undefined
+    for (const fork of forks) if (newest === undefined || (await isAncestor(cwd, newest, fork))) newest = fork
+    return newest ?? "HEAD"
+}
+
 /** Files that differ between `base` and the working tree, plus untracked files, repository-relative with forward slashes. */
 export const changedFiles = async (cwd: string, base: string): Promise<string[]> => {
     const committed = await git(cwd, ["diff", "--name-only", base])

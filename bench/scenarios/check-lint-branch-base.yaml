@@ -1,0 +1,47 @@
+schema: starci/scenario@1
+id: check-lint-branch-base
+group: resources
+title: "check lint on a lane branch judges the lane's changed files, not main's unpushed commits"
+inject: >-
+  a scratch repository whose local main runs a commit ahead of origin/main, that commit carrying a file the lint stand-in
+  flags; a lane branch cut from main changes one clean file
+expect: >-
+  with no --base, check lint (and check run's lint) compares against the branch base, the newest fork point of the branch from
+  main or origin/main, so the lane's own file alone is linted and green; --all still lints every file of the package and is red
+pass:
+  - check lint on the lane names the fork point from local main as its base and exits 0
+  - check run on the lane exits 0
+  - check lint --all exits 1, the flagged file of main among what it lints
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    package.json: '{"name": "bench-branch-base", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"fe": {"grammar": "core"}}}'
+    tsconfig.json: '{"compilerOptions": {"strict": true}, "include": ["src"]}'
+    eslint.config.js: "module.exports = []\n"
+    src/index.ts: "export const index = 1\n"
+    node_modules/typescript/bin/tsc: "process.exit(0)\n"
+    node_modules/eslint/bin/eslint.js: |
+      if (process.argv.some((arg) => arg.includes("main-only"))) { console.log("src/main-only.ts: flagged"); process.exit(1) }
+    .gitignore: "node_modules\n"
+steps:
+  - name: origin/main stands at the scratch commit
+    git: [update-ref, refs/remotes/origin/main, HEAD]
+  - name: local main runs one commit ahead of origin/main, with a file the lint flags
+    write: { path: src/main-only.ts, content: "export const mainOnly = 1\n" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: a commit of main not on origin"]
+  - name: a lane branch cut from local main, changing one clean file
+    git: [checkout, -q, -b, lane/bench]
+  - write: { path: src/lane.ts, content: "export const lane = 1\n" }
+  - git: [add, -A]
+  - name: lint my changed files
+    starci: [check, lint]
+    expect: { exit: 0, lacks: "main-only" }
+  - name: the runtime tier on the lane judges the same files
+    starci: [check, run]
+    expect: { exit: 0 }
+  - name: --all lints the whole package
+    starci: [check, lint, --all]
+    expect: { exit: 1, contains: "main-only" }

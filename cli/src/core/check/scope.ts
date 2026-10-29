@@ -8,7 +8,7 @@ import { captureTool } from "../../shared/exec.js"
 import type { RunOptions, ToolRun } from "../../shared/exec.js"
 import { opForkOf, ownChanges } from "../../harness/baseline.js"
 import { underPaths } from "../../harness/contract.js"
-import { changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
+import { branchBase, changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
 import { ESLINT_CONFIGS, listPackages, ownerOf } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
@@ -114,7 +114,7 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     const root = await repositoryRoot(cwd)
     // A task in its Op worktree is judged on its own diff: from the workflow head its worktree was cut from, never from main.
     const fork = baseFlag !== undefined || judging.task === undefined ? undefined : await opForkOf(root, judging.task)
-    const base = baseFlag ?? fork ?? ((await refExists(root, "origin/main")) ? "origin/main" : "HEAD")
+    const base = baseFlag ?? fork ?? (await branchBase(root))
     if (!(await refExists(root, base))) throw new Refusal("CHECK_BASE_UNKNOWN", `the base ${base} does not exist here`)
     const packages = listPackages(root)
     if (packages.length === 0) throw new Refusal("CHECK_NO_PACKAGE", `no package.json with a name and version under ${root}`)

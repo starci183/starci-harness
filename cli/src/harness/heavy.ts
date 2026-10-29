@@ -235,6 +235,12 @@ interface ManagedReading {
     readonly pids: Readonly<Record<string, number>>
 }
 
+/** Two managed readings the share is measured between: the older and the newest. */
+interface ManagedPair {
+    readonly old: ManagedReading
+    readonly current: ManagedReading
+}
+
 /**
  * The managed share between two readings, in percent of the host's total CPU: each managed process's CPU time since the older
  * reading (all of it for a process the older one did not hold, or held at more, a reused pid), at most the host's whole time.
@@ -274,28 +280,32 @@ export const managedCpuPercent = async (rules: HeavyRules): Promise<number | nul
     }
     const toReading = (row: Record<string, unknown> | undefined): ManagedReading | undefined =>
         row === undefined ? undefined : { atMs: Number(row.at_ms), total: Number(row.total), pids: JSON.parse(String(row.pids_json)) as Record<string, number> }
-    const pair = (): { readonly old: ManagedReading; readonly current: ManagedReading } | undefined =>
-        withGovernor((db) => {
-            const current = toReading(db.prepare("SELECT * FROM managed_cpu_samples ORDER BY at_ms DESC LIMIT 1").get())
-            if (current === undefined) return undefined
-            const old =
-                toReading(db.prepare("SELECT * FROM managed_cpu_samples WHERE at_ms <= ? ORDER BY at_ms DESC LIMIT 1").get(current.atMs - windowMs)) ??
-                toReading(db.prepare("SELECT * FROM managed_cpu_samples WHERE at_ms <= ? ORDER BY at_ms ASC LIMIT 1").get(current.atMs - SAMPLE_MIN_MS))
-            return old === undefined ? undefined : { old, current }
-        })
-    const due = withGovernor((db) => {
+    const pairIn = (db: DatabaseSync): ManagedPair | undefined => {
+        const current = toReading(db.prepare("SELECT * FROM managed_cpu_samples ORDER BY at_ms DESC LIMIT 1").get())
+        if (current === undefined) return undefined
+        const old =
+            toReading(db.prepare("SELECT * FROM managed_cpu_samples WHERE at_ms <= ? ORDER BY at_ms DESC LIMIT 1").get(current.atMs - windowMs)) ??
+            toReading(db.prepare("SELECT * FROM managed_cpu_samples WHERE at_ms <= ? ORDER BY at_ms ASC LIMIT 1").get(current.atMs - SAMPLE_MIN_MS))
+        return old === undefined ? undefined : { old, current }
+    }
+    // One open of the store decides: a reading is due (and claimed), or the stored pair answers.
+    const decided = withGovernor((db): { readonly due: true } | { readonly due: false; readonly found: ManagedPair | undefined } => {
         db.exec(TABLES)
         const at = Date.now()
         const newest = Number(db.prepare("SELECT MAX(at_ms) AS at FROM managed_cpu_samples").get()?.at ?? 0)
         const claimed = Number(db.prepare("SELECT value FROM heavy_meta WHERE key = ?").get(MANAGED_CLAIM)?.value ?? 0)
-        if (at - newest < refreshMs || at - claimed < refreshMs) return false
+        if (at - newest < refreshMs || at - claimed < refreshMs) return { due: false, found: pairIn(db) }
         db.prepare("INSERT INTO heavy_meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(MANAGED_CLAIM, String(at))
-        return true
+        return { due: true }
     })
-    const taken = due ? await read() : undefined
+    if (!decided.due && decided.found !== undefined) return managedShare(decided.found.old, decided.found.current)
+    const taken = decided.due ? await read() : undefined
     if (taken === null) return null
-    if (taken !== undefined) store(taken)
-    const found = pair()
+    const found = taken === undefined ? undefined : withGovernor((db) => {
+        db.prepare("INSERT INTO managed_cpu_samples (at_ms, total, pids_json) VALUES (?, ?, ?)").run(taken.atMs, taken.total, JSON.stringify(taken.pids))
+        db.prepare("DELETE FROM managed_cpu_samples WHERE at_ms < ?").run(taken.atMs - windowMs * 5)
+        return pairIn(db)
+    })
     if (found !== undefined) return managedShare(found.old, found.current)
     const first = taken ?? (await read())
     if (first === null) return null

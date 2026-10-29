@@ -17,6 +17,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   it, by age with the project fair share; at or above it, or unknown, the ceiling and the starve rule hold as before. RAM rules
   are unchanged and still block. `host load`, the queue's wait reasons and `workflow status` name the rule that applied. Bench:
   `heavy-foreign-cpu-admits-managed`, `heavy-own-cpu-still-waits`.
+- **A governed tsc runs under the same heap as eslint** (nivo-lite lane r-4). `check typecheck` died of a node heap OOM on a
+  large back end: its tsc child ran under `heavy.memoryMb.tsc` 2048, below node's default heap. `memoryMb.tsc` and
+  `estimateMb.tsc` now equal eslint's, so the admission's RAM estimate matches the heap; the child gets it through
+  NODE_OPTIONS of its `node <bin>` spawn (`withHeavySlot`). Bench: `heavy-heap-reaches-tsc-eslint`.
+- **A change check on a branch judges the branch's own files** (nivo-lite lane r-4). `check lint`, `check typecheck`,
+  `check run` and `check secrets` without `--base` compared against `origin/main`, so a lane cut from a local main that ran
+  ahead of origin linted 212 files of main's unpushed merges. The default base is now the branch base (`branchBase` of
+  `shared/git.ts`): `origin/main` on main, else the newest fork point of the branch from main or origin/main. `--all` and the
+  app-root widening are unchanged. Bench: `check-lint-branch-base`.
 
 ## [1.1.0-alpha.9] - 2026-10-29
 

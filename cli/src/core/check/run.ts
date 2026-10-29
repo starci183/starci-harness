@@ -150,7 +150,7 @@ export const checkRunVerb = defineVerb({
     roles: EVERYONE,
     schema: "starci/check-run@1",
     flags: {
-        base: { kind: "string", summary: "compare against this ref (default origin/main, else HEAD)" },
+        base: { kind: "string", summary: "compare against this ref (default the branch base: origin/main on main, else the fork point from main or origin/main)" },
         all: { kind: "boolean", summary: "check every package and scan every file, not only the changed ones" },
         task: { kind: "string", summary: "judge as this task: only the files it changed since its work began, its composition rules deferred to its composer, and the modules it composes judged in full" },
         workflow: { kind: "string", summary: "the workflow's final verify: judge every module whose composition rules a task of it deferred, with no deferral" },

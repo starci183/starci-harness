@@ -13,8 +13,10 @@ starci check run
 ```
 
 The runtime tier of the repository's policy profile ([policy/quality.yaml](../../../policy/quality.yaml)):
-secrets, loosening, canon, typecheck and lint, scoped to the diff against `origin/main`. Run one step alone
-with `starci check lint`, `starci check typecheck`, `starci check secrets` or `starci check loosening`.
+secrets, loosening, canon, typecheck and lint, scoped to the diff against the branch base (`origin/main` on main, else the
+fork point from main: `branchBase` of `cli/src/shared/git.ts`), the files your branch changed, committed or not; `--all`
+judges every package in full. Run one step alone with `starci check lint` (lint my changed files), `starci check
+typecheck`, `starci check secrets` or `starci check loosening`.
 A red gate is fixed in the code. Never loosen a gate, add an inline disable or a policy exception to pass.
 
 ## 2. Push
