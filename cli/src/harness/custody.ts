@@ -20,13 +20,14 @@ import { projectOf } from "./work.js"
  * materialize` decrypts with, and hands them to that one test run's child environment: a command check's run, or a worker's own
  * through `starci test live` (core/test/live.ts); a worker's report of a run custody stopped is judged by the harness's own run
  * (CUSTODY_RECHECK). Never a file, an argument, a log line or
- * evidence: the run's output has every handed value scrubbed. A declared key no member of the environment holds (or holds empty or
- * blank) is CUSTODY_KEY_MISSING, an owner-gated block that spends no try (core/task/verify.ts); a declaration the harness cannot read is
- * CUSTODY_KEYS_UNRESOLVED, the same block filed as the harness's defect; a run that still reports a key custody holds as not
+ * evidence: the run's output has every handed value scrubbed. A key the suite needs that no member of the environment holds (or
+ * holds empty or blank) is CUSTODY_KEY_MISSING, an owner-gated block that spends no try (core/task/verify.ts, harness/wave.ts),
+ * whether its declaration names it before the run or the run reports it as not declared; a declaration the harness cannot read
+ * is CUSTODY_KEYS_UNRESOLVED, the same block filed as the harness's defect; a run that still reports a key custody holds as not
  * declared is the harness's failure too, VERIFY_INFRA with no verdict.
  */
 
-/** A declared key no sealed member of the environment holds, or holds empty or blank: the owner seals it, the verify spends no try meanwhile. */
+/** A key a live suite needs that no sealed member of the environment holds, or holds empty or blank: the owner seals it, the verify spends no try meanwhile. */
 export const CUSTODY_KEY_MISSING = "CUSTODY_KEY_MISSING"
 
 /** The environment's custody holds the key but cannot be opened here (no age identity, sops refused): the owner's to fix too. */
@@ -269,6 +270,12 @@ const holdersOf = async (tree: string, keys: readonly string[]): Promise<{ reado
     return { app, environment, directory, holder }
 }
 
+/** The owner's block on keys custody of `environment` lacks (CUSTODY_KEY_MISSING), naming each one. */
+const lacking = (missing: readonly string[], environment: string): Refusal => {
+    const them = missing.length === 1 ? "it" : "them"
+    return new Refusal(CUSTODY_KEY_MISSING, `custody lacks ${missing.join(", ")} in ${environment}: the live suite needs ${them}, and no sealed member of .starcistacks/${environment}/secrets holds ${them} with a value`)
+}
+
 /** The keys handed to one run: the child environment, the values to scrub from its output, and the line the check's detail names. */
 export interface Custody {
     readonly env: Readonly<Record<string, string>>
@@ -294,10 +301,8 @@ export const custodyFor = async (liveSpecs: readonly string[], checkout: string)
     const keys = declared.keys
     if (keys.length === 0) return undefined
     const { app, environment, directory, holder } = await holdersOf(checkout, keys)
-    const lacks = (missing: readonly string[]): Refusal =>
-        new Refusal(CUSTODY_KEY_MISSING, `custody lacks ${missing.join(", ")} in ${environment}: the live suite declares ${missing.length === 1 ? "it" : "them"}, and no sealed member of .starcistacks/${environment}/secrets holds ${missing.length === 1 ? "it" : "them"} with a value`)
     const missing = keys.filter((key) => !holder.has(key))
-    if (missing.length > 0) throw lacks(missing)
+    if (missing.length > 0) throw lacking(missing, environment)
     const store = await import("@starci/hfs/runtime/scripts/hfs/secret-store.mjs")
     const { defaultSops } = await import("@starci/hfs/runtime/scripts/hfs/secret-sops.mjs")
     const env: Record<string, string> = {}
@@ -313,7 +318,7 @@ export const custodyFor = async (liveSpecs: readonly string[], checkout: string)
     }
     // A key sealed by name with no value, or only blanks, is no credential: it is the owner's to fill, like one never sealed.
     const empty = keys.filter((key) => (env[key] ?? "").trim() === "")
-    if (empty.length > 0) throw lacks(empty)
+    if (empty.length > 0) throw lacking(empty, environment)
     const values = Object.values(env)
     const members = [...new Set(holder.values())].map((file) => file.replace(/\.enc$/, "")).join(", ")
     return { env, values, detail: `custody: ${keys.join(", ")} from ${environment}/${members}, handed to this run's environment only` }
@@ -331,16 +336,18 @@ export const undeclaredIn = (output: string): string[] => [
 ]
 
 /**
- * Refuses with VERIFY_INFRA when a failed test run (its scrubbed `output`) reports as not declared a key the custody of the
- * checkout `tree` it ran from holds: the harness did not hand over what it had (a declaration it did not read, a spec it did not
- * take for live), so the red is not the task's. It opens one harness-defect ticket, deduped by CUSTODY_KEY_NOT_HANDED, and the
- * caller reaches no verdict (core/task/verify.ts returns the task to reported with no try spent; a wave fails and judges no task).
+ * Judges the keys a failed test run (its scrubbed `output`) reports as not declared against the custody of the checkout `tree` it
+ * ran from; a run reporting none keeps its own verdict. A run reporting any is never the task's red, since its world never booted. A key custody holds
+ * means the harness did not hand over what it had (a declaration it did not read, a spec it did not take for live): it refuses
+ * VERIFY_INFRA and opens one harness-defect ticket, deduped by CUSTODY_KEY_NOT_HANDED, and the caller reaches no verdict
+ * (core/task/verify.ts returns the task to reported with no try spent; a wave fails and judges no task). Keys custody holds none
+ * of refuse CUSTODY_KEY_MISSING naming them, the owner's block as when a declaration names them before the run (`blockOnCustody`).
  */
 export const assertKeysHanded = async (output: string, tree: string): Promise<void> => {
     const named = undeclaredIn(output)
     if (named.length === 0) return
     const { environment, holder } = await holdersOf(tree, named)
-    if (holder.size === 0) return
+    if (holder.size === 0) throw lacking([...named].sort((left, right) => left.localeCompare(right)), environment)
     const held = [...holder.keys()].sort((left, right) => left.localeCompare(right))
     const { ticket } = openTicket({
         kind: "harness-defect",

@@ -32,7 +32,8 @@ interface LiveData {
  * path, and when they hold a `useSandbox` spec the keys its world declares are read from the app's custody and handed to that one
  * child process, under a heavy-command slot, with every value scrubbed from its output. The worker never sees a value. Refuses
  * CUSTODY_KEY_MISSING (a declared key no sealed member holds, or holds empty), CUSTODY_UNREADABLE and CUSTODY_KEYS_UNRESOLVED
- * before anything runs, and VERIFY_INFRA when the run still reports a key custody holds as not declared; red (exit 1) when the
+ * before anything runs; after it, VERIFY_INFRA when the run reports a key custody holds as not declared and CUSTODY_KEY_MISSING
+ * when it reports keys custody holds none of; red (exit 1) when the
  * suite fails.
  */
 export const testLiveVerb = defineVerb({
