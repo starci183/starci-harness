@@ -409,6 +409,11 @@ rulings:
     status: live
     ruling: "Owner, verbatim, on where the db image's Dockerfile lives: \"phải nằm trong starcistacks nhỉ?\" (it belongs in starcistacks). The managed Dockerfile of a lite app's db image is .starcistacks/images/db/Dockerfile, built with its folder as the context by the stack build, the images and stack-deploy workflows, npm run db:image, the drift scratch database and the squash replay; db/ keeps only schema and data (migrations, bootstrap, seed), and starci app sync --write removes a leftover db/Dockerfile."
     owner: "contexts/hfs/slots.yaml (app.db.image, app.starcistacks lite allows); @starci/hfs db/image.mjs, sync (retiredFiles), templates/app/db-image, templates/app/gitignore-lite; contexts/project/lite.md"
+  - id: lite-reactors-as-full
+    date: '2026-10-30'
+    status: live
+    ruling: "Owner, verbatim, on the lite reactor pattern being marked open while R153 already judged lite consumers: \"ủa là sao, phần này lite phải tuân thủ full chứ?\" (lite must follow full here). A lite app's event consumer is a reactor exactly as in full (BE-REACTORS-1, BE-EVENT-BUS-4): features/reactors/<reactor>/ holds transport/message/<event>.consumer.ts, <reactor>-message.module.ts and an application/ of plain CQRS; the consumer dispatches one command forwarding delivery.eventId and never imports a domain service; the handler's domain service of the reactor's own context claims the inbox and does the work in one transaction. Only the transport differs (the pgmq bus of ruling lite-pgmq-bus-bullmq-jobs). Saga and projection stay open for lite."
+    owner: "contexts/code/be/reactors.md BE-REACTORS-1; contexts/code/be/event-bus.md BE-EVENT-BUS-4, -6; contexts/hfs/rules.yaml R153 BE_EVENT_CONSUMER_SHAPE; contexts/project/lite.md (Patterns); @starci/hfs templates/be/patterns/reactors (full adapter; a lite template is to come, until then the lite reactor is written by hand on the pgmq adapter)"
   - id: lite-persistence-typeorm-entities
     date: '2026-10-29'
     status: live

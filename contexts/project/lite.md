@@ -48,10 +48,15 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 - A recurring task is a tick of `platform/jobs`, fired by `@nestjs/schedule` in the back end and enqueued once per
   minute for the whole deployment. Owners: R335; [code/be/jobs.md](../code/be/jobs.md) BE-JOBS-6.
 - Jobs and projections keep their tables in db migrations. Owners: slots `be.platform.jobs`, `be.projections`.
-- Reactor, saga and projection: open. The pattern topics ([saga.md](../code/be/saga.md),
-  [projections.md](../code/be/projections.md), [event-bus.md](../code/be/event-bus.md)) describe each one
-  running in lite, while [README.md](../../README.md) (verb groups; `starci explain` lists what is built) gives `app add reactor|saga|projection` to full
-  apps only. The owner's ruling decides which holds.
+- A reactor is the same as in full: `features/reactors/<reactor>/transport/message/<event>.consumer.ts`, its message module
+  and an `application/` of plain CQRS, the consumer dispatching one command and the reactor's own domain service doing the
+  work; only the transport is the pgmq bus. Owners: ruling `lite-reactors-as-full`; R153;
+  [code/be/reactors.md](../code/be/reactors.md) BE-REACTORS-1. `app add reactor` still carries only the full adapter's
+  templates, so a lite reactor is written by hand on that shape until a lite template ships.
+- Saga and projection: open. The pattern topics ([saga.md](../code/be/saga.md),
+  [projections.md](../code/be/projections.md)) describe each one running in lite, while [README.md](../../README.md) (verb
+  groups; `starci explain` lists what is built) gives `app add saga|projection` to full apps only. The owner's ruling decides
+  which holds.
 
 ## Infrastructure the project runs
 
