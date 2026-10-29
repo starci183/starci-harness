@@ -114,14 +114,19 @@ image, so any digest-pinned supported reverse proxy serves.
   with `sops updatekeys`, the owner identity opening only the data key. `--rotate --execute` stages a new identity, wraps the
   members to it, swaps it in keeping the old file on the server as `keys.txt.retired-<UTC stamp>` until the owner deletes it,
   then drops the old recipient. The owner key is the first way back when the server loses its identity: production is
-  sealed to it, so the owner seals production again to a new server key. The owner chose a second way, a copy in GitHub,
-  accepting that whoever can deploy to that GitHub Environment can read the server key: `--backup github --execute` streams
-  the key file from the server's ssh stdout straight into `gh secret set SOPS_AGE_KEY_<ENV> --env <env>` of the app's origin
-  repository, never printed, held or written locally, and refuses unless that Environment exists with required reviewers or
-  deployment branches limited to main; GitHub never gives a secret back, so `--restore github --execute` dispatches the
-  managed `.github/workflows/stack-key-restore.yml`, which writes it to the server over the deploy's CI ssh key (umask 077,
-  mode 600, never echoed, never over an existing identity). `stack deploy` opens the members where it runs (the owner machine, or CI with the protected
-  environment's SOPS_AGE_KEY) and hands each value to a Swarm secret over the deploy transport; a decrypt on the server reads
+  sealed to it, so the owner seals production again to a new server key. The server key is also the environment's CI key,
+  which the owner accepts knowing that whoever can deploy to that GitHub Environment can read it: `--backup github --execute`
+  streams the key file from the server's ssh stdout straight into `gh secret set SOPS_AGE_KEY --env <env>` of the app's
+  origin repository, never printed, held or written locally, and refuses unless that Environment exists with required
+  reviewers or deployment branches limited to main. That Environment secret is the SOPS_AGE_KEY every CI job bound to `<env>`
+  reads, overriding a repository secret of the same name, so a deploy of `<env>` opens its members with that environment's
+  server key. GitHub never gives a secret back, so `--restore github --execute` dispatches the managed
+  `.github/workflows/stack-key-restore.yml` with the recorded `serverRecipient`, which writes that secret to the server over
+  the deploy's CI ssh key only when its public key is that recipient (umask 077, mode 600, never echoed, never over an
+  existing identity). Both warn while the repository holds a SOPS_AGE_KEY of its own (`gh api repos/<o>/<r>/actions/secrets`,
+  names only): the owner deletes it once every environment holds its server key, since the owner key never belongs in
+  GitHub. `stack deploy` opens the members where it runs (the owner machine with the owner key, or CI with the bound
+  environment's server key) and hands each value to a Swarm secret over the deploy transport; a decrypt on the server reads
   this key file (@starci/hfs `stack/server-key.mjs`).
 - **Set in one write.** `starci app secret set <env> <provider> <KEY>...` prompts for each key with masked input on a
   terminal (or reads redirected stdin, or `--from-file KEY=path` byte for byte) and seals them all in one write, so no member
@@ -138,8 +143,9 @@ image, so any digest-pinned supported reverse proxy serves.
      recipients.
   2. `starci app sync --write` renders the `.gitignore` block that tracks `secrets/*.enc.yaml`.
   3. `starci app secret recipients <env> --add owner` puts the owner key on each environment; a recipient no one holds any
-     more leaves with `--remove <age1...>`, and `starci app secret server-key production --execute` makes the server key and
-     seals production to it.
+     more leaves with `--remove <age1...>`, `starci app secret server-key production --execute` makes the server key and
+     seals production to it, and `server-key production --backup github --execute` makes it the key CI deploys production
+     with; once every environment holds its key, the owner deletes the repository-level SOPS_AGE_KEY the backup warns about.
   4. `starci app secret migrate <env> <member> [--to <provider>] [--into-existing]`, then the same with `--execute`, moves
      each legacy member, or merges one into an existing member; `split <env> <member> [--group KEY=member ...]
      [--group-file <yaml>] [--into-existing]` (dry run, then `--execute`) divides one that mixes providers, each key to its
@@ -219,9 +225,11 @@ One key belongs to one class, and the manifest's `ci` block declares names and p
 A name is upper snake case, never in the CI provider's reserved prefix, and declared once across the classes; an
 environment-scoped name names its environment; a variable whose value only the owner may give is declared as such and
 set from standard input, never argv. A sealed key is never a CI secret, an app's runtime secret never reaches CI, and
-every workflow reference is declared and every required declaration read (R296, R297, R298). CI holds only age
-identities (the deploy's, and the server identity's backup of PROJECT-STACKS-5) and the deploy transport credentials, injected into the protected job that needs custody and removed when it
-ends; a job that only builds or checks needs no key (R251, R252).
+every workflow reference is declared and every required declaration read (R296, R297, R298). CI holds only each
+environment's server key, as the SOPS_AGE_KEY of that GitHub Environment (PROJECT-STACKS-5), and the deploy transport
+credentials, never the owner key and no repository-level SOPS_AGE_KEY. Every job that reads SOPS_AGE_KEY is bound to the
+environment whose members it opens (`environment: <env>`), so it reads that environment's key, injected into that job
+alone and gone when it ends; a job that only builds or checks needs no key (R251, R252).
 
 ## PROJECT-STACKS-8 Quality services are declared and required
 

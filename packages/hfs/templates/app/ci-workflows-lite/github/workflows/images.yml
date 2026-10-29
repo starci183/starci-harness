@@ -1,6 +1,8 @@
 {{header}}
 # Builds each image declared by the lite app. The API image is required; a front-end image is emitted only when declared.
 # It runs on the release tag, so every image is built there, and never pushes.
+# When an environment declares images, the job is bound to that protected GitHub environment and opens its sealed build
+# arguments with that environment's SOPS_AGE_KEY (its server identity, starci app secret server-key <env> --backup github).
 name: images
 
 on:

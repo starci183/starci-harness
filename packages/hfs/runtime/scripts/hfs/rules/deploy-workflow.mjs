@@ -160,6 +160,24 @@ function deploymentJobFindings(name, job, doc, refuse) {
   return findings;
 }
 
+const AGE_KEY_REFERENCE = /\$\{\{[^}]*\bsecrets\s*(?:\.\s*SOPS_AGE_KEY\b|\[\s*(['"])SOPS_AGE_KEY\1\s*\])/;
+const readsAgeKey = (value) => strings(value).some((text) => AGE_KEY_REFERENCE.test(text));
+
+/**
+ * A job that reads secrets.SOPS_AGE_KEY opens the members of one environment, so it is bound to that GitHub Environment, whose
+ * SOPS_AGE_KEY is the environment's server identity (PROJECT-STACKS-5/7); unbound, it would read a repository secret of that name.
+ * Disabled steps do not count. A deployment job is judged by deploymentJobFindings, which already requires its environment.
+ */
+function ageKeyJobFindings(doc, file, refuse) {
+  const deployment = new Set(deploymentJobs(doc, file).map(([name]) => name));
+  const workflowWide = readsAgeKey(doc.env);
+  const jobs = record(doc.jobs) ? Object.entries(doc.jobs).filter(([, job]) => record(job)) : [];
+  return jobs
+    .filter(([name, job]) => !deployment.has(name) && !validEnvironment(job.environment))
+    .filter(([, job]) => workflowWide || readsAgeKey({ env: job.env, with: job.with, secrets: job.secrets, steps: activeSteps(job).map((step) => ({ env: step.env, with: step.with, run: nonempty(step.run) ? executable(step.run) : undefined })) }))
+    .map(([name]) => refuse(DEPLOY, `job ${name} reads secrets.SOPS_AGE_KEY without an environment; bind it to the GitHub Environment whose members it opens (environment: <env>), which holds that environment's server key`));
+}
+
 function deploymentFindings(doc, file, refuse) {
   const deployment = deploymentJobs(doc, file);
   const named = deployName(file) || deployName(String(doc.name ?? ''));
@@ -216,7 +234,7 @@ function perWorkflow({ path: file, text }) {
   const refuse = (code, message) => found(code, file, `${code} ${file}: ${message}`);
   const doc = parseWorkflow(text);
   if (!record(doc)) return [refuse(TRIGGER, 'the workflow must be valid YAML with a release-only on block'), ...(deployName(file) ? [refuse(DEPLOY, 'the deploy workflow must be valid YAML')] : [])];
-  return [...triggerFindings(doc, refuse, file), ...deploymentFindings(doc, file, refuse), ...toolFindings(doc, refuse)];
+  return [...triggerFindings(doc, refuse, file), ...deploymentFindings(doc, file, refuse), ...ageKeyJobFindings(doc, file, refuse), ...toolFindings(doc, refuse)];
 }
 
 /** Synchronous R251 findings over the tracked workflows of a lite/full app. */

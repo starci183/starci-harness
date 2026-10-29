@@ -7,7 +7,9 @@
 # operation rollback  redeploys a stored release; "release" is 16 lowercase hex characters, empty means the previous accepted release
 # The environment input names a protected GitHub environment (required reviewers) that holds:
 #   vars    VPS_HOST, VPS_USER (the swarm manager); a variable named in deploy.passEnv, when the stack interpolates one
-#   secrets SOPS_AGE_KEY (the age identity of .sops.yaml), VPS_SSH_KEY (CI-only deploy key), VPS_KNOWN_HOSTS (pinned host keys)
+#   secrets SOPS_AGE_KEY (that environment's server identity, stored there by starci app secret server-key <env> --backup github;
+#           both jobs are bound to the environment, so they read it and never a repository secret of that name), VPS_SSH_KEY
+#           (CI-only deploy key), VPS_KNOWN_HOSTS (pinned host keys)
 # Nothing else is a secret: images are pushed with the workflow token, which also reads the CI verdict of the tag's commit a production deploy
 # waits for (requireCi deploy.prod). Dispatch inputs reach scripts only through env.
 name: deploy stack
