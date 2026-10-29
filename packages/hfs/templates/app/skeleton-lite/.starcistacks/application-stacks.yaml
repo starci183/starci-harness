@@ -27,9 +27,9 @@ components:
     role: service
     stateful: true
     volumes: [db-data]
-    image: "supabase/postgres:17.11.0.006@sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2"
+    image: "{{project}}/db:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
     compose: infra/swarm/stack.yaml
-    purpose: The app's own PostgreSQL (pg_cron, pg_net, pgmq, vector), migrated by starci app db migrate.
+    purpose: The app's own PostgreSQL, the official postgres image plus pgvector built from db/Dockerfile, migrated by starci app db migrate.
     required: true
   ingress:
     role: ingress
@@ -203,6 +203,8 @@ environments:
       images:
         api:
           app: api
+        db:
+          app: db
         web:
           app: web
           # Public browser configuration; replace these placeholders before deployment.

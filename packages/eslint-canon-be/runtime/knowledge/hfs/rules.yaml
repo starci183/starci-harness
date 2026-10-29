@@ -4176,7 +4176,7 @@ rules:
     editions: [lite, full]
     docs:
       - {path: docs/application-stacks.md#r250-deploy-scan, editions: [lite, full]}
-    law: "In lite and full apps, scheduled work belongs to the back-end queue scheduler, a pg_cron tick that enqueues through the queue outbox or a declared replicated-job. Deployment files, scripts, workflows, compose files and Dockerfiles install no host crontab, cron.d entry, systemd timer, @reboot job or at job; a workflow does not schedule app work. Docker compose up, down and pull run only against an explicitly dev environment. Deploy shell scripts delegate to docker, starci or the app CLI, and contain no node -e, psql, inline SQL or downloaded shell logic."
+    law: "In lite and full apps, scheduled work belongs to the back-end queue scheduler, a platform/jobs tick (R335) that enqueues through the queue outbox or a declared replicated-job. Deployment files, scripts, workflows, compose files and Dockerfiles install no host crontab, cron.d entry, systemd timer, @reboot job or at job; a workflow does not schedule app work. Docker compose up, down and pull run only against an explicitly dev environment. Deploy shell scripts delegate to docker, starci or the app CLI, and contain no node -e, psql, inline SQL or downloaded shell logic."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_HOST_CRON", "HFS_DEPLOY_NO_LOGIC", "HFS_DEPLOY_COMPOSE_ON_VPS", "HFS_DEPLOY_SCHEDULER"]
@@ -4701,7 +4701,7 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-full-fixtures.spec.mjs, edition: full}
   - id: R276
     code: "STACKS_LITE_SELFHOSTED_DB"
-    law: "Lite runs exactly one database, its db component of image supabase/postgres (pinned by digest) with pgvector for vector search, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector, ruling:lite-self-hosted-postgres-passport-minio). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
+    law: "Lite runs exactly one database, its db component of the image its managed db/Dockerfile builds (the digest-pinned official postgres image plus pgvector, ruling:lite-official-postgres-image) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector, ruling:lite-self-hosted-postgres-passport-minio). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["STACKS_LITE_SELFHOSTED_DB", "STACKS_SIDECAR_VOLUME_UNDECLARED", "STACKS_SIDECAR_DB_UNSUPPORTED", "STACKS_LITE_REDIS_PERSISTENCE"]
@@ -5849,3 +5849,27 @@ rules:
         source: owner
         quote: "big refactor đi … không viết raw sql như thế theo starci-academy-be"
         ruling: "Lite persistence moves to TypeORM entities on the EntityManager, the shape of full and starci-academy-be (ruling lite-persistence-typeorm-entities)."
+  - id: R335
+    code: "BE_JOBS_SCHEDULER_OWNER"
+    law: "Recurring work is a tick of platform/jobs (ruling lite-official-postgres-image): JOB_TICKS of job-ticks.contracts.ts lists the ticks as data, and only job-tick.service.ts (JobTickService, which registers one CronJob per tick in SchedulerRegistry) and jobs.module.ts (which composes ScheduleModule.forRoot()) import @nestjs/schedule or cron; no file uses the Cron, Interval or Timeout decorator. JobTickService takes advisoryXactLock(tx, \"tick:<name>\") and claims the tick's UTC minute through callDbFunction(tx, \"job_tick_claim\", ...) in the transaction that writes the queue outbox row, so of the replicas that fire a tick exactly one enqueues it once per minute."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_JOBS_SCHEDULER_OWNER"]
+    enforcers:
+      - {kind: eslint-be, id: jobs-scheduler-owner}
+    editions: [lite, full]
+    docs: [contexts/code/be/jobs.md]
+    proves:
+      - packages/eslint-canon-be/src/jobs-scheduler.spec.ts
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/patterns/jobs/platform-lite/job-tick.service.ts.tpl, edition: lite}
+      - {path: packages/eslint-canon-be/src/jobs-scheduler.spec.ts, editions: [lite, full], codes: [BE_JOBS_SCHEDULER_OWNER]}
+    witness:
+      - {path: packages/eslint-canon-be/src/jobs-scheduler.spec.ts, edition: lite, codes: [BE_JOBS_SCHEDULER_OWNER]}
+      - {path: packages/eslint-canon-be/src/jobs-scheduler.spec.ts, edition: full, codes: [BE_JOBS_SCHEDULER_OWNER]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "chạy postgresql thuần image chính chủ nhé ko phải supebase"
+        ruling: "The lite db image carries no pg_cron, so recurring work moves to a Nest schedule tick of platform/jobs under an advisory lock and a minute claim (ruling lite-official-postgres-image)."

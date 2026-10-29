@@ -39,7 +39,22 @@ const LITE_TEMPLATES = Object.freeze({
   'jobs/platform/jobs.index.ts.tpl': 'jobs/platform-lite/jobs.index.ts.tpl',
   'jobs/platform/job-claim.service.ts.tpl': 'jobs/platform-lite/job-claim.service.ts.tpl',
   'jobs/platform/job-claim.service.spec.ts.tpl': 'jobs/platform-lite/job-claim.service.spec.ts.tpl',
+  // The jobs module composes the one tick scheduler (R335, ruling:lite-official-postgres-image): ScheduleModule.forRoot() and JobTickService.
+  'jobs/platform/jobs.module.ts.tpl': 'jobs/platform-lite/jobs.module.ts.tpl',
 });
+
+/** The tick scheduler of platform/jobs the lite jobs capability adds beside full's tree: the ticks as data, the scheduler and its spec (R335). */
+const TICK_FILES = Object.freeze([
+  ['be/src/modules/platform/jobs/job-ticks.contracts.ts', 'jobs/platform-lite/job-ticks.contracts.ts.tpl'],
+  ['be/src/modules/platform/jobs/job-tick.service.ts', 'jobs/platform-lite/job-tick.service.ts.tpl'],
+  ['be/src/modules/platform/jobs/job-tick.service.spec.ts', 'jobs/platform-lite/job-tick.service.spec.ts.tpl'],
+]);
+
+/** The tick files of a jobs capability the verb adds for the first time; an app that already has platform/jobs keeps its own. */
+function tickFiles({ beRoot, patterns }) {
+  if (!patterns.includes('fenced-job') || fs.existsSync(path.join(beRoot, 'src', 'modules', 'platform', 'jobs', 'index.ts'))) return [];
+  return TICK_FILES.map(([relative, source]) => ({ relative, text: template(`be/patterns/${source}`) }));
+}
 
 /**
  * The persistence files lite leaves out: the TypeORM schema (its authority is db/migrations) and the SQL text and row files (the
@@ -102,20 +117,24 @@ function migrationFiles({ repoRoot, beRoot, patterns, now }) {
 
 /** The queue imports bullmq, which loads ioredis as an optional peer and cannot connect without it. */
 const QUEUE_CLIENTS = Object.freeze(['bullmq', 'ioredis']);
+/** The jobs capability's tick scheduler imports @nestjs/schedule and its CronJob (R335). */
+const SCHEDULER_CLIENTS = Object.freeze(['@nestjs/schedule', 'cron']);
 
 /**
- * hfs.json declares redis in sides.be.backing; the package.json gains the queue's clients at their canon pins, and the managed
+ * hfs.json declares redis in sides.be.backing; the package.json gains the queue's clients (and, for fenced-job, the tick
+ * scheduler's) at their canon pins, and the managed
  * development scripts of the declared Redis that `starci app sync` renders for it. Each is added when it is missing, so a Redis an
  * earlier capability declared (a cache on ioredis) still gains bullmq; a file already complete is left alone.
  */
-function declarationPatches(repoRoot, project) {
+function declarationPatches(repoRoot, project, patterns) {
   const file = path.join(repoRoot, 'hfs.json');
   const declaration = JSON.parse(read(file));
   declaration.sides.be.backing = [...new Set([...(declaration.sides.be.backing ?? []), 'redis'])].sort(byCodeUnit);
   const packageFile = path.join(repoRoot, 'package.json');
   const pkg = JSON.parse(read(packageFile));
   const pins = bundledPins();
-  const missing = QUEUE_CLIENTS.filter((name) => typeof pkg.dependencies?.[name] !== 'string');
+  const clients = [...QUEUE_CLIENTS, ...(patterns.includes('fenced-job') ? SCHEDULER_CLIENTS : [])];
+  const missing = clients.filter((name) => typeof pkg.dependencies?.[name] !== 'string');
   for (const name of missing) if (!pins[name]) throw new ScaffoldError('HFS_SCAFFOLD_PIN_MISSING', `${name} has no canon pin in knowledge/hfs/canon-pins.yaml`);
   if (missing.length)
     pkg.dependencies = Object.fromEntries(Object.entries({ ...pkg.dependencies, ...Object.fromEntries(missing.map((name) => [name, pins[name].version])) }).sort(([a], [b]) => a.localeCompare(b)));
@@ -331,9 +350,9 @@ export function planLiteQueue({ repoRoot, repo, noun, patterns, now }) {
   const beRoot = path.join(repoRoot, 'be');
   const migrations = migrationFiles({ repoRoot, beRoot, patterns, now });
   const database = skeletonFiles(repoRoot);
-  const declaration = declarationPatches(repoRoot, repo.project);
+  const declaration = declarationPatches(repoRoot, repo.project, patterns);
   const stack = stackFiles(repoRoot, { project: repo.project, consumers: queueServicesOf(repo) });
-  const created = [...migrations, ...database.created, ...stack.created];
+  const created = [...migrations, ...tickFiles({ beRoot, patterns }), ...database.created, ...stack.created];
   const patches = [...database.patches, ...declaration, ...stack.patches];
   const clashes = created.filter((entry) => fs.existsSync(path.join(repoRoot, ...entry.relative.split('/')))).map((entry) => entry.relative);
   if (clashes.length) throw new ScaffoldError('HFS_ADD_EXISTS', `add ${noun} would overwrite ${clashes.join(', ')}`);

@@ -1,16 +1,16 @@
 -- Managed by starci app sync (slot app.db.bootstrap); do not edit: run "npx starci app sync --write".
--- The pre-migration bootstrap of a lite app's self-hosted PostgreSQL (ruling lite-self-hosted-postgres-passport-minio). Migrations written
--- for Supabase reference objects GoTrue and Supabase Storage created: the browser roles, the `auth` schema (auth.users, auth.identities,
--- auth.sessions, auth.uid/jwt/role) and the `storage` schema (storage.buckets, storage.objects). The supabase/postgres image ships only a partial
--- copy of them, and a lite app runs neither GoTrue nor storage-api: auth is the app's own (integrations/passport) and storage is the S3 endpoint
--- of integrations/object-storage. This file gives the migrations those objects, EMPTY, and nothing else. It is idempotent; `starci app db migrate`
+-- The pre-migration bootstrap of a lite app's self-hosted PostgreSQL (ruling lite-self-hosted-postgres-passport-minio), run on the official
+-- postgres image of db/Dockerfile (ruling lite-official-postgres-image). Migrations written for Supabase reference objects GoTrue and Supabase
+-- Storage created: the browser roles, the `auth` schema (auth.users, auth.identities, auth.sessions, auth.uid/jwt/role) and the `storage`
+-- schema (storage.buckets, storage.objects). A lite app runs neither GoTrue nor storage-api: auth is the app's own (integrations/passport) and
+-- storage is the S3 endpoint of integrations/object-storage. This file gives the migrations those objects, EMPTY, and nothing else; nothing
+-- else of Supabase (supabase_admin, the `extensions` schema, the realtime publication) exists. It is idempotent; `starci app db migrate`
 -- applies it as the database owner before the first migration of an empty database.
 --
 -- auth.users keeps the GoTrue column set so restored rows and foreign keys from public tables stay valid; encrypted_password holds bcrypt hashes.
 -- auth.uid(), auth.role() and auth.jwt() read the request.jwt.claims setting; the API connects as app_be and sets none, so they return NULL and
 -- every policy that names them denies the browser roles, which have no door in lite.
 
-create schema if not exists extensions;
 create schema if not exists auth;
 create schema if not exists storage;
 
@@ -23,9 +23,8 @@ end
 $roles$;
 
 grant usage on schema auth, storage to anon, authenticated, service_role;
-grant usage on schema extensions to anon, authenticated, service_role;
 
--- auth.users: the full GoTrue column set (the image's old copy is extended in place).
+-- auth.users: the full GoTrue column set (a copy an earlier database carries is extended in place).
 create table if not exists auth.users (id uuid primary key);
 alter table auth.users
     add column if not exists instance_id uuid,
@@ -130,10 +129,3 @@ alter table storage.buckets enable row level security;
 
 grant select, insert, update, delete on storage.objects, storage.buckets to authenticated, service_role;
 grant select on storage.objects, storage.buckets to anon;
-
--- Replication publication the baseline adds tables to (the image ships it; a bare PostgreSQL does not).
-do $pub$
-begin
-    if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then create publication supabase_realtime; end if;
-end
-$pub$;

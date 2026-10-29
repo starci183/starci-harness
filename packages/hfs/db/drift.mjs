@@ -2,8 +2,8 @@
 // The migrations (db/migrations/*.sql, after db/bootstrap.sql when present) are the only DDL and `synchronize` is false, so an entity only
 // maps tables that already exist and can drift from them. The verb builds TypeORM's metadata from the app's entity list
 // (be/src/modules/platform/database/entities.ts, compiled in-process with the app's own typescript and loaded with the app's own typeorm) through a
-// DataSource that never connects, applies the migrations to a scratch database (a throwaway container of the image the app's
-// .starcistacks declares for its db component, or the empty database named by --url-env), reads that schema from
+// DataSource that never connects, applies the migrations to a scratch database (a throwaway container of the image the app's managed
+// db/Dockerfile builds, or the empty database named by --url-env), reads that schema from
 // information_schema.columns and pg_catalog, and reports every entity column whose table or column is missing, whose type differs (both
 // normalised to PostgreSQL's format_type names) or whose nullability differs, under BE_ENTITY_SCHEMA_DRIFT. Database columns no entity maps
 // are fine. Exit 0 is green, 1 is drift (or a migration that does not apply to an empty database), 2 is a refusal: no verdict, which is
@@ -12,10 +12,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Module, { createRequire } from 'node:module';
 import { randomBytes } from 'node:crypto';
-import { runVerb, readDeclaration } from '../release/index.mjs';
+import { runVerb } from '../release/index.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
 import { firstLine, tool } from '../stack/context.mjs';
 import { ENTITY_LIST, hasEntityList } from './entity-list.mjs';
+import { DB_DOCKERFILE } from './image.mjs';
 
 export const DRIFT_CODE = 'BE_ENTITY_SCHEMA_DRIFT';
 export const MIGRATIONS_DIR = 'db/migrations';
@@ -141,27 +142,27 @@ export function migrationFiles(root) {
   return [...(fs.existsSync(path.join(root, BOOTSTRAP_FILE)) ? [BOOTSTRAP_FILE] : []), ...migrations];
 }
 
-/** The image of the app's db component (.starcistacks/application-stacks.yaml components.db.image), the one the scratch container runs. */
-export function scratchImage(root) {
-  const image = readDeclaration(root)?.components?.db?.image;
-  if (typeof image !== 'string' || image.trim() === '') throw refusal('DB_DRIFT_NO_IMAGE', 'declare components.db.image in .starcistacks/application-stacks.yaml (the scratch database runs the app\'s own db image) or pass --url-env');
-  return image.trim();
-}
-
-/** Starts a throwaway container of `image` on a loopback port; returns { connection, stop }. Docker missing or failing is no verdict. */
-function startScratch(ctx, image) {
+/**
+ * Builds the app's db image from db/Dockerfile and starts a throwaway container of it on a loopback port; returns { connection, stop }.
+ * Docker missing or failing is no verdict; an app without db/Dockerfile is refused (sync writes it).
+ */
+function startScratch(ctx, root) {
+  if (!fs.existsSync(path.join(root, DB_DOCKERFILE))) throw refusal('DB_DRIFT_NO_IMAGE', `${DB_DOCKERFILE} is missing: run "npx starci app sync --write" (the scratch database runs the app's own db image) or pass --url-env`);
   const docker = (args, env) => tool(ctx, 'docker', args, { env: { ...ctx.env, ...env } });
   const probe = docker(['version', '--format', '{{.Server.Version}}']);
   if (probe.error || probe.status !== 0) throw needsDatabase('Docker is not available on this host; start it, or pass --url-env naming an empty database');
+  const build = docker(['build', '--quiet', '--file', path.join(root, DB_DOCKERFILE), path.join(root, 'db')]);
+  const image = /sha256:[a-f0-9]{64}/u.exec(String(build.stdout ?? ''))?.[0];
+  if (build.status !== 0 || !image) throw needsDatabase(`docker could not build ${DB_DOCKERFILE}: ${firstLine(build.stderr)}`);
   const password = randomBytes(18).toString('hex');
   const name = `starci-db-drift-${randomBytes(6).toString('hex')}`;
   const run = docker(['run', '-d', '--rm', '--name', name, '--label', 'starci.db-drift=1', '-e', 'POSTGRES_PASSWORD', '-p', '127.0.0.1::5432', image], { POSTGRES_PASSWORD: password });
   const stop = () => { docker(['rm', '-f', name]); };
-  if (run.status !== 0) { stop(); throw needsDatabase(`docker could not start ${image}: ${firstLine(run.stderr)}`); }
+  if (run.status !== 0) { stop(); throw needsDatabase(`docker could not start the image of ${DB_DOCKERFILE}: ${firstLine(run.stderr)}`); }
   const port = docker(['port', name, '5432/tcp']);
   const match = /:(\d+)\s*$/mu.exec(String(port.stdout ?? '').split('\n')[0]);
   if (port.status !== 0 || !match) { stop(); throw needsDatabase('docker published no port for the scratch database'); }
-  return { connection: { host: '127.0.0.1', port: Number(match[1]), user: 'postgres', password, database: 'postgres' }, stop, how: `scratch container of ${image}` };
+  return { connection: { host: '127.0.0.1', port: Number(match[1]), user: 'postgres', password, database: 'postgres' }, stop, how: `scratch container of the image ${DB_DOCKERFILE} builds` };
 }
 
 /** Connects with the app's pg, retrying while a fresh container is still initialising; gives up after READY_TIMEOUT_MS. */
@@ -200,7 +201,7 @@ export async function migratedSchema(ctx, appRoot, { urlEnv } = {}) {
     if (typeof value !== 'string' || !/^postgres(?:ql)?:\/\//u.test(value)) throw needsDatabase(`${urlEnv} holds no postgres connection URL`);
     secrets = [value];
     scratch = { connection: { connectionString: value }, stop: () => {}, how: `the database ${urlEnv} names` };
-  } else scratch = startScratch(ctx, scratchImage(root));
+  } else scratch = startScratch(ctx, root);
   const scrub = (text) => secrets.reduce((out, secret) => out.replaceAll(secret, '[value]'), String(text));
   let client;
   try {

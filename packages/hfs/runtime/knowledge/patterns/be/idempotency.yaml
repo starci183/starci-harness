@@ -258,7 +258,7 @@ liteAdapter:
     idempotency pattern with its required proof scenarios.
   ports:
     - {port: Inbox, adapter: PostgresInbox through the caller's active EntityManager transaction}
-    - {port: receipt retention, adapter: a fenced job delivered by the BullMQ queue on the declared Redis and scheduled by a pg_cron tick that enqueues through the queue outbox}
+    - {port: receipt retention, adapter: a fenced job delivered by the BullMQ queue on the declared Redis and scheduled by a platform/jobs tick (R335) that enqueues through the queue outbox}
   proof: >-
     The same inbox and fingerprint unit specs apply; declaring idempotency requires both client receipt scenarios in
     lite's local db integration lane.

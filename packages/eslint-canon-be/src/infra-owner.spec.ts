@@ -140,15 +140,13 @@ test("infra-import-owner: each raw library is used only by its owner", () => {
                 { filename: DOMAIN, code: `import { EventEmitter2 } from "@nestjs/event-emitter"\nexport { EventEmitter2 }`, errors: [{ messageId: "nowhere" }] },
                 { filename: DOMAIN, code: `import { EventEmitter2 } from "eventemitter2"
     export { EventEmitter2 }`, errors: [{ messageId: "nowhere" }] },
+                // the schedule package belongs to platform/jobs alone (its tick scheduler, R335): everywhere else it is foreign
                 { filename: QUEUE, code: `import { Cron } from "@nestjs/schedule"
-    export { Cron }`, errors: [{ messageId: "nowhere" }] },
-                // the decorators of the schedule package are refused everywhere, a schedule is a BullMQ job scheduler
-                { filename: DOMAIN, code: `import { Interval } from "@nestjs/schedule"
-    export { Interval }`, errors: [{ messageId: "nowhere" }] },
-                { filename: DOMAIN, code: `import { Timeout } from "@nestjs/schedule"
-    export { Timeout }`, errors: [{ messageId: "nowhere" }] },
+    export { Cron }`, errors: [{ messageId: "foreign" }] },
                 { filename: DOMAIN, code: `import { ScheduleModule } from "@nestjs/schedule"
-    export { ScheduleModule }`, errors: [{ messageId: "nowhere" }] },
+    export { ScheduleModule }`, errors: [{ messageId: "foreign" }] },
+                { filename: DOMAIN, code: `import { CronJob } from "cron"
+    export { CronJob }`, errors: [{ messageId: "foreign" }] },
                 // bullmq and its nest wrapper belong to platform/queue alone
                 { filename: DOMAIN, code: `import { BullModule } from "@nestjs/bullmq"
     export { BullModule }`, errors: [{ messageId: "foreign" }] },

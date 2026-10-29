@@ -45,6 +45,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
     - `<stamp>_<name>.sql` — **app.db.migrations** required · R213, R332
     - `archive/` — **app.db.migrations.archive** optional
   - `seed.sql` — **app.db.seed** optional
+  - `Dockerfile` — **app.db.image** required · R05
   - `bootstrap.sql` — **app.db.bootstrap** required · R05
 
 Git-ignored: `app.build-output`.

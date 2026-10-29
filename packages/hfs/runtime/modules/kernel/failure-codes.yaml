@@ -3732,7 +3732,7 @@ HFS_HOST_CRON:
   meaning_vi: "Tệp triển khai hoặc script tại <path> khai báo crontab, cron.d, systemd timer, @reboot hoặc at; lịch chạy phải do ứng dụng sở hữu."
   causes_vi:
     - "Vi phạm R250: cài lịch chạy ngoài scheduler của ứng dụng hoặc replicated-job đã khai báo."
-  nextStep_vi: "Chuyển tác vụ sang scheduler hàng đợi của back end, một tick pg_cron enqueue qua outbox hàng đợi hoặc replicated-job đã khai báo và gọi lệnh CLI của ứng dụng."
+  nextStep_vi: "Chuyển tác vụ sang scheduler hàng đợi của back end, một tick của platform/jobs (R335) enqueue qua outbox hàng đợi hoặc replicated-job đã khai báo và gọi lệnh CLI của ứng dụng."
   owner: op-retry
   kind: check-finding
 
@@ -5598,5 +5598,15 @@ BE_PERSISTENCE_NO_RAW_SQL:
   causes_vi:
     - "Vi phạm R334: dữ liệu của app lite đi qua entity TypeORM trên EntityManager (find, save, update, upsert, createQueryBuilder)."
   nextStep_vi: "Khai entity ở persistence/entities/<table>.entity.ts và đọc/ghi bằng EntityManager hoặc createQueryBuilder với tham số có tên; hàm pg/SECURITY DEFINER không diễn đạt được thì khai vào rawSqlFunctions kèm lý do."
+  owner: op-retry
+  kind: check-finding
+
+BE_JOBS_SCHEDULER_OWNER:
+  title: "A schedule outside the platform/jobs tick scheduler"
+  title_vi: "Lịch chạy định kỳ nằm ngoài bộ lập lịch tick của platform/jobs"
+  meaning_vi: "File `<path>` import @nestjs/schedule hoặc cron ngoài job-tick.service.ts và jobs.module.ts của platform/jobs, dùng decorator Cron/Interval/Timeout, hoặc JobTickService không giữ advisoryXactLock và job_tick_claim trước khi ghi outbox."
+  causes_vi:
+    - "Vi phạm R335: việc định kỳ là tick của platform/jobs (JOB_TICKS), mỗi phút chỉ một replica enqueue nhờ khoá advisory và claim phút trong DB."
+  nextStep_vi: "Khai tick vào JOB_TICKS của platform/jobs/job-ticks.contracts.ts (name, cron, timeZone UTC, queue, payload) và xoá lịch tự viết; giữ advisoryXactLock và job_tick_claim trong JobTickService."
   owner: op-retry
   kind: check-finding

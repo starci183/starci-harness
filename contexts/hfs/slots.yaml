@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.10.0
+version: 3.11.0
 presenceValues:
   - required
   - optional
@@ -223,14 +223,10 @@ crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 ruleParams:
   db:
     extensions:
-      - pgmq
-      - pg_cron
       - pgcrypto
       - pg_trgm
       - vector
       - uuid-ossp
-      - pg_net
-      - supabase_vault
       - unaccent
       - btree_gist
     queueOutbox:
@@ -320,7 +316,10 @@ ruleParams:
         - platform/queue
       kafkajs:
         - platform/event-bus
-      "@nestjs/schedule": []
+      "@nestjs/schedule":
+        - platform/jobs
+      cron:
+        - platform/jobs
       eventemitter2: []
       setInterval:
         - platform/retry
@@ -782,6 +781,7 @@ ruleParams:
       - {name: job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
       - {name: job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
       - {name: job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
+      - {name: job_tick_claim, reason: "platform/jobs (add job, lite): the once-per-minute claim of a scheduler tick, jobs.sql (R335)"}
       - {name: queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
       - {name: queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
       - {name: queue_mark_sent, reason: "platform/queue (add queue, lite): the relay mark of queue-outbox.sql"}
@@ -1391,6 +1391,19 @@ slots:
     tracked: tracked
     tier: none
     tests: none
+  - id: app.db.image
+    profiles:
+      - app
+    editions:
+      - lite
+    path: db/Dockerfile
+    presence: required
+    tracked: tracked
+    managedBy: db-image
+    tier: none
+    tests: none
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
   - id: app.db.bootstrap
     profiles:
       - app
@@ -2532,7 +2545,7 @@ slots:
         Redis (backing: [redis]): the relay adds each committed outbox row with the outbox id as the
         job id, workers retry with exponential backoff and keep a job that exhausts its attempts as
         failed (the dead letter); the outbox table comes from a db migration, and a schedule
-        is a BullMQ job scheduler or a pg_cron tick that inserts one outbox row
+        is a BullMQ job scheduler or a platform/jobs tick that writes one outbox row (R335)
         (contexts/code/be/queues.yaml liteAdapter)"
     requires:
       - index.ts

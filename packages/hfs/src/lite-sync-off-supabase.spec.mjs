@@ -2,7 +2,7 @@
 // A lite app synced by @starci/hfs 4.10 holds no Supabase reference in its managed files (ruling lite-self-hosted-postgres-passport-minio):
 // the db scripts, codegen and CI name the self-hosted database through `starci app db ... --url-env DATABASE_URL`, and sync deletes a
 // leftover supabase/types/. The one sanctioned mention is db/bootstrap.sql, which recreates the objects migrations written for a
-// hosted Supabase reference, and the db image reference `supabase/postgres`.
+// hosted Supabase reference. The db image is the official postgres image of the managed db/Dockerfile (ruling lite-official-postgres-image).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -16,13 +16,23 @@ const lite = starterDeclaration('demo', undefined, 'lite');
 const targets = renderTargets(lite, bundledPresets(), { source: { files: [], read: () => '' } });
 const byPath = new Map(targets.map((target) => [target.path, target]));
 
-test('a lite app on hfs 4.10 has no Supabase reference in its managed files but the bootstrap and the db image', () => {
+test('a lite app has no Supabase reference in its managed files but the bootstrap', () => {
   for (const target of targets) {
     if (target.path === 'db/bootstrap.sql') continue;
-    const text = String(target.content).replaceAll('supabase/postgres', '');
-    assert.equal(/supabase/i.test(text), false, `${target.path} names Supabase`);
+    assert.equal(/supabase/i.test(String(target.content)), false, `${target.path} names Supabase`);
   }
   assert.ok(byPath.has('db/bootstrap.sql'), 'the bootstrap is managed');
+});
+
+test('the managed db/Dockerfile builds the digest-pinned official postgres image plus pgvector, and the local db container runs it', () => {
+  const dockerfile = String(byPath.get('db/Dockerfile').content);
+  assert.match(dockerfile, /^FROM postgres:17\.\d+@sha256:[a-f0-9]{64}$/mu);
+  assert.match(dockerfile, /apt-get install -y --no-install-recommends postgresql-17-pgvector=\S+/u);
+  assert.equal(/pg_cron|pg_net|pgmq|shared_preload_libraries/u.test(dockerfile), false, 'pgvector is the one package the image adds');
+  const scripts = String(byPath.get('package.json').content);
+  assert.match(scripts, /^db:image: docker build --tag demo-db:local db$/mu);
+  assert.match(scripts, /^db:create: npm run db:image && docker create .* demo-db:local$/mu);
+  assert.match(String(byPath.get('.github/workflows/images.yml').content), /- name: db\n\s+file: db\/Dockerfile/u, 'the release builds the db image beside the app images');
 });
 
 test('the managed db scripts, codegen and CI drive the self-hosted database', () => {

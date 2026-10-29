@@ -1604,7 +1604,7 @@ rules:
       - {kind: hfs, id: env-value-shape}
   - id: R250
     code: HFS_HOST_CRON
-    law: Scheduled work belongs to the app's queue scheduler, pg_cron ticks or declared replicated jobs, never to a host crontab, and deploy scripts only delegate to docker or the app CLI.
+    law: Scheduled work belongs to the app's queue scheduler, platform/jobs ticks or declared replicated jobs, never to a host crontab, and deploy scripts only delegate to docker or the app CLI.
     failureCodes:
       - HFS_HOST_CRON
       - HFS_DEPLOY_NO_LOGIC
@@ -2265,6 +2265,13 @@ rules:
       - BE_PERSISTENCE_NO_RAW_SQL
     enforcers:
       - {kind: eslint-be, id: no-raw-sql}
+  - id: R335
+    code: BE_JOBS_SCHEDULER_OWNER
+    law: "Recurring work is a tick of platform/jobs: only its job-tick.service.ts and jobs.module.ts import @nestjs/schedule or cron, no file uses a cron, interval or timeout decorator, and the tick service takes advisoryXactLock and claims the tick's minute through job_tick_claim before it writes the outbox, so one replica enqueues each tick once per minute."
+    failureCodes:
+      - BE_JOBS_SCHEDULER_OWNER
+    enforcers:
+      - {kind: eslint-be, id: jobs-scheduler-owner}
 
 # Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

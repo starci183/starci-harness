@@ -78,18 +78,19 @@ rules:
       manual: []
     relatedExamples: [queue]
   - id: BE-QUEUES-3
-    title: A schedule is a BullMQ job scheduler declared with its queue, or a pg_cron tick that writes the outbox
+    title: A schedule is a BullMQ job scheduler declared with its queue, or a platform/jobs tick that writes the outbox
     kind: mandatory
-    hfsRules: [R90, R258]
+    hfsRules: [R90, R335]
     requirement: |-
       A recurring task is a job scheduler (`upsertJobScheduler`) that the queue module declares in its `schedulers` list and
-      `platform/queue` registers at boot, or, in a lite app, a uniquely named pg_cron job of a migration whose command
-      (directly or through one `*_tick` function) only inserts one row of a queue constant into the queue outbox table of
-      `ruleParams.db.queueOutbox` (`public.queue`), which the relay hands to BullMQ, or by calling the enqueue function that the app declares with its own outbox table in `hfs.json` `sides.be.queueOutbox` (redis declared in `sides.be.backing`; the function's active definition only inserts into that table); a tick has exactly one of the two owners. A job name is scheduled once while it is active: a later migration that replaces a tick's command calls `cron.unschedule` of the name first. Its job is processed by the same
-      `features/jobs/<job>/<job>.processor.ts` as any enqueued job. `@nestjs/schedule`, `@Cron`, `@Interval`, `@Timeout` and
-      `setInterval` for work are not used anywhere.
+      `platform/queue` registers at boot, or, in a lite app, a tick of `platform/jobs` (BE-JOBS-6, R335): `JOB_TICKS` of
+      `job-ticks.contracts.ts` lists it as data and `JobTickService` fires it on every replica, where each firing takes
+      `advisoryXactLock(tx, "tick:<name>")`, claims the tick's UTC minute through `job_tick_claim` and only then writes one row of
+      the tick's queue into the queue outbox, which the relay hands to BullMQ. Its job is processed by the same
+      `features/jobs/<job>/<job>.processor.ts` as any enqueued job. `@nestjs/schedule` and `cron` are imported only by that
+      scheduler, and `@Cron`, `@Interval`, `@Timeout` and `setInterval` for work are not used anywhere.
     rationale: |-
-      One scheduler in Redis, or one pg_cron job in the database, fires once for the whole deployment, where cron in a replicated
+      One scheduler in Redis, or one minute claim in the database, fires once for the whole deployment, where cron in a replicated
       process fires once per replica.
     cases:
       - id: case-1
@@ -283,12 +284,12 @@ liteAdapter:
     - {port: queue transport (queue-transport.port.ts), adapter: "full's bullmq-queue-transport.client.ts over the declared Redis (host, port, db and the password read from its sealed secret file), plus persist(jobs): WAITAOF 1 0 on each queue's connection, then each job's state, refusing with QUEUE_NOT_PERSISTED or QUEUE_JOB_LOST (errors/queue.error.ts)"}
     - {port: outbox relay (queue-relay.service.ts), adapter: "full's relay, which calls persist after the adds and before it marks the rows sent, so a refusal rolls the mark back and the next pass adds the rows again"}
     - {port: QueueWorkerRegistry (platform/queue), adapter: "full's BullMQ worker per queue: attempts and exponential backoff from queue.policy.ts, failed jobs kept as the dead letter"}
-    - {port: schedulers, adapter: "a BullMQ job scheduler declared with its queue, as full, or a pg_cron job in a db migration whose tick inserts one row of the queue constant into the queue outbox"}
-  forbids: [kafkajs, "@nestjs/schedule"]
+    - {port: schedulers, adapter: "a BullMQ job scheduler declared with its queue, as full, or a platform/jobs tick (JobTickService, R335) that writes one row of the tick's queue into the queue outbox under its lock and minute claim"}
+  forbids: [kafkajs]
   proof: >-
     Unit specs as full (queue-outbox, relay and worker services, the BullMQ client against a mocked factory); declaring queue
     requires integration specs titled `queue/<scenario>: ...` for every declared scenario on the local db service (R284,
-    which runs no container of its own): the outbox, its commit boundary, the relay identity and the pg_cron tick are Postgres
+    which runs no container of its own): the outbox, its commit boundary, the relay identity and the tick's minute claim are Postgres
     facts proved there with the real outbox writer and relay, and the queue transport records what the relay hands to BullMQ
     (the job id is the outbox id). BullMQ itself is covered by the unit spec of the BullMQ client, which also proves the
     persist refusals; the relay's unit spec proves a refused persist leaves the rows waiting.

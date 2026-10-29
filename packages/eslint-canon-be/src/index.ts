@@ -21,6 +21,7 @@ import { pluginForEdition } from "./lib/edition.ts"
 import { recommended as aiGatewayRecommended, rules as aiGatewayRules } from "./ai-gateway.ts"
 import { recommended as authPassportRecommended, rules as authPassportRules } from "./auth-passport.ts"
 import { recommended as noRawSqlRecommended, rules as noRawSqlRules } from "./no-raw-sql.ts"
+import { recommended as jobsSchedulerRecommended, rules as jobsSchedulerRules } from "./jobs-scheduler.ts"
 import { recommended as ambientIdRecommended, rules as ambientIdRules } from "./ambient-id.ts"
 import { recommended as appCompositionRecommended, rules as appCompositionRules } from "./app-composition.ts"
 import { recommended as asyncDisciplineRecommended, rules as asyncDisciplineRules } from "./async-discipline.ts"
@@ -96,6 +97,7 @@ const CONTRIBUTIONS: Contribution[] = [
     { law: "ai-gateway", rules: aiGatewayRules, recommended: aiGatewayRecommended },
     { law: "auth-passport", rules: authPassportRules, recommended: authPassportRecommended },
     { law: "no-raw-sql", rules: noRawSqlRules, recommended: noRawSqlRecommended },
+    { law: "jobs-scheduler", rules: jobsSchedulerRules, recommended: jobsSchedulerRecommended },
     { law: "ambient-id", rules: ambientIdRules, recommended: ambientIdRecommended },
     { law: "app-composition", rules: appCompositionRules, recommended: appCompositionRecommended },
     { law: "async-discipline", rules: asyncDisciplineRules, recommended: asyncDisciplineRecommended },

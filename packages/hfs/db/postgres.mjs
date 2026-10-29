@@ -6,7 +6,7 @@ import { firstLine, tool } from '../stack/context.mjs';
 
 /** The default environment variable that names the app's database. */
 export const DEFAULT_DB_URL_ENV = 'DATABASE_URL';
-/** The history table `starci app db migrate` records applied migrations in (the layout the supabase/postgres image already ships). */
+/** The history table `starci app db migrate` records applied migrations in (Supabase's layout, so a history restored from a hosted Supabase carries over; migrate creates it on an empty database). */
 export const HISTORY_TABLE = 'supabase_migrations.schema_migrations';
 
 const KEY = /^[A-Z][A-Z0-9_]*$/u;

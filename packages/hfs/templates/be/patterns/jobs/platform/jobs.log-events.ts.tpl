@@ -6,4 +6,6 @@ export enum JobsLogEvent {
     DeliveryFailed = "jobs.delivery.failed",
     /** A failed delivery could not even be recorded as failed; the lease will expire and the job will be claimed again. */
     FailureNotRecorded = "jobs.delivery.failure-not-recorded",
+    /** A scheduler tick failed to fire; the next firing claims its own minute (lite, R335). */
+    TickFailed = "jobs.tick.failed",
 }

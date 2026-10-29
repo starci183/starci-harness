@@ -69,7 +69,9 @@ for (const edition of ['lite', 'full']) {
 
   test(`${edition}: DB_EXTENSION_ALLOWED rejects an off-list extension and accepts the configured allowlist`, () => {
     has(findings({ [MIGRATION]: 'create extension if not exists hstore with schema extensions;' }, edition), 'DB_EXTENSION_ALLOWED');
-    assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists "uuid-ossp"; create extension pgmq;' }, edition), []);
+    assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists "uuid-ossp"; create extension vector;' }, edition), []);
+    // the official postgres image of db/Dockerfile carries none of Supabase's extensions (ruling:lite-official-postgres-image)
+    for (const extension of ['pgmq', 'pg_cron', 'pg_net', 'supabase_vault']) has(findings({ [MIGRATION]: `create extension ${extension};` }, edition), 'DB_EXTENSION_ALLOWED');
     assert.deepEqual(findings({ [MIGRATION]: 'create extension hstore;' }, edition, { manifest: { ruleParams: { db: { extensions: ['hstore'] } } } }), []);
     has(findings({ [MIGRATION]: 'create extension pgcrypto;' }, edition, { manifest: { ruleParams: { db: { extensions: [] } } } }), 'DB_EXTENSION_ALLOWED');
   });

@@ -116,3 +116,22 @@ test('a stack edit that does not reproduce the expected document refuses before 
   grants.value.grants[1].from.push({ member: 'b' });
   assert.equal(grants.text(), 'grants:\n  - service: web\n    from: []\n  - service: api\n    from:\n      - member: a\n      - member: b\n');
 });
+
+test('lite add job writes the platform/jobs tick scheduler, its minute claim and its pinned clients (R335)', (t) => {
+  const root = liteApp(t);
+
+  addKind({ repoRoot: root, noun: 'job', name: 'digest', options: { noTypes: true }, now: () => SCAFFOLDED + 60_000 });
+
+  const jobs = 'be/src/modules/platform/jobs';
+  assert.match(read(root, `${jobs}/job-ticks.contracts.ts`), /export const JOB_TICKS: ReadonlyArray<JobTick> = \[\]/);
+  const service = read(root, `${jobs}/job-tick.service.ts`);
+  assert.match(service, /advisoryXactLock\(tx, `tick:\$\{tick\.name\}`\)/);
+  assert.match(service, /callDbFunction<TickClaim>\(tx, "job_tick_claim"/);
+  assert.match(read(root, `${jobs}/job-tick.service.spec.ts`), /enqueues nothing when another replica already fired the tick this minute/);
+  assert.match(read(root, `${jobs}/jobs.module.ts`), /ScheduleModule\.forRoot\(\)/);
+  const migrations = fs.readdirSync(path.join(root, 'db', 'migrations')).filter((file) => file.endsWith('.sql'));
+  assert.ok(migrations.some((file) => /create function public\.job_tick_claim/.test(read(root, `db/migrations/${file}`))), 'the jobs migration carries the minute claim');
+  const after = JSON.parse(read(root, 'package.json'));
+  assert.equal(after.dependencies['@nestjs/schedule'], bundledPins()['@nestjs/schedule'].version);
+  assert.equal(after.dependencies.cron, bundledPins().cron.version);
+});
