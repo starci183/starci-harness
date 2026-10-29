@@ -108,12 +108,13 @@ outage API takes it. Only the world that injected an outage restores proxies at 
 
 `@starci/test-world/fakes`: `defineHttpFake` (recording, failure injection, control channel), `smtpFake`, `openaiCompatibleFake` (streaming, embeddings), `vnpayFake`, `momoFake`, `payosFake`, `sepayFake` with the providers' real signature schemes and payload fixtures. Repo-specific fakes are built with `defineHttpFake` in `src/tests/world/fakes/`.
 
-A provider whose contract requires TLS (an OIDC issuer: discovery and JWKS over `https`) declares `defineHttpFake({ https: true, routes })`. The fake then listens on `https://127.0.0.1:<port>` with a server certificate signed by the run's ephemeral fake CA (made in memory per run over `node:crypto`, ECDSA P-256, valid for `127.0.0.1`, `::1`, `localhost` and `host.docker.internal`; no file, no dependency), and publishes that CA's PEM as `w.fake.<name>.ca`. The app trusts it through its own HTTP client, as an option the declaration passes from the wiring:
+A provider whose contract requires TLS (an OIDC issuer: discovery and JWKS over `https`) declares `defineHttpFake({ https: true, routes })`. The fake then listens on `https://127.0.0.1:<port>` with a server certificate signed by the run's ephemeral fake CA (made in memory per run over `node:crypto`, ECDSA P-256, valid for `127.0.0.1`, `::1`, `localhost` and `host.docker.internal`; no file, no dependency), and publishes that CA's PEM as `w.fake.<name>.ca`. The app trusts it through its own HTTP client: the `FetchHttpClient` of the `@starci/hfs` skeleton's `platform/http` takes `HttpOptions.trustedCa`, a PEM it trusts beside Node's bundled roots (`HttpModule.register({ isGlobal: true, ...options.http })`), and `parseHttpConfig` reads it from `HTTP_TRUSTED_CA` of the app's environment, so the declaration passes the CA in the environment it builds the app's options from, beside the integration's own URL key:
 
 ```ts
 fakes: { idp: oidcIssuerFake() },   // defineHttpFake({ https: true, routes: [/* discovery, jwks, token */] })
-apps: { api: { module: ApiApp, options: (w) => ({ oidc: { issuer: w.fake.idp.url, ca: w.fake.idp.ca } }) } },
-// in the app: new https.Agent({ ca }) for node:https, or new Agent({ connect: { ca } }) from undici for fetch
+// src/tests/world/test-apps.options.ts: read the way main.ts reads it; every outbound call of the app trusts the run's CA
+export const apiOptionsOf = (w: AppWiring): ApiOptions =>
+    readApiEnv(environmentOf(w, { PORT: String(w.apps.api.port), HTTP_TRUSTED_CA: w.fake.idp.ca /*, the issuer key: w.fake.idp.url */ }))
 ```
 
 A client that does not hold the CA is refused by the handshake, so the app's issuer validation runs unchanged. TLS verification is never turned off: no `NODE_TLS_REJECT_UNAUTHORIZED=0`, no `rejectUnauthorized: false`, nothing added to the process-wide trust store. `fakeTls()` answers the run's material (`{ ca, cert, key }`) for a repo fake that is not built on `defineHttpFake`; `issueFakeTls()` makes fresh, unrelated material (a spec's untrusted CA).

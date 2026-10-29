@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 - 2026-10-29
+
+- Changed: the README's HTTPS fake section names the option an app trusts the run's CA through: `HttpOptions.trustedCa` of the hfs skeleton's `platform/http`, read from `HTTP_TRUSTED_CA` of the environment the declaration builds the app's options from. No code changed.
+
 ## 1.3.0 - 2026-10-29
 
 - Added: `defineHttpFake({ https: true, ... })` serves HTTPS on `https://127.0.0.1:<port>` with a server certificate signed by the run's ephemeral fake CA (made in memory once per process over `node:crypto`, X.509 v3, ECDSA P-256, valid for `127.0.0.1`, `::1`, `localhost` and `host.docker.internal`; no new dependency), for a provider whose contract requires TLS such as an OIDC issuer.

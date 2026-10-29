@@ -1,14 +1,19 @@
 import { Test } from "@nestjs/testing"
 import { mock } from "@starci/jest-preset"
+import { Agent } from "undici"
 import { HttpErrorCode } from "./errors/http.error"
 import { FetchHttpClient } from "./fetch-http-client.client"
+import { HTTP_OPTIONS } from "./http.decorators"
+import type { HttpOptions } from "./http.options"
 
 /** Asymmetric matchers read as `unknown`: jest types them `any`, which may not flow into a property or a typed argument. */
 const anyOf = (type: unknown): unknown => expect.any(type)
 const objectLike = (shape: Record<string, unknown>): unknown => expect.objectContaining(shape)
 
-const build = async (): Promise<FetchHttpClient> => {
-    const moduleRef = await Test.createTestingModule({ providers: [FetchHttpClient] }).compile()
+const build = async (options: HttpOptions = {}): Promise<FetchHttpClient> => {
+    const moduleRef = await Test.createTestingModule({
+        providers: [FetchHttpClient, { provide: HTTP_OPTIONS, useValue: options }],
+    }).compile()
     return moduleRef.get(FetchHttpClient)
 }
 
@@ -231,5 +236,35 @@ describe("FetchHttpClient response stream failures", () => {
                 timeoutMs: 2500,
             }),
         ).rejects.toMatchObject({ code: HttpErrorCode.Timeout, cause: failure })
+    })
+})
+
+describe("FetchHttpClient trusted certificate authority", () => {
+    it("sends through fetch's own pool and has nothing to close when no CA is trusted", async () => {
+        const client = await build()
+        const response = responseOf()
+        response.text.mockResolvedValue("{}")
+        const send = jest.spyOn(global, "fetch").mockResolvedValue(response)
+
+        await client.request({ correlationId: "request-1", method: "GET", url: "https://service.test/orders", timeoutMs: 2500 })
+
+        expect(send.mock.calls[0]?.[1]).not.toHaveProperty("dispatcher")
+        await expect(client.onModuleDestroy()).resolves.toBeUndefined()
+    })
+
+    it("sends every request through one pool that trusts the CA, and closes it when the app stops", async () => {
+        const client = await build({ trustedCa: "the run's fake CA" })
+        const response = responseOf()
+        response.text.mockResolvedValue("{}")
+        const send = jest.spyOn(global, "fetch").mockResolvedValue(response)
+
+        await client.request({ correlationId: "request-1", method: "GET", url: "https://idp.test/jwks", timeoutMs: 2500 })
+        await client.request({ correlationId: "request-2", method: "GET", url: "https://service.test/orders", timeoutMs: 2500 })
+
+        const pool = send.mock.calls[0]?.[1]?.dispatcher
+        expect(pool).toBeInstanceOf(Agent)
+        expect(send.mock.calls[1]?.[1]?.dispatcher).toBe(pool)
+        await client.onModuleDestroy()
+        expect(pool).toHaveProperty("closed", true)
     })
 })

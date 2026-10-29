@@ -1,3 +1,5 @@
 export { HTTP_ERROR_KINDS } from "./errors/http.error"
 export { HTTP_MESSAGES } from "./messages/http.messages"
+export { parseHttpConfig } from "./http.config"
 export { HttpModule } from "./http.module"
+export type { HttpOptions } from "./http.options"
