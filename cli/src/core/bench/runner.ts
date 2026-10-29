@@ -551,7 +551,9 @@ export const runScenario = async (scenario: Scenario, fault: string | null): Pro
     // A bench run inside an Orca terminal must not adopt it, and a caller's role must not narrow the scenario's verbs.
     delete process.env.ORCA_TERMINAL_HANDLE
     delete process.env.STARCI_ROLE
-    const run = await setUp(scenario, fault)
+    // A run that cannot even be set up (its folder refused) is this scenario's error, never the end of the whole bench.
+    const run = await setUp(scenario, fault).catch((error: unknown) => error instanceof Error ? error : new Error(String(error)))
+    if (run instanceof Error) return { ...base, verdict: "error", failures: [`bench error: the run could not be set up: ${run.message}`], runDir: null, ms: Date.now() - started }
     let verdict: Verdict = "pass"
     // A step runs only under its `when` fault and never under its `unless` one; its number counts every step of the scenario.
     const steps = (scenario.steps ?? []).map((step, index) => ({ step, index })).filter(({ step }) => (step.when === undefined || step.when === fault) && step.unless !== fault)
@@ -561,7 +563,7 @@ export const runScenario = async (scenario: Scenario, fault: string | null): Pro
         verdict = error instanceof Unmet ? "fail" : "error"
         if (!(error instanceof Unmet)) run.failures.push(`bench error: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
-        for (const served of run.served) served.stop()
+        await Promise.all(run.served.map((served) => served.stop()))
     }
     const result: ScenarioResult = { ...base, verdict, failures: run.failures, runDir: run.dir, ms: Date.now() - started }
     writeFileSync(join(run.dir, "result.json"), JSON.stringify(result, null, 2))

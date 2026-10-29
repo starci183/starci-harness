@@ -29,6 +29,8 @@ function app(t, red = []) {
   fs.mkdirSync(root);
   git(base, 'init', '-q', '--bare', '-b', 'main', remote);
   git(root, 'init', '-q', '-b', 'main');
+  // The release code tags with plain `git`, so the scratch repository carries its own identity: a runner has no global one.
+  for (const [key, value] of [['user.email', 'bench@example.invalid'], ['user.name', 'bench'], ['commit.gpgsign', 'false'], ['tag.gpgsign', 'false']]) git(root, 'config', key, value);
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'urgent-app', version: '1.0.0', private: true }));
   fs.writeFileSync(path.join(root, 'ok.mjs'), 'process.exit(0)\n');
   fs.writeFileSync(path.join(root, 'fail.mjs'), "process.stderr.write('red on purpose\\n'); process.exit(1)\n");

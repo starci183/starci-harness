@@ -13,7 +13,7 @@ export const SEARCH_SCOPES = ["ui", "grammars", "vendor", "code", "hfs", "stack"
 export type SearchScope = (typeof SEARCH_SCOPES)[number]
 
 /** Bumped whenever chunking changes, so an index built by another chunker reads as stale. */
-export const CHUNKER_VERSION = 3
+export const CHUNKER_VERSION = 4
 
 /** One searchable piece of the corpus: a Markdown section or a yaml entry, named by the anchor a worker cites. */
 export interface Chunk {
@@ -228,14 +228,28 @@ const yamlAnchors = (path: string, cut: Cut): { readonly anchor: string; readonl
     return isAnchorId(cut.id, scopeOf(path) === "decisions") ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
 }
 
+const COMMENT = /^(\s*)#/
+
+/**
+ * The first line of a cut's text: the comment block written directly above its key line, at the key's indent, documents
+ * that key and belongs to its chunk, not to the one above. The file's leading comment block stays its header.
+ */
+const yamlStart = (lines: readonly string[], cut: Cut): number => {
+    const indent = /^\s*/.exec(lines[cut.line] ?? "")?.[0].length ?? 0
+    let start = cut.line
+    while (start > 0 && COMMENT.exec(lines[start - 1] ?? "")?.[1]?.length === indent) start -= 1
+    return start === 0 ? cut.line : start
+}
+
 const yamlChunks = (path: string, lines: readonly string[]): Chunk[] => {
     const scope = scopeOf(path)
     const cuts = yamlCuts(lines)
+    const starts = cuts.map((cut) => yamlStart(lines, cut))
     const chunks: Chunk[] = []
-    const header = lines.slice(0, cuts[0]?.line ?? lines.length).join("\n").trim()
+    const header = lines.slice(0, starts[0] ?? lines.length).join("\n").trim()
     if (header !== "") chunks.push(topChunk(path, header, `${path}#top`))
     for (const [at, cut] of cuts.entries()) {
-        const text = lines.slice(cut.line, cuts[at + 1]?.line ?? lines.length).join("\n").trim()
+        const text = lines.slice(starts[at], starts[at + 1] ?? lines.length).join("\n").trim()
         chunks.push({
             ...yamlAnchors(path, cut),
             path,
