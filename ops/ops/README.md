@@ -90,7 +90,8 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
      the canon, or climbs the question to the Supervisor, who answers it or files one ticket; the answer reaches your next
      attempt's brief under "Answers". When that something is
      a shared thing that is missing (a capability under `platform/`, an app-root file, a `@starci` package, a root config such
-     as the lint, tsconfig, compose or package.json), you never build it: add `--needs <key>` with its key
+     as the lint, tsconfig, compose or package.json; never an opt-in pattern of `hfs.json`, which the harness declares itself for
+     the slots your work lies in, so an `HFS_SLOT_NOT_ENABLED` red is no need of yours), you never build it: add `--needs <key>` with its key
      (`capability:platform.http`, `package:@starci/grammar`, `config:root-eslint`), `--rule <id>` that asks for it,
      `--paths <path>...` it would touch and `--note <what>`. Every task that reports one key waits on one need, which one owner
      resolves; your task is parked with its work kept and runs again, from that work, once the need is resolved or ruled

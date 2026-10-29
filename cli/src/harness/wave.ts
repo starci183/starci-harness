@@ -1,12 +1,13 @@
 import type { DatabaseSync } from "node:sqlite"
 import { join } from "node:path"
-import { git, nulPaths, resolveSha } from "../shared/git.js"
+import { currentBranch, git, nulPaths, resolveSha } from "../shared/git.js"
 import { asRefusal, Refusal } from "../shared/errors.js"
 import { redactSecrets } from "../shared/secrets.js"
 import { assertNoInfraFailure, inCleanCheckout, prepareCheckout, VERIFY_INFRA } from "./clean-verify.js"
 import { blockOnCustody, CUSTODY_CODES } from "./custody.js"
 import { resolveChecks } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
+import { enablePatterns, patternsOfFindings } from "./hfs-patterns.js"
 import { opWorktreeOf } from "./land.js"
 import { inTransaction, now } from "./ledger.js"
 import { readMachine } from "./machine.js"
@@ -257,7 +258,7 @@ const waveRunning = (workflow: string, holder: Verifier | undefined): Refusal =>
  * lock: a wave another caller finished meanwhile judged its tasks (`wave-judged`), so they are no longer due and its recorded
  * verdict stands for that head; nothing is run twice.
  */
-const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, timeoutMs: number): Promise<WaveReport | undefined> => {
+const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, timeoutMs: number, remedy = true): Promise<WaveReport | undefined> => {
     // The lock now stands for the wave; a job row that started it is spent.
     recordJob(db, waveJobOf(workflow), null)
     const ids = waveDue(db, workflow)
@@ -341,6 +342,14 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
         if (asRefusal(error).code === VERIFY_INFRA) recordEvent(db, "wave-infra", workflow, { base, head, tasks: ids, error: asRefusal(error).message })
         throw error
     })
+    // A red naming an opt-in slot of an undeclared pattern is the harness's to remedy (harness/hfs-patterns.ts): it declares the
+    // pattern on the branch and judges the wave again on the new head, so no task is returned for it and no try is spent.
+    const branch = remedy ? await currentBranch(checkout) : undefined
+    if (branch !== undefined) {
+        const reds = Object.values(judged.outcomes).flat().filter((outcome) => outcome.status === "red").map((outcome) => outcome.detail)
+        const enabled = await enablePatterns({ db, checkout, branch, workflow, task: first, why: "wave-red" }, await patternsOfFindings(reds))
+        if (enabled.commit !== null) return judgeWave(db, workflow, checkout, timeoutMs, false)
+    }
     for (const [id, refusal] of blocked) blockOnCustody(db, id, "done", refusal)
     const judgedTasks = tasks.filter((each) => !blocked.has(each.task.id))
     const judgedWave = attributeWave(judgedTasks, judged.prepared, judged.outcomes)

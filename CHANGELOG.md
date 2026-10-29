@@ -27,6 +27,16 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **An opt-in slot no task may enable is enabled by the harness** (ticket tk-3ea0b331b3df: be-purchase's webhook doors red
+  `HFS_SLOT_NOT_ENABLED`, since only the app-root `hfs.json`, which no task writes, switches on `sides.be.patterns`). The harness
+  reads which slots a task's paths lie in through @starci/hfs's classifier and declares each missing pattern itself: before the
+  task's Op worktree is cut, before its verify, and when a red of its verify or wave names an `HFS_SLOT_NOT_ENABLED` slot, after
+  which the verify or wave runs again on the new head and no try is spent. The declaration is an additive edit of that one list
+  (every other byte of `hfs.json` kept, proved by parsing), a commit of its own on the workflow's branch under its land lock
+  (`Starci-Harness: hfs-pattern`), an `hfs-pattern-enabled` event and a resolved shared need `config:hfs.<side>.patterns.<name>`
+  whose later declarations on other branches are its relays; no task's diff carries `hfs.json`, so none is judged app-wide for it
+  (`cli/src/harness/hfs-patterns.ts`, `cli/src/shared/json-edit.ts`). `contract check` names the patterns a contract needs. Bench:
+  `verify-hfs-pattern-declared-by-harness`.
 - **A hot CPU slows the heavy queue and never freezes it** (monitor report 5: 0 admissions for 2 h 33 with 23.7 GB free). Once
   the queue admitted nothing for `heavy.cpuStarveMinutes`, its first command RAM admits starts despite the CPU ceiling, one at a
   time. The queue is served by age, a project with fewer commands running first, and a project running `heavy.projectSlots`

@@ -93,7 +93,7 @@ act there whatever checkout the caller is in.
 **Op worktrees.** Every task of a workflow, under either runner, works in a git worktree of its own,
 `<project state>/worktrees/<workflow>.ops/<task>` on branch `starci/<workflow>.ops/<task>`, cut when its seat starts (or
 its inline step hands it out) from the head of the branch its workflow's worktree has checked out (an inline workflow
-without one: the checkout it runs in), beside that worktree rather than inside it, since git keeps no branch below another
+without one: the checkout it runs in), once that head declares the opt-in patterns its `allowPaths` need ("Opt-in patterns"), beside that worktree rather than inside it, since git keeps no branch below another
 branch's name and a nested checkout would sit in the workflow's tree. It gets the product's hooks and, for each
 node_modules folder of that checkout and each lockfile folder of its own, an install without npm: from the install cache
 (below) when it holds the key of that folder's lockfile, else a link to the checkout's own folder when it has one (a
@@ -138,7 +138,8 @@ ran; `check run` first builds the workspace dependencies whose entries the clean
 the build cache (`core/check/workspace-deps.ts`, cache path in `harness/ledger.ts`), as
 [contexts/project/lint.md](../contexts/project/lint.md) states. Green commits only those paths (never pushed; a candidate that changes nothing commits nothing and its result hash
 reads the tree of its `allowPaths` at the head it settled on) and makes the task done and records its settle commit
-(`tasks.settle_commit`) in one transaction; red preserves and resets its paths and fails it; either way the task's Op
+(`tasks.settle_commit`) in one transaction; red preserves and resets its paths and fails it, but a red that names an opt-in slot
+of a pattern the branch lacks is the harness's ("Opt-in patterns"): it declares the pattern and verifies again on the new head; either way the task's Op
 worktree is removed. Every ending of an Op's task, under the land lock, also preserves as the task's work whatever sits
 dirty under its `allowPaths` in the checkout it lands on and puts that checkout back (`land-escaped`, `preserveEscaped` in
 `core/task/verify.ts`), so the fast-forward never meets it and a retry starts from it: green lands on the branch or the task
@@ -176,7 +177,8 @@ never done while a wave is due (`derivedStatus` of `harness/workflow.ts`). The w
 (`wave-scope`: the diff from the oldest settle parent of its tasks to HEAD, the changed files, the commands, what it
 skips), then, on one clean checkout of the workflow's HEAD, prepares one install and every contract's setup, runs each
 scoped check once over the union and each command once per cwd and argv (per task when it reads the task's result or
-coverage). A red check belongs to the tasks whose landed files its output names (every task that left it when it names
+coverage). A red that names an opt-in slot of a pattern the branch lacks is the harness's: it declares the pattern and judges
+the wave again on the new head ("Opt-in patterns"). Any other red check belongs to the tasks whose landed files its output names (every task that left it when it names
 none): those tasks go `done → failed` with the red rows on their attempt (`wave-returned`), back to the Kernel like any
 red verify, and every task of the wave is judged (`wave-judged`, `wave-verified`). `workflow wave <id>` runs a due wave by
 hand, and `workflow wave <id> --final` a due final verify. A coordinator's turn (`kernel next`, `kernel submit`, `supervisor
@@ -327,6 +329,21 @@ it is a `need-relay-conflict` event and one Supervisor `escalation` of kind `con
 parked with their work kept, and the Supervisor's answer releases them as they stand. Then every waiter whose needs all ended is
 retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its brief. `needs list`
 and `needs show <key>` read the store.
+
+**Opt-in patterns.** A slot of the hfs manifest that names a `pattern` is enabled only by `sides.<side>.patterns` of the app's
+`hfs.json`, an app-root file every workflow shares and no task writes, so the harness owns those lists (`harness/hfs-patterns.ts`).
+It reads which slots a task's paths lie in through @starci/hfs's own classifier (`starci app explain`) and declares each pattern
+the branch lacks: before the task's Op worktree is cut (its `allowPaths`), before its verify (those and the files its result
+names), and when a red of its verify or of its wave names an `HFS_SLOT_NOT_ENABLED` slot. The declaration adds the names to that
+one list and keeps every other byte of `hfs.json` (`addToStringArray` in `shared/json-edit.ts`, proved by parsing the result), and
+lands under the branch's land lock as a commit of its own (trailer `Starci-Harness: hfs-pattern`), the checkout fast-forwarded;
+after a red the verify or the wave runs again on the new head, so the task spends no try on it. Each declaration is an
+`hfs-pattern-enabled` ledger event (`hfs-pattern-refused` with the reason when it cannot land, a dirty `hfs.json` in the checkout
+for one, and the task then meets the red as it stands) and lands as a shared need: `config:hfs.<side>.patterns.<name>`, resolved
+by the first branch's commit, a declaration on another workflow's branch recorded as its relay (`needs show`). The commit belongs
+to no task, so no task's diff carries `hfs.json`: no task is judged app-wide for a declaration, findings already on the branch
+stay the base it is judged against, and what a pattern makes legal or red is judged on the files a task lands in its slots.
+`contract check` names the patterns a contract's `allowPaths` need that the app does not declare yet.
 
 **Seat launch.** The claim comes first, in one transaction: the queued task goes to running and an attempt and a
 `starting` seat carrying the launch record are opened; only then is Orca called, so two starts never both launch.
