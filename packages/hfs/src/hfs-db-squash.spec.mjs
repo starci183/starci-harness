@@ -1,8 +1,10 @@
 // `starci app db baseline --squash` end to end. A source database (a scratch postgres:17-alpine container) carries a lite app's bootstrap and
 // active chain: an extension to drop (hstore, in its own schema) with two functions reaching it, a kept extension (pg_trgm), an app role
 // with a role-level search_path, schema grants on the bootstrap's extensions schema, in-schema and database-wide default privileges, and
-// reference rows in two tables tied by a foreign key. The verb must preview without writing, then write a baseline, a bootstrap section
-// and a seed that replay green on a fresh database: grants present, seed rows present (twice applied), the dropped extension absent.
+// reference rows in two tables tied by a foreign key. The source publishes its port on 127.0.0.1 only, as the app's dev database does, so
+// the verb must find a route to a loopback source on Docker Desktop and on a Linux engine alike. The verb must preview without writing,
+// then write a baseline, a bootstrap section and a seed that replay green on a fresh database: grants present, seed rows present (twice
+// applied), the dropped extension absent.
 // A kept function calling an excluded one is refused with both names. Without a Docker daemon the verb refuses (exit 2) and so does the spec.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -190,6 +192,12 @@ test('squash previews, proves, writes four outputs that replay green, and refuse
   const unrecorded = squash(app(t, CHAIN), CHAIN, source.port, 'unrecorded');
   assert.equal(unrecorded.code, 2);
   assert.match(unrecorded.stderr, /the source records no migration history/);
+
+  // A loopback source no route reaches is refused with each route's psql failure, its password withheld.
+  const unreachable = squash(app(t, CHAIN), CHAIN, 1, 'source');
+  assert.equal(unreachable.code, 2);
+  assert.match(unreachable.stderr, /no container of postgres:17-alpine reaches the database SOURCE_DB_URL names:\n {2}psql against .+ failed: .+\n {2}psql against .+ failed: /);
+  assert.doesNotMatch(unreachable.stderr, /postgres:source@/);
 });
 
 test('sync judges db/bootstrap.sql except the squash section, keeps that section on write, and flags a hand edit outside it', async (t) => {

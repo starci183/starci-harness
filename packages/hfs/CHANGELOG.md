@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.11.7 - 2026-10-29
+
+- Fixed: `starci app db baseline --squash` reaches a loopback source (`127.0.0.1`, `localhost`, `[::1]`, as the app's own dev database on `127.0.0.1:54322`) on a Linux Docker engine. The scratch container reached it only as `host.docker.internal`, which a Linux engine maps to its bridge gateway, where a port published on 127.0.0.1 refuses the connection; Docker Desktop alone forwarded it. `sourceTarget` (`runtime/scripts/hfs/db-squash.mjs`) now keeps the first route psql connects on: the scratch container through `host.docker.internal`, else a one-shot container of the same image on the host's network; when neither connects the verb refuses with each route's psql failure. Every client tool runs where its target's route says (`exec`, `targetRunner`).
+- Changed: a failed history read of the squash source names the psql failure (password and URL withheld) instead of "database command failed; inspect psql privately".
+- Spec: `src/hfs-db-squash.spec.mjs`: its source, published on 127.0.0.1 only, is the loopback route CI's Linux engine proves; a source no route reaches is refused.
+
 ## 4.11.6 - 2026-10-29
 
 - Added: the skeleton's `platform/http` takes `HttpOptions.trustedCa`, the PEM of one more certificate authority the outbound client trusts beside Node's bundled roots (never instead of them; verification stays on). `FetchHttpClient` builds one undici `Agent({ connect: { ca: [...rootCertificates, trustedCa] } })` for it and hands it to the global `fetch` as `dispatcher` on every request, closing it at module destroy; without the option it builds no pool and every request is sent exactly as before. `HTTP_OPTIONS` and `InjectHttpOptions` carry the options (`http.decorators.ts`), `parseHttpConfig` (`http.config.ts`) reads them from the optional `HTTP_TRUSTED_CA` (or `HTTP_TRUSTED_CA_FILE`), and the full skeleton's api app reads `http: parseHttpConfig(env)` into its options and registers `HttpModule.register({ isGlobal: true, ...options.http })`, so a test world passes its per-run fake CA (`w.fake.<name>.ca`) as `HTTP_TRUSTED_CA` in the environment it builds the app's options from.
