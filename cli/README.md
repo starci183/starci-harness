@@ -171,15 +171,19 @@ the build cache (`core/check/workspace-deps.ts`, cache path in `harness/ledger.t
 reads the tree of its `allowPaths` at the head it settled on) and makes the task done and records its settle commit
 (`tasks.settle_commit`) in one transaction; red preserves and resets its paths and fails it, but a red that names an opt-in slot
 of a pattern the branch lacks is the harness's ("Opt-in patterns"): it declares the pattern and verifies again on the new head; either way the task's Op
-worktree is removed once its attempt is settled ("Settling an attempt"). Every ending of an Op's task, under the land lock, also preserves as the task's work whatever sits
-dirty under its `allowPaths` in the checkout it lands on and puts that checkout back (`land-escaped`, `preserveEscaped` in
-`core/task/verify.ts`), so the fast-forward never meets it and a retry starts from it: green lands on the branch or the task
-returns with its work preserved, never done with its work left beside the branch. A done task an older verify settled with
+worktree is removed once its attempt is settled ("Settling an attempt"). Every ending of an Op's task, under the land lock, also
+clears the checkout it lands on, so the fast-forward never meets a dirty path and the task's work never stays beside the
+branch: a red or conflict ending preserves whatever sits dirty under its `allowPaths` there as the task's work, which its retry
+starts from, and puts it back (`land-escaped`, `preserveEscaped` in `core/task/verify.ts`); a green one clears every dirty path
+the fast-forward writes or its `allowPaths` hold (modified, staged, a line-ending-only difference `git diff` hides, or
+untracked), dropping one whose work-tree and index content are the head's or the candidate's and preserving the rest first
+into `preserved/land-<task>`, which no settle deletes, all named in one `land-stale` event (`clearStale` in
+`harness/preserve.ts`, run by `settle` in `harness/settle.ts`). A preserve that fails reaches no verdict and spends no try. A done task an older verify settled with
 nothing while its result names files is returned by `task verify --recover`: its work is preserved from that checkout and
 it fails `land-orphaned`, a harness cause (below), reopening its workflow when that had ended done. A verify holds its task's verifier lock throughout, and the land lock of the branch it lands on
 (one per branch, `landLockKey` in `harness/land.ts`) only while its verified commit is integrated: an Op's lands by
-`git merge --ff-only` in the target checkout, which moves branch, index and work tree together and refuses rather than
-overwrite a local edit, a task in the checkout it lands on by moving the ref. Verifies of one workflow run side by side;
+`git merge --ff-only` in the target checkout, which moves branch, index and work tree together over the paths the
+settle cleared, a task in the checkout it lands on by moving the ref. Verifies of one workflow run side by side;
 when another task landed between a verify's rebase and its landing, it verifies again on the new head under the land
 lock, so each lands on the head the previous one left. A lock's holder stamps a heartbeat, so a dead holder whose pid
 Windows reused is taken over once the beat goes stale (`withSettleLock` in `harness/settle.ts`), and holds a lock at most

@@ -15,7 +15,7 @@ import { loadLiveness } from "../../harness/liveness.js"
 import { loadOps } from "../../harness/ops.js"
 import type { Ops } from "../../harness/ops.js"
 import { PreserveIncomplete, preserveTaskPaths, resetPreserved } from "../../harness/preserve.js"
-import type { Preserved } from "../../harness/preserve.js"
+import type { Preserved, StaleCleared } from "../../harness/preserve.js"
 import { LAND_ORPHANED } from "../../harness/revive.js"
 import { recheckOf, recordBaselineFindings, runCheck } from "../../harness/run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
@@ -323,8 +323,17 @@ interface Ending {
     readonly escaped?: Preserved
 }
 
+/** What the settle cleared in the checkout it lands on before its fast-forward (harness/preserve.ts clearStale). */
+const staleLine = (stale: StaleCleared | null): string[] => {
+    if (stale === null) return []
+    const dropped = stale.dropped.length === 0 ? [] : [`${stale.dropped.join(", ")} dropped (git holds their content)`]
+    const kept = stale.preserved.dir === null ? [] : [`${[...stale.preserved.tracked, ...stale.preserved.untracked].join(", ") || "the index"} preserved in ${stale.preserved.dir}`]
+    return [`stale: the checkout it lands on held dirty paths the fast-forward writes or its allowPaths hold; ${[...dropped, ...kept].join("; ")} (land-stale)`]
+}
+
 const seatLine = (ending: Ending): string[] => [
     ...(ending.escaped?.dir == null ? [] : [`escaped: ${[...ending.escaped.tracked, ...ending.escaped.untracked].join(", ")} sat under allowPaths in the checkout it lands on; preserved in ${ending.escaped.dir} as this task's work, and put back`]),
+    ...staleLine(ending.settlement?.stale ?? null),
     ...(ending.seats.length === 0 ? [] : ["seats: " + ending.seats.map((seat) => seat.seat + " " + seat.outcome).join(", ")]),
     ...(ending.seatProblem === undefined ? [] : [`warning: the task's seats were not closed (${ending.seatProblem}); close them with starci seat stop <seat>`]),
     ...(ending.repair === undefined ? [] : [`warning: the red work is saved in ${ending.repair} but not every path was put back; starci task verify <task> --recover finishes the reset`]),
@@ -448,9 +457,9 @@ const LAND_ESCAPED = "land-escaped"
 /**
  * Work the task wrote outside its own checkout, into the checkout it lands on (an Op worktree's target): every file dirty there
  * under the task's allowPaths is saved as the task's work (a `task-preserved` event, the prior work a retry starts from) and put
- * back, recorded `land-escaped`, so the branch fast-forwards and the target holds no task's work. Every ending runs it: a red or
- * conflict before the task returns, a green before its commit lands, each under the target's land lock. Null when the task works
- * in its target or nothing escaped.
+ * back, recorded `land-escaped`, so the target holds no task's work and its retry starts from it. A red or a conflict ending runs
+ * it before the task returns, under the target's land lock; a green one lands instead, and its settle clears the target
+ * (harness/preserve.ts clearStale). Null when the task works in its target or nothing escaped.
  */
 const preserveEscaped = async (db: DatabaseSync, task: TaskRow, target: LandTarget): Promise<Preserved | null> => {
     if (target.own) return null
@@ -548,21 +557,17 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
         if (work !== null) recordEvent(db, "work-written", task.id, work)
         return { built, ending: { ...unsettled, status: "failed", work, preserved, ...(repair === null ? {} : { repair }), ...escapedOf(escaped) } }
     }
-    let landed: { readonly settlement: Settlement; readonly escaped: Preserved | null }
+    let settlement: Settlement
     try {
-        // The task's work sitting in the target would block its fast-forward: it is preserved first, under the same land lock.
-        landed = await underLand(async () => {
-            const escaped = await preserveEscaped(db, task, target)
-            return { settlement: await settle(target, built, task), escaped }
-        })
+        // What sits dirty in the target on its paths would block the fast-forward: settle clears it first, under the land lock.
+        settlement = await underLand(() => settle(target, built, task, db))
     } catch (error: unknown) {
         if (!locked && asRefusal(error).code === "HEAD_MOVED") return "moved"
         throw noVerdict(db, task.id, attempt.id, "settle-refused", error)
     }
-    const { settlement, escaped } = landed
     // The branch moved: from here the task is done whatever else happens (a crash here is reconciled by --recover from git).
     finishTask(db, task.id, attempt.id, settlement, "task-settled", settlement, deferred)
-    return { built, ending: { ...unsettled, status: "done", settlement, work: settlement.work, ...escapedOf(escaped) } }
+    return { built, ending: { ...unsettled, status: "done", settlement, work: settlement.work } }
 }
 
 /**

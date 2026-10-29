@@ -30,6 +30,18 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A green task lands over stale dirt in the checkout it lands on.** starci-next-app lesson-ai `lesson-content-grading`
+  (t-12055865, and auth-sign-in t-2184122d before it) verified green and failed its settle three times on `SETTLE_REF_FAILED`
+  (`git merge --ff-only` would overwrite local changes), then waited on the owner: the workflow's worktree held leftovers on
+  paths the commit writes, CRLF copies of LF files that `git diff` shows clean and the merge still refuses, so `land-escaped`
+  saw nothing to preserve. A green settle now clears, under the land lock and before the fast-forward, every dirty path the
+  fast-forward writes or the task's `allowPaths` hold (modified, staged, line-ending-only or untracked): a path whose work-tree
+  and index content are the head's or the candidate's is dropped, the rest is preserved first into `preserved/land-<task>`
+  (a changes patch, a staged patch, untracked copies; no settle deletes it), and one `land-stale` event names both (`clearStale`
+  in `harness/preserve.ts`, run by `settle` in `harness/settle.ts`, sharing `preserveScope` with the task preserve). A preserve
+  that fails reaches no verdict and spends no try. A green ending no longer files the target's dirt as the task's own preserve,
+  which its merge settle deleted. Bench: `land-stale-target-dirty-settles`, `land-stale-escape-cleared-then-lands`.
+
 - **The secret scan reads a key's name and a contract spec's inputs as what they are.** starci-next-app auth-sign-in
   `keycloak-contract-spec` (t-15237b2c) failed verify on `secrets` for two lines of `keycloak.contract-spec.ts`: a const holding
   the custody key name `IDENTITY_KEYCLOAK_CLIENT_SECRET`, and the deliberately wrong password of its invalid-credentials case.

@@ -8,12 +8,15 @@ import { asRefusal, Refusal } from "../shared/errors.js"
 import { headline, pidAlive } from "../shared/exec.js"
 import { captureGit, currentBranch, git, gitSucceeds, resolveSha } from "../shared/git.js"
 import type { CleanVerify } from "./clean-verify.js"
+import { taskPaths } from "./contract.js"
 import type { Contract } from "./contract.js"
 import { heavyOwner, queuedSince } from "./heavy.js"
 import type { LandTarget } from "./land.js"
 import { now } from "./ledger.js"
 import { loadLiveness } from "./liveness.js"
 import { loadOps } from "./ops.js"
+import { clearStale } from "./preserve.js"
+import type { StaleCleared } from "./preserve.js"
 import type { ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
 import type { TaskRow } from "./tasks.js"
@@ -43,6 +46,8 @@ export interface Settlement {
     readonly committed: boolean
     readonly warnings: readonly string[]
     readonly work: WorkWrite | null
+    /** What the settle found dirty in the checkout it lands on and cleared first (preserve.ts clearStale); null when nothing was. */
+    readonly stale: StaleCleared | null
 }
 
 /** Who verifies a task now: the process, its host and when it began; a dead pid on this host means nobody does. */
@@ -357,13 +362,15 @@ export const workLine = (work: WorkWrite): string => {
  * Lands exactly the candidate the checks saw on the target's branch, only while it still points at the candidate's parent
  * (call it under the target's land lock). A task working in the target checkout itself moves the ref and refreshes the index of
  * the settled paths, whose files its work tree already holds; a task of an Op worktree fast-forwards the target checkout
- * (`git merge --ff-only`), which moves its branch, index and work tree together and refuses rather than overwrite a local edit
- * there. A uat task's Work rides in the same harness commit: the candidate's tree plus the record's `state: done` and
- * `activity: idle` and its run cited in the flow's evidence.yaml, read in the target checkout; a Work file the user is editing is
- * left alone, with a warning. Once the ref moved the settle stands: refreshing the index and the Work files is best effort and
+ * (`git merge --ff-only`), which moves its branch, index and work tree together. What is dirty there on a path it writes or
+ * under the task's allowPaths (a leftover of an earlier writer, the task's own escaped copy) is cleared first, recorded on the
+ * task in `db` (preserve.ts clearStale: dropped when git holds its content, else preserved), so the merge never refuses over it,
+ * never overwrites what only the work tree held, and the checkout holds none of the task's work once it landed. A uat task's
+ * Work rides in the same harness commit: the candidate's tree plus the record's `state: done` and `activity: idle` and its run
+ * cited in the flow's evidence.yaml, read in the target checkout; a Work file the user is editing is left alone, with a warning. Once the ref moved the settle stands: refreshing the index and the Work files is best effort and
  * only warns. Nothing is pushed.
  */
-export const settle = async (target: LandTarget, built: CleanVerify, task?: TaskRow): Promise<Settlement> => {
+export const settle = async (target: LandTarget, built: CleanVerify, task?: TaskRow, db?: DatabaseSync): Promise<Settlement> => {
     const root = target.checkout
     const branch = await settleBranch(root)
     if (branch !== target.branch) throw new Refusal("SETTLE_BRANCH_MOVED", `${root} has ${branch} checked out, not ${target.branch}, the branch the task lands on; nothing was landed, verify again`)
@@ -387,17 +394,18 @@ export const settle = async (target: LandTarget, built: CleanVerify, task?: Task
             work = skippedWrite(binding, "passed", undefined, asRefusal(error).message)
         }
     }
-    if (changed.length === 0) return { branch, commit: head, committed: false, warnings: [], work }
+    const stale = target.own || db === undefined ? null : await clearStale(root, db, task?.id ?? `land:${branch}`, candidate, task === undefined ? [] : taskPaths(task))
+    if (changed.length === 0) return { branch, commit: head, committed: false, warnings: [], work, stale }
     const update = target.own
         ? await captureGit(["update-ref", "-m", "starci settle", `refs/heads/${branch}`, candidate, built.parent], root)
         : await captureGit(["merge", "--ff-only", "--quiet", candidate], root)
     if (update.exitCode !== 0) {
         const after = await resolveSha(root, "HEAD")
         if (after !== built.parent) throw moved(after)
-        throw new Refusal("SETTLE_REF_FAILED", `git ${target.own ? "update-ref" : "merge --ff-only"} of ${branch} failed: ${headline(update.stderr)}; the work tree is untouched and no try is spent, verify again`)
+        throw new Refusal("SETTLE_REF_FAILED", `git ${target.own ? "update-ref" : "merge --ff-only"} of ${branch} failed: ${headline(update.stderr)}; ${stale === null ? "the work tree is untouched" : "its dirty paths were cleared first (land-stale)"} and no try is spent, verify again`)
     }
     const refreshed = target.own ? [...(await refreshIndex(root, built.paths)), ...(workPaths.length === 0 ? [] : await checkoutWork(root, candidate, workPaths))] : []
-    return { branch, commit: candidate, committed: true, warnings: refreshed, work }
+    return { branch, commit: candidate, committed: true, warnings: refreshed, work, stale }
 }
 
 /** Where a red walk stopped: the first failing step and its reason from the filed result, else the names of the red checks. */
