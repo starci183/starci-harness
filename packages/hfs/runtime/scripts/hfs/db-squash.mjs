@@ -36,7 +36,7 @@ const sorted = (items) => [...items].sort((left, right) => (left < right ? -1 : 
 /** A comma list flag as distinct names, or `fallback` when the flag is absent. */
 export const flagList = (value, fallback) => (value === undefined ? [...fallback] : [...new Set(String(value).split(',').map((item) => item.trim()).filter(Boolean))]);
 
-/* ---- docker: the scratch container runs every client tool, so the host needs Docker and no PostgreSQL client */
+/* ---- docker: every client tool runs in a container of the db image, so the host needs Docker and no PostgreSQL client */
 
 function docker(args, { input, env = {}, secrets = [] } = {}) {
   const result = spawnSync('docker', args, { input, env: { ...process.env, ...env }, encoding: 'utf8', maxBuffer: 1 << 30, timeout: 600_000, windowsHide: true });
@@ -72,31 +72,47 @@ function buildImage(root) {
   return image;
 }
 
-const scratchTarget = (scratch, database) => ({ url: `postgresql://postgres@127.0.0.1:5432/${database}`, password: scratch.password, label: `the scratch ${database}` });
+/** Where a target's client tools run: `docker exec` in the scratch container, or a one-shot container of its image on the host's network. */
+const inScratch = (scratch) => ({ head: ['exec', '-i'], ref: scratch.name });
+const onHostNetwork = (scratch) => ({ head: ['run', '--rm', '-i', '--network', 'host', '--label', 'starci.db-squash=1'], ref: scratch.image });
 
-/** The source as the scratch container reaches it: a loopback host becomes host.docker.internal. */
-export function containerTarget(connection, label) {
-  const url = new URL(connection.url);
-  if (LOCAL_HOSTS.has(url.hostname)) url.hostname = 'host.docker.internal';
-  return { url: url.toString(), password: connection.env.PGPASSWORD ?? '', label };
-}
+const scratchTarget = (scratch, database) => ({ url: `postgresql://postgres@127.0.0.1:5432/${database}`, password: scratch.password, label: `the scratch ${database}`, client: inScratch(scratch) });
 
-function exec(scratch, target, tool, args, { input, query = false } = {}) {
+function exec(target, tool, args, { input, query = false } = {}) {
   const env = { PGPASSWORD: target.password, ...(query ? { PGOPTIONS: QUERY_OPTIONS } : {}) };
-  const result = docker(['exec', '-i', '-e', 'PGPASSWORD', ...(query ? ['-e', 'PGOPTIONS'] : []), scratch.name, tool, ...args], { input, env, secrets: [target.password, target.url] });
+  const result = docker([...target.client.head, '-e', 'PGPASSWORD', ...(query ? ['-e', 'PGOPTIONS'] : []), target.client.ref, tool, ...args], { input, env, secrets: [target.password, target.url] });
   if (!result.ok) throw new DbVerbError(`${tool} against ${target.label} failed: ${firstLines(result.stderr)}`);
   return result.stdout;
 }
 
 const psqlArgs = (target) => ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-d', target.url];
-const queryJson = (scratch, target, sql) => JSON.parse(exec(scratch, target, 'psql', [...psqlArgs(target), '-A', '-t', '-c', sql], { query: true }));
+const queryJson = (target, sql) => JSON.parse(exec(target, 'psql', [...psqlArgs(target), '-A', '-t', '-c', sql], { query: true }));
 
-/** The runPostgres port of db-baseline-verb.mjs, served by the scratch container: the history precondition needs no host psql. */
-export function scratchRunner(scratch, target, commandOf) {
+/**
+ * The source as a container reaches it. A remote host is reached from the scratch container. A loopback host is the host's own: Docker
+ * Desktop reaches it from the scratch container as host.docker.internal, a Linux engine only from a container on the host's network (its
+ * bridge gateway never reaches a port bound to 127.0.0.1, as the app's own dev database is). The first route psql connects on is kept;
+ * when none does, the verb refuses with each route's failure.
+ */
+export function sourceTarget(scratch, connection, label) {
+  const password = connection.env.PGPASSWORD ?? '';
+  const url = new URL(connection.url);
+  if (!LOCAL_HOSTS.has(url.hostname)) return { url: url.toString(), password, label, client: inScratch(scratch) };
+  const gateway = new URL(connection.url);
+  gateway.hostname = 'host.docker.internal';
+  const routes = [{ url: gateway.toString(), password, label, client: inScratch(scratch) }, { url: url.toString(), password, label, client: onHostNetwork(scratch) }];
+  const failures = [];
+  for (const route of routes) {
+    try { exec(route, 'psql', [...psqlArgs(route), '-At', '-c', 'select 1']); return route; } catch (error) { failures.push(error.message); }
+  }
+  throw new DbVerbError(`no container of ${scratch.image} reaches ${label}:\n${failures.map((line) => `  ${line}`).join('\n')}`);
+}
+
+/** The runPostgres port of db-baseline-verb.mjs, served by the target's container: the history precondition needs no host psql. */
+export function targetRunner(target, commandOf) {
   return (root, op) => {
     const [tool, args] = commandOf(op, target.url);
-    const result = docker(['exec', '-i', '-e', 'PGPASSWORD', scratch.name, tool, ...args], { env: { PGPASSWORD: target.password }, secrets: [target.password, target.url] });
-    return { status: result.ok ? 0 : 1, stdout: result.stdout };
+    return { status: 0, stdout: exec(target, tool, args) };
   };
 }
 
@@ -303,13 +319,13 @@ function partition(dump, facts, scope, config) {
 }
 
 /** One database projected to the files a squash writes; the same function reads the source and the replay. */
-function project(scratch, target, config) {
-  const facts = queryJson(scratch, target, FACTS_SQL);
+function project(target, config) {
+  const facts = queryJson(target, FACTS_SQL);
   const scope = squashScope(facts, config);
-  const queues = facts.extensions.some((extension) => extension.name === 'pgmq') && !config.dropped.includes('pgmq') ? queryJson(scratch, target, QUEUES_SQL) : [];
+  const queues = facts.extensions.some((extension) => extension.name === 'pgmq') && !config.dropped.includes('pgmq') ? queryJson(target, QUEUES_SQL) : [];
   scope.droppedQueues = new Set(queues.filter((queue) => queueDropped(queue.name, config.droppedQueues)).map((queue) => queue.name));
   const keptQueues = queues.filter((queue) => !scope.droppedQueues.has(queue.name));
-  const dump = dumpEntries(exec(scratch, target, 'pg_dump', ['--schema-only', '--no-owner', '-d', target.url]));
+  const dump = dumpEntries(exec(target, 'pg_dump', ['--schema-only', '--no-owner', '-d', target.url]));
   const parts = partition(dump, facts, scope, config);
   const refusals = danglingReferences(parts.kept, scope);
   const roleNames = new Set(facts.roles.map((role) => role.name));
@@ -347,7 +363,7 @@ function project(scratch, target, config) {
   const tail = [...creates, ...outside.filter((item) => !item.schemaLevel).map((item) => item.line)];
   parts.report.droppedQueues = sorted(scope.droppedQueues);
   parts.report.queues = keptQueues.map((queue) => queue.name);
-  const seed = config.seedTables.length ? seedText(scratch, target, config.seedTables, scope, refusals) : null;
+  const seed = config.seedTables.length ? seedText(target, config.seedTables, scope, refusals) : null;
   return { facts, scope, dump, entries, tail, section, seed, carried, report: parts.report, refusals };
 }
 
@@ -378,9 +394,9 @@ function seedOrder(tables, refusals) {
   return order;
 }
 
-function seedText(scratch, target, requested, scope, refusals) {
+function seedText(target, requested, scope, refusals) {
   const pairs = requested.map((name) => (name.includes('.') ? name.split('.') : ['public', name]));
-  const facts = queryJson(scratch, target, seedFactsSql(pairs));
+  const facts = queryJson(target, seedFactsSql(pairs));
   const found = new Set(facts.map((table) => `${table.schema}.${table.table}`));
   for (const [schema, table] of pairs) {
     if (!found.has(`${schema}.${table}`)) refusals.push(`seed table ${schema}.${table} does not exist in the source`);
@@ -392,7 +408,7 @@ function seedText(scratch, target, requested, scope, refusals) {
     const columns = table.columns.map((column) => ident(column.name)).join(', ');
     const overriding = table.columns.some((column) => column.identity === 'a') ? 'overriding system value ' : '';
     const values = `pg_catalog.concat_ws(', ', ${table.columns.map((column) => `pg_catalog.quote_nullable(${ident(column.name)})`).join(', ')})`;
-    const rows = queryJson(scratch, target, `select coalesce(json_agg(line order by line collate "C"), '[]') from (select 'insert into ${qualified.replaceAll("'", "''")} (${columns.replaceAll("'", "''")}) ${overriding}values (' || ${values} || ') on conflict do nothing;' as line from ${qualified}) q`);
+    const rows = queryJson(target, `select coalesce(json_agg(line order by line collate "C"), '[]') from (select 'insert into ${qualified.replaceAll("'", "''")} (${columns.replaceAll("'", "''")}) ${overriding}values (' || ${values} || ') on conflict do nothing;' as line from ${qualified}) q`);
     const sequences = table.columns.filter((column) => column.sequence).map((column) => `select pg_catalog.setval(pg_catalog.pg_get_serial_sequence(${literal(qualified)}, ${literal(column.name)}), coalesce(max(${ident(column.name)}), 0) + 1, false) from ${qualified};`);
     return { name: `${table.schema}.${table.table}`, count: rows.length, sql: [`-- ${table.schema}.${table.table}: ${rows.length} row(s)`, ...rows, ...sequences].join('\n') };
   });
@@ -435,10 +451,10 @@ function firstDifference(left, right) {
 
 function replay(scratch, files) {
   const admin = scratchTarget(scratch, 'postgres');
-  exec(scratch, admin, 'psql', [...psqlArgs(admin), '-c', `create database ${REPLAY_DB}`]);
+  exec(admin, 'psql', [...psqlArgs(admin), '-c', `create database ${REPLAY_DB}`]);
   const target = scratchTarget(scratch, REPLAY_DB);
   for (const [label, text] of files) {
-    try { exec(scratch, target, 'psql', [...psqlArgs(target), '-1', '-f', '-'], { input: text }); }
+    try { exec(target, 'psql', [...psqlArgs(target), '-1', '-f', '-'], { input: text }); }
     catch (error) { throw new DbVerbError(`the replay of ${label} failed on ${scratch.image}: ${error.message}`); }
   }
   return target;
@@ -478,13 +494,13 @@ export function squashBaseline({ root, opts, plan, urlEnv, connection, commandOf
   const image = opts.image ?? buildImage(root);
   const scratch = startScratch(image);
   try {
-    const source = containerTarget(connection, `the database ${urlEnv} names`);
-    precondition(scratchRunner(scratch, source, commandOf));
-    const projected = project(scratch, source, config);
+    const source = sourceTarget(scratch, connection, `the database ${urlEnv} names`);
+    precondition(targetRunner(source, commandOf));
+    const projected = project(source, config);
     if (projected.refusals.length) throw new DbVerbError(`baseline --squash cannot carry the source:\n${[...new Set(projected.refusals)].map((line) => `  ${line}`).join('\n')}`);
     const files = [[BOOTSTRAP_FILE, `${head}${projected.section}`], [plan.file, baselineText(projected, plan.last, urlEnv)], ...(projected.seed ? [[SEED_FILE, projected.seed.text]] : [])];
     const replayTarget = replay(scratch, [...files, ...(projected.seed ? [[`${SEED_FILE} (second run)`, projected.seed.text]] : [])]);
-    const replayed = project(scratch, replayTarget, config);
+    const replayed = project(replayTarget, config);
     const diff = projectionDiff(projected, replayed);
     stdout(`${opts.apply ? 'apply' : 'preview'} squash baseline ${plan.file}; archive ${plan.active.length} migrations; the source is read only\n`);
     printReport(stdout, projected, config, files);
