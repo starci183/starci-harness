@@ -147,7 +147,7 @@ steps:
       sql:
         db: machine
         query: "SELECT json_extract(data_json, '$.by') || ':' || json_extract(data_json, '$.relayReopen') || ':' || json_extract(data_json, '$.relayVersion') || ':' || json_extract(data_json, '$.parked') FROM host_events WHERE kind = 'need-reopened'"
-        equals: ["harness:1:2:1"]
+        equals: ["harness:1:3:1"]
   - assert:
       sql:
         db: machine
@@ -163,7 +163,7 @@ steps:
       sql:
         db: machine
         query: "SELECT json_extract(data_json, '$.workflow') || ':' || json_extract(data_json, '$.relay.status') || ':' || json_extract(data_json, '$.relayVersion') FROM host_events WHERE kind = 'need-relayed'"
-        equals: ["sub:relayed:2"]
+        equals: ["sub:relayed:3"]
   - assert:
       sql:
         db: machine
