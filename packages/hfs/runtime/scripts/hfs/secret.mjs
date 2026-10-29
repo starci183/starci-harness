@@ -9,7 +9,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { invocationDir } from "../lib/roots.mjs";
-import { initializeSecrets } from "./secret-init.mjs";
+import { environmentRecipients, initializeSecrets, ownerRecipient } from "./secret-init.mjs";
+import { declareKeys, migrateMember, printAudit, splitMember } from "./secret-standard.mjs";
 import { envelopeOf, validateKey } from "./secret-document.mjs";
 import { defaultSops } from "./secret-sops.mjs";
 import { fileOf, secretsDirectory, writeSecret } from "./secret-store.mjs";
@@ -22,7 +23,9 @@ import { setValues } from "./secret-prompt.mjs";
 export { envelopeOf, formatOf, plaintextOf } from "./secret-document.mjs";
 export { setSecretValues } from "./secret-store.mjs";
 
-const VERBS = new Set(["init", "list", "get", "set", "unset", "rename", "remove", "materialize", "verify"]);
+const VERBS = new Set(["init", "list", "get", "set", "unset", "rename", "remove", "materialize", "verify", "recipients", "migrate", "split", "audit"]);
+const MOVE_VERBS = new Set(["migrate", "split"]);
+const LIST_FLAGS = ["--add", "--remove", "--from-file"];
 const EDIT_VERBS = new Set(["unset", "rename", "remove"]);
 
 function valueOption(opts, flag, value) {
@@ -38,7 +41,11 @@ function parse(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     const [flag, inline] = arg.split(/=(.*)/su);
-    if (["--cwd", "--generate"].includes(flag)) {
+    if (LIST_FLAGS.includes(flag)) {
+      const value = inline ?? argv[++i];
+      if (value === undefined || value.startsWith("--")) throw new SecretError(`${flag} needs a value`);
+      (opts[flag.slice(2)] ??= []).push(value);
+    } else if (["--cwd", "--generate", "--to"].includes(flag)) {
       valueOption(opts, flag, inline ?? argv[++i]);
     } else if (["--to-file", "--reveal", "--execute", "--force-nonempty"].includes(flag)) {
       if (inline !== undefined && !["true", "false"].includes(inline))
@@ -58,12 +65,19 @@ function usageArguments(verb) {
   if (verb === "unset") return "<env> <slug> <KEY> [--execute]";
   if (verb === "rename") return "<env> <slug> <OLD> <NEW> [--execute]";
   if (verb === "remove") return "<env> <slug> [--execute] [--force-nonempty]";
+  if (verb === "recipients") return "<env> [--add <age1...|owner>] [--remove <age1...|owner>]";
+  if (verb === "migrate") return "<env> <slug> [--to <slug>] [--execute]";
+  if (verb === "split") return "<env> <slug> [--execute]";
+  if (verb === "audit") return "[<env>]";
   return "<env>";
 }
 
 function editOptionsFor(verb, opts) {
-  if (opts.execute !== undefined && !EDIT_VERBS.has(verb))
-    throw new SecretError("--execute is only valid for unset, rename and remove");
+  if (opts.execute !== undefined && !EDIT_VERBS.has(verb) && !MOVE_VERBS.has(verb))
+    throw new SecretError("--execute is only valid for unset, rename, remove, migrate and split");
+  if (opts.to !== undefined && verb !== "migrate") throw new SecretError("--to is only valid for migrate");
+  if ((opts.add || opts.remove) && verb !== "recipients") throw new SecretError("--add and --remove are only valid for recipients");
+  if (opts["from-file"] && verb !== "set") throw new SecretError("--from-file is only valid for set");
   if (opts["force-nonempty"] !== undefined && verb !== "remove")
     throw new SecretError("--force-nonempty is only valid for remove");
 }
@@ -90,6 +104,10 @@ function optionsFor(verb, opts) {
     unset: [3, 3],
     rename: [4, 4],
     remove: [2, 2],
+    recipients: [1, 1],
+    migrate: [2, 2],
+    split: [2, 2],
+    audit: [0, 1],
   }[verb];
   if (count < bounds[0] || count > bounds[1])
     throw new SecretError(
@@ -108,6 +126,27 @@ function optionsFor(verb, opts) {
   }
   if (verb === "get" && opts.positional[2] !== undefined)
     validateKey(opts.positional[2]);
+}
+
+/** The `--from-file KEY=path` values of set: each a named key, read byte for byte by setValues. */
+function fromFiles(entries, keys) {
+  const files = {};
+  for (const entry of entries ?? []) {
+    const at = entry.indexOf("=");
+    const key = entry.slice(0, at);
+    if (at < 1 || !entry.slice(at + 1)) throw new SecretError("--from-file takes KEY=path");
+    if (!keys.includes(key)) throw new SecretError(`--from-file names ${key}, which this set does not`);
+    if (Object.hasOwn(files, key)) throw new SecretError(`--from-file names ${key} twice`);
+    files[key] = entry.slice(at + 1);
+  }
+  return files;
+}
+
+/** What `set` declared in the environment's stack `secrets:`, or the keys to declare by hand; nothing when all were declared. */
+function declarationLine(environment, { declared, byHand }) {
+  if (declared.length) return `declared ${declared.join(", ")} in environments.${environment}.secrets of application-stacks.yaml\n`;
+  if (byHand.length) return `declare ${byHand.join(", ")} in environments.${environment}.secrets of application-stacks.yaml (this environment's shape is wired by hand)\n`;
+  return "";
 }
 
 /** The app root of a sealed member: `<root>/.starcistacks/<env>/secrets/<slug>.enc`. */
@@ -156,14 +195,22 @@ export async function secretMain(
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env>",
+        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env> | recipients <env> | migrate <env> <slug> | split <env> <slug> | audit [<env>]",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);
     const repoRoot = path.resolve(cwd, opts.cwd ?? ".");
     if (verb === "init")
       return publicStorage(() =>
-        initializeSecrets(repoRoot, { env, platform, tools, stdout }),
+        initializeSecrets(repoRoot, { env, platform, tools, stdout, host: hostIdentity }),
+      );
+    if (verb === "audit") return printAudit(repoRoot, opts.positional[0] ?? null, stdout);
+    if (verb === "recipients")
+      return publicStorage(() =>
+        environmentRecipients(repoRoot, opts.positional[0], {
+          add: opts.add ?? [], remove: opts.remove ?? [], stdout,
+          owner: () => ownerRecipient(repoRoot, env, { platform, tools, host: hostIdentity }),
+        }),
       );
     const [environment, slug, key] = opts.positional;
     const directory = secretsDirectory(repoRoot, environment);
@@ -174,6 +221,10 @@ export async function secretMain(
         directory, environment, slug, names: opts.positional.slice(2),
         execute: opts.execute === true, force: opts["force-nonempty"] === true, sops: open, stdout,
       });
+    if (MOVE_VERBS.has(verb)) {
+      const move = { directory, environment, member: slug, to: opts.to, execute: opts.execute === true, sops: open, stdout };
+      return verb === "migrate" ? migrateMember(move) : splitMember(move);
+    }
     const seam = open();
     if (verb === "verify")
       return verifySecrets({ repoRoot, directory, environment, sops: seam, stdout });
@@ -184,10 +235,12 @@ export async function secretMain(
     if (verb === "get") return getSecret(file, key, seam, opts, output, stderr);
     const keys = opts.positional.slice(2);
     const created = !fs.existsSync(file);
-    if (!created) seam.requireIdentity?.(file);
-    const values = await setValues(keys, { generate: opts.generate, stdin, prompt, random });
+    // Adding a key decrypts the member, so its identity is checked before any value is asked for; replacing every key does not.
+    if (!created && !envelopeOf(fs.readFileSync(file, "utf8")).keys.every((name) => keys.includes(name))) seam.requireIdentity?.(file);
+    const values = await setValues(keys, { generate: opts.generate, stdin, prompt, random, fromFile: fromFiles(opts["from-file"], keys) });
     writeSecret({ file, values, age: [], sops: seam });
     stdout(sealedLine(environment, slug, keys, file, created, seam));
+    stdout(declarationLine(environment, declareKeys(repoRoot, environment, slug, keys)));
     return 0;
   } catch (error) {
     const message = secretErrorMessage(error);

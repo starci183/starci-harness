@@ -21,7 +21,7 @@ const ENV_FILE = /(?:^|\/)[^/.][^/]*\.env(?:\.(?!example|sample|template)[^/]*)?
 // which R06 already judges, and the sealed `.enc` members, which are custody.
 const SECRETS_DIR = /(?:^|\/)secrets\/[^/]+\.(?:ya?ml|env|json|conf|cfg|ini|toml|txt|properties)$/i;
 const SEALED_DIR = /^\.starcistacks\/[^/]+\/secrets\//;
-const SEALED_HOME = /^\.starcistacks\/[^/]+\/secrets\/[^/]+\.enc$/;
+const SEALED_HOME = /^\.starcistacks\/[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/;
 
 const KEY_LINE = /^\s*(?:export\s+)?([A-Za-z_$][\w$]*)\s*=/;
 const hasSecretKeys = (file, text) =>
@@ -40,7 +40,7 @@ export function secretCustodyOnlyFindings({ repoRoot, files, repo, inScope }) {
   const findings = [];
   for (const file of files.filter((f) => !inScope || inScope(f))) {
     const posix = file.replaceAll('\\', '/');
-    if (file.endsWith('.enc')) {
+    if (/\.enc(?:\.yaml)?$/.test(file)) {
       findings.push(...sealedCustodyFindings(file, posix, repo));
       continue;
     }

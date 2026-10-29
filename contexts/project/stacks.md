@@ -85,26 +85,47 @@ image, so any digest-pinned supported reverse proxy serves.
 
 ## PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated
 
-- **Sealed only.** A secret exists in the tree only as a SOPS envelope `<env>/secrets/<slug>.enc` (R06, R277); the
-  back end reads it through `*_FILE` as BE-CONFIG-4 in [code/be/config.md](../code/be/config.md) says. Nothing else
-  under `.starcistacks/` is ciphertext.
-- **One owner identity, found by itself.** Every envelope is encrypted with age to the recipients the app's root
-  `.sops.yaml` names, public keys only. The owner's private identity is `SOPS_AGE_KEY` in the harness's secret.env, outside
-  every repository and backed up by the owner (R253); every `starci app secret` verb finds it with nothing exported or
-  pointed to, taking the first of: SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, the app's git-ignored
-  `.claude/secret.env` (its main checkout's for a worktree), the harness secret.env, the sops `keys.txt`
-  (`localAgeIdentity`, @starci/hfs `secret-init.mjs`). With none it refuses before asking for a value, naming each place.
-  Whoever holds that identity can decrypt every member in the whole git history, so it never leaves the harness secret.env
-  and the app repositories stay private.
-- **One member per provider, set in one write.** A member holds the keys of one provider or service;
-  `starci app secret set <env> <member> <KEY>...` prompts for each key with masked input on a terminal (or reads redirected
-  stdin) and seals them all in one write, so no member is left half filled. Open gaps of ruling `app-secrets-one-standard`,
-  not built yet: the `<member>.enc.yaml` YAML format with byte-exact multi-line values and `--from-file`, a recipient rule per
-  environment (production to the server key and the owner key), per-key declarations in `secrets:` rendered as one mounted
-  `<KEY>_FILE` each, and the `migrate`, `split` and `audit` verbs.
+- **Sealed only, one member per provider.** A secret exists in the tree only as a SOPS envelope; a member holds the keys
+  of one provider or service, `<env>/secrets/<provider>.enc.yaml`, sops YAML whose values come back byte for byte (a
+  multi-line key, a trailing newline), committed (R06, R277; the names are `scripts/lib/sealed-member.mjs` of @starci/hfs).
+  A legacy dotenv `<member>.enc` stays readable until `migrate` moves it. Nothing else under `.starcistacks/` is ciphertext.
+- **Declared per key, read as `<KEY>_FILE`.** Each key is one entry of its environment's `secrets:` in
+  `application-stacks.yaml` (`name: <kebab of the key>`, `member`, `key`, `where: secrets/<member>`); `materialize` writes
+  each key to its own file in host-local custody and the back end reads it through `<KEY>_FILE` as BE-CONFIG-4 in
+  [code/be/config.md](../code/be/config.md) says. `set` declares the keys of a compose environment itself; a swarm
+  environment's secret is wired with its stack (runtimeName and the deploy grant) by hand.
+- **One owner identity, found by itself; one rule per environment.** Every member is sealed to the public recipients of
+  its environment's rule in the app's `.sops.yaml`, which `starci app secret init` and `recipients` manage: dev to the owner
+  key, production to the production server key and the owner key both, so the owner sets and rotates production from his
+  machine and the server decrypts at deploy through SOPS_AGE_KEY_FILE, its key never in a repository or the harness. The
+  owner's private identity is `SOPS_AGE_KEY` in the harness's secret.env, backed up by the owner (R253); every
+  `starci app secret` verb finds it with nothing exported or pointed to, taking the first of: SOPS_AGE_KEY or
+  SOPS_AGE_KEY_FILE of the environment, the app's git-ignored `.claude/secret.env` (its main checkout's for a worktree), the
+  harness secret.env, the sops `keys.txt` (`localAgeIdentity`, @starci/hfs `secret-init.mjs`), and with none refuses before
+  asking for a value, naming each place. Whoever holds that identity can decrypt every member in the whole git history, so
+  it never leaves the harness secret.env and the app repositories stay private.
+- **Set in one write.** `starci app secret set <env> <provider> <KEY>...` prompts for each key with masked input on a
+  terminal (or reads redirected stdin, or `--from-file KEY=path` byte for byte) and seals them all in one write, so no member
+  is left half filled. `starci app secret audit [<env>]` names every deviation (a legacy member, a member mixing providers by
+  the first word of its keys, one sealed to other recipients than its rule, a key not declared, a declared member not
+  sealed, an untracked member) and exits 1 while any stands; `migrate` and `split` repair them, dry runs until `--execute`,
+  decrypting in memory only. The audit is a verb, not a gate row, until every app has moved.
+- **Moving an app to the standard.** In the app root, with the harness CLI:
+  1. `starci app secret audit` lists what deviates; `starci app secret recipients <env>` shows each environment's
+     recipients.
+  2. `starci app sync --write` renders the `.gitignore` block that tracks `secrets/*.enc.yaml`.
+  3. `starci app secret recipients <env> --add owner` puts the owner key on each environment; a recipient no one holds any
+     more leaves with `--remove <age1...>`, and production gains the server key with `--add <age1 of the server>`.
+  4. `starci app secret migrate <env> <member> [--to <provider>]`, then the same with `--execute`, moves each legacy member;
+     `split <env> <member>` (dry run, then `--execute`) divides one that mixes providers. A member no identity here opens is
+     removed (`remove <env> <member> --force-nonempty --execute`) and its keys set again. A member the deploy names
+     (`deploy.secrets.grants`, `deploy.remote.sealed`) is renamed there in the same change.
+  5. `starci app secret set <env> <provider> <KEY>...` seals the provider's keys and declares them.
+  6. `starci app secret verify <env>` opens every member and checks the shapes the app reads; `audit` is clean.
+  7. Commit the members, `.sops.yaml`, `.gitignore` and `application-stacks.yaml` together.
 - **Plaintext never enters the tree.** A decrypted member reaches a process through `*_FILE` from host-local custody
   (the `goesTo` of slot `app.plaintext-env`) or memory, never a file in the checkout, ignored or not. Each
-  environment's `.gitignore` still ignores everything under `secrets/` except `*.enc`, so a mistaken decrypt cannot be
+  environment's `.gitignore` still ignores everything under `secrets/` except its sealed members, so a mistaken decrypt cannot be
   committed.
 - **Never printed.** No agent opens, decrypts, echoes or logs a secret; a member is judged by its name
   ([contexts/harness/rules.md](../harness/rules.md) hard rule 1, `neverRead` in [policy/security.yaml](../../policy/security.yaml)).

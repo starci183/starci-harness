@@ -97,20 +97,32 @@ export function stdinValues(keys, text) {
   return { ...values };
 }
 
+/** The text of a `--from-file` value, byte for byte (a trailing newline kept); an empty file seals nothing. */
+function fileValue(key, file) {
+  let text;
+  try { text = fs.readFileSync(file, "utf8"); }
+  catch (error) { throw new SecretError(`--from-file ${key}: the file cannot be read (${error.code ?? "unreadable"})`); }
+  if (!text) throw new SecretError(`--from-file ${key}: the file is empty; nothing was sealed`);
+  return text;
+}
+
 /**
- * The values `set` seals for `keys`: `--generate <bytes>` random base64url per key; else the `stdin` port (a function returning
- * the text, as the harness CLI hands a host key, or a stream with `fd` and `isTTY`); a terminal is prompted through `prompt`
- * (promptHidden by default), anything else is read whole.
+ * The values `set` seals for `keys`: each `fromFile` key read byte for byte from its file; the rest from `--generate <bytes>`
+ * (random base64url per key), else the `stdin` port (a function returning the text, as the harness CLI hands a host key, or a
+ * stream with `fd` and `isTTY`): a terminal is prompted through `prompt` (promptHidden by default), anything else is read whole.
  */
-export async function setValues(keys, { generate, stdin, prompt = promptHidden, random }) {
+export async function setValues(keys, { generate, stdin, prompt = promptHidden, random, fromFile = {} }) {
+  const files = Object.fromEntries(Object.entries(fromFile).map(([key, file]) => [key, fileValue(key, file)]));
+  const rest = keys.filter((key) => !Object.hasOwn(files, key));
+  if (!rest.length) return files;
   if (generate !== undefined) {
     const bytes = Number(generate);
     if (!Number.isInteger(bytes) || bytes < 1 || bytes > 1024)
       throw new SecretError("--generate must be a whole byte count from 1 to 1024");
-    return Object.fromEntries(keys.map((key) => [key, random(bytes).toString("base64url")]));
+    return { ...files, ...Object.fromEntries(rest.map((key) => [key, random(bytes).toString("base64url")])) };
   }
-  if (typeof stdin === "function") return stdinValues(keys, stdin());
+  if (typeof stdin === "function") return { ...files, ...stdinValues(rest, stdin()) };
   const source = stdin ?? process.stdin;
-  if (source.isTTY) return typedValues(keys, prompt);
-  return stdinValues(keys, fs.readFileSync(source.fd ?? 0, "utf8"));
+  if (source.isTTY) return { ...files, ...(await typedValues(rest, prompt)) };
+  return { ...files, ...stdinValues(rest, fs.readFileSync(source.fd ?? 0, "utf8")) };
 }

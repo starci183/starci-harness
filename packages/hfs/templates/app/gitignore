@@ -7,7 +7,7 @@ schema.gql
 .next/
 next-env.d.ts
 # .starcistacks custody at the app root: modules/schemas/stacks-layout.yaml custody.gitignoreRules, in order. Only the
-# declaration, runbooks, key lists, seeds, the rendered environment, the infra definitions and sealed *.enc are tracked.
+# declaration, runbooks, key lists, seeds, the rendered environment, the infra definitions and sealed members (*.enc.yaml, legacy *.enc) are tracked.
 .starcistacks/**
 !.starcistacks/**/
 !.starcistacks/**/KEYS.md
@@ -32,6 +32,7 @@ next-env.d.ts
 .starcistacks/*/infra/terraform/*.tfstate.*
 .starcistacks/*/infra/terraform/files/
 .starcistacks/*/infra/terraform/*.tar.gz
+!.starcistacks/**/secrets/*.enc.yaml
 !.starcistacks/**/*.enc
 
 # Host-local agent credentials and app age identity never enter Git.

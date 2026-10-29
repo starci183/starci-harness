@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { claimFile } from "../api/fs/claim-file.mjs";
 import { isSopsEnvelope } from "../lib/sops-envelope.mjs";
 import { byCodeUnit } from "../lib/list.mjs";
+import { LEGACY_SUFFIX, isLegacyName, isSealedName, memberFile } from "../lib/sealed-member.mjs";
 import {
   envelopeOf,
   plaintextOf,
@@ -50,7 +51,8 @@ export const fileOf = (directory, slug) => {
     throw new SecretError(
       `${slug === undefined ? "a secret name" : slug} is not a secret slug: lowercase letters, digits and dashes`,
     );
-  return path.join(directory, `${slug}.enc`);
+  try { return memberFile(directory, slug); }
+  catch (error) { throw new SecretError(error.message); }
 };
 
 /**
@@ -60,15 +62,19 @@ export const fileOf = (directory, slug) => {
 function sealSecretMap({ file, values, age, sops }) {
   let map = Object.create(null);
   let recipients = age;
+  const legacy = isLegacyName(path.basename(file));
   if (fs.existsSync(file)) {
     const envelope = envelopeOf(fs.readFileSync(file, "utf8"));
     if (!envelope.keys.every((key) => Object.hasOwn(values, key)))
       map = sops.decrypt(file, envelope.format);
-    if (!age.length) recipients = envelope.recipients;
+    if (!age.length && legacy) recipients = envelope.recipients;
   }
   validateMap(map);
   map = { ...map, ...values };
-  const sealed = sops.seal({ inputType: "dotenv", plaintext: plaintextOf("dotenv", map), recipients, filenameOverride: file });
+  // A member is sops YAML, its values double-quoted scalars kept byte for byte, sealed to the recipients its environment's
+  // .sops.yaml rule names (so a re-seal follows a recipients change); a legacy member stays dotenv to its own recipients.
+  const format = legacy ? "dotenv" : "yaml";
+  const sealed = sops.seal({ inputType: format, plaintext: plaintextOf(format, map), recipients, filenameOverride: file });
   let parsed;
   try { parsed = envelopeOf(sealed); }
   catch { throw new SecretError("sops returned an invalid sealed document"); }
@@ -116,14 +122,18 @@ export function writeSecret({ file, values, age, sops, write }) {
   } finally { held.release(); }
 }
 
-/** Update named keys through the same canonical sealed-secret owner used by the CLI. */
+/**
+ * Update named keys through the same canonical sealed-secret owner used by the CLI. `legacy` creates a new member as a dotenv
+ * `.enc`, for the sops-free bootstrap sealer of a fresh scaffold, which writes only that format; `migrate` moves it later.
+ */
 export function setSecretValues(
   repoRoot,
   { slug, values, env = null },
-  { sops = null, age = [], processEnv = process.env, write } = {},
+  { sops = null, age = [], processEnv = process.env, write, legacy = false } = {},
 ) {
   const directory = secretsDirectory(repoRoot, env);
-  const file = fileOf(directory, slug);
+  const existing = fileOf(directory, slug);
+  const file = legacy && !fs.existsSync(existing) ? path.join(directory, `${slug}${LEGACY_SUFFIX}`) : existing;
   if (
     !values ||
     typeof values !== "object" ||
@@ -148,7 +158,7 @@ export function sealedFiles(directory) {
   return fs.existsSync(directory)
     ? fs
         .readdirSync(directory)
-        .filter((name) => name.endsWith(".enc"))
+        .filter(isSealedName)
         .sort(byCodeUnit)
     : [];
 }

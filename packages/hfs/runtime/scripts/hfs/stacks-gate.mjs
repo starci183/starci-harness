@@ -6,6 +6,7 @@ import {parseYaml} from '../../engine/yaml.mjs';
 import { validateAgainstSchema } from '../lib/json-schema.mjs';
 import { PROVISION_OPERATION_SCHEMA_REF, provisionOperationSchema } from '../lib/provision-operation-schema.mjs';
 import {slash} from '../lib/path-key.mjs';
+import { envelopeOf } from './secret-document.mjs';
 import { isInside, walkFiles } from '../lib/walk.mjs';
 import { composeIncludePaths, swarmInventoryIssues, swarmModelIssues } from '../lib/swarm-stack.mjs';
 import { swarmHardeningIssues } from './rules/stacks-swarm.mjs';
@@ -255,9 +256,14 @@ const checkSecret=(secret,at,{envDir,environment,root,tracked,secretNames,add})=
   if(!object(secret))return;
   if(secretNames.has(secret.name))add('secret-duplicate',`${at}.name`,'secret names must be unique');else secretNames.add(secret.name);
   const plain=nonempty(secret.where)?resolvedPath(envDir,secret.where):null;
-  const enc=nonempty(secret.where)?resolvedPath(envDir,`${secret.where}.enc`):null;
+  // The member of `where` is `<where>.enc.yaml`, or a legacy `<where>.enc` (scripts/lib/sealed-member.mjs); an entry naming `key`
+  // declares that one key of the member, which its envelope must hold.
+  const member=nonempty(secret.where)?[`${secret.where}.enc.yaml`,`${secret.where}.enc`].map(name=>resolvedPath(envDir,name)).find(file=>file&&regular(file,{root:envDir})):null;
+  const enc=member??(nonempty(secret.where)?resolvedPath(envDir,`${secret.where}.enc.yaml`):null);
   if(!enc||!regular(enc,{root:envDir})||!sopsEnvelope(enc))
-    add('encrypted-ref-invalid',`${at}.where`,'secret must resolve to <where>.enc as a recognizable SOPS envelope, an existing regular file below the environment directory');
+    add('encrypted-ref-invalid',`${at}.where`,'secret must resolve to <where>.enc.yaml (or a legacy <where>.enc) as a recognizable SOPS envelope, an existing regular file below the environment directory');
+  else if(nonempty(secret.key)&&!envelopeOf(fs.readFileSync(enc,'utf8')).keys.includes(secret.key))
+    add('encrypted-ref-invalid',`${at}.key`,`the member at ${secret.where} holds no ${secret.key}`);
   if(nonempty(secret.where)&&!plain)
     add('materialized-path-invalid',`${at}.where`,'secret plaintext path and its existing ancestors must remain below the environment directory without symlinks');
   if(!String(secret.recipientPolicy??'').trim()||!String(secret.keyCustody??'').trim())

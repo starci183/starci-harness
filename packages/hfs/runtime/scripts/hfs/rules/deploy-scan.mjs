@@ -8,7 +8,7 @@ const DEPLOY = /(?:^|\/)deploy\//;
 const SCRIPT = /(?:^|\/)scripts\//;
 const COMPOSE = /(?:^|\/)(?:docker-)?compose(?:[.-][^/]*)?\.ya?ml$/;
 const DOCKERFILE = /(?:^|\/)Dockerfile(?:\.[^/]*)?$/;
-const CREDENTIAL_FILE_PARTS = [/(?:^|\/)secrets?\.env(?:\.[^/]*)?/, /(?:^|\/)\.env(?:\.[^/]*)?/, /(?:^|\/)secrets\//, /\.enc$/];
+const CREDENTIAL_FILE_PARTS = [/(?:^|\/)secrets?\.env(?:\.[^/]*)?/, /(?:^|\/)\.env(?:\.[^/]*)?/, /(?:^|\/)secrets\//, /\.enc(?:\.yaml)?$/];
 const CREDENTIAL_FILE = new RegExp(CREDENTIAL_FILE_PARTS.map((part) => part.source).join('|'), 'i');
 const AT_JOB_ARGUMENT = /-[ft]\b|now\b|tomorrow\b|\d{1,2}:\d{2}\b|midnight\b|noon\b/.source;
 const HOST_CRON_PARTS = [

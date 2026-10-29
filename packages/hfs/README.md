@@ -24,7 +24,7 @@ starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app new service <dir> <name> [--inject <binding>...] [--cwd <dir>]
 starci app new spec <file>.service.ts [--cwd <dir>]
 starci app new image [--cwd <dir>]
-starci app secret init|set|get|unset|rename|remove|materialize|list|verify ... [--cwd <dir>]
+starci app secret init|set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit ... [--cwd <dir>]
 starci app hygiene [--cwd <dir>]
 ```
 
@@ -219,17 +219,23 @@ Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (no
 
 ## Secrets
 
-`starci app secret` keeps an app's sealed members, `.starcistacks/<env>/secrets/<member>.enc`, encrypted to the recipient of
-the app's `.sops.yaml` (the custody law is the harness's PROJECT-STACKS-5). `set <env> <member> <KEY> [KEY ...]` seals every
-named key in one sops write (`runtime/scripts/hfs/secret.mjs`): on a terminal it prompts `<KEY>: ` for each with masked input
-(one `*` per character; a paste, backspace, Enter, Ctrl+C to cancel with nothing written), redirected stdin gives one key its
-whole text or several one `KEY=value` line each (`secret-prompt.mjs`), and `--generate <bytes>` makes a random value per key.
-Re-sealing a member whose every key the set replaces needs no age identity; adding a key to a member does, and the identity is
-found by itself (`localAgeIdentity` of `secret-init.mjs`): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the
-app's git-ignored `.claude/secret.env`, else of its main checkout's when the app is a git worktree, else the `hostIdentity` the
-harness CLI passes (its own secret.env), else the sops `keys.txt`. With none, the verb refuses before asking for a value,
-naming every place it looked and the one line that fixes it; the success line of a set that creates a member names the
-recipient and where this machine holds its identity. No output carries a value except `get --reveal`.
+`starci app secret` keeps an app's sealed members (the standard is the harness's PROJECT-STACKS-5): one per provider,
+`.starcistacks/<env>/secrets/<provider>.enc.yaml`, sops YAML whose values keep every byte, a legacy dotenv `<member>.enc`
+read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mjs` names both). `set <env> <provider> <KEY> [KEY ...]`
+seals every named key in one sops write (`runtime/scripts/hfs/secret.mjs`): on a terminal it prompts `<KEY>: ` for each with
+masked input (one `*` per character; a paste, backspace, Enter, Ctrl+C to cancel with nothing written), redirected stdin gives
+one key its whole text or several one `KEY=value` line each, `--from-file KEY=path` reads a key byte for byte
+(`secret-prompt.mjs`), and `--generate <bytes>` makes a random value per key. It then declares the keys in the environment's
+`secrets:` of a compose environment (`declareKeys`, `secret-standard.mjs`) and names a swarm environment's to wire by hand.
+A member is sealed to its environment's rule of the managed `.sops.yaml`; `recipients <env> [--add|--remove <age1...|owner>]`
+rewrites that rule (`environmentRecipients`, `secret-init.mjs`), and `init` takes the owner's identity as the app's recipient.
+Re-sealing a member whose every key the set replaces needs no age identity; adding a key to one does, and the identity is found
+by itself (`localAgeIdentity`): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the app's git-ignored
+`.claude/secret.env`, else of its main checkout's when the app is a git worktree, else the `hostIdentity` the harness CLI passes
+(its own secret.env), else the sops `keys.txt`; with none, the verb refuses before asking for a value, naming every place it
+looked and the one line that fixes it. `audit [<env>]` names every deviation and exits 1; `migrate <env> <member> [--to
+<provider>]` and `split <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). No output carries a
+value except `get --reveal`.
 
 ## Sonar
 

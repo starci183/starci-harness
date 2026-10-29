@@ -15,7 +15,7 @@ import { hostCrontabFindings, stacksRuntimeFindings } from './stacks-runtime.mjs
 const STACKS_SHAPE = 'HFS_STACKS_SHAPE';
 const STACKS_SLOT = 'app.starcistacks';
 const HOST_SONAR_ROOT = '.claude/ext/sonar';
-const INSIDE_SECRETS = /^[^/]+\/secrets\/[^/]+\.enc$/;
+const INSIDE_SECRETS = /^[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/;
 
 /** The anchored expressions of a slot's `allows` entries: `<name>` is one path segment, braces alternate. */
 const allowedExpressions = (allows) => allows.flatMap((entry) => braceVariants(entry.replace(/<[a-z][a-z0-9-]*>/g, '*'))).map((variant) => globExpression(variant.endsWith('/') ? `${variant}**` : variant));
@@ -26,7 +26,7 @@ function treeFindings(files, allowed, prefix) {
   const findings = [];
   for (const file of files.filter((f) => f.startsWith(prefix))) {
     const rel = file.slice(prefix.length);
-    if (rel.endsWith('.enc') && !INSIDE_SECRETS.test(rel)) findings.push(shapeFinding(file, `${file} is a sealed secret outside <env>/secrets/<slug>.enc; move it to .starcistacks/<env>/secrets/`));
+    if (/\.enc(?:\.yaml)?$/.test(rel) && !INSIDE_SECRETS.test(rel)) findings.push(shapeFinding(file, `${file} is a sealed secret outside <env>/secrets/<slug>.enc; move it to .starcistacks/<env>/secrets/`));
     else if (!allowed.some((expression) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml, images/db/Dockerfile in lite and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc, seeds}); move or delete it`));
   }
   return findings;

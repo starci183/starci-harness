@@ -56,6 +56,6 @@ export function liteCustodyDirectory(directory) {
     if (entry.isFile()) return entry.name === 'environment.json';
     if (!entry.isDirectory() || entry.name !== 'secrets') return false;
     return fs.readdirSync(path.join(directory, entry.name), { withFileTypes: true })
-      .every(secret => secret.isFile() && !secret.isSymbolicLink() && (secret.name === '.gitkeep' || /^[a-z0-9-]+\.enc$/.test(secret.name)));
+      .every(secret => secret.isFile() && !secret.isSymbolicLink() && (secret.name === '.gitkeep' || /^[a-z0-9-]+\.enc(?:\.yaml)?$/.test(secret.name)));
   });
 }

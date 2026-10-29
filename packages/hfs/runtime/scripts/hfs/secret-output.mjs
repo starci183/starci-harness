@@ -5,6 +5,7 @@ import { byCodeUnit } from "../lib/list.mjs";
 import { materializedDirectory, writeSecretFile } from "./secret-files.mjs";
 import { envelopeOf, validateKey } from "./secret-document.mjs";
 import { fileOf, readMap, sealedFiles } from "./secret-store.mjs";
+import { memberOfName } from "../lib/sealed-member.mjs";
 import { SecretError, publicStorage } from "./secret-errors.mjs";
 
 function validateWindowsKeys(map) {
@@ -72,7 +73,7 @@ export function materializeSecrets(directory, sops, output) {
   const map = Object.create(null);
   for (const name of sealedFiles(directory)) {
     for (const [item, value] of Object.entries(
-      readMap(fileOf(directory, name.slice(0, -4)), sops),
+      readMap(fileOf(directory, memberOfName(name)), sops),
     )) {
       if (Object.hasOwn(map, item))
         throw new SecretError(

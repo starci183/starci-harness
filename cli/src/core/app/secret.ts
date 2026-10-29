@@ -7,14 +7,18 @@ import { hfsArgv, NUMBER, QUIET_FLAG, runHfs } from "./hfs.js"
 
 /** The flags @starci/hfs takes: everything but `--from-host`, which the CLI resolves itself. */
 const HFS_FLAGS = {
-    action: { kind: "string", summary: "init, set, get, unset, rename, remove, materialize, list or verify", required: true, positional: true },
+    action: { kind: "string", summary: "init, set, get, unset, rename, remove, materialize, list, verify, recipients, migrate, split or audit", required: true, positional: true },
     env: { kind: "string", summary: "the environment of .starcistacks", positional: true },
-    slug: { kind: "string", summary: "the sealed member", positional: true },
+    slug: { kind: "string", summary: "the sealed member: one per provider or service, <member>.enc.yaml", positional: true },
     keys: { kind: "rest", summary: "the keys inside the member: set seals one or more in one write; get and unset take one; rename takes OLD NEW" },
     generate: { kind: "string", summary: "generate this many random bytes per key for set instead of prompting or reading stdin" },
     "to-file": { kind: "boolean", summary: "write one private file per KEY outside the repository" },
     reveal: { kind: "boolean", summary: "explicitly print decrypted values for get" },
-    execute: { kind: "boolean", summary: "apply the edit instead of only reporting what unset or rename or remove would do" },
+    execute: { kind: "boolean", summary: "apply the edit instead of only reporting what unset, rename, remove, migrate or split would do" },
+    "from-file": { kind: "list", summary: "set: KEY=path, the key's value read byte for byte from the file (a multi-line key, its trailing newline kept), once per key" },
+    to: { kind: "string", summary: "migrate: the member's new name (a legacy member named otherwise than its provider)" },
+    add: { kind: "list", summary: "recipients: a public age recipient (age1...) or owner, added to the environment's rule, once per recipient" },
+    remove: { kind: "list", summary: "recipients: a public age recipient or owner, removed from the environment's rule, once per recipient" },
     "force-nonempty": { kind: "boolean", summary: "let remove delete a member that still holds keys" },
     ...QUIET_FLAG,
 } as const satisfies Readonly<Record<string, FlagSpec>>
@@ -25,7 +29,7 @@ const FLAGS = {
 } as const satisfies Readonly<Record<string, FlagSpec>>
 
 const CHOICES = {
-    action: z.enum(["init", "set", "get", "unset", "rename", "remove", "materialize", "list", "verify"]),
+    action: z.enum(["init", "set", "get", "unset", "rename", "remove", "materialize", "list", "verify", "recipients", "migrate", "split", "audit"]),
     generate: NUMBER,
 } as const
 
@@ -49,7 +53,7 @@ const hostValue = (hostKey: string): string => {
  */
 export const appSecretVerb = defineVerb({
     path: ["app", "secret"],
-    summary: "initialize, seal, edit, materialize and verify app secrets; set prompts with masked input, seals several keys in one write, --from-host seals a host key",
+    summary: "initialize, seal, edit, materialize, verify, migrate and audit app secrets: one <member>.enc.yaml per provider, set prompts masked and seals several keys in one write, recipients manages .sops.yaml",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "supervisor"],

@@ -1,6 +1,7 @@
 // config.mjs - loads `environments.<env>.deploy` of .starcistacks/application-stacks.yaml for the stack verbs.
 // The block is read and judged by the same module `starci app check` uses (runtime/scripts/hfs/stack-deploy-config.mjs).
 import fs from 'node:fs';
+import { isSealedName, memberOfName } from '../runtime/scripts/lib/sealed-member.mjs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { DEPLOY_CONFIG_CODE, NAME, normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
@@ -22,7 +23,7 @@ const projectOf = (repoRoot) => {
 };
 
 const sealedMembers = (secretsDir) => {
-  try { return new Set(fs.readdirSync(secretsDir).filter((name) => name.endsWith('.enc')).map((name) => name.slice(0, -4))); } catch { return new Set(); }
+  try { return new Set(fs.readdirSync(secretsDir).filter(isSealedName).map(memberOfName)); } catch { return new Set(); }
 };
 
 const stackServices = (stackFile) => {

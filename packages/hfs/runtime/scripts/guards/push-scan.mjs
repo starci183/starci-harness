@@ -54,7 +54,7 @@ function diffScanner(files = [], { encText = null, keepHit = null } = {}) {
       if (raw.startsWith('+++ ')) {
         flushEnc();
         file = raw.slice(4).replace(/^b\//, '');
-        if (/\.enc$/i.test(file)) enc = { file, line: null, added: [], findings: [] };
+        if (/\.enc(?:\.yaml)?$/i.test(file)) enc = { file, line: null, added: [], findings: [] };
         return;
       }
       const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(raw);

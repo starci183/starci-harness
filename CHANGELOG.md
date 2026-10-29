@@ -47,7 +47,9 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `harness/secret-env.ts`; `SOPS_AGE_KEY` joins `secretKeys` of policy/security.yaml) as its last age identity source, so adding a
   key to a member no longer fails `identity-not-supplied` when the identity lives there. The `key` and `new-key` operands become one
   `keys` rest operand; `--from-host` names exactly one key. Needs @starci/hfs 4.11.5: the CLI's requirement moves once npm serves it.
-  Bench: `app-secret-identity-from-harness`.
+  The verb also carries the app secrets standard of @starci/hfs 4.11.5 (ruling `app-secrets-one-standard`): actions
+  `recipients`, `migrate`, `split` and `audit`, flags `--from-file`, `--to`, `--add` and `--remove`.
+  Bench: `app-secret-identity-from-harness`, `app-secret-provider-members`.
 ### Added
 
 - `check loosening` bans `tls-unverified`: the `NODE_TLS_REJECT_UNAUTHORIZED` switch set to 0 (assigned in code or a spec, an

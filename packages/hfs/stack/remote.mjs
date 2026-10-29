@@ -8,6 +8,7 @@
 // `bash -s` fail with `set: pipefail`). Key material lives in memory and in a private temp directory only; it is never in argv (only the key
 // FILE path is), in a line, in a result or in an error message.
 import fs from 'node:fs';
+import { isLegacyName, memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { tool } from './context.mjs';
@@ -78,7 +79,7 @@ function openMember(slug, read) {
 
 function opsAccount(ctx, config) {
   const slug = config.remote.sealed.ops;
-  const map = openMember(slug, () => ctx.sops.decrypt(path.join(config.secretsDir, `${slug}.enc`), 'dotenv'));
+  const map = openMember(slug, () => ctx.sops.decrypt(memberFile(config.secretsDir, slug), isLegacyName(memberFile(config.secretsDir, slug)) ? 'dotenv' : 'yaml'));
   for (const name of ['VPS_HOST', 'VPS_USER']) {
     const value = map[name];
     if (typeof value !== 'string' || !ACCOUNT.test(value) || value.startsWith('-')) throw refusal('STACK_REMOTE_OPS', `${slug} must hold ${name} (letters, digits, . _ @ -)`);
@@ -87,7 +88,7 @@ function opsAccount(ctx, config) {
 }
 
 function binaryMember(ctx, config, slug, names) {
-  return unwrap(openMember(slug, () => ctx.sops.decryptBinary(path.join(config.secretsDir, `${slug}.enc`))), names);
+  return unwrap(openMember(slug, () => ctx.sops.decryptBinary(memberFile(config.secretsDir, slug))), names);
 }
 
 const withNewline = (text) => `${text.trim()}\n`;
@@ -159,7 +160,7 @@ function withOwnerTransport(ctx, config, { sshCmd = null } = {}) {
   const { sealed } = config.remote;
   if (config.nativeTarget) return Object.create(ctx, { env: { value: { ...ctx.env, STARCI_STACK_SEALED_SSH: '1' }, enumerable: true } });
   if (sshCmd || !sealed || ctx.env.GITHUB_ACTIONS === 'true' || ctx.env.STARCI_STACK_SEALED_SSH !== undefined) return ctx;
-  const present = [sealed.ops, sealed.sshKey, sealed.knownHosts].every((slug) => fs.existsSync(path.join(config.secretsDir, `${slug}.enc`)));
+  const present = [sealed.ops, sealed.sshKey, sealed.knownHosts].every((slug) => fs.existsSync(memberFile(config.secretsDir, slug)));
   if (!present) return ctx;
   return Object.create(ctx, { env: { value: { ...ctx.env, STARCI_STACK_SEALED_SSH: '1' }, enumerable: true } });
 }

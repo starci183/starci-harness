@@ -1,5 +1,6 @@
 // Runtime examples keep names only; checks receive disposable copies with fresh sealed members.
 import fs from 'node:fs';
+import { memberFile } from '../lib/sealed-member.mjs';
 import { safeRemove } from '../api/fs/safe-remove.mjs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,7 +21,7 @@ import { generateAppIdentity } from './secret-bootstrap-crypto.mjs';
 import { declaredSealedMembers, materializeDeclaredPlaceholders } from './sealed-members.mjs';
 
 const SKIPPED = new Set(['.git', '.claude', '.secrets', '.aws', '.codex', '.agents', 'node_modules', '.next', '.turbo', 'dist', 'coverage']);
-const PATH_RULE = String.raw`\.starcistacks[/\\][^/\\]+[/\\]secrets[/\\][^/\\]+\.enc$`;
+const PATH_RULE = String.raw`\.starcistacks[/\\][^/\\]+[/\\]secrets[/\\][^/\\]+\.enc(?:\.yaml)?$`;
 
 function writePublicRecipient(repoRoot, recipient) {
   fs.writeFileSync(path.join(repoRoot, '.sops.yaml'), stringifyYaml({
@@ -38,7 +39,7 @@ function writePublicRecipient(repoRoot, recipient) {
 export async function materializeExample(repoRoot, { createIdentity = generateAppIdentity, sops } = {}) {
   const declared = declaredSealedMembers(repoRoot);
   if (!declared.length) return { members: [] };
-  if (declared.some(({ env, slug }) => fs.existsSync(path.join(repoRoot, '.starcistacks', env, 'secrets', slug + '.enc'))))
+  if (declared.some(({ env, slug }) => fs.existsSync(memberFile(path.join(repoRoot, '.starcistacks', env, 'secrets'), slug))))
     throw new Error('example materialization requires a disposable copy without existing sealed members');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-example-age-'));
   try {
@@ -116,7 +117,7 @@ function safeExampleSource(source, { preserveCoverage = false } = {}) {
   const stat = fs.lstatSync(source);
   if (stat.isSymbolicLink()) return false;
   if (SKIPPED.has(name) && !(preserveCoverage && name === 'coverage')) return false;
-  if (name.endsWith('.enc') || /\.(?:agekey|pem|key)$/iu.test(name)) return false;
+  if (/\.enc(?:\.yaml)?$/u.test(name) || /\.(?:agekey|pem|key)$/iu.test(name)) return false;
   if (['secret.env', 'secrets.env', 'keys.txt'].includes(name)) return false;
   if (name === '.env.example' || name.endsWith('.env.example')) return true;
   if (name === '.env' || name.startsWith('.env.') || name.endsWith('.env')) return false;
