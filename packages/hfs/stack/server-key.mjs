@@ -43,6 +43,22 @@ const RECIPIENT = /^age1[a-z0-9]+$/u;
 const AS_ROOT = 'if [ "$(id -u)" -eq 0 ]; then sh -s; else sudo -n sh -s; fi';
 
 /**
+ * The directories, after root's PATH, where age-keygen is looked for: sudo's secure_path (AlmaLinux 10, RHEL) leaves out
+ * /usr/local/bin, where the static installer puts it, so the presence check and every call resolve it the same way, as root.
+ */
+export const AGE_KEYGEN_DIRS = ['/usr/local/bin', '/usr/bin', '/bin'];
+
+/** The shell lines that set k to age-keygen's absolute path as root sees it, or exit 127 naming it missing. Every root script holds them. */
+export const RESOLVE_AGE_KEYGEN = [
+  'k="$(command -v age-keygen 2>/dev/null || true)"',
+  `for d in ${AGE_KEYGEN_DIRS.join(' ')}; do if [ -z "$k" ] && [ -x "$d/age-keygen" ]; then k="$d/age-keygen"; fi; done`,
+  'if [ -z "$k" ]; then echo "age-keygen is not installed" >&2; exit 127; fi',
+].join('\n');
+
+/** The root script that only resolves age-keygen and prints its path: the presence check, run exactly as the calls run. */
+export const ageKeygenScript = () => ['set -eu', RESOLVE_AGE_KEYGEN, String.raw`printf '%s\n' "$k"`].join('\n');
+
+/**
  * The GitHub Environment secret that holds an environment's server identity. It carries the name the deploy workflows read
  * (secrets.SOPS_AGE_KEY), scoped to the Environment <env>: for a job bound to <env> it overrides a repository secret of that name.
  */
@@ -54,24 +70,25 @@ export function ensureIdentityScript(file) {
   return [
     'set -eu',
     'umask 077',
+    RESOLVE_AGE_KEYGEN,
     `f=${quoted}`,
     'if [ -e "$f" ] || [ -L "$f" ]; then',
     '  if [ -L "$f" ] || [ ! -f "$f" ]; then echo "the identity path is not an ordinary file" >&2; exit 4; fi',
     '  echo "identity kept" >&2',
     'else',
     '  mkdir -p "$(dirname "$f")"',
-    '  age-keygen -o "$f" >/dev/null 2>&1',
+    '  "$k" -o "$f" >/dev/null 2>&1',
     '  echo "identity created" >&2',
     'fi',
     'chown root:root "$f"',
     'chmod 600 "$f"',
-    'age-keygen -y "$f"',
+    '"$k" -y "$f"',
   ].join('\n');
 }
 
 /** The shell that prints only the public key of `file`, or exits 5 when there is none. */
 export function publicKeyScript(file) {
-  return ['set -eu', `f=${shellQuote(file)}`, '[ -f "$f" ] || exit 5', 'age-keygen -y "$f"'].join('\n');
+  return ['set -eu', RESOLVE_AGE_KEYGEN, `f=${shellQuote(file)}`, '[ -f "$f" ] || exit 5', '"$k" -y "$f"'].join('\n');
 }
 
 /** The shell that swaps the staged `<file>.next` in, keeping the old identity as `retired`, then prints only the new public key. */
@@ -79,6 +96,7 @@ export function swapIdentityScript(file, retired) {
   return [
     'set -eu',
     'umask 077',
+    RESOLVE_AGE_KEYGEN,
     `f=${shellQuote(file)}`,
     `r=${shellQuote(retired)}`,
     'n="$f.next"',
@@ -87,7 +105,7 @@ export function swapIdentityScript(file, retired) {
     'mv "$f" "$r"',
     'mv "$n" "$f"',
     'chmod 600 "$f" "$r"',
-    'age-keygen -y "$f"',
+    '"$k" -y "$f"',
   ].join('\n');
 }
 
@@ -112,14 +130,20 @@ function declaredRemote(repoRoot, env) {
   return remote;
 }
 
-/** Ensures age-keygen on the server: stack prepare's installer owns the install (with --execute); without it the exact commands. */
+/** True when root resolves age-keygen the way every server-key script does (ageKeygenScript). */
+const hasKeygen = (run) => asRoot(run, ageKeygenScript()).status === 0;
+
+/**
+ * Ensures age-keygen on the server, checked as root exactly as it is called: stack prepare's installer owns the install (with
+ * --execute); without it the exact commands.
+ */
 function ensureTool(run, execute, lines) {
-  if (run('command -v age-keygen').status === 0) return true;
+  if (hasKeygen(run)) return true;
   const install = `install age on the server (one of: ${Object.values(AGE_INSTALL).join('; ')})`;
   if (!execute) { lines.push(`dry run: age-keygen is missing on the server; --execute installs it with stack prepare's installer, or ${install}`); return false; }
   const problems = [];
   installAge(run, { note: (text) => lines.push(text), bad: (text) => problems.push(text) });
-  if (problems.length || run('command -v age-keygen').status !== 0)
+  if (problems.length || !hasKeygen(run))
     throw refusal('STACK_SERVER_KEY_NO_AGE', `age-keygen is not on the server and could not be installed (${problems.join('; ') || 'still missing'}): ${install}`);
   return true;
 }
