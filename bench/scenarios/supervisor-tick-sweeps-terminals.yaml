@@ -3,7 +3,7 @@ id: supervisor-tick-sweeps-terminals
 group: lifecycle
 title: "supervisor tick closes the tab of a released seat and an orphaned harness tab, and never touches a terminal the harness did not make"
 inject: >-
-  an Op's tab survives its release (Orca refused the close once); after an Orca restart a harness-titled tab is listed orphaned
+  an Op's tab survives its release (Orca refused, once each, its close and the forced close of its workspace); after an Orca restart a harness-titled tab is listed orphaned
   ([Supervisor] ghost, recorded nowhere); the owner has a shell of their own open beside them
 expect: >-
   supervisor tick --dry-run names both harness tabs and closes nothing; the next supervisor tick closes both with terminal close
@@ -54,7 +54,7 @@ steps:
       db: ledger
       query: "SELECT terminal FROM seats WHERE role = 'worker'"
       as: opTerminal
-  - name: Orca refuses the Op's tab close once
+  - name: Orca refuses the Op's tab close once, and the forced close of its workspace that follows it
     orca:
       rules:
         - command: terminal close
@@ -62,6 +62,11 @@ steps:
           code: busy
           match:
             terminal: "^${opTerminal}$"
+        - command: terminal close
+          fault: refuse
+          code: busy
+          match:
+            worktree: "/sweep\\.ops/${a}$"
   - worker:
       task: ${a}
       status: done
@@ -98,9 +103,22 @@ steps:
         title: owner shell
   - name: the dry run
     starci: [supervisor, tick, --dry-run]
+  - name: the dry run closed nothing; the release's reap made the only closes, its tab by handle and its workspace forced
+    assert:
+      orcaCalls:
+        command: terminal close
+        count: 2
   - assert:
       orcaCalls:
         command: terminal close
+        match:
+          terminal: "^${opTerminal}$"
+        count: 1
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          worktree: "/sweep\\.ops/${a}$"
         count: 1
   - name: the tick sweeps
     starci: [supervisor, tick]

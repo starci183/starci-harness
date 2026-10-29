@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, rmdirSync, rmSync, symlinkSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, statSync, symlinkSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { headline } from "../shared/exec.js"
@@ -173,6 +173,24 @@ const deregisterOrca = async (repo: string, path: string): Promise<string | null
 
 const reason = (error: unknown): string => (error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""
 
+/**
+ * True when `folder` holds a live checkout: a `.git` folder, or a `.git` file whose `gitdir:` still exists. A `.git` file left
+ * behind by a removal that deregistered the worktree (git deletes the admin folder whatever the delete of the work tree did, and
+ * stops at the first file it cannot delete, so which entries survive depends on the order the host lists them) names a git dir
+ * that is gone, and the folder is a remnant. A `.git` that cannot be read counts as live.
+ */
+const holdsLiveCheckout = (folder: string): boolean => {
+    const dotGit = join(folder, ".git")
+    if (!existsSync(dotGit)) return false
+    try {
+        if (statSync(dotGit).isDirectory()) return true
+        const gitdir = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"))?.[1]
+        return gitdir === undefined || existsSync(resolve(folder, gitdir))
+    } catch {
+        return true
+    }
+}
+
 /** True when git still lists `path` as a worktree of `repo`. */
 const gitLists = async (repo: string, path: string): Promise<boolean> => {
     const listed = await captureGit(["worktree", "list", "--porcelain"], repo)
@@ -187,8 +205,8 @@ const gitLists = async (repo: string, path: string): Promise<boolean> => {
  * it, records the removal failed, or a bound passes), since Orca's own watcher and terminal host hold a workspace it lists; then,
  * for a folder under the harness's state, the processes the harness started there, those working inside it and every process
  * under them are ended and seen gone. Git removes what is left. A folder git emptied and no longer lists (its rmdir was refused)
- * is removed as the one empty folder it is. A folder git no longer lists that holds no `.git` but still holds files (one
- * Windows would not let git delete, such as a file named `nul`) is deleted with every link in it unlinked first, never entered,
+ * is removed as the one empty folder it is. A folder git no longer lists that holds no live checkout (holdsLiveCheckout) but still
+ * holds files (one Windows would not let git delete, such as a file named `nul`, or one held while git deleted) is deleted with every link in it unlinked first, never entered,
  * when this call deregistered it or `remnant` says it is a harness folder left half removed. A removed worktree Orca still lists
  * (its earlier removal failed) is dropped from Orca's list; a folder still held names its holder (reap.ts heldBy), Orca when
  * Orca still lists it.
@@ -226,7 +244,7 @@ export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: 
     if (existsSync(path) && !(await gitLists(repo, path))) {
         try {
             if (readdirSync(path).length === 0) rmdirSync(path)
-            else if ((remnant || listedAtStart) && !existsSync(join(path, ".git"))) {
+            else if ((remnant || listedAtStart) && !holdsLiveCheckout(path)) {
                 unlinkCheckoutLinks(path)
                 rmSync(path, { recursive: true, force: true })
             } else refusals.push("git no longer lists it, and the folder still holds files")
