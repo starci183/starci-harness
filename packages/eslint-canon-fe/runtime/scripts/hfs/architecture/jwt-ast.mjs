@@ -61,28 +61,28 @@ const configType = (checker, node) => {
     || /(?:Config|Options|Env)$/u.test(symbol.name)));
 };
 
-/** Trace issuer construction through configuration values and local URL/string transformations. */
-const issuerFromConfig = (ts, checker, expression, seen = new Set()) => {
+/** Trace an issuer or audience to typed configuration values through local URL/string transformations. */
+const fromConfig = (ts, checker, expression, seen = new Set()) => {
   const node = unwrap(ts, expression);
   if (!node || seen.has(node)) return false;
   const next = new Set(seen).add(node);
   if (ts.isIdentifier(node)) {
     return declarationsOf(ts, checker, node).some(declaration => {
-      if (ts.isVariableDeclaration(declaration) && declaration.initializer) return issuerFromConfig(ts, checker, declaration.initializer, next);
+      if (ts.isVariableDeclaration(declaration) && declaration.initializer) return fromConfig(ts, checker, declaration.initializer, next);
       if (ts.isParameter(declaration) || ts.isPropertyDeclaration(declaration)) return configType(checker, node);
       return /(?:\.config|\.env)\.ts$|\/modules\/config\//u.test(String(declaration.getSourceFile().fileName).replaceAll('\\', '/'));
     });
   }
   if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
-    return issuerFromConfig(ts, checker, node.expression, next) || declarationsOf(ts, checker, node).some(declaration =>
+    return fromConfig(ts, checker, node.expression, next) || declarationsOf(ts, checker, node).some(declaration =>
       (ts.isParameter(declaration) || ts.isPropertyDeclaration(declaration)) && !declaration.initializer && configType(checker, node));
   }
-  if (ts.isTemplateExpression(node)) return node.templateSpans.some(span => issuerFromConfig(ts, checker, span.expression, next));
+  if (ts.isTemplateExpression(node)) return node.templateSpans.some(span => fromConfig(ts, checker, span.expression, next));
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-    return issuerFromConfig(ts, checker, node.left, next) || issuerFromConfig(ts, checker, node.right, next);
+    return fromConfig(ts, checker, node.left, next) || fromConfig(ts, checker, node.right, next);
   }
   if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
-    return issuerFromConfig(ts, checker, node.expression, next) || node.arguments?.some(argument => issuerFromConfig(ts, checker, argument, next));
+    return fromConfig(ts, checker, node.expression, next) || node.arguments?.some(argument => fromConfig(ts, checker, argument, next));
   }
   return false;
 };
@@ -201,7 +201,12 @@ export const jwtPolicyProblems = (ts, checker, call) => {
     || options?.properties.some(entry => ts.isSpreadAssignment(entry))) {
     problems.push('BE_JWT_ALG_PINNED: algorithms must be a non-empty literal subset of ES256, RS256 and EdDSA.');
   }
-  if (!issuerFromConfig(ts, checker, value('issuer'))) problems.push('BE_JWT_ALG_PINNED: issuer must derive from typed configuration.');
-  if (!rejectsOtherRoles(ts, checker, call)) problems.push('BE_JWT_ALG_PINNED: the verified principal must reject every role other than authenticated before returning it.');
+  if (!fromConfig(ts, checker, value('issuer'))) problems.push('BE_JWT_ALG_PINNED: issuer must derive from typed configuration.');
+  // The principal is bound either by an audience of typed configuration (an OIDC client such as Keycloak, the app's own
+  // Passport tokens) or, where the audience is shared by every token of the issuer (Supabase's literal 'authenticated'),
+  // by rejecting every role other than authenticated before the principal is returned.
+  if (!fromConfig(ts, checker, value('audience')) && !rejectsOtherRoles(ts, checker, call)) {
+    problems.push('BE_JWT_ALG_PINNED: an OIDC verifier audience must derive from typed configuration, or the verified principal must reject every role other than authenticated before returning it.');
+  }
   return problems;
 };

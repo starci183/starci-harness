@@ -58,3 +58,47 @@ for (const edition of ["lite", "full"] as const) {
         })
     })
 }
+
+const OIDC = at("src/modules/integrations/keycloak/keycloak.client.ts")
+const oidcVerifier = ({ audience = "this.options.clientId", issuer = "this.options.issuer", algorithms = "['RS256']", importLine = "import {jwtVerify} from 'jose'", call = "jwtVerify", before = "", guard = "" } = {}) => `
+${importLine}
+interface KeycloakOptions { issuer: string; clientId: string; audiences: string[] }
+const keys = {}
+export class KeycloakClient {
+  constructor(private readonly options: KeycloakOptions) {}
+  async exchange(token: string) {
+    ${before}
+    const verified = await ${call}(token, keys, {issuer: ${issuer}, ${audience ? `audience: ${audience},` : ""} algorithms: ${algorithms}, requiredClaims: ['sub', 'exp', 'nonce']})
+      .catch((cause: unknown) => { throw new Error('rejected', {cause}) })
+    ${guard}
+    return {issuer: verified.payload.iss, subject: verified.payload.sub}
+  }
+}`
+
+for (const edition of ["lite", "full"] as const) {
+    test(`R260 BE_JWT_ALG_PINNED admits a role-free OIDC principal only with an audience from typed configuration (${edition})`, () => {
+        const declaration = { ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }] }), edition }
+        const settings = { starci: { hfs: hfsFromDeclaration(declaration, at("")) } }
+        typedTester().run("jwt-alg-pinned", jwtAlgPinned, {
+            valid: [
+                { filename: OIDC, settings, code: oidcVerifier() },
+                { filename: OIDC, settings, code: oidcVerifier({ algorithms: "['ES256', 'RS256', 'EdDSA']" }) },
+                { filename: OIDC, settings, code: oidcVerifier({ audience: "this.options.audiences" }) },
+                { filename: OIDC, settings, code: oidcVerifier({ before: "const audience = this.options.clientId", audience: "audience" }) },
+                { filename: OIDC, settings, code: oidcVerifier({ importLine: "import {jwtVerify as check} from 'jose'", call: "check" }) },
+                { filename: OIDC, settings, code: oidcVerifier({ importLine: "import * as jose from 'jose'", call: "jose.jwtVerify" }) },
+                // The app's own Passport access tokens (lite): the configured audience binds them like any OIDC client.
+                { filename: SRC, settings, code: verifier({ guard: "" }).replace("audience: 'authenticated'", "audience: options.url") },
+            ],
+            invalid: [
+                ...["'literal-client'", "'authenticated'", "", "input.clientId"].map(audience => ({
+                    filename: OIDC, settings, code: oidcVerifier({ audience }), errors: [{ message: /audience must derive from typed configuration/ }],
+                })),
+                { filename: OIDC, settings, code: oidcVerifier({ issuer: "'https://literal.invalid/realm'" }), errors: [{ message: /issuer must derive/ }] },
+                ...["['none']", "['HS256']", "[]", "['RS256', ...extra]"].map(algorithms => ({
+                    filename: OIDC, settings, code: oidcVerifier({ algorithms }), errors: [{ message: /BE_JWT_ALG_PINNED: algorithms/ }],
+                })),
+            ],
+        })
+    })
+}

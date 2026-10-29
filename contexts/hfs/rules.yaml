@@ -1692,7 +1692,7 @@ rules:
       - {kind: hfs, id: db-migration-destructive}
   - id: R260
     code: BE_JWT_ALG_PINNED
-    law: A back-end JWT verifier pins a literal subset of asymmetric algorithms, reads its issuer from configuration and admits only the authenticated role.
+    law: Every back-end JWT verifier pins a literal subset of asymmetric algorithms and reads its issuer from typed configuration; it binds the principal by an audience read from typed configuration (an OIDC client such as Keycloak, or the app's own Passport tokens) or, where every token of the issuer shares one audience (Supabase-style), admits only the authenticated role.
     failureCodes:
       - BE_JWT_ALG_PINNED
     enforcers:

@@ -1,4 +1,4 @@
-/** R260 BE_JWT_ALG_PINNED: remote JWT verification pins algorithms, configuration and principal role. */
+/** R260 BE_JWT_ALG_PINNED: JWT verification pins algorithms and a configured issuer, and binds the principal by a configured audience or the authenticated role. */
 import ts from "typescript"
 import { typed } from "./lib/types.ts"
 import { isDeclarationFile } from "./lib/path.ts"
@@ -27,7 +27,7 @@ const joseVerifier = (checker: ts.TypeChecker, expression: ts.Node | undefined, 
 export const jwtAlgPinned: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "R260 BE_JWT_ALG_PINNED: literal secure algorithms, config issuer and authenticated principal role." },
+        docs: { description: "R260 BE_JWT_ALG_PINNED: literal secure algorithms, config issuer, and a config audience or the authenticated principal role." },
         schema: [],
         messages: { pinned: "{{detail}}" },
     },
