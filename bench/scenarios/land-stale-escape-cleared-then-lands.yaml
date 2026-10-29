@@ -6,12 +6,12 @@ inject: >-
   an earlier attempt left docs/a/a.md uncommitted in the checkout the task lands on (the workflow's), and this attempt writes
   the file properly in its own Op worktree, so a fast-forward of the branch would refuse to overwrite the stale copy
 expect: >-
-  verify is green; under the land lock the stale copy is preserved as the task's work (land-escaped) and put back, then the
-  branch fast-forwards to the task's commit: the task is done with its settle commit, never stuck awaiting the owner on
-  SETTLE_REF_FAILED
+  verify is green; under the land lock the settle preserves the stale copy, which differs from the task's version, in
+  preserved/land-<task> (land-stale) and puts it back, then the branch fast-forwards to the task's commit: the task is done with
+  its settle commit, never stuck awaiting the owner on SETTLE_REF_FAILED
 pass:
   - task done with one commit carrying its trailer
-  - one land-escaped event naming the stale file; the checkout is clean and holds the task's version
+  - one land-stale event naming the stale file as preserved; the checkout is clean and holds the task's version
   - no settle-refused or verify-stuck event
   - no human intervention beyond the injected fault
 automation: automated
@@ -68,9 +68,14 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: "SELECT json_extract(data_json, '$.untracked[0]') FROM events WHERE kind = 'land-escaped'"
+        query: "SELECT json_extract(data_json, '$.files[0]') FROM events WHERE kind = 'land-stale'"
         equals:
           - docs/a/a.md
+  - assert:
+      exists:
+        path: ${project}/preserved/land-${a}/untracked/docs/a/a.md
+        present: true
+        contains: an older draft
   - assert:
       sql:
         db: ledger

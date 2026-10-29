@@ -149,7 +149,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   task the harness ended with no red of its own returns to ready at the same try, its last included (`harnessCause` in
   `cli/src/harness/revive.ts`). Landing is atomic: a green task is on its workflow's branch or returned with its work
   preserved, never done with its work beside the branch (`lands` in `cli/src/harness/clean-verify.ts`, `preserveEscaped` in
-  `cli/src/core/task/verify.ts`). A check whose premise is stale is the Kernel's to amend, never the worker's
+  `cli/src/core/task/verify.ts`, `clearStale` in `cli/src/harness/preserve.ts`). A check whose premise is stale is the Kernel's to amend, never the worker's
   (`check-premise`, `cli/src/harness/check-premise.ts`). Every escalation awaiting the owner or Debug, with or without a
   topic, and every task left awaiting the owner becomes a ticket on the next tick or Supervisor next, a question among them sent
   to the owner's Telegram
