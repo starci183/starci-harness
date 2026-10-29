@@ -7,12 +7,12 @@ import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
 import { InjectReflector } from "@modules/platform/composition"
 import type { DoorDecorator } from "@modules/platform/composition"
-import { InjectPrimaryEntityManager } from "@modules/platform/database"
+import { InjectPrimaryEntityManager, returnedRows } from "@modules/platform/database"
 import { HttpSecurityError, HttpSecurityErrorCode } from "./errors/http-security.error"
 import { requestOf } from "./execution-request.mapper"
 import { InjectHttpSecurityOptions } from "./http-security.decorators"
 import type { HttpSecurityOptions } from "./http-security.options"
-import type { RateWindowRow } from "./persistence/rate-limit.rows"
+import { isRateWindowRow } from "./persistence/rate-limit.rows"
 import { HIT_RATE_WINDOW, PRUNE_RATE_WINDOWS } from "./persistence/rate-limit.sql"
 
 /** The rate limit tiers of a door. */
@@ -79,7 +79,7 @@ export class RateLimitGuard implements CanActivate {
         const now = this.clock.now()
         const key = `${tier}:${requestOf(context).ip ?? "unknown"}`.slice(0, KEY_MAX)
         const resetAt = new Date(now.getTime() + this.options.rateLimit.windowMs)
-        const rows: Array<RateWindowRow> = await this.entityManager.query(HIT_RATE_WINDOW, [key, now, resetAt])
+        const rows = returnedRows(await this.entityManager.query(HIT_RATE_WINDOW, [key, now, resetAt]), isRateWindowRow)
         const hits = rows[0]?.hits ?? Number.POSITIVE_INFINITY
         if (hits === 1) await this.entityManager.query(PRUNE_RATE_WINDOWS, [now])
         if (hits <= limit) return true

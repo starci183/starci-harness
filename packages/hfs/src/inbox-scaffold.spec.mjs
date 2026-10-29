@@ -37,7 +37,14 @@ test('the lite inbox scaffold installs client replay declarations and migrates i
     'be/src/modules/platform/idempotency/messages/idempotency.messages.ts',
   ]) assert.ok(created.includes(relative) && fs.existsSync(path.join(root, relative)), relative);
   const inboxRoot = path.join(root, 'be/src/modules/platform/inbox');
-  assert.doesNotMatch(fs.readFileSync(path.join(inboxRoot, 'index.ts'), 'utf8'), /\bEffectful\b/);
+  const barrel = fs.readFileSync(path.join(inboxRoot, 'index.ts'), 'utf8');
+  assert.doesNotMatch(barrel, /\bEffectful\b/);
+  // An entity-receipt capability injects the same INBOX provider typed as EntityInbox, so no app hand-rolls the decorator.
+  assert.match(fs.readFileSync(path.join(inboxRoot, 'inbox.decorators.ts'), 'utf8'),
+    /export const InjectEntityInbox = \(\): TypedParameterDecorator<EntityInbox> => injector<EntityInbox>\(INBOX\)/);
+  assert.match(barrel, /export \{ INBOX, InjectEntityInbox, InjectInbox \} from "\.\/inbox\.decorators"/);
+  assert.match(barrel, /export type \{ EntityInbox, Inbox, InboxEntityReceipt, InboxEventId \} from "\.\/inbox\.port"/);
+  assert.match(fs.readFileSync(path.join(inboxRoot, 'inbox.service.ts'), 'utf8'), /export class PostgresInbox implements Inbox, EntityInbox \{/);
   assert.equal(fs.existsSync(path.join(inboxRoot, 'effectful.decorators.ts')), false, 'a delivery-only inbox does not adopt the client command pattern');
   const migration = created.find((relative) => relative.startsWith('db/migrations/'));
   const parsed = await parseSql(fs.readFileSync(path.join(root, migration), 'utf8'));

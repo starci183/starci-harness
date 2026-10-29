@@ -1,7 +1,7 @@
 import { IdempotencyErrorCode } from "@modules/platform/idempotency"
 import { Test } from "@nestjs/testing"
 import type { ClientOperation } from "./inbox.port"
-import { FakeClock, fakeTransaction, mockEntityManager } from "@starci/jest-preset"
+import { FakeClock, fakeTransaction, mockEntityManager, queueQueryBuilders } from "@starci/jest-preset"
 import { BATCH_ROWS, DatabaseError, DatabaseErrorCode } from "@modules/platform/database"
 import { CLOCK } from "@modules/platform/clock"
 import { InboxError, InboxErrorCode } from "./errors/inbox.error"
@@ -28,6 +28,15 @@ const REQUEST = {
     request: { total: 2400 },
 }
 const OUTCOME = { kind: "ok", value: { orderId: "order-1" } }
+
+/** A provider receipt entity as a capability maps its inbox table. */
+class SpecReceiptEntity {
+    id!: string
+    provider!: string
+    deliveryId!: string
+}
+
+const RECEIPT = { entity: SpecReceiptEntity, row: { provider: "spec", deliveryId: "delivery-1" } }
 
 const build = async () => {
     const module = await Test.createTestingModule({
@@ -91,6 +100,61 @@ describe("PostgresInbox delivery rollback and validation", () => {
         })
 
         expect(manager.query).not.toHaveBeenCalled()
+    })
+})
+
+describe("PostgresInbox entity receipts", () => {
+    it("claims, then inserts the receipt row in the caller's transaction and answers its id", async () => {
+        const subject = await build()
+        const manager = mockEntityManager({ query: [CLAIM_EVENT, [{ event_id: "delivery-1" }]] })
+        const [insert] = queueQueryBuilders(manager, [{ execute: { raw: [{ id: "receipt-1" }] } }])
+
+        await expect(subject.claimRow("webhook:spec", "delivery-1", manager, RECEIPT)).resolves.toBe("receipt-1")
+
+        expect(manager.query).toHaveBeenCalledWith(CLAIM_EVENT, ["webhook:spec", "delivery-1"])
+        expect(manager.createQueryBuilder).toHaveBeenCalledWith(SpecReceiptEntity, "receipt")
+        expect(insert?.callsOf("values")).toEqual([[RECEIPT.row]])
+        expect(insert?.callsOf("orIgnore")).toEqual([[]])
+        expect(insert?.callsOf("returning")).toEqual([["id"]])
+    })
+
+    it("inserts no receipt for a delivery already claimed", async () => {
+        const subject = await build()
+        const manager = mockEntityManager({ query: [CLAIM_EVENT, []] })
+
+        await expect(subject.claimRow("webhook:spec", "delivery-1", manager, RECEIPT)).resolves.toBeUndefined()
+
+        expect(manager.createQueryBuilder).not.toHaveBeenCalled()
+    })
+
+    it("answers undefined when the receipt row already exists", async () => {
+        const subject = await build()
+        const manager = mockEntityManager({ query: [CLAIM_EVENT, [{ event_id: "delivery-1" }]] })
+        queueQueryBuilders(manager, [{ execute: { raw: [] } }])
+
+        await expect(subject.claimRow("webhook:spec", "delivery-1", manager, RECEIPT)).resolves.toBeUndefined()
+    })
+
+    it("refuses a returned receipt row without a text id", async () => {
+        const subject = await build()
+        const manager = mockEntityManager({ query: [CLAIM_EVENT, [{ event_id: "delivery-1" }]] })
+        queueQueryBuilders(manager, [{ execute: { raw: [{ id: 7 }] } }])
+
+        await expect(subject.claimRow("webhook:spec", "delivery-1", manager, RECEIPT)).rejects.toMatchObject({
+            code: DatabaseErrorCode.ReturningRowRejected,
+        })
+    })
+
+    it("refuses a missing delivery id before claiming or inserting", async () => {
+        const subject = await build()
+        const manager = mockEntityManager()
+
+        await expect(subject.claimRow("webhook:spec", undefined, manager, RECEIPT)).rejects.toMatchObject({
+            code: DatabaseErrorCode.WebhookDeliveryIdRequired,
+        })
+
+        expect(manager.query).not.toHaveBeenCalled()
+        expect(manager.createQueryBuilder).not.toHaveBeenCalled()
     })
 })
 

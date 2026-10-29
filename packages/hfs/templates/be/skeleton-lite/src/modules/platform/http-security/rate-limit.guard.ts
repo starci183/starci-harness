@@ -8,7 +8,7 @@ import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
 import { InjectReflector } from "@modules/platform/composition"
 import type { DoorDecorator } from "@modules/platform/composition"
-import { InjectPrimaryEntityManager } from "@modules/platform/database"
+import { InjectPrimaryEntityManager, returnedRows, rowShape } from "@modules/platform/database"
 import { HttpSecurityError, HttpSecurityErrorCode } from "./errors/http-security.error"
 import { requestOf } from "./execution-request.mapper"
 import { InjectHttpSecurityOptions } from "./http-security.decorators"
@@ -35,6 +35,8 @@ const RATE_EXCEEDED_KEY = "platform.http-security.rate-exceeded"
 const KEY_MAX = 128
 /** The most ended windows one fresh window prunes. */
 const PRUNE_BATCH = 100
+/** The row the counting update returns: the hits of the live window, this one included. */
+const isCountedWindow = rowShape({ hits: "number" })
 
 /** A same-site path: one leading slash, never a protocol-relative `//` or `/\` that leaves the site. */
 const isSameSitePath = (location: string): boolean =>
@@ -91,16 +93,20 @@ export class RateLimitGuard implements CanActivate {
     }
 
     /**
-     * Counts one hit in the caller's window and answers the hits it holds: a live window grows by one in one atomic increment,
-     * an ended window restarts at one hit ending at `resetAt`, and a missing one opens at one hit (a concurrent opener's row
-     * wins and this hit is its first). A window that vanished between the writes counts as over every limit.
+     * Counts one hit in the caller's window and answers the hits it holds: a live window grows by one in one UPDATE that
+     * returns its hits, an ended window restarts at one hit ending at `resetAt`, and a missing one opens at one hit (a
+     * concurrent opener's row wins and this hit is its first).
      */
     private async hit(key: string, now: Date, resetAt: Date): Promise<number> {
-        const counted = await this.entityManager.increment(RateWindowEntity, { key, resetAt: MoreThan(now) }, "hits", 1)
-        if ((counted.affected ?? 0) > 0) {
-            const window = await this.entityManager.findOneBy(RateWindowEntity, { key })
-            return window?.hits ?? Number.POSITIVE_INFINITY
-        }
+        const counted = await this.entityManager
+            .createQueryBuilder(RateWindowEntity, "window")
+            .update()
+            .set({ hits: () => "hits + 1" })
+            .where({ key, resetAt: MoreThan(now) })
+            .returning("hits")
+            .execute()
+        const [live] = returnedRows(counted.raw, isCountedWindow)
+        if (live !== undefined) return live.hits
         const restarted = await this.entityManager.update(
             RateWindowEntity,
             { key, resetAt: LessThanOrEqual(now) },

@@ -2,12 +2,11 @@ import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
 import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
-import { InjectPrimaryEntityManager, LIST_ROWS_MAX } from "@modules/platform/database"
+import { InjectPrimaryEntityManager, LIST_ROWS_MAX, returnedRows } from "@modules/platform/database"
 import type { CreateNoteParams, Note } from "./note.contracts"
 import { NoteError, NoteErrorCode } from "./errors/note.error"
 import { NoteEntity } from "./persistence/entities/note.entity"
-import { toNote } from "./persistence/note.rows"
-import type { NoteRow } from "./persistence/note.rows"
+import { isNoteRow, toNote } from "./persistence/note.rows"
 import { INSERT_NOTE } from "./persistence/note.sql"
 
 @Injectable()
@@ -29,7 +28,7 @@ export class NoteService {
 
     /** Writes one note in the caller transaction, stamped by the clock, and answers it as stored. */
     async create(params: CreateNoteParams): Promise<Note> {
-        const rows: Array<NoteRow> = await params.manager.query(INSERT_NOTE, [params.body, this.clock.now()])
+        const rows = returnedRows(await params.manager.query(INSERT_NOTE, [params.body, this.clock.now()]), isNoteRow)
         const note = toNote(rows)
         if (note === null) throw new NoteError({ code: NoteErrorCode.NoteMissing })
         return note

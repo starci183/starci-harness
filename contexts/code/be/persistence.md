@@ -77,15 +77,19 @@ named bare and called in `pg_catalog`. `callDbFunction` refuses any other name w
 double-quotes each checked part and passes the arguments as numbered parameters; that file is the one place a call
 statement is composed (R68 names it). TypeORM 0.3 traps the builder hides: a dotted join (`innerJoin("public.x", ...)`)
 throws, so join the entity or the unqualified table; `InsertQueryBuilder.returning()` takes the string form and ignores an array; an
-`UPDATE ... RETURNING` stays one builder statement, never a write followed by a read. A query builder names its entity:
+`UPDATE ... RETURNING` stays one builder statement, never a write followed by a read, and the `raw` rows a builder's `execute()`
+answers are read through `returnedRows(result.raw, rowShape({ column: kind }))` of `platform/database`, which checks each row
+against the returned columns and refuses another shape (`DATABASE_RETURNING_ROW_REJECTED`), never cast. A query builder names its entity:
 a table-name builder and a Repository are refused. The unit doubles are `mockEntityManager` of `@starci/jest-preset`
 (`{ method: [Entity, result] }`) and, for a builder, its `queueQueryBuilders(em, answers)` (`fakeQueryBuilder` per call).
 
 Full: every statement is an UPPER_SNAKE constant built with the `sql` tag of `platform/database` in
 `persistence/<name>.sql.ts`, documented with what it does and its numbered parameters. Values are `$n` parameters with
 explicit casts; the only substitution the tag takes is a `SqlIdent` from `ident(name, allowed)`. Row shapes are
-readonly snake_case interfaces `<Name>Row` in `persistence/<name>.rows.ts`. No SQL literal elsewhere, no query
-builder, no `+` or template building a `.query` string.
+readonly snake_case interfaces `<Name>Row` in `persistence/<name>.rows.ts`, each beside its guard
+(`is<Name>Row: (value: unknown) => value is <Name>Row = rowShape({ ... })`), and a statement's rows are read as
+`returnedRows(await manager.query(SQL, [params]), is<Name>Row)`, never typed by a cast or a `query<T>` argument. No SQL
+literal elsewhere, no query builder, no `+` or template building a `.query` string.
 
 Why: SQL in one reviewed file per owner is a data boundary that can be parsed, checked for ownership and never
 concatenated.
@@ -126,7 +130,7 @@ Enforced by: `no-external-call-in-transaction` (R82).
 
 A domain service (or a platform capability owning a `persistence/`) injects
 `@InjectPrimaryEntityManager() private readonly entityManager: EntityManager` and calls its entity API (lite,
-BE-PERSISTENCE-4) or `entityManager.query<Array<Row>>(SQL, [params])` (full). No `getRepository`, `@InjectRepository`, `Repository<T>`, repository
+BE-PERSISTENCE-4) or `returnedRows(await entityManager.query(SQL, [params]), isRow)` (full). No `getRepository`, `@InjectRepository`, `Repository<T>`, repository
 or store class, injected `DataSource` or `QueryRunner` outside `platform/database` and the cli, and no manager in a
 door, integration or app.
 
@@ -149,16 +153,22 @@ database a service queries.
 
 Enforced by: `one-connection-per-database`, `connection-map` (R84).
 
-## BE-PERSISTENCE-9 SQL touches only its owner's tables, and every list is bounded
+## BE-PERSISTENCE-9 A capability touches only its own tables, and every list is bounded
 
-A statement writes only its capability's tables. A multi-row `SELECT` carries `LIMIT` (a literal bound or a clamped
-parameter) unless it filters on a unique key or only aggregates; bounds are the `platform/database` constants. A read
-never runs once per loop element: read the keys at once (`id = ANY($2::uuid[])`) and look them up.
+The capability that owns a table (BE-PERSISTENCE-3) is the only one that writes or reads it, by a statement or through its
+entity. Another capability reads that data through the owner's read service, a method of the owner's domain service that
+takes the caller's manager when the read must share its transaction (BE-PERSISTENCE-10), or through a projection the reader
+owns (BE-PROJECTIONS-1); never by a statement, a join or an entity call on the owner's table. A multi-row `SELECT` carries
+`LIMIT` (a literal bound or a clamped parameter) unless it filters on a unique key or only aggregates; bounds are the
+`platform/database` constants. A read never runs once per loop element: read the keys at once (`id = ANY($2::uuid[])`)
+and look them up.
 
-Why: a statement that writes another owner's table breaks ownership silently, and an unbounded read turns a growing
-table into an outage.
+Why: a read of another owner's table couples the reader to a schema it does not review, so the owner can no longer change
+it alone; a write breaks ownership silently; an unbounded read turns a growing table into an outage.
 
-Enforced by: `sql-owner`, `query-needs-limit`, `no-query-in-loop` (R86, R69, R77).
+Enforced by: `sql-owner` (R86) refuses a statement that writes another capability's table or reads a table of another
+context; `query-needs-limit`, `no-query-in-loop` (R69, R77). A same-context read of another capability's table, by a
+statement or an entity call, is held by review.
 
 ## BE-PERSISTENCE-10 The domain service opens the transaction and hands the manager down
 
@@ -172,7 +182,7 @@ Why: one transaction identity per scenario makes atomicity checkable.
 
 ```ts
 return this.entityManager.transaction(async (manager) => {
-    const [row] = await manager.query<Array<InsertedRow>>(INSERT_GENERATION, [workspaceId, kind, input])
+    const [row] = returnedRows(await manager.query(INSERT_GENERATION, [workspaceId, kind, input]), isInsertedRow)
     if (row === undefined) throw new GenerationsError({ code: GenerationsErrorCode.NotCreated })
     await this.queue.enqueueGenerate({ generationId: row.id, workspaceId }, manager)
     return { id: row.id, status: "queued" }
