@@ -49,7 +49,7 @@
 //   starci app ci secret set <NAME> [--env E | --dependabot] [--repo owner/name]  reads the value from stdin only.
 //   starci app ci var set <NAME> [--env E] [--value v] | var sync [--execute] | verify [--json]
 //                                            declared GitHub CI custody; verify compares names, scopes and public values.
-//   starci app db baseline | restamp --map <restamp.yaml> | plan
+//   starci app db new <name> | baseline | restamp --map <restamp.yaml> | plan | migrate | post-cutover | dump
 //                                            preview the database cutover or compare its state with the repo; baseline and restamp mutate only with --apply.
 //   starci app add <api|webhook|realtime|saga|job|reactor|queue|projection> <name> [--event <event> --from <service> --service <Class>=<module>] [--owner <service> --failed <event> --done <event>] [--connection <name>] [--cwd <dir>]
 //                                            exactly that kind's file tree, generated FROM the files: tree of its pattern topic (knowledge/patterns/be) with the
@@ -79,7 +79,6 @@ import { main as syncMain } from '../sync/cli.mjs';
 import { SyncError, bundledPresets } from '../sync/index.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import { emitContracts } from '../emit/contracts.mjs';
-import { dbTypesEmitter } from '../emit/db-types.mjs';
 import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
@@ -95,26 +94,26 @@ import { releaseMain } from '../release/index.mjs';
 import { dbMigrateMain } from '../db/migrate.mjs';
 import { dbPostCutoverMain } from '../db/post-cutover.mjs';
 import { dbDumpMain } from '../db/dump.mjs';
-import { dbResetMain } from '../db/reset.mjs';
+import { dbNewMain } from '../db/new.mjs';
 import { dbDriftMain } from '../db/drift.mjs';
 import { codemodMain } from '../codemod/button-intent.mjs';
 
 export const VERBS = Object.freeze(['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'release', 'explain', 'emit', 'new', 'secret', 'ci', 'db', 'hygiene', 'coverage', 'codemod']);
-const DATABASE_VERBS = new Map([['baseline', dbBaselineMain], ['restamp', dbRestampMain], ['plan', dbPlanMain], ['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['reset', dbResetMain], ['drift', dbDriftMain]]);
+const DATABASE_VERBS = new Map([['baseline', dbBaselineMain], ['restamp', dbRestampMain], ['plan', dbPlanMain], ['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
 
 const USAGE = `starci app scaffold <name> [--into <dir>] [--edition full|lite] [--registry-visibility public|private] [--cwd <dir>]
 starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|composite|branch|leaf|page|overlay|layout> <name> [options] [--cwd <dir>]
 starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--format text|json] [--sonar <file>]
 starci app codemod button-intent [--write] [--format json|markdown] [--report <file.json|file.md>] [--cwd <dir>]
 starci app sync (--check | --write) [--cwd <dir>]
-starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--db-types] [--wiring] [--coverage-from <lcov>]
-starci app db baseline [--stamp <version>] [--local] [--apply] [--cwd <dir>]
-starci app db restamp --map <restamp.yaml> [--local] [--apply] [--cwd <dir>]
-starci app db plan [--local] [--json] [--cwd <dir>]
-starci app db dump (--linked | --local | --url-env <NAME>) --out <dir> [--schema-only] [--json] [--cwd <dir>]
-starci app db reset --linked --auth keep|drop --storage keep|drop --backup <receipt.json> [--execute] [--json] [--cwd <dir>]
-starci app db migrate [--execute] [--local | --linked | --url-env <NAME>] [--json] [--cwd <dir>]
-starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--linked | --url-env <NAME>] [--json] [--cwd <dir>]
+starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--wiring] [--coverage-from <lcov>]
+starci app db new <kebab-name> [--json] [--cwd <dir>]
+starci app db baseline [--stamp <version>] [--url-env <NAME>] [--apply] [--cwd <dir>]
+starci app db restamp --map <restamp.yaml> [--url-env <NAME>] [--apply] [--cwd <dir>]
+starci app db plan [--url-env <NAME>] [--json] [--cwd <dir>]
+starci app db dump [--url-env <NAME>] --out <dir> [--schema-only] [--json] [--cwd <dir>]
+starci app db migrate [--execute] [--url-env <NAME>] [--json] [--cwd <dir>]
+starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app release gate [--execute] [--source <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json] [--cwd <dir>]
 starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json] [--cwd <dir>]
@@ -147,7 +146,7 @@ const PER_CODE_LIMIT = 25;
 const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs']);
 /** Flags that may repeat: their values are collected in order. */
 const LIST_FLAGS = new Set(['--inject']);
-const BOOL_FLAGS = new Set(['--json', '--fast', '--fe', '--no-types', '--db-types', '--wiring', '--form']);
+const BOOL_FLAGS = new Set(['--json', '--fast', '--fe', '--wiring', '--form']);
 
 function coverageArgument(arg, args, opts) {
   const inline = arg.startsWith('--coverage-from=');
@@ -250,11 +249,11 @@ function printExplain(e, out) {
  * The app pass: slots, managed files, formatter, contract snapshots and the architecture machine's check surface, root and sides.
  * `only` limits the formatter to those (app-relative) files.
  */
-async function runCheck({ repoRoot, harness, fast = false, base, only, presets, prettier, dbTypes = false }) {
+async function runCheck({ repoRoot, harness, fast = false, base, only, presets, prettier }) {
   const tracked = trackedFiles(repoRoot);
   // Managed files of the root and both sides, the .gitignore block and sonar against their render (R04, R05, R11, ...), and prettier
   // through the app's own install (R19, never under --fast).
-  const extraFindings = [...await managedFindings({ repoRoot, tracked, presets }), ...await checkDatabase({ repoRoot, files: tracked, base, ...(dbTypes ? { emitTypes: dbTypesEmitter() } : {}) }), ...(fast ? [] : await formatFindings({ repoRoot, files: only ?? tracked, prettier }))];
+  const extraFindings = [...await managedFindings({ repoRoot, tracked, presets }), ...await checkDatabase({ repoRoot, files: tracked, base }), ...(fast ? [] : await formatFindings({ repoRoot, files: only ?? tracked, prettier }))];
   // R23 against the be side itself (full pass only): committed snapshots equal what `starci app emit` writes now.
   let contracts = null;
   let be = null;
@@ -345,7 +344,7 @@ async function installedStackMain(cwd) {
 function databaseMain(argv, io) {
   const [verb, ...rest] = argv;
   const dispatch = DATABASE_VERBS.get(verb);
-  if (!dispatch) throw new Error('starci app db takes baseline, restamp, plan, migrate, post-cutover, dump, reset or drift');
+  if (!dispatch) throw new Error('starci app db takes new, baseline, restamp, plan, migrate, post-cutover, dump or drift');
   return dispatch(rest, io);
 }
 
@@ -357,7 +356,7 @@ function printCheckProofs(result, out) {
 async function checkMain(opts, { cwd: repoRoot, harness, edition, stdout: out, presets, prettier, checkApp = runCheck, runLinter }) {
   if (opts.positional.length) throw new Error('starci app check takes no path');
   if (opts.base !== undefined && opts.fast !== true) throw new Error('--base names the ref --fast compares with; it needs --fast');
-  const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, fast: opts.fast === true, base: opts.base, presets, prettier, dbTypes: opts['db-types'] === true }), presets, prettier });
+  const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, fast: opts.fast === true, base: opts.base, presets, prettier }), presets, prettier });
   const proof = withCheckProofs(checked, { repoRoot, edition, wiring: opts.wiring === true, coverageFrom: opts['coverage-from'] });
   const changed = opts.fast === true ? changedSince(repoRoot, proof.fast?.base ?? opts.base).files : null;
   const existing = changed ? changed.filter(file => fs.existsSync(path.join(repoRoot, file))) : [];
@@ -398,7 +397,7 @@ function newMain(opts, { cwd: repoRoot, stdout: out }) {
 function addMain(opts, { cwd: repoRoot, stdout: out }) {
   const [noun, name, ...extra] = opts.positional;
   if (!noun || !name || extra.length) throw new Error('starci app add takes `<noun> <name>` and the options of the noun');
-  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, noTypes: opts['no-types'], shapes: opts.shapes, read: opts.read, app: opts.app, kind: opts.kind, form: opts.form, blocks: opts.blocks, tabs: opts.tabs } });
+  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, shapes: opts.shapes, read: opts.read, app: opts.app, kind: opts.kind, form: opts.form, blocks: opts.blocks, tabs: opts.tabs } });
   for (const file of created) out(`created ${file}\n`);
   const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
   // A noun that registers nothing in hfs.json (a table, an app, a front-end unit) ends with what it wrote.
@@ -437,7 +436,7 @@ function declaredEdition(cwd) {
  */
 async function stackAppMain(argv, { cwd, edition, stackMain, stdout: out, stderr: err, env, sops, stackIo }) {
   if (STACK_ACTIONS.includes(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, ...(sops ? { sops } : {}) });
-  if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app stack up|down|status manage the local test world of the full edition; a lite app starts its local infrastructure with the Supabase CLI');
+  if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app stack up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err });
 }
@@ -460,7 +459,7 @@ function errorMessage(error) {
 
 /**
  * `harness` ({ version }) is the CLI that runs this package in-process: its version is the starci-harness an app is judged and
- * scaffolded at (runtime/scripts/hfs/canon-pins.mjs). `run` injects the Supabase runner, `runLinter` the linter transport, `checkApp`
+ * scaffolded at (runtime/scripts/hfs/canon-pins.mjs). `run` injects the database runner, `runLinter` the linter transport, `checkApp`
  * the HFS check and `stackIo` Swarm tools; production defaults execute every check.
  */
 export async function main(argv, {

@@ -277,18 +277,18 @@ files:
     role: "Titles fenced-job/<scenario>: ... prove the pattern."
     spec: fenced-job/claim-bumps-token, fenced-job/zombie-fenced-out, fenced-job/redispatch-isolated
     rules: [BE_PATTERN_SPEC_MISSING]
-# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a Supabase adapter behind them.
+# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a self-hosted Postgres adapter behind them.
 liteAdapter:
   summary: >-
     Under lite a fenced job is unchanged: the job row with its fencing token, the atomic claim, guarded writes and run keys. The
-    row's table is a supabase migration, and the processor is fed by full's BullMQ queue on the declared Redis, so a lite app
+    row's table is a db migration, and the processor is fed by full's BullMQ queue on the declared Redis, so a lite app
     that declares fenced-job declares `backing: [redis]`. Without a declared Redis a lite app has no fenced job; a long task is
     a declared replicated-job running a cli command.
   ports:
-    - {port: job claim (platform/jobs), adapter: "the same claim SQL through the shared EntityManager; the table comes from supabase/migrations"}
+    - {port: job claim (platform/jobs), adapter: "the same claim SQL through the shared EntityManager; the table comes from db/migrations"}
     - {port: processor delivery, adapter: "full's BullMQ worker (attempts and exponential backoff from the queue policy, failed jobs kept as the dead letter)"}
   proof: >-
     Unit specs as full (job-claim.service.spec.ts); declaring fenced-job requires integration specs titled
-    `fenced-job/<scenario>: ...` for every declared scenario on the local Supabase stack (R284, which runs no container of its
+    `fenced-job/<scenario>: ...` for every declared scenario on the local db service (R284, which runs no container of its
     own): the claim, the fencing token and the guarded writes are Postgres facts, driven there by the real runner without BullMQ.
   see: [knowledge/patterns/be/queues.yaml]

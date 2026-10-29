@@ -176,15 +176,15 @@ files:
     role: "Titles projection/<scenario>: ... prove the pattern."
     spec: projection/recompute-is-idempotent, projection/replay-rebuilds
     rules: [BE_PATTERN_SPEC_MISSING]
-# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a Supabase adapter behind them.
+# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a self-hosted Postgres adapter behind them.
 liteAdapter:
   summary: >-
     Under lite a projection is unchanged in behaviour (only it writes its table, recompute is idempotent and replayable, readers
-    use get*); its table is a supabase migration with a rows type, so the slot carries no projection entity (be.projections lite
+    use get*); its table is a db migration with a rows type, so the slot carries no projection entity (be.projections lite
     overlay), and it is kept current by a reactor on the lite event bus or by a job on the queue (BullMQ on the declared Redis).
   ports:
-    - {port: read model table, adapter: "a supabase migration plus <name>.sql.ts and <name>.rows.ts under persistence/"}
+    - {port: read model table, adapter: "a db migration plus <name>.sql.ts and <name>.rows.ts under persistence/"}
   proof: >-
     Unit specs as full (the projection is a logic role at 100 per file); declaring projection requires integration specs titled
-    `projection/<scenario>: ...` for every declared scenario on `starci supabase start` (R284).
+    `projection/<scenario>: ...` for every declared scenario on the local db service (`npm run db:start`, R284).
   see: [knowledge/patterns/be/event-bus.yaml, knowledge/patterns/be/queues.yaml]

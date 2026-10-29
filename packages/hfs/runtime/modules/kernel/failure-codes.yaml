@@ -870,7 +870,7 @@ BE_JSON_PARSE_UNGUARDED:
 BE_JWT_ALG_PINNED:
   title: "JWT verification has no pinned asymmetric algorithm policy"
   title_vi: "Xác minh JWT thiếu chính sách thuật toán bất đối xứng cố định"
-  meaning_vi: "Bộ xác minh chưa cố định thuật toán an toàn, nguồn cấu hình của issuer hoặc vai trò authenticated của principal Supabase."
+  meaning_vi: "Bộ xác minh chưa cố định thuật toán an toàn, nguồn cấu hình của issuer hoặc vai trò authenticated của principal."
   causes_vi:
     - "Danh sách algorithms rỗng, động hoặc chứa none hay HS256"
     - "Issuer viết trực tiếp hoặc principal chấp nhận vai trò khác authenticated"
@@ -1497,25 +1497,7 @@ BE_SQL_TABLE_OWNER:
   owner: op-retry
   kind: check-finding
 
-BE_SUPABASE_CLIENT_OWNER:
-  title: "A back-end Supabase client, import or call is outside `be.integrations.supabase`, or is not typed with `Database`"
-  title_vi: "Supabase client phía back end sai chủ sở hữu hoặc thiếu kiểu Database"
-  meaning_vi: "Import/call Supabase ở `<path>` không thuộc `be.integrations.supabase`, hoặc client được tạo mà không mang kiểu `Database`."
-  causes_vi:
-    - "Vi phạm L10: back end dùng EntityManager cho dữ liệu; chỉ integration Supabase sở hữu Auth/Storage client và kiểu Database."
-  nextStep_vi: "Chuyển Auth/Storage client vào `be.integrations.supabase`, dùng API công khai của integration và thêm kiểu `Database`; dữ liệu thường đi qua EntityManager."
-  owner: op-retry
-  kind: check-finding
 
-BE_SUPABASE_JWT_VERIFIED:
-  title: "A Supabase principal is derived without pinned JWKS verification, or authorization claims come from the request body"
-  title_vi: "JWT Supabase chưa được xác minh đầy đủ hoặc claim lấy từ request body"
-  meaning_vi: "`<path>` decode JWT không verify, gọi `jwtVerify` ngoài integration/thiếu JWKS, issuer, audience `authenticated` hay algorithm pin, hoặc đọc role/membership từ body."
-  causes_vi:
-    - "Vi phạm L16: principal chỉ đến từ access token đã verify signature/iss/aud/exp/algorithm hoặc được đọc lại từ DB."
-  nextStep_vi: "Dùng `createRemoteJWKSet` + `jwtVerify` trong `be.integrations.supabase`, pin issuer/audience/algorithms và bỏ mọi authorization claim từ body."
-  owner: op-retry
-  kind: check-finding
 
 BE_TEST_BUILDER_ARRANGES:
   title: "A test data builder asserts or has a non-deterministic default"
@@ -1811,15 +1793,6 @@ CLI_ONLY_ENTRY:
   owner: op-retry
   kind: check-finding
 
-DB_API_EXPOSED:
-  title: "The database API never exposes pgmq and lite data access is closed"
-  title_vi: "API cơ sở dữ liệu mở schema bị cấm"
-  meaning_vi: "config.toml mở pgmq hoặc pgmq_public, hoặc ứng dụng lite mở API dữ liệu mà không có policy public_read rõ ràng."
-  causes_vi:
-    - "Vi phạm R259: cửa dữ liệu không khớp quy tắc front end chỉ dùng Supabase Auth."
-  nextStep_vi: "Loại pgmq và pgmq_public khỏi schema API; đóng API dữ liệu lite hoặc khai báo policy public_read giới hạn cần thiết."
-  owner: op-retry
-  kind: check-finding
 
 DB_APP_ROLE:
   title: "The back-end database role has explicit least privileges"
@@ -1852,26 +1825,7 @@ DB_BASELINE_SHAPE:
   owner: op-retry
   kind: check-finding
 
-DB_BE_ONLY_ACCESS:
-  title: "Exposed product data is accessed through the back end"
-  title_vi: "Dữ liệu exposed được mở trực tiếp cho trình duyệt"
-  meaning_vi: "Migration tại <path> cấp quyền bảng hoặc sequence cho authenticated, khai báo policy cho authenticated, hoặc mở quyền anon ngoài policy select có tên kết thúc _public_read; đối tượng chưa được khai báo ngoại lệ supabase.directAccess."
-  causes_vi:
-    - "Vi phạm R254: Supabase phía front end chỉ phục vụ Auth; dữ liệu sản phẩm đi qua back end."
-    - "Grant hoặc policy mới mở lại cửa dữ liệu trong schema exposed mà không có ngoại lệ rõ ràng."
-  nextStep_vi: "Gỡ grant và policy truy cập trực tiếp; cho back end truy cập bằng app role. Nếu chủ ý mở đối tượng, khai báo bảng trong hfs.json supabase.directAccess; anon chỉ đọc qua policy select *_public_read."
-  owner: op-retry
-  kind: check-finding
 
-DB_CONFIG_POLICY:
-  title: "`supabase/config.toml` holds no literal credential (`env(NAME)` only), `auth.jwt_expiry <= 3600`, and signup/site_url/redirects equal the Supabase block of hfs.json"
-  title_vi: "config.toml lệch policy"
-  meaning_vi: "`<path>` (supabase/config.toml) chứa giá trị literal dưới key credential (secret|password|token|client_id|*_key trừ anon/publishable), `auth.jwt_expiry` quá 3600, hoặc `enable_signup`/`site_url`/`additional_redirect_urls` khác với block Supabase mà hfs.json khai báo."
-  causes_vi:
-    - "Vi phạm luật L08: secret trong config.toml viết `env(NAME)`; jwt_expiry tối đa 3600; posture auth là fact được check, không phải claim trong doc."
-  nextStep_vi: "Đổi credential thành `env(TEN_BIEN)`, hạ `jwt_expiry` về <= 3600, và chỉnh block Supabase của hfs.json hoặc config.toml cho khớp nhau."
-  owner: op-retry
-  kind: check-finding
 
 DB_CRON_OWNED:
   title: "A uniquely owned migration cron job only enqueues through the queue outbox"
@@ -1930,7 +1884,7 @@ DB_FORCE_RLS_DEFAULT:
   meaning_vi: "Bảng tại <path> thuộc app role nhưng thiếu force row level security và không có ngoại lệ forceRls kèm lý do không rỗng trong hfs.json."
   causes_vi:
     - "Vi phạm R255: chủ sở hữu bảng có thể bỏ qua RLS khi không có force row level security."
-  nextStep_vi: "Thêm alter table <schema>.<table> force row level security trong migration; nếu cần miễn, khai báo đúng bảng và lý do trong hfs.json supabase.forceRls."
+  nextStep_vi: "Thêm alter table <schema>.<table> force row level security trong migration; nếu cần miễn, khai báo đúng bảng và lý do trong hfs.json db.forceRls."
   owner: op-retry
   kind: check-finding
 
@@ -1949,8 +1903,8 @@ DB_MIGRATION_SHAPE:
   title_vi: "Migration sai hình dạng hoặc bị sửa"
   meaning_vi: "`<path>` vi phạm luật migration: tên phải là `<ts14>_<kebab>.sql`, stamp là thời điểm UTC thật và không trùng giữa các migration đang hoạt động; migration mới xếp sau chuỗi đang hoạt động đã commit trên HEAD. Archive ghi nhận migration đã nghỉ khỏi chuỗi, nên baseline thay thế có thể mang stamp trước archive. Migration đã lên base là bất biến (sửa hay xoá mà không archive đều là finding)."
   causes_vi:
-    - "Vi phạm luật L02: `supabase/migrations/<ts14>_<kebab>.sql`; stamp mới tăng nghiêm ngặt so với chuỗi đang hoạt động đã commit trên HEAD, không so với đồng hồ, thời gian commit hay stamp trên remote; file đã lên base không được đổi."
-  nextStep_vi: "Tạo migration mới bằng the Supabase CLI new-migration command, không sửa/đổi tên/xoá migration đã lên base; nếu cần đổi nội dung, viết migration mới."
+    - "Vi phạm luật L02: `db/migrations/<ts14>_<kebab>.sql`; stamp mới tăng nghiêm ngặt so với chuỗi đang hoạt động đã commit trên HEAD, không so với đồng hồ, thời gian commit hay stamp trên remote; file đã lên base không được đổi."
+  nextStep_vi: "Tạo migration mới bằng `npm run db:new -- <ten>`, không sửa/đổi tên/xoá migration đã lên base; nếu cần đổi nội dung, viết migration mới."
   owner: op-retry
   kind: check-finding
 
@@ -1987,22 +1941,13 @@ DB_POLICY_TAUTOLOGY:
   owner: op-retry
   kind: check-finding
 
-DB_REALTIME_UNLISTED:
-  title: "Realtime publication tables require declared direct access"
-  title_vi: "Bảng Realtime chưa được khai báo truy cập trực tiếp"
-  meaning_vi: "Migration tại <path> thêm bảng vào publication supabase_realtime nhưng bảng không có trong hfs.json supabase.directAccess."
-  causes_vi:
-    - "Vi phạm R254: publication Realtime mở một cửa dữ liệu trực tiếp chưa được khai báo."
-  nextStep_vi: "Gỡ bảng khỏi publication supabase_realtime hoặc khai báo ngoại lệ có chủ ý trong hfs.json supabase.directAccess."
-  owner: op-retry
-  kind: check-finding
 
 DB_RLS_REQUIRED:
   title: "Every `create table` in an exposed schema is followed by `enable row level security` in the same migration"
   title_vi: "Bảng trong schema public thiếu RLS"
   meaning_vi: "`<path>` tạo bảng trong schema exposed (`public` và `[api] schemas` của config.toml) mà không có `alter table ... enable row level security` ngay trong cùng migration; bảng khai báo `forceRls` cần cả `force row level security`."
   causes_vi:
-    - "Vi phạm luật L03: mọi `create table`/`create table as` trong schema exposed phải có enable (và force khi hfs.json `supabase.forceRls` khai báo) trong cùng migration; partition con và bảng temp được miễn."
+    - "Vi phạm luật L03: mọi `create table`/`create table as` trong schema exposed phải có enable (và force khi hfs.json `db.forceRls` khai báo) trong cùng migration; partition con và bảng temp được miễn."
   nextStep_vi: "Viết `alter table <schema>.<table> enable row level security;` ngay sau create trong cùng migration; không dùng vòng lặp dynamic SQL."
   owner: op-retry
   kind: check-finding
@@ -2027,15 +1972,6 @@ DB_STORAGE_PREFIX:
   owner: op-retry
   kind: check-finding
 
-DB_TYPES_DRIFT:
-  title: "`supabase/types/database.types.ts` is committed and equals what `contract:emit` regenerates from the migrations"
-  title_vi: "database.types.ts lệch với migrations"
-  meaning_vi: "`supabase/types/database.types.ts` chưa được commit, hoặc khác với text mà `contract:emit` sinh lại từ migrations hiện tại (hoặc emit thất bại). Pattern giống R23 HFS_CONTRACT_SNAPSHOT_DRIFT."
-  causes_vi:
-    - "Vi phạm luật L09: file types là artefact sinh; commit bản mới nhất, không sửa tay."
-  nextStep_vi: "Chạy `starci app emit` và commit `supabase/types/database.types.ts` kết quả."
-  owner: op-retry
-  kind: check-finding
 
 DB_VAULT_WRITE:
   title: "Migrations contain no vault writes or role passwords"
@@ -2197,16 +2133,6 @@ FE_BUTTON_NO_VARIANT:
   owner: op-retry
   kind: check-finding
 
-FE_CALLBACK_SHAPE:
-  title: "An auth callback performs more than code exchange and redirect"
-  title_vi: "Callback xác thực làm thêm việc ngoài đổi mã và chuyển hướng"
-  meaning_vi: "Handler của fe.route.callback chứa operation dữ liệu, logic sản phẩm, handler bổ sung hoặc phản hồi JSON thay vì chỉ đổi mã xác thực rồi chuyển hướng."
-  causes_vi:
-    - "Callback gọi operation API hoặc xử lý dữ liệu sản phẩm"
-    - "Callback trả JSON hoặc định nghĩa thêm handler"
-  nextStep_vi: "Giữ callback ở việc đọc mã, tạo client xác thực, đổi mã và chuyển hướng; chuyển logic sản phẩm về back end hoặc hook phù hợp."
-  owner: op-retry
-  kind: check-finding
 
 FE_CLIENT_BOUNDARY:
   title: "Server first; `\"use client\"` only where allowed"
@@ -2925,15 +2851,6 @@ FE_SERVER_ONLY_MARK:
   owner: op-retry
   kind: check-finding
 
-FE_SERVICE_ROLE_FORBIDDEN:
-  title: "A service-role or credential-shaped environment value enters the front end"
-  title_vi: "Service role hoặc biến môi trường bí mật đi vào front end"
-  meaning_vi: "`<path>` chứa identifier/string service_role hoặc đọc biến `*_SECRET`, `*_PRIVATE`, `*_TOKEN`, `*_PASSWORD`; public config không được khai báo qua chủ `modules/config`."
-  causes_vi:
-    - "Vi phạm L13: front end chỉ giữ URL, anon/publishable key và public config; service role luôn ở back end."
-  nextStep_vi: "Xóa credential khỏi fe/, chuyển thao tác đặc quyền qua use case back end, và khai báo public config tại `modules/config`."
-  owner: op-retry
-  kind: check-finding
 
 FE_SINGLE_COMMIT_PER_RENDER:
   title: "A component renders more than one commit"
@@ -3077,15 +2994,6 @@ FE_SUBSCRIPTION_NO_SNAPSHOT:
   owner: op-retry
   kind: check-finding
 
-FE_SUPABASE_CLIENT_OWNER:
-  title: "A front-end Supabase import or call is outside `fe.modules.auth`, or reaches past the auth API"
-  title_vi: "Supabase phía front end ngoài modules/auth hoặc dùng ngoài API auth"
-  meaning_vi: "Import/call Supabase ở `<path>` không thuộc ô `fe.modules.auth`, hoặc gọi API ngoài auth (`.from`, `.rpc`, `.storage`, `.channel`): front end không đọc hay ghi dữ liệu qua Supabase."
-  causes_vi:
-    - "Vi phạm luật R217: Supabase trên front end chỉ là xác thực (đăng nhập, phiên, access token) trong `modules/auth`; dữ liệu đi qua `modules/api` (Apollo GraphQL) và hook SWR tới back end (R212 case-2)."
-  nextStep_vi: "Chuyển client Supabase vào `modules/auth` và chỉ giữ API auth; đọc/ghi dữ liệu bằng query/mutation GraphQL trong `modules/api` và hook `hooks/swr`; không thêm ngoại lệ."
-  owner: op-retry
-  kind: check-finding
 
 FE_SUSPENSE_NULL_FALLBACK:
   title: "Suspense fallback renders something"
@@ -3689,15 +3597,6 @@ HFS_EDITION_INVALID:
   owner: op-retry
   kind: check-finding
 
-HFS_EMIT_DB_TYPES_STALE:
-  title: "Database types require current migration history"
-  title_vi: "Lịch sử migration chưa khớp để sinh kiểu"
-  meaning_vi: "Tập phiên bản đã áp dụng trong DB cục bộ khác dấu thời gian tệp supabase/migrations."
-  causes_vi:
-    - "Tập phiên bản đã áp dụng trong DB cục bộ khác dấu thời gian tệp supabase/migrations."
-  nextStep_vi: "Chạy npm run db:reset rồi starci app emit; kiểm tra cả phiên bản thiếu và phiên bản thừa."
-  owner: op-retry
-  kind: verb-refusal
 
 HFS_EMPTY_DIR:
   title: "No empty directory outside an `ignored` slot"
@@ -4302,15 +4201,6 @@ HFS_SERVICE_PLACEMENT:
   owner: op-retry
   kind: check-finding
 
-HFS_SERVICE_ROLE_SCOPE:
-  title: "Service-role access belongs to the Supabase integration"
-  title_vi: "Service role được dùng ngoài integration Supabase"
-  meaning_vi: "Mã tại <path> tham chiếu service_role ngoài integration Supabase của back end, kể cả trong script triển khai."
-  causes_vi:
-    - "Vi phạm R252: sử dụng quyền service role ngoài thành phần sở hữu kết nối Supabase."
-  nextStep_vi: "Đưa quyền service role vào be/src/modules/integrations/supabase và truy cập qua port của integration; script gọi CLI của ứng dụng."
-  owner: op-retry
-  kind: check-finding
 
 HFS_SERVICE_STACK_DECLARATION:
   title: "Each service app is a service component of the stack"
@@ -5648,5 +5538,65 @@ BE_ENTITY_SCHEMA_DRIFT:
     - "Vi phạm R333: entity được sửa mà không có migration tương ứng, hoặc migration đổi bảng mà entity chưa theo kịp."
     - "Entity khai báo sai kiểu (ví dụ timestamp thay vì timestamptz) hoặc quên nullable cho một cột cho phép NULL."
   nextStep_vi: "Viết migration mới trong db/migrations để schema có đúng cột đó, hoặc sửa entity cho khớp schema hiện tại, rồi chạy lại starci app db drift cho đến khi xanh."
+  owner: op-retry
+  kind: check-finding
+
+BE_AUTH_PASSPORT_OWNER:
+  title: "An identity library is imported outside integrations/passport"
+  title_vi: "Thư viện định danh bị import ngoài integrations/passport"
+  meaning_vi: "File `<path>` import @nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose hoặc bcryptjs mà không thuộc `be.integrations.passport`, hoặc import bcrypt hay client Supabase."
+  causes_vi:
+    - "Vi phạm R328: chỉ integration passport sở hữu chiến lược Google, đăng nhập email/mật khẩu và token riêng của app."
+  nextStep_vi: "Chuyển mã vào `src/modules/integrations/passport/` và gọi qua API công khai của integration; dùng bcryptjs thay bcrypt, bỏ client Supabase."
+  owner: op-retry
+  kind: check-finding
+
+BE_AUTH_JWT_OWN_JWKS:
+  title: "A lite principal is not built from the app own verified access token"
+  title_vi: "Principal của app lite không đến từ access token riêng đã xác minh"
+  meaning_vi: "`<path>` gọi jwtVerify ngoài integrations/passport, xác minh với createRemoteJWKSet thay vì key set riêng (createLocalJWKSet), thiếu issuer/audience/algorithms, decode token không xác minh hoặc đọc role/membership từ request body."
+  causes_vi:
+    - "Vi phạm R329: principal chỉ đến từ token do chính app ký và xác minh bằng JWKS riêng."
+  nextStep_vi: "Dùng `createTokenKit` của integrations/passport (jwtVerify trên createLocalJWKSet, pin issuer/audience/algorithms) và để domain/identity dựng principal từ kết quả đó."
+  owner: op-retry
+  kind: check-finding
+
+BE_AUTH_REFRESH_COOKIE:
+  title: "A refresh token leaves the httpOnly cookie"
+  title_vi: "Refresh token rời khỏi cookie httpOnly"
+  meaning_vi: "`<path>` đặt cookie refresh thiếu httpOnly, secure, sameSite strict hoặc path của cửa refresh, hoặc đưa refresh token vào body của request/response."
+  causes_vi:
+    - "Vi phạm R330: refresh token chỉ sống trong cookie httpOnly Secure SameSite=Strict và được xoay vòng mỗi lần dùng."
+  nextStep_vi: "Đặt và xoá cookie qua `setRefreshCookie`/`clearRefreshCookie` của integrations/passport; bỏ trường refreshToken khỏi DTO và kết quả trả về."
+  owner: op-retry
+  kind: check-finding
+
+BE_STORAGE_OWNER:
+  title: "An S3 SDK is imported outside integrations/storage"
+  title_vi: "S3 SDK bị import ngoài integrations/storage"
+  meaning_vi: "File `<path>` import @aws-sdk/client-s3 hoặc @aws-sdk/s3-request-presigner ngoài `be.integrations.storage`, hoặc import minio."
+  causes_vi:
+    - "Vi phạm R331: chỉ integration storage sở hữu client S3 (MinIO trong lite) và URL presigned."
+  nextStep_vi: "Gọi port ObjectStorage của integrations/storage (presignPut, presignGet, remove); bỏ minio."
+  owner: op-retry
+  kind: check-finding
+
+LITE_DB_MIGRATION:
+  title: "A lite schema change lives outside db/migrations"
+  title_vi: "Thay đổi schema của app lite nằm ngoài db/migrations"
+  meaning_vi: "`<path>` là tệp của thư mục supabase/ hoặc một tệp SQL ngoài db/ (trừ seed của .starcistacks)."
+  causes_vi:
+    - "Vi phạm R332: schema của app lite chỉ nằm trong db/migrations/<ts14>_<kebab>.sql, archive và seed trong db/."
+  nextStep_vi: "Chuyển migration sang db/migrations (giữ nguyên stamp), seed sang db/seed.sql, types sang db/types/; xoá supabase/."
+  owner: op-retry
+  kind: check-finding
+
+BE_PERSISTENCE_NO_RAW_SQL:
+  title: "Lite domain code runs raw SQL instead of TypeORM entities"
+  title_vi: "Mã domain của app lite chạy SQL thô thay vì entity TypeORM"
+  meaning_vi: "File `<path>` gọi `.query(` hoặc dùng template `sql` ngoài platform/database và ngoài danh sách hàm ruleParams.be.lite.rawSqlFunctions."
+  causes_vi:
+    - "Vi phạm R333: dữ liệu của app lite đi qua entity TypeORM trên EntityManager (find, save, update, upsert, createQueryBuilder)."
+  nextStep_vi: "Khai entity ở persistence/entities/<table>.entity.ts và đọc/ghi bằng EntityManager hoặc createQueryBuilder với tham số có tên; hàm pg/SECURITY DEFINER không diễn đạt được thì khai vào rawSqlFunctions kèm lý do."
   owner: op-retry
   kind: check-finding

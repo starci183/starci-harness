@@ -36,7 +36,7 @@ export function readComposeGroup({ repoRoot, repo, app, area, noun }) {
   const skeleton = repo.edition === 'lite' ? 'skeleton-lite/apps/api' : 'skeleton/apps/__app__';
   const template = path.join(TEMPLATES_DIR, 'be', ...skeleton.split('/'), 'src', 'compose', `${area}.ts`);
   const text = fs.readFileSync(exists ? file : template, 'utf8').replace(/\r\n/g, '\n');
-  const argument = area === 'domain' && repo.edition === 'lite' ? 'verifyAccessToken: VerifySupabaseAccessToken' : '';
+  const argument = area === 'domain' && repo.edition === 'lite' ? 'verifyAccessToken: VerifyAccessToken' : '';
   const marker = `export const ${area}Modules = (${argument}): Array<Type<unknown> | DynamicModule> => [`;
   const declarationAt = compositionCode(text).indexOf(`\n${marker}`);
   const active = declarationAt >= 0;

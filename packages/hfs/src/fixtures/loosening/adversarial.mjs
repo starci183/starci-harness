@@ -143,7 +143,7 @@ export const SAFE = [
   { id: 'a package.json that keeps its tool configs in their own files', file: 'package.json', text: '{\n  "name": "x",\n  "scripts": { "test": "jest" }\n}\n' },
   { id: 'a codecov file with only comments and the placeholder lines of a template', file: 'packages/hfs/templates/app/quality-config/codecov.yml', text: 'codecov:\n  require_ci_to_pass: true\ncoverage:\n  status:\n    project:\n      default:\n        target: {{codecovTarget}}%\nignore:\n{{codecovExclusions}}\n' },
   { id: 'a sonar line continuation that lists a known entry', file: 'sonar-project.properties', text: 'sonar.exclusions=**/dist/**,\\\n  **/coverage/**\n' },
-  { id: 'rooted output folders in a prettier ignore', file: '.prettierignore', text: 'reports/\ncontracts/\n.starcistacks/\nsupabase/types/\n' },
+  { id: 'rooted output folders in a prettier ignore', file: '.prettierignore', text: 'reports/\ncontracts/\n.starcistacks/\n' },
   { id: 'the jest preset ignoring node_modules by its exact pattern', file: 'packages/jest-preset/index.cjs', text: 'const cfg = { testPathIgnorePatterns: ["/node_modules/"] };\n' },
   { id: 'a strict true in a file an app extends', file: 'config/base.json', text: '{\n  "compilerOptions": { "strict": true, "noImplicitAny": true }\n}\n' },
   { id: 'a CLI verb file that has override in its name', file: 'modules/cli/commands/kernel/op-override.yaml', text: 'verb: op-override\n' },

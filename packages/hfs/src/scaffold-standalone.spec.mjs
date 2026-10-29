@@ -43,7 +43,11 @@ async function renderedOverride(root, spec, model) {
     'primary-db-url': { PRIMARY_DB_URL: 'postgresql://fixture.invalid/database' },
     'postgres-password': { POSTGRES_PASSWORD: 'fixture-admin-value' },
     'primary-db-password': { PRIMARY_DB_PASSWORD: 'fixture-app-value' },
-    'supabase-service-role-key': { SUPABASE_SERVICE_ROLE_KEY: 'fixture-service-role-value' },
+    'db-password': { POSTGRES_PASSWORD: 'fixture-db-value' },
+    'google-client-secret': { GOOGLE_CLIENT_SECRET: 'fixture-google-value' },
+    'auth-jwt-private-key': { AUTH_JWT_PRIVATE_KEY: 'fixture-key-value' },
+    'storage-access-key-id': { STORAGE_ACCESS_KEY_ID: 'fixture-access-value' },
+    'storage-secret-access-key': { STORAGE_SECRET_ACCESS_KEY: 'fixture-storage-value' },
   };
   let override, configName;
   const result = await renderRelease({ env: { STARCI_SECRET_VERSION_KEY: 'fixture-version-value' }, now: () => 0,
@@ -146,17 +150,17 @@ test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persi
   }
 });
 
-test('the lite starter keeps its vector backing in Supabase without a Qdrant declaration, client or container', async (t) => {
+test('the lite starter keeps its vector backing in its db service without a Qdrant declaration, client or container', async (t) => {
   const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init,
     emitTypes: () => 'export type Database = Record<string, never>\n' });
   const read = file => fs.readFileSync(path.join(root, ...file.split('/')), 'utf8');
   const declaration = JSON.parse(read('hfs.json'));
   const pkg = JSON.parse(read('package.json'));
   const stacks = parseYaml(read('.starcistacks/application-stacks.yaml'));
-  assert.equal(declaration.sides.be.connections[0].provider, 'supabase');
+  assert.equal(declaration.sides.be.connections[0].provider, 'postgres');
   assert.deepEqual(declaration.sides.be.backing ?? [], []);
   assert.ok(!Object.keys(pkg.dependencies).some(name => name.startsWith('@qdrant/')));
-  assert.deepEqual(stacks.backing, { supabase: { provider: 'supabase', managed: true } });
+  assert.deepEqual(stacks.backing, { db: { provider: 'postgres', component: 'db' } });
   for (const env of ['dev', 'production']) {
     const model = parseYaml(read(`.starcistacks/${env}/infra/swarm/stack.yaml`));
     assert.ok(!Object.values(model.services).some(service => service.image.includes('qdrant')));
@@ -164,7 +168,7 @@ test('the lite starter keeps its vector backing in Supabase without a Qdrant dec
   const model = parseYaml(read('.starcistacks/production/infra/swarm/stack.yaml'));
   const { override } = await renderedOverride(root, stacks.environments.production, model);
   assert.equal(override.version, model.version);
-  assert.deepEqual(Object.keys(override.services).sort(), ['api', 'web']);
+  assert.deepEqual(Object.keys(override.services).sort(), ['api', 'db', 'web']);
 });
 
 test('full and lite scaffolds leave Compose versions to the runtime default', (t) => {

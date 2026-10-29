@@ -1,6 +1,6 @@
-// supabase-secrets.mjs - L17 extends the one R06 secret scan for edition lite. It keeps the ordinary
+// lite-secrets.mjs - L17 extends the one R06 secret scan for edition lite. It keeps the ordinary
 // HFS_PLAINTEXT_SECRET judgement, then adds the reduced lite custody tree and provider-shaped literals
-// which are meaningful only in the Supabase/FE surface. Findings name shapes, never captured values.
+// in the trees that hold no secret at all (fe/ and db/). Findings name shapes, never captured values.
 import { Buffer } from 'node:buffer';
 import { secretFindings } from './secrets.mjs';
 import { found, readText } from './read.mjs';
@@ -40,11 +40,11 @@ const validJwt = candidate => {
 
 const liteSecretPatterns = line => {
   const names = LITE_SECRET_PATTERNS.filter(pattern => pattern.re.test(line)).map(pattern => pattern.name);
-  if ([...line.matchAll(JWT_CANDIDATE)].some(match => validJwt(match[0]))) names.push('supabase-eyj-service-token');
+  if ([...line.matchAll(JWT_CANDIDATE)].some(match => validJwt(match[0]))) names.push('signed-jwt');
   return names;
 };
 
-const inSecretFreeTree = (repo, file) => repo.profile === 'fe' || file.startsWith('fe/') || file.startsWith('supabase/');
+const inSecretFreeTree = (repo, file) => repo.profile === 'fe' || file.startsWith('fe/') || file.startsWith('db/');
 
 function custodyPathFinding(file, repo, findings) {
   if (repo.profile === 'app') {
@@ -71,7 +71,7 @@ function providerSecretFindings(repoRoot, file, repo, findings) {
     for (const pattern of liteSecretPatterns(line)) {
       if (seen.has(pattern)) continue;
       seen.add(pattern);
-      findings.push(found(LITE_SECRET_CUSTODY, file, `${file}:${index + 1} holds a provider-shaped secret (${pattern}); lite keeps no secret literal under fe/ or supabase/.`, { line: index + 1, pattern }));
+      findings.push(found(LITE_SECRET_CUSTODY, file, `${file}:${index + 1} holds a provider-shaped secret (${pattern}); lite keeps no secret literal under fe/ or db/.`, { line: index + 1, pattern }));
     }
   }
 }
@@ -90,7 +90,7 @@ export function liteSecretCustodyFindings({ repoRoot, files, repo }) {
  * Drop-in extension of secretFindings for scripts/hfs/check.mjs. When an L17 finding identifies the same file/line as
  * the generic R06 scanner (a complete JWT, for example), the specific lite code wins so one physical issue is emitted once.
  */
-export function supabaseSecretFindings(input) {
+export function liteSecretFindings(input) {
   const ordinary = secretFindings(input);
   const lite = liteSecretCustodyFindings(input);
   const liteJwtAuthority = (input.repo.edition ?? 'full') === 'lite';

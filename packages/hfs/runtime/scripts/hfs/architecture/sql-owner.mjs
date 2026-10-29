@@ -2,8 +2,7 @@ import path from 'node:path';
 import { analyzeSql, HOLE } from './sql-tokens.mjs';
 import { machineKit } from './machine-ast.mjs';
 import { contextModelOf } from './context-map.mjs';
-import { supabaseTablesOf } from './supabase-tables.mjs';
-import { supabaseUniqueSetsOf } from './supabase-keys.mjs';
+import { sqlUniqueSetsOf } from './sql-keys.mjs';
 
 /**
  * R86 `sql-owner` (BE_SQL_TABLE_OWNER). Every `sql` tagged template (the tag declared in platform/database) of a
@@ -14,7 +13,7 @@ import { supabaseUniqueSetsOf } from './supabase-keys.mjs';
  *     capability's, or those of a same-context capability its owner may import (the tier matrix, through `resolver.importAllowed`
  *     to the table owner's public entry); a table of another context is refused (cross-context data comes only by events);
  *   - every table it names is declared by some entity under TypeORM authority, or by the generated
- *     `Database['public']['Tables']` contract under Supabase authority;
+ *     public tables the ordered db/migrations create under the SQL migration authority;
  *   - a SELECT carries LIMIT, or reads a single relation under a complete primary/unique-key equality to scalar values,
  *     or selects only proven scalar aggregates without GROUP BY. Inferred bounds reject multiplying projections and set operations.
  * Table positions that hold a `${...}` substitution (SqlIdent) are dynamic; they are counted in the coverage and judged by
@@ -130,11 +129,10 @@ export function entitiesOf(kit, graph) {
 
 const capabilityTable = root => path.posix.basename(root).replaceAll('-', '_').toLowerCase();
 
-/** Supabase declarations, with an owner when the generated table name matches a capability's persistence folder. */
-function supabaseDeclarations(graph, appRoot, ts) {
-  const generated = supabaseTablesOf(appRoot, ts);
-  const keys = supabaseUniqueSetsOf(appRoot);
-  const tables = new Map([...generated].map(table => [table, { table, owner: null, rel: null, uniqueSets: keys.get(table) ?? [] }]));
+/** SQL-authority declarations (the public tables db/migrations create), with an owner when a table name matches a capability's persistence folder. */
+function sqlDeclarations(graph, appRoot) {
+  const keys = sqlUniqueSetsOf(appRoot);
+  const tables = new Map([...keys.keys()].map(table => [table, { table, owner: null, rel: null, uniqueSets: keys.get(table) ?? [] }]));
   for (const file of graph.files.values()) {
     if (file.slot !== 'be.persistence' || !file.owner) continue;
     const key = capabilityTable(file.owner.root);
@@ -150,16 +148,16 @@ const isOwnTable = (table, ownTable) => {
   return name === ownTable || name.startsWith(`${ownTable}_`);
 };
 
-function reportSqlWrite({ tables, supabase, file, ownTable, report }, write) {
+function reportSqlWrite({ tables, sqlAuthority, file, ownTable, report }, write) {
   const declaration = tables.get(write.table.toLowerCase());
   if (!declaration) {
-    report(supabase
-      ? `SQL writes table ${write.table}, which Database['public']['Tables'] does not declare; regenerate supabase/types/database.types.ts from the migrations.`
+    report(sqlAuthority
+      ? `SQL writes table ${write.table}, which no db/migrations migration creates; add the table in a migration first.`
       : `SQL writes table ${write.table}, which no @Entity declares; declare the entity in the owning capability's persistence/entities.`, { table: write.table });
-  } else if (supabase) {
+  } else if (sqlAuthority) {
     if (isOwnTable(write.table, ownTable) && (declaration.owner === null || declaration.owner === file.owner.root)) return;
     const ownerNote = declaration.owner ? `, owned by ${declaration.owner}` : '';
-    report(`SQL in ${file.owner.root} writes table ${write.table}${ownerNote}; under Supabase schema authority a capability writes only its own table (${ownTable}), named for that capability.`, { table: write.table, ...(declaration.owner ? { tableOwner: declaration.owner } : {}) });
+    report(`SQL in ${file.owner.root} writes table ${write.table}${ownerNote}; under the SQL migration authority a capability writes only its own table (${ownTable}), named for that capability.`, { table: write.table, ...(declaration.owner ? { tableOwner: declaration.owner } : {}) });
   } else if (declaration.owner !== file.owner.root) {
     report(`SQL in ${file.owner.root} writes table ${write.table}, owned by ${declaration.owner}; a capability writes only the tables of its own entities, call the owner's public API instead.`, { table: write.table, tableOwner: declaration.owner });
   }
@@ -169,11 +167,11 @@ function reportSqlWrites(input) {
   for (const write of input.result.writes) reportSqlWrite(input, write);
 }
 
-function reportSqlRead(tables, supabase, file, model, resolver, report, read) {
+function reportSqlRead(tables, sqlAuthority, file, model, resolver, report, read) {
   const declaration = tables.get(read.table.toLowerCase());
   if (!declaration) {
-    report(supabase
-      ? `SQL reads table ${read.table}, which Database['public']['Tables'] does not declare; regenerate supabase/types/database.types.ts from the migrations.`
+    report(sqlAuthority
+      ? `SQL reads table ${read.table}, which no db/migrations migration creates; add the table in a migration first.`
       : `SQL reads table ${read.table}, which no @Entity declares; declare the entity in the owning capability's persistence/entities.`, { table: read.table });
     return;
   }
@@ -188,8 +186,8 @@ function reportSqlRead(tables, supabase, file, model, resolver, report, read) {
   if (!verdict.allowed) report(`SQL in ${file.owner.root} reads table ${read.table}, owned by ${declaration.owner}, which ${file.owner.root} may not import (${verdict.reason}); read it through the owner's public API.`, { table: read.table, tableOwner: declaration.owner, reason: verdict.reason });
 }
 
-function reportSqlReads({ result, tables, supabase, file, model, resolver, report }) {
-  for (const read of result.reads) reportSqlRead(tables, supabase, file, model, resolver, report, read);
+function reportSqlReads({ result, tables, sqlAuthority, file, model, resolver, report }) {
+  for (const read of result.reads) reportSqlRead(tables, sqlAuthority, file, model, resolver, report, read);
 }
 
 function reportSqlSelects({ result, tables, report }) {
@@ -201,7 +199,7 @@ function reportSqlSelects({ result, tables, report }) {
 }
 
 function inspectSqlTag(input, state, file, checker, node) {
-  const { kit, ts, tables, supabase, model, resolver } = input;
+  const { kit, ts, tables, sqlAuthority, model, resolver } = input;
   if (!ts.isTaggedTemplateExpression(node)) return true;
   const home = kit.declarationsOf(checker, node.tag).map(kit.ownerOfDeclaration).find(Boolean);
   if (home?.tier !== 'platform' || home?.name !== 'database') { state.foreignTags += 1; return true; }
@@ -217,13 +215,13 @@ function inspectSqlTag(input, state, file, checker, node) {
     state.violations.push({ ruleId: RULE, path: file.rel, ...kit.at(file.rel, file.sourceFile, node), message, ...extra });
   };
   const result = analyzeSql(text, { uniqueSetsOf: (table, schema) => {
-    if (supabase && ((schema && schema !== 'public') || table !== table.toLowerCase())) return null;
+    if (sqlAuthority && ((schema && schema !== 'public') || table !== table.toLowerCase())) return null;
     return tables.get(table.toLowerCase())?.uniqueSets ?? null;
   } });
   state.dynamic += result.dynamic;
   const ownTable = capabilityTable(file.owner.root);
-  reportSqlWrites({ result, tables, supabase, file, ownTable, report });
-  reportSqlReads({ result, tables, supabase, file, model, resolver, report });
+  reportSqlWrites({ result, tables, sqlAuthority, file, ownTable, report });
+  reportSqlReads({ result, tables, sqlAuthority, file, model, resolver, report });
   reportSqlSelects({ result, tables, report });
   return true;
 }
@@ -239,13 +237,13 @@ export function checkSqlOwner(input) {
   const { config, graph } = input;
   const kit = machineKit(input);
   const { ts, resolver } = kit;
-  const supabase = resolver.ruleParams().schemaAuthority === 'supabase';
-  const entityDeclarations = supabase ? { tables: new Map(), unreadable: 0 } : entitiesOf(kit, graph);
-  const tables = supabase ? supabaseDeclarations(graph, config.packageRoot, ts) : entityDeclarations.tables;
+  const sqlAuthority = resolver.ruleParams().schemaAuthority === 'sql';
+  const entityDeclarations = sqlAuthority ? { tables: new Map(), unreadable: 0 } : entitiesOf(kit, graph);
+  const tables = sqlAuthority ? sqlDeclarations(graph, config.packageRoot) : entityDeclarations.tables;
   const model = contextModelOf(kit, graph);
   const state = { violations: [], templates: 0, dynamic: 0, foreignTags: 0 };
-  const inspection = { kit, ts, tables, supabase, model, resolver };
+  const inspection = { kit, ts, tables, sqlAuthority, model, resolver };
   for (const file of graph.files.values()) inspectSqlFile(inspection, state, file);
   return { violations: state.violations, coverage: { status: 'checked', entities: entityDeclarations.tables.size, unreadableEntities: entityDeclarations.unreadable,
-    ...(supabase ? { supabaseTables: tables.size } : {}), templates: state.templates, dynamicIdentifiers: state.dynamic, foreignTags: state.foreignTags } };
+    ...(sqlAuthority ? { sqlTables: tables.size } : {}), templates: state.templates, dynamicIdentifiers: state.dynamic, foreignTags: state.foreignTags } };
 }

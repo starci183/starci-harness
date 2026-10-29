@@ -85,16 +85,16 @@ properties:
         command: {type: string, minLength: 1}
   backing:
     description: >-
-      Supabase backing: local Docker containers managed by the Supabase CLI in development and a hosted
-      service in production. Every other dependency is a Docker component, on Swarm in production.
+      The self-hosted database of a lite app: its db component (image supabase/postgres), a Docker container in
+      development and a Swarm service in production. Every other dependency is a Docker component too.
     type: object
     additionalProperties:
       type: object
       additionalProperties: false
-      required: [provider, managed]
+      required: [provider, component]
       properties:
-        provider: {const: supabase}
-        managed: {const: true}
+        provider: {const: postgres}
+        component: {type: string, minLength: 1}
   environments:
     type: object
     minProperties: 1

@@ -21,7 +21,7 @@ const ENTITY_MANAGER_TOKENS: ReadonlyMap<string, EntityManagerToken> = new Map<s
 ])
 
 @Module({})
-/** Opens each named Supabase PostgreSQL connection and exposes its shared EntityManager without entities or migrations. */
+/** Opens each named PostgreSQL connection with the entities the composition root hands it, and exposes its shared EntityManager; no migrations. */
 export class DatabaseModule extends ConfigurableModuleClass {
     /** Registers the capability once per app with the connections it opens. */
     static register(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -53,6 +53,7 @@ export class DatabaseModule extends ConfigurableModuleClass {
                         type: "postgres",
                         url: connection.url.reveal(),
                         ...schemaOption(connection.schema),
+                        entities: [...options.entities],
                         synchronize: false,
                         retryAttempts: 2,
                     }),

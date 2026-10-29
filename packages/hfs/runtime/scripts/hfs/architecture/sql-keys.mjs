@@ -248,7 +248,7 @@ function activeMigrations(root) {
  * Public-table key sets proven by ordered, tracked active migrations. Direct event triggers taint later DDL proof.
  * Opaque bodies discard current facts; persistent schema machinery hidden inside them is outside static authority.
  */
-export function supabaseUniqueSetsOf(appRoot) {
+export function sqlUniqueSetsOf(appRoot) {
   const root = path.resolve(appRoot);
   const files = activeMigrations(root);
   const state = { tables: new Map(), safe: new Set(), schema: 'public', tainted: false };

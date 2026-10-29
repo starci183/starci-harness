@@ -182,7 +182,7 @@ raw-tools:
   podman: {use: 'starci docker up, starci docker down, starci docker build, or starci docker ps'}
   kubectl: {use: 'starci app stack'}
   k3d: {use: 'starci app stack'}
-  supabase: {use: "starci supabase start, starci supabase stop, or starci supabase status for the app's own stack"}
+  supabase: {use: "starci app db new|plan|migrate|dump, and npm run db:start or db:stop for the app's own database"}
   gh: {use: 'starci release cut (the GitHub release is created from the CHANGELOG section of the tag); anything else is the owner''s'}
   schtasks: {use: 'starci task register, starci task show, or starci task list for runtime scheduled tasks'}
   shutdown: {use: 'ask the owner: a worker never shuts the host down'}

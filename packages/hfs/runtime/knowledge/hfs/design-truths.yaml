@@ -29,7 +29,7 @@ outsideTheGates:
     entries: [node_modules, dist, build, coverage, .next, storybook-static, "*.tsbuildinfo", __generated__, .starci]
   - id: root-output-and-records
     cite: {ruling: design-truths-confirmed}
-    entries: [reports, contracts, supabase/types, .starcistacks, .starciwork, package-lock.json]
+    entries: [reports, contracts, .starcistacks, .starciwork, package-lock.json]
 
 # The gate limits of the Sonar gate (knowledge/sonar-gate.yaml): a floor is a number that may not be lower, a ceiling a number that may not be higher.
 gateLimits:

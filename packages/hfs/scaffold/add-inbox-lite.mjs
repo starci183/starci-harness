@@ -169,7 +169,7 @@ export function addLiteWebhookInbox({
   validateProcessingOwner({ root, ...values, provider });
   const Provider = pascalOf(provider);
   const table = `${snakeOf(provider)}_inbox`;
-  const migrationsDir = path.join(root, "supabase", "migrations");
+  const migrationsDir = path.join(root, "db", "migrations");
   const migrations = fs.existsSync(migrationsDir)
     ? fs.readdirSync(migrationsDir).filter((file) => MIGRATION.test(file)).sort(byCodeUnit)
     : [];
@@ -197,7 +197,7 @@ export function addLiteWebhookInbox({
   const events = eventFiles(root, provider, renderValues);
   const planned = [
     {
-      relative: `supabase/migrations/${stamp}_${suffix}`,
+      relative: `db/migrations/${stamp}_${suffix}`,
       text: template("migration.sql.tpl", renderValues),
     },
     { relative: `${base}/index.ts`, text: template("index.ts.tpl", renderValues) },

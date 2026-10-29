@@ -18,7 +18,6 @@ RUN npm ci --ignore-scripts
 
 COPY be/tsconfig.json be/tsconfig.build.json be/
 COPY be/src be/src
-COPY supabase/types supabase/types
 COPY be/apps/api be/apps/api
 RUN npm run build:be
 

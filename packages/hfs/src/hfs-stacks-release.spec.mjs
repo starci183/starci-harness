@@ -34,7 +34,7 @@ function withFixture(edition, run) {
     imagesLock: 'evidence/images.lock', pointer: 'evidence/current.json',
     previous: 'evidence/previous.json', healthAssertions: ['api-ready', 'authenticated-smoke'],
   };
-  const backup = ['automation', 'supabase'].map(component => ({
+  const backup = ['automation', 'db'].map(component => ({
     component, target: 'encrypted-offsite', retention: '30d', owner: 'operations',
     restoreProof: 'evidence/' + component + '-restore.md',
   }));
@@ -45,7 +45,7 @@ function withFixture(edition, run) {
       automation: { role: 'sidecar', database: { provider: 'sqlite', volume: 'automation-data' }, volumes: ['automation-data'] },
       unused: { role: 'stateful' },
     },
-    backing: { supabase: { provider: 'supabase', managed: true } },
+    backing: { db: { provider: 'postgres', component: 'db' } },
     environments: { production: spec },
   };
   const model = { services: { api: { image: PINNED }, automation: { volumes: ['automation-data:/data'] } }, volumes: { 'automation-data': {} } };
@@ -73,7 +73,7 @@ function jobFixture(value) {
 
 const finderMutations = [
   { code: 'STACKS_RELEASE_UNDECLARED', violate(value) { delete value.spec.release; } },
-  { code: 'BACKUP_UNDECLARED', violate(value) { value.spec.backup = value.spec.backup.filter(entry => entry.component !== 'supabase'); } },
+  { code: 'BACKUP_UNDECLARED', violate(value) { value.spec.backup = value.spec.backup.filter(entry => entry.component !== 'db'); } },
   { code: 'BACKUP_PROOF_MISSING', violate(value) { delete value.spec.backup[0].restoreProof; } },
 ];
 
@@ -137,7 +137,7 @@ for (const edition of ['lite', 'full']) {
   test('BACKUP_UNDECLARED@' + edition + ': absent, incomplete and duplicate backup declarations fail', () => {
     const mutations = [
       value => { delete value.spec.backup; },
-      value => { value.spec.backup = value.spec.backup.filter(entry => entry.component !== 'supabase'); },
+      value => { value.spec.backup = value.spec.backup.filter(entry => entry.component !== 'db'); },
       value => { value.spec.backup = value.spec.backup.filter(entry => entry.component !== 'automation'); },
       ...['target', 'retention', 'owner'].map(key => value => { value.spec.backup[0][key] = ' '; }),
       value => { value.spec.backup.push({ ...value.spec.backup[0] }); },
@@ -321,11 +321,11 @@ for (const edition of ['lite', 'full']) {
 
   test('HFS_SCHEDULE_UNDECLARED@' + edition + ': pg_cron migrations and app SQL match declared jobs', () => {
     const schedules = [
-      { file: 'supabase/migrations/202610150001_report.sql', text: "SELECT cron.schedule('report', '0 3 * * *', 'select 1');" },
-      { file: 'supabase/migrations/202610150001_report.sql', text: "SELECT cron.schedule(job_name := 'report', schedule := '0 3 * * *', command := 'select 1');" },
-      { file: 'supabase/migrations/202610150001_report.sql', text: "SELECT cron.schedule_in_database('report', '0 3 * * *', 'select 1', 'postgres');" },
-      { file: 'supabase/migrations/202610150001_report.sql', text: "DO $$ BEGIN PERFORM cron.schedule('report', '0 3 * * *', 'select 1'); END $$;" },
-      { file: 'supabase/migrations/202610150001_report.sql', text: "DO $$ DECLARE jobid integer; BEGIN jobid := cron.schedule('report', '0 3 * * *', 'select 1'); END $$;" },
+      { file: 'db/migrations/202610150001_report.sql', text: "SELECT cron.schedule('report', '0 3 * * *', 'select 1');" },
+      { file: 'db/migrations/202610150001_report.sql', text: "SELECT cron.schedule(job_name := 'report', schedule := '0 3 * * *', command := 'select 1');" },
+      { file: 'db/migrations/202610150001_report.sql', text: "SELECT cron.schedule_in_database('report', '0 3 * * *', 'select 1', 'postgres');" },
+      { file: 'db/migrations/202610150001_report.sql', text: "DO $$ BEGIN PERFORM cron.schedule('report', '0 3 * * *', 'select 1'); END $$;" },
+      { file: 'db/migrations/202610150001_report.sql', text: "DO $$ DECLARE jobid integer; BEGIN jobid := cron.schedule('report', '0 3 * * *', 'select 1'); END $$;" },
       { file: 'be/src/modules/jobs/register.ts', text: "await db.query(\"SELECT cron.schedule('report', '0 3 * * *', 'select 1')\");" },
     ];
     for (const source of schedules) withFixture(edition, value => {
@@ -340,19 +340,19 @@ for (const edition of ['lite', 'full']) {
 
   test('HFS_SCHEDULE_UNDECLARED@' + edition + ': later migrations replace and remove named pg_cron jobs', () => {
     withFixture(edition, value => {
-      writeTracked(value, 'supabase/migrations/202610150001_report.sql', "SELECT cron.schedule('report', '0 4 * * *', 'select 1');");
-      writeTracked(value, 'supabase/migrations/202610150002_report.sql', "SELECT cron.schedule('report', '0 3 * * *', 'select 1');");
+      writeTracked(value, 'db/migrations/202610150001_report.sql', "SELECT cron.schedule('report', '0 4 * * *', 'select 1');");
+      writeTracked(value, 'db/migrations/202610150002_report.sql', "SELECT cron.schedule('report', '0 3 * * *', 'select 1');");
       value.doc.jobs = { report: { schedule: CRON, command: COMMAND } };
       assert.deepEqual(scheduleIssues(value), []);
       delete value.doc.jobs;
-      writeTracked(value, 'supabase/migrations/202610150003_report.sql', "SELECT cron.unschedule(job_name := 'report');");
+      writeTracked(value, 'db/migrations/202610150003_report.sql', "SELECT cron.unschedule(job_name := 'report');");
       assert.deepEqual(scheduleIssues(value), []);
     });
   });
 
   test('HFS_SCHEDULE_UNDECLARED@' + edition + ': an unschedule whose job name is not a literal removes nothing known and is not a finding of its own', () => {
     withFixture(edition, value => {
-      writeTracked(value, 'supabase/migrations/202610150003_drop.sql', "DO $$ DECLARE legacy record; BEGIN FOR legacy IN SELECT jobname FROM cron.job LOOP PERFORM cron.unschedule(legacy.jobname); END LOOP; END $$;");
+      writeTracked(value, 'db/migrations/202610150003_drop.sql', "DO $$ DECLARE legacy record; BEGIN FOR legacy IN SELECT jobname FROM cron.job LOOP PERFORM cron.unschedule(legacy.jobname); END LOOP; END $$;");
       assert.deepEqual(scheduleIssues(value), []);
       for (const issue of scheduleIssues(value)) assert.equal(typeof issue.path, 'string');
     });
@@ -377,9 +377,9 @@ for (const edition of ['lite', 'full']) {
     withFixture(edition, value => {
       writeTracked(value, 'be/src/modules/jobs/ordinary.ts', "// queue.upsertJobScheduler('report', {every: 1});\nconst text = \"cron.schedule('report', '* * * * *', 'select 1')\"; const record = {id: 'report', schedule: 'event-date'};");
       writeTracked(value, 'be/src/modules/jobs/report.spec.ts', "queue.upsertJobScheduler('report', {every: 1});");
-      writeTracked(value, 'supabase/migrations/_archive/202001010001_report.sql', "SELECT cron.schedule('report', '* * * * *', 'select 1');");
-      writeTracked(value, 'supabase/migrations/202610150001_noop.sql', "-- SELECT cron.schedule('report', '* * * * *', 'select 1');\nSELECT 'cron.schedule';");
-      writeTracked(value, 'supabase/migrations/202610150002_function.sql', "CREATE FUNCTION register_later() RETURNS void LANGUAGE plpgsql AS $$ BEGIN PERFORM cron.schedule('report', '* * * * *', 'select 1'); END $$; DO $$ BEGIN PERFORM 1; END $$;");
+      writeTracked(value, 'db/migrations/archive/202001010001_report.sql', "SELECT cron.schedule('report', '* * * * *', 'select 1');");
+      writeTracked(value, 'db/migrations/202610150001_noop.sql', "-- SELECT cron.schedule('report', '* * * * *', 'select 1');\nSELECT 'cron.schedule';");
+      writeTracked(value, 'db/migrations/202610150002_function.sql', "CREATE FUNCTION register_later() RETURNS void LANGUAGE plpgsql AS $$ BEGIN PERFORM cron.schedule('report', '* * * * *', 'select 1'); END $$; DO $$ BEGIN PERFORM 1; END $$;");
       assert.deepEqual(scheduleIssues(value), []);
     });
   });
@@ -388,7 +388,7 @@ for (const edition of ['lite', 'full']) {
     withFixture(edition, value => {
       delete value.spec.release;
       delete value.spec.backup[0].restoreProof;
-      value.spec.backup = value.spec.backup.filter(entry => entry.component !== 'supabase');
+      value.spec.backup = value.spec.backup.filter(entry => entry.component !== 'db');
       const source = 'be/src/modules/jobs/report.ts';
       writeTracked(value, source, "queue.upsertJobScheduler('report', {every: 60000});");
       saveDeclaration(value);

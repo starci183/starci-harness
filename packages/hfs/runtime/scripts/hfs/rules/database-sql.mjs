@@ -283,7 +283,7 @@ function rlsFindings(file, facts, exposed, forceRls) {
       findings.push(found(DB_RLS_REQUIRED, file, `${file}:${table.line} ${operation} ${qualified} into the exposed schema ${table.schema} without a later \`alter table ${qualified} enable row level security\` in the same migration`, { line: table.line, table: qualified }));
     }
     if (forceRls.has(qualified) && !relationHasLaterEvent(facts.forces, table)) {
-      findings.push(found(DB_RLS_REQUIRED, file, `${file}:${table.line} ${operation} ${qualified}, which hfs.json supabase.forceRls declares definer-owned, without \`alter table ${qualified} force row level security\` in the same migration`, { line: table.line, table: qualified }));
+      findings.push(found(DB_RLS_REQUIRED, file, `${file}:${table.line} ${operation} ${qualified}, which hfs.json db.forceRls declares definer-owned, without \`alter table ${qualified} force row level security\` in the same migration`, { line: table.line, table: qualified }));
     }
   }
   findings.push(...rlsWeakeningFindings(file, facts.rlsEvents, exposed));

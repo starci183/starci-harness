@@ -5,7 +5,7 @@ import { parseYaml } from '../../engine/yaml.mjs';
 import { invocationDir } from '../lib/roots.mjs';
 import { migrationStamp } from './rules/database-migrations.mjs';
 import { MIGRATIONS_DIR } from './rules/database-constants.mjs';
-import { DbVerbError, dbOptions, dbAppRoot, dbSqlFiles, runDbSupabase, repairArgs, dbFailure } from './db-baseline-verb.mjs';
+import { DbVerbError, dbOptions, dbAppRoot, dbSqlFiles, runDbPostgres, repairOp, repairLine, dbFailure } from './db-baseline-verb.mjs';
 
 /** The map value of one old version: a new version, or { file, to, applied } for the colliding-versions case. */
 function mapEntry(old, raw) {
@@ -39,16 +39,16 @@ function sourceOf(entry, active) {
  * of the file that ran). No row means nothing ran; a row named for the other file means the one that stays ran. A history that cannot be read is
  * not guessed: the entry has to say `applied`.
  */
-function recordedAsApplied(root, source, old, local, ports) {
+function recordedAsApplied(root, source, old, urlEnv, ports) {
   const unreadable = new DbVerbError(`version ${old} is shared by several migrations and the history could not be read; say which one ran with "${old}": { file: <name>, applied: true|false }`);
   let rows;
-  try { rows = JSON.parse(runDbSupabase(root, ['db', 'query', `select name from supabase_migrations.schema_migrations where version = '${old}'`, local ? '--local' : '--linked', '--output', 'json', '--agent', 'no'], ports)); } catch { throw unreadable; }
+  try { rows = JSON.parse(runDbPostgres(root, { kind: 'query', sql: `select name from supabase_migrations.schema_migrations where version = '${old}'` }, ports, urlEnv)); } catch { throw unreadable; }
   if (!Array.isArray(rows) || (rows.length > 0 && typeof rows[0]?.name !== 'string')) throw unreadable;
   return rows.length > 0 && rows[0].name === source.name.slice(15).replace(/\.sql$/, '');
 }
 
 /** YAML maps use quoted UTC stamps as keys and a new version, or { file, to?, applied? }, as values (or a versions: mapping). */
-function restampPlan(root, mapFile, { local = false, ports = {} } = {}) {
+function restampPlan(root, mapFile, { urlEnv = 'DATABASE_URL', ports = {} } = {}) {
   if (!mapFile) throw new DbVerbError('restamp requires --map <restamp.yaml>');
   let document;
   try { document = parseYaml(fs.readFileSync(path.resolve(root, mapFile), 'utf8')); }
@@ -67,7 +67,7 @@ function restampPlan(root, mapFile, { local = false, ports = {} } = {}) {
     if (occupied.has(next) || targets.has(next)) throw new DbVerbError('restamp targets must be unique unoccupied versions');
     targets.add(next);
     // a version two files share ran for at most one of them: the history says which, unless the entry does
-    const applied = entry.applied ?? (shared ? recordedAsApplied(root, source, old, local, ports) : true);
+    const applied = entry.applied ?? (shared ? recordedAsApplied(root, source, old, urlEnv, ports) : true);
     return { old, next, source: source.file, target: `${MIGRATIONS_DIR}/${source.name.replace(old, next)}`, applied };
   });
   const moved = new Map(steps.map((step) => [step.source, step.next]));
@@ -79,16 +79,17 @@ function restampPlan(root, mapFile, { local = false, ports = {} } = {}) {
 /** The complete map is validated before any repair or file mutation. */
 export function dbRestampMain(argv, { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), ...ports } = {}) {
   try {
-    const opts = dbOptions(argv, ['cwd', 'map', 'apply', 'local']);
+    const opts = dbOptions(argv, ['cwd', 'map', 'apply', 'url-env']);
+    const urlEnv = opts['url-env'] ?? 'DATABASE_URL';
     const root = dbAppRoot(cwd, opts);
-    const steps = restampPlan(root, opts.map, { local: opts.local, ports });
-    const repairs = steps.filter((step) => step.applied).flatMap((step) => [repairArgs(step.old, 'reverted', opts.local), repairArgs(step.next, 'applied', opts.local)]);
+    const steps = restampPlan(root, opts.map, { urlEnv, ports });
+    const repairs = steps.filter((step) => step.applied).flatMap((step) => [repairOp(step.old, 'reverted'), repairOp(step.next, 'applied', step.target.split('/').at(-1).slice(15).replace(/\.sql$/, ''))]);
     stdout(`${opts.apply ? 'apply' : 'preview'} restamp ${steps.length} migrations\n`);
     for (const step of steps) stdout(`${step.source} -> ${step.target}\n`);
-    for (const args of repairs) stdout(`supabase ${args.join(' ')}\n`);
+    for (const op of repairs) stdout(`${repairLine(op)}\n`);
     if (!opts.apply) return 0;
     // CLI failures never echo credentials and leave the local files intact for an explicit retry.
-    for (const args of repairs) runDbSupabase(root, args, ports);
+    for (const op of repairs) runDbPostgres(root, op, ports, urlEnv);
     for (const step of steps) {
       const source = path.join(root, step.source);
       const text = fs.readFileSync(source, 'utf8').replace(/^\s*--\s*starci:restamp\s+\d{14}\s+\d{14}\s*\r?\n/, '');

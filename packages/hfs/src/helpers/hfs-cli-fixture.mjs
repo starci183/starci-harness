@@ -185,6 +185,8 @@ export function writeCleanRepo(declaration = APP, { declare = true, into, name =
   for (const file of imageFiles(resolved)) put(file.path, file.content);
   const required = resolver.requiredPaths().paths.map((entry) => entry.path);
   for (const file of required) if (!file.endsWith('/')) put(file, requiredContent(file));
+  // A lite app's schema authority holds at least one migration (app.db.migrations, minInstances 1).
+  if (resolved.edition === 'lite') put('db/migrations/20260101000000_baseline.sql', 'select 1;\n');
   writeFrontend(declaration, required, writers);
   writeBackend(declaration, required, writers);
   // Both sides' tsconfig.json are the managed ones (they extend @starci/tsconfig/be.json or next.json, see installTypeScript).

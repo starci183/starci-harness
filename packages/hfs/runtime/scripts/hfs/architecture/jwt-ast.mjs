@@ -1,10 +1,8 @@
-// supabase-ast.mjs - shared TypeScript-symbol and expression helpers for the front-end and back-end Supabase
-// architecture checks. Recognition follows imported declarations and inferred types, never local spelling alone.
+// jwt-ast.mjs - shared TypeScript-symbol and expression helpers of the identity checks (token verification and the principal).
+// Recognition follows imported declarations and inferred types, never local spelling alone.
 import { unwrapExpression } from '../../lib/ts-analysis.mjs';
 import { accessName as memberName, hasAnyFlag } from '../../lib/ts-ast.mjs';
 export { accessName as memberName } from '../../lib/ts-ast.mjs';
-
-export const SUPABASE_MODULES = Object.freeze({ has: name => typeof name === 'string' && name.startsWith('@supabase/') });
 
 export const moduleNameOf = (ts, node) => {
   if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier)) return node.moduleSpecifier.text;
@@ -19,38 +17,7 @@ export const importedFrom = (kit, checker, node, modules, names = null) => {
   return Boolean(binding && modules.has(binding.module) && (names === null || names.has(binding.name)));
 };
 
-const declarationFromSupabase = (declaration) => /(?:^|\/)node_modules\/@supabase\/[^/]+(?:\/|$)/u
-  .test(String(declaration?.getSourceFile?.().fileName ?? '').replaceAll('\\', '/'));
-
-const typeFromSupabase = (checker, node) => {
-  let type;
-  try { type = checker.getTypeAtLocation(node); } catch { return false; }
-  const queue = [type];
-  const seen = new Set();
-  while (queue.length) {
-    const item = queue.shift();
-    if (!item || seen.has(item)) continue;
-    seen.add(item);
-    if ([item.symbol, item.aliasSymbol].some((symbol) => symbol?.declarations?.some(declarationFromSupabase))) return true;
-    if (item.types) queue.push(...item.types);
-    if (item.target && item.target !== item) queue.push(item.target);
-  }
-  return false;
-};
-
-const signatureFromSupabase = (checker, call) => {
-  try { return declarationFromSupabase(checker.getResolvedSignature(call)?.declaration); } catch { return false; }
-};
-
 export const unwrap = (ts, node) => unwrapExpression(ts, node, { awaitExpressions: true, satisfiesExpressions: false });
-
-const isSupabaseValue = (kit, checker, node) => {
-  const current = unwrap(kit.ts, node);
-  if (!current) return false;
-  if (importedFrom(kit, checker, current, SUPABASE_MODULES)) return true;
-  if (kit.ts.isCallExpression(current) && signatureFromSupabase(checker, current)) return true;
-  return typeFromSupabase(checker, current);
-};
 
 export const callName = (ts, call) => ts.isCallExpression(call) ? memberName(ts, call.expression) : null;
 
@@ -71,74 +38,6 @@ export const chainParts = (ts, expression) => {
     break;
   }
   return names;
-};
-
-export const isSupabaseCall = (kit, checker, node) => kit.ts.isCallExpression(node)
-  && (signatureFromSupabase(checker, node) || isSupabaseValue(kit, checker,
-    kit.ts.isPropertyAccessExpression(node.expression) || kit.ts.isElementAccessExpression(node.expression) ? node.expression.expression : node.expression));
-
-const authStorageValue = (kit, checker, expression, seen = new Set()) => {
-  const current = unwrap(kit.ts, expression);
-  if (!current || seen.has(current)) return false;
-  seen.add(current);
-  if (['auth', 'storage'].includes(memberName(kit.ts, current)) && isSupabaseValue(kit, checker, current.expression)) return true;
-  if (checker.getTypeAtLocation(current).symbol?.declarations?.some(declaration =>
-    /\/node_modules\/@supabase\/(?:storage-js|auth-js)\//u.test(String(declaration.getSourceFile().fileName).replaceAll('\\', '/')))) return true;
-  if (!kit.ts.isIdentifier(current)) return false;
-  return kit.declarationsOf(checker, current).some(declaration =>
-    (kit.ts.isVariableDeclaration(declaration) || kit.ts.isPropertyDeclaration(declaration)) && declaration.initializer
-    && authStorageValue(kit, checker, declaration.initializer, seen));
-};
-
-const chainAccesses = (ts, node) => {
-  const accesses = [];
-  let current = unwrap(ts, node);
-  while (current) {
-    if (ts.isCallExpression(current)) current = unwrap(ts, current.expression);
-    else if (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
-      accesses.unshift(current);
-      current = unwrap(ts, current.expression);
-    } else break;
-  }
-  return accesses;
-};
-
-/** The first forbidden SDK access in a call chain, anchored once even when more methods follow it. */
-export const supabaseDataAccess = (kit, checker, node, members, { storageAllowed = false } = {}) => {
-  for (const access of chainAccesses(kit.ts, node)) {
-    const name = memberName(kit.ts, access);
-    if (storageAllowed && (name === 'storage' || name === 'auth')) return null;
-    if (members.has(name) && isSupabaseValue(kit, checker, access.expression)) {
-      if (storageAllowed && authStorageValue(kit, checker, access.expression)) return null;
-      return { name, node: access };
-    }
-  }
-  return null;
-};
-
-export const isDatabaseType = (ts, node) => {
-  if (!node) return false;
-  if (ts.isTypeReferenceNode(node)) {
-    const name = ts.isIdentifier(node.typeName) ? node.typeName.text : node.typeName.right.text;
-    return name === 'Database';
-  }
-  return false;
-};
-
-export const supabaseClientType = (kit, checker, node) => {
-  if (!node || !kit.ts.isTypeReferenceNode(node)) return false;
-  const name = kit.ts.isIdentifier(node.typeName) ? node.typeName : null;
-  return Boolean(name && importedFrom(kit, checker, name, SUPABASE_MODULES, new Set(['SupabaseClient'])));
-};
-
-export const contextTypesClient = (kit, checker, call) => {
-  let parent = call.parent;
-  while (parent && (kit.ts.isParenthesizedExpression(parent) || kit.ts.isAsExpression(parent))) {
-    if (kit.ts.isAsExpression(parent) && supabaseClientType(kit, checker, parent.type) && isDatabaseType(kit.ts, parent.type.typeArguments?.[0])) return true;
-    parent = parent.parent;
-  }
-  return kit.ts.isVariableDeclaration(parent) && supabaseClientType(kit, checker, parent.type)
-    && isDatabaseType(kit.ts, parent.type.typeArguments?.[0]);
 };
 
 export const reportAt = (violations, kit, ruleId, file, node, message, extra = {}) => {

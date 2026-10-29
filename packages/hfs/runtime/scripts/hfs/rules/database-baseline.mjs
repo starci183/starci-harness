@@ -8,8 +8,8 @@ import { found, readText } from './read.mjs';
 import { migrationStamp } from './database-migrations.mjs';
 import { DB_BASELINE_SHAPE, DB_ARCHIVE_MUTATED, MIGRATIONS_DIR, MIGRATIONS_ARCHIVE_DIR } from './database-constants.mjs';
 
-const ACTIVE = /^supabase\/migrations\/\d{14}_[^/]+\.sql$/;
-const ARCHIVED = /^supabase\/migrations\/_archive\/\d{14}_[^/]+\.sql$/;
+const ACTIVE = /^db\/migrations\/\d{14}_[^/]+\.sql$/;
+const ARCHIVED = /^db\/migrations\/archive\/\d{14}_[^/]+\.sql$/;
 const stampOf = (file) => /(?:^|\/)(\d{14})_/.exec(file)?.[1] ?? null;
 
 /** Header comments only: SQL literals and later comments cannot impersonate a baseline marker. */
@@ -68,7 +68,7 @@ function shapeFindings(repoRoot, active, archived) {
   if (!archived.length) return { findings: [], marked };
   const findings = [];
   if (marked.length !== 1) {
-    findings.push(found(DB_BASELINE_SHAPE, MIGRATIONS_DIR, 'a nonempty _archive requires exactly one active -- starci:baseline <archived-last-stamp> header marker'));
+    findings.push(found(DB_BASELINE_SHAPE, MIGRATIONS_DIR, 'a nonempty archive requires exactly one active -- starci:baseline <archived-last-stamp> header marker'));
     return { findings, marked };
   }
   const latest = archived.map(stampOf).filter((stamp) => stamp && migrationStamp(stamp) !== null).sort((left, right) => left.localeCompare(right)).at(-1);

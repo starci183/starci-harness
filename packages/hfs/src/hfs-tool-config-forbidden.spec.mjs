@@ -21,7 +21,7 @@ for (const edition of ['lite', 'full']) {
       const declaration = structuredClone(APP);
       declaration.edition = edition;
       if (edition === 'lite') declaration.sides.be.connections = [
-        { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'supabase' },
+        { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' },
       ];
       const canonical = `${side}/eslint.config.mjs`;
       const rendered = renderTargets(declaration, PRESETS).find((target) => target.path === canonical);

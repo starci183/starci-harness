@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 # The job shape of the StarCi CI standard (knowledge/hfs/ci-standard.yaml): fast, lint per side, the unit run in shards, one coverage merge, build,
-# sonar, and the database types of the lite edition. Timeouts and the shard count come from ci.jobs of .starcistacks/application-stacks.yaml (defaults in the standard).
+# and sonar. Timeouts and the shard count come from ci.jobs of .starcistacks/application-stacks.yaml (defaults in the standard).
 jobs:
   fast:
     timeout-minutes: {{timeoutFast}}
@@ -110,19 +110,3 @@ jobs:
           NODE_OPTIONS: {{nodeOptions}}
 
 {{sonarJob}}
-  db-types:
-    timeout-minutes: {{timeoutDbTypes}}
-    runs-on: ubuntu-latest
-    steps:
-{{> app/ci-workflows/install-steps.yml}}
-      - name: start Supabase
-        run: npm run db:start
-      - name: apply migrations
-        run: npm run db:reset
-      - name: regenerate database types
-        run: npm run db:types
-      - name: database types are committed
-        run: git diff --exit-code -- supabase/types/database.types.ts
-      - name: stop Supabase
-        if: always()
-        run: npm run db:stop

@@ -1,5 +1,3 @@
-// proves: DB_BE_ONLY_ACCESS@lite, DB_BE_ONLY_ACCESS@full
-// proves: DB_REALTIME_UNLISTED@lite, DB_REALTIME_UNLISTED@full
 // proves: DB_APP_ROLE@lite, DB_APP_ROLE@full
 // proves: DB_FORCE_RLS_DEFAULT@lite, DB_FORCE_RLS_DEFAULT@full
 // proves: DB_POLICY_TAUTOLOGY@lite, DB_POLICY_TAUTOLOGY@full
@@ -19,18 +17,18 @@ import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
 import { withoutGitLocalEnv } from '../runtime/scripts/lib/git.mjs';
 
 const made = [];
-const MIGRATION = 'supabase/migrations/20260101120000_access.sql';
-const NEXT_MIGRATION = 'supabase/migrations/20260102120000_hardening.sql';
+const MIGRATION = 'db/migrations/20260101120000_access.sql';
+const NEXT_MIGRATION = 'db/migrations/20260102120000_hardening.sql';
 
 test.after(() => {
   for (const dir of made) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-function fixtureRepo(edition, contents, supabase = {}) {
+function fixtureRepo(edition, contents, db = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-access-'));
   made.push(dir);
   const declaration = {
-    hfs: 3, kind: 'app', project: 'access', edition, supabase,
+    hfs: 3, kind: 'app', project: 'access', edition, db,
     sides: { be: { apps: [] }, fe: { apps: [] } },
   };
   fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify(declaration));
@@ -47,7 +45,7 @@ function fixtureRepo(edition, contents, supabase = {}) {
 
 async function findingsFor(edition, sql, options = {}) {
   const contents = { [MIGRATION]: sql, ...options.contents };
-  const repoRoot = fixtureRepo(edition, contents, options.supabase);
+  const repoRoot = fixtureRepo(edition, contents, options.db);
   return checkDatabase({ repoRoot, files: Object.keys(contents) });
 }
 
@@ -57,7 +55,7 @@ async function expectCode(edition, code, sql, violates, options) {
   assert.equal(matching.length > 0, violates, JSON.stringify(findings, null, 2));
   for (const finding of matching) {
     assert.equal(finding.level, 'error');
-    assert.ok(finding.path.startsWith('supabase/migrations/'));
+    assert.ok(finding.path.startsWith('db/migrations/'));
   }
 }
 
@@ -65,7 +63,7 @@ const table = `
 create table public.items (id uuid primary key, user_id uuid not null, tenant_id uuid);
 alter table public.items enable row level security;
 `;
-const listed = { supabase: { directAccess: ['public.items'] } };
+const listed = {};
 const memberPolicy = (predicate, action = 'select') => `${table}
 create policy items_member_${action} on public.items for ${action} to authenticated
   ${action === 'insert' ? 'with check' : 'using'} (${predicate});`;
@@ -77,36 +75,6 @@ create function public.identity(subject uuid) returns uuid language sql security
 set search_path = '' as $$ select subject $$;
 `;
 
-const accessCases = [
-  ['authenticated table grant', `${table} grant select on public.items to authenticated;`, true],
-  ['authenticated policy', memberPolicy('user_id = auth.uid()'), true],
-  ['authenticated direct access grant', `${table} grant select on public.items to authenticated;`, false, listed],
-  ['authenticated direct access policy', memberPolicy('user_id = auth.uid()'), false, listed],
-  ['unqualified listed table', memberPolicy('user_id = auth.uid()'), false, { supabase: { directAccess: ['items'] } }],
-  ['unrelated exception', memberPolicy('user_id = auth.uid()'), true, { supabase: { directAccess: ['private.items'] } }],
-  ['private authenticated table grant', 'create table private.items (id uuid); grant select on private.items to authenticated;', false],
-  ['authenticated sequence grant', 'grant usage, select on sequence public.items_id_seq to authenticated;', true],
-  ['anonymous select without a public read policy', `${table} grant select on public.items to anon;`, true],
-  ['anonymous select covered by public read', `${publicRead} grant select on public.items to anon;`, false],
-  ['anonymous write despite public read', `${publicRead} grant select, insert on public.items to anon;`, true],
-  ['anonymous write policy', `${table} create policy items_anon_insert on public.items for insert to anon with check (user_id = auth.uid());`, true],
-  ['anonymous listed exception', `${table} grant insert on public.items to anon;`, false, listed],
-  ['broad exposed authenticated grant', `${table} grant select on all tables in schema public to authenticated;`, true],
-  ['non-table schema usage grant', 'grant usage on schema public to authenticated;', false],
-  ['other exposed schema', 'create table api.items (id uuid); alter table api.items enable row level security; grant select on api.items to authenticated;', true,
-    { contents: { 'supabase/config.toml': '[api]\nschemas = ["public", "api"]\n' } }],
-];
-
-const realtimeCases = [
-  ['add an unlisted table', `${table} alter publication supabase_realtime add table public.items;`, true],
-  ['set an unlisted table', `${table} alter publication supabase_realtime set table public.items;`, true],
-  ['create publication with unlisted table', `${table} create publication supabase_realtime for table public.items;`, true],
-  ['create publication for all tables', `${table} create publication supabase_realtime for all tables;`, true],
-  ['add a listed table', `${table} alter publication supabase_realtime add table public.items;`, false, listed],
-  ['set a listed table', `${table} alter publication supabase_realtime set table public.items;`, false, listed],
-  ['another publication', `${table} create publication analytics_feed for table public.items;`, false],
-];
-
 const roleCases = [
   ['superuser application role', 'create role app_be login noinherit nobypassrls superuser;', true],
   ['bypassrls application role', 'create role app_be login noinherit bypassrls;', true],
@@ -117,7 +85,7 @@ const roleCases = [
   ['grant all on one table', `${table} grant all privileges on public.items to app_be;`, true],
   ['bounded table and schema grants', `${table} grant usage on schema public to app_be; grant select, insert, update, delete on public.items to app_be;`, false],
   ['alter role to bypassrls', 'create role app_be login noinherit nobypassrls; alter role app_be bypassrls;', true],
-  ['declared role is checked', 'create role backend login noinherit bypassrls;', true, { supabase: { appRole: 'backend' } }],
+  ['declared role is checked', 'create role backend login noinherit bypassrls;', true, { db: { appRole: 'backend' } }],
   ['another role is independent', 'create role maintenance superuser;', false],
 ];
 
@@ -127,10 +95,10 @@ const forceCases = [
   ['owner role enables force RLS', `${owned} alter table public.items force row level security;`, false],
   ['SET ROLE determines the creator', `set role app_be; ${table} reset role;`, true],
   ['SET ROLE with force RLS', `set role app_be; ${table} alter table public.items force row level security; reset role;`, false],
-  ['reasoned table exemption', owned, false, { supabase: { forceRlsExemptions: [{ table: 'public.items', reason: 'The documented owner path must bypass its own RLS.' }] } }],
-  ['empty exemption reason is refused', owned, true, { supabase: { forceRlsExemptions: [{ table: 'public.items', reason: '' }] } }],
-  ['whitespace exemption reason is refused', owned, true, { supabase: { forceRlsExemptions: [{ table: 'public.items', reason: '   ' }] } }],
-  ['unrelated exemption cannot cover the table', owned, true, { supabase: { forceRlsExemptions: [{ table: 'public.other', reason: 'Owner maintenance.' }] } }],
+  ['reasoned table exemption', owned, false, { db: { forceRlsExemptions: [{ table: 'public.items', reason: 'The documented owner path must bypass its own RLS.' }] } }],
+  ['empty exemption reason is refused', owned, true, { db: { forceRlsExemptions: [{ table: 'public.items', reason: '' }] } }],
+  ['whitespace exemption reason is refused', owned, true, { db: { forceRlsExemptions: [{ table: 'public.items', reason: '   ' }] } }],
+  ['unrelated exemption cannot cover the table', owned, true, { db: { forceRlsExemptions: [{ table: 'public.other', reason: 'Owner maintenance.' }] } }],
   ['another owner has no default-force obligation', `${table} alter table public.items owner to migration_owner;`, false],
 ];
 
@@ -198,7 +166,6 @@ const storageCases = [
 ];
 
 const ruleCases = [
-  ['DB_BE_ONLY_ACCESS', accessCases], ['DB_REALTIME_UNLISTED', realtimeCases],
   ['DB_APP_ROLE', roleCases], ['DB_FORCE_RLS_DEFAULT', forceCases],
   ['DB_POLICY_TAUTOLOGY', policyCases], ['DB_VIEW_UNSAFE', viewCases],
   ['DB_RLS_REQUIRED', rlsCases], ['DB_DEFINER_REVOKE', definerCases],
@@ -206,9 +173,6 @@ const ruleCases = [
 ];
 
 const historicalCases = [
-  ['grant revoked by the next migration', 'DB_BE_ONLY_ACCESS', `${table} grant select, update on public.items to authenticated;`, 'revoke all on public.items from authenticated;'],
-  ['authenticated policy dropped by the next migration', 'DB_BE_ONLY_ACCESS', memberPolicy('user_id = auth.uid()'), 'drop policy items_member_select on public.items;'],
-  ['authenticated policy reassigned by the next migration', 'DB_BE_ONLY_ACCESS', memberPolicy('user_id = auth.uid()'), 'alter policy items_member_select on public.items to app_be;'],
   ['view access revoked by the next migration', 'DB_VIEW_UNSAFE', `${table} create view public.item_view as select id from public.items;`, 'revoke select on public.item_view from anon, authenticated;'],
   ['definer revoke completed by the next migration', 'DB_DEFINER_REVOKE', `${definer} revoke execute on function public.identity(uuid) from public, anon;`, 'revoke execute on function public.identity(uuid) from authenticated;'],
   ['definer schema revoke completed by the next migration', 'DB_DEFINER_REVOKE', `${definer} revoke execute on function public.identity(uuid) from public, anon;`, 'revoke all on all functions in schema public from authenticated;'],
@@ -268,14 +232,4 @@ for (const edition of ['lite', 'full']) {
 
 // The same literal-block proof for R254: one block per code, a violating and a passing migration each.
 for (const edition of ['lite', 'full']) {
-  test(`DB_BE_ONLY_ACCESS@${edition}: an authenticated table grant is refused and a listed direct-access table passes`, async () => {
-    await expectCode(edition, 'DB_BE_ONLY_ACCESS', `${table} grant select on public.items to authenticated;`, true);
-    await expectCode(edition, 'DB_BE_ONLY_ACCESS', `${table} grant select on public.items to authenticated;`, false, listed);
-    await expectCode(edition, 'DB_BE_ONLY_ACCESS', `${publicRead} grant select on public.items to anon;`, false);
-  });
-  test(`DB_REALTIME_UNLISTED@${edition}: publishing an unlisted table is refused and a listed one passes`, async () => {
-    await expectCode(edition, 'DB_REALTIME_UNLISTED', `${table} alter publication supabase_realtime add table public.items;`, true);
-    await expectCode(edition, 'DB_REALTIME_UNLISTED', `${table} alter publication supabase_realtime add table public.items;`, false, listed);
-    await expectCode(edition, 'DB_REALTIME_UNLISTED', `${table} create publication analytics_feed for table public.items;`, false);
-  });
 }

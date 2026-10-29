@@ -1,10 +1,8 @@
-// R254-R256 inspect the final database access state, so later revokes and policy drops retire old browser doors.
+// R255-R256 inspect the final database access state: the application role, forced RLS, policies, views and storage prefixes.
 import { found } from './read.mjs';
 import { parseSql } from '../sql/pg-parse.mjs';
 import { eachInOrder } from '../../lib/in-order.mjs';
 
-export const DB_BE_ONLY_ACCESS = 'DB_BE_ONLY_ACCESS';
-export const DB_REALTIME_UNLISTED = 'DB_REALTIME_UNLISTED';
 export const DB_APP_ROLE = 'DB_APP_ROLE';
 export const DB_FORCE_RLS_DEFAULT = 'DB_FORCE_RLS_DEFAULT';
 export const DB_POLICY_TAUTOLOGY = 'DB_POLICY_TAUTOLOGY';
@@ -20,8 +18,6 @@ const unwrap = (node) => node?.TypeCast ? unwrap(node.TypeCast.arg) : node;
 const stringValue = (node) => unwrap(node)?.A_Const?.sval?.sval;
 const operator = (node) => names(node.name);
 const publicRead = (policy) => policy.cmd === 'select' && policy.name.endsWith('_public_read');
-const anonymous = (role) => role === 'anon' || role === 'public';
-const browserRole = (role) => anonymous(role) || role === 'authenticated';
 const AND = ['AND', 'EXPR'].join('_');
 const OR = ['OR', 'EXPR'].join('_');
 const NOT = ['NOT', 'EXPR'].join('_');
@@ -119,40 +115,10 @@ function updatePrivileges(state, granting, privileges) {
   if (privileges.some((privilege) => ['select', 'all'].includes(privilege))) state.revokedRead = true;
 }
 
-function grantAccessFindings(grants, policies, exposed, directAccess) {
-  const findings = [];
-  for (const state of grants.values()) {
-    if (!state.privileges.size || !browserRole(state.role)) continue;
-    if (!exposed.has(state.target.split('.')[0]) || directAccess.has(state.target)) continue;
-    const readOnly = state.privileges.size === 1 && state.privileges.has('select');
-    const policy = policies.some((item) => `${item.schema}.${item.table}` === state.target && publicRead(item)
-      && item.roles.some((role) => role === state.role || role === 'public'));
-    if (anonymous(state.role) && state.objtype === 'OBJECT_TABLE' && readOnly && policy) continue;
-    findings.push(note(DB_BE_ONLY_ACCESS, state, `grants ${state.role} data privileges on ${state.target}; browser data access requires supabase.directAccess, or anonymous SELECT beside *_public_read`, { table: state.target }));
-  }
-  return findings;
-}
-
-function defaultAccessFindings(analyses, exposed) {
-  const findings = [];
-  for (const { file, facts } of analyses) {
-    for (const defaults of facts.defaultPrivileges) {
-      if (!defaults.grant || !['OBJECT_TABLE', SEQUENCE].includes(defaults.objtype)) continue;
-      if (defaults.schemas?.length && !defaults.schemas.some((schema) => exposed.has(schema))) continue;
-      if (defaults.grantees.some(browserRole)) findings.push(note(DB_BE_ONLY_ACCESS, { ...defaults, file }, 'grants default browser data privileges; exposed data grants must be explicit per table'));
-    }
-  }
-  return findings;
-}
-
-function policyFindings(policies, exposed, directAccess, appRole, helpers) {
+function policyFindings(policies, appRole, helpers) {
   const findings = [];
   for (const policy of policies) {
     const table = `${policy.schema}.${policy.table}`;
-    const listed = directAccess.has(table);
-    if (exposed.has(policy.schema) && !listed && policy.roles.some((role) => browserRole(role) && !(anonymous(role) && publicRead(policy)))) {
-      findings.push(note(DB_BE_ONLY_ACCESS, policy, `policy ${policy.name} opens ${table} to browser roles; list intentional access in supabase.directAccess`, { table, policy: policy.name }));
-    }
     if (policy.roles.every((role) => role === appRole) || publicRead(policy)) continue;
     const predicates = [policy.qual, policy.withCheck].filter((expression) => expression !== undefined);
     if (!predicates.length || predicates.some((expression) => !principalPredicate(expression, helpers))) {
@@ -185,34 +151,6 @@ function roleStatementFindings(statement, appRole) {
   const creationInvalid = type === 'CreateRoleStmt' && (options.get('canlogin') !== true || options.get('inherit') !== false);
   if (!unsafe && !creationInvalid) return [];
   return [note(DB_APP_ROLE, statement, `${appRole} must LOGIN NOINHERIT without SUPERUSER, BYPASSRLS or administrative role attributes`)];
-}
-
-function publicationTargets(node, defaultSchema) {
-  if (node.for_all_tables) return ['*'];
-  return (node.pubobjects ?? []).map(({ PublicationObjSpec: spec }) => {
-    if (spec.pubtable?.relation) return relationName(spec.pubtable.relation, defaultSchema);
-    return `${spec.name ?? defaultSchema}.*`;
-  });
-}
-
-function publicationFindings(analyses, directAccess) {
-  const tables = new Map();
-  for (const { file, facts } of analyses) {
-    for (const statement of facts.statements) {
-      applyPublication(tables, { ...statement, file });
-    }
-  }
-  return [...tables].filter(([table]) => !directAccess.has(table)).map(([table, source]) => note(DB_REALTIME_UNLISTED, source, `supabase_realtime publishes unlisted ${table}; every browser data table must be in supabase.directAccess`, { table }));
-}
-
-function applyPublication(tables, statement) {
-  const { type, node, defaultSchema } = statement;
-  if (!['CreatePublicationStmt', 'AlterPublicationStmt'].includes(type) || node.pubname !== 'supabase_realtime') return;
-  if (type === 'CreatePublicationStmt' || node.action === 'AP_SetObjects') tables.clear();
-  for (const table of publicationTargets(node, defaultSchema)) {
-    if (node.action === 'AP_DropObjects') tables.delete(table);
-    else tables.set(table, statement);
-  }
 }
 
 function tableStates(analyses) {
@@ -251,10 +189,10 @@ function applyTableAlter(tables, statement) {
   tables.set(key, table);
 }
 
-function forceFindings(analyses, supabase, appRole) {
-  const exemptions = new Set((supabase.forceRlsExemptions ?? []).filter((item) => typeof item?.table === 'string' && typeof item.reason === 'string' && item.reason.trim()).map((item) => qualify(item.table)));
+function forceFindings(analyses, db, appRole) {
+  const exemptions = new Set((db.forceRlsExemptions ?? []).filter((item) => typeof item?.table === 'string' && typeof item.reason === 'string' && item.reason.trim()).map((item) => qualify(item.table)));
   return [...tableStates(analyses)].filter(([name, table]) => table.owner === appRole && !table.forced && !exemptions.has(name))
-    .map(([table, source]) => note(DB_FORCE_RLS_DEFAULT, source, `${appRole} owns ${table} without FORCE ROW LEVEL SECURITY; an exemption needs supabase.forceRlsExemptions with a table and reason`, { table }));
+    .map(([table, source]) => note(DB_FORCE_RLS_DEFAULT, source, `${appRole} owns ${table} without FORCE ROW LEVEL SECURITY; an exemption needs hfs.json db.forceRlsExemptions with a table and reason`, { table }));
 }
 
 function viewFindings(analyses, grants, exposed) {
@@ -318,10 +256,9 @@ function storagePrefixFindings(policies, helpers) {
 }
 
 /** All new access checks run on the ordered active migrations in either edition, through checkDatabase. */
-export async function databaseAccessFindings({ analyses, exposed, supabase = {} }) {
-  const declared = supabase ?? {};
+export async function databaseAccessFindings({ analyses, exposed, db = {} }) {
+  const declared = db ?? {};
   const appRole = declared.appRole ?? 'app_be';
-  const directAccess = new Set((declared.directAccess ?? []).filter((table) => typeof table === 'string').map(qualify));
   const policyMap = new Map();
   const grants = new Map();
   for (const { file, facts } of analyses) {
@@ -331,10 +268,7 @@ export async function databaseAccessFindings({ analyses, exposed, supabase = {} 
   const policies = [...policyMap.values()];
   const helpers = await principalHelpers(analyses);
   return [
-    ...grantAccessFindings(grants, policies, exposed, directAccess),
-    ...defaultAccessFindings(analyses, exposed),
-    ...policyFindings(policies, exposed, directAccess, appRole, helpers),
-    ...publicationFindings(analyses, directAccess),
+    ...policyFindings(policies, appRole, helpers),
     ...roleFindings(analyses, appRole),
     ...forceFindings(analyses, declared, appRole),
     ...viewFindings(analyses, grants, exposed),

@@ -6,8 +6,5 @@ const required = (name: string, value: string | undefined): string => {
 
 /** The public origin used for metadata. */
 export const siteUrl = (): string => required("NEXT_PUBLIC_SITE_URL", process.env.NEXT_PUBLIC_SITE_URL)
-/** The public Supabase project origin, read by modules/auth only. */
-export const supabaseUrl = (): string => required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL)
-/** The public anonymous key of Supabase Auth; the back end verifies every access token it is sent. */
-export const supabaseAnonKey = (): string =>
-    required("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+/** The public origin of the API whose auth doors modules/auth calls; the browser holds no credential of its own. */
+export const apiUrl = (): string => required("NEXT_PUBLIC_API_URL", process.env.NEXT_PUBLIC_API_URL)

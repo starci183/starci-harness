@@ -1,11 +1,10 @@
-// backup-receipt.mjs - encrypted database backup custody, shared by dump and reset; tool output never enters diagnostics.
+// backup-receipt.mjs - encrypted database backup custody of `starci app db dump`; tool output never enters diagnostics.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { readDeclaration } from '../release/index.mjs';
-import { resolveTarget, runCli as migrationCli, targetArgs } from './migrate.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
+import { DEFAULT_DB_URL_ENV, dbTarget, pgTool, queryRows as psqlRows } from './postgres.mjs';
 
 export const RECEIPT_SCHEMA = 'starci/db-backup@1';
 export function sha256(file) {
@@ -20,10 +19,9 @@ export function sha256(file) {
 }
 const inside = (root, file) => { const rel = path.relative(root, file); return rel === '' || (!rel.startsWith(`..${path.sep}`) && rel !== '..' && !path.isAbsolute(rel)); };
 
-/** Backup/restore SQL can hold row values, so even the migration runner's scrubbed stderr must be withheld. */
-export function runCli(session, args) {
-  try { return migrationCli(session, args); }
-  catch { throw failure('DB_BACKUP_CLI_FAILED', `supabase ${args.slice(0, 2).join(' ')} failed; output withheld`); }
+/** Backup SQL can hold row values, so a client tool's stderr is withheld whole. */
+export function runPgTool(session, command, args) {
+  return pgTool(session.ctx, session.target, command, args, { withhold: true, code: 'DB_BACKUP_CLI_FAILED' });
 }
 
 /** Resolves existing ancestors before checking containment, including symlinked output directories and Git worktree marker files. */
@@ -40,27 +38,17 @@ export function outsideRepository(root, output) {
   return resolved;
 }
 
-/** Uses migrate's linked/password/URL resolution; local is explicitly selected and never silently defaults to linked. */
+/** The database of `--url-env` (default DATABASE_URL) and the project name the archive carries. */
 export function backupSession(ctx, options) {
-  const database = readDeclaration(ctx.cwd).database ?? {};
-  const selections = [options.linked === true, options.local === true, options.urlEnv !== undefined].filter(Boolean).length;
-  if (selections !== 1) throw refusal('DB_USAGE', 'select exactly one of --linked, --local or --url-env');
-  const target = options.local ? { kind: 'local', ref: null, env: {}, secrets: [], how: 'local database' }
-    : resolveTarget(ctx, { projectRef: null, password: null, ...database }, options);
-  if (target.kind === 'linked' && !/^[a-z0-9]{10,40}$/u.test(target.ref)) throw refusal('DB_NOT_LINKED', 'linked project ref is invalid');
+  const target = dbTarget(ctx, options.urlEnv ?? DEFAULT_DB_URL_ENV);
   const project = path.basename(ctx.cwd).replace(/[^A-Za-z0-9_-]/gu, '-') || 'database';
-  return { ctx, target, database, project };
+  return { ctx, target, project };
 }
 
-export const backupArgs = (session) => session.target.kind === 'local' ? ['--local', '--workdir', session.ctx.cwd] : targetArgs(session.target, session.ctx.cwd);
-
-/** Queries via the same injected Supabase runner; malformed output is withheld. */
+/** One read-only query through psql; failures and malformed output are withheld. */
 export function queryRows(session, sql) {
-  let rows;
-  try { rows = JSON.parse(runCli(session, ['db', 'query', sql, '--output', 'json', '--agent', 'no', ...backupArgs(session)]).stdout); }
+  try { return psqlRows(session.ctx, session.target, sql, { withhold: true }); }
   catch { throw failure('DB_BACKUP_QUERY_FAILED', 'database inventory query failed; output withheld'); }
-  if (!Array.isArray(rows) || rows.some((row) => !row || typeof row !== 'object' || Array.isArray(row))) throw failure('DB_BACKUP_QUERY_FAILED', 'database inventory is not a rows array');
-  return rows;
 }
 
 /** Executes local tar/age through ctx.spawn, the same seam used by the stack's age installer; never relays tool errors containing data. */
@@ -102,28 +90,3 @@ export function encryptFile(ctx, input, output, recipients) {
   return checkArchive(output);
 }
 
-/** Validates a complete, recent, full-data receipt and its encrypted bytes before any destructive reset call. */
-export function validateReceipt(session, receiptPath) {
-  if (!receiptPath) throw refusal('DB_RESET_BACKUP_MISSING', '--backup must name an encrypted backup receipt');
-  let receipt;
-  try { receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8')); } catch { throw refusal('DB_RESET_BACKUP_INVALID', 'backup receipt is missing or invalid JSON'); }
-  const valid = receipt && receipt.schema === RECEIPT_SCHEMA && receipt.target === 'linked' && receipt.schemaOnly === false
-    && typeof receipt.project === 'string' && typeof receipt.ref === 'string' && typeof receipt.file === 'string'
-    && path.basename(receipt.file) === receipt.file && receipt.file.endsWith('.age') && Number.isSafeInteger(receipt.bytes) && receipt.bytes >= 100
-    && /^[a-f0-9]{64}$/u.test(receipt.sha256 ?? '') && Array.isArray(receipt.parts)
-    && ['roles.sql', 'schema.sql', 'auth-storage-schema.sql', 'data.sql', 'auth-storage-data.sql', 'rowcounts.json'].every((part) => receipt.parts.includes(part))
-    && Number.isSafeInteger(receipt.rowcounts?.tables) && receipt.rowcounts.tables >= 0 && /^\d+$/u.test(receipt.rowcounts?.rows ?? '')
-    && typeof receipt.at === 'string' && Number.isFinite(Date.parse(receipt.at));
-  if (!valid) throw refusal('DB_RESET_BACKUP_INVALID', 'backup receipt is not a full starci/db-backup@1 linked backup');
-  if (receipt.ref !== session.target.ref) throw refusal('DB_RESET_BACKUP_PROJECT', 'backup targets a different project ref');
-  const maxAge = session.database.reset?.backupMaxAgeHours ?? 24;
-  if (!Number.isFinite(maxAge) || maxAge <= 0) throw refusal('DB_CONFIG_INVALID', 'database.reset.backupMaxAgeHours must be positive');
-  const age = session.ctx.now() - Date.parse(receipt.at);
-  if (age < 0 || age > maxAge * 3600000) throw refusal('DB_RESET_BACKUP_STALE', 'backup is future-dated or older than the allowed backup age');
-  const file = path.resolve(path.dirname(receiptPath), receipt.file);
-  if (!fs.existsSync(file)) throw refusal('DB_RESET_BACKUP_ARCHIVE_MISSING', 'backup archive is absent');
-  try {
-    if (checkArchive(file) !== receipt.bytes || sha256(file) !== receipt.sha256) throw new Error('mismatch');
-  } catch { throw refusal('DB_RESET_BACKUP_HASH', 'backup archive size, header or sha256 differs from the receipt'); }
-  return receipt;
-}

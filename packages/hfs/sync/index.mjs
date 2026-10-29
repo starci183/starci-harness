@@ -157,6 +157,8 @@ function trailingNewline(text) {
 }
 
 /** The digest-pinned image of a lite app's declared Redis, in every environment that runs it (ruling:R212/case-10). */
+/** The pinned image of a lite app's db service (contexts/stack/pins.yaml images): PostgreSQL with pg_cron, pg_net, pgmq and pgvector. */
+export const DB_IMAGE = 'supabase/postgres:17.11.0.006@sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2';
 export const REDIS_IMAGE = 'redis:7@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f';
 
 const redisDevText = project => render(readBundled('app/package-scripts/redis-dev.json'), { project, redisImage: REDIS_IMAGE });
@@ -286,7 +288,7 @@ export function appScripts(app, source) {
   const watch = entry => `cd be && ts-node-dev --respawn -r tsconfig-paths/register apps/${entry.name}/src/main.ts`;
   const built = entry => `node be/dist/apps/${entry.name}/src/main.js`;
   const workspace = entry => feAppPackageName(app.project, entry.name);
-  // Both editions generate before they run (owner ruling 2026-10-13): the fe's GraphQL wire types, and under lite the Supabase types check.
+  // Both editions generate before they run (owner ruling 2026-10-13): the fe's GraphQL wire types, and under lite the database types check.
   const dev = entry => `npm run codegen --silent && turbo run dev --filter=${workspace(entry)}`;
   const images = imageEntries(app, source);
   const imageCommand = ({ side, entry }) => `docker build -f ${dockerfilePath(side, entry.name)} -t ${app.project}/${entry.name}:dev .`;
@@ -347,7 +349,7 @@ export function imageFiles(app, source) {
   const side = app.sides.fe;
   const inputs = [...(opensPackages(side) ? ['fe/packages'] : []), ...((side.reads ?? []).includes('be/contracts/') ? ['be/contracts'] : [])];
   const copyInputs = inputs.map(folder => `COPY ${folder} ${folder}\n`).join('');
-  // The folders outside be/ that the back end declares it reads (the generated Supabase types of a lite back end, which an upgraded app keeps reading) are in every one of its images.
+  // The folders outside be/ that the back end declares it reads (the generated database types of a lite back end, db/types/) are in every one of its images.
   const beFolders = (app.sides.be.reads ?? []).map(folder => folder.replace(/\/$/, ''));
   const copyBeInputs = beFolders.map(folder => `COPY ${folder} ${folder}\n`).join('');
   const entries = imageEntries(app, source).map(({ side: which, entry: item }) => ({ side: which, item }));
@@ -373,8 +375,8 @@ export function variables(app, scope, presets, sonarKey, manifest = loadSlotMani
     project: app.project,
     appBinary: APP_BINARY,
     appScripts: appScripts(app, source),
-    // A full upgrade keeps the app's declared Supabase connection and its local database commands.
-    supabaseScripts: providers.includes('supabase') ? render(readBundled('app/package-scripts/supabase.json'), { appBinary: APP_BINARY }) : '',
+    // A lite app's own database runs in development as one container of the pinned db image (ruling:lite-self-hosted-postgres-passport-minio).
+    dbImage: DB_IMAGE,
     // A lite app's declared Redis (sides.be.backing, ruling:R212/case-10) runs in development as one container of its pinned image.
     backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
     // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both.
@@ -555,6 +557,24 @@ export async function renderRepo(root, { presets, parseYaml, notices, manifest =
   return { hfs, targets: renderTargets(hfs, presets ?? await loadPresets(root), { sonarKey, manifest, source: appSource(root, { parseYaml, notices }) }) };
 }
 
+/** The folders a lite app's sync retires (ruling lite-self-hosted-postgres-passport-minio): the generated Supabase row types nothing reads any more. */
+const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
+
+/** The app-relative files of the retired folders that still exist under `root` of a lite app; sync --write deletes them, --check reports them. */
+export function retiredFiles(root, hfs) {
+  if (hfs?.edition !== 'lite') return [];
+  const found = [];
+  const walk = (rel) => {
+    const full = path.join(root, rel);
+    const stat = fs.lstatSync(full, { throwIfNoEntry: false });
+    if (!stat) return;
+    if (stat.isDirectory()) for (const name of fs.readdirSync(full).sort(byCodeUnit)) walk(`${rel}/${name}`);
+    else found.push(rel);
+  };
+  for (const dir of LITE_RETIRED_DIRS) walk(dir);
+  return found;
+}
+
 /** `starci app sync --check | --write [--cwd <dir>]` at the app root; returns 0 clean, 1 drift, 2 usage. */
 function syncOptions(argv) {
   const check = argv.includes('--check'), write = argv.includes('--write');
@@ -567,16 +587,17 @@ function syncOptions(argv) {
   return { write, cwdAt };
 }
 
-function reportSyncCheck(root, targets, out) {
+function reportSyncCheck(root, targets, out, retired = []) {
   const results = checkTargets(root, targets);
   const bad = results.filter(item => item.status !== 'ok');
+  for (const file of retired) out(`HFS_SYNC_DRIFT ${file}: retired, the lite edition generates no database types; run "npx starci app sync --write" to delete it`);
   for (const result of bad) {
     const found = result.actualHash ? `, found ${result.actualHash.slice(0, 12)}` : '';
     const where = result.difference ? ` (line ${result.difference.line}: expected ${JSON.stringify(result.difference.expected)}, found ${JSON.stringify(result.difference.actual)})` : '';
     out(`HFS_SYNC_DRIFT ${result.path}: ${result.status}, expected sha256 ${result.expectedHash.slice(0, 12)}${found}${where}`);
   }
   out(`starci app sync --check: ${results.length - bad.length} of ${results.length} in sync${bad.length ? '; run "npx starci app sync --write"' : ''}`);
-  return bad.length ? 1 : 0;
+  return bad.length || retired.length ? 1 : 0;
 }
 
 export async function runSync(argv, { cwd = process.cwd(), out = line => process.stdout.write(`${line}\n`), presets, parseYaml } = {}) {
@@ -589,15 +610,18 @@ export async function runSync(argv, { cwd = process.cwd(), out = line => process
   const root = cwdAt >= 0 ? path.resolve(cwd, argv[cwdAt + 1]) : cwd;
   try {
     const notices = [];
-    const { targets } = await renderRepo(root, { presets, parseYaml, notices });
+    const { hfs, targets } = await renderRepo(root, { presets, parseYaml, notices });
+    const retired = retiredFiles(root, hfs);
     if (targets.some(target => target.path === 'README.md')) for (const notice of new Set(notices)) out(notice);
     if (write) {
       const written = writeTargets(root, targets);
       for (const file of written) out(`wrote ${file}`);
+      for (const file of retired) { fs.rmSync(path.join(root, file)); out(`removed ${file} (retired)`); }
+      for (const dir of LITE_RETIRED_DIRS) if (retired.length && fs.existsSync(path.join(root, dir)) && !fs.readdirSync(path.join(root, dir)).length) fs.rmdirSync(path.join(root, dir));
       out(`starci app sync: ${written.length} written, ${targets.length - written.length} already in sync`);
       return 0;
     }
-    return reportSyncCheck(root, targets, out);
+    return reportSyncCheck(root, targets, out, retired);
   } catch (error) {
     if (!(error instanceof SyncError)) throw error;
     out(error.message);

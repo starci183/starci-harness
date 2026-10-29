@@ -1,9 +1,10 @@
-// R276: lite keeps Postgres and pgvector on managed Supabase, admits only the backing services available to its edition,
+// R276: lite runs exactly its own PostgreSQL (the db component, image supabase/postgres) with pgvector, admits only the backing services available to its edition,
 // and runs a declared Redis as one service with AOF fsynced at least every second on a named volume and no eviction
 // (ruling:R212/case-10, owner:lite-vector-is-pgvector); sidecar SQLite persists on declared named volumes.
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { composeEntries } from '../../lib/compose-values.mjs';
 import { repositoryOf } from '../../lib/stack-services.mjs';
+import { isLiteDatabaseImage } from '../../lib/swarm-stack.mjs';
 import { loadSlotManifest } from '../slots.mjs';
 import { judgedInEdition } from '../edition-slots.mjs';
 import { readJson } from './read.mjs';
@@ -43,12 +44,12 @@ function imageIssues(components, services, { catalog, declared }) {
     for (const [id, entry] of Object.entries(inventory)) {
       if (!present(entry?.image)) continue;
       const service = serviceOfImage(catalog, entry.image);
-      if (DATABASE_IMAGE.test(repositoryOf(entry.image)))
+      if (DATABASE_IMAGE.test(repositoryOf(entry.image)) && !isLiteDatabaseImage(entry.image))
         errors.push({ code: 'STACKS_LITE_SELFHOSTED_DB', at: `${prefix}.${id}.image`,
-          message: 'lite must not run a self-hosted Postgres or Mongo database image; use managed Supabase backing' });
+          message: 'lite runs one database, the db component of image supabase/postgres; no other Postgres or Mongo image' });
       else if (service !== null && !judgedInEdition(catalog[service], 'lite'))
         errors.push({ code: 'STACKS_LITE_SELFHOSTED_DB', at: `${prefix}.${id}.image`,
-          message: `lite must not run ${service}; vector search uses Supabase pgvector (owner:lite-vector-is-pgvector)` });
+          message: `lite must not run ${service}; vector search uses pgvector in the db service (owner:lite-vector-is-pgvector)` });
       else if (service !== null && !declared.has(service))
         errors.push({ code: 'STACKS_LITE_SELFHOSTED_DB', at: `${prefix}.${id}.image`,
           message: `lite runs ${service} only when hfs.json sides.be.backing declares it for the capability that needs it (ruling:R212/case-10)` });

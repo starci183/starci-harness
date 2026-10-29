@@ -28,7 +28,7 @@ test('derived pattern slots retain app-root lite migrations and the default back
     slot: stale-be-slot
 liteFiles:
 # The explicit root belongs to this entry, irrespective of field order.
-  - path: supabase/migrations/20261024000000_queue.sql
+  - path: db/migrations/20261024000000_queue.sql
     root: 'app'
     slot: stale-app-slot
   - path: src/modules/platform/queue/queue.policy.ts
@@ -42,7 +42,7 @@ guidance:
   assert.deepEqual(result.problems, []);
   const derived = parseYaml(result.text);
   assert.equal(derived.files[0].slot, 'be.platform.queue');
-  assert.deepEqual(derived.liteFiles.map(entry => entry.slot), ['app.supabase.migrations', 'be.platform.queue']);
+  assert.deepEqual(derived.liteFiles.map(entry => entry.slot), ['app.db.migrations', 'be.platform.queue']);
   assert.deepEqual(derivePatternFileSlots(result.text, classify), result);
 });
 

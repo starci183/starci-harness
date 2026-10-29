@@ -1,4 +1,4 @@
-import type { EntityManager } from "typeorm"
+import type { EntityManager, EntityTarget, ObjectLiteral } from "typeorm"
 import { DatabaseError, DatabaseErrorCode } from "./errors/database.error"
 
 declare const sqlTextBrand: unique symbol
@@ -35,15 +35,28 @@ function assertSqlIdent(_value: string): asserts _value is SqlIdent {
 
 type NotFoundFactory = (id: string) => never
 
-/** Requires the row selected by an id-and-owner statement and lets the capability own its typed not-found error of that id. */
-export const requireOwnedRow = async <T>(
+/** The id an owned read answers. */
+interface OwnedId {
+    readonly id: string
+}
+
+/**
+ * Requires the row of `entity` with this id and owner (its `id` and `owner_id` columns) and lets the capability own its
+ * typed not-found error of that id; absent and denied rows share it. The read is the entity's query builder with named
+ * parameters, so the capability writes no SQL (R333).
+ */
+export const requireOwnedEntity = async (
     entityManager: EntityManager,
-    statement: SqlText,
+    entity: EntityTarget<ObjectLiteral>,
     id: string,
     ownerId: string,
     notFound: NotFoundFactory,
-): Promise<T> => {
-    const row = (await entityManager.query<Array<T>>(statement, [id, ownerId]))[0]
+): Promise<OwnedId> => {
+    const row = await entityManager
+        .createQueryBuilder(entity, "owned")
+        .select("owned.id", "id")
+        .where("owned.id = :id AND owned.owner_id = :ownerId", { id, ownerId })
+        .getRawOne<OwnedId>()
     if (row === undefined) return notFound(id)
     return row
 }

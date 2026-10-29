@@ -2,7 +2,7 @@ import { SetMetadata, applyDecorators, createParamDecorator } from "@nestjs/comm
 import type { ExecutionContext } from "@nestjs/common"
 import { injector } from "@modules/platform/composition"
 import type { DoorDecorator, TypedParameterDecorator } from "@modules/platform/composition"
-import type { VerifySupabaseAccessToken } from "@modules/integrations/supabase"
+import type { VerifyAccessToken } from "@modules/integrations/passport"
 import { ServerToServer, requestOf } from "@modules/platform/http-security"
 import type { Principal } from "@modules/platform/cqrs"
 import type { CredentialAuthenticator, CredentialMetadata } from "./credential.contracts"
@@ -13,15 +13,15 @@ import type { PublicMetadata } from "./identity.contracts"
 /** Token of the access-token verifier the composition root hands to identity. */
 export const ACCESS_TOKEN_VERIFIER: unique symbol = Symbol("domain.identity.access-token-verifier")
 
-/** Injects the access-token verifier identity was registered with. Parameter type: VerifySupabaseAccessToken. */
-export const InjectAccessTokenVerifier = (): TypedParameterDecorator<VerifySupabaseAccessToken> =>
-    injector<VerifySupabaseAccessToken>(ACCESS_TOKEN_VERIFIER)
+/** Injects the access-token verifier identity was registered with. Parameter type: VerifyAccessToken. */
+export const InjectAccessTokenVerifier = (): TypedParameterDecorator<VerifyAccessToken> =>
+    injector<VerifyAccessToken>(ACCESS_TOKEN_VERIFIER)
 
 /** Metadata key of `@Public`. */
 export const PUBLIC_KEY = "domain.identity.public"
 
 /**
- * Opens a door to anonymous callers, stating why; every other door needs a credential or a verified Supabase session.
+ * Opens a door to anonymous callers, stating why; every other door needs a credential or a verified session.
  * A signed webhook proves its caller by its signature, so it owes no browser origin.
  */
 export const Public = (metadata: PublicMetadata): DoorDecorator =>
@@ -46,7 +46,7 @@ export const InjectCredentialAuthenticator = (): TypedParameterDecorator<Credent
 export const Credential = (metadata: CredentialMetadata): DoorDecorator =>
     applyDecorators(SetMetadata(CREDENTIAL_KEY, metadata), ServerToServer())
 
-/** The authenticated Supabase caller established by the default-deny guard. */
+/** The authenticated caller established by the default-deny guard. */
 export const CurrentPrincipal = createParamDecorator((_data: unknown, context: ExecutionContext): Principal => {
     const principal = requestOf(context).principal
     if (!principal) throw new IdentityError({ code: IdentityErrorCode.Unauthenticated })

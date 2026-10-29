@@ -1,2 +1,1 @@
 {{> app/tool-config/prettierignore}}
-supabase/types/

@@ -21,7 +21,7 @@ import {
 } from "../runtime/scripts/hfs/rules/secrets.mjs";
 import { canonCopyDriftFindings } from "../runtime/scripts/hfs/rules/canon-copy-drift.mjs";
 import { secretCustodyOnlyFindings } from "../runtime/scripts/hfs/rules/secret-custody-only.mjs";
-import { liteSecretCustodyFindings } from "../runtime/scripts/hfs/rules/supabase-secrets.mjs";
+import { liteSecretCustodyFindings } from "../runtime/scripts/hfs/rules/lite-secrets.mjs";
 import { secretRoots } from "../runtime/scripts/hfs/secret-files.mjs";
 
 const RECIPIENT = `age1${"q".repeat(58)}`;
@@ -126,7 +126,7 @@ test("assigned-secret recognizes psql password references without admitting YAML
     "CREATE ROLE app_be WITH LOGIN PASSWORD :'app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;",
     'alter user "app_be" password :"selected_password";',
   ];
-  for (const file of ["infra/postgres-init.sh", "supabase/migrations/role.sql"])
+  for (const file of ["infra/postgres-init.sh", "db/migrations/role.sql"])
     for (const line of references) assert.deepEqual(secretHits(file, line), []);
   for (const line of ["PASSWORD: 'app_password'", "PASSWORD : 'app_password'", "PASSWORD :'app_password'"])
     assert.ok(secretHits("infra/stack.yaml", line).includes("assigned-secret"));

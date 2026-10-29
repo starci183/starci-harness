@@ -1,7 +1,8 @@
 import { Secret } from "@modules/platform/config"
 import { PRIMARY_DATA_SOURCE } from "@modules/platform/database"
 import { ACCESS_TOKEN_VERIFIER } from "@modules/domain/identity"
-import { SUPABASE_ACCESS_TOKEN_VERIFIER, SUPABASE_ADMIN_CLIENT } from "@modules/integrations/supabase"
+import { OWN_TOKEN_VERIFIER } from "@modules/integrations/passport"
+import { OBJECT_STORAGE } from "@modules/integrations/storage"
 
 /** Compiles the real API root with public configuration and explicit infrastructure doubles. */
 export const buildWiringProof = () => ({
@@ -14,16 +15,28 @@ export const buildWiringProof = () => ({
         },
         database: {
             name: "primary",
-            provider: "supabase",
+            provider: "postgres",
             url: new Secret("postgresql://app_be@127.0.0.1:5432/postgres"),
             schema: "public",
         },
-        supabase: { url: "https://fixture.supabase.co", serviceRoleKey: new Secret("fixture-only") },
+        passport: {
+            google: { clientId: "fixture", clientSecret: new Secret("fixture-only"), callbackUrl: "https://api.fixture.example/auth/google/callback" },
+            tokens: { issuer: "https://api.fixture.example", audience: "fixture", privateKey: new Secret("fixture-only"), keyId: "k1", accessTtlSeconds: 900 },
+            refresh: { name: "refresh_token", path: "/auth/refresh", ttlSeconds: 2592000 },
+        },
+        storage: {
+            endpoint: "https://storage.fixture.example",
+            region: "us-east-1",
+            bucket: "fixture",
+            accessKeyId: new Secret("fixture-only"),
+            secretAccessKey: new Secret("fixture-only"),
+            presignTtlSeconds: 300,
+        },
     },
     overrides: [
         { token: PRIMARY_DATA_SOURCE, value: { manager: {} } },
-        { token: SUPABASE_ADMIN_CLIENT, value: { auth: {}, storage: {} } },
-        { token: SUPABASE_ACCESS_TOKEN_VERIFIER, value: () => ({ ok: false }) },
+        { token: OBJECT_STORAGE, value: {} },
+        { token: OWN_TOKEN_VERIFIER, value: () => ({ ok: false }) },
         { token: ACCESS_TOKEN_VERIFIER, value: () => ({ ok: false }) },
     ],
 })

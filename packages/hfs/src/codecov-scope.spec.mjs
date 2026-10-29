@@ -20,7 +20,7 @@ const report = [
   { path: 'be/src/modules/domain/orders/persistence/order.rows.ts', lines: 50, hits: 0 },
   { path: 'be/src/modules/domain/orders/persistence/hydrate.service.ts', lines: 5, hits: 0 },
   { path: 'be/src/modules/platform/clock/clock.config.ts', lines: 10, hits: 1 },
-  { path: 'be/src/modules/integrations/supabase/supabase.jwks.ts', lines: 10, hits: 1 },
+  { path: 'be/src/modules/integrations/passport/passport.tokens.ts', lines: 10, hits: 1 },
   { path: 'fe/apps/web/src/app/page.tsx', lines: 10, hits: 0 },
 ];
 
@@ -37,7 +37,7 @@ for (const edition of ['full', 'lite']) {
   test(`${edition} rendered Codecov scope keeps uncovered logic and ignores incidental imports`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'codecov-scope-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }], connections: [
-        { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'schema', provider: 'supabase' },
+        { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'schema', provider: 'postgres' },
       ] },
       fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
     } };

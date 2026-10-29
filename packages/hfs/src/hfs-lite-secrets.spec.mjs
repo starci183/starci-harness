@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
-import { liteSecretCustodyFindings, supabaseSecretFindings } from '../runtime/scripts/hfs/rules/supabase-secrets.mjs';
+import { liteSecretCustodyFindings, liteSecretFindings } from '../runtime/scripts/hfs/rules/lite-secrets.mjs';
 import { secretFindings, untrackedSecretFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 
 const tree = (t, files) => {
@@ -110,7 +110,7 @@ test('HFS_LITE_SECRET_CUSTODY (lite): Supabase tokens, long eyJ service material
   const root = tree(t, { 'apps/web/src/modules/config/generated.ts': source });
   const findings = liteSecretCustodyFindings({ repoRoot: root, files: ['apps/web/src/modules/config/generated.ts'], repo: fe('lite') });
   assert.deepEqual(findings.map(item => item.pattern).sort((left, right) => left.localeCompare(right)), [
-    'password-connection-string', 'supabase-eyj-service-token', 'supabase-personal-access-token', 'supabase-secret-token',
+    'password-connection-string', 'signed-jwt', 'supabase-personal-access-token', 'supabase-secret-token',
   ]);
   assert.ok(findings.every(item => !item.message.includes('postgresql://') && !item.message.includes('sb_secret_')), 'a finding never prints the captured value');
 });
@@ -128,9 +128,9 @@ export const injected='postgresql://app:\${DATABASE_PASSWORD}@db.invalid/product
 });
 
 test('the extended scanner emits one specific L17 finding instead of duplicate R06/L17 findings for a complete JWT in lite', t => {
-  const file = 'supabase/config.ts';
+  const file = 'db/config.ts';
   const root = tree(t, { [file]: `export const copied = '${jwtFixture}'\n` });
-  const lite = supabaseSecretFindings({ repoRoot: root, files: [file], repo: app('lite'), resolver });
+  const lite = liteSecretFindings({ repoRoot: root, files: [file], repo: app('lite'), resolver });
   assert.equal(lite.length, 1, JSON.stringify(lite, null, 2));
   assert.equal(lite[0].code, 'HFS_LITE_SECRET_CUSTODY');
   const full = secretFindings({ repoRoot: root, files: [file], resolver });

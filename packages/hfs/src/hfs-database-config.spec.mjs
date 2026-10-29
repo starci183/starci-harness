@@ -5,13 +5,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { configFindings, databaseConfigFindings } from '../runtime/scripts/hfs/rules/database-config.mjs';
+import { databaseConfigFindings } from '../runtime/scripts/hfs/rules/database-config.mjs';
 import { databaseExecutableTokens, databaseSqlTokens, isMigrationName, migrationShapeFindings } from '../runtime/scripts/hfs/rules/database-migrations.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
 const CONFIG = 'supabase/config.toml';
-const MIGRATION = 'supabase/migrations/20261014120000_expand.sql';
-const CONTRACT = 'supabase/migrations/20261014120000_contract_remove-old.sql';
+const MIGRATION = 'db/migrations/20261014120000_expand.sql';
+const CONTRACT = 'db/migrations/20261014120000_contract_remove-old.sql';
 const CONFIG_TEXT = `[api]
 enabled = false
 schemas = ["public", "graphql_public"]
@@ -35,7 +35,7 @@ function fixture(contents = {}, edition = 'lite', options = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-config-'));
   roots.push(repoRoot);
   const files = {
-    'hfs.json': JSON.stringify({ hfs: 3, kind: 'app', edition, supabase: options.supabase ?? {} }),
+    'hfs.json': JSON.stringify({ hfs: 3, kind: 'app', edition, db: options.db ?? {} }),
     ...contents,
   };
   for (const [file, text] of Object.entries(files)) {
@@ -64,7 +64,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition}: a bounded config and additive migration pass every R259 check`, () => {
-    assert.deepEqual(findings({ [CONFIG]: CONFIG_TEXT, [MIGRATION]: 'create extension if not exists pgcrypto; create table public.items (id integer);' }, edition), []);
+    assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists pgcrypto; create table public.items (id integer);' }, edition), []);
   });
 
   test(`${edition}: DB_EXTENSION_ALLOWED rejects an off-list extension and accepts the configured allowlist`, () => {
@@ -102,65 +102,16 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(findings({ [MIGRATION]: 'select name from vault.decrypted_secrets; create role app_be nologin; alter role app_be login;' }, edition), []);
   });
 
-  test(`${edition}: DB_API_EXPOSED refuses queue schemas even when the API is disabled or allowlisted`, () => {
-    for (const schema of ['pgmq', 'pgmq_public']) {
-      has(findings({ [CONFIG]: configured('["public", "graphql_public"]', `["${schema}"]`) }, edition,
-        { manifest: { ruleParams: { db: { apiSchemas: [schema] } } } }), 'DB_API_EXPOSED');
-    }
-    assert.deepEqual(findings({ [CONFIG]: configured('["public", "graphql_public"]', '[]') }, edition), []);
-  });
-
-  const configCases = [
-    ['api schema allowlist', '["public", "graphql_public"]', '["private"]'],
-    ['anonymous sign-ins', 'enable_anonymous_sign_ins = false', 'enable_anonymous_sign_ins = true'],
-    ['invalid anonymous auth flag', 'enable_anonymous_sign_ins = false', 'enable_anonymous_sign_ins = "false"'],
-    ['edge runtime', '[edge_runtime]\nenabled = false', '[edge_runtime]\nenabled = true'],
-    ['missing edge runtime posture', '[edge_runtime]\nenabled = false', '[edge_runtime]'],
-    ['storage limit', 'file_size_limit = "10MiB"', 'file_size_limit = "unbounded"'],
-    ['missing storage limit', 'file_size_limit = "10MiB"', ''],
-    ['zero storage limit', 'file_size_limit = "10MiB"', 'file_size_limit = "0MB"'],
-    ['database major pin', 'major_version = 17', 'major_version = 16'],
-  ];
-  for (const [label, before, after] of configCases) {
-    test(`${edition}: DB_CONFIG_POLICY checks ${label}`, () => {
-      has(findings({ [CONFIG]: configured(before, after) }, edition), 'DB_CONFIG_POLICY');
-      assert.deepEqual(findings({ [CONFIG]: CONFIG_TEXT }, edition), []);
-    });
-  }
-
-  test(`${edition}: explicitly declared anonymous auth and database/schema pins pass`, () => {
-    assert.deepEqual(findings({ [CONFIG]: configured('enable_anonymous_sign_ins = false', 'enable_anonymous_sign_ins = true') }, edition,
-      { supabase: { enableAnonymousSignIns: true } }), []);
-    assert.deepEqual(findings({ [CONFIG]: configured('major_version = 17', 'major_version = 16').replace('["public", "graphql_public"]', '["private"]') }, edition,
-      { manifest: { ruleParams: { db: { majorVersion: 16, apiSchemas: ['private'] } } } }), []);
-  });
-
-  test(`${edition}: seed paths must resolve to tracked SQL under supabase`, () => {
-    const enabled = configured('[db.seed]\nenabled = false', '[db.seed]\nenabled = true');
-    has(findings({ [CONFIG]: enabled }, edition), 'DB_CONFIG_POLICY');
-    assert.deepEqual(findings({ [CONFIG]: enabled, 'supabase/seed.sql': "insert into items values ('demo@example.test') on conflict do nothing;" }, edition), []);
-    const windowsOutside = path.win32.resolve('C:', os.tmpdir(), 'outside.sql').replaceAll(path.win32.sep, '/');
-    for (const sqlPath of ['../outside.sql', '/outside.sql', windowsOutside, './missing.sql', './seed.txt']) {
-      has(findings({ [CONFIG]: enabled.replace('./seed.sql', sqlPath), 'outside.sql': 'select 1;', 'supabase/seed.txt': 'select 1;' }, edition), 'DB_CONFIG_POLICY');
-    }
-    assert.deepEqual(findings({ [CONFIG]: enabled.replace('./seed.sql', './seeds/*.sql'), 'supabase/seeds/demo.sql': 'select 1;' }, edition), []);
-    has(findings({ [CONFIG]: enabled.replace('["./seed.sql"]', '[]') }, edition), 'DB_CONFIG_POLICY');
-    has(findings({ [CONFIG]: enabled.replace('["./seed.sql"]', '"./seed.sql"') }, edition), 'DB_CONFIG_POLICY');
-  });
-
   test(`${edition}: HFS_SEED_PII rejects personal email and phone literals and accepts synthetic seed identities`, () => {
     for (const value of ['demo@real.invalid', '+1 (202) 555-0199', '2025550199']) {
-      const list = findings({ 'supabase/seed.sql': `insert into fixtures values ('${value}');` }, edition);
+      const list = findings({ 'db/seed.sql': `insert into fixtures values ('${value}');` }, edition);
       has(list, 'HFS_SEED_PII');
       assert.ok(!JSON.stringify(list).includes(value));
     }
-    assert.deepEqual(findings({ 'supabase/seed.sql': "-- demo@real.invalid\ninsert into fixtures values ('demo@example.test', '2026-10-14', '00000000-0000-0000-0000-000000000001');" }, edition), []);
+    assert.deepEqual(findings({ 'db/seed.sql': "-- demo@real.invalid\ninsert into fixtures values ('demo@example.test', '2026-10-14', '00000000-0000-0000-0000-000000000001');" }, edition), []);
   });
 
-  test(`${edition}: custom configured seed files are scanned for PII`, () => {
-    const config = configured('[db.seed]\nenabled = false', '[db.seed]\nenabled = true').replace('./seed.sql', './fixtures/demo.sql');
-    has(findings({ [CONFIG]: config, 'supabase/fixtures/demo.sql': "insert into fixtures values ('demo@real.invalid');" }, edition), 'HFS_SEED_PII');
-    assert.deepEqual(findings({ [CONFIG]: config, 'supabase/fixtures/demo.sql': "insert into fixtures values ('demo@example.test');" }, edition), []);
+  test(`${edition}: .starcistacks seed files are scanned for PII`, () => {
     has(findings({ '.starcistacks/dev/seeds/demo.sql': "insert into fixtures values ('demo@real.invalid');" }, edition), 'HFS_SEED_PII');
     assert.deepEqual(findings({ '.starcistacks/dev/seeds/demo.sql': "insert into fixtures values ('demo@example.test');" }, edition), []);
   });
@@ -212,27 +163,9 @@ create function public.javascript() returns text language plv8 as $$drop table p
   });
 
   test(`${edition}: archived SQL is excluded from active extension/custody/DDL checks`, () => {
-    assert.deepEqual(findings({ 'supabase/migrations/_archive/20260101120000_retired.sql': "create extension hstore; select vault.create_secret('fixture-value'); drop table items;" }, edition), []);
+    assert.deepEqual(findings({ 'db/migrations/archive/20260101120000_retired.sql': "create extension hstore; select vault.create_secret('fixture-value'); drop table items;" }, edition), []);
   });
 }
-
-test('lite data API requires a surviving public-read policy in an exposed schema; full API may serve data', () => {
-  const config = configured('[api]\nenabled = false', '[api]\nenabled = true');
-  const policy = 'create policy items_public_read on public.items for select to anon using (true);';
-  has(findings({ [CONFIG]: config }, 'lite'), 'DB_API_EXPOSED');
-  assert.deepEqual(findings({ [CONFIG]: config }, 'full'), []);
-  assert.deepEqual(findings({ [CONFIG]: config, [MIGRATION]: policy }, 'lite'), []);
-  assert.deepEqual(findings({ [CONFIG]: config, [MIGRATION]: policy.replace('to anon', 'to public') }, 'lite'), []);
-  assert.deepEqual(findings({ [CONFIG]: config, [MIGRATION]: policy.replace('items_public_read', 'items_old_read') + ' alter policy items_old_read on public.items rename to items_public_read;' }, 'lite'), []);
-  for (const changed of [
-    policy.replace('for select', 'for all'),
-    policy.replace('to anon', 'to authenticated'),
-    policy.replace('public.items', 'private.items'),
-    `${policy} drop policy items_public_read on public.items;`,
-    `${policy} alter policy items_public_read on public.items to authenticated;`,
-    `${policy} alter policy items_public_read on public.items rename to items_private_read;`,
-  ]) has(findings({ [CONFIG]: config, [MIGRATION]: changed }, 'lite'), 'DB_API_EXPOSED');
-});
 
 test('config finder is synchronous and respects root, profile and finding scope', () => {
   const input = fixture({ [MIGRATION]: 'create extension hstore;' });
@@ -240,13 +173,6 @@ test('config finder is synchronous and respects root, profile and finding scope'
   assert.deepEqual(databaseConfigFindings({ ...input, isRoot: false }), []);
   for (const profile of ['be', 'fe']) assert.deepEqual(databaseConfigFindings({ ...input, repo: { edition: 'lite', profile } }), []);
   assert.deepEqual(databaseConfigFindings({ ...input, inScope: (file) => file === CONFIG }), []);
-});
-
-test('the existing L08 credential and declaration checks remain available', () => {
-  const text = 'password = "fixture-value"';
-  const list = configFindings({ file: CONFIG, text, toml: { password: 'fixture-value', auth: { jwt_expiry: 7200, enable_signup: true } }, supabase: { enableSignup: false } });
-  assert.equal(only(list, 'DB_CONFIG_POLICY').length, 3);
-  assert.ok(!JSON.stringify(list).includes('fixture-value'));
 });
 
 test('SQL token helpers preserve identifiers, body/data boundaries and line locations', () => {
@@ -272,8 +198,8 @@ function historyGit(contents, headFiles = Object.keys(contents)) {
 
 for (const edition of ['lite', 'full']) {
   test(`${edition}: an explicit content-preserving restamp retires its old version without bypassing unrelated history`, async () => {
-    const old = 'supabase/migrations/29990101120000_old.sql';
-    const next = 'supabase/migrations/20261014120000_old.sql';
+    const old = 'db/migrations/29990101120000_old.sql';
+    const next = 'db/migrations/20261014120000_old.sql';
     const sql = 'select 1;\n';
     const input = fixture({ [next]: '-- starci:restamp 29990101120000 20261014120000\n' + sql }, edition);
     assert.deepEqual(await migrationShapeFindings({ ...input, migrations: [next], git: historyGit({ [old]: sql }) }), []);

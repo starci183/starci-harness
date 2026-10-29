@@ -92,8 +92,8 @@ function swarmDeploymentFiles(repoRoot, files) {
 function liteEnvironmentFindings({ doc, environments, deployments }) {
   const findings = [];
   const delivery = deployments.length || Object.values(environments).some(spec => Array.isArray(spec?.composeFiles) && spec.composeFiles.length);
-  if (delivery && (doc.backing?.supabase?.provider !== 'supabase' || doc.backing?.supabase?.managed !== true))
-    findings.push(found(CODE, DECLARATION, `${DECLARATION}: lite Swarm delivery must declare backing.supabase with provider: supabase and managed: true`));
+  if (delivery && (doc.backing?.db?.provider !== 'postgres' || doc.backing?.db?.component !== 'db'))
+    findings.push(found(CODE, DECLARATION, `${DECLARATION}: lite Swarm delivery must declare backing.db with provider: postgres and component: db (its db service)`));
   for (const [environment, spec] of Object.entries(environments)) {
     if (!Array.isArray(spec?.composeFiles) || !spec.composeFiles.length) continue;
     if (spec.runtime !== 'docker-swarm' || spec.composeFiles.some(file => typeof file !== 'string' || !file.startsWith('infra/swarm/')))

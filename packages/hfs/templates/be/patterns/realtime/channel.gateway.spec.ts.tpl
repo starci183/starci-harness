@@ -1,8 +1,8 @@
 import { Test } from "@nestjs/testing"
 import { MESSAGE_MAPPING_METADATA } from "@nestjs/websockets/constants"
 import { @@service@@ } from "@@serviceModule@@"
-import type { VerifySupabaseAccessToken } from "@modules/integrations/supabase"
-import { SupabaseErrorCode } from "@modules/integrations/supabase"
+import type { VerifyAccessToken } from "@modules/integrations/passport"
+import { PassportErrorCode } from "@modules/integrations/passport"
 import type { Principal } from "@modules/platform/cqrs"
 import { ok, refused } from "@modules/platform/primitives"
 import { REALTIME_HUB } from "@modules/platform/realtime"
@@ -79,7 +79,7 @@ const socketOf = (id: string, auth: Readonly<Record<string, unknown>> = { access
     return { socket, pushed }
 }
 
-const build = async (hub: RealtimeHub, verify: VerifySupabaseAccessToken) => {
+const build = async (hub: RealtimeHub, verify: VerifyAccessToken) => {
     const moduleRef = await Test.createTestingModule({
         imports: [@@Channel@@WebsocketModule.register({ verifyAccessToken: verify })],
     })
@@ -96,7 +96,7 @@ const build = async (hub: RealtimeHub, verify: VerifySupabaseAccessToken) => {
 describe("@@Channel@@Gateway", () => {
     it("builds the topic only from the verified principal, ignoring handshake principal and topic claims", async () => {
         const { hub, topics } = hubAnswering()
-        const verify: VerifySupabaseAccessToken = jest.fn().mockResolvedValue(ok(principal))
+        const verify: VerifyAccessToken = jest.fn().mockResolvedValue(ok(principal))
         const { transport, adapter } = await build(hub, verify)
         const { socket } = socketOf("socket-1", { accessToken: "signed-token", principal: { id: "p-2" }, topic: "foreign" })
 
@@ -111,7 +111,7 @@ describe("@@Channel@@Gateway", () => {
 
     it("isolates another authenticated principal's topic", async () => {
         const { hub, topics } = hubAnswering()
-        const verify: VerifySupabaseAccessToken = jest.fn().mockResolvedValue(ok({ id: "p-2", role: "authenticated" }))
+        const verify: VerifyAccessToken = jest.fn().mockResolvedValue(ok({ id: "p-2", role: "authenticated" }))
         const { transport, adapter } = await build(hub, verify)
         const { socket } = socketOf("socket-2")
 
@@ -126,7 +126,7 @@ describe("@@Channel@@Gateway", () => {
     it("pushes a hub frame automatically and releases the iterator on disconnect", async () => {
         const frame = { id: "x-1" }
         const { hub, released } = hubAnswering(frame)
-        const verify: VerifySupabaseAccessToken = jest.fn().mockResolvedValue(ok(principal))
+        const verify: VerifyAccessToken = jest.fn().mockResolvedValue(ok(principal))
         const { transport, adapter } = await build(hub, verify)
         const { socket, pushed } = socketOf("socket-1")
 
@@ -142,7 +142,7 @@ describe("@@Channel@@Gateway", () => {
 
     it.each([{}, { accessToken: "" }, { accessToken: 42 }])("refuses a missing or malformed access token without invoking the verifier", async (auth) => {
         const { hub, topics } = hubAnswering()
-        const verify: VerifySupabaseAccessToken = jest.fn()
+        const verify: VerifyAccessToken = jest.fn()
         const { adapter } = await build(hub, verify)
         const { socket } = socketOf("socket-1", auth)
         socket.data.principal = principal
@@ -156,7 +156,7 @@ describe("@@Channel@@Gateway", () => {
 
     it("refuses a rejected token and clears a prior principal", async () => {
         const { hub, topics } = hubAnswering()
-        const verify: VerifySupabaseAccessToken = jest.fn().mockResolvedValue(refused(SupabaseErrorCode.AccessTokenInvalid))
+        const verify: VerifyAccessToken = jest.fn().mockResolvedValue(refused(PassportErrorCode.AccessTokenInvalid))
         const { adapter } = await build(hub, verify)
         const { socket } = socketOf("socket-1")
         socket.data.principal = principal

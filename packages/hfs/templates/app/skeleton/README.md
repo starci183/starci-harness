@@ -22,7 +22,7 @@ Declare `ci.github.repository` and `ci.github.defaultBranch` in `.starcistacks/a
 
 ## Development
 
-Every development dependency runs in Docker Linux containers. Local Supabase, when declared, runs through the Supabase CLI; every other declared dependency runs through its managed `<dep>:create`, `<dep>:start` and `<dep>:stop` scripts or the declared container model. This starter uses Compose to run its pinned local PostgreSQL and app services; Compose is an implementation detail. A declared native profile may run the app processes locally while dependencies stay in Docker. In production, the app and its dependencies run on Docker Swarm, except Supabase, which is a hosted service.
+Every development dependency runs in Docker Linux containers. Every declared dependency runs through its managed `<dep>:create`, `<dep>:start` and `<dep>:stop` scripts or the declared container model. This starter uses Compose to run its pinned local PostgreSQL and app services; Compose is an implementation detail. A declared native profile may run the app processes locally while dependencies stay in Docker. In production, the app and its dependencies run on Docker Swarm, except Supabase, which is a hosted service.
 
 ```sh
 npm install

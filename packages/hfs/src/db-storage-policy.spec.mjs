@@ -8,7 +8,7 @@ import path from 'node:path';
 import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
 import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 
-const FILE = 'supabase/migrations/20260101120000_avatars.sql';
+const FILE = 'db/migrations/20260101120000_avatars.sql';
 const BUCKET = "insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('avatars', 'avatars', false, 1048576, '{image/png}');\n";
 
 async function judge(t, edition, sql) {
@@ -19,13 +19,13 @@ async function judge(t, edition, sql) {
     sides: {
       be: {
         apps: [{ name: 'api', kind: 'api' }],
-        connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'schema', provider: 'supabase' }],
+        connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'schema', provider: 'postgres' }],
       },
       fe: { apps: [{ name: 'web', kind: 'next' }] },
     },
   }));
   assert.equal(readRepoDeclaration(loadSlotManifest(), repoRoot).edition, edition);
-  fs.mkdirSync(path.join(repoRoot, 'supabase/migrations'), { recursive: true });
+  fs.mkdirSync(path.join(repoRoot, 'db/migrations'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, FILE), sql);
   return checkDatabase({ repoRoot, files: [FILE], git: () => ({ ok: false, stdout: '' }) });
 }

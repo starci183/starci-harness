@@ -16,14 +16,14 @@ async function judge(t, edition, name) {
     sides: {
       be: {
         apps: [{ name: 'api', kind: 'api' }],
-        connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'schema', provider: 'supabase' }],
+        connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'schema', provider: 'postgres' }],
       },
       fe: { apps: [{ name: 'web', kind: 'next' }] },
     },
   }));
   assert.equal(readRepoDeclaration(loadSlotManifest(), repoRoot).edition, edition);
-  const file = `supabase/migrations/${name}`;
-  fs.mkdirSync(path.join(repoRoot, 'supabase/migrations'), { recursive: true });
+  const file = `db/migrations/${name}`;
+  fs.mkdirSync(path.join(repoRoot, 'db/migrations'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, file), 'select 1;\n');
   return checkDatabase({ repoRoot, files: [file], git: () => ({ ok: false, stdout: '' }) });
 }
@@ -32,7 +32,7 @@ for (const edition of ['lite', 'full']) {
   test(`DB_MIGRATION_SHAPE@${edition} rejects a migration with an impossible UTC stamp`, async (t) => {
     const findings = await judge(t, edition, '20260230000000_baseline.sql');
     assert.deepEqual(findings.map(({ code }) => code), ['DB_MIGRATION_SHAPE']);
-    assert.equal(findings[0].path, 'supabase/migrations/20260230000000_baseline.sql');
+    assert.equal(findings[0].path, 'db/migrations/20260230000000_baseline.sql');
     assert.match(findings[0].message, /no valid UTC time/);
   });
 

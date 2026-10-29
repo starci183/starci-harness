@@ -16,7 +16,7 @@ const synced = (context, edition) => {
   const declaration = structuredClone(APP);
   declaration.edition = edition;
   if (edition === 'lite') declaration.sides.be.connections = [
-    { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'supabase' },
+    { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' },
   ];
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify(declaration));
   const targets = renderTargets(declaration, PRESETS);

@@ -6,7 +6,7 @@ declare module "express-serve-static-core" {
     interface Request {
         /** The identity `CredentialGuard` authenticated on a door marked `@Credential`; never a session principal. */
         credentialPrincipal?: CredentialPrincipal
-        /** The authenticated Supabase caller, when the door is not public. */
+        /** The authenticated caller, when the door is not public. */
         principal?: Principal
     }
 }

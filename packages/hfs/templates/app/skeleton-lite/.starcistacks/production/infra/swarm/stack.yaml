@@ -8,13 +8,29 @@ services:
       HTTP_SECURITY_ALLOWED_ORIGINS: https://{{project}}.example.invalid
       PRIMARY_DB_URL_FILE: /run/secrets/primary-db-url
       PRIMARY_DB_SCHEMA: public
-      SUPABASE_URL: https://{{project}}.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY_FILE: /run/secrets/supabase-service-role-key
+      GOOGLE_CLIENT_ID: REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID
+      GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google-client-secret
+      GOOGLE_CALLBACK_URL: https://api.{{project}}.example.invalid/auth/google/callback
+      AUTH_JWT_ISSUER: https://api.{{project}}.example.invalid
+      AUTH_JWT_AUDIENCE: {{project}}
+      AUTH_JWT_KEY_ID: production-1
+      AUTH_JWT_PRIVATE_KEY_FILE: /run/secrets/auth-jwt-private-key
+      STORAGE_ENDPOINT: https://storage.{{project}}.example.invalid
+      STORAGE_REGION: us-east-1
+      STORAGE_BUCKET: {{project}}-production
+      STORAGE_ACCESS_KEY_ID_FILE: /run/secrets/storage-access-key-id
+      STORAGE_SECRET_ACCESS_KEY_FILE: /run/secrets/storage-secret-access-key
     secrets:
       - source: primary-db-url
         target: primary-db-url
-      - source: supabase-service-role-key
-        target: supabase-service-role-key
+      - source: google-client-secret
+        target: google-client-secret
+      - source: auth-jwt-private-key
+        target: auth-jwt-private-key
+      - source: storage-access-key-id
+        target: storage-access-key-id
+      - source: storage-secret-access-key
+        target: storage-secret-access-key
     networks: [app]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -66,6 +82,38 @@ services:
       restart_policy:
         condition: on-failure
         delay: 5s
+  db:
+    image: "supabase/postgres:17.11.0.006@sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+    secrets:
+      - source: db-password
+        target: db-password
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    deploy:
+      replicas: 1
+      placement:
+        constraints: ["node.labels.{{project}} == production"]
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
   ingress:
     image: caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb
     configs:
@@ -105,13 +153,28 @@ secrets:
   primary-db-url:
     external: true
     name: "{{project}}-production-primary-db-url-v1"
-  supabase-service-role-key:
+  db-password:
     external: true
-    name: "{{project}}-production-supabase-service-role-key-v1"
+    name: "{{project}}-production-db-password-v1"
+  google-client-secret:
+    external: true
+    name: "{{project}}-production-google-client-secret-v1"
+  auth-jwt-private-key:
+    external: true
+    name: "{{project}}-production-auth-jwt-private-key-v1"
+  storage-access-key-id:
+    external: true
+    name: "{{project}}-production-storage-access-key-id-v1"
+  storage-secret-access-key:
+    external: true
+    name: "{{project}}-production-storage-secret-access-key-v1"
 configs:
   ingress-config:
     file: ./Caddyfile
 volumes:
+  db-data:
+    external: true
+    name: "{{project}}-production-db-data"
   ingress-data:
     external: true
     name: "{{project}}-production-ingress-data"

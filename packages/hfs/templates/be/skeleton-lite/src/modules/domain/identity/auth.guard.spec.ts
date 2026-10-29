@@ -5,8 +5,8 @@ import type { Request } from "express"
 import { mock } from "@starci/jest-preset"
 import type { Principal } from "@modules/platform/cqrs"
 import { ok, refused } from "@modules/platform/primitives"
-import { SupabaseErrorCode } from "@modules/integrations/supabase"
-import type { VerifySupabaseAccessToken } from "@modules/integrations/supabase"
+import { PassportErrorCode } from "@modules/integrations/passport"
+import type { VerifyAccessToken } from "@modules/integrations/passport"
 import { AuthGuard } from "./auth.guard"
 import type { CredentialMetadata, CredentialPrincipal } from "./credential.contracts"
 import { IdentityErrorCode } from "./errors/identity.error"
@@ -26,7 +26,7 @@ interface GuardRequest {
 }
 
 const build = async (metadata: PublicMetadata | undefined, credential?: CredentialMetadata) => {
-    const verifier = mock<{ verify: VerifySupabaseAccessToken }>()
+    const verifier = mock<{ verify: VerifyAccessToken }>()
     const reflector = mock<Reflector>()
     reflector.getAllAndOverride.mockImplementation((key: unknown) =>
         key === CREDENTIAL_KEY ? credential : key === PUBLIC_KEY ? metadata : undefined,
@@ -129,7 +129,7 @@ describe("AuthGuard credential doors", () => {
 
     it("refuses a door that is not public when the token fails verification", async () => {
         const { guard, verify } = await build(undefined)
-        verify.mockResolvedValue(refused(SupabaseErrorCode.AccessTokenInvalid))
+        verify.mockResolvedValue(refused(PassportErrorCode.AccessTokenInvalid))
         const { context, request } = contextOf("bearer forged-token")
 
         await expect(guard.canActivate(context)).rejects.toThrow(IdentityErrorCode.Unauthenticated)

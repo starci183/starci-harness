@@ -6,7 +6,7 @@
     "typecheck:tests": "tsc -p be/src/tests/tsconfig.json",
     "test": "cd be && jest --selectProjects unit --coverage",
     "test:integration": "npm run typecheck:tests && cd be && jest --selectProjects integration",
-{{> app/package-scripts/supabase.json}}
+{{> app/package-scripts/db.json}}
 {{backingScripts}}
     "contract:emit": "{{appBinary}} emit"
   }

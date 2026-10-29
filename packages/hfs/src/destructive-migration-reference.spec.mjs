@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { destructiveMigrationFindings } from '../runtime/scripts/hfs/rules/database-migrations.mjs';
 
-const MIGRATION = 'supabase/migrations/20261101000906_origin-columns_contract_drop.sql';
+const MIGRATION = 'db/migrations/20261101000906_origin-columns_contract_drop.sql';
 
 /** The findings of `migration` (SQL text) against be/src sources `{ path: text }` in a fresh app root. */
 function judge(t, migration, sources, additionalMigrations = {}) {
@@ -18,7 +18,7 @@ function judge(t, migration, sources, additionalMigrations = {}) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), text);
   }
-  const migrations = Object.keys(files).filter((file) => file.startsWith('supabase/migrations/')).sort();
+  const migrations = Object.keys(files).filter((file) => file.startsWith('db/migrations/')).sort();
   return destructiveMigrationFindings({ repoRoot: root, migrations, files: Object.keys(files) });
 }
 
@@ -59,8 +59,8 @@ const publicApiQueries = [
   'SELECT id, title, content, origin FROM public.knowledge_sources WHERE workspace_id = $1::uuid AND id = $2::uuid',
 ];
 const schemaMigrations = {
-  'supabase/migrations/20261026000000_baseline.sql': 'CREATE TABLE public.knowledge_sources (id uuid, origin text);',
-  'supabase/migrations/20261104000500_source-metadata.sql': 'ALTER TABLE public.knowledge_sources ADD COLUMN IF NOT EXISTS topic text;',
+  'db/migrations/20261026000000_baseline.sql': 'CREATE TABLE public.knowledge_sources (id uuid, origin text);',
+  'db/migrations/20261104000500_source-metadata.sql': 'ALTER TABLE public.knowledge_sources ADD COLUMN IF NOT EXISTS topic text;',
 };
 
 test('NIVO public API queries do not attribute surviving knowledge_sources.origin to three dropped columns', (t) => {
@@ -146,7 +146,7 @@ test('a real constraint dependency remains red', (t) => {
 });
 
 test('dropping a constraint still requires a contract migration', (t) => {
-  const file = 'supabase/migrations/20261101000907_remove-constraint.sql';
+  const file = 'db/migrations/20261101000907_remove-constraint.sql';
   const findings = judge(t, '', {}, { [file]: 'ALTER TABLE public.knowledge_sources DROP CONSTRAINT IF EXISTS origin;' });
   assert.equal(findings.length, 1);
   assert.equal(findings[0].path, file);
@@ -196,10 +196,10 @@ for (const statement of [
 
 test('a later additive migration cannot excuse data loss in an expansion migration', (t) => {
   const findings = judge(t, '', {}, {
-    'supabase/migrations/20261101000907_remove-origin.sql': dropOrigin,
-    'supabase/migrations/20261101000908_restore-origin.sql': 'ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS origin text;',
+    'db/migrations/20261101000907_remove-origin.sql': dropOrigin,
+    'db/migrations/20261101000908_restore-origin.sql': 'ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS origin text;',
   });
   assert.equal(findings.length, 1);
-  assert.equal(findings[0].path, 'supabase/migrations/20261101000907_remove-origin.sql');
+  assert.equal(findings[0].path, 'db/migrations/20261101000907_remove-origin.sql');
   assert.equal(findings[0].object, 'public.transactions.origin');
 });

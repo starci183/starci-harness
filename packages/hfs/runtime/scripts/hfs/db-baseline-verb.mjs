@@ -4,9 +4,7 @@ import path from 'node:path';
 import pg from 'libpg-query';
 import { invocationDir } from '../lib/roots.mjs';
 import { sqlStringParts as names, walkSqlAst as walk, sqlParser } from '../lib/sql-ast.mjs';
-import { databaseDump } from '../api/supabase/database-dump.mjs';
-import { databaseQuery } from '../api/supabase/database-query.mjs';
-import { migrationRepair } from '../api/supabase/migration-repair.mjs';
+import { spawnSync } from 'node:child_process';
 import { migrationStamp, isMigrationName, databaseSqlTokens, databaseExecutableTokens } from './rules/database-migrations.mjs';
 import { baselineMarkers, baselineSourceFindings } from './rules/database-baseline.mjs';
 import { databaseQueueDeclarations } from './rules/database-queues.mjs';
@@ -16,10 +14,6 @@ import { dbPlanMain } from './db-plan-verb.mjs';
 await pg.loadModule();
 
 export class DbVerbError extends Error {}
-const LINKED_PASSWORD_ENV = 'SUPABASE_DB_PASSWORD';
-const TELEMETRY_DISABLED_ENV = 'SUPABASE_TELEMETRY_DISABLED';
-const TELEMETRY_DEBUG_ENV = 'SUPABASE_TELEMETRY_DEBUG';
-const CLI_DEBUG_ENV = 'SUPABASE_DEBUG';
 
 /** Strict shared options; unknown flags never reach the database CLI. */
 export function dbOptions(argv, allowed) {
@@ -28,7 +22,7 @@ export function dbOptions(argv, allowed) {
     const [flag, inline] = argv[index].split(/=(.*)/s);
     const name = flag.slice(2);
     if (!flag.startsWith('--') || !allowed.includes(name) || Object.hasOwn(opts, name)) throw new DbVerbError('unknown or duplicate database option');
-    if (['apply', 'local', 'json'].includes(name)) {
+    if (['apply', 'json'].includes(name)) {
       if (inline !== undefined && !['true', 'false'].includes(inline)) throw new DbVerbError(`${flag} expects true or false`);
       opts[name] = inline !== 'false';
     } else {
@@ -48,7 +42,7 @@ export function dbAppRoot(cwd, opts) {
   return root;
 }
 
-/** Immediate SQL files only, never secrets or Supabase's temporary credential files. */
+/** Immediate SQL files only, never secrets or credential files. */
 export function dbSqlFiles(root, directory = MIGRATIONS_DIR) {
   const dir = path.join(root, directory);
   if (!fs.existsSync(dir)) return [];
@@ -59,27 +53,50 @@ export function dbSqlFiles(root, directory = MIGRATIONS_DIR) {
   }).sort((left, right) => left.name < right.name ? -1 : Number(left.name > right.name));
 }
 
-/** Supabase adapter uses supabaseSpawn's (repoRoot, args, options) contract; raw failures are private. */
-const DB_CALLS = { 'db dump': databaseDump, 'db query': databaseQuery, 'migration repair': migrationRepair };
-
-function runDatabaseCommand(root, args, options) {
-  const call = DB_CALLS[args.slice(0, 2).join(' ')];
-  if (!call) throw new DbVerbError('unsupported database command');
-  return call(root, args.slice(2), options);
+/** The database of `--url-env` (default DATABASE_URL): the URL without its password and the password for PGPASSWORD. */
+function connectionOf(env, urlEnv) {
+  if (!/^[A-Z][A-Z0-9_]*$/.test(urlEnv)) throw new DbVerbError('--url-env must name an UPPER_CASE environment variable');
+  let url;
+  try { url = new URL(String(env[urlEnv] ?? '')); } catch { throw new DbVerbError(`${urlEnv} must hold a postgres connection URL`); }
+  if (!/^postgres(?:ql)?:$/.test(url.protocol)) throw new DbVerbError(`${urlEnv} must hold a postgres connection URL`);
+  const password = decodeURIComponent(url.password);
+  url.password = '';
+  return { url: url.toString(), env: { ...env, ...(password ? { PGPASSWORD: password } : {}) } };
 }
 
-export function runDbSupabase(root, args, ports = {}) {
+const HISTORY = 'supabase_migrations.schema_migrations';
+const sqlLiteral = (value) => `'${String(value).replaceAll("'", "''")}'`;
+
+/** The psql and pg_dump invocation of one operation: a JSON rows query, a schema-only dump, or one history row applied or reverted. */
+function commandOf(op, url) {
+  const psql = ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-d', url];
+  if (op.kind === 'query') return ['psql', [...psql, '-A', '-t', '-c', `select coalesce(json_agg(row_to_json(q)), '[]'::json) from (${op.sql.replace(/;\s*$/, '')}) q`]];
+  if (op.kind === 'dump') return ['pg_dump', ['--schema-only', '--schema', 'public', '--dbname', url]];
+  if (op.kind === 'repair') {
+    const change = op.status === 'applied'
+      ? `insert into ${HISTORY} (version, name) values (${sqlLiteral(op.stamp)}, ${sqlLiteral(op.name ?? 'baseline')}) on conflict (version) do nothing`
+      : `delete from ${HISTORY} where version = ${sqlLiteral(op.stamp)}`;
+    return ['psql', [...psql, '-1', '-c', `create schema if not exists supabase_migrations; create table if not exists ${HISTORY} (version text primary key, statements text[], name text)`, '-c', change]];
+  }
+  throw new DbVerbError('unsupported database command');
+}
+
+/** Runs one database operation through psql or pg_dump (ports.runPostgres in specs); raw failures and output are private. */
+export function runDbPostgres(root, op, ports = {}, urlEnv = 'DATABASE_URL') {
   const env = ports.env ?? process.env;
-  // The linked CLI can mint a temporary remote login when no existing password is supplied.
-  // Check custody presence only; the value stays within the CLI environment.
-  if (args.includes('--linked') && !ports.runSupabase && !ports.run && (typeof env[LINKED_PASSWORD_ENV] !== 'string' || env[LINKED_PASSWORD_ENV].length === 0)) throw new DbVerbError('linked database operations require an existing SUPABASE_DB_PASSWORD in the CLI environment');
-  const cliEnv = { ...env, [TELEMETRY_DISABLED_ENV]: '1', [TELEMETRY_DEBUG_ENV]: '0', [CLI_DEBUG_ENV]: '0' };
-  const result = (ports.runSupabase ?? runDatabaseCommand)(root, args, { env: cliEnv, ...(ports.run ? { run: ports.run } : {}) });
-  if (result?.error || !(result?.ok === true || result?.status === 0)) throw new DbVerbError('Supabase command failed; inspect the CLI privately');
+  const result = ports.runPostgres ? ports.runPostgres(root, op) : (() => {
+    const connection = connectionOf(env, urlEnv);
+    const [command, args] = commandOf(op, connection.url);
+    return spawnSync(command, args, { cwd: root, encoding: 'utf8', env: connection.env, timeout: 120_000, windowsHide: true });
+  })();
+  if (result?.error || !(result?.ok === true || result?.status === 0)) throw new DbVerbError('database command failed; inspect psql privately');
   return String(result.stdout ?? '');
 }
 
-export const repairArgs = (stamp, status, local) => ['migration', 'repair', stamp, '--status', status, local ? '--local' : '--linked'];
+/** A history change: `stamp` recorded as applied (named `name`) or reverted. */
+export const repairOp = (stamp, status, name) => ({ kind: 'repair', stamp, status, ...(name ? { name } : {}) });
+/** The printed form of a history change. */
+export const repairLine = (op) => `history ${op.status} ${op.stamp}${op.name ? ` ${op.name}` : ''}`;
 export const dbFailure = (verb, error, stderr) => { stderr(`starci app db ${verb}: ${error instanceof DbVerbError ? error.message : 'operation failed; database output was withheld'}\n`); return 2; };
 
 function baselinePlan(root, opts, now) {
@@ -114,7 +131,7 @@ function baselineFiles(root) {
       else if (entry.isFile() && /\.(?:sql|[cm]?[jt]sx?)$/.test(entry.name)) files.push(file);
     }
   };
-  for (const directory of ['supabase', 'be/src', 'be/apps', 'src', 'apps']) visit(directory);
+  for (const directory of ['db', 'be/src', 'be/apps', 'src', 'apps']) visit(directory);
   return files;
 }
 
@@ -257,20 +274,21 @@ function metadataSql(metadata) {
 /** Numeric CLI exit code, injectable IO/clock/CLI; neither files nor history change without --apply. */
 export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), now = () => new Date(), ...ports } = {}) {
   try {
-    const opts = dbOptions(argv, ['cwd', 'stamp', 'apply', 'local']);
+    const opts = dbOptions(argv, ['cwd', 'stamp', 'apply', 'url-env']);
+    const urlEnv = opts['url-env'] ?? 'DATABASE_URL';
     const root = dbAppRoot(cwd, opts);
     const plan = baselinePlan(root, opts, now);
     const files = baselineFiles(root);
     if (baselineSourceFindings({ repoRoot: root, files, all: files, git: ports.git }).length) throw new DbVerbError('baseline sources and archives must match committed migration history');
     const metadata = baselineMetadata(root, plan, files);
-    if (dbPlanMain(['--json', ...(opts.local ? ['--local'] : [])], { ...ports, cwd: root, stdout: () => {}, stderr: () => {} }) !== 0) throw new DbVerbError('baseline requires a clean database plan with all local migrations already applied');
-    const schema = runDbSupabase(root, ['db', 'dump', opts.local ? '--local' : '--linked'], ports);
+    if (dbPlanMain(['--json', '--url-env', urlEnv], { ...ports, cwd: root, stdout: () => {}, stderr: () => {} }) !== 0) throw new DbVerbError('baseline requires a clean database plan with every migration already applied');
+    const schema = runDbPostgres(root, { kind: 'dump' }, ports, urlEnv);
     if (!schema.trim() || baselineMarkers(schema).length || /\bvault\.(?:create_secret|update_secret)\s*\(|\bpassword\s+'[^']+'/i.test(schema)) throw new DbVerbError('schema dump is empty or contains unsupported secret/baseline statements');
-    const repairs = [...plan.active.map((entry) => repairArgs(entry.stamp, 'reverted', opts.local)), repairArgs(plan.stamp, 'applied', opts.local)];
+    const repairs = [...plan.active.map((entry) => repairOp(entry.stamp, 'reverted')), repairOp(plan.stamp, 'applied', 'baseline')];
     stdout(`${opts.apply ? 'apply' : 'preview'} baseline ${plan.file}; archive ${plan.active.length} migrations\n`);
-    for (const args of repairs) stdout(`supabase ${args.join(' ')}\n`);
+    for (const op of repairs) stdout(`${repairLine(op)}\n`);
     if (!opts.apply) return 0;
-    for (const args of repairs) runDbSupabase(root, args, ports);
+    for (const op of repairs) runDbPostgres(root, op, ports, urlEnv);
     fs.mkdirSync(path.join(root, MIGRATIONS_ARCHIVE_DIR), { recursive: true });
     fs.writeFileSync(path.join(root, plan.file), `-- starci:baseline ${plan.last}\n${metadata.extensions}${metadata.roles}${schema.replace(/^\s+/, '')}\n${metadataSql(metadata)}`, { flag: 'wx' });
     for (const entry of plan.active) fs.renameSync(path.join(root, entry.file), path.join(root, MIGRATIONS_ARCHIVE_DIR, entry.name));

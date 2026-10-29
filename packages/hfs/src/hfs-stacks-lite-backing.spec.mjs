@@ -24,7 +24,7 @@ function fixture(edition = 'lite') {
       api: { role: 'service', app: 'api', image: pinned('app/api:1.0.0') },
       automation: { role: 'sidecar', stateful: true, image: pinned('n8nio/n8n:1.64.3'), database: { provider: 'sqlite', volume: 'automation-data' }, volumes: ['automation-data'] },
     },
-    environments: { production: spec }, backing: { supabase: { provider: 'supabase', managed: true } },
+    environments: { production: spec }, backing: { db: { provider: 'postgres', component: 'db' } },
   };
   const model = {
     services: { api: { image: pinned('app/api:1.0.0') }, automation: { image: pinned('n8nio/n8n:1.64.3'), volumes: [`automation-data:${SQLITE_DATA_DIR}`] } },

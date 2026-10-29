@@ -5,8 +5,8 @@ import { parsePrimaryDatabaseConfig } from "@modules/platform/database"
 export interface CliEnv {
     /** The logical connection name declared in `hfs.json`. */
     readonly name: string
-    /** The Supabase PostgreSQL provider. */
-    readonly provider: "supabase"
+    /** The PostgreSQL provider. */
+    readonly provider: "postgres"
     /** The least-privilege database connection URL, read through the secret source. */
     readonly url: Secret
     /** The isolated PostgreSQL schema. */

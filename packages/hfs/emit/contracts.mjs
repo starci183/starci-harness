@@ -18,10 +18,7 @@
  * TypeScript, Nest and graphql are the repository's own packages; nothing is added to the managed devDependencies. Every app
  * runs in its own child process (`schema-worker.mjs`) because Nest GraphQL's type metadata is process-global.
  *
- * An app whose declaration enables the slot `app.supabase.types` (a connection with provider supabase) also gets its generated
- * Database types written: `supabase/types/database.types.ts` at the app root through `writeDbTypes` (emit/db-types.mjs), the
- * same `supabase gen types typescript --local` text L09 DB_TYPES_DRIFT regenerates to judge drift. The types are an app-level
- * artifact, so a redirected `outDir` (the R23 check mode, which emits into a scratch root) does not get them.
+ * * artifact, so a redirected `outDir` (the R23 check mode, which emits into a scratch root) does not get them.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -30,7 +27,6 @@ import { fileURLToPath } from 'node:url';
 import { emitEvents, eventServices, eventsSnapshotPath } from './events.mjs';
 import { openapiPath } from './operations.mjs';
 import { readEnv } from '../runtime/scripts/lib/env.mjs';
-import { appHasDbTypes, writeDbTypes } from './db-types.mjs';
 import { createSlotResolver, loadSlotManifest, locateDeclaration, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 
 /** The stderr prefix of a dependency the worker could not load and stood in for. */
@@ -84,7 +80,7 @@ function emitApp(repoRoot, app) {
  * resolves there (a bare folder is not an app and emits no types). `repoRoot` is the be side folder, so `locateDeclaration`
  * answers the app root above it.
  */
-function appSupabaseScope(repoRoot) {
+function appDbScope(repoRoot) {
   try {
     const { appRoot } = locateDeclaration(repoRoot);
     const manifest = loadSlotManifest();
@@ -100,9 +96,9 @@ function appSupabaseScope(repoRoot) {
  * being the apps with neither. `declaration` is the parsed hfs.json. `outDir` (absolute) redirects the snapshots to another
  * root, keeping their relative paths.
  *
- * On the real write pass (`outDir` is `repoRoot`) the app's Supabase types are written too when the slot `app.supabase.types`
+ * On the real write pass (`outDir` is `repoRoot`) the app's database types are written too when the slot `app.db.types`
  * is enabled: `resolver` is the app-scope slot view (built from the declaration at the app root when not passed), `appRoot`
- * overrides where the types land, and `run` is the command runner `writeDbTypes` spawns `supabase` with. `types` in the answer
+ * overrides where the types land, and `run` is the command runner `writeDbTypes` spawns `psql` with. `types` in the answer
  * is `writeDbTypes`'s `{ path, changed }`, or null for an app without the slot or a redirected pass.
  */
 export function emitContracts({ repoRoot, declaration, outDir = repoRoot, resolver, appRoot, run } = {}) {
@@ -137,7 +133,7 @@ export function emitContracts({ repoRoot, declaration, outDir = repoRoot, resolv
   // The generated Database types are an app-level artifact of the write pass only: a redirected outDir is the R23 check
   // mode, and L09 judges drift on the same emitted text through the injected emitTypes (emit/db-types.mjs dbTypesEmitter).
   if (outDir === repoRoot) {
-    const scope = resolver === undefined ? appSupabaseScope(repoRoot) : { appRoot: locateDeclaration(repoRoot).appRoot, resolver };
+    const scope = resolver === undefined ? appDbScope(repoRoot) : { appRoot: locateDeclaration(repoRoot).appRoot, resolver };
     const target = appRoot ?? scope?.appRoot;
     if (target !== null && target !== undefined && scope?.resolver != null && appHasDbTypes(scope.resolver)) types = writeDbTypes({ root: target, run });
   }

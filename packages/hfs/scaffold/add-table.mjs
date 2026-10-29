@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { emitDbTypes, dbTypesPath } from "../emit/db-types.mjs";
 import {
   loadSlotManifest,
   readRepoDeclaration,
@@ -288,7 +287,7 @@ const apiFeatureFiles = (values) => {
 /**
  * The fe data code of a table in one product app: one GraphQL operation file per operation (modules/api/graphql/{queries,
  * mutations}, its request/data types from the generated wire types) and one SWR hook per operation (hooks/swr/api/graphql).
- * Never a Server Action and never a Supabase reader: Supabase on the front end is the Auth client only.
+ * Never a Server Action and never a database reader: the front end reaches data only through the back end.
  */
 const feOperationFiles = (app, values) => {
   const api = `fe/apps/${app}/src/modules/api/graphql`;
@@ -326,9 +325,8 @@ const withExport = (text, line) => {
 };
 
 /**
- * Adds one Supabase table migration and its domain capability; with `fe`, the table's api feature over GraphQL (the GraphQL
+ * Adds one db table migration and its domain capability; with `fe`, the table's api feature over GraphQL (the GraphQL
  * server capability on first use) and, in every product Next app, its operation files and SWR hooks.
- * `emitTypes` returns the generated database.types.ts text; false is the explicit `--no-types` seam.
  */
 function tableContext({ root, name }) {
   const requestedName = String(name);
@@ -341,11 +339,11 @@ function tableContext({ root, name }) {
   const table = snakeOf(requestedName);
   const manifest = loadSlotManifest();
   const repo = readRepoDeclaration(manifest, root);
-  const connection = repo.sides?.be?.connections?.find((candidate) => candidate.provider === "supabase");
+  const connection = repo.sides?.be?.connections?.find((candidate) => candidate.provider === "postgres");
   if (!connection) {
     throw new ScaffoldError(
       "HFS_ADD_TABLE_PROVIDER",
-      "add table needs a back-end connection whose provider is supabase",
+      "add table needs a back-end connection whose provider is postgres",
     );
   }
 
@@ -353,7 +351,7 @@ function tableContext({ root, name }) {
 }
 
 function nextMigration({ root, feature, requestedName, now }) {
-  const migrationsDir = path.join(root, "supabase", "migrations");
+  const migrationsDir = path.join(root, "db", "migrations");
   const migrations = fs.existsSync(migrationsDir)
     ? fs
         .readdirSync(migrationsDir)
@@ -408,7 +406,7 @@ function tableFiles({ root, repo, feature, stamp, values, fe, apps }) {
   const domain = `be/src/modules/domain/${feature}`;
   const planned = [
     {
-      relative: `supabase/migrations/${stamp}_${feature}.sql`,
+      relative: `db/migrations/${stamp}_${feature}.sql`,
       body: template("be/table/migration.sql.tpl", values),
     },
     { relative: `${domain}/index.ts`, body: template("be/table/index.ts.tpl", values) },
@@ -417,16 +415,9 @@ function tableFiles({ root, repo, feature, stamp, values, fe, apps }) {
     { relative: `${domain}/${feature}.module-definition.ts`, body: template("be/table/module-definition.ts.tpl", values) },
     { relative: `${domain}/${feature}.options.ts`, body: template("be/table/options.ts.tpl", values) },
     { relative: `${domain}/${feature}.service.ts`, body: template(`be/table/service${api}.ts.tpl`, values) },
-    { relative: `${domain}/persistence/${feature}.rows.ts`, body: template("be/table/rows.ts.tpl", values) },
-    { relative: `${domain}/persistence/${feature}.sql.ts`, body: template(`be/table/sql${api}.ts.tpl`, values) },
+    { relative: `${domain}/persistence/entities/${feature}.entity.ts`, body: template("be/table/entity.ts.tpl", values) },
+    { relative: `${domain}/persistence/entities/index.ts`, body: template("be/table/entities.index.ts.tpl", values) },
   ];
-  const databaseSql = "be/src/modules/platform/database/database.sql.ts";
-  if (repo.edition === "lite" && !fs.existsSync(at(root, databaseSql))) {
-    planned.splice(1, 0, {
-      relative: databaseSql,
-      body: render(fs.readFileSync(path.join(TEMPLATES_DIR, "be", "skeleton-lite", "src", "modules", "platform", "database", "database.sql.ts"), "utf8"), {}),
-    });
-  }
   if (fe) {
     planned.push(...apiFeatureFiles(values));
     if (!fs.existsSync(at(root, `${GRAPHQL_PLATFORM}/index.ts`))) planned.push(...graphqlPlatformFiles());
@@ -450,7 +441,7 @@ function tableOwner({ root, repo, connection, name, requestedName, planned }) {
     );
   const owner = repo.sides.be.apps.find((app) => app.name === connection.owner && app.kind === "api");
   if (!owner)
-    throw new ScaffoldError("HFS_ADD_NO_API_OWNER", `add table needs the Supabase connection owner ${connection.owner} to be a declared api app`);
+    throw new ScaffoldError("HFS_ADD_NO_API_OWNER", `add table needs the database connection owner ${connection.owner} to be a declared api app`);
   const ownerRelative = `be/apps/${owner.name}/src/app.module.ts`;
   if (!fs.existsSync(at(root, ownerRelative)))
     throw new ScaffoldError("HFS_ADD_WIRE_MISSING", `add table registers ${name} in ${ownerRelative}, which does not exist`);
@@ -471,16 +462,12 @@ function tableEditor(root, touched) {
   return edit;
 }
 
-function writeTableFiles({ root, planned, emitTypes, edit }, created) {
+function writeTableFiles({ root, planned, edit }, created) {
   for (const file of planned) {
     const target = at(root, file.relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, file.body);
     created.push(target);
-  }
-  if (typeof emitTypes === "function") {
-    const generated = emitTypes({ root });
-    if (typeof generated === "string") edit(dbTypesPath, () => generated);
   }
 
 }
@@ -504,8 +491,30 @@ function wireTableFrontends({ root, feature, values, apps, edit }) {
       }
 }
 
+/** The lite entity list: platform/database/entities.ts names the capability's `<c>Entities` in PRIMARY_ENTITIES (BE-PERSISTENCE-3). */
+const PRIMARY_ENTITIES_FILE = "be/src/modules/platform/database/entities.ts";
+const PRIMARY_ENTITIES = /(export const PRIMARY_ENTITIES[^=]*=\s*\[)([\s\S]*?)(\])/;
+
+/** `text` of entities.ts with `<c>Entities` imported from the capability barrel and spread into PRIMARY_ENTITIES, once. */
+function withPrimaryEntities(text, { feature, nameCamel }) {
+  const list = `${nameCamel}Entities`;
+  if (!PRIMARY_ENTITIES.test(text))
+    throw new ScaffoldError("HFS_ADD_WIRE_MISSING", `add table names ${list} in PRIMARY_ENTITIES of ${PRIMARY_ENTITIES_FILE}, which declares no PRIMARY_ENTITIES array`);
+  if (new RegExp(`\\.\\.\\.${list}\\b`).test(text)) return text;
+  const imported = `import { ${list} } from "@modules/domain/${feature}"\n`;
+  const withList = text.replace(PRIMARY_ENTITIES, (all, head, items, tail) => {
+    const entries = items.split(",").map((item) => item.trim()).filter(Boolean);
+    return `${head}${[...entries, `...${list}`].join(", ")}${tail}`;
+  });
+  const lines = withList.split("\n");
+  const lastImport = lines.reduce((at, line, index) => (line.startsWith("import ") ? index : at), -1);
+  if (lastImport >= 0) lines.splice(lastImport + 1, 0, imported.trimEnd());
+  return lastImport >= 0 ? lines.join("\n") : `${imported}${withList}`;
+}
+
 function wireTable({ root, repo, feature, values, ownerRelative, composition, fe, apps, edit }) {
     const kindsHome = kindsHomeOf(root, ownerRelative);
+    if (repo.edition === "lite") edit(PRIMARY_ENTITIES_FILE, (text) => withPrimaryEntities(text, { feature, nameCamel: values.nameCamel }));
     for (const patch of composition) edit(patch.relative, () => patch.text);
     edit(kindsHome, (text) => wireKinds(text, kindsHome, { kinds: `${snakeOf(feature).toUpperCase()}_ERROR_KINDS`, specifier: `@modules/domain/${feature}` }));
   tableRegistrations({ root, repo, fe, edit });
@@ -538,7 +547,7 @@ function applyTable(context) {
 }
 
 /** Adds one table through typed domain/API groups and restores every touched byte on failure. */
-export function addTable({ root, name, fe = false, emitTypes = emitDbTypes, now = Date.now }) {
+export function addTable({ root, name, fe = false, now = Date.now }) {
   const context = tableContext({ root, name });
   const stamp = nextMigration({ ...context, now });
   const values = tableValues(context);
@@ -546,9 +555,8 @@ export function addTable({ root, name, fe = false, emitTypes = emitDbTypes, now 
   const planned = tableFiles({ ...context, stamp, values, apps, fe });
   const owner = tableOwner({ ...context, planned });
   const composition = tableComposition({ ...context, ...owner, fe });
-  applyTable({ ...context, ...owner, planned, composition, apps, values, fe, emitTypes });
+  applyTable({ ...context, ...owner, planned, composition, apps, values, fe });
   return {
     created: [...planned.map((file) => file.relative), ...composition.filter((patch) => patch.exists === false).map((patch) => patch.relative)],
-    types: typeof emitTypes === "function" ? dbTypesPath : "skipped",
   };
 }

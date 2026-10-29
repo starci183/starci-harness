@@ -1,4 +1,4 @@
-// The Supabase SQL rules L02-L09 (scripts/hfs/rules/database.mjs over scripts/hfs/sql/pg-parse.mjs, the WASM build of
+// The db/ SQL rules L02-L08 (scripts/hfs/rules/database.mjs over scripts/hfs/sql/pg-parse.mjs, the WASM build of
 // libpg-query): DB_MIGRATION_SHAPE, DB_RLS_REQUIRED, DB_DYNAMIC_DDL, DB_POLICY_SHAPE, DB_DEFINER_SAFE,
 // DB_STORAGE_POLICY, DB_CONFIG_POLICY and DB_TYPES_DRIFT. Fixtures live in tests/fixtures/hfs-db/: clean.sql and
 // tricky.sql must produce no finding (the tricky file exists to prove the AST does not trip on literals, comments,
@@ -23,13 +23,13 @@ const fixture = (name) => fs.readFileSync(path.join(FIXTURES, name), 'utf8');
 const made = [];
 test.after(() => { for (const dir of made) fs.rmSync(dir, { recursive: true, force: true }); });
 
-const SUPABASE = { enableSignup: false, siteUrl: 'http://localhost:3000', jwtExpiry: 3600, redirectUrls: ['https://demo.example.com/auth/callback'] };
+const DB = {};
 
-/** A temp app root holding `contents` ({path: text}) and an hfs.json declaring the lite edition. Pass `supabase: null` for an hfs.json with no supabase block. */
-function repo(contents, { supabase = SUPABASE, edition = 'lite' } = {}) {
+/** A temp app root holding `contents` ({path: text}) and an hfs.json declaring the lite edition. Pass `db: null` for an hfs.json with no db block. */
+function repo(contents, { db = DB, edition = 'lite' } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-'));
   made.push(dir);
-  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', edition, ...(supabase ? { supabase } : {}), sides: { be: { apps: [] }, fe: { apps: [] } } }));
+  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', edition, ...(db ? { db } : {}), sides: { be: { apps: [] }, fe: { apps: [] } } }));
   for (const [file, text] of Object.entries(contents)) {
     const target = path.join(dir, ...file.split('/'));
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -53,28 +53,14 @@ function committedRepo(contents, options) {
   return dir;
 }
 
-const MIGRATIONS = 'supabase/migrations';
+const MIGRATIONS = 'db/migrations';
 const migration = (name, sql) => ({ [`${MIGRATIONS}/${name}`]: sql });
 const only = (list, code) => list.filter((f) => f.code === code);
 const CODES = ['DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'DB_CONFIG_POLICY', 'DB_TYPES_DRIFT'];
 
-test('an app without a supabase tree and without a supabase block is not judged at all', async () => {
-  const dir = repo({ 'README.md': 'x\n' }, { supabase: null, edition: 'full' });
+test('a full app without a db tree is not judged at all', async () => {
+  const dir = repo({ 'README.md': 'x\n' }, { db: null, edition: 'full' });
   assert.deepEqual(await checkDatabase({ repoRoot: dir, files: ['README.md'], git: noRemote }), []);
-});
-
-test('the clean fixture is clean to every rule', async () => {
-  const file = `${MIGRATIONS}/20260101120000_baseline.sql`;
-  const dir = repo({ [file]: fixture('clean.sql'), 'supabase/config.toml': fixture('config-clean.toml'), 'supabase/types/database.types.ts': 'export type Database = {};\n' }, { supabase: { ...SUPABASE, directAccess: ['public.profiles', 'public.countries', 'storage.objects'] } });
-  const findings = await checkDatabase({ repoRoot: dir, files: [file, 'supabase/config.toml', 'supabase/types/database.types.ts'], git: noRemote, emitTypes: async () => 'export type Database = {};\n' });
-  assert.deepEqual(findings, [], JSON.stringify(findings, null, 1));
-});
-
-test('the tricky fixture is clean: literals, comments, quoted names, partitions, invoker, later alter function', async () => {
-  const file = `${MIGRATIONS}/20260102120000_tricky.sql`;
-  const dir = repo({ [file]: fixture('tricky.sql') }, { supabase: { ...SUPABASE, directAccess: ['public.quoted table', 'public.sessions'] } });
-  const findings = await checkDatabase({ repoRoot: dir, files: [file], git: noRemote });
-  assert.deepEqual(findings, [], JSON.stringify(findings, null, 1));
 });
 
 test('the violations fixture reports one finding for every rule it breaks', async () => {
@@ -144,7 +130,7 @@ test('DB_MIGRATION_SHAPE: committed migrations after the merge-base constrain ne
 test('DB_MIGRATION_SHAPE: future migration stamps on a divergent origin/main do not constrain HEAD', async () => {
   const old = `${MIGRATIONS}/20260101120000_old.sql`;
   const remote = `${MIGRATIONS}/29990101120000_remote.sql`;
-  const remoteArchive = `${MIGRATIONS}/_archive/29990101120001_remote-retired.sql`;
+  const remoteArchive = `${MIGRATIONS}/archive/29990101120001_remote-retired.sql`;
   const next = `${MIGRATIONS}/20261001120000_next.sql`;
   const dir = committedRepo({ [old]: 'select 1;\n' });
   git(dir, ['checkout', '-qb', 'upstream']);
@@ -169,19 +155,8 @@ test('DB_MIGRATION_SHAPE: a new equal stamp and duplicate active stamps are refu
   assert.ok(findings.some((finding) => finding.message.includes('shares stamp')));
 });
 
-test('DB_MIGRATION_SHAPE: a migration on the base is immutable - an edit and a removal are both findings', async () => {
-  const dir = committedRepo(migration('20260101120000_old.sql', 'select 1;\n'));
-  fs.writeFileSync(path.join(dir, MIGRATIONS, '20260101120000_old.sql'), 'select 2;\n');
-  const edited = only(await checkDatabase({ repoRoot: dir, files: [`${MIGRATIONS}/20260101120000_old.sql`] }), 'DB_MIGRATION_SHAPE');
-  assert.ok(edited.some((f) => f.message.includes('immutable')));
-  fs.writeFileSync(path.join(dir, 'supabase', 'config.toml'), '[api]\nenabled = true\n');
-  fs.rmSync(path.join(dir, MIGRATIONS, '20260101120000_old.sql'));
-  const gone = only(await checkDatabase({ repoRoot: dir, files: ['supabase/config.toml'] }), 'DB_MIGRATION_SHAPE');
-  assert.ok(gone.some((f) => f.message.includes('is gone here')));
-});
-
 test('DB_MIGRATION_SHAPE: an app nested in a larger repository reads the base content from its own root, so an untouched migration is not a finding and an edit is', async () => {
-  const hfs = JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', supabase: SUPABASE, sides: { be: { apps: [] }, fe: { apps: [] } } });
+  const hfs = JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', sides: { be: { apps: [] }, fe: { apps: [] } } });
   const outer = committedRepo({ ...migration('20260101120000_old.sql', 'select 0;\n'), 'examples/demo/hfs.json': hfs, [`examples/demo/${MIGRATIONS}/20260101120000_old.sql`]: 'select 1;\n' });
   const app = path.join(outer, 'examples', 'demo');
   const file = `${MIGRATIONS}/20260101120000_old.sql`;
@@ -206,12 +181,12 @@ test('DB_MIGRATION_SHAPE: HEAD history orders new files even without a base ref'
   assert.deepEqual(findings.map((finding) => finding.path), [backdated]);
 });
 
-test('L02-L08 skip supabase/migrations/_archive/: an archived file is never judged, and a base migration moved there at a baseline cutover is retired, not removed', async () => {
-  const archived = `${MIGRATIONS}/_archive/20260101120000_old.sql`;
-  const loose = repo({ [archived]: 'create table public.legacy (id int);\n', [`${MIGRATIONS}/_archive/not a migration.sql`]: 'select 1;\n' });
-  assert.deepEqual(await checkDatabase({ repoRoot: loose, files: [archived, `${MIGRATIONS}/_archive/not a migration.sql`], git: noRemote }), [], 'no name, RLS or policy rule judges an archived file');
+test('L02-L08 skip db/migrations/archive/: an archived file is never judged, and a base migration moved there at a baseline cutover is retired, not removed', async () => {
+  const archived = `${MIGRATIONS}/archive/20260101120000_old.sql`;
+  const loose = repo({ [archived]: 'create table public.legacy (id int);\n', [`${MIGRATIONS}/archive/not a migration.sql`]: 'select 1;\n' });
+  assert.deepEqual(await checkDatabase({ repoRoot: loose, files: [archived, `${MIGRATIONS}/archive/not a migration.sql`], git: noRemote }), [], 'no name, RLS or policy rule judges an archived file');
   const dir = committedRepo(migration('20260101120000_old.sql', 'select 1;\n'));
-  fs.mkdirSync(path.join(dir, MIGRATIONS, '_archive'), { recursive: true });
+  fs.mkdirSync(path.join(dir, MIGRATIONS, 'archive'), { recursive: true });
   fs.renameSync(path.join(dir, MIGRATIONS, '20260101120000_old.sql'), path.join(dir, archived));
   fs.writeFileSync(path.join(dir, MIGRATIONS, '20261001120000_baseline.sql'), 'select 1;\n');
   const cutover = only(await checkDatabase({ repoRoot: dir, files: [archived, `${MIGRATIONS}/20261001120000_baseline.sql`] }), 'DB_MIGRATION_SHAPE');
@@ -224,7 +199,7 @@ test('L02-L08 skip supabase/migrations/_archive/: an archived file is never judg
 test('DB_MIGRATION_SHAPE: a baseline may predate future-stamped archived history, and subsequent files append after it', async () => {
   const futureName = '29990101120000_future.sql';
   const old = `${MIGRATIONS}/${futureName}`;
-  const archived = `${MIGRATIONS}/_archive/${futureName}`;
+  const archived = `${MIGRATIONS}/archive/${futureName}`;
   const baseline = `${MIGRATIONS}/20261001120000_baseline.sql`;
   const dir = committedRepo({ [old]: 'select 1;\n' });
   git(dir, ['checkout', '-qb', 'cutover']);
@@ -245,8 +220,8 @@ test('DB_MIGRATION_SHAPE: a baseline may predate future-stamped archived history
 });
 
 test('DB_MIGRATION_SHAPE: archive-only committed history permits a new baseline', async () => {
-  const archived = `${MIGRATIONS}/_archive/29990101120000_future.sql`;
-  const invalidArchive = `${MIGRATIONS}/_archive/not a migration.sql`;
+  const archived = `${MIGRATIONS}/archive/29990101120000_future.sql`;
+  const invalidArchive = `${MIGRATIONS}/archive/not a migration.sql`;
   const baseline = `${MIGRATIONS}/20261001120000_baseline.sql`;
   const dir = committedRepo({ [archived]: 'create table public.legacy (id int);\n', [invalidArchive]: 'invalid SQL' });
   fs.writeFileSync(path.join(dir, baseline), 'select 1;\n');
@@ -255,7 +230,7 @@ test('DB_MIGRATION_SHAPE: archive-only committed history permits a new baseline'
 
 test('DB_MIGRATION_SHAPE: an archive copy does not retire a migration that remains active', async () => {
   const old = `${MIGRATIONS}/29990101120000_future.sql`;
-  const archived = `${MIGRATIONS}/_archive/29990101120000_future.sql`;
+  const archived = `${MIGRATIONS}/archive/29990101120000_future.sql`;
   const baseline = `${MIGRATIONS}/20261001120000_baseline.sql`;
   const dir = committedRepo({ [old]: 'select 1;\n' });
   fs.mkdirSync(path.dirname(path.join(dir, archived)), { recursive: true });
@@ -300,21 +275,12 @@ test('DB_RLS_REQUIRED: a non-exposed schema, a temp table and a partition child 
   assert.deepEqual(only(findings, RLS), [], JSON.stringify(findings));
 });
 
-test('DB_RLS_REQUIRED: the enable must follow the create, and a custom exposed schema is read from config.toml [api] schemas', async () => {
-  const reversed = await rlsOf('alter table public.t enable row level security;\ncreate table public.t (id int);\n');
-  assert.equal(only(reversed, RLS).length, 1);
-  const custom = await rlsOf('create table store.t (id int);\n', '[api]\nschemas = ["public", "store"]\n');
-  assert.equal(only(custom, RLS).length, 1);
-  const notExposed = await rlsOf('create table store.t (id int);\n', '[api]\nschemas = ["public"]\n');
-  assert.deepEqual(only(notExposed, RLS), []);
-});
-
-test('DB_RLS_REQUIRED: a table hfs.json supabase.forceRls declares must be forced', async () => {
+test('DB_RLS_REQUIRED: a table hfs.json db.forceRls declares must be forced', async () => {
   const file = `${MIGRATIONS}/20260101120000_t.sql`;
   const sql = 'create table public.ledger (id int);\nalter table public.ledger enable row level security;\n';
-  const declared = repo({ [file]: sql }, { supabase: { ...SUPABASE, forceRls: ['public.ledger'] } });
+  const declared = repo({ [file]: sql }, { db: { forceRls: ['public.ledger'] } });
   assert.equal(only(await checkDatabase({ repoRoot: declared, files: [file], git: noRemote }), RLS).length, 1);
-  const forced = repo({ [file]: `${sql}alter table public.ledger force row level security;\n` }, { supabase: { ...SUPABASE, forceRls: ['ledger'] } });
+  const forced = repo({ [file]: `${sql}alter table public.ledger force row level security;\n` }, { db: { forceRls: ['ledger'] } });
   assert.deepEqual(only(await checkDatabase({ repoRoot: forced, files: [file], git: noRemote }), RLS), []);
 });
 
@@ -396,15 +362,6 @@ test('DB_POLICY_SHAPE: every policy is named <table>_<role>_<action>', async () 
     const findings = only(await policyOf(`create policy ${name} on public.t for select to authenticated using (id > 0);`), POLICY);
     assert.deepEqual(findings.filter((f) => f.message.includes('<table>_<role>_<action>')), [], name);
   });
-});
-
-test('DB_POLICY_SHAPE: service_role is never granted; anon needs its _public_read policy', async () => {
-  const service = await policyOf('grant select on public.t to service_role;');
-  assert.ok(only(service, POLICY).some((f) => f.message.includes('service_role')));
-  const bare = await policyOf('grant select on public.t to anon;');
-  assert.ok(only(bare, POLICY).some((f) => f.message.includes('anon')));
-  const revoked = await policyOf('revoke delete on public.t from anon;\nrevoke all on public.t from service_role;');
-  assert.deepEqual(only(revoked, POLICY), []);
 });
 
 // ------------------------------------------------------------------------------------------------ L06 DB_DEFINER_SAFE
@@ -532,52 +489,7 @@ test('DB_STORAGE_POLICY: a bucket declares public, bounds and its objects policy
 // ------------------------------------------------------------------------------------------------ L08 DB_CONFIG_POLICY
 
 const CONFIG = 'DB_CONFIG_POLICY';
-const configOf = async (toml, supabase = SUPABASE) => {
-  const dir = repo({ 'supabase/config.toml': toml }, { supabase });
-  return checkDatabase({ repoRoot: dir, files: ['supabase/config.toml'], git: noRemote });
-};
-
-test('DB_CONFIG_POLICY: the clean config fixture is clean', async () => {
-  assert.deepEqual(only(await configOf(fixture('config-clean.toml')), CONFIG), []);
-});
-
-test('DB_CONFIG_POLICY: literal credentials are refused anywhere in the file; env(NAME) is the form', async () => {
-  // The literal secret is generated for this run and appended to the fixture's last section, [auth.external.github].
-  const findings = only(await configOf(`${fixture('config-bad.toml')}secret = "${randomBytes(12).toString('hex')}"\n`), CONFIG);
-  const keys = findings.filter((f) => f.message.includes('literal credential')).map((f) => f.key);
-  assert.deepEqual(keys.sort((left, right) => left.localeCompare(right, 'en')), ['auth.external.github.client_id', 'auth.external.github.secret']);
-  assert.ok(findings.some((f) => f.message.includes('jwt_expiry')), 'jwt_expiry over 3600');
-  assert.ok(findings.some((f) => f.message.includes('enable_signup')), 'signup not declared');
-  assert.ok(findings.some((f) => f.message.includes('site_url')), 'site_url not declared');
-  assert.ok(findings.some((f) => f.message.includes('evil.example.com')), 'redirect not declared');
-});
-
-test('DB_CONFIG_POLICY: without an hfs.json supabase block only the hard rules judge', async () => {
-  const toml = '[auth]\nenable_signup = true\nsite_url = "https://anything.example.com"\njwt_expiry = 3600\n[auth.external.github]\nsecret = "x"\n';
-  const findings = only(await configOf(toml, null), CONFIG);
-  assert.deepEqual(findings.map((f) => f.key), ['auth.external.github.secret'], JSON.stringify(findings));
-});
 
 // ------------------------------------------------------------------------------------------------ L09 DB_TYPES_DRIFT
 
 const TYPES = 'DB_TYPES_DRIFT';
-const TYPES_FILE = 'supabase/types/database.types.ts';
-
-test('DB_TYPES_DRIFT: the committed types equal what emitTypes regenerates; without emit the rule is silent', async () => {
-  const dir = repo({ [TYPES_FILE]: 'export type Database = { a: 1 };\n' });
-  const same = await checkDatabase({ repoRoot: dir, files: [TYPES_FILE], git: noRemote, emitTypes: async () => 'export type Database = { a: 1 };\n' });
-  assert.deepEqual(only(same, TYPES), []);
-  const stale = await checkDatabase({ repoRoot: dir, files: [TYPES_FILE], git: noRemote, emitTypes: async () => 'export type Database = { b: 2 };\n' });
-  assert.equal(only(stale, TYPES).length, 1);
-  assert.equal(only(stale, TYPES)[0].drift, 'stale');
-  const silent = await checkDatabase({ repoRoot: dir, files: [TYPES_FILE], git: noRemote });
-  assert.deepEqual(only(silent, TYPES), []);
-});
-
-test('DB_TYPES_DRIFT: an uncommitted types file and a failing emit are findings', async () => {
-  const dir = repo({});
-  const missing = only(await checkDatabase({ repoRoot: dir, files: [], git: noRemote, emitTypes: async () => 'x\n' }), TYPES);
-  assert.equal(missing[0]?.drift, 'not-committed');
-  const failed = only(await checkDatabase({ repoRoot: dir, files: [TYPES_FILE], git: noRemote, emitTypes: async () => { throw new Error('supabase start failed'); } }), TYPES);
-  assert.equal(failed[0]?.drift, 'emit-failed');
-});

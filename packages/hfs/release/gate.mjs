@@ -33,13 +33,11 @@ export const VERSION = /^(\d+)\.(\d+)\.(\d+)$/u;
 const THRESHOLD_MISS = /coverage threshold .* not met/gu;
 const WRAPPED = new Set(['npm', 'npx']);
 // Every row the managed CI runs, so a release that does not wait for its candidate CI (release.requireCi false) still ran them all locally:
-// fast (audit, format, typecheck), lint, test + coverage (the managed `test` script is the per-file 100 threshold), build, the lite database lint and types, and Sonar.
+// fast (audit, format, typecheck), lint, test + coverage (the managed `test` script is the per-file 100 threshold), build, the lite database lint, and Sonar.
 const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test'];
 // A full app has a test world (integration, e2e and contract projects, always present: the managed `test:e2e` script marks it), so those layers are rows of its gate;
 // a lite app's integration project exists only where it has integration specs, so it has no world rows.
 const WORLD_SCRIPTS = ['test:integration', 'test:e2e', 'test:contract'];
-const DB_TYPES_SCRIPTS = ['db:start', 'db:reset', 'db:types', 'db:stop'];
-const DB_TYPES_COMMITTED = { name: 'db-types-committed', command: ['git', 'diff', '--exit-code', '--', 'supabase/types/database.types.ts'], summary: null, env: {} };
 // An app with an entity list (db/entity-list.mjs) checks its entities against the migrated schema: a row of every gate, declared or default.
 const DB_DRIFT = { name: 'db-drift', command: ['npx', 'starci', 'app', 'db', 'drift'], summary: null, env: {} };
 
@@ -53,21 +51,11 @@ const scriptGate = (script) => ({
   env: {},
 });
 
-/**
- * The lite database-types rows of the managed CI, in its order: start Supabase, apply the migrations, regenerate the types, require them committed, stop.
- * The stop is the teardown of the start (`teardownOf`): it runs whenever the start ran, also after a red row, so a failed database row never leaves Supabase running.
- */
-function dbTypesGates(scripts) {
-  if (!DB_TYPES_SCRIPTS.every((script) => typeof scripts?.[script] === 'string')) return [];
-  const [start, reset, types, stop] = DB_TYPES_SCRIPTS.map(scriptGate);
-  return [start, reset, types, DB_TYPES_COMMITTED, { ...stop, teardownOf: start.name }];
-}
-
-/** Default gates run app-check, the enabled audit, then every managed script present in the app, the database-types rows and the entity drift row, Sonar following when it is declared. */
+/** Default gates run app-check, the enabled audit, then every managed script present in the app and the entity drift row, Sonar following when it is declared. */
 function defaultGates(scripts, audit, entities) {
   const present = SCRIPT_GATES.filter((script) => typeof scripts?.[script] === 'string');
   const world = typeof scripts?.['test:e2e'] === 'string' ? WORLD_SCRIPTS.filter((script) => typeof scripts?.[script] === 'string') : [];
-  return [{ name: 'app-check', command: ['npx', 'starci', 'app', 'check'], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...world.map(scriptGate), ...dbTypesGates(scripts), ...(entities ? [DB_DRIFT] : [])];
+  return [{ name: 'app-check', command: ['npx', 'starci', 'app', 'check'], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...world.map(scriptGate), ...(entities ? [DB_DRIFT] : [])];
 }
 
 /** Shared quality settings retain the release reader's audit validation, disabled mode and legacy string host compatibility. */

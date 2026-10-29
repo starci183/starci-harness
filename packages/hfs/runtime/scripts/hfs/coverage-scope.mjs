@@ -52,7 +52,7 @@ export function nested(inner, outer) {
 const variantsOf = (slot) => braceVariants(slot.path).map(star);
 
 /**
- * The tracked slots of the be profile, in manifest order. A slot gated by a connection provider (be.integrations.supabase) holds files only in an
+ * The tracked slots of the be profile, in manifest order. A slot gated by a connection provider holds files only in an
  * app whose connection declares that provider (`providers`), so it takes no part in the scope of any other app.
  */
 const beSlots = (manifest, providers) => manifest.slots.filter((slot) => slot.profiles.includes('be') && slot.tracked === 'tracked' && (slot.provider === undefined || providers.includes(slot.provider)));

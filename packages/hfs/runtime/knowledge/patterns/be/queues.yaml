@@ -83,7 +83,7 @@ rules:
     hfsRules: [R90, R258]
     requirement: |-
       A recurring task is a job scheduler (`upsertJobScheduler`) that the queue module declares in its `schedulers` list and
-      `platform/queue` registers at boot, or, in an app on Supabase, a uniquely named pg_cron job of a migration whose command
+      `platform/queue` registers at boot, or, in a lite app, a uniquely named pg_cron job of a migration whose command
       (directly or through one `*_tick` function) only inserts one row of a queue constant into the queue outbox table of
       `ruleParams.db.queueOutbox` (`public.queue`), which the relay hands to BullMQ, or by calling the enqueue function that the app declares with its own outbox table in `hfs.json` `sides.be.queueOutbox` (redis declared in `sides.be.backing`; the function's active definition only inserts into that table); a tick has exactly one of the two owners. A job name is scheduled once while it is active: a later migration that replaces a tick's command calls `cron.unschedule` of the name first. Its job is processed by the same
       `features/jobs/<job>/<job>.processor.ts` as any enqueued job. `@nestjs/schedule`, `@Cron`, `@Interval`, `@Timeout` and
@@ -96,7 +96,7 @@ rules:
         when: Expire unpaid orders every five minutes
         write: 'order-expiry.queue.ts declares scheduler { every: 5 minutes } for the expire-orders job; the processor dispatches ExpireOrdersCommand.'
       - id: case-2
-        when: A lite app on Supabase sends booking reminders every fifteen minutes
+        when: A lite app sends booking reminders every fifteen minutes
         write: "A migration declares private.booking_reminder_tick() as one insert into public.queue (queue, payload, created_at) values ('booking_reminder', jsonb_build_object('tick', true), now()) and schedules it with cron.schedule('booking_reminder_tick', '*/15 * * * *', ...); the send-reminder processor is the queue's."
     verification:
       automated:
@@ -275,19 +275,19 @@ liteAdapter:
     full's adapter: the relay marks an outbox row sent only after the transport's persist step confirms Redis wrote the job to
     its append-only file (WAITAOF) and still holds it, so a job Redis loses inside the at most one second fsync window leaves
     its row waiting and is added again; that is why a lite queue does not lose a job. Without a declared Redis there is no queue
-    pattern: the work is a direct call inside the request, or a declared replicated-job running a cli command. Supabase Queues
-    (pgmq) is not a queue transport. `starci app add queue|job` writes this adapter in a lite app, with the outbox and job
-    tables as one supabase migration, the Redis declaration and the persisted Redis of every docker-swarm environment.
+    pattern: the work is a direct call inside the request, or a declared replicated-job running a cli command. pgmq
+    is not a queue transport. `starci app add queue|job` writes this adapter in a lite app, with the outbox and job
+    tables as one db migration, the Redis declaration and the persisted Redis of every docker-swarm environment.
   ports:
-    - {port: QueueOutbox (platform/queue), adapter: "full's outbox row written through the caller's tx; the table comes from a supabase migration (no TypeORM entity under lite)"}
+    - {port: QueueOutbox (platform/queue), adapter: "full's outbox row written through the caller's tx; the table comes from a db migration (no TypeORM entity under lite)"}
     - {port: queue transport (queue-transport.port.ts), adapter: "full's bullmq-queue-transport.client.ts over the declared Redis (host, port, db and the password read from its sealed secret file), plus persist(jobs): WAITAOF 1 0 on each queue's connection, then each job's state, refusing with QUEUE_NOT_PERSISTED or QUEUE_JOB_LOST (errors/queue.error.ts)"}
     - {port: outbox relay (queue-relay.service.ts), adapter: "full's relay, which calls persist after the adds and before it marks the rows sent, so a refusal rolls the mark back and the next pass adds the rows again"}
     - {port: QueueWorkerRegistry (platform/queue), adapter: "full's BullMQ worker per queue: attempts and exponential backoff from queue.policy.ts, failed jobs kept as the dead letter"}
-    - {port: schedulers, adapter: "a BullMQ job scheduler declared with its queue, as full, or a pg_cron job in a supabase migration whose tick inserts one row of the queue constant into the queue outbox"}
+    - {port: schedulers, adapter: "a BullMQ job scheduler declared with its queue, as full, or a pg_cron job in a db migration whose tick inserts one row of the queue constant into the queue outbox"}
   forbids: [kafkajs, "@nestjs/schedule"]
   proof: >-
     Unit specs as full (queue-outbox, relay and worker services, the BullMQ client against a mocked factory); declaring queue
-    requires integration specs titled `queue/<scenario>: ...` for every declared scenario on the local Supabase stack (R284,
+    requires integration specs titled `queue/<scenario>: ...` for every declared scenario on the local db service (R284,
     which runs no container of its own): the outbox, its commit boundary, the relay identity and the pg_cron tick are Postgres
     facts proved there with the real outbox writer and relay, and the queue transport records what the relay hands to BullMQ
     (the job id is the outbox id). BullMQ itself is covered by the unit spec of the BullMQ client, which also proves the

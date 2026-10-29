@@ -6,12 +6,13 @@
 //   2. a time gate: --green-at <ISO> at least minAgeHours (48) ago, or --owner-confirms-old-app-gone;
 //   3. STARCI_DB_ARMED=1.
 // Idempotent: when every held-back version is already on the remote it prints `nothing to do`. The pg_proc query goes through `options.query(sql)`
-// (specs inject one) or, by default, `supabase db query` of the linked project or the --url-env connection.
+// (specs inject one) or, by default, psql against the database --url-env names (default DATABASE_URL).
 import fs from 'node:fs';
 import path from 'node:path';
 import { failure, refusal } from '../stack/errors.mjs';
 import { runVerb } from '../release/index.mjs';
-import { buildModel, listRemote, loadDatabase, pendingVersions, requireArmed, resolveTarget, runCli, targetArgs } from './migrate.mjs';
+import { applyVersions, buildModel, listRemote, loadDatabase, requireArmed, resolveTarget } from './migrate.mjs';
+import { queryRows as psqlRows } from './postgres.mjs';
 
 const DROP_FUNCTION = /^drop\s+function\s+/iu;
 const IF_EXISTS = /^if\s+exists\s+/iu;
@@ -54,7 +55,7 @@ function preflightSql({ schema, prefixes, names }) {
   return `select oid::regprocedure::text as signature from pg_proc where pronamespace = '${schema}'::regnamespace and (${clauses.join(' or ')})`;
 }
 
-const cliQuery = (session) => (sql) => JSON.parse(runCli(session, ['db', 'query', sql, '--output', 'json', '--agent', 'no', ...targetArgs(session.target, session.ctx.cwd)]).stdout);
+const cliQuery = (session) => (sql) => psqlRows(session.ctx, session.target, sql, { withhold: true });
 
 async function queryRows(session, sql, options) {
   try {
@@ -89,26 +90,21 @@ function timeGate(ctx, post, options) {
 }
 
 function applyHeld(session, remote) {
-  const { model, ctx } = session;
+  const { model } = session;
   const lacking = [...model.pushVersions].filter((version) => !remote.has(version));
-  if (lacking.length > 0) throw refusal('DB_BASELINE_NOT_APPLIED', `the remote history lacks ${lacking.join(', ')}: run starci app db migrate first`);
-  const args = ['db', 'push', '--include-all'];
-  const pending = pendingVersions(runCli(session, [...args, '--dry-run', ...targetArgs(session.target, ctx.cwd)]).text);
-  const stray = pending.filter((version) => !model.heldVersions.includes(version));
-  if (stray.length > 0) throw failure('DB_PUSH_STRAY', `the dry run lists more than the held-back migrations: ${pending.join(', ')}. Stopped.`);
-  if (pending.length > 0) runCli(session, [...args, '--yes', ...targetArgs(session.target, ctx.cwd)]);
-  return pending;
+  if (lacking.length > 0) throw refusal('DB_BASELINE_NOT_APPLIED', `the history lacks ${lacking.join(', ')}: run starci app db migrate first`);
+  return applyVersions(session, model.heldVersions.filter((version) => !remote.has(version)));
 }
 
 /**
- * `starci app db post-cutover`. options: { execute, linked, urlEnv, greenAt, ownerConfirms, query }. Dry run: remote read plus the read-only preflight.
- * --execute: gate open and STARCI_DB_ARMED=1, then `db push --include-all` of exactly the held-back versions.
+ * `starci app db post-cutover`. options: { execute, urlEnv, greenAt, ownerConfirms, query }. Dry run: history read plus the read-only preflight.
+ * --execute: gate open and STARCI_DB_ARMED=1, then exactly the held-back versions, each with its history row in one transaction.
  */
 async function postCutoverDatabase(ctx, decl, options = {}) {
   const model = buildModel(ctx.cwd, decl);
   if (model.held.length === 0) return { ok: true, lines: ['no held-back migration in the repository. Nothing to do.'], data: { held: [], done: true, executed: false } };
   if (decl.postCutover === null) throw refusal('DB_POSTCUTOVER_UNDECLARED', 'database.postCutover is not declared: the function preflight needs it (an empty mapping declares no family)');
-  const session = { ctx, decl, model, target: resolveTarget(ctx, decl, options) };
+  const session = { ctx, decl, model, target: resolveTarget(ctx, options) };
   const remote = listRemote(session);
   const data = { held: model.heldVersions, done: false, executed: false };
   if (model.heldVersions.every((version) => remote.has(version))) return { ok: true, lines: [`held-back migrations ${model.held.join(', ')} are already applied. Nothing to do.`], data: { ...data, done: true } };
@@ -123,14 +119,14 @@ async function postCutoverDatabase(ctx, decl, options = {}) {
   return { ok: true, lines: [...lines, pending.length > 0 ? `applied: ${pending.join(', ')}` : 'nothing pending: already applied.'], data: { ...data, done: true, executed: true, pushed: pending, signatures: preflight.count } };
 }
 
-const SPEC = { boolean: ['--execute', '--json', '--linked', '--owner-confirms-old-app-gone'], value: ['--url-env', '--green-at'] };
+const SPEC = { boolean: ['--execute', '--json', '--owner-confirms-old-app-gone'], value: ['--url-env', '--green-at'] };
 
-/** Entry of the verb: `starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--linked | --url-env NAME] [--json]`. */
+/** Entry of the verb: `starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--url-env NAME] [--json]`. */
 export function dbPostCutoverMain(argv, io = {}) {
   return runVerb({
     label: 'starci app db post-cutover', name: 'db post-cutover', code: 'DB_USAGE', io, argv, spec: SPEC,
     run: (ctx, flags) => postCutoverDatabase(ctx, loadDatabase(ctx.cwd), {
-      execute: flags.execute === true, linked: flags.linked === true, urlEnv: flags['url-env'], greenAt: flags['green-at'], ownerConfirms: flags['owner-confirms-old-app-gone'] === true,
+      execute: flags.execute === true, urlEnv: flags['url-env'], greenAt: flags['green-at'], ownerConfirms: flags['owner-confirms-old-app-gone'] === true,
     }),
   });
 }

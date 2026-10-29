@@ -21,7 +21,7 @@ const managedScripts = (repo, source) => {
 
 const CLI_OPTIONS = `import type { DatabaseConnectionOptions } from "@modules/platform/database"
 
-/** Everything the lite cli needs: the least-privilege Supabase PostgreSQL connection. */
+/** Everything the lite cli needs: the least-privilege PostgreSQL connection. */
 export interface CliAppOptions {
     /** The connections the built-in migrate and seed groups operate on. */
     readonly connections: ReadonlyArray<DatabaseConnectionOptions>
@@ -36,8 +36,8 @@ export const createCliAppOptions = (primary: DatabaseConnectionOptions): CliAppO
 const MIGRATE_RUN = `import { CommandRunner, SubCommand } from "nest-commander"
 import { MigrationRunnerService } from "@modules/platform/database"
 
-@SubCommand({ name: "run", description: "Push the pending Supabase migrations" })
-/** \`cli migrate run\`: delegates schema authority to the managed Supabase db:push script. */
+@SubCommand({ name: "run", description: "Apply the pending db migrations" })
+/** \`cli migrate run\`: delegates schema authority to the managed db:push script (starci app db migrate). */
 export class RunCli extends CommandRunner {
     constructor(private readonly migrations: MigrationRunnerService) {
         super()
@@ -53,7 +53,7 @@ export class RunCli extends CommandRunner {
 const SEED_RUN = `import { CommandRunner, SubCommand } from "nest-commander"
 import { SeedRunnerService } from "@modules/platform/database"
 
-@SubCommand({ name: "run", description: "Run the tracked Supabase seed through the application role" })
+@SubCommand({ name: "run", description: "Run the tracked seed through the application role" })
 /** \`cli seed run\`: executes the one tracked seed through the shared least-privilege EntityManager. */
 export class RunSeedsCli extends CommandRunner {
     constructor(private readonly seeds: SeedRunnerService) {
@@ -91,7 +91,7 @@ import { SeedCli } from "./seed.cli"
 import { RunSeedsCli } from "./subs/run.cli"
 
 @Module({ providers: [SeedCli, RunSeedsCli] })
-/** The lite seed group: the command and its one tracked Supabase seed runner. */
+/** The lite seed group: the command and its one tracked seed runner. */
 export class SeedModule {}
 `;
 
@@ -144,7 +144,7 @@ function enableLiteCliDatabase(root) {
 }
 
 /**
- * Creates the optional lite cli app, its typed CliEnv/readCliEnv boundary and Supabase migrate/seed groups on first `add cli`.
+ * Creates the optional lite cli app, its typed CliEnv/readCliEnv boundary and its migrate/seed groups on first `add cli`.
  * Existing cli trees are never repaired or overwritten: drift remains a check finding.
  */
 export function ensureLiteCli({ root, manifest, repo }) {
