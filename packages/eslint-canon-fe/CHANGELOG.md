@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.5.13 - 2026-10-29
+
+- Changed: the bundled canon pins name hfs 4.11.12, eslint-canon-be 3.8.11, eslint-canon-fe 9.5.13 and the Grammar family 0.15.24; the bundled slot judgement (`runtime/scripts/hfs/path-findings.mjs`) admits the one file a file slot names by its path, as eslint-canon-be does.
+
 ## 9.5.12 - 2026-10-29
 
 - Changed: the bundled canon pins name hfs 4.11.11, eslint-canon-be 3.8.10, eslint-canon-fe 9.5.12 and the Grammar family 0.15.23. No rule changed.

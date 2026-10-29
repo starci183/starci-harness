@@ -1,5 +1,8 @@
 import type { Secret } from "@modules/platform/config"
 
+/** An entity class as TypeORM registers it. */
+export type EntityClass = new () => object
+
 /** What the primary connection parser reads from the environment. */
 export interface DatabaseConnectionConfig {
     /** The logical connection name declared in `hfs.json`. */
@@ -21,5 +24,5 @@ export interface DatabaseOptions {
     /** The connections this app opens; one per physical database. */
     readonly connections: ReadonlyArray<DatabaseConnectionOptions>
     /** The TypeORM entities the connections map: PRIMARY_ENTITIES of `@modules/platform/database/entities`, passed by the app's composition root only. */
-    readonly entities: ReadonlyArray<Function>
+    readonly entities: ReadonlyArray<EntityClass>
 }

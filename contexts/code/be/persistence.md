@@ -60,11 +60,15 @@ counts the registry as a unit of its own, so it never closes a cycle among capab
 
 ## BE-PERSISTENCE-4 Lite reads and writes through entities; full SQL is a `sql`-tagged constant
 
-Lite: domain and feature code uses the entity API of the injected manager (`find`, `findOne`, `findBy`, `count`,
+Lite: domain, feature and test code uses the entity API of an EntityManager (`find`, `findOne`, `findBy`, `count`,
 `exists`, `insert`, `save`, `update`, `delete`, `upsert`, `increment`) and `createQueryBuilder(Entity, "alias")` with
 named parameters for joins, aggregates, `FOR UPDATE` / `SKIP LOCKED` and jsonb or vector operators; it writes no `.query(`
-and no `sql` template, and no `<Name>Row` interface: a service maps entities to its contracts. A database function
-TypeORM cannot express is called through the helpers of `platform/database/database.client.ts`
+and no `sql` template, and no `<Name>Row` interface: a service maps entities to its contracts. Domain code takes the
+injected manager; integration and e2e specs, builders and fixtures seed and assert through the world's
+`world.db.<connection>`. Raw SQL has two owners: `platform/database` and the test world `src/tests/world/`, which as the
+owner of test infrastructure wraps only what entities cannot express (a trigger, a database function, a row-level-security
+probe, a pgmq queue inspection) in a named, typed helper on the world (`world.db.<connection>.raw...`) that specs call.
+A database function TypeORM cannot express is called, in domain and test code alike, through the helpers of `platform/database/database.client.ts`
 (`callDbFunction(manager, name, args)`, `advisoryXactLock(manager, key)`, `notify(manager, channel, payload)`), which
 build the parameterised statement and accept only a function `ruleParams.be.dbFunctions` (the canon's) or hfs.json
 `sides.be.dbFunctions` (the app's own, each with its reason) lists. A function of a migration is named schema-qualified

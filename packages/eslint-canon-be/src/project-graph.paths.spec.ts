@@ -166,3 +166,15 @@ test("a misplaced spec that is not TypeScript is not on the lint surface: it sta
         invalid: [{ filename: f.at("src/features/api/orders/place-order.spec.ts"), code: EXPORT, errors: [{ messageId: "finding", line: 1 }] }],
     })
 })
+
+test("a file a file slot names by its path keeps its name: the lite entity registry is no suffix finding", (t) => {
+    const s = scene(t, [
+        "src/modules/platform/database/entities.ts",
+        "src/modules/platform/database/database.module.ts",
+        "src/modules/platform/database/helpers.ts",
+    ], { edition: "lite" })
+    s.tester.run("source-suffix", ruleNamed(rules, "source-suffix"), {
+        valid: [s.good("src/modules/platform/database/entities.ts"), s.good("src/modules/platform/database/database.module.ts")],
+        invalid: [s.bad("src/modules/platform/database/helpers.ts")],
+    })
+})

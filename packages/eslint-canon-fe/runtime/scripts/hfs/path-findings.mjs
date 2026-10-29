@@ -29,6 +29,8 @@ function sourceFormContext(file, resolver, suffixes, bannedSuffixes) {
   const base = path.posix.basename(file);
   if (FREE_NAMES.has(base)) return null;
   const slot = resolver.slot(c.slot);
+  // A file slot declares its one file by its path (be.platform.database.entities: src/modules/platform/database/entities.ts).
+  if (slot?.path === c.path) return null;
   if ([...(slot?.requires ?? []), ...(slot?.allows ?? [])].includes(base)) return null;
   const admitted = allowsFile(resolver, file);
   // Environment parsing is an app slot role, not a source suffix admitted outside that matching app file.
@@ -57,8 +59,8 @@ function sourceFormFinding(file, { c, base, suffixes, bannedSuffixes }, boundSuf
 }
 
 /**
- * BE_SOURCE_FORM (R89): every tracked src/ or apps/ TypeScript file of a back end is index.ts, main.ts, a migration of
- * be.persistence, the matching <app>.env.ts explicitly admitted by its app slot, or <kebab-name>.<suffix>.ts with <suffix> in the closed vocabulary ruleParams.be.suffixes (a name such
+ * BE_SOURCE_FORM (R89): every tracked src/ or apps/ TypeScript file of a back end is index.ts, main.ts, the one file a file
+ * slot names by its path (the lite entity registry src/modules/platform/database/entities.ts), a migration of be.persistence, the matching <app>.env.ts explicitly admitted by its app slot, or <kebab-name>.<suffix>.ts with <suffix> in the closed vocabulary ruleParams.be.suffixes (a name such
  * as order.service.spec.ts keeps its inner words kebab-case). A suffix of ruleParams.be.bannedSuffixes anywhere in the
  * name is refused by name. Paths no slot owns are HFS_SLOT_UNDECLARED's, not this code's.
  */

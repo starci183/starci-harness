@@ -353,13 +353,25 @@ const CLI_APP_DIR = 'apps/cli/';
 const declaresCliApp = app => app.sides.be.apps.some(entry => entry.kind === 'cli' && entry.name === 'cli');
 
 const LITE_APP_REUSED = new Set(['.editorconfig', '.gitattributes', '.nvmrc']);
+/**
+ * The lite be files a generator writes when it first needs them, never the starter: the cli's runners, the in-order relay, and the
+ * raw SQL helpers of platform/database (the sql tag, and the database-function call statement with its spec), which only the table,
+ * queue, jobs and webhook capabilities call; a fresh app reads and writes through entities alone (R334).
+ */
 const LITE_DEFERRED_GENERATOR_FILES = new Set([
+  'src/modules/platform/database/database.client.ts',
+  'src/modules/platform/database/database.client.spec.ts',
+  'src/modules/platform/database/database.sql.ts',
   'src/modules/platform/database/migration-runner.service.ts',
   'src/modules/platform/database/seed-runner.service.ts',
   'src/modules/platform/primitives/sequence.policy.ts',
 ]);
-/** The TypeORM schema files of a platform capability: lite's schema authority is db/migrations (be.persistence lite overlay). */
-const LITE_TYPEORM_SCHEMA = /^src\/modules\/platform\/[^/]+\/persistence\/(?:connection\.ts$|entities\/|migrations\/)/;
+/**
+ * The persistence folder of a full platform capability (TypeORM migrations, connection arrays, `sql`-tagged statements and rows):
+ * lite's schema authority is db/migrations and its code reads and writes through entities (be.persistence lite overlay, R334), so a
+ * lite platform capability takes its persistence/ from the lite overlay alone.
+ */
+const FULL_PLATFORM_PERSISTENCE = /^src\/modules\/platform\/[^/]+\/persistence\//;
 const liteBaseSource = (rel) => !rel.startsWith('apps/cli/')
     && !rel.startsWith('src/features/cli/')
     && !rel.startsWith('src/modules/domain/note/')
@@ -367,7 +379,7 @@ const liteBaseSource = (rel) => !rel.startsWith('apps/cli/')
     && rel !== 'src/modules/platform/database/migrate-connections.client.ts'
     && rel !== 'src/modules/platform/database/seed-connections.client.ts'
     && !LITE_DEFERRED_GENERATOR_FILES.has(rel)
-    && !LITE_TYPEORM_SCHEMA.test(rel)
+    && !FULL_PLATFORM_PERSISTENCE.test(rel)
     && !rel.startsWith('src/tests/');
 /** The be files the lite overlay replaces: a base unit spec of such a file tests the full variant, so lite carries its own. */
 const liteOverlaid = (() => {

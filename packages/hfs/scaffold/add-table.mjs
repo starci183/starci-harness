@@ -472,9 +472,14 @@ function writeTableFiles({ root, planned, edit }, created) {
 
 }
 
+/** The lite sql helpers of platform/database (requireOwnedEntity, the bounds and the sql tag). */
+const DATABASE_SQL_FILE = "be/src/modules/platform/database/database.sql.ts";
+
 function tableRegistrations({ root, repo, fe, edit }) {
   const errorFile = "be/src/modules/platform/database/errors/database.error.ts";
   if (repo.edition === "lite" && fs.existsSync(at(root, errorFile))) edit(errorFile, withSqlIdentifierError);
+  // requireOwnedEntity lives in the sql helpers the lite starter leaves out; the first table writes them.
+  if (repo.edition === "lite") edit(DATABASE_SQL_FILE, (text) => text || render(fs.readFileSync(path.join(TEMPLATES_DIR, "be", "skeleton-lite", "src", "modules", "platform", "database", "database.sql.ts"), "utf8"), {}));
     const registrations = [
       ...(repo.edition === "lite" ? ["table"] : []),
       ...(fe ? ["api", "graphql"] : []),
