@@ -144,3 +144,46 @@ export const packageOfFile = (file: string): string | null => {
     const head = parts[0] ?? ""
     return head.startsWith("@") ? `${head}/${parts[1]}` : head
 }
+
+/** The ports `platform/inbox` declares a delivery claim on: `Inbox`, and `EntityInbox`, which extends it with `claimRow`. */
+const INBOX_PORTS: ReadonlyArray<string> = ["Inbox", "EntityInbox"]
+
+/** The receiver is typed as the `Inbox` port of `platform/inbox` or its `EntityInbox` extension, never a lookalike of another owner. */
+export const isInboxPortType = (context: Context, node: Node): boolean =>
+    INBOX_PORTS.some((name) => isOwnedType(context, node, { name, capability: "inbox", tier: "platform" }))
+
+/**
+ * The claim a call makes on an inbox port: `claim` (source, eventId[, tx]) answers whether the delivery is new; `claimRow`
+ * (source, eventId, tx, receipt) claims, then inserts the receipt row only for the winning claim and answers its id, undefined
+ * on a repeat. Null for any other call: a computed or optional member, another method, too few arguments or another receiver.
+ */
+export const inboxClaimOf = (context: Context, call: Node | null | undefined): "claim" | "claimRow" | null => {
+    if (call?.type !== "CallExpression" || call.optional) return null
+    const callee = call.callee
+    if (callee.type !== "MemberExpression" || callee.computed || callee.optional || callee.property.type !== "Identifier") return null
+    const method = callee.property.name
+    const arity = method === "claim" ? 2 : method === "claimRow" ? 4 : Number.POSITIVE_INFINITY
+    if (call.arguments.length < arity || call.arguments.some((argument) => argument.type === "SpreadElement")) return null
+    return isInboxPortType(context, callee.object) ? (method === "claim" ? "claim" : "claimRow") : null
+}
+
+/**
+ * Whether `test` refuses the repeat `target` answered (the awaited claim, or the binding holding it): `!target` for both claims,
+ * `target === false` for `claim`, `target === undefined` for `claimRow`; `loose` also admits `==`. `same` compares a stored
+ * answer by its binding.
+ */
+export const refusesRepeat = (
+    test: Node | null | undefined,
+    target: Node,
+    method: "claim" | "claimRow",
+    { same, loose = false }: { same: (left: Node, right: Node) => boolean; loose?: boolean },
+): boolean => {
+    if (!test) return false
+    if (test.type === "UnaryExpression" && test.operator === "!") return test.argument === target || same(test.argument, target)
+    if (test.type !== "BinaryExpression" || !(test.operator === "===" || (loose && test.operator === "=="))) return false
+    const repeat = (node: Node): boolean => method === "claim"
+        ? node.type === "Literal" && node.value === false
+        : node.type === "Identifier" && node.name === "undefined"
+    const answer = (node: Node): boolean => node === target || same(node, target)
+    return (answer(test.left) && repeat(test.right)) || (answer(test.right) && repeat(test.left))
+}

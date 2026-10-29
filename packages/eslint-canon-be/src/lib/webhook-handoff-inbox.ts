@@ -3,7 +3,7 @@ import ts from "typescript"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { memberKeyValue, nameOrValue, walk } from "./ast.ts"
 import { hfsOf } from "./hfs.ts"
-import { baseName, isOwnedType, ownerNameOf } from "./ports.ts"
+import { baseName, inboxClaimOf, ownerNameOf, refusesRepeat } from "./ports.ts"
 import { resolveVariable } from "./transactions.ts"
 import { isPackageType, typed } from "./types.ts"
 import { webhookIntakeProcessesDelivery } from "./webhook-handoff-intake.ts"
@@ -207,12 +207,10 @@ const claimBody = (context: Context, body: TSESTree.BlockStatement): { body: TSE
         ? { body: callback.body, manager } : { body, manager: null }
 }
 
-/** Match an immediate false refusal with no work before the return. */
-const rejectsDuplicate = (context: Context, awaited: TSESTree.AwaitExpression, body: TSESTree.BlockStatement): boolean => {
-    const rejects = (test: Node | null | undefined, target: Node): boolean => test?.type === "UnaryExpression" && test.operator === "!" && (test.argument === target || sameBinding(context, test.argument, target))
-        || test?.type === "BinaryExpression" && test.operator === "==="
-            && ((test.left === target && test.right.type === "Literal" && test.right.value === false)
-                || (test.right === target && test.left.type === "Literal" && test.left.value === false))
+/** Match an immediate refusal of the repeat (`false` from claim, no receipt id from claimRow) with no work before the return. */
+const rejectsDuplicate = (context: Context, awaited: TSESTree.AwaitExpression, body: TSESTree.BlockStatement, method: "claim" | "claimRow"): boolean => {
+    const rejects = (test: Node | null | undefined, target: Node): boolean =>
+        refusesRepeat(test, target, method, { same: (left, right) => sameBinding(context, left, right) })
     const returns = (statement: Node | null | undefined): boolean => statement?.type === "ReturnStatement" && !statement.argument
         || statement?.type === "BlockStatement" && statement.body.length === 1 && returns(statement.body[0])
     const parent = awaited.parent
@@ -232,10 +230,10 @@ const rejectsDuplicate = (context: Context, awaited: TSESTree.AwaitExpression, b
 export const webhookInboxKey: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "Delivery methods with first *Id parameters or DTO properties, or raw-body signature contracts, claim the real Inbox with a stable delivery key before work and return on duplicates. Receipt transactions publish events and leave processing to a reactor/job." },
+        docs: { description: "Delivery methods with first *Id parameters or DTO properties, or raw-body signature contracts, claim the real Inbox (claim, or claimRow on its EntityInbox) with a stable delivery key before work and return on duplicates. Receipt transactions publish events and leave processing to a reactor/job." },
         schema: [],
         messages: {
-            key: "[BE_WEBHOOK_INBOX_KEY] This delivery intake must first await the real platform/inbox claim(source, deliveryId), using its first *Id parameter or DTO property, or a decoded id for a signed raw-body intake, and return immediately when the claim is false. A transaction claim uses that callback's own manager; raw payloads and fixed literals are not delivery keys.",
+            key: "[BE_WEBHOOK_INBOX_KEY] This delivery intake must first await the real platform/inbox claim(source, deliveryId), or claimRow(source, deliveryId, tx, receipt) on its EntityInbox, using its first *Id parameter or DTO property, or a decoded id for a signed raw-body intake, and return immediately on a repeat (claim answers false, claimRow undefined). A transaction claim uses that callback's own manager; raw payloads and fixed literals are not delivery keys.",
             handoff: "[BE_WEBHOOK_INBOX_KEY] A receipt transaction records the inbox delivery and publishes the typed event. Remove the process callback and domain/command processing from this transaction; a reactor or job processes the delivery after commit.",
         },
     },
@@ -259,16 +257,14 @@ export const webhookInboxKey: RuleModule = {
                 const parent: Node | undefined = awaited?.parent
                 const statement: Node | undefined = parent?.type === "VariableDeclarator" ? parent.parent
                     : parent?.type === "UnaryExpression" || parent?.type === "BinaryExpression" ? parent.parent : parent
-                const claims = awaited !== null && call?.type === "CallExpression" && !call.optional
-                    && call.callee.type === "MemberExpression" && !call.callee.computed && !call.callee.optional
-                    && call.callee.property.name === "claim" && call.arguments.length >= 2
-                    && isOwnedType(context, call.callee.object, { name: "Inbox", capability: "inbox", tier: "platform" })
+                const claimMethod = inboxClaimOf(context, call)
+                const claims = awaited !== null && call?.type === "CallExpression" && claimMethod !== null
                     && usesKey(context, call.arguments[1], key)
                     && preservesKey(context, key, call)
                     && (!manager || sameBinding(context, call.arguments[2], manager))
                     && claimsBeforeWork(context, body, statement, key, call)
                     && !priorWork(statement, call)
-                    && rejectsDuplicate(context, awaited, body)
+                    && rejectsDuplicate(context, awaited, body, claimMethod)
                 if (!claims) context.report({ node: method.key, messageId: "key" })
             },
         }
