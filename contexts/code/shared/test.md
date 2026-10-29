@@ -33,7 +33,8 @@ cd be && npx jest --selectProjects unit --findRelatedTests <changed files>
 ```
 
 Enforced by: R47 (`staged-spec-presence`, BE_UNIT_SPEC_NOT_STAGED); the contract's `tests-pass` check names the
-command, runs the spec files it names (or, for an integration, e2e or contract run naming none, the task's own) by path, a
+command, runs the spec files it names with the specs of every changed file under allowPaths (or, for an integration, e2e or
+contract run naming none, the task's own) by path, a
 live-provider spec only when named, and narrows its coverage to the changed logic files (`coverage: changed`,
 `cli/src/harness/coverage-scope.ts`). A named live-provider spec gets the keys its `useSandbox` declares from the app's
 custody (`.starcistacks/<env>` sealed members) in that run's environment only; seal a key there (`starci app secret set

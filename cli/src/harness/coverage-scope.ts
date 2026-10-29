@@ -210,12 +210,33 @@ const isLive = (file: string): boolean => {
 }
 
 /**
+ * The specs of what the task changed under allowPaths, inside the folder jest runs in: each changed spec file, and each spec
+ * beside a changed source file named after it (`origin.guard.ts`: `origin.guard.spec.ts`), which covers it.
+ */
+const changedSpecs = async (place: TestPlace, allowPaths: readonly string[], folder: string): Promise<string[]> => {
+    const changed = (await changedFiles(place.root, place.diffBase ?? "HEAD")).filter((file) => underPaths(file, allowPaths) && SOURCE.test(file)).map((file) => join(place.root, file))
+    const inside = (file: string): boolean => existsSync(file) && !relative(folder, file).startsWith("..")
+    const beside = changed
+        .filter((file) => !SPEC.test(file) && existsSync(dirname(file)))
+        .flatMap((file) => {
+            const stem = `${basename(file).replace(SOURCE, "")}.`
+            return readdirSync(dirname(file))
+                .filter((name) => name.startsWith(stem) && SPEC.test(name))
+                .map((name) => join(dirname(file), name))
+        })
+    return [...new Set([...changed.filter((file) => SPEC.test(file)), ...beside])].filter(inside)
+}
+
+/**
  * Scopes a package manager script that runs jest to the task's own spec files, passed as `--runTestsByPath <files>` (exact paths,
  * which no array option of the script, such as `--selectProjects e2e`, can swallow as a positional pattern does). A command that
- * names test paths after its `--` runs the spec files under them; a world run (every project it selects boots the test world:
- * integration, e2e, contract) that names none runs the spec files the task changed under allowPaths, else every spec of its
- * kinds under the folder jest runs in. A live-provider spec (`useSandbox`) runs only when its file or its own folder is named.
- * Undefined for any other command, which runs as named (a unit run keeps jest's related-tests choice).
+ * names test paths after its `--` runs the spec files under them and the specs of what the task changed under allowPaths
+ * (changedSpecs), so every changed logic file `coverage: changed` judges is run with its own specs, never read 0% because the
+ * named paths left them out (a relay node, whose checks name its source's test paths, runs the specs of every folder it relays);
+ * a world run (every project it selects boots the test world: integration, e2e, contract) that names none runs the spec files
+ * the task changed under allowPaths, else every spec of its kinds under the folder jest runs in. A live-provider spec
+ * (`useSandbox`) runs only when its file or its own folder is named. Undefined for any other command, which runs as named (a
+ * unit run keeps jest's related-tests choice).
  */
 export const scopedTests = async (argv: readonly string[], place: TestPlace, allowPaths: readonly string[]): Promise<TestScope | undefined> => {
     const runner = basename(argv[0] ?? "", extname(argv[0] ?? "")).toLowerCase()
@@ -242,7 +263,13 @@ export const scopedTests = async (argv: readonly string[], place: TestPlace, all
                 return kept
             })
         })
-        why = `the spec files under ${named.join(", ")}${dropped.length === 0 ? "" : `; live-provider specs not named, left out: ${dropped.join(", ")}`}`
+        const given = new Set(files.map((file) => resolve(file)))
+        const added = (await changedSpecs(place, allowPaths, folder)).filter((file) => !given.has(resolve(file)) && !isLive(file))
+        files.push(...added)
+        why =
+            `the spec files under ${named.join(", ")}` +
+            (added.length === 0 ? "" : ` and of the changed files under allowPaths (${added.map((file) => toSlash(relative(folder, file))).join(", ")})`) +
+            (dropped.length === 0 ? "" : `; live-provider specs not named, left out: ${dropped.join(", ")}`)
     } else {
         const kinds = projects.map((project) => `.${project}-spec.`)
         const changed = (await changedFiles(place.root, place.diffBase ?? "HEAD")).filter((file) => underPaths(file, allowPaths) && SPEC.test(file)).map((file) => join(place.root, file))
