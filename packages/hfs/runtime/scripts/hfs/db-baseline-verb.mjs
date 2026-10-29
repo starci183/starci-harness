@@ -317,6 +317,22 @@ function sourceHistory(root, plan, ports, urlEnv) {
   if (offenders.length) throw offendersError('baseline --squash reads a source with exactly the active chain applied', offenders.sort());
 }
 
+/**
+ * A baseline reads a database whose history, queues and cron jobs equal the repository's. The plan's own refusal (already free of
+ * database output) is passed through as the reason; a drift names each inventory that differs, by its counts.
+ */
+function cleanPlan(root, urlEnv, ports) {
+  let out = '';
+  let err = '';
+  const code = dbPlanMain(['--json', '--url-env', urlEnv], { ...ports, cwd: root, stdout: (text) => { out += text; }, stderr: (text) => { err += text; } });
+  if (code === 0) return;
+  const heading = 'baseline requires a clean database plan with every migration already applied';
+  if (code !== 1) throw new DbVerbError(`${heading}; the plan refused: ${err.trim().replace(/^starci app db plan: /, '')}`);
+  const drift = Object.entries(JSON.parse(out)).filter(([, item]) => item && typeof item === 'object' && (item.missing || item.unexpected || item.changed))
+    .map(([kind, item]) => `${kind}: missing ${item.missing}, unexpected ${item.unexpected}, changed ${item.changed}`);
+  throw offendersError(`${heading}; the plan found drift`, drift);
+}
+
 /** Numeric CLI exit code, injectable IO/clock/CLI; neither files nor history change without --apply. */
 export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), now = () => new Date(), ...ports } = {}) {
   try {
@@ -338,7 +354,7 @@ export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) =>
       return squashBaseline({ root, opts, plan, urlEnv, connection: connectionOf(ports.env ?? process.env, urlEnv), commandOf, precondition, managedSchema: excludedSchema, archive, stdout });
     }
     const metadata = baselineMetadata(root, plan, files);
-    if (dbPlanMain(['--json', '--url-env', urlEnv], { ...ports, cwd: root, stdout: () => {}, stderr: () => {} }) !== 0) throw new DbVerbError('baseline requires a clean database plan with every migration already applied');
+    cleanPlan(root, urlEnv, ports);
     const schema = runDbPostgres(root, { kind: 'dump' }, ports, urlEnv);
     if (!schema.trim() || baselineMarkers(schema).length || /\bvault\.(?:create_secret|update_secret)\s*\(|\bpassword\s+'[^']+'/i.test(schema)) throw new DbVerbError('schema dump is empty or contains unsupported secret/baseline statements');
     const repairs = [...plan.active.map((entry) => repairOp(entry.stamp, 'reverted')), repairOp(plan.stamp, 'applied', 'baseline')];

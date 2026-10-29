@@ -478,6 +478,15 @@ for (const edition of ['lite', 'full']) {
     ].join('\n'));
   });
 
+  test(`app db baseline ${edition}: passes the plan's refusal through and names the inventories that drift`, () => {
+    const refused = io(fixture(edition, { [old]: 'select 1;\n' }), { status: 0, stdout: '{"PRIVATE_DATABASE_OUTPUT": 1}' });
+    assert.equal(dbBaselineMain(['--stamp', replacement], refused.ports), 2);
+    assert.equal(refused.err.join(''), 'starci app db baseline: baseline requires a clean database plan with every migration already applied; the plan refused: the database returned an invalid inventory; database output was withheld\n');
+    const drifted = remoteInventory(fixture(edition, { [old]: 'select 1;\n' }), { migrations: [{ version: first }, { version: second }], cron: [], queues: [], vault: [] });
+    assert.equal(dbBaselineMain(['--stamp', replacement], drifted.ports), 2);
+    assert.equal(drifted.err.join(''), 'starci app db baseline: baseline requires a clean database plan with every migration already applied; the plan found drift:\n  migrations: missing 0, unexpected 1, changed 0\n');
+  });
+
   test(`app db plan ${edition}: inert and conditional declarations refuse before querying the database`, () => {
     for (const sql of ["create view public.inert as select pgmq.create('events');", "explain select pgmq.create('events');", "select pgmq.create('events') where false;", "do $$begin if false then perform pgmq.create('events'); end if; end$$;"]) {
       const root = fixture(edition, { [old]: sql });
