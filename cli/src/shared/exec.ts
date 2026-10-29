@@ -77,6 +77,38 @@ const killTree = (child: ChildProcess): void => {
     }
 }
 
+/** How long a served program has to end on its SIGTERM before its tree is killed. */
+const STOP_GRACE_MS = 5000
+
+/**
+ * Ends a served program and its tree: a SIGTERM to its process group first, so it can undo what it set (a folder it made
+ * read-only), then, once it exited or the grace passed, the kill of whatever of its tree is left. Windows has no SIGTERM to a
+ * tree, so its tree is killed at once.
+ */
+const stopTree = (child: ChildProcess): Promise<void> =>
+    new Promise((done) => {
+        const pid = child.pid
+        if (pid === undefined || process.platform === "win32" || child.exitCode !== null || child.signalCode !== null) {
+            killTree(child)
+            done()
+            return
+        }
+        const timer = setTimeout(() => {
+            killTree(child)
+            done()
+        }, STOP_GRACE_MS)
+        child.once("exit", () => {
+            clearTimeout(timer)
+            killTree(child)
+            done()
+        })
+        try {
+            process.kill(-pid, "SIGTERM")
+        } catch {
+            child.kill("SIGTERM")
+        }
+    })
+
 /** Collects one output stream up to MAX_BUFFER; the rest is dropped rather than failing the run. */
 const collector = (): { readonly push: (chunk: Buffer) => void; readonly text: () => string } => {
     const chunks: Buffer[] = []
@@ -283,10 +315,10 @@ export const startDetached = (argv: readonly string[], cwd: string, env: NodeJS.
         })
     })
 
-/** A long-lived program `startServing` started: the stdout line its readiness pattern matched, and the kill of its whole tree. */
+/** A long-lived program `startServing` started: the stdout line its readiness pattern matched, and the end of its whole tree (stopTree). */
 export interface Serving {
     readonly ready: RegExpExecArray
-    readonly stop: () => void
+    readonly stop: () => Promise<void>
 }
 
 /**
@@ -319,7 +351,7 @@ export const startServing = (tool: string, args: readonly string[], cwd: string,
             if (match === null) return
             waiting = false
             clearTimeout(timer)
-            settle({ ready: match, stop: () => { killTree(child) } })
+            settle({ ready: match, stop: () => stopTree(child) })
         })
         child.on("error", (error: Error) => {
             fail(`did not start (${error.message})`)

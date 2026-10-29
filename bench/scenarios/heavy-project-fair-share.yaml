@@ -11,7 +11,7 @@ expect: >-
   check run ends green; the other project's rows are untouched
 pass:
   - the check run exits 0 although an older command of another project waits
-  - the other project's queued row still waits and its two running rows still run
+  - the other project's queued row still waits and its running row still runs
   - no human intervention beyond the injected fault
 automation: automated
 env:
@@ -33,26 +33,28 @@ steps:
   - starci: [config, set, liveness.heavy.reserveMb, "0"]
   - name: no CPU holds work back, whatever else this host runs
     starci: [config, set, liveness.heavy.maxCpuPercent, "100"]
-  - name: three slots, two per project while another waits
-    starci: [config, set, liveness.heavy.maxSlots, "3"]
-  - starci: [config, set, liveness.heavy.projectSlots, "2"]
-  - git: [commit, -q, -am, "bench: three slots"]
+  - name: two slots, one per project while another waits
+    starci: [config, set, liveness.heavy.maxSlots, "2"]
+  - starci: [config, set, liveness.heavy.projectSlots, "1"]
+  - git: [commit, -q, -am, "bench: two slots"]
   - write: { path: src/changed.ts, content: "export const changed = 1\n" }
-  - name: a live process stands in for the other project's commands
+  - name: the other project's folder, inside this run
+    write: { path: "${run}/other-project/live/.keep", content: "" }
+  - name: a live process stands in for the other project's commands; the folder it holds is inside the run, never the run itself
     serve:
       stub: hold
-      cwd: ${run}
+      cwd: ${run}/other-project/live
       as: other
-  - name: the governor's tables exist
+  - name: the governor's tables exist, and the host has the two slots this needs (floor(cores / 2) at least 2) instead of a wait that never ends
     starci: [host, load]
-  - name: the other project runs two commands and queued a third before this one
+    expect: { exit: 0, contains: '"cap": 2,' }
+  - name: the other project runs its one command and queued a second before this one
     sql:
       db: machine
       exec: >-
         INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES
           ('other-1', ${other.token}, 'build', 'npm run build other', '${run}/other-project', 'running', '2020-01-01T00:00:00.000Z'),
-          ('other-2', ${other.token}, 'build', 'npm run build other', '${run}/other-project', 'running', '2020-01-01T00:00:01.000Z'),
-          ('other-3', ${other.token}, 'test', 'jest other', '${run}/other-project', 'waiting', '2020-01-01T00:00:02.000Z')
+          ('other-2', ${other.token}, 'test', 'jest other', '${run}/other-project', 'waiting', '2020-01-01T00:00:01.000Z')
   - name: this project's check run takes the free slot
     starci: [check, run, --base, HEAD]
     expect: { exit: 0 }
@@ -60,4 +62,4 @@ steps:
       sql:
         db: machine
         query: "SELECT group_concat(id || ':' || state, ',') FROM (SELECT id, state FROM heavy_slots WHERE id LIKE 'other-%' ORDER BY id)"
-        equals: ["other-1:running,other-2:running,other-3:waiting"]
+        equals: ["other-1:running,other-2:waiting"]
