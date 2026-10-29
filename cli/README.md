@@ -292,7 +292,9 @@ node is done and, when a task names its composer (`composedBy`), its final verif
 (`workflow-final-verify`) and blocks the workflow on a red one (`derivedStatus` in `harness/workflow.ts`). A replan is
 `workflow amend --desired <workflow file> --based-on <graph version>` (the Kernel's whole desired graph, reconciled by
 task key) or `--change <starci/workflow-change@1 file>` (add, edit, remove, retry, accept); it records graph n+1
-atomically (`STALE` on a moved graph, idempotent by `--cmd-id`) and is refused `SCOPE_EXCEEDED` past the goal's
+atomically (`STALE` on a moved graph, idempotent by `--cmd-id`) and is refused `WORKFLOW_INVALID` for an unfit contract, the
+context budget judged only on a contract it adds or edits (a contract the current graph holds, done, unchanged or retried, is
+history and keeps the budget it was admitted under: `buildGraph`), `SCOPE_EXCEEDED` past the goal's
 ceiling, and `GOAL_SHRUNK` when it drops a key of a graph planned under the current goal version that no key it adds
 takes over (`assertDeliverables` in `harness/goal.ts`): only the first replan after a goal change may drop one. Define
 and every replan are refused `TASK_NOT_SPLIT` while one task of a `perRecord` label works several Work records
@@ -368,8 +370,14 @@ naming it. Like a revert node, a relay node's key and contract are the harness's
 the goal's scope paths, the Work records' lanes and the foreign-source rule, since it carries what another workflow's lane built.
 Only a relay node its Kernel removed raises one Supervisor `escalation` of kind `conflict`, whose answer releases the waiters as
 they stand. Then every waiter whose needs all ended is
-retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its brief. `needs list`
-and `needs show <key>` read the store.
+retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its brief. A rejection
+is taken back by `needs reopen <key> --reason <why>` (Supervisor, Debug; `NEED_NOT_REJECTED` for a need in another state): the
+waiters the rejection released are parked again and a new round resolves through the newest task resolver a round recorded,
+judged afresh, so the next step relays its commits; with none it opens at its router (`reopenRejected` in `harness/needs.ts`).
+The relay is versioned (`RELAY_VERSION`, recorded as `relayVersion` on every relay event and waiter release, none reading as
+1): a rejected need whose relay conflicted under an older version is reopened so by the router itself, once per version
+(`relayReopenDue`), since that rejection ruled on the relay rather than on the need. Each reopen is a `need-reopened` event
+naming who reopened it. `needs list` and `needs show <key>` read the store.
 
 ### Opt-in patterns
 
@@ -714,7 +722,11 @@ admitted before any side effect into `commands` with its sha256 (an `applying` i
 outcome, other bytes refuse `CMD_CONFLICT`, a stale `basedOn` refuses `STALE`. Decisions are raised once per fact into
 `decisions` and closed by the command that answers them, or superseded when the ledger moves past them. Mail (`orca
 orchestration send|check`) only wakes: an Op mails only its Kernel, a Kernel only its project's Supervisor and its Ops, a
-Supervisor only the owner, and a Kernel takes a question only from a sender of its Run tree (its own Ops' terminals or its
+Supervisor only the owner. A Kernel stays the Dispatch of the Supervisor Run that launched it, so every mail to the Supervisor
+(`wakeSupervisor`: an escalation, question or handoff, and an owner request) picks its sender at send time, the caller's
+terminal when its seat's Run is the current Supervisor's, else the Supervisor's own terminal, which Orca accepts where it
+refuses a Dispatch of a replaced Supervisor's Run (`dispatch_run_mismatch`); a mail Orca still refuses is replaced by the
+Supervisor's loop prompt typed into its terminal (`mailOrType`). A Kernel takes a question only from a sender of its Run tree (its own Ops' terminals or its
 project's Supervisor's); any other sender's mail is a `mail-impostor` event and is dropped. A repository Orca does not know is registered by its main checkout (`orca repo add`), so a workflow worktree is listed under its repository, and the call retried once. A
 seat's terminal lives exactly as long as the seat: its tab is closed right after Orca fenced its worker (released, or ended and
 retained), and the tick's sweep closes one that outlived it (`closeWorker` in `harness/orca/client.ts`). Inline workflows touch nothing in Orca: the chat agent is

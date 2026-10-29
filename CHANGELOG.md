@@ -14,6 +14,23 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   dispatch sat pasted unsent. `terminalSubmit` now sends a bare Enter with no request id, the recorded resubmit count bounds the
   replays, and a refused Enter returns no action instead of throwing. The bench Orca stand-in refuses the same flag set, so the
   composer scenarios now prove it.
+- **A workflow change is never blocked by a done node's context growing.** A replan measured every node's contract against the
+  context files as they are now, so a canon file that grew put a done task past its op's budget (subscription-premium's
+  `deps-grammar` at 24022 of 24000 tokens) and refused every change to the workflow `WORKFLOW_INVALID`. `buildGraph` now judges
+  the context budget only on a contract the change adds or edits; a contract the current graph holds (done, unchanged or
+  retried) keeps the budget it was admitted under. Bench: `change-retry-beside-done-node-over-budget`.
+- **A need rejected because its relay failed is relayed once the relay is fixed.** `capability:domain.entitlement` was rejected
+  as unrelayable before the complete-commit relay landed, so the fixed relay never ran for lesson-ai. Relays are versioned
+  (`RELAY_VERSION`, recorded on every relay event and waiter release); the need router reopens a rejected need whose relay
+  conflicted under an older version once per version, parking the waiters its rejection released again and resolving it
+  through its last resolver, so the next step relays every commit it landed. New verb `needs reopen <key> --reason <why>`
+  (Supervisor, Debug) takes back any rejection the same way; each reopen is a `need-reopened` event naming who did it. Bench:
+  `needs-reopen-rejected-under-older-relay`.
+- **A Kernel's escalation reaches a replaced Supervisor by mail.** A Kernel stays the Dispatch of the Run that launched it, so
+  after its Supervisor was replaced every escalation mail from its terminal was refused `dispatch_run_mismatch` and fell back to
+  a typed prompt. `wakeSupervisor` now picks the sender at send time: the caller's terminal when its seat's Run is the current
+  Supervisor's, else the Supervisor's own terminal; the typed prompt stays the fallback for any other refusal. The bench Orca
+  stand-in refuses a cross-Run Dispatch sender as Orca does. Bench: `orca-kernel-mail-after-supervisor-replaced`.
 
 ## [1.1.0-alpha.7] - 2026-10-29
 
