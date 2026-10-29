@@ -9,7 +9,7 @@ import { currentGoal } from "../../harness/goal.js"
 import { taskState } from "../../harness/graph.js"
 import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { kernelTitle, opTitle } from "../../harness/kernel.js"
-import { evaluateFlow, flowLines, loadLanes, recordsOf, roleOf } from "../../harness/lanes.js"
+import { evaluateFlow, flowCheckoutOf, flowLines, loadLanes, recordsOf, roleOf } from "../../harness/lanes.js"
 import type { FlowReport } from "../../harness/lanes.js"
 import { livenessOf, loadLiveness } from "../../harness/liveness.js"
 import { readMachine, runningWorkers, textOf } from "../../harness/machine.js"
@@ -273,9 +273,9 @@ const attemptsOf = (db: DatabaseSync, taskId: string): AttemptFact[] =>
             return { seq: Number(row.seq), member: memberOf(textOf(row.agent), textOf(row.model), pick), outcome: textOf(row.verdict) ?? textOf(row.outcome) ?? "running", startedAt: textOf(row.started_at) ?? "", pick }
         })
 
-/** The checkout the lanes of a workflow are read in: its worktree, else its repository (as workflowLanes reads them). */
+/** The lanes of a workflow, judged where its lanes are judged (flowCheckoutOf), else in its repository. */
 const flowOf = (db: DatabaseSync, snapshot: Snapshot, repo: string): FlowReport => {
-    const checkout = textOf(db.prepare("SELECT worktree FROM workflows WHERE id = ?").get(snapshot.workflow.id)?.worktree) ?? repo
+    const checkout = flowCheckoutOf(db, snapshot.workflow.id) ?? repo
     return evaluateFlow(snapshot.nodes, { repo: checkout, db, requires: snapshot.workflow.header.requires ?? [] }, loadLanes(loadOps()))
 }
 

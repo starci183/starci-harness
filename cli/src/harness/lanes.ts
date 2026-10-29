@@ -11,6 +11,7 @@ import { isRelayKey } from "./graph.js"
 import { readMachine, textOf } from "./machine.js"
 import { loadOps } from "./ops.js"
 import type { Ops } from "./ops.js"
+import { workflowWorktree } from "./tasks.js"
 import { getWorkflow, graphOf } from "./workflow.js"
 
 /** The schema tag of ops/lanes.yaml. */
@@ -528,13 +529,22 @@ export const repoOfLedger = (db: DatabaseSync): string | undefined => {
 }
 
 /**
+ * Where a workflow's lanes are judged: its worktree, the checkout of the workflow branch's head where its records are written,
+ * while it exists. The planning digest and a replan's FLOW_INCOMPLETE read this one tree, so a record the branch holds and main
+ * does not is satisfied for both; each falls back to its own checkout only when the workflow has none.
+ */
+export const flowCheckoutOf = (db: DatabaseSync, workflowId: string): string | undefined => {
+    const checkout = workflowWorktree(db, workflowId)
+    return checkout !== undefined && existsSync(checkout) ? checkout : undefined
+}
+
+/**
  * The planning digest of a workflow: the lane of each Work record its current graph covers, each step satisfied, carried,
- * optional or missing, read in the workflow's worktree (else its repository). The Kernel plans only what is missing.
+ * optional or missing, read where its lanes are judged (flowCheckoutOf, else its repository). The Kernel plans only what is missing.
  */
 export const workflowLanes = (db: DatabaseSync, workflowId: string): readonly string[] => {
     const workflow = getWorkflow(db, workflowId)
-    const checkout = textOf(db.prepare("SELECT worktree FROM workflows WHERE id = ?").get(workflowId)?.worktree) ?? undefined
-    const repo = checkout ?? repoOfLedger(db)
+    const repo = flowCheckoutOf(db, workflowId) ?? repoOfLedger(db)
     if (repo === undefined || !existsSync(repo)) return []
     try {
         const nodes = graphOf(db, workflowId, workflow.graphVersion)
