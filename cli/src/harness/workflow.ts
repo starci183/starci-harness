@@ -260,16 +260,25 @@ export const recordReplan = (
         return getWorkflow(db, fresh.id)
     })
 
-/** Moves a workflow to a status with its reason (an event records each change), refusing a move WORKFLOW_TRANSITIONS does not allow; returns the row. */
-export const setWorkflowStatus = (db: DatabaseSync, id: string, status: WorkflowStatus, reason: string | null): WorkflowRow => {
+/**
+ * Moves a workflow to a status with its reason (an event records each change, with `by`, the actor who moved it, when the
+ * caller names one: `pausedBy` reads it), refusing a move WORKFLOW_TRANSITIONS does not allow; returns the row.
+ */
+export const setWorkflowStatus = (db: DatabaseSync, id: string, status: WorkflowStatus, reason: string | null, by?: string): WorkflowRow => {
     const before = getWorkflow(db, id)
     if (before.status === status && before.reason === reason) return before
     if (before.status !== status && !WORKFLOW_TRANSITIONS[before.status].includes(status)) {
         throw new Refusal("WORKFLOW_BAD_TRANSITION", `workflow ${id} cannot go from ${before.status} to ${status}`)
     }
     db.prepare("UPDATE workflows SET status = ?, reason = ?, updated_at = ? WHERE id = ?").run(status, reason, now(), id)
-    if (before.status !== status) recordEvent(db, "workflow-status", id, { from: before.status, to: status, reason })
+    if (before.status !== status) recordEvent(db, "workflow-status", id, { from: before.status, to: status, reason, ...(by === undefined ? {} : { by }) })
     return getWorkflow(db, id)
+}
+
+/** Who paused a workflow: the `by` of its newest move to paused, null when none was named (the harness's own pauses). */
+export const pausedBy = (db: DatabaseSync, id: string): string | null => {
+    const by: unknown = db.prepare("SELECT json_extract(data_json, '$.by') AS by FROM events WHERE kind = 'workflow-status' AND subject = ? AND json_extract(data_json, '$.to') = 'paused' ORDER BY id DESC LIMIT 1").get(id)?.by
+    return typeof by === "string" ? by : null
 }
 
 /** What changed of a workflow's Kernel in Orca; a field left out keeps its value. */

@@ -25,7 +25,7 @@ import type { VerbContext } from "../../shared/verb.js"
 import { RELAUNCH_LIMIT } from "../kernel/driver.js"
 import { launchQueuedWorkers } from "../supervisor/workers.js"
 import { cancelTask } from "../task/cancel.js"
-import { workflowResumeVerb } from "../workflow/resume.js"
+import { stepWorkflow } from "../workflow/engine.js"
 
 /** The workflow statuses a park pauses: every started one that has not ended. */
 const PARKABLE: readonly WorkflowStatus[] = ["running", "blocked", "paused"]
@@ -183,7 +183,7 @@ const pauseWorkflows = (repo: string, dryRun: boolean): Omit<ParkedWorkflow, "ke
                 .filter((workflow) => PARKABLE.includes(workflow.status))
                 .map((workflow) => {
                     const was = isParkedReason(workflow.reason) ? parkedFrom(workflow.reason ?? "") : { status: workflow.status, reason: workflow.reason }
-                    if (!dryRun && !isParkedReason(workflow.reason)) setWorkflowStatus(db, workflow.id, "paused", parkedReason(workflow.status, workflow.reason))
+                    if (!dryRun && !isParkedReason(workflow.reason)) setWorkflowStatus(db, workflow.id, "paused", parkedReason(workflow.status, workflow.reason), "park")
                     return { repo, workflow: workflow.id, was: was.status, reason: was.reason }
                 }),
         ),
@@ -291,8 +291,8 @@ const unparkWorkflow = async (context: VerbContext, binary: OrcaBinary, acting: 
     const was = parkedFrom(entry.reason)
     const kernelDue = entry.orca && !(was.status === "paused" && was.reason?.startsWith(RELAUNCH_LIMIT) === true)
     const kernel = kernelDue ? (await startKernel(entry.repo, context.cwd, entry.workflow, binary, { replace: true, acting })).notes.join("; ") : "not relaunched"
-    if (was.status === "paused") withLedger(entry.repo, (db) => setWorkflowStatus(db, entry.workflow, "paused", was.reason))
-    else await workflowResumeVerb.run({ ...context, cwd: entry.repo }, { workflow: entry.workflow })
+    withLedger(entry.repo, (db) => setWorkflowStatus(db, entry.workflow, was.status === "paused" ? "paused" : "running", was.status === "paused" ? was.reason : null, "unpark"))
+    if (was.status !== "paused") await stepWorkflow({ ...context, cwd: entry.repo }, entry.repo, entry.workflow)
     const status = withLedger(entry.repo, (db) => {
         recordEvent(db, WORKFLOW_UNPARKED, entry.workflow, { was: was.status, kernel })
         return getWorkflow(db, entry.workflow).status

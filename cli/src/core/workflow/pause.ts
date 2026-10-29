@@ -3,11 +3,13 @@ import { DISPATCHING, getWorkflow, setWorkflowStatus } from "../../harness/workf
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { actorOf } from "./actor.js"
 import { readSnapshot, reportMessage, reportOf } from "./engine.js"
 
 /**
  * `starci workflow pause <id>`: holds dispatch. Nothing new is dispatched or launched while paused; live tasks keep running,
- * and each step still verifies and settles what they report. `workflow resume` restarts dispatch.
+ * and each step still verifies and settles what they report. The pause records who set it (`actorOf`); `workflow resume` restarts
+ * dispatch.
  */
 export const workflowPauseVerb = defineVerb({
     path: ["workflow", "pause"],
@@ -28,7 +30,7 @@ export const workflowPauseVerb = defineVerb({
                 const workflow = getWorkflow(db, flags.workflow)
                 if (workflow.status === "paused") throw new Refusal("WORKFLOW_PAUSED", `workflow ${workflow.id} is paused already; starci workflow resume ${workflow.id} restarts it`)
                 if (!DISPATCHING.includes(workflow.status)) throw new Refusal("WORKFLOW_NOT_RUNNING", `workflow ${workflow.id} is ${workflow.status}; only a running or blocked workflow is paused`)
-                setWorkflowStatus(db, workflow.id, "paused", flags.reason ?? `paused (was ${workflow.status})`)
+                setWorkflowStatus(db, workflow.id, "paused", flags.reason ?? `paused (was ${workflow.status})`, actorOf(db))
             })
         } finally {
             db.close()

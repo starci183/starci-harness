@@ -815,11 +815,14 @@ const escalateSupervisorStalls = (waiting: SupervisorDecision | OwnerRequest, qu
     return withLedger(place.repo, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow, kind: "escalation", subject: `coordinator-stalls:${seat}`, evidence: { project: place.repo, escalation: { kind: "harness", question } } }))
 }
 
-/** The projects that own a running orca workflow: the repositories whose ledgers hold one a Supervisor coordinates, by `projectOf`. */
+/**
+ * The projects that own a running orca workflow: the repositories whose ledgers hold a running or blocked one a Supervisor
+ * coordinates, by `projectOf`. A paused workflow brings no Supervisor back: a pause and the owner's stop hold until a resume.
+ */
 const projectsWithWorkflows = async (problems: string[]): Promise<Project[]> => {
     const found: Project[] = []
     await inOrder(registeredRepositories(), async (repo) => {
-        const owns = withLedger(repo, (db) => listWorkflows(db).some((workflow) => isCoordinated(workflow) && coordinatorOf(db, workflow.id) === SUPERVISOR_COORDINATOR))
+        const owns = withLedger(repo, (db) => listWorkflows(db).some((workflow) => isCoordinated(workflow) && DISPATCHING.includes(workflow.status) && coordinatorOf(db, workflow.id) === SUPERVISOR_COORDINATOR))
         if (!owns) return
         try {
             found.push(await projectOf(repo))

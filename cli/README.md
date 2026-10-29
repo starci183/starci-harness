@@ -554,9 +554,13 @@ in `harness/reap.ts`), recording on the event what it closed and what Orca still
 itself keeps running. While parked, `ensureSupervisor` starts nothing for the project and no sweep counts a parked workflow as
 coordinated, so no tick relaunches its Supervisor, Kernels or seats. `project unpark [--project] [--wait <seconds>]` records
 `project-unparked`, starts the Supervisor and, once it attached, relaunches each parked workflow's Kernel on its own worktree
-and restores its status (a running or blocked one through `workflow resume`, whose dispatch re-sends the parked tasks from
+and restores its status (a running or blocked one runs again and is stepped, whose dispatch re-sends the parked tasks from
 their patches; a worker's parked task is retried and launched); a Supervisor not attached within the wait leaves the rest to
 `supervisor tick`, which finishes it (`finishUnpark`).
+`workflow pause` records who paused (`by` on the `workflow-status` event: STARCI_ROLE, else the coordinator whose terminal
+runs it, else the owner; `actorOf` in `core/workflow/actor.ts`); `workflow resume` refuses `WORKFLOW_HELD` from a Supervisor or
+Kernel while the owner or Debug paused it (`pausedBy` in `harness/workflow.ts`), and `WORKFLOW_PARKED` to anyone while the
+workflow is parked.
 `workflow start` of an orca workflow runs only in the terminal of the Supervisor of the workflow's project
 (`SUPERVISOR_REQUIRED` elsewhere): it makes (or reuses) the workflow's one git worktree (`workflows.worktree`, default
 `<project state>/worktrees/<workflow>` on branch `starci/<workflow>`) and launches the Kernel by `worker-start
@@ -671,7 +675,7 @@ any registered ledger still unreconciled past `effectUnknownDeadlineMinutes` wit
 (`harness/stale-launch.ts`), so an abandoned launch stops holding a slot; a ledger `project retire` retired is read by none of
 it (retiring also removes the project's harness worktrees, their work preserved, and detaches the repository from Orca's
 project list with `orca project setup-delete` once Orca lists no other worktree of it); then `ensureSupervisors` keeps
-the Supervisor of every project that owns a running orca workflow, or whose last Supervisor ended by anything but the
+the Supervisor of every project that owns a running or blocked orca workflow (a paused one brings none back), or whose last Supervisor ended by anything but the
 owner's `supervisor stop` or `project park` (started when Orca says it is gone; a parked project gets none); then, acting for each attached Supervisor (its terminal as
 `--from`, its lease left to its own calls), it finishes a pending unpark of its project, then runs the Kernel sweep of that project's repositories with the Ops' stall
 ladder and the ready-idle wake of each owned workflow (below), and that Supervisor's own ladder. A host store of version 2 kept one host Supervisor in its

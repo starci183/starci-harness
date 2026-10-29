@@ -20,6 +20,16 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   its worktree, resumes the workflow, which re-dispatches the parked tasks from their patches, and retries a parked worker's
   task; a Supervisor that attaches later has the rest finished by `supervisor tick`. Bench: `project-park-unpark-resumes`.
 
+### Fixed
+
+- **An owner's pause and Supervisor stop hold.** On 2026-10-29 the owner paused every starci-next-app workflow and stopped its
+  Supervisor; the next `supervisor tick` started a new one 14 s later (`projectsWithWorkflows` counted paused workflows as
+  needing a Supervisor), which ran `workflow resume` on two of them. A paused workflow now brings no Supervisor back (only a
+  running or blocked one does); `workflow pause` records who paused (`by`: STARCI_ROLE, else the coordinator whose terminal
+  runs it, else the owner), and `workflow resume` refuses `WORKFLOW_HELD` from a Supervisor or Kernel while the owner or Debug
+  paused it, and `WORKFLOW_PARKED` to anyone on a parked workflow. Bench: `supervisor-stop-paused-project-stays-down`,
+  `workflow-pause-owner-held`.
+
 ## [1.1.0-alpha.14] - 2026-10-29
 
 ### Added

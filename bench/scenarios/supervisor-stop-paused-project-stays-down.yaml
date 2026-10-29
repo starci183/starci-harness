@@ -1,0 +1,71 @@
+schema: starci/scenario@1
+id: supervisor-stop-paused-project-stays-down
+group: lifecycle
+title: "the owner pauses every workflow and stops the Supervisor: no tick relaunches it, and a parked project gets none either"
+inject: "the owner pauses both orca workflows of a project, then runs supervisor stop; ticks follow"
+expect: >-
+  a paused workflow brings no Supervisor back (only a running or blocked one does), so the ticks launch no agent; once the
+  owner resumes a workflow the next tick starts the Supervisor again; after project park no tick starts one
+pass:
+  - no agent launch from a tick while every workflow is paused and the owner stopped the Supervisor
+  - the owner's resume brings the Supervisor back on the next tick
+  - no agent launch from a tick after project park
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wa.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: wa
+        goal: bench stop workflow a
+        runner: orca
+        tasks:
+          - {id: a, label: docs, summary: write doc a, allowPaths: [docs/a.md], checks: [{preset: files-exist, args: {files: [docs/a.md]}}]}
+  - file:
+      path: wb.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: wb
+        goal: bench stop workflow b
+        runner: orca
+        tasks:
+          - {id: b, label: docs, summary: write doc b, allowPaths: [docs/b.md], checks: [{preset: files-exist, args: {files: [docs/b.md]}}]}
+  - boot: {file: "${run}/wa.yaml", workflow: wa}
+  - boot: {file: "${run}/wb.yaml", workflow: wb}
+  - name: the owner pauses both workflows and stops the Supervisor
+    starci: [workflow, pause, wa]
+  - starci: [workflow, pause, wb]
+  - starci: [supervisor, stop]
+  - starci: [supervisor, tick]
+  - starci: [supervisor, tick]
+  - name: no tick relaunched the Supervisor
+    assert:
+      orcaCalls:
+        command: agent launch
+        count: 1
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM project_supervisors WHERE ended_at IS NULL"
+        equals: [0]
+  - name: the owner resumes one workflow; the next tick brings the Supervisor back
+    starci: [workflow, resume, wa]
+  - starci: [supervisor, tick]
+  - assert:
+      orcaCalls:
+        command: agent launch
+        count: 2
+  - name: the owner parks the project; no tick starts a Supervisor
+    starci: [project, park]
+  - starci: [supervisor, tick]
+  - starci: [supervisor, tick]
+  - assert:
+      orcaCalls:
+        command: agent launch
+        count: 2
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM project_supervisors WHERE ended_at IS NULL"
+        equals: [0]
