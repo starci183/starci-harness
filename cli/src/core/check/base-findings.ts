@@ -71,7 +71,7 @@ export const findingKeys = (output: string, roots: readonly string[]): string[] 
 }
 
 /** The keys of `candidate` that `base` does not hold, counted as a multiset: one base finding answers one finding of the change. */
-const newKeys = (candidate: readonly string[], base: readonly string[]): string[] => {
+export const newKeys = (candidate: readonly string[], base: readonly string[]): string[] => {
     const left = new Map<string, number>()
     for (const key of base) left.set(key, (left.get(key) ?? 0) + 1)
     return candidate.filter((key) => {

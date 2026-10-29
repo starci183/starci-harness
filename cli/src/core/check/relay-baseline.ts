@@ -9,7 +9,8 @@ import type { Judging } from "./scope.js"
 /**
  * A relayed source a check judges against: a relay node (harness/reconcile.ts relayTask) carries work another workflow already
  * settled, so a finding its relayed files held at the source's head (its last relayed commit) is the source's baseline, judged
- * there, and never the red of the relay node or of the waiter that composes it (base-findings.ts judgeAgainstRuns).
+ * there, and never the red of the relay node or of the waiter that composes it (base-findings.ts judgeAgainstRuns); a red command
+ * check of the relay node is judged at that head the same way (harness/run-checks.ts judgeAtRelayHead).
  */
 export interface RelaySource {
     readonly node: string

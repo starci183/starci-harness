@@ -2,6 +2,7 @@ import { existsSync, globSync, readFileSync, statSync } from "node:fs"
 import { isAbsolute, join, posix } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
+import { baseCwd, findingKeys, newKeys } from "../core/check/base-findings.js"
 import { sectionedSource } from "../core/contexts/sectioned-docs.js"
 import { EXIT_HOST_HELD, Refusal } from "../shared/errors.js"
 import { captureCommand, captureTool } from "../shared/exec.js"
@@ -11,7 +12,8 @@ import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
 import { HOST_HELD, testWorkerArgs, withHeavySlot } from "./heavy.js"
-import { VERIFY_INFRA } from "./clean-verify.js"
+import { VERIFY_INFRA, inCleanCheckout } from "./clean-verify.js"
+import { linkInstall } from "./land.js"
 import { changedCoverageScope, runsJest, scopedTests, withCoverageArgs } from "./coverage-scope.js"
 import { assertKeysHanded, CUSTODY_CODES, custodyFor, isCustodyRecheck, scrubbed } from "./custody.js"
 import type { Custody } from "./custody.js"
@@ -19,6 +21,7 @@ import { RESULT_FILE, isRuleId, resolveChecks, ruleIdsIn, underPaths, workNamesI
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { loadOps } from "./ops.js"
 import type { OutputType } from "./ops.js"
+import { toPinnedHfs } from "./pinned-hfs.js"
 import { relayHeadOf } from "./reconcile.js"
 import { ruleOwnerOf } from "./rule-pages.js"
 import { recordEvent } from "./tasks.js"
@@ -526,21 +529,65 @@ export const prepareSuite = async (named: readonly string[], place: CheckPlace, 
     return { argv, given, lead, live: tests?.live ?? [] }
 }
 
+/** What a command printed, both streams, as one text whose findings `findingKeys` reads. */
+const printed = (run: ToolRun): string => `${run.stdout}\n${run.stderr}`
+
 /**
- * Runs a command check: its argv (a list, or a string split at blanks), made ready by `prepareSuite` (scoped specs, coverage,
- * custody) and held to its verdict key when it names one; the detail opens with the files it ran and judged. A custody refusal
+ * A relay node's red command check judged at the source's head it relays (reconcile.ts relayHeadOf): the same argv, in the same
+ * folder of a clean checkout of that head with the checkout's install linked, as core/check/relay-baseline.ts gives a scoped
+ * check. When the head run is red too and holds every finding the relay's run printed (base-findings.ts `findingKeys`: checkout
+ * roots and line numbers dropped), the red is the source's, judged there: the check is green, its detail says so, and its
+ * `baseline` names the head and the inherited findings, which the verify and the wave record as `baseline-findings`. A finding the
+ * head lacks, or a head that is green, leaves the red the relay's own.
+ */
+const judgeAtRelayHead = async (check: ResolvedCheck, run: ToolRun, argv: readonly string[], place: CheckPlace, head: string, given: CommandOptions): Promise<CheckOutcome> => {
+    const own = fromRun(check, run)
+    const options: CommandOptions = { ...(given.timeoutMs === undefined ? {} : { timeoutMs: given.timeoutMs }), ...(given.custody === undefined ? {} : { custody: given.custody }) }
+    const there = await inCleanCheckout(place.root, head, "relay-head", async (dir) => {
+        linkInstall(place.root, dir)
+        return { ran: await heavyCommand(argv, baseCwd(place.root, place.cwd, dir), options), dir }
+    })
+    const at = `the relayed source's head ${head.slice(0, 12)}`
+    if (there.ran.exitCode === 0) return { ...own, detail: `${own.detail}\nat ${at} it is green, so the red is this relay's` }
+    const roots = [place.root, there.dir]
+    const mine = findingKeys(printed(run), roots)
+    const fresh = newKeys(mine, findingKeys(printed(there.ran), roots))
+    if (fresh.length > 0) return { ...own, detail: `${own.detail}\n${String(fresh.length)} of ${String(mine.length)} finding(s) are not at ${at}, so the red is this relay's` }
+    return {
+        ...own,
+        status: "green",
+        detail: `relay-baseline: exit ${String(run.exitCode)}, red as at ${at} with every one of its ${String(mine.length)} finding(s): the red is the source's, judged there, not this relay's\n${own.detail}`,
+        baseline: { base: head, steps: [{ package: ".", step: "command", at: head, findings: mine }] },
+    }
+}
+
+/**
+ * Runs a command check: its argv (a list, or a string split at blanks), each path it names inside the CLI's own @starci/hfs read
+ * in the app's pinned one (harness/pinned-hfs.ts `toPinnedHfs`: a skeleton parity judges the skeleton the app installs), made
+ * ready by `prepareSuite` (scoped specs, coverage, custody) and held to its verdict key when it names one; the detail opens with the files it ran and judged. A custody refusal
  * (CUSTODY_CODES, a block awaiting the owner, before the run or from a run reporting keys custody lacks as undeclared) or
  * VERIFY_INFRA (a run reporting a key custody holds as undeclared) leaves the
- * check, never a red; any other failure is a red check.
+ * check, never a red; any other failure is a red check. A relay node's red that its relayed source's head holds too is that
+ * source's (`judgeAtRelayHead`).
  */
-const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
+const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, contract: Contract, options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
+    const allowPaths = contract.context.allowPaths
     const primitive = check.check
-    const named = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
+    const written = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
     try {
-        const prepared = await prepareSuite(named, place, allowPaths, { ...options, ...(primitive.coverage === undefined ? {} : { coverage: primitive.coverage }) })
+        const pinned = await toPinnedHfs(written, place.root)
+        if ("problem" in pinned) return outcome(check, [pinned.problem], "")
+        const prepared = await prepareSuite(pinned.argv, place, allowPaths, { ...options, ...(primitive.coverage === undefined ? {} : { coverage: primitive.coverage }) })
         if ("problem" in prepared) return outcome(check, [prepared.problem], "")
-        const { argv, given, lead } = prepared
-        const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, given) : fromRun(check, await heavyCommand(argv, place.cwd, given))
+        const { argv, given } = prepared
+        const lead = pinned.detail === undefined ? prepared.lead : [pinned.detail, ...prepared.lead]
+        const head = relayHeadOf(contract)
+        let judged: CheckOutcome
+        if (primitive.verdict !== undefined) judged = await runVerdictCommand(check, argv, primitive.verdict, place, given)
+        else {
+            const run = await heavyCommand(argv, place.cwd, given)
+            judged = run.exitCode === 0 || head === undefined ? fromRun(check, run) : await judgeAtRelayHead(check, run, argv, place, head, given)
+        }
         return lead.length === 0 ? judged : { ...judged, detail: `${lead.join("\n")}\n${judged.detail}` }
     } catch (error: unknown) {
         // A custody block is not the task's red: it leaves the check, and the verify ends awaiting the owner or with no verdict. A
@@ -564,7 +611,7 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
             return fromRun(check, unlessHeld(await captureTool(process.execPath, [selfEntry(), "--cwd", place.cwd, ...primitive.args], place.cwd, options), ""))
         }
         case "command":
-            return runCommandCheck({ ...check, check: primitive }, place, contract.context.allowPaths, options)
+            return runCommandCheck({ ...check, check: primitive }, place, contract, options)
         case "files":
             return runFilesCheck({ ...check, check: primitive }, contract, place)
         case "json":

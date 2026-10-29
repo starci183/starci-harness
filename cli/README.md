@@ -345,6 +345,18 @@ next step verifies it, and the verify runs the contract's checks with custody as
 aside (`recheckOf`, `ResultSource.setAside`): the suite's own exit is the verdict, in the task's verify and in the wave
 alike. Green settles it, a genuine red fails it, and a key custody lacks ends it `awaiting_owner` as above.
 
+### Skeleton parity reads the pinned hfs
+
+An app is judged against the skeleton of the @starci/hfs version it pins and installs, never the CLI's own: a skeleton
+change reaches an app only when the app raises its hfs and runs `starci app sync`, never through a check or a relay. A
+command check that names a path inside the CLI's own hfs (the harness checkout's `packages/hfs`, or the copy the CLI
+installs), as a contract spells a skeleton parity with `git diff --no-index --exit-code <harness>/packages/hfs/templates/be/skeleton/<dir> be/<dir>`,
+reads that path inside the app's pinned hfs (`toPinnedHfs`, `harness/pinned-hfs.ts`): the version the checkout's lockfile
+resolves for `node_modules/@starci/hfs` (else an exact package.json pin), from an installed copy at that version or else the
+exact published version unpacked once into `<state base>/cache/hfs/<version>`. A checkout whose pin cannot be read makes the
+check red, naming why; the check's detail names the version and copy it read. R253 (`HFS_CANON_COPY_DRIFT`) holds the
+same law inside @starci/hfs.
+
 ### Result reuse
 
 `check run` keys each typecheck and lint step by the digest of its inputs (`checkDigest` in
@@ -459,7 +471,10 @@ files defer to that waiter, whose check and the workflow's final verify judge th
 commit as data (`relayHeadOf`), never copied onto the branch; and a finding its relayed files already held at that commit (the
 same rule, file and message, whichever ESLint report printed it: a deferral's json findings print their message as the stylish
 report does, `judgeDeferred` in `core/check/composition.ts`) is the source's baseline, judged there and kept as `baseline-findings` evidence, wherever `check run` judges them (as the node,
-its composer or the final verify), a composition rule excepted (`core/check/relay-baseline.ts`). Every waiter of the need in
+its composer or the final verify), a composition rule excepted (`core/check/relay-baseline.ts`); a red command check of the
+node is run again, same argv and folder, in a clean checkout of that commit, and when it is red there with every finding the
+node's run printed it is the source's red too: green, its detail saying so, the inherited findings a `baseline-findings` event
+(`judgeAtRelayHead` in `harness/run-checks.ts`), while a finding the head lacks keeps it red. Every waiter of the need in
 that workflow depends on it and stays parked with its work kept, spending no try, until it lands; the add is a `need-relay-conflict` event naming the node and the files, and the node's landing a `need-relayed` event
 naming it. Like a revert node, a relay node's key and contract are the harness's own (no file adds or edits one), it is outside
 the goal's scope paths, the Work records' lanes and the foreign-source rule, since it carries what another workflow's lane built.
@@ -835,9 +850,11 @@ A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflo
 plus `settle` (`discard` or `repair`) on a Kernel's answer to a decision on a task ("Settling an attempt").
 A `workflow-change` that answers a red, question, check-premise or conflict decision on a task with no change and no need holds
 the task where it stands, and names the one condition that releases it (`hold`: `ticket`, `commit` on harness main, `need` or
-`time`; `tasks` names, by plan key, the tasks a hold answering an `escalation-answer` or `goal-change` keeps), refused
+`time`; `tasks` names, by plan key, the tasks a hold keeps beside those whose decisions it answers, and with `tasks` a hold
+needs no open decision at all, so a Kernel holds a key on an open ticket alone), refused
 `HOLD_UNCONDITIONED` without one (`assertHold` in `harness/holds.ts`) and admitted off the decision's route; the hold is a `task-held` event, the
-task leaves `decisionIdle` while it holds, and `releaseHolds` (every `settleWorkflow`, so every tick and step, and
+task leaves `decisionIdle` while it holds, nothing runs it again meanwhile (a shared need's release leaves a held waiter, or
+one a live ticket's `task:<id>` waiter holds, parked: `holdOf`, `ticketHoldingTask`, core/needs/tend.ts), and `releaseHolds` (every `settleWorkflow`, so every tick and step, and
 `wakeOnClose` for a ticket's close or answer) releases it once the condition is met (`hold-released`): a task the harness ended
 comes back to ready at the same try (`hold-revived`, past `reviveMax` too), any other has its Kernel decision reopened. It is
 admitted before any side effect into `commands` with its sha256 (an `applying` intent row): a known cmdId replays its

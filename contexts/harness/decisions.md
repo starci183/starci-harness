@@ -183,10 +183,12 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
 - **Open source under MIT.** The harness and every package it publishes are MIT, copyright starci183
   ([LICENSE](../../LICENSE)); the CLI ships on npm as `starci-harness`, published by CI.
 - **Findings already on a branch are the base's (`r-b910f07221cf`).** A scoped check an app-wide configuration change widens is
-  judged against the same check at its base, and the files a relay node carries against the same check at the source's head it
-  relays (ticket tk-405c2bb94dbd: a relay node transports work its source already settled); a finding that base holds fails no
+  judged against the same check at its base, and the files a relay node carries, and its command checks, against the same check
+  at the source's head it relays (tickets tk-405c2bb94dbd, tk-a46c4d69c675: a relay node transports work its source already
+  settled); a finding that base holds fails no
   task and spends no try, and is kept as `baseline-findings` evidence, a composition rule excepted for a relayed source, which
-  the relay's composer answers for (`cli/src/core/check/base-findings.ts`, `cli/src/core/check/relay-baseline.ts`). An opt-in pattern of `hfs.json` is declared by the harness,
+  the relay's composer answers for (`cli/src/core/check/base-findings.ts`, `cli/src/core/check/relay-baseline.ts`, `judgeAtRelayHead` in
+  `cli/src/harness/run-checks.ts`). An opt-in pattern of `hfs.json` is declared by the harness,
   never by a task (`cli/src/harness/hfs-patterns.ts`).
 - **Every seat loads a minimal core and searches the rest (`minimal-core-search`).** The owner's words: "nạp cho op và
   kernel và sup là tối thiểu + search i" (load the op, the Kernel and the Supervisor minimally, plus search). Each op of

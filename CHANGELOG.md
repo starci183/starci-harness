@@ -37,6 +37,40 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   paused it, and `WORKFLOW_PARKED` to anyone on a parked workflow. Bench: `supervisor-stop-paused-project-stays-down`,
   `workflow-pause-owner-held`.
 
+### Fixed
+
+- **A relay node's command check that is red exactly as at the relayed source's head is the source's red.** The relay of
+  capability:platform.http carries its source's skeleton parity check, which the relay's own later commit (the exported
+  port in `index.ts`) makes red at the source's head too, so no relay of it could pass unchanged. A red command check of a
+  relay node is now run again, same argv and folder, in a clean checkout of the last relayed commit with the install linked
+  (`judgeAtRelayHead`, `harness/run-checks.ts`, reading findings as `core/check/base-findings.ts` does for a scoped check):
+  red there with every finding the node printed, the check is green with its detail saying the red is the source's, and the
+  inherited findings are a `baseline-findings` event (step `command`, at the head) in the verify and the wave; a finding the
+  head lacks, or a head that is green, keeps it red, naming how many. Bench: `needs-relay-command-baseline` (and its
+  `own-finding` fault).
+- **A shared need's release never runs a key a hold keeps (tk-2607eb9c7960).** platform-http-ca was parked on
+  config:root-package and held on open ticket tk-50ca764c5426; when the need resolved, its release retried the key as
+  t-07e4bcc3 past the hold, and cancelling that retry discarded the key's kept patch. The release (`release` in
+  `core/needs/tend.ts`) now leaves a waiter that a hold in force keeps (`holdOf`, `harness/holds.ts`) or a live ticket's
+  `task:<id>` waiter holds (`ticketHoldingTask`, `harness/tickets.ts`) parked, its row unreleased, with a `wait` action
+  naming why; once the hold or ticket ends, the next pass retries it once from its kept work. A Kernel's `workflow-change`
+  with no change may carry a hold alone: `hold: {tasks: [<key>...], ticket: <id>}` with `answers: []` is admitted, so a key
+  is held on an open ticket with no decision of its own open. Bench: `needs-release-respects-hold` (held: no dispatch on
+  two steps; ticket closed: one retry, its kept work applied).
+- **A skeleton parity judges the skeleton of the hfs the app pins, never the CLI's own (tk-a46c4d69c675).** The relay
+  `relay.capability-platform.http.r3` carried its source's check `git diff --no-index --exit-code
+  <harness>/packages/hfs/templates/be/skeleton/src/modules/platform/http be/src/modules/platform/http`, which read the CLI's
+  hfs 4.11.11 (trusted CA, pool lifecycle, `http.config.ts`) while the relayed commits and the app's pinned hfs predate them,
+  so the relay could not meet its own contract. A command check now reads every path it names inside the CLI's own hfs (the
+  harness checkout's `packages/hfs`, or the copy the CLI installs) inside the app's pinned hfs (`toPinnedHfs`,
+  `harness/pinned-hfs.ts`): the version the checkout's lockfile resolves for `node_modules/@starci/hfs` (else an exact
+  package.json pin), from an installed copy at that version or else the exact published version unpacked once into
+  `<state base>/cache/hfs/<version>`; a pin it cannot read is a red naming why, and the check's detail names the version it
+  read. A skeleton change reaches an app only when the app raises its hfs. The same mistake in hfs R253
+  (`HFS_CANON_COPY_DRIFT`) is fixed in @starci/hfs 4.11.14 (canon pins: eslint-canon-be 3.8.13, eslint-canon-fe 9.5.15,
+  Grammar family 0.15.26). Bench: `verify-skeleton-parity-pinned-hfs` (a copy of the pinned 4.9.3 skeleton green, a drift
+  from it red).
+
 ## [1.1.0-alpha.14] - 2026-10-29
 
 ### Added

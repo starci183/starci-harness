@@ -227,7 +227,8 @@ export interface RelayPlan {
  * its op's context budget, which it is held to like any task. Its verify is its label's own, judging it as the transport of work the source already settled:
  * its first waiter composes it (graph.ts composerOf), consuming what the commits export, so the composition rules on the relayed
  * files defer to that waiter (core/check/composition.ts); a context file the source owns is read at the last relayed commit
- * (relayHeadOf); and a finding the relayed files already held there is the source's baseline (core/check/relay-baseline.ts). The
+ * (relayHeadOf); and a finding the relayed files already held there is the source's baseline (core/check/relay-baseline.ts; a command
+ * check's, harness/run-checks.ts judgeAtRelayHead). The
  * engine's `applyGenerated` does the mechanics first.
  */
 export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: RelayPlan): PlanTask => {

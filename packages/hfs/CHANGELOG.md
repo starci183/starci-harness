@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.11.14 - 2026-10-29
+
+- Fixed: R253 (`HFS_CANON_COPY_DRIFT`, `rules/canon-copy-drift.mjs`) judges a hash-sensitive canon copy against the be/skeleton of the @starci/hfs version the app pins (its lockfile's resolution of `node_modules/@starci/hfs`, else an exact package.json pin), never against a newer hfs that runs the check: this package's own templates serve when it is that version or the app pins none, else an installed copy at the pinned version; with neither at hand the copy is left to the app's own run of its pinned hfs. A skeleton change reaches an app only when the app raises its hfs.
+- Changed: the bundled canon pins name hfs 4.11.14, eslint-canon-be 3.8.13, eslint-canon-fe 9.5.15 and the Grammar family 0.15.26.
+- Spec: `src/hfs-secret-custody.spec.mjs` pins an older hfs with an installed copy whose skeleton differs: a copy equal to the pinned skeleton is clean, one equal to this package's skeleton drifts, and with no copy of the pinned version nothing is judged against another.
+
 ## 4.11.13 - 2026-10-29
 
 - Fixed: a member sealed to an environment's whole recipient set (the owner key and the deploy server key, the production standard after `server-key --execute`) opens with either identity alone. The selected-identity decrypt (`runtime/scripts/lib/sops-envelope.mjs` `selectedAgeEnvelope`) refused every envelope whose age list held more than one entry (`unsupported-age-set`), so every production read failed once the server key joined; it now admits a set that holds the selected recipient and refuses an empty entry or gap (`invalid-age-entry`) and a recipient named twice (`duplicate-age-recipient`); a dotenv envelope reads every `sops_age__list_<n>__` entry.
