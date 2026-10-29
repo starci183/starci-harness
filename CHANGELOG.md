@@ -6,37 +6,6 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
-## [1.1.0-alpha.15] - 2026-10-29
-
-### Changed
-
-- The CLI requires @starci/hfs 4.11.13 (was 4.11.8), its pin in contexts/stack/pins.yaml: an app's pre-commit hook run by
-  this CLI no longer reports `HFS_SYNC_DRIFT` against an app on the 4.11.13 cohort (CONTRIB-20 step 2).
-- Every `starci app` verb hands @starci/hfs the harness secret.env's age identity (`runHfs` defaults `hostIdentity` to `hostAgeIdentity`), not `app secret` alone: `app stack`, `app release` and `app db` open sealed members through the same lookup as `app secret` (@starci/hfs `decryptionIdentity`).
-### Added
-
-- **`project park` and `project unpark` (owner decision `project-park`).** `starci project park [--project <checkout>] [--dry-run]`
-  pauses every running, blocked or paused workflow of the project (reason `parked: was <status>`), stops each live Op or
-  `[Worker]` seat with its task cancelled as parked (`task-parked`, revive.ts cause `parked`: its work settles KEEP as one
-  patch and its key comes back at the same try, outside `reviveMax`), closes each workflow's Kernel terminal (`workflow-parked`;
-  worktree and graph untouched), stops the Supervisor (`ended_by` `parked`), then closes every Orca terminal of the project by
-  Orca's list and force-closes its worktrees (`closeFolderTerminals`, shared with the reap), and records it all on a
-  `project-parked` host event; exit 1 while Orca still lists one. Orca itself is left running. While parked,
-  `ensureSupervisor` starts nothing and the Kernel sweep skips parked workflows, so no tick relaunches anything.
-  `starci project unpark [--project] [--wait <seconds>]` starts the Supervisor and, once it attached, relaunches each Kernel on
-  its worktree, resumes the workflow, which re-dispatches the parked tasks from their patches, and retries a parked worker's
-  task; a Supervisor that attaches later has the rest finished by `supervisor tick`. Bench: `project-park-unpark-resumes`.
-
-### Fixed
-
-- **An owner's pause and Supervisor stop hold.** On 2026-10-29 the owner paused every starci-next-app workflow and stopped its
-  Supervisor; the next `supervisor tick` started a new one 14 s later (`projectsWithWorkflows` counted paused workflows as
-  needing a Supervisor), which ran `workflow resume` on two of them. A paused workflow now brings no Supervisor back (only a
-  running or blocked one does); `workflow pause` records who paused (`by`: STARCI_ROLE, else the coordinator whose terminal
-  runs it, else the owner), and `workflow resume` refuses `WORKFLOW_HELD` from a Supervisor or Kernel while the owner or Debug
-  paused it, and `WORKFLOW_PARKED` to anyone on a parked workflow. Bench: `supervisor-stop-paused-project-stays-down`,
-  `workflow-pause-owner-held`.
-
 ### Fixed
 
 - **A relay node's command check that is red exactly as at the relayed source's head is the source's red.** The relay of
@@ -70,6 +39,37 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   (`HFS_CANON_COPY_DRIFT`) is fixed in @starci/hfs 4.11.14 (canon pins: eslint-canon-be 3.8.13, eslint-canon-fe 9.5.15,
   Grammar family 0.15.26). Bench: `verify-skeleton-parity-pinned-hfs` (a copy of the pinned 4.9.3 skeleton green, a drift
   from it red).
+
+## [1.1.0-alpha.15] - 2026-10-29
+
+### Changed
+
+- The CLI requires @starci/hfs 4.11.13 (was 4.11.8), its pin in contexts/stack/pins.yaml: an app's pre-commit hook run by
+  this CLI no longer reports `HFS_SYNC_DRIFT` against an app on the 4.11.13 cohort (CONTRIB-20 step 2).
+- Every `starci app` verb hands @starci/hfs the harness secret.env's age identity (`runHfs` defaults `hostIdentity` to `hostAgeIdentity`), not `app secret` alone: `app stack`, `app release` and `app db` open sealed members through the same lookup as `app secret` (@starci/hfs `decryptionIdentity`).
+### Added
+
+- **`project park` and `project unpark` (owner decision `project-park`).** `starci project park [--project <checkout>] [--dry-run]`
+  pauses every running, blocked or paused workflow of the project (reason `parked: was <status>`), stops each live Op or
+  `[Worker]` seat with its task cancelled as parked (`task-parked`, revive.ts cause `parked`: its work settles KEEP as one
+  patch and its key comes back at the same try, outside `reviveMax`), closes each workflow's Kernel terminal (`workflow-parked`;
+  worktree and graph untouched), stops the Supervisor (`ended_by` `parked`), then closes every Orca terminal of the project by
+  Orca's list and force-closes its worktrees (`closeFolderTerminals`, shared with the reap), and records it all on a
+  `project-parked` host event; exit 1 while Orca still lists one. Orca itself is left running. While parked,
+  `ensureSupervisor` starts nothing and the Kernel sweep skips parked workflows, so no tick relaunches anything.
+  `starci project unpark [--project] [--wait <seconds>]` starts the Supervisor and, once it attached, relaunches each Kernel on
+  its worktree, resumes the workflow, which re-dispatches the parked tasks from their patches, and retries a parked worker's
+  task; a Supervisor that attaches later has the rest finished by `supervisor tick`. Bench: `project-park-unpark-resumes`.
+
+### Fixed
+
+- **An owner's pause and Supervisor stop hold.** On 2026-10-29 the owner paused every starci-next-app workflow and stopped its
+  Supervisor; the next `supervisor tick` started a new one 14 s later (`projectsWithWorkflows` counted paused workflows as
+  needing a Supervisor), which ran `workflow resume` on two of them. A paused workflow now brings no Supervisor back (only a
+  running or blocked one does); `workflow pause` records who paused (`by`: STARCI_ROLE, else the coordinator whose terminal
+  runs it, else the owner), and `workflow resume` refuses `WORKFLOW_HELD` from a Supervisor or Kernel while the owner or Debug
+  paused it, and `WORKFLOW_PARKED` to anyone on a parked workflow. Bench: `supervisor-stop-paused-project-stays-down`,
+  `workflow-pause-owner-held`.
 
 ## [1.1.0-alpha.14] - 2026-10-29
 
