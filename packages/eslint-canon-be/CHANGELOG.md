@@ -2,6 +2,7 @@
 
 ## 3.8.16 - 2026-10-30
 
+- Fixed: `jobs-scheduler-owner` requires the tick claim as `callDbFunction(tx, "public.job_tick_claim", ...)`, the schema-qualified name `no-raw-sql` lists and the hfs jobs template calls; the bare `"job_tick_claim"` could not pass both rules.
 - Changed: the bundled canon pins name ai-router 0.4.0 (mounted keys), hfs 4.11.17, eslint-canon-be 3.8.16, eslint-canon-fe 9.5.18 and the Grammar family 0.15.29. No rule changed.
 
 ## 3.8.15 - 2026-10-30

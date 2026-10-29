@@ -2,6 +2,7 @@
 
 ## 4.11.17 - 2026-10-30
 
+- Fixed: `starci app emit`'s write pass (outDir is the app root) no longer calls `appHasDbTypes`/`writeDbTypes`, whose module (`emit/db-types.mjs`) left with the lite Supabase types in 4.10.0: every write pass aborted after `events.json` and wrote no `schema.graphql` or `openapi.json`. `emitContracts` answers `{ written, skipped, standIns }`; spec: the write pass in `src/input-bounds-emit.spec.mjs`.
 - Changed: the bundled canon pins name ai-router 0.4.0 (mounted keys), hfs 4.11.17, eslint-canon-be 3.8.16, eslint-canon-fe 9.5.18 and the Grammar family 0.15.29. No rule or template changed.
 
 ## 4.11.16 - 2026-10-30
