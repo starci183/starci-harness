@@ -847,9 +847,11 @@ A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflo
 plus `settle` (`discard` or `repair`) on a Kernel's answer to a decision on a task ("Settling an attempt").
 A `workflow-change` that answers a red, question, check-premise or conflict decision on a task with no change and no need holds
 the task where it stands, and names the one condition that releases it (`hold`: `ticket`, `commit` on harness main, `need` or
-`time`; `tasks` names, by plan key, the tasks a hold answering an `escalation-answer` or `goal-change` keeps), refused
+`time`; `tasks` names, by plan key, the tasks a hold keeps beside those whose decisions it answers, and with `tasks` a hold
+needs no open decision at all, so a Kernel holds a key on an open ticket alone), refused
 `HOLD_UNCONDITIONED` without one (`assertHold` in `harness/holds.ts`) and admitted off the decision's route; the hold is a `task-held` event, the
-task leaves `decisionIdle` while it holds, and `releaseHolds` (every `settleWorkflow`, so every tick and step, and
+task leaves `decisionIdle` while it holds, nothing runs it again meanwhile (a shared need's release leaves a held waiter, or
+one a live ticket's `task:<id>` waiter holds, parked: `holdOf`, `ticketHoldingTask`, core/needs/tend.ts), and `releaseHolds` (every `settleWorkflow`, so every tick and step, and
 `wakeOnClose` for a ticket's close or answer) releases it once the condition is met (`hold-released`): a task the harness ended
 comes back to ready at the same try (`hold-revived`, past `reviveMax` too), any other has its Kernel decision reopened. It is
 admitted before any side effect into `commands` with its sha256 (an `applying` intent row): a known cmdId replays its

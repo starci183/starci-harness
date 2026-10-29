@@ -35,6 +35,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A shared need's release never runs a key a hold keeps (tk-2607eb9c7960).** platform-http-ca was parked on
+  config:root-package and held on open ticket tk-50ca764c5426; when the need resolved, its release retried the key as
+  t-07e4bcc3 past the hold, and cancelling that retry discarded the key's kept patch. The release (`release` in
+  `core/needs/tend.ts`) now leaves a waiter that a hold in force keeps (`holdOf`, `harness/holds.ts`) or a live ticket's
+  `task:<id>` waiter holds (`ticketHoldingTask`, `harness/tickets.ts`) parked, its row unreleased, with a `wait` action
+  naming why; once the hold or ticket ends, the next pass retries it once from its kept work. A Kernel's `workflow-change`
+  with no change may carry a hold alone: `hold: {tasks: [<key>...], ticket: <id>}` with `answers: []` is admitted, so a key
+  is held on an open ticket with no decision of its own open. Bench: `needs-release-respects-hold` (held: no dispatch on
+  two steps; ticket closed: one retry, its kept work applied).
 - **A skeleton parity judges the skeleton of the hfs the app pins, never the CLI's own (tk-a46c4d69c675).** The relay
   `relay.capability-platform.http.r3` carried its source's check `git diff --no-index --exit-code
   <harness>/packages/hfs/templates/be/skeleton/src/modules/platform/http be/src/modules/platform/http`, which read the CLI's

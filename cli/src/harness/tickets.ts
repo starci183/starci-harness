@@ -311,6 +311,18 @@ export const findTicket = (id: string): Ticket | undefined => readMachine((db) =
 export const waitersOf = (id: string): TicketWaiter[] =>
     readMachine((db) => db.prepare("SELECT * FROM ticket_waiters WHERE ticket_id = ? ORDER BY linked_at, subject").all(id), []).map(toWaiter)
 
+/** The live ticket a task of a project's ledger waits on (a `task:<id>` waiter not released), or null when it waits on none. */
+export const ticketHoldingTask = (project: string, taskId: string): string | null =>
+    readMachine(
+        (db) =>
+            textOf(
+                db
+                    .prepare(`SELECT w.ticket_id AS id FROM ticket_waiters w JOIN tickets t ON t.id = w.ticket_id WHERE w.project = ? AND w.subject = ? AND w.released_at IS NULL AND t.state IN (${LIVE.map(() => "?").join(", ")}) ORDER BY w.linked_at LIMIT 1`)
+                    .get(project, `task:${taskId}`, ...LIVE)?.id,
+            ),
+        null,
+    )
+
 /** True when a decision of the ledger of `repo` already waits on a ticket. */
 export const decisionTicketed = (repo: string, decisionId: string): boolean =>
     readMachine((db) => db.prepare("SELECT 1 FROM ticket_waiters WHERE repo = ? AND subject = ?").get(repo, `decision:${decisionId}`) !== undefined, false)

@@ -165,8 +165,8 @@ export const readCommand = (file: string, scope: CommandScope): CommandFile => {
     if (!allowed.includes(command.kind)) throw new Refusal("COMMAND_NOT_YOURS", `a ${scope} submits ${allowed.join(", ")}, not ${command.kind}`)
     const missing = needs[command.kind].filter((field) => command[field] === undefined)
     if (missing.length > 0) throw new Refusal("COMMAND_INVALID", `${command.kind} needs ${missing.join(", ")}`)
-    if (command.kind === "workflow-change" && command.change === undefined && (command.answers ?? []).length === 0) {
-        throw new Refusal("COMMAND_INVALID", "workflow-change needs change (a workflow-change or whole workflow file), or answers that close decisions without one")
+    if (command.kind === "workflow-change" && command.change === undefined && command.hold === undefined && (command.answers ?? []).length === 0) {
+        throw new Refusal("COMMAND_INVALID", "workflow-change needs change (a workflow-change or whole workflow file), answers that close decisions without one, or a hold naming the tasks it keeps (hold.tasks) and what releases them")
     }
     return { command, sha256: createHash("sha256").update(bytes).digest("hex"), dir: dirname(file) }
 }

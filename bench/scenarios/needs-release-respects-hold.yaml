@@ -1,0 +1,183 @@
+schema: starci/scenario@1
+id: needs-release-respects-hold
+group: needs
+title: "a shared need's release never runs a key a hold keeps: the waiter stays parked until its ticket closes, then is retried once from its kept work"
+inject: >-
+  task a files blocked on capability:platform/http with a draft written, so it is parked with its work kept; the Kernel names a
+  prerequisite as the need's resolver, then holds key a on an open ticket with no decision of its own open (answers: []); the
+  prerequisite lands while the ticket is open; then Debug closes the ticket
+expect: >-
+  the hold-only workflow-change is admitted and recorded on a's parked task; the landing resolves the need but its release leaves
+  a parked, its waiter row unreleased and no task dispatched, on that step and the next; the ticket's close releases the hold,
+  and the next step retries a once, from the draft its parked attempt kept; a later step dispatches nothing more
+pass:
+  - a hold with tasks and a ticket and no answers is admitted and recorded as task-held
+  - the resolved need's release dispatches no task for the held key, its waiter row stays unreleased
+  - the ticket's close releases the hold, and the next step retries the key exactly once, its kept work applied
+  - "no step without evidence: every state change in the ledger has its event"
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: shop
+        goal: bench workflow shop
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a, which calls the shared http client
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/a.md]}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, shop]
+    save:
+      a: data.nodes.0.task.id
+  - name: the Op drafts its doc, then finds the shared client missing
+    worker:
+      task: ${a}
+      status: blocked
+      files:
+        docs/a.md: "# a, drafted before the client\n"
+      output:
+        summary: platform/http has no HttpClient
+        files: [docs/a.md]
+        rulesApplied: []
+        needs:
+          - {key: "capability:platform/http", rule: BE-INFRA-2, note: HttpClient is missing}
+  - name: step parks it with its work kept
+    starci: [workflow, step, shop]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${a}'"
+        equals: [cancelled]
+  - starci: [kernel, next, shop, --wait, "0"]
+    expect:
+      contains: '"kind": "shared-need"'
+    save:
+      decision: data.decision.id
+      graph: data.digest.graphVersion
+  - file:
+      path: add-http.yaml
+      content: |
+        schema: starci/workflow-change@1
+        workflow: shop
+        reason: build the shared http client once
+        changes:
+          - op: add
+            task:
+              id: http
+              label: docs
+              summary: write the shared http client
+              allowPaths: [platform/http/client.md]
+              checks:
+                - preset: files-exist
+                  args: {files: [platform/http/client.md]}
+  - file:
+      path: cmd-need.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-shop-need-http
+        kind: workflow-change
+        workflow: shop
+        basedOn: {graph: ${graph}}
+        answers: [${decision}]
+        change: add-http.yaml
+        need: {key: "capability:platform.http", resolver: http}
+  - starci: [kernel, submit, "${run}/cmd-need.yaml"]
+  - name: a defect a must not run past is filed
+    starci: [ticket, open, --kind, harness-defect, --severity, blocking, --title, "doc a must wait for HFS_BENCH_HOLD (cli/src/core/needs/tend.ts)"]
+  - read:
+      db: machine
+      query: SELECT id FROM tickets
+      as: ticket
+  - read:
+      db: ledger
+      query: "SELECT graph_version FROM workflows WHERE id = 'shop'"
+      as: graph2
+  - file:
+      path: hold.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-shop-hold-a
+        kind: workflow-change
+        workflow: shop
+        basedOn: {graph: ${graph2}}
+        answers: []
+        hold: {tasks: [a], ticket: ${ticket}}
+        note: a waits for the ticket's fix as well as for its need
+  - name: the Kernel holds key a on the open ticket, with no decision of its own open
+    starci: [kernel, submit, "${run}/hold.yaml"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'task-held' AND subject = '${a}' AND json_extract(data_json, '$.until.ticket') = '${ticket}' AND json_extract(data_json, '$.decision') IS NULL"
+        equals: [1]
+  - starci: [workflow, step, shop]
+    expect: {}
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http'"
+      as: http
+  - name: the prerequisite lands while the ticket is open
+    worker:
+      task: ${http}
+      files:
+        platform/http/client.md: "# HttpClient\n"
+  - name: the step that lands it resolves the need and leaves the held waiter parked
+    starci: [workflow, step, shop]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state FROM shared_needs"
+        equals: [resolved]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT released_at IS NULL FROM shared_need_waiters WHERE task_id = '${a}'"
+        equals: [1]
+  - starci: [workflow, step, shop]
+    expect: {}
+  - name: nothing dispatched the held key
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'a'"
+        equals: [1]
+  - name: Debug closes the ticket, which releases the hold
+    env:
+      STARCI_ROLE: debug
+    starci: [ticket, close, "${ticket}", --wontfix, --reason, "fixed elsewhere"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'hold-released' AND subject = '${a}' AND json_extract(data_json, '$.cmdId') = 'k-shop-hold-a'"
+        equals: [1]
+  - name: the next step retries the key from its kept work
+    starci: [workflow, step, shop]
+    expect: {}
+  - starci: [workflow, step, shop]
+    expect: {}
+  - name: retried exactly once
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'a'"
+        equals: [2]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT released_at IS NOT NULL FROM shared_need_waiters WHERE task_id = '${a}'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT DISTINCT json_extract(e.data_json, '$.outcome') || ':' || json_extract(e.data_json, '$.fromTask') FROM events e JOIN tasks t ON t.id = e.subject WHERE e.kind = 'prior-applied' AND t.plan_key = 'a' AND t.id <> '${a}'"
+        equals: ["applied:${a}"]

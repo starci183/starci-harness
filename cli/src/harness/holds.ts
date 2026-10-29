@@ -135,8 +135,11 @@ export const activeHolds = (db: DatabaseSync, workflowId?: string): ActiveHold[]
         })
         .filter((hold) => workflowId === undefined || hold.workflow === workflowId)
 
-/** True while a hold is in force on a task. */
-export const isHeld = (db: DatabaseSync, taskId: string): boolean => activeHolds(db).some((hold) => hold.task === taskId)
+/** The hold in force on a task, in one line (the command that made it and what releases it), or null when none is. */
+export const holdOf = (db: DatabaseSync, taskId: string): string | null => {
+    const hold = activeHolds(db).find((one) => one.task === taskId)
+    return hold === undefined ? null : `held by ${hold.cmdId} until ${holdLine(hold.until)}`
+}
 
 /** How a hold's condition reads in one line. */
 export const holdLine = (until: Hold): string =>

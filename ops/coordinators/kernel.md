@@ -40,9 +40,11 @@ it, that the host driver wakes you about (`decisionIdle` of ops/liveness.yaml, a
 turn, by its route or by an escalation naming what it waits for. A hold, a `workflow-change` that answers a decision on a task
 without a change, names what releases it: `hold: {ticket: <id>}` (the ticket it waits on, preferred), `{commit: <sha>}` (once
 harness main holds it), `{need: <key>}` (once the shared need ends) or `{time: <iso>}`, plus `tasks: [<key>...]` for the
-tasks it keeps when it answers an `escalation-answer` or `goal-change` rather than their own decisions; one with none is refused
-`HOLD_UNCONDITIONED`, and a hold answers a task's decision off its route. The harness releases it on its own when the condition is met: a task the harness ended comes back at the
-same try, any other returns to you as its decision, reopened. One still undecided
+tasks it keeps beside the decisions it answers; with `tasks` it needs no open decision, so you hold a key on an open ticket
+with `answers: []`. One with no condition is refused `HOLD_UNCONDITIONED`, and a hold answers a task's decision off its route.
+Nothing runs a held key meanwhile, a shared need's release included. The harness releases it on its own when the condition is
+met: a task the harness ended comes back at the same try, a waiter parked on a shared need is retried once from its kept work,
+any other returns to you as its decision, reopened. One still undecided
 past `decisionStallMinutes` is handed to the Supervisor, who rules it in your place with the commands you would have used
 (a `workflow-change` that retries, edits, removes or adds a task or amends its checks, after `budget raise --task` when its tries are
 spent, or an escalation to the owner or Debug). `kernel next` tells you each such ruling once, on your next turn (its

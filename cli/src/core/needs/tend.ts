@@ -9,6 +9,7 @@ import { workflowWorktreeOf } from "../../harness/kernel.js"
 import { LandConflict, rebaseCandidate } from "../../harness/land.js"
 import { relayKeyOf, relayTask } from "../../harness/reconcile.js"
 import { now, openLedger, projectDir } from "../../harness/ledger.js"
+import { holdOf } from "../../harness/holds.js"
 import { readMachine, withMachine } from "../../harness/machine.js"
 import { KERNEL_NEED_GUIDANCE, SUPERVISOR_NEED_GUIDANCE } from "../../harness/need-answer.js"
 import {
@@ -36,6 +37,7 @@ import {
 import type { NeedDecisionRef, NeedLevel, NeedResolver, NeedRow, NeedScope, WaiterRow } from "../../harness/needs.js"
 import { thisVerifier, withSettleLock } from "../../harness/settle.js"
 import { getTask, latestAttempt, resultOf } from "../../harness/tasks.js"
+import { ticketHoldingTask } from "../../harness/tickets.js"
 import type { TaskRow } from "../../harness/tasks.js"
 import { projectOf } from "../../harness/work.js"
 import { getWorkflow, snapshotOf } from "../../harness/workflow.js"
@@ -601,15 +603,23 @@ const relayedByNode = (place: Place, need: NeedRow, key: string, view: NodeView)
  * Releases the waiters of an ended need in this workflow, once the resolving commits are on its branch: the harness relays them
  * itself, or a relay node applies what does not apply cleanly (routeRelay) and the waiters, which depend on it, wait for it to
  * land; only a relay node its Kernel removed raises the Supervisor's conflict, whose ruling releases them as they stand. A waiter
- * whose every need ended is released from this need alone: its row of this need is marked released with how, this need's relayed
- * commits included, and its row of another need stays until that need's own relay put its commits on the branch. The waiters
- * whose every other row is released already are retried in one amend, unless their Kernel already moved them on. A waiter
- * outside any workflow (a worker) is marked released for its Supervisor.
+ * whose every need ended is released from this need alone, unless it is held (a hold in force, harness/holds.ts `holdOf`, or a
+ * live ticket it waits on, harness/tickets.ts `ticketHoldingTask`): a held waiter stays parked with its row unreleased, so the
+ * pass after its hold ends retries it once from its kept work. A released waiter's row of this need is marked released with how,
+ * this need's relayed commits included, and its row of another need stays until that need's own relay put its commits on the
+ * branch. The waiters whose every other row is released already are retried in one amend, unless their Kernel already moved
+ * them on. A waiter outside any workflow (a worker) is marked released for its Supervisor.
  */
 const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const mine = waiting(withMachine((db) => waitersOf(db, need.project, need.key))).filter((waiter) => waiter.workflow === place.workflow && sameRepo(waiter.repo, place.repo))
-    const ready = withMachine((db) => mine.filter((waiter) => allEnded(db, need.project, waiterRowsOfTask(db, need.project, waiter.repo, waiter.task))))
-    if (ready.length === 0) return []
+    const ended = withMachine((db) => mine.filter((waiter) => allEnded(db, need.project, waiterRowsOfTask(db, need.project, waiter.repo, waiter.task))))
+    // A held waiter stays parked, its row unreleased: once its hold or ticket ends, a later pass retries it from its kept work.
+    const held = withLedger(place.root, (db) => ended.flatMap((waiter) => {
+        const why = holdOf(db, waiter.task) ?? ((ticket) => (ticket === null ? null : `waits on ticket ${ticket}`))(ticketHoldingTask(need.project, waiter.task))
+        return why === null ? [] : [action(`need ${need.key} ${need.state}: waiter ${waiter.taskKey ?? waiter.task} not released, ${why}`, "wait", waiter.task, waiter.taskKey)]
+    }))
+    const ready = ended.filter((waiter) => !held.some((one) => one.task === waiter.task))
+    if (ready.length === 0) return held
     const node = relayByNode(place, need)
     if (node.view !== undefined && node.view.state !== "done") return [action(`need ${need.key}: waiters wait on relay node ${node.key} (${node.view.state}), which applies its commits onto this branch`, "wait", node.view.task?.id ?? null, node.key)]
     const relayed = node.view === undefined ? await relay(place, need) : relayedByNode(place, need, node.key, node.view)
@@ -629,7 +639,7 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
         return view !== undefined && (view.task === null || view.task.id === waiter.task)
     })
     const keys = [...new Set(retry.map((waiter) => waiter.taskKey).filter((key): key is string => key !== null))]
-    const actions: StepAction[] = []
+    const actions: StepAction[] = [...held]
     if (keys.length > 0) {
         const dir = join(projectDir(place.root), "needs")
         mkdirSync(dir, { recursive: true })
