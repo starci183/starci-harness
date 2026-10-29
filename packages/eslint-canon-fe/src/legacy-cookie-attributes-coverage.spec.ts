@@ -4,7 +4,7 @@ import test from "node:test"
 import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { responseCookieAttributes } from "./client-boundary.ts"
 
-const ROUTE = at("apps/web/src/app/auth/callback/route.ts")
+const ROUTE = at("apps/web/src/app/health/live/route.ts")
 const imports = 'import { NextResponse } from "next/server"\nimport { cookies } from "next/headers"\n'
 const sessionOptions = 'const OPTIONS = { httpOnly: true, secure: true, sameSite: "lax" } as const\n'
 

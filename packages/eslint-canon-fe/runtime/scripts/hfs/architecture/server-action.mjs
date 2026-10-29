@@ -7,7 +7,7 @@ import { sourceLocation } from '../../lib/ts-ast.mjs';
  *   - FE_SERVER_ACTION_FORBIDDEN: a `"use server"` directive anywhere in a front-end source file, in the file's directive prologue
  *     (a Server Action module) or in the prologue of any function body (an inline Server Action), apps and packages alike;
  *   - FE_ROUTE_HANDLER_FORBIDDEN: a route handler (`route.ts`, `route.js` and their module variants) under `apps/<app>/src/app/` other than the
- *     liveness probe `health/live/route.ts` and the file the slot `fe.route.callback` owns (the Supabase auth code exchange).
+ *     liveness probe `health/live/route.ts`.
  *
  * The check is provider-independent: it runs for every front-end repository.
  */
@@ -15,7 +15,6 @@ export const SERVER_ACTION_RULE_IDS = Object.freeze(['FE_SERVER_ACTION_FORBIDDEN
 
 const SERVER_ACTION = 'FE_SERVER_ACTION_FORBIDDEN';
 const ROUTE_HANDLER = 'FE_ROUTE_HANDLER_FORBIDDEN';
-const CALLBACK_SLOT = 'fe.route.callback';
 const ROUTE_FILE = /^apps\/([^/]+)\/src\/app\/(?:.+\/)?route\.[cm]?[jt]s$/u;
 
 /** The statement nodes of a directive prologue: the leading string-literal expression statements. */
@@ -57,10 +56,10 @@ function serverActionViolations(ts, file) {
 function routeHandlerViolation(file) {
   const match = ROUTE_FILE.exec(file.rel);
   if (!match) return null;
-  if (file.rel === `apps/${match[1]}/src/app/health/live/route.ts` || file.slot === CALLBACK_SLOT) return null;
+  if (file.rel === `apps/${match[1]}/src/app/health/live/route.ts`) return null;
   return {
     ruleId: ROUTE_HANDLER, path: file.rel, line: 1, column: 1,
-    message: `${file.rel} is a front-end route handler outside health/live/route.ts and the ${CALLBACK_SLOT} slot: the front end serves no API. Webhooks, cron, public APIs and third-party callbacks belong to be features; the browser reaches the back end through modules/api.`,
+    message: `${file.rel} is a front-end route handler outside health/live/route.ts: the front end serves no API. Webhooks, cron, public APIs and third-party callbacks belong to be features; the browser reaches the back end through modules/api.`,
   };
 }
 

@@ -53,10 +53,10 @@ export const FE_DECLARATION: FeDeclaration = Object.freeze({
   optionalSlots: ["repo.packages", "fe.package.ui", "fe.package.api", "fe.package.i18n"],
 })
 
-/** The fe side of a lite fixture app: one app on a Supabase connection, no packages. */
+/** The fe side of a lite fixture app: one app on a postgres connection, no packages. */
 export const LITE_FE_DECLARATION: FeDeclaration = Object.freeze({ apps: [{ name: "web", kind: "next" }] })
 
-const SUPABASE_CONNECTION = { name: "primary", envPrefix: "PRIMARY_DB", owner: "core", isolation: "schema", provider: "supabase" }
+const PRIMARY_CONNECTION = { name: "primary", envPrefix: "PRIMARY_DB", owner: "core", isolation: "schema", provider: "postgres" }
 
 /** An app declaration as the fixture reads it: the sides it spreads. */
 interface AppDeclaration {
@@ -74,7 +74,7 @@ const fixtureApp = (declaration: FeDeclaration, lite: boolean): unknown => {
   const app: unknown = appDeclaration("fe", declaration)
   if (!lite) return app
   if (!isAppDeclaration(app)) throw new TypeError("the shared fixture app declaration has no back-end side")
-  return { ...app, edition: "lite", sides: { ...app.sides, be: { ...app.sides.be, connections: [SUPABASE_CONNECTION] } } }
+  return { ...app, edition: "lite", sides: { ...app.sides, be: { ...app.sides.be, connections: [PRIMARY_CONNECTION] } } }
 }
 
 /** The options of a fixture tester: the fe side declared and whether the app is edition lite. */

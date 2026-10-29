@@ -341,8 +341,8 @@ export const why = {
   },
   "fe-stack-import": {
     code: "FE_STACK_FORBIDDEN",
-    en: "`<file>` imports `<what>`, a package or scoped package family the front-end stack forbids, or a Supabase package outside `modules/auth`.",
-    fix: "Use the concern's canonical library from `knowledge/hfs/fe-stack.yaml` (the message names it). For @dicebear/*, pass the identity id as seed on Grammar Avatar, AvatarButton or AvatarGroup members. Supabase on the front end is the auth client in `modules/auth` only, data goes through `modules/api`.",
+    en: "`<file>` imports `<what>`, a package or scoped package family the front-end stack forbids.",
+    fix: "Use the concern's canonical library from `knowledge/hfs/fe-stack.yaml` (the message names it). For @dicebear/*, pass the identity id as seed on Grammar Avatar, AvatarButton or AvatarGroup members.",
   },
   "file-size-growth": {
     code: "HFS_SIZE_GROWTH",

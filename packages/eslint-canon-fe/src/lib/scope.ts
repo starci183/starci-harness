@@ -64,6 +64,19 @@ export const isComponentPath = (context: AnyContext, file: string): boolean => {
   return (found.slot === "fe.components" || found.slot === "fe.package.ui") && found.kind !== undefined
 }
 
+/** The base name of the linted file. */
+const baseNameOf = (context: AnyContext): string => (context.filename || context.getFilename()).split(/[\\/]/).at(-1) ?? ""
+
+/**
+ * The one auth door of the session issuer's client: `modules/auth/auth-door.ts` (slot `fe.modules.auth`). It alone calls the app's
+ * own back-end auth doors (login, signup, refresh, logout, password reset, resend verification) with the REST client, credentials
+ * included; every other file of `modules/auth` and every other module stays outside the transport.
+ */
+export const isAuthDoor = (context: AnyContext): boolean => inSlot(context, "fe.modules.auth") && baseNameOf(context) === "auth-door.ts"
+
+/** The in-memory access-token store of `modules/auth` (`modules/auth/token-store.ts`), the one module-level mutable state the auth client keeps. */
+export const isAuthTokenStore = (context: AnyContext): boolean => inSlot(context, "fe.modules.auth") && baseNameOf(context) === "token-store.ts"
+
 /** The one place that may read the environment: slot `fe.modules.config`. */
 export const isConfigModule = (context: AnyContext): boolean => inSlot(context, "fe.modules.config")
 

@@ -100,7 +100,7 @@ const SECRET_NAME_TEST = NAME_WORD(SECRET_WORD, String.raw`(?:[_\-.]|[A-Z]|[^A-Z
 const BENIGN_TAIL_TEST = NAME_WORD(BENIGN_WORD, '$');
 
 /** True when a bare variable `name` holds secret material as an identifier segment (DB_PASSWORD, dbPassword,
- *  SUPABASE_SERVICE_ROLE_KEY) and does not end in a config suffix (PASSWORD_MIN_LENGTH, SECRET_FILE,
+ *  STORAGE_SECRET_ACCESS_KEY) and does not end in a config suffix (PASSWORD_MIN_LENGTH, SECRET_FILE,
  *  tokenBudget). The same name judgement the `assigned-secret` patterns make, for callers that read keys. */
 export const secretNameLike = (name) => SECRET_NAME_TEST.test(name) && !BENIGN_TAIL_TEST.test(name);
 
@@ -117,7 +117,7 @@ export const SECRET_PATTERNS = [
   { name: 'jwt', re: /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/ },
   { name: 'age-secret-key', re: /\bAGE-SECRET-KEY-1[0-9A-Z]{20,}\b/ },
   { name: 'password-connection-string', re: /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis):\/\/[^:\s/@]+:[^@\s/${}]{8,}@/iu },
-  // A value written `env(NAME)` (the Supabase config.toml reference form) names a variable, not a secret.
+  // A value written `env(NAME)` (a config reference form) names a variable, not a secret.
   // A keyword-assigned value that names itself a stand-in (a test stub's `accessToken: "fixture-..."`) is no
   // candidate; only this heuristic takes the exemption, never a provider-shaped token above.
   // A spec file's keyword-assigned values are test inputs (a spec's sign-in

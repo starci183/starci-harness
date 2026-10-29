@@ -49,7 +49,7 @@ function sideCrossing(repo, fromSide, toSide, toPath) {
 function importAllowedApp({ repo, root, sides }, fromPath, toPath) {
   const from = splitSide(fromPath);
   const to = splitSide(toPath);
-  // A side file may read an app-root path (supabase/types/) only through a declared read, exactly as it reads the other side.
+  // A side file may read an app-root path (db/types/) only through a declared read, exactly as it reads the other side.
   if (from && from.side !== to?.side) return sideCrossing(repo, from.side, to?.side ?? null, toPath);
   if (from && to) return sides[from.side].importAllowed(from.rest, to.rest);
   return root.importAllowed(fromPath, toPath);

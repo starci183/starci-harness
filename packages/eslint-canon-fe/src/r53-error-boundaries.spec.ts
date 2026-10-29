@@ -46,7 +46,7 @@ function boundaryFixture(t: TestContext, edition: 'lite' | 'full'): BoundaryFixt
   for (const boundary of BOUNDARIES) put(root, boundary);
   put(root, 'apps/web/src/app/[locale]/layout.tsx');
   const connections = edition === 'lite'
-    ? [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'supabase' }]
+    ? [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' }]
     : [];
   const declaration = {
     hfs: 3, kind: 'app', project: 'r53-fixture', edition,

@@ -1,7 +1,7 @@
 // side-boundary.mjs - what counts as an import that leaves a side of an app (ARCH_INTERNAL_IMPORT_OUTSIDE).
 // A side (be/ or fe/) imports nothing of the app outside itself: the root holds no source and the other side is another program; a
 // declared read of the OTHER side (be/contracts/) is codegen input, never an import. A declared read of a tree the APP ROOT owns
-// (supabase/types/, sides.<side>.reads of the slot manifest) is the one thing both sides do import: the generated database types.
+// (db/types/, sides.<side>.reads of the slot manifest) is the one thing both sides do import: the generated database types.
 import path from 'node:path';
 import { isInside, slash } from './config.mjs';
 
