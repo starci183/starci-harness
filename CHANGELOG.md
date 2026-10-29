@@ -16,6 +16,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 - `starci app release push --urgent --lint-baseline <tag>`: the lint of an urgent release judged against a release tag's findings
   (owner ruling `urgent-lint-baseline`): only a finding new since the tag is red.
 
+### Removed
+
+- **The stress bench (owner ruling `bench-removed`, 2026-10-29: "xóa bench đi").** `bench/` (scenarios, fixtures, stand-ins,
+  README), the verbs `starci bench run` and `starci bench list` (`cli/src/core/bench/`) and the `harness` CI job's bench step
+  with the sops and age install it needed are deleted. `feedback close --kind bench` is no longer a closing kind, and the
+  environment overrides that existed only for the bench's stand-ins are gone: `STARCI_SECRET_ENV`, `STARCI_TELEGRAM_API`,
+  `STARCI_DOCKER_BIN`, `STARCI_CONTEXTS_DIR` and `STARCI_FEEDBACK_REPO`. `bench/` no longer triggers the `harness` job
+  (`release affected`). Orchestration proof is to come from real test results in Orca.
+
 ### Fixed
 
 - **A relay node's command check that is red exactly as at the relayed source's head is the source's red.** The relay of

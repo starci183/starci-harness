@@ -32,7 +32,7 @@ exceptions:
     kind: ruling
     decision: cli-proven-by-bench
     match: "sonar.coverage.exclusions=cli/src/**"
-    reason: "the CLI is proven by the bench, so cli/src is excluded from coverage only; issues and duplication still analyse it"
+    reason: "the CLI is proven by runs of the built CLI, not unit coverage (the stress bench is removed, ruling bench-removed), so cli/src is excluded from coverage only; issues and duplication still analyse it"
   - path: packages/hfs/runtime/scripts/guards/git-policy.mjs
     marker: no-verify
     kind: detector

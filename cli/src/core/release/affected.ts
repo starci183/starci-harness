@@ -9,7 +9,7 @@ import type { WorkspacePackage } from "../../shared/workspace.js"
 const NODE = /^(?:packages\/[^/]+|cli|app)$/
 
 /** Trees the CLI reads at run time, so a change there is the harness job's (the CLI node's). */
-const HARNESS_TREES = ["contexts/", "ops/", "policy/", "bench/", "hfs.json"]
+const HARNESS_TREES = ["contexts/", "ops/", "policy/", "hfs.json"]
 
 /** Trees whose change makes every node affected: the workflows that run CI. */
 const FULL_TREES = [".github/"]

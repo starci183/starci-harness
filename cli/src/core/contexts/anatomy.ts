@@ -31,14 +31,8 @@ interface AnatomyData {
     readonly pending: readonly Gap[]
 }
 
-/** Overrides the knowledge folder the generator reads and writes (default `<runtime root>/contexts`): the bench points it at a fixture. */
-export const CONTEXTS_DIR_ENV = "STARCI_CONTEXTS_DIR"
-
-/** The knowledge folder: STARCI_CONTEXTS_DIR, else `<runtime root>/contexts`. */
-export const knowledgeDir = (): string => {
-    const dir = process.env[CONTEXTS_DIR_ENV]
-    return dir === undefined || dir === "" ? join(runtimeRoot(), "contexts") : dir
-}
+/** The knowledge folder: `<runtime root>/contexts`. */
+export const knowledgeDir = (): string => join(runtimeRoot(), "contexts")
 
 /** The gate's lines: one per red gap, then one naming the pending gaps and their rulings. */
 const gateNote = (gate: GateVerdict): string => {

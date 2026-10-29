@@ -64,7 +64,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `checks.behavioural` is true makes a contract without a behavioural check unfit (`contractProblems` in
   `cli/src/harness/contract.ts`). Anything no machine can judge (taste, UX) is an owner review step, never part of a contract.
 - **Speed flow (`speed-flow`).** Checks run in three tiers: a branch runs at most a fast typecheck or lint of the files it
-  touched, a merged batch runs one scoped round, CI runs the full suite; no tests, build or bench on a branch
+  touched, a merged batch runs one scoped round, CI runs the full suite; no tests or build on a branch
   ([contexts/authority/](../authority/README.md)). Owner, 2026-10-28: "lên master plan để tối ưu hóa thời gian làm việc
   tránh thủ tục rườm rà ... vừa chậm vừa block cpu/ram như lint, tests, typescript"; "contexts/<quyền> ghi rõ code nhánh
   không tests".
@@ -232,3 +232,13 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `isCoordinated` in `cli/src/core/supervisor/driver.ts`). A pause the owner or Debug sets is lifted only by their own resume or
   `project unpark`, never by a Supervisor or Kernel, and a paused workflow brings no stopped Supervisor back (`resume` in
   `cli/src/core/workflow/resume.ts`, `projectsWithWorkflows` in `cli/src/core/supervisor/driver.ts`).
+- **The stress bench is removed (`bench-removed`).** The owner, 2026-10-29: "với cái bench là gì dẹp nó đi, vô nghĩa vcl —
+  bench phải là kết quả tests thật trong orca", then "xóa bench đi" (whatever that bench is, scrap it, it is meaningless;
+  the bench has to be the results of real tests in Orca; delete the bench). The stress bench (`bench/`: scenarios, fixtures,
+  stand-ins and its README), its verbs `starci bench run` and `starci bench list` (`cli/src/core/bench/`), the CI step that
+  ran it with the sops and age it installed, the `bench` kind of `feedback close` and the environment overrides that existed
+  only to point the CLI at its stand-ins (`STARCI_SECRET_ENV`, `STARCI_TELEGRAM_API`, `STARCI_DOCKER_BIN`,
+  `STARCI_CONTEXTS_DIR`, `STARCI_FEEDBACK_REPO`) are gone. Proof of the orchestration is to come from real test results in
+  Orca; until then a CLI change is proved by running the built CLI (CONTRIBUTING.md CONTRIB-1). A record that cites a bench
+  scenario as proof (the CHANGELOG, earlier rulings) is history; ruling `cli-proven-by-bench` is amended to say the bench is
+  removed.

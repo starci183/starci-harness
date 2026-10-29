@@ -88,7 +88,7 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
    output file. The replay hands a live-provider suite (specs calling `useSandbox`) the keys its world declares from the
    app's custody; a suite your op runs itself (a `verify` suite) runs through `starci test live <spec...>` for the same keys,
    never by its own command. Beyond that you run only what tier 1 allows ([contexts/authority/branch.md](../../contexts/authority/branch.md)):
-   no tests, build, bench or full suite, and no install of your own; the harness gives your checkout the app's `@starci`
+   no tests, build or full suite, and no install of your own; the harness gives your checkout the app's `@starci`
    packages as the app takes them (npm, or local copies under `starci deps source --local`).
 4. Return exactly one result with `starci task result {taskId} --status <s> --output @{outputFile}` (the `@` reads the file):
    - `done`: verify is green. Work that finds nothing to change (the code already meets the task) is done too: you change

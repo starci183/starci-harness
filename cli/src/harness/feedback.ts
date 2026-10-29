@@ -10,9 +10,9 @@ import { locateOps } from "./ops.js"
 
 /**
  * The kinds of target that close an owner feedback: a commit touching packages/grammar, cli/ or app/ of the harness checkout,
- * a rule of contexts/hfs/rules.yaml with a built enforcer, a contexts anchor the search corpus resolves, or a bench scenario.
+ * a rule of contexts/hfs/rules.yaml with a built enforcer, or a contexts anchor the search corpus resolves.
  */
-export const FEEDBACK_TARGET_KINDS = ["grammar", "cli", "app", "rule", "context", "bench"] as const
+export const FEEDBACK_TARGET_KINDS = ["grammar", "cli", "app", "rule", "context"] as const
 /** One kind of closing target. */
 export type FeedbackTargetKind = (typeof FEEDBACK_TARGET_KINDS)[number]
 

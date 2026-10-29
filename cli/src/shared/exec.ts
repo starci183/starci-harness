@@ -106,38 +106,6 @@ const killTree = (child: ChildProcess): void => {
     }
 }
 
-/** How long a served program has to end on its SIGTERM before its tree is killed. */
-const STOP_GRACE_MS = 5000
-
-/**
- * Ends a served program and its tree: a SIGTERM to its process group first, so it can undo what it set (a folder it made
- * read-only), then, once it exited or the grace passed, the kill of whatever of its tree is left. Windows has no SIGTERM to a
- * tree, so its tree is killed at once.
- */
-const stopTree = (child: ChildProcess): Promise<void> =>
-    new Promise((done) => {
-        const pid = child.pid
-        if (pid === undefined || process.platform === "win32" || child.exitCode !== null || child.signalCode !== null) {
-            killTree(child)
-            done()
-            return
-        }
-        const timer = setTimeout(() => {
-            killTree(child)
-            done()
-        }, STOP_GRACE_MS)
-        child.once("exit", () => {
-            clearTimeout(timer)
-            killTree(child)
-            done()
-        })
-        try {
-            process.kill(-pid, "SIGTERM")
-        } catch {
-            child.kill("SIGTERM")
-        }
-    })
-
 /** Collects one output stream up to MAX_BUFFER; the rest is dropped rather than failing the run. */
 const collector = (): { readonly push: (chunk: Buffer) => void; readonly text: () => string } => {
     const chunks: Buffer[] = []
@@ -349,53 +317,6 @@ export const startDetached = (argv: readonly string[], cwd: string, env: NodeJS.
             told(child.pid, cwd, tool, args)
             child.unref()
             settle(child.pid ?? 0)
-        })
-    })
-
-/** A long-lived program `startServing` started: the stdout line its readiness pattern matched, and the end of its whole tree (stopTree). */
-export interface Serving {
-    readonly ready: RegExpExecArray
-    readonly stop: () => Promise<void>
-}
-
-/**
- * Starts a long-lived program (a local server) without a shell and waits until a line of its stdout matches `ready`; it keeps
- * running until `stop`. Refuses SERVE_NOT_READY, its tree killed, when it exits or `timeoutMs` passes before that line.
- */
-export const startServing = (tool: string, args: readonly string[], cwd: string, options: { readonly env?: Readonly<Record<string, string>>; readonly ready: RegExp; readonly timeoutMs: number }): Promise<Serving> =>
-    new Promise((settle, refuse) => {
-        const env = options.env === undefined ? process.env : { ...process.env, ...options.env }
-        const child = spawn(tool, [...args], { cwd, env, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] })
-        told(child.pid, cwd, tool, args)
-        const output = collector()
-        let seen = ""
-        let waiting = true
-        const fail = (why: string): void => {
-            if (!waiting) return
-            waiting = false
-            clearTimeout(timer)
-            killTree(child)
-            refuse(new Refusal("SERVE_NOT_READY", `${tool} ${args.join(" ")} ${why}: ${output.text().slice(-500)}`))
-        }
-        const timer = setTimeout(() => {
-            fail(`printed no ready line in ${String(Math.round(options.timeoutMs / 1000))}s`)
-        }, options.timeoutMs)
-        child.stderr.on("data", output.push)
-        child.stdout.on("data", (chunk: Buffer) => {
-            output.push(chunk)
-            if (!waiting) return
-            seen += chunk.toString("utf8")
-            const match = options.ready.exec(seen)
-            if (match === null) return
-            waiting = false
-            clearTimeout(timer)
-            settle({ ready: match, stop: () => stopTree(child) })
-        })
-        child.on("error", (error: Error) => {
-            fail(`did not start (${error.message})`)
-        })
-        child.on("close", (code: number | null) => {
-            fail(`exited ${String(code)} first`)
         })
     })
 

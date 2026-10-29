@@ -729,8 +729,7 @@ installed with its evidence, and lists every other StarCi-named task (a disabled
 ### Host secrets
 
 `harness/secret-env.ts` is the one reader of a credential: `lookupSecret(key)` returns the key from the
-process environment, else from `secret.env` at the harness root (the folder above policy/; `STARCI_SECRET_ENV` replaces the
-path, and the bench points it at its run's own file), parsing dotenv lines (`KEY=VALUE`, `export`, quotes, `#` comments) and
+process environment, else from `secret.env` at the harness root (the folder above policy/), parsing dotenv lines (`KEY=VALUE`, `export`, quotes, `#` comments) and
 keeping no other key. It reads only the keys [policy/security.yaml](../policy/security.yaml) `secretKeys` lists and refuses any
 other `SECRET_KEY_UNLISTED` before it opens the file; no message, envelope or evidence carries a value. A host service
 (`telegram-bridge`, `supervisor tick`) reads the file itself, so a key `host up` strips from its environment still arrives.

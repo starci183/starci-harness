@@ -174,16 +174,13 @@ jobs:
         working-directory: ${{ matrix.package }}
         run: npm test
 
-  # The CLI and the trees it reads (cli/, contexts/, ops/, policy/, bench/, or a package the CLI requires changed).
+  # The CLI and the trees it reads (cli/, contexts/, ops/, policy/, or a package the CLI requires changed).
   harness:
     needs: plan
     if: needs.plan.outputs.harness == 'true'
     runs-on: ubuntu-latest
     steps:
-      # Full history: feedback-seed-2026-10-27 closes the owner's feedback on the harness's own commits.
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -200,31 +197,6 @@ jobs:
       - name: Build the CLI
         working-directory: cli
         run: npm run build
-      # The secret scenarios seal and open real envelopes. The versions are ones the sealed-secret code accepts
-      # (SELECTED_SOPS_VERSIONS and SELECTED_AGE_VERSIONS in packages/hfs/runtime/scripts/api/sops/lib.mjs); each official
-      # release asset is checked against the sha256 GitHub records for it before it reaches PATH.
-      - name: Install sops and age for the secret scenarios
-        env:
-          SOPS_VERSION: 3.13.3
-          SOPS_SHA256: e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b
-          AGE_VERSION: 1.3.1
-          AGE_SHA256: bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377
-        run: |
-          set -euo pipefail
-          tools="$RUNNER_TEMP/secret-tools"
-          mkdir -p "$tools/bin"
-          curl -fsSL -o "$tools/sops" "https://github.com/getsops/sops/releases/download/v$SOPS_VERSION/sops-v$SOPS_VERSION.linux.amd64"
-          echo "$SOPS_SHA256  $tools/sops" | sha256sum -c -
-          install -m 0755 "$tools/sops" "$tools/bin/sops"
-          curl -fsSL -o "$tools/age.tar.gz" "https://github.com/FiloSottile/age/releases/download/v$AGE_VERSION/age-v$AGE_VERSION-linux-amd64.tar.gz"
-          echo "$AGE_SHA256  $tools/age.tar.gz" | sha256sum -c -
-          tar -xzf "$tools/age.tar.gz" -C "$tools"
-          install -m 0755 "$tools/age/age" "$tools/age/age-keygen" "$tools/bin/"
-          echo "$tools/bin" >> "$GITHUB_PATH"
-          "$tools/bin/sops" --disable-version-check --version
-          "$tools/bin/age" --version
-      - name: Bench (bench/scenarios, every scenario with steps)
-        run: node cli/dist/main.js bench run --all
 
   # The desktop app typechecks against cli/src/core/ui/contract.ts and installs packages/grammar as a file: copy, built first;
   # its bundles are built by .github/workflows/app.yml.
