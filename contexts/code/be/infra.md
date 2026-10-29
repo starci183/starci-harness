@@ -32,7 +32,9 @@ Enforced by: `infra-import-owner`, `third-party-import-owner` (R90, R279, R328, 
 `platform/http` owns the `HttpClient` port (`request({ method, url, headers?, body? | form? | bytes?, read?, pin?,
 redirect?, timeoutMs, signal? })`, built on `fetch`), injected with `@InjectHttpClient()`. `timeoutMs` is required in
 the type and comes from the integration's options. Only an integration (and `platform/http` itself) calls the port; a
-network failure rejects with its `HttpError`.
+network failure rejects with its `HttpError`. The client verifies every certificate against Node's bundled roots plus, when
+`HttpOptions.trustedCa` is set (`parseHttpConfig` reads `HTTP_TRUSTED_CA`), that one more CA, which a test world sets to
+its per-run fake CA; verification is never turned off.
 
 Why: a required field makes "every outbound call has a deadline" a type error instead of a lint heuristic.
 

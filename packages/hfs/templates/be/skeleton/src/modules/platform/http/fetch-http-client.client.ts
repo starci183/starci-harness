@@ -1,11 +1,34 @@
+import { rootCertificates } from "node:tls"
 import { Injectable } from "@nestjs/common"
+import type { OnModuleDestroy } from "@nestjs/common"
+import { Agent } from "undici"
 import { isRecord } from "@modules/platform/primitives"
 import { HttpError, HttpErrorCode } from "./errors/http.error"
+import { InjectHttpOptions } from "./http.decorators"
+import type { HttpOptions } from "./http.options"
 import type { HttpClient, HttpRequest, HttpResponse } from "./http.port"
 
 @Injectable()
 /** The HttpClient adapter over the global `fetch`; the only place outside a spec that calls it. */
-export class FetchHttpClient implements HttpClient {
+export class FetchHttpClient implements HttpClient, OnModuleDestroy {
+    /**
+     * The connection pool that adds `trustedCa` to Node's bundled roots (the CA joins the trusted list, verification stays
+     * on); absent without one, so every request goes through fetch's own default pool as before.
+     */
+    private readonly dispatcher: Agent | undefined
+
+    constructor(@InjectHttpOptions() options: HttpOptions) {
+        this.dispatcher =
+            options.trustedCa === undefined
+                ? undefined
+                : new Agent({ connect: { ca: [...rootCertificates, options.trustedCa] } })
+    }
+
+    /** Closes the pool of the trusted CA, if the app configured one, when the app stops. */
+    async onModuleDestroy(): Promise<void> {
+        await this.dispatcher?.close()
+    }
+
     /** Sends `request` with its deadline and reads the body: parsed JSON, or the raw bytes when the request asks for them. */
     async request(request: HttpRequest): Promise<HttpResponse> {
         const deadline = AbortSignal.timeout(request.timeoutMs)
@@ -38,15 +61,25 @@ export class FetchHttpClient implements HttpClient {
     private async send(request: HttpRequest, signal: AbortSignal): Promise<Response> {
         try {
             const body = this.bodyOf(request)
-            return await fetch(request.url, {
+            const init: RequestInit = {
                 method: request.method,
                 headers: this.headersOf(request),
                 ...(body === undefined ? {} : { body }),
                 signal,
-            })
+            }
+            return await fetch(request.url, this.routed(init))
         } catch (cause) {
             throw this.failure(cause)
         }
+    }
+
+    /**
+     * `init` sent through the trusted-CA pool when there is one. @types/node declares fetch over its own copy of undici's
+     * types, which the Agent of the undici package does not match nominally; `Object.assign` keeps the declared type of
+     * `init` and hands fetch the Agent itself.
+     */
+    private routed(init: RequestInit): RequestInit {
+        return this.dispatcher === undefined ? init : Object.assign(init, { dispatcher: this.dispatcher })
     }
 
     /** The explicit id owns correlation; a copied traceparent would take precedence at the receiving logger. */

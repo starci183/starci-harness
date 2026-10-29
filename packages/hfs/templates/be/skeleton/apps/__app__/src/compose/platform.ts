@@ -30,7 +30,7 @@ export const platformModules = (options: {{appPascal}}Options): Array<DynamicMod
     RetryModule.register({ isGlobal: true }),
     IdsModule.register({ isGlobal: true }),
     LoggingModule.register({ isGlobal: true }),
-    HttpModule.register({ isGlobal: true }),
+    HttpModule.register({ isGlobal: true, ...options.http }),
     I18nModule.register({
         isGlobal: true,
         bundles: [HTTP_MESSAGES, ERRORS_MESSAGES, HTTP_SECURITY_MESSAGES, IDENTITY_MESSAGES],

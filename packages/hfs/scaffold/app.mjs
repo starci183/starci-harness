@@ -145,7 +145,7 @@ const STARTER_DEPENDENCIES = Object.freeze({
   dependencies: {
     '@apollo/server': null, '@nestjs/apollo': null, '@nestjs/common': null, '@nestjs/core': null, '@nestjs/cqrs': null, '@nestjs/graphql': null,
     '@nestjs/platform-express': null, '@nestjs/typeorm': null, 'nest-commander': null, pg: null, graphql: null,
-    'class-transformer': null, 'class-validator': null, 'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, zod: null,
+    'class-transformer': null, 'class-validator': null, 'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, undici: null, zod: null,
   },
   devDependencies: {
     turbo: null, '@nestjs/testing': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null, '@starci/jest-preset': null,
@@ -167,7 +167,7 @@ const LITE_STARTER_DEPENDENCIES = Object.freeze({
     '@nestjs/platform-express': null, '@nestjs/typeorm': null, '@nestjs/passport': null, passport: null, 'passport-google-oauth20': null, 'passport-local': null,
     '@aws-sdk/client-s3': null, '@aws-sdk/s3-request-presigner': null, bcryptjs: null,
     'class-transformer': null, 'class-validator': null, graphql: null, jose: null, pg: null,
-    'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, zod: null,
+    'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, undici: null, zod: null,
   },
   devDependencies: {
     turbo: null, '@nestjs/testing': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null,
