@@ -6,6 +6,7 @@ import { heavySlots } from "./heavy.js"
 import { clipCommand } from "./host-holders.js"
 import { openMachine, projectsRoot, stateBase } from "./ledger.js"
 import { closeWorkspaceTerminals, closeWorktreeTerminals, orcaBinarySync, terminalList } from "./orca/client.js"
+import type { OrcaBinary } from "./orca/client.js"
 import { listProcesses } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
 import { busySubject, lockersOf } from "./worktree-busy.js"
@@ -212,6 +213,25 @@ const endAll = async (pids: readonly number[]): Promise<void> => {
 const TERMINAL_EXIT_MS = 2_000
 
 /**
+ * Closes every Orca terminal working in `folder` or below it (each tab but the caller's own), then forces the workspace closed
+ * with `orca terminal close --worktree path:<folder> --all`, which also stops terminals no list shows and drops its saved tabs,
+ * layouts and resume records, unless the caller's own terminal works there. Returns the handles closed and what the forced close
+ * answered. Never throws.
+ */
+export const closeFolderTerminals = async (binary: OrcaBinary, folder: string, repo: string): Promise<{ readonly terminals: string[]; readonly workspace: string }> => {
+    const terminals = await closeWorktreeTerminals(binary, folder, repo).catch(() => [])
+    const own = process.env.ORCA_TERMINAL_HANDLE
+    const ownHere = own !== undefined && (await terminalList(binary, repo).then((inventory) => inventory.terminals.some((terminal) => terminal.handle === own && insideFolder(folder, terminal.worktree)), () => true))
+    const workspace = ownHere
+        ? "kept: the caller's own terminal works there"
+        : await closeWorkspaceTerminals(binary, folder, repo).then(
+              (answer) => `closed: ${JSON.stringify(answer ?? null).slice(0, 300)}`,
+              (error: unknown) => `not closed: ${(error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""}`,
+          )
+    return { terminals, workspace }
+}
+
+/**
  * Reaps a worktree in the order a held folder needs: reads the process table first (while the parent chains still stand), closes
  * the Orca terminals working in `folder` (each tab but the caller's own, then `orca terminal close --worktree path:<folder>
  * --all`, Orca's forced close, which also stops terminals no list shows and drops the workspace's saved tabs and layouts, unless
@@ -224,19 +244,7 @@ export const reapWorktree = async (folder: string, repo: string, end: boolean, b
     const listed = end ? await listProcesses(true).catch((error: unknown) => (error instanceof Error ? error.message : String(error))) : "the folder is not under the harness's state"
     const first = typeof listed === "string" ? new Map<number, ReapedProcess>() : targetsOf(listed, folder, recordedIn(folder))
     const binary = orcaBinarySync()
-    let terminals: string[] = []
-    let workspace: string | null = null
-    if (binary !== undefined) {
-        terminals = await closeWorktreeTerminals(binary, folder, repo).catch(() => [])
-        const own = process.env.ORCA_TERMINAL_HANDLE
-        const ownHere = own !== undefined && (await terminalList(binary, repo).then((inventory) => inventory.terminals.some((terminal) => terminal.handle === own && insideFolder(folder, terminal.worktree)), () => true))
-        workspace = ownHere
-            ? "kept: the caller's own terminal works there"
-            : await closeWorkspaceTerminals(binary, folder, repo).then(
-                  (answer) => `closed: ${JSON.stringify(answer ?? null).slice(0, 300)}`,
-                  (error: unknown) => `not closed: ${(error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""}`,
-              )
-    }
+    const { terminals, workspace } = binary === undefined ? { terminals: [], workspace: null } : await closeFolderTerminals(binary, folder, repo)
     // A closed tab's shell takes a moment to exit and let go of its working folder.
     if (terminals.length > 0) await pause(TERMINAL_EXIT_MS)
     await between()

@@ -70,6 +70,11 @@ export const noteHanded = (id: string, handed: string): void => {
     withMachine((db) => db.prepare("UPDATE supervisor_workers SET handed = ? WHERE id = ?").run(handed, id))
 }
 
+/** Points an open worker at the task that continues its work (`project unpark` retries a task a park stopped). */
+export const retaskWorker = (id: string, taskId: string): void => {
+    withMachine((db) => db.prepare("UPDATE supervisor_workers SET task_id = ?, handed = NULL WHERE id = ? AND ended_at IS NULL").run(taskId, id))
+}
+
 /** Ends a worker once. */
 export const endWorker = (id: string, by: WorkerEnd): void => {
     withMachine((db) => db.prepare("UPDATE supervisor_workers SET ended_at = ?, ended_by = ? WHERE id = ? AND ended_at IS NULL").run(now(), by, id))

@@ -54,7 +54,8 @@ from the app (its new goal or ruling is a `goal-change` applied as the owner's).
 3. `starci supervisor next --json --wait {nextWaitSeconds}`. For the workflows of your project you started or adopted (`kernel start`), never
    another session's,
    it relaunches a Kernel Orca reports gone (or idle past its TTL with no progress),
-   resolves a lost Kernel launch, pauses a workflow and escalates to the owner after too many relaunches, decides for you every
+   resolves a lost Kernel launch, pauses a workflow and escalates to the owner after too many relaunches (a pause the owner or
+   Debug set is theirs: `workflow resume` refuses you `WORKFLOW_HELD`, and a parked project waits for `project unpark`), decides for you every
    `owner` escalation that carries a default you may rule (a `product` choice inside the goal: its Kernel gets an
    `escalation-answer` whose ruling is that default, recorded with its reasoning as `escalation-defaulted`), hands you each
    decision a Kernel left undecided past `decisionStallMinutes` of ops/liveness.yaml as a `kernel-undecided` (never a ticket),

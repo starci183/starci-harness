@@ -24,6 +24,8 @@ import type { OrcaBinary, TerminalInventory, WorkerStartInput } from "../../harn
 import { holdTerminal, kernelSeatOf, launchUnreconciled, noteTab, recordSeat, SEAT_LAUNCH_FAILED } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { askIdle, claimNudge, coordinatorStallEscalates, loadStallRules, nudgesOf, promptOf, repeatedStallQuestion, reportStalled, sendNudge, STALL_GAVE_UP, STALL_NUDGED, stallKindOf, stallStep } from "../../harness/stall.js"
+import { isParkedReason } from "../../harness/park.js"
+import { finishUnpark } from "../project/park-engine.js"
 import { ensureSupervisor, hostSupervisors, inSupervisorTerminal, isAttached, keptProjects, liveSupervisors, projectOfRecord, renewSupervisorLease, retireHostSupervisor, startSupervisor, stopSupervisor, supervisorRecord, supervisorTitle } from "../../harness/supervisor.js"
 import type { AttachedSupervisor, SupervisorEnsured } from "../../harness/supervisor.js"
 import { sweepTerminals } from "../../harness/terminal-sweep.js"
@@ -79,8 +81,12 @@ const sleep = async (ms: number): Promise<void> => new Promise((done) => setTime
 /** A project given by `--project <path>`, else the project of the working directory. */
 export const projectFrom = async (context: VerbContext, project: string | undefined, mint = true): Promise<Project> => projectOf(project === undefined ? context.cwd : resolve(context.cwd, project), mint)
 
+/**
+ * True for an orca workflow its Supervisor keeps a Kernel for: started and not ended, and not paused by the relaunch limit or by
+ * `project park` (harness/park.ts), whose Kernel only the owner's resume or `project unpark` brings back.
+ */
 const isCoordinated = (workflow: WorkflowRow): boolean =>
-    workflow.header.runner === "orca" && ["running", "blocked", "paused"].includes(workflow.status) && workflow.reason?.startsWith(RELAUNCH_LIMIT) !== true
+    workflow.header.runner === "orca" && ["running", "blocked", "paused"].includes(workflow.status) && workflow.reason?.startsWith(RELAUNCH_LIMIT) !== true && !isParkedReason(workflow.reason)
 
 /** The event `supervisor next` records when it hands its Supervisor a decision awaiting the owner or Debug, which it hands over once. */
 const DECISION_RELAYED = "decision-relayed"
@@ -809,11 +815,14 @@ const escalateSupervisorStalls = (waiting: SupervisorDecision | OwnerRequest, qu
     return withLedger(place.repo, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow, kind: "escalation", subject: `coordinator-stalls:${seat}`, evidence: { project: place.repo, escalation: { kind: "harness", question } } }))
 }
 
-/** The projects that own a running orca workflow: the repositories whose ledgers hold one a Supervisor coordinates, by `projectOf`. */
+/**
+ * The projects that own a running orca workflow: the repositories whose ledgers hold a running or blocked one a Supervisor
+ * coordinates, by `projectOf`. A paused workflow brings no Supervisor back: a pause and the owner's stop hold until a resume.
+ */
 const projectsWithWorkflows = async (problems: string[]): Promise<Project[]> => {
     const found: Project[] = []
     await inOrder(registeredRepositories(), async (repo) => {
-        const owns = withLedger(repo, (db) => listWorkflows(db).some((workflow) => isCoordinated(workflow) && coordinatorOf(db, workflow.id) === SUPERVISOR_COORDINATOR))
+        const owns = withLedger(repo, (db) => listWorkflows(db).some((workflow) => isCoordinated(workflow) && DISPATCHING.includes(workflow.status) && coordinatorOf(db, workflow.id) === SUPERVISOR_COORDINATOR))
         if (!owns) return
         try {
             found.push(await projectOf(repo))
@@ -889,7 +898,7 @@ const blockedPromptLines = (root: string): string[] =>
 /**
  * `supervisor tick`: one deterministic pass of the host driver, idempotent and safe to run every minute, with no LLM awake. It
  * keeps every project's Supervisor (`ensureSupervisors`), retires a version-2 host Supervisor Orca reports gone, and for each
- * Supervisor attached and alive it acts for it, over its project only: the owned workflows of the project's repositories get the
+ * Supervisor attached and alive it acts for it, over its project only: an unpark left pending is finished (`finishUnpark`), the owned workflows of the project's repositories get the
  * Kernel sweep (adoption from a host Supervisor, relaunch on Orca's word, the relaunch limit, a Kernel launch Orca never confirmed) and
  * the stall ladder for their Kernels and Ops, and the Supervisor's own seat the stall ladder. Every open blocked-prompt escalation
  * is named on each tick until answered. Every action is an event (project ledger, or host_events for a Supervisor and the tick).
@@ -928,6 +937,9 @@ export const supervisorTick = async (context: VerbContext, dryRun = false): Prom
         }
         swept.push(one.project.name)
         const lines: string[] = []
+        // An unpark whose Supervisor attached after the verb returned is finished here, before the sweep reads its workflows.
+        const unparked = await finishUnpark(context, one.project, binary, seat).catch((error: unknown) => ({ workflows: [], workers: [], problems: [`unpark not finished (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`] }))
+        lines.push(...unparked.workflows.map((workflow) => `${workflow.workflow}: unparked, ${workflow.status}; ${workflow.kernel}`), ...unparked.workers, ...unparked.problems)
         const { repos, problems: unresolved } = await projectRepositories(one.project)
         lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(context, repo, binary, rules, seat, true))).flat())
         lines.push(...repos.flatMap(blockedPromptLines), ...(await inOrder(repos, gcLines)).flat(), ...(await inOrder(repos, (repo) => lineageLines(repo, binary, context.cwd))).flat())

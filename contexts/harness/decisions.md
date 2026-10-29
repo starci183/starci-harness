@@ -209,3 +209,13 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `applyPriorWork` and `pruneUnkeptPrior` in `cli/src/harness/prior.ts`, `removeOpWorktree` in `cli/src/harness/land.ts`,
   `recordSettles` in `cli/src/core/kernel/driver.ts`, `KERNEL_SETTLES` in `cli/src/harness/coordinator-commands.ts`,
   `cli/src/core/task/cancel.ts`, [ops/coordinators/kernel.md](../../ops/coordinators/kernel.md)).
+- **A project parks whole and resumes whole (`project-park`).** The owner, 2026-10-29, with his Claude quota nearly out: every
+  workflow of a project paused and resumable later, and Orca closed for that project, no Supervisor, Kernel or worker terminal
+  left running. `project park` pauses every workflow, stops each live seat as a stop the harness caused (KEEP: one patch, the
+  same try), closes each Kernel terminal (worktree and graph kept), stops the Supervisor and closes every Orca terminal of the
+  project, never Orca itself; nothing of a parked project is relaunched until `project unpark` brings back the Supervisor, the
+  Kernels on their worktrees and the dispatch of the parked tasks from their patches (`cli/src/core/project/park-engine.ts`,
+  `cli/src/harness/park.ts`, `harnessCause` in `cli/src/harness/revive.ts`, `ensureSupervisor` in `cli/src/harness/supervisor.ts`,
+  `isCoordinated` in `cli/src/core/supervisor/driver.ts`). A pause the owner or Debug sets is lifted only by their own resume or
+  `project unpark`, never by a Supervisor or Kernel, and a paused workflow brings no stopped Supervisor back (`resume` in
+  `cli/src/core/workflow/resume.ts`, `projectsWithWorkflows` in `cli/src/core/supervisor/driver.ts`).

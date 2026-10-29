@@ -1,0 +1,83 @@
+schema: starci/scenario@1
+id: workflow-pause-owner-held
+group: lifecycle
+title: "a pause the owner or Debug set is lifted only by their resume or unpark, never by a Supervisor or Kernel"
+inject: "the owner pauses a workflow, then its Supervisor and its Kernel each run workflow resume; Debug pauses it, the Supervisor tries again"
+expect: >-
+  the pause records who set it (by); a resume from the Supervisor's or the Kernel's seat is refused WORKFLOW_HELD while the
+  owner or Debug paused it, the owner's resume lifts it, a pause the Supervisor set is one it may lift, and a parked workflow
+  is refused WORKFLOW_PARKED to everyone until unpark
+pass:
+  - the pause event names by owner, then by debug, then by supervisor
+  - the Supervisor's and the Kernel's resumes are refused WORKFLOW_HELD and the workflow stays paused
+  - the owner's resume runs it again
+  - the Supervisor lifts its own pause
+  - a parked workflow refuses resume WORKFLOW_PARKED
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: held
+        goal: bench held pause
+        runner: orca
+        tasks:
+          - {id: a, label: docs, summary: write doc a, allowPaths: [docs/a.md], checks: [{preset: files-exist, args: {files: [docs/a.md]}}]}
+  - boot: {file: "${run}/wf.yaml", workflow: held}
+  - name: the owner pauses it
+    starci: [workflow, pause, held]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.by') FROM events WHERE kind = 'workflow-status' AND json_extract(data_json, '$.to') = 'paused'"
+        equals: [owner]
+  - name: the Supervisor may not lift it
+    seat: supervisor
+    starci: [workflow, resume, held]
+    expect: {exit: 1, contains: WORKFLOW_HELD}
+  - name: nor may the Kernel
+    seat: kernel:held
+    starci: [workflow, resume, held]
+    expect: {exit: 1, contains: WORKFLOW_HELD}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM workflows"
+        equals: [paused]
+  - name: the owner lifts it
+    starci: [workflow, resume, held]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.by') FROM events WHERE kind = 'workflow-status' AND json_extract(data_json, '$.from') = 'paused'"
+        equals: [owner]
+  - name: Debug pauses it; the Supervisor still may not lift it
+    starci: [workflow, pause, held]
+  - sql:
+      db: ledger
+      exec: "UPDATE events SET data_json = json_set(data_json, '$.by', 'debug') WHERE id = (SELECT MAX(id) FROM events WHERE kind = 'workflow-status' AND json_extract(data_json, '$.to') = 'paused')"
+  - seat: supervisor
+    starci: [workflow, resume, held]
+    expect: {exit: 1, contains: WORKFLOW_HELD}
+  - starci: [workflow, resume, held]
+  - name: a pause the Supervisor set is its own to lift
+    seat: supervisor
+    starci: [workflow, pause, held]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.by') FROM events WHERE kind = 'workflow-status' AND json_extract(data_json, '$.to') = 'paused' ORDER BY id DESC LIMIT 1"
+        equals: [supervisor]
+  - seat: supervisor
+    starci: [workflow, resume, held]
+  - name: a parked workflow is lifted only by unpark
+    starci: [project, park]
+  - starci: [workflow, resume, held]
+    expect: {exit: 1, contains: WORKFLOW_PARKED}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM workflows"
+        equals: [paused]
