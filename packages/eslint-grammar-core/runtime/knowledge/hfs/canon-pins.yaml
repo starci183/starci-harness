@@ -31,35 +31,35 @@ pins:
     source: packages/event-stream/package.json
     why: 'the one server-sent-events client of every front end (fe-stack event-stream, owner:event-stream-package): the transport client layer (modules/api/sse/clients) creates one instance for the app with the bearer token source and the stream operations follow on it; it carries Last-Event-ID resume, the capped doubling backoff, the heartbeat timeout, the single 401 renewal and the useSWRSubscription adapter, so no app keeps a hand-written reader.'
   '@starci/grammar':
-    version: 0.15.10
+    version: 0.15.11
     group: starci
     install: registry
     side: fe
     source: packages/grammar/package.json
     why: 'the grammar front ends read: the brand layer sets `--font-sans` and `--font-mono` and the grammar reads them; it carries the Input tel kind, the copyable and read-only Input, the IconButton disclosure props and count badge, ChatBubble, FillViewport, Textarea mentions and Enter-to-send, the leading PrimaryRailLayout rail, the plate-less Image, ListRow, the soft Alert, Progress steps, the floating primary IconButton, FlowGraph, the STATE-8 loading views and the bordered selectable TagGroup chips. The runtime source version wins for a @starci package.'
   '@starci/eslint-canon-be':
-    version: 3.6.8
+    version: 3.7.0
     group: starci
     install: registry
     side: be
     source: packages/eslint-canon-be/package.json
     why: 'the back-end ESLint canon: `loadHfs(import.meta.url)` of be/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the be side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; `starciBeConfig({ hfs: loadHfs(import.meta.url) })` is the typed factory and the BE-CONVENTION laws are its rules.'
   '@starci/eslint-canon-fe':
-    version: 9.4.9
+    version: 9.5.0
     group: starci
     install: registry
     side: fe
     source: packages/eslint-canon-fe/package.json
     why: 'the front-end ESLint canon: `loadHfs(import.meta.url)` of fe/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the fe side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; the front end has no tests (FE_NO_TESTS R97 in hfs) and no-vietnamese-in-source (R91) applies.'
   '@starci/eslint-grammar-core':
-    version: 0.15.10
+    version: 0.15.11
     group: starci
     install: registry
     side: fe
     source: packages/eslint-grammar-core/package.json
     why: 'the StarCi Grammar component API lint, versioned with @starci/grammar; front ends compose this family package with the universal FE canon.'
   '@starci/eslint-grammar-offset-pop':
-    version: 0.15.10
+    version: 0.15.11
     group: starci
     install: registry
     side: fe
@@ -85,12 +85,12 @@ pins:
     side: both
     source: packages/prettier-config/package.json
   '@starci/jest-preset':
-    version: 2.4.1
+    version: 2.5.0
     group: starci
     install: registry
     side: be
     source: packages/jest-preset/package.json
-    why: 'the Jest preset of a back end: the world runner runs up to min(--maxWorkers, slots) world files at once, each in its own process bound to one data slot of the test world (STARCI_TEST_WORLD_SLOT), and reads test-world state protocol 2 only: it pairs exactly with @starci/test-world, and any other state file is JEST_PRESET_WORLD_PAIR_MISMATCH. The unit run writes the lcov Sonar and Codecov import (services only); the integration, e2e and contract projects run every spec file in a worker process of its own (world-runner.cjs), so a process-global framework registry (@nestjs/graphql type metadata) never leaks between e2e files; it ships the unit kit (mockEntityManager, fakeTransaction, fakeIds, FakeClock, Outcome matchers) and the recordingOutbox claim side.'
+    why: 'the Jest preset of a back end: the world runner runs up to min(--maxWorkers, slots) world files at once, each in its own process bound to one data slot of the test world (STARCI_TEST_WORLD_SLOT), and reads test-world state protocol 2 only: it pairs exactly with @starci/test-world, and any other state file is JEST_PRESET_WORLD_PAIR_MISMATCH. The unit run writes the lcov Sonar and Codecov import (services only); the integration, e2e and contract projects run every spec file in a worker process of its own (world-runner.cjs), so a process-global framework registry (@nestjs/graphql type metadata) never leaks between e2e files; it ships the unit kit (mockEntityManager, fakeTransaction, fakeQueryBuilder, queueQueryBuilders, fakeIds, FakeClock, Outcome matchers) and the recordingOutbox claim side.'
   '@starci/test-world':
     version: 1.2.3
     group: starci
@@ -106,7 +106,7 @@ pins:
     source: packages/ai-router/package.json
     why: 'the AI pool router of a back end: a NestJS module that routes OpenAI-compatible chat, stream and embeddings calls across keys, models and providers, with @starci/ai-router/testing for its specs; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/hfs':
-    version: 4.9.11
+    version: 4.10.0
     group: starci
     install: registry
     side: both
@@ -543,12 +543,12 @@ pins:
     version: 3.1150.0
     group: framework
     side: be
-    why: 'the S3 transport of integrations/object-storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces, Supabase Storage); 3.1150.0 is the release of 2026-10-12, chosen over newer ones that had not aged two weeks.'
+    why: 'the S3 transport of integrations/storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces); 3.1150.0 is the release of 2026-10-12, chosen over newer ones that had not aged two weeks.'
   '@aws-sdk/s3-request-presigner':
     version: 3.1150.0
     group: framework
     side: be
-    why: 'signs the presigned PUT and GET of integrations/object-storage locally, the same release as client-s3.'
+    why: 'signs the presigned PUT and GET of integrations/storage locally, the same release as client-s3.'
   '@apollo/server':
     version: 5.5.1
     group: framework
@@ -594,27 +594,52 @@ pins:
     group: framework
     side: be
     why: 'the Express 5 integration @nestjs/apollo loads at boot (R111 nestjs-apollo-express5, knowledge/hfs/peer-integrations.yaml); every api app that serves GraphQL installs it; the latest registry version on 2026-10-13.'
-  # --- Supabase lite
-  '@supabase/ssr':
-    version: 0.12.7
+  # --- lite identity (integrations/passport, ruling lite-self-hosted-postgres-passport-minio)
+  '@nestjs/passport':
+    version: 12.0.0
     group: framework
-    side: fe
-    why: the one server/browser client factory for a lite Next app; exact version registry-checked for the lite scaffold.
-  '@supabase/supabase-js':
-    version: 2.117.2
+    side: be
+    why: 'PassportStrategy of integrations/passport; 12.0.0 declares @nestjs/common ^11 || ^12, so it sits on the Nest 11 line.'
+  passport:
+    version: 0.7.0
     group: framework
-    side: both
-    why: the generated Database-typed client used by the FE data owner and the BE Auth/Storage integration.
+    side: be
+    why: the strategy runtime under @nestjs/passport (its peer range ^0.5 || ^0.6 || ^0.7).
+  passport-google-oauth20:
+    version: 2.0.0
+    group: framework
+    side: be
+    why: Google OAuth 2.0 (authorization code with state and PKCE) of integrations/passport.
+  passport-local:
+    version: 1.0.0
+    group: framework
+    side: be
+    why: the email and password strategy of integrations/passport.
+  '@nestjs/jwt':
+    version: 12.0.3
+    group: framework
+    side: be
+    why: the Nest JWT module, owned by integrations/passport when an app signs through it (the skeleton signs with jose).
+  bcryptjs:
+    version: 3.0.3
+    group: framework
+    side: be
+    why: 'bcrypt in pure JavaScript (no native build on the alpine image); verifies the $2a$/$2b$ hashes auth.users carries over.'
+  '@types/passport-google-oauth20':
+    version: 2.0.17
+    group: framework
+    side: be
+    why: types of passport-google-oauth20.
+  '@types/passport-local':
+    version: 1.0.38
+    group: framework
+    side: be
+    why: types of passport-local.
   jose:
     version: 6.2.12
     group: framework
     side: be
-    why: verifies Supabase access tokens against the project JWKS with issuer, audience, expiry and algorithm checks.
-  supabase:
-    version: 2.119.0
-    group: tooling
-    side: both
-    why: the root CLI wrapper owns local schema lifecycle and generates the committed database types.
+    why: signs the app's own ES256 access tokens and verifies them against its own key set (createLocalJWKSet) in integrations/passport.
   class-transformer:
     version: 0.5.1
     group: framework

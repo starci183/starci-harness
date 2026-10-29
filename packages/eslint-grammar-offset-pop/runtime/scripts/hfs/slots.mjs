@@ -120,6 +120,7 @@ function sideDeclaration(manifest, declaration, name, edition, providers) {
     connections: Object.freeze((s.connections ?? []).map(connectionView)),
     providers,
     reads: Object.freeze([...(s.reads ?? [])]),
+    dbFunctions: Object.freeze((s.dbFunctions ?? []).map((entry) => Object.freeze({ ...entry }))),
     ...(s.grammar === undefined ? {} : { grammar: s.grammar }),
     ...(s.extraPackages === undefined ? {} : { extraPackages: Object.freeze(s.extraPackages.map(entry => Object.freeze({ ...entry }))) }),
     manifestVersion: manifest.version,
@@ -221,7 +222,8 @@ function createScopeResolver(manifest, repo) {
     trackingOf,
     /** True only for a path a slot owns and requires to be committed. */
     isTracked: (p) => trackingOf(p) === 'tracked',
-    ruleParams: () => ruleParams(manifest, profile, edition),
+    // The app's own database functions (hfs.json sides.be.dbFunctions) join the canon's list (R333).
+    ruleParams: () => withDeclaredDbFunctions(ruleParams(manifest, profile, edition), repo.dbFunctions),
     allowedImports: (tier) => manifest.tiers[profile]?.[tier]?.mayImport ?? null,
   });
 }
@@ -235,12 +237,16 @@ function createScopeResolver(manifest, repo) {
  */
 export function createSlotResolver(manifest, repo) {
   if (repo.profile !== APP_SCOPE) return createScopeResolver(manifest, repo);
-  // The root declares no connection of its own, yet a provider slot of the app profile (app.supabase*) is enabled by a
+  // The root declares no connection of its own, yet a provider slot of the app profile is enabled by a
   // side's connection with that provider: the root scope reads the union of the sides' connections.
   const root = createScopeResolver(manifest, { ...repo, connections: SIDES.flatMap((side) => repo.sides[side].connections) });
   const sides = Object.fromEntries(PROFILES.map((side) => [side, createScopeResolver(manifest, repo.sides[side])]));
   return appResolver(repo, root, sides);
 }
+
+/** The rule parameters with the app's declared database functions appended to `dbFunctions` (be only), frozen. */
+const withDeclaredDbFunctions = (params, declared = []) => (params.dbFunctions === undefined && !declared.length ? params
+  : Object.freeze({ ...params, dbFunctions: Object.freeze([...(params.dbFunctions ?? []), ...declared]) }));
 
 /** The rule parameters of one profile (be: infraOwners, suffixes, bannedSuffixes and the rest over the shared ruleParams.common fileLines and duplicateBlock; fe: common alone or with its overrides; runtime: ruleParams.runtime of a runtime manifest), as a frozen deep copy. Under `edition` lite the `lite` overrides of ruleParams.<profile> merge over the base (the `lite` key itself is never returned). */
 export function ruleParams(manifest, profile, edition = 'full') {
