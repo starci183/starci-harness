@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.13 - 2026-10-29
+
+- Changed: the bundled canon pins name hfs 4.11.14, eslint-canon-be 3.8.13, eslint-canon-fe 9.5.15 and the Grammar family 0.15.26. No rule changed.
+
 ## 3.8.12 - 2026-10-29
 
 - Changed: the bundled `runtime/scripts/lib/sops-envelope.mjs` admits an age set of one or more recipients for the selected-identity decrypt (`selectedAgeEnvelope`): the selected recipient must be one of the set, an empty entry or gap (`invalid-age-entry`) and a recipient named twice (`duplicate-age-recipient`) are refused, a dotenv envelope reads every `sops_age__list_<n>__` entry; the bundled canon pins name hfs 4.11.13, eslint-canon-be 3.8.12, eslint-canon-fe 9.5.14 and the Grammar family 0.15.25. No rule changed.

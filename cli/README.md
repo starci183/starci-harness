@@ -345,6 +345,18 @@ next step verifies it, and the verify runs the contract's checks with custody as
 aside (`recheckOf`, `ResultSource.setAside`): the suite's own exit is the verdict, in the task's verify and in the wave
 alike. Green settles it, a genuine red fails it, and a key custody lacks ends it `awaiting_owner` as above.
 
+### Skeleton parity reads the pinned hfs
+
+An app is judged against the skeleton of the @starci/hfs version it pins and installs, never the CLI's own: a skeleton
+change reaches an app only when the app raises its hfs and runs `starci app sync`, never through a check or a relay. A
+command check that names a path inside the CLI's own hfs (the harness checkout's `packages/hfs`, or the copy the CLI
+installs), as a contract spells a skeleton parity with `git diff --no-index --exit-code <harness>/packages/hfs/templates/be/skeleton/<dir> be/<dir>`,
+reads that path inside the app's pinned hfs (`toPinnedHfs`, `harness/pinned-hfs.ts`): the version the checkout's lockfile
+resolves for `node_modules/@starci/hfs` (else an exact package.json pin), from an installed copy at that version or else the
+exact published version unpacked once into `<state base>/cache/hfs/<version>`. A checkout whose pin cannot be read makes the
+check red, naming why; the check's detail names the version and copy it read. R253 (`HFS_CANON_COPY_DRIFT`) holds the
+same law inside @starci/hfs.
+
 ### Result reuse
 
 `check run` keys each typecheck and lint step by the digest of its inputs (`checkDigest` in

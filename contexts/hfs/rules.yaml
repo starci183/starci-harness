@@ -1633,7 +1633,7 @@ rules:
       - {kind: hfs, id: script-hygiene}
   - id: R253
     code: HFS_AGE_KEY_CUSTODY
-    law: The age identity that seals an app's secrets stays in untracked host-local custody, and the hash-sensitive secret-custody platform files equal their skeleton template.
+    law: The age identity that seals an app's secrets stays in untracked host-local custody, and the hash-sensitive secret-custody platform files equal the skeleton template of the @starci/hfs version the app pins.
     failureCodes:
       - HFS_AGE_KEY_CUSTODY
       - HFS_CANON_COPY_DRIFT

@@ -33,6 +33,22 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   paused it, and `WORKFLOW_PARKED` to anyone on a parked workflow. Bench: `supervisor-stop-paused-project-stays-down`,
   `workflow-pause-owner-held`.
 
+### Fixed
+
+- **A skeleton parity judges the skeleton of the hfs the app pins, never the CLI's own (tk-a46c4d69c675).** The relay
+  `relay.capability-platform.http.r3` carried its source's check `git diff --no-index --exit-code
+  <harness>/packages/hfs/templates/be/skeleton/src/modules/platform/http be/src/modules/platform/http`, which read the CLI's
+  hfs 4.11.11 (trusted CA, pool lifecycle, `http.config.ts`) while the relayed commits and the app's pinned hfs predate them,
+  so the relay could not meet its own contract. A command check now reads every path it names inside the CLI's own hfs (the
+  harness checkout's `packages/hfs`, or the copy the CLI installs) inside the app's pinned hfs (`toPinnedHfs`,
+  `harness/pinned-hfs.ts`): the version the checkout's lockfile resolves for `node_modules/@starci/hfs` (else an exact
+  package.json pin), from an installed copy at that version or else the exact published version unpacked once into
+  `<state base>/cache/hfs/<version>`; a pin it cannot read is a red naming why, and the check's detail names the version it
+  read. A skeleton change reaches an app only when the app raises its hfs. The same mistake in hfs R253
+  (`HFS_CANON_COPY_DRIFT`) is fixed in @starci/hfs 4.11.14 (canon pins: eslint-canon-be 3.8.13, eslint-canon-fe 9.5.15,
+  Grammar family 0.15.26). Bench: `verify-skeleton-parity-pinned-hfs` (a copy of the pinned 4.9.3 skeleton green, a drift
+  from it red).
+
 ## [1.1.0-alpha.14] - 2026-10-29
 
 ### Added

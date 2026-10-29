@@ -19,6 +19,7 @@ import { RESULT_FILE, isRuleId, resolveChecks, ruleIdsIn, underPaths, workNamesI
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { loadOps } from "./ops.js"
 import type { OutputType } from "./ops.js"
+import { toPinnedHfs } from "./pinned-hfs.js"
 import { relayHeadOf } from "./reconcile.js"
 import { ruleOwnerOf } from "./rule-pages.js"
 import { recordEvent } from "./tasks.js"
@@ -527,19 +528,23 @@ export const prepareSuite = async (named: readonly string[], place: CheckPlace, 
 }
 
 /**
- * Runs a command check: its argv (a list, or a string split at blanks), made ready by `prepareSuite` (scoped specs, coverage,
- * custody) and held to its verdict key when it names one; the detail opens with the files it ran and judged. A custody refusal
+ * Runs a command check: its argv (a list, or a string split at blanks), each path it names inside the CLI's own @starci/hfs read
+ * in the app's pinned one (harness/pinned-hfs.ts `toPinnedHfs`: a skeleton parity judges the skeleton the app installs), made
+ * ready by `prepareSuite` (scoped specs, coverage, custody) and held to its verdict key when it names one; the detail opens with the files it ran and judged. A custody refusal
  * (CUSTODY_CODES, a block awaiting the owner, before the run or from a run reporting keys custody lacks as undeclared) or
  * VERIFY_INFRA (a run reporting a key custody holds as undeclared) leaves the
  * check, never a red; any other failure is a red check.
  */
 const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
     const primitive = check.check
-    const named = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
+    const written = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
     try {
-        const prepared = await prepareSuite(named, place, allowPaths, { ...options, ...(primitive.coverage === undefined ? {} : { coverage: primitive.coverage }) })
+        const pinned = await toPinnedHfs(written, place.root)
+        if ("problem" in pinned) return outcome(check, [pinned.problem], "")
+        const prepared = await prepareSuite(pinned.argv, place, allowPaths, { ...options, ...(primitive.coverage === undefined ? {} : { coverage: primitive.coverage }) })
         if ("problem" in prepared) return outcome(check, [prepared.problem], "")
-        const { argv, given, lead } = prepared
+        const { argv, given } = prepared
+        const lead = pinned.detail === undefined ? prepared.lead : [pinned.detail, ...prepared.lead]
         const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, given) : fromRun(check, await heavyCommand(argv, place.cwd, given))
         return lead.length === 0 ? judged : { ...judged, detail: `${lead.join("\n")}\n${judged.detail}` }
     } catch (error: unknown) {

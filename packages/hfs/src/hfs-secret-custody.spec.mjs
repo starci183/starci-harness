@@ -339,6 +339,34 @@ for (const edition of ["lite", "full"]) {
   });
 }
 
+// R253 judges the skeleton of the hfs the app pins, never of a newer hfs running the check: an installed copy at the pinned
+// version holds the canon an app's copy must equal, and with no copy of that version at hand the check leaves it to the
+// app's own run.
+const pinnedApp = (t, version) => {
+  const { root } = app(t);
+  write(root, "package.json", JSON.stringify({ name: "pinned-app", private: true, devDependencies: { "@starci/hfs": version } }));
+  return root;
+};
+const OLDER = "0.0.1-pinned";
+
+test("HFS_CANON_COPY_DRIFT: an app pinning an older hfs is judged by that hfs's skeleton", (t) => {
+  const root = pinnedApp(t, OLDER);
+  const copy = path.join(root, "node_modules", "@starci", "hfs");
+  write(copy, "package.json", JSON.stringify({ name: "@starci/hfs", version: OLDER }));
+  for (const rel of CANON) write(copy, path.join("templates", "be", "skeleton", rel), `// pinned ${rel}\n`);
+  for (const rel of CANON) write(root, rel, `// pinned ${rel}\n`);
+  assert.deepEqual(canonCopyDriftFindings(ctx(root, CANON, "full")), []);
+  write(root, CANON[1], fs.readFileSync(path.join(TEMPLATE, CANON[1])));
+  assert.deepEqual(canonCopyDriftFindings(ctx(root, CANON, "full")).map((finding) => [finding.path, finding.code]),
+    [[CANON[1], "HFS_CANON_COPY_DRIFT"]]);
+});
+
+test("HFS_CANON_COPY_DRIFT: no copy of the pinned hfs at hand judges nothing against another version", (t) => {
+  const root = pinnedApp(t, OLDER);
+  for (const rel of CANON) write(root, rel, "// any bytes\n");
+  assert.deepEqual(canonCopyDriftFindings(ctx(root, CANON, "full")), []);
+});
+
 // A runProgram double of the selected-identity contract: version probes, the `age -y` recipient derivation and
 // the one sops file action. It records every call's argv and child env so the custody assertions can name them.
 const selectedTools = (calls) => ({
