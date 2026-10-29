@@ -28,8 +28,9 @@ const TEST_CALLEES = new Set(['it', 'test']);
 /** The TypeScript compiler of the app (else of the runtime), or null. */
 const typescriptFor = (repoRoot) => loadTypescript(repoRoot, HERE);
 
-/** The event-bus pattern file name of an event name: dots become dashes (`order.placed` -> `order-placed`). */
-export const stemOfEvent = (name) => name.replaceAll('.', '-');
+/** The event-bus pattern file name of an event name: dots and underscores become dashes (`order.placed` -> `order-placed`,
+ * `installation_changed` -> `installation-changed`), the kebab case source-suffix gives every file. */
+export const stemOfEvent = (name) => name.replaceAll(/[._]/gu, '-');
 
 /** The initializer of a `static` property member with an identifier name, parentheses and `as` casts stripped, else null. */
 function staticMemberValue(ts, member) {

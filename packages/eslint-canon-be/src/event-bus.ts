@@ -140,8 +140,8 @@ const eventNameOf = (context: Context, expression: Node): string | null => {
 const readsDeliveryEventId = (context: Context, node: Node): boolean =>
     node.type === "MemberExpression" && !node.computed && node.property.type === "Identifier" && node.property.name === "eventId" && isEventDeliveryType(context, node.object)
 
-/** The kebab stem of an event name: dots become dashes. */
-const stemOfEvent = (name: string): string => name.split(".").join("-")
+/** The kebab stem of an event name: dots and underscores become dashes, as source-suffix names every file in kebab case. */
+const stemOfEvent = (name: string): string => name.replaceAll(/[._]/gu, "-")
 
 /** A message consumer is the one door of an event: placed in `transport/message`, named after its event, and it forwards the event id. */
 export const eventConsumerShape: RuleModule = {
@@ -153,7 +153,7 @@ export const eventConsumerShape: RuleModule = {
             placement: "`{{name}}` implements `EventConsumer` outside a `.consumer.ts` file of the message transport (`transport/message/<event>.consumer.ts`). A consumer is a transport door: move it there.",
             notConsumer: "This `.consumer.ts` file declares `{{name}}`, which does not implement `EventConsumer` of `platform/event-bus`. The message transport holds only event consumers.",
             eventUnknown: "`{{name}}.event` must be an event class whose static `eventName` is a string literal (`static readonly eventName = \"order.placed\"`), so the consumer and its contract entry are one name.",
-            stem: "The consumer of `{{event}}` is `{{expected}}.consumer.ts`, but this file is `{{actual}}.consumer.ts`. A consumer is named after the event it handles (dots become dashes).",
+            stem: "The consumer of `{{event}}` is `{{expected}}.consumer.ts`, but this file is `{{actual}}.consumer.ts`. A consumer is named after the event it handles (dots and underscores become dashes).",
             noEventId: "`{{name}}.handle` never reads `delivery.eventId`. Delivery is at least once: pass the event id to the command so the domain service claims it in `platform/inbox` inside its own transaction and a redelivery is a no-op.",
         },
     },

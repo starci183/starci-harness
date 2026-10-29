@@ -47,3 +47,10 @@ for (const edition of ['lite', 'full']) {
     assert.match(findings[0].message, /version 1 but .* version 2/);
   });
 }
+
+test('stemOfEvent: dots and underscores become dashes, the kebab case every source file takes', async () => {
+  const { stemOfEvent } = await import('../runtime/scripts/hfs/rules/event-bus.mjs');
+  assert.equal(stemOfEvent('order.placed'), 'order-placed');
+  assert.equal(stemOfEvent('installation_changed'), 'installation-changed');
+  assert.equal(stemOfEvent('billing.invoice_paid'), 'billing-invoice-paid');
+});

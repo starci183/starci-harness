@@ -19,6 +19,8 @@ const FEATURE = at("src/features/api/checkout/application/place-order.handler.ts
 const INTEGRATION = at("src/modules/integrations/foo/foo.client.ts")
 const CONSUMER = at("src/features/api/checkout/transport/message/order-placed.consumer.ts")
 const MISNAMED = at("src/features/api/checkout/transport/message/placed.consumer.ts")
+const KEBAB = at("src/features/reactors/installation-sync/transport/message/installation-changed.consumer.ts")
+const SNAKE = at("src/features/reactors/installation-sync/transport/message/installation_changed.consumer.ts")
 const NOT_TRANSPORT = at("src/features/api/checkout/application/order-placed.consumer.ts")
 const QUEUE = at("src/modules/queues/mail/mail.queue.ts")
 const WORLD = at("src/tests/world/use-test-world.ts")
@@ -58,7 +60,7 @@ test("outbox-write-tx: the outbox is written only by a domain service, with its 
 
 const CONSUMER_HEAD = `import { Injectable } from "@nestjs/common"
 import type { EventConsumer, EventDelivery } from "@modules/platform/event-bus"
-import { OrderPlacedEvent } from "@modules/events/order"
+import { InstallationChangedEvent, OrderPlacedEvent } from "@modules/events/order"
 `
 
 test("event-consumer-shape: a consumer is a transport door named after its event that forwards the event id", () => {
@@ -67,8 +69,15 @@ test("event-consumer-shape: a consumer is a transport door named after its event
           valid: [
               { filename: CONSUMER, code: `${CONSUMER_HEAD}@Injectable()\nexport class OrderPlacedConsumer implements EventConsumer<OrderPlacedEvent> {\n readonly event = OrderPlacedEvent\n async handle(delivery: EventDelivery<OrderPlacedEvent>): Promise<void> { void delivery.eventId } }` },
               { filename: DOMAIN, code: `export class NotAConsumer { handle(): void {} }` },
+              // an underscore in the event name is a dash in the file, the kebab case source-suffix asks of every file
+              { filename: KEBAB, code: `${CONSUMER_HEAD}export class InstallationChangedConsumer implements EventConsumer<InstallationChangedEvent> {
+ readonly event = InstallationChangedEvent
+ async handle(delivery: EventDelivery<InstallationChangedEvent>): Promise<void> { void delivery.eventId } }` },
           ],
           invalid: [
+              { filename: SNAKE, code: `${CONSUMER_HEAD}export class InstallationChangedConsumer implements EventConsumer<InstallationChangedEvent> {
+ readonly event = InstallationChangedEvent
+ async handle(delivery: EventDelivery<InstallationChangedEvent>): Promise<void> { void delivery.eventId } }`, errors: [{ messageId: "stem" }] },
               { filename: NOT_TRANSPORT, code: `${CONSUMER_HEAD}export class OrderPlacedConsumer implements EventConsumer<OrderPlacedEvent> {\n readonly event = OrderPlacedEvent\n async handle(delivery: EventDelivery<OrderPlacedEvent>): Promise<void> { void delivery.eventId } }`, errors: [{ messageId: "placement" }] },
               { filename: MISNAMED, code: `${CONSUMER_HEAD}export class PlacedConsumer implements EventConsumer<OrderPlacedEvent> {\n readonly event = OrderPlacedEvent\n async handle(delivery: EventDelivery<OrderPlacedEvent>): Promise<void> { void delivery.eventId } }`, errors: [{ messageId: "stem" }] },
               { filename: CONSUMER, code: `${CONSUMER_HEAD}export class OrderPlacedConsumer implements EventConsumer<OrderPlacedEvent> {\n readonly event = OrderPlacedEvent\n async handle(delivery: EventDelivery<OrderPlacedEvent>): Promise<void> { void delivery.attempt } }`, errors: [{ messageId: "noEventId" }] },
