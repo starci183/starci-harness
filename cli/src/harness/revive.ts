@@ -6,13 +6,17 @@ import { loadStallRules } from "./stall.js"
 /**
  * Why the harness, not the task, ended a task: a wave red no file of it was proven to own (`wave-foreign`), a launch Orca fenced
  * (`consumer-fenced`), a launch that never started its worker's turn (`launch-lost`), a verify the harness stopped (`verify-infra`,
- * clean-verify.ts `assertNoInfraFailure`) or its lock's deadline stopped (`verify-deadline`), or a done task whose work never landed, returned
- * with that work preserved by `task verify --recover` (`land-orphaned`, core/task/verify.ts).
+ * clean-verify.ts `assertNoInfraFailure`) or its lock's deadline stopped (`verify-deadline`), a done task whose work never landed, returned
+ * with that work preserved by `task verify --recover` (`land-orphaned`, core/task/verify.ts), or an attempt whose walk met no app,
+ * every page it opened answering 5xx (`walk-unserved`, core/task/result.ts).
  */
-export type HarnessCause = "wave-foreign" | "consumer-fenced" | "launch-lost" | "verify-infra" | "verify-deadline" | "land-orphaned"
+export type HarnessCause = "wave-foreign" | "consumer-fenced" | "launch-lost" | "verify-infra" | "verify-deadline" | "land-orphaned" | "walk-unserved"
 
 /** The event `task verify --recover` records when it returns a done task whose work never landed. */
 export const LAND_ORPHANED = "land-orphaned"
+
+/** The event `task result` records on an attempt whose walk met no app (harness/uat.ts unservedWalk): the task failed as the harness's. */
+export const WALK_UNSERVED = "walk-unserved"
 
 /** The event a dispatch records when it brings a harness-killed task back at the same try. */
 export const TASK_REVIVED = "task-revived"
@@ -38,7 +42,8 @@ const workerStarted = (db: DatabaseSync, attemptId: string): boolean => {
 
 /**
  * The harness cause that ended a failed or cancelled task, read from the ledger's facts alone; null for a task that ended by its
- * own red (a red verdict, a wave red its files own) or its worker's own words (a result other than done), for one cancelled with
+ * own red (a red verdict, a wave red its files own) or its worker's own words (a result other than done, filed on an attempt
+ * whose walk met an app or that walked nothing), for one cancelled with
  * nothing that names the harness, and for every other status. Such a task returns to ready and its retry spends no try
  * (tasks.ts `tryAfter`, workflow.ts `nodeTasks`).
  */
@@ -49,6 +54,8 @@ export const harnessCause = (db: DatabaseSync, taskId: string): HarnessCause | n
     const attempt = db.prepare("SELECT id, outcome, verdict FROM attempts WHERE task_id = ? ORDER BY seq DESC LIMIT 1").get(taskId)
     if (attempt === undefined || text(attempt.verdict) === "red") return null
     const attemptId = text(attempt.id) ?? ""
+    // A walk that met no app ends its attempt whatever the worker filed: the result is the harness's environment, not the task's words.
+    if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ? AND json_extract(data_json, '$.attempt') = ?").get(WALK_UNSERVED, taskId, attemptId) !== undefined) return WALK_UNSERVED
     const result = db.prepare("SELECT status, filed_at FROM results WHERE attempt_id = ?").get(attemptId)
     if (result !== undefined && text(result.status) !== "done") return null
     const wave = db.prepare("SELECT data_json FROM events WHERE kind = 'wave-returned' AND subject = ? ORDER BY id DESC LIMIT 1").get(taskId)

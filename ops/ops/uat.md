@@ -22,7 +22,9 @@ checks:
   behavioural: true
 ---
 Write a short Playwright script for the flows and run it with `starci uat run <script> --out <run>`; never install
-Playwright or a browser, and never run Docker by hand. The script itself observes: during the run it saves each step's
+Playwright or a browser, and never run Docker by hand. The verb first builds the workspace packages the app imports in this
+checkout, as the wave does, so serve the app from it; a walk it refuses `UAT_APP_UNSERVED` (every page answered 5xx) met no
+app, so file your result as it stands and the harness takes the attempt as its own failure. The script itself observes: during the run it saves each step's
 screenshot (`page.screenshot`) and writes `checks.json` with every step's status and the value it read for each check.
 The harness judges the walk on those files as the run's receipt holds them, so a file written or edited outside the run
 counts for nothing. A step where the product misbehaves is a failed verdict with its screenshot, never a script changed

@@ -158,7 +158,7 @@ const stepSchema = z.strictObject({
      * `<as>.url` and `<as>.token`.
      */
     serve: z
-        .strictObject({ starci: z.array(z.string()).min(1).optional(), stub: z.enum(["telegram", "hold", "busy"]).optional(), args: z.array(z.string()).optional(), cwd: z.string().optional(), as: z.string().regex(/^[\w-]+$/) })
+        .strictObject({ starci: z.array(z.string()).min(1).optional(), stub: z.enum(["telegram", "hold", "busy", "app"]).optional(), args: z.array(z.string()).optional(), cwd: z.string().optional(), as: z.string().regex(/^[\w-]+$/) })
         .refine((serve) => (serve.starci === undefined) !== (serve.stub === undefined), "serve names exactly one of starci and stub")
         .optional(),
     /**

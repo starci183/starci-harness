@@ -383,8 +383,8 @@ unless the removal says `keepEffect`); the generated `relay.<need>.r<round>` nod
 blocks its dependents and the workflow, naming the red checks; independent tasks keep going. A task the harness ended with no
 red of its own (`harnessCause` in `harness/revive.ts`: a wave red not proven its own, a launch Orca fenced or one whose worker
 never started its turn, a verify the harness stopped (VERIFY_INFRA) or its lock's deadline stopped, a done task returned
-`land-orphaned`) carries its node no
-more, so the node is ready and its next dispatch retries it at the same try, its last included (`tryAfter` in
+`land-orphaned`, an attempt whose walk met no app, every page it opened answering 5xx: `walk-unserved`, filed by `task result`)
+carries its node no more, so the node is ready and its next dispatch retries it at the same try, its last included (`tryAfter` in
 `harness/tasks.ts`, a `task-revived` event), up to `reviveMax` of [ops/liveness.yaml](../ops/liveness.yaml) per node, past
 which its red names the cause. A retry past its contract's `budget.tries` is refused `TRIES_EXHAUSTED` (`retryOfNode` in
 `harness/workflow.ts`) until `budget raise <workflow> --task <key> --tries <n>` raises that one node's tries (a `tries-raised`

@@ -133,10 +133,10 @@ const git = async (run: RunState, args: readonly string[], where?: string): Prom
 
 const cliPath = (): string => join(runtimeRoot(), "cli", "dist", "main.js")
 
-/** The orca stand-in: a copy of this node named orca, which runs the bench stub preloaded by NODE_OPTIONS and nothing else. */
-const orcaBinary = (): string => {
+/** A stand-in binary: a copy of this node named `name` (orca, docker), which runs its bench stub preloaded by NODE_OPTIONS and nothing else. */
+const standIn = (name: string): string => {
     const dir = join(stateBase(), "bench", "bin")
-    const file = join(dir, process.platform === "win32" ? "orca.exe" : "orca")
+    const file = join(dir, process.platform === "win32" ? `${name}.exe` : name)
     if (!existsSync(file) || statSync(file).size !== statSync(process.execPath).size) {
         mkdirSync(dir, { recursive: true })
         copyFileSync(process.execPath, file)
@@ -516,18 +516,22 @@ const setUp = async (scenario: Scenario, fault: string | null): Promise<RunState
     const orcaState = join(dir, "orca.json")
     const orcaLog = join(dir, "orca.jsonl")
     writeFileSync(orcaState, "{}")
-    const stub = pathToFileURL(join(benchRoot(), "stub", "orca-stub.mjs")).href
+    const stub = (name: string): string => `--import=${pathToFileURL(join(benchRoot(), "stub", `${name}-stub.mjs`)).href}`
     const env: Record<string, string> = {
         STARCI_LOCAL_ROOT: state,
         STARCI_PROJECTS_ROOT: join(state, "projects"),
-        STARCI_ORCA_BIN: orcaBinary(),
+        STARCI_ORCA_BIN: standIn("orca"),
+        // No real Docker is ever run: the docker stand-in runs a uat container's relay and script on this host with this node.
+        STARCI_DOCKER_BIN: standIn("docker"),
+        STARCI_BENCH_NODE: process.execPath,
+        STARCI_BENCH_DOCKER_PREAMBLE: join(runtimeRoot(), "cli", "dist", "harness", "uat-preamble.js"),
         STARCI_BENCH_ORCA: orcaState,
         STARCI_BENCH_ORCA_LOG: orcaLog,
         // The host's own Codex usage never reaches a scenario: its Codex home is the run's empty folder.
         CODEX_HOME: join(dir, "codex"),
         // The host's secret.env never reaches a scenario: the secret loader reads the run's own file, absent until a step writes it.
         STARCI_SECRET_ENV: join(dir, "secret.env"),
-        NODE_OPTIONS: `--import=${stub}`,
+        NODE_OPTIONS: `${stub("orca")} ${stub("docker")}`,
     }
     const run: RunState = { scenario, dir, repo, state, orcaState, orcaLog, env: {}, vars: new Map(), failures: [], served: [], key: `${["AK", "IA"].join("")}${randomBytes(8).toString("hex").toUpperCase()}` }
     const withEnv: RunState = { ...run, env: { ...env, ...Object.fromEntries(Object.entries(scenario.env ?? {}).map(([key, value]) => [key, expand(run, value)])) } }

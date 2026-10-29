@@ -133,7 +133,7 @@ const runTier = async (cwd: string, treeRoot: string | undefined, flags: TierFla
     const canon = canonOf(policy, choice.profile)
     const options = { timeoutMs: policy.quality.runtime.stepTimeoutSeconds * 1000 }
     const gates = await inOrder(tier.filter((name) => REPOSITORY_GATES.has(name)), (gate) => repositoryGate(gate, scope, policy, choice.name, flags.all))
-    const builds = tier.some((gate) => IMPORT_GATES.has(gate)) ? await buildWorkspaceDependencies(scope, options) : NO_BUILDS
+    const builds = tier.some((gate) => IMPORT_GATES.has(gate)) ? await buildWorkspaceDependencies(scope.root, scope.targets.map((target) => target.pkg), options) : NO_BUILDS
     const gated = await inOrder(scope.targets.flatMap((target) => tier.flatMap((gate) => packageStep(gate, scope, target, canon, builds, options))), (step) => step())
     return { scope, policy, choice, tier, canon, gates, steps: [...builds.steps, ...gated] }
 }
