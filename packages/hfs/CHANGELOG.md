@@ -2,7 +2,7 @@
 
 ## 4.11.0 - 2026-10-29
 
-Breaking for lite apps (ruling lite-official-postgres-image; the move is contexts/project/lite.md "Moving an app off Supabase").
+Breaking for lite apps (rulings lite-official-postgres-image and lite-queue-bullmq; the move is contexts/project/lite.md "Moving an app off Supabase").
 
 - Changed: the lite db service runs the Docker Official `postgres` image. `starci app sync --write` writes the managed `db/Dockerfile` (slot `app.db.image`, templates/app/db-image): `FROM postgres:17.11@sha256:31ba9c94…b08f` (sync `DB_BASE_IMAGE`) plus `postgresql-17-pgvector=0.8.7-1.pgdg13+1` from PGDG (`PGVECTOR_PACKAGE`), nothing else. The managed db scripts gain `db:image` (`docker build --tag <project>-db:local db`) and `db:create` builds it first; the lite skeleton's stack runs `{{project}}/db` for its db component and service, deploys it as `deploy.images.db: {app: db}` (`starci app stack build` and the managed `images.yml` and `stack-deploy.yml` build `db/Dockerfile` for it, `db/image.mjs`); `starci app db drift` builds `db/Dockerfile` for its scratch database (`DB_DRIFT_NO_IMAGE` without one) instead of reading `components.db.image`. `DB_IMAGE` (supabase/postgres) is removed.
 - Changed: `db/bootstrap.sql` keeps the NOLOGIN browser roles and the auth and storage stubs and no longer creates the `extensions` schema or the `supabase_realtime` publication; it applies green, twice, on the official image.

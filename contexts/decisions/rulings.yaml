@@ -393,6 +393,11 @@ rulings:
     status: live
     ruling: "Owner, verbatim: \"chạy postgresql thuần image chính chủ nhé ko phải supebase\", then \"pgvector\" as the one extension package and \"Nest schedule\" for the ticks pg_cron ran. The lite db service runs the Docker Official postgres image (major 17, pinned by digest) through the app's managed db/Dockerfile, which adds only the PGDG package of pgvector; the contrib extensions the image ships (pgcrypto, pg_trgm, unaccent, uuid-ossp, btree_gist) are the rest, and there is no pg_cron, pg_net, pgmq or supabase_vault. The scratch database of starci app db drift and the local db container build the same Dockerfile. Recurring work is a tick of platform/jobs: @nestjs/schedule fires it in the back end, each firing claims its minute in the database under advisoryXactLock and enqueues one job through the queue outbox, so one replica fires it once."
     owner: "contexts/stack/pins.yaml (images postgres); contexts/hfs/slots.yaml (app.db.image, ruleParams.db.extensions, ruleParams.be.infraOwners, be.platform.jobs); contexts/hfs/rules.yaml R335; contexts/code/be/jobs.md BE-JOBS-6; contexts/project/lite.md; @starci/hfs templates/app/db-image, sync, db/drift.mjs; @starci/eslint-canon-be src/jobs-scheduler.ts"
+  - id: lite-queue-bullmq
+    date: '2026-10-29'
+    status: live
+    ruling: "Owner, verbatim: \"Giữ BullMQ\". The lite queue is BullMQ on the declared Redis, the shape nivo-lite runs, as in full: platform/queue owns bullmq and ioredis, a producer writes the queue outbox in its transaction and the relay adds each committed row to BullMQ; no queue rides on Postgres tables."
+    owner: "contexts/code/be/queues.md; contexts/hfs/slots.yaml (be.platform.queue, ruleParams.be.infraOwners, ruleParams.be.backing)"
   - id: lite-persistence-typeorm-entities
     date: '2026-10-29'
     status: live
@@ -406,7 +411,7 @@ rulings:
   - id: R212/case-10
     date: '2026-10-24'
     status: live
-    ruling: "Both editions share one code structure and one front-end standard; lite is a minimal production of one stateless, horizontally scaled instance type on its own self-hosted PostgreSQL, identity and S3 storage (lite-self-hosted-postgres-passport-minio) plus one minimal instance of each declared backing service, with no e2e world, while full runs several services with their own infrastructure. The queue is BullMQ on Redis in both editions; the lite event bus stays on pgmq topics or in-process delivery. Editions are fixed at scaffold."
+    ruling: "Both editions share one code structure and one front-end standard; lite is a minimal production of one stateless, horizontally scaled instance type on its own self-hosted PostgreSQL, identity and S3 storage (lite-self-hosted-postgres-passport-minio) plus one minimal instance of each declared backing service, with no e2e world, while full runs several services with their own infrastructure. The queue is ruling lite-queue-bullmq; the lite event bus stays on pgmq topics or in-process delivery. Editions are fixed at scaffold."
     owner: "contexts/hfs/rules.yaml R212; contexts/hfs/slots.yaml (editions, ruleParams.be.backing)"
     absorbs: [R212/case-1, R212/case-2, R212/case-3, lite-minimal-production, lite-backing-services, lite-event-bus-stays-pgmq]
   - id: R212/case-4

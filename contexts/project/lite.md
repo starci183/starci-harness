@@ -1,7 +1,7 @@
 # Lite: what differs
 
 Only the differences of a lite app from the shared project model ([README.md](README.md)); everything not named here
-is the same in both editions, including the code structure, the front-end standard, the queue (BullMQ on Redis) and
+is the same in both editions, including the code structure, the front-end standard, the queue (BullMQ on Redis, ruling `lite-queue-bullmq`) and
 the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](README.md) (R212 in
 [hfs/rules.yaml](../hfs/rules.yaml)). Each line names the owner of the fact; the slot, rule or ruling is the authority, not this page.
 
