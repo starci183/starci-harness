@@ -37,9 +37,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   Windows PEB, `/proc`, `lsof`) and every process under those, by pid and never by name, sparing this process, its ancestors and
   Orca; it reads again and ends what the first kill missed. A removed worktree Orca still lists as "Delete failed" is dropped.
   A folder still held records `worktree-held` with its holder, is retried and reaped again by `worktree gc`, and is listed by
-  `worktree gc` and `host load` (`harness/reap.ts`, `harness/process-table.ts`, `harness/land.ts`). Bench:
-  `worktree-reap-op-processes`; `worktree-remove-busy-gc-retries` now holds the folder from outside, as a process the harness
-  never started.
+  `worktree gc` and `host load` (`harness/reap.ts`, `harness/process-table.ts`, `harness/land.ts`). `worktree gc --now` tries
+  a folder left busy at once all the way down: the removal itself (`removeTracked`) no longer answers it with the busy record's
+  old text before its backoff runs out; and it takes a harness folder git no longer lists however recently it changed, which a
+  plain gc leaves to its ten-minute quiet period. Bench: `worktree-reap-op-processes`, `worktree-reap-busy-unlisted-now` (a folder
+  left busy that git no longer lists is still reaped), `worktree-gc-now-reaps-orphan-holder` (an orphan and a fresh unlisted
+  folder, each with a real process and child working there); `worktree-remove-busy-gc-retries` now holds the folder from outside, as a
+  process the harness never started.
 
 ## [1.1.0-alpha.13] - 2026-10-29
 
