@@ -10,7 +10,7 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { invocationDir } from "../lib/roots.mjs";
 import { environmentRecipients, initializeSecrets, ownerRecipient } from "./secret-init.mjs";
-import { declareKeys, migrateMember, printAudit, splitMember } from "./secret-standard.mjs";
+import { declareKeys, groupMap, migrateMember, printAudit, splitMember } from "./secret-standard.mjs";
 import { envelopeOf, validateKey } from "./secret-document.mjs";
 import { defaultSops } from "./secret-sops.mjs";
 import { fileOf, secretsDirectory, writeSecret } from "./secret-store.mjs";
@@ -25,7 +25,7 @@ export { setSecretValues } from "./secret-store.mjs";
 
 const VERBS = new Set(["init", "list", "get", "set", "unset", "rename", "remove", "materialize", "verify", "recipients", "migrate", "split", "audit"]);
 const MOVE_VERBS = new Set(["migrate", "split"]);
-const LIST_FLAGS = ["--add", "--remove", "--from-file"];
+const LIST_FLAGS = ["--add", "--remove", "--from-file", "--group"];
 const EDIT_VERBS = new Set(["unset", "rename", "remove"]);
 
 function valueOption(opts, flag, value) {
@@ -45,9 +45,9 @@ function parse(argv) {
       const value = inline ?? argv[++i];
       if (value === undefined || value.startsWith("--")) throw new SecretError(`${flag} needs a value`);
       (opts[flag.slice(2)] ??= []).push(value);
-    } else if (["--cwd", "--generate", "--to"].includes(flag)) {
+    } else if (["--cwd", "--generate", "--to", "--group-file"].includes(flag)) {
       valueOption(opts, flag, inline ?? argv[++i]);
-    } else if (["--to-file", "--reveal", "--execute", "--force-nonempty"].includes(flag)) {
+    } else if (["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing"].includes(flag)) {
       if (inline !== undefined && !["true", "false"].includes(inline))
         throw new SecretError(`${flag} expects true or false`);
       opts[flag.slice(2)] = inline !== "false";
@@ -66,8 +66,8 @@ function usageArguments(verb) {
   if (verb === "rename") return "<env> <slug> <OLD> <NEW> [--execute]";
   if (verb === "remove") return "<env> <slug> [--execute] [--force-nonempty]";
   if (verb === "recipients") return "<env> [--add <age1...|owner>] [--remove <age1...|owner>]";
-  if (verb === "migrate") return "<env> <slug> [--to <slug>] [--execute]";
-  if (verb === "split") return "<env> <slug> [--execute]";
+  if (verb === "migrate") return "<env> <slug> [--to <slug>] [--into-existing] [--execute]";
+  if (verb === "split") return "<env> <slug> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]";
   if (verb === "audit") return "[<env>]";
   return "<env>";
 }
@@ -76,6 +76,8 @@ function editOptionsFor(verb, opts) {
   if (opts.execute !== undefined && !EDIT_VERBS.has(verb) && !MOVE_VERBS.has(verb))
     throw new SecretError("--execute is only valid for unset, rename, remove, migrate and split");
   if (opts.to !== undefined && verb !== "migrate") throw new SecretError("--to is only valid for migrate");
+  if ((opts.group || opts["group-file"] !== undefined) && verb !== "split") throw new SecretError("--group and --group-file are only valid for split");
+  if (opts["into-existing"] !== undefined && !MOVE_VERBS.has(verb)) throw new SecretError("--into-existing is only valid for migrate and split");
   if ((opts.add || opts.remove) && verb !== "recipients") throw new SecretError("--add and --remove are only valid for recipients");
   if (opts["from-file"] && verb !== "set") throw new SecretError("--from-file is only valid for set");
   if (opts["force-nonempty"] !== undefined && verb !== "remove")
@@ -195,7 +197,7 @@ export async function secretMain(
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env> | recipients <env> | migrate <env> <slug> | split <env> <slug> | audit [<env>]",
+        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env> | recipients <env> | migrate <env> <slug> [--to <slug>] [--into-existing] | split <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [<env>]",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);
@@ -222,8 +224,9 @@ export async function secretMain(
         execute: opts.execute === true, force: opts["force-nonempty"] === true, sops: open, stdout,
       });
     if (MOVE_VERBS.has(verb)) {
-      const move = { directory, environment, member: slug, to: opts.to, execute: opts.execute === true, sops: open, stdout };
-      return verb === "migrate" ? migrateMember(move) : splitMember(move);
+      const move = { directory, environment, member: slug, to: opts.to, intoExisting: opts["into-existing"] === true, execute: opts.execute === true, sops: open, stdout };
+      if (verb === "migrate") return migrateMember(move);
+      return splitMember({ ...move, groups: groupMap(opts.group, opts["group-file"] === undefined ? null : path.resolve(cwd, opts["group-file"])) });
     }
     const seam = open();
     if (verb === "verify")

@@ -86,8 +86,9 @@ image, so any digest-pinned supported reverse proxy serves.
 ## PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated
 
 - **Sealed only, one member per provider.** A secret exists in the tree only as a SOPS envelope; a member holds the keys
-  of one provider or service, `<env>/secrets/<provider>.enc.yaml`, sops YAML whose values come back byte for byte (a
-  multi-line key, a trailing newline), committed (R06, R277; the names are `scripts/lib/sealed-member.mjs` of @starci/hfs).
+  of one provider or service (the owner's group: an app's own keys, the keys one service reads),
+  `<env>/secrets/<provider>.enc.yaml`, sops YAML whose values come back byte for byte (a multi-line key, a trailing
+  newline), committed (R06, R277; the names are `scripts/lib/sealed-member.mjs` of @starci/hfs).
   A legacy dotenv `<member>.enc` stays readable until `migrate` moves it. Nothing else under `.starcistacks/` is ciphertext.
 - **Declared per key, read as `<KEY>_FILE`.** Each key is one entry of its environment's `secrets:` in
   `application-stacks.yaml` (`name: <kebab of the key>`, `member`, `key`, `where: secrets/<member>`); `materialize` writes
@@ -107,19 +108,25 @@ image, so any digest-pinned supported reverse proxy serves.
 - **Set in one write.** `starci app secret set <env> <provider> <KEY>...` prompts for each key with masked input on a
   terminal (or reads redirected stdin, or `--from-file KEY=path` byte for byte) and seals them all in one write, so no member
   is left half filled. `starci app secret audit [<env>]` names every deviation (a legacy member, a member mixing providers by
-  the first word of its keys, one sealed to other recipients than its rule, a key not declared, a declared member not
-  sealed, an untracked member) and exits 1 while any stands; `migrate` and `split` repair them, dry runs until `--execute`,
-  decrypting in memory only. The audit is a verb, not a gate row, until every app has moved.
+  the first word of its keys unless the stack groups it on purpose, every key of it declared in `secrets:` with that
+  `member`; one sealed to other recipients than its rule, a key not declared, a declared member not sealed, an untracked
+  member) and exits 1 while any stands; `migrate` and `split` repair them, dry runs until `--execute`, decrypting in
+  memory only. Either merges into a member that already exists only with `--into-existing`: a key the target holds with
+  another value refuses the whole move, naming the key, an identical one merges, each target is written once and the
+  source goes only after every target is written. The audit is a verb, not a gate row, until every app has moved.
 - **Moving an app to the standard.** In the app root, with the harness CLI:
   1. `starci app secret audit` lists what deviates; `starci app secret recipients <env>` shows each environment's
      recipients.
   2. `starci app sync --write` renders the `.gitignore` block that tracks `secrets/*.enc.yaml`.
   3. `starci app secret recipients <env> --add owner` puts the owner key on each environment; a recipient no one holds any
      more leaves with `--remove <age1...>`, and production gains the server key with `--add <age1 of the server>`.
-  4. `starci app secret migrate <env> <member> [--to <provider>]`, then the same with `--execute`, moves each legacy member;
-     `split <env> <member>` (dry run, then `--execute`) divides one that mixes providers. A member no identity here opens is
-     removed (`remove <env> <member> --force-nonempty --execute`) and its keys set again. A member the deploy names
-     (`deploy.secrets.grants`, `deploy.remote.sealed`) is renamed there in the same change.
+  4. `starci app secret migrate <env> <member> [--to <provider>] [--into-existing]`, then the same with `--execute`, moves
+     each legacy member, or merges one into an existing member; `split <env> <member> [--group KEY=member ...]
+     [--group-file <yaml>] [--into-existing]` (dry run, then `--execute`) divides one that mixes providers, each key to its
+     first word's member unless `--group` (or the file's `KEY: member` map) names the owner's. A member no identity here
+     opens is removed (`remove <env> <member> --force-nonempty --execute`) and its keys set again. A member the deploy names
+     (`deploy.secrets.grants`, `deploy.secrets.settings`, one `{ member, keys }` or a list of them, `deploy.remote.sealed`)
+     is renamed there in the same change, and each key's `secrets:` entry names its new member.
   5. `starci app secret set <env> <provider> <KEY>...` seals the provider's keys and declares them.
   6. `starci app secret verify <env>` opens every member and checks the shapes the app reads; `audit` is clean.
   7. Commit the members, `.sops.yaml`, `.gitignore` and `application-stacks.yaml` together.

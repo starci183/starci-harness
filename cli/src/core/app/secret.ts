@@ -16,7 +16,10 @@ const HFS_FLAGS = {
     reveal: { kind: "boolean", summary: "explicitly print decrypted values for get" },
     execute: { kind: "boolean", summary: "apply the edit instead of only reporting what unset, rename, remove, migrate or split would do" },
     "from-file": { kind: "list", summary: "set: KEY=path, the key's value read byte for byte from the file (a multi-line key, its trailing newline kept), once per key" },
-    to: { kind: "string", summary: "migrate: the member's new name (a legacy member named otherwise than its provider)" },
+    to: { kind: "string", summary: "migrate: the member's new name (a legacy member named otherwise than its provider, or an existing member with --into-existing)" },
+    group: { kind: "list", summary: "split: KEY=member, the member this key goes to instead of its first word's, once per key" },
+    "group-file": { kind: "string", summary: "split: a YAML map of KEY: member, read as one --group per entry" },
+    "into-existing": { kind: "boolean", summary: "migrate and split: merge into a member that already exists; a key it holds with another value refuses the move, naming the key" },
     add: { kind: "list", summary: "recipients: a public age recipient (age1...) or owner, added to the environment's rule, once per recipient" },
     remove: { kind: "list", summary: "recipients: a public age recipient or owner, removed from the environment's rule, once per recipient" },
     "force-nonempty": { kind: "boolean", summary: "let remove delete a member that still holds keys" },
@@ -53,7 +56,7 @@ const hostValue = (hostKey: string): string => {
  */
 export const appSecretVerb = defineVerb({
     path: ["app", "secret"],
-    summary: "initialize, seal, edit, materialize, verify, migrate and audit app secrets: one <member>.enc.yaml per provider, set prompts masked and seals several keys in one write, recipients manages .sops.yaml",
+    summary: "initialize, seal, edit, materialize, verify, migrate, split and audit app secrets: one <member>.enc.yaml per provider or owner group, set prompts masked and seals several keys in one write, recipients manages .sops.yaml",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "supervisor"],

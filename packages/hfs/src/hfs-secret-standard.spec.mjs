@@ -136,7 +136,7 @@ test("migrate is a dry run naming keys only, then moves a legacy member to <slug
   const seals = [];
   const sops = fakeSops(seals, { OPENROUTER_API_KEY: FAKE[2] });
   const dry = await run(["migrate", "dev", "ai", "--to", "openrouter"], { cwd: root, env, sops });
-  assert.equal(dry.out, "dry run: would move dev/ai.enc (OPENROUTER_API_KEY) to dev/openrouter.enc.yaml; add --execute\n");
+  assert.equal(dry.out, "dry run: would move dev/ai.enc to dev/openrouter.enc.yaml (OPENROUTER_API_KEY); add --execute\n");
   assert.equal(seals.length, 0);
   const done = await run(["migrate", "dev", "ai", "--to", "openrouter", "--execute"], { cwd: root, env, sops });
   assert.equal(done.code, 0, done.err);
@@ -146,7 +146,7 @@ test("migrate is a dry run naming keys only, then moves a legacy member to <slug
   privateAbsent(done, [FAKE[2]]);
 });
 
-test("split divides a member by provider into one <provider>.enc.yaml each and never merges into an existing member", async (t) => {
+test("split divides a member by provider into one <provider>.enc.yaml each and merges into an existing member only when asked", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "sepay.enc.yaml"), sealedYaml(["SEPAY_MERCHANT_ID", "OPENROUTER_API_KEY"]));
   const seals = [];
@@ -155,11 +155,11 @@ test("split divides a member by provider into one <provider>.enc.yaml each and n
   assert.equal(done.code, 0, done.err);
   assert.deepEqual(envelopeOf(fs.readFileSync(path.join(dir, "sepay.enc.yaml"), "utf8")).keys, ["SEPAY_MERCHANT_ID"]);
   assert.deepEqual(envelopeOf(fs.readFileSync(path.join(dir, "openrouter.enc.yaml"), "utf8")).keys, ["OPENROUTER_API_KEY"]);
-  assert.equal(fs.existsSync(path.join(dir, "sepay-split.enc.yaml")), false, "the staged member is moved over the old one");
+  assert.equal(fs.existsSync(path.join(dir, "sepay-staged.enc.yaml")), false, "the staged member is moved over the old one");
   privateAbsent(done, FAKE);
   fs.writeFileSync(path.join(dir, "mixed.enc.yaml"), sealedYaml(["SEPAY_X", "OPENROUTER_Y"]));
   const refused = await run(["split", "dev", "mixed", "--execute"], { cwd: root, env, sops });
-  assert.match(refused.err, /already exists; split never merges into a member/u);
+  assert.match(refused.err, /already exists; split merges into it only with --into-existing/u);
 });
 
 test("a member sealed twice (.enc.yaml and a legacy .enc) is refused rather than read from either", async (t) => {
@@ -192,4 +192,80 @@ test("set declares each key of a compose environment in its stack secrets: once,
   assert.match(swarm.out, /declare OPENROUTER_API_KEY in environments\.production\.secrets .*by hand/u);
   assert.deepEqual(parseYaml(fs.readFileSync(stacks, "utf8")).environments.production.secrets, []);
   privateAbsent(first, FAKE);
+});
+
+/** A sops seam double whose decrypt answers per member file (`byFile` keyed by file name); seals are recorded as fakeSops does. */
+const filesSops = (seals, byFile) => ({ ...fakeSops(seals), decrypt: (file) => ({ ...byFile[path.basename(file)] }) });
+
+test("split --group sends keys to the owner's members, merges an identical key into an existing member with --into-existing, then removes the source", async (t) => {
+  const { root, dir, env } = app(t);
+  fs.writeFileSync(path.join(dir, "api.enc.yaml"), sealedYaml(["OTP_PEPPER", "WEBHOOK_SIGNING_SECRET", "PRIMARY_DB_URL", "N8N_API_KEY"]));
+  fs.writeFileSync(path.join(dir, "n8n.enc.yaml"), sealedYaml(["N8N_API_KEY", "N8N_HOST"]));
+  const seals = [];
+  const sops = filesSops(seals, {
+    "api.enc.yaml": { OTP_PEPPER: FAKE[0], WEBHOOK_SIGNING_SECRET: FAKE[1], PRIMARY_DB_URL: FAKE[2], N8N_API_KEY: "fake-n8n" },
+    "n8n.enc.yaml": { N8N_API_KEY: "fake-n8n", N8N_HOST: "fake-host" },
+  });
+  const args = ["split", "dev", "api", "--group", "OTP_PEPPER=nivo", "--group", "WEBHOOK_SIGNING_SECRET=nivo", "--group", "PRIMARY_DB_URL=postgres"];
+  const refused = await run([...args, "--execute"], { cwd: root, env, sops });
+  assert.match(refused.err, /dev\/n8n\.enc\.yaml already exists; split merges into it only with --into-existing/u);
+  const dry = await run([...args, "--into-existing"], { cwd: root, env, sops });
+  assert.equal(dry.out, "dry run: would split dev/api.enc.yaml into dev/nivo.enc.yaml (OTP_PEPPER, WEBHOOK_SIGNING_SECRET), dev/postgres.enc.yaml (PRIMARY_DB_URL), dev/n8n.enc.yaml (N8N_API_KEY) merged into the existing member; it already holds N8N_API_KEY, which must be identical; add --execute\n");
+  assert.equal(seals.length, 0, "a dry run seals nothing");
+  const done = await run([...args, "--into-existing", "--execute"], { cwd: root, env, sops });
+  assert.equal(done.code, 0, done.err);
+  assert.deepEqual(seals.map((seal) => [seal.file, seal.map]), [
+    ["nivo.enc.yaml", { OTP_PEPPER: FAKE[0], WEBHOOK_SIGNING_SECRET: FAKE[1] }],
+    ["postgres.enc.yaml", { PRIMARY_DB_URL: FAKE[2] }],
+    ["n8n.enc.yaml", { N8N_API_KEY: "fake-n8n", N8N_HOST: "fake-host" }],
+  ], "each target is written once, the existing one with its own keys kept");
+  assert.equal(fs.existsSync(path.join(dir, "api.enc.yaml")), false, "the source goes only after every target is written");
+  privateAbsent(done, [...FAKE, "fake-n8n", "fake-host"]);
+});
+
+test("a merge whose target holds a key with another value is refused naming the key, and nothing is written or removed", async (t) => {
+  const { root, dir, env } = app(t);
+  fs.writeFileSync(path.join(dir, "stack.enc.yaml"), sealedYaml(["OPENCLAW_TOKEN", "OPENCLAW_URL"]));
+  fs.writeFileSync(path.join(dir, "openclaw.enc.yaml"), sealedYaml(["OPENCLAW_TOKEN"]));
+  const seals = [];
+  const sops = filesSops(seals, { "stack.enc.yaml": { OPENCLAW_TOKEN: FAKE[0], OPENCLAW_URL: FAKE[1] }, "openclaw.enc.yaml": { OPENCLAW_TOKEN: FAKE[2] } });
+  const result = await run(["migrate", "dev", "stack", "--to", "openclaw", "--into-existing", "--execute"], { cwd: root, env, sops });
+  assert.equal(result.code, 2);
+  assert.match(result.err, /refused, nothing was written: dev\/openclaw\.enc\.yaml already holds OPENCLAW_TOKEN with another value/u);
+  assert.equal(seals.length, 0);
+  assert.ok(fs.existsSync(path.join(dir, "stack.enc.yaml")));
+  privateAbsent(result, FAKE);
+  const same = filesSops(seals, { "stack.enc.yaml": { OPENCLAW_TOKEN: FAKE[0], OPENCLAW_URL: FAKE[1] }, "openclaw.enc.yaml": { OPENCLAW_TOKEN: FAKE[0] } });
+  const merged = await run(["migrate", "dev", "stack", "--to", "openclaw", "--into-existing", "--execute"], { cwd: root, env, sops: same });
+  assert.equal(merged.code, 0, merged.err);
+  assert.deepEqual(seals.map((seal) => [seal.file, seal.map]), [["openclaw.enc.yaml", { OPENCLAW_TOKEN: FAKE[0], OPENCLAW_URL: FAKE[1] }]]);
+  assert.equal(fs.existsSync(path.join(dir, "stack.enc.yaml")), false);
+});
+
+test("--group-file reads KEY: member, and a group naming a key the member does not hold, or a key twice, is refused", async (t) => {
+  const { root, dir, env } = app(t);
+  fs.writeFileSync(path.join(dir, "api.enc.yaml"), sealedYaml(["OTP_PEPPER", "QUEUE_REDIS_PASSWORD"]));
+  const groups = path.join(root, "..", "groups.yaml");
+  fs.writeFileSync(groups, "OTP_PEPPER: nivo\nQUEUE_REDIS_PASSWORD: redis\n");
+  const dry = await run(["split", "dev", "api", "--group-file", groups], { cwd: root, env, sops: fakeSops([]) });
+  assert.equal(dry.out, "dry run: would split dev/api.enc.yaml into dev/nivo.enc.yaml (OTP_PEPPER), dev/redis.enc.yaml (QUEUE_REDIS_PASSWORD); add --execute\n");
+  const stray = await run(["split", "dev", "api", "--group", "OTHER_KEY=nivo"], { cwd: root, env, sops: fakeSops([]) });
+  assert.match(stray.err, /--group names OTHER_KEY, which dev\/api does not hold/u);
+  const twice = await run(["split", "dev", "api", "--group-file", groups, "--group", "OTP_PEPPER=other"], { cwd: root, env, sops: fakeSops([]) });
+  assert.match(twice.err, /--group names OTP_PEPPER twice/u);
+  const wrongVerb = await run(["migrate", "dev", "api", "--group", "OTP_PEPPER=nivo"], { cwd: root, env, sops: fakeSops([]) });
+  assert.match(wrongVerb.err, /--group and --group-file are only valid for split/u);
+});
+
+test("audit accepts a member the stack groups on purpose (every key declared in it) and still names an ungrouped mix", async (t) => {
+  const { root, dir, env } = app(t);
+  const entry = (key, member) => `      - {name: ${key.toLowerCase().replaceAll("_", "-")}, member: ${member}, key: ${key}, where: secrets/${member}}\n`;
+  const declared = ["PRIMARY_DB_URL", "APP_BE_DB_PASSWORD", "POSTGRES_PASSWORD"].map((key) => entry(key, "postgres")).join("");
+  fs.writeFileSync(path.join(root, ".starcistacks", "application-stacks.yaml"),
+    `schema: starci/application-stacks@1\nenvironments:\n  dev:\n    secrets:\n${declared}${entry("OTP_PEPPER", "mixed")}`);
+  fs.writeFileSync(path.join(dir, "postgres.enc.yaml"), sealedYaml(["PRIMARY_DB_URL", "APP_BE_DB_PASSWORD", "POSTGRES_PASSWORD"]));
+  fs.writeFileSync(path.join(dir, "mixed.enc.yaml"), sealedYaml(["OTP_PEPPER", "QUEUE_REDIS_PASSWORD"]));
+  const result = await run(["audit", "dev"], { cwd: root, env });
+  assert.ok(!result.out.includes("dev/postgres.enc.yaml"), result.out);
+  assert.ok(result.out.includes("MIXED_PROVIDERS dev/mixed.enc.yaml"), result.out);
 });

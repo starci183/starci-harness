@@ -117,13 +117,13 @@ function sealGrants(config, memberOf, versionKey) {
 }
 
 function sealSettings(config, memberOf) {
-  const block = config.secrets.settings;
-  if (block === null) return {};
-  const map = memberOf(block.member);
   const settings = {};
-  for (const key of block.keys.filter((name) => present(map, name))) {
-    if (UNSAFE_SETTING.test(map[key])) throw refusal('STACK_SETTING_INVALID', `${key} must be a plain one-line value`);
-    settings[key] = map[key];
+  for (const block of config.secrets.settings) {
+    const map = memberOf(block.member);
+    for (const key of block.keys.filter((name) => present(map, name))) {
+      if (UNSAFE_SETTING.test(map[key])) throw refusal('STACK_SETTING_INVALID', `${key} must be a plain one-line value`);
+      settings[key] = map[key];
+    }
   }
   return settings;
 }

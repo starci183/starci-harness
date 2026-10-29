@@ -101,11 +101,18 @@ const PROBLEMS = [
   ['a verify entry with a bad url', (m) => { deployOf(m).verify.http[0].url = 'ftp://example.com'; }, 'environments.production.deploy.verify.http[0].url: must be an http(s) URL'],
   ['a verify entry with a bad status', (m) => { deployOf(m).verify.http[0].status = 99; }, 'environments.production.deploy.verify.http[0].status'],
   ['a verify exec check with a bad pattern', (m) => { deployOf(m).verify.exec[0].stdout = '('; }, 'environments.production.deploy.verify.exec[0].stdout: must be a valid regular expression'],
+  ['a settings key two settings entries name', (m) => { deployOf(m).secrets.settings = [{ member: 'stack', keys: ['JOBS_STALE'] }, { member: 'api', keys: ['JOBS_STALE'] }]; }, 'environments.production.deploy.secrets.settings[1].keys: JOBS_STALE is named by another settings entry'],
+  ['a settings list entry from an unknown sealed member', (m) => { deployOf(m).secrets.settings = [{ member: 'stack', keys: ['JOBS_STALE'] }, { member: 'nowhere', keys: ['N8N_HOST'] }]; }, 'environments.production.deploy.secrets.settings[1].member: sealed member nowhere has no'],
 ];
 
 for (const edition of ['lite', 'full']) {
   test(`${CODE}: ${edition} accepts a valid deploy block`, () => {
     assert.deepEqual(stacksDeployFindings(app(edition)), []);
+  });
+
+  test(`${CODE}: ${edition} accepts deploy.secrets.settings as a list over several members`, () => {
+    const findings = stacksDeployFindings(app(edition, (m) => { deployOf(m).secrets.settings = [{ member: 'stack', keys: ['JOBS_STALE'] }, { member: 'api', keys: ['N8N_HOST'] }]; }));
+    assert.deepEqual(findings, []);
   });
 
   for (const [title, change, expected] of PROBLEMS) {
