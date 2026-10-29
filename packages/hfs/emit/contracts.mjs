@@ -27,7 +27,6 @@ import { fileURLToPath } from 'node:url';
 import { emitEvents, eventServices, eventsSnapshotPath } from './events.mjs';
 import { openapiPath } from './operations.mjs';
 import { readEnv } from '../runtime/scripts/lib/env.mjs';
-import { createSlotResolver, loadSlotManifest, locateDeclaration, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 
 /** The stderr prefix of a dependency the worker could not load and stood in for. */
 const STAND_IN = 'stand-in ';
@@ -76,36 +75,15 @@ function emitApp(repoRoot, app) {
 }
 
 /**
- * The app-scope slot view of the repository `repoRoot` belongs to: `{ appRoot, resolver }`, or null when no app declaration
- * resolves there (a bare folder is not an app and emits no types). `repoRoot` is the be side folder, so `locateDeclaration`
- * answers the app root above it.
- */
-function appDbScope(repoRoot) {
-  try {
-    const { appRoot } = locateDeclaration(repoRoot);
-    const manifest = loadSlotManifest();
-    return { appRoot, resolver: createSlotResolver(manifest, readRepoDeclaration(manifest, appRoot)) };
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Writes the snapshots of every api app: `contracts/<app>/schema.graphql` when it serves GraphQL and `contracts/<app>/openapi.json`
- * when it has an operation table. Answers `{ written: [paths], skipped: [apps], standIns: { app: [lines] }, types }`, `skipped`
+ * when it has an operation table. Answers `{ written: [paths], skipped: [apps], standIns: { app: [lines] } }`, `skipped`
  * being the apps with neither. `declaration` is the parsed hfs.json. `outDir` (absolute) redirects the snapshots to another
  * root, keeping their relative paths.
- *
- * On the real write pass (`outDir` is `repoRoot`) the app's database types are written too when the slot `app.db.types`
- * is enabled: `resolver` is the app-scope slot view (built from the declaration at the app root when not passed), `appRoot`
- * overrides where the types land, and `run` is the command runner `writeDbTypes` spawns `psql` with. `types` in the answer
- * is `writeDbTypes`'s `{ path, changed }`, or null for an app without the slot or a redirected pass.
  */
-export function emitContracts({ repoRoot, declaration, outDir = repoRoot, resolver, appRoot, run } = {}) {
+export function emitContracts({ repoRoot, declaration, outDir = repoRoot } = {}) {
   const written = [];
   const skipped = [];
   const standIns = {};
-  let types = null;
   for (const app of apiApps(declaration)) {
     const emitted = emitApp(repoRoot, app);
     if (emitted.graphql === null && emitted.openapi === null) {
@@ -130,12 +108,5 @@ export function emitContracts({ repoRoot, declaration, outDir = repoRoot, resolv
     fs.writeFileSync(target, events);
     written.push(relative);
   }
-  // The generated Database types are an app-level artifact of the write pass only: a redirected outDir is the R23 check
-  // mode, and L09 judges drift on the same emitted text through the injected emitTypes (emit/db-types.mjs dbTypesEmitter).
-  if (outDir === repoRoot) {
-    const scope = resolver === undefined ? appDbScope(repoRoot) : { appRoot: locateDeclaration(repoRoot).appRoot, resolver };
-    const target = appRoot ?? scope?.appRoot;
-    if (target !== null && target !== undefined && scope?.resolver != null && appHasDbTypes(scope.resolver)) types = writeDbTypes({ root: target, run });
-  }
-  return { written, skipped, standIns, types };
+  return { written, skipped, standIns };
 }
