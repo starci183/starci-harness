@@ -201,6 +201,13 @@ const defaults = (command, flags, state) => {
         case "send": {
             const key = flags["retry-request"]
             if (key !== undefined && state.sent[key] !== undefined) return { ok: true, result: { message: { id: state.sent[key] } } }
+            // Like Orca, a sender that is a Dispatch's agent terminal speaks for that Dispatch's Run alone: its mail to another Run
+            // is refused, unless the terminal coordinates that Run.
+            const target = String(flags.to).startsWith("run:") ? String(flags.to).slice("run:".length) : undefined
+            const sender = Object.values(state.dispatches).filter((entry) => entry.terminal === flags.from && entry.run !== null).at(-1)
+            if (target !== undefined && sender !== undefined && sender.run !== target && state.runs[target]?.coordinator !== flags.from) {
+                return refuse("dispatch_run_mismatch", `${sender.dispatchId} belongs to Run ${sender.run}, not ${target}`)
+            }
             const id = idOf("msg", key ?? String(state.calls))
             let payload = flags.payload
             try {

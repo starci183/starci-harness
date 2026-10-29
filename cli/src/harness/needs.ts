@@ -409,15 +409,15 @@ export const recordNeedEvent = (db: DatabaseSync, what: string, project: string,
     db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), `need-${what}`, `${project}|${key}`, JSON.stringify(data))
 }
 
-/** Writes a change to a need and records it as a `need-<what>` event; returns the need as it now stands. */
-export const patchNeed = (db: DatabaseSync, project: string, key: string, patch: NeedPatch, what: string): NeedRow => {
+/** Writes a change to a need and records it as a `need-<what>` event (with `data` beside the patch); returns the need as it now stands. */
+export const patchNeed = (db: DatabaseSync, project: string, key: string, patch: NeedPatch, what: string, data: Readonly<Record<string, unknown>> = {}): NeedRow => {
     const entries = Object.entries(patch) as [keyof NeedPatch, unknown][]
     const sets = entries.map(([field]) => `${COLUMNS[field]} = ?`)
     const values = entries.map(([field, value]) => (JSON_FIELDS.has(field) ? (value === null ? null : JSON.stringify(value)) : (value as string | number | null)))
     db.prepare(`UPDATE shared_needs SET ${[...sets, "updated_at = ?"].join(", ")} WHERE project = ? AND key = ?`).run(...values, now(), project, key)
     const need = needOf(db, project, key)
     if (need === undefined) throw new Refusal("NEED_UNKNOWN", `no need ${key} in project ${project}`)
-    recordNeedEvent(db, what, project, key, { ...patch, state: need.state, round: need.round })
+    recordNeedEvent(db, what, project, key, { ...data, ...patch, state: need.state, round: need.round })
     return need
 }
 
@@ -427,6 +427,85 @@ export const patchNeed = (db: DatabaseSync, project: string, key: string, patch:
  */
 export const reopenNeed = (db: DatabaseSync, need: NeedRow, reason: string, level: NeedLevel | null = need.level): NeedRow =>
     patchNeed(db, need.project, need.key, { state: "open", round: need.round + 1, decision: null, owner: null, resolver: null, reason, level, routedAt: null, resolvedAt: null }, "reopened")
+
+/**
+ * The version of the cross-branch relay (core/needs/tend.ts `relay`, `routeRelay` and the relay node), raised with every change
+ * to how it carries a need's commits. Each relay event and waiter release records it (`relayVersion`; a record with none is
+ * version 1), so a need rejected because its relay failed is tried again once under a relay that changed (relayReopenDue).
+ */
+export const RELAY_VERSION = 2
+
+/** The relay version a recorded relay carries; 1 for a record made before relays were versioned. */
+const relayVersionOf = (data: unknown): number => {
+    const version = typeof data === "object" && data !== null && "relayVersion" in data ? data.relayVersion : undefined
+    return typeof version === "number" ? version : 1
+}
+
+/** The data of a need's host events of one kind, newest first. */
+const needEvents = (db: DatabaseSync, need: NeedRow, kind: string): Record<string, unknown>[] =>
+    db
+        .prepare("SELECT data_json FROM host_events WHERE kind = ? AND subject = ? ORDER BY id DESC")
+        .all(`need-${kind}`, `${need.project}|${need.key}`)
+        .map((row) => JSON.parse(String(row.data_json)) as Record<string, unknown>)
+
+/**
+ * True when a rejected need is due to be tried again under the current relay: a relay of it conflicted (a `need-relay-conflict`
+ * event, or a waiter released with its relay in conflict) under an older RELAY_VERSION, and it was not reopened under this one
+ * yet. A rejection made because the relay could not carry the resolving commits was a ruling on the relay, not on the need; the
+ * relay that changed is owed one try, never more.
+ */
+export const relayReopenDue = (db: DatabaseSync, need: NeedRow): boolean => {
+    if (need.state !== "rejected") return false
+    if (needEvents(db, need, "reopened").some((data) => relayVersionOf(data) >= RELAY_VERSION && data.relayReopen === true)) return false
+    const conflicted = needEvents(db, need, "relay-conflict").some((data) => relayVersionOf(data) < RELAY_VERSION)
+    if (conflicted) return true
+    return waitersOf(db, need.project, need.key).some((waiter) => {
+        const relay = typeof waiter.release === "object" && waiter.release !== null && "relay" in waiter.release ? waiter.release.relay : undefined
+        return typeof relay === "object" && relay !== null && "status" in relay && relay.status === "conflict" && relayVersionOf(relay) < RELAY_VERSION
+    })
+}
+
+/** A task resolver as a fresh round starts it: its commits are judged again, never carried over. */
+const bareResolver = (resolver: NeedResolver): NeedResolver =>
+    resolver.kind === "task" ? { kind: "task", repo: resolver.repo, workflow: resolver.workflow, key: resolver.key, task: resolver.task, ...(resolver.keys === undefined ? {} : { keys: resolver.keys }) } : resolver
+
+/** The newest task resolver and owner a need's rounds recorded (`need-owned`, `need-resolved`), if any round had one. */
+const lastResolver = (db: DatabaseSync, need: NeedRow): { readonly owner: NeedOwner | null; readonly resolver: NeedResolver } | undefined => {
+    const fromRow = need.resolver?.kind === "task" ? { owner: need.owner, resolver: need.resolver } : undefined
+    if (fromRow !== undefined) return fromRow
+    for (const kind of ["resolved", "owned"]) {
+        for (const data of needEvents(db, need, kind)) {
+            const resolver = data.resolver as NeedResolver | null | undefined
+            if (resolver?.kind !== "task") continue
+            const owned = needEvents(db, need, "owned").find((one) => one.owner !== undefined && one.owner !== null)
+            return { owner: (owned?.owner ?? null) as NeedOwner | null, resolver }
+        }
+    }
+    return undefined
+}
+
+/**
+ * Reopens a rejected need in a new round (`needs reopen`, and the router for a need relayReopenDue names): the waiters its
+ * rejection released are parked on it again, and it resolves through the newest task resolver a round of it recorded, judged
+ * afresh (`resolving`), so the next step resolves it with every commit that resolver landed and relays them; a need no round
+ * gave a task resolver opens at its router. Recorded as `need-reopened` with who reopened it and, for a relay retry, the relay
+ * version (`relayReopen`). Refuses NEED_NOT_REJECTED for a need in any other state.
+ */
+export const reopenRejected = (db: DatabaseSync, need: NeedRow, reason: string, by: string, relayReopen = false): { readonly need: NeedRow; readonly parked: number } => {
+    const current = needOf(db, need.project, need.key)
+    if (current?.state !== "rejected") throw new Refusal("NEED_NOT_REJECTED", `need ${need.key} is ${current?.state ?? "unknown"}; only a rejected need is reopened (a resolved one reopens when a task reports it again)`)
+    const parked = db
+        .prepare("UPDATE shared_need_waiters SET released_at = NULL, release_json = NULL WHERE project = ? AND key = ? AND released_at IS NOT NULL AND json_extract(release_json, '$.by') = 'rejected' AND json_extract(release_json, '$.round') = ?")
+        .run(current.project, current.key, current.round).changes
+    const last = lastResolver(db, current)
+    const data = { by, relayVersion: RELAY_VERSION, relayReopen, parked: Number(parked) }
+    const base: NeedPatch = { round: current.round + 1, decision: null, reason, routedAt: null, resolvedAt: null }
+    const reopened =
+        last === undefined
+            ? patchNeed(db, current.project, current.key, { ...base, state: "open", owner: null, resolver: null }, "reopened", data)
+            : patchNeed(db, current.project, current.key, { ...base, state: "resolving", owner: last.owner, resolver: bareResolver(last.resolver) }, "reopened", data)
+    return { need: reopened, parked: Number(parked) }
+}
 
 /** Where a reporting task lives. */
 export interface WaiterPlace {

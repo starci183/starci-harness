@@ -936,10 +936,9 @@ const failureOf = (error: unknown): Refusal => (error instanceof Refusal ? error
 
 /**
  * Wakes a coordinator: the mail first; when Orca refuses it, the wake prompt is typed into the target's own terminal instead
- * (`terminal send`, replay-safe by the mail's retry request), so a refused mail never leaves it asleep. Orca refuses a mail whose
- * sender is a Dispatch of another Run: a Kernel a replaced Supervisor dispatched stays a Dispatch of the old Supervisor's Run, so
- * its mail to the new one's Run fails. Returns what reached the target, naming the mail's failure in full (the message's first
- * line, never only its code).
+ * (`terminal send`, replay-safe by the mail's retry request), so a refused mail never leaves it asleep (a sender Orca does not
+ * place in the target's Run is chosen away before the mail: supervisor.ts wakeSupervisor). Returns what reached the target,
+ * naming the mail's failure in full (the message's first line, never only its code).
  */
 export const mailOrType = async (binary: OrcaBinary, mail: MailSend, fallback: { readonly terminal: string | null; readonly text: string }, cwd: string): Promise<string> => {
     try {

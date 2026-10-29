@@ -596,8 +596,17 @@ const allowPathProblems = (allowPaths: readonly string[]): string[] => {
     return problems
 }
 
-/** Problems that make a contract unfit to send, beyond its schema: label, base kept, paths, context files and the behavioural rule. */
-export const contractProblems = (contract: Contract, ops: Ops): string[] => {
+/** What a contract is judged on: every problem, or (`budget: false`) all but the context budget, for a contract a graph holds already. */
+export interface ContractJudging {
+    readonly budget?: boolean
+}
+
+/**
+ * Problems that make a contract unfit to send, beyond its schema: label, base kept, paths, context files, the context budget and
+ * the behavioural rule. The budget measures the context files as they are now, so it is judged on a contract being written; a
+ * contract a workflow's graph holds already passed it when it was added (`budget: false`, graph.ts buildGraph).
+ */
+export const contractProblems = (contract: Contract, ops: Ops, judging: ContractJudging = {}): string[] => {
     const problems = allowPathProblems(contract.context.allowPaths)
     if (contract.context.cwd !== undefined) problems.push(...placeProblems("cwd", contract.context.cwd))
     let resolved: ResolvedContract
@@ -606,7 +615,7 @@ export const contractProblems = (contract: Contract, ops: Ops): string[] => {
     } catch (error: unknown) {
         return [...problems, error instanceof Error ? error.message : String(error)]
     }
-    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...traceProblems(resolved, ops), ...budgetProblems(resolved, ops), ...contractCiteProblems(contract.cites, ops.root))
+    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...traceProblems(resolved, ops), ...(judging.budget === false ? [] : budgetProblems(resolved, ops)), ...contractCiteProblems(contract.cites, ops.root))
     try {
         problems.push(...checkProblems(contract, resolved, ops))
     } catch (error: unknown) {

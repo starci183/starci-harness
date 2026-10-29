@@ -49,7 +49,8 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   launch` (a terminal handle, replayed by `--retry-launch`), run-create and run-use (a Run bound to its coordinator
   terminal), task-create, worker-start (refused unless `--from` is the coordinator of `--run` and `--parent` a task of
   it), worker show, stop, release and abandon, request-show, `orchestration check` and `send` (one mailbox per Run or
-  dispatch, deliveries acked), terminal create, list (each terminal's title, its last rename, and orphaned flag), close and rename, repo add, worktree show, set, rm and list (each git worktree of `--repo` with the parent its lineage names), project setups (the scripted `setups`) and setup-delete, and the idle signals the stall ladder reads (`terminal wait --for tui-idle`, `terminal show`, the
+  dispatch, deliveries acked; a send from a Dispatch's agent terminal to another Run is refused `dispatch_run_mismatch`, as Orca
+  refuses it), terminal create, list (each terminal's title, its last rename, and orphaned flag), close and rename, repo add, worktree show, set, rm and list (each git worktree of `--repo` with the parent its lineage names), project setups (the scripted `setups`) and setup-delete, and the idle signals the stall ladder reads (`terminal wait --for tui-idle`, `terminal show`, the
   terminal list's lastOutputAt, worker-show's heartbeat and agentWait, and `terminal send`, which keeps each typed prompt). It
   dedupes by retry-request like Orca,
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,

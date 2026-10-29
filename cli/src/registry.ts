@@ -90,6 +90,7 @@ import { supervisorWorkersVerb } from "./core/supervisor/worker-list.js"
 import { needsListVerb } from "./core/needs/list.js"
 import { needsShowVerb } from "./core/needs/show.js"
 import { needsMergeVerb } from "./core/needs/merge.js"
+import { needsReopenVerb } from "./core/needs/reopen.js"
 import { supervisorAcceptVerb } from "./core/supervisor/accept.js"
 import { supervisorRejectVerb } from "./core/supervisor/reject.js"
 import { supervisorSubmitVerb } from "./core/supervisor/submit.js"
@@ -221,6 +222,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     needsListVerb,
     needsShowVerb,
     needsMergeVerb,
+    needsReopenVerb,
     supervisorAcceptVerb,
     supervisorRejectVerb,
     supervisorSubmitVerb,
