@@ -3,6 +3,7 @@
 import { found } from './read.mjs';
 import { parseSql } from '../sql/pg-parse.mjs';
 import { plpgsqlFindings } from './database-plpgsql.mjs';
+import { transactionControlFindings } from './database-transaction.mjs';
 import { DB_MIGRATION_SHAPE, DB_POLICY_SHAPE, DB_RLS_REQUIRED, DB_STORAGE_POLICY } from './database-constants.mjs';
 const POLICY_ACTIONS = ['select', 'insert', 'update', 'delete', 'all'];
 const WRITE_COMMANDS = new Set(['all', 'insert', 'update', 'delete']);
@@ -491,6 +492,7 @@ export async function sqlAnalysis({ file, text, exposed, forceRls }) {
   }
   const facts = factsOf(statementList(parsed.stmts, lineAt));
   return { facts, findings: [
+    ...transactionControlFindings(file, text, parsed.stmts, lineAt),
     ...rlsFindings(file, facts, exposed, forceRls),
     ...await plpgsqlFindings(file, facts, exposed),
     ...localPolicyFindings(file, facts),

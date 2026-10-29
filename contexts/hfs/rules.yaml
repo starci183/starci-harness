@@ -1499,7 +1499,7 @@ rules:
       - {kind: hfs, id: lite-brand-work}
   - id: R213
     code: DB_MIGRATION_SHAPE
-    law: A migration is `db/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, and is immutable once on the base.
+    law: A migration is `db/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, carries no transaction control (it is applied in one transaction with its history row), and is immutable once on the base.
     failureCodes:
       - DB_MIGRATION_SHAPE
     enforcers:
