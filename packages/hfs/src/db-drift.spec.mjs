@@ -110,6 +110,6 @@ test('an app with an entity list runs the drift row in its release gate, default
 
 test('the managed CI database step runs the drift check for an app with an entity list', () => {
   const step = (files) => ciWorkflowCommands({ files, read: () => '' }).ciDatabaseLint;
-  assert.equal(step(['src/platform/database/entities.ts']), 'npm run db:lint && npx starci app db drift');
+  assert.equal(step(['src/modules/platform/database/entities.ts']), 'npm run db:lint && npx starci app db drift');
   assert.equal(step(['src/main.ts']), 'npm run db:lint');
 });

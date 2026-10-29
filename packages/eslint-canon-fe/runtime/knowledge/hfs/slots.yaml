@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.7.0
+version: 3.9.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -38,6 +38,9 @@ versioning:
 # or environment reads (BE_APP_OPTIONS_COMPOSITION). Secrets use EnvSource.secret(): <NAME>_FILE first, plain <NAME> only
 # when the file key is absent; .starcistacks owns custody. Capability <capability>.config.ts roles stay unchanged.
 # 3.3.0 is a minor (alpha.16): it ADDS the optional app.ci-stack-deploy slot, the managed workflow of the starci app stack verbs.
+# 3.9.0 (ruling:lite-self-hosted-postgres-passport-minio, 2026-10-29) is a major for lite and changes no full slot but the S3 owner's
+# folder: lite leaves Supabase. The app.supabase* and be.integrations.supabase slots and fe.route.callback are removed; app.db (db/, its
+# migrations, archive, seed and managed bootstrap), be.integrations.passport and be.integrations.object-storage are added; lite's schemaAuthority is sql.
 # 3.4.0 is a minor (alpha.25): it ADDS the opt-in be.contract.mcp-tools slot, the committed MCP tool-catalog snapshot of an app.
 # 3.5.0 is a minor (alpha.27): it ADDS the opt-in app.browser-config slot, the managed browser/tsconfig.json that type-checks the browser
 # journey (enabled with app.browser by `browser: true`).
@@ -102,34 +105,34 @@ versioning:
 #               requiredInstances, why), each shaped as the same field in the slot body; every other field is the edition's.
 #               `why` under lite names the adapter behind the slot's ports (pgmq, Postgres locks, in-process socket.io).
 #               `tests` is never overlaid: a lite slot owes exactly the unit specs its full slot owes.
-#   provider    the hfs.json connections[].provider that enables this opt-in slot (supabase); never an app kind.
+#   provider    the hfs.json connections[].provider that enables this opt-in slot (postgres); never an app kind.
 #   since       the manifest version that introduced the slot.
 presenceValues: [required, optional, opt-in, forbidden]
 trackedValues: [tracked, ignored, external]
 testValues: [unit-beside, e2e, none]
 
 # The editions a repository declares in hfs.json `edition` (absent means full). ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite IS
-# the full architecture with Supabase backing services - the same monorepo, slots, CQRS shape and patterns (queue,
+# the full architecture on its own self-hosted PostgreSQL (ruling:lite-self-hosted-postgres-passport-minio) - the same monorepo, slots, CQRS shape and patterns (queue,
 # event bus, saga, reactors, projection, realtime, webhooks, fenced job), declared in hfs.json the same way, and the same unit
 # specs (unitRoles, logicRoles, 100 per file, @starci/jest-preset doubles, builders). What differs is ADAPTERS and DELIVERY
-# (ruling:R212/case-10): schema authority in supabase/migrations, the queue port on BullMQ over the Redis hfs.json
+# (ruling:R212/case-10): schema authority in db/migrations, the queue port on BullMQ over the Redis hfs.json
 # sides.be.backing declares (as in full, fed by the Postgres outbox), event-bus ports on pgmq-backed topics or in-process
 # delivery, cache and locks on Postgres or the declared Redis, schedules on pg_cron (+ pg_net) enqueueing through the queue
-# outbox, storage and auth on Supabase. Realtime uses SSE or the socket.io gateway
+# outbox, storage on S3-compatible MinIO (integrations/object-storage) and auth through integrations/passport. Realtime uses SSE or the socket.io gateway
 # in the api process, which scales horizontally and stateless (memory hub for one replica or tests; the Redis hub and @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter, for N replicas; websocket only, no sticky sessions). Integration and provider sandbox contract specs are optional;
 # declared patterns owe their integration proofs (R284). Lite has no e2e world. Production uses declared docker-swarm under
-# .starcistacks/production/infra/swarm/ (owner ruling 2026-10-14); lite runs no self-hosted database, and runs only the backing
-# services sides.be.backing declares. The front end is full's (R97).
+# .starcistacks/production/infra/swarm/ (owner ruling 2026-10-14); lite runs its PostgreSQL as the db service of its
+# stack and only the backing services sides.be.backing declares. The front end is full's (R97).
 # Lite is this same manifest filtered: a slot whose `editions` lacks lite does not exist for a lite app, `litePresence` replaces
 # presence and a `lite` map replaces the fields it names. The edition is chosen once at scaffold; there is no upgrade
 # or downgrade between lite and full. Lite contracts are allowed (owner decision 2026-10-14).
 editions: [full, lite]
 
 # The two sides of an app: the folder of each is its profile name (be/, fe/). `reads` lists the only paths of the OTHER side a side
-# may read (hfs.json sides.<side>.reads names a subset), or a tree an app-root slot owns (supabase/types/); nothing else crosses sides.
+# may read (hfs.json sides.<side>.reads names a subset), or a tree an app-root slot owns; nothing else crosses sides.
 sides:
-  be: {reads: [supabase/types/]}   # the generated Database types of a Supabase connection (server code types its PostgREST calls)
-  fe: {reads: [be/contracts/, supabase/types/]}     # be/contracts/: the committed contract snapshots, the input of the front end's codegen; supabase/types/: the same generated types
+  be: {reads: []}
+  fe: {reads: [be/contracts/]}     # be/contracts/: the committed contract snapshots, the input of the front end's codegen
 
 # The trigger kinds of the back end's features: what starts the work of a feature. A feature slot names its kind in `trigger`; no kind imports another
 # (BE_KIND_ISOLATION), every cross-kind call is an event on the bus, and only be/apps/* compose features.
@@ -192,9 +195,9 @@ crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 ruleParams:
   db:
     # R259: btree_gist supplies UUID equality for the booking interval exclusion constraint.
-    # R259: unaccent is a first-party Supabase extension used by Vietnamese-content search functions.
+    # R259: unaccent ships in the supabase/postgres image of the db service, used by Vietnamese-content search functions.
     extensions: [pgmq, pg_cron, pgcrypto, pg_trgm, vector, uuid-ossp, pg_net, supabase_vault, unaccent, btree_gist]
-    # R258 DB_CRON_OWNED: THE queue outbox of a Supabase schema (the relay hands its unsent rows to BullMQ, ruling:R212/case-10). A pg_cron
+    # R258 DB_CRON_OWNED: THE queue outbox of a lite schema (the relay hands its unsent rows to BullMQ, ruling:R212/case-10). A pg_cron
     # job enqueues only by inserting one row into this table, writing only these columns, one of which is `queue`.
     queueOutbox: {table: public.queue, columns: [queue, payload, created_at, correlation_id]}
   common:
@@ -218,8 +221,18 @@ ruleParams:
       "node:https": [platform/http]
       http: [platform/http]
       https: [platform/http]
-      "@aws-sdk/client-s3": [integrations/object-storage]       # the ObjectStorage port: one S3 adapter for MinIO, S3, Spaces and Supabase Storage
+      "@aws-sdk/client-s3": [integrations/object-storage]       # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
       "@aws-sdk/s3-request-presigner": [integrations/object-storage]
+      minio: []                                          # storage goes through the S3 client of integrations/object-storage
+      "@supabase": []                                    # no Supabase client in a back end
+      "@nestjs/passport": [integrations/passport]        # the identity libraries (R328)
+      passport: [integrations/passport]
+      passport-google-oauth20: [integrations/passport]
+      passport-local: [integrations/passport]
+      "@nestjs/jwt": [integrations/passport]
+      jose: [integrations/passport]
+      bcryptjs: [integrations/passport]
+      bcrypt: []
       cache-manager: [integrations/cache, integrations/redis]
       "@nestjs/cache-manager": [integrations/cache, integrations/redis]     # the CACHE_MANAGER token: caching goes through the cache capability
       redis: [integrations/cache, integrations/redis]
@@ -391,21 +404,41 @@ ruleParams:
     # end may declare in hfs.json sides.be.backing. `clients` are the libraries that consume the service: one of them as a dependency
     # is its consumer, and under lite none of them may be a dependency while the service is undeclared. `patterns` are the declared
     # patterns that need the service. `images` are the image repositories (the last path segment) a stack runs it from.
-    # `editions` limits admission: owner:lite-vector-is-pgvector keeps vector search on Supabase pgvector in lite.
+    # `editions` limits admission: owner:lite-vector-is-pgvector keeps vector search on pgvector in lite.
     backing:
       redis: {clients: [bullmq, "@nestjs/bullmq", bull, "@nestjs/bull", ioredis, redis, "@keyv/redis", cache-manager-redis-yet, cache-manager-ioredis-yet, "@socket.io/redis-adapter"], patterns: [queue, fenced-job], images: [redis, redis-stack, redis-stack-server]}
       qdrant: {clients: ["@qdrant/js-client-rest", "@qdrant/qdrant-js"], patterns: [], images: [qdrant], editions: [full]}
     # Edition lite (ruleParams(manifest, 'be', 'lite') merges these keys over the base; a map merges one level deep): the schema
-    # authority is the Supabase migration tree (supabase/migrations/*.sql, forward-only), so a lite back end holds no TypeORM
+    # authority is the SQL migration tree (db/migrations/*.sql, forward-only), so a lite back end holds no TypeORM
     # migration or entity under be/ (R34/R35 read schemaAuthority; be.persistence's lite overlay allows neither). The unit roles,
     # logic roles and spec doubles are full's (owner ruling 2026-10-12 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4). infraOwners: full's owners,
     # bullmq in platform/queue and ioredis/redis in integrations/cache and integrations/redis (ruling:R212/case-10: the queue is
     # Redis in both editions; a backing library is legal only when hfs.json sides.be.backing declares its service, which
-    # HFS_BACKING_UNDECLARED checks), except Kafka, which is owned nowhere (platform/event-bus runs Supabase Queues (pgmq) through
+    # HFS_BACKING_UNDECLARED checks), except Kafka, which is owned nowhere (platform/event-bus runs pgmq queues through
     # the shared EntityManager); realtime is the same socket.io gateway as full, run inside the api process, scaled horizontally and stateless (hub redis when
     # Redis is declared, else hub postgres with @socket.io/postgres-adapter; no sticky sessions).
+    # R334: the database functions code may call through platform/database's callDbFunction, advisoryXactLock and notify helpers,
+    # each {name, reason}; the canon lists the pg built-ins it uses itself, and an app adds its own in hfs.json sides.be.dbFunctions.
+    dbFunctions:
+      - {name: pg_advisory_xact_lock, reason: "advisoryXactLock: a transaction-scoped lock TypeORM has no API for"}
+      - {name: hashtextextended, reason: "advisoryXactLock: the 64-bit key of a text lock name"}
+      - {name: pg_notify, reason: "notify: LISTEN/NOTIFY of the Postgres realtime hub"}
+      - {name: to_regproc, reason: "callDbFunction: whether an optional database function exists"}
+      - {name: job_claim, reason: "platform/jobs (add job, lite): the fenced claim upsert of jobs.sql"}
+      - {name: job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
+      - {name: job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
+      - {name: job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
+      - {name: queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
+      - {name: queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
+      - {name: queue_mark_sent, reason: "platform/queue (add queue, lite): the relay mark of queue-outbox.sql"}
+      - {name: inbox_claim_event, reason: "platform/inbox (add webhook, lite): the conflict-safe delivery claim"}
+      - {name: inbox_claim_client, reason: "platform/inbox (add webhook, lite): the client claim upsert returning its committed outcome"}
+      - {name: inbox_save_client_outcome, reason: "platform/inbox (add webhook, lite): the saved client outcome"}
+      - {name: inbox_sweep_clients, reason: "platform/inbox (add webhook, lite): the bounded retention sweep FOR UPDATE SKIP LOCKED"}
+      - {name: event_bus_write, reason: "platform/event-bus (add webhook, lite): the typed envelope insert of the outbox"}
+
     lite:
-      schemaAuthority: supabase
+      schemaAuthority: sql
       infraOwners:
         kafkajs: []
         "@qdrant/js-client-rest": []
@@ -435,7 +468,7 @@ slots:
   - id: app.package-manifest
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite manages Supabase and wiring scripts; full also manages e2e and stack test scripts. Both may run optional contracts."
+    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite manages its database and wiring scripts; full also manages e2e and stack test scripts. Both may run optional contracts."
     # The one package.json of the app, at the app root: be's dependencies and every tool, and every script; npm workspaces are
     # exactly fe/apps/* and fe/packages/* (HFS_MONO_WORKSPACES), each with its own package.json. be has no package.json of its own.
     path: package.json
@@ -504,7 +537,7 @@ slots:
   - id: app.format-config
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite additionally ignores Supabase-generated row types when formatting; full has its TypeORM schema authority."
+    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite additionally ignores the generated database row types when formatting; full has its TypeORM schema authority."
     # The one formatter configuration of the app (prettier walks up from every file of both sides to it): .prettierrc names
     # @starci/prettier-config, .prettierignore is the template.
     path: "{.prettierrc,.prettierignore}"
@@ -513,7 +546,7 @@ slots:
     tier: none
     tests: none
     managedBy: tool-config
-    liteManagedBy: tool-config-lite     # the same files plus the generated supabase/types, which the Supabase CLI writes unformatted
+    liteManagedBy: tool-config-lite     # the same files as full
     rules: [HFS_MANAGED_FILE_DRIFT, HFS_TOOL_CONFIG_LOCAL]
   - id: app.tool-config-optional
     since: 3.1.0
@@ -556,7 +589,7 @@ slots:
   - id: app.ci
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite CI proves boot through R272 wiring and checks Supabase artifacts; full also provides its e2e lane."
+    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite CI proves boot through R272 wiring and checks its database artifacts; full also provides its e2e lane."
     path: ".github/workflows/ci.yml"
     presence: required
     tracked: tracked
@@ -581,7 +614,7 @@ slots:
   - id: app.ci-images
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite renders its Supabase-backed image workflow; full renders images for its separately deployed services."
+    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite renders its image workflow; full renders images for its separately deployed services."
     # Builds every image of the app (one matrix entry per declared app, path-filtered), never pushes: rendered by starci app sync.
     path: ".github/workflows/images.yml"
     presence: required
@@ -596,7 +629,7 @@ slots:
     exemplifiedBy:
       - packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite manages its Supabase database deploy workflow; full owns an optional provider-specific workflow."
+    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite manages its database deploy workflow; full owns an optional provider-specific workflow."
     # The database deploy workflow: workflow_dispatch only (like app.ci-e2e); starci app sync renders it under the managed ci group.
     path: ".github/workflows/db-deploy.yml"
     presence: optional
@@ -634,7 +667,7 @@ slots:
     since: 3.1.0
     profiles: [app]
     # Production delivery tooling for the app's own processes: compose files, Caddyfile, *.env.example and ops shell scripts.
-    # Lite still keeps its backing services on Supabase and its encrypted custody in app.starcistacks; R06 scans every file here.
+    # Lite keeps its encrypted custody in app.starcistacks; R06 scans every file here.
     path: "deploy/"
     presence: optional
     tracked: tracked
@@ -718,7 +751,7 @@ slots:
     profiles: [app]
     exemplifiedBy:
       - {path: packages/hfs/templates/app/skeleton/scripts/codegen.mjs, edition: full}
-    editionWhy: "Lite manages its Supabase codegen script; full owns operational scripts through the generic path (ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4))."
+    editionWhy: "Lite manages its database-types codegen script; full owns operational scripts through the generic path (ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4))."
     # The app's operational scripts only (`*.mjs`, `*.cjs`, `*.ps1`, `*.sh`), or nothing: an empty folder is `scripts/.gitkeep`, which
     # `starci app scaffold` writes. A spec or a test (BE_SPEC_PLACEMENT, FE_NO_TESTS), a check or lint source (`check-*`, `eslint-local-rules*`,
     # a local eslint plugin: HFS_REPO_LOCAL_CHECK) and anything that re-implements a canon check is not an operational script and has no place here.
@@ -803,7 +836,7 @@ slots:
   - id: app.starcistacks
     since: 3.1.0
     profiles: [app]
-    editionWhy: "owner:lite-production-swarm: lite requires declared docker-swarm production with Supabase backing; owner:dev-docker-prod-swarm keeps dependencies in Docker Linux containers in dev and the app and dependencies on Swarm in prod except hosted Supabase."
+    editionWhy: "owner:lite-production-swarm: lite requires declared docker-swarm production with its PostgreSQL as a stack service; owner:dev-docker-prod-swarm keeps dependencies in Docker Linux containers in dev and the app and dependencies on Swarm in prod."
     exemplifiedBy:
       - {path: packages/hfs/templates/app/skeleton/.starcistacks/, edition: full}
       - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks/, edition: lite}
@@ -818,7 +851,7 @@ slots:
              "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.enc", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
     forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
     # Owner ruling 2026-10-14: lite declares docker-swarm production, app runtime config, sealed custody and seed data.
-    # Supabase supplies the database and broker; production has no Compose or host cron.
+    # The db service supplies the database and broker (pgmq, pg_cron); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
       allows: [application-stacks.yaml, "<env>/README.md", "<env>/environment.json", "<env>/infra/swarm/**", "<env>/infra/metadata.json",
@@ -881,122 +914,78 @@ slots:
     goesTo: ".starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
     rules: [HFS_PLAINTEXT_SECRET]
 
-  # ----- app root: the Supabase project of an app whose connection declares provider: supabase (every lite app) -------
-  - id: app.supabase
+  # ----- app root: the database of a lite app (ruling:lite-self-hosted-postgres-passport-minio): a self-hosted PostgreSQL in the app's
+  # stack (the `db` service, image supabase/postgres for pg_cron, pg_net, pgmq, vector, unaccent and pgcrypto), migrated by
+  # `starci app db migrate --url-env <NAME>`. A full app keeps its TypeORM migrations under be/ and has no such folder.
+  - id: app.db
     profiles: [app]
+    editions: [lite]
     exemplifiedBy:
-      - packages/hfs/templates/app/skeleton-lite/supabase/
-      - {path: packages/hfs/src/hfs-database-access.spec.mjs, edition: full}
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): Supabase is required in lite; full enables it only through a declared connection."
-    # The one Supabase project directory, at the app root beside be/, fe/ and .starcistacks (never under a side).
-    path: "supabase/"
-    presence: opt-in              # enabled by a connection with provider: supabase; required under edition lite
-    provider: supabase
-    litePresence: required
+      - packages/hfs/templates/app/skeleton-lite/db/
+    # The one database directory, at the app root beside be/, fe/ and .starcistacks (never under a side).
+    path: "db/"
+    presence: required
     tracked: tracked
     tier: none
     tests: none
-    since: 2.1.0
-  - id: app.supabase.config
+    since: 3.9.0
+  - id: app.db.migrations
     profiles: [app]
+    editions: [lite]
     exemplifiedBy:
-      - packages/hfs/templates/app/skeleton-lite/supabase/config.toml
-      - {path: packages/hfs/src/db-config-policy.spec.mjs, edition: full}
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite requires Supabase configuration; full requires it only when Supabase is declared."
-    # The project configuration: auth keys are env(NAME) references, never literals (L08 judges its policy keys).
-    path: "supabase/config.toml"
-    presence: opt-in
-    provider: supabase
-    litePresence: required
+      - packages/hfs/templates/app/skeleton-lite/db/migrations/__timestamp___baseline.sql
+      - {path: packages/hfs/src/db-migration-shape.spec.mjs, edition: lite}
+    # The schema authority of a lite app: forward-only SQL migrations named <timestamp14>_<kebab-name>.sql, one file per change,
+    # immutable once on origin/main, applied in order by `starci app db migrate` and recorded in the history table.
+    path: "db/migrations/<stamp>_<name>.sql"
+    presence: required
+    minInstances: 1
     tracked: tracked
     tier: none
     tests: none
-    since: 2.1.0
-  - id: app.supabase.migrations
+    since: 3.9.0
+    rules: [DB_MIGRATION_SHAPE, LITE_DB_MIGRATION]
+  - id: app.db.migrations.archive
     profiles: [app]
-    exemplifiedBy:
-      - packages/hfs/templates/app/skeleton-lite/supabase/migrations/__timestamp___baseline.sql
-      - {path: packages/hfs/src/db-migration-shape.spec.mjs, edition: full}
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite uses Supabase schema authority and requires a migration; full opts into that provider."
-    # The schema authority of an app on Supabase: forward-only SQL migrations named <timestamp14>_<kebab-name>.sql,
-    # one file per change, immutable once on origin/main (L02-L08 judge them).
-    path: "supabase/migrations/<stamp>_<name>.sql"
-    presence: opt-in
-    provider: supabase
-    litePresence: required
-    lite: {minInstances: 1}
+    editions: [lite]
+    # The migrations an app retired at a baseline cutover: the live schema is dumped into ONE baseline migration, marked applied
+    # without a re-run, and the older files move here. `starci app db migrate` never applies this folder and no migration rule judges it.
+    path: "db/migrations/archive/"
+    presence: optional
     tracked: tracked
     tier: none
     tests: none
-    since: 2.1.0
-  - id: app.supabase.migrations.archive
+    since: 3.9.0
+  - id: app.db.seed
     profiles: [app]
-    # The migrations an existing app retired at its cutover (owner ruling 2026-10-13, migration baseline policy): the live schema is
-    # dumped into ONE baseline migration written to the current standard, marked applied on production without a re-run, and the
-    # older files move here. The Supabase CLI applies only supabase/migrations/<stamp>_<name>.sql, never this folder, and no
-    # migration rule (L02-L08) judges it; new migrations append after the baseline.
-    path: "supabase/migrations/_archive/"
-    presence: opt-in
-    provider: supabase
-    tracked: tracked
-    tier: none
-    tests: none
-    since: 3.0.0
-  - id: app.supabase.seed
-    profiles: [app]
-    path: "supabase/seed.sql"
+    editions: [lite]
+    path: "db/seed.sql"
     presence: optional            # synthetic dev data only; a lite app seeds nothing it cannot regenerate
     tracked: tracked
     tier: none
     tests: none
-    since: 2.1.0
-  - id: app.supabase.types
+    since: 3.9.0
+  - id: app.db.bootstrap
     profiles: [app]
-    templateNa: "Database row types are generated from the app's Supabase schema by contract:emit; a hand-authored scaffold template would invent the schema contract."
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite requires generated Supabase row types; full enables them with the provider."
-    # The generated Database types (database.types.ts) contract:emit writes from the migrations; both sides read it
-    # (sides.<side>.reads supabase/types/); drift against regeneration is L09.
-    path: "supabase/types/database.types.ts"
-    presence: opt-in
-    provider: supabase
-    litePresence: required
+    editions: [lite]
+    # The managed pre-migration bootstrap (templates/app/db-bootstrap): the auth, storage and extensions schemas, auth.users with the
+    # GoTrue column set, auth.uid/role/jwt stubs, the NOLOGIN browser roles and the realtime publication, so migrations written for a
+    # hosted Supabase apply to the self-hosted db service. `starci app db migrate` applies it before the first migration of an empty database.
+    path: "db/bootstrap.sql"
+    presence: required
     tracked: tracked
+    managedBy: db-bootstrap
     tier: none
     tests: none
-    since: 2.1.0
-    exemplifiedBy:
-      - {path: packages/hfs/src/db-types-returned-collector.spec.mjs, edition: full}
-  - id: app.supabase.templates
-    profiles: [app]
-    path: "supabase/templates/*.html"
-    presence: optional            # the auth e-mail templates Supabase serves
-    tracked: tracked
-    tier: none
-    tests: none
-    since: 2.1.0
-  - id: app.supabase.local-state
-    profiles: [app]
-    path: "supabase/{.temp,.branches}/"
-    presence: optional
-    tracked: ignored              # the local CLI's working state: exists, never committed
-    tier: none
-    tests: none
-    since: 2.1.0
-  - id: app.supabase.functions
-    profiles: [app]
-    path: "supabase/functions/"
-    presence: forbidden           # a Deno runtime is a second language runtime outside the lint canon and the slot machine (lite v1)
-    tracked: external
-    tier: none
-    tests: none
-    goesTo: "a be feature: webhooks/<provider> for a third-party callback, api for an endpoint, a job of a queue (BullMQ on the declared Redis, its tick enqueued through the queue outbox) or a cli command on a schedule (pg_cron / pg_net)"
-    since: 2.1.0
+    since: 3.9.0
+    rules: [HFS_MANAGED_FILE_DRIFT]
+
 
   # ----- side root (both sides): what a standalone repository root holds, less the app-root files ----------
   - id: repo.side-root-forbidden
     since: 3.1.0
     profiles: [be, fe]
-    path: "{package.json,package-lock.json,hfs.json,README.md,.gitignore,.gitattributes,.husky/,.github/,.starciwork/,.starcistacks/,supabase/,.sops.yaml,sonar-project.properties,codecov.yml,.prettierrc,.prettierignore,scripts/}"
+    path: "{package.json,package-lock.json,hfs.json,README.md,.gitignore,.gitattributes,.husky/,.github/,.starciwork/,.starcistacks/,db/,.sops.yaml,sonar-project.properties,codecov.yml,.prettierrc,.prettierignore,scripts/}"
     presence: forbidden
     tracked: external
     tier: none
@@ -1266,8 +1255,8 @@ slots:
       - {path: packages/hfs/src/mcp-tools-snapshot.spec.mjs, editions: [lite, full]}
 
   # ----- BE: apps (one slot per app kind; a new kind = a new slot, minor bump) ---------------------------
-  # The files of every app (owner ruling 2026-10-14, R245 and R246, since 3.1.0), each with a line budget that
-  # BE_APP_COMPOSITION_BUDGET holds absolutely (not a ratchet):
+  # The files of every app (owner ruling 2026-10-14, R245 and R246, since 3.1.0), each with a line budget (lines excluding
+  # import declarations, multi-line imports included) that BE_APP_COMPOSITION_BUDGET holds absolutely (not a ratchet):
   #   main.ts            the entry: builds EnvSource once, imports and calls read<App>Env from <app>.env.ts, builds options and boots.
   #   <app>.env.ts       exports interface <App>Env and read<App>Env(env: EnvSource): <App>Env (for example ApiEnv/readApiEnv);
   #                      fail-fast environment parsing only, via EnvSource and unchanged capability parse helpers; no localhost
@@ -1317,7 +1306,7 @@ slots:
   - id: be.app.cli
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): Supabase CLI owns lite migrations; a lite cli app is optional for declared operator commands."
+    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): `starci app db migrate` owns lite migrations; a lite cli app is optional for declared operator commands."
     # The ONE app of every one-off action (migrate, seed, sync, backup, any operator command): be/apps/cli, on nest-commander.
     # main.ts boots with CommandFactory.run (BE_CLI_BOOTSTRAP); app.module.ts composes the platform and the cli feature root
     # (src/features/cli/cli.module.ts); cli.env.ts exports CliEnv and readCliEnv(env: EnvSource): CliEnv, and cli.options.ts carries the env-derived values,
@@ -1327,7 +1316,7 @@ slots:
     path: "apps/<app>/src/"
     appKind: cli
     presence: opt-in
-    litePresence: optional        # lite: schema migration is the Supabase CLI's job; a cli app exists only when the app declares one
+    litePresence: optional        # lite: schema migration is `starci app db migrate`'s job; a cli app exists only when the app declares one
     tracked: tracked
     tier: app
     owner: true
@@ -1678,7 +1667,7 @@ slots:
   - id: be.persistence
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): Supabase migrations own lite tables, with SQL and row types here; full keeps TypeORM entities and migrations here."
+    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): db/migrations own lite tables and both editions map them with TypeORM entities here (ruling:lite-persistence-typeorm-entities); full also keeps its TypeORM migrations here."
     path: "src/modules/{domain,platform,projections}/<capability>/persistence/"
     # R178: the platform capabilities whose tables exist on EVERY connection that uses them (the event-bus outbox, the inbox of every service, the job table); their arrays may be
     # registered on several declared connections. Any other capability registers its arrays on exactly one (BE_SCHEMA_OWNER).
@@ -1689,15 +1678,17 @@ slots:
     requires: [connection.ts]     # the capability's <c>Entities / <c>Migrations arrays (the owner index re-exports the two arrays by name); no CONNECTION alias: the connection is the one the apps register the arrays on
     allows: ["entities/<table>.entity.ts", "migrations/<epochMs13>-<kebab-name>.ts", "<name>.sql.ts", "<name>.rows.ts", connection.ts]
     forbids: [index.ts, "<name>.repository.ts"]
-    # Lite keeps the shared-EntityManager persistence (raw SqlText + rows types over the generated Database row types) but the
-    # schema authority is supabase/migrations (ruleParams.be.lite.schemaAuthority): no TypeORM entity and no be migration.
+    # Lite maps its tables with the same TypeORM entities as full (ruling:lite-persistence-typeorm-entities): each capability's
+    # persistence/entities/<table>.entity.ts and an entities/index.ts exporting its <c>Entities array, which platform/database
+    # lists by name; the schema authority stays db/migrations (ruleParams.be.lite.schemaAuthority), so no be migration and no
+    # raw SQL file (R334 BE_PERSISTENCE_NO_RAW_SQL).
     lite:
-      requires: []                 # no TypeORM arrays to re-export: the persistence of a lite capability is its sql and rows files
-      allows: ["<name>.sql.ts", "<name>.rows.ts", connection.ts]
-      forbids: [index.ts, "<name>.repository.ts", entities/, migrations/]
+      requires: []
+      allows: ["entities/<table>.entity.ts", entities/index.ts, connection.ts]
+      forbids: [index.ts, "<name>.repository.ts", migrations/, "<name>.sql.ts", "<name>.rows.ts"]
     tests: none
     coverage: none
-    rules: [BE_SCHEMA_OWNER, BE_SCHEMA_AUTHORITY, BE_SQL_OUTSIDE_PERSISTENCE, BE_SQL_TABLE_OWNER, BE_SQL_RETURNING_SHAPE, BE_CONTEXT_COUPLING, BE_CONTEXT_PLATFORM_TABLES]
+    rules: [BE_SCHEMA_OWNER, BE_SCHEMA_AUTHORITY, BE_SQL_OUTSIDE_PERSISTENCE, BE_PERSISTENCE_NO_RAW_SQL, BE_SQL_TABLE_OWNER, BE_SQL_RETURNING_SHAPE, BE_CONTEXT_COUPLING, BE_CONTEXT_PLATFORM_TABLES]
   - id: be.platform
     since: 3.1.0
     profiles: [be]
@@ -1748,7 +1739,7 @@ slots:
     owner: true
     lite:
       why: >-
-        the same EventPublisher and EventConsumer ports on Supabase Queues (pgmq): the outbox relay sends each committed row to the
+        the same EventPublisher and EventConsumer ports on pgmq queues: the outbox relay sends each committed row to the
         pgmq queue of every consumer group of its topic through the shared EntityManager, a consumer reads with a visibility
         timeout, retries by letting it lapse and archives the message on dead letter (read_ct over the budget); a single api may
         deliver in process. No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)
@@ -1762,7 +1753,7 @@ slots:
   - id: be.platform.queue
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-10: both editions implement the queue ports with BullMQ on Redis; lite declares its Redis in hfs.json sides.be.backing and keeps the outbox table in a supabase migration."
+    editionWhy: "ruling:R212/case-10: both editions implement the queue ports with BullMQ on Redis; lite declares its Redis in hfs.json sides.be.backing and keeps the outbox table in a db migration."
     path: "src/modules/platform/queue/"
     presence: opt-in
     pattern: queue                # the ONE BullMQ owner: the outbox relay into queues (jobId = outbox id) and job schedulers (knowledge/patterns/be/queues.yaml)
@@ -1773,7 +1764,7 @@ slots:
       why: >-
         the same QueueOutbox and QueueWorkerRegistry ports and full's BullMQ adapter on the declared Redis (backing: [redis]): the
         relay adds each committed outbox row with the outbox id as the job id, workers retry with exponential backoff and keep a
-        job that exhausts its attempts as failed (the dead letter); the outbox table comes from a supabase migration, and a
+        job that exhausts its attempts as failed (the dead letter); the outbox table comes from a db migration, and a
         schedule is a BullMQ job scheduler or a pg_cron tick that inserts one outbox row (knowledge/patterns/be/queues.yaml liteAdapter)
     requires: [index.ts, queue.module.ts, queue.port.ts, queue.contracts.ts, queue-outbox.service.ts, queue-outbox.service.spec.ts]
     tests: unit-beside
@@ -1867,7 +1858,7 @@ slots:
   - id: be.platform.jobs
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite persists fenced claims in Supabase migrations and dispatches through the BullMQ queue on its declared Redis (ruling:R212/case-10); full uses TypeORM schema authority and the same queue adapter."
+    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite persists fenced claims in db migrations and dispatches through the BullMQ queue on its declared Redis (ruling:R212/case-10); full uses TypeORM schema authority and the same queue adapter."
     path: "src/modules/platform/jobs/"
     presence: opt-in
     pattern: fenced-job           # the ONE fencing primitive: the job entity, the claim that bumps the token, guarded writes (knowledge/patterns/be/jobs.yaml)
@@ -1882,7 +1873,7 @@ slots:
   - id: be.projections
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite projection tables live in Supabase migrations; full keeps the TypeORM projection entity beside its projection."
+    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite projection tables live in db migrations; full keeps the TypeORM projection entity beside its projection."
     path: "src/modules/projections/<name>/"
     presence: opt-in
     pattern: projection           # a read model: only its projection writes its table; recompute is idempotent and replayable; readers use get*
@@ -1891,7 +1882,7 @@ slots:
     owner: true
     requires: [index.ts, "<name>.module.ts", "<name>.projection.ts", "<name>.projection-entity.ts"]
     allows: [index.ts, "<name>.module.ts", "<name>.module-definition.ts", "<name>.options.ts", "<name>.projection.ts", "<name>.projection-entity.ts", "<name>.contracts.ts", persistence/]
-    lite:                         # the read model's table is a supabase migration with its rows type (lite's schema authority): no TypeORM projection entity
+    lite:                         # the read model's table is a db migration (lite's schema authority) mapped by its entity under persistence/entities/ (R334)
       requires: [index.ts, "<name>.module.ts", "<name>.projection.ts"]
       allows: [index.ts, "<name>.module.ts", "<name>.module-definition.ts", "<name>.options.ts", "<name>.projection.ts", "<name>.contracts.ts", persistence/]
     tests: unit-beside            # a measured slot: <name>.projection.spec.ts beside its projection is legal (the file owes 100 per file; a spec of its own is optional)
@@ -1924,28 +1915,44 @@ slots:
     why: a self-hosted ML model client is an integration; weights and datasets are never in git, and a language model is called through the ai-router gateway by the integrations/ai LangChain client (BE-AI-1, BE-AI-3)
     rules: [BE_TIER_DIRECTION, BE_INFRA_OWNER, BE_INTEGRATION_SPEC_MISSING]
 
-  - id: be.integrations.supabase
+  - id: be.integrations.passport
+    profiles: [be]
+    editions: [lite]
+    exemplifiedBy:
+      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/
+    # The one owner of the lite identity libraries (ruleParams.be.infraOwners: @nestjs/passport, passport, passport-google-oauth20,
+    # passport-local, @nestjs/jwt, jose, bcryptjs): the Google OAuth 2.0 strategy (state and PKCE), the local email and password
+    # strategy (bcrypt), the app's own asymmetric access tokens and their JWKS, and the rotating refresh cookie. domain/identity
+    # verifies a token through this integration's verifier and builds the principal (contexts/code/be/api-auth.md).
+    path: "src/modules/integrations/passport/"
+    presence: required
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.tokens.ts, passport.password.ts, passport.cookie.ts]   # Secrets, no defaults (R44); options and named injectors (R83); tokens and JWKS; bcrypt; the refresh cookie
+    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.tokens.ts, passport.password.ts, passport.cookie.ts, strategies/, errors/]
+    tests: unit-beside
+    rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
+    coverage: required
+    since: 3.9.0
+  - id: be.integrations.object-storage
     profiles: [be]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/supabase/
-      - {path: packages/hfs/src/be-supabase-jwt-verified.spec.mjs, edition: full}
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite requires the Supabase Auth and Storage integration; full opts in through a connection."
-    # The only be import of @supabase/* (L10): the Auth admin and Storage admin client, plus the JWKS-based verification of
-    # the Supabase access token the guard chain reads (L16). The connection itself is ordinary Postgres (the shared
-    # EntityManager of the declared connection); what lives here are the service calls no database role covers.
-    path: "src/modules/integrations/supabase/"
-    presence: opt-in              # enabled by a connection with provider: supabase; required under edition lite
-    provider: supabase
+      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/
+    # The one owner of the S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) over S3-compatible storage (MinIO in
+    # lite): the ObjectStorage port with presigned PUT and GET; no other module imports an S3 SDK or minio.
+    path: "src/modules/integrations/object-storage/"
+    presence: optional
     litePresence: required
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, supabase.config.ts, supabase.options.ts, supabase.decorators.ts, supabase.client.ts, supabase.jwks.ts]   # Secrets, no defaults (R44); the options and the named injector (R83); the admin client; the token verification
-    allows: [index.ts, supabase.config.ts, supabase.options.ts, supabase.decorators.ts, supabase.client.ts, supabase.jwks.ts, errors/]
+    requires: [index.ts, storage.config.ts, storage.options.ts, storage.decorators.ts, storage.client.ts]
+    allows: [index.ts, storage.config.ts, storage.options.ts, storage.decorators.ts, storage.client.ts, errors/]
     tests: unit-beside
-    rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT]
+    rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_STORAGE_OWNER]
     coverage: required
-    since: 2.1.0
+    since: 3.9.0
 
   # ----- BE: tests (owner test layout 2026-09-30). Unit specs are <name>.service.spec.ts beside their service and nothing else; everything else
   # lives under src/tests/, one folder per kind, and the folder and the file suffix always agree (a file whose suffix does
@@ -1953,15 +1960,15 @@ slots:
   - id: be.tests.world
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite integration proofs use the local Supabase stack and network fakes; full also boots apps and self-hosted services."
+    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite integration proofs use the local db service and network fakes; full also boots apps and self-hosted services."
     path: "src/tests/world/"
     presence: optional
     tracked: tracked
     tier: e2e
     lite:
       why: >-
-        the world of the optional integration specs of a lite app: global-setup.ts connects to the local Supabase CLI stack
-        (`starci supabase start`, with the migrations applied by the local stack) and starts no container, no toxiproxy and no stack of its
+        the world of the optional integration specs of a lite app: global-setup.ts connects to the local db service
+        (`npm run db:start`, with the migrations applied by `npm run db:push`) and starts no container, no toxiproxy and no stack of its
         own; use-test-world.ts exports useTestWorld({ modules: [...] }) -> world.db.<connection> (the shared EntityManager) and
         world.fake.<provider> (a network-edge fake of an external SaaS). There is no world.apps (no e2e) and no world.infra
         (no self-hosted service to cut)
@@ -2030,7 +2037,7 @@ slots:
   - id: be.tests.integration
     since: 3.1.0
     profiles: [be]
-    editionWhy: "Lite integration specs use the local Supabase CLI stack without containers or toxiproxy (ruling:R212/case-1, amended by ruling:R212/case-2 (owner:lite-production-swarm) and ruling:R212/case-4, with contracts allowed by owner:lite-contract-specs); R284 requires declared-pattern proofs there. Full additionally proves infrastructure outages through its world (R112)."
+    editionWhy: "Lite integration specs use the local db service without containers or toxiproxy (ruling:R212/case-1, amended by ruling:R212/case-2 (owner:lite-production-swarm) and ruling:R212/case-4, with contracts allowed by owner:lite-contract-specs); R284 requires declared-pattern proofs there. Full additionally proves infrastructure outages through its world (R112)."
     path: "src/tests/integration/<capability>/*.integration-spec.ts"
     presence: optional
     tracked: tracked
@@ -2039,8 +2046,8 @@ slots:
     coverage: none
     lite:
       why: >-
-        optional under lite: one capability module through useTestWorld({ modules }) against the local Supabase CLI stack
-        (`starci supabase start`), run by test:integration; no container, no toxiproxy and no outage through the world (R112 is full's)
+        optional under lite: one capability module through useTestWorld({ modules }) against the local db service
+        (`npm run db:start`), run by test:integration; no container, no toxiproxy and no outage through the world (R112 is full's)
     why: one capability module through useTestWorld({ modules }), no HTTP door of ours (SQL, transactions, concurrency, inbox claims on the real database; and every integration client, `<capability>` being its provider folder, against our real infra, a real peer app or the library fake at the network edge, with its success, its ErrorCode refusal mapping and an outage through the world, R112); run by test:integration
     rules: [BE_TEST_TOPOLOGY, BE_INTEGRATION_SPEC_MISSING]
   - id: be.tests.e2e
@@ -2053,7 +2060,7 @@ slots:
     tracked: tracked
     tier: e2e
     tests: e2e
-    goesTo: "the full edition: a lite app has no e2e world; its logic is proven by unit specs and its database by optional integration specs on `starci supabase start`"
+    goesTo: "the full edition: a lite app has no e2e world; its logic is proven by unit specs and its database by optional integration specs on `npm run db:start`"
     coverage: none
     why: flow e2e through useTestWorld({ apps }); external services are the world's network fakes; run by test:e2e
     rules: [HFS_CI_E2E_AUTOMATIC, BE_TEST_TOPOLOGY, BE_E2E_FLOW]
@@ -2112,7 +2119,7 @@ slots:
     tracked: tracked
     tier: route
     # ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4) (lite = full): routes are thin and the front end serves no API - health/live is the one
-    # route handler of this slot, the Supabase auth callback is fe.route.callback, and no file holds a Server Action
+    # route handler of this slot, the OAuth callback is a back-end door, and no file holds a Server Action
     # (FE_ROUTE_HANDLER_FORBIDDEN, FE_SERVER_ACTION_FORBIDDEN).
     allows: ["[locale]/**/{page,layout,template,loading,error,not-found,default}.tsx", "[locale]/providers.tsx",
              global-error.tsx, page.tsx,   # the root page.tsx only redirects (FE_ROUTE_FILES_THIN)
@@ -2143,20 +2150,6 @@ slots:
     tests: none
     goesTo: "apps/<app>/src/proxy.ts: Next >= 16 reads proxy.ts and refuses middleware.ts"
     rules: [FE_NEXT_CONVENTIONS]
-  - id: fe.route.callback
-    profiles: [fe]
-    # The auth callback of a Supabase session (the PKCE code exchange), kept only when the auth flow truly needs a server exchange
-    # (prefer the client-side PKCE exchange in fe.modules.auth): the one non-health route handler of an app with a Supabase
-    # connection; an app without one has no route handler in fe/ (L15).
-    path: "apps/<app>/src/app/auth/callback/route.ts"
-    presence: opt-in
-    provider: supabase
-    tracked: tracked
-    tier: route
-    tests: none
-    since: 2.1.0
-    rules: [FE_ROUTE_HANDLER_FORBIDDEN, FE_CALLBACK_SHAPE, FE_SUPABASE_CLIENT_OWNER, FE_SERVICE_ROLE_FORBIDDEN]
-
   - id: fe.feature
     since: 3.1.0
     profiles: [fe]
@@ -2488,18 +2481,17 @@ slots:
   - id: fe.modules.auth
     profiles: [fe]
     # The identity-provider client (fe-stack auth, FE-AUTH): the session, the access token the Apollo link attaches and the
-    # sign-in/sign-out calls. With a Supabase connection it is the ONLY fe importer of @supabase/supabase-js and uses its auth API
-    # only; Supabase on the front end never reads or writes data (owner ruling 2026-10-13).
+    # sign-in/sign-out calls. It talks only to the app's own back-end auth doors and holds no credential: the refresh token lives in
+    # the back end's httpOnly cookie and the access token in memory (ruling:lite-self-hosted-postgres-passport-minio).
     path: "apps/<app>/src/modules/auth/"
     presence: optional
     tracked: tracked
     tier: modules
     owner: true
     requires: [index.ts]
-    entries: [server.ts]   # the server-only PKCE exchange API used by the opted-in callback route
     tests: none
     since: 3.0.0
-    rules: [FE_SUPABASE_CLIENT_OWNER, FE_SERVICE_ROLE_FORBIDDEN]
+    rules: [FE_STACK_FORBIDDEN]
   - id: fe.modules.toast
     profiles: [fe]
     # Mutation feedback (fe-stack toast, FE-TOAST): the HeroUI toast wrapper, showGraphQLToast over a GraphQLResponse and the

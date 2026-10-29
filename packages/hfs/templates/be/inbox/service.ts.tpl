@@ -6,7 +6,6 @@ import { InjectEventBus } from "@modules/platform/event-bus"
 import type { EventBus } from "@modules/platform/event-bus"
 import { InjectInbox } from "@modules/platform/inbox"
 import type { Inbox } from "@modules/platform/inbox"
-import { INSERT_@@providerUpper@@_INBOX } from "./persistence/@@provider@@-inbox.sql"
 
 interface @@Provider@@Delivery {
     readonly id: string
@@ -34,7 +33,7 @@ export class @@Provider@@InboxService {
             if (!(await this.inbox.claim("webhook.@@provider@@", request.eventId, manager))) return
             const receiptId = await recordWebhookDelivery({
                 manager,
-                insert: INSERT_@@providerUpper@@_INBOX,
+                table: "@@table@@",
                 provider: "@@provider@@",
                 deliveryId: request.eventId,
                 payload: request.delivery,

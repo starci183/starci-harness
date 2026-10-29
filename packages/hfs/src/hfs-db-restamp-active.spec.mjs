@@ -48,9 +48,9 @@ function io(root) {
     cwd: root,
     stdout: (text) => out.push(text),
     stderr: (text) => err.push(text),
-    runSupabase: (cwd, args) => {
+    runPostgres: (cwd, op) => {
       assert.equal(cwd, root);
-      calls.push(args);
+      calls.push(op.kind === 'query' ? ['db', 'query', op.sql] : op.kind === 'dump' ? ['db', 'dump'] : ['migration', 'repair', op.stamp, '--status', op.status]);
       return { status: 0, stdout: '' };
     },
   } };
@@ -83,10 +83,10 @@ for (const edition of ['lite', 'full']) {
     const apply = io(root);
     assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], apply.ports), 0, apply.err.join(''));
     assert.deepEqual(apply.calls, [
-      ['migration', 'repair', first, '--status', 'reverted', '--linked'],
-      ['migration', 'repair', next, '--status', 'applied', '--linked'],
-      ['migration', 'repair', second, '--status', 'reverted', '--linked'],
-      ['migration', 'repair', last, '--status', 'applied', '--linked'],
+      ['migration', 'repair', first, '--status', 'reverted'],
+      ['migration', 'repair', next, '--status', 'applied'],
+      ['migration', 'repair', second, '--status', 'reverted'],
+      ['migration', 'repair', last, '--status', 'applied'],
     ]);
     const expected = { ...before };
     delete expected[start];

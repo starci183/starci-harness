@@ -14,7 +14,9 @@
  *     options files and composition groups receive the typed result of `read<App>Env(env: EnvSource)`.
  *   - `app-file-budget` (`BE_APP_COMPOSITION_BUDGET`) holds each composition file to the line budget its app slot names
  *     (`budget` of the slot, keyed by the same entry: `app.module.ts` 250, `<app>.env.ts` 150, `<app>.options.ts` 200, `compose/<area>.ts` 120,
- *     `main.ts` 80). The budget is absolute, not a ratchet: an app root that outgrows it moves an area into a new group.
+ *     `main.ts` 80), counted in lines EXCLUDING import declarations (a multi-line import counts none of its lines): an import
+ *     is the cost of naming a capability, not composition. The budget is absolute, not a ratchet: an app root that outgrows it moves
+ *     an area into a new group.
  *
  * R265 resolves composition from types, including renamed constructors, factories, maps and scheduler tables. All
  * three rules ask the slot view which entry a file matches; none keeps a path of its own.
@@ -498,14 +500,24 @@ export const appModuleListInline: RuleModule = {
     },
 }
 
-/** Each composition file of an app stays within the line budget its app slot names. */
+/** The lines of a source text that no import declaration (`import ...` or `import x = require(...)`) covers, one or many lines each. */
+const linesExcludingImports = (text: string, body: ReadonlyArray<{ readonly type: string, readonly loc?: { readonly start: { readonly line: number }, readonly end: { readonly line: number } } | null }>): number => {
+    const covered = new Set<number>()
+    for (const statement of body) {
+        if ((statement.type !== "ImportDeclaration" && statement.type !== "TSImportEqualsDeclaration") || !statement.loc) continue
+        for (let line = statement.loc.start.line; line <= statement.loc.end.line; line += 1) covered.add(line)
+    }
+    return lineCount(text) - covered.size
+}
+
+/** Each composition file of an app stays within the line budget its app slot names, counted without its import lines. */
 export const appFileBudget: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "`main.ts`, `app.module.ts`, `<app>.env.ts`, `<app>.options.ts` and `compose/<area>.ts` stay within the line budget of their app slot." },
+        docs: { description: "`main.ts`, `app.module.ts`, `<app>.env.ts`, `<app>.options.ts` and `compose/<area>.ts` stay within the line budget of their app slot, counted without import lines." },
         schema: [],
         messages: {
-            over: "This {{role}} has {{lines}} lines, over its budget of {{max}} (the `budget` of slot {{slot}}). {{fix}}",
+            over: "This {{role}} has {{lines}} lines excluding imports, over its budget of {{max}} (the `budget` of slot {{slot}}). {{fix}}",
         },
     },
     create(context) {
@@ -524,7 +536,7 @@ export const appFileBudget: RuleModule = {
             : "Move one area of the composition into its own group `apps/<app>/src/compose/<area>.ts` and spread it in `app.module.ts`."
         return {
             "Program:exit"(node) {
-                const lines = lineCount((context.sourceCode || context.getSourceCode()).text)
+                const lines = linesExcludingImports((context.sourceCode || context.getSourceCode()).text, node.body)
                 if (lines > max) context.report({ node, loc: { line: 1, column: 0 }, messageId: "over", data: { role: role.entry, lines, max, slot: role.slot, fix } })
             },
         }

@@ -7,8 +7,8 @@
  * second dependency a release has to keep current, and it always arrives one import at a time. The catalog names, per concern,
  * the alternatives a front end never imports; this rule refuses exactly those, read from the catalog, so the list lives once.
  *
- * SUPABASE IS AUTH ONLY. With a Supabase connection the front end holds the Supabase Auth client and nothing else of Supabase
- * (the data path is GraphQL to the back end): `@supabase/*` is imported only by `modules/auth` (slot `fe.modules.auth`).
+ * SESSION ISSUER. The front end holds no identity SDK: `modules/auth` talks only to the app's own back-end auth doors, and the fe-stack
+ * catalog forbids every Supabase client package (concern `auth`).
  *
  * WHAT IS LEFT TO SIBLINGS. A canonical library imported in the wrong place (Apollo outside `modules/api`, axios outside its REST
  * calls, socket.io-client outside `hooks/socketio`) and `fetch` outside the API layer are `fetch-only-in-api-client`'s findings;
@@ -17,30 +17,25 @@
 import type { TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { forbiddingConcern, packageNameOf } from "./lib/fe-stack.ts"
-import { globalReferences, inSlot, isProductSource } from "./lib/scope.ts"
+import { globalReferences, isProductSource } from "./lib/scope.ts"
 
 /** The package scope only the identity-provider client may import. */
-const SUPABASE_SCOPE = "@supabase/"
 
 /**
- * No import (static, re-export, dynamic or `require`) of a package the fe-stack catalog forbids, and no `@supabase/*` outside
- * `modules/auth`. Type-only imports count: a type import still makes the package a dependency of the front end.
+ * No import (static, re-export, dynamic or `require`) of a package the fe-stack catalog forbids.
  */
 export const feStackImport = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "A front end imports no library the fe-stack catalog forbids, and `@supabase/*` only in `modules/auth`." },
+    docs: { description: "A front end imports no library the fe-stack catalog forbids." },
     schema: [],
     messages: {
       forbidden:
         "`{{name}}` is a forbidden alternative for the {{concern}} concern of the front-end stack. The stack has one library per concern, the same in every app and both editions: use {{canonical}} ({{pattern}}). {{why}}",
-      supabase:
-        "`{{name}}` is imported outside `modules/auth`. Supabase on the front end is the auth client only, held by `modules/auth` (the session, the access token the Apollo link attaches, sign-in and sign-out); data is read and written through the GraphQL operations of `modules/api`, never through Supabase from the browser.",
     },
   },
   create(context) {
     if (!isProductSource(context)) return {}
-    const authOwner = inSlot(context, "fe.modules.auth")
     const judge = (node: Node, source: TSESTree.Literal["value"]): void => {
       const name = packageNameOf(source)
       if (name === null || name === undefined) return
@@ -51,7 +46,6 @@ export const feStackImport = defineRule({
         context.report({ node, messageId: "forbidden", data: { name, concern: concern.id, canonical, pattern: concern.pattern ?? "", why: concern.why ?? "" } })
         return
       }
-      if (name.startsWith(SUPABASE_SCOPE) && !authOwner) context.report({ node, messageId: "supabase", data: { name } })
     }
     return {
       ImportDeclaration(node) {

@@ -1,6 +1,6 @@
 // pg-parse.mjs - the one SQL parse entry of the hfs database rules (scripts/hfs/rules/database.mjs): the WASM build
 // of libpg-query, the real PostgreSQL parser compiled to WebAssembly (no native build, no postgres server). It is
-// loaded lazily: a check of an app with no supabase/ tree never pays the module init. parseSql gives the statement
+// loaded lazily: a check of an app with no db/ tree never pays the module init. parseSql gives the statement
 // tree of a migration (`{version, stmts}`, each stmt `{stmt, stmt_location, stmt_len}` with byte offsets); a
 // plpgsql body (a DO block's or a function's `as` source) is judged through parsePlpgsqlBody, which wraps it in a
 // probe CREATE FUNCTION because libpg-query parses plpgsql only in that form. A parse failure throws the
@@ -10,7 +10,7 @@ let loading = null;
 
 /**
  * The libpg-query module (wasm build), initialized once per process. A bare dynamic import so the package can be
- * absent until a supabase/ tree exists to judge; the caller reports the load failure, not this module.
+ * absent until a db/ tree exists to judge; the caller reports the load failure, not this module.
  */
 function loadPgParser() {
   loading ??= (async () => {

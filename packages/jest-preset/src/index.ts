@@ -4,6 +4,7 @@ import type { Config } from "jest"
 
 import { mock, createMock } from "./mock.ts"
 import { mockEntityManager, fakeTransaction } from "./entity-manager.ts"
+import { fakeQueryBuilder, queueQueryBuilders } from "./query-builder.ts"
 import { FakeClock } from "./clock.ts"
 import { fakeCache } from "./cache.ts"
 import { fakeLock } from "./lock.ts"
@@ -16,6 +17,7 @@ import SONAR_EXCLUSIONS = require("./sonar-exclusions.ts")
 
 export type { MockOf } from "./mock.ts"
 export type { MockEntityManager, FakeTransaction, EntityClass } from "./entity-manager.ts"
+export type { FakeQueryBuilder, QueryBuilderAnswers, QueryBuilderCall, QueryBuilderHost } from "./query-builder.ts"
 export type { FakeCache } from "./cache.ts"
 export type { FakeLock } from "./lock.ts"
 export type { RecordingEventBus } from "./event-bus.ts"
@@ -315,6 +317,8 @@ export {
   createMock,
   mockEntityManager,
   fakeTransaction,
+  fakeQueryBuilder,
+  queueQueryBuilders,
   FakeClock,
   fakeCache,
   fakeLock,

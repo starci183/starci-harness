@@ -75,7 +75,7 @@ function scriptFindings(rel, pkg) {
   const scripts = isPlainObject(pkg.scripts) ? pkg.scripts : {};
   return Object.keys(scripts)
     .filter((name) => LITE_FORBIDDEN_SCRIPT.test(name))
-    .map((name) => found(HFS_EDITION_FORBIDDEN_PRESENT, rel, `${rel} has script ${JSON.stringify(name)}: a lite app has unit specs, optional integration specs on the local Supabase stack and optional contract specs, never an e2e, stack or browser run`, { name }));
+    .map((name) => found(HFS_EDITION_FORBIDDEN_PRESENT, rel, `${rel} has script ${JSON.stringify(name)}: a lite app has unit specs, optional integration specs on the local db service and optional contract specs, never an e2e, stack or browser run`, { name }));
 }
 
 /** The backing services of the manifest (ruleParams.be.backing): name -> {clients, patterns, images, editions?}. */

@@ -25,7 +25,7 @@ Enforced by: `tier-direction`, `package-imports-app`, `owner-cycle`, `feature-im
 ## BE-ARCHITECTURE-2 An app owns bootstrap and composition only
 
 `be/apps/<app>/src` holds `main.ts`, `<app>.env.ts`, `<app>.options.ts`, `compose/<area>.ts` and `app.module.ts`, each
-within its slot budget. `main.ts` builds `EnvSource` once, calls `read<App>Env`, boots `AppModule.register(options)`,
+within its slot budget, counted in lines excluding imports. `main.ts` builds `EnvSource` once, calls `read<App>Env`, boots `AppModule.register(options)`,
 applies the edge settings and logs a startup failure with the failing key. `<app>.env.ts` declares the `<App>Options`
 interface of parsed members and `read<App>Env` (BE-CONFIG-1). `<app>.options.ts` holds port maps (`{ notifier:
 NotifierService }`) and re-exports the options type, with no parsing. A `compose/<area>.ts` returns a typed

@@ -1,5 +1,5 @@
 // `starci app add queue|job` in a lite app (ruling:R212/case-10): the queue is full's BullMQ adapter on the declared Redis, so lite
-// generates full's queue and jobs trees with three differences. The outbox and job tables are a Supabase migration instead of the
+// generates full's queue and jobs trees with three differences. The outbox and job tables are a db migration instead of the
 // TypeORM entity, connection and migration; the SQL names the public schema; and the queue options read the Redis password of
 // its sealed secret. The verb also declares redis in hfs.json sides.be.backing with its bullmq client, and renders the one
 // declared Redis into every docker-swarm environment of the stack: the stateful component, its backup and restore record, the
@@ -7,7 +7,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { dbTypesPath, emitDbTypes } from '../emit/db-types.mjs';
 import { configuredRecipients } from '../runtime/scripts/hfs/secret-init.mjs';
 import { materializeDeclaredPlaceholders } from '../runtime/scripts/hfs/sealed-members.mjs';
 import { REDIS_IMAGE, TEMPLATES_DIR, redisDevScripts, render } from '../sync/index.mjs';
@@ -35,13 +34,18 @@ const LITE_TEMPLATES = Object.freeze({
   'queues/platform/queue-relay.service.ts.tpl': 'queues/platform-lite/queue-relay.service.ts.tpl',
   'queues/platform/queue-relay.service.spec.ts.tpl': 'queues/platform-lite/queue-relay.service.spec.ts.tpl',
   'queues/platform/queue.module.ts.tpl': 'queues/platform-lite/queue.module.ts.tpl',
-  'queues/platform/persistence.queue.sql.ts.tpl': 'queues/platform-lite/persistence.queue.sql.ts.tpl',
+  'queues/platform/queue-outbox.service.ts.tpl': 'queues/platform-lite/queue-outbox.service.ts.tpl',
+  'queues/platform/queue-outbox.service.spec.ts.tpl': 'queues/platform-lite/queue-outbox.service.spec.ts.tpl',
   'jobs/platform/jobs.index.ts.tpl': 'jobs/platform-lite/jobs.index.ts.tpl',
-  'jobs/platform/persistence.jobs.sql.ts.tpl': 'jobs/platform-lite/persistence.jobs.sql.ts.tpl',
+  'jobs/platform/job-claim.service.ts.tpl': 'jobs/platform-lite/job-claim.service.ts.tpl',
+  'jobs/platform/job-claim.service.spec.ts.tpl': 'jobs/platform-lite/job-claim.service.spec.ts.tpl',
 });
 
-/** The TypeORM-only files of a platform capability: lite's schema authority is supabase/migrations (be.persistence lite overlay). */
-const TYPEORM_ONLY = /\/persistence\/(?:connection\.ts$|entities\/|migrations\/)/;
+/**
+ * The persistence files lite leaves out: the TypeORM schema (its authority is db/migrations) and the SQL text and row files (the
+ * statements are database functions of the lite migration, called through callDbFunction; R334 and the be.persistence lite overlay).
+ */
+const TYPEORM_ONLY = /\/persistence\/(?:connection\.ts$|entities\/|migrations\/|[^/]+\.(?:sql|rows)\.ts$)/;
 
 /** The e2e proof slot lite forbids (R212); a lite pattern proves itself with optional integration specs (the topic's liteAdapter proof). */
 const E2E_SLOT = 'be.tests.e2e';
@@ -80,20 +84,20 @@ function skeletonFiles(repoRoot) {
   return { created, patches: after === before ? [] : [{ file: errorFile, text: after }] };
 }
 
-/** The capability tables a platform capability the verb adds for the first time needs, as one forward-only Supabase migration. */
+/** The capability tables a platform capability the verb adds for the first time needs, as one forward-only db migration. */
 function migrationFiles({ repoRoot, beRoot, patterns, now }) {
   const sections = [
     ['queue-outbox', 'queue', 'queues/platform-lite/queue-outbox.sql.tpl', 'queue'],
     ['jobs', 'fenced-job', 'jobs/platform-lite/jobs.sql.tpl', 'jobs'],
   ].filter(([, pattern, , capability]) => patterns.includes(pattern) && !fs.existsSync(path.join(beRoot, 'src', 'modules', 'platform', capability, 'index.ts')));
   if (!sections.length) return [];
-  const folder = path.join(repoRoot, 'supabase', 'migrations');
+  const folder = path.join(repoRoot, 'db', 'migrations');
   const migrations = fs.existsSync(folder) ? fs.readdirSync(folder).filter((file) => MIGRATION.test(file)).sort(byCodeUnit) : [];
   const stamp = new Date(now()).toISOString().replace(/\D/g, '').slice(0, 14);
   const latest = migrations.at(-1)?.slice(0, 14);
   if (latest && stamp <= latest) throw new ScaffoldError('HFS_ADD_MIGRATION_ORDER', `the current UTC timestamp ${stamp} is not later than the latest migration ${latest}; fix the clock or wait for the next second`);
   const text = sections.map(([, , source]) => template(`be/patterns/${source}`)).join('\n');
-  return [{ relative: `supabase/migrations/${stamp}_${sections.map(([name]) => name).join('-')}.sql`, text }];
+  return [{ relative: `db/migrations/${stamp}_${sections.map(([name]) => name).join('-')}.sql`, text }];
 }
 
 /** The queue imports bullmq, which loads ioredis as an optional peer and cannot connect without it. */
@@ -320,10 +324,9 @@ function stackFiles(repoRoot, { project, consumers }) {
 
 /**
  * Plans the lite additions of `add queue|job` before any file is written; returns null outside lite or for another noun. The
- * plan's apply() writes them and returns the app-relative paths it created or changed. A new migration regenerates the
- * database types through `emitTypes` (the local Supabase stack, as `add table`); false is the `--no-types` seam.
+ * plan's apply() writes them and returns the app-relative paths it created or changed.
  */
-export function planLiteQueue({ repoRoot, repo, noun, patterns, now, emitTypes = emitDbTypes }) {
+export function planLiteQueue({ repoRoot, repo, noun, patterns, now }) {
   if (repo.edition !== 'lite' || !['queue', 'job'].includes(noun)) return null;
   const beRoot = path.join(repoRoot, 'be');
   const migrations = migrationFiles({ repoRoot, beRoot, patterns, now });
@@ -345,20 +348,9 @@ export function planLiteQueue({ repoRoot, repo, noun, patterns, now, emitTypes =
       const exported = registerLiteExports({ root: repoRoot, generator: 'queue' });
       const sealed = sealRedisMembers(repoRoot, stack.environments);
       const changed = patches.map((patch) => path.relative(repoRoot, patch.file).split(path.sep).join('/'));
-      const types = migrations.length && typeof emitTypes === 'function' ? writeTypes(repoRoot, emitTypes) : [];
-      return [...new Set([...created.map((entry) => entry.relative), ...changed, ...exported, ...sealed, ...types])];
+      return [...new Set([...created.map((entry) => entry.relative), ...changed, ...exported, ...sealed])];
     },
   };
-}
-
-/** The SQL of the new capabilities names public.queue and public.jobs, which the generated database types must declare. */
-function writeTypes(repoRoot, emitTypes) {
-  const generated = emitTypes({ root: repoRoot });
-  if (typeof generated !== 'string') return [];
-  const target = path.join(repoRoot, ...dbTypesPath.split('/'));
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(target, generated);
-  return [dbTypesPath];
 }
 
 /** Seals a placeholder redis-password member to the app's configured recipient; without one, `starci app secret init` seals it. */

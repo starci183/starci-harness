@@ -12,7 +12,10 @@ temporal.md, retries resilience.md, logging logging.md.
 A raw library (the queue and Redis clients, the Postgres driver, socket and LISTEN engines, timers, loggers, date
 libraries, `node:async_hooks`) is imported only by the platform capability the table names; any other package
 dependency outside the framework and pure-library allowlists only by its one provider integration; model libraries
-follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). `@nestjs/config`,
+follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). The S3 client (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`) is
+imported only by `integrations/object-storage`, the ObjectStorage port with presigned PUT and GET over S3-compatible storage
+(MinIO in lite), and `minio` nowhere; in lite the identity libraries belong to `integrations/passport`
+([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
 `dotenv`, `@nestjs/schedule` and `@nestjs/event-emitter` are imported nowhere. In lite a backing library is legal only
 when `sides.be.backing` declares it (Redis for the queue and the realtime hub); vectors are pgvector.
 
@@ -21,7 +24,7 @@ Why: a library used in two places has two configurations, two failure behaviours
 - When code must run something later → a typed queue producer and a job (BE-QUEUES-1, BE-JOBS-4), never `setTimeout`
   or a cron decorator.
 
-Enforced by: `infra-import-owner`, `third-party-import-owner` (R90, R279), `no-ambient-id` (R142).
+Enforced by: `infra-import-owner`, `third-party-import-owner` (R90, R279, R328, R331), `no-ambient-id` (R142).
 
 ## BE-INFRA-2 Outbound HTTP goes through the HttpClient port with a required timeout
 

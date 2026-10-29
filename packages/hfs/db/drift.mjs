@@ -1,7 +1,7 @@
 // drift.mjs - `starci app db drift`: the TypeORM entities of an app against the schema its SQL migrations build.
 // The migrations (db/migrations/*.sql, after db/bootstrap.sql when present) are the only DDL and `synchronize` is false, so an entity only
 // maps tables that already exist and can drift from them. The verb builds TypeORM's metadata from the app's entity list
-// (be/src/platform/database/entities.ts, compiled in-process with the app's own typescript and loaded with the app's own typeorm) through a
+// (be/src/modules/platform/database/entities.ts, compiled in-process with the app's own typescript and loaded with the app's own typeorm) through a
 // DataSource that never connects, applies the migrations to a scratch database (a throwaway container of the image the app's
 // .starcistacks declares for its db component, or the empty database named by --url-env), reads that schema from
 // information_schema.columns and pg_catalog, and reports every entity column whose table or column is missing, whose type differs (both

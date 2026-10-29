@@ -2,14 +2,46 @@ import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
 import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
-import { BATCH_ROWS, DatabaseError, DatabaseErrorCode } from "@modules/platform/database"
+import { BATCH_ROWS, DatabaseError, DatabaseErrorCode, callDbFunction } from "@modules/platform/database"
 import type { ClientOperation, ClientOperationEffect, Inbox, InboxEventId } from "./inbox.port"
 import { IdempotencyError, IdempotencyErrorCode } from "@modules/platform/idempotency"
 import { InboxError, InboxErrorCode } from "./errors/inbox.error"
 import { clientSource } from "./client-operation.policy"
 import { canonicalJson, requestFingerprint } from "./request-fingerprint.policy"
-import type { ClaimClientRow, InboxEventRow, InboxSweepRow, SavedClientOutcomeRow } from "./persistence/inbox.rows"
-import { CLAIM_CLIENT, CLAIM_EVENT, SAVE_CLIENT_OUTCOME, SWEEP_CLIENTS } from "./persistence/inbox.sql"
+
+/** The JSON envelope makes a completed null value distinct from a pending SQL-null outcome. */
+interface ClientOutcomeRow<T> {
+    /** The operation's complete JSON result, including expected refusals. */
+    readonly value: T
+}
+
+/** The row returned by the atomic client claim. */
+interface ClaimClientRow<T> {
+    /** The digest recorded by the first operation under this scoped key. */
+    readonly request_fingerprint: string | null
+    /** The saved result, or null only for a claim inserted by this transaction. */
+    readonly outcome: ClientOutcomeRow<T> | null
+    /** An existing row had no completed outcome, so it must never run an effect again. */
+    readonly incomplete: boolean
+}
+
+/** The persisted outcome returned to the first caller. */
+interface SavedClientOutcomeRow<T> {
+    /** The normalized JSON result as the database stores it. */
+    readonly outcome: ClientOutcomeRow<T>
+}
+
+/** A claimed or deleted delivery key returned by inbox persistence. */
+interface InboxEventRow {
+    /** The event or client key owned by the row. */
+    readonly event_id: string
+}
+
+/** The bounded retention batch's aggregate result. */
+interface InboxSweepRow {
+    /** Number of completed client claims removed by this transaction. */
+    readonly deleted_count: number
+}
 
 @Injectable()
 /** Claims a delivery with the receipt transaction, so a failure can be retried without losing the delivery. */
@@ -22,7 +54,7 @@ export class PostgresInbox implements Inbox {
         if (!normalizedEventId) {
             throw new DatabaseError({ code: DatabaseErrorCode.WebhookDeliveryIdRequired })
         }
-        const rows: Array<InboxEventRow> = await tx.query(CLAIM_EVENT, [source, normalizedEventId])
+        const rows = await callDbFunction<InboxEventRow>(tx, "inbox_claim_event", [source, normalizedEventId])
         return rows.length > 0
     }
 
@@ -32,7 +64,7 @@ export class PostgresInbox implements Inbox {
             throw new InboxError({ code: InboxErrorCode.TransactionRequired })
         const source = clientSource(request)
         const fingerprint = requestFingerprint(request.request)
-        const rows: Array<ClaimClientRow<T>> = await tx.query(CLAIM_CLIENT, [
+        const rows = await callDbFunction<ClaimClientRow<T>>(tx, "inbox_claim_client", [
             source,
             request.idempotencyKey,
             fingerprint,
@@ -52,7 +84,7 @@ export class PostgresInbox implements Inbox {
         } catch (cause) {
             throw new InboxError({ code: InboxErrorCode.OutcomeInvalid, cause })
         }
-        const saved: Array<SavedClientOutcomeRow<T>> = await tx.query(SAVE_CLIENT_OUTCOME, [
+        const saved = await callDbFunction<SavedClientOutcomeRow<T>>(tx, "inbox_save_client_outcome", [
             source,
             request.idempotencyKey,
             outcome,
@@ -64,7 +96,7 @@ export class PostgresInbox implements Inbox {
 
     /** A row lock and SKIP LOCKED keep retention from competing with a live retry or another sweep worker. */
     async sweepClients(cutoff: Date, tx: EntityManager): Promise<number> {
-        const rows: Array<InboxSweepRow> = await tx.query(SWEEP_CLIENTS, [cutoff, BATCH_ROWS])
+        const rows = await callDbFunction<InboxSweepRow>(tx, "inbox_sweep_clients", [cutoff, BATCH_ROWS])
         return rows[0]?.deleted_count ?? 0
     }
 }

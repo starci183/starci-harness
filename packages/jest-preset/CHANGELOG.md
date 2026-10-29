@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.0 - 2026-10-29
+
+- Added: `fakeQueryBuilder(answers)` and `queueQueryBuilders(em, answers)` (also at `@starci/jest-preset/query-builder`), the double of `createQueryBuilder(Entity, "alias")` beside `mockEntityManager`: every chained call is recorded and returned to the chain, the terminals resolve the spec's answers. Lite persistence reads through entities and that builder (ruling `lite-persistence-typeorm-entities`), so the double moves here from the apps.
+
 ## 2.4.1 - 2026-10-28
 
 - Changed: `@starci/ai-router` joins the ESM-only dependencies jest compiles to CommonJS, so a spec that builds an AppModule registering the AI pool loads it.

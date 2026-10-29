@@ -9,7 +9,10 @@ import { OutboxLogEvent } from "@modules/platform/outbox"
 import type { QueueOptions } from "./queue.options"
 import { QueueRelayService } from "./queue-relay.service"
 import type { QueueTransport } from "./queue-transport.port"
-import { MARK_ROWS_SENT, SELECT_WAITING_ROWS } from "./persistence/queue.sql"
+
+// The statements callDbFunction of platform/database sends for the relay's functions.
+const SELECT_WAITING_ROWS = "SELECT * FROM queue_waiting($1)"
+const MARK_ROWS_SENT = "SELECT * FROM queue_mark_sent($1, $2)"
 
 const AT = "2026-02-03T04:05:06.000Z"
 

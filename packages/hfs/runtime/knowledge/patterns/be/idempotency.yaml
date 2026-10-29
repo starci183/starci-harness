@@ -81,7 +81,7 @@ rules:
       (`ON CONFLICT (source, event_id) DO NOTHING RETURNING event_id`) returns `true` for a new row and `false` for a
       duplicate without aborting the caller's transaction. It never reads first and writes after, which races two concurrent
       deliveries of the same event. Lite uses its existing `public.inbox` table with the same client receipt columns,
-      owned by a forward-only Supabase migration. A client receipt extends this table; no capability creates another
+      owned by a forward-only db migration. A client receipt extends this table; no capability creates another
       dedupe table or unique request-key constraint to compete with it.
     rationale: |-
       One shared table with one owner keeps the guarantee "this (source, event id) claims at most once" in one place, and
@@ -250,7 +250,7 @@ files:
 liteAdapter:
   summary: >-
     Lite keeps the Inbox port and transaction-owned client receipt API. Its existing public.inbox
-    table uses Supabase migration authority; the be/inbox platform templates carry the lite adapter and the
+    table uses db migration authority; the be/inbox platform templates carry the lite adapter and the
     platform/client-operation-outcomes.sql.tpl forward migration. The files tree above describes the full TypeORM adapter.
     Delivery-only webhook scaffolds do not install a client marker. When adopting this client pattern, add the shared
     idempotency/platform/inbox/effectful.decorators.ts.tpl as src/modules/platform/inbox/effectful.decorators.ts and
@@ -261,5 +261,5 @@ liteAdapter:
     - {port: receipt retention, adapter: a fenced job delivered by the BullMQ queue on the declared Redis and scheduled by a pg_cron tick that enqueues through the queue outbox}
   proof: >-
     The same inbox and fingerprint unit specs apply; declaring idempotency requires both client receipt scenarios in
-    lite's local Supabase integration lane.
+    lite's local db integration lane.
   see: [knowledge/patterns/be/queues.yaml]

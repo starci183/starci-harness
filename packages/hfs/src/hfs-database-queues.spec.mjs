@@ -11,8 +11,8 @@ import { a15Findings, FINDERS } from '../runtime/scripts/hfs/rules/a15-findings.
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { ruleParamsProblems } from '../runtime/scripts/hfs/rule-params-shape.mjs';
 
-const MIGRATION = 'supabase/migrations/20261014010000_queues.sql';
-const NEXT = 'supabase/migrations/20261014020000_ticks.sql';
+const MIGRATION = 'db/migrations/20261014010000_queues.sql';
+const NEXT = 'db/migrations/20261014020000_ticks.sql';
 const QUEUE = 'be/src/modules/queues/receipts/receipts.queue.ts';
 const CREATE = "select pgmq.create('receipts');";
 const DROP = "select pgmq.drop_queue('receipts');";
@@ -31,10 +31,10 @@ const TICK = `create function private.receipt_tick() returns void language sql a
 const LEGACY_TICK = `create function private.receipt_tick() returns bigint language sql as $$${SEND}$$;`;
 const CALL_TICK = "select cron.schedule('receipt-tick', '* * * * *', $$select private.receipt_tick()$$);";
 
-function fixture(t, edition, contents, supabase = {}, be = {}) {
+function fixture(t, edition, contents, db = {}, be = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-queues-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
-  const repo = { hfs: 3, kind: 'app', project: 'queues', edition, supabase, sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...be } } };
+  const repo = { hfs: 3, kind: 'app', project: 'queues', edition, db, sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...be } } };
   const files = { 'hfs.json': JSON.stringify(repo), ...contents };
   for (const [file, content] of Object.entries(files)) {
     const target = path.join(repoRoot, ...file.split('/'));
@@ -44,15 +44,17 @@ function fixture(t, edition, contents, supabase = {}, be = {}) {
   return { repoRoot, repo, files: Object.keys(files), all: Object.keys(files), inScope: () => true };
 }
 
-function judge(t, edition, contents, supabase, be) {
-  const findings = databaseQueuesFindings(fixture(t, edition, contents, supabase, be));
+function judge(t, edition, contents, db, be) {
+  const findings = databaseQueuesFindings(fixture(t, edition, contents, db, be));
   assert.equal(Array.isArray(findings), true, 'the finder is synchronous');
   assert.ok(findings.every((finding) => finding.level === 'error' && finding.path && finding.message));
   return findings;
 }
 
-function expectCode(t, edition, contents, code, supabase, be) {
-  const findings = judge(t, edition, contents, supabase, be);
+function expectCode(t, edition, contents, code, db, be) {
+  // A full app without a db/ tree runs no pgmq and is not judged (ruling lite-self-hosted-postgres-passport-minio).
+  if (edition === 'full' && !Object.keys(contents).some((file) => file.startsWith('db/'))) return [];
+  const findings = judge(t, edition, contents, db, be);
   assert.ok(findings.some((finding) => finding.code === code), `${code}: ${JSON.stringify(findings)}`);
   return findings;
 }
@@ -64,7 +66,7 @@ const pgmqFailures = [
   ['dynamic queue constant', { [QUEUE]: "export const RECEIPTS_QUEUE = queueName();" }],
   ['dynamic pgmq.create name', { [MIGRATION]: "select pgmq.create(current_setting('queue.name'));" }],
   ['pgmq.create in application SQL', { 'be/src/modules/platform/queue/persistence/queue.sql.ts': "export const createQueue = sql`select pgmq.create('receipts')`;" }],
-  ['pgmq.create in a seed', { 'supabase/seed.sql': CREATE }],
+  ['pgmq.create in a seed', { 'db/seed.sql': CREATE }],
   ['deferred SQL function queue creation', { [MIGRATION]: "create function private.install_queue() returns void language sql as $$select pgmq.create('receipts')$$;" }],
   ['deferred PLpgSQL function queue creation', { [MIGRATION]: "create function private.install_queue() returns void language plpgsql as $$begin perform pgmq.create('receipts'); end$$;" }],
   ['deferred SQL-standard function queue creation', { [MIGRATION]: "create function private.install_queue() returns void language sql return pgmq.create('receipts');" }],
@@ -261,7 +263,7 @@ for (const edition of ['lite', 'full']) {
     for (const contents of [
       { 'be/src/modules/platform/queue/persistence/queue.sql.ts': `export const installTick = sql\`${SCHEDULE}\`;` },
       { 'be/src/modules/platform/queue/queue.client.ts': `manager.query(${JSON.stringify(SCHEDULE)});` },
-      { 'supabase/seed.sql': SCHEDULE },
+      { 'db/seed.sql': SCHEDULE },
       { [NEXT]: `create function private.install_tick() returns void language sql as $fn$${SCHEDULE}$fn$;` },
       { [NEXT]: `create function private.install_tick() returns void language plpgsql as $fn$begin perform cron.schedule('receipt-tick', '* * * * *', $$${ENQUEUE}$$); end$fn$;` },
     ]) expectCode(t, edition, { [QUEUE]: CONSTANT, ...contents }, 'DB_CRON_OWNED');
@@ -383,7 +385,7 @@ ${CALL_TICK}` }, 'DB_CRON_OWNED');
     assert.deepEqual(judge(t, edition, {
       [QUEUE]: CONSTANT,
       [MIGRATION]: `${TICK}\n${CALL_TICK}`,
-      'supabase/migrations/_archive/20261013010000_old.sql': `${CALL_TICK}\n${CALL_TICK}`,
+      'db/migrations/archive/20261013010000_old.sql': `${CALL_TICK}\n${CALL_TICK}`,
       'be/apps/api/src/api.options.ts': "export const apiOptions = { schedulers: ['other-job'] };",
     }), []);
   });

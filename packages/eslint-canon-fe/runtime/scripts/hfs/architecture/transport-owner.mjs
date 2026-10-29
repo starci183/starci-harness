@@ -18,7 +18,8 @@ import { propertyValue } from './function-spec-providers.mjs';
  *   - no file outside the client folder and the stream reader folder (`fe.transport.stream`, `modules/api/sse/clients/`) references the global `fetch`: a call, `globalThis.fetch`, `window.fetch`, or a
  *     reference passed as a value (`useSWR(key, fetch)`, `const send = fetch`), all of which a spelling-based rule misses; with no
  *     client at all every such reference is a finding that says the repository has no client;
- *   - axios is imported only by the api owner (modules/api, the api package) for its rest calls; every other HTTP library is a
+ *   - axios is imported only by the api owner (modules/api, the api package) for its rest calls and by the auth door
+ *     (modules/auth/auth-door.ts) for the app's own auth doors; every other HTTP library is a
  *     second transport wherever it is imported, by static import, `import()` or `require()`;
  *   - an `ApolloClient` is constructed only inside the client folder;
  *   - every GraphQL operation (`graphql/queries/query-*.ts`, `graphql/mutations/mutation-*.ts`, `graphql/subscriptions/subscription-*.ts`) imports the client (or the api
@@ -103,13 +104,16 @@ function isApolloClientConstruction(ts, kit, checker, node) {
   return Boolean(binding?.name === 'ApolloClient' && binding.module.startsWith('@apollo/client'));
 }
 
+/** The one auth door of the session issuer's client (`modules/auth/auth-door.ts`, slot fe.modules.auth): it calls the app's own auth doors with axios. */
+const isAuthDoor = (file) => file.slot === 'fe.modules.auth' && path.posix.basename(file.rel) === 'auth-door.ts';
+
 function inspectLibraryImport({ ts, file, node, transport, report }) {
   const specifier = moduleSpecifierOf(ts, node);
   if (!specifier || !ts.isStringLiteralLike(specifier)) return;
   const library = specifier.text.split('/')[0];
-  if (!HTTP_LIBRARIES.has(library) || (library === REST_LIBRARY && API_OWNER_SLOTS.has(file.slot))) return;
+  if (!HTTP_LIBRARIES.has(library) || (library === REST_LIBRARY && (API_OWNER_SLOTS.has(file.slot) || isAuthDoor(file)))) return;
   const where = library === REST_LIBRARY
-    ? 'axios belongs to the api owner only (modules/api/rest, the api package): call its rest functions'
+    ? 'axios belongs to the api owner (modules/api/rest, the api package) and the auth door (modules/auth/auth-door.ts) only: call their functions'
     : `the transport is Apollo GraphQL (${transport}) with axios for the rest calls of modules/api/rest`;
   report(file, node, `${specifier.text} is a second HTTP transport in ${file.rel}; ${where}.`, { library: specifier.text });
 }

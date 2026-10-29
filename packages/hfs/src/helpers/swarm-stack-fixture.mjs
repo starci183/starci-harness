@@ -28,7 +28,7 @@ export function swarmFixture(t, edition = 'lite') {
   const manifest = { schema: 'starci/application-stacks@1',
     components: { api: { role: 'service', image: swarmService().image, compose: 'infra/swarm/stack.yaml' },
       ingress: { role: 'ingress', image: `caddy:2@sha256:${'b'.repeat(64)}`, compose: 'infra/swarm/stack.yaml' } },
-    backing: { supabase: { provider: 'supabase', managed: true } },
+    backing: { db: { provider: 'postgres', component: 'db' } },
     environments: { production: { status: 'supported', runtime: 'docker-swarm', composeFiles: ['infra/swarm/stack.yaml'],
       components: { api: { replicas: 2 }, ingress: {} }, runbook: 'README.md',
       secrets: [{ name: 'database-url', runtimeName: 'swarm-app-database-url-v1', version: 1,
@@ -38,8 +38,8 @@ export function swarmFixture(t, edition = 'lite') {
       tls: { owner: 'application operator', receipt: 'evidence/tls.md' },
       release: { imagesLock: 'evidence/images.lock', pointer: 'evidence/current.json',
         previous: 'evidence/previous.json', healthAssertions: ['api-ready'] },
-      backup: [{ component: 'supabase', target: 'encrypted-offsite', retention: '30d', owner: 'application operator',
-        restoreProof: 'evidence/supabase-restore.md' }] } },
+      backup: [{ component: 'db', target: 'encrypted-offsite', retention: '30d', owner: 'application operator',
+        restoreProof: 'evidence/db-restore.md' }] } },
     k8s: { status: 'deferred', reason: 'Swarm is the delivery runtime' },
     services: { sonar: { provider: 'sonarcloud', mode: 'disabled', reason: 'isolated checker fixture', ci: { wiring: 'not-used' }, ownerAction: 'none' } } };
   const model = { services: { api: swarmService(), ingress: { ...swarmService(manifest.components.ingress.image), ports: ['443:443'],
@@ -67,7 +67,7 @@ export function swarmFixture(t, edition = 'lite') {
   const encrypted = 'ENC[AES256_GCM,data:YWJj,iv:ZGVm,tag:Z2hp,type:str]';
   put('.starcistacks/production/secrets/database-url.enc', JSON.stringify({ data: encrypted, sops: { mac: encrypted, age: [] } }));
   put('.starcistacks/production/infra/swarm/Caddyfile', 'app.example.test {\n  reverse_proxy api:3000\n}\n');
-  for (const record of ['images.lock', 'current.json', 'previous.json', 'supabase-restore.md', 'dns.md', 'tls.md'])
+  for (const record of ['images.lock', 'current.json', 'previous.json', 'db-restore.md', 'dns.md', 'tls.md'])
     put(`evidence/${record}`, 'Public fixture evidence for the declared release and recovery contract.\n');
   write();
   const check = () => stacksFindings({ repoRoot: root, files: [...files], resolver: openHfs({ declaration }) });

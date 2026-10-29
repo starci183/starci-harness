@@ -28,7 +28,7 @@ kind (api, webhooks, realtime, jobs, cli) → domain, persistence → error, typ
 | [cli](cli.md) | The one cli app, groups and sub-commands, thin commands, argv ownership | BE-CLI-1 … 4 |
 | [idempotency](idempotency.md) | Inbox claim first, one inbox table, client receipts | BE-IDEMPOTENCY-1 … 3 |
 | [domain](domain.md) | Capability ownership, direct call versus enqueued work | BE-DOMAIN-1, 2 |
-| [persistence](persistence.md) | Schema authority, SQL constants, transactions, connections, Supabase boundary | BE-PERSISTENCE-1 … 11, 16, 17, 19 |
+| [persistence](persistence.md) | Schema authority, entities and SQL, transactions, connections, the lite data boundary | BE-PERSISTENCE-1 … 11, 16, 17, 19 |
 | [error](error.md) | Error families, throw versus Outcome, catch, filter and formatter | BE-ERROR-1 … 5 |
 | [typing](typing.md) | Shapes, layer contracts, mutability, enums, narrowing, zod placement | BE-TYPING-1 … 5, 8 |
 | [naming](naming.md) | File suffixes, classes, tokens, methods, type suffixes, GraphQL fields | BE-NAMING-1, 2, 5 … 8 |

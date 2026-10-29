@@ -55,9 +55,9 @@ Lite is the smaller edition of the same HFS standard, not another profile or eng
 the same slot manifest, rule catalog, lint canons, grammar, security rules and Docker rules apply, while edition fields filter
 out the test world and event machinery.
 
-`starci app scaffold <name> --edition lite` creates the minimum single-api, single-Next-app Supabase product. It generates the
-`app.supabase.types` artifact from the app's local Supabase stack; if that generation cannot run, scaffolding fails and removes
-the app it began instead of leaving a partial tree.
+`starci app scaffold <name> --edition lite` creates the minimum single-api, single-Next-app product on its own PostgreSQL (`db/`,
+the `db` service of its stack), its Passport identity and its S3 storage; a failed step removes the app it began instead of leaving a
+partial tree. `starci app db new|plan|migrate|dump|post-cutover --url-env <NAME>` drives that database (default `DATABASE_URL`).
 
 The lite `app.starciwork` slot is optional when the app has no brand records. When present, it holds only `.gitignore`,
 optional `workspace.yaml` metadata and `brand/**` (R212): the existing brand record, drawing records, references and assets.
@@ -67,22 +67,20 @@ and `workspace.yaml` and retains `brand/` only when present.
 
 The lite additions are deliberately narrow:
 
-- `starci app add table <name> [--fe] [--no-types]` adds the migration and matching back-end capability. `--fe` also adds the table's
+- `starci app add table <name> [--fe]` adds the migration and matching back-end capability. `--fe` also adds the table's
   api feature over GraphQL (get-<singular> query, create-<singular> mutation, the GraphQL server capability on first use) and, in
   every product Next app, one operation file per operation under `modules/api/graphql` and its `useQuery*Swr` / `useMutate*Swr`
-  hook under `hooks/swr/api/graphql`; never a Server Action or a Supabase reader. Types regenerate by default, while `--no-types` is
-  the explicit opt-out.
+  hook under `hooks/swr/api/graphql`; never a Server Action or a database reader.
 - `starci app add cli <group>` creates the optional cli app on first use, including its built-in migration and seed groups, then adds
   the requested group without full-edition specs.
 - `starci app add app <name>` adds another Next app in either edition: the edition's app skeleton plus the shared app core
   (modules/api, auth, toast, redux, the providers and the hooks), one fe structure for lite and full (owner ruling 2026-10-13).
 - An `add` or `new` whose target slot is unavailable in lite stops before writing with `<verb> <noun>: full edition only`.
 
-`starci app emit` continues to emit the enabled back-end snapshots and also writes `supabase/types/database.types.ts` when
-the `app.supabase.types` slot is enabled. The local Supabase stack must be running for generation.
+`starci app emit` emits the enabled back-end contract snapshots; a lite app generates no database types.
 
 `starci app db drift` holds a lite app's TypeORM entities to the schema its migrations build (R333, `BE_ENTITY_SCHEMA_DRIFT`; `db/drift.mjs`).
-It loads the entity list `be/src/platform/database/entities.ts` with the app's own `typescript`, `typeorm` and `pg` (its `be/tsconfig.json`
+It loads the entity list `be/src/modules/platform/database/entities.ts` with the app's own `typescript`, `typeorm` and `pg` (its `be/tsconfig.json`
 path aliases resolved) and builds TypeORM's metadata through a postgres `DataSource` with `synchronize` false that never connects. It applies
 `db/bootstrap.sql`, when present, and every active `db/migrations/*.sql`, each file in one transaction, to a scratch database: a throwaway
 container of the image `.starcistacks/application-stacks.yaml` declares for `components.db`, or with `--url-env <NAME>` the database that

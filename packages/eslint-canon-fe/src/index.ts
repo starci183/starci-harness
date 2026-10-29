@@ -315,11 +315,9 @@ Object.assign(recommended, functionBudgetRecommended)
 // source-only catalog discovery can find them. The appended registration gives each module
 // ownership of those same rule instances without declaring either rule twice.
 import { recommended as swrFamilyRecommended, rules as swrFamilyRules } from "./swr-family.ts"
-import { recommended as callbackShapeRecommended, rules as callbackShapeRules } from "./callback-shape.ts"
 
 const A14_CONTRIBUTIONS: Contribution[] = [
   { law: "swr-family", rules: swrFamilyRules, recommended: swrFamilyRecommended },
-  { law: "callback-shape", rules: callbackShapeRules, recommended: callbackShapeRecommended },
 ]
 
 for (const addition of A14_CONTRIBUTIONS) {

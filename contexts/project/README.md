@@ -48,7 +48,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
   Kernel carries them into the contract's `checks.extend`, beside the checks its op file holds as base.
 - **Contract.** Its shape, presets and refusals are `starci explain` (`contract new`, `contract check`) and
   [README.md](../../README.md) "How it works"; a docs task names a scope inside `.starciwork` as its allowPaths, never the
-  whole tree. A project whose clean checkout lacks generated code (GraphQL types, Supabase row types, catalogs)
+  whole tree. A project whose clean checkout lacks generated code (GraphQL types, catalogs)
   declares the commands that produce it in the contract's `context.setup`; the clean verify runs them after install
   and before the checks, so a green never depends on a file only the worker's checkout had.
 - **Op and verify.** The worker brief is the worker procedure of [ops/ops/README.md](../../ops/ops/README.md) followed

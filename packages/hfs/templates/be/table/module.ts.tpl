@@ -4,7 +4,7 @@ import { ConfigurableModuleClass, OPTIONS_TYPE } from "./{{name}}.module-definit
 import { {{Name}}Service } from "./{{name}}.service"
 
 @Module({})
-/** The {{name}} capability over the primary Supabase PostgreSQL connection. */
+/** The {{name}} capability over the primary PostgreSQL connection. */
 export class {{Name}}Module extends ConfigurableModuleClass {
     /** Registers the capability once in the API app. */
     static register(options: typeof OPTIONS_TYPE): DynamicModule {

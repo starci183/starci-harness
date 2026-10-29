@@ -162,7 +162,7 @@ function appendEntries(entries, context, planned) {
 
 /** Planned app migrations append after every active migration, before any generated file is written. */
 function requireMigrationOrder(repoRoot, planned) {
-  const directory = path.join(repoRoot, 'supabase', 'migrations');
+  const directory = path.join(repoRoot, 'db', 'migrations');
   const migrations = planned.filter(file => path.dirname(file.absolute) === directory);
   if (migrations.length === 0) return;
   const existing = fs.existsSync(directory) ? fs.readdirSync(directory) : [];

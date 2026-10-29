@@ -1,17 +1,18 @@
-// dump.mjs - full Supabase backup, encrypted outside Git; every plaintext part is removed even when a tool fails.
+// dump.mjs - `starci app db dump`: a full backup of the database --url-env names (pg_dumpall roles, pg_dump schema and data),
+// encrypted outside Git; every plaintext part is removed even when a tool fails.
 import fs from 'node:fs';
 import path from 'node:path';
 import { runVerb } from '../release/index.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
-import { RECEIPT_SCHEMA, outsideRepository, backupSession, backupArgs, backupRecipients, backupTool, encryptFile, queryRows, sha256, runCli } from './backup-receipt.mjs';
+import { RECEIPT_SCHEMA, outsideRepository, backupSession, backupRecipients, backupTool, encryptFile, queryRows, sha256, runPgTool } from './backup-receipt.mjs';
 
-/** Counts every ordinary table with quoted identifiers in a read-only transaction, including auth and storage. */
+/** Counts every ordinary table with quoted identifiers, every schema but the catalogs (auth included). */
 export function rowcounts(session) {
   const tables = queryRows(session, "select schemaname, tablename from pg_catalog.pg_tables where schemaname not in ('pg_catalog', 'information_schema') order by schemaname, tablename;");
   const quote = (name) => `"${String(name).replaceAll('"', '""')}"`;
   return tables.map((table) => {
     if (typeof table.schemaname !== 'string' || typeof table.tablename !== 'string') throw failure('DB_BACKUP_QUERY_FAILED', 'invalid table inventory');
-    const rows = queryRows(session, `begin read only; select count(*)::text as count from ${quote(table.schemaname)}.${quote(table.tablename)}; commit;`);
+    const rows = queryRows(session, `select count(*)::text as count from ${quote(table.schemaname)}.${quote(table.tablename)}`);
     if (rows.length !== 1 || !/^\d+$/u.test(String(rows[0].count))) throw failure('DB_BACKUP_QUERY_FAILED', 'invalid rowcount');
     return { schema: table.schemaname, table: table.tablename, count: String(rows[0].count) };
   });
@@ -48,15 +49,15 @@ export function dumpDatabase(ctx, options = {}) {
   let complete = false;
   try {
     fs.mkdirSync(scratch, { mode: 0o700 });
-    const jobs = [['roles.sql', ['--role-only']], ['schema.sql', []], ['auth-storage-schema.sql', ['--schema', 'auth,storage']]];
-    if (!options.schemaOnly) jobs.push(['data.sql', ['--data-only']], ['auth-storage-data.sql', ['--data-only', '--schema', 'auth,storage']]);
-    for (const [file, flags] of jobs) runCli(session, ['db', 'dump', ...flags, '--file', path.join(scratch, file), ...backupArgs(session)]);
+    const jobs = [['roles.sql', 'pg_dumpall', ['--roles-only', '--no-role-passwords']], ['schema.sql', 'pg_dump', ['--schema-only']]];
+    if (!options.schemaOnly) jobs.push(['data.sql', 'pg_dump', ['--data-only']]);
+    for (const [file, command, flags] of jobs) runPgTool(session, command, [...flags, '--file', path.join(scratch, file), '--dbname', session.target.url]);
     const counts = rowcounts(session);
     fs.writeFileSync(path.join(scratch, 'rowcounts.json'), `${JSON.stringify(counts, null, 2)}\n`, { mode: 0o600 });
     const parts = [...jobs.map(([file]) => file), 'rowcounts.json'];
     const tar = archiveParts(ctx, scratch, parts);
     const bytes = encryptFile(ctx, tar, archive, recipients);
-    const receipt = { schema: RECEIPT_SCHEMA, project: session.project, target: session.target.kind, ref: session.target.ref ?? null,
+    const receipt = { schema: RECEIPT_SCHEMA, project: session.project, target: session.target.kind, ref: session.target.urlEnv,
       at, file: path.basename(archive), bytes, sha256: sha256(archive), parts,
       rowcounts: { tables: counts.length, rows: counts.reduce((sum, row) => sum + BigInt(row.count), 0n).toString(), tablesByName: counts }, schemaOnly: options.schemaOnly === true };
     fs.writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 });
@@ -70,9 +71,9 @@ export function dumpDatabase(ctx, options = {}) {
 
 export function dbDumpMain(argv, io = {}) {
   return runVerb({ label: 'starci app db dump', name: 'db dump', code: 'DB_USAGE', io, argv,
-    spec: { boolean: ['--linked', '--local', '--schema-only', '--json'], value: ['--url-env', '--out'] },
+    spec: { boolean: ['--schema-only', '--json'], value: ['--url-env', '--out'] },
     run: (ctx, flags, positional) => {
       if (positional.length) throw refusal('DB_USAGE', 'dump takes flags only');
-      return dumpDatabase(ctx, { linked: flags.linked, local: flags.local, urlEnv: flags['url-env'], out: flags.out, schemaOnly: flags['schema-only'] });
+      return dumpDatabase(ctx, { urlEnv: flags['url-env'], out: flags.out, schemaOnly: flags['schema-only'] });
     } });
 }

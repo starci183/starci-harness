@@ -39,7 +39,7 @@ test('the lite inbox scaffold installs client replay declarations and migrates i
   const inboxRoot = path.join(root, 'be/src/modules/platform/inbox');
   assert.doesNotMatch(fs.readFileSync(path.join(inboxRoot, 'index.ts'), 'utf8'), /\bEffectful\b/);
   assert.equal(fs.existsSync(path.join(inboxRoot, 'effectful.decorators.ts')), false, 'a delivery-only inbox does not adopt the client command pattern');
-  const migration = created.find((relative) => relative.startsWith('supabase/migrations/'));
+  const migration = created.find((relative) => relative.startsWith('db/migrations/'));
   const parsed = await parseSql(fs.readFileSync(path.join(root, migration), 'utf8'));
   const statements = parsed.stmts.map((statement) => statement.stmt);
   const tables = statements.map((statement) => statement.CreateStmt?.relation?.relname).filter(Boolean);

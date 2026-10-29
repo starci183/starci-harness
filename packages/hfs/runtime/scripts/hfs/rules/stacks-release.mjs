@@ -81,7 +81,8 @@ function stateful(component, service) {
 function recoveryComponents({ doc, spec, model }) {
   const components = mapping(doc.components), services = mapping(model?.services);
   const selected = new Set([...Object.keys(mapping(spec.components)), ...Object.keys(services)]);
-  const required = new Set(Object.entries(mapping(doc.backing)).filter(([, entry]) => entry?.managed === true).map(([id]) => id));
+  // Every declared backing (the lite db: backing.db naming its component) owes a backup, as every stateful component does.
+  const required = new Set(Object.entries(mapping(doc.backing)).filter(([, entry]) => typeof entry?.provider === 'string').map(([id]) => id));
   for (const id of selected) if (stateful(mapping(components[id]), mapping(services[id]))) required.add(id);
   return [...required];
 }
@@ -290,7 +291,7 @@ function sqlTemplateText(node) {
 }
 
 function recurringObservations({ doc, repoRoot, files, file, issues }) {
-  const sql = file.startsWith('supabase/migrations/') && file.endsWith('.sql') && !file.includes('/_archive/');
+  const sql = file.startsWith('db/migrations/') && file.endsWith('.sql') && !file.startsWith('db/migrations/archive/');
   const sourceFile = SOURCE.test(file) && !TEST.test(file);
   if ((!sql && !sourceFile) || !publicReference(repoRoot, files, file)) return [];
   const text = readText(repoRoot, file);

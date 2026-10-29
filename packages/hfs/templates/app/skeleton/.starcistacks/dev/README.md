@@ -1,6 +1,6 @@
 # Development stack
 
-Every development dependency runs in Docker Linux containers. This starter's Docker Compose model contains the core API, the product and landing front ends, and a pinned local PostgreSQL database. Compose is an implementation detail; declared dependencies may also use managed `<dep>:create`, `<dep>:start` and `<dep>:stop` scripts, and local Supabase, when declared, runs through the Supabase CLI. A declared native profile may run app processes locally while dependencies stay in Docker. Trust authentication is confined to this local, unpublished database.
+Every development dependency runs in Docker Linux containers. This starter's Docker Compose model contains the core API, the product and landing front ends, and a pinned local PostgreSQL database. Compose is an implementation detail; declared dependencies may also use managed `<dep>:create`, `<dep>:start` and `<dep>:stop` scripts. A declared native profile may run app processes locally while dependencies stay in Docker. Trust authentication is confined to this local, unpublished database.
 Starter release images and external secrets must be prepared before starting the container model. Local source development remains available through the app scripts.
 
 | Command | Operation |

@@ -47,3 +47,25 @@ with check (event_name <> '');
 
 revoke all on table public.event_bus from public, anon, authenticated;
 grant select, insert, update on table public.event_bus to app_be;
+
+-- The claim of one delivery and the typed envelope write, called through callDbFunction of platform/database (R334).
+create function public.inbox_claim_event(p_source text, p_event_id text)
+returns table (event_id text)
+language sql
+as $$
+    insert into public.inbox as i (source, event_id) values (p_source, p_event_id)
+    on conflict (source, event_id) do nothing
+    returning i.event_id
+$$;
+
+create function public.event_bus_write(p_event_id text, p_event_name text, p_payload jsonb, p_correlation_id varchar)
+returns void
+language sql
+as $$
+    insert into public.event_bus (event_id, event_name, payload, correlation_id) values (p_event_id, p_event_name, p_payload, p_correlation_id)
+$$;
+
+revoke all on function public.inbox_claim_event(text, text) from public;
+grant execute on function public.inbox_claim_event(text, text) to app_be;
+revoke all on function public.event_bus_write(text, text, jsonb, varchar) from public;
+grant execute on function public.event_bus_write(text, text, jsonb, varchar) to app_be;

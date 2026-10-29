@@ -24,8 +24,7 @@ Enforced by: R05 HFS_MANAGED_FILE_DRIFT (slots `app.package-manifest`, `app.ci`,
 
 ## SHARED-SCRIPTS-2 Generated code is produced by its command, never written by hand
 
-GraphQL documents' types (`npm run codegen`, into the ignored `__generated__/`), the Supabase row types
-(`npm run db:types`, committed under `supabase/types/`) and the back end's contract snapshot (`starci app emit`,
+GraphQL documents' types (`npm run codegen`, into the ignored `__generated__/`) and the back end's contract snapshot (`starci app emit`,
 committed under `be/contracts/`) come only from their commands. An op that changes a source of generated code runs the
 command and lands its output; it never edits a generated file. A contract whose clean checkout lacks generated code
 declares the commands in `context.setup` ([project/README.md](../../project/README.md) "Life cycle").

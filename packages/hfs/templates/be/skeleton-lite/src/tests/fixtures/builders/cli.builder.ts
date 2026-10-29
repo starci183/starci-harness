@@ -7,7 +7,7 @@ export const buildWiringProof = () => ({
     options: {
         connections: [{
             name: PRIMARY_CONNECTION,
-            provider: "supabase",
+            provider: "postgres",
             url: new Secret("postgresql://app_be@127.0.0.1:5432/postgres"),
             schema: "public",
         }],

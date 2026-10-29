@@ -7,8 +7,7 @@ import {
 } from "../runtime/scripts/hfs/slots.mjs";
 import { imageFiles, render, TEMPLATES_DIR } from "../sync/index.mjs";
 import { ScaffoldError, pascalOf } from "./service.mjs";
-import { bundledPins } from "../runtime/scripts/hfs/canon-pins.mjs";
-import { PARTIAL_VARIABLES, callbackSourceFiles, coreFeApps, hasAuthCallback, jsonText, packageJsonText } from "./app.mjs";
+import { PARTIAL_VARIABLES, coreFeApps, jsonText, packageJsonText } from "./app.mjs";
 
 /** The shared fe app core (modules/api, auth, toast, redux, the providers, the hooks): the base tree, then the edition overlay. */
 const CORE_DIRS = Object.freeze({
@@ -66,8 +65,7 @@ function planAppTemplates(repo, name) {
     if (!fs.existsSync(dir)) continue;
     for (const relative of listFiles(dir)) byPath.set(relative, { relative: `${targetBase}/${relative}`, body: readTemplate(dir, relative) });
   }
-  return callbackSourceFiles([...byPath.values()].map(file => ({ path: file.relative, content: file.body })), repo)
-    .map(file => ({ relative: file.path, body: file.content }));
+  return [...byPath.values()];
 }
 
 /** The package and TypeScript manifests of a new Next workspace. */
@@ -85,12 +83,6 @@ function planWorkspaceManifests(root, repo, name) {
     );
   const workspacePackage = JSON.parse(fs.readFileSync(firstPackage, "utf8"));
   workspacePackage.name = `@${repo.project}/${name}`;
-  if (hasAuthCallback(repo)) {
-    const pins = bundledPins();
-    workspacePackage.dependencies ??= {};
-    for (const dependency of ["@supabase/ssr", "@supabase/supabase-js", "server-only"])
-      workspacePackage.dependencies[dependency] = pins[dependency].version;
-  }
   const appTemplates = path.join(TEMPLATES_DIR, "fe", "app");
   return [
     {

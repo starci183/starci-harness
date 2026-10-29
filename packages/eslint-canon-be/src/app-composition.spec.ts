@@ -120,6 +120,29 @@ test("each composition file stays within the line budget of its app slot", () =>
   })
 })
 
+/** `count` import lines: single-line imports and, every fourth, one import spread over three lines. */
+const imports = (count: number) => {
+  const out: string[] = []
+  let index = 0
+  while (out.length < count) {
+    if (count - out.length >= 3 && index % 4 === 3) out.push(`import {`, `    name${index},`, `} from "./module${index}"`)
+    else out.push(`import { name${index} } from "./module${index}"`)
+    index += 1
+  }
+  return `${out.join("\n")}\n`
+}
+
+test("a slot file budget counts the lines excluding import declarations, multi-line imports included", () => {
+  assert.doesNotThrow(() => {
+      tester.run("app-file-budget excluding imports", appFileBudget, {
+          // 160 lines, 40 of them imports: 120 counted lines, within 150
+          valid: [{ filename: ENV, code: `${imports(40)}${lines(120)}` }],
+          // 151 counted lines fail whatever the imports above them
+          invalid: [{ filename: ENV, code: `${imports(10)}${lines(151)}`, errors: [{ messageId: "over", data: { role: "<app>.env.ts", lines: 151, max: 150, slot: "be.app.api", fix: "Keep typed, fail-fast environment parsing only here; move module composition into `compose/<area>.ts` and business code into its owning module." } }] }],
+      })
+  })
+})
+
 /** These augment the fixture's Nest stubs with the real composition contracts, without changing shared fixtures. */
 const contracts = `
 import { Module } from "@nestjs/common"

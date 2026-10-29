@@ -154,7 +154,7 @@ function readCall(env, call, managers) {
 function ownedRead(env, statement) {
   const { ts } = env;
   const call = statementCall(ts, statement);
-  if (!call || !ts.isCallExpression(call) || !imported(env, call.expression, 'requireOwnedRow', '@modules/platform/database') || call.arguments.length !== 5) return false;
+  if (!call || !ts.isCallExpression(call) || !imported(env, call.expression, 'requireOwnedEntity', '@modules/platform/database') || call.arguments.length !== 5) return false;
   if (!call.arguments.slice(0, 4).every(argument => mapping(env, argument))) return false;
   const callback = unwrap(ts, call.arguments[4]);
   if (!ts.isArrowFunction(callback) || callback.parameters.length || !ts.isBlock(callback.body) || callback.body.statements.length !== 1) return false;

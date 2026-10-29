@@ -90,6 +90,8 @@ export interface HfsRuleParams {
     readonly logicRoles?: readonly string[]
     readonly valueRoles?: readonly string[]
     readonly thinRoles?: readonly string[]
+    /** The database functions `callDbFunction` of platform/database may call, each with its reason (`ruleParams.be.dbFunctions` plus hfs.json `sides.be.dbFunctions`). */
+    readonly dbFunctions?: readonly { readonly name: string; readonly reason: string }[]
 }
 
 /** The frozen view of one side of an app. */

@@ -101,14 +101,14 @@ test('the CI standard refuses continue-on-error, a probe, a secret-gated provide
   for (const needle of ['continue-on-error', 'codecov-availability', 'gated on a secret', 'fail_ci_if_error', 'passWithNoTests']) assert.ok(messages.includes(needle), needle);
 });
 
-const SCRIPTS = Object.fromEntries(['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test', 'test:integration', 'test:e2e', 'test:contract', 'db:start', 'db:reset', 'db:types', 'db:stop'].map((name) => [name, 'x']));
+const SCRIPTS = Object.fromEntries(['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test', 'test:integration', 'test:e2e', 'test:contract'].map((name) => [name, 'x']));
 const SERVICES = { sonar: { provider: 'sonarqube', mode: 'hosted', host: { public: 'https://sonar.example.invalid' } } };
 const gateNames = (requireCi) => normalizeRelease({ requireCi }, SCRIPTS, SERVICES).config.gates.map((gate) => gate.name);
 
 test('requireCi does not change the local gate: every CI row runs whether or not the push waits for the candidate CI', () => {
   assert.deepEqual(gateNames(false), gateNames(true));
   assert.deepEqual(gateNames(undefined), gateNames(true));
-  for (const row of ['app-check', 'audit', 'format-check', 'typecheck', 'build-be', 'lint', 'db-lint', 'build-fe', 'test', 'test-integration', 'test-e2e', 'test-contract', 'db-start', 'db-reset', 'db-types', 'db-types-committed', 'db-stop']) {
+  for (const row of ['app-check', 'audit', 'format-check', 'typecheck', 'build-be', 'lint', 'db-lint', 'build-fe', 'test', 'test-integration', 'test-e2e', 'test-contract']) {
     assert.ok(gateNames(false).includes(row), row);
   }
 });
@@ -119,7 +119,7 @@ test('the local gate has a row for every npm script step of the managed CI', () 
   const scriptSteps = Object.entries(doc.jobs).filter(([id]) => id !== 'sonar')
     .flatMap(([, job]) => job.steps ?? []).map((step) => step.run).filter((run) => typeof run === 'string')
     .map((run) => /^npm run ([a-z:]+)/u.exec(run)?.[1]).filter(Boolean);
-  assert.ok(scriptSteps.length >= 8, 'the lite CI runs npm scripts');
+  assert.ok(scriptSteps.length >= 4, 'the lite CI runs npm scripts');
   for (const script of new Set(scriptSteps.filter((name) => name !== 'codegen' && name !== 'lint:fix'))) assert.ok(rows.has(`npm run ${script}`), `the gate has a row for npm run ${script}`);
 });
 
@@ -135,53 +135,4 @@ test('a declared Sonar is a row of the local gate and a missing token refuses in
   await assert.rejects(releaseGate({ env: {}, cwd: '.' }, config, {}), (error) => error.code === 'RELEASE_SONAR_UNAVAILABLE');
 });
 
-test('a red database row still runs db-stop: the teardown of db-start always runs once the start ran, and nothing else runs after the red row', async (t) => {
-  const root = fs.mkdtempSync(path.join(tempRoot(), 'hfs-gate-teardown-'));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const { 'test:e2e': e2e, 'test:contract': contract, 'test:integration': integration, ...lite } = SCRIPTS;
-  assert.equal(typeof e2e + typeof contract + typeof integration, 'stringstringstring');
-  const config = normalizeRelease({}, lite, { audit: { mode: 'disabled' } }).config;
-  assert.equal(config.gates.find((gate) => gate.name === 'db-stop').teardownOf, 'db-start');
-  const ran = [];
-  const spawn = (command, args) => {
-    if (command === 'git') {
-      if (args[0] === 'rev-parse' && args[1] === 'HEAD') return { status: 0, stdout: 'a'.repeat(40) };
-      if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref') return { status: 0, stdout: 'main' };
-      if (args[0] === 'rev-parse' && args[1] === '--git-common-dir') return { status: 0, stdout: path.join(root, '.git') };
-      if (['status', 'tag', 'ls-remote'].includes(args[0])) return { status: 0, stdout: '' };
-      if (args[0] === 'diff') { ran.push('db-types-committed'); return { status: 0, stdout: '' }; }
-      throw new Error(`unexpected git ${args.join(' ')}`);
-    }
-    const script = args.at(-1);
-    ran.push(script);
-    const jest = script === 'test' ? 'Test Suites: 1 passed, 1 total\nTests:       1 passed, 1 total\n' : '';
-    return { status: script === 'db:reset' ? 1 : 0, stdout: `${script}\n${jest}` };
-  };
-  const result = await releaseGate({ cwd: root, spawn, now: () => 1000, env: {} }, { ...config, version: '1.0.0' }, { execute: true, platform: 'linux' });
-  assert.equal(result.ok, false);
-  assert.deepEqual(ran.slice(-3), ['db:start', 'db:reset', 'db:stop'], 'db-stop runs after the red db-reset; db-types and the commit check do not');
-  assert.deepEqual(result.data.results.filter((row) => !row.pass).map((row) => row.name), ['db-reset']);
-  assert.match(result.lines.join('\n'), /PASS db-stop/u);
-});
 
-test('a row that fails before db-start runs no teardown: nothing was started', async (t) => {
-  const root = fs.mkdtempSync(path.join(tempRoot(), 'hfs-gate-teardown-'));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const config = normalizeRelease({}, SCRIPTS, { audit: { mode: 'disabled' } }).config;
-  const ran = [];
-  const spawn = (command, args) => {
-    if (command === 'git') {
-      if (args[0] === 'rev-parse' && args[1] === 'HEAD') return { status: 0, stdout: 'a'.repeat(40) };
-      if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref') return { status: 0, stdout: 'main' };
-      if (args[0] === 'rev-parse' && args[1] === '--git-common-dir') return { status: 0, stdout: path.join(root, '.git') };
-      if (['status', 'tag', 'ls-remote'].includes(args[0])) return { status: 0, stdout: '' };
-      throw new Error(`unexpected git ${args.join(' ')}`);
-    }
-    ran.push(args.at(-1));
-    return { status: args.at(-1) === 'lint' ? 1 : 0, stdout: '' };
-  };
-  const result = await releaseGate({ cwd: root, spawn, now: () => 1000, env: {} }, { ...config, version: '1.0.0' }, { execute: true, platform: 'linux' });
-  assert.equal(result.ok, false);
-  assert.equal(ran.includes('db:stop'), false);
-  assert.equal(ran.at(-1), 'lint');
-});

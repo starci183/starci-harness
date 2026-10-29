@@ -58,10 +58,9 @@ for (const edition of ['lite', 'full']) {
     ]);
   });
 
-  test(`FE_ROUTE_HANDLER_FORBIDDEN accepts liveness and the owned auth callback in ${edition}`, () => {
+  test(`FE_ROUTE_HANDLER_FORBIDDEN accepts liveness in ${edition}`, () => {
     const input = actionInput(edition, [
       source('apps/web/src/app/health/live/route.ts', 'export const GET = () => new Response();'),
-      source('apps/web/src/app/auth/callback/route.ts', 'export const GET = () => new Response();', 'fe.route.callback'),
       source('apps/web/src/modules/routes/route.ts', 'export const route = (path: string) => path;'),
     ]);
     assert.deepEqual(checkServerActions(input).violations, []);

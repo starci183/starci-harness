@@ -290,8 +290,8 @@ rules:
       the memory hub (STACKS_REALTIME_SCALED) and the two-replica scenarios are the realtime scale rule BE-REALTIME-7.
 
       Lite (ruling:R212/case-10, owner:lite-vector-is-pgvector):
-      ONE instance type, one api deployable, scales horizontally and stateless, with no sticky sessions, on Postgres/Supabase plus
-      Redis when a declared capability needs it. Vector search uses Supabase pgvector. The three doors above are served from that api (the GraphQL subscription door is new
+      ONE instance type, one api deployable, scales horizontally and stateless, with no sticky sessions, on its own Postgres plus
+      Redis when a declared capability needs it. Vector search uses pgvector in the db service. The three doors above are served from that api (the GraphQL subscription door is new
       in lite, ruling:R212/case-7). A lite api with more than one replica uses the Redis hub when Redis is
       declared, else the Postgres hub. The example is the SSE `booking-status` channel.
 
@@ -373,7 +373,7 @@ rules:
       snapshot with a query on every reconnect. The engines (`socket.io`, `@socket.io/postgres-adapter`, `@socket.io/redis-adapter`,
       `graphql-ws`, `graphql-subscriptions`, `pg` for LISTEN and `ioredis`) are imported only by `platform/realtime`
       (`BE_INFRA_OWNER`). The tables are migrations of the app (`realtime_events` and, for the Postgres socket adapter,
-      `socket_io_attachments`: a Supabase migration in lite, a TypeORM migration of `platform/realtime` in full). Declaring realtime
+      `socket_io_attachments`: a db migration in lite, a TypeORM migration of `platform/realtime` in full). Declaring realtime
       adds two scenarios, proven with two api replicas: `realtime/push-crosses-replicas` (published through replica A, received on
       replica B) and `realtime/resume-after-reconnect` (`Last-Event-ID` sent to the other replica receives the missed frames).
     rationale: |-
@@ -406,7 +406,7 @@ rules:
           publish writes the realtime_events row and NOTIFYs; every replica LISTENs and writes the frame to its local streams; a
           reconnect to ANY replica sends Last-Event-ID and the hub reads the missed rows from the table. A domain service that owns the
           change publishes inside its own transaction (`hub.publish(topic, frame, tx)`), so the confirmation and its push commit together. At the ingress the stream is
-          not buffered or compressed and the idle timeout is above the heartbeat. Migration: supabase/migrations/<ts>_realtime-events.sql
+          not buffered or compressed and the idle timeout is above the heartbeat. Migration: db/migrations/<ts>_realtime-events.sql
           (lite) or platform/realtime/persistence/migrations/<epochMs>-create-realtime-events.ts (full).
       - id: case-3
         when: SSE, scale on Redis (Redis declared, lite or full)
@@ -668,9 +668,9 @@ files:
     slot: be.persistence
     role: Full edition migration of the realtime_events replay table and the socket_io_attachments table of the Postgres adapter.
     optional: true
-  - path: supabase/migrations/<timestamp>_realtime-events.sql
+  - path: db/migrations/<timestamp>_realtime-events.sql
     slot: repo.side-root-forbidden
-    role: Lite edition migration (created with supabase migration new) of the same two tables, forced row level security for app_be, and the pg_cron tick of the retention queue.
+    role: Lite edition migration (created with `npm run db:new`) of the same two tables, forced row level security for app_be, and the pg_cron tick of the retention queue.
     optional: true
   - path: src/features/reactors/<name>/transport/message/<event>.consumer.ts
     slot: be.transport.message

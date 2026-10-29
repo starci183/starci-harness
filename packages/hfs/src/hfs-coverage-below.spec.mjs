@@ -25,7 +25,7 @@ const OUTSIDE = [
 const declaration = (edition) => ({
   hfs: 3, kind: 'app', project: 'coverage-demo', edition,
   sides: {
-    be: { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }], connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'database', provider: 'supabase' }] },
+    be: { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }], connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'database', provider: 'postgres' }] },
     fe: { apps: [{ name: 'web', kind: 'next' }] },
   },
 });

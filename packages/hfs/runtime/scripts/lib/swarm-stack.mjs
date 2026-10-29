@@ -10,6 +10,9 @@ const BACKING_IMAGE_SQL_AND_CACHE = 'postgres(?:ql)?|postgresql-repmgr|mysql(?:-
 const BACKING_IMAGE_BROKERS_AND_OTHERS = '(?:cp-)?kafka(?:-native)?|keycloak|minio|rabbitmq';
 const BACKING_IMAGE = new RegExp(`^(?:${BACKING_IMAGE_SQL_AND_CACHE}|${BACKING_IMAGE_BROKERS_AND_OTHERS})$`, 'i');
 const mapping = value => plain(value) ? value : {};
+
+/** True for the one database image a lite app runs (its db component): supabase/postgres, pinned by digest. */
+export const isLiteDatabaseImage = image => typeof image === 'string' && /^supabase\/postgres(?::[^@]+)?@sha256:[a-f0-9]{64}$/i.test(image);
 const present = value => typeof value === 'string' && Boolean(value.trim());
 const configured = value => Object.keys(mapping(value)).length > 0;
 const schedulerImage = image => present(image) && /(?:^|\/)swarm-cronjob(?:[:@]|$)/.test(image);
@@ -49,8 +52,8 @@ export function swarmInventoryIssues({ components, lite = false }) {
   const add = (at, message) => errors.push({ at, message });
   for (const [id, entry] of Object.entries(catalog)) {
     const component = mapping(entry);
-    if (lite && present(component.image) && BACKING_IMAGE.test(repositoryOf(component.image)))
-      add(`components.${id}.image`, 'lite must use managed Supabase backing services; this image duplicates a Supabase-provided service');
+    if (lite && present(component.image) && BACKING_IMAGE.test(repositoryOf(component.image)) && !isLiteDatabaseImage(component.image))
+      add(`components.${id}.image`, 'lite runs no backing image but its db component (supabase/postgres); storage is the external S3 endpoint, identity the API');
     jobDeclarationIssues(id, component, catalog, add);
   }
   return errors;
@@ -117,8 +120,8 @@ export function swarmModelIssues({ model, components, bindings, lite = false }) 
       add(`services.${id}.ports`, 'Swarm ports must be an array of published port definitions');
     else if (service.ports?.length && component.role !== 'ingress')
       add(`services.${id}.ports`, 'only a component with role ingress may publish Swarm ports');
-    if (lite && present(service.image) && BACKING_IMAGE.test(repositoryOf(service.image)))
-      add(`services.${id}.image`, 'lite stack must not run an image that duplicates a Supabase-provided backing service');
+    if (lite && present(service.image) && BACKING_IMAGE.test(repositoryOf(service.image)) && !isLiteDatabaseImage(service.image))
+      add(`services.${id}.image`, 'lite stack runs no backing image but its db service (supabase/postgres)');
     jobServiceIssues(id, service, component, services, bound, add);
   }
   for (const id of Object.keys(bound)) {

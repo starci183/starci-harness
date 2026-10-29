@@ -1,4 +1,3 @@
-// proves: FE_CALLBACK_SHAPE@lite FE_CALLBACK_SHAPE@full
 /** Real import targets determine ownership; virtual rule inputs keep their declared path ownership. */
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -15,7 +14,7 @@ const setup = (t: TestContext, edition: "lite" | "full") => {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const declaration = { ...appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] }), edition }
   const hfs = hfsFromDeclaration(declaration, root)
-  const context = contextAt(join(root, "apps/web/src/app/auth/callback/route.ts"), hfs)
+  const context = contextAt(join(root, "apps/web/src/app/[locale]/page.tsx"), hfs)
   const write = (file: string) => {
     const target = join(root, "apps/web/src", file)
     mkdirSync(dirname(target), { recursive: true })
@@ -29,7 +28,7 @@ for (const edition of ["lite", "full"] as const) {
     const { context, write } = setup(t, edition)
     write("modules/auth/index.ts")
     assert.equal(classifyImport(context, "@/modules/auth")?.slot, "fe.modules.auth")
-    assert.equal(classifyImport(context, "../../../modules/auth")?.slot, "fe.modules.auth")
+    assert.equal(classifyImport(context, "../../modules/auth")?.slot, "fe.modules.auth")
     assert.equal(classifyImport(context, "@/modules/auth/index.ts")?.slot, "fe.modules.auth")
   })
 

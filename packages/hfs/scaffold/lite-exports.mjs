@@ -26,7 +26,7 @@ const REGISTRATIONS = Object.freeze({
     {
       file: "be/src/modules/platform/database/index.ts",
       source: "./database.sql",
-      names: ["requireOwnedRow", "sql"],
+      names: ["requireOwnedEntity"],
       beforeSource: "./errors/database.error",
     },
     {

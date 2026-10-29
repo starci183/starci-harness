@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common"
 import type { DynamicModule } from "@nestjs/common"
 import { APP_FILTER, APP_GUARD } from "@nestjs/core"
 import { AuthGuard, CredentialGuard } from "@modules/domain/identity"
-import { createSupabaseAccessTokenVerifier } from "@modules/integrations/supabase"
+import { tokenKit } from "@modules/integrations/passport"
 import { ErrorsFilter } from "@modules/platform/errors"
 import { OriginGuard, RateLimitGuard } from "@modules/platform/http-security"
 import { platformModules } from "./compose/platform"
@@ -18,18 +18,18 @@ import type { ApiOptions } from "./api.options"
 export class AppModule {
     /** Builds the module from options parsed once at boot; nothing here reads the environment. */
     static register(options: ApiOptions): DynamicModule {
-        const verifyAccessToken = createSupabaseAccessTokenVerifier(options.supabase)
+        const tokens = tokenKit(options.passport.tokens)
         return {
             module: AppModule,
             imports: [
                 ...platformModules(options),
-                ...domainModules(verifyAccessToken),
+                ...domainModules(tokens.verify),
                 ...systemModules(),
                 ...apiModules(),
                 ...webhooksModules(),
             ],
             providers: [
-                ...integrationProviders(options.supabase, verifyAccessToken),
+                ...integrationProviders(options, tokens.verify),
                 { provide: APP_FILTER, useClass: ErrorsFilter },
                 { provide: APP_GUARD, useClass: RateLimitGuard },
                 { provide: APP_GUARD, useClass: OriginGuard },

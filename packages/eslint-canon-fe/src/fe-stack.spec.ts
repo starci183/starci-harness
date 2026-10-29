@@ -84,7 +84,7 @@ test("Grammar owns avatar generation: every DiceBear import form names Avatar se
   })
 })
 
-test("FE-STACK-2: one library per concern; Supabase only in modules/auth", () => {
+test("FE-STACK-2: one library per concern; no Supabase client anywhere", () => {
   assert.doesNotThrow(() => {
   tester.run("fe-stack-import", feStackImport, {
     valid: [
@@ -101,10 +101,8 @@ test("FE-STACK-2: one library per concern; Supabase only in modules/auth", () =>
       { filename: BLOCK, code: "import Decimal from \"decimal.js\"" },
       // a relative or aliased path is not a package
       { filename: BLOCK, code: "import moment from \"./moment\"\nimport { dayjs } from \"@/modules/dayjs\"" },
-      // the identity-provider client is the one Supabase importer
-      { filename: AUTH, code: "import { createBrowserClient } from \"@supabase/ssr\"" },
-      { filename: AUTH_CLIENT, code: "import { createClient } from \"@supabase/supabase-js\"" },
-      { filename: AUTH_CLIENT, code: "import type { Session } from \"@supabase/supabase-js\"" },
+      // the session issuer's client speaks to the app's own auth doors with the REST client
+      { filename: AUTH, code: "import axios from \"axios\"" },
       // tooling outside every product slot is not the front end's source
       { filename: at("scripts/seed.ts"), code: "import moment from \"moment\"\nimport { createClient } from \"@supabase/supabase-js\"" },
     ],
@@ -126,12 +124,10 @@ test("FE-STACK-2: one library per concern; Supabase only in modules/auth", () =>
       { filename: BLOCK, code: "import { Star } from \"lucide-react\"", errors: [{ messageId: "forbidden" }] },
       // forbidden in modules/auth as everywhere: Supabase Realtime is not the front end's push channel
       { filename: AUTH, code: "import { RealtimeClient } from \"@supabase/realtime-js\"", errors: [{ messageId: "forbidden" }] },
-      // Supabase outside modules/auth: no data reads from the browser
-      { filename: HOOK, code: "import { createClient } from \"@supabase/supabase-js\"", errors: [{ messageId: "supabase" }] },
-      { filename: API, code: "import { createBrowserClient } from \"@supabase/ssr\"", errors: [{ messageId: "supabase" }] },
-      { filename: BLOCK, code: "import type { User } from \"@supabase/supabase-js\"", errors: [{ messageId: "supabase" }] },
-      { filename: at("apps/web/src/app/auth/callback/route.ts"), code: "import { createServerClient } from \"@supabase/ssr\"", errors: [{ messageId: "supabase" }] },
-      { filename: at("apps/web/src/modules/db/server.ts"), code: "import { createServerClient } from \"@supabase/ssr\"", errors: [{ messageId: "supabase" }] },
+      // no Supabase client anywhere: the session issuer is the app's own back end
+      { filename: AUTH_CLIENT, code: "import { createClient } from \"@supabase/supabase-js\"", errors: [{ messageId: "forbidden" }] },
+      { filename: HOOK, code: "import { createClient } from \"@supabase/supabase-js\"", errors: [{ messageId: "forbidden" }] },
+      { filename: API, code: "import { createBrowserClient } from \"@supabase/ssr\"", errors: [{ messageId: "forbidden" }] },
     ],
   })
 

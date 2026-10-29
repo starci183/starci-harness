@@ -22,8 +22,8 @@ import { refusal } from './errors.mjs';
 const AGE_HEADER = 'age-encryption.org/v1\n';
 const SHA = /^[a-f0-9]{64}$/u;
 
-/** The database a floor step reaches: the connection named by --db-url-env, else the linked project of the `database:` block. */
-const targetOf = (options) => (options.dbUrlEnv ? { urlEnv: options.dbUrlEnv } : { linked: true });
+/** The database a floor step reaches: the connection named by --db-url-env (default DATABASE_URL). */
+const targetOf = (options) => (options.dbUrlEnv ? { urlEnv: options.dbUrlEnv } : {});
 
 /** The backups of an urgent deploy live outside every repository: --backup-out, else ~/.starci-backups/<project>. */
 const backupDir = (config, options) => options.backupOut ?? path.join(os.homedir(), '.starci-backups', config.project);

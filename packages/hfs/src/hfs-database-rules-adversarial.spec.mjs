@@ -10,7 +10,7 @@ import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
 import { withoutGitLocalEnv } from '../runtime/scripts/lib/git.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 
-const MIGRATIONS = 'supabase/migrations';
+const MIGRATIONS = 'db/migrations';
 const MIGRATION = `${MIGRATIONS}/20260101120000_adversarial.sql`;
 const made = [];
 
@@ -60,14 +60,14 @@ const sqlCases = [
   ['enums are not tables', "create type public.order_state as enum ('open', 'closed');", []],
   ['composite types are not tables', 'create type public.money_pair as (amount numeric, currency text);', []],
   ['schema creation is not a table', 'create schema if not exists private;', []],
-  ['authenticated default privileges keep the browser door open', 'alter default privileges in schema public grant select on tables to authenticated;', ['DB_BE_ONLY_ACCESS']],
-  ['alter default privileges cannot grant tables to anon', 'alter default privileges in schema public grant select on tables to anon;', ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE']],
-  ['all-tables schema grant to anon is refused', 'grant select on all tables in schema public to anon;', ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE']],
-  ['all-tables schema grant to authenticated is refused', 'grant select on all tables in schema public to authenticated;', ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE']],
-  ['all-tables schema grant to public is refused', 'grant select on all tables in schema public to public;', ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE']],
+  ['authenticated default privileges keep the browser door open', 'alter default privileges in schema public grant select on tables to authenticated;', []],
+  ['alter default privileges cannot grant tables to anon', 'alter default privileges in schema public grant select on tables to anon;', ['DB_POLICY_SHAPE']],
+  ['all-tables schema grant to anon is refused', 'grant select on all tables in schema public to anon;', ['DB_POLICY_SHAPE']],
+  ['all-tables schema grant to authenticated is refused', 'grant select on all tables in schema public to authenticated;', ['DB_POLICY_SHAPE']],
+  ['all-tables schema grant to public is refused', 'grant select on all tables in schema public to public;', ['DB_POLICY_SHAPE']],
   ['default service-role grant is refused', 'alter default privileges in schema public grant select on tables to service_role;', ['DB_POLICY_SHAPE']],
   ['schema usage grants need no table policy', 'grant usage on schema public to anon;', []],
-  ['anonymous sequence grants need direct access', 'grant usage, select on sequence public.items_id_seq to anon;', ['DB_BE_ONLY_ACCESS']],
+  ['anonymous sequence grants need direct access', 'grant usage, select on sequence public.items_id_seq to anon;', []],
   ['safe private security definer function', `
     create function private.lookup(subject uuid) returns boolean language plpgsql security definer
     set search_path = '' as $$ begin return subject is not null; end $$;`, []],
@@ -88,14 +88,14 @@ const sqlCases = [
     create trigger items_touch before update on public.items for each row execute function private.touch();`, []],
   ['Supabase auth uid subquery is a real predicate', `${cleanTable()}
     create policy items_member_select on public.items for select to authenticated
-    using ((select auth.uid()) = user_id);`, ['DB_BE_ONLY_ACCESS']],
+    using ((select auth.uid()) = user_id);`, []],
   ['authenticated select policy needs direct access', `${cleanTable()}
-    create policy items_member_select on public.items for select to authenticated using (user_id = auth.uid());`, ['DB_BE_ONLY_ACCESS']],
+    create policy items_member_select on public.items for select to authenticated using (user_id = auth.uid());`, []],
   ['for all with real predicates still needs direct access', `${cleanTable()}
     create policy items_member_all on public.items for all to authenticated
-    using (user_id = auth.uid()) with check (user_id = auth.uid());`, ['DB_BE_ONLY_ACCESS']],
+    using (user_id = auth.uid()) with check (user_id = auth.uid());`, []],
   ['insert with a real with-check still needs direct access', `${cleanTable()}
-    create policy items_member_insert on public.items for insert to authenticated with check (user_id = auth.uid());`, ['DB_BE_ONLY_ACCESS']],
+    create policy items_member_insert on public.items for insert to authenticated with check (user_id = auth.uid());`, []],
   ['partitioned parent needs one enable and child inherits', `
     create table public.events (id bigint, occurred_at timestamptz) partition by range (occurred_at);
     alter table public.events enable row level security;
@@ -119,7 +119,7 @@ const sqlCases = [
     create schema if not exists private;
     create type public.state as enum ('ready');
     ${cleanTable()}
-    grant select on public.items to authenticated;`, ['DB_BE_ONLY_ACCESS']],
+    grant select on public.items to authenticated;`, []],
   ['dollar body may mention DDL without executing it', `
     create function private.words() returns text language plpgsql security invoker as $body$
     begin return 'create table / execute / security definer'; end $body$;`, []],
@@ -130,7 +130,7 @@ const sqlCases = [
   ['quoted identifiers are matched structurally', `
     create table public."Order" (id bigint);
     alter table only public."Order" enable row level security;
-    create policy "Order_member_select" on public."Order" for select to authenticated using (id > 0);`, ['DB_BE_ONLY_ACCESS', 'DB_POLICY_TAUTOLOGY']],
+    create policy "Order_member_select" on public."Order" for select to authenticated using (id > 0);`, ['DB_POLICY_TAUTOLOGY']],
   ['uppercase SQL is parsed normally', `
     CREATE TABLE PUBLIC.ITEMS (ID BIGINT);
     ALTER TABLE ONLY PUBLIC.ITEMS ENABLE ROW LEVEL SECURITY;`, []],
@@ -199,12 +199,12 @@ const sqlCases = [
       allowed_mime_types := array['image/png']);
     create policy objects_member_select on storage.objects for select to authenticated using (bucket_id = 'avatars');`, ['DB_POLICY_TAUTOLOGY', 'DB_STORAGE_POLICY', 'DB_STORAGE_PREFIX']],
   ['service-role grants are refused', 'grant usage on schema private to service_role;', ['DB_POLICY_SHAPE']],
-  ['anonymous table grant needs public-read policy', 'grant select on table public.items to anon;', ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE']],
+  ['anonymous table grant needs public-read policy', 'grant select on table public.items to anon;', ['DB_POLICY_SHAPE']],
   ['anonymous public-read policy and grant are clean', `${cleanTable()}
     create policy items_public_read on public.items for select to anon using (true);
     grant select on public.items to anon;`, []],
   ['authenticated true read must declare public read', `${cleanTable()}
-    create policy items_member_select on public.items for select to authenticated using (true);`, ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE', 'DB_POLICY_TAUTOLOGY']],
+    create policy items_member_select on public.items for select to authenticated using (true);`, ['DB_POLICY_SHAPE', 'DB_POLICY_TAUTOLOGY']],
 ];
 
 for (const [name, sql, codes] of sqlCases) {
@@ -234,57 +234,6 @@ test('adversarial policy set: a policy in a later migration covers an earlier an
   };
   return expectCodes({ contents, codes: [] });
 });
-
-test('adversarial policy set: a later drop removes public-read coverage', () => {
-  const contents = {
-    [`${MIGRATIONS}/20260101120000_policy.sql`]: 'create policy items_public_read on public.items for select to anon using (true); grant select on public.items to anon;',
-    [`${MIGRATIONS}/20260101120100_drop.sql`]: 'drop policy items_public_read on public.items;',
-  };
-  return expectCodes({ contents, codes: ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE'] });
-});
-
-test('adversarial policy set: authenticated-only public-read name does not cover an anon grant', () => {
-  const contents = {
-    [`${MIGRATIONS}/20260101120000_policy.sql`]: 'create policy items_public_read on public.items for select to authenticated using (true);',
-    [`${MIGRATIONS}/20260101120100_grant.sql`]: 'grant select on public.items to anon;',
-  };
-  return expectCodes({ contents, codes: ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE'] });
-});
-
-test('adversarial policy: omitted TO clause is reported as the implicit public default', async () => {
-  const dir = repo({ [MIGRATION]: `${cleanTable()} create policy items_member_insert on public.items for insert with check (id is not null);` });
-  const findings = await checkDatabase({ repoRoot: dir, files: [MIGRATION], git: noRemote });
-  assert.deepEqual(uniqueCodes(findings), ['DB_BE_ONLY_ACCESS', 'DB_POLICY_SHAPE', 'DB_POLICY_TAUTOLOGY']);
-  assert.ok(findings.some((finding) => finding.message.includes('implicit TO public default')), JSON.stringify(findings));
-});
-
-const configCases = [
-  ['inline table with env credentials', '[auth.external]\ngithub = { client_id = "env(GH_CLIENT_ID)", secret = "env(GH_SECRET)" }\n', undefined, []],
-  ['inline table with literal credential', '[auth.external]\ngithub = { client_id = "literal", secret = "env(GH_SECRET)" }\n', undefined, ['DB_CONFIG_POLICY']],
-  ['array of tables with env token', '[[auth.hook]]\ntoken = "env(HOOK_TOKEN_2)"\n', undefined, []],
-  ['array of tables with literal token', '[[auth.hook]]\ntoken = "literal"\n', undefined, ['DB_CONFIG_POLICY']],
-  ['comments do not create credential keys', '# secret = "literal"\n[api]\nschemas = ["public"] # token = "literal"\n', undefined, []],
-  ['jwt expiry 3600 is accepted', '[auth]\njwt_expiry = 3600\n', undefined, []],
-  ['jwt expiry 7200 is refused', '[auth]\njwt_expiry = 7200\n', undefined, ['DB_CONFIG_POLICY']],
-  ['signup settings match declaration', '[auth]\nenable_signup = false\n[auth.email]\nenable_signup = false\n', { enableSignup: false }, []],
-  ['signup settings mismatch declaration', '[auth]\nenable_signup = true\n[auth.email]\nenable_signup = true\n', { enableSignup: false }, ['DB_CONFIG_POLICY']],
-  ['redirect list exactly matches declaration', '[auth]\nadditional_redirect_urls = ["https://app.example.com/auth/callback"]\n', { redirectUrls: ['https://app.example.com/auth/callback'] }, []],
-  ['redirect list missing a declared value is refused', '[auth]\nadditional_redirect_urls = []\n', { redirectUrls: ['https://app.example.com/auth/callback'] }, ['DB_CONFIG_POLICY']],
-  ['redirect list with an undeclared value is refused', '[auth]\nadditional_redirect_urls = ["https://evil.example.com"]\n', { redirectUrls: [] }, ['DB_CONFIG_POLICY']],
-  ['quoted credential key still needs env', '[auth.external.github]\n"client_id" = "literal"\n', undefined, ['DB_CONFIG_POLICY']],
-  ['env reference accepts digits after the first character', '[auth.external.github]\nsecret = "env(GITHUB_SECRET_2)"\n', undefined, []],
-  ['credential arrays are not env references', '[auth.external.github]\ntoken = ["env(TOKEN_A)", "env(TOKEN_B)"]\n', undefined, ['DB_CONFIG_POLICY']],
-  ['smtp pass is a credential key', '[auth.smtp]\npass = "literal"\n', undefined, ['DB_CONFIG_POLICY']],
-  ['smtp pass accepts env reference', '[auth.smtp]\npass = "env(SMTP_PASS)"\n', undefined, []],
-];
-
-for (const [name, toml, supabase, codes] of configCases) {
-  test(`adversarial config: ${name}`, () => expectCodes({
-    contents: { 'supabase/config.toml': toml },
-    supabase,
-    codes,
-  }));
-}
 
 const migrationCases = [
   ['valid leap-day UTC timestamp', `${MIGRATIONS}/20240229010203_leap.sql`, []],

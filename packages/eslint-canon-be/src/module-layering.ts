@@ -12,7 +12,9 @@
  *   - `no-relative-capability-escape` - a relative import never walks out of its own owner.
  *   - `no-folder-reexport` - a specifier that names a directory is refused; a nested `index.ts` (any index that is not
  *     at its owner's root) is refused; an owner's `index.ts` holds only named `export { }` / `export type { }` lines
- *     re-exporting from files, never `export *`, never a declaration, and at most `budget.indexExports` names.
+ *     re-exporting from files, never `export *`, never a declaration, and at most `budget.indexExports` names. One
+ *     sanctioned exception, lite only: `<owner>/persistence/entities/index.ts` imports its entity files and declares the
+ *     owner's `<c>Entities` array, the list `platform/database/entities.ts` names (persistence.md BE-PERSISTENCE-3).
  *
  * "Which owner does this file belong to" is `hfs.ownerOf`; "which owner does this specifier reach" is the same question
  * asked of the file the specifier resolves to. Nothing here touches disk.
@@ -154,6 +156,9 @@ export const noSelfModuleAlias: RuleModule = {
 
 // -- no-folder-reexport ----------------------------------------------------------------------------
 
+/** The lite entity list of a capability: `<owner>/persistence/entities/index.ts` (BE-PERSISTENCE-3). */
+const LITE_ENTITY_LIST = /(?:^|\/)persistence\/entities\/index\.ts$/
+
 /** Whether a file is an index by its role name. */
 const isIndexFile = (filename: string) => /^index\.[cm]?[jt]sx?$/.test(baseName(filename))
 
@@ -190,7 +195,7 @@ export const noFolderReexport: RuleModule = {
   create(context) {
     const filename = context.filename || context.getFilename()
     const hfs = hfsOf(context)
-    const isIndex = isIndexFile(filename)
+    const isIndex = isIndexFile(filename) && !(hfs.edition === "lite" && LITE_ENTITY_LIST.test(hfs.relative(filename)))
     const max = indexExportBudget(hfs, filename)
     let count = 0
     return {

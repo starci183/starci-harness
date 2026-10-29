@@ -15,12 +15,12 @@ const ENV_PREFIX =/^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/;
 const CONTEXT_ISOLATIONS = Object.freeze(["database", "schema"]);
 /** The app kinds that may own a context: the services, never the migrate or cli apps that only run migrations. */
 const CONTEXT_OWNER_KINDS = Object.freeze(["api", "worker"]);
-/** The database engines a connection may run on: a self-described Postgres, or the Postgres of a Supabase project. */
-const CONNECTION_PROVIDERS = Object.freeze(["postgres", "supabase"]);
+/** The database engine a connection runs on. */
+const CONNECTION_PROVIDERS = Object.freeze(["postgres"]);
 /** The editions an app repository may declare in hfs.json (`full` when absent): the filter slots.mjs applies. */
 export const EDITIONS = Object.freeze(["full", "lite"]);
-/** What decides where schema changes live (ruleParams.<side>.schemaAuthority): TypeORM migrations under persistence/, or the Supabase migration tree. */
-export const SCHEMA_AUTHORITIES = Object.freeze(["typeorm", "supabase"]);
+/** What decides where schema changes live (ruleParams.<side>.schemaAuthority): TypeORM migrations under persistence/, or the SQL migration tree db/migrations. */
+export const SCHEMA_AUTHORITIES = Object.freeze(["typeorm", "sql"]);
 /**
  * The shape problems of the `connections` of one side: a list of {name, envPrefix, owner, isolation}, the owner an api or worker app
  * of the same side (a connection is a bounded context and one service owns it), isolation `database` or `schema`.

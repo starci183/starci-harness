@@ -172,7 +172,7 @@ function migrationStatement(state, node, file) {
 }
 
 function migrationFacts(state, files) {
-  for (const file of files.filter((item) => item.endsWith('.sql') && !item.includes('/_archive/')).sort((left, right) => left.localeCompare(right))) {
+  for (const file of files.filter((item) => item.endsWith('.sql') && !item.startsWith('db/migrations/archive/')).sort((left, right) => left.localeCompare(right))) {
     const text = readText(state.repoRoot, file);
     if (text === null) continue;
     const tree = sqlTree(text);
@@ -373,9 +373,8 @@ function tickOwner(state, tick, name, schedule, ticks) {
 function queueState({ repoRoot, files = [], all = files, repo = {}, manifest }) {
   const paths = [...new Set(all)];
   const declaration = readJson(repoRoot, 'hfs.json') ?? repo;
-  const connected = ['be', 'fe'].some((side) => (declaration.sides?.[side]?.connections ?? []).some((item) => item.provider === 'supabase'));
-  if (repo.edition !== 'lite' && declaration.edition !== 'lite' && !declaration.supabase && !connected && !paths.some((file) => file.startsWith('supabase/'))) return null;
-  const state = { repoRoot, appRole: declaration.supabase?.appRole ?? 'app_be', findings: [], outbox: queueOutbox(manifest ?? loadSlotManifest()), declaredOutbox: queueOutboxDeclaration(declaration), scheduledNames: new Set(), constants: new Map(), topics: new Map(), created: new Map(), functions: new Map(), schedules: [], activeCron: new Map(), liveSchedules: new Map(), unschedules: [], drops: [], grants: [], queueAcls: new Map() };
+  if (repo.edition !== 'lite' && declaration.edition !== 'lite' && !paths.some((file) => file.startsWith('db/'))) return null;
+  const state = { repoRoot, appRole: declaration.db?.appRole ?? 'app_be', findings: [], outbox: queueOutbox(manifest ?? loadSlotManifest()), declaredOutbox: queueOutboxDeclaration(declaration), scheduledNames: new Set(), constants: new Map(), topics: new Map(), created: new Map(), functions: new Map(), schedules: [], activeCron: new Map(), liveSchedules: new Map(), unschedules: [], drops: [], grants: [], queueAcls: new Map() };
   state.sources = queueSourceFacts(state, paths, inspectCalls);
   migrationFacts(state, paths);
   return state;
@@ -394,7 +393,7 @@ function validateQueues(state, inScope) {
   return state.findings.filter((finding) => inScope(finding.path));
 }
 
-/** Cross-file R258 findings. A full app participates when it declares or contains Supabase files. */
+/** Cross-file R258 findings. A full app participates when it contains a db/ tree. */
 export function databaseQueuesFindings(context) {
   // The app-root pass owns the cross-file inventory; a side pass cannot see its migrations.
   if (context.appSide === true) return [];

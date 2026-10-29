@@ -52,7 +52,7 @@ const FE_OWNERS = Object.freeze({
  */
 export function addKind({ repoRoot, noun, name, options = {}, now = Date.now }) {
   if (noun === 'table') {
-    const result = addTable({ root: repoRoot, name, fe: options.fe === true, emitTypes: options.noTypes === true ? false : options.emitTypes, now });
+    const result = addTable({ root: repoRoot, name, fe: options.fe === true, now });
     return { ...result, registered: { patterns: [], kinds: [] } };
   }
   if (noun === 'app') {
@@ -81,7 +81,7 @@ function registerFeatureExports({ repoRoot, repo, noun, values }) {
 
 function writeKind({ repoRoot, noun, name, now, options, manifest, repo, spec, declarationFile, values, forms, beRoot, patterns, planned }) {
   if (noun === 'api' || noun === 'webhook') preflightFeatureComposition({ repoRoot, repo, noun, name });
-  const liteQueue = planLiteQueue({ repoRoot, repo, noun, patterns, now, emitTypes: options.noTypes === true ? false : options.emitTypes });
+  const liteQueue = planLiteQueue({ repoRoot, repo, noun, patterns, now });
   const bootstrapCreated = noun === 'cli' && repo.edition === 'lite' ? ensureLiteCli({ root: repoRoot, manifest, repo }) : [];
   for (const file of planned) {
     fs.mkdirSync(path.dirname(file.absolute), { recursive: true });

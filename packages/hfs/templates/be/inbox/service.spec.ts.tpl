@@ -1,13 +1,13 @@
 import { fakeInbox, fakeTransaction, mockEntityManager, recordingEventBus } from "@starci/jest-preset"
 import { Test } from "@nestjs/testing"
-import { PRIMARY_ENTITY_MANAGER } from "@modules/platform/database"
+import { PRIMARY_ENTITY_MANAGER, webhookReceiptInsert } from "@modules/platform/database"
 import { @@Provider@@DeliveryRecordedEvent } from "@modules/events/@@provider@@"
 import { EVENT_BUS } from "@modules/platform/event-bus"
 import { INBOX } from "@modules/platform/inbox"
-import { INSERT_@@providerUpper@@_INBOX } from "./persistence/@@provider@@-inbox.sql"
 import { @@Provider@@InboxService } from "./@@provider@@-inbox.service"
 
 const DELIVERY = { id: "delivery-1" }
+const INSERT_@@providerUpper@@_INBOX = webhookReceiptInsert("@@table@@")
 
 const build = async (fresh: boolean, recorded: ReadonlyArray<{ readonly id: string }> = [{ id: "inbox-1" }]) => {
     const entityManager = mockEntityManager({ query: [INSERT_@@providerUpper@@_INBOX, recorded] })

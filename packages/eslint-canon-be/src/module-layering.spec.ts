@@ -10,7 +10,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, BE_DECLARATION, fixtureHfs, typedTester } from "../fixtures/typed/tester.mjs"
-import type { HfsView } from "./lib/hfs.ts"
+import { hfsFromDeclaration, type HfsView } from "./lib/hfs.ts"
+import { appDeclaration } from "../fixtures/app.mjs"
 import {
   importOwnerEntry,
   noFolderReexport,
@@ -132,17 +133,31 @@ test("R30: the data-sources integration entry uses its resolved slot budget of 8
 test("R30: a provider-specific integration slot inherits the integrations tier budget", () => {
   const connections = BE_DECLARATION.connections
   assert.ok(connections, "the fixture declares connections")
-  const declaration = { ...BE_DECLARATION, connections: connections.map(connection => ({ ...connection, provider: "supabase" })) }
+  const declaration = { ...BE_DECLARATION, connections: connections.map(connection => ({ ...connection, provider: "postgres" })) }
   const hfs = fixtureHfs(declaration)
-  const filename = at("src/modules/integrations/supabase/index.ts")
+  const filename = at("src/modules/integrations/object-storage/index.ts")
   assert.equal(hfs.classify(filename).status, "owned")
-  assert.equal(hfs.slotOf(filename), "be.integrations.supabase")
+  assert.equal(hfs.slotOf(filename), "be.integrations.object-storage")
   assert.equal(hfs.tierOf(filename), "integrations")
   assert.equal(slotBudgetOf(hfs, filename), undefined)
 
   typedTester({ declaration }).run("no-folder-reexport provider budget", noFolderReexport, {
     valid: [{ filename, code: namesFrom(80) }],
     invalid: [{ filename, code: namesFrom(81), errors: [{ messageId: "tooWide", data: { count: 81, max: 80 } }] }],
+  })
+})
+
+test("R30: a lite capability's persistence/entities/index.ts declares its entity list; full keeps it a nested index", () => {
+  const filename = at("src/modules/domain/plan/persistence/entities/index.ts")
+  const code = "import { PlanEntity } from './plan.entity'\nexport const planEntities = [PlanEntity]"
+  const settingsOf = (edition: "lite" | "full") => ({ starci: { hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, at("")) } })
+  typedTester().run("no-folder-reexport lite entity list", noFolderReexport, {
+    valid: [{ filename, code, settings: settingsOf("lite") }],
+    invalid: [],
+  })
+  typedTester().run("no-folder-reexport full entity index", noFolderReexport, {
+    valid: [],
+    invalid: [{ filename, code, settings: settingsOf("full"), errors: [{ messageId: "nestedIndex" }, { messageId: "onlyNamedExports" }, { messageId: "onlyNamedExports" }] }],
   })
 })
 

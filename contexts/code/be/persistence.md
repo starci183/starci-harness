@@ -3,27 +3,28 @@ slots: [be.persistence]
 ---
 # Persistence and migrations
 
-Who owns a table, how its schema changes, how the database is reached and how transactions are drawn. Lite runs on
-Supabase Postgres (`ruleParams.be.lite.schemaAuthority: supabase`): SQL migrations under `supabase/migrations/`, raw SQL
-through TypeORM's `EntityManager`, no entity classes. Full adds TypeORM entities and per-capability migrations
-(BE-PERSISTENCE-3) and several bounded contexts (BE-PERSISTENCE-11).
+Who owns a table, how its schema changes, how the database is reached and how transactions are drawn. Lite runs its own
+PostgreSQL (the `db` service of its stack, `ruleParams.be.lite.schemaAuthority: sql`): SQL migrations under
+`db/migrations/`, TypeORM entities that map those tables (BE-PERSISTENCE-3) read and written through the
+`EntityManager`. Full adds per-capability TypeORM migrations, its `sql`-tagged statements (BE-PERSISTENCE-4) and several
+bounded contexts (BE-PERSISTENCE-11).
 
 ## BE-PERSISTENCE-1 Migrations are the only schema authority
 
-Lite: every schema change is one `supabase/migrations/<stamp>_<name>.sql`, and the generated row types
-(`supabase/types/database.types.ts`) come from `npm run db:types`. Full: `persistence/migrations/<epochMs13>-<name>.ts`
+Lite: every schema change is one `db/migrations/<stamp>_<name>.sql` (`npm run db:new -- <kebab-name>`), applied after the
+managed `db/bootstrap.sql` by `starci app db migrate --url-env <NAME>`; entities only map tables a migration created. Full: `persistence/migrations/<epochMs13>-<name>.ts`
 of the owning capability, with a `down()` that reverses `up()`. Everywhere `synchronize` is the literal `false`, no
 `migrationsRun`, no DDL string outside a migration, no entity or migration glob. Seed data is never a migration.
 
 Why: when an ORM diffs the schema at boot, the live schema is whatever the code implies that day and migrations never
 run.
 
-Enforced by: `no-runtime-schema` (R34), `migration-down-reversible` (R74), R213, R257 (lite migration and baseline
-shape); lite entities are checked against the migrated schema by `starci app db drift` (BE_ENTITY_SCHEMA_DRIFT, R333).
+Enforced by: `no-runtime-schema` (R34), `migration-down-reversible` (R74), R213, R257, R332 (lite migration path,
+shape and baseline); lite entities are checked against the migrated schema by `starci app db drift` (BE_ENTITY_SCHEMA_DRIFT, R333).
 
 ## BE-PERSISTENCE-2 The cli applies migrations; serving apps never do
 
-Migrations run only through `cli migrate run` (in lite it delegates to the managed `db:push` script through the
+Migrations run only through `cli migrate run` (in lite it delegates to the managed `db:push` script, `starci app db migrate`, through the
 migration runner of `platform/database`), before api processes start. Api apps never migrate or seed; seeding is a
 `cli seed ...` command.
 
@@ -31,21 +32,42 @@ Why: two processes racing to migrate corrupt a schema, and a migration inside a 
 
 Enforced by: `no-runtime-schema` (R34), R147.
 
-## BE-PERSISTENCE-3 Full: entities belong to the capability that owns the table
+## BE-PERSISTENCE-3 Entities belong to the capability that owns the table
 
-In full, `persistence/entities/<table>.entity.ts` and `persistence/migrations/` sit in the owning capability (domain,
-projection, or platform for technical tables); `persistence/connection.ts` exports the `<c>Entities` and
-`<c>Migrations` arrays the apps register per connection. An entity is `@Entity("<plural_snake>")`, every `@Column` has
-an explicit name and type, timestamps are `timestamptz`, enums `varchar` with a `CHECK`, and there is no eager, lazy or
-cascade relation and no GraphQL or validator decorator. No `*.repository.ts`.
+In both editions `persistence/entities/<table>.entity.ts` sits in the owning capability (domain, projection, or platform for
+technical tables). An entity is `@Entity({ schema, name: "<plural_snake>" })`, every `@Column` has an explicit `name` and
+`type`, timestamps are `timestamptz`, enums `varchar` with a `CHECK`, and there is no eager, lazy or cascade relation and
+no GraphQL or validator decorator. No `*.repository.ts`. Full keeps `persistence/migrations/` beside them and
+`persistence/connection.ts` exports the `<c>Entities` and `<c>Migrations` arrays the apps register per connection. Lite
+has no be migration: each capability's `persistence/entities/index.ts` exports its `<c>Entities` array (a sanctioned
+re-export), and `platform/database/entities.ts` lists those arrays by name, no glob, as `PRIMARY_ENTITIES`.
+`DatabaseOptions.entities` is required, and only the composition root of an app passes `PRIMARY_ENTITIES`, imported
+from the deep path `@modules/platform/database/entities`: `DatabaseModule` never imports that file and the
+`platform/database` barrel never exports it, because database.module, the entity list and the capability barrels would
+form a cycle that fails at boot (`InjectPrimaryEntityManager is not a function`).
 
 Why: one owner per table gives every schema change one reviewer and keeps platform free of domain types.
 
-Enforced by: `schema-owner`, `require-entity-table-name`, `no-eager-relation`, `no-entity-in-contract` (R35, R83, R37).
+Enforced by: `schema-owner`, `require-entity-table-name`, `no-eager-relation`, `no-entity-in-contract` (R35, R83, R37);
+the deep `PRIMARY_ENTITIES` import from app composition only is held by review (open gap: the import-boundary rule does not
+name that path yet).
 
-## BE-PERSISTENCE-4 SQL is a `sql`-tagged constant in the owner's persistence folder
+## BE-PERSISTENCE-4 Lite reads and writes through entities; full SQL is a `sql`-tagged constant
 
-Every statement is an UPPER_SNAKE constant built with the `sql` tag of `platform/database` in
+Lite: domain and feature code uses the entity API of the injected manager (`find`, `findOne`, `findBy`, `count`,
+`exists`, `insert`, `save`, `update`, `delete`, `upsert`, `increment`) and `createQueryBuilder(Entity, "alias")` with
+named parameters for joins, aggregates, `FOR UPDATE` / `SKIP LOCKED` and jsonb or vector operators; it writes no `.query(`
+and no `sql` template, and no `<Name>Row` interface: a service maps entities to its contracts. A database function
+TypeORM cannot express is called through the helpers of `platform/database` (`callDbFunction(manager, name, args)`,
+`advisoryXactLock(manager, key)`, `notify(manager, channel, payload)`), which build the parameterised statement and accept
+only a function `ruleParams.be.dbFunctions` (the canon's pg built-ins) or hfs.json `sides.be.dbFunctions` (the app's own,
+each with its reason) lists. TypeORM 0.3 traps the builder hides: a dotted join (`innerJoin("public.x", ...)`) throws, so
+join the entity or the unqualified table; `InsertQueryBuilder.returning()` takes the string form and ignores an array; an
+`UPDATE ... RETURNING` stays one builder statement, never a write followed by a read. A query builder names its entity:
+a table-name builder and a Repository are refused. The unit doubles are `mockEntityManager` of `@starci/jest-preset`
+(`{ method: [Entity, result] }`) and, for a builder, its `queueQueryBuilders(em, answers)` (`fakeQueryBuilder` per call).
+
+Full: every statement is an UPPER_SNAKE constant built with the `sql` tag of `platform/database` in
 `persistence/<name>.sql.ts`, documented with what it does and its numbered parameters. Values are `$n` parameters with
 explicit casts; the only substitution the tag takes is a `SqlIdent` from `ident(name, allowed)`. Row shapes are
 readonly snake_case interfaces `<Name>Row` in `persistence/<name>.rows.ts`. No SQL literal elsewhere, no query
@@ -64,7 +86,7 @@ export const CANCEL_ORDER = sql`WITH changed AS (
 SELECT id, workspace_id, order_no, status, created_at FROM changed`
 ```
 
-Enforced by: `sql-text-only`, `no-query-builder`, `no-interpolated-sql` (R36, R68).
+Enforced by: lite `no-raw-sql` (R334); full `sql-text-only`, `no-query-builder`, `no-interpolated-sql` (R36, R68).
 
 ## BE-PERSISTENCE-5 Work that must follow a write is written in the same transaction
 
@@ -89,8 +111,8 @@ Enforced by: `no-external-call-in-transaction` (R82).
 ## BE-PERSISTENCE-7 The database is reached through the named shared EntityManager
 
 A domain service (or a platform capability owning a `persistence/`) injects
-`@InjectPrimaryEntityManager() private readonly entityManager: EntityManager` and calls
-`entityManager.query<Array<Row>>(SQL, [params])`. No `getRepository`, `@InjectRepository`, `Repository<T>`, repository
+`@InjectPrimaryEntityManager() private readonly entityManager: EntityManager` and calls its entity API (lite,
+BE-PERSISTENCE-4) or `entityManager.query<Array<Row>>(SQL, [params])` (full). No `getRepository`, `@InjectRepository`, `Repository<T>`, repository
 or store class, injected `DataSource` or `QueryRunner` outside `platform/database` and the cli, and no manager in a
 door, integration or app.
 
@@ -169,16 +191,16 @@ Enforced by: `sql-returning` (R181).
 
 ## BE-PERSISTENCE-17 Lite: product data is reached through the back end only
 
-The front end uses Supabase for auth only. On exposed schemas the browser roles hold no table privileges or data
-policies; anonymous access is at most `SELECT` under a policy named `*_public_read`, and a deliberate direct-access
-table is listed in `hfs.json` `supabase.directAccess`. The back end connects with the least-privilege application role
-(`supabase.appRole`: LOGIN, NOINHERIT, NOBYPASSRLS, named grants only), and its tables enable and force RLS unless
-`supabase.forceRlsExemptions` names them.
+The browser never reaches the database: there is no data API and the front end holds no database credential. The back end
+connects with the least-privilege application role (`db.appRole` of hfs.json, `app_be` by default: LOGIN, NOINHERIT,
+NOBYPASSRLS, named grants only), and its tables enable and force RLS unless `db.forceRlsExemptions` names them. The
+`anon`, `authenticated` and `service_role` roles of `db/bootstrap.sql` exist NOLOGIN only so migrations written for a
+hosted provider apply; no door logs in as them.
 
-Why: a browser holding the public key and a user token can call the data API even when no code imports it; closed
-grants keep the back end the authorization boundary.
+Why: the back end stays the one authorization boundary, and forced RLS keeps a missed `WHERE` from reading another owner's
+rows.
 
-Enforced by: R217, R254, R214, R255 (hfs checks over the migrations).
+Enforced by: R214, R255 (hfs checks over the migrations).
 
 ## BE-PERSISTENCE-19 Lite: policies, definers and configuration keep the boundary
 
@@ -190,4 +212,4 @@ and is never edited.
 
 Why: a view, definer or configuration change can expose rows while the base table looks protected.
 
-Enforced by: R214, R215, R256, R216, R259, R213, R257 (hfs checks).
+Enforced by: R214, R215, R256, R259, R213, R257 (hfs checks).

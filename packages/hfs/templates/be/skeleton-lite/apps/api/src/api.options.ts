@@ -1,4 +1,5 @@
-import type { SupabaseOptions } from "@modules/integrations/supabase"
+import type { PassportOptions } from "@modules/integrations/passport"
+import type { ObjectStorageOptions } from "@modules/integrations/object-storage"
 import type { ServerOptions } from "@modules/platform/config"
 import type { DatabaseConnectionOptions } from "@modules/platform/database"
 import type { HttpSecurityOptions } from "@modules/platform/http-security"
@@ -9,8 +10,10 @@ export interface ApiOptions {
     readonly server: ServerOptions
     /** The origin allowlist and rate limits. */
     readonly httpSecurity: HttpSecurityOptions
-    /** The least-privilege PostgreSQL connection to the Supabase project. */
+    /** The least-privilege PostgreSQL connection to the app's own database. */
     readonly database: DatabaseConnectionOptions
-    /** Supabase Auth, Storage and token-verification configuration. */
-    readonly supabase: SupabaseOptions
+    /** Google OAuth, the app's own access tokens and the refresh cookie. */
+    readonly passport: PassportOptions
+    /** S3-compatible object storage. */
+    readonly objectStorage: ObjectStorageOptions
 }

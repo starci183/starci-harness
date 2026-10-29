@@ -2,27 +2,23 @@
 // against a loaded manifest remain in slots.mjs; this module mirrors modules/schemas/hfs-repo.schema.yaml only.
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { APP_KIND, connectionShapeProblems, NAME, PACKAGE_NAME, RUNTIME_KIND, SLOT_ID } from './manifest-shape.mjs';
+import { dbFunctionsOk } from './rule-params-shape.mjs';
 import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 
-/** Shape problems of the optional hfs.json `supabase` block whose auth posture DB_CONFIG_POLICY checks. */
-const isSupabaseStringList = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string' && entry.trim());
+/** Shape problems of the optional hfs.json `db` block of a lite app: the environment variable naming its database, its image, forced RLS and its application role. */
+const isStringList = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string' && entry.trim());
 
-function supabaseValueProblems(block) {
-  const bad = [];
-  if (block.enableSignup !== undefined && typeof block.enableSignup !== 'boolean') bad.push('supabase.enableSignup must be true or false');
-  if (block.jwtExpiry !== undefined && !(Number.isInteger(block.jwtExpiry) && block.jwtExpiry > 0 && block.jwtExpiry <= 3600)) bad.push('supabase.jwtExpiry must be an integer of seconds, 3600 at most');
-  if (block.siteUrl !== undefined && (typeof block.siteUrl !== 'string' || !block.siteUrl.trim())) bad.push('supabase.siteUrl must be a URL string');
-  for (const key of ['redirectUrls', 'forceRls']) if (block[key] !== undefined && !isSupabaseStringList(block[key])) bad.push(`supabase.${key} must be a list of strings`);
-  return bad;
-}
-
-function supabaseBlockProblems(block) {
+function dbBlockProblems(block) {
   if (block === undefined) return [];
-  if (!isPlainObject(block)) return ['supabase must be an object'];
+  if (!isPlainObject(block)) return ['db must be an object'];
   const bad = [];
-  for (const key of Object.keys(block)) if (!['enableSignup', 'jwtExpiry', 'siteUrl', 'redirectUrls', 'forceRls'].includes(key)) bad.push(`supabase has unknown key ${key}`);
-  bad.push(...supabaseValueProblems(block));
+  for (const key of Object.keys(block)) if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole'].includes(key)) bad.push(`db has unknown key ${key}`);
+  if (block.urlEnv !== undefined && (typeof block.urlEnv !== 'string' || !/^[A-Z][A-Z0-9_]*$/.test(block.urlEnv))) bad.push('db.urlEnv must name an UPPER_CASE environment variable');
+  if (block.image !== undefined && (typeof block.image !== 'string' || !/@sha256:[0-9a-f]{64}$/.test(block.image))) bad.push('db.image must be a digest-pinned image reference');
+  if (block.forceRls !== undefined && !isStringList(block.forceRls)) bad.push('db.forceRls must be a list of strings');
+  if (block.appRole !== undefined && (typeof block.appRole !== 'string' || !/^[a-z][a-z0-9_]*$/.test(block.appRole))) bad.push('db.appRole must name a role');
+  if (block.forceRlsExemptions !== undefined && !Array.isArray(block.forceRlsExemptions)) bad.push('db.forceRlsExemptions must be a list of { table, reason }');
   return bad;
 }
 
@@ -95,7 +91,8 @@ function declarationSideProblems(side, value, names) {
   const bad = [];
   const at = `sides.${side}`;
   if (!isPlainObject(value)) return [`${at} must be an object`];
-  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'queueOutbox'].includes(key)) bad.push(`${at} has unknown key ${key}`);
+  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'queueOutbox', 'dbFunctions'].includes(key)) bad.push(`${at} has unknown key ${key}`);
+  if (value.dbFunctions !== undefined && (side !== 'be' || !dbFunctionsOk(value.dbFunctions))) bad.push(`${at}.dbFunctions belongs to the be side and lists {name, reason} database functions with unique names`);
   bad.push(...appShapeProblems(value.apps, at, side, names));
   if (isBadUniqueList(value.optionalSlots, (slot) => SLOT_ID.test(String(slot)))) bad.push(`${at}.optionalSlots must be a unique list of slot ids`);
   if (value.backing !== undefined && side !== 'be') bad.push('backing belongs to the be side');
@@ -127,13 +124,13 @@ function observeBlockProblems(observe) {
   return bad;
 }
 
-const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'supabase', 'sides', 'browser', 'lexicon', 'observe']);
+const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'lexicon', 'observe']);
 const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 
 function productDeclarationProblems(declaration, profiles) {
   const bad = [];
   for (const key of Object.keys(declaration)) if (!DECLARATION_KEYS.has(key)) bad.push(`unknown key ${key}`);
-  bad.push(...supabaseBlockProblems(declaration.supabase), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe));
+  bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe));
   if (declaration.browser !== undefined && declaration.browser !== true) bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
   if (declaration.kind !== APP_KIND) bad.push(`kind must be ${APP_KIND} (a product is one app repository with a be and an fe side) or ${RUNTIME_KIND} (the StarCi runtime repository)`);
   if (!isPlainObject(declaration.sides) || Object.keys(declaration.sides).sort(byCodeUnit).join() !== profiles.join()) { bad.push('sides must declare exactly be and fe'); return bad; }

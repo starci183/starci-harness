@@ -168,7 +168,7 @@ rules:
     code: "HFS_STACKS_SHAPE"
     editions: [lite, full]
     docs: [docs/legacy-tree-rule-coverage.md#r10]
-    law: "`.starcistacks` has the edition-aware standard shape and the host Sonar owner. STACK-DEV keeps every dependency in Docker Linux containers in development (local Supabase through its CLI); application processes follow their declared development profile. Production runs the app and dependencies on Docker Swarm except hosted Supabase, the only admitted managed backing provider (owner:dev-docker-prod-swarm). Swarm stacks have digest-pinned images, healthchecks, rollout, rollback and restart policies, versioned external secrets, ingress-only published ports and declared schedulers for replicated jobs. Recurring work is app-owned; host crontab installation is forbidden. Lite declares Supabase as managed backing and runs no duplicate backing-service component."
+    law: "`.starcistacks` has the edition-aware standard shape and the host Sonar owner. STACK-DEV keeps every dependency in Docker Linux containers in development (the db service among them); application processes follow their declared development profile. Production runs the app and dependencies, its db service included, on Docker Swarm (owner:dev-docker-prod-swarm). Swarm stacks have digest-pinned images, healthchecks, rollout, rollback and restart policies, versioned external secrets, ingress-only published ports and declared schedulers for replicated jobs. Recurring work is app-owned; host crontab installation is forbidden. Lite declares its db service as backing (backing.db) and runs no other backing-service component."
     kinds: [check, codemod]
     gates: [settle, land, ci]
     failureCodes: ["HFS_STACKS_SHAPE"]
@@ -640,7 +640,7 @@ rules:
       - {path: packages/eslint/be/a16-r34-schema-authority.spec.mjs, editions: [lite, full], codes: [BE_SCHEMA_AUTHORITY]}
   - id: R35
     code: "BE_SCHEMA_OWNER"
-    law: "Entities and migrations live in the owning capability's `persistence/`; its `<c>Entities` and `<c>Migrations` are registered under exactly one declared connection, which every `Inject<Conn>EntityManager` of the capability names (no `CONNECTION` alias); only a platform capability the manifest lists as `perConnection` (the event-bus outbox, the job table) registers on several."
+    law: "Entities and migrations live in the owning capability's `persistence/`; its `<c>Entities` and `<c>Migrations` are registered under exactly one declared connection, which every `Inject<Conn>EntityManager` of the capability names (no `CONNECTION` alias); only a platform capability the manifest lists as `perConnection` (the event-bus outbox, the job table) registers on several. In lite a capability's `persistence/entities/index.ts` declares its `<c>Entities` and `platform/database/entities.ts` names it in `PRIMARY_ENTITIES`, the one list the app composition registers."
     kinds: [lint, codemod, design]
     gates: [settle, land, ci]
     failureCodes: ["BE_SCHEMA_OWNER"]
@@ -665,7 +665,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: sql-text-only}
       - {kind: eslint-be, id: no-query-builder}
-    editions: [lite, full]
+    editions: [full]
     docs: ["docs/architecture.md#r36"]
     proves:
       - path: packages/eslint/be/r36-sql-boundary.spec.mjs
@@ -722,7 +722,7 @@ rules:
     proves:
       - {path: packages/eslint/be/a16-error-home.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/supabase/errors/supabase.error.ts, edition: lite}
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/errors/passport.error.ts, edition: lite}
       - {path: packages/hfs/templates/be/skeleton/src/modules/domain/identity/errors/identity.error.ts, edition: full}
       - {path: packages/eslint/be/a16-error-home.spec.mjs, editions: [lite, full]}
     witness:
@@ -3619,7 +3619,7 @@ rules:
     docs: [docs/lite-edition.md#edition-validation]
     templateNa: "The hfs.json edition declaration is generated programmatically by packages/hfs/scaffold/app.mjs; no managed declaration template exists. Forbidden paths are rejected rather than scaffolded."
     code: "HFS_EDITION_INVALID"
-    law: "hfs.json names an edition the manifest knows (full, or lite; absent means full). Lite is a minimal production (case-10): the same monorepo, code structure, slots, patterns and back-end unit specs, one stateless instance type that scales horizontally, managed Supabase for Postgres, Auth and Storage, and one minimal instance of each backing service a declared capability needs (hfs.json sides.be.backing: Redis for the queue, with AOF persistence); vector search uses Supabase pgvector (owner:lite-vector-is-pgvector, which excludes Qdrant from lite); a backing service is declared or absent, never on by default. The queue is BullMQ on Redis in both editions, fed by the Postgres outbox; pg_cron ticks enqueue through that outbox; the event bus keeps its lite adapter (pgmq-backed topics or in-process delivery) because full's event bus is Kafka, not Redis; cache and locks are Postgres unless Redis is declared; the api and sidecars run on docker-swarm on a VPS. The realtime pattern serves SSE (the default for one-way push), the same socket.io gateway or the restricted GraphQL subscription inside the be api process (scales horizontally and stateless: the memory hub is for a single replica or tests only, and replicas > 1 use the Redis hub and the sharded @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter; both shared socket adapters force websocket-only connections with no sticky sessions; R212 case-9, which amends the realtime clauses of case-2, case-3 and case-5; the GraphQL subscription door is R212 case-7 and owner:lite-graphql-subscription-door), and both editions share knowledge/hfs/fe-stack.yaml. Lite requires application-stacks.yaml and permits environment metadata, runbooks, infra/swarm and encrypted-secret custody, while refusing infra/compose, infra/k8s, infra/terraform and components duplicating Supabase backing services (runtime/{config,env}, seeds and the sealed secrets of its environments are allowed). Contract specs and `test:contract` are allowed (owner 2026-10-14); it has no e2e spec, `test:e2e`, `test:stack` or `test:browser` script, e2e workflow, browser journey, Work catalog, shell, features, resources, UAT or br records, test container, toxiproxy, browser-runner or Kafka dependency, client library of an undeclared backing service (HFS_BACKING_UNDECLARED), declared backing service without a consumer (HFS_BACKING_UNUSED), or supabase/functions. Its .starciwork is optional and admits only .gitignore, workspace.yaml and brand/**; workspace.yaml is optional and carries project identity and repo roles for the Work tools."
+    law: "hfs.json names an edition the manifest knows (full, or lite; absent means full). Lite is a minimal production (case-10): the same monorepo, code structure, slots, patterns and back-end unit specs, one stateless instance type that scales horizontally, its own PostgreSQL db service, Passport identity and S3-compatible storage (ruling:lite-self-hosted-postgres-passport-minio), and one minimal instance of each backing service a declared capability needs (hfs.json sides.be.backing: Redis for the queue, with AOF persistence); vector search uses pgvector in the db service (owner:lite-vector-is-pgvector, which excludes Qdrant from lite); a backing service is declared or absent, never on by default. The queue is BullMQ on Redis in both editions, fed by the Postgres outbox; pg_cron ticks enqueue through that outbox; the event bus keeps its lite adapter (pgmq-backed topics or in-process delivery) because full's event bus is Kafka, not Redis; cache and locks are Postgres unless Redis is declared; the api and sidecars run on docker-swarm on a VPS. The realtime pattern serves SSE (the default for one-way push), the same socket.io gateway or the restricted GraphQL subscription inside the be api process (scales horizontally and stateless: the memory hub is for a single replica or tests only, and replicas > 1 use the Redis hub and the sharded @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter; both shared socket adapters force websocket-only connections with no sticky sessions; R212 case-9, which amends the realtime clauses of case-2, case-3 and case-5; the GraphQL subscription door is R212 case-7 and owner:lite-graphql-subscription-door), and both editions share knowledge/hfs/fe-stack.yaml. Lite requires application-stacks.yaml and permits environment metadata, runbooks, infra/swarm and encrypted-secret custody, while refusing infra/compose, infra/k8s, infra/terraform and backing components other than its db service (runtime/{config,env}, seeds and the sealed secrets of its environments are allowed). Contract specs and `test:contract` are allowed (owner 2026-10-14); it has no e2e spec, `test:e2e`, `test:stack` or `test:browser` script, e2e workflow, browser journey, Work catalog, shell, features, resources, UAT or br records, test container, toxiproxy, browser-runner or Kafka dependency, client library of an undeclared backing service (HFS_BACKING_UNDECLARED), declared backing service without a consumer (HFS_BACKING_UNUSED), or a supabase/ tree (LITE_DB_MIGRATION). Its .starciwork is optional and admits only .gitignore, workspace.yaml and brand/**; workspace.yaml is optional and carries project identity and repo roles for the Work tools."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_EDITION_INVALID", "HFS_EDITION_FORBIDDEN_PRESENT", "HFS_STARCIWORK_LITE_FORBIDDEN", "HFS_BACKING_UNDECLARED", "HFS_BACKING_UNUSED"]
@@ -3678,7 +3678,7 @@ rules:
         date: "2026-10-24"
         source: owner
         quote: "Lite still has Redis, Qdrant and the like!!! That is, it deploys a minimal production. Lite is one instance that scales horizontally and is stateless! Full's infrastructure is more complex. Lite cannot go up to full!!! Lite is lite, full is full. The queue is Redis!!! (translated from Vietnamese; the owner approved the ruling table with \"ok, fix all of it, that is right\")"
-        ruling: "This case replaces the clauses of case-1, case-2 and case-3 that ban backing services in lite and the clause of case-7 that keeps Redis out of the realtime hub of lite (no BullMQ or Redis, one instance with no Redis adapter, the full architecture minus self-hosted infrastructure, the queue on pgmq). Lite is a minimal production: one instance type (one api, an optional worker) that is stateless and scales horizontally, managed Supabase for Postgres, Auth and Storage, and one minimal instance of each backing service a declared capability needs, deployed compactly on docker-swarm; full is several services each with its own database plus Redis, Kafka/CDC, its own IdP, object storage and observability on a multi-node stack. A backing service is declared or absent: hfs.json sides.be.backing names redis in lite (redis or qdrant in full), nothing is on by default; owner:lite-vector-is-pgvector narrows the lite vector store to Supabase pgvector and refuses Qdrant even when declared, the lite stack renders only declared services (STACKS_LITE_SELFHOSTED_DB), a client library of an undeclared service is refused (HFS_BACKING_UNDECLARED) and a declared service without a consumer is refused (HFS_BACKING_UNUSED). The queue is BullMQ on Redis in both editions behind the same platform/queue ports (outbox in Postgres, relay to BullMQ, processors, retry with exponential backoff, failed jobs kept as the dead letter); pgmq is not a queue transport, a declared queue or fenced-job pattern requires Redis, and a pg_cron tick enqueues through the queue outbox. The lite Redis runs with AOF persistence (appendonly yes) on a named volume because queue jobs must not be lost (STACKS_LITE_REDIS_PERSISTENCE); cache, rate limit and realtime pub/sub may share that instance, which keeps maxmemory-policy noeviction so no queue job is evicted. Durable data and the outbox stay in Postgres. MongoDB stays out of lite. Editions are fixed at scaffold (case-6)."
+        ruling: "This case replaces the clauses of case-1, case-2 and case-3 that ban backing services in lite and the clause of case-7 that keeps Redis out of the realtime hub of lite (no BullMQ or Redis, one instance with no Redis adapter, the full architecture minus self-hosted infrastructure, the queue on pgmq). Lite is a minimal production: one instance type (one api, an optional worker) that is stateless and scales horizontally, its own PostgreSQL db service, Passport identity and S3-compatible storage (ruling:lite-self-hosted-postgres-passport-minio), and one minimal instance of each backing service a declared capability needs, deployed compactly on docker-swarm; full is several services each with its own database plus Redis, Kafka/CDC, its own IdP, object storage and observability on a multi-node stack. A backing service is declared or absent: hfs.json sides.be.backing names redis in lite (redis or qdrant in full), nothing is on by default; owner:lite-vector-is-pgvector narrows the lite vector store to Supabase pgvector and refuses Qdrant even when declared, the lite stack renders only declared services (STACKS_LITE_SELFHOSTED_DB), a client library of an undeclared service is refused (HFS_BACKING_UNDECLARED) and a declared service without a consumer is refused (HFS_BACKING_UNUSED). The queue is BullMQ on Redis in both editions behind the same platform/queue ports (outbox in Postgres, relay to BullMQ, processors, retry with exponential backoff, failed jobs kept as the dead letter); pgmq is not a queue transport, a declared queue or fenced-job pattern requires Redis, and a pg_cron tick enqueues through the queue outbox. The lite Redis runs with AOF persistence (appendonly yes) on a named volume because queue jobs must not be lost (STACKS_LITE_REDIS_PERSISTENCE); cache, rate limit and realtime pub/sub may share that instance, which keeps maxmemory-policy noeviction so no queue job is evicted. Durable data and the outbox stay in Postgres. MongoDB stays out of lite. Editions are fixed at scaffold (case-6)."
     proves: [packages/hfs/src/hfs-edition-invalid.spec.mjs, packages/hfs/src/hfs-edition-forbidden-present.spec.mjs, packages/hfs/src/hfs-starciwork-lite-forbidden.spec.mjs, packages/hfs/src/hfs-backing-declared.spec.mjs]
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-edition-invalid.spec.mjs, editions: [lite, full]}
@@ -3694,8 +3694,8 @@ rules:
     code: "DB_MIGRATION_SHAPE"
     editions: [lite, full]
     docs: [docs/architecture.md#r213]
-    templateNa: "Full apps opt into Supabase without a managed Supabase migration scaffold; their migration sequence and Git history are product-authored."
-    law: "A migration is `supabase/migrations/<ts14>_<kebab>.sql`; the stamp is a valid UTC instant, active stamps are unique, and a new migration sorts strictly after the committed active migrations in HEAD. Repository history includes the archive: moving an active migration to the archive retires it from ordering, so a replacement baseline may predate archived stamps and later migrations append after the baseline. Wall-clock time, commit time and remote-branch stamps do not set the ordering boundary. A migration already on the base is immutable (a diff or an unarchived removal is a finding); a file that does not parse as PostgreSQL is a shape failure."
+    templateNa: "Full apps keep TypeORM migrations under be/; the managed db/migrations scaffold is lite's."
+    law: "A migration is `db/migrations/<ts14>_<kebab>.sql`; the stamp is a valid UTC instant, active stamps are unique, and a new migration sorts strictly after the committed active migrations in HEAD. Repository history includes the archive: moving an active migration to the archive retires it from ordering, so a replacement baseline may predate archived stamps and later migrations append after the baseline. Wall-clock time, commit time and remote-branch stamps do not set the ordering boundary. A migration already on the base is immutable (a diff or an unarchived removal is a finding); a file that does not parse as PostgreSQL is a shape failure."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_MIGRATION_SHAPE"]
@@ -3704,7 +3704,7 @@ rules:
     proves:
       - {path: packages/hfs/src/db-migration-shape.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/hfs/templates/app/skeleton-lite/supabase/migrations/__timestamp___baseline.sql, edition: lite}
+      - {path: packages/hfs/templates/app/skeleton-lite/db/migrations/__timestamp___baseline.sql, edition: lite}
       - {path: packages/hfs/src/db-migration-shape.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/db-migration-shape.spec.mjs, editions: [lite, full], codes: [DB_MIGRATION_SHAPE]}
@@ -3712,7 +3712,7 @@ rules:
     code: "DB_RLS_REQUIRED"
     editions: [lite, full]
     docs: [docs/lite-edition.md#r214]
-    law: "Row level security is code a parser can read: every `create table` (or `create table as`) in an exposed schema (`public` plus the config.toml `[api] schemas`) is followed, in the same migration, by `alter table <t> enable row level security` (and `force` for a table hfs.json `supabase.forceRls` declares); no `DO` block or function runs dynamic SQL that builds DDL or grants; a write or `for all` policy never uses `(true)`, `to anon`/`to public` is legal only on a `for select` policy named `*_public_read`, every policy is named `<table>_<role>_<action>`, and `service_role` is never granted."
+    law: "Row level security is code a parser can read: every `create table` (or `create table as`) in the app schema `public` is followed, in the same migration, by `alter table <t> enable row level security` (and `force` for a table hfs.json `db.forceRls` declares); no `DO` block or function runs dynamic SQL that builds DDL or grants; a write or `for all` policy never uses `(true)`, `to anon`/`to public` is legal only on a `for select` policy named `*_public_read`, every policy is named `<table>_<role>_<action>`, and `service_role` is never granted."
     kinds: [check, codemod]
     gates: [settle, land, ci]
     failureCodes: ["DB_RLS_REQUIRED", "DB_DYNAMIC_DDL", "DB_POLICY_SHAPE"]
@@ -3756,98 +3756,24 @@ rules:
       - {path: packages/hfs/src/db-storage-policy.spec.mjs, edition: lite, codes: [DB_STORAGE_POLICY]}
       - {path: packages/hfs/src/db-definer-safe.spec.mjs, edition: full, codes: [DB_DEFINER_SAFE]}
       - {path: packages/hfs/src/db-storage-policy.spec.mjs, edition: full, codes: [DB_STORAGE_POLICY]}
-  - id: R216
-    code: "DB_CONFIG_POLICY"
-    editions: [lite, full]
-    docs: [docs/lite-edition.md#r216]
-    templateNa: "Database types are generated from each app migration set, not static templates; full-edition Supabase configuration is app-owned."
-    law: "The database configuration and its types are checked facts: `supabase/config.toml` carries no literal value under a credential key (the value is `env(NAME)`), `auth.jwt_expiry` is at most 3600, and signup, site url and redirect urls equal the Supabase block of hfs.json where it declares them; `supabase/types/database.types.ts` is committed and equals the text `contract:emit` regenerates from the migrations. Type emission refuses HFS_EMIT_DB_TYPES_STALE unless the complete applied migration version set equals the SQL filename stamps; lint and check report drift without writing types."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["DB_CONFIG_POLICY", "DB_TYPES_DRIFT", "HFS_EMIT_DB_TYPES_STALE"]
-    enforcers:
-      - {kind: hfs, id: db-config-types, at: scripts/hfs/rules/database.mjs}
-      - {kind: hfs, id: db-types-emit, at: packages/hfs/emit/db-types.mjs}
-    proves:
-      - {path: packages/hfs/src/db-types-returned-collector.spec.mjs, editions: [lite, full], codes: [DB_TYPES_DRIFT]}
-      - {path: packages/hfs/src/db-config-policy.spec.mjs, editions: [lite, full], codes: [DB_CONFIG_POLICY]}
-      - {path: packages/hfs/src/db-types-emit-stale.spec.mjs, editions: [lite, full], codes: [HFS_EMIT_DB_TYPES_STALE]}
-    exemplifiedBy:
-      - {path: packages/hfs/templates/app/skeleton-lite/supabase/config.toml, edition: lite}
-      - {path: packages/hfs/src/db-types-returned-collector.spec.mjs, editions: [lite, full]}
-      - {path: packages/hfs/src/db-config-policy.spec.mjs, editions: [lite, full]}
-      - {path: packages/hfs/src/db-types-emit-stale.spec.mjs, editions: [lite, full], codes: [HFS_EMIT_DB_TYPES_STALE]}
-    witness:
-      - {path: packages/hfs/src/db-types-returned-collector.spec.mjs, edition: lite, codes: [DB_TYPES_DRIFT]}
-      - {path: packages/hfs/src/db-types-returned-collector.spec.mjs, edition: full, codes: [DB_TYPES_DRIFT]}
-      - {path: packages/hfs/src/db-config-policy.spec.mjs, edition: lite, codes: [DB_CONFIG_POLICY]}
-      - {path: packages/hfs/src/db-config-policy.spec.mjs, edition: full, codes: [DB_CONFIG_POLICY]}
-      - {path: packages/hfs/src/db-types-emit-stale.spec.mjs, editions: [lite, full], codes: [HFS_EMIT_DB_TYPES_STALE]}
-  - id: R217
-    code: "FE_SUPABASE_CLIENT_OWNER"
-    editions: [lite, full]
-    docs: [docs/lite-edition.md#r217]
-    law: "Supabase has one door per side: on the front end `@supabase/supabase-js` and `@supabase/ssr` are imported only by `fe.modules.auth` and only their auth API is called (sign-in, sign-out, session, access token; never `.from`, `.rpc`, `.storage` or `.channel`, so the front end reads and writes no data through Supabase), and on the back end only `be.integrations.supabase` imports them, every back-end client carrying the committed `Database` type; the front end holds no credential: `fe/` names no service-role or `*_SECRET`, `*_PRIVATE`, `*_TOKEN`, `*_PASSWORD` value (public configuration is read once by `modules/config`)."
-    kinds: [check, design]
-    gates: [settle, land, ci]
-    failureCodes: ["FE_SUPABASE_CLIENT_OWNER", "BE_SUPABASE_CLIENT_OWNER", "FE_SERVICE_ROLE_FORBIDDEN"]
-    enforcers:
-      - {kind: machine, id: supabase-client-owner, at: scripts/hfs/architecture/supabase.mjs}
-      - {kind: machine, id: supabase-service-role, at: scripts/hfs/architecture/supabase.mjs}
-    proves:
-      - {path: packages/hfs/src/fe-supabase-client-owner.spec.mjs, editions: [lite, full], codes: [FE_SUPABASE_CLIENT_OWNER]}
-      - {path: packages/hfs/src/r217-backend-client-owner.spec.mjs, editions: [lite, full], codes: [BE_SUPABASE_CLIENT_OWNER]}
-      - {path: packages/hfs/src/fe-service-role-forbidden.spec.mjs, editions: [lite, full], codes: [FE_SERVICE_ROLE_FORBIDDEN]}
-    exemplifiedBy:
-      - {path: packages/hfs/templates/fe/auth/supabase-client.ts.tpl, editions: [lite, full]}
-      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/supabase/supabase.client.ts, edition: lite}
-      - {path: packages/hfs/src/fe-supabase-client-owner.spec.mjs, editions: [lite, full]}
-      - {path: packages/hfs/src/r217-backend-client-owner.spec.mjs, editions: [lite, full]}
-      - {path: packages/hfs/src/fe-service-role-forbidden.spec.mjs, editions: [lite, full]}
-    witness:
-      - {path: packages/hfs/src/fe-supabase-client-owner.spec.mjs, edition: lite, codes: [FE_SUPABASE_CLIENT_OWNER]}
-      - {path: packages/hfs/src/r217-backend-client-owner.spec.mjs, edition: lite, codes: [BE_SUPABASE_CLIENT_OWNER]}
-      - {path: packages/hfs/src/fe-service-role-forbidden.spec.mjs, edition: lite, codes: [FE_SERVICE_ROLE_FORBIDDEN]}
-      - {path: packages/hfs/src/fe-supabase-client-owner.spec.mjs, edition: full, codes: [FE_SUPABASE_CLIENT_OWNER]}
-      - {path: packages/hfs/src/r217-backend-client-owner.spec.mjs, edition: full, codes: [BE_SUPABASE_CLIENT_OWNER]}
-      - {path: packages/hfs/src/fe-service-role-forbidden.spec.mjs, edition: full, codes: [FE_SERVICE_ROLE_FORBIDDEN]}
-  - id: R219
-    code: "BE_SUPABASE_JWT_VERIFIED"
-    editions: [lite, full]
-    docs: [docs/lite-edition.md#r219]
-    templateNa: "Full-edition Supabase verification is an optional integration with no managed verifier scaffold; lite has the referenced integration template."
-    law: "The principal is verified, never trusted: a back-end principal comes only from a Supabase access token verified against the project JWKS (signature, issuer, audience, expiry, pinned algorithm), never decoded unverified and never from the request body."
-    kinds: [check, design]
-    gates: [settle, land, ci]
-    failureCodes: ["BE_SUPABASE_JWT_VERIFIED"]
-    enforcers:
-      - {kind: machine, id: supabase-principal, at: scripts/hfs/architecture/supabase.mjs}
-    proves:
-      - {path: packages/hfs/src/be-supabase-jwt-verified.spec.mjs, editions: [lite, full]}
-    exemplifiedBy:
-      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/supabase/supabase.jwks.ts, edition: lite}
-      - {path: packages/hfs/src/be-supabase-jwt-verified.spec.mjs, editions: [lite, full]}
-    witness:
-      - {path: packages/hfs/src/be-supabase-jwt-verified.spec.mjs, edition: lite, codes: [BE_SUPABASE_JWT_VERIFIED]}
-      - {path: packages/hfs/src/be-supabase-jwt-verified.spec.mjs, edition: full, codes: [BE_SUPABASE_JWT_VERIFIED]}
   - id: R220
     code: "HFS_LITE_SECRET_CUSTODY"
     editions: [lite]
-    editionWhy: "ruling:lite-backing-services assigns Supabase backing to lite; R220 adds lite's reduced custody tree and Supabase/FE literal scan, while R06 governs plaintext secret material in both editions."
+    editionWhy: "ruling:lite-self-hosted-postgres-passport-minio gives lite its own database and identity; R220 adds lite's reduced custody tree and the fe/ and db/ literal scan, while R06 governs plaintext secret material in both editions."
     docs: [docs/host-secrets.md#application-secret-rules]
-    law: "A lite app holds no secret material in the tree: root `.env*`, `secrets.env`, `.secrets/` and an `.enc` file outside `.starcistacks/<env>/secrets` are forbidden, and `fe/` and `supabase/` hold no Supabase token, JWT or connection string with a password; the one custody is the sealed `.starcistacks/<env>/secrets/<slug>.enc`."
+    law: "A lite app holds no secret material in the tree: root `.env*`, `secrets.env`, `.secrets/` and an `.enc` file outside `.starcistacks/<env>/secrets` are forbidden, and `fe/` and `db/` hold no provider token, JWT or connection string with a password; the one custody is the sealed `.starcistacks/<env>/secrets/<slug>.enc`."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_LITE_SECRET_CUSTODY"]
     enforcers:
-      - {kind: hfs, id: lite-secret-custody, at: scripts/hfs/rules/supabase-secrets.mjs}
+      - {kind: hfs, id: lite-secret-custody, at: scripts/hfs/rules/lite-secrets.mjs}
     proves:
-      - {path: packages/hfs/src/hfs-supabase-secrets.spec.mjs, edition: lite}
+      - {path: packages/hfs/src/hfs-lite-secrets.spec.mjs, edition: lite}
     exemplifiedBy:
       - {path: packages/hfs/templates/app/skeleton-lite/.sops.yaml, edition: lite}
-      - {path: packages/hfs/src/hfs-supabase-secrets.spec.mjs, edition: lite}
+      - {path: packages/hfs/src/hfs-lite-secrets.spec.mjs, edition: lite}
     witness:
-      - {path: packages/hfs/src/hfs-supabase-secrets.spec.mjs, edition: lite}
+      - {path: packages/hfs/src/hfs-lite-secrets.spec.mjs, edition: lite}
   - id: R221
     code: "CI_TRIGGERS_RELEASE_ONLY"
     law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, and workflow_dispatch. Runtime workflows and app ci.yml also admit main. App ci.yml includes the candidate branch filter for starci app release push. Other branches, events, path filters and ignore filters are refused."
@@ -4124,7 +4050,7 @@ rules:
     code: "FE_SERVER_ACTION_FORBIDDEN"
     editions: [lite, full]
     docs: [docs/code-pattern-enforcement.md#r243]
-    law: "The front end serves no API, in every app and edition (R212 case-2 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4): no file under `fe/` carries a `\"use server\"` directive (module or function level), and the only route handlers are `app/health/live/route.ts` and the auth callback of the `fe.route.callback` slot; reads and writes reach the back end through `modules/api` and the SWR hooks, and a webhook, cron, public API or third-party callback is a back-end feature."
+    law: "The front end serves no API, in every app and edition (R212 case-2 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4): no file under `fe/` carries a `\"use server\"` directive (module or function level), and the only route handler is `app/health/live/route.ts`; reads and writes reach the back end through `modules/api` and the SWR hooks, and a webhook, cron, public API or third-party callback is a back-end feature."
     kinds: [check, lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_SERVER_ACTION_FORBIDDEN", "FE_ROUTE_HANDLER_FORBIDDEN"]
@@ -4191,7 +4117,7 @@ rules:
     witness:
       - {path: packages/eslint/be/app-composition-coverage.spec.mjs, edition: lite, codes: [BE_APP_COMPOSITION_BUDGET]}
       - {path: packages/eslint/be/app-composition-coverage.spec.mjs, edition: full, codes: [BE_APP_COMPOSITION_BUDGET]}
-    law: "Each app file stays within the line budget its `be.app.*` slot names (`budget`, keyed by the slot entry the file matches): `main.ts` 80, `<app>.env.ts` 150, `<app>.options.ts` 200, `compose/<area>.ts` 120, `app.module.ts` 250. The budget is absolute, not a ratchet: an entrypoint that outgrows it moves typed, fail-fast parsing into `<app>.env.ts`; an app root that outgrows it moves an area into a new `compose/<area>.ts` group, never into the env or options file."
+    law: "Each app file stays within the line budget its `be.app.*` slot names (`budget`, keyed by the slot entry the file matches): `main.ts` 80, `<app>.env.ts` 150, `<app>.options.ts` 200, `compose/<area>.ts` 120, `app.module.ts` 250, counted in lines excluding import declarations (a multi-line import counts none of its lines). The budget is absolute, not a ratchet: an entrypoint that outgrows it moves typed, fail-fast parsing into `<app>.env.ts`; an app root that outgrows it moves an area into a new `compose/<area>.ts` group, never into the env or options file."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_APP_COMPOSITION_BUDGET"]
@@ -4289,10 +4215,10 @@ rules:
     editions: [lite, full]
     docs:
       - {path: docs/application-stacks.md#r252-script-hygiene, editions: [lite, full]}
-    law: "In lite and full apps, executable scripts and workflow commands never load plaintext secrets.env, secret.env, .env secret files or a home-directory credential file, enable shell xtrace or request --reveal. Service-role references belong only to the back-end Supabase integration; deployment scripts and source outside that integration never use the service role. Scanners inspect source references and report paths without reading secret files or printing their values."
+    law: "In lite and full apps, executable scripts and workflow commands never load plaintext secrets.env, secret.env, .env secret files or a home-directory credential file, enable shell xtrace or request --reveal. Scanners inspect source references and report paths without reading secret files or printing their values."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_SCRIPT_PLAINTEXT_LOAD", "HFS_SCRIPT_XTRACE", "HFS_SERVICE_ROLE_SCOPE"]
+    failureCodes: ["HFS_SCRIPT_PLAINTEXT_LOAD", "HFS_SCRIPT_XTRACE"]
     enforcers:
       - {kind: hfs, id: script-hygiene, at: scripts/hfs/rules/script-hygiene.mjs}
     proves:
@@ -4323,31 +4249,13 @@ rules:
       - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [lite, full]}
-  - id: R254
-    code: "DB_BE_ONLY_ACCESS"
-    editions: [lite]
-    editionWhy: "owner:lite-backing-services makes Supabase lite's database backing; these SQL access requirements apply to that backing."
-    docs: [docs/microservices.md#r254]
-    templateNa: "Browser grants, policies and publication membership belong to product-authored Supabase migrations, rather than a scaffolded SQL surface."
-    law: "In lite and full, browser data access stays closed on exposed schemas: authenticated receives neither table or sequence privileges nor data policies, and anon reads only through a select policy named *_public_read. A table listed in hfs.json supabase.directAccess is an explicit exception. A table joins supabase_realtime only when that direct access is declared. The front end uses Supabase for Auth and reaches product data through the back end."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["DB_BE_ONLY_ACCESS", "DB_REALTIME_UNLISTED"]
-    enforcers:
-      - {kind: hfs, id: db-be-only-access, at: scripts/hfs/rules/database-access.mjs}
-    proves:
-      - {path: packages/hfs/src/hfs-database-access.spec.mjs, edition: lite, codes: [DB_BE_ONLY_ACCESS, DB_REALTIME_UNLISTED]}
-    exemplifiedBy:
-      - {path: packages/hfs/src/hfs-database-access.spec.mjs, edition: lite, codes: [DB_BE_ONLY_ACCESS, DB_REALTIME_UNLISTED]}
-    witness:
-      - {path: packages/hfs/src/hfs-database-access.spec.mjs, edition: lite, codes: [DB_BE_ONLY_ACCESS, DB_REALTIME_UNLISTED]}
   - id: R255
     code: "DB_APP_ROLE"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes Supabase lite's database backing; application-role and forced-RLS requirements apply to that backing."
+    editionWhy: "owner:lite-backing-services makes the db service lite's database; application-role and forced-RLS requirements apply to that backing."
     docs: [docs/microservices.md#r255]
-    templateNa: "Application roles and table ownership are product-authored Supabase migration content, rather than a scaffolded SQL surface."
-    law: "The declared back-end database role (hfs.json supabase.appRole, app_be by default) has only the privileges it needs: role declarations refuse superuser and bypassrls, require noinherit and nobypassrls, and never grant all schema or table privileges. Tables owned by that role enable and force row level security by default; a forceRls exemption identifies the table and carries a nonempty reason. This applies to every edition that declares Supabase."
+    templateNa: "Application roles and table ownership are product-authored db migration content, rather than a scaffolded SQL surface."
+    law: "The declared back-end database role (app_be by default) has only the privileges it needs: role declarations refuse superuser and bypassrls, require noinherit and nobypassrls, and never grant all schema or table privileges. Tables owned by that role enable and force row level security by default; a forceRls exemption identifies the table and carries a nonempty reason. This applies to every edition that declares Supabase."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_APP_ROLE", "DB_FORCE_RLS_DEFAULT"]
@@ -4362,9 +4270,9 @@ rules:
   - id: R256
     code: "DB_POLICY_TAUTOLOGY"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes Supabase lite's database backing; access-policy, view, definer and storage SQL requirements apply to that backing."
+    editionWhy: "owner:lite-backing-services makes the db service lite's database; access-policy, view, definer and storage SQL requirements apply to that backing."
     docs: [docs/microservices.md#r256]
-    templateNa: "Access policies, views, definers and storage policies belong to product-authored Supabase migrations, rather than a scaffolded SQL surface."
+    templateNa: "Access policies, views, definers and storage policies belong to product-authored db migrations, rather than a scaffolded SQL surface."
     law: "Exposed database objects keep their access boundaries in lite and full. Policies refuse tautological true, is-not-null and self-equality predicates; policies for browser roles prove a principal predicate. An exposed view or materialized view uses security_invoker or the migration set ends with access revoked from anon and authenticated. Disabling RLS or moving a table into an exposed schema preserves the R214 RLS obligation. A security definer declaration, including alter function, preserves R215 safety checks and the migration set ends with execute revoked from authenticated when exposed, in addition to R215's public and anon revocation. A storage.objects policy scopes an ownership prefix to the principal unless its bucket id ends _public."
     kinds: [check]
     gates: [settle, land, ci]
@@ -4384,9 +4292,9 @@ rules:
   - id: R257
     code: "DB_BASELINE_SHAPE"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes Supabase lite's database backing; baseline and archive requirements apply to its migration history."
+    editionWhy: "owner:lite-backing-services makes the db service lite's database; baseline and archive requirements apply to its migration history."
     docs: [docs/microservices.md#r257]
-    templateNa: "A baseline is derived from a product's existing Supabase migration history and cannot be supplied by a scaffold template."
+    templateNa: "A baseline is derived from a product's existing migration history and cannot be supplied by a scaffold template."
     law: "An archived migration chain has exactly one active baseline marked -- starci:baseline <archived-last-stamp>, with a later valid stamp or an explicit restamp. Archived files only need the digits-stamp_name.sql shape, whatever the stamp value (they are immutable history and never applied); the baseline and active migrations keep the real-instant stamp check. Archive contents are immutable against repository history; an active migration enters the archive unchanged only in the same diff that adds the replacement baseline. The app db baseline, restamp and plan verbs are read-only unless --apply is explicit."
     kinds: [check]
     gates: [settle, land, ci]
@@ -4402,9 +4310,9 @@ rules:
   - id: R258
     code: "DB_PGMQ_DECLARED"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes Supabase lite's database backing and ruling:R212/case-10 moves the lite queue to Redis; the pgmq retirement and pg_cron ownership requirements apply to that backing."
+    editionWhy: "owner:lite-backing-services makes the db service lite's database and ruling:R212/case-10 moves the lite queue to Redis; the pgmq retirement and pg_cron ownership requirements apply to that backing."
     docs: [docs/microservices.md#r258]
-    templateNa: "Queue declarations and enqueue-only cron commands depend on product-owned work and are authored in its Supabase migrations."
+    templateNa: "Queue declarations and enqueue-only cron commands depend on product-owned work and are authored in its db migrations."
     law: "DB_QUEUE_CRON: the queue is BullMQ on Redis (ruling:R212/case-10), so the active migrations leave no pgmq queue named by a queue constant under modules/queues; a pgmq queue a migration created for one is dropped by a later migration. Every pgmq queue the active migrations leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under platform/event-bus, every such constant has its pgmq queue, and pgmq objects are granted only to the application role while they exist. A pg_cron job belongs to a migration and only enqueues; its name is scheduled once while it is active, so a later migration schedules it again only after its own cron.unschedule of that name, and one tick function has one live job at a time. Its command, directly or through one enqueue-only *_tick function, inserts one row of a literal queue constant into the queue outbox table of ruleParams.db.queueOutbox, writing only its declared columns (the relay hands it to BullMQ). An app whose hfs.json sides.be.backing declares redis may declare its own outbox in sides.be.queueOutbox ({table, enqueue, queueParameter}); the command, or the tick, then calls the declared enqueue function with a literal queue constant for the declared parameter and pure other arguments, while the active definition of that function only inserts one row into the declared table with its queue column bound to that parameter (an ON CONFLICT DO NOTHING, a read of the declared table and pure expressions are the only other work). A direct insert into the app's outbox table, or any other function, stays refused. The job executes no business DML or HTTP request and shares no tick with an app scheduler. A pgmq.send validates only in the original body of a job an older migration scheduled while that queue existed; the live job and its current tick never enqueue that way. Removing a tick unschedules its job."
     kinds: [check]
     gates: [settle, land, ci]
@@ -4421,41 +4329,40 @@ rules:
   - id: R259
     code: "DB_EXTENSION_ALLOWED"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes Supabase lite's database backing; database configuration, extension, migration and seed requirements apply to that backing."
+    editionWhy: "owner:lite-backing-services makes the db service lite's database; database configuration, extension, migration and seed requirements apply to that backing."
     docs: [docs/microservices.md#r259]
-    templateNa: "Extension use, contract migrations, vault operations and seed literals are product-authored Supabase content, rather than a scaffolded SQL surface."
-    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, pgmq schemas are never exposed through the API, and lite API access is closed except for explicit public-read policies. R216 DB_CONFIG_POLICY also checks API schema allowlisting, existing seed paths, anonymous sign-ins, disabled edge runtime, bounded storage uploads and the database major-version pin. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities. Seeds contain no real email or phone literals."
+    templateNa: "Extension use, contract migrations, vault operations and seed literals are product-authored db content, rather than a scaffolded SQL surface."
+    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities. Seeds contain no real email or phone literals."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["DB_EXTENSION_ALLOWED", "DB_API_EXPOSED", "DB_MIGRATION_DESTRUCTIVE", "HFS_SEED_PII", "DB_VAULT_WRITE"]
+    failureCodes: ["DB_EXTENSION_ALLOWED", "DB_MIGRATION_DESTRUCTIVE", "HFS_SEED_PII", "DB_VAULT_WRITE"]
     enforcers:
       - {kind: hfs, id: db-config-ext, at: scripts/hfs/rules/database-config.mjs}
       - {kind: hfs, id: db-migration-destructive, at: scripts/hfs/rules/database-migrations.mjs}
     proves:
-      - {path: packages/hfs/src/hfs-database-config.spec.mjs, editions: [lite], codes: [DB_EXTENSION_ALLOWED, DB_API_EXPOSED, DB_MIGRATION_DESTRUCTIVE, HFS_SEED_PII, DB_VAULT_WRITE]}
+      - {path: packages/hfs/src/hfs-database-config.spec.mjs, editions: [lite], codes: [DB_EXTENSION_ALLOWED, DB_MIGRATION_DESTRUCTIVE, HFS_SEED_PII, DB_VAULT_WRITE]}
     exemplifiedBy:
-      - {path: packages/hfs/src/hfs-database-config.spec.mjs, editions: [lite], codes: [DB_EXTENSION_ALLOWED, DB_API_EXPOSED, DB_MIGRATION_DESTRUCTIVE, HFS_SEED_PII, DB_VAULT_WRITE]}
+      - {path: packages/hfs/src/hfs-database-config.spec.mjs, editions: [lite], codes: [DB_EXTENSION_ALLOWED, DB_MIGRATION_DESTRUCTIVE, HFS_SEED_PII, DB_VAULT_WRITE]}
     witness:
-      - {path: packages/hfs/src/hfs-database-config.spec.mjs, editions: [lite], codes: [DB_EXTENSION_ALLOWED, DB_API_EXPOSED, DB_MIGRATION_DESTRUCTIVE, HFS_SEED_PII, DB_VAULT_WRITE]}
+      - {path: packages/hfs/src/hfs-database-config.spec.mjs, editions: [lite], codes: [DB_EXTENSION_ALLOWED, DB_MIGRATION_DESTRUCTIVE, HFS_SEED_PII, DB_VAULT_WRITE]}
   - id: R260
     code: "BE_JWT_ALG_PINNED"
-    law: "A back-end JWT verifier pins a nonempty literal subset of ES256, RS256 and EdDSA and obtains its issuer from configuration. A Supabase principal is built only after verification and rejection of every role other than authenticated, in lite and full."
+    law: "A back-end JWT verifier pins a nonempty literal subset of ES256, RS256 and EdDSA and obtains its issuer from configuration. A principal is built only after verification and rejection of every role other than authenticated, in lite and full."
     kinds: [check, lint]
     gates: ["pre-commit","settle","land","ci"]
     failureCodes: ["BE_JWT_ALG_PINNED"]
     enforcers:
       - {kind: eslint-be, id: jwt-alg-pinned}
-      - {kind: machine, id: jwt-policy, at: scripts/hfs/architecture/supabase.mjs}
+      - {kind: machine, id: jwt-policy, at: scripts/hfs/architecture/identity.mjs}
     editions: ["lite","full"]
-    templateNa: "Full identity providers are product-owned integrations with no scaffolded JWT verifier; the lite Supabase verifier is templated and both editions are exercised by the verifier specs."
+    templateNa: "Full identity providers are product-owned integrations with no scaffolded JWT verifier; the lite own-token verifier is templated and both editions are exercised by the verifier specs."
     docs:
       - "docs/microservices.md#r260"
     proves:
       - "packages/eslint/be/jwt-alg.spec.mjs"
       - packages/hfs/src/architecture-jwt-policy.spec.mjs
     exemplifiedBy:
-      - {"path":"packages/hfs/templates/be/skeleton-lite/src/modules/integrations/supabase/supabase.jwks.ts","edition":"lite"}
-      - {"path":"examples/lite-app/be/src/modules/integrations/supabase/supabase.jwks.ts","edition":"lite"}
+      - {"path":"packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.tokens.ts","edition":"lite"}
       - {"path":"packages/eslint/be/jwt-alg.spec.mjs","edition":"full","codes":["BE_JWT_ALG_PINNED"]}
     witness:
       - {"path":"packages/eslint/be/jwt-alg.spec.mjs","editions":["lite","full"],"codes":["BE_JWT_ALG_PINNED"]}
@@ -4794,14 +4701,14 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-full-fixtures.spec.mjs, edition: full}
   - id: R276
     code: "STACKS_LITE_SELFHOSTED_DB"
-    law: "Lite keeps PostgreSQL and vector search on managed Supabase pgvector and runs no PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
+    law: "Lite runs exactly one database, its db component of image supabase/postgres (pinned by digest) with pgvector for vector search, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector, ruling:lite-self-hosted-postgres-passport-minio). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["STACKS_LITE_SELFHOSTED_DB", "STACKS_SIDECAR_VOLUME_UNDECLARED", "STACKS_SIDECAR_DB_UNSUPPORTED", "STACKS_LITE_REDIS_PERSISTENCE"]
     enforcers:
       - {kind: hfs, id: stacks-lite-backing, at: scripts/hfs/rules/stacks-lite-backing.mjs}
     editions: ["lite"]
-    editionWhy: "ruling:R276 records owner ruling 4, amended by ruling:R212/case-10: lite keeps Postgres on managed Supabase, uses Supabase pgvector for vectors, refuses Qdrant even when declared (owner:lite-vector-is-pgvector), runs a Redis instance only when declared, runs a declared Redis as one service persisted with AOF fsynced at least every second on a named volume and never evicting (the outbox relay re-adds a job Redis did not persist), and permits database-dependent sidecars only with SQLite on declared persistent volumes, never on the app's Redis; full keeps its declared backing topology."
+    editionWhy: "ruling:R276 records owner ruling 4, amended by ruling:R212/case-10 and ruling:lite-self-hosted-postgres-passport-minio: lite runs its own Postgres as the db service, uses pgvector for vectors, refuses Qdrant even when declared (owner:lite-vector-is-pgvector), runs a Redis instance only when declared, runs a declared Redis as one service persisted with AOF fsynced at least every second on a named volume and never evicting (the outbox relay re-adds a job Redis did not persist), and permits database-dependent sidecars only with SQLite on declared persistent volumes, never on the app's Redis; full keeps its declared backing topology."
     docs:
       - "docs/application-stacks.md#r276"
     proves: [packages/hfs/src/hfs-stacks-lite-backing.spec.mjs]
@@ -5020,25 +4927,6 @@ rules:
     witness:
       - {path: packages/eslint/fe/translation.spec.mjs, editions: [lite, full], codes: [FE_COPY_IN_CALL, FE_NO_ALERT]}
       - {path: packages/eslint/grammar-core/icon.spec.mjs, editions: [lite, full], codes: [FE_ICON_INLINE_SVG]}
-
-  - id: R287
-    code: "FE_CALLBACK_SHAPE"
-    amendedBy: [owner:auth-callback-email-link, owner:auth-callback-pure-helpers]
-    law: "The fe.route.callback handler performs only the auth code exchange and redirect: read the callback URL, obtain the auth client, exchange the code and redirect to the declared route. An email confirmation or recovery link (owner:auth-callback-email-link) arrives as the query values token_hash and type; the handler then awaits one verifyOtp({ token_hash, type }) of the auth owner (the auth client, or verifyOtp from modules/auth/server), built from exactly those two query values, in place of or beside the one code exchange. The handler may read the exchange outcome's success or ok flag, and may call pure text helpers exported by the app's modules/routes or modules/auth (owner:auth-callback-pure-helpers): a synchronous function with no await, no network, storage, DOM, process or console access and no import beyond other such helpers, found by TypeScript symbol resolution, so the public origin and the same-origin validation of next stay in the owner modules. It carries no product data operation, business logic, additional request handler or JSON response."
-    kinds: [lint]
-    gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_CALLBACK_SHAPE"]
-    enforcers:
-      - {kind: eslint-fe, id: callback-shape}
-    editions: [lite, full]
-    docs: [docs/quality-bar.md#r287]
-    exemplifiedBy:
-      - {path: packages/eslint/fe/callback-shape.spec.mjs, editions: [lite, full], codes: [FE_CALLBACK_SHAPE]}
-      - {path: packages/hfs/templates/fe/skeleton/apps/__app__/src/app/auth/callback/route.ts, editions: [lite, full]}
-    proves:
-      - {path: packages/eslint/fe/callback-shape.spec.mjs, editions: [lite, full], codes: [FE_CALLBACK_SHAPE]}
-    witness:
-      - {path: packages/eslint/fe/callback-shape.spec.mjs, editions: [lite, full], codes: [FE_CALLBACK_SHAPE]}
 
   - id: R288
     code: "FE_STACK_UNLISTED"
@@ -5802,9 +5690,121 @@ rules:
         source: owner
         quote: "nhớ làm langchain nhé update .claude lun là call thẳng từ code phải dùng langchain với embeded context"
         ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): the LangChain clients point at the gateway's base URL with its virtual key."
+  - id: R328
+    code: "BE_AUTH_PASSPORT_OWNER"
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are imported only by integrations/passport, the one owner of the Google OAuth 2.0 strategy (state and PKCE), the local email and password strategy (bcrypt) and the app's own access tokens; bcrypt and every Supabase client are owned nowhere."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_AUTH_PASSPORT_OWNER"]
+    enforcers:
+      - {kind: eslint-be, id: infra-import-owner}
+    editions: [lite]
+    docs: [contexts/code/be/api-auth.md]
+    proves:
+      - packages/eslint-canon-be/src/auth-passport.spec.ts
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.tokens.ts, edition: lite}
+    witness:
+      - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, edition: lite, codes: [BE_AUTH_PASSPORT_OWNER]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
+        ruling: "Lite leaves Supabase: its identity is the app own Passport integration (Google OAuth and email/password) on its self-hosted PostgreSQL; full keeps Keycloak."
+  - id: R329
+    code: "BE_AUTH_JWT_OWN_JWKS"
+    law: "A lite back-end principal comes only from the app's own access token verified by integrations/passport against its own key set (jose jwtVerify over createLocalJWKSet, issuer, audience and algorithms pinned), never from a remote JWKS, an unverified decode or a request body claim; domain/identity builds the principal from that verification."
+    kinds: [check, lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_AUTH_JWT_OWN_JWKS"]
+    enforcers:
+      - {kind: machine, id: own-jwks-principal, at: scripts/hfs/architecture/identity.mjs}
+      - {kind: eslint-be, id: own-jwks-only}
+    editions: [lite]
+    docs: [contexts/code/be/api-auth.md]
+    proves:
+      - packages/hfs/src/be-auth-jwt-own-jwks.spec.mjs
+      - packages/eslint-canon-be/src/auth-passport.spec.ts
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.tokens.ts, edition: lite}
+    witness:
+      - {path: packages/hfs/src/be-auth-jwt-own-jwks.spec.mjs, edition: lite, codes: [BE_AUTH_JWT_OWN_JWKS]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
+        ruling: "The lite back end verifies its own asymmetric access tokens against its own JWKS; it trusts no remote identity provider."
+  - id: R330
+    code: "BE_AUTH_REFRESH_COOKIE"
+    law: "A refresh token travels only in an httpOnly, Secure, SameSite=Strict cookie scoped to the refresh door (set and cleared only through integrations/passport), is rotated on every use with reuse detection, and never appears as a field of a request or response body."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_AUTH_REFRESH_COOKIE"]
+    enforcers:
+      - {kind: eslint-be, id: refresh-token-cookie-only}
+    editions: [lite]
+    docs: [contexts/code/be/api-auth.md]
+    proves:
+      - packages/eslint-canon-be/src/auth-passport.spec.ts
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.cookie.ts, edition: lite}
+    witness:
+      - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, edition: lite, codes: [BE_AUTH_REFRESH_COOKIE]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
+        ruling: "The refresh token of the lite identity rotates and lives only in an httpOnly cookie; the browser holds no credential."
+  - id: R331
+    code: "BE_STORAGE_OWNER"
+    law: "The S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) is imported only by integrations/object-storage, the ObjectStorage port over S3-compatible storage (MinIO in lite) with presigned PUT and GET; no module imports minio."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_STORAGE_OWNER"]
+    enforcers:
+      - {kind: eslint-be, id: infra-import-owner}
+    editions: [lite, full]
+    docs: [contexts/code/be/infra.md]
+    proves:
+      - packages/eslint-canon-be/src/auth-passport.spec.ts
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/object-storage.client.ts, edition: lite}
+    witness:
+      - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, editions: [lite, full], codes: [BE_STORAGE_OWNER]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
+        ruling: "Lite storage is the MinIO already running on the Tay Son host, reached through the one S3 integration."
+  - id: R332
+    code: "LITE_DB_MIGRATION"
+    law: "A lite app's schema lives only in db/: every schema change is one db/migrations/<ts14>_<kebab>.sql (archive db/migrations/archive/, seed db/seed.sql), and the tree holds no supabase/ folder and no SQL file outside db/ but a .starcistacks seed."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["LITE_DB_MIGRATION"]
+    enforcers:
+      - {kind: hfs, id: lite-db-path, at: scripts/hfs/rules/database.mjs}
+    editions: [lite]
+    docs: [contexts/code/be/persistence.md]
+    proves:
+      - packages/hfs/src/db-migration-shape.spec.mjs
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/db/migrations/__timestamp___baseline.sql, edition: lite}
+    witness:
+      - {path: packages/hfs/src/db-migration-shape.spec.mjs, edition: lite, codes: [LITE_DB_MIGRATION]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
+        ruling: "The lite database is self-hosted PostgreSQL in the app stack; its migrations live in db/migrations and starci app db migrate applies them."
   - id: R333
     code: "BE_ENTITY_SCHEMA_DRIFT"
-    law: "Every TypeORM entity column of an app's entity list (be/src/platform/database/entities.ts) matches the schema its SQL migrations build: `starci app db drift` applies db/bootstrap.sql and every active db/migrations/*.sql to a scratch database (a container of the app's db image, or the empty database --url-env names), reads information_schema.columns and pg_catalog, and refuses a missing table, a missing column, a type that differs once both are normalised to PostgreSQL's format_type names (an enum by its type name), and a nullability that differs. A database column no entity maps is fine. A host that cannot provide the scratch database gets no verdict (exit 2, needs a database), never a green."
+    law: "Every TypeORM entity column of an app's entity list (be/src/modules/platform/database/entities.ts) matches the schema its SQL migrations build: `starci app db drift` applies db/bootstrap.sql and every active db/migrations/*.sql to a scratch database (a container of the app's db image, or the empty database --url-env names), reads information_schema.columns and pg_catalog, and refuses a missing table, a missing column, a type that differs once both are normalised to PostgreSQL's format_type names (an enum by its type name), and a nullability that differs. A database column no entity maps is fine. A host that cannot provide the scratch database gets no verdict (exit 2, needs a database), never a green."
     kinds: [check]
     gates: [ci]
     failureCodes: ["BE_ENTITY_SCHEMA_DRIFT"]
@@ -5827,3 +5827,25 @@ rules:
         source: owner
         quote: "lite persistence moves to TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false"
         ruling: "Lite entities only map tables the migrations create, so each entity column is checked against the migrated schema by starci app db drift, which CI runs in the build job and the release gate runs as its db-drift row."
+  - id: R334
+    code: "BE_PERSISTENCE_NO_RAW_SQL"
+    law: "Lite domain and feature code reads and writes through TypeORM entities on the injected EntityManager (find, findOne, findBy, count, exists, insert, save, update, delete, upsert, increment, and createQueryBuilder(Entity, alias) with named parameters for joins, aggregates, FOR UPDATE / SKIP LOCKED and jsonb or vector operators; never a table-name builder, a builder with no entity or a Repository); no .query( call and no sql template outside platform/database; a database function TypeORM cannot express is called through the callDbFunction, advisoryXactLock and notify helpers of platform/database, and callDbFunction names only a function ruleParams.be.dbFunctions or hfs.json sides.be.dbFunctions lists with a reason. Entities only map tables db/migrations created (synchronize stays false); entity-versus-schema drift is BE_ENTITY_SCHEMA_DRIFT of starci app db drift."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_PERSISTENCE_NO_RAW_SQL"]
+    enforcers:
+      - {kind: eslint-be, id: no-raw-sql}
+    editions: [lite]
+    docs: [contexts/code/be/persistence.md]
+    proves:
+      - packages/eslint-canon-be/src/no-raw-sql.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-canon-be/src/no-raw-sql.spec.ts, edition: lite, codes: [BE_PERSISTENCE_NO_RAW_SQL]}
+    witness:
+      - {path: packages/eslint-canon-be/src/no-raw-sql.spec.ts, edition: lite, codes: [BE_PERSISTENCE_NO_RAW_SQL]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "big refactor đi … không viết raw sql như thế theo starci-academy-be"
+        ruling: "Lite persistence moves to TypeORM entities on the EntityManager, the shape of full and starci-academy-be (ruling lite-persistence-typeorm-entities)."

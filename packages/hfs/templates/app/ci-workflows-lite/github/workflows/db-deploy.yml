@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: Protected environment with sealed Supabase custody under .starcistacks
+        description: Protected environment whose sealed custody under .starcistacks holds DATABASE_URL
         required: true
         type: environment
       backup_receipt:
@@ -45,7 +45,7 @@ jobs:
         uses: mdgreenwald/mozilla-sops-action@bb2d96a13ef438ad122e5827a57ebd75d6ff118d # v2.1.0
         with:
           version: v3.13.2
-      - name: materialize sealed custody and push migrations
+      - name: materialize sealed custody and migrate the database
         env:
           XDG_DATA_HOME: ${{ runner.temp }}/starci-data
         shell: bash
@@ -57,9 +57,7 @@ jobs:
           secret_dir="$XDG_DATA_HOME/StarCi/secrets/{{project}}/$STACK_ENVIRONMENT"
           trap 'rm -rf -- "$secret_dir"' EXIT
           npx --no-install starci app secret materialize "$STACK_ENVIRONMENT"
-          export SUPABASE_ACCESS_TOKEN="$(cat "$secret_dir/SUPABASE_ACCESS_TOKEN")"
-          export SUPABASE_DB_PASSWORD="$(cat "$secret_dir/SUPABASE_DB_PASSWORD")"
-          project_id="$(cat "$secret_dir/SUPABASE_PROJECT_ID")"
-          npx --no-install supabase link --project-ref "$project_id"
-          npm run db:push -- --dry-run
-          npm run db:push
+          DATABASE_URL="$(cat "$secret_dir/DATABASE_URL")"
+          export DATABASE_URL
+          npx --no-install starci app db migrate --url-env DATABASE_URL
+          STARCI_DB_ARMED=1 npx --no-install starci app db migrate --url-env DATABASE_URL --execute

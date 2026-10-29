@@ -13,8 +13,8 @@ import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { databaseQueuesFindings } from '../runtime/scripts/hfs/rules/database-queues.mjs';
 
 const made = [];
-const migrations = 'supabase/migrations';
-const archive = `${migrations}/_archive`;
+const migrations = 'db/migrations';
+const archive = `${migrations}/archive`;
 const first = '20260101000000';
 const second = '20260102000000';
 const replacement = '20260103000000';
@@ -34,9 +34,12 @@ test.after(() => {
 function fixture(edition, contents) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-baseline-'));
   made.push(root);
-  write(root, { 'hfs.json': JSON.stringify({ kind: 'app', edition, supabase: {} }), ...contents });
+  write(root, { 'hfs.json': JSON.stringify({ kind: 'app', edition }), ...contents });
   return root;
 }
+
+/** The legacy argument shape the assertions read, from one runDbPostgres operation (query, dump or a history repair). */
+const legacyArgs = (op) => (op.kind === 'query' ? ['db', 'query', op.sql] : op.kind === 'dump' ? ['db', 'dump'] : ['migration', 'repair', op.stamp, '--status', op.status]);
 
 function write(root, contents) {
   for (const [file, text] of Object.entries(contents)) {
@@ -64,7 +67,8 @@ function io(root, result) {
   const out = [];
   const err = [];
   const committed = Object.fromEntries([...dbSqlFiles(root), ...dbSqlFiles(root, archive)].map((entry) => [entry.file, fs.readFileSync(path.join(root, entry.file), 'utf8')]));
-  return { calls, out, err, ports: { cwd: root, git: history(committed), stdout: (text) => out.push(text), stderr: (text) => err.push(text), runSupabase: (cwd, args) => {
+  return { calls, out, err, ports: { cwd: root, git: history(committed), stdout: (text) => out.push(text), stderr: (text) => err.push(text), runPostgres: (cwd, op) => {
+    const args = legacyArgs(op);
     assert.equal(cwd, root);
     calls.push(args);
     if (result !== undefined) return typeof result === 'function' ? result(args) : result;
@@ -72,7 +76,7 @@ function io(root, result) {
     const sql = args[2];
     let rows = [];
     if (sql.includes('to_regclass')) rows = [{ migrations: true, cron: true, queues: true, vault: true }];
-    else if (sql.includes('schema_migrations')) rows = Object.keys(committed).filter((file) => !file.includes('/_archive/')).map((file) => ({ version: /\/(\d{14})_/.exec(file)[1] }));
+    else if (sql.includes('schema_migrations')) rows = Object.keys(committed).filter((file) => !file.includes('/archive/')).map((file) => ({ version: /\/(\d{14})_/.exec(file)[1] }));
     return { status: 0, stdout: JSON.stringify(rows) };
   } } };
 }
@@ -91,7 +95,6 @@ function remoteInventory(root, overrides = {}) {
   return io(root, (args) => {
     assert.equal(args[0], 'db');
     assert.equal(args[1], 'query');
-    assert.deepEqual(args.slice(4), ['--output', 'json', '--agent', 'no']);
     const sql = args[2];
     assert.ok(/^select\s/i.test(sql));
     assert.equal(/(?:decrypted_secret|\bsecret\s+from|select\s+\*)/i.test(sql), false);
@@ -176,17 +179,17 @@ for (const edition of ['lite', 'full']) {
     const root = fixture(edition, { [old]: 'select 1;\n' });
     const preview = io(root);
     assert.equal(dbBaselineMain(['--stamp', replacement], preview.ports), 0);
-    assert.deepEqual(preview.calls.filter((args) => args[1] === 'dump'), [['db', 'dump', '--linked']]);
+    assert.deepEqual(preview.calls.filter((args) => args[1] === 'dump'), [['db', 'dump']]);
     assert.ok(preview.calls.every((args) => ['query', 'dump'].includes(args[1])));
     assert.ok(fs.existsSync(path.join(root, old)));
     assert.equal(fs.existsSync(path.join(root, baseline)), false);
-    assert.ok(preview.out.join('').includes(`migration repair ${first} --status reverted --linked`));
+    assert.ok(preview.out.join('').includes(`history reverted ${first}`));
     const apply = io(root);
-    assert.equal(dbBaselineMain(['--stamp', replacement, '--apply', '--local'], apply.ports), 0);
+    assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], apply.ports), 0);
     assert.equal(fs.existsSync(path.join(root, old)), false);
     assert.equal(fs.readFileSync(path.join(root, retired), 'utf8'), 'select 1;\n');
     assert.deepEqual(baselineMarkers(fs.readFileSync(path.join(root, baseline), 'utf8')), [first]);
-    assert.deepEqual(apply.calls.slice(-3), [['db', 'dump', '--local'], ['migration', 'repair', first, '--status', 'reverted', '--local'], ['migration', 'repair', replacement, '--status', 'applied', '--local']]);
+    assert.deepEqual(apply.calls.slice(-3), [['db', 'dump'], ['migration', 'repair', first, '--status', 'reverted'], ['migration', 'repair', replacement, '--status', 'applied']]);
     const contents = { [retired]: 'select 1;\n', [baseline]: fs.readFileSync(path.join(root, baseline), 'utf8') };
     assert.deepEqual(judge(root, edition, contents, history({ [old]: 'select 1;\n' })), []);
   });
@@ -239,8 +242,8 @@ for (const edition of ['lite', 'full']) {
     const contents = { [old]: initialSql, [topic]: "export const EVENTS_TOPIC_QUEUE = 'events';\n", [queue]: "export const SWEEP_QUEUE = 'sweep';\n" };
     const root = fixture(edition, contents);
     const inventories = remoteInventory(root, { cron: [{ name: 'events-tick', schedule: '* * * * *', commandHash: createHash('sha256').update(tickCommand).digest('hex'), active: true }], vault: [] });
-    const query = inventories.ports.runSupabase;
-    inventories.ports.runSupabase = (cwd, args) => args[1] === 'query' ? query(cwd, args) : { status: 0, stdout: args[1] === 'dump' ? tickSql : '' };
+    const query = inventories.ports.runPostgres;
+    inventories.ports.runPostgres = (cwd, op) => op.kind === 'query' ? query(cwd, op) : { status: 0, stdout: op.kind === 'dump' ? tickSql : '' };
     assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], inventories.ports), 0, inventories.err.join(''));
     const sql = fs.readFileSync(path.join(root, baseline), 'utf8');
     const roleDeclaration = /create role "?app_be"?/i.exec(sql);
@@ -277,7 +280,7 @@ for (const edition of ['lite', 'full']) {
     const renamed = `${migrations}/${second}_start.sql`;
     assert.equal(fs.existsSync(path.join(root, old)), false);
     assert.equal(fs.readFileSync(path.join(root, renamed), 'utf8'), `-- starci:restamp ${first} ${second}\nselect 1;\n`);
-    assert.deepEqual(apply.calls, [['migration', 'repair', first, '--status', 'reverted', '--linked'], ['migration', 'repair', second, '--status', 'applied', '--linked']]);
+    assert.deepEqual(apply.calls, [['migration', 'repair', first, '--status', 'reverted'], ['migration', 'repair', second, '--status', 'applied']]);
   });
 
   test(`app db restamp ${edition}: partial maps, collisions, duplicate keys and archive sources are refused before effects`, () => {
@@ -330,7 +333,7 @@ for (const edition of ['lite', 'full']) {
     const ran = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: beta\n` });
     const repaired = io(ran, (args) => (args[1] === 'query' ? recorded('beta')(args) : { status: 0, stdout: '' }));
     assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], repaired.ports), 0);
-    assert.deepEqual(repaired.calls.slice(1), [['migration', 'repair', first, '--status', 'reverted', '--linked'], ['migration', 'repair', '20260101000001', '--status', 'applied', '--linked']]);
+    assert.deepEqual(repaired.calls.slice(1), [['migration', 'repair', first, '--status', 'reverted'], ['migration', 'repair', '20260101000001', '--status', 'applied']]);
     // an unreadable history is never guessed
     const blind = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: beta\n` });
     const unreadable = io(blind, { status: 1, stdout: '' });
@@ -346,7 +349,7 @@ for (const edition of ['lite', 'full']) {
     const root = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: ${first}_beta.sql\n  to: "${second}"\n  applied: true\n` });
     const apply = io(root);
     assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], apply.ports), 0);
-    assert.deepEqual(apply.calls, [['migration', 'repair', first, '--status', 'reverted', '--linked'], ['migration', 'repair', second, '--status', 'applied', '--linked']]);
+    assert.deepEqual(apply.calls, [['migration', 'repair', first, '--status', 'reverted'], ['migration', 'repair', second, '--status', 'applied']]);
     for (const entry of [`file: gamma`, `file: beta\n  to: "${first}"`, `file: beta\n  applied: yes-please`, `file: beta\n  extra: 1`]) {
       const refusedRoot = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  ${entry}\n` });
       const refused = io(refusedRoot);
@@ -359,21 +362,21 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`app db plan ${edition}: compares all four inventories using SELECT-only queries and emits counts`, () => {
-    const contents = { [old]: ownedStateSql, 'supabase/config.toml': '[db.vault]\nwebhook = "env(WEBHOOK_TOKEN)"\n' };
+    const contents = { [old]: ownedStateSql };
     const root = fixture(edition, contents);
     const ports = remoteInventory(root);
     assert.equal(dbPlanMain(['--json'], ports.ports), 0);
     const report = JSON.parse(ports.out.join(''));
     assert.equal(report.readOnly, true);
     assert.equal(report.drift, false);
-    for (const key of ['migrations', 'cron', 'queues', 'vault']) assert.deepEqual(report[key], { expected: 1, remote: 1, missing: 0, unexpected: 0, changed: 0 });
-    assert.equal(ports.calls.length, 5);
+    for (const key of ['migrations', 'cron', 'queues']) assert.deepEqual(report[key], { expected: 1, remote: 1, missing: 0, unexpected: 0, changed: 0 });
+    assert.equal(ports.calls.length, 4);
     assert.equal(ports.out.join('').includes('WEBHOOK_TOKEN'), false);
     assert.equal(ports.out.join('').includes('events-tick'), false);
     for (const [file, text] of Object.entries(contents)) assert.equal(fs.readFileSync(path.join(root, file), 'utf8'), text);
     const applied = remoteInventory(root);
-    assert.equal(dbPlanMain(['--apply', '--local'], applied.ports), 0);
-    assert.ok(applied.calls.every((args) => args[3] === '--local' && args[1] === 'query'));
+    assert.equal(dbPlanMain(['--apply'], applied.ports), 0);
+    assert.ok(applied.calls.every((args) => args[1] === 'query'));
   });
 
   test(`app db plan ${edition}: remote extra jobs, missing queues, cron changes and migration drift fail without exposing data`, () => {
@@ -389,7 +392,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(report.queues.missing, 1);
     assert.equal(report.cron.changed, 1);
     assert.equal(report.cron.unexpected, 1);
-    assert.equal(report.vault.unexpected, 1);
+    assert.equal(report.vault, undefined);
     assert.equal(ports.out.join('').includes('PRIVATE_'), false);
   });
 
@@ -420,13 +423,13 @@ for (const edition of ['lite', 'full']) {
     }
   });
 
-  test(`app db plan ${edition}: unconditional migration DO declarations and multiline TOML values are inventoried safely`, () => {
+  test(`app db plan ${edition}: unconditional migration DO declarations are inventoried safely`, () => {
     const sql = `do $$begin perform pgmq.create('events'); end$$;\nselect cron.schedule('events-tick', '* * * * *', $job$${command}$job$);`;
     const config = '[auth]\nlabel = """ignored""""\n[db.vault]\nwebhook = "env(WEBHOOK_TOKEN)"\n';
     const root = fixture(edition, { [old]: sql, 'supabase/config.toml': config });
     const ports = remoteInventory(root);
     assert.equal(dbPlanMain(['--json'], ports.ports), 0, ports.err.join(''));
-    assert.equal(JSON.parse(ports.out.join('')).vault.expected, 1);
+    assert.equal(JSON.parse(ports.out.join('')).queues.expected, 1);
   });
 }
 
@@ -443,11 +446,3 @@ test('R257 participates in the synchronous alpha.15 finder and fast cross-file i
   assert.ok(findings.some((item) => item.code === 'DB_BASELINE_SHAPE'));
 });
 
-test('app db plan linked preview refuses before CLI when its existing link cache is absent', () => {
-  const root = fixture('lite', { [old]: 'select 1;' });
-  const out = [];
-  const err = [];
-  assert.equal(dbPlanMain([], { cwd: root, env: {}, stdout: (text) => out.push(text), stderr: (text) => err.push(text) }), 2);
-  assert.deepEqual(out, []);
-  assert.ok(err.join('').includes('link'));
-});

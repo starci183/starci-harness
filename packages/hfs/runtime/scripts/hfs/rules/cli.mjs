@@ -26,7 +26,7 @@ export function cliFindings({ files, repo, resolver }) {
   const commandFiles = onBe.filter((file) => beResolver.classifyPath(file).slot === CLI_FEATURE_SLOT);
   const findings = [];
   const cliApps = be.apps.filter((app) => app.kind === CLI_KIND);
-  // Where the cli app is only optional (litePresence: schema migration is the Supabase CLI's job) a connection no longer forces it; a tracked command still does.
+  // Where the cli app is only optional (litePresence: schema migration is `starci app db migrate`'s job) a connection no longer forces it; a tracked command still does.
   const migrates = (be.connections ?? []).length > 0 && beResolver.slot(CLI_APP_SLOT)?.presence !== 'optional';
   const needs = migrates || commandFiles.length > 0;
   let why = 'it tracks commands under be/src/features/cli/';

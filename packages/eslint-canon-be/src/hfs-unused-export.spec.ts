@@ -67,3 +67,20 @@ for (const edition of ['lite', 'full'] as const) {
     });
   });
 }
+
+test('lite dead exports count a capability <c>Entities once PRIMARY_ENTITIES names it, and the list once app composition passes it', t => {
+  const files = {
+    'apps/core/src/app.module.ts': "import { PRIMARY_ENTITIES } from '../../../src/modules/platform/database/entities';\nexport const AppModule = { entities: PRIMARY_ENTITIES };\n",
+    'apps/core/src/main.ts': "import { AppModule } from './app.module';\nvoid AppModule;\n",
+    'src/modules/platform/database/entities.ts': "import { billingEntities } from '../../domain/billing';\nexport const PRIMARY_ENTITIES = [...billingEntities];\n",
+    'src/modules/domain/billing/index.ts': "export { billingEntities } from './persistence/entities/index';\n",
+    'src/modules/domain/billing/persistence/entities/index.ts': "import { InvoiceEntity } from './invoice.entity';\nexport const billingEntities = [InvoiceEntity];\n",
+    'src/modules/domain/billing/persistence/entities/invoice.entity.ts': 'export class InvoiceEntity { id = "" }\n',
+  };
+  const fixture = projectFixture({ profile: 'be', edition: 'lite', files });
+  t.after(fixture.cleanup);
+  fixture.tester.run('dead-exports', ruleNamed(beRules, 'dead-exports'), {
+    valid: Object.keys(files).filter(file => file !== 'apps/core/src/main.ts').map(file => sourceCase(fixture, files, file)),
+    invalid: [],
+  });
+});

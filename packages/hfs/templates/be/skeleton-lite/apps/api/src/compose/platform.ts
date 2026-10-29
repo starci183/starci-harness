@@ -1,10 +1,11 @@
 import type { DynamicModule } from "@nestjs/common"
 import { IDENTITY_ERROR_KINDS, IDENTITY_MESSAGES } from "@modules/domain/identity"
-import { SUPABASE_ERROR_KINDS } from "@modules/integrations/supabase"
+import { PASSPORT_ERROR_KINDS } from "@modules/integrations/passport"
 import { ClockModule } from "@modules/platform/clock"
 import { CONFIG_ERROR_KINDS } from "@modules/platform/config"
 import { CqrsModule } from "@modules/platform/cqrs"
 import { DATABASE_ERROR_KINDS, DatabaseModule } from "@modules/platform/database"
+import { PRIMARY_ENTITIES } from "@modules/platform/database/entities"
 import { ERRORS_MESSAGES, ErrorsModule } from "@modules/platform/errors"
 import { HTTP_SECURITY_ERROR_KINDS, HTTP_SECURITY_MESSAGES, HttpSecurityModule } from "@modules/platform/http-security"
 import { I18nModule } from "@modules/platform/i18n"
@@ -37,7 +38,7 @@ export const platformModules = (options: ApiOptions): Array<DynamicModule> => [
             DATABASE_ERROR_KINDS,
             HTTP_SECURITY_ERROR_KINDS,
             IDENTITY_ERROR_KINDS,
-            SUPABASE_ERROR_KINDS,
+            PASSPORT_ERROR_KINDS,
         ],
     }),
     CqrsModule.register({ isGlobal: true }),
@@ -48,5 +49,6 @@ export const platformModules = (options: ApiOptions): Array<DynamicModule> => [
     DatabaseModule.register({
         isGlobal: true,
         connections: [options.database],
+        entities: PRIMARY_ENTITIES,
     }),
 ]

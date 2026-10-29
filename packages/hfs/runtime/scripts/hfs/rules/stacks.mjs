@@ -5,7 +5,7 @@
 //     `deployment.json` and `k8s/` are not in the list, so they fall out of it;
 //   - the declaration (read by scripts/lib/stack-declaration.mjs, the one reader of it) states a sonar service, a local
 //     Sonar is owned by the host (`stack.owner: host`, root `.claude/ext/sonar`).
-// The lite overlay admits Swarm compute and managed Supabase backing. Runtime rules are shared with the stack gates.
+// The lite overlay admits Swarm compute and its own db service. Runtime rules are shared with the stack gates.
 // The declaration's quality/delivery services contract (custody, CI wiring, project keys) stays check-starcistacks's.
 import { braceVariants, globExpression } from '../../lib/glob.mjs';
 import { declaredStack, findStackDeclaration, STACK_ROOT, text } from '../../lib/stack-declaration.mjs';

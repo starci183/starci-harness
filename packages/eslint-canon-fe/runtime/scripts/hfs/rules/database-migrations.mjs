@@ -74,7 +74,7 @@ function localMigrationFindings(local) {
   const stamps = new Map();
   for (const entry of local) {
     if (!entry.match) {
-      findings.push(found(DB_MIGRATION_SHAPE, entry.file, `${entry.file} is not named <ts14>_<kebab>.sql; a migration is created by \`npm run db:new\` (supabase migration new), never renamed by hand`, { expected: '<ts14>_<kebab>.sql' }));
+      findings.push(found(DB_MIGRATION_SHAPE, entry.file, `${entry.file} is not named <ts14>_<kebab>.sql; a migration is created by \`npm run db:new\` (starci app db new), never renamed by hand`, { expected: '<ts14>_<kebab>.sql' }));
       continue;
     }
     const stamp = migrationStamp(entry.match[1]);
@@ -143,8 +143,8 @@ function removedMigrationFindings(local, retired, baseNames, baseSha) {
 }
 
 /**
- * L02 findings for names, stamps, ordering and immutability of supabase/migrations/*.sql. `archived` are the files of
- * supabase/migrations/_archive/ (app.supabase.migrations.archive): never judged, and a migration moved there at a baseline
+ * L02 findings for names, stamps, ordering and immutability of db/migrations/*.sql. `archived` are the files of
+ * db/migrations/archive/ (app.db.migrations.archive): never judged, and a migration moved there at a baseline
  * cutover is retired from the ordering chain, not removed. New files append after HEAD's active migrations; timestamps
  * on archived migrations, remote branches and the wall clock do not constrain a replacement baseline.
  */

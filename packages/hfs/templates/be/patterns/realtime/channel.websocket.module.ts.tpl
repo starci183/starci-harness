@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common"
 import type { OnModuleDestroy, OnModuleInit } from "@nestjs/common"
 import type { @@Channel@@Frame } from "@@serviceModule@@"
-import type { VerifySupabaseAccessToken } from "@modules/integrations/supabase"
+import type { VerifyAccessToken } from "@modules/integrations/passport"
 import { injector } from "@modules/platform/composition"
 import type { Principal } from "@modules/platform/cqrs"
 import { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN } from "./@@channel@@-websocket.module-definition"
@@ -48,8 +48,8 @@ export class @@Channel@@WebsocketModule extends ConfigurableModuleClass implemen
 
     constructor(
         private readonly gateway: @@Channel@@Gateway,
-        @injector<VerifySupabaseAccessToken>(ACCESS_TOKEN_VERIFIER)
-        private readonly verifyAccessToken: VerifySupabaseAccessToken,
+        @injector<VerifyAccessToken>(ACCESS_TOKEN_VERIFIER)
+        private readonly verifyAccessToken: VerifyAccessToken,
     ) {
         super()
     }

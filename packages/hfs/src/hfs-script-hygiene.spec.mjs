@@ -9,7 +9,6 @@ import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 
 // proves: HFS_SCRIPT_PLAINTEXT_LOAD@lite HFS_SCRIPT_PLAINTEXT_LOAD@full
 // proves: HFS_SCRIPT_XTRACE@lite HFS_SCRIPT_XTRACE@full
-// proves: HFS_SERVICE_ROLE_SCOPE@lite HFS_SERVICE_ROLE_SCOPE@full
 
 function fixture(t, entries, edition, extra = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-script-hygiene-'));
@@ -100,32 +99,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(scriptHygieneFindings(context).filter((item) => item.code === 'HFS_SCRIPT_XTRACE'), []);
   });
 
-  test(`HFS_SERVICE_ROLE_SCOPE: ${edition} refuses delivery helpers, workflows, CLI and frontend source`, (t) => {
-    const context = fixture(t, {
-      'deploy/jobs.sh': 'node -e "createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)"\n',
-      'scripts/client.mjs': 'const role = "service_role"\n',
-      '.github/workflows/deploy.yml': 'env:\n  ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\n',
-      'be/src/features/cli/seed/seed.command.ts': 'const key = env.secret("SUPABASE_SERVICE_ROLE_KEY")\n',
-      'be/src/modules/integrations/other/client.ts': 'const key = "SERVICE_ROLE"\n',
-      'fe/apps/web/src/modules/auth/client.ts': 'const serviceRoleKey = env.secret("SUPABASE_SERVICE_ROLE_KEY")\n',
-    }, edition);
-    const findings = scriptHygieneFindings(context);
-    assert.deepEqual(findings.map((item) => item.path).sort(byCodeUnit), context.files.sort(byCodeUnit));
-    assert.ok(findings.every((item) => item.code === 'HFS_SERVICE_ROLE_SCOPE'));
-    assert.ok(findings.every((item) => ALL_CHECK_CODES.includes(item.code)), 'service-role findings retain bundled catalog explanations');
-    assert.ok(findings.every((item) => !item.message.includes('SUPABASE_SERVICE_ROLE_KEY') && !item.message.includes('createClient')));
-  });
 
-  test(`HFS_SERVICE_ROLE_SCOPE: ${edition} accepts the canonical integration and its config`, (t) => {
-    const context = fixture(t, {
-      'be/src/modules/integrations/supabase/supabase.config.ts': 'const serviceRoleKey = env.secret("SUPABASE_SERVICE_ROLE_KEY")\n',
-      'be/src/modules/integrations/supabase/supabase.client.ts': 'const role = "service_role"\n',
-      'be/apps/api/src/api.env.ts': 'const config = parseSupabaseConfig(env)\n',
-      '.starcistacks/production/secrets/api.enc': 'SUPABASE_SERVICE_ROLE_KEY',
-      'docs/security.md': 'service_role belongs only to the integration\n',
-    }, edition, { resolver: { ownerOf: () => ({ slot: 'be.integrations.supabase' }) } });
-    assert.deepEqual(scriptHygieneFindings(context).filter((item) => item.code === 'HFS_SERVICE_ROLE_SCOPE'), []);
-  });
 
   test(`script hygiene: ${edition} honors scope and scans side source exactly once through checkRepo`, (t) => {
     const context = fixture(t, { 'be/scripts/task.sh': 'set -x\n', 'fe/scripts/task.sh': 'cat secrets.env\n' }, edition);

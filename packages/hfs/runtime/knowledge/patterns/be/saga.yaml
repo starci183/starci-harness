@@ -262,7 +262,7 @@ rules:
       manual:
         - Check the injected fault hits the compensation, not only the step before it.
     relatedExamples: [saga]
-# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a Supabase adapter behind them.
+# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a self-hosted Postgres adapter behind them.
 liteAdapter:
   summary: >-
     Under lite a saga is unchanged: the orchestrator service, the versioned state behind the fenced store, steps and their
@@ -270,9 +270,9 @@ liteAdapter:
     consumer group).
   ports:
     - {port: saga events, adapter: "the lite event-bus adapter (pgmq) - see event-bus.yaml liteAdapter"}
-    - {port: saga state store, adapter: "the same table and version fence, created by a supabase migration (no TypeORM entity under lite)"}
+    - {port: saga state store, adapter: "the same table and version fence, created by a db migration"}
   proof: >-
     The orchestrator's unit spec (<saga>.saga.service.spec.ts) as full; declaring saga requires integration specs titled
-    `saga/<scenario>: ...` for every declared scenario on `starci supabase start` (R284), including each compensation path with
+    `saga/<scenario>: ...` for every declared scenario on the local db service (`npm run db:start`, R284), including each compensation path with
     failure injection and the final state read back. The e2e world of R173 remains full-only.
   see: [knowledge/patterns/be/event-bus.yaml]

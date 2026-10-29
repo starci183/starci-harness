@@ -7,7 +7,12 @@ import { CLOCK } from "@modules/platform/clock"
 import { InboxError, InboxErrorCode } from "./errors/inbox.error"
 import { requestFingerprint } from "./request-fingerprint.policy"
 import { PostgresInbox } from "./inbox.service"
-import { CLAIM_CLIENT, CLAIM_EVENT, SAVE_CLIENT_OUTCOME, SWEEP_CLIENTS } from "./persistence/inbox.sql"
+
+// The statements callDbFunction of platform/database sends for each inbox function.
+const CLAIM_EVENT = "SELECT * FROM inbox_claim_event($1, $2)"
+const CLAIM_CLIENT = "SELECT * FROM inbox_claim_client($1, $2, $3, $4)"
+const SAVE_CLIENT_OUTCOME = "SELECT * FROM inbox_save_client_outcome($1, $2, $3)"
+const SWEEP_CLIENTS = "SELECT * FROM inbox_sweep_clients($1, $2)"
 
 const runClient = <T>(
     inbox: PostgresInbox,

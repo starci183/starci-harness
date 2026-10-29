@@ -26,12 +26,12 @@
 //   FE_NO_TESTS                   (R97, rules/fe-no-tests.mjs) a front end holds a spec, e2e or test-tool file, a test script or a test dependency; no exception
 //   FE_STACK_FORBIDDEN            (rules/fe-stack.mjs) a front-end manifest (the fe side's, or the app root's minus the back end's own libraries)
 //                                 declares a package knowledge/hfs/fe-stack.yaml forbids
-//   HFS_LITE_SECRET_CUSTODY       (R220, rules/supabase-secrets.mjs) under edition lite: secret material or a forbidden custody path; the R06 scan itself runs for every edition
+//   HFS_LITE_SECRET_CUSTODY       (R220, rules/lite-secrets.mjs) under edition lite: secret material or a forbidden custody path; the R06 scan itself runs for every edition
 //   HFS_EDITION_FORBIDDEN_PRESENT (R212, rules/edition.mjs) under edition lite: an e2e, contract, test-stack or browser script, or a
 //                                 dependency of infrastructure lite does not run (test containers, fault proxy, Kafka)
 //   HFS_BACKING_UNDECLARED, HFS_BACKING_UNUSED (R212, rules/edition.mjs) under edition lite: a client library or a pattern of a backing
 //                                 service hfs.json sides.be.backing does not declare or the edition does not admit, or a declared service no dependency consumes
-//   DB_MIGRATION_SHAPE ... DB_TYPES_DRIFT (R213-R216, rules/database.mjs, async: passed in as extraFindings) the Supabase migrations, policies, definer functions, buckets, config.toml and generated types
+//   DB_MIGRATION_SHAPE ... LITE_DB_MIGRATION (R213-R215, R332, rules/database.mjs, async: passed in as extraFindings) the db/ migrations, policies, definer functions and buckets; generated types
 //   BE_SPEC_PLACEMENT             (R102, rules/spec-placement.mjs) a spec or test file outside the four test layers, scripts/ and tools/ included
 //   HFS_REPO_LOCAL_CHECK          (R103, rules/repo-local-checks.mjs) a local eslint rule or plugin, a `check-*` script, a relative import in eslint.config
 //   HFS_LINT_SUPPRESSION_FILE     (R104, rules/lint-suppression.mjs) an eslint suppressions file, script or option
@@ -83,7 +83,7 @@ import { frontendFindings } from './rules/frontend-tree.mjs';
 import { lintSuppressionFindings } from './rules/lint-suppression.mjs';
 import { bypassMarkerFindings } from './rules/bypass-markers.mjs';
 import { repoLocalCheckFindings } from './rules/repo-local-checks.mjs';
-import { supabaseSecretFindings } from './rules/supabase-secrets.mjs';
+import { liteSecretFindings } from './rules/lite-secrets.mjs';
 import { untrackedSecretFindings } from './rules/secrets.mjs';
 import { liteStarciworkFinding, pathFindings } from './path-findings.mjs';
 import { onLintSurface } from './architecture/surface.mjs';
@@ -111,8 +111,8 @@ export const CHECK_CODES = Object.freeze([
   'HFS_PLAINTEXT_SECRET', 'HFS_STACKS_SHAPE', 'HFS_CI_MISSING_CANON', 'HFS_DEP_VERSION_SKEW', 'HFS_CONTRACT_SNAPSHOT_DRIFT', 'HFS_MCP_TOOLS_SNAPSHOT',
   'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'HFS_PROOF_COMMAND_FILE_MISSING', 'HFS_PEER_INTEGRATION_MISSING', 'BE_INTEGRATION_SPEC_MISSING', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_ASYNC_SPEC_MISSING', 'BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS', 'BE_SAGA_E2E_MISSING',
   'FE_STACK_FORBIDDEN', 'HFS_EDITION_FORBIDDEN_PRESENT', 'HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_LITE_SECRET_CUSTODY', 'HFS_STARCIWORK_LITE_FORBIDDEN',
-  'DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'DB_CONFIG_POLICY', 'DB_TYPES_DRIFT',
-  'HFS_DOCKER_HEALTHCHECK_FAKE', 'DB_BE_ONLY_ACCESS', 'DB_REALTIME_UNLISTED', 'DB_APP_ROLE', 'DB_FORCE_RLS_DEFAULT',
+  'DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'LITE_DB_MIGRATION',
+  'HFS_DOCKER_HEALTHCHECK_FAKE', 'DB_APP_ROLE', 'DB_FORCE_RLS_DEFAULT',
   'DB_POLICY_TAUTOLOGY', 'DB_VIEW_UNSAFE', 'DB_STORAGE_PREFIX', 'DB_DEFINER_REVOKE',
   'HFS_GITIGNORE_BLOCK_DRIFT', 'HFS_SONAR_CONFIG', 'HFS_COVERAGE_SCOPE_DRIFT', 'HFS_FORMAT',
   'HFS_EMPTY_DIR', 'HFS_GHOST_TREE', 'HFS_UNTRACKED_ROOT_ENTRY',
@@ -209,7 +209,7 @@ function minimumInstanceFindings(resolver, required, instances) {
 function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, inScope, isRoot, appSide, editionDeclaration, manifest, phase }) {
   const findings = [
     ...pinFindings({ repoRoot, files, profile: repo.profile, pins, only: scoped }),
-    ...supabaseSecretFindings({ repoRoot, files: files.filter((file) => inScope(file)), resolver, repo }),
+    ...liteSecretFindings({ repoRoot, files: files.filter((file) => inScope(file)), resolver, repo }),
     ...editionFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, resolver, manifest, withDeclaration: editionDeclaration }),
     ...feStackFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, manifest }),
     ...repoLocalCheckFindings({ repoRoot, files }),

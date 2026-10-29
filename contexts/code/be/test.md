@@ -105,7 +105,7 @@ Enforced by: `no-call-only-spec`, `spec-behavior-assertion`, `spec-exact-values`
 
 ## BE-TEST-12 Integration specs boot the real world; the app is proved by its boot
 
-Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (lite: the Supabase
+Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (lite: the db
 CLI database and the declared Redis), fake only external providers at the network edge, override no provider, guard or
 token, and assert persisted state. Lite proves composition by compiling the real AppModule graph (`starci app check
 --wiring`) and each declared pattern in integration specs; full boots the real apps for e2e

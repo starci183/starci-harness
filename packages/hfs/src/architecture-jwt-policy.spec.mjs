@@ -5,7 +5,7 @@ import { appDeclaration, archFixture, ts } from './helpers/hfs-arch-fixture.mjs'
 import { loadArchitectureConfig } from '../runtime/scripts/hfs/architecture/config.mjs';
 import { buildTypeScriptContext } from '../runtime/scripts/hfs/architecture/typescript.mjs';
 import { buildHfsGraph } from '../runtime/scripts/hfs/architecture/hfs-graph.mjs';
-import { checkJwtPolicy } from '../runtime/scripts/hfs/architecture/supabase.mjs';
+import { checkJwtPolicy } from '../runtime/scripts/hfs/architecture/identity.mjs';
 
 const verifier = (algorithms, shorthandIssuer = false) => `
 import { jwtVerify } from 'jose';
@@ -22,7 +22,7 @@ export async function verify(token: string, options: Options) {
 const jwtPolicyFindings = (t, edition, algorithms, shorthandIssuer = false) => {
   const declaration = appDeclaration('be', {
     apps: [{ name: 'core', kind: 'api' }],
-    connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'supabase' }],
+    connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' }],
   });
   declaration.edition = edition;
   const root = archFixture(t, { profile: 'be', files: {

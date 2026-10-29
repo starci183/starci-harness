@@ -39,17 +39,15 @@ has this shape and how a line reads: path, slot, presence, the topics that teach
 - `.starciwork/` — **app.starciwork** optional · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), HFS_IDENTITY_CUSTODY (no rule)
 - `.sops.yaml` — **app.sops** required
-- `supabase/` — **app.supabase** required
-  - `config.toml` — **app.supabase.config** required
+- `db/` — **app.db** required
   - `migrations/`
-    - `<stamp>_<name>.sql` — **app.supabase.migrations** required
-    - `_archive/` — **app.supabase.migrations.archive** opt-in
-  - `seed.sql` — **app.supabase.seed** optional
-  - `types/database.types.ts` — **app.supabase.types** required
-  - `templates/*.html` — **app.supabase.templates** optional
+    - `<stamp>_<name>.sql` — **app.db.migrations** required · R213 (hfs `db-migration-shape`), R332 (hfs `lite-db-path`)
+    - `archive/` — **app.db.migrations.archive** optional
+  - `seed.sql` — **app.db.seed** optional
+  - `bootstrap.sql` — **app.db.bootstrap** required · R05 (hfs `managed-file-drift`)
 
-Git-ignored: `app.build-output`, `app.supabase.local-state`.
-Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`, `app.supabase.functions`.
+Git-ignored: `app.build-output`.
+Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### lite · fe/
 
@@ -71,7 +69,6 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.bro
   - `public/` — **fe.app-optional** optional
   - `src/`
     - `app/` — **fe.route** required · [fe/architecture](../code/fe/architecture.md), [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/function](../code/fe/function.md) · R54 (eslint-fe `no-middleware-file` `page-exports-metadata` `route-files-thin` `route-adapter`), R55 (eslint-fe `use-client-only-at-boundary` `client-no-server-import` `server-module-marks-server-only` `web-storage-only-in-modules` `no-dangerous-html` `client-reaches-server`), R57 (eslint-fe `no-hardcoded-route` `owner-reachable`), R243 (machine `server-action-forbidden`; eslint-fe `no-server-action`)
-      - `auth/callback/route.ts` — **fe.route.callback** opt-in · [fe/architecture](../code/fe/architecture.md), [fe/transport](../code/fe/transport.md) · R243 (machine `server-action-forbidden`; eslint-fe `no-server-action`), R287 (eslint-fe `callback-shape`), R217 (machine `supabase-client-owner` `supabase-service-role`)
     - `{proxy.ts,instrumentation.ts,instrumentation-client.ts,sentry.server.config.ts,sentry.edge.config.ts}` — **fe.source-root-pinned** optional · [fe/architecture](../code/fe/architecture.md) · R54 (eslint-fe `no-middleware-file` `page-exports-metadata` `route-files-thin` `route-adapter`)
     - `features/{pages,layouts,overlays}/<name>/` — **fe.feature** required · [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R57 (eslint-fe `no-hardcoded-route` `owner-reachable`), R58 (eslint-fe `no-hardcoded-copy` `html-lang-from-locale` `no-copy-resolution-below-block`), FE_SIZE_BUDGET (no rule)
     - `components/`
@@ -99,7 +96,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.bro
       - `routes/` — **fe.modules.routes** required · [fe/i18n](../code/fe/i18n.md) · R57 (eslint-fe `no-hardcoded-route` `owner-reachable`)
       - `types/` — **fe.modules.types** optional · R22 (eslint-fe `no-type-assertion` `no-non-null-assertion` `no-explicit-any` `no-double-cast`; hfs `ts-strict`)
         - `ambient/` — **fe.modules.types.ambient** optional · R22 (eslint-fe `no-type-assertion` `no-non-null-assertion` `no-explicit-any` `no-double-cast`; hfs `ts-strict`)
-      - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R217 (machine `supabase-client-owner` `supabase-service-role`)
+      - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R244 (hfs `fe-stack`; eslint-fe `fe-stack-import`), R50 (eslint-fe `fetch-only-in-api-client` `client-fetch-has-signal` `no-shared-transport-state` `no-data-fetch-in-effect` `transport-owner` `api-client-attaches-the-locale` `locale-header-belongs-to-the-link` `swr-data-lifecycle`)
       - `toast/` — **fe.modules.toast** optional · [fe/form](../code/fe/form.md) · R58 (eslint-fe `no-hardcoded-copy` `html-lang-from-locale` `no-copy-resolution-below-block`), R56 (eslint-fe `hooks-folder-holds-hooks-only` `hooks-are-hooks` `hook-location`), R51 (eslint-fe `client-maps-auth-to-refused` `no-failure-collapse` `outcome-kinds-exhaustive` `one-outcome-union`)
 
 Git-ignored: `repo.build-output`, `repo.generated`, `fe.transport.generated`.
