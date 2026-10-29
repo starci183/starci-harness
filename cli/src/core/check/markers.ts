@@ -4,7 +4,7 @@ import type { TextSyntax, TextView } from "./code-text.js"
 import { NON_SOURCE_DIRS, judgeSonarProperties } from "./sonar-properties.js"
 
 /** The kind of text a file holds, which decides the markers read in it; undefined for a file no marker applies to. */
-export type MarkerFileKind = "code" | "spec" | "shell" | "workflow" | "manifest" | "dockerfile" | "properties"
+export type MarkerFileKind = "code" | "spec" | "shell" | "workflow" | "manifest" | "dockerfile" | "properties" | "env"
 
 /** One marker found on one line. */
 export interface MarkerHit {
@@ -36,6 +36,15 @@ const SCRIPTS: readonly MarkerFileKind[] = ["shell", "workflow", "manifest", "do
 
 const RUNNER = "(?:it|test|describe|suite)"
 
+/**
+ * TLS verification turned off for the whole process: the environment switch set to 0, assigned in code, as an env object
+ * key, on a command line, in a workflow or Dockerfile env entry or on an .env line. Reading or comparing it is no finding.
+ */
+const TLS_SWITCH = new RegExp(String.raw`\b${word("NODE_TLS", "_REJECT", "_UNAUTHORIZED")}["'\x60]?\]?(?:\s*(?:=(?!=)|:)\s*|\s+)(["'\x60]?)0\1(?![\w.])`)
+
+/** TLS verification turned off for one client: the option set false, as an object key or an assigned property. */
+const TLS_OPTION = new RegExp(String.raw`\b${word("reject", "Unauthorized")}["'\x60]?\s*(?:=(?!=)|:)\s*false\b`)
+
 const DETECTORS: readonly Detector[] = [
     { marker: "eslint-disable", label: "an inline ESLint disable", kinds: CODE, view: "comments", pattern: directive(word("eslint", "-disable")) },
     { marker: "eslint-disable", label: "inline ESLint configuration", kinds: CODE, view: "comments", pattern: directive(String.raw`(?:${word("eslint", "-env")}\b|${word("esl", "int")}\s+[@\w/.-]+\s*:)`) },
@@ -66,6 +75,9 @@ const DETECTORS: readonly Detector[] = [
         view: "code",
         pattern: new RegExp(String.raw`\bsonar\.(?:\w+\.)*${word("exclu", "sions")}\s*[=:]\s*(?!(?:\*\*\/)?(?:${NON_SOURCE_DIRS})\/\*\*(?:\s*,\s*(?:\*\*\/)?(?:${NON_SOURCE_DIRS})\/\*\*)*\s*$)`),
     },
+    // A test certificate is trusted through its client's `ca` (contexts/code/be/test.md BE-TEST-12), never by turning the check off.
+    { marker: "tls-unverified", label: "TLS verification turned off for the process", kinds: [...CODE, ...SCRIPTS, "env"], view: "strings", pattern: TLS_SWITCH },
+    { marker: "tls-unverified", label: "TLS verification turned off for a client", kinds: CODE, view: "strings", pattern: TLS_OPTION },
     { marker: "gate-widening", label: "a gate not waited for or not failing", kinds: [...SCRIPTS, "properties"], view: "code", pattern: /sonar\.qualitygate\.wait\s*=\s*false|\bfail_ci_if_error\s*:\s*false\b/ },
 ]
 
@@ -77,6 +89,8 @@ const SHELL_FILE = /(?:^|\/)(?:\.(?:husky|githooks)\/(?!_\/)[^/]+|[^/]+\.(?:sh|b
 const WORKFLOW_FILE = /(?:^|\/)(?:\.github\/(?:workflows|actions)\/.+\.ya?ml|\.gitlab-ci\.ya?ml|lefthook\.ya?ml)$/
 const DOCKERFILE = /(?:^|\/)Dockerfile(?:\.[\w-]+)?$/
 const MANIFEST_FILE = /(?:^|\/)package\.json$/
+/** An environment file or its template: `.env`, `.env.example`, `secret.env.example`, `api.env.tpl`. */
+const ENV_FILE = /(?:^|\/)(?:[\w-][\w.-]*)?\.env(?:\.(?:example|sample|template|tpl|dist|defaults|local|development|production|staging|test))*$/
 const SHEBANG = /^#!\s*(?:\/usr\/bin\/env\s+)?\S*(?:sh|bash|zsh|dash)\b/
 
 /** The kind of `file` (repository-relative, forward slashes); `firstLine` lets an extensionless script with a shell shebang count. */
@@ -86,6 +100,7 @@ export const markerFileKind = (file: string, firstLine: string): MarkerFileKind 
     if (DOCKERFILE.test(file)) return "dockerfile"
     if (MANIFEST_FILE.test(file)) return "manifest"
     if (file.endsWith(".properties")) return "properties"
+    if (ENV_FILE.test(file)) return "env"
     if (CODE_FILE.test(file)) return isSpecFile(file) ? "spec" : "code"
     const name = file.slice(file.lastIndexOf("/") + 1)
     return !name.includes(".") && SHEBANG.test(firstLine) ? "shell" : undefined
@@ -100,6 +115,7 @@ const SYNTAX: Readonly<Record<MarkerFileKind, TextSyntax>> = {
     dockerfile: "hash",
     manifest: "none",
     properties: "properties",
+    env: "hash",
 }
 
 /** What the scan knows beyond the file's text: for a properties file, the Sonar block the generator writes for its app. */

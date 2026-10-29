@@ -112,8 +112,8 @@ token, and assert persisted state. Lite proves composition by compiling the real
 (`useTestWorld({ apps })`). Configuration is substituted by passing options, never by patching `process.env`. A
 provider whose contract requires TLS (an OIDC issuer and its JWKS) is faked over HTTPS (`defineHttpFake({ https: true })`,
 `@starci/test-world` README "Fakes"), and the app trusts the run's fake CA (`w.fake.<name>.ca`) through an option of its
-own HTTP client, never by turning verification off (`NODE_TLS_REJECT_UNAUTHORIZED=0`, `rejectUnauthorized: false`), so the
-issuer check a spec proves is the one production runs.
+own HTTP client, never by turning verification off (SHARED-LOOSENING-1, marker `tls-unverified`), so the issuer check a
+spec proves is the one production runs.
 
 Why: a hand-assembled module can pass while the real app cannot start, and transaction, lock and fence claims need the
 real store.

@@ -21,6 +21,7 @@ banned:
   - or-true
   - no-verify
   - gate-widening
+  - tls-unverified
 scan:
   maxFileBytes: 1048576
 # A code marker reads code, never the text of a string, template or comment; a directive marker reads comments, so a
