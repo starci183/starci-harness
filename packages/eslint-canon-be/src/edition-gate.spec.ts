@@ -36,10 +36,13 @@ test("every published back-end rule follows the bundled catalog in both editions
     }
 })
 
-test("full keeps the exact plugin and every exact rule object", () => {
+test("full, the default edition, reads the bundled catalog: a lite-only rule is inactive and every rule full judges is the exact object", () => {
     const gated = pluginForEdition({ plugin, hfs: {} })
-    assert.equal(gated, plugin)
-    for (const [id, rule] of Object.entries(plugin.rules)) assert.equal(gated.rules[id], rule, id)
+    assert.notEqual(gated.rules["no-raw-sql"], plugin.rules["no-raw-sql"])
+    assert.deepEqual(createdWithoutContext(ruleNamed(gated.rules, "no-raw-sql")), {})
+    for (const [id, rule] of Object.entries(plugin.rules)) {
+        assert.equal(gated.rules[id] === rule, catalog.enforcerJudgedIn("eslint-be", id, "full"), id)
+    }
 })
 
 test("an uncatalogued lint rule runs in every edition", () => {

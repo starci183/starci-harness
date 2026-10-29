@@ -61,7 +61,9 @@ test("the config is one ignore block and one typed rule block over every source,
     assert.equal(settingsHfsOf(block), hfs)
     assert.deepEqual(block.linterOptions, linterOptions)
     assert.deepEqual(linterOptions, { noInlineConfig: true, reportUnusedDisableDirectives: "error" })
-    assert.equal(block.plugins?.["starci-be"], plugin)
+    const published = block.plugins?.["starci-be"]
+    assert.equal(published?.meta, plugin.meta)
+    assert.deepEqual(Object.keys(published?.rules ?? {}).sort(), Object.keys(plugin.rules).sort(), "the edition view keeps every rule name")
     assert.ok(block.plugins?.["@typescript-eslint"]?.rules, "the borrowed rules have their plugin")
     for (const [name, setting] of Object.entries(rules)) assert.equal(levelOf(setting), "error", `${name} is not an error`)
     for (const name of Object.keys(BORROWED)) assert.ok(name in rules, `${name} is borrowed`)

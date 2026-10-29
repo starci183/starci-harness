@@ -3,6 +3,7 @@
 ## 3.8.11 - 2026-10-29
 
 - Changed: `no-raw-sql` (R334) exempts its two raw SQL owners by side-relative folder (`RAW_SQL_OWNERS`: `src/modules/platform/database/` and `src/tests/world/`) and keeps refusing raw SQL in integration and e2e specs, builders and fixtures; its messages send a spec author to entities on `world.db.<connection>` or a named world helper. `callDbFunction` with a listed function is allowed in specs as in domain code (ruling lite-test-sql-owner).
+- Fixed: the edition gate (`pluginForEdition`) reads the rule catalog in full too, so a rule whose catalog entries name only lite is inactive in full: `no-raw-sql` (R334, `editions: [lite]`) no longer fires on a full app, whose SQL law is R36. Full used to return every rule without reading the catalog.
 - Changed: the bundled canon pins name hfs 4.11.12, eslint-canon-be 3.8.11, eslint-canon-fe 9.5.13 and the Grammar family 0.15.24.
 
 ## 3.8.9 - 2026-10-29

@@ -25,10 +25,9 @@ const inactive = (rule: RuleModule): RuleModule => Object.freeze({ ...rule, crea
 /**
  * The plugin view for one HFS edition.
  *
- * Full is the default edition and the catalog's superset, so it needs no runtime catalog read. This
- * keeps the source checkout testable before `sync-runtime` refreshes the generated bundle; lite
- * loads the package's bundled catalog in a published installation. Tests may inject a catalog to
- * prove the generic filtering independently of generated copies.
+ * Both editions read the catalog: full is the default edition, and a rule whose catalog entries name only lite (R334
+ * `no-raw-sql`) is inactive there, as a full-only rule is in lite. The bundled catalog is loaded once per lint process;
+ * tests may inject a catalog to prove the generic filtering independently of the bundled copy.
  */
 export const pluginForEdition = <P extends CanonPlugin>({ plugin, hfs, catalog }: {
     plugin: P
@@ -39,7 +38,6 @@ export const pluginForEdition = <P extends CanonPlugin>({ plugin, hfs, catalog }
     if (edition !== "full" && edition !== "lite") {
         throw new RangeError(`Unknown HFS edition ${JSON.stringify(edition)}; expected "full" or "lite"`)
     }
-    if (edition === "full" && catalog === undefined) return plugin
     const loaded = catalog ?? bundledCatalog()
     const rules = Object.fromEntries(Object.entries(plugin.rules).map(([id, rule]) => [
         id,
