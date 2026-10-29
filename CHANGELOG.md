@@ -6,6 +6,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.18] - 2026-10-30
+
+### Changed
+
+- `starci check pins` is `pending` (exit 0), not red, when every CLI_PIN_SKEW pins a version of this repository's own package
+  that npm does not serve yet (a 404): between the two phases of a release the CLI cannot require it, so the gate no longer turns
+  CI red until `publish-packages` brings it. A skew to a version npm serves, or a registry that cannot be asked, is still red, and
+  `release publish` still holds the CLI on any skew.
+
 ## [1.1.0-alpha.17] - 2026-10-30
 
 ### Changed
