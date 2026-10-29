@@ -2,6 +2,7 @@
 
 ## 4.11.12 - 2026-10-29
 
+- Fixed: `source-suffix` (BE_SOURCE_FORM, R89) admits the one file a file slot names by its path, read from the slot manifest: the lite entity registry `src/modules/platform/database/entities.ts` (slot `be.platform.database.entities`) was refused for having no role suffix.
 - Fixed: the lite skeleton types its entity lists with `EntityClass` (`new () => object`, declared in `platform/database/database.options.ts` as full declares it): `DatabaseOptions.entities` and `PRIMARY_ENTITIES` of `entities.ts` were `ReadonlyArray<Function>`, which `starci-be/no-function-or-eval` refuses.
 - Changed: R334 `BE_PERSISTENCE_NO_RAW_SQL` covers test code with one owner exception (ruling lite-test-sql-owner): specs, builders and fixtures seed and assert through entities on `world.db.<connection>`, and only `src/tests/world` holds raw SQL beside `platform/database`, as named world helpers for what entities cannot express. The bundled catalog law and the failure-code hint say so; the bundled canon pins name hfs 4.11.12, eslint-canon-be 3.8.11, eslint-canon-fe 9.5.13 and the Grammar family 0.15.24.
 
