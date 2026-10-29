@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.11.8 - 2026-10-29
+
+- Added: `starci app secret migrate <env> <member> --to <existing> --into-existing` and `split <env> <member> --into-existing` merge into a member that already exists (never a legacy `.enc` one: migrate it first). Without the flag an existing target is refused, naming the flag. Every existing target is decrypted in memory and checked before anything is written: a key it already holds with another value refuses the whole move (`refused, nothing was written: <env>/<member>.enc.yaml already holds KEY with another value`, names only); an identical value merges. Each target is written once, and the source is removed only after every target is written (an own target is staged as `<member>-staged.enc.yaml` and moved over it). The dry run names each target's keys, which targets exist and the keys they already hold (`secret-standard.mjs` `plannedTargets`, `moveKeys`).
+- Added: `split <env> <member> --group KEY=member` (repeatable) and `--group-file <yaml>` (a map of `KEY: member`) send a key to the owner's member instead of its first word's; a key named twice, or one the member does not hold, is refused. The dry run prints the resulting plan (`groupMap`).
+- Changed: `audit` does not name MIXED_PROVIDERS for a member the stack groups on purpose, one whose every key the environment's `secrets:` declares per key with `member: <that member>` (`declaredGroup`); the finding names that fix beside split.
+- Changed: `deploy.secrets.settings` of application-stacks takes one `{ member, keys }` or a list of them over several members; a key two entries name is refused (STACKS_DEPLOY_CONFIG_INVALID), and the sealer reads each listed member once (`stack-deploy-config.mjs`, `stack/sealed.mjs`).
+- Changed: the bundled canon pins name hfs 4.11.8, eslint-canon-be 3.8.7, eslint-canon-fe 9.5.9 and the Grammar family 0.15.20.
+- Spec: `src/hfs-secret-standard.spec.mjs` (group, merge, collision refusal, group file, grouped audit; fake values only), `src/hfs-stacks-deploy.spec.mjs` (settings list).
+
 ## 4.11.7 - 2026-10-29
 
 - Fixed: `starci app db baseline --squash` reaches a loopback source (`127.0.0.1`, `localhost`, `[::1]`, as the app's own dev database on `127.0.0.1:54322`) on a Linux Docker engine. The scratch container reached it only as `host.docker.internal`, which a Linux engine maps to its bridge gateway, where a port published on 127.0.0.1 refuses the connection; Docker Desktop alone forwarded it. `sourceTarget` (`runtime/scripts/hfs/db-squash.mjs`) now keeps the first route psql connects on: the scratch container through `host.docker.internal`, else a one-shot container of the same image on the host's network; when neither connects the verb refuses with each route's psql failure. Every client tool runs where its target's route says (`exec`, `targetRunner`).

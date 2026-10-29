@@ -124,16 +124,30 @@ function grants(c, block, services, members) {
   return out;
 }
 
+/**
+ * `deploy.secrets.settings`: one `{ member, keys }` or a list of them, one per member whose plain one-line values the stack
+ * interpolates; a key named by two entries is refused, so every setting has one source.
+ */
 function secretSettings(c, block, members) {
-  if (block === undefined) return null;
-  if (!closedFields(c, 'deploy.secrets.settings', block, FIELDS.settings)) return null;
-  memberRef(c, 'deploy.secrets.settings.member', block.member, members);
-  return { member: block.member, keys: stringList(c, 'deploy.secrets.settings.keys', block.keys, KEY, { nonEmpty: true }) };
+  if (block === undefined) return [];
+  const entries = Array.isArray(block) ? block : [block];
+  const seen = new Set();
+  return entries.flatMap((entry, index) => {
+    const at = Array.isArray(block) ? `deploy.secrets.settings[${index}]` : 'deploy.secrets.settings';
+    if (!closedFields(c, at, entry, FIELDS.settings)) return [];
+    memberRef(c, `${at}.member`, entry.member, members);
+    const keys = stringList(c, `${at}.keys`, entry.keys, KEY, { nonEmpty: true });
+    for (const key of keys) {
+      if (seen.has(key)) c.problem(`${at}.keys`, `${key} is named by another settings entry`);
+      seen.add(key);
+    }
+    return [{ member: entry.member, keys }];
+  });
 }
 
 function secrets(c, block, services, members) {
-  if (block === undefined) return { grants: [], settings: null };
-  if (!closedFields(c, 'deploy.secrets', block, FIELDS.secrets)) return { grants: [], settings: null };
+  if (block === undefined) return { grants: [], settings: [] };
+  if (!closedFields(c, 'deploy.secrets', block, FIELDS.secrets)) return { grants: [], settings: [] };
   if (block.grants !== undefined && !Array.isArray(block.grants)) c.problem('deploy.secrets.grants', 'must be a list');
   return { grants: grants(c, block.grants, services, members), settings: secretSettings(c, block.settings, members) };
 }

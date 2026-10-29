@@ -1,6 +1,7 @@
 // secret-standard.mjs - the app secrets standard (ruling app-secrets-one-standard, contexts/project/stacks.md
 // PROJECT-STACKS-5) judged and repaired: `audit` names every deviation, `migrate` moves a member to `<member>.enc.yaml` sealed
-// to its environment's recipients, `split` divides a member that mixes providers into one member per provider. The dry run
+// to its environment's recipients (or merges it into an existing member), `split` divides a member into one member per provider
+// or per the owner's --group. A member every key of which the stack declares in it is a deliberate group, not a mix. The dry run
 // reads only envelope key names and recipients; an executed move decrypts in memory through the sops seam and seals again,
 // never writing plaintext to disk or printing a value.
 import fs from "node:fs";
@@ -25,6 +26,15 @@ function declaredKeys(spec, member, keys) {
   const memberOfEntry = (entry) => entry?.member ?? /^secrets\/([a-z0-9-]+)/u.exec(entry?.where ?? "")?.[1] ?? entry?.name;
   if (entries.some((entry) => entry?.key === undefined && memberOfEntry(entry) === member)) return keys;
   return entries.filter((entry) => entry?.key !== undefined && memberOfEntry(entry) === member).map((entry) => entry.key);
+}
+
+/**
+ * True when the stack groups `member` on purpose: the environment's `secrets:` declares every key of it per key, naming this member.
+ * A member the owner groups (an app's own keys, the keys one service reads) holds keys of several first words by design.
+ */
+function declaredGroup(spec, member, keys) {
+  const entries = Array.isArray(spec?.secrets) ? spec.secrets : [];
+  return keys.length > 0 && keys.every((key) => entries.some((entry) => entry?.key === key && entry?.member === member));
 }
 
 /** The tracked member file names of one environment, or null outside a git work tree. */
@@ -64,7 +74,8 @@ export function auditSecrets(repoRoot, environment = null) {
       const add = (code, detail) => findings.push({ code, env, member: name, detail });
       const providers = [...new Set(envelope.keys.map(providerOf))];
       if (isLegacyName(name)) add("LEGACY_MEMBER", `is a dotenv .enc member; move it: starci app secret migrate ${env} ${member} [--to <provider>] --execute`);
-      if (providers.length > 1) add("MIXED_PROVIDERS", `holds keys of ${providers.length} providers by their first word (${providers.join(", ")}); split it: starci app secret split ${env} ${member} --execute`);
+      if (providers.length > 1 && !declaredGroup(spec, member, envelope.keys))
+        add("MIXED_PROVIDERS", `holds keys of ${providers.length} providers by their first word (${providers.join(", ")}) that the stack does not group in it; split it (starci app secret split ${env} ${member} [--group KEY=member] --execute) or declare each key with member: ${member} in environments.${env}.secrets`);
       const wanted = recipientsFor(repoRoot, path.join(directory, `${member}${MEMBER_SUFFIX}`));
       if (!isLegacyName(name) && wanted.length && !sameSet(wanted, envelope.recipients))
         add("RECIPIENT_DRIFT", `is sealed to ${keyList(envelope.recipients)}, its environment's rule names ${keyList(wanted)}; seal it again: starci app secret migrate ${env} ${member} --execute`);
@@ -163,7 +174,7 @@ export function printAudit(repoRoot, environment, stdout) {
   return 0;
 }
 
-/** Seals `map` as a fresh member `<slug>.enc.yaml` (no merge), to the recipients its environment's rule names. */
+/** Seals `map` as member `<slug>.enc.yaml` to the recipients its environment's rule names; `map` holds every key it keeps. */
 function sealFresh(directory, slug, map, sops) {
   const file = path.join(directory, `${slug}${MEMBER_SUFFIX}`);
   writeSecret({ file, values: map, age: [], sops });
@@ -177,62 +188,128 @@ function plannedMember(directory, member) {
 }
 
 /**
- * `migrate <env> <member> [--to <slug>] [--execute]`: moves a member (a legacy dotenv `.enc`, or one sealed to other recipients
- * than its rule) to `<slug>.enc.yaml` sealed to the environment's recipients, then removes the old file. A dry run until --execute.
+ * Each target of a move: its keys, whether it is the source member itself (`own`, re-sealed in place) and whether it is another
+ * member that already exists (`existing`, merged into only with --into-existing, never a legacy one). Refuses before any read.
  */
-export function migrateMember({ directory, environment, member, to, execute, sops, stdout }) {
-  const { file, envelope } = plannedMember(directory, member);
-  const target = to ?? member;
-  const targetFile = path.join(directory, `${target}${MEMBER_SUFFIX}`);
-  if (targetFile !== file && fs.existsSync(targetFile)) throw new SecretError(`${environment}/${target}${MEMBER_SUFFIX} already exists; migrate never merges two members`);
-  const plan = `${environment}/${path.basename(file)} (${keyList(envelope.keys)}) to ${environment}/${target}${MEMBER_SUFFIX}`;
-  if (!execute) {
-    stdout(`dry run: would move ${plan}; add --execute\n`);
-    return 0;
-  }
+function plannedTargets({ directory, environment, file, groups, intoExisting, verb }) {
+  return [...groups].map(([target, keys]) => {
+    const resolved = fileOf(directory, target);
+    const own = resolved === file && !isLegacyName(path.basename(file));
+    const existing = resolved !== file && fs.existsSync(resolved);
+    const label = `${environment}/${path.basename(resolved)}`;
+    if (existing && isLegacyName(path.basename(resolved))) throw new SecretError(`${label} is a legacy member; migrate it first, then merge into it`);
+    if (existing && !intoExisting) throw new SecretError(`${label} already exists; ${verb} merges into it only with --into-existing`);
+    const held = existing ? envelopeOf(fs.readFileSync(resolved, "utf8")).keys : [];
+    const overlap = keys.filter((key) => held.includes(key));
+    return { target, keys, own, existing, overlap, file: existing ? resolved : path.join(directory, `${target}${MEMBER_SUFFIX}`) };
+  });
+}
+
+const planText = (environment, targets) => targets.map(({ target, keys, existing, overlap }) => {
+  const merge = overlap.length ? `; it already holds ${keyList(overlap)}, which must be identical` : "";
+  return `${environment}/${target}${MEMBER_SUFFIX} (${keyList(keys)})${existing ? ` merged into the existing member${merge}` : ""}`;
+}).join(", ");
+
+/**
+ * Moves the keys of the source member `file` into `targets`, decrypting in memory only. Every existing target is opened and
+ * checked first: a key it already holds with another value refuses the whole move, naming the keys and never a value. Then
+ * each target is written once, and only after every target is written is the source removed (or, for an own target, the
+ * re-sealed copy staged beside it is moved over it), so no key is ever held by no member.
+ */
+function moveKeys({ directory, environment, file, envelope, targets, member, sops }) {
   const seam = sops();
   const map = seam.decrypt(file, envelope.format);
   validateMap(map);
   if (!sameSet(Object.keys(map), envelope.keys)) throw new SecretError("sops returned keys that differ from the envelope");
-  // Re-sealing the same file replaces every key it holds, so it reads nothing more and stays in place until the new one lands.
-  sealFresh(directory, target, map, seam);
-  if (targetFile !== file) deleteSealed(file);
+  const writes = targets.map((target) => {
+    const values = Object.fromEntries(target.keys.map((key) => [key, map[key]]));
+    if (!target.existing) return { target, values, colliding: [] };
+    const held = seam.decrypt(target.file, envelopeOf(fs.readFileSync(target.file, "utf8")).format);
+    validateMap(held);
+    const colliding = target.keys.filter((key) => Object.hasOwn(held, key) && held[key] !== values[key]);
+    return { target, values: { ...held, ...values }, colliding };
+  });
+  const collisions = writes.filter((write) => write.colliding.length);
+  if (collisions.length)
+    throw new SecretError(`refused, nothing was written: ${collisions.map(({ target, colliding }) => `${environment}/${path.basename(target.file)} already holds ${keyList(colliding)} with another value`).join("; ")}; rename or unset one side first`);
+  const staging = `${member}-staged`;
+  if (targets.some((target) => target.own) && fs.existsSync(fileOf(directory, staging)))
+    throw new SecretError(`${environment}/${staging}${MEMBER_SUFFIX} exists; remove it before moving ${member}`);
+  let staged = null;
+  for (const { target, values } of writes) {
+    if (target.own) staged = sealFresh(directory, staging, values, seam);
+    else writeSecret({ file: target.file, values, age: [], sops: seam });
+  }
+  if (staged) fs.renameSync(staged, file);
+  else deleteSealed(file);
+}
+
+/** The `--group-file` YAML map (`KEY: member`) and the `--group KEY=member` entries as one map; a key named twice is refused. */
+export function groupMap(entries = [], groupFile = null) {
+  const pairs = [];
+  if (groupFile) {
+    if (!fs.existsSync(groupFile)) throw new SecretError(`--group-file ${groupFile} does not exist`);
+    let document;
+    try { document = parseYaml(fs.readFileSync(groupFile, "utf8")); } catch { document = undefined; }
+    if (!document || typeof document !== "object" || Array.isArray(document) || Object.values(document).some((value) => typeof value !== "string"))
+      throw new SecretError(`--group-file ${groupFile} must be a YAML map of KEY: member`);
+    pairs.push(...Object.entries(document));
+  }
+  for (const entry of entries) {
+    const at = entry.indexOf("=");
+    if (at < 1 || !entry.slice(at + 1)) throw new SecretError("--group takes KEY=member");
+    pairs.push([entry.slice(0, at), entry.slice(at + 1)]);
+  }
+  const groups = new Map();
+  for (const [key, member] of pairs) {
+    if (groups.has(key)) throw new SecretError(`--group names ${key} twice`);
+    groups.set(key, member);
+  }
+  return groups;
+}
+
+/**
+ * `migrate <env> <member> [--to <slug>] [--into-existing] [--execute]`: moves a member (a legacy dotenv `.enc`, one sealed to
+ * other recipients than its rule, or one whose keys belong to another member) to `<slug>.enc.yaml` sealed to the environment's
+ * recipients, merging into an existing `<slug>` only with --into-existing, then removes the old file. A dry run until --execute.
+ */
+export function migrateMember({ directory, environment, member, to, intoExisting, execute, sops, stdout }) {
+  const { file, envelope } = plannedMember(directory, member);
+  const targets = plannedTargets({ directory, environment, file, groups: new Map([[to ?? member, envelope.keys]]), intoExisting, verb: "migrate" });
+  const plan = `${environment}/${path.basename(file)} to ${planText(environment, targets)}`;
+  if (!execute) {
+    stdout(`dry run: would move ${plan}; add --execute\n`);
+    return 0;
+  }
+  moveKeys({ directory, environment, file, envelope, targets, member, sops });
   stdout(`moved ${plan}\n`);
   return 0;
 }
 
 /**
- * `split <env> <member> [--execute]`: divides a member that mixes providers into one `<provider>.enc.yaml` per provider
- * (providerOf), each sealed to the environment's recipients, then removes the old file. A dry run until --execute.
+ * `split <env> <member> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]`: divides a member into one
+ * `<member>.enc.yaml` per group, each sealed to the environment's recipients, then removes the old file. A key's group is its
+ * --group member, else its provider (providerOf); an existing member is merged into only with --into-existing. A dry run until
+ * --execute.
  */
-export function splitMember({ directory, environment, member, execute, sops, stdout }) {
+export function splitMember({ directory, environment, member, groups: chosen = new Map(), intoExisting, execute, sops, stdout }) {
   const { file, envelope } = plannedMember(directory, member);
+  const stray = [...chosen.keys()].filter((key) => !envelope.keys.includes(key));
+  if (stray.length) throw new SecretError(`--group names ${keyList(stray)}, which ${environment}/${member} does not hold`);
   const groups = new Map();
-  for (const key of envelope.keys) groups.set(providerOf(key), [...(groups.get(providerOf(key)) ?? []), key]);
-  if (groups.size < 2) throw new SecretError(`${environment}/${member} holds one provider's keys; nothing to split (migrate renames a member)`);
-  for (const provider of groups.keys()) {
-    const target = path.join(directory, `${provider}${MEMBER_SUFFIX}`);
-    if (target !== file && fs.existsSync(target)) throw new SecretError(`${environment}/${provider}${MEMBER_SUFFIX} already exists; split never merges into a member`);
+  for (const key of envelope.keys) {
+    const group = chosen.get(key) ?? providerOf(key);
+    groups.set(group, [...(groups.get(group) ?? []), key]);
   }
-  const plan = [...groups].map(([provider, keys]) => `${provider}${MEMBER_SUFFIX} (${keyList(keys)})`).join(", ");
+  if (groups.size < 2 && groups.has(member))
+    throw new SecretError(`${environment}/${member} holds one group's keys; nothing to split (migrate renames a member)`);
+  const targets = plannedTargets({ directory, environment, file, groups, intoExisting, verb: "split" });
+  const plan = planText(environment, targets);
   if (!execute) {
     stdout(`dry run: would split ${environment}/${path.basename(file)} into ${plan}; add --execute\n`);
     return 0;
   }
-  const seam = sops();
-  const map = seam.decrypt(file, envelope.format);
-  validateMap(map);
-  if (!sameSet(Object.keys(map), envelope.keys)) throw new SecretError("sops returned keys that differ from the envelope");
-  const own = groups.has(member) && path.basename(file) === `${member}${MEMBER_SUFFIX}`;
-  for (const [provider, keys] of groups) {
-    if (own && provider === member) continue;
-    sealFresh(directory, provider, Object.fromEntries(keys.map((key) => [key, map[key]])), seam);
-  }
-  if (own) {
-    // The member keeps only its own provider's keys: sealed beside it first, then moved over it, so no key is ever unsealed.
-    const staged = sealFresh(directory, `${member}-split`, Object.fromEntries(groups.get(member).map((key) => [key, map[key]])), seam);
-    fs.renameSync(staged, file);
-  } else deleteSealed(file);
+  moveKeys({ directory, environment, file, envelope, targets, member, sops });
   stdout(`split ${environment}/${path.basename(file)} into ${plan}\n`);
   return 0;
 }
