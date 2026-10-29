@@ -1,13 +1,23 @@
+import { Test } from "@nestjs/testing"
 import { mock } from "@starci/jest-preset"
 import { GraphQLError } from "graphql"
+import { ERRORS_SERVICE } from "./errors.decorators"
 import type { ErrorsService } from "./errors.service"
 import { formatGraphqlError } from "./graphql-error.mapper"
 
 const formatted = { message: "raw", path: ["item"], locations: [{ line: 1, column: 3 }] }
 
+const build = async () => {
+    const double = mock<ErrorsService>()
+    const moduleRef = await Test.createTestingModule({
+        providers: [{ provide: ERRORS_SERVICE, useValue: double }],
+    }).compile()
+    return moduleRef.get<typeof double>(ERRORS_SERVICE)
+}
+
 describe("formatGraphqlError", () => {
-    it("keeps the message of a malformed operation and marks it invalid without describing it", () => {
-        const errors = mock<ErrorsService>()
+    it("keeps the message of a malformed operation and marks it invalid without describing it", async () => {
+        const errors = await build()
 
         expect(formatGraphqlError(errors, formatted, new GraphQLError("GRAPHQL_VALIDATION_FAILED"))).toEqual({
             message: "raw",
@@ -18,8 +28,8 @@ describe("formatGraphqlError", () => {
         expect(errors.describe).not.toHaveBeenCalled()
     })
 
-    it("describes the original failure of a resolver and travels its code, kind and params", () => {
-        const errors = mock<ErrorsService>()
+    it("describes the original failure of a resolver and travels its code, kind and params", async () => {
+        const errors = await build()
         const cause = new Error("not found")
         errors.describe.mockReturnValue({
             code: "ITEM_NOT_FOUND",
@@ -37,8 +47,8 @@ describe("formatGraphqlError", () => {
         expect(errors.describe).toHaveBeenCalledWith(cause)
     })
 
-    it("describes a failure that is not a GraphQL error as it is", () => {
-        const errors = mock<ErrorsService>()
+    it("describes a failure that is not a GraphQL error as it is", async () => {
+        const errors = await build()
         const cause = new Error("boom")
         errors.describe.mockReturnValue({ code: "ERRORS_INTERNAL", kind: "internal", status: 500, params: {} })
 
@@ -50,9 +60,9 @@ describe("formatGraphqlError", () => {
         expect(errors.describe).toHaveBeenCalledWith(cause)
     })
 
-    it("leaves out the locations and path a formatted error does not carry", () => {
+    it("leaves out the locations and path a formatted error does not carry", async () => {
         const subject = formatGraphqlError
-        const errors = mock<ErrorsService>()
+        const errors = await build()
         errors.describe.mockReturnValue({ code: "ERRORS_INTERNAL", kind: "internal", status: 500, params: {} })
 
         expect(subject(errors, { message: "raw" }, new GraphQLError("GRAPHQL_PARSE_FAILED"))).toEqual({
