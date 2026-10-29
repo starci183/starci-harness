@@ -1,13 +1,19 @@
 import { existsSync, mkdirSync, statSync } from "node:fs"
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path"
-import { containerName, dockerServer, fileSha256, fileStamps, loadUat, prepareImage, RECEIPT_FILE, receiptFiles, receiptPath, RESERVED_ENV_PREFIX, runContainer, tailOf, writeReceipt } from "../../harness/uat.js"
+import { appUnserved, containerName, dockerServer, fileSha256, fileStamps, loadUat, pagesOf, prepareImage, RECEIPT_FILE, receiptFiles, receiptPath, RESERVED_ENV_PREFIX, runContainer, tailOf, UAT_APP_UNSERVED, withoutPages, writeReceipt } from "../../harness/uat.js"
 import type { Prepared, UatReceipt } from "../../harness/uat.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { prepareWorkspace } from "../check/workspace-deps.js"
+import type { StepResult } from "../check/scope.js"
 
 /** What one uat run did: the image, the forwards, the variables handed in (names only), the script's arguments, the evidence it wrote and the script's verdict. */
 interface UatRunData {
+    /** The workspace dependencies the walk's checkout was given before the run (core/check/workspace-deps.ts prepareWorkspace). */
+    readonly workspace: readonly StepResult[]
+    /** The pages the walk opened and how many answered 5xx, as the relay tallied them; null when it printed no tally. */
+    readonly pages: { readonly opened: number; readonly serverErrors: number } | null
     readonly image: string
     readonly prepared: Prepared
     readonly docker: string
@@ -104,6 +110,14 @@ const verdictOf = (data: UatRunData, timeoutMs: number): string => {
     return `exit ${String(data.exitCode)} (${data.exitCode === 0 ? "green" : "red"}) in ${(data.durationMs / 1000).toFixed(1)} s`
 }
 
+/** The line naming what the walk's checkout was given before the run. */
+const workspaceNote = (steps: readonly StepResult[]): string =>
+    steps.length === 0 ? "workspace: every workspace dependency the app imports is built" : `workspace: ${steps.map((one) => `${one.package} ${one.status} (${one.reason})`).join("; ")}`
+
+/** The line naming the pages the walk opened. */
+const pagesNote = (pages: UatRunData["pages"]): string =>
+    pages === null ? "pages: no tally (the run printed none)" : `pages: ${String(pages.opened)} opened, ${String(pages.serverErrors)} answered 5xx`
+
 /** The human lines of a run, before the tails of its streams. */
 const describeRun = (data: UatRunData, timeoutMs: number): string[] => {
     const forwards = data.forwards.length === 0 ? "none" : data.forwards.map((port) => `127.0.0.1:${String(port)}`).join(", ")
@@ -111,20 +125,35 @@ const describeRun = (data: UatRunData, timeoutMs: number): string[] => {
     const args = data.args.length === 0 ? "none" : JSON.stringify(data.args)
     const files = data.files.length === 0 ? "no files written" : data.files.join(", ")
     return [
+        workspaceNote(data.workspace),
         `image ${data.image} (${imageNote(data)})`,
         `forwards ${forwards}`,
         `env ${env}; args ${args}`,
         `evidence ${data.out}: ${files}`,
         `receipt ${data.receipt} (sha256 ${data.receiptSha256.slice(0, 12)}), its copy ${RECEIPT_FILE} in the folder`,
+        pagesNote(data.pages),
         verdictOf(data, timeoutMs),
         `container ${data.container} ${data.removed ? "removed" : "STILL PRESENT (docker rm --force it)"}`,
     ]
 }
 
+/**
+ * Gives the checkout the walk serves the app from what check run gives the packages it judges (core/check/workspace-deps.ts
+ * prepareWorkspace, each build under the heavy governor), before any container runs; a dependency that does not build refuses
+ * UAT_APP_SETUP_FAILED, the walk's environment failing, never a finding of the screens.
+ */
+const prepareApp = async (root: string, timeoutMs: number, progress: (line: string) => void): Promise<readonly StepResult[]> => {
+    const steps = await prepareWorkspace(root, { timeoutMs })
+    for (const one of steps) progress(`workspace: ${one.package} ${one.status} (${one.reason})`)
+    const red = steps.filter((one) => one.status !== "green")
+    if (red.length > 0) throw new Refusal("UAT_APP_SETUP_FAILED", `the app's workspace could not be prepared, so the walk would meet no app (an environment failure, not a finding): ${red.map((one) => `${one.package}: ${one.reason}${one.output === "" ? "" : `\n${one.output}`}`).join("\n")}`)
+    return steps
+}
+
 /** `starci uat run <script>`: runs a Playwright script in the pinned Playwright image, with host ports forwarded on 127.0.0.1 and an evidence folder. */
 export const uatRunVerb = defineVerb({
     path: ["uat", "run"],
-    summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green. The harness keeps a receipt of the run (script digest, image, container, exit, times, every evidence file by digest in its store), the only source a uat-flow check reads observations from",
+    summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml), after giving the checkout the workspace dependencies its app imports as check run does (UAT_APP_SETUP_FAILED when one does not build): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green. The harness keeps a receipt of the run (script digest, image, container, exit, times, every evidence file by digest in its store), the only source a uat-flow check reads observations from, and the pages the walk opened; a walk whose every page answered 5xx refuses UAT_APP_UNSERVED, an environment failure",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["op", "worker", "agent", "kernel", "supervisor", "owner"],
@@ -150,6 +179,7 @@ export const uatRunVerb = defineVerb({
         const container = containerName()
         const root = await repositoryOrCwd(context.cwd)
         const { out, fromRoot } = evidenceFolder(root, flags.out ?? `uat-evidence/${container}`)
+        const workspace = await prepareApp(root, config.prepareTimeoutMs, context.progress)
         const docker = await dockerServer(context.cwd)
         const prepared = await prepareImage(config, image, context.cwd, context.progress)
         mkdirSync(out, { recursive: true })
@@ -161,6 +191,7 @@ export const uatRunVerb = defineVerb({
         const endedAt = new Date().toISOString()
         // The harness's receipt of what it ran and saw: a uat-flow check reads observations only through it.
         const stored = receiptFiles(out, before)
+        const pages = pagesOf(run.stderr)
         const receipt: UatReceipt = {
             schema: "starci/uat-receipt@1",
             folder: out.replaceAll("\\", "/"),
@@ -173,11 +204,20 @@ export const uatRunVerb = defineVerb({
             startedAt,
             endedAt,
             files: stored,
+            ...(pages === undefined ? {} : { pages }),
         }
         const receiptSha256 = writeReceipt(receipt)
         const files = stored.filter((file) => file.written).map((file) => file.path)
         const outPath = fromRoot.replaceAll("\\", "/")
+        if (appUnserved(receipt)) {
+            throw new Refusal(
+                UAT_APP_UNSERVED,
+                `every page the walk opened answered 5xx (${String(pages?.opened ?? 0)} of ${String(pages?.opened ?? 0)}): the app was not served, so nothing of it was judged; this is an environment failure, never a finding of the screens. File the task's result as it stands, with no finding: the harness ends the attempt as its own failure and dispatches the task again at the same try. Receipt ${receiptPath(out).replaceAll("\\", "/")} (sha256 ${receiptSha256.slice(0, 12)})\n--- stderr (tail)\n${tailOf(withoutPages(run.stderr), config.tailLines)}`,
+            )
+        }
         const data: UatRunData = {
+            workspace,
+            pages: pages ?? null,
             image,
             prepared,
             docker,
@@ -195,7 +235,7 @@ export const uatRunVerb = defineVerb({
             removed: run.removed,
             durationMs: run.durationMs,
             stdoutTail: tailOf(run.stdout, config.tailLines),
-            stderrTail: tailOf(run.stderr, config.tailLines),
+            stderrTail: tailOf(withoutPages(run.stderr), config.tailLines),
         }
         const lines = describeRun(data, timeoutMs)
         if (data.stdoutTail !== "") lines.push("--- stdout (tail)", data.stdoutTail)

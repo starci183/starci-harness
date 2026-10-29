@@ -32,6 +32,9 @@ checks:
 ---
 Write a short Playwright script that opens each screen of the records in every state they name and saves a screenshot per
 screen and state, and run it with `starci uat run <script> --out <run>`, so each screenshot is held by the run's receipt.
+The verb first builds the workspace packages the app imports in this checkout, as the wave does, so serve the app from it.
+A walk it refuses `UAT_APP_UNSERVED` (every page answered 5xx) met no app: file your result as it stands with no finding,
+and the harness takes the attempt as its own failure.
 Compare each screenshot with the record's direction and the grammar's rules; each difference is a finding with its
 screenshot and the rule it breaks, and any finding makes the verdict failed (file `failed`). Change nothing in the product.
 A direction that is missing, contradictory or too vague to audit against is no finding of the build: file `blocked`

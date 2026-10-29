@@ -9,12 +9,12 @@ import { git, nulPaths } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
 import { listPackages, workspacePatterns } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
-import type { Scope, StepResult } from "./scope.js"
+import type { StepResult } from "./scope.js"
 
 /** The code of a workspace dependency that did not build, on its own step and on every step it held back. */
 export const DEP_BUILD_FAILED = "CHECK_WORKSPACE_DEP_BUILD_FAILED"
 
-/** What preparing the scope's workspace dependencies did: one step per dependency it built or restored, and what each target lacks. */
+/** What preparing the targets' workspace dependencies did: one step per dependency it built or restored, and what each target lacks. */
 export interface DependencyBuilds {
     readonly steps: readonly StepResult[]
     /** The workspace dependencies of a package, direct and transitive, that did not build; empty when it lacks none. */
@@ -126,10 +126,11 @@ const store = (key: string, pkg: WorkspacePackage, outputs: readonly string[]): 
 }
 
 /**
- * Prepares the in-repository workspace dependencies of the scope's packages before their typecheck and lint, so a package that
- * imports a sibling exporting only its build output (`exports` or `main` pointing at `dist/`, which git does not track) is
- * judged against that sibling as a consumer would see it, not against a missing module. The dependencies are found the same
- * way for npm, yarn and pnpm (workspaceOf: the dependency names of a member that name another member of its workspace,
+ * Prepares the in-repository workspace dependencies of the target packages of the checkout at `root`, so a package that imports a
+ * sibling exporting only its build output (`exports` or `main` pointing at `dist/`, which git does not track) is judged or served
+ * against that sibling as a consumer would see it, not against a missing module: check run prepares its scope's packages before
+ * their typecheck and lint, and a walk every package of the checkout it serves the app from (prepareWorkspace). The
+ * dependencies are found the same way for npm, yarn and pnpm (workspaceOf: the dependency names of a member that name another member of its workspace,
  * whatever the version spec), transitively, and handled in topological order. A dependency whose entries are all on disk
  * is left alone. One that misses an entry is restored from the build cache under its content key (its source files, build
  * script, lockfile, Node version and the keys of its own workspace dependencies) when the cache holds it, else built with
@@ -137,14 +138,14 @@ const store = (key: string, pkg: WorkspacePackage, outputs: readonly string[]): 
  * ignored output kept under that key. A build that fails, has no `build` script, or leaves an entry missing is red with
  * CHECK_WORKSPACE_DEP_BUILD_FAILED naming the package; a dependency of it is skipped, and the targets that need it are held.
  */
-export const buildWorkspaceDependencies = async (scope: Scope, options: RunOptions): Promise<DependencyBuilds> => {
-    const packages = listPackages(scope.root)
-    // One object per package folder, so a target of the scope and the same package met as a dependency are one node.
+export const buildWorkspaceDependencies = async (root: string, given: readonly WorkspacePackage[], options: RunOptions): Promise<DependencyBuilds> => {
+    const packages = listPackages(root)
+    // One object per package folder, so a target and the same package met as a dependency are one node.
     const byDir = new Map(packages.map((pkg) => [resolve(pkg.dir), pkg]))
     const node = (pkg: WorkspacePackage): WorkspacePackage => byDir.get(resolve(pkg.dir)) ?? pkg
     const workspaces = new Map<WorkspacePackage, readonly WorkspacePackage[]>()
     const dependenciesOf = (pkg: WorkspacePackage): WorkspacePackage[] => {
-        const members = workspaces.get(pkg) ?? workspaceOf(scope.root, packages, pkg)
+        const members = workspaces.get(pkg) ?? workspaceOf(root, packages, pkg)
         workspaces.set(pkg, members)
         return pkg.dependsOn.map((name) => members.find((member) => member.name === name && member !== pkg)).filter((member): member is WorkspacePackage => member !== undefined)
     }
@@ -156,19 +157,19 @@ export const buildWorkspaceDependencies = async (scope: Scope, options: RunOptio
         for (const dependency of dependenciesOf(pkg)) visit(dependency)
         order.push(pkg)
     }
-    const targets = new Set(scope.targets.map((target) => node(target.pkg)))
+    const targets = new Set(given.map(node))
     for (const target of targets) for (const dependency of dependenciesOf(target)) visit(dependency)
     const keys = new Map<WorkspacePackage, string>()
     const failed = new Set<WorkspacePackage>()
     const steps: StepResult[] = []
     for (const pkg of order) {
-        const sources = await sourceFiles(scope.root, pkg)
+        const sources = await sourceFiles(root, pkg)
         const key = sha256([
             CACHE_SCHEMA,
             process.version,
             pkg.name,
             pkg.scripts.build ?? "",
-            lockfileHash(scope.root, pkg.dir),
+            lockfileHash(root, pkg.dir),
             ...sources.map((file) => `${file}\0${sha256(readFileSync(join(pkg.dir, file)))}`),
             ...dependenciesOf(pkg).map((dependency) => `${dependency.name}\0${keys.get(dependency) ?? ""}`).sort((left, right) => left.localeCompare(right)),
         ].join("\n"))
@@ -214,3 +215,10 @@ export const buildWorkspaceDependencies = async (scope: Scope, options: RunOptio
         })
     return { steps, unbuilt: (pkg) => closure(node(pkg), new Set()).filter((dependency) => failed.has(dependency)).map((dependency) => dependency.name) }
 }
+
+/**
+ * Prepares the checkout a walk serves the app from as check run prepares the packages it judges: every in-repository workspace
+ * dependency any package of the checkout imports is restored or built (buildWorkspaceDependencies), so the app the walk opens
+ * resolves its siblings' build output instead of answering 5xx for a missing module. Its steps; a red one names the package.
+ */
+export const prepareWorkspace = async (root: string, options: RunOptions): Promise<readonly StepResult[]> => (await buildWorkspaceDependencies(root, listPackages(root), options)).steps

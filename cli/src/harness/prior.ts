@@ -265,8 +265,7 @@ const parkedOnNeed = (taskId: string): boolean => readMachine((machine) => machi
 
 /**
  * The harness cause that owes an ended task's work a continuation, or null: the owner's custody hold (awaiting_owner), a cause
- * revive.ts `harnessCause` names (a fenced or lost launch, a verify stopped by infrastructure or its deadline, a wave red not its
- * own, a done task whose work never landed), a verify the host held, or a waiter parked on a shared need.
+ * revive.ts `harnessCause` names, a verify the host held, or a waiter parked on a shared need.
  */
 const harnessKept = (db: DatabaseSync, task: TaskRow): string | null => {
     if (task.status === "awaiting_owner") return "custody"

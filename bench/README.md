@@ -66,6 +66,14 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   and the scenarios assert only what both leave. It prints `stub hold: <url> token <pid>`; `POST <url>/__exit` or a SIGTERM
   lets go and ends it. `args: [--child, <folder>]` also starts a child node process working in that folder, ended with the
   stub, whose pid `GET <url>/__child` answers.
+- **The Docker stand-in** is `stub/docker-stub.mjs`: the runner copies this node binary to `<state base>/bench/bin/docker`
+  and points `STARCI_DOCKER_BIN` at it, so no real Docker is ever run. It answers the docker calls `starci uat run` makes:
+  `info` names a Linux engine, `image inspect` finds every image, and `run` plays the container on the host, running the
+  CLI's built relay (`uat-preamble.js`) and the walk script with the evidence folder as its working directory, each forwarded
+  port relayed from 127.0.0.1 to the same port on 127.0.0.2.
+- **The app stand-in** is `stub/app-stub.mjs`, served by `serve: {stub: app}`: the app a walk opens, on 127.0.0.2 where the
+  Docker stand-in's relay reaches it, answering every page with `--status` (default 500) and `/asset.js` with 200. It prints
+  `stub app: <url> token <port>`, so `${<as>.token}` is the port to forward.
 - **The CPU burner** is `stub/busy-stub.mjs`, served by `serve: {stub: busy}`: a process that keeps one core busy, so the
   heavy governor's CPU average is above a tiny `maxCpuPercent` on any host, an idle runner included. It prints
   `stub busy: <url> token <pid>`; `POST <url>/__exit`, a SIGTERM or the scenario's end stops it.

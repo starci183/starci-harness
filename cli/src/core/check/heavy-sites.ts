@@ -9,8 +9,8 @@ const SPAWN = /\b(?:captureNpm|runNpm|captureCommand|captureTool|runTool|capture
 /** npm calls that read or publish metadata and build nothing: light, so they take no slot. */
 const LIGHT_NPM = /\b(?:captureNpm|runNpm)\(\s*\[\s*"(?:view|pack|publish|--version)"/
 
-/** A tool spawn that is heavy whatever runs it: a compiler, a linter, a test runner, a bundler, a browser run or a container build or run. */
-const HEAVY_TOOL = /\b(?:tsc|eslint|jest|vitest|playwright|next|webpack)\b|"docker",\s*(?:\["(?:build|run)"|args\b)/
+/** A tool spawn that is heavy whatever runs it: a compiler, a linter, a test runner, a bundler, a browser run or a container build or run (docker, or the client uat.ts dockerBin names). */
+const HEAVY_TOOL = /\b(?:tsc|eslint|jest|vitest|playwright|next|webpack)\b|(?:"docker"|dockerBin\(\)),\s*(?:\["(?:build|run)"|args\b)/
 
 /** The files that define the runner and the governor themselves. */
 const OWNERS = new Set(["shared/exec.ts", "harness/heavy.ts"])

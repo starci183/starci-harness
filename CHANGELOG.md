@@ -19,6 +19,23 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A walk serves the app the wave built: `starci uat run` prepares the app's workspace first.** starci-next-app's
+  fe-sign-in-audit (t-eac0bcc9, ticket tk-900481687ea8) walked 16 captures of the sign-in screen and every route answered
+  HTTP 500, as Next.js could not resolve `@starci-next/i18n/proxy`: the walk's Op worktree held the app's workspace packages
+  unbuilt (their `dist/` is git-ignored), while the wave's check run builds them before its typecheck. `uat run`, the verb
+  every audit and uat walk runs, now gives its checkout the same preparation through the same code before any container
+  starts (`prepareWorkspace` over `buildWorkspaceDependencies` in `core/check/workspace-deps.ts`: every in-repository
+  workspace dependency any package imports, found from the manifests' workspaces for npm, yarn and pnpm, restored from the
+  build cache or built with `npm run build` under the heavy governor); a dependency that does not build refuses
+  `UAT_APP_SETUP_FAILED`. Bench: `audit-walk-prepares-workspace-and-unserved-is-infra`.
+- **A walk where every page answered 5xx is the harness's failure, never a finding.** The container's relay
+  (`harness/uat-preamble.ts`) reads the HTTP/1.x framing it pipes and tallies the pages the walk opened (the browser's
+  document requests, redirects aside) and how many answered 5xx, kept in the run's receipt as `pages`. A run whose every
+  page answered 5xx is refused `UAT_APP_UNSERVED` with its receipt kept, and the result a worker files on that attempt,
+  whatever its status, fails the task with a `walk-unserved` event (`unservedWalk` in `harness/uat.ts`, `core/task/result.ts`):
+  a harness cause (`harness/revive.ts`), so its workflow dispatches it again at the same try, up to `reviveMax`. The bench
+  runs `uat run` against a Docker stand-in (`STARCI_DOCKER_BIN`, `bench/stub/docker-stub.mjs`) that plays the container
+  with the real relay, and an app stand-in (`bench/stub/app-stub.mjs`).
 - **A deregistered worktree folder that kept its `.git` file is removed once nothing holds it.** Git deletes a worktree's
   admin folder whatever its delete of the work tree did, and that delete stops at the first entry it cannot remove, so a
   held file listed before `.git` leaves a `.git` file naming a git dir that is gone. Removal (`removeWorktreeFolder` in

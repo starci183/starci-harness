@@ -63,6 +63,9 @@ const dockerfileOf = (image: string, version: string): string =>
         "",
     ].join("\n")
 
+/** The docker client every uat call runs: STARCI_DOCKER_BIN when set (the bench's stand-in), else docker on PATH. */
+export const dockerBin = (): string => process.env.STARCI_DOCKER_BIN ?? "docker"
+
 const preambleFile = (): string => join(dirname(fileURLToPath(import.meta.url)), "uat-preamble.js")
 
 /** How the run image was obtained: already on the host, or built now (with the base pulled when it was missing). */
@@ -73,7 +76,7 @@ export interface Prepared {
     readonly durationMs: number
 }
 
-const imageExists = async (image: string, cwd: string): Promise<boolean> => (await captureTool("docker", ["image", "inspect", "--format", "{{.Id}}", image], cwd)).exitCode === 0
+const imageExists = async (image: string, cwd: string): Promise<boolean> => (await captureTool(dockerBin(), ["image", "inspect", "--format", "{{.Id}}", image], cwd)).exitCode === 0
 
 /**
  * The local run image: the pinned base plus the matching playwright package and the forwarding preamble, tagged by a hash of
@@ -95,7 +98,7 @@ export const prepareImage = async (config: UatConfig, image: string, cwd: string
         writeFileSync(join(context, "Dockerfile"), dockerfile)
         copyFileSync(preambleFile(), join(context, "preamble.mjs"))
         const labels = ["--label", "starci.uat=1", "--label", `starci.uat.base=${image}`, "--label", `starci.uat.playwright=${version}`]
-        const build = await withHeavySlot("uat", "docker build (uat image)", cwd, { timeoutMs: config.prepareTimeoutMs }, (held) => captureTool("docker", ["build", "--tag", runImage, ...labels, context], cwd, held.options))
+        const build = await withHeavySlot("uat", "docker build (uat image)", cwd, { timeoutMs: config.prepareTimeoutMs }, (held) => captureTool(dockerBin(), ["build", "--tag", runImage, ...labels, context], cwd, held.options))
         if (build.exitCode !== 0) {
             const failure = headline(build.stderr) || "exit " + String(build.exitCode)
             const why = build.timedOut ? "timed out after " + String(config.prepareTimeoutMs) + " ms" : failure
@@ -109,7 +112,7 @@ export const prepareImage = async (config: UatConfig, image: string, cwd: string
 
 /** Refuses unless a Linux Docker engine answers; returns its server version. */
 export const dockerServer = async (cwd: string): Promise<string> => {
-    const info = await captureTool("docker", ["info", "--format", "{{.OSType}} {{.ServerVersion}}"], cwd, { timeoutMs: 30_000 })
+    const info = await captureTool(dockerBin(), ["info", "--format", "{{.OSType}} {{.ServerVersion}}"], cwd, { timeoutMs: 30_000 })
     if (info.exitCode !== 0) {
         const why = headline(info.stderr) || "exit " + String(info.exitCode)
         throw new Refusal("UAT_DOCKER_UNREACHABLE", `no Docker engine answers: ${why}`)
@@ -216,13 +219,13 @@ export const runContainer = async (spec: UatRunSpec, cwd: string): Promise<UatRu
     const started = Date.now()
     let run: ToolRun
     try {
-        run = await withHeavySlot("uat", "playwright (uat run)", cwd, { timeoutMs: spec.timeoutMs }, (held) => captureTool("docker", args, cwd, held.options))
+        run = await withHeavySlot("uat", "playwright (uat run)", cwd, { timeoutMs: spec.timeoutMs }, (held) => captureTool(dockerBin(), args, cwd, held.options))
     } finally {
         // Killing the client leaves the container running; a finished --rm container is already gone and this answers "no such container".
-        await captureTool("docker", ["rm", "--force", container], cwd, { timeoutMs: 60_000 })
+        await captureTool(dockerBin(), ["rm", "--force", container], cwd, { timeoutMs: 60_000 })
     }
     const durationMs = Date.now() - started
-    const removed = (await captureTool("docker", ["container", "inspect", "--format", "{{.Id}}", container], cwd, { timeoutMs: 60_000 })).exitCode !== 0
+    const removed = (await captureTool(dockerBin(), ["container", "inspect", "--format", "{{.Id}}", container], cwd, { timeoutMs: 60_000 })).exitCode !== 0
     if (run.exitCode === DOCKER_RUN_FAILED && !run.timedOut) throw new Refusal("UAT_DOCKER_FAILED", `docker run could not start ${container}: ${headline(run.stderr)}`)
     return { exitCode: run.exitCode, timedOut: run.timedOut, stdout: run.stdout, stderr: run.stderr, durationMs, removed }
 }
@@ -277,6 +280,9 @@ export const uatReceiptSchema = z.strictObject({
     startedAt: z.string().min(1),
     endedAt: z.string().min(1),
     files: z.array(receiptFileSchema),
+    // The pages the walk opened (responses to a browser's document requests, redirects aside) and how many answered 5xx, as the
+    // container's relay tallied them; absent when the run printed no tally (killed at its deadline, or an older run image).
+    pages: z.strictObject({ opened: z.number().int().min(0), serverErrors: z.number().int().min(0) }).optional(),
 })
 
 /** A uat run receipt. */
@@ -327,4 +333,62 @@ export const readReceipt = (folder: string): { readonly receipt: UatReceipt; rea
     }
     const parsed = uatReceiptSchema.safeParse(raw)
     return parsed.success ? { receipt: parsed.data, sha256: fileSha256(file) } : undefined
+}
+
+/** The line prefix of the page tally the container's relay prints on stderr at exit (harness/uat-preamble.ts). */
+const PAGES_LINE = /^starci-uat-pages (\{.*\})\s*$/
+
+/** The pages a run's stderr tallied (its last tally line), or undefined when it printed none. */
+export const pagesOf = (stderr: string): UatReceipt["pages"] => {
+    const line = stderr.split("\n").map((each) => PAGES_LINE.exec(each)?.[1]).filter((each): each is string => each !== undefined).at(-1)
+    if (line === undefined) return undefined
+    try {
+        const parsed = uatReceiptSchema.shape.pages.safeParse(JSON.parse(line))
+        return parsed.success ? parsed.data : undefined
+    } catch {
+        return undefined
+    }
+}
+
+/** A run's stderr without the relay's tally lines, which the receipt carries instead. */
+export const withoutPages = (stderr: string): string => stderr.split("\n").filter((line) => !PAGES_LINE.test(line)).join("\n")
+
+/** The refusal of a walk where every page the app was asked for answered 5xx: the app was not served, nothing of it was judged. */
+export const UAT_APP_UNSERVED = "UAT_APP_UNSERVED"
+
+/** True when a run opened pages and every one of them answered 5xx: the walk met no app, an environment failure, never a finding. */
+export const appUnserved = (receipt: UatReceipt): boolean => receipt.pages !== undefined && receipt.pages.opened > 0 && receipt.pages.serverErrors === receipt.pages.opened
+
+const underFolder = (folder: string, parent: string): boolean => {
+    const fold = (path: string): string => {
+        const full = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+        return process.platform === "win32" ? full.toLowerCase() : full
+    }
+    const child = fold(folder)
+    const above = fold(parent)
+    return child === above || child.startsWith(`${above}/`)
+}
+
+/**
+ * The latest walk into a folder under `folders` (a task's checkout joined with its allowPaths) that started at or after `since`,
+ * read from the receipts the harness keeps (never the copies in the run folders), when that walk met no app (appUnserved).
+ * Undefined when no such walk ran, or the latest one opened a page that answered.
+ */
+export const unservedWalk = (folders: readonly string[], since: string): UatReceipt | undefined => {
+    const dir = join(stateBase(), "uat", "receipts")
+    if (!existsSync(dir) || folders.length === 0) return undefined
+    const walks = readdirSync(dir)
+        .filter((name) => name.endsWith(".json"))
+        .flatMap((name) => {
+            try {
+                const parsed = uatReceiptSchema.safeParse(JSON.parse(readFileSync(join(dir, name), "utf8")))
+                return parsed.success ? [parsed.data] : []
+            } catch {
+                return []
+            }
+        })
+        .filter((receipt) => receipt.startedAt >= since && folders.some((folder) => underFolder(receipt.folder, folder)))
+        .sort((left, right) => left.endedAt.localeCompare(right.endedAt))
+    const latest = walks.at(-1)
+    return latest !== undefined && appUnserved(latest) ? latest : undefined
 }

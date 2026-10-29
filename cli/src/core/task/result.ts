@@ -1,11 +1,14 @@
 import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
+import { join, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { PreserveIncomplete, preserveTaskPaths } from "../../harness/preserve.js"
 import type { Preserved } from "../../harness/preserve.js"
 import { removeOpWorktree } from "../../harness/land.js"
 import { CUSTODY_RECHECK, custodyEvidence } from "../../harness/custody.js"
+import { WALK_UNSERVED } from "../../harness/revive.js"
+import { UAT_APP_UNSERVED, unservedWalk } from "../../harness/uat.js"
+import type { UatReceipt } from "../../harness/uat.js"
 import type { CustodyEvidence } from "../../harness/custody.js"
 import { fileResult, getTask, latestAttempt, markIntent, openAttempt, recordEvent, resultOf, setStatus, taskCheckout } from "../../harness/tasks.js"
 import type { AttemptRow, ResultStatus, TaskRow, TaskStatus } from "../../harness/tasks.js"
@@ -35,6 +38,8 @@ interface ResultData {
     readonly needs: readonly NeedReport[]
     /** The custody evidence that handed a failed or blocked report to the harness's own run (harness/custody.ts CUSTODY_RECHECK), or null. */
     readonly recheck: CustodyEvidence | null
+    /** The walk of the attempt that met no app (harness/uat.ts unservedWalk): the result is the harness's failure, not the task's verdict; or null. */
+    readonly unserved: UatReceipt | null
 }
 
 /**
@@ -103,14 +108,27 @@ const filingOf = (db: DatabaseSync, taskId: string): Filing => {
 }
 
 /**
+ * The walk of the attempt that met no app: the latest `starci uat run` into the task's allowPaths since the attempt began (since
+ * the task was created, for an attempt the result opens) where every page answered 5xx (harness/uat.ts unservedWalk); undefined
+ * when there is none, or the task's checkout is gone.
+ */
+const unservedOf = async (filing: Filing, callerRoot: string): Promise<UatReceipt | undefined> => {
+    const root = await taskCheckout(filing.task, callerRoot).catch(() => undefined)
+    if (root === undefined) return undefined
+    return unservedWalk(filing.task.contract.context.allowPaths.map((path) => join(root, path)), filing.attempt?.startedAt ?? filing.task.createdAt)
+}
+
+/**
  * `starci task result <task-id>`: files the one immutable result of the task's open attempt and hands the task back to the Kernel.
  * A failed or blocked output whose evidence shows the worker's run was stopped by custody (harness/custody.ts `custodyEvidence`)
  * is no verdict of the task: the task goes reported with a CUSTODY_RECHECK event and its work kept, and its verify runs the suite
- * with the keys custody holds, setting the worker's verdict aside (core/task/verify.ts).
+ * with the keys custody holds, setting the worker's verdict aside (core/task/verify.ts). A result of any status whose attempt's
+ * walk met no app (`unservedOf`) is no verdict either: the task fails with a WALK_UNSERVED event, its work preserved, as the
+ * harness's own failure (harness/revive.ts `harnessCause`), and its workflow dispatches it again at the same try.
  */
 export const taskResultVerb = defineVerb({
     path: ["task", "result"],
-    summary: "file the one result of a task's open attempt (done, blocked, mismatch or failed) with its json output; blocked --needs <key> reports a missing shared thing; failed preserves and resets its dirty allowPaths; a failed or blocked output showing TEST_WORLD_NOT_DECLARED or a custody refusal is reported for the harness's own verify with custody instead, spending no try",
+    summary: "file the one result of a task's open attempt (done, blocked, mismatch or failed) with its json output; blocked --needs <key> reports a missing shared thing; failed preserves and resets its dirty allowPaths; a failed or blocked output showing TEST_WORLD_NOT_DECLARED or a custody refusal is reported for the harness's own verify with custody instead, spending no try; a result whose attempt's walk met no app (every page 5xx, UAT_APP_UNSERVED) fails as the harness's own failure and is dispatched again at the same try",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["worker", "op", "agent", "kernel", "supervisor"],
@@ -139,11 +157,14 @@ export const taskResultVerb = defineVerb({
             // A failed task's dirty work is saved and reset in the task's own checkout before its worktree goes. The checks run
             // first, so a refused result resets nothing.
             const checked = filingOf(db, flags.task)
+            // A walk that met no app judged nothing: whatever the worker filed, the attempt ends as the harness's failure.
+            const unserved = await unservedOf(checked, callerRoot)
             // A failed or blocked report whose run custody stopped is not the task's verdict: the harness judges it by its own run.
-            const custody = (status === "failed" || status === "blocked") && needs.length === 0 ? custodyEvidence(output) : undefined
+            const custody = unserved === undefined && (status === "failed" || status === "blocked") && needs.length === 0 ? custodyEvidence(output) : undefined
+            const fails = unserved !== undefined || (status === "failed" && custody === undefined)
             let preserved: Preserved | null = null
             let repair: string | null = null
-            if (status === "failed" && custody === undefined) {
+            if (fails) {
                 const root = await taskCheckout(checked.task, callerRoot)
                 try {
                     preserved = await preserveTaskPaths(root, checked.task, db)
@@ -162,10 +183,11 @@ export const taskResultVerb = defineVerb({
                 // blocked and mismatch are reported too: the Kernel reads the result and decides. A custody recheck is reported
                 // for the harness's verify instead, which runs the suite with custody and sets the worker's verdict aside.
                 if (custody !== undefined) recordEvent(db, CUSTODY_RECHECK, task.id, { attempt: attempt.id, filed: status, keys: custody.keys, codes: custody.codes })
-                const next = setStatus(db, task.id, status === "failed" && custody === undefined ? "failed" : "reported")
+                if (unserved !== undefined) recordEvent(db, WALK_UNSERVED, task.id, { attempt: attempt.id, filed: status, folder: unserved.folder, container: unserved.container, pages: unserved.pages ?? null })
+                const next = setStatus(db, task.id, fails ? "failed" : "reported")
                 // A reset that broke keeps a repair intent, and the worktree with it, until --recover finishes it.
                 if (repair !== null) markIntent(db, task.id, "repair", repair)
-                return { task: task.id, attempt: attempt.id, status, taskStatus: next.status, inline: filing.inline, preserved, repair, needs, recheck: custody ?? null }
+                return { task: task.id, attempt: attempt.id, status, taskStatus: next.status, inline: filing.inline, preserved, repair, needs, recheck: custody ?? null, unserved: unserved ?? null }
             })
             const waiting = needs.length === 0 ? "" : await recordNeeds(db, callerRoot, data.task, needs)
             const worktree = data.taskStatus === "failed" && repair === null ? ((await removeOpWorktree(callerRoot, data.task).catch(() => undefined)) ?? null) : null
@@ -175,7 +197,8 @@ export const taskResultVerb = defineVerb({
             const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
             const keys = data.recheck === null ? "" : [...data.recheck.codes, ...data.recheck.keys].join(", ")
             const recheck = data.recheck === null ? "" : `; its run was stopped by custody (${keys || "TEST_WORLD_NOT_DECLARED"}), so the harness judges it by its own run with the keys custody holds (starci task verify ${data.task}); no try is spent on the worker's run`
-            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}${waiting}${recheck}`
+            const walk = data.unserved === null ? "" : `; its walk into ${data.unserved.folder} met no app (every page it opened answered 5xx, ${UAT_APP_UNSERVED}): an environment failure, not the task's verdict, so it ends as the harness's own and its workflow dispatches it again at the same try`
+            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}${waiting}${recheck}${walk}`
             return { data, message, ...(repair === null ? {} : { exitCode: 1 }) }
         } finally {
             db.close()

@@ -188,8 +188,8 @@ export const hostHeldAttempt = (db: DatabaseSync, taskId: string): boolean => {
 export const TASK_DISCARDED = "task-discarded"
 
 /**
- * The try number a retry of `previous` takes: the next one, unless the harness ended `previous` (revive.ts `harnessCause`: a wave
- * red not proven its own, a fenced or lost launch, a verify stopped by infrastructure or its deadline), the host held it
+ * The try number a retry of `previous` takes: the next one, unless the harness ended `previous` (a cause revive.ts `harnessCause`
+ * names), the host held it
  * (`hostHeldAttempt`), or it was discarded because its worktree was gone (`TASK_DISCARDED`), which spends no try: the retry
  * keeps its number, even past the last try.
  */
