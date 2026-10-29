@@ -61,8 +61,8 @@ every path. A project ledger (`runtime.sqlite`) holds `workflows`; `plan_nodes`,
 graph version's nodes with contract hash, node hash, routing hints and retry round, and why the version was recorded);
 `tasks`; `attempts` (one per dispatch, with the router's pick record); `results` (immutable, one per attempt);
 `check_runs` (every check of every verify with its status, exit code and detail: the tail of its output, at most `EVIDENCE_LINES` of `shared/output.ts` per tool run, with every value `redactSecrets` of `shared/secrets.ts` recognises redacted, which `task status` prints for the red checks of the newest verify); `seats`; `messages`; `events` (append-only); `prior_work`, which indexes by workflow, plan key, contract hash,
-attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
-settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); `check_rows`, the green
+attempt and sha256 the one patch a key keeps for its next attempt (a KEEP or REPAIR settle, "Settling an attempt") in the
+project's `prior/<sha256>.patch` store, deleted when that attempt settles (`harness/prior.ts`); `check_rows`, the green
 check steps by input digest (`harness/check-reuse.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
 `pool_concurrency`, `route_picks`, `budgets`, `budget_raises`, `host_events`, `owner_requests`, the heavy-command
@@ -140,8 +140,8 @@ processes are gone, git removes what is left and prunes, and a removed worktree 
 dropped from Orca's list. A folder still held is never a failure of the settle: it is recorded `worktree-held` with its
 holder (the processes still working in it, Orca still listing it, a handle tool's answer, or what was tried), retried by
 `worktree gc` with backoff and reaped again each time, ticketed for Debug at the attempt cap (`harness/worktree-busy.ts`),
-and listed by `worktree gc` and `host load`. An Op's branch is deleted once its tip is on the branch it landed on, every
-other branch is kept.
+and listed by `worktree gc` and `host load`. An Op's worktree and its branch go together, only after its attempt is
+settled ("Settling an attempt"), whatever the branch carries; every other branch is kept.
 
 ### Settling
 
@@ -153,7 +153,7 @@ of that rebased commit, never in the worker's environment (a workflow task's hea
 what is verified is what lands; what the candidate misses
 is read against the same staged snapshot. A textual conflict is never resolved by the harness: no check runs, the work
 is preserved, the attempt ends `conflict` and the task fails without a verdict, and the Kernel gets a `conflict`
-decision to amend the node on the new head, whose retry starts from the preserved work. A task working in a checkout it
+decision to amend the node on the new head, whose retry starts from the preserved work when the Kernel settles it `repair`. A task working in a checkout it
 shares (one sent from the owner's checkout) records its checkout's tree as its baseline when its work begins
 (`beginWork` in `harness/baseline.ts`), and a dirty file unchanged since then is left out of its candidate, its
 `paths-only` stray files, the lint and typecheck of its `check run --task`, and its preserve and reset; an Op worktree
@@ -171,7 +171,7 @@ the build cache (`core/check/workspace-deps.ts`, cache path in `harness/ledger.t
 reads the tree of its `allowPaths` at the head it settled on) and makes the task done and records its settle commit
 (`tasks.settle_commit`) in one transaction; red preserves and resets its paths and fails it, but a red that names an opt-in slot
 of a pattern the branch lacks is the harness's ("Opt-in patterns"): it declares the pattern and verifies again on the new head; either way the task's Op
-worktree is removed. Every ending of an Op's task, under the land lock, also preserves as the task's work whatever sits
+worktree is removed once its attempt is settled ("Settling an attempt"). Every ending of an Op's task, under the land lock, also preserves as the task's work whatever sits
 dirty under its `allowPaths` in the checkout it lands on and puts that checkout back (`land-escaped`, `preserveEscaped` in
 `core/task/verify.ts`), so the fast-forward never meets it and a retry starts from it: green lands on the branch or the task
 returns with its work preserved, never done with its work left beside the branch. A done task an older verify settled with
@@ -195,6 +195,27 @@ coordinates, so a filed result is verified and its worker's seat closed with no 
 the verify started from), else back to `reported`, which the same step verifies. Git runs through one runner (`captureGit` in
 `shared/git.ts`) with `core.quotePath` off and `core.longpaths` on, and every path listing the harness parses is
 NUL-separated (`-z`), so a non-ASCII or deep path is never quoted or cut.
+
+### Settling an attempt
+
+An Op reports, the harness verifies, and each ended attempt is settled once in its status by one of four decisions (owner
+decision `op-settle-merge-or-discard`; `settleDue` and `settleWork` in `harness/prior.ts`, recorded `op-settled`): MERGE,
+a green verify that landed it; KEEP, a stop the harness owes a continuation (custody's `awaiting_owner`, a cause
+`harnessCause` of `harness/revive.ts` names, a verify the host held, a waiter parked on a shared need); and, for a red the
+task caused, its Kernel's decision, the `settle` of the command answering its red, question, check-premise or conflict
+decision: `discard` (the default) or `repair` (`recordSettles` in `core/kernel/driver.ts`; refused `COMMAND_INVALID` on a
+command that answers no such decision, or holds it). A task with no Kernel (outside a workflow), or cancelled with no harness
+cause, is DISCARD, and one whose Kernel answered nothing is DISCARD once its workflow ended or its key went on to a later
+task. Until its decision nothing of the attempt is removed: its preserve folder, Op worktree and branch stay
+(`removeOpWorktree` in `harness/land.ts` and `worktree gc` wait for it). KEEP and REPAIR store one patch for the key, the
+attempt's newest preserve (with the commits its Op branch carried past its fork) under its `allowPaths`, and drop every
+other patch of the key; MERGE and DISCARD drop the key's patch, since the attempt that applied it settled. Every settle then
+deletes the attempt's preserve folders, so no partial work stays beside the store, and its Op worktree and branch go. The
+next attempt of the key first settles any earlier one whose decision is due, then applies the kept patch at launch
+(`applyPriorWork`, through `beginWork` in `harness/baseline.ts`), and its own settle deletes it: a key keeps at most one
+patch, for one attempt. A cancel of a task whose worktree is already gone (removed out of band) has nothing to preserve: it
+is cancelled at once, recorded `task-discarded`, and spends no try (`tryAfter` in `harness/tasks.ts`). `worktree gc`
+drops every stored patch that is not its key's one kept patch (`pruneUnkeptPrior`, a `prior-dropped` event per row).
 
 ### Wave verify
 
@@ -351,7 +372,7 @@ and every replan are refused `TASK_NOT_SPLIT` while one task of a `perRecord` la
 in the lane's order (`assertFlow` in `harness/lanes.ts`), judged on the workflow branch's head (its worktree, `flowCheckoutOf`)
 where its records are written, whichever checkout asks; `kernel next` digests each record's lane, read on the same tree, as `lanes`. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
 nothing is cancelled), rework (done and its contract changed: a new attempt from its previous commit with the contract
-diff), redo-live (live and changed: cancelled through task cancel, relaunched from its preserved patch), redo, add or
+diff), redo-live (live and changed: cancelled through task cancel, which settles it discard, and relaunched), redo, add or
 drop (live: cancelled; done: a generated `revert.<key>` node undoes the commits it landed, verified like any task,
 unless the removal says `keepEffect`); the generated `relay.<need>.r<round>` node is a shared need's ("Shared needs"). `plan diff` prints the classification without applying it, and
 `workflowActions` gives the step and `kernel next` the same per-key actions for the current graph. A red or stuck task
@@ -429,7 +450,7 @@ naming it. Like a revert node, a relay node's key and contract are the harness's
 the goal's scope paths, the Work records' lanes and the foreign-source rule, since it carries what another workflow's lane built.
 Only a relay node its Kernel removed raises one Supervisor `escalation` of kind `conflict`, whose answer releases the waiters as
 they stand. Then every waiter whose needs all ended is
-retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its brief. A rejection
+retried in one amend, its new attempt starting from the one patch its park kept ("Settling an attempt") with a "Shared needs" section in its brief. A rejection
 is taken back by `needs reopen <key> --reason <why>` (Supervisor, Debug; `NEED_NOT_REJECTED` for a need in another state): the
 waiters the rejection released are parked again and a new round resolves through the newest task resolver a round recorded,
 judged afresh, so the next step relays its commits; with none it opens at its router (`reopenRejected` in `harness/needs.ts`).
@@ -771,7 +792,8 @@ wakes, give-ups and a ruling told are never progress.
 ### Coordinator commands
 
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
-(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`, `hold`; `project` for the Supervisor).
+(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`, `hold`; `project` for the Supervisor),
+plus `settle` (`discard` or `repair`) on a Kernel's answer to a decision on a task ("Settling an attempt").
 A `workflow-change` that answers a red, question, check-premise or conflict decision on a task with no change and no need holds
 the task where it stands, and names the one condition that releases it (`hold`: `ticket`, `commit` on harness main, `need` or
 `time`; `tasks` names, by plan key, the tasks a hold answering an `escalation-answer` or `goal-change` keeps), refused

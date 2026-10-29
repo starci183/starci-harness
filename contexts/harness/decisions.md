@@ -95,7 +95,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
 - **One worktree per Op (`op-worktrees`).** Every task attempt of a workflow, under `orca` and `inline` alike, works in a git
   worktree of its own cut from the workflow's branch; no path is held while it works, and its verified commit is rebased
   onto the workflow's head and landed under a short land lock per branch; a textual conflict returns it `conflict` with its
-  work preserved for an amend, never resolved inside the harness (`cli/src/harness/land.ts`, `cli/src/core/task/verify.ts`).
+  work preserved until its Kernel settles it, never resolved inside the harness (`cli/src/harness/land.ts`, `cli/src/core/task/verify.ts`).
   In Orca each Op's worktree is listed under its Kernel's and the Kernel's under the main checkout. Owner, 2026-10-28:
   "phải từng op chạy trên worktree riêng"; "ok chốt vậy sửa lun".
 - **The harness removes what it made, processes first (`worktree-cleanup`).** Every worktree the harness creates, in both
@@ -196,3 +196,16 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   stands for in the read trace. Everything else is read on demand, through `starci contexts search` and `starci contexts
   anchor`, as the worker procedure ([ops/ops/README.md](../../ops/ops/README.md)) and each coordinator brief say. A contract
   is measured against its op's context budget once, when it is admitted (`isAdmitted` in `cli/src/harness/tasks.ts`).
+- **An Op's attempt is settled before anything of it goes (`op-settle-merge-or-discard`).** The owner, 2026-10-29: "op code
+  xong báo về kernel để quyết merge hay không, merge xong mới xóa không để lại partial_work để lần sau chạy lại/xóa" (an Op
+  that finishes reports to its Kernel, which decides whether to merge; delete only after the merge, and leave no partial work
+  for a later run to redo or delete), and on Debug's refinement: "Theo trò" (go with it). An Op reports, the harness verifies,
+  and each ended attempt settles as MERGE (its green verify lands it), DISCARD (nothing kept: the default of its Kernel's
+  answer to a red of the task's own), REPAIR (its Kernel's `settle: repair`: one patch kept for exactly one repair attempt,
+  counted against tries as any retry) or KEEP (a stop the harness caused or a waiter parked on a shared need: one patch kept
+  for the attempt that continues it). A key keeps at most one patch, applied by its next attempt and deleted when that attempt
+  settles; the worktree, branch and preserve folders of an attempt are removed only after its settle; a cancel whose worktree
+  is already gone is a DISCARD that spends no try; `worktree gc` drops every older or unkept patch (`settleDue`, `settleWork`,
+  `applyPriorWork` and `pruneUnkeptPrior` in `cli/src/harness/prior.ts`, `removeOpWorktree` in `cli/src/harness/land.ts`,
+  `recordSettles` in `cli/src/core/kernel/driver.ts`, `KERNEL_SETTLES` in `cli/src/harness/coordinator-commands.ts`,
+  `cli/src/core/task/cancel.ts`, [ops/coordinators/kernel.md](../../ops/coordinators/kernel.md)).
