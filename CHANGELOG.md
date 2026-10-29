@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.13] - 2026-10-29
+
 ### Fixed
 
 - **The host's heavy queue no longer runs down a task's budget.** The budget ladder's clocks (the ask at `budget.minutes`
@@ -21,11 +23,6 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   rules and note) in its details, never the template's pinned base or harness topic and canon files; lesson-ai's
   `relay.capability-domain.entitlement.r4` measured 24564 tokens against the code op's 24000 and measures 21396 lean. It is held
   to the budget like any task. Bench: `needs-relay-lean-context`.
-
-## [1.1.0-alpha.13] - 2026-10-29
-
-### Fixed
-
 - **A CLI off its pins is refused.** `check pins` (a CI gate on every push) and `release publish` before the CLI publishes
   refuse `CLI_PIN_SKEW`, naming each package, where, the pin and the version found, when a `@starci` requirement of
   `cli/package.json` or a copy `cli/package-lock.json` resolves differs from `contexts/stack/pins.yaml`; 1.1.0-alpha.10
