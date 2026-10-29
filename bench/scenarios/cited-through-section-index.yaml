@@ -1,0 +1,86 @@
+schema: starci/scenario@1
+id: cited-through-section-index
+group: verify
+title: a seat whose base loads a section index in place of a large document may cite that document's rule ids
+inject: >-
+  a draw task reads the generated section index of contexts/ui/composition.md (its base names composition-sections.md,
+  never the whole file); its worker cites a composition rule, then another draw task also cites a back-end rule it never read
+expect: >-
+  the draw contract is fit (its context names rule ids through the index's source); rules-cited is green for HIERARCHY-1,
+  found through contexts/ui/composition-sections.md; the second task's back-end id is red while its composition id is found
+pass:
+  - workflow define accepts the draw task with no "no context file it may cite" problem
+  - rules-cited green on the first task, HIERARCHY-1 found in composition-sections.md
+  - rules-cited red on the second task for BE-CLI-2 alone
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: drawidx
+        goal: draw the cart direction
+        runner: inline
+        tasks:
+          - id: green
+            label: draw
+            summary: draw the cart page direction
+            allowPaths: [design/cart.md]
+            inputs: {grammar: core}
+          - id: red
+            label: draw
+            summary: draw the checkout page direction
+            allowPaths: [design/checkout.md]
+            inputs: {grammar: core}
+            dependsOn: [green]
+  - starci: [workflow, define, "${run}/wf.yaml"]
+    expect:
+      exit: 0
+      lacks: no context file it may cite
+  - starci: [workflow, start, drawidx]
+    save:
+      green: data.nodes.0.task.id
+  - name: the first worker cites a composition rule it opened through the index
+    worker:
+      task: ${green}
+      status: done
+      files:
+        design/cart.md: "# Cart\n"
+      output:
+        summary: the cart direction
+        files: [design/cart.md]
+        direction: design/cart.md
+        rulesApplied: [HIERARCHY-1]
+        cites: [HIERARCHY-1]
+  - starci: [workflow, step, drawidx]
+    save:
+      red: data.nodes.1.task.id
+  - name: the second worker also cites a back-end rule it never read
+    worker:
+      task: ${red}
+      status: done
+      files:
+        design/checkout.md: "# Checkout\n"
+      output:
+        summary: the checkout direction
+        files: [design/checkout.md]
+        direction: design/checkout.md
+        rulesApplied: [HIERARCHY-1, BE-CLI-2]
+        cites: [HIERARCHY-1]
+  - name: the second task's verify is red for the back-end id
+    starci: [workflow, step, drawidx]
+    expect:
+      exit: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || (detail LIKE '%HIERARCHY-1 in %composition-sections.md%') FROM check_runs WHERE name = 'rules-cited' AND task_id = '${green}' AND runner = 'harness' AND attempt_id IS NOT NULL"
+        equals:
+          - "green:1"
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || (detail LIKE '%BE-CLI-2%') || ':' || (detail LIKE '%\"HIERARCHY-1\"%') FROM check_runs WHERE name = 'rules-cited' AND task_id = '${red}' AND runner = 'harness' AND attempt_id IS NOT NULL"
+        equals:
+          - "red:1:0"

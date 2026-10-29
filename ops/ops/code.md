@@ -7,26 +7,18 @@ perRecord: true
 context:
   budget: 24000
   base:
-    - file: "harness:contexts/project/README.md"
-      when: {side: [be, fe]}
-      shared: true
     - file: "harness:contexts/project/anatomy-{edition}-{side}.md"
       when: {side: [be, fe]}
-    - file: "harness:contexts/project/lint.md"
-      when: {side: [be, fe]}
-      shared: true
     - file: "harness:contexts/project/{edition}.md"
       when: {side: [be, fe]}
     - {file: "harness:contexts/code/README.md", shared: true}
     - {file: "harness:contexts/code/shared/README.md", shared: true}
     - {file: "harness:contexts/code/shared/typing.md", shared: true}
-    - {file: "harness:contexts/code/shared/format.md", shared: true}
     - {file: "harness:contexts/code/shared/loosening.md", shared: true}
     - {file: "harness:contexts/code/shared/comment.md", shared: true}
     - {file: "harness:contexts/code/shared/naming.md", shared: true}
     - {file: "harness:contexts/code/shared/imports.md", shared: true}
     - {file: "harness:contexts/code/shared/test.md", shared: true}
-    - {file: "harness:contexts/code/shared/scripts.md", shared: true}
     - file: "harness:contexts/code/{side}/README.md"
       when: {side: [be, fe]}
     - file: "harness:CONTRIBUTING.md"

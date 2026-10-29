@@ -184,3 +184,11 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   task and spends no try, and is kept as `baseline-findings` evidence, a composition rule excepted for a relayed source, which
   the relay's composer answers for (`cli/src/core/check/base-findings.ts`, `cli/src/core/check/relay-baseline.ts`). An opt-in pattern of `hfs.json` is declared by the harness,
   never by a task (`cli/src/harness/hfs-patterns.ts`).
+- **Every seat loads a minimal core and searches the rest (`minimal-core-search`).** The owner's words: "nạp cho op và
+  kernel và sup là tối thiểu + search i" (load the op, the Kernel and the Supervisor minimally, plus search). Each op of
+  `ops/ops/` and each coordinator brief of `ops/coordinators/` loads the few pages that seat cannot act without plus an index
+  of what exists: the [load order](../README.md#two-layers-of-context), and a generated section index (`*-sections.md`,
+  `SECTIONED_DOCS` of `cli/src/core/contexts/sectioned-docs.ts`) in place of a document too large to load whole, whose ids it
+  stands for in the read trace. Everything else is read on demand, through `starci contexts search` and `starci contexts
+  anchor`, as the worker procedure ([ops/ops/README.md](../../ops/ops/README.md)) and each coordinator brief say. A contract
+  is measured against its op's context budget once, when it is admitted (`isAdmitted` in `cli/src/harness/tasks.ts`).

@@ -324,7 +324,8 @@ node is done and, when a task names its composer (`composedBy`), its final verif
 task key) or `--change <starci/workflow-change@1 file>` (add, edit, remove, retry, accept); it records graph n+1
 atomically (`STALE` on a moved graph, idempotent by `--cmd-id`) and is refused `WORKFLOW_INVALID` for an unfit contract, the
 context budget judged only on a contract it adds or edits (a contract the current graph holds, done, unchanged or retried, is
-history and keeps the budget it was admitted under: `buildGraph`), `SCOPE_EXCEEDED` past the goal's
+admitted and keeps the budget it passed then: `buildGraph`, the admission rule of `context.budget` in
+[ops/ops/README.md](../ops/ops/README.md)), `SCOPE_EXCEEDED` past the goal's
 ceiling, and `GOAL_SHRUNK` when it drops a key of a graph planned under the current goal version that no key it adds
 takes over (`assertDeliverables` in `harness/goal.ts`): only the first replan after a goal change may drop one. Define
 and every replan are refused `TASK_NOT_SPLIT` while one task of a `perRecord` label works several Work records

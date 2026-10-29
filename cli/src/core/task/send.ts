@@ -5,7 +5,7 @@ import { contractProblems, normaliseRepoPath, parseContract, readContract } from
 import type { Contract } from "../../harness/contract.js"
 import { inTransaction, openExistingLedger, openLedger, projectDir } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
-import { createTask, getTask, recordEvent, tryAfter } from "../../harness/tasks.js"
+import { createTask, getTask, isAdmitted, recordEvent, tryAfter } from "../../harness/tasks.js"
 import { worktreeSelector } from "../../harness/orca/client.js"
 import type { TaskRow } from "../../harness/tasks.js"
 import { assertRunPlace, freshRunId, locateWorkRoot, readUatRecord, uatBinding, uatContract } from "../../harness/work.js"
@@ -150,7 +150,8 @@ export const taskSendVerb = defineVerb({
         const contract = fromWork?.contract ?? readContract(file)
         // A uat task is queued where its Work is, so its run, its record and its harness commit share one repository.
         const root = fromWork?.uat.workRoot.root ?? (await repositoryRoot(context.cwd))
-        const problems = contractProblems(contract, loadOps())
+        // A contract this ledger admitted already (a retry of the same hash) keeps the context budget it passed then.
+        const problems = contractProblems(contract, loadOps(), { budget: !isAdmitted(root, contract) })
         if (problems.length > 0) {
             // The refusal queues nothing, but the ledger keeps its evidence: what was refused and why.
             const db = openLedger(root)

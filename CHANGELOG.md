@@ -6,6 +6,29 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **An admitted contract is never refused for a context that grew under it.** The op's context budget is judged when a
+  contract is admitted (`task send`, `supervisor dispatch`, `workflow define`, a workflow change that adds or edits it). Its
+  verify, settle, relaunch and a resend or retry of the same contract hash keep the budget it passed then (`isAdmitted` in
+  `harness/tasks.ts`: a task or graph node of the ledger carries the hash; `task verify` judges a task's own contract
+  without it). starci-next-app's `be-purchase` was refused `CONTRACT_UNFIT` at its verify (24564 tokens against 24000) after
+  its worker had done the work. Bench: `admitted-contract-settles-after-context-grows`.
+- **Every seat loads a minimal core and searches the rest** (owner decision `minimal-core-search`). Canon growth had taken
+  the code op's `be`/`fe` base to about 20.7k of its 24000 tokens, so a contract with more than about 3.3k tokens of its own
+  context was unfit. The anatomy slices name each rule by id alone (its enforcers stay in anatomy.md's full tree);
+  project/README.md, project/lint.md and the shared format and scripts topics leave the code and test op bases for on-demand
+  reads (contexts/code/README.md "Read for a coding task", the core column of contexts/code/shared/README.md). Large documents
+  a seat needs to find its way in load as a generated section index (`*-sections.md`: work.md, stacks.md, ui/composition.md,
+  grammars/contract.md beside cli/README.md, listed once in `SECTIONED_DOCS` of `core/contexts/sectioned-docs.ts`), whose
+  source's rule ids it stands for in the read trace. The worker procedure and both coordinator briefs say when to
+  `contexts search` and `contexts anchor`; the Kernel loads roles.md and project/README.md, the rest of harness/ and
+  project/index.md on demand, and the Supervisor its brief without skills/starci/SKILL.md. Measured with `contract check`
+  (coordinators: brief plus launch load, bytes / 4), before → after in tokens: code full/be 21120 → 12895, lite/be 21943 →
+  13643, full/fe 18720 → 11418, lite/fe 19515 → 12176, harness 13783 → 12738, package 14340 → 13293; test full 27334 →
+  19109, lite 28157 → 19857; draw and audit core 17849 → 8880, offset-pop 18171 → 9203; uat 7679 → 1435; deliver 4341 →
+  779; Kernel 32475 → 12668; Supervisor 11306 → 9930. No budget changed. Bench: `cited-through-section-index`.
+
 ## [1.1.0-alpha.13] - 2026-10-29
 
 ### Fixed

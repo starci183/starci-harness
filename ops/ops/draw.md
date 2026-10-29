@@ -7,11 +7,11 @@ perRecord: true
 context:
   budget: 40000
   base:
-    - harness:contexts/project/work.md
+    - harness:contexts/project/work-sections.md
     - harness:contexts/ui/README.md
-    - harness:contexts/ui/composition.md
+    - harness:contexts/ui/composition-sections.md
     - harness:contexts/ui/scale.md
-    - harness:contexts/grammars/contract.md
+    - harness:contexts/grammars/contract-sections.md
     - harness:contexts/grammars/{grammar}.md
 input:
   base:

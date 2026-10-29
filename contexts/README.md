@@ -17,9 +17,9 @@ checks it runs, under either runner.
 
 | task | read |
 |---|---|
-| operate the harness: send a task, run a workflow, verify, push | `skills/starci/SKILL.md`, then `starci explain --term <group>` for the verbs you call |
+| operate the harness: send a task, run a workflow, verify, push | `skills/starci/SKILL.md` (a `[Supervisor]` seat reads its rendered brief instead, `ops/coordinators/supervisor.md`), then `starci explain --term <group>` for the verbs you call |
 | work as a worker on one task | the brief the harness rendered for the task (the worker procedure of [ops/ops/README.md](../ops/ops/README.md), then the label's op file `ops/ops/<label>.md`), then the contract it names |
-| plan as a Kernel | [harness/](#harness), [project/README.md](project/README.md), then [project/index.md](project/index.md) (generated: every file of this tree with its size, first sentence, sections and ids) instead of the tree itself; open only the files the tasks need, through the rows of "Reading order by task", and name them in each contract's `context.extend` |
+| plan as a Kernel | [harness/roles.md](harness/roles.md) and [project/README.md](project/README.md); the rest of [harness/](#harness) and [project/index.md](project/index.md) (generated: every file of this tree with its size, first sentence, sections and ids) on demand, by `starci contexts search` or the file a table below names; open only the files the tasks need, through the rows of "Reading order by task", and name them in each contract's `context.extend` |
 | edit the harness itself (`cli/`, `ops/`, `policy/`, these documents) | [CONTRIBUTING.md](../CONTRIBUTING.md), then the owner of your surface: [cli/README.md](../cli/README.md) through [harness/cli-sections.md](harness/cli-sections.md) (generated: its sections with anchor, size and first sentence; open a section with `starci contexts anchor <anchor>`, never the whole file), [policy/README.md](../policy/README.md), the header of the `ops/` file you change, and [harness/decisions.md](harness/decisions.md) |
 | author app code or UI | "Reading order by task" below and the files it routes you to; the app's own `hfs.json` and `.starciwork/` |
 | change a gate, a profile, a banned marker or the secret scan | [policy/README.md](../policy/README.md) and the file it names; the code of the gate is under `cli/src/core/check/` |
@@ -30,15 +30,20 @@ The verbs available in the working directory, with flags, effect and json schema
 
 ## Two layers of context
 
-The first layer is read before any work and is fixed: your row above, or for a worker the brief's files (the op's
-`context.base` with its anatomy slice, then the contract's `context.extend`, within the op's budget). The second layer is
-looked up on demand. A worker's brief lists its rule pages: each code topic owning a rule over a path under its
-allowPaths, opened at the sections a written file needs and citable, outside the budget. Any other question mid-task goes to `starci contexts search "<question>" [--scope ui,code,...]`,
-asked in English since the tree is English (a question in another language is translated first, keeping rule ids and
-names as written; the verb refuses it otherwise with `SEARCH_QUERY_NOT_ENGLISH`), ranks the sections of this tree, the op files, `policy/` and the harness documents and prints each hit's id, file,
-line and text. Open the hit's file before you rely on it. A hit marked citable carries a rule or decision id; `rulesApplied`
-may cite it only when that file is among the task's context files (its rule pages included), since the rules-cited check
-reads ids from those files alone.
+Every seat, worker, Kernel and Supervisor alike, loads a minimal fixed core and reads the rest on demand (owner decision
+`minimal-core-search`, [harness/decisions.md](harness/decisions.md)). The first layer is read before any work and is fixed:
+your row above, or for a worker the brief's files (the op's `context.base`, then the contract's `context.extend`, within the
+op's budget). It is the few pages the seat cannot act without plus an index of what exists: this file's tables, and a
+generated section index (`*-sections.md`, beside the document it indexes: every section with its anchor, size and opening
+sentence) in place of a document too large to load whole. The second layer is looked up on demand. A section an index lists
+opens with `starci contexts anchor <anchor>`. A worker's brief lists its rule pages: each code topic owning a rule over a
+path under its allowPaths, opened at the sections a written file needs and citable, outside the budget. Any other question
+mid-task goes to `starci contexts search "<question>" [--scope ui,code,...]`, asked in English since the tree is English (a
+question in another language is translated first, keeping rule ids and names as written; the verb refuses it otherwise with
+`SEARCH_QUERY_NOT_ENGLISH`), which ranks the sections of this tree, the op files, `policy/` and the harness documents and
+prints each hit's id, file, line and text. Open the hit's file before you rely on it. A hit marked citable carries a rule or
+decision id; `rulesApplied` may cite it only when that file is among the task's context files (its rule pages included, and
+a section index standing for its source), since the rules-cited check reads ids from those files alone.
 
 ## Harness
 

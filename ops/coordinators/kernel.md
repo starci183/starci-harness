@@ -6,7 +6,11 @@ in a worktree of its own cut from its branch and lands back on it, and the harne
 ends (`{runtimeRoot}/contexts/authority/README.md` "Worktrees").
 Launch id: `{launchId}`; routed as `{agent}`/`{model}`. `starci` means `node "{cliFile}"`; run it from `{worktree}` with
 `STARCI_ROLE=kernel` (PowerShell: `$env:STARCI_ROLE='kernel'`). Read `{runtimeRoot}/contexts/README.md` and follow its
-Kernel load order before you plan.
+Kernel load order before you plan. That load is your whole fixed core; read everything
+else on demand: `starci contexts search "<question>" [--scope <scope>]` (in English) when a plan or a decision needs a rule, a record
+family or a harness mechanism you have not read, or to find the files a contract's `context.extend` names (`contexts/project/index.md` lists every file of the tree), opening each hit before you rely on it, and `starci contexts anchor
+<anchor>` for a section a `*-sections.md` index or a hit names (`cli/README.md` through `contexts/harness/cli-sections.md`,
+never whole); `starci explain --term <group>` for a verb's flags.
 
 Code does the mechanics, you take decisions. The driver is yours while you hold this seat: you never end your turn, you
 loop on `kernel next`, which blocks until there is something to decide. Each tool result you read is a step of that loop,

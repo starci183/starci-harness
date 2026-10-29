@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { z } from "zod"
+import { sectionedSource } from "../core/contexts/sectioned-docs.js"
 import { Refusal } from "../shared/errors.js"
 import { contractCiteProblems, fillCiteCheck } from "./cite.js"
 import { BEHAVIOURAL_KINDS, checkEntrySchema, entryApplies, entryFile, entryShared, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema, trustTier } from "./ops.js"
@@ -503,9 +504,11 @@ const traceProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
         // A repository file may be written by an earlier task, so only an all-harness context can be judged before the work.
         const citable = citableContext(resolved)
         if (citable.some((file) => !file.harness)) continue
+        // A section index stands for its source, whose every section the task may open (sectioned-docs.ts sectionedSource).
+        const names = (path: string): boolean => existsSync(path) && ruleIdsIn(readFileSync(path, "utf8")).size > 0
         const named = citable.some((file) => {
-            const path = join(ops.root, file.path)
-            return existsSync(path) && ruleIdsIn(readFileSync(path, "utf8")).size > 0
+            const source = sectionedSource(file.path)
+            return names(join(ops.root, file.path)) || (source !== undefined && names(join(ops.root, source)))
         })
         if (!named) problems.push(`output key ${item.key} must cite at least ${String(minItemsOf(item.spec))} rule id(s), but no context file it may cite (shared files excluded) names one; extend context with the rules the task applies`)
     }
@@ -596,15 +599,17 @@ const allowPathProblems = (allowPaths: readonly string[]): string[] => {
     return problems
 }
 
-/** What a contract is judged on: every problem, or (`budget: false`) all but the context budget, for a contract a graph holds already. */
+/** What a contract is judged on: every problem, or (`budget: false`) all but the context budget, for a contract already admitted. */
 export interface ContractJudging {
     readonly budget?: boolean
 }
 
 /**
  * Problems that make a contract unfit to send, beyond its schema: label, base kept, paths, context files, the context budget and
- * the behavioural rule. The budget measures the context files as they are now, so it is judged on a contract being written; a
- * contract a workflow's graph holds already passed it when it was added (`budget: false`, graph.ts buildGraph).
+ * the behavioural rule. The budget measures the context files as they are now, so it is judged once, when the contract is
+ * admitted (task send, supervisor dispatch, workflow define, or a workflow change that adds or edits it). An admitted contract
+ * (`budget: false`) keeps the budget it passed then: its verify, relaunch, retry of the same hash and settle never refuse it for
+ * a context that grew under it (tasks.ts isAdmitted, graph.ts buildGraph's `held`, task verify).
  */
 export const contractProblems = (contract: Contract, ops: Ops, judging: ContractJudging = {}): string[] => {
     const problems = allowPathProblems(contract.context.allowPaths)

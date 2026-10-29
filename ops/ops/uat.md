@@ -5,8 +5,8 @@ floor: medium
 hostTools: [browser]
 context:
   base:
-    - harness:contexts/project/work.md
-    - harness:contexts/project/stacks.md
+    - harness:contexts/project/work-sections.md
+    - harness:contexts/project/stacks-sections.md
 input:
   base:
     record: the Work record of the flow (`.starciwork/features/<feature>/uat/<flow>/index.yaml`)
