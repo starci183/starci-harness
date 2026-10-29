@@ -30,7 +30,10 @@ applies the edge settings and logs a startup failure with the failing key. `<app
 interface of parsed members and `read<App>Env` (BE-CONFIG-1). `<app>.options.ts` holds port maps (`{ notifier:
 NotifierService }`) and re-exports the options type, with no parsing. A `compose/<area>.ts` returns a typed
 `Array<DynamicModule>` for one area; `app.module.ts` spreads the groups and provides only `APP_FILTER` and the
-`APP_GUARD` chain.
+`APP_GUARD` chain. An area group may also export its capabilities' catalogs as typed lists
+(`ReadonlyArray<Readonly<Record<string, ErrorKind>>>` of their `<C>_ERROR_KINDS`, `MessageBundle[]` of their `<C>_MESSAGES`), which
+`compose/platform.ts` spreads into `ErrorsModule.register({ kinds })` and `I18nModule.register({ bundles })`, so a large app keeps
+each compose file within its budget.
 
 Why: a thin root makes startup explicit and keeps behaviour testable below it; one group per area keeps options pure
 data and the root a table of contents.

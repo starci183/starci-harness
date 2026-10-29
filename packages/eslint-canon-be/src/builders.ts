@@ -122,8 +122,42 @@ const BUILDERS = "be.tests.fixtures.builders"
 const SPEC_SLOTS = new Set(["be.tests.integration", "be.tests.e2e", "be.tests.contract"])
 const CREATING_METHODS = new Set(["save", "insert", "upsert"])
 
-/** The test world slots: the one test owner of raw SQL (no-raw-sql), for what entities cannot express (an RLS probe, a pgmq queue, a pre-migration schema). */
+/** The test world slots: the one test owner of raw SQL (no-raw-sql), for what entities cannot express (an RLS probe, a pgmq queue). */
 const WORLD_SLOTS = new Set(["be.tests.world", "be.tests.world.kit"])
+/** The table a raw INSERT writes: `INSERT INTO [schema.]table`, quotes dropped, schema default `public`. */
+const INSERT_TARGET = /\binsert\s+into\s+("?[\w$]+"?)(?:\s*\.\s*("?[\w$]+"?))?/iu
+const unquote = (name: string) => name.replace(/^"|"$/gu, "").toLowerCase()
+const insertTarget = (sql: string): string | null => {
+    const match = INSERT_TARGET.exec(sql)
+    if (!match?.[1]) return null
+    return match[2] ? `${unquote(match[1])}.${unquote(match[2])}` : `public.${unquote(match[1])}`
+}
+/** The tables the program's entities map, as `schema.table` (from `@Entity("t")` or `@Entity({ name, schema })`), cached per program. */
+const entityTablesByProgram = new WeakMap<ts.Program, ReadonlySet<string>>()
+const entityTables = (program: ts.Program, checker: ts.TypeChecker): ReadonlySet<string> => {
+    const cached = entityTablesByProgram.get(program)
+    if (cached) return cached
+    const tables = new Set<string>()
+    const literal = (node: ts.Node | undefined) => (node && ts.isStringLiteralLike(node) ? node.text.toLowerCase() : null)
+    const visit = (node: ts.Node): void => {
+        if (isEntityClass(checker, node)) {
+            for (const decorator of ts.getDecorators(node) ?? []) {
+                if (!ts.isCallExpression(decorator.expression)) continue
+                const [first] = decorator.expression.arguments
+                if (literal(first)) tables.add(`public.${literal(first)}`)
+                else if (first && ts.isObjectLiteralExpression(first)) {
+                    const value = (key: string) => literal(first.properties.find((property): property is ts.PropertyAssignment => ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === key)?.initializer)
+                    const name = value("name")
+                    if (name) tables.add(`${value("schema") ?? "public"}.${name}`)
+                }
+            }
+        }
+        ts.forEachChild(node, visit)
+    }
+    for (const file of program.getSourceFiles()) if (!file.isDeclarationFile && !file.fileName.includes("/node_modules/")) visit(file)
+    entityTablesByProgram.set(program, tables)
+    return tables
+}
 
 /** A file of the test tree that is not a spec and is not the builders slot. */
 const isTestSupport = (slot: string | null | undefined) => typeof slot === "string" && slot.startsWith("be.tests.") && slot !== BUILDERS && !SPEC_SLOTS.has(slot)
@@ -156,9 +190,16 @@ export const persistingBuilderInBuildersSlot: RuleModule = {
     create(context) {
         const slot = hfsOf(context).slotOf(context.filename || context.getFilename())
         if (!isTestSupport(slot)) return {}
-        // A raw INSERT in the test world is a named probe of what entities cannot express, which no-raw-sql admits there and refuses in
-        // the builders slot; an entity write (save, insert, upsert) in the world still arranges data and belongs to a builder.
-        const rawIsWorldProbe = WORLD_SLOTS.has(slot ?? "")
+        // A raw INSERT in the test world into a table no entity maps (storage.objects, a pgmq queue, a policy table) is a named probe of
+        // what entities cannot express, which no-raw-sql admits there and refuses in the builders slot. A raw INSERT into a mapped table,
+        // and an entity write (save, insert, upsert), still arranges data and belongs to a builder.
+        const inWorld = WORLD_SLOTS.has(slot ?? "")
+        const worldProbe = (sql: string): boolean => {
+            if (!inWorld) return false
+            const target = insertTarget(sql)
+            const { program, checker } = typed(context)
+            return target !== null && !entityTables(program, checker).has(target)
+        }
         const sourceCode = context.sourceCode || context.getSourceCode()
         const writes = new Set<Node>()
         const references = new Map<Node, Set<string>>()
@@ -166,7 +207,8 @@ export const persistingBuilderInBuildersSlot: RuleModule = {
             const method = methodOf(node)
             if (!method || node.callee.type !== "MemberExpression" || !isDatabaseReceiver(context, node.callee.object)) return false
             if (CREATING_METHODS.has(method)) return true
-            return method === "query" && !rawIsWorldProbe && INSERTING_SQL.test(queryText(node.arguments[0], sourceCode.getScope(node)) ?? "")
+            const sql = queryText(node.arguments[0], sourceCode.getScope(node)) ?? ""
+            return method === "query" && INSERTING_SQL.test(sql) && !worldProbe(sql)
         }
         return {
             CallExpression(node) {

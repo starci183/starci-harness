@@ -1,1 +1,1 @@
-export type { RequestLocale } from "./i18n.contracts"
+export type { MessageBundle, RequestLocale } from "./i18n.contracts"

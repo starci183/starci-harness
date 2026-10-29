@@ -213,7 +213,25 @@ const compositionTypes = (checker: ts.TypeChecker) => {
         const parts = element.isUnion() ? element.types : [element]
         return parts.every((part) => contains(part, true))
     }
-    return { arrayElement, contains, typedList }
+    /** Whether a type is declared under the app's `platform/<area>` capability folder. */
+    const declaredIn = (symbol: ts.Symbol | undefined, area: string): boolean =>
+        symbol?.getDeclarations()?.some((declaration) => normalizePath(declaration.getSourceFile().fileName).includes(`/modules/platform/${area}/`)) ?? false
+    /** A message bundle of `platform/i18n`, or a table of error kinds: every value (property or index) is `platform/errors`' ErrorKind. */
+    const catalogEntry = (type: ts.Type): boolean => {
+        if (declaredIn(type.getSymbol(), "i18n") && type.getSymbol()?.name === "MessageBundle") return true
+        if (!(type.flags & ts.TypeFlags.Object)) return false
+        const kind = (value: ts.Type | null): boolean => value?.aliasSymbol?.name === "ErrorKind" && declaredIn(value.aliasSymbol, "errors")
+        const values = [...type.getProperties().map((property) => propertyType(type, property.name)), ...checker.getIndexInfosOfType(type).map((index) => index.type)]
+        return values.length > 0 && values.every(kind)
+    }
+    /** A typed list of catalogs: message bundles or error-kind tables, the catalogs `platform.ts` hands I18nModule and ErrorsModule. */
+    const catalogList = (type: ts.Type): boolean => {
+        const element = arrayElement(type)
+        if (!element || element.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return false
+        const parts = element.isUnion() ? element.types : [element]
+        return parts.every(catalogEntry)
+    }
+    return { arrayElement, contains, typedList, catalogList }
 }
 
 /** R265: app values compose only in typed groups, never in env/options/bootstrap lists. */
@@ -235,7 +253,7 @@ export const appCompositionTyped: RuleModule = {
         const typedRoles: ReadonlyArray<string | undefined> = [APP_ENV_ROLE, APP_OPTIONS_ROLE, "main.ts", "compose/<area>.ts"]
         if (!typedRoles.includes(role)) return {}
         const { checker, toTs } = typed(context)
-        const { arrayElement, contains, typedList } = compositionTypes(checker)
+        const { arrayElement, contains, typedList, catalogList } = compositionTypes(checker)
         const reported = new WeakSet<Node>()
         const hasReport = (node: Node): boolean => {
             for (let ancestor: Node | undefined = node; ancestor; ancestor = ancestor.parent) if (reported.has(ancestor)) return true
@@ -274,7 +292,9 @@ export const appCompositionTyped: RuleModule = {
                 report(node, "business")
                 return
             }
-            if (!annotation || !typedList(result)) report(node, "group")
+            // A group composes modules, providers, queues or schedules, or carries an area's catalogs (error kinds, message bundles) that
+            // platform.ts spreads into ErrorsModule and I18nModule, so a large app keeps each compose file within its budget.
+            if (!annotation || !(typedList(result) || catalogList(result))) report(node, "group")
         }
         const annotationOf = (node: Node | null | undefined): unknown => {
             if (!node) return null

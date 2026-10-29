@@ -22,12 +22,17 @@ for (const edition of ["lite", "full"]) {
             valid: [
                 { filename: BUILDER, code: PERSIST_ORDER },
                 { filename: WORLD, code: `${DB_IMPORT}export const countOrders = (db: EntityManager) => db.query("SELECT count(*) FROM orders")` },
+                // a raw INSERT into a table no entity maps is a probe of the world (no-raw-sql admits raw SQL only there)
+                { filename: WORLD, code: `${DB_IMPORT}export const probeStorage = (runner: QueryRunner) => runner.query("INSERT INTO storage.objects (name) VALUES ('a')")` },
                 { filename: FIXTURES, code: `${DB_IMPORT}declare const db: EntityManager\nconst warm = () => db.save({ id: 1 })\nwarm()\nexport const fixtureId = 1` },
                 { filename: WORLD, code: "declare const cache: { save(value: number): void }\nexport const remember = () => cache.save(1)" },
             ],
             invalid: [
                 { filename: FIXTURES, code: PERSIST_ORDER, errors: [{ messageId: "misplaced" }] },
-                { filename: WORLD, code: `${DB_IMPORT}export const seedOrders = (runner: QueryRunner) => runner.query("INSERT INTO orders (id) VALUES (1)")`, errors: [{ messageId: "misplaced" }] },
+                // a raw INSERT into a table an entity maps still arranges data, even in the world (the app's program holds its entities)
+                { filename: WORLD, code: `${DB_IMPORT}import type { OrderEntity } from "@modules/domain/order/persistence/entities/order.entity"
+export type Seeded = OrderEntity
+export const seedOrders = (runner: QueryRunner) => runner.query("INSERT INTO orders (id) VALUES (1)")`, errors: [{ messageId: "misplaced" }] },
                 { filename: FIXTURES, code: `${DB_IMPORT}const write = (db: EntityManager) => db.upsert(Object, {}, ["id"])\nexport const arrange = (db: EntityManager) => write(db)`, errors: [{ messageId: "misplaced" }] },
                 { filename: WORLD, code: `${DB_IMPORT}const seed = (db: EntityManager) => db.save({ id: 1 })\nexport { seed }`, errors: [{ messageId: "misplaced" }] },
             ],

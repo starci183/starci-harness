@@ -221,6 +221,14 @@ export default function area(): Array<Type<unknown> | DynamicModule> { return [C
 export const ports: Provider[] = [{ provide: "APPROVAL", useClass: Adapter }]`),
                 example(GROUP, 'export const schedules: Schedule[] = [{ queue: "billing", id: "tick", everyMs: 1000 }]'),
                 example(GROUP, 'export const schedules: ReadonlyArray<QueueSchedulerDefinition> = [{ queue: "billing", id: "tick", everyMs: 1000 }]'),
+                // an area's catalogs, which platform.ts spreads into ErrorsModule and I18nModule: typed error-kind tables and message bundles
+                example(GROUP, `import type { ErrorKind } from "@modules/platform/errors"
+enum BillingErrorCode { Declined = "BILLING_DECLINED", Missing = "BILLING_MISSING" }
+const BILLING_ERROR_KINDS: Record<BillingErrorCode, ErrorKind> = { [BillingErrorCode.Declined]: "conflict", [BillingErrorCode.Missing]: "not-found" }
+export const billingErrorKinds: ReadonlyArray<Readonly<Record<string, ErrorKind>>> = [BILLING_ERROR_KINDS]`),
+                example(GROUP, `import type { MessageBundle } from "@modules/platform/i18n"
+const BILLING_MESSAGES: MessageBundle = { vi: { declined: "Bị từ chối" }, en: { declined: "Declined" } }
+export const billingMessages: MessageBundle[] = [BILLING_MESSAGES]`),
             ],
             invalid: [
                 // CE1: a renamed module still has its decorated constructor type.
@@ -261,6 +269,11 @@ Local.run([Core])`, "outside"),
                 example(GROUP, '@Module({}) class Core {}\nexport const area = () => [Core]', "group"),
                 example(GROUP, '@Module({}) class Core {}\nexport const area = [Core]', "group"),
                 example(GROUP, 'export const area: unknown[] = []', "group"),
+                // a catalog list is typed like any group, and only bundles and error-kind tables are catalogs
+                example(GROUP, `import type { ErrorKind } from "@modules/platform/errors"
+const KINDS: Record<string, ErrorKind> = { A: "invalid" }
+export const kinds = [KINDS]`, "group"),
+                example(GROUP, 'export const labels: ReadonlyArray<Readonly<Record<string, string>>> = [{ a: "b" }]', "group"),
                 example(GROUP, 'export const area: Array<DynamicModule | string> = []', "group"),
                 example(GROUP, 'export const area = (): object[] => []', "group"),
                 example(GROUP, '@Module({}) class Core {}\nconst area = [Core]\nexport { area }', "group"),

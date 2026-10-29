@@ -1738,7 +1738,7 @@ rules:
       - {kind: eslint-be, id: feature-logic-role}
   - id: R265
     code: BE_COMPOSITION_UNTYPED
-    law: App composition lives only in typed `compose/<area>.ts` groups identified by resolved types, never in `main.ts`, `<app>.env.ts` or `<app>.options.ts`.
+    law: App composition lives only in typed `compose/<area>.ts` groups identified by resolved types, never in `main.ts`, `<app>.env.ts` or `<app>.options.ts`; a group composes modules, providers, queues or schedules, or carries its area's typed catalogs (error-kind tables of `platform/errors`, message bundles of `platform/i18n`) that `compose/platform.ts` spreads into ErrorsModule and I18nModule.
     failureCodes:
       - BE_COMPOSITION_UNTYPED
     enforcers:
