@@ -5,7 +5,7 @@ import { classifyFailure } from "./circuit.js"
 import { openDecisions, raiseDecision } from "./coordinator-commands.js"
 import type { Decision } from "./coordinator-commands.js"
 import { openLedger } from "./ledger.js"
-import { OrcaFailure, requestIdOf, terminalOfFailure, terminalRead, terminalSubmit } from "./orca/client.js"
+import { OrcaFailure, terminalOfFailure, terminalRead, terminalSubmit } from "./orca/client.js"
 import { recordEvent } from "./tasks.js"
 import type { OrcaBinary } from "./orca/client.js"
 import type { FailureKind, Routing } from "./routing.js"
@@ -93,9 +93,10 @@ export const COMPOSER_RESUBMITTED = "seat-composer-resubmitted"
 
 /**
  * Submits a dispatch left pasted in its agent's composer (routing.yaml pendingComposer): reads the seat's terminal screen once
- * and, when its last lines show the paste, sends a bare Enter under a request id of the seat and the attempt number, recording
- * a COMPOSER_RESUBMITTED event, at most resubmitMax times per seat. Returns what it did, or null when the screen showed no paste,
- * the terminal is unreadable or the re-submits are spent.
+ * and, when its last lines show the paste, records a COMPOSER_RESUBMITTED event and then sends a bare Enter, at most
+ * resubmitMax times per seat (the recorded count, not a request id, bounds the replays: Orca takes none on a bare Enter). Returns
+ * what it did, or null when the screen showed no paste, the terminal is unreadable, the re-submits are spent or Orca refused
+ * the Enter; a refusal never fails the caller's step.
  */
 export const resubmitPendingComposer = async (binary: OrcaBinary, cwd: string, root: string, seat: { readonly id: string; readonly terminal: string | null }, routing: Routing): Promise<string | null> => {
     if (seat.terminal === null) return null
@@ -106,8 +107,9 @@ export const resubmitPendingComposer = async (binary: OrcaBinary, cwd: string, r
     const line = rows === null ? undefined : pastedLine(lastLines(rows, routing.blockedPrompts.screenLines), patterns)
     if (line === undefined) return null
     const terminal = seat.terminal
-    await terminalSubmit(binary, { terminal, retryRequest: requestIdOf("composer-submit", `${seat.id}\0${String(sent + 1)}`) }, cwd)
     withLedgerOf(root, (db) => { recordEvent(db, COMPOSER_RESUBMITTED, seat.id, { n: sent + 1, terminal, line: line.trim() }); })
+    const submitted = await terminalSubmit(binary, { terminal }, cwd).then(() => true, () => false)
+    if (!submitted) return null
     return `its dispatch sat pasted in the composer of ${terminal} ("${line.trim()}"): submitted again (${String(sent + 1)} of ${String(resubmitMax)})`
 }
 

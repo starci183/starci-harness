@@ -244,6 +244,9 @@ const defaults = (command, flags, state) => {
         case "terminal send": {
             // A nudge typed into a terminal; the same retry-request is one prompt, never typed twice.
             if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
+            // Orca's own rule: a retry-request (or wait-submit) needs --text with --enter and no --interrupt.
+            if ((flags["retry-request"] !== undefined || flags["wait-submit"] !== undefined) && (typeof flags.text !== "string" || flags.enter !== true || flags.interrupt !== undefined))
+                return refuse("invalid_argument", "--retry-request and --wait-submit require --text with --enter and without --interrupt.")
             const key = flags["retry-request"] ?? String(state.calls)
             state.typed = state.typed ?? {}
             if (state.typed[key] === undefined) state.typed[key] = { terminal: flags.terminal, text: flags.text, enter: flags.enter === true }
