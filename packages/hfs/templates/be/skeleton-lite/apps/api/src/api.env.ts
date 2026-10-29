@@ -3,7 +3,7 @@ import { parseServerConfig } from "@modules/platform/config"
 import { parsePrimaryDatabaseConfig } from "@modules/platform/database"
 import { parseHttpSecurityConfig } from "@modules/platform/http-security"
 import { parsePassportConfig } from "@modules/integrations/passport"
-import { parseStorageConfig } from "@modules/integrations/storage"
+import { parseObjectStorageConfig } from "@modules/integrations/object-storage"
 
 /** The API environment values required before composition. */
 export interface ApiEnv {
@@ -16,7 +16,7 @@ export interface ApiEnv {
     /** Google OAuth, the app's own access tokens and the refresh cookie. */
     readonly passport: ReturnType<typeof parsePassportConfig>
     /** S3-compatible object storage. */
-    readonly storage: ReturnType<typeof parseStorageConfig>
+    readonly objectStorage: ReturnType<typeof parseObjectStorageConfig>
 }
 
 /** Reads the API environment; missing or invalid values fail boot, and secrets use `_FILE` first. */
@@ -25,5 +25,5 @@ export const readApiEnv = (env: EnvSource): ApiEnv => ({
     httpSecurity: parseHttpSecurityConfig(env),
     database: parsePrimaryDatabaseConfig(env),
     passport: parsePassportConfig(env),
-    storage: parseStorageConfig(env),
+    objectStorage: parseObjectStorageConfig(env),
 })

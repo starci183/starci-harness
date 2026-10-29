@@ -2,7 +2,7 @@ import { Secret } from "@modules/platform/config"
 import { PRIMARY_DATA_SOURCE } from "@modules/platform/database"
 import { ACCESS_TOKEN_VERIFIER } from "@modules/domain/identity"
 import { OWN_TOKEN_VERIFIER } from "@modules/integrations/passport"
-import { OBJECT_STORAGE } from "@modules/integrations/storage"
+import { OBJECT_STORAGE } from "@modules/integrations/object-storage"
 
 /** Compiles the real API root with public configuration and explicit infrastructure doubles. */
 export const buildWiringProof = () => ({
@@ -24,7 +24,7 @@ export const buildWiringProof = () => ({
             tokens: { issuer: "https://api.fixture.example", audience: "fixture", privateKey: new Secret("fixture-only"), keyId: "k1", accessTtlSeconds: 900 },
             refresh: { name: "refresh_token", path: "/auth/refresh", ttlSeconds: 2592000 },
         },
-        storage: {
+        objectStorage: {
             endpoint: "https://storage.fixture.example",
             region: "us-east-1",
             bucket: "fixture",

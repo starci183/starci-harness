@@ -285,7 +285,7 @@ liteAdapter:
     that declares fenced-job declares `backing: [redis]`. Without a declared Redis a lite app has no fenced job; a long task is
     a declared replicated-job running a cli command.
   ports:
-    - {port: job claim (platform/jobs), adapter: "the same claim SQL through the shared EntityManager; the table comes from db/migrations"}
+    - {port: job claim (platform/jobs), adapter: "the claim and guarded writes as the job_claim, job_advance, job_complete and job_fail functions of the jobs migration in db/migrations, called through callDbFunction of platform/database (R334)"}
     - {port: processor delivery, adapter: "full's BullMQ worker (attempts and exponential backoff from the queue policy, failed jobs kept as the dead letter)"}
   proof: >-
     Unit specs as full (job-claim.service.spec.ts); declaring fenced-job requires integration specs titled

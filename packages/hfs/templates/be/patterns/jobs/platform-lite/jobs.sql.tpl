@@ -42,3 +42,54 @@ with check (kind is not null);
 
 revoke all on table public.jobs from public, anon, authenticated;
 grant select, insert, update on table public.jobs to app_be;
+
+-- The claim and the guarded writes, called through callDbFunction of platform/database (R334). A claim inserts a new key with
+-- token 1 or claims a failed or expired one again, bumping the token; a done job or a live claim returns no row. Every other
+-- write matches only the token the caller holds, so a worker that lost its claim changes nothing and gets no row back.
+create function public.job_claim(p_kind varchar, p_job_key varchar, p_worker varchar, p_lease_end timestamptz, p_payload jsonb, p_now timestamptz)
+returns table (id uuid, kind varchar, fencing_token bigint, current_step varchar, payload jsonb)
+language sql
+as $$
+    insert into public.jobs as j (kind, job_key, status, fencing_token, claimed_by, lease_expires_at, payload, created_at, updated_at)
+    values (p_kind, p_job_key, 'running', 1, p_worker, p_lease_end, p_payload, p_now, p_now)
+    on conflict (job_key) do update
+       set fencing_token = j.fencing_token + 1, claimed_by = p_worker, lease_expires_at = p_lease_end, status = 'running', error = null, updated_at = p_now
+     where j.status = 'failed' or (j.status = 'running' and j.lease_expires_at < p_now)
+    returning j.id, j.kind, j.fencing_token, j.current_step, j.payload
+$$;
+
+create function public.job_advance(p_id uuid, p_token bigint, p_step varchar, p_now timestamptz)
+returns table (id uuid)
+language sql
+as $$
+    update public.jobs as j set current_step = p_step, updated_at = p_now
+     where j.id = p_id and j.fencing_token = p_token and j.status = 'running'
+    returning j.id
+$$;
+
+create function public.job_complete(p_id uuid, p_token bigint, p_now timestamptz)
+returns table (id uuid)
+language sql
+as $$
+    update public.jobs as j set status = 'done', lease_expires_at = null, updated_at = p_now
+     where j.id = p_id and j.fencing_token = p_token and j.status = 'running'
+    returning j.id
+$$;
+
+create function public.job_fail(p_id uuid, p_token bigint, p_reason text, p_now timestamptz)
+returns table (id uuid)
+language sql
+as $$
+    update public.jobs as j set status = 'failed', error = p_reason, lease_expires_at = null, updated_at = p_now
+     where j.id = p_id and j.fencing_token = p_token and j.status = 'running'
+    returning j.id
+$$;
+
+revoke all on function public.job_claim(varchar, varchar, varchar, timestamptz, jsonb, timestamptz) from public;
+grant execute on function public.job_claim(varchar, varchar, varchar, timestamptz, jsonb, timestamptz) to app_be;
+revoke all on function public.job_advance(uuid, bigint, varchar, timestamptz) from public;
+grant execute on function public.job_advance(uuid, bigint, varchar, timestamptz) to app_be;
+revoke all on function public.job_complete(uuid, bigint, timestamptz) from public;
+grant execute on function public.job_complete(uuid, bigint, timestamptz) to app_be;
+revoke all on function public.job_fail(uuid, bigint, text, timestamptz) from public;
+grant execute on function public.job_fail(uuid, bigint, text, timestamptz) to app_be;

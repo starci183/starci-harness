@@ -1,7 +1,7 @@
 import type { Secret } from "@modules/platform/config"
 
 /** S3-compatible object storage (MinIO in lite) parsed once at API boot. */
-export interface StorageOptions {
+export interface ObjectStorageOptions {
     /** The S3 endpoint origin. */
     readonly endpoint: string
     /** The region the endpoint signs for. */

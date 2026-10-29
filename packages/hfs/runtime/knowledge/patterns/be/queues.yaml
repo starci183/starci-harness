@@ -279,7 +279,7 @@ liteAdapter:
     is not a queue transport. `starci app add queue|job` writes this adapter in a lite app, with the outbox and job
     tables as one db migration, the Redis declaration and the persisted Redis of every docker-swarm environment.
   ports:
-    - {port: QueueOutbox (platform/queue), adapter: "full's outbox row written through the caller's tx; the table comes from a db migration (no TypeORM entity under lite)"}
+    - {port: QueueOutbox (platform/queue), adapter: "the outbox row written through the caller's tx by queue_write, and the relay's queue_waiting and queue_mark_sent, functions of the queue migration in db/migrations called through callDbFunction of platform/database (R334)"}
     - {port: queue transport (queue-transport.port.ts), adapter: "full's bullmq-queue-transport.client.ts over the declared Redis (host, port, db and the password read from its sealed secret file), plus persist(jobs): WAITAOF 1 0 on each queue's connection, then each job's state, refusing with QUEUE_NOT_PERSISTED or QUEUE_JOB_LOST (errors/queue.error.ts)"}
     - {port: outbox relay (queue-relay.service.ts), adapter: "full's relay, which calls persist after the adds and before it marks the rows sent, so a refusal rolls the mark back and the next pass adds the rows again"}
     - {port: QueueWorkerRegistry (platform/queue), adapter: "full's BullMQ worker per queue: attempts and exponential backoff from queue.policy.ts, failed jobs kept as the dead letter"}

@@ -34,13 +34,18 @@ const LITE_TEMPLATES = Object.freeze({
   'queues/platform/queue-relay.service.ts.tpl': 'queues/platform-lite/queue-relay.service.ts.tpl',
   'queues/platform/queue-relay.service.spec.ts.tpl': 'queues/platform-lite/queue-relay.service.spec.ts.tpl',
   'queues/platform/queue.module.ts.tpl': 'queues/platform-lite/queue.module.ts.tpl',
-  'queues/platform/persistence.queue.sql.ts.tpl': 'queues/platform-lite/persistence.queue.sql.ts.tpl',
+  'queues/platform/queue-outbox.service.ts.tpl': 'queues/platform-lite/queue-outbox.service.ts.tpl',
+  'queues/platform/queue-outbox.service.spec.ts.tpl': 'queues/platform-lite/queue-outbox.service.spec.ts.tpl',
   'jobs/platform/jobs.index.ts.tpl': 'jobs/platform-lite/jobs.index.ts.tpl',
-  'jobs/platform/persistence.jobs.sql.ts.tpl': 'jobs/platform-lite/persistence.jobs.sql.ts.tpl',
+  'jobs/platform/job-claim.service.ts.tpl': 'jobs/platform-lite/job-claim.service.ts.tpl',
+  'jobs/platform/job-claim.service.spec.ts.tpl': 'jobs/platform-lite/job-claim.service.spec.ts.tpl',
 });
 
-/** The TypeORM-only files of a platform capability: lite's schema authority is db/migrations (be.persistence lite overlay). */
-const TYPEORM_ONLY = /\/persistence\/(?:connection\.ts$|entities\/|migrations\/)/;
+/**
+ * The persistence files lite leaves out: the TypeORM schema (its authority is db/migrations) and the SQL text and row files (the
+ * statements are database functions of the lite migration, called through callDbFunction; R334 and the be.persistence lite overlay).
+ */
+const TYPEORM_ONLY = /\/persistence\/(?:connection\.ts$|entities\/|migrations\/|[^/]+\.(?:sql|rows)\.ts$)/;
 
 /** The e2e proof slot lite forbids (R212); a lite pattern proves itself with optional integration specs (the topic's liteAdapter proof). */
 const E2E_SLOT = 'be.tests.e2e';

@@ -1,8 +1,8 @@
 import type { EnvSource } from "@modules/platform/config"
-import type { StorageOptions } from "./storage.options"
+import type { ObjectStorageOptions } from "./object-storage.options"
 
 /** Reads the object storage configuration with no credential or endpoint defaults; secrets read `<KEY>_FILE` first. */
-export const parseStorageConfig = (env: EnvSource): StorageOptions => ({
+export const parseObjectStorageConfig = (env: EnvSource): ObjectStorageOptions => ({
     endpoint: env.url("STORAGE_ENDPOINT"),
     region: env.string("STORAGE_REGION"),
     bucket: env.string("STORAGE_BUCKET"),

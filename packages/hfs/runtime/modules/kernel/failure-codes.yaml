@@ -5572,12 +5572,12 @@ BE_AUTH_REFRESH_COOKIE:
   kind: check-finding
 
 BE_STORAGE_OWNER:
-  title: "An S3 SDK is imported outside integrations/storage"
-  title_vi: "S3 SDK bị import ngoài integrations/storage"
-  meaning_vi: "File `<path>` import @aws-sdk/client-s3 hoặc @aws-sdk/s3-request-presigner ngoài `be.integrations.storage`, hoặc import minio."
+  title: "An S3 SDK is imported outside integrations/object-storage"
+  title_vi: "S3 SDK bị import ngoài integrations/object-storage"
+  meaning_vi: "File `<path>` import @aws-sdk/client-s3 hoặc @aws-sdk/s3-request-presigner ngoài `be.integrations.object-storage`, hoặc import minio."
   causes_vi:
     - "Vi phạm R331: chỉ integration storage sở hữu client S3 (MinIO trong lite) và URL presigned."
-  nextStep_vi: "Gọi port ObjectStorage của integrations/storage (presignPut, presignGet, remove); bỏ minio."
+  nextStep_vi: "Gọi port ObjectStorage của integrations/object-storage (presignPut, presignGet, remove); bỏ minio."
   owner: op-retry
   kind: check-finding
 
@@ -5596,7 +5596,7 @@ BE_PERSISTENCE_NO_RAW_SQL:
   title_vi: "Mã domain của app lite chạy SQL thô thay vì entity TypeORM"
   meaning_vi: "File `<path>` gọi `.query(` hoặc dùng template `sql` ngoài platform/database và ngoài danh sách hàm ruleParams.be.lite.rawSqlFunctions."
   causes_vi:
-    - "Vi phạm R333: dữ liệu của app lite đi qua entity TypeORM trên EntityManager (find, save, update, upsert, createQueryBuilder)."
+    - "Vi phạm R334: dữ liệu của app lite đi qua entity TypeORM trên EntityManager (find, save, update, upsert, createQueryBuilder)."
   nextStep_vi: "Khai entity ở persistence/entities/<table>.entity.ts và đọc/ghi bằng EntityManager hoặc createQueryBuilder với tham số có tên; hàm pg/SECURITY DEFINER không diễn đạt được thì khai vào rawSqlFunctions kèm lý do."
   owner: op-retry
   kind: check-finding

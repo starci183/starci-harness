@@ -543,12 +543,12 @@ pins:
     version: 3.1150.0
     group: framework
     side: be
-    why: 'the S3 transport of integrations/storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces); 3.1150.0 is the release of 2026-10-12, chosen over newer ones that had not aged two weeks.'
+    why: 'the S3 transport of integrations/object-storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces); 3.1150.0 is the release of 2026-10-12, chosen over newer ones that had not aged two weeks.'
   '@aws-sdk/s3-request-presigner':
     version: 3.1150.0
     group: framework
     side: be
-    why: 'signs the presigned PUT and GET of integrations/storage locally, the same release as client-s3.'
+    why: 'signs the presigned PUT and GET of integrations/object-storage locally, the same release as client-s3.'
   '@apollo/server':
     version: 5.5.1
     group: framework
@@ -596,10 +596,10 @@ pins:
     why: 'the Express 5 integration @nestjs/apollo loads at boot (R111 nestjs-apollo-express5, knowledge/hfs/peer-integrations.yaml); every api app that serves GraphQL installs it; the latest registry version on 2026-10-13.'
   # --- lite identity (integrations/passport, ruling lite-self-hosted-postgres-passport-minio)
   '@nestjs/passport':
-    version: 12.0.0
+    version: 11.0.5
     group: framework
     side: be
-    why: 'PassportStrategy of integrations/passport; 12.0.0 declares @nestjs/common ^11 || ^12, so it sits on the Nest 11 line.'
+    why: 'PassportStrategy of integrations/passport; 11.0.5 is CommonJS on the Nest 11 line (12.0.0 is ESM-only and breaks Nest 11 jest under the CommonJS transform of @starci/jest-preset), as nivo-lite runs it.'
   passport:
     version: 0.7.0
     group: framework
@@ -615,11 +615,6 @@ pins:
     group: framework
     side: be
     why: the email and password strategy of integrations/passport.
-  '@nestjs/jwt':
-    version: 12.0.3
-    group: framework
-    side: be
-    why: the Nest JWT module, owned by integrations/passport when an app signs through it (the skeleton signs with jose).
   bcryptjs:
     version: 3.0.3
     group: framework

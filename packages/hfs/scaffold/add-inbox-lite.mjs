@@ -72,8 +72,8 @@ const databasePatches = (root) => {
       "lite add webhook needs the scaffolded platform/database capability",
     );
   let index = fs.readFileSync(indexFile, "utf8").replace(/\r\n/g, "\n");
-  if (!index.includes('export { recordWebhookDelivery } from "./webhook-inbox.client"'))
-    index = `${index.trimEnd()}\nexport { recordWebhookDelivery } from "./webhook-inbox.client"\n`;
+  if (!index.includes('export { recordWebhookDelivery, webhookReceiptInsert } from "./webhook-inbox.client"'))
+    index = `${index.trimEnd()}\nexport { recordWebhookDelivery, webhookReceiptInsert } from "./webhook-inbox.client"\n`;
   if (!index.split("\n").some((line) => line.startsWith("export { ") && line.includes("DatabaseErrorCode") && line.endsWith(' } from "./errors/database.error"')))
     index = `${index.trimEnd()}\nexport { DatabaseError, DatabaseErrorCode } from "./errors/database.error"\n`;
   let error = withSqlIdentifierError(fs.readFileSync(errorFile, "utf8").replace(/\r\n/g, "\n"));
@@ -220,10 +220,6 @@ export function addLiteWebhookInbox({
     {
       relative: `${base}/${provider}-inbox.service.spec.ts`,
       text: template("service.spec.ts.tpl", renderValues),
-    },
-    {
-      relative: `${base}/persistence/${provider}-inbox.sql.ts`,
-      text: template("sql.ts.tpl", renderValues),
     },
     {
       relative: `be/src/modules/events/${provider}/${provider}-delivery-recorded.event.ts`,

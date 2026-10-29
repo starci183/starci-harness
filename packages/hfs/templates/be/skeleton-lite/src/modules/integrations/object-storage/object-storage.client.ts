@@ -1,9 +1,9 @@
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-import type { ObjectStorage, PresignedRequest, StorageOptions } from "./storage.options"
+import type { ObjectStorage, PresignedRequest, ObjectStorageOptions } from "./object-storage.options"
 
 /** The one S3 client of the app over S3-compatible storage (path-style, as MinIO serves it). */
-export const createObjectStorage = (options: StorageOptions, now: () => Date = () => new Date()): ObjectStorage => {
+export const createObjectStorage = (options: ObjectStorageOptions, now: () => Date = () => new Date()): ObjectStorage => {
     const client = new S3Client({
         endpoint: options.endpoint,
         region: options.region,

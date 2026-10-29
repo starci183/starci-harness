@@ -80,7 +80,7 @@ The lite additions are deliberately narrow:
 `starci app emit` emits the enabled back-end contract snapshots; a lite app generates no database types.
 
 `starci app db drift` holds a lite app's TypeORM entities to the schema its migrations build (R333, `BE_ENTITY_SCHEMA_DRIFT`; `db/drift.mjs`).
-It loads the entity list `be/src/platform/database/entities.ts` with the app's own `typescript`, `typeorm` and `pg` (its `be/tsconfig.json`
+It loads the entity list `be/src/modules/platform/database/entities.ts` with the app's own `typescript`, `typeorm` and `pg` (its `be/tsconfig.json`
 path aliases resolved) and builds TypeORM's metadata through a postgres `DataSource` with `synchronize` false that never connects. It applies
 `db/bootstrap.sql`, when present, and every active `db/migrations/*.sql`, each file in one transaction, to a scratch database: a throwaway
 container of the image `.starcistacks/application-stacks.yaml` declares for `components.db`, or with `--url-env <NAME>` the database that

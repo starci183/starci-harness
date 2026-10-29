@@ -1,7 +1,7 @@
 import type { EntityManager } from "typeorm"
 
 /** The database functions this app may call, each listed with its reason in ruleParams.be.dbFunctions or hfs.json sides.be.dbFunctions. */
-const IDENTIFIER = /^[a-z_][a-z0-9_]*(?:.[a-z_][a-z0-9_]*)?$/
+const IDENTIFIER = /^[a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?$/
 
 /**
  * Calls one database function TypeORM cannot express (a pg built-in or a SECURITY DEFINER function of a migration) with numbered

@@ -3,7 +3,7 @@
 -- for Supabase reference objects GoTrue and Supabase Storage created: the browser roles, the `auth` schema (auth.users, auth.identities,
 -- auth.sessions, auth.uid/jwt/role) and the `storage` schema (storage.buckets, storage.objects). The supabase/postgres image ships only a partial
 -- copy of them, and a lite app runs neither GoTrue nor storage-api: auth is the app's own (integrations/passport) and storage is the S3 endpoint
--- of integrations/storage. This file gives the migrations those objects, EMPTY, and nothing else. It is idempotent; `starci app db migrate`
+-- of integrations/object-storage. This file gives the migrations those objects, EMPTY, and nothing else. It is idempotent; `starci app db migrate`
 -- applies it as the database owner before the first migration of an empty database.
 --
 -- auth.users keeps the GoTrue column set so restored rows and foreign keys from public tables stay valid; encrypted_password holds bcrypt hashes.

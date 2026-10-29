@@ -1,5 +1,5 @@
 import type { PassportOptions } from "@modules/integrations/passport"
-import type { StorageOptions } from "@modules/integrations/storage"
+import type { ObjectStorageOptions } from "@modules/integrations/object-storage"
 import type { ServerOptions } from "@modules/platform/config"
 import type { DatabaseConnectionOptions } from "@modules/platform/database"
 import type { HttpSecurityOptions } from "@modules/platform/http-security"
@@ -15,5 +15,5 @@ export interface ApiOptions {
     /** Google OAuth, the app's own access tokens and the refresh cookie. */
     readonly passport: PassportOptions
     /** S3-compatible object storage. */
-    readonly storage: StorageOptions
+    readonly objectStorage: ObjectStorageOptions
 }

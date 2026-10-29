@@ -40,7 +40,7 @@ versioning:
 # 3.3.0 is a minor (alpha.16): it ADDS the optional app.ci-stack-deploy slot, the managed workflow of the starci app stack verbs.
 # 3.9.0 (ruling:lite-self-hosted-postgres-passport-minio, 2026-10-29) is a major for lite and changes no full slot but the S3 owner's
 # folder: lite leaves Supabase. The app.supabase* and be.integrations.supabase slots and fe.route.callback are removed; app.db (db/, its
-# migrations, archive, seed and managed bootstrap), be.integrations.passport and be.integrations.storage are added; lite's schemaAuthority is sql.
+# migrations, archive, seed and managed bootstrap), be.integrations.passport and be.integrations.object-storage are added; lite's schemaAuthority is sql.
 # 3.4.0 is a minor (alpha.25): it ADDS the opt-in be.contract.mcp-tools slot, the committed MCP tool-catalog snapshot of an app.
 # 3.5.0 is a minor (alpha.27): it ADDS the opt-in app.browser-config slot, the managed browser/tsconfig.json that type-checks the browser
 # journey (enabled with app.browser by `browser: true`).
@@ -122,7 +122,7 @@ testValues: [unit-beside, e2e, none]
 # (ruling:R212/case-10): schema authority in db/migrations, the queue port on BullMQ over the Redis hfs.json
 # sides.be.backing declares (as in full, fed by the Postgres outbox), event-bus ports on pgmq-backed topics or in-process
 # delivery, cache and locks on Postgres or the declared Redis, schedules on pg_cron (+ pg_net) enqueueing through the queue
-# outbox, storage on S3-compatible MinIO (integrations/storage) and auth through integrations/passport. Realtime uses SSE or the socket.io gateway
+# outbox, storage on S3-compatible MinIO (integrations/object-storage) and auth through integrations/passport. Realtime uses SSE or the socket.io gateway
 # in the api process, which scales horizontally and stateless (memory hub for one replica or tests; the Redis hub and @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter, for N replicas; websocket only, no sticky sessions). Integration and provider sandbox contract specs are optional;
 # declared patterns owe their integration proofs (R284). Lite has no e2e world. Production uses declared docker-swarm under
 # .starcistacks/production/infra/swarm/ (owner ruling 2026-10-14); lite runs its PostgreSQL as the db service of its
@@ -225,9 +225,9 @@ ruleParams:
       "node:https": [platform/http]
       http: [platform/http]
       https: [platform/http]
-      "@aws-sdk/client-s3": [integrations/storage]       # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
-      "@aws-sdk/s3-request-presigner": [integrations/storage]
-      minio: []                                          # storage goes through the S3 client of integrations/storage
+      "@aws-sdk/client-s3": [integrations/object-storage]       # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
+      "@aws-sdk/s3-request-presigner": [integrations/object-storage]
+      minio: []                                          # storage goes through the S3 client of integrations/object-storage
       "@supabase": []                                    # no Supabase client in a back end
       "@nestjs/passport": [integrations/passport]        # the identity libraries (R328)
       passport: [integrations/passport]
@@ -421,13 +421,25 @@ ruleParams:
     # HFS_BACKING_UNDECLARED checks), except Kafka, which is owned nowhere (platform/event-bus runs pgmq queues through
     # the shared EntityManager); realtime is the same socket.io gateway as full, run inside the api process, scaled horizontally and stateless (hub redis when
     # Redis is declared, else hub postgres with @socket.io/postgres-adapter; no sticky sessions).
-    # R333: the database functions code may call through platform/database's callDbFunction, advisoryXactLock and notify helpers,
+    # R334: the database functions code may call through platform/database's callDbFunction, advisoryXactLock and notify helpers,
     # each {name, reason}; the canon lists the pg built-ins it uses itself, and an app adds its own in hfs.json sides.be.dbFunctions.
     dbFunctions:
       - {name: pg_advisory_xact_lock, reason: "advisoryXactLock: a transaction-scoped lock TypeORM has no API for"}
       - {name: hashtextextended, reason: "advisoryXactLock: the 64-bit key of a text lock name"}
       - {name: pg_notify, reason: "notify: LISTEN/NOTIFY of the Postgres realtime hub"}
       - {name: to_regproc, reason: "callDbFunction: whether an optional database function exists"}
+      - {name: job_claim, reason: "platform/jobs (add job, lite): the fenced claim upsert of jobs.sql"}
+      - {name: job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
+      - {name: job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
+      - {name: job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
+      - {name: queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
+      - {name: queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
+      - {name: queue_mark_sent, reason: "platform/queue (add queue, lite): the relay mark of queue-outbox.sql"}
+      - {name: inbox_claim_event, reason: "platform/inbox (add webhook, lite): the conflict-safe delivery claim"}
+      - {name: inbox_claim_client, reason: "platform/inbox (add webhook, lite): the client claim upsert returning its committed outcome"}
+      - {name: inbox_save_client_outcome, reason: "platform/inbox (add webhook, lite): the saved client outcome"}
+      - {name: inbox_sweep_clients, reason: "platform/inbox (add webhook, lite): the bounded retention sweep FOR UPDATE SKIP LOCKED"}
+      - {name: event_bus_write, reason: "platform/event-bus (add webhook, lite): the typed envelope insert of the outbox"}
 
     lite:
       schemaAuthority: sql
@@ -1257,8 +1269,8 @@ slots:
       - {path: packages/hfs/src/mcp-tools-snapshot.spec.mjs, editions: [lite, full]}
 
   # ----- BE: apps (one slot per app kind; a new kind = a new slot, minor bump) ---------------------------
-  # The files of every app (owner ruling 2026-10-14, R245 and R246, since 3.1.0), each with a line budget that
-  # BE_APP_COMPOSITION_BUDGET holds absolutely (not a ratchet):
+  # The files of every app (owner ruling 2026-10-14, R245 and R246, since 3.1.0), each with a line budget (lines excluding
+  # import declarations, multi-line imports included) that BE_APP_COMPOSITION_BUDGET holds absolutely (not a ratchet):
   #   main.ts            the entry: builds EnvSource once, imports and calls read<App>Env from <app>.env.ts, builds options and boots.
   #   <app>.env.ts       exports interface <App>Env and read<App>Env(env: EnvSource): <App>Env (for example ApiEnv/readApiEnv);
   #                      fail-fast environment parsing only, via EnvSource and unchanged capability parse helpers; no localhost
@@ -1683,7 +1695,7 @@ slots:
     # Lite maps its tables with the same TypeORM entities as full (ruling:lite-persistence-typeorm-entities): each capability's
     # persistence/entities/<table>.entity.ts and an entities/index.ts exporting its <c>Entities array, which platform/database
     # lists by name; the schema authority stays db/migrations (ruleParams.be.lite.schemaAuthority), so no be migration and no
-    # raw SQL file (R333 BE_PERSISTENCE_NO_RAW_SQL).
+    # raw SQL file (R334 BE_PERSISTENCE_NO_RAW_SQL).
     lite:
       requires: []
       allows: ["entities/<table>.entity.ts", entities/index.ts, connection.ts]
@@ -1884,7 +1896,7 @@ slots:
     owner: true
     requires: [index.ts, "<name>.module.ts", "<name>.projection.ts", "<name>.projection-entity.ts"]
     allows: [index.ts, "<name>.module.ts", "<name>.module-definition.ts", "<name>.options.ts", "<name>.projection.ts", "<name>.projection-entity.ts", "<name>.contracts.ts", persistence/]
-    lite:                         # the read model's table is a db migration with its rows type (lite's schema authority): no TypeORM projection entity
+    lite:                         # the read model's table is a db migration (lite's schema authority) mapped by its entity under persistence/entities/ (R334)
       requires: [index.ts, "<name>.module.ts", "<name>.projection.ts"]
       allows: [index.ts, "<name>.module.ts", "<name>.module-definition.ts", "<name>.options.ts", "<name>.projection.ts", "<name>.contracts.ts", persistence/]
     tests: unit-beside            # a measured slot: <name>.projection.spec.ts beside its projection is legal (the file owes 100 per file; a spec of its own is optional)
@@ -1937,13 +1949,13 @@ slots:
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
     coverage: required
     since: 3.9.0
-  - id: be.integrations.storage
+  - id: be.integrations.object-storage
     profiles: [be]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/storage/
+      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/
     # The one owner of the S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) over S3-compatible storage (MinIO in
     # lite): the ObjectStorage port with presigned PUT and GET; no other module imports an S3 SDK or minio.
-    path: "src/modules/integrations/storage/"
+    path: "src/modules/integrations/object-storage/"
     presence: optional
     litePresence: required
     tracked: tracked

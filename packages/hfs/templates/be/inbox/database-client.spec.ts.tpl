@@ -1,15 +1,19 @@
 import { mockEntityManager } from "@starci/jest-preset"
 import type { EntityManager } from "typeorm"
-import { sql } from "./database.sql"
 import { DatabaseErrorCode } from "./errors/database.error"
-import { recordWebhookDelivery } from "./webhook-inbox.client"
+import { recordWebhookDelivery, webhookReceiptInsert } from "./webhook-inbox.client"
 
-// The caller owns the conflict-safe pending-row insert; an opaque function call stands in for it here.
-const INSERT = sql`SELECT id FROM record_spec_inbox($1, $2, $3::jsonb)`
+const INSERT = webhookReceiptInsert("spec_inbox")
 const PAYLOAD = { id: "delivery-1" }
 
 const record = (manager: EntityManager, deliveryId: string | undefined) =>
-    recordWebhookDelivery({ manager, insert: INSERT, provider: "spec", deliveryId, payload: PAYLOAD })
+    recordWebhookDelivery({ manager, table: "spec_inbox", provider: "spec", deliveryId, payload: PAYLOAD })
+
+describe("webhookReceiptInsert", () => {
+    it("refuses a table name that is not a lowercase identifier", () => {
+        expect(() => webhookReceiptInsert("spec; drop table x")).toThrow(TypeError)
+    })
+})
 
 describe("recordWebhookDelivery", () => {
     it("records a new delivery through the caller's transaction manager", async () => {

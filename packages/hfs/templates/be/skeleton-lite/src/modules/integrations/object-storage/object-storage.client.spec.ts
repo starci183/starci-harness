@@ -1,5 +1,5 @@
 import { Secret } from "@modules/platform/config"
-import { createObjectStorage } from "./storage.client"
+import { createObjectStorage } from "./object-storage.client"
 
 const options = {
     endpoint: "http://127.0.0.1:9000",

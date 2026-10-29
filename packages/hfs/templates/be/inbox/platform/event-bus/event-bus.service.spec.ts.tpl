@@ -3,7 +3,9 @@ import { fakeTransaction, mockEntityManager } from "@starci/jest-preset"
 import { EventBusErrorCode } from "./errors/event-bus.error"
 import { BaseEvent } from "./event-bus.contracts"
 import { EventBusService } from "./event-bus.service"
-import { INSERT_OUTBOX_EVENT } from "./persistence/event-bus.sql"
+
+// The statement callDbFunction of platform/database sends for event_bus_write.
+const INSERT_OUTBOX_EVENT = "SELECT * FROM event_bus_write($1, $2, $3, $4)"
 
 class ReceiptRecordedEvent extends BaseEvent {
     readonly eventId = "receipt-1"

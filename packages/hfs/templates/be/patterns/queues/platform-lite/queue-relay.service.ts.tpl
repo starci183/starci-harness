@@ -9,8 +9,19 @@ import { OutboxRelayPolicy } from "@modules/platform/outbox"
 import { InjectQueueOptions, InjectQueueRelayManagers, InjectQueueTransport } from "./queue.decorators"
 import type { QueueOptions } from "./queue.options"
 import type { QueueTransport } from "./queue-transport.port"
-import { MARK_ROWS_SENT, SELECT_WAITING_ROWS } from "./persistence/queue.sql"
-import type { QueueRow } from "./persistence/queue.rows"
+import { callDbFunction } from "@modules/platform/database"
+
+/** One waiting row queue_waiting returns. */
+interface QueueRow {
+    /** The correlation id recorded by the producer's transaction. */
+    readonly correlationId: string
+    /** The row id: it is the BullMQ job id, so a repeated relay pass adds nothing. */
+    readonly id: string
+    /** The queue the job goes to. */
+    readonly queue: string
+    /** The payload, as the database returns the jsonb value. */
+    readonly payload: object
+}
 
 @Injectable()
 /**
@@ -32,8 +43,8 @@ export class QueueRelayService extends OutboxRelayPolicy<QueueRow> {
         super()
     }
 
-    protected select(tx: EntityManager): Promise<Array<QueueRow>> {
-        return tx.query(SELECT_WAITING_ROWS, [this.options.relayBatch])
+    protected async select(tx: EntityManager): Promise<Array<QueueRow>> {
+        return [...(await callDbFunction<QueueRow>(tx, "queue_waiting", [this.options.relayBatch]))]
     }
 
     protected async deliver(rows: ReadonlyArray<QueueRow>): Promise<void> {
@@ -42,7 +53,7 @@ export class QueueRelayService extends OutboxRelayPolicy<QueueRow> {
     }
 
     protected async mark(tx: EntityManager, rows: ReadonlyArray<QueueRow>): Promise<void> {
-        await tx.query(MARK_ROWS_SENT, [rows.map((row) => row.id), this.clock.now()])
+        await callDbFunction(tx, "queue_mark_sent", [rows.map((row) => row.id), this.clock.now()])
     }
 
     protected idle(): Promise<void> {

@@ -1,10 +1,10 @@
 import type { EntityManager } from "typeorm"
 import { DatabaseError, DatabaseErrorCode } from "./errors/database.error"
-import type { SqlText } from "./database.sql"
 
 interface RecordWebhookDelivery {
     readonly manager: EntityManager
-    readonly insert: SqlText
+    /** The provider inbox table under public, created by its db migration. */
+    readonly table: string
     readonly provider: string
     readonly deliveryId: string | undefined
     readonly payload: object
@@ -12,13 +12,22 @@ interface RecordWebhookDelivery {
 
 type WebhookReceiptId = string | undefined
 
+/** A provider inbox table name: a lowercase identifier, never a value. */
+const TABLE = /^[a-z_][a-z0-9_]*$/
+
+/** The conflict-safe insert of one pending delivery into `public.<table>`, answering its id only to the winning transaction. */
+export const webhookReceiptInsert = (table: string): string => {
+    if (!TABLE.test(table)) throw new TypeError(`${table} is not a provider inbox table name`)
+    return `INSERT INTO public.${table} (provider, delivery_id, payload) VALUES ($1, $2, $3::jsonb) ON CONFLICT (provider, delivery_id) DO NOTHING RETURNING id`
+}
+
 /**
  * Records one pending delivery using the intake's transaction manager and returns its durable receipt identity.
  * Business processing and the completion marker belong to the reactor or job that consumes the committed row.
  */
 export const recordWebhookDelivery = async ({
     manager,
-    insert,
+    table,
     provider,
     deliveryId,
     payload,
@@ -27,7 +36,7 @@ export const recordWebhookDelivery = async ({
     if (!normalizedDeliveryId) {
         throw new DatabaseError({ code: DatabaseErrorCode.WebhookDeliveryIdRequired })
     }
-    const rows: Array<{ readonly id: string }> = await manager.query(insert, [
+    const rows: Array<{ readonly id: string }> = await manager.query(webhookReceiptInsert(table), [
         provider,
         normalizedDeliveryId,
         JSON.stringify(payload),
