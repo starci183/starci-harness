@@ -6,8 +6,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.15] - 2026-10-29
+
 ### Changed
 
+- The CLI requires @starci/hfs 4.11.13 (was 4.11.8), its pin in contexts/stack/pins.yaml: an app's pre-commit hook run by
+  this CLI no longer reports `HFS_SYNC_DRIFT` against an app on the 4.11.13 cohort (CONTRIB-20 step 2).
 - Every `starci app` verb hands @starci/hfs the harness secret.env's age identity (`runHfs` defaults `hostIdentity` to `hostAgeIdentity`), not `app secret` alone: `app stack`, `app release` and `app db` open sealed members through the same lookup as `app secret` (@starci/hfs `decryptionIdentity`).
 ### Added
 
