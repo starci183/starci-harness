@@ -13,7 +13,7 @@ import { inTransaction, now } from "./ledger.js"
 import { readMachine } from "./machine.js"
 import { loadOps } from "./ops.js"
 import { loadPolicy } from "./policy.js"
-import { runCheck } from "./run-checks.js"
+import { recordBaselineFindings, runCheck } from "./run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
 import { jobBusy, recordJob, waveJob } from "./jobs.js"
@@ -350,6 +350,7 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
         const enabled = await enablePatterns({ db, checkout, branch, workflow, task: first, why: "wave-red" }, await patternsOfFindings(reds))
         if (enabled.commit !== null) return judgeWave(db, workflow, checkout, timeoutMs, false)
     }
+    for (const [id, outcomes] of Object.entries(judged.outcomes)) recordBaselineFindings(db, id, outcomes)
     for (const [id, refusal] of blocked) blockOnCustody(db, id, "done", refusal)
     const judgedTasks = tasks.filter((each) => !blocked.has(each.task.id))
     const judgedWave = attributeWave(judgedTasks, judged.prepared, judged.outcomes)

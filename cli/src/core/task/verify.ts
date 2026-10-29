@@ -17,7 +17,7 @@ import type { Ops } from "../../harness/ops.js"
 import { PreserveIncomplete, preserveTaskPaths, resetPreserved } from "../../harness/preserve.js"
 import type { Preserved } from "../../harness/preserve.js"
 import { LAND_ORPHANED } from "../../harness/revive.js"
-import { runCheck } from "../../harness/run-checks.js"
+import { recordBaselineFindings, runCheck } from "../../harness/run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
 import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
@@ -459,6 +459,7 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
     // A verify that outlived its deadline lost its lock: it records, preserves and lands nothing (the catch above holds the same fence).
     assertSettleLockHeld(db, me, verifyLockKey(task.id))
     recordRuns(db, task.id, attempt.id, task.contractHash, built.checks)
+    recordBaselineFindings(db, task.id, built.checks)
     recordEvent(db, "task-verified", task.id, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: true, onto: onto ?? null })
     // A red that names an opt-in slot of an undeclared pattern is the harness's to remedy: it declares the pattern on the branch and
     // the caller verifies again on the new head, under the land lock, so the task spends no try on it.

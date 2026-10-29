@@ -176,3 +176,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   edited package is bumped and re-pinned ([contexts/authority/packages.md](../authority/packages.md)).
 - **Open source under MIT.** The harness and every package it publishes are MIT, copyright starci183
   ([LICENSE](../../LICENSE)); the CLI ships on npm as `starci-harness`, published by CI.
+- **Findings already on a branch are the base's (`r-b910f07221cf`).** A scoped check an app-wide configuration change widens is
+  judged against the same check at its base, and a finding the base holds fails no task and spends no try; it is kept as
+  `baseline-findings` evidence (`cli/src/core/check/base-findings.ts`). An opt-in pattern of `hfs.json` is declared by the harness,
+  never by a task (`cli/src/harness/hfs-patterns.ts`).

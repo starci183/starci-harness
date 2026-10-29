@@ -341,8 +341,11 @@ after a red the verify or the wave runs again on the new head, so the task spend
 `hfs-pattern-enabled` ledger event (`hfs-pattern-refused` with the reason when it cannot land, a dirty `hfs.json` in the checkout
 for one, and the task then meets the red as it stands) and lands as a shared need: `config:hfs.<side>.patterns.<name>`, resolved
 by the first branch's commit, a declaration on another workflow's branch recorded as its relay (`needs show`). The commit belongs
-to no task, so no task's diff carries `hfs.json`: no task is judged app-wide for a declaration, findings already on the branch
-stay the base it is judged against, and what a pattern makes legal or red is judged on the files a task lands in its slots.
+to no task, so no task's diff carries `hfs.json`: no task is judged app-wide for a declaration, and what a pattern makes legal or red
+is judged on the files a task lands in its slots. A task that changes `hfs.json` or another app-wide configuration file itself
+widens its scoped check to whole packages, and that run is judged against the same run at its base: a finding already there is
+the base's, recorded as a `baseline-findings` event and never the task's red, so it spends no try
+([contexts/project/lint.md](../contexts/project/lint.md), `core/check/base-findings.ts`).
 `contract check` names the patterns a contract's `allowPaths` need that the app does not declare yet.
 
 **Seat launch.** The claim comes first, in one transaction: the queued task goes to running and an attempt and a

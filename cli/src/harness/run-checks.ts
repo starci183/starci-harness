@@ -1,5 +1,6 @@
 import { existsSync, globSync, readFileSync, statSync } from "node:fs"
 import { isAbsolute, join, posix } from "node:path"
+import type { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../shared/errors.js"
 import { captureCommand, captureTool } from "../shared/exec.js"
@@ -16,6 +17,7 @@ import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./con
 import type { Contract, ResolvedCheck } from "./contract.js"
 import type { OutputType } from "./ops.js"
 import { ruleOwnerOf } from "./rule-pages.js"
+import { recordEvent } from "./tasks.js"
 import { WORK_DIR, judgeUatWalk, parseUatRecord, recordFileOfId } from "./work.js"
 
 /** The verdict of one check. */
@@ -25,6 +27,13 @@ export interface CheckOutcome {
     readonly status: "green" | "red"
     readonly exitCode: number | null
     readonly detail: string
+    /** A widened scoped check's findings that were already at its base (core/check/base-findings.ts), recorded as `baseline-findings`. */
+    readonly baseline?: { readonly base: string; readonly steps: readonly { readonly package: string; readonly step: string; readonly findings: readonly string[] }[] }
+}
+
+/** Records the base findings each widened check of a task met as one `baseline-findings` event: evidence, never its red. */
+export const recordBaselineFindings = (db: DatabaseSync, taskId: string, checks: readonly CheckOutcome[]): void => {
+    for (const check of checks) if (check.baseline !== undefined) recordEvent(db, "baseline-findings", taskId, { check: check.name, ...check.baseline })
 }
 
 /** What a `@result` json check reads: the worker's output, or why there is none to read. */
@@ -400,7 +409,14 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
         ...(ran.length === 0 ? ["no step ran: nothing was typechecked or linted, so this check proves nothing"] : []),
         ...steps.filter((step) => step.status === "red").map((step) => `--- ${step.package} ${step.step}\n${step.output}`),
     ]
-    return { name: check.name, kind: check.check.kind, status: run.exitCode === 0 && ran.length > 0 ? "green" : "red", exitCode: run.exitCode, detail: lines.join("\n") }
+    const baseline = asRecord(data.baseline)
+    const based =
+        typeof baseline.base === "string" && Array.isArray(baseline.steps)
+            ? { base: baseline.base, steps: (baseline.steps as unknown[]).map(asRecord).map((one) => ({ package: textOf(one.package), step: textOf(one.step), findings: Array.isArray(one.findings) ? (one.findings as unknown[]).map(textOf) : [] })) }
+            : undefined
+    const evidence = based === undefined ? [] : based.steps.map((one) => `baseline-findings ${one.package} ${one.step}: ${String(one.findings.length)} finding(s) already at the base ${based.base.slice(0, 12)}, judged there and not this change's`)
+    const outcome: CheckOutcome = { name: check.name, kind: check.check.kind, status: run.exitCode === 0 && ran.length > 0 ? "green" : "red", exitCode: run.exitCode, detail: [...lines, ...evidence].join("\n") }
+    return based === undefined ? outcome : { ...outcome, baseline: based }
 }
 
 /**

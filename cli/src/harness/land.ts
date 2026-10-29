@@ -86,7 +86,7 @@ export const opWorktreePlace = (root: string, workflowId: string, taskId: string
  * a symlink elsewhere). A repository in local package mode (`starci deps source --local`) always links the target's folder, so
  * its local `@starci` copies reach the Op. Returns the folders made, relative to the worktree.
  */
-const linkInstall = (target: string, worktree: string): string[] => {
+export const linkInstall = (target: string, worktree: string): string[] => {
     const local = (readRecord(target)?.packages.length ?? 0) > 0
     const folders = new Set([...modulesFolders(target), ...lockfileFolders(worktree).map((folder) => (folder === "." ? "node_modules" : `${folder}/node_modules`))])
     return [...folders].flatMap((folder) => {

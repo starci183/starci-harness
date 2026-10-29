@@ -13,7 +13,9 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
   never another task's uncommitted work in the same checkout (`cli/src/harness/baseline.ts`). It widens to every package when the diff touches an app-wide
   configuration file every side reads (the root paths of the app-root declaration, manifest, lockfile and tool-config
   slots of [hfs/slots.yaml](../hfs/slots.yaml) and any canon tool's config file, `cli/src/core/check/scope.ts`), so each
-  side's lint config loads and lints its whole package; a task that changes nothing is judged on the tracked files
+  side's lint config loads and lints its whole package, and such a widened run is judged against the same run at its base:
+  a finding the base holds already (rule, file and message, line numbers aside) is the base's, kept as `baseline-findings`
+  evidence and never the change's, and only a new one is red (`cli/src/core/check/base-findings.ts`); a task that changes nothing is judged on the tracked files
   under its allowPaths and their packages. A task waits for it. Each package is judged against its workspace
   dependencies as a consumer sees them: before its typecheck and lint, every dependency in its workspace (npm, yarn or
   pnpm), transitively and dependencies first, whose manifest entries (`exports`, `main`, `module`, `types`) name a file not on disk is
