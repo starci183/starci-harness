@@ -7,7 +7,7 @@ import { recordEvent } from "../../harness/tasks.js"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
-import { withHeavySlot } from "../../harness/heavy.js"
+import { HOST_HELD, withHeavySlot } from "../../harness/heavy.js"
 import { git, nulPaths } from "../../shared/git.js"
 
 /**
@@ -341,6 +341,8 @@ export const reapplyLocal = async (source: string, checkout: string): Promise<Re
         const lines = copied.map((one) => `${one.name} ${one.version} from ${one.folder} into ${one.targets.join(", ")}${one.warnings.map((warning) => `\n  warning: ${warning}`).join("")}`)
         return { status: "green", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), ...(added.length === 0 ? [] : [`installed without saving: ${added.join(", ")}`]), ...lines].join("\n") }
     } catch (error: unknown) {
+        // An install the host held in the heavy queue judged nothing: the verify reaches no verdict, never a red copy.
+        if (error instanceof Refusal && error.code === HOST_HELD) throw error
         return { status: "red", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), `the repository is in local package mode (starci deps source) but its copy failed: ${error instanceof Error ? error.message : String(error)}`].join("\n") }
     }
 }

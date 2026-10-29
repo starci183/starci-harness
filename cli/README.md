@@ -102,8 +102,12 @@ its inline step hands it out) from the head of the branch its workflow's worktre
 without one: the checkout it runs in), once that head declares the opt-in patterns its `allowPaths` need ("Opt-in patterns"), beside that worktree rather than inside it, since git keeps no branch below another
 branch's name and a nested checkout would sit in the workflow's tree. It gets the product's hooks and, for each
 node_modules folder of that checkout and each lockfile folder of its own, an install without npm: from the install cache
-(below) when it holds the key of that folder's lockfile, else a link to the checkout's own folder when it has one (a
-junction on Windows), always the link in local package mode (`ensureOpWorktree` and `linkInstall` in `harness/land.ts`). No path is held while a task works: two tasks may write the same file at once. Under the orca
+(below) when it holds the key of that folder's install inputs, else a link to the checkout's own folder when it has one (a
+junction on Windows), always the link in local package mode (`ensureOpWorktree` and `linkInstall` in `harness/land.ts`).
+Before the Op's work is checked (at seat start, once its prior work is applied, and in the worker's dry replay `task verify
+--contract`), `refreshOpInstall` replaces every install that no longer satisfies the worktree's own lockfile (a task that
+added a dependency) by the install of its own inputs, from the cache or by `npm ci` (below), recorded `op-install-refreshed`.
+No path is held while a task works: two tasks may write the same file at once. Under the orca
 runner the worktree is listed in Orca under the workflow's worktree as `[Op] <workflow>: <task>`, and the workflow's
 worktree under the project's main checkout as `[Kernel] <workflow>` (`orca worktree set --parent-worktree`), so
 Orca's worktree tree shows Supervisor, Kernel and Op whichever worktree each terminal runs in. A start sets it whether its
@@ -160,7 +164,8 @@ overwrite a local edit, a task in the checkout it lands on by moving the ref. Ve
 when another task landed between a verify's rebase and its landing, it verifies again on the new head under the land
 lock, so each lands on the head the previous one left. A lock's holder stamps a heartbeat, so a dead holder whose pid
 Windows reused is taken over once the beat goes stale (`withSettleLock` in `harness/settle.ts`), and holds a lock at most
-`verifyDeadlineMinutes` ([ops/liveness.yaml](../ops/liveness.yaml)): at the deadline the holder gives it up itself
+`verifyDeadlineMinutes` ([ops/liveness.yaml](../ops/liveness.yaml)), counted over the time its heavy commands ran and never
+the time they waited in the heavy queue (`queuedSince` of `harness/heavy.ts`, which the beat stamps as `queuedMs`): at the deadline the holder gives it up itself
 (`VERIFY_DEADLINE`, no verdict, back to reported, and work that resumes later lands nothing), and a holder still listed
 past it counts as gone though it beats. A tool run ends at most a few seconds after its process exited or was killed even
 when a grandchild keeps its output pipes open (`shared/exec.ts`). Git is the authority for landed: a task left verifying
@@ -200,8 +205,11 @@ busy while its lock is held or its process lives), and a later step reads their 
 ### Install cache
 
 A clean checkout and an Op worktree never run their own `npm ci` when the shared install exists: `cachedInstall`
-(`harness/install-cache.ts`) keys an install by the lockfile's bytes, Node's version and npm's
-(`<state base>/cache/installs/<key>`, path in `harness/ledger.ts`). A miss runs `npm ci` in the checkout and copies its
+(`harness/install-cache.ts`) keys an install by its inputs (`installKey`: the path and bytes of the lockfile, manifest and
+.npmrc of the install folder and of each workspace member its lockfile names), Node's version and npm's
+(`<state base>/cache/installs/<key>`, path in `harness/ledger.ts`), so a candidate whose lockfile or any manifest changed is
+never served the base's entry. A miss runs `npm ci` in the checkout under a heavy-command slot, one fill per key across the
+host, and copies its
 node_modules into the cache (staged, then renamed into place), recording the links npm made to the checkout's own folders
 (workspace members) relative to the install folder; a hit gives the checkout a real node_modules whose every package is a
 link into the cache (a junction on Windows), those workspace links re-made to the checkout, and a marker. A repository in
@@ -224,7 +232,10 @@ running first, and a project running `projectSlots` commands is passed over whil
 its own cap (`servingOrder`). The reserve, estimates, per-kind timeouts, memory caps and seat floor are
 the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command's timeout starts at its admission, never in the
 queue. A command not admitted waits in the queue, says so on stderr and records a `heavy-wait` host event; waiting never
-fails it, except in a coordinator's turn, where it is refused `HEAVY_DEFERRED` at once. A verify or wave stopped by the harness reaches no verdict (VERIFY_INFRA, `assertNoInfraFailure` of
+fails it: a coordinator's turn is refused `HEAVY_DEFERRED` at once instead of waiting, and a command of `task verify` (or a
+process it started) still in the queue at the verify's timeout, its contract budget (`withHeavyBound`), is refused
+`HOST_HELD` (exit 75): a host-held verify reached no verdict, the settling one returns its task to reported with no try spent
+and no count toward `settleNoVerdictMax` (`verify-host-held`), and the next step verifies it again. A verify or wave stopped by the harness reaches no verdict (VERIFY_INFRA, `assertNoInfraFailure` of
 `harness/clean-verify.ts`): an install or setup out of time, or an install red although the work changed no file an install
 reads (package.json, package-lock.json, npm-shrinkwrap.json, .npmrc), which also opens one harness-defect ticket
 (`INSTALL_RED_HARNESS`, every repeat landing on it). No try is spent, a wave fails, returns and revives no task (they stay

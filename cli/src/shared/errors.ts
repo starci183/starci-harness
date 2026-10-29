@@ -1,6 +1,9 @@
 /** Exit code of a refused command: the verb ran and declined, nothing moved. */
 export const EXIT_REFUSED = 1
 
+/** Exit code of a verify the host held (HOST_HELD, harness/heavy.ts): no verdict, try again later; a parent reads it from a child. */
+export const EXIT_HOST_HELD = 75
+
 /** Exit code of bad usage: the command line itself is wrong. */
 export const EXIT_USAGE = 2
 

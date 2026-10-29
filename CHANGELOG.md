@@ -45,6 +45,21 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   read-only on Linux and the next scenario failed EACCES. A scenario whose run cannot be set up is that scenario's error, and the
   bench goes on. A `busy` stand-in (`bench/stub/busy-stub.mjs`) keeps a core busy for the scenarios that need a hot CPU on an idle
   host; `heavy-project-fair-share` runs on two slots, one per project, and checks the host has them before it queues.
+- **A task's new dependency resolves in its own install** (monitor report 8, tickets tk-508a33c34756 and tk-15a70700fb46: a task
+  adding jose to package.json and the lockfile failed TS2307 and its suites in its Op worktree, which held the install of the
+  branch it was cut from). The install cache key covers every install input (the lockfile, manifest and .npmrc of the install
+  folder and of each workspace member, `installKey` in `cli/src/harness/install-cache.ts`), so a changed lockfile or manifest is
+  never served the base's entry; an Op worktree whose install no longer satisfies its own lockfile (`installSatisfies`, read
+  from npm's record of the install) gets the install of its own inputs at seat start and before the worker's dry replay
+  (`refreshOpInstall` in `cli/src/harness/land.ts`), from the cache or by `npm ci` under the heavy governor, one fill per key,
+  local package sources reapplied after it. Bench: `verify-new-dependency-own-install`.
+- **A verify the host holds is no verdict** (tk-15a70700fb46: a task verify sat 413 s queued on a tsc check at CPU 100% and was
+  stopped with nothing judged). A `task verify`'s heavy commands, those of the processes it starts included, wait in the queue at
+  most its contract budget and are then refused `HOST_HELD` (exit 75, `withHeavyBound` in `cli/src/harness/heavy.ts`); a settling
+  verify so stopped returns its task to reported with no try spent and no count toward `settleNoVerdictMax` (`verify-host-held`),
+  and the next step verifies it again (`workflow step` reads it as a wait). The verify deadline counts only the time a verify's
+  commands ran, never their queue wait (`queuedSince`, stamped into the lock's beat in `cli/src/harness/settle.ts`). Bench:
+  `verify-host-held-no-try`.
 - **A shared need's relay is never a dead end** (monitor report 7, ticket tk-069fd4d52ad3: lesson-ai waited forever on
   `capability:domain.entitlement`). A need resolved by a workflow's keys records every commit those keys landed, each attempt and
   round of each key in branch order (`keyCommits` in `cli/src/core/needs/tend.ts`), not only each key's last task, so a relay no

@@ -14,7 +14,7 @@ import { excludedSpec, notOwn } from "./baseline.js"
 import { rebaseCandidate } from "./land.js"
 import { readRecord, reapplyLocal } from "../core/deps/packages.js"
 import { withHeavySlot } from "./heavy.js"
-import { cachedInstall, isInstalled, unlinkCheckoutLinks } from "./install-cache.js"
+import { cachedInstall, INSTALL_INPUTS, isInstalled, unlinkCheckoutLinks } from "./install-cache.js"
 import { cleanCheckoutsPath } from "./ledger.js"
 import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
@@ -223,18 +223,19 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
 
 /**
  * The install where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none. It
- * comes from the shared install cache keyed by the lockfile, Node and npm (harness/install-cache.ts): a hit links the cached
- * node_modules into the checkout, a miss runs `npm ci` and caches it. When the repository is in local package mode (`starci deps
+ * comes from the shared install cache keyed by the candidate's own install inputs (its lockfile and every manifest it installs),
+ * Node and npm (harness/install-cache.ts installKey): a hit links the cached node_modules into the checkout, a miss (a lockfile or
+ * manifest the task changed) runs `npm ci` and caches it, so a changed lockfile is never served the base's install. When the repository is in local package mode (`starci deps
  * source --local`) the cached tree is copied, not linked, and the same local copies are applied after it, so the candidate runs
  * against the package the work tree runs against (`reapplyLocal`).
  */
 const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => {
-    const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")))
+    const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")) || existsSync(join(candidate, "npm-shrinkwrap.json")))
     // An install an earlier prepare of the same checkout made (a wave's other cwd) is not made twice.
     if (dir === undefined || isInstalled(dir)) return undefined
     const source = place.source ?? place.root
     const local = (readRecord(source)?.packages.length ?? 0) > 0
-    const cached = await cachedInstall(dir, join(dir, "package-lock.json"), place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }, local)
+    const cached = await cachedInstall(dir, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }, local)
     const exitCode = cached.run?.exitCode ?? 0
     const tail = cached.run === null ? "" : `\n${evidenceTail(cached.run.stdout, cached.run.stderr)}`
     const installed: CheckOutcome = { name: "install", kind: "install", status: exitCode === 0 ? "green" : "red", exitCode, detail: `${cached.note}${tail}` }
@@ -250,9 +251,6 @@ export const VERIFY_INFRA = "VERIFY_INFRA"
 /** The code of the one harness-defect ticket a red install no landed change explains opens; every repeat lands on it. */
 export const INSTALL_RED_HARNESS = "INSTALL_RED_HARNESS"
 
-/** The files an npm install reads from the tree: only a change to one of them can make the work's install red. */
-const INSTALL_INPUTS: ReadonlySet<string> = new Set(["package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc"])
-
 /**
  * Refuses with VERIFY_INFRA when a preparing step failed on the harness, not on the work: the install or a setup command ran
  * out of its budget (exit 124), or the install is red while none of the files the work changed (`changed`) is one an install
@@ -265,7 +263,7 @@ export const assertNoInfraFailure = async (prepared: readonly CheckOutcome[], ch
     const stuck = prepared.find((outcome) => outcome.status === "red" && outcome.exitCode === EXIT_TIMEOUT)
     if (stuck !== undefined) throw new Refusal(VERIFY_INFRA, `the ${stuck.name} step ran out of time (an infrastructure failure, not the task's): ${stuck.detail.split("\n")[0] ?? ""}`)
     const install = prepared.find((outcome) => outcome.kind === "install" && outcome.status === "red")
-    if (install === undefined || changed.some((file) => INSTALL_INPUTS.has(posix.basename(file)))) return
+    if (install === undefined || changed.some((file) => INSTALL_INPUTS.includes(posix.basename(file)))) return
     const { ticket } = openTicket({
         kind: "harness-defect",
         severity: "blocking",
@@ -281,7 +279,7 @@ export const assertNoInfraFailure = async (prepared: readonly CheckOutcome[], ch
         module: "cli/src/harness/clean-verify.ts",
         waiters: [],
     })
-    throw new Refusal(VERIFY_INFRA, `the install is red although the work changed none of ${[...INSTALL_INPUTS].join(", ")} (an infrastructure failure, not the task's; harness-defect ticket ${ticket.id}): ${install.detail.split("\n")[0] ?? ""}`)
+    throw new Refusal(VERIFY_INFRA, `the install is red although the work changed none of ${INSTALL_INPUTS.join(", ")} (an infrastructure failure, not the task's; harness-defect ticket ${ticket.id}): ${install.detail.split("\n")[0] ?? ""}`)
 }
 
 /**

@@ -6,7 +6,7 @@ import { setTimeout as sleep } from "node:timers/promises"
 import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
 import { z } from "zod"
-import { Refusal } from "../shared/errors.js"
+import { EXIT_HOST_HELD, Refusal } from "../shared/errors.js"
 import { pidAlive } from "../shared/exec.js"
 import type { RunOptions } from "../shared/exec.js"
 import { governorStorePath, now } from "./ledger.js"
@@ -362,13 +362,68 @@ export const refuseHeavyWaits = (): void => {
 /** Whether this process is a coordinator's turn that never waits in the heavy queue (`refuseHeavyWaits`). */
 export const heavyWaitsRefused = (): boolean => waitsRefused
 
+/** The refusal of a heavy command a verify's bound (`withHeavyBound`) stopped in the queue: the host held it, no verdict on the work. */
+export const HOST_HELD = "HOST_HELD"
+
+/** The environment variable carrying a verify's queue bound in ms to every process it starts (`withHeavyBound`). */
+const HOLD_ENV = "STARCI_HEAVY_HOLD_MS"
+
+/** The environment variable naming the pid whose wait a heavy command's queue time counts toward (`heavyOwner`). */
+const OWNER_ENV = "STARCI_HEAVY_OWNER"
+
+/**
+ * Runs a verify (`task verify`) whose heavy commands, and those of every process it starts while it runs, wait in the queue at most
+ * `holdMs` (the verify's timeout) and are then refused HOST_HELD: the host held the work, nothing judged it, so the verify ends with
+ * no verdict and spends no try. Their queue time is counted toward the verify's process (`heavyOwner`, `queuedSince`), so its lock
+ * deadline counts only the time its commands ran. The bound ends with `work`: whatever the same process runs after it waits as before.
+ */
+export const withHeavyBound = async <T>(holdMs: number, work: () => Promise<T>): Promise<T> => {
+    const before = { hold: process.env[HOLD_ENV], owner: process.env[OWNER_ENV] }
+    process.env[HOLD_ENV] = String(holdMs)
+    process.env[OWNER_ENV] = before.owner ?? String(process.pid)
+    const restore = (name: string, value: string | undefined): void => {
+        if (value === undefined) Reflect.deleteProperty(process.env, name)
+        else process.env[name] = value
+    }
+    try {
+        return await work()
+    } finally {
+        restore(HOLD_ENV, before.hold)
+        restore(OWNER_ENV, before.owner)
+    }
+}
+
+/** The pid whose verify a heavy command of this process waits for: the bounding verify's (`withHeavyBound`), else this process's. */
+export const heavyOwner = (): number => Number(process.env[OWNER_ENV] ?? process.pid)
+
+/**
+ * How long, in ms, the heavy commands counted toward `owner` (its own and its children's, `heavyOwner`) waited in the queue since
+ * `since` (an ISO time): every finished wait recorded as a `heavy-wait` host event since then, clipped to `since`, plus each wait
+ * still in the queue. What a verify's lock deadline leaves out (harness/settle.ts).
+ */
+export const queuedSince = (owner: number, since: string): number =>
+    withGovernor((db) => {
+        db.exec(TABLES)
+        const from = Date.parse(since)
+        const finished = db
+            .prepare("SELECT at, data_json FROM host_events WHERE kind = 'heavy-wait' AND at >= ? AND json_extract(data_json, '$.owner') = ?")
+            .all(since, owner)
+            .reduce((sum, row) => sum + Math.min(Number((JSON.parse(String(row.data_json)) as { readonly waitedMs?: unknown }).waitedMs ?? 0), Date.parse(String(row.at)) - from), 0)
+        const waiting = db
+            .prepare("SELECT at FROM heavy_slots WHERE state = 'waiting' AND id LIKE ?")
+            .all(`${String(owner)}-%`)
+            .reduce((sum, row) => sum + Date.now() - Math.max(Date.parse(String(row.at)), from), 0)
+        return finished + waiting
+    })
+
 /**
  * Runs one heavy command (tsc, eslint, a test runner, a build, an npm install, a uat container) under a slot of the host-wide
  * semaphore in machine.sqlite; nothing the harness spawns that is heavy runs any other way (the heavy-sites audit in
  * cli/scripts holds it). Admission reads free memory and the CPU average (`admission`); a command with no slot is a waiting row
  * (`starci host load` shows the queue), polls every `heavy.pollSeconds`, and its wait is printed on stderr and recorded as a
- * `heavy-wait` host event; waiting never fails the command, except in a coordinator's turn (`refuseHeavyWaits`), which is refused
- * HEAVY_DEFERRED at once. The child runs below normal priority, a node tool under the kind's
+ * `heavy-wait` host event. Waiting never fails the command: a coordinator's turn (`refuseHeavyWaits`) is refused HEAVY_DEFERRED
+ * at once instead of waiting, and a verify's command (`withHeavyBound`) still in the queue at the verify's bound is refused
+ * HOST_HELD, a non-verdict. The child runs below normal priority, a node tool under the kind's
  * `--max-old-space-size`, and inherits HEAVY_HELD_ENV: a process that inherited it already runs under its parent's slot and
  * takes no second one.
  */
@@ -381,8 +436,10 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     const timed = budget === undefined ? options : { ...options, timeoutMs: budget * 60_000 }
     const base: RunOptions = { ...timed, env, priority: constants.priority.PRIORITY_BELOW_NORMAL }
     if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, pressure: false, rules })
-    const slot = { id: randomBytes(8).toString("hex"), pid: process.pid, kind, label, cwd }
+    const owner = heavyOwner()
+    const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd }
     const started = Date.now()
+    const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
     let announced = false
     let load: HostLoad
     for (;;) {
@@ -394,6 +451,11 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
             release(slot.id)
             throw new Refusal(HEAVY_DEFERRED, `${label} was not admitted at once (${load.reason}) and a coordinator's turn never waits in the heavy queue; it runs detached or on a later turn`)
         }
+        if (Number.isFinite(holdMs) && Date.now() - started >= holdMs) {
+            release(slot.id)
+            withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs: Date.now() - started, pid: process.pid, owner, held: true })))
+            throw new Refusal(HOST_HELD, `${label} waited ${String(Math.round((Date.now() - started) / 60_000))} min in the heavy queue, past its verify's bound of ${String(Math.round(holdMs / 60_000))} min (${load.reason}): the host held it, nothing judged the work; no verdict, no try spent, it is verified again once the host has room`, EXIT_HOST_HELD)
+        }
         if (!announced) {
             process.stderr.write(`starci: ${label} waits for a heavy-command slot (${load.reason}; running: ${tried.holders.join(", ") || "none"})\n`)
             announced = true
@@ -402,7 +464,7 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     }
     if (announced) {
         const waitedMs = Date.now() - started
-        withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid })))
+        withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner })))
     }
     try {
         return await work({ options: { ...base, onSpawn: (pid) => { setChild(slot.id, pid) } }, pressure: load.pressure, rules })

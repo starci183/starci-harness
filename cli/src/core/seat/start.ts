@@ -40,7 +40,7 @@ import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStar
 import { callerTerminal, ensureKernel, launchableKernel, mayActAs, opTitle, workflowWorktreeOf } from "../../harness/kernel.js"
 import { CONSUMER_FENCED_OUTCOME } from "../../harness/budget.js"
 import { beginWork } from "../../harness/baseline.js"
-import { ensureOpWorktree, opWorktreeOf, opWorktreePlace } from "../../harness/land.js"
+import { ensureOpWorktree, opWorktreeOf, opWorktreePlace, refreshOpInstall } from "../../harness/land.js"
 import type { KernelLaunch } from "../../harness/kernel.js"
 import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, noteTab, openSeat, recordSeat, recordSeatLaunch, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -549,6 +549,12 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
             return { task: running, seat, record, files }
         })
         await beginWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
+        // The prior work may carry a lockfile the install the Op was given does not satisfy: its own install replaces it first. One
+        // that cannot run now (the heavy queue in a coordinator's turn) is recorded; the worker's dry replay installs it.
+        const made = opPath === undefined ? undefined : opWorktreeOf(db, claim.task.id)
+        if (made !== undefined) await refreshOpInstall(root, claim.task.id, made).catch((error: unknown) => {
+            recordEvent(db, "op-install-refresh-deferred", claim.task.id, { error: asRefusal(error).message, code: asRefusal(error).code })
+        })
         // A repository in local package mode gives the worker's checkout the same local @starci copies as its work tree; a
         // failed copy is recorded and the launch goes on, since the worker can still run `starci deps source --sync`.
         const synced = await reapplyLocal(root, worktreeFolder(options.worktree, cwd, root))
