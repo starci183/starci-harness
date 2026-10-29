@@ -6,6 +6,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.11] - 2026-10-29
+
+### Fixed
+
+- **The CLI runs @starci/hfs 4.10.0.** `cli/package.json` still pinned 4.9.5, so every `starci app` verb (sync, lint, check, db) ran the
+  3.7.0 slot manifest even after the lite cohort landed: `app sync` refused an app's `sides.be.dbFunctions`
+  (`HFS_DECLARATION_INVALID`), and a local link of hfs could not reach the CLI's own nested copy.
+
 ## [1.1.0-alpha.10] - 2026-10-29
 
 ### Changed
