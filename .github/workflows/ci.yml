@@ -10,11 +10,13 @@ on:
 permissions:
   contents: read
 
-# Only the newest run of a ref matters: a push supersedes the run still going for the older commit. A publish cut short
-# is safe, since `release publish` is idempotent per version and the newer run publishes whatever is still due.
+# On a pull request only the newest run matters: a push cancels the run still going for its older commit. A run
+# on main is never cut short, since its publish jobs publish one package after another: a newer push waits as the one
+# pending run (an even newer push replaces it), then publishes whatever is still due, so a package late in the
+# publication order reaches npm even while main moves faster than one run lasts.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # What this run checks. A pull request is measured from its base, a push to main from the last main commit whose ci run
