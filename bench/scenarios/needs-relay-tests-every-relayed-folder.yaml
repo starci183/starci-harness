@@ -1,0 +1,213 @@
+schema: starci/scenario@1
+id: needs-relay-tests-every-relayed-folder
+group: needs
+title: "orca: a relay node of two folders runs the specs of both, so coverage judges each relayed logic file by its own spec"
+inject: >-
+  workflow auth resolves the shared need with two tasks, each writing one folder with its logic file and its spec, and each
+  tests-pass naming only its own folder (npm test -- platform/http, npm test -- platform/guard). Their commits conflict with sub's own
+  client, so sub gets a relay node built on http's node, whose tests-pass names platform/http alone while it relays platform/guard too
+expect: >-
+  the relay node's tests-pass runs the specs under the path it names and the specs of every relayed folder (platform/guard's spec,
+  a changed file under its allowPaths), so coverage, judged on both relayed logic files, finds each covered by its own spec and
+  is green; the relay node is done and a need-relayed event names it
+pass:
+  - the relay node's tests-pass runs both platform/http/http.spec.ts and platform/guard/guard.spec.ts
+  - its coverage judges platform/http/http.ts and platform/guard/guard.ts, both green
+  - the relay node done, and a need-relayed event names it
+  - no human intervention beyond the injected fault
+automation: automated
+# The jest stand-in answers --showConfig with the config's collectCoverageFrom, runs the --runTestsByPath specs and measures the
+# --collectCoverageFrom files (else every file the config measures): a measured file is covered when its own <name>.spec.ts ran,
+# else it reads 0% and fails, like a per-file threshold of 100.
+repo:
+  files:
+    README.md: "# bench scratch relay tests\n"
+    package.json: '{"name": "bench-relay-tests", "version": "1.0.0", "private": true, "scripts": {"test": "node node_modules/jest/bin/jest.js --coverage"}}'
+    jest.config.js: |
+      module.exports = { collectCoverageFrom: ["platform/**/*.ts", "!platform/**/*.spec.ts"] }
+    node_modules/jest/bin/jest.js: |
+      const { readdirSync, statSync, existsSync } = require("node:fs")
+      const { join, relative, sep, posix } = require("node:path")
+      const args = process.argv.slice(2)
+      const config = require(join(process.cwd(), "jest.config.js"))
+      if (args.includes("--showConfig")) {
+        console.log(JSON.stringify({ configs: [{ rootDir: process.cwd() }], globalConfig: { rootDir: process.cwd(), collectCoverageFrom: config.collectCoverageFrom } }))
+        process.exit(0)
+      }
+      const at = args.indexOf("--runTestsByPath")
+      const ran = at < 0 ? [] : args.slice(at + 1).filter((a) => !a.startsWith("-")).map((f) => f.split(sep).join("/"))
+      for (const f of ran) console.log("PASS " + f)
+      if (!args.includes("--coverage") || args.includes("--coverage=false")) process.exit(0)
+      const named = args.filter((a) => a.startsWith("--collectCoverageFrom=")).map((a) => a.slice("--collectCoverageFrom=".length))
+      const globs = named.length > 0 ? named : config.collectCoverageFrom
+      const positive = globs.filter((g) => !g.startsWith("!"))
+      const negative = globs.filter((g) => g.startsWith("!")).map((g) => g.slice(1))
+      const walk = (dir) => (existsSync(dir) ? readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).isDirectory() ? walk(join(dir, n)) : [join(dir, n)])) : [])
+      const measured = walk(join(process.cwd(), "platform"))
+        .map((f) => relative(process.cwd(), f).split(sep).join("/"))
+        .filter((f) => positive.some((g) => posix.matchesGlob(f, g)) && !negative.some((g) => posix.matchesGlob(f, g)))
+      const below = measured.filter((f) => !ran.includes(f.replace(/\.ts$/, ".spec.ts")))
+      for (const f of measured) console.log("coverage " + f + (below.includes(f) ? " 0%" : " 100%"))
+      for (const f of below) console.log("Jest: " + f + " coverage threshold for lines (100%) not met: 0%")
+      process.exit(below.length === 0 ? 0 : 1)
+steps:
+  - file:
+      path: auth.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: auth
+        goal: sign in, with the shared http client and its guard
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: http
+            label: docs
+            summary: write the shared http client
+            allowPaths: [platform/http]
+            checks:
+              - preset: tests-pass
+                args: {command: "npm test -- platform/http"}
+          - id: guard
+            label: docs
+            summary: write the origin guard
+            allowPaths: [platform/guard]
+            checks:
+              - preset: tests-pass
+                args: {command: "npm test -- platform/guard"}
+  - file:
+      path: sub.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: sub
+        goal: premium subscription payments
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: pay
+            label: docs
+            summary: write the payment rails doc
+            allowPaths: [docs/pay.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/pay.md]}
+          - id: own
+            label: docs
+            summary: write sub's own client
+            allowPaths: [platform/http/http.ts]
+            checks:
+              - preset: files-exist
+                args: {files: [platform/http/http.ts]}
+  - boot:
+      file: ${run}/auth.yaml
+      workflow: auth
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - boot:
+      file: ${run}/sub.yaml
+      workflow: sub
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http'"
+      as: http
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'guard'"
+      as: guard
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'pay'"
+      as: pay
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'own'"
+      as: own
+  - worker:
+      task: ${http}
+      files:
+        platform/http/http.ts: "export const http = 'auth'\n"
+        platform/http/http.spec.ts: "import { http } from './http'\n"
+  - worker:
+      task: ${guard}
+      files:
+        platform/guard/guard.ts: "export const guard = 1\n"
+        platform/guard/guard.spec.ts: "import { guard } from './guard'\n"
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT plan_key || ':' || status FROM tasks WHERE workflow_id = 'auth' ORDER BY plan_key"
+        equals: ["guard:done", "http:done"]
+  - worker:
+      task: ${own}
+      files:
+        platform/http/http.ts: "export const http = 'sub'\n"
+  - worker:
+      task: ${pay}
+      status: blocked
+      output:
+        summary: needs the shared http client and its guard
+        files: []
+        rulesApplied: []
+        needs: [{key: "capability:platform.http", paths: [platform/http/http.ts, platform/guard/guard.ts], note: "pay calls the gateway through them"}]
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - file:
+      path: owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-http-by-auth
+        kind: need-owner
+        workflow: auth
+        basedOn: {}
+        need: {key: "capability:platform.http", resolver: [http, guard]}
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/owner.yaml"]
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - name: sub's step routes the conflict as a relay node built on http's node, its tests-pass naming platform/http alone
+    seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(contract_json, '$.checks.extend[0].args.command') FROM tasks WHERE workflow_id = 'sub' AND plan_key = 'relay.capability-platform.http.r1'"
+        equals: ["npm test -- platform/http"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'relay.capability-platform.http.r1'"
+      as: relay
+  - name: the relay node's worker merges both sides and applies the guard's commit
+    worker:
+      task: ${relay}
+      files:
+        platform/http/http.ts: "export const http = 'auth'\nexport const own = 'sub'\n"
+        platform/http/http.spec.ts: "import { http } from './http'\n"
+        platform/guard/guard.ts: "export const guard = 1\n"
+        platform/guard/guard.spec.ts: "import { guard } from './guard'\n"
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - name: sub's wave runs the relay node's heavy tests-pass
+    starci: [workflow, wave, sub, --wait, "600"]
+  - name: the relay node's tests-pass runs the spec of both relayed folders, and coverage judges both logic files green
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM check_runs WHERE task_id = '${relay}' AND name = 'tests-pass' AND status = 'green' AND detail LIKE '%platform/guard/guard.spec.ts%' AND detail LIKE '%platform/http/http.spec.ts%' AND detail LIKE '%coverage platform/guard/guard.ts 100%%' AND detail LIKE '%coverage platform/http/http.ts 100%%' AND detail NOT LIKE '%not met%'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${relay}'"
+        equals: [done]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT json_extract(data_json, '$.node') || ':' || json_extract(data_json, '$.relay.status') FROM host_events WHERE kind = 'need-relayed'"
+        equals: ["relay.capability-platform.http.r1:relayed"]

@@ -30,8 +30,9 @@ presets:
     check:
       kind: files
       onlyAllowPaths: true
-  # A jest run (this and every command check) runs the task's own spec files by path when it names test paths or runs the test
-  # world alone, never a live-provider spec it did not name (scopedTests, cli/src/harness/coverage-scope.ts), and its coverage is
+  # A jest run (this and every command check) runs the task's own spec files by path when it names test paths (those under the
+  # paths and the specs of every changed file under allowPaths) or runs the test world alone, never a live-provider spec it did
+  # not name (scopedTests, cli/src/harness/coverage-scope.ts), and its coverage is
   # narrowed to the changed logic files under allowPaths (coverage: changed), so the app's own thresholds hold what the task
   # changed while its whole measured scope stays CI's.
   tests-pass:

@@ -39,6 +39,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   scoped coverage and the release plan, which each kept a copy, the three outside coverage narrower. A credential assigned to a secret-worded name, and a
   provider-shaped one in any spec, are still caught; the three `HFS_PLAINTEXT_SECRET` exceptions of `policy/security.yaml`
   covered nothing any more and are gone. Bench: `security-secret-key-names`.
+- **A test run that names test paths also runs the specs of what the task changed, so coverage judges each changed logic file
+  by its own specs** (ticket tk-0e5cb72b4285). starci-next-app's `relay.capability-platform.http.r3` (t-ad40127f) relayed
+  `platform/http`, `primitives` and `http-security` byte-identical, but its tests-pass, inherited from its source's node, named
+  only `src/modules/platform/http` and `primitives`, while `coverage: changed` judged every relayed logic file under its
+  allowPaths: `origin.guard.ts` and `rate-limit.guard.ts` read 0% because their specs never ran, and every re-dispatch burned
+  a try. `scopedTests` (`harness/coverage-scope.ts`) now runs, beside the specs under the named paths, each changed spec file
+  under allowPaths and each spec named after a changed source file, so a relay node runs the specs of every folder it relays
+  and the run and its coverage scope read the same change. Bench: `needs-relay-tests-every-relayed-folder`.
 - **A live suite whose keys the app's custody lacks waits on the owner, never a findings red, however the harness meets
   them.** A failed test run reporting as `TEST_WORLD_NOT_DECLARED` keys custody holds none of was let stand as the task's red
   (`assertKeysHanded` returned when no sealed member held them), so a wave whose spec custody did not catch before the run

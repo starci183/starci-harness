@@ -445,7 +445,9 @@ context is lean: its op's base, the conflicting files and the repository files t
 commits implement), with the need's evidence (each waiter's rules and note) in its details, never the template's pinned base or
 its harness topic and canon files, and it is held to its op's context budget like any task; before its worker starts the
 engine applies them up to the first that conflicts and leaves git's markers (`applyGenerated`). Its verify runs its label's
-checks and judges it as the transport of work the source already settled: its first waiter (the first node that depends on
+checks, a test run naming its source's test paths running the specs of every folder it relays too (every relayed file is a
+changed file under its allowPaths, `scopedTests` in `harness/coverage-scope.ts`), and judges it as the transport of work the
+source already settled: its first waiter (the first node that depends on
 it, `composerOf` in `harness/graph.ts`) composes it, consuming what the commits export, so the composition rules on the relayed
 files defer to that waiter, whose check and the workflow's final verify judge them in full; a context file its checkout lacks
 (a Work record of the source's, on the source's branch alone) is read, by its brief and its read trace, at the last relayed

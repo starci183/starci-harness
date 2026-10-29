@@ -251,7 +251,7 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: "SELECT COUNT(*) > 0 FROM events WHERE subject = 'helper' AND kind = 'wave-infra' AND json_extract(data_json, '$.error') LIKE '%reports OPENROUTER_API_KEY as not declared although custody of dev holds it (OPENROUTER_API_KEY in ai.enc)%'"
+        query: "SELECT COUNT(*) > 0 FROM events WHERE subject = 'helper' AND kind = 'wave-infra' AND json_extract(data_json, '$.error') LIKE '%reports OPENROUTER_API_KEY as not declared although custody of dev holds it (OPENROUTER_API_KEY in ai.enc.yaml)%'"
         equals: [1]
   - name: the value is in no check row and no event
     assert:
