@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.13] - 2026-10-29
+
 ### Fixed
 
 - **An admitted contract is never refused for a context that grew under it.** The op's context budget is judged when a
@@ -40,11 +42,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `worktree gc` and `host load` (`harness/reap.ts`, `harness/process-table.ts`, `harness/land.ts`). Bench:
   `worktree-reap-op-processes`; `worktree-remove-busy-gc-retries` now holds the folder from outside, as a process the harness
   never started.
-
-## [1.1.0-alpha.13] - 2026-10-29
-
-### Fixed
-
+- **The CLI runs @starci/hfs 4.10.1** (the entity-registry cohort), moved once npm served it (CONTRIB-20). `worktree gc --now`
+  retries a folder left busy at once.
 - **Several typed checks run at once again.** alpha.12 set the tsc and eslint `estimateMb` to their 8 GB heap ceiling, so with the
   8 GB reserve one eslint filled the host's room and 16 waited 30 min behind a run holding 0.7 GB. The estimates are what one run
   holds (tsc 3072, eslint 4096); `memoryMb` stays the 8192 heap ceiling.
