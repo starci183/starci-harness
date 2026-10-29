@@ -10,6 +10,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- The CLI requires @starci/hfs 4.11.17, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2).
 - `starci check pins` is `pending` (exit 0), not red, when every CLI_PIN_SKEW pins a version of this repository's own package
   that npm does not serve yet (a 404): between the two phases of a release the CLI cannot require it, so the gate no longer turns
   CI red until `publish-packages` brings it. A skew to a version npm serves, or a registry that cannot be asked, is still red, and

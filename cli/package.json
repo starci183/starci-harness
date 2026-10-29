@@ -61,7 +61,7 @@
     "postpack": "node -e \"const fs = require('node:fs'); fs.cpSync('cli/README.md', 'README.md'); for (const d of ['ops','policy','contexts','skills','packages','cli','CONTRIBUTING.md','LICENSE']) fs.rmSync(d, {recursive: true, force: true})\""
   },
   "dependencies": {
-    "@starci/hfs": "4.11.16",
+    "@starci/hfs": "4.11.17",
     "commander": "15.0.0",
     "yaml": "2.9.1",
     "zod": "4.6.7"

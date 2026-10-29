@@ -371,6 +371,19 @@ jobs:
         run: |
           set -euo pipefail
           plan="$RUNNER_TEMP/publish-plan.json"
+          # A CLI whose @starci requirements trail their stack pins waits: cli-follow raises them once npm serves the pins, and the
+          # run of that commit publishes it.
+          if ! node cli/dist/main.js check pins > "$RUNNER_TEMP/pins.txt"; then
+            cat "$RUNNER_TEMP/pins.txt"
+            echo "::notice::the CLI trails its stack pins; cli-follow moves it onto them and the run of that commit publishes it"
+            echo "due=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if grep -q "verdict: pending" "$RUNNER_TEMP/pins.txt"; then
+            cat "$RUNNER_TEMP/pins.txt"
+            echo "due=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           node cli/dist/main.js release publish --base "$BASE" --package cli --json > "$plan" || { cat "$plan"; exit 1; }
           PLAN="$plan" node -e '
             const fs = require("fs")
@@ -396,3 +409,57 @@ jobs:
           export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
           node cli/dist/main.js release publish --publish --base "$BASE" --package cli
+
+  # The CLI follows its siblings by itself (.github/scripts/cli-follow.mjs): once publish-packages put the pinned versions on npm,
+  # this job raises the CLI's requirement and lockfile to the stack pins, bumps its prerelease when that version is on npm, records
+  # it in CHANGELOG.md and pushes the commit to main. It pushes with HARNESS_BOT_TOKEN (a fine-grained token with contents: write on
+  # this repository), because a push made with GITHUB_TOKEN starts no workflow run; the run of that commit publishes the CLI. With
+  # nothing to follow it changes nothing, so its own commit's run ends here.
+  cli-follow:
+    needs: [plan, publish-packages]
+    if: >-
+      !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.publish-packages.result == 'success'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cli-follow
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      # Without the secret the job only reports what it would move: the owner adds HARNESS_BOT_TOKEN once.
+      HAS_BOT_TOKEN: ${{ secrets.HARNESS_BOT_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.HARNESS_BOT_TOKEN || github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Install the CLI on this commit's packages
+        uses: ./.github/actions/cli-install
+      - name: Build the CLI
+        working-directory: cli
+        run: npm run build
+      - name: Move the CLI onto the pins npm serves
+        id: follow
+        run: |
+          set -euo pipefail
+          node cli/dist/main.js check pins --json > "$RUNNER_TEMP/pins.json" || true
+          SKEWS="$RUNNER_TEMP/pins.json" node .github/scripts/cli-follow.mjs
+      - name: Report a missing bot token
+        if: steps.follow.outputs.changed == 'true' && env.HAS_BOT_TOKEN != 'true'
+        run: echo "::warning::the CLI trails its pins but HARNESS_BOT_TOKEN is not set, so cli-follow cannot push its commit; add the secret (contents write on this repository) or move the CLI by hand"
+      - name: Commit and push
+        if: steps.follow.outputs.changed == 'true' && env.HAS_BOT_TOKEN == 'true'
+        env:
+          MESSAGE: ${{ steps.follow.outputs.message }}
+        run: |
+          set -euo pipefail
+          git config user.name "starci-harness-bot"
+          git config user.email "starci-harness-bot@users.noreply.github.com"
+          git add cli/package.json cli/package-lock.json CHANGELOG.md
+          git commit -m "$MESSAGE"
+          git push origin HEAD:main

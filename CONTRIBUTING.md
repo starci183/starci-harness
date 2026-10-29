@@ -217,7 +217,12 @@ refused `CLI_PIN_SKEW` by the `check pins` gate on every push and by `release pu
 of a package the CLI requires is therefore raised together with the CLI's requirement and lockfile, in the same commit when npm
 already serves the new version, else in the next one once the first phase published it. In between, `check pins` is
 `pending` (exit 0), not red, while every skew pins this commit's own package version that npm answers with a 404; a skew to a
-version npm already serves, or a registry that cannot be asked, stays red, and `release publish` holds `publish-cli` on any skew. Every CI job installs the CLI with the siblings of the commit packed over the registry copies
+version npm already serves, or a registry that cannot be asked, stays red, and `publish-cli` skips a CLI that trails its pins.
+The follow-up commit is CI's own: the `cli-follow` job ([.github/scripts/cli-follow.mjs](.github/scripts/cli-follow.mjs)), once
+`publish-packages` succeeded and npm serves every skewed pin, raises the CLI's requirement and lockfile to the pins, bumps its
+prerelease when that version is on npm, records it in [CHANGELOG.md](CHANGELOG.md) and pushes to main with the repository secret
+`HARNESS_BOT_TOKEN` (a fine-grained token, contents: write on this repository; a push with `GITHUB_TOKEN` starts no run), and the
+run of that commit publishes the CLI. Every CI job installs the CLI with the siblings of the commit packed over the registry copies
 ([.github/actions/cli-install](.github/actions/cli-install/action.yml)), and `publish-cli` publishes it as committed,
 refusing while a sibling it requires is held. `starci release publish --publish` from a
 workstation is Debug's fallback when CI cannot publish, with the owner's approval.
