@@ -22,6 +22,16 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 - **A cancel of an attempt whose worktree was removed out of band settles it at once.** It has nothing to preserve, so it ends
   cancelled with a `task-discarded` event (worktree gone) and its redo spends no try, instead of every step refusing
   `TASK_WORKTREE_GONE` (ticket tk-cb03efd533f1: `auth-sign-in`'s superseded t-2184122d). Bench: `op-settle-worktree-gone-discards`.
+- **A verify-only live suite gets its custody keys in the wave from the branch it runs.** starci-next-app's `ai-router-live`
+  burned five tries (the last t-503b105d) red `own: true` on TEST_WORLD_NOT_DECLARED for OPENROUTER_API_KEY. Its spec calls
+  `useSandbox<LessonAi>({ keys: CUSTODY_KEYS })`, and the live-spec test (`LIVE` in `harness/coverage-scope.ts`) matched only
+  `useSandbox(`, so the run held no live spec and nothing was handed; it now reads a call with type arguments too. Custody was
+  also read in the app's main checkout, which lacks `.starcistacks/dev/secrets/ai.enc` sealed on the workflow's branch only:
+  `holdersOf` (`harness/custody.ts`) now reads the sealed members in the checkout the run executes (a wave's branch head, a
+  verify's candidate, a worker's worktree) and takes only the age identity from the main checkout, so `custodyFor` hands what
+  the branch seals and `assertKeysHanded` turns a run that still lacks a key the branch holds into `VERIFY_INFRA`, never the
+  task's red. A key sealed blank is `CUSTODY_KEY_MISSING` like an empty one. A bench `starci` step takes `stdin` (`input` of
+  `shared/exec.ts`). Bench: `wave-verify-live-custody-branch`.
 
 ## [1.1.0-alpha.13] - 2026-10-29
 

@@ -103,6 +103,8 @@ const stepSchema = z.strictObject({
     parallel: z.number().int().min(2).max(64).optional(),
     /** Where the verb runs; default the scratch repository. */
     cwd: z.string().optional(),
+    /** What the verb reads on its stdin (`app secret set` seals it); without it the verb's stdin is ignored. */
+    stdin: z.string().optional(),
     env: z.record(z.string(), z.string()).optional(),
     expect: envelopeExpect.optional(),
     /** Saves `data.<path>` of a verb's json envelope, or `stdout` of a git step (trimmed), under a variable name. */

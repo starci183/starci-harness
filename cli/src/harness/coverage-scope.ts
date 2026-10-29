@@ -148,8 +148,11 @@ const SPEC = /\.(?:[\w-]+-)?(?:spec|test)\.[cm]?[jt]sx?$/
 /** The jest projects that boot the test world; a run of them only is a world run (`@starci/jest-preset`: integration, e2e, contract). */
 const WORLD_PROJECTS: ReadonlySet<string> = new Set(["integration", "e2e", "contract"])
 
-/** A spec that boots a live provider sandbox (`useSandbox`, `@starci/test-world`): it needs keys the world does not declare, so it runs only when named. */
-const LIVE = /\buseSandbox\s*\(/
+/**
+ * A spec that boots a live provider sandbox (`useSandbox(...)`, or with its client type `useSandbox<LessonAi>(...)`,
+ * `@starci/test-world`): it needs keys the world does not declare, so it runs only when named.
+ */
+const LIVE = /\buseSandbox\s*(?:<[^;()]*>)?\s*\(/
 
 /** The folders a spec walk never enters. */
 const SKIPPED = new Set(["node_modules", "dist", "coverage", ".git"])

@@ -36,7 +36,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   `supervisor:<repo>` or `kernel:<workflow>`) runs it in that seat's terminal (`ORCA_TERMINAL_HANDLE`) and role, a
   Supervisor from its project's repository and a Kernel from its workflow's worktree; `kernel next <workflow> --wait 0` and
   `kernel submit` drive the workflow, and command files are written with `file`.
-- **Steps** call a verb (`starci`, with `seat`, `expect`, `save` and `parallel`), boot the tree (`boot`), write files
+- **Steps** call a verb (`starci`, with `seat`, `cwd`, `stdin`, `expect`, `save` and `parallel`), boot the tree (`boot`), write files
   (`file`, its `yaml` or `json` serialized after variables expand, `write`; `write.from` copies a file or folder in, `${ops}` naming the ops/ folder the CLI reads), act as a worker (`worker` writes its files in the task's checkout, the workflow's worktree, and files
   its result there), read a ledger value into a variable (`read`), run git, script the Orca stand-in (`orca`), inject a
   fault straight into a ledger (`sql`, the state a killed process or elapsed time leaves behind), serve a long-lived verb

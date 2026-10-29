@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process"
 import type { ChildProcess, ChildProcessByStdio } from "node:child_process"
-import type { Readable } from "node:stream"
+import type { Readable, Writable } from "node:stream"
 import { existsSync, readFileSync } from "node:fs"
 import { setPriority } from "node:os"
 import { dirname, join } from "node:path"
@@ -36,6 +36,8 @@ export interface RunOptions {
     readonly priority?: number
     /** Told the child's pid once it started (the heavy-command semaphore records it). */
     readonly onSpawn?: (pid: number) => void
+    /** Written to the child's stdin, which is then closed; without it the child's stdin is ignored. */
+    readonly input?: string
 }
 
 /** One process this CLI started: its pid, the folder it was started in, and its argv. */
@@ -169,9 +171,12 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
         const base = options.baseEnv ?? process.env
         const env = options.env === undefined ? base : { ...base, ...options.env }
         const detached = options.timeoutMs !== undefined && process.platform !== "win32"
-        let child: ChildProcessByStdio<null, Readable, Readable>
+        let child: ChildProcessByStdio<Writable | null, Readable, Readable>
         try {
-            child = spawn(tool, [...args], { cwd, env, windowsHide: true, detached, stdio: ["ignore", "pipe", "pipe"] })
+            child =
+                options.input === undefined
+                    ? spawn(tool, [...args], { cwd, env, windowsHide: true, detached, stdio: ["ignore", "pipe", "pipe"] })
+                    : spawn(tool, [...args], { cwd, env, windowsHide: true, detached, stdio: ["pipe", "pipe", "pipe"] })
         } catch (error: unknown) {
             // Windows refuses a .cmd or .bat synchronously (spawn EINVAL), before any process exists.
             const code = errorCode(error)
@@ -185,6 +190,9 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
         }
         child.stdout.on("data", stdout.push)
         child.stderr.on("data", stderr.push)
+        // A child that exits before reading its input closes the pipe: the write error is its own early exit, never this run's.
+        child.stdin?.on("error", () => undefined)
+        child.stdin?.end(options.input)
         let done = false
         const finish = (code: number | null): void => {
             if (done) return

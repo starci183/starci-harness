@@ -195,7 +195,7 @@ const starci = async (run: RunState, step: Step, label: string): Promise<void> =
     const seat = seatOf(run, step.seat, label)
     const cwd = step.cwd === undefined ? seat.cwd : inRepo(run, step.cwd)
     const env = { ...run.env, ...seat.env, ...Object.fromEntries(Object.entries(step.env ?? {}).map(([key, value]) => [key, expand(run, value)])) }
-    const done = await captureTool(process.execPath, [cliPath(), ...args, "--json", "--cwd", cwd], cwd, { env, timeoutMs: 600_000 })
+    const done = await captureTool(process.execPath, [cliPath(), ...args, "--json", "--cwd", cwd], cwd, { env, timeoutMs: 600_000, ...(step.stdin === undefined ? {} : { input: expand(run, step.stdin) }) })
     const envelope = envelopeOf(done.stdout)
     const expect = step.expect ?? { exit: 0 }
     const said = saidOf(done, envelope)

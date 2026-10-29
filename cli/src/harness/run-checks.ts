@@ -508,8 +508,9 @@ export type PreparedSuite = { readonly argv: readonly string[]; readonly given: 
 /**
  * Makes a command ready the way a command check runs it: a command that runs jest (`runsJest`) runs the spec files it scopes to
  * (harness/coverage-scope.ts `scopedTests`), with `coverage: changed` narrowed to the changed logic files, and when what it runs
- * holds an opt-in live suite the keys its world declares come from the app's custody for that run alone (harness/custody.ts
- * `custodyFor`, which refuses CUSTODY_CODES). `starci test live` makes a worker's run of a live suite with this same function.
+ * holds an opt-in live suite the keys its world declares come for that run alone from the custody of the checkout it runs in
+ * (`place.root`: a wave's branch head, a verify's candidate; harness/custody.ts `custodyFor`, which refuses CUSTODY_CODES).
+ * `starci test live` makes a worker's run of a live suite with this same function.
  */
 export const prepareSuite = async (named: readonly string[], place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number; readonly coverage?: "changed" }): Promise<PreparedSuite> => {
     const jest = runsJest(named, place.cwd)
@@ -518,8 +519,8 @@ export const prepareSuite = async (named: readonly string[], place: CheckPlace, 
     const scoped = tests?.argv ?? named
     const scope = options.coverage === "changed" && jest ? await changedCoverageScope(place, allowPaths) : undefined
     const argv = scope === undefined ? scoped : withCoverageArgs(scoped, scope)
-    const custody = tests === undefined || tests.live.length === 0 ? undefined : await custodyFor(tests.live, place.source ?? place.root, place.root)
-    const given: CommandOptions = { ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }), ...(custody === undefined ? {} : { custody }), ...(jest ? { keysOf: place.source ?? place.root } : {}) }
+    const custody = tests === undefined || tests.live.length === 0 ? undefined : await custodyFor(tests.live, place.root)
+    const given: CommandOptions = { ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }), ...(custody === undefined ? {} : { custody }), ...(jest ? { keysOf: place.root } : {}) }
     const lead = [tests?.detail, scope?.detail, custody?.detail].filter((line): line is string => line !== undefined)
     return { argv, given, lead, live: tests?.live ?? [] }
 }
