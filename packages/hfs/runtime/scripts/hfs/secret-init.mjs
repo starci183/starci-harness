@@ -106,6 +106,21 @@ export function localAgeIdentity(repoRoot, env, tools, host = null) {
   return { env: { ...env }, source: null, looked };
 }
 
+/**
+ * The one age identity every decrypt of a sealed member opens with (secret get, verify, materialize, set over an existing member,
+ * migrate, split, the edit verbs, updatekeys, server-key, the stack's sealed members and the CLI's custody): localAgeIdentity's
+ * order (the environment, the app's `.claude/secret.env`, its main checkout's, the `host` port), then sops' per-user keys.txt.
+ * Same shape as localAgeIdentity; `looked` names every place read, keys.txt last.
+ */
+export function decryptionIdentity(repoRoot, env, { tools, host = null, platform = process.platform } = {}) {
+  const local = localAgeIdentity(repoRoot, env, tools, host);
+  if (local.source !== null) return local;
+  const keys = secretRoots(env, platform).identity;
+  const looked = [...local.looked, keys];
+  if (!fs.existsSync(keys)) return { ...local, looked };
+  return { env: { ...local.env, SOPS_AGE_KEY_FILE: keys }, source: keys, looked };
+}
+
 /** Load host-local age selections below the explicit environment (localAgeIdentity), without copying any other credentials. */
 export function ageIdentityEnv(repoRoot, env, tools) {
   return localAgeIdentity(repoRoot, env, tools).env;

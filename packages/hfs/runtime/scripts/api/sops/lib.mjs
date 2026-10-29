@@ -116,7 +116,11 @@ function isolatedSopsEnv(env, inlineName = 'SOPS_AGE_KEY') {
   return out;
 }
 
-const held = reason => ({ status: null, stdout: '', stderr: '', error: Object.assign(new Error(`SOPS selected identity [${reason}]: the selected invocation was not qualified`), { name: 'SopsIdentityRefusal', identityRefusal: reason }) });
+/**
+ * A refusal of the selected invocation. `detail` says what failed in public words; `facts` carries only public values the caller
+ * names in its own refusal (`publicRecipient`, the selected identity's recipient; `sopsFailure`, the class of a failed sops run).
+ */
+const held = (reason, detail = 'the selected invocation was not qualified', facts = {}) => ({ status: null, stdout: '', stderr: '', error: Object.assign(new Error(`SOPS selected identity [${reason}]: ${detail}`), { name: 'SopsIdentityRefusal', identityRefusal: reason, ...facts }) });
 const nativeFile = file => {
   if (typeof file !== 'string' || !path.isAbsolute(file) || /\.(?:[cm]?js|cmd|bat|ps1|sh)$/i.test(file)) return false;
   let fd;
@@ -175,11 +179,29 @@ const selectedAdmission = (selection, spec, invocation, env) => {
 
 const decryptArgs = (file, inputType, outputType) => ['decrypt', '--input-type', inputType, '--output-type', outputType, '--filename-override', file, '--enable-local-keyservice=true', '--decryption-order', 'age'];
 
+/**
+ * The class of a failed sops run, read from its stderr and exit; sops prints no value there, and only the class leaves. Classes:
+ * no-matching-identity (no age entry opens with the identity), mac-mismatch (the document changed after it was sealed),
+ * unparsable-document (the bytes are not the format they were read as), timeout, or exit-<n>.
+ */
+export function sopsFailureClass(result) {
+  if (result?.error?.code === 'ETIMEDOUT' || result?.signal === 'SIGTERM') return 'timeout';
+  const text = Buffer.isBuffer(result?.stderr) ? result.stderr.toString('utf8') : String(result?.stderr ?? '');
+  if (/MAC mismatch/iu.test(text)) return 'mac-mismatch';
+  if (/no identity matched|failed to get the data key|could not decrypt data key|0 successful groups/iu.test(text)) return 'no-matching-identity';
+  if (/unmarshal|could not parse|error loading file|invalid character|yaml:/iu.test(text)) return 'unparsable-document';
+  return `exit-${String(result?.status ?? 'none')}`;
+}
+
 const decryptSelected = (run, exe, file, input, spec, recipient) => {
+  const facts = { publicRecipient: recipient };
   const envelope = selectedAgeEnvelope(decoded(input), spec.inputType, recipient);
-  if (!envelope.ok) return held(envelope.reason);
+  if (!envelope.ok) return held(envelope.reason, `the ${spec.inputType} envelope was refused for the selected recipient ${recipient}`, facts);
   const result = run(exe, decryptArgs(file, spec.inputType, spec.outputType), input);
-  if (!captured(result)) return held('selected-decryption-failed');
+  if (!captured(result)) {
+    const failure = sopsFailureClass(result);
+    return held('selected-decryption-failed', `sops could not decrypt the ${spec.inputType} document with the selected recipient ${recipient} (${failure})`, { ...facts, sopsFailure: failure });
+  }
   return { status: 0, stdout: decoded(result.stdout), stderr: '', error: null };
 };
 

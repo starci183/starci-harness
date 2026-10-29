@@ -435,8 +435,8 @@ function declaredEdition(cwd) {
  * `starci app stack`: the deploy actions (prepare, doctor, render, deploy, converge, verify, rollback, prune, backup, jobs, ...) are the Swarm
  * tooling of stack/cli.mjs; up, down and status are the full edition's test-world infrastructure.
  */
-async function stackAppMain(argv, { cwd, edition, stackMain, stdout: out, stderr: err, env, sops, stackIo }) {
-  if (STACK_ACTIONS.includes(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, ...(sops ? { sops } : {}) });
+async function stackAppMain(argv, { cwd, edition, stackMain, stdout: out, stderr: err, env, sops, hostIdentity, stackIo }) {
+  if (STACK_ACTIONS.includes(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, ...(sops ? { sops } : {}) });
   if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app stack up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err });
@@ -462,7 +462,7 @@ function errorMessage(error) {
  * `harness` ({ version }) is the CLI that runs this package in-process: its version is the starci-harness an app is judged and
  * scaffolded at (runtime/scripts/hfs/canon-pins.mjs). `run` injects the database runner, `runLinter` the linter transport, `checkApp`
  * the HFS check and `stackIo` Swarm tools; production defaults execute every check. `hostIdentity` ({ label, read }) is the
- * harness CLI's own secret.env SOPS_AGE_KEY, which `secret` reads last for the age identity; `prompt` replaces its masked prompt.
+ * harness CLI's own secret.env SOPS_AGE_KEY, which every verb that opens a sealed member (secret, stack, release, db) reads last for the age identity (decryptionIdentity); `prompt` replaces its masked prompt.
  */
 export async function main(argv, {
   cwd: baseCwd = process.cwd(), harness, stdout = (s) => process.stdout.write(s), stderr = (s) => process.stderr.write(s), presets, prettier, lock, run, stackMain,

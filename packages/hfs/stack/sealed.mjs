@@ -5,7 +5,6 @@ import { createHash, createHmac } from 'node:crypto';
 import { memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import { secretRoots } from '../runtime/scripts/hfs/secret-files.mjs';
 import { readMap } from '../runtime/scripts/hfs/secret-store.mjs';
 import { refusal } from './errors.mjs';
 
@@ -52,27 +51,32 @@ function secretRuntimeName(stack, key, value, versionKey) {
   return name;
 }
 
-const AGE_IDENTITY_ENV = /^SOPS_AGE_KEY(?:_FILE)?$/iu;
-const AGE_HINT = 'load the age identity into SOPS_AGE_KEY (the secret.env of the owner machine, or the CI secret) and retry';
+const AGE_HINT = 'add SOPS_AGE_KEY to .claude/secret.env of the app or the harness secret.env of the owner machine (the CI secret in a workflow) and retry';
 
-/** True when an age identity is reachable: SOPS_AGE_KEY or SOPS_AGE_KEY_FILE in the environment, the repository's .claude/secret.env or the per-user keys.txt. */
-export function hasAgeIdentity(ctx, config) {
-  const named = Object.entries(ctx.env).some(([name, value]) => AGE_IDENTITY_ENV.test(name) && value);
-  return named || fs.existsSync(path.join(config.repoRoot, '.claude', 'secret.env')) || fs.existsSync(secretRoots(ctx.env).identity);
+/**
+ * True when the sops seam found an age identity (secret-init.mjs decryptionIdentity, the one lookup every decrypt uses). A seam
+ * that reports no `identity` (a spec double) decides for itself.
+ */
+export function hasAgeIdentity(ctx) {
+  const { identity } = ctx.sops;
+  return identity === undefined || identity.source !== null;
 }
 
 /** Refuses up front, before any work, when sealed custody must be opened and no age identity is reachable. */
 export function requireAgeIdentity(ctx, config, purpose) {
-  if (!hasAgeIdentity(ctx, config)) throw refusal('STACK_AGE_IDENTITY_MISSING', `${purpose} needs the sealed members, and no age identity is available: ${AGE_HINT}`);
+  if (!hasAgeIdentity(ctx)) throw refusal('STACK_AGE_IDENTITY_MISSING', `${purpose} needs the sealed members, and no age identity is available (looked in ${ctx.sops.identity.looked.join(', ')}): ${AGE_HINT}`);
 }
 
-/** Opens one sealed member (`<secretsDir>/<member>.enc.yaml`, or a legacy `.enc`) into a { KEY: value } map. Names the member only on failure. */
+/**
+ * Opens one sealed member (`<secretsDir>/<member>.enc.yaml`, or a legacy `.enc`) into a { KEY: value } map. A failure is refused
+ * naming the member and the seam's reason (its format, recipients and the identity tried); no value.
+ */
 export function openMember(ctx, config, member) {
   try {
     const map = readMap(memberFile(config.secretsDir, member), ctx.sops);
     return Object.fromEntries(Object.entries(map).map(([key, value]) => [key, typeof value === 'string' && !value.includes(String.fromCodePoint(0)) ? lfText(value) : value]));
-  } catch {
-    throw refusal('STACK_SECRET_MEMBER_UNREADABLE', `the sealed member ${member} cannot be opened${hasAgeIdentity(ctx, config) ? ' (is the age identity a recipient of this member?)' : `: no age identity is available, ${AGE_HINT}`}`);
+  } catch (error) {
+    throw refusal('STACK_SECRET_MEMBER_UNREADABLE', `the sealed member ${member} cannot be opened: ${error.message}${hasAgeIdentity(ctx) ? '' : `; ${AGE_HINT}`}`);
   }
 }
 

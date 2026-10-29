@@ -707,7 +707,7 @@ the stdin `set` reads, so no shell, argument, output, error or evidence carries 
 a listed one the host lacks `HOST_SECRET_MISSING`, and `--from-host` names exactly one key. Without it, `app secret set <env>
 <member> <KEY>...` prompts on a terminal for each key with masked input and reads redirected stdin otherwise (the whole of it
 for one key, one `KEY=value` line per key for several), sealing every key in one write. `SOPS_AGE_KEY` is one of
-`secretKeys`: every `app secret` verb and `harness/custody.ts` hand @starci/hfs the loader's reader of it
+`secretKeys`: every `app` verb (`runHfs`) and `harness/custody.ts` hand @starci/hfs the loader's reader of it
 (`hostAgeIdentity`), read only when neither the environment nor the app's own `.claude/secret.env` selects an identity. Full and lite apps keep the same custody (`.starcistacks/<env>/secrets/<member>.enc.yaml`
 under the app's `.sops.yaml`), so the verb serves both. Another shared key is one line in `secretKeys`, its entry in
 secret.env.example and one `set --from-host` per app.

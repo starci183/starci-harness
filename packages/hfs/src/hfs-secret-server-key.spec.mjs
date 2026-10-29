@@ -11,7 +11,7 @@ import { secretMain } from "../runtime/scripts/hfs/secret.mjs";
 import { parseYaml } from "../runtime/engine/yaml.mjs";
 import { auditSecrets } from "../runtime/scripts/hfs/secret-standard.mjs";
 import {
-  BACKUP_SECRET, SERVER_AGE_IDENTITY, ensureIdentityScript, publicKeyScript, streamIdentityCommand, swapIdentityScript,
+  BACKUP_SECRET, SERVER_AGE_IDENTITY, ageKeygenScript, ensureIdentityScript, publicKeyScript, streamIdentityCommand, swapIdentityScript,
 } from "../stack/server-key.mjs";
 
 const OWNER = `age1${"q".repeat(58)}`;
@@ -50,7 +50,7 @@ function fakeServer({ identity = null, tool = true, next = NEXT } = {}) {
   const state = { identity, staged: null, retired: [], calls: [] };
   const run = (command, { input } = {}) => {
     state.calls.push({ command, input });
-    if (command === "command -v age-keygen") return { status: tool ? 0 : 1, stdout: "", stderr: "" };
+    if (input === ageKeygenScript()) return tool ? { status: 0, stdout: "/usr/local/bin/age-keygen\n", stderr: "" } : { status: 127, stdout: "", stderr: "age-keygen is not installed\n" };
     if (input === ensureIdentityScript(SERVER_AGE_IDENTITY)) {
       const created = state.identity === null;
       state.identity ??= SERVER;
@@ -62,7 +62,7 @@ function fakeServer({ identity = null, tool = true, next = NEXT } = {}) {
     }
     if (input === publicKeyScript(SERVER_AGE_IDENTITY))
       return state.identity === null ? { status: 5, stdout: "", stderr: "" } : { status: 0, stdout: `${state.identity}\n`, stderr: "" };
-    if (input?.startsWith("set -eu\numask 077\nf=") && input.includes('mv "$n" "$f"')) {
+    if (input?.startsWith("set -eu\numask 077\n") && input.includes('mv "$n" "$f"')) {
       state.retired.push(state.identity);
       state.identity = state.staged;
       state.staged = null;
@@ -98,16 +98,17 @@ const ruleOf = (fixture) => {
 const recorded = (fixture) =>
   parseYaml(fs.readFileSync(path.join(fixture.root, ".starcistacks", "application-stacks.yaml"), "utf8")).environments.production.deploy.remote.serverRecipient;
 
-/** Every script sent to the server writes its stdout only through `age-keygen -y`; age-keygen -o goes to /dev/null. */
+/** Every script sent to the server writes its stdout only through `age-keygen -y` (as "$k", its root-resolved path); age-keygen -o goes to /dev/null. */
 function onlyPublicReadBack(calls) {
   for (const { command, input } of calls) {
     const text = `${command}\n${input ?? ""}`;
     assert.doesNotMatch(text, /\bcat\b|\bhead\b|\btail\b|base64|\bxxd\b|\bdd\b/u, "no script reads the private file back");
     for (const line of (input ?? "").split("\n")) {
-      if (/age-keygen -o/u.test(line)) assert.match(line, />\/dev\/null 2>&1$/u, "age-keygen -o prints nothing");
+      if (/"\$k" -o/u.test(line)) assert.match(line, />\/dev\/null 2>&1$/u, "age-keygen -o prints nothing");
+      assert.doesNotMatch(line, /^\s*age-keygen\b/u, "age-keygen is called by its root-resolved path, never by name");
     }
-    const stdoutWriters = (input ?? "").split("\n").filter((line) => /^\s*age-keygen\b/u.test(line) && !/-o /u.test(line));
-    for (const line of stdoutWriters) assert.match(line, /^age-keygen -y "\$f"$/u);
+    const stdoutWriters = (input ?? "").split("\n").filter((line) => /^\s*"\$k"/u.test(line) && !/-o /u.test(line));
+    for (const line of stdoutWriters) assert.match(line, /^"\$k" -y "\$f"$/u);
   }
 }
 
@@ -159,6 +160,42 @@ test("server-key refuses an environment whose deploy declares no remote, before 
   assert.equal(result.code, 2);
   assert.match(result.err, /STACK_SERVER_KEY_NO_REMOTE: environments\.production\.deploy\.remote/u);
   assert.deepEqual(server.state.calls, []);
+});
+
+/**
+ * A server whose sudo secure_path leaves out /usr/local/bin, where age-keygen lives (AlmaLinux 10): the deploy user's
+ * `command -v age-keygen` finds it, and a root script that calls age-keygen by name exits 127 as sh does.
+ */
+function securePathServer() {
+  const state = { identity: null, calls: [] };
+  const run = (command, { input } = {}) => {
+    state.calls.push({ command, input });
+    if (/^command -v age(-keygen)?$/u.test(command)) return { status: 0, stdout: "/usr/local/bin/age-keygen\n", stderr: "" };
+    if (!command.includes("sudo -n sh -s") || input === undefined) return { status: 127, stdout: "", stderr: "unexpected command" };
+    const byName = input.split("\n").some((line) => /^\s*age-keygen\b|\$\(\s*age-keygen\b/u.test(line));
+    if (byName || !input.includes("/usr/local/bin")) return { status: 127, stdout: "", stderr: "sh: line 1: age-keygen: command not found\n" };
+    if (input === ageKeygenScript()) return { status: 0, stdout: "/usr/local/bin/age-keygen\n", stderr: "" };
+    if (input === ensureIdentityScript(SERVER_AGE_IDENTITY)) {
+      state.identity ??= SERVER;
+      return { status: 0, stdout: `${SERVER}\n`, stderr: "identity created\n" };
+    }
+    if (input === publicKeyScript(SERVER_AGE_IDENTITY)) return state.identity ? { status: 0, stdout: `${state.identity}\n`, stderr: "" } : { status: 5, stdout: "", stderr: "" };
+    return { status: 127, stdout: "", stderr: "unexpected command" };
+  };
+  return { state, run: Object.assign(run, { cleanup: () => {}, notes: [] }) };
+}
+
+test("server-key finds age-keygen as root where sudo's secure_path leaves /usr/local/bin out, checking it the way it calls it", async (t) => {
+  const fixture = await productionApp(t);
+  const server = securePathServer();
+  const dry = await serverKey(fixture, ["production"], { server });
+  assert.equal(dry.code, 0, dry.err);
+  assert.match(dry.out, /dry run: would create/u);
+  const result = await serverKey(fixture, ["production", "--execute"], { server });
+  assert.equal(result.code, 0, result.err);
+  assert.equal(server.state.identity, SERVER);
+  assert.deepEqual(ruleOf(fixture), [OWNER, SERVER]);
+  assert.ok(server.state.calls.every(({ command }) => !/^command -v/u.test(command)), "no presence check runs outside the root shell");
 });
 
 test("server-key refuses with the exact install commands when age-keygen is missing and cannot be installed", async (t) => {

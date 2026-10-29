@@ -98,17 +98,24 @@ image, so any digest-pinned supported reverse proxy serves.
 - **One owner identity, found by itself; one rule per environment.** Every member is sealed to the public recipients of
   its environment's rule in the app's `.sops.yaml`, which `starci app secret init` and `recipients` manage: dev to the owner
   key, production to the production server key and the owner key both, so the owner sets and rotates production from his
-  machine and the server opens it with its own key. The owner's private identity is `SOPS_AGE_KEY` in the harness's secret.env, backed up by the owner (R253); every
-  `starci app secret` verb finds it with nothing exported or pointed to, taking the first of: SOPS_AGE_KEY or
-  SOPS_AGE_KEY_FILE of the environment, the app's git-ignored `.claude/secret.env` (its main checkout's for a worktree), the
-  harness secret.env, the sops `keys.txt` (`localAgeIdentity`, @starci/hfs `secret-init.mjs`), and with none refuses before
-  asking for a value, naming each place. Whoever holds that identity can decrypt every member in the whole git history, so
+  machine and the server opens it with its own key. A member is sealed to that whole set, and a rewrite (`set`, `migrate`,
+  `split`, an edit) seals to the rule's set, or to the member's own set when no rule names it, so none drops the server key;
+  a decrypt opens a member when its identity's recipient is one of the set. The owner's private identity is `SOPS_AGE_KEY` in
+  the harness's secret.env, backed up by the owner (R253); every verb that opens a member (`starci app secret`, `stack`,
+  `release`, `db`, the CLI's custody) finds it with nothing exported or pointed to through one lookup, taking the first of:
+  SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, the app's git-ignored `.claude/secret.env` (its main checkout's for a
+  worktree), the harness secret.env, the sops `keys.txt` (`decryptionIdentity`, @starci/hfs `secret-init.mjs`), and with none
+  refuses before asking for a value, naming each place. A member it cannot open is refused naming the member, the format it
+  was read as, its recipients, the identity's source and recipient, and why. Whoever holds that identity can decrypt every member in the whole git history, so
   it never leaves the harness secret.env and the app repositories stay private.
 - **The server's own identity, made on the server.** `starci app secret server-key <env>` (a dry run until `--execute`)
   reaches the environment's deploy server the way the deploy does (`deploy.remote`, the same host, user and key source;
   without one it refuses) and there keeps `/root/.config/sops/age/keys.txt`, sops' default key file of root that a decrypt on
   the server reads with nothing set (SOPS_AGE_KEY_FILE names it where one is set), or makes it with `age-keygen` (umask 077,
-  mode 600, owner root), installing age through stack prepare's installer when it is missing. Only `age-keygen -y` comes
+  mode 600, owner root), installing age through stack prepare's installer when it is missing. Every script runs as root and
+  resolves age-keygen there (root's PATH, then `/usr/local/bin`, `/usr/bin`, `/bin`), the presence check the same way, since
+  sudo's secure_path can leave `/usr/local/bin` out; the static installer puts age in `/usr/local/bin` and links it from
+  `/usr/bin`. Only `age-keygen -y` comes
   back: the private key never leaves the server and the owner's key never makes it. Locally the recipient joins the
   environment's rule beside the owner key, is recorded as `deploy.remote.serverRecipient`, and every member is wrapped again
   with `sops updatekeys`, the owner identity opening only the data key. `--rotate --execute` stages a new identity, wraps the
@@ -125,7 +132,9 @@ image, so any digest-pinned supported reverse proxy serves.
   the deploy's CI ssh key only when its public key is that recipient (umask 077, mode 600, never echoed, never over an
   existing identity). Both warn while the repository holds a SOPS_AGE_KEY of its own (`gh api repos/<o>/<r>/actions/secrets`,
   names only): the owner deletes it once every environment holds its server key, since the owner key never belongs in
-  GitHub. `stack deploy` opens the members where it runs (the owner machine with the owner key, or CI with the bound
+  GitHub. The deploy's owner-machine transport opens `deploy.remote.sealed`: `ops` holds `VPS_HOST` and `VPS_USER`, `sshKey`
+  the PEM private key under the key `privateKey`, `knownHosts` the pinned known_hosts under `knownHosts` (`SEALED_SSH_KEYS`,
+  @starci/hfs `stack/remote.mjs`). `stack deploy` opens the members where it runs (the owner machine with the owner key, or CI with the bound
   environment's server key) and hands each value to a Swarm secret over the deploy transport; a decrypt on the server reads
   this key file (@starci/hfs `stack/server-key.mjs`).
 - **Set in one write.** `starci app secret set <env> <provider> <KEY>...` prompts for each key with masked input on a

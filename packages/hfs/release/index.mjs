@@ -18,9 +18,9 @@ import { RELEASE_CODE, VERSION, normalizeRelease, releaseGate } from './gate.mjs
 import { releasePush } from './push.mjs';
 import { releaseUrgentPush } from './urgent.mjs';
 
-const IO_KEYS = ['cwd', 'stdout', 'stderr', 'env', 'sops'];
+const IO_KEYS = ['cwd', 'stdout', 'stderr', 'env', 'sops', 'hostIdentity'];
 
-/** The stack context of one invocation: the IO of the app (cwd, writers, env, sops) over the injectable seams of `io.stackIo` (spawn, sleep, now, fetch). */
+/** The stack context of one invocation: the IO of the app (cwd, writers, env, sops, hostIdentity) over the injectable seams of `io.stackIo` (spawn, sleep, now, fetch). */
 export function contextOf(io = {}) {
   const own = Object.fromEntries(IO_KEYS.filter((key) => io[key] !== undefined).map((key) => [key, io[key]]));
   return stackContext({ ...io.stackIo, ...own });

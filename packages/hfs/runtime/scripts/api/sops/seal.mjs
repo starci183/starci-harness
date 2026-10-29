@@ -7,10 +7,11 @@ import { resolveSops, runSelectedSops } from './lib.mjs';
 
 /**
  * Run `<bin> encrypt` (bin null: the sops resolveSops finds) over `plaintext` of format `inputType` (json, yaml or dotenv). Sops reads stdin only with a `--filename-override`, the path the sealed
- * file will have: recipients are age keys (`--age`), and when none are given sops picks them from the repository's .sops.yaml for that path. {status, stdout, stderr, error}.
+ * file will have: recipients are age keys (`--age`), and when none are given sops picks them from the repository's .sops.yaml for that path. `config` names
+ * the sops configuration to read instead of the repository's (a rule-less member sealed to its own recipients). {status, stdout, stderr, error}.
  */
-export function seal(bin, { inputType, plaintext, recipients = [], filenameOverride }, { invocation = null, env = process.env, cwd = undefined, maxBuffer = 16 * 1024 * 1024, timeout = undefined } = {}) {
-  const args = ['encrypt', '--input-type', inputType, '--output-type', inputType, '--filename-override', filenameOverride];
+export function seal(bin, { inputType, plaintext, recipients = [], filenameOverride, config = null }, { invocation = null, env = process.env, cwd = undefined, maxBuffer = 16 * 1024 * 1024, timeout = undefined } = {}) {
+  const args = [...(config ? ['--config', config] : []), 'encrypt', '--input-type', inputType, '--output-type', inputType, '--filename-override', filenameOverride];
   if (recipients.length) args.push('--age', recipients.join(','));
   const selected = sopsIdentityEnv(env);
   if (selected.error?.identityRefusal === 'inline-context-unqualified') return runSelectedSops(bin, { operation: 'seal', params: { inputType, plaintext, recipients, filenameOverride } }, { selection: selected, invocation, env, cwd, maxBuffer, timeout });

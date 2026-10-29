@@ -12,7 +12,7 @@ import { secretMain } from "../runtime/scripts/hfs/secret.mjs";
 import { envelopeOf } from "../runtime/scripts/hfs/secret-document.mjs";
 import { resolveSops } from "../runtime/scripts/api/sops/lib.mjs";
 import { resolveRealTool } from "../runtime/scripts/api/process/resolve-real-tool.mjs";
-import { SERVER_AGE_IDENTITY, ensureIdentityScript } from "../stack/server-key.mjs";
+import { SERVER_AGE_IDENTITY, ageKeygenScript, ensureIdentityScript } from "../stack/server-key.mjs";
 
 const sops = resolveSops(process.env);
 const keygen = resolveRealTool("age-keygen", { env: process.env });
@@ -42,7 +42,7 @@ test("server-key wraps a real member to the server recipient with sops updatekey
   assert.deepEqual(envelopeOf(fs.readFileSync(file, "utf8")).recipients, [owner.recipient]);
 
   const ssh = Object.assign((command, { input } = {}) => {
-    if (command === "command -v age-keygen") return { status: 0, stdout: "", stderr: "" };
+    if (input === ageKeygenScript()) return { status: 0, stdout: "/usr/local/bin/age-keygen\n", stderr: "" };
     if (input === ensureIdentityScript(SERVER_AGE_IDENTITY)) return { status: 0, stdout: `${server.recipient}\n`, stderr: "identity created\n" };
     return { status: 127, stdout: "", stderr: "" };
   }, { cleanup: () => {}, notes: [] });

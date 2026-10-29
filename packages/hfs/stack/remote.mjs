@@ -64,24 +64,36 @@ function sshCommandArgv(sshCmd) {
   return parts;
 }
 
-/** A sealed binary member is the file itself; a JSON object around it ({ data | <names> }, the re-sealed shape of `starci app secret rename`) is unwrapped. */
-function unwrap(text, names) {
+/**
+ * The key each sealed SSH member of `deploy.remote.sealed` holds (contexts/project/stacks.md PROJECT-STACKS-5): the one owner of
+ * these names. `sshKey` names the member whose `privateKey` is the PEM private key, `knownHosts` the member whose `knownHosts` is
+ * the pinned known_hosts text.
+ */
+export const SEALED_SSH_KEYS = Object.freeze({ sshKey: 'privateKey', knownHosts: 'knownHosts' });
+
+/** A legacy binary member is the file itself; a JSON object around it ({ data | <key> }, the re-sealed shape of `starci app secret rename`) is unwrapped. */
+function unwrap(text, key) {
   const body = lfOnly(text);
   const trimmed = body.trim();
   if (!trimmed.startsWith('{')) return body;
   let parsed;
   try { parsed = JSON.parse(trimmed); } catch { return body; }
-  for (const name of ['data', ...names]) if (typeof parsed[name] === 'string') return lfOnly(parsed[name]);
+  for (const name of ['data', key]) if (typeof parsed[name] === 'string') return lfOnly(parsed[name]);
   return body;
 }
 
+/** The sops format a sealed member is read as: a `.enc.yaml` member is YAML, a legacy `.enc` one dotenv. */
+const memberFormat = (file) => (isLegacyName(file) ? 'dotenv' : 'yaml');
+
+/** Opens one member through the sops seam; a failure is refused naming the member and the seam's own reason (format, recipients, identity). */
 function openMember(slug, read) {
   try { return read(); } catch (error) { throw refusal('STACK_REMOTE_SEALED', `cannot open the sealed member ${slug}: ${error.message}`); }
 }
 
 function opsAccount(ctx, config) {
   const slug = config.remote.sealed.ops;
-  const map = openMember(slug, () => ctx.sops.decrypt(memberFile(config.secretsDir, slug), isLegacyName(memberFile(config.secretsDir, slug)) ? 'dotenv' : 'yaml'));
+  const file = memberFile(config.secretsDir, slug);
+  const map = openMember(slug, () => ctx.sops.decrypt(file, memberFormat(file)));
   for (const name of ['VPS_HOST', 'VPS_USER']) {
     const value = map[name];
     if (typeof value !== 'string' || !ACCOUNT.test(value) || value.startsWith('-')) throw refusal('STACK_REMOTE_OPS', `${slug} must hold ${name} (letters, digits, . _ @ -)`);
@@ -89,8 +101,17 @@ function opsAccount(ctx, config) {
   return `${map.VPS_USER}@${map.VPS_HOST}`;
 }
 
-function binaryMember(ctx, config, slug, names) {
-  return unwrap(openMember(slug, () => ctx.sops.decryptBinary(memberFile(config.secretsDir, slug))), names);
+/**
+ * The text a sealed SSH member holds under `key` (SEALED_SSH_KEYS): a `.enc.yaml` member is read as YAML and the key taken from
+ * its map; a legacy `.enc` member is the sops binary or JSON envelope it was sealed as.
+ */
+function sshMember(ctx, config, slug, key) {
+  const file = memberFile(config.secretsDir, slug);
+  if (isLegacyName(file)) return unwrap(openMember(slug, () => ctx.sops.decryptBinary(file)), key);
+  const map = openMember(slug, () => ctx.sops.decrypt(file, 'yaml'));
+  if (typeof map[key] !== 'string' || map[key] === '')
+    throw refusal('STACK_REMOTE_SEALED', `the sealed member ${slug} holds no ${key} (it holds ${Object.keys(map).join(', ') || 'no key'}): seal it with starci app secret set ${config.env ?? '<env>'} ${slug} ${key} --from-file ${key}=<file>`);
+  return lfOnly(map[key]);
 }
 
 const withNewline = (text) => `${text.trim()}\n`;
@@ -107,9 +128,9 @@ export function openSealedSession(ctx, config) {
   const account = opsAccount(ctx, config);
   if (config.nativeTarget && account !== `${config.nativeTarget.user}@${config.nativeTarget.host}`)
     throw refusal('STACK_REMOTE_OPS', 'the sealed SSH account differs from the accepted native target');
-  const key = binaryMember(ctx, config, sealed.sshKey, ['privateKey', 'key']);
+  const key = sshMember(ctx, config, sealed.sshKey, SEALED_SSH_KEYS.sshKey);
   if (!key.includes('PRIVATE KEY')) throw refusal('STACK_REMOTE_KEY', `${sealed.sshKey} does not hold a PEM private key`);
-  const known = binaryMember(ctx, config, sealed.knownHosts, ['knownHosts', 'known_hosts']).trim();
+  const known = sshMember(ctx, config, sealed.knownHosts, SEALED_SSH_KEYS.knownHosts).trim();
   assertStackAccount(config.nativeTarget, account, known);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stack-ssh-'));
   const keyFile = path.join(dir, 'id');
