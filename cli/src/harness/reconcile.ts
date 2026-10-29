@@ -4,7 +4,7 @@ import { headline } from "../shared/exec.js"
 import { captureGit, git } from "../shared/git.js"
 import { normaliseRepoPath, parseContract } from "./contract.js"
 import type { Contract } from "./contract.js"
-import { LIVE_STATES, REVERT_PREFIX, isGeneratedKey, nodeHashOf, sha } from "./graph.js"
+import { LIVE_STATES, RELAY_PREFIX, REVERT_PREFIX, isGeneratedKey, isRelayKey, nodeHashOf, sha } from "./graph.js"
 import type { Classified, NodeState, NodeView, PlanNode, PlanTask, PriorWork, RevertOf } from "./graph.js"
 import { inOrder } from "./sequential.js"
 import { getTask, lastEvent, latestAttempt, recordEvent, resultOf } from "./tasks.js"
@@ -14,7 +14,8 @@ import type { Snapshot, WorkflowTask } from "./workflow.js"
 /*
  * The replan pattern's mechanics (cli/README.md "Workflow graph"): the settled result of a task, the early cutoff that
  * compares results instead of upstream node hashes, the per-key classification of a desired graph against the current one,
- * the compensating revert of a dropped done task, and the per-key actions a step or `kernel next` acts on.
+ * the compensating revert of a dropped done task, the relay node of a shared need, and the per-key actions a step or
+ * `kernel next` acts on.
  */
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
@@ -194,7 +195,74 @@ export const revertCommits = async (root: string, commits: readonly string[]): P
     await git(root, ["reset", "-q"])
 }
 
-/** What a replan is judged on: the graph before (nodes and views), the graph asked for, and the Kernel's per-key choices. */
+/** The input of a relay node naming, in order, the commits it carries (full hashes, space separated). */
+export const RELAY_COMMITS = "relayCommits"
+
+/** The key of the relay node of a shared need's round in a waiting workflow. */
+export const relayKeyOf = (need: string, round: number): string => {
+    const plain = `${RELAY_PREFIX}${need.toLowerCase().replaceAll(/[^a-z0-9._-]+/g, "-")}.r${String(round)}`
+    return plain.length <= KEY_MAX ? plain : `${RELAY_PREFIX}${sha(`${need}#${String(round)}`).slice(0, 16)}`
+}
+
+/** What a relay node carries: the need and its round, the commits in landing order, the files git could not merge and the files they touch. */
+export interface RelayPlan {
+    readonly need: string
+    readonly round: number
+    readonly commits: readonly string[]
+    readonly conflicts: readonly string[]
+    readonly files: readonly string[]
+}
+
+/**
+ * The relay node of a shared need whose resolving commits do not apply to a waiting branch (core/needs/tend.ts): built on
+ * `template` (the resolver's node, so its label, inputs and checks prove the capability on this branch too), it may write the
+ * conflicting files and every file the commits touch, and its work is to apply exactly those commits, resolving each conflict
+ * so that both sides' intent holds. Its verify is its label's own; the engine's `applyGenerated` does the mechanics first.
+ */
+export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: RelayPlan): PlanTask => {
+    const listed = plan.commits.map((commit) => commit.slice(0, 12)).join(" ")
+    const allowPaths = [...new Set([...plan.conflicts, ...plan.files])].sort((left, right) => left.localeCompare(right))
+    const how = "`git cherry-pick --no-commit <commit>` for each in that order, then `git reset -q`"
+    const contract = parseContract({
+        ...template.contract,
+        context: { ...template.contract.context, allowPaths },
+        input: {
+            ...template.contract.input,
+            summary: `relay shared need ${plan.need}: apply commits ${listed} onto this branch, resolving conflicts preserving both sides' intent`,
+            details:
+                `Shared need ${plan.need} (round ${String(plan.round)}) was resolved on another workflow's branch by ${plan.commits.join(", ")} (oldest first), ` +
+                `and they do not apply cleanly here: ${plan.conflicts.join(", ") || "git named no file"} conflict. Apply exactly those commits and nothing else: ` +
+                `${how} (the harness applied them up to the first that conflicts, leaving git's markers in its files). Resolve every conflict so that both ` +
+                "sides' intent holds: keep what this branch built and what the need's commits add, never dropping either side to make it apply.",
+            extend: { ...(template.contract.input.extend ?? {}), [RELAY_COMMITS]: plan.commits.join(" ") },
+        },
+    })
+    return { key: relayKeyOf(plan.need, plan.round), contract, dependsOn: [], route: template.route, round: 0 }
+}
+
+/** The commits a relay node carries, in order; none for any other node. */
+export const relayCommitsOf = (node: Pick<PlanNode, "key" | "contract">): string[] =>
+    isRelayKey(node.key) ? (node.contract.input.extend?.[RELAY_COMMITS] ?? "").split(" ").filter((commit) => commit !== "") : []
+
+/**
+ * Applies `commits` in order to the work tree, committing nothing and leaving the index as it was: the mechanics of a relay
+ * node, whose verify then settles it like any task. The first commit that does not apply stops it with git's conflict markers
+ * left in its files for the worker, who resolves them and applies the rest; returns that commit, or null when all applied.
+ */
+export const relayCommits = async (root: string, commits: readonly string[]): Promise<string | null> => {
+    for (const commit of commits) {
+        const picked = await captureGit(["cherry-pick", "--no-commit", commit], root)
+        if (picked.exitCode !== 0) {
+            await captureGit(["cherry-pick", "--quit"], root)
+            await git(root, ["reset", "-q"])
+            return commit
+        }
+    }
+    await git(root, ["reset", "-q"])
+    return null
+}
+
+/** What a replan is judged on:the graph before (nodes and views), the graph asked for, and the Kernel's per-key choices. */
 export interface ReplanInput {
     readonly before: readonly NodeView[]
     readonly beforeNodes: readonly PlanNode[]
@@ -279,7 +347,7 @@ const dropRow = (node: PlanNode, view: NodeView | undefined, context: Context, n
     const commits = landedOf(context.input.results, node.key)
     const listed = commits.map((commit) => commit.slice(0, 12)).join(" ")
     if (commits.length === 0) return { row: { ...base, why: "done but landed no commit: nothing to revert" }, revert: null }
-    if (isGeneratedKey(node.key)) return { row: { ...base, why: "a revert node the Kernel removed; its effect stays" }, revert: null }
+    if (isGeneratedKey(node.key)) return { row: { ...base, why: `a ${isRelayKey(node.key) ? "relay" : "revert"} node the Kernel removed; its effect stays` }, revert: null }
     if (context.input.keepEffect.has(node.key)) return { row: { ...base, why: `done; keepEffect: its commits ${listed} stay` }, revert: null }
     const revert = revertTask(node, commits)
     if (nextKeys.has(revert.key)) return { row: { ...base, why: `done; ${revert.key} undoes it already` }, revert: null }
@@ -291,7 +359,7 @@ const afterRow = (node: ReplanInput["after"][number], context: Context): Classif
     const { input } = context
     const previous = context.old.get(node.key)
     const view = context.views.get(node.key)
-    if (previous === undefined) return { key: node.key, class: isGeneratedKey(node.key) ? "revert" : "add", state: null, cancel: null, hash: node.hash, why: "new in the goal" }
+    if (previous === undefined) return { key: node.key, class: node.key.startsWith(REVERT_PREFIX) ? "revert" : "add", state: null, cancel: null, hash: node.hash, why: isRelayKey(node.key) ? "the relay node of a shared need" : "new in the goal" }
     if (input.retries.has(node.key)) return { key: node.key, class: "redo", state: view?.state ?? null, cancel: liveTaskId(view), hash: node.hash, why: "retry asked" }
     if (previous.hash !== node.hash) return changedRow(node, previous, view, input.results)
     const row = unchangedRow(node, view, context)

@@ -26,7 +26,13 @@ export interface Replan {
     readonly unchanged: boolean
 }
 
-/** The Kernel's per-key choices that come with a desired graph instead of a change file. */
+/** A relay node the harness adds (core/needs/tend.ts) and the parked keys that wait on it, which come to depend on it. */
+export interface RelayAdd {
+    readonly task: PlanTask
+    readonly waiters: readonly string[]
+}
+
+/** The Kernel's per-key choices that come with a desired graph instead of a change file, and the harness's relay nodes. */
 export interface ReplanOptions {
     /** The settled facts of the workflow's tasks (reconcile.ts ensureResultHashes, then readResults); read as stored when left out. */
     readonly results?: Results
@@ -34,6 +40,22 @@ export interface ReplanOptions {
     readonly keepEffect?: ReadonlySet<string>
     /** Stale keys the Kernel keeps on their dependencies' current results. */
     readonly accepts?: ReadonlySet<string>
+    /** Relay nodes to add (a key the graph holds already is left as it stands); only the harness passes them, no file can. */
+    readonly relays?: readonly RelayAdd[]
+}
+
+/** The tasks with each relay node added and every waiter of it depending on it, so no waiter runs before its relay lands. */
+const withRelays = (tasks: readonly PlanTask[], relays: readonly RelayAdd[]): PlanTask[] => {
+    const keys = new Set(tasks.map((task) => task.key))
+    const added = relays.filter((relay) => !keys.has(relay.task.key))
+    const waitOn = (key: string): string[] => relays.filter((relay) => relay.waiters.includes(key)).map((relay) => relay.task.key)
+    return [
+        ...tasks.map((task) => {
+            const extra = waitOn(task.key).filter((key) => !task.dependsOn.includes(key))
+            return extra.length === 0 ? task : { ...task, dependsOn: [...task.dependsOn, ...extra] }
+        }),
+        ...added.map((relay) => relay.task),
+    ]
 }
 
 const sameHeader = (left: WorkflowHeader, right: WorkflowHeader): boolean => JSON.stringify(left) === JSON.stringify(right)
@@ -118,7 +140,8 @@ const STARTS: ReadonlySet<Classified["class"]> = new Set<Classified["class"]>(["
  * goal's scope ceiling (SCOPE_EXCEEDED), keep every deliverable of that goal (GOAL_SHRUNK), walk the lane of every Work record it
  * covers (FLOW_INCOMPLETE), take no other workflow's branch or landed commit as a new task's source (NEEDS_REQUIRED) and keep
  * every new attempt within its try
- * budget. Drops of done tasks add their revert nodes. `unchanged` says it moves nothing.
+ * budget. Drops of done tasks add their revert nodes, and `options.relays` the relay nodes the harness asks for. `unchanged`
+ * says it moves nothing.
  */
 export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, source: PlanSource, ops: Ops, place: PlanPlace, options: ReplanOptions = {}): Replan => {
     const { workflow } = snapshot
@@ -127,7 +150,7 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     if (asked.problems.length > 0) throw unfit(workflow.id, asked.problems)
     const header = withRequires(withGoal(asked.header, goal), workflow.header.requires)
     const results = options.results ?? readResults(db, workflow.id, snapshot.tasks)
-    const first = nodesOf(db, snapshot, asked.tasks, ops)
+    const first = nodesOf(db, snapshot, withRelays(asked.tasks, options.relays ?? []), ops)
     const judged = classifyReplan({ before: snapshot.views, beforeNodes: snapshot.nodes, after: first.nodes, retries: asked.retries, keepEffect: asked.keepEffect, accepts: asked.accepts, results })
     const built = judged.reverts.length === 0 ? first : nodesOf(db, snapshot, [...first.nodes, ...judged.reverts.map((plan) => plan.task)], ops)
     const classification = [...judged.rows, ...revertRows(built.nodes, judged.reverts)]

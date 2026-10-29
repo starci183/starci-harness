@@ -27,6 +27,19 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A shared need's relay is never a dead end** (monitor report 7, ticket tk-069fd4d52ad3: lesson-ai waited forever on
+  `capability:domain.entitlement`). A need resolved by a workflow's keys records every commit those keys landed, each attempt and
+  round of each key in branch order (`keyCommits` in `cli/src/core/needs/tend.ts`), not only each key's last task, so a relay no
+  longer carries a rework commit without the commits it stands on; a need resolved with the short list is completed at its next
+  relay (`need-commits-completed`). The relay merges each commit three-way against its parent and skips one whose change the
+  branch holds already (an equal patch, or a merge that changes nothing). A relay that still conflicts becomes work of the waiting
+  workflow: a generated `relay.<need>.r<round>` node owned by its Kernel, built on the resolver's node, allowed the conflicting
+  files and the commits' files, whose contract applies exactly those commits preserving both sides' intent (`relayTask` in
+  `cli/src/harness/reconcile.ts`, added by `amendWithRelays`, its commits pre-applied up to the first conflict by the engine's
+  `applyGenerated`); every waiter depends on it and spends no try until it lands, and a `need-relay-conflict` event names the node
+  and files. Only a relay node its Kernel removed raises the Supervisor's `conflict`. Relay keys are the harness's own like revert
+  keys (no file adds or edits one) and sit outside the goal's scope paths, the lanes and the foreign-source rule. Bench:
+  `needs-relay-conflict` (rewritten to the relay node), `needs-relay-three-way`.
 - **A hot CPU slows the heavy queue and never freezes it** (monitor report 5: 0 admissions for 2 h 33 with 23.7 GB free). Once
   the queue admitted nothing for `heavy.cpuStarveMinutes`, its first command RAM admits starts despite the CPU ceiling, one at a
   time. The queue is served by age, a project with fewer commands running first, and a project running `heavy.projectSlots`

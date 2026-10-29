@@ -8,7 +8,7 @@ import { callerTerminal, closeKernel, launchableKernel, mayActAs, workflowWorktr
 import { beginWork } from "../../harness/baseline.js"
 import { ensureOpWorktree, sweepOpWorktrees } from "../../harness/land.js"
 import { worktreeGc } from "../../harness/worktree-gc.js"
-import { priorWorkOf, revertCommits } from "../../harness/reconcile.js"
+import { priorWorkOf, relayCommits, relayCommitsOf, revertCommits } from "../../harness/reconcile.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { closeSeatsOfTask, isSeatOpen, SEAT_STOPPED, SEAT_WORKER_LOST, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -290,10 +290,25 @@ const launchOf = (root: string, node: PlanNode, taskId: string): RoutePick | Ref
 }
 
 /**
- * The mechanics of a revert node (reconcile.ts revertOf): before its worker starts, the dropped key's commits are reversed in
- * the checkout once (revertCommits), and the worker checks and files it; a revert that does not apply cleanly is the worker's.
+ * The mechanics of a node the harness generated, before its worker starts, once per task (each a no-op the second time): a
+ * revert node's dropped commits are reversed in the checkout (revertCommits, reconcile.ts revertOf), and a relay node's commits
+ * are applied up to the first that conflicts, its markers left in place (relayCommits). The worker resolves what git could not,
+ * checks and files it; a revert that does not apply cleanly is the worker's.
  */
-const applyRevert = async (root: string, checkout: string, workflowId: string, node: PlanNode, taskId: string): Promise<string | null> => {
+const applyGenerated = async (root: string, checkout: string, workflowId: string, node: PlanNode, taskId: string): Promise<string | null> => {
+    const relay = relayCommitsOf(node)
+    if (relay.length > 0) {
+        if (withLedger(root, (db) => db.prepare("SELECT 1 FROM events WHERE kind = 'relay-applied' AND subject = ?").get(taskId)) !== undefined) return null
+        let detail: string
+        try {
+            const stopped = await relayCommits(checkout, relay)
+            detail = stopped === null ? `applied ${String(relay.length)} relayed commit(s) in the checkout` : `applied the relayed commits up to ${stopped.slice(0, 12)}, which conflicts: its markers are the worker's`
+        } catch (error: unknown) {
+            detail = `relay left to the worker: ${asRefusal(error).message}`
+        }
+        withLedger(root, (db) => { recordEvent(db, "relay-applied", taskId, { commits: relay, detail }) })
+        return detail
+    }
     const { revertOf } = withLedger(root, (db) => priorWorkOf(db, workflowId, node))
     if (revertOf === undefined || withLedger(root, (db) => db.prepare("SELECT 1 FROM events WHERE kind = 'revert-applied' AND subject = ?").get(taskId)) !== undefined) return null
     let detail: string
@@ -321,10 +336,10 @@ const launchTask = async (context: VerbContext, root: string, workflow: Workflow
     const chosen = launchOf(root, node, task)
     if (chosen instanceof Refusal) return { key: node.key, task, action: "wait", detail: `no route (${chosen.code}): ${chosen.message}; the task stays queued` }
     try {
-        // The Op's own worktree comes first, so a revert lands in the checkout its worker runs in; startSeat reuses it.
+        // The Op's own worktree comes first, so a revert or relay lands in the checkout its worker runs in; startSeat reuses it.
         const target = withLedger(root, (db) => workflowWorktreeOf(db, workflow.id)) ?? root
         const made = await ensureOpWorktree(root, task, target)
-        await applyRevert(root, made.path, workflow.id, node, task)
+        await applyGenerated(root, made.path, workflow.id, node, task)
         const started = await startSeat({ root, cwd: context.cwd, task, agent: chosen.agent, model: chosen.model, effort: chosen.effort, pick: chosen, worktree: target })
         return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} routed (tier ${chosen.tier}, pool ${chosen.pool}, by ${chosen.record.chosen?.by ?? "?"}): ${started.message.split("\n")[0] ?? "launched"}` }
     } catch (error: unknown) {
@@ -617,7 +632,7 @@ export const runFinalVerify = async (context: VerbContext, root: string, snapsho
 
 /**
  * Begins an inline task's work before its brief is written: its own Op worktree, cut from the branch the workflow runs on (its
- * worktree, else this checkout), then a revert node's reverts and its prior work there (each a no-op the second time).
+ * worktree, else this checkout), then a revert or relay node's mechanics and its prior work there (each a no-op the second time).
  */
 const priorWorkOfInline = async (root: string, snapshot: Snapshot): Promise<void> => {
     if (snapshot.workflow.header.runner !== "inline" || !DISPATCHING.includes(snapshot.workflow.status)) return
@@ -626,7 +641,7 @@ const priorWorkOfInline = async (root: string, snapshot: Snapshot): Promise<void
     const id = view.task.id
     const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
     const made = await ensureOpWorktree(root, id, withLedger(root, (db) => workflowWorktreeOf(db, snapshot.workflow.id)) ?? root)
-    if (node !== undefined) await applyRevert(root, made.path, snapshot.workflow.id, node, id)
+    if (node !== undefined) await applyGenerated(root, made.path, snapshot.workflow.id, node, id)
     await beginWork(root, made.path, withLedger(root, (db) => getTask(db, id)))
 }
 
