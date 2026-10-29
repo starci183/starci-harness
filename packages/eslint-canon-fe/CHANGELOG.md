@@ -3,6 +3,7 @@
 ## 9.5.1 - 2026-10-29
 
 - Changed: the bundled slot manifest 3.10.0 adds the lite slot `be.platform.database.entities`, the entity registry (slot fields `role: entity-registry` and `importedBy`, validated by the manifest shape); the bundled architecture machine reads it (`architecture/entity-registry.mjs`): `tier-direction` (R26 `BE_TIER_DIRECTION`) admits the registry's import of a domain or platform capability's `index.ts` that binds only that capability's `<c>Entities`, and `owner-export-bypass` (R30 `ARCH_OWNER_EXPORT_BYPASS`) admits a direct import of the registry from the files `importedBy` names (`apps/*/src/compose/*.ts`, `apps/*/src/app.module.ts`, `src/tests/world/**`); every other import of either shape stays refused, and full has no registry; the bundled canon pins name hfs 4.10.1, eslint-canon-be 3.7.1, eslint-canon-fe 9.5.1 and the Grammar family 0.15.12. No front-end rule changed.
+- Changed: the bundled architecture machine: the owner-cycle check (R27 `ARCH_OWNER_CYCLE`) counts the entity registry as a unit of its own, not part of `platform/database`, so naming every `<c>Entities` closes no cycle among capabilities while any other platform/database file importing a domain still does.
 
 ## 9.5.0 - 2026-10-29
 

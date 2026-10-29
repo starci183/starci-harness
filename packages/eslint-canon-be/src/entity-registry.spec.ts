@@ -143,3 +143,36 @@ test("import-owner-entry full: the registry is no slot, so its deep path is refu
         ],
     })
 })
+
+// The r-5 shape: agent-connections uses platform/database, shifts uses agent-connections, and the registry names both lists.
+const CYCLE_FILES = {
+    "src/modules/platform/database/index.ts": "export { DatabaseModule } from './database.module';\n",
+    "src/modules/platform/database/database.module.ts": "export class DatabaseModule {}\n",
+    "src/modules/domain/agent-connections/index.ts": "export { agentConnectionsEntities } from './persistence/entities/index';\nexport { AgentConnectionsService } from './agent-connections.service';\n",
+    "src/modules/domain/agent-connections/persistence/entities/index.ts": "export const agentConnectionsEntities = [];\n",
+    "src/modules/domain/agent-connections/agent-connections.service.ts": "import { DatabaseModule } from '../../platform/database';\nexport class AgentConnectionsService { readonly db = DatabaseModule }\n",
+    "src/modules/domain/shifts/index.ts": "export { shiftsEntities } from './persistence/entities/index';\nexport { ShiftsService } from './shifts.service';\n",
+    "src/modules/domain/shifts/persistence/entities/index.ts": "export const shiftsEntities = [];\n",
+    "src/modules/domain/shifts/shifts.service.ts": "import { AgentConnectionsService } from '../agent-connections';\nexport class ShiftsService { constructor(readonly connections: AgentConnectionsService) {} }\n",
+    [REGISTRY]: "import { agentConnectionsEntities } from '../../domain/agent-connections';\nimport { shiftsEntities } from '../../domain/shifts';\nexport const PRIMARY_ENTITIES = [...agentConnectionsEntities, ...shiftsEntities];\n",
+}
+const CONNECTIONS_SERVICE = "src/modules/domain/agent-connections/agent-connections.service.ts"
+
+test("ARCH_OWNER_CYCLE lite: the registry is a unit of its own, so naming every <c>Entities closes no cycle", (t) => {
+    const made = projectFixture({ edition: "lite", files: CYCLE_FILES })
+    t.after(made.cleanup)
+    made.tester.run("owner-cycle", ruleNamed(rules, "owner-cycle"), {
+        valid: [ok(made, CYCLE_FILES, REGISTRY), ok(made, CYCLE_FILES, CONNECTIONS_SERVICE), ok(made, CYCLE_FILES, "src/modules/domain/shifts/shifts.service.ts")],
+        invalid: [],
+    })
+})
+
+test("ARCH_OWNER_CYCLE lite: a platform-to-domain edge from any other platform/database file still closes the cycle", (t) => {
+    const files = { ...CYCLE_FILES, "src/modules/platform/database/lookup.ts": "import { ShiftsService } from '../../domain/shifts';\nexport const lookup = ShiftsService;\n" }
+    const made = projectFixture({ edition: "lite", files })
+    t.after(made.cleanup)
+    made.tester.run("owner-cycle", ruleNamed(rules, "owner-cycle"), {
+        valid: [ok(made, files, REGISTRY)],
+        invalid: [bad(made, files, CONNECTIONS_SERVICE, /\[ARCH_OWNER_CYCLE\].*agent-connections -> src\/modules\/platform\/database -> src\/modules\/domain\/shifts/)],
+    })
+})

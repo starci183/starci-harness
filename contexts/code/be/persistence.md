@@ -55,7 +55,8 @@ registry that names every list is the only place that knowledge meets.
 
 Enforced by: `schema-owner`, `require-entity-table-name`, `no-eager-relation`, `no-entity-in-contract` (R35, R83, R37);
 the registry's imports and importers by `tier-direction` (R26), `owner-export-bypass` and `import-owner-entry` (R30),
-which admit exactly the registry's `<c>Entities` imports and its `importedBy` importers.
+which admit exactly the registry's `<c>Entities` imports and its `importedBy` importers; `owner-cycle` (R27)
+counts the registry as a unit of its own, so it never closes a cycle among capabilities through `platform/database`.
 
 ## BE-PERSISTENCE-4 Lite reads and writes through entities; full SQL is a `sql`-tagged constant
 

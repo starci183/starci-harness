@@ -3,6 +3,7 @@
 ## 0.15.12 - 2026-10-29
 
 - Changed: the peer moves to the 0.15.12 cohort (eslint-canon-fe 9.5.1); the bundled slot manifest 3.10.0 adds the lite slot `be.platform.database.entities`, the entity registry (slot fields `role: entity-registry` and `importedBy`, validated by the manifest shape); the bundled canon pins name hfs 4.10.1, eslint-canon-be 3.7.1, eslint-canon-fe 9.5.1 and the Grammar family 0.15.12. No rule changed.
+- Changed: the bundled rule catalog's R26 and R30 laws name the entity registry. No rule changed.
 
 ## 0.15.11 - 2026-10-29
 
