@@ -447,7 +447,10 @@ jobs:
         id: follow
         run: |
           set -euo pipefail
-          node cli/dist/main.js check pins --json > "$RUNNER_TEMP/pins.json" || true
+          # check pins exits 1 when the CLI trails its pins, the case this job moves; any other failure stops the job.
+          status=0
+          node cli/dist/main.js check pins --json > "$RUNNER_TEMP/pins.json" || status=$?
+          if [ "$status" -gt 1 ]; then exit "$status"; fi
           SKEWS="$RUNNER_TEMP/pins.json" node .github/scripts/cli-follow.mjs
       - name: Report a missing bot token
         if: steps.follow.outputs.changed == 'true' && env.HAS_BOT_TOKEN != 'true'
