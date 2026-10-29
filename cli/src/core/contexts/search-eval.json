@@ -87,7 +87,7 @@
     { "q": "a group of buttons in a toolbar", "expect": ["contexts/ui/components/action-group.md#choose"] },
     { "q": "a divider spans the full width of the card", "expect": ["divider-full-bleed", "contexts/ui/presentation.md#space"] },
     { "q": "may a card be nested inside another card", "expect": ["contexts/grammars/contract.md#card", "contexts/ui/components/card.md#variants", "contexts/ui/presentation.md#surface"] },
-    { "q": "is the label inside or outside the card", "expect": ["contexts/ui/components/card.md#choose", "contexts/ui/components/card.md#variants", "contexts/grammars/contract.yaml#roles.card"] },
+    { "q": "is the label inside or outside the card", "expect": ["card-label-placement-per-grammar", "DNA-CORE-CARD-LABEL-OUTSIDE", "DNA-OFFSET-POP-CARD-LABEL-OUTSIDE", "contexts/grammars/contract.yaml#roles.card"] },
     { "q": "chip padding", "expect": ["contexts/ui/components/chip.md#size", "contexts/vendor/heroui.md#chip", "contexts/grammars/contract.md#chip"] },
     { "q": "when to use a toast", "expect": ["contexts/ui/components/toast-alert.md#choose", "FE-TOAST"] },
     { "q": "when to use an empty state", "expect": ["contexts/ui/components/empty-state.md#choose", "contexts/ui/components/empty-state.md#job", "STATE-3"] }
