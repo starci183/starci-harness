@@ -90,7 +90,7 @@ An app scaffolded on the earlier lite edition moves in one commit on hfs 4.10: `
 (an `_archive/` folder becomes `db/migrations/archive/`), `git mv supabase/seed.sql db/seed.sql`, then delete
 `supabase/config.toml`, `supabase/types/` and the rest of `supabase/`; in hfs.json replace the `supabase` block with an
 optional `db` block (`forceRls`, `appRole`), set every connection's `provider` to `postgres`, drop `supabase/types/` from
-`sides.<side>.reads`, and list the app's database functions in `sides.be.dbFunctions`; run `npx starci app sync --write`
+`sides.<side>.reads`, and list the app's database functions, schema-qualified (`public.job_claim`), in `sides.be.dbFunctions`; run `npx starci app sync --write`
 (it renders `db/bootstrap.sql`, the db scripts, codegen and CI, and removes a leftover `supabase/types/`); restore the
 data with `starci app db migrate --url-env DATABASE_URL --execute` on an empty database after `pg_restore` of the hosted
 dump, which keeps the `supabase_migrations.schema_migrations` history the migrate verb reads. On hfs 4.11 the db service

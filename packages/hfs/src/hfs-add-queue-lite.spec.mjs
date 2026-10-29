@@ -126,7 +126,7 @@ test('lite add job writes the platform/jobs tick scheduler, its minute claim and
   assert.match(read(root, `${jobs}/job-ticks.contracts.ts`), /export const JOB_TICKS: ReadonlyArray<JobTick> = \[\]/);
   const service = read(root, `${jobs}/job-tick.service.ts`);
   assert.match(service, /advisoryXactLock\(tx, `tick:\$\{tick\.name\}`\)/);
-  assert.match(service, /callDbFunction<TickClaim>\(tx, "job_tick_claim"/);
+  assert.match(service, /callDbFunction<TickClaim>\(tx, "public\.job_tick_claim"/);
   assert.match(read(root, `${jobs}/job-tick.service.spec.ts`), /enqueues nothing when another replica already fired the tick this minute/);
   assert.match(read(root, `${jobs}/jobs.module.ts`), /ScheduleModule\.forRoot\(\)/);
   const migrations = fs.readdirSync(path.join(root, 'db', 'migrations')).filter((file) => file.endsWith('.sql'));

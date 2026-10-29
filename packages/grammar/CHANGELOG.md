@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.14 - 2026-10-29
+
+- Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.14), which re-pin the hfs 4.11.2 canon.
+- Changed: its lint family's canon pins also carry the hfs 4.11.1 re-pin of db baseline --squash (R213 transaction control in migrations, extensions schema in the bootstrap), which bumped no eslint package.
+
 ## 0.15.13 - 2026-10-29
 
 - Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.13), which re-pin the hfs 4.11.0 canon.

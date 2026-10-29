@@ -18,6 +18,6 @@ export class EventBusService implements EventBus {
             eventName: event.eventName,
             payload: event.payload,
         }
-        await callDbFunction(tx, "event_bus_write", [event.eventId, event.eventName, JSON.stringify(envelope), correlationId])
+        await callDbFunction(tx, "public.event_bus_write", [event.eventId, event.eventName, JSON.stringify(envelope), correlationId])
     }
 }

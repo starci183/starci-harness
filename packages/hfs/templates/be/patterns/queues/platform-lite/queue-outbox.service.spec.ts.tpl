@@ -4,7 +4,7 @@ import { CLOCK } from "@modules/platform/clock"
 import { QueueOutboxService } from "./queue-outbox.service"
 
 // The statement callDbFunction of platform/database sends for queue_write.
-const INSERT_QUEUE_ROW = "SELECT * FROM queue_write($1, $2, $3, $4)"
+const INSERT_QUEUE_ROW = 'SELECT * FROM "public"."queue_write"($1, $2, $3, $4)'
 import { QueueErrorCode } from "./errors/queue.error"
 
 const AT = "2026-02-03T04:05:06.000Z"

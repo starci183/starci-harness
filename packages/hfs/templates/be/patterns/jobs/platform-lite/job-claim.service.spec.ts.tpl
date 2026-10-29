@@ -8,10 +8,10 @@ import { JOBS_MANAGERS } from "./jobs.decorators"
 import { JobClaimService } from "./job-claim.service"
 
 // The statements callDbFunction of platform/database sends for each job function.
-const CLAIM_JOB = "SELECT * FROM job_claim($1, $2, $3, $4, $5, $6)"
-const ADVANCE_JOB = "SELECT * FROM job_advance($1, $2, $3, $4)"
-const COMPLETE_JOB = "SELECT * FROM job_complete($1, $2, $3)"
-const FAIL_JOB = "SELECT * FROM job_fail($1, $2, $3, $4)"
+const CLAIM_JOB = 'SELECT * FROM "public"."job_claim"($1, $2, $3, $4, $5, $6)'
+const ADVANCE_JOB = 'SELECT * FROM "public"."job_advance"($1, $2, $3, $4)'
+const COMPLETE_JOB = 'SELECT * FROM "public"."job_complete"($1, $2, $3)'
+const FAIL_JOB = 'SELECT * FROM "public"."job_fail"($1, $2, $3, $4)'
 
 const AT = "2026-02-03T04:05:06.000Z"
 

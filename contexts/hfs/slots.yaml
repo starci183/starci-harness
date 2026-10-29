@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.11.0
+version: 3.12.0
 presenceValues:
   - required
   - optional
@@ -777,19 +777,20 @@ ruleParams:
       - {name: hashtextextended, reason: "advisoryXactLock: the 64-bit key of a text lock name"}
       - {name: pg_notify, reason: "notify: LISTEN/NOTIFY of the Postgres realtime hub"}
       - {name: to_regproc, reason: "callDbFunction: whether an optional database function exists"}
-      - {name: job_claim, reason: "platform/jobs (add job, lite): the fenced claim upsert of jobs.sql"}
-      - {name: job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
-      - {name: job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
-      - {name: job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
-      - {name: job_tick_claim, reason: "platform/jobs (add job, lite): the once-per-minute claim of a scheduler tick, jobs.sql (R335)"}
-      - {name: queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
-      - {name: queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
-      - {name: queue_mark_sent, reason: "platform/queue (add queue, lite): the relay mark of queue-outbox.sql"}
-      - {name: inbox_claim_event, reason: "platform/inbox (add webhook, lite): the conflict-safe delivery claim"}
-      - {name: inbox_claim_client, reason: "platform/inbox (add webhook, lite): the client claim upsert returning its committed outcome"}
-      - {name: inbox_save_client_outcome, reason: "platform/inbox (add webhook, lite): the saved client outcome"}
-      - {name: inbox_sweep_clients, reason: "platform/inbox (add webhook, lite): the bounded retention sweep FOR UPDATE SKIP LOCKED"}
-      - {name: event_bus_write, reason: "platform/event-bus (add webhook, lite): the typed envelope insert of the outbox"}
+      - {name: gen_random_uuid, reason: "callDbFunction: a random uuid from the database (PG13+ core, pg_catalog) where a token is minted in the transaction"}
+      - {name: public.job_claim, reason: "platform/jobs (add job, lite): the fenced claim upsert of jobs.sql"}
+      - {name: public.job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
+      - {name: public.job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
+      - {name: public.job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
+      - {name: public.job_tick_claim, reason: "platform/jobs (add job, lite): the once-per-minute claim of a scheduler tick, jobs.sql (R335)"}
+      - {name: public.queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
+      - {name: public.queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
+      - {name: public.queue_mark_sent, reason: "platform/queue (add queue, lite): the relay mark of queue-outbox.sql"}
+      - {name: public.inbox_claim_event, reason: "platform/inbox (add webhook, lite): the conflict-safe delivery claim"}
+      - {name: public.inbox_claim_client, reason: "platform/inbox (add webhook, lite): the client claim upsert returning its committed outcome"}
+      - {name: public.inbox_save_client_outcome, reason: "platform/inbox (add webhook, lite): the saved client outcome"}
+      - {name: public.inbox_sweep_clients, reason: "platform/inbox (add webhook, lite): the bounded retention sweep FOR UPDATE SKIP LOCKED"}
+      - {name: public.event_bus_write, reason: "platform/event-bus (add webhook, lite): the typed envelope insert of the outbox"}
     lite:
       schemaAuthority: sql
       infraOwners:

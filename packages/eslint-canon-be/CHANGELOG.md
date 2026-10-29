@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.8.1 - 2026-10-29
+
+- Changed: `no-interpolated-sql` (R68 `BE_SQL_INTERPOLATED`) knows the owner R334 names for the lite function-call statement, `platform/database/database.client.ts` of a lite app: there a `.query(` template may substitute only values whose type is a brand that file declares for the parts its validator checked (`DbFunctionPart`, `DbParameterList`); any other substitution, a `+`, the same template in any other file and the same file in full stay refused. Spec: `src/query-safety.spec.ts`.
+- Changed: `no-raw-sql` (R334) tells an unlisted name to be listed schema-qualified (`public.job_claim`) in hfs.json `sides.be.dbFunctions`.
+- Changed: the bundled slot manifest 3.12.0 lists the canon's database functions of R334 schema-qualified (`public.job_claim`, `public.job_tick_claim`) beside the pg built-ins it names bare (`gen_random_uuid` joins them), and its shape (`rule-params-shape.mjs`, `declaration-shape.mjs`) with the manifest check of `slots.mjs` refuses in hfs.json `sides.be.dbFunctions` a `pg_catalog` name and any bare name that is not a built-in the canon lists; the manifest bump is minor although that refusal is stricter, since R334 is new on manifest major 3 and its one app (nivo-lite) lists only names it admits (its one bare name, `gen_random_uuid`, is now a canon built-in); the bundled rule catalog's R334 and R68 laws name `platform/database/database.client.ts` as the one composer of the call statement; the bundled canon pins name hfs 4.11.2, eslint-canon-be 3.8.1, eslint-canon-fe 9.5.3 and the Grammar family 0.15.14.
+- Changed: the bundled canon pins also carry the hfs 4.11.1 re-pin of db baseline --squash (R213 transaction control in migrations, extensions schema in the bootstrap), which bumped no eslint package.
+
 ## 3.8.0 - 2026-10-29
 
 - Added: `jobs-scheduler-owner` (R335 `BE_JOBS_SCHEDULER_OWNER`, ruling lite-official-postgres-image): only `platform/jobs/job-tick.service.ts`, its spec and `jobs.module.ts` import `@nestjs/schedule` or `cron`, the `Cron`, `Interval` and `Timeout` decorators are refused everywhere, and a `job-tick.service.ts` must call `advisoryXactLock` and `callDbFunction(..., "job_tick_claim", ...)`. `infra-import-owner` (R90) reads `@nestjs/schedule` and `cron` as owned by `platform/jobs` from the bundled manifest.

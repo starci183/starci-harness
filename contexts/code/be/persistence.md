@@ -64,11 +64,15 @@ Lite: domain and feature code uses the entity API of the injected manager (`find
 `exists`, `insert`, `save`, `update`, `delete`, `upsert`, `increment`) and `createQueryBuilder(Entity, "alias")` with
 named parameters for joins, aggregates, `FOR UPDATE` / `SKIP LOCKED` and jsonb or vector operators; it writes no `.query(`
 and no `sql` template, and no `<Name>Row` interface: a service maps entities to its contracts. A database function
-TypeORM cannot express is called through the helpers of `platform/database` (`callDbFunction(manager, name, args)`,
-`advisoryXactLock(manager, key)`, `notify(manager, channel, payload)`), which build the parameterised statement and accept
-only a function `ruleParams.be.dbFunctions` (the canon's pg built-ins) or hfs.json `sides.be.dbFunctions` (the app's own,
-each with its reason) lists. TypeORM 0.3 traps the builder hides: a dotted join (`innerJoin("public.x", ...)`) throws, so
-join the entity or the unqualified table; `InsertQueryBuilder.returning()` takes the string form and ignores an array; an
+TypeORM cannot express is called through the helpers of `platform/database/database.client.ts`
+(`callDbFunction(manager, name, args)`, `advisoryXactLock(manager, key)`, `notify(manager, channel, payload)`), which
+build the parameterised statement and accept only a function `ruleParams.be.dbFunctions` (the canon's) or hfs.json
+`sides.be.dbFunctions` (the app's own, each with its reason) lists. A function of a migration is named schema-qualified
+(`public.job_claim`, `be_access.chat_target_member`) in the call and in the list; a pg built-in the canon lists is
+named bare and called in `pg_catalog`. `callDbFunction` refuses any other name with `DATABASE_IDENTIFIER_REJECTED`,
+double-quotes each checked part and passes the arguments as numbered parameters; that file is the one place a call
+statement is composed (R68 names it). TypeORM 0.3 traps the builder hides: a dotted join (`innerJoin("public.x", ...)`)
+throws, so join the entity or the unqualified table; `InsertQueryBuilder.returning()` takes the string form and ignores an array; an
 `UPDATE ... RETURNING` stays one builder statement, never a write followed by a read. A query builder names its entity:
 a table-name builder and a Repository are refused. The unit doubles are `mockEntityManager` of `@starci/jest-preset`
 (`{ method: [Entity, result] }`) and, for a builder, its `queueQueryBuilders(em, answers)` (`fakeQueryBuilder` per call).
@@ -92,7 +96,7 @@ export const CANCEL_ORDER = sql`WITH changed AS (
 SELECT id, workspace_id, order_no, status, created_at FROM changed`
 ```
 
-Enforced by: lite `no-raw-sql` (R334); full `sql-text-only`, `no-query-builder`, `no-interpolated-sql` (R36, R68).
+Enforced by: lite `no-raw-sql` (R334) and `no-interpolated-sql` (R68); full `sql-text-only`, `no-query-builder`, `no-interpolated-sql` (R36, R68).
 
 ## BE-PERSISTENCE-5 Work that must follow a write is written in the same transaction
 

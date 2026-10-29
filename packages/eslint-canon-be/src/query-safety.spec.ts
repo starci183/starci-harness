@@ -9,7 +9,9 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { noInterpolatedSql, noQueryBuilder, noQueryInLoop, queryNeedsLimit, rules, sqlTextOnly } from "./query-safety.ts"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.mjs"
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.mjs"
+import { hfsFromDeclaration } from "./lib/hfs.ts"
 
 const tester = typedTester()
 
@@ -111,6 +113,56 @@ test("R68: a substitution in the sql tag is a SqlIdent; a .query string is never
             { filename: HANDLER, code: code("const db = manager\nawait db.query(`SELECT ${owner}`)"), errors: [{ messageId: "built" }] },
             { filename: HANDLER_SPEC, code: code("await runner.query(`SELECT ${owner}`)"), errors: [{ messageId: "built" }] },
         ],
+    }) })
+})
+
+/** The lite fixture: the edition whose platform/database/database.client.ts composes the function-call statement (R334). */
+const liteTester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "lite" }, TYPED_ROOT) })
+
+const CALL_CLIENT = at("src/modules/platform/database/database.client.ts")
+const OTHER_DATABASE_CLIENT = at("src/modules/platform/database/session.client.ts")
+const DOMAIN_CLIENT = at("src/modules/domain/order/order.client.ts")
+
+/** The brands, the checked parts and the call of the R334 call-statement file, as the lite skeleton writes them. */
+const CALL_HEAD = [
+    'import { EntityManager } from "typeorm"',
+    "declare const functionPartBrand: unique symbol",
+    "declare const parameterListBrand: unique symbol",
+    "type DbFunctionPart = string & { readonly [functionPartBrand]: true }",
+    "type DbParameterList = string & { readonly [parameterListBrand]: true }",
+    "declare const manager: EntityManager",
+    "declare const schema: DbFunctionPart",
+    "declare const fn: DbFunctionPart",
+    "declare const parameters: DbParameterList",
+    "declare const owner: string",
+    "",
+].join("\n")
+const call = (body: string) => `${CALL_HEAD}${body}`
+const CHECKED_CALL = 'export const run = () => manager.query(`SELECT * FROM "${schema}"."${fn}"(${parameters})`, [owner])'
+
+test("R68 with R334: only the lite call-statement file splices its own checked parts into a .query template", () => {
+    assert.doesNotThrow(() => { liteTester.run("no-interpolated-sql", noInterpolatedSql, {
+        valid: [
+            { filename: CALL_CLIENT, code: call(CHECKED_CALL) },
+            { filename: CALL_CLIENT, code: call("export const lock = () => manager.query('SELECT pg_notify($1, $2)', [owner, owner])") },
+        ],
+        invalid: [
+            // any other substitution in the owner file stays refused, beside checked parts or alone
+            { filename: CALL_CLIENT, code: call('export const run = () => manager.query(`SELECT * FROM "${schema}"."${owner}"(${parameters})`)'), errors: [{ messageId: "built" }] },
+            { filename: CALL_CLIENT, code: call("export const run = () => manager.query(`SELECT * FROM orders WHERE owner = '${owner}'`)"), errors: [{ messageId: "built" }] },
+            // a look-alike string, unbranded, is not a checked part
+            { filename: CALL_CLIENT, code: call('declare const loose: string\nexport const run = () => manager.query(`SELECT * FROM "${loose}"."${fn}"()`)'), errors: [{ messageId: "built" }] },
+            // concatenation stays refused in the owner file
+            { filename: CALL_CLIENT, code: call("export const run = () => manager.query('SELECT * FROM ' + schema)"), errors: [{ messageId: "built" }] },
+            // the same pattern in any other file is refused: another client of platform/database, a domain client
+            { filename: OTHER_DATABASE_CLIENT, code: call(CHECKED_CALL), errors: [{ messageId: "built" }] },
+            { filename: DOMAIN_CLIENT, code: call(CHECKED_CALL), errors: [{ messageId: "built" }] },
+        ],
+    }) })
+    // full has no call-statement file: the owner path itself is refused there
+    assert.doesNotThrow(() => { tester.run("no-interpolated-sql", noInterpolatedSql, {
+        valid: [],
+        invalid: [{ filename: CALL_CLIENT, code: call(CHECKED_CALL), errors: [{ messageId: "built" }] }],
     }) })
 })
 
