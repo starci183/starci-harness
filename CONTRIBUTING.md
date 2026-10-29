@@ -202,8 +202,9 @@ dependent, skipping a private one and a version already on npm, with npm provena
 `package` job of every folder of its build order the plan tested, itself and the siblings it needs; a due package any of
 them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mjs](.github/scripts/publish-gate.mjs)).
 The CLI (`publish-cli`) publishes after it, once the harness job and every gate are green. The harness bench, Sonar and
-the app job never hold a package; Sonar and the app job never hold the CLI. Runs of one phase queue and never overlap, and a re-run publishes only
-what is still missing. The plan is refused, before anything reaches npm, when a package changed since the base (its
+the app job never hold a package; Sonar and the app job never hold the CLI. A run on main is never cancelled by a newer push, which waits for it, so
+a publication is never cut short; runs of one phase queue and never overlap, and a re-run publishes only what is still
+missing. The plan is refused, before anything reaches npm, when a package changed since the base (its
 specs and test folders aside) while its version is already on npm (`RELEASE_VERSION_NOT_BUMPED`, measured from the
 commit npm recorded for that version), and when a due package requires a sibling (`dependencies`, `peerDependencies`)
 at another version than the sibling's folder holds at that commit, or at a version that is neither on npm nor due in the

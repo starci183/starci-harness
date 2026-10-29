@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.14] - 2026-10-29
+
 ### Added
 
 - **A workflow near its budget is asked ahead, not after the stop.** lesson-ai reached 67/70 tries and 929/1000 minutes with
@@ -16,6 +18,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   Supervisor's, so the owner's answer wakes it), each later tick a repeat that bumps occurrences, and a workflow-wide
   `budget raise` answers it. A ticket opener may name its episode (`TicketInput.key`, `keyedFingerprint` in
   `harness/tickets.ts`) to be deduped by it. Bench: `budget-near-asks-once`, `budget-near-tries-below-tasks`.
+- `check loosening` bans `tls-unverified`: the `NODE_TLS_REJECT_UNAUTHORIZED` switch set to 0 (assigned in code or a spec, an
+  env object key, a shell script, a workflow env entry, a Dockerfile `ENV`, a `package.json` script, an env template the
+  security policy lets it read) and a client's `rejectUnauthorized: false`; reading or comparing the switch is no finding.
+  Env templates (`*.env.example`, `*.env.tpl`, ...) are a scanned kind for it; `.env` and `.env.*` stay `neverRead`. Bench:
+  `security-loosening-tls-unverified` (each form red, the test-world https fake path green).
 
 ### Changed
 
@@ -30,6 +37,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **The CLI runs @starci/hfs 4.11.8** (app secret members, migrate/split/audit, `--into-existing`), moved once npm served it
+  (CONTRIB-20).
 - **The secret scan reads a key's name and a contract spec's inputs as what they are.** starci-next-app auth-sign-in
   `keycloak-contract-spec` (t-15237b2c) failed verify on `secrets` for two lines of `keycloak.contract-spec.ts`: a const holding
   the custody key name `IDENTITY_KEYCLOAK_CLIENT_SECRET`, and the deliberately wrong password of its invalid-credentials case.
@@ -99,17 +108,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   verb (and `harness/custody.ts`) hands @starci/hfs the harness secret.env's `SOPS_AGE_KEY` (`hostAgeIdentity`,
   `harness/secret-env.ts`; `SOPS_AGE_KEY` joins `secretKeys` of policy/security.yaml) as its last age identity source, so adding a
   key to a member no longer fails `identity-not-supplied` when the identity lives there. The `key` and `new-key` operands become one
-  `keys` rest operand; `--from-host` names exactly one key. Needs @starci/hfs 4.11.5: the CLI's requirement moves once npm serves it.
+  `keys` rest operand; `--from-host` names exactly one key.
   The verb also carries the app secrets standard of @starci/hfs 4.11.5 (ruling `app-secrets-one-standard`): actions
   `recipients`, `migrate`, `split` and `audit`, flags `--from-file`, `--to`, `--add` and `--remove`.
   Bench: `app-secret-identity-from-harness`, `app-secret-provider-members`.
-### Added
-
-- `check loosening` bans `tls-unverified`: the `NODE_TLS_REJECT_UNAUTHORIZED` switch set to 0 (assigned in code or a spec, an
-  env object key, a shell script, a workflow env entry, a Dockerfile `ENV`, a `package.json` script, an env template the
-  security policy lets it read) and a client's `rejectUnauthorized: false`; reading or comparing the switch is no finding.
-  Env templates (`*.env.example`, `*.env.tpl`, ...) are a scanned kind for it; `.env` and `.env.*` stay `neverRead`. Bench:
-  `security-loosening-tls-unverified` (each form red, the test-world https fake path green).
 
 ## [1.1.0-alpha.13] - 2026-10-29
 
@@ -157,11 +159,6 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   Windows PEB, `/proc`, `lsof`) and every process under those, by pid and never by name, sparing this process, its ancestors and
   Orca; it reads again and ends what the first kill missed. A removed worktree Orca still lists as "Delete failed" is dropped.
   A folder still held records `worktree-held` with its holder, is retried and reaped again by `worktree gc`, and is listed by
-  `worktree gc` and `host load` (`harness/reap.ts`, `harness/process-table.ts`, `harness/land.ts`). Bench:
-  `worktree-reap-op-processes`; `worktree-remove-busy-gc-retries` now holds the folder from outside, as a process the harness
-  never started.
-- **The CLI runs @starci/hfs 4.10.1** (the entity-registry cohort), moved once npm served it (CONTRIB-20). `worktree gc --now`
-  retries a folder left busy at once.
   `worktree gc` and `host load` (`harness/reap.ts`, `harness/process-table.ts`, `harness/land.ts`). `worktree gc --now` tries
   a folder left busy at once all the way down: the removal itself (`removeTracked`) no longer answers it with the busy record's
   old text before its backoff runs out; and it takes a harness folder git no longer lists however recently it changed, which a
@@ -169,11 +166,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   left busy that git no longer lists is still reaped), `worktree-gc-now-reaps-orphan-holder` (an orphan and a fresh unlisted
   folder, each with a real process and child working there); `worktree-remove-busy-gc-retries` now holds the folder from outside, as a
   process the harness never started.
-
-## [1.1.0-alpha.13] - 2026-10-29
-
-### Fixed
-
+- **The CLI runs @starci/hfs 4.10.1** (the entity-registry cohort), moved once npm served it (CONTRIB-20).
 - **Several typed checks run at once again.** alpha.12 set the tsc and eslint `estimateMb` to their 8 GB heap ceiling, so with the
   8 GB reserve one eslint filled the host's room and 16 waited 30 min behind a run holding 0.7 GB. The estimates are what one run
   holds (tsc 3072, eslint 4096); `memoryMb` stays the 8192 heap ceiling.
