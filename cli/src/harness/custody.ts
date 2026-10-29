@@ -92,7 +92,7 @@ const moduleFile = (from: string, specifier: string): string | undefined => {
 const constOf = (at: Parsed, name: string, exported: boolean): Bound | undefined => {
     const compiler = at.ts
     for (const statement of at.source.statements) {
-        if (!compiler.isVariableStatement(statement) || (statement.declarationList.flags & compiler.NodeFlags.Const) === 0) continue
+        if (!compiler.isVariableStatement(statement) || statement.declarationList.getFirstToken(at.source)?.kind !== compiler.SyntaxKind.ConstKeyword) continue
         if (exported && !(statement.modifiers ?? []).some((modifier) => modifier.kind === compiler.SyntaxKind.ExportKeyword)) continue
         for (const declaration of statement.declarationList.declarations) {
             if (compiler.isIdentifier(declaration.name) && declaration.name.text === name && declaration.initializer !== undefined) return { at, init: declaration.initializer }

@@ -6,15 +6,6 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
-### Fixed
-
-- **A dispatch left pasted in a composer is submitted, and the step never dies on it.** The composer re-submit sent a bare
-  Enter with `--retry-request`, which Orca refuses (`invalid_argument: --retry-request and --wait-submit require --text with
-  --enter and without --interrupt`); the refusal escaped `kernel next`, so every call failed (lesson-ai from 00:49Z) and a Devin
-  dispatch sat pasted unsent. `terminalSubmit` now sends a bare Enter with no request id, the recorded resubmit count bounds the
-  replays, and a refused Enter returns no action instead of throwing. The bench Orca stand-in refuses the same flag set, so the
-  composer scenarios now prove it.
-
 ## [1.1.0-alpha.7] - 2026-10-29
 
 ### Added
@@ -38,6 +29,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A dispatch left pasted in a composer is submitted, and the step never dies on it.** The composer re-submit sent a bare
+  Enter with `--retry-request`, which Orca refuses (`invalid_argument: --retry-request and --wait-submit require --text with
+  --enter and without --interrupt`); the refusal escaped `kernel next`, so every call failed (lesson-ai from 00:49Z) and a Devin
+  dispatch sat pasted unsent. `terminalSubmit` now sends a bare Enter with no request id, the recorded resubmit count bounds the
+  replays, and a refused Enter returns no action instead of throwing. The bench Orca stand-in refuses the same flag set, so the
+  composer scenarios now prove it.
+- **Sonar S1529 in custody.ts:** the top-level const check reads the declaration list's first token (`const`) instead of masking `NodeFlags` with a bitwise `&`.
 - **A yaml key's comment is searched with that key.** `contexts search` cut a yaml file at each key line, so the comment written
   above a key landed in the chunk of the key before it (`neverRead`'s "files no agent opens" sat in `sopsEnvelopes`); a cut now
   starts at the comment block directly above its key, the file's leading comment staying its header (chunker 4,
