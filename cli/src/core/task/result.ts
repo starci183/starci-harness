@@ -5,7 +5,9 @@ import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { PreserveIncomplete, preserveTaskPaths } from "../../harness/preserve.js"
 import type { Preserved } from "../../harness/preserve.js"
 import { removeOpWorktree } from "../../harness/land.js"
-import { fileResult, getTask, latestAttempt, markIntent, openAttempt, resultOf, setStatus, taskCheckout } from "../../harness/tasks.js"
+import { CUSTODY_RECHECK, custodyEvidence } from "../../harness/custody.js"
+import type { CustodyEvidence } from "../../harness/custody.js"
+import { fileResult, getTask, latestAttempt, markIntent, openAttempt, recordEvent, resultOf, setStatus, taskCheckout } from "../../harness/tasks.js"
 import type { AttemptRow, ResultStatus, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
@@ -31,6 +33,8 @@ interface ResultData {
     readonly repair: string | null
     /** The shared needs a blocked result reported, by canonical key (harness/needs.ts). */
     readonly needs: readonly NeedReport[]
+    /** The custody evidence that handed a failed or blocked report to the harness's own run (harness/custody.ts CUSTODY_RECHECK), or null. */
+    readonly recheck: CustodyEvidence | null
 }
 
 /**
@@ -98,10 +102,15 @@ const filingOf = (db: DatabaseSync, taskId: string): Filing => {
     return { task, attempt: latest, inline: false }
 }
 
-/** `starci task result <task-id>`: files the one immutable result of the task's open attempt and hands the task back to the Kernel. */
+/**
+ * `starci task result <task-id>`: files the one immutable result of the task's open attempt and hands the task back to the Kernel.
+ * A failed or blocked output whose evidence shows the worker's run was stopped by custody (harness/custody.ts `custodyEvidence`)
+ * is no verdict of the task: the task goes reported with a CUSTODY_RECHECK event and its work kept, and its verify runs the suite
+ * with the keys custody holds, setting the worker's verdict aside (core/task/verify.ts).
+ */
 export const taskResultVerb = defineVerb({
     path: ["task", "result"],
-    summary: "file the one result of a task's open attempt (done, blocked, mismatch or failed) with its json output; blocked --needs <key> reports a missing shared thing; failed preserves and resets its dirty allowPaths",
+    summary: "file the one result of a task's open attempt (done, blocked, mismatch or failed) with its json output; blocked --needs <key> reports a missing shared thing; failed preserves and resets its dirty allowPaths; a failed or blocked output showing TEST_WORLD_NOT_DECLARED or a custody refusal is reported for the harness's own verify with custody instead, spending no try",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["worker", "op", "agent", "kernel", "supervisor"],
@@ -130,9 +139,11 @@ export const taskResultVerb = defineVerb({
             // A failed task's dirty work is saved and reset in the task's own checkout before its worktree goes. The checks run
             // first, so a refused result resets nothing.
             const checked = filingOf(db, flags.task)
+            // A failed or blocked report whose run custody stopped is not the task's verdict: the harness judges it by its own run.
+            const custody = (status === "failed" || status === "blocked") && needs.length === 0 ? custodyEvidence(output) : undefined
             let preserved: Preserved | null = null
             let repair: string | null = null
-            if (status === "failed") {
+            if (status === "failed" && custody === undefined) {
                 const root = await taskCheckout(checked.task, callerRoot)
                 try {
                     preserved = await preserveTaskPaths(root, checked.task, db)
@@ -148,11 +159,13 @@ export const taskResultVerb = defineVerb({
                 const attempt = filing.attempt ?? openAttempt(db, task.id, { agent: INLINE_AGENT })
                 if (task.status === "queued") task = setStatus(db, task.id, "running")
                 fileResult(db, attempt.id, status, output)
-                // blocked and mismatch are reported too: the Kernel reads the result and decides.
-                const next = setStatus(db, task.id, status === "failed" ? "failed" : "reported")
+                // blocked and mismatch are reported too: the Kernel reads the result and decides. A custody recheck is reported
+                // for the harness's verify instead, which runs the suite with custody and sets the worker's verdict aside.
+                if (custody !== undefined) recordEvent(db, CUSTODY_RECHECK, task.id, { attempt: attempt.id, filed: status, keys: custody.keys, codes: custody.codes })
+                const next = setStatus(db, task.id, status === "failed" && custody === undefined ? "failed" : "reported")
                 // A reset that broke keeps a repair intent, and the worktree with it, until --recover finishes it.
                 if (repair !== null) markIntent(db, task.id, "repair", repair)
-                return { task: task.id, attempt: attempt.id, status, taskStatus: next.status, inline: filing.inline, preserved, repair, needs }
+                return { task: task.id, attempt: attempt.id, status, taskStatus: next.status, inline: filing.inline, preserved, repair, needs, recheck: custody ?? null }
             })
             const waiting = needs.length === 0 ? "" : await recordNeeds(db, callerRoot, data.task, needs)
             const worktree = data.taskStatus === "failed" && repair === null ? ((await removeOpWorktree(callerRoot, data.task).catch(() => undefined)) ?? null) : null
@@ -160,7 +173,9 @@ export const taskResultVerb = defineVerb({
             const kept = dir === null || repair !== null ? "" : `; dirty work preserved in ${dir} and reset`
             const broken = repair === null ? "" : `; its work is saved in ${repair} but not every path was put back: starci task verify ${data.task} --recover finishes the reset`
             const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
-            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}${waiting}`
+            const keys = data.recheck === null ? "" : [...data.recheck.codes, ...data.recheck.keys].join(", ")
+            const recheck = data.recheck === null ? "" : `; its run was stopped by custody (${keys || "TEST_WORLD_NOT_DECLARED"}), so the harness judges it by its own run with the keys custody holds (starci task verify ${data.task}); no try is spent on the worker's run`
+            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}${waiting}${recheck}`
             return { data, message, ...(repair === null ? {} : { exitCode: 1 }) }
         } finally {
             db.close()

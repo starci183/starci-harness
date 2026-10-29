@@ -438,7 +438,7 @@ export const taskOf = async (project: string, id: string): Promise<TaskDetail> =
         key: task.key ?? id,
         label: contract.label,
         title: contract.input.summary,
-        state: view?.state ?? taskState({ id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost }),
+        state: view?.state ?? taskState({ id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost, recheck: task.recheck }),
         contract: { summary: contract.input.summary, allowPaths: contract.context.allowPaths, dependsOn: node?.dependsOn ?? [], record: recordOf(contract, place.repo).record, step },
         checks,
         route: routeOf(place.repo, id, attempts),

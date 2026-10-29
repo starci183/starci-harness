@@ -550,11 +550,14 @@ export interface NodeTask {
     readonly redChecks: string | null
     /** True when a seat of the task is worker-lost: Orca said its worker is gone. */
     readonly lost: boolean
+    /** True when its failed or blocked report was stopped by custody, so the harness verifies it like a done one (harness/custody.ts CUSTODY_RECHECK). */
+    readonly recheck: boolean
 }
 
 /**
  * Where a node stands. Without a task: waiting (a dependency is not done), ready, or blocked (a dependency failed or came
- * back unfinished). With one: its task's status, where a reported task whose result is not done is `returned` to the Kernel.
+ * back unfinished). With one: its task's status, where a reported task whose result is not done is `returned` to the Kernel, unless
+ * custody stopped its run (`recheck`): the harness verifies that one like a done one.
  */
 export type NodeState = "waiting" | "ready" | "blocked" | "queued" | "running" | "launch-unknown" | "lost" | "reported" | "returned" | "verifying" | "done" | "failed" | "cancelled"
 
@@ -572,7 +575,7 @@ export const STUCK_STATES: readonly NodeState[] = ["failed", "returned", "lost",
 /** The node states whose task is live: dispatched and not ended. */
 export const LIVE_STATES: readonly NodeState[] = ["queued", "running", "launch-unknown", "lost", "reported", "returned", "verifying"]
 
-/** The state of a node from the ledger task carrying it; a reported task whose result is not done is returned to the Kernel. */
+/** The state of a node from the ledger task carrying it; a reported task whose result is not done (nor a custody recheck) is returned to the Kernel. */
 export const taskState = (task: NodeTask): NodeState => {
     switch (task.status) {
         case "queued":
@@ -582,7 +585,7 @@ export const taskState = (task: NodeTask): NodeState => {
         case "effect_unknown":
             return task.lost ? "lost" : "launch-unknown"
         case "reported":
-            return task.result === "done" ? "reported" : "returned"
+            return task.result === "done" || task.recheck ? "reported" : "returned"
         case "verifying":
             return "verifying"
         case "done":

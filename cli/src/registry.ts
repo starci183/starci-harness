@@ -69,6 +69,7 @@ import { workflowResumeVerb } from "./core/workflow/resume.js"
 import { workflowRunVerb } from "./core/workflow/run.js"
 import { seatPingVerb } from "./core/seat/ping.js"
 import { uatRunVerb } from "./core/uat/run.js"
+import { testLiveVerb } from "./core/test/live.js"
 import { contextsAnatomyVerb } from "./core/contexts/anatomy.js"
 import { contextsAnchorVerb } from "./core/contexts/anchors-verb.js"
 import { contextsSearchVerb } from "./core/contexts/search.js"
@@ -200,6 +201,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     workflowRunVerb,
     seatPingVerb,
     uatRunVerb,
+    testLiveVerb,
     contextsAnatomyVerb,
     contextsAnchorVerb,
     contextsSearchVerb,

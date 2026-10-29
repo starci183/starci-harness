@@ -7,6 +7,7 @@ import type { Classified, Difficulty, NodeTask, NodeView, PlanNode, TaskRoute, W
 import { recordFirstGoal } from "./goal.js"
 import { loadRouting } from "./routing.js"
 import { inTransaction, now } from "./ledger.js"
+import { CUSTODY_RECHECK } from "./custody.js"
 import { SEAT_WORKER_LOST } from "./seats.js"
 import { harnessCause, revivableTasks, TASK_REVIVED } from "./revive.js"
 import type { HarnessCause } from "./revive.js"
@@ -79,6 +80,8 @@ export interface WorkflowTask {
     readonly tryNo: number
     readonly redChecks: string | null
     readonly lost: boolean
+    /** Reported, and its newest attempt's failed or blocked report was stopped by custody: the harness verifies it by its own run (harness/custody.ts CUSTODY_RECHECK). */
+    readonly recheck: boolean
     readonly createdAt: string
     /** Set when the harness, not the task, ended it and it comes back to ready at the same try (harness/revive.ts). */
     readonly revive: HarnessCause | null
@@ -296,10 +299,11 @@ export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTas
             // The newest attempt's result and the harness checks that were red on it, so a blocked reason names what failed.
             "SELECT tasks.*, (SELECT results.status FROM attempts JOIN results ON results.attempt_id = attempts.id WHERE attempts.task_id = tasks.id ORDER BY attempts.seq DESC LIMIT 1) AS result_status, " +
                 "(SELECT group_concat(name, ', ') FROM check_runs WHERE check_runs.task_id = tasks.id AND check_runs.status = 'red' AND check_runs.runner = 'harness' AND check_runs.attempt_id = (SELECT id FROM attempts WHERE task_id = tasks.id ORDER BY seq DESC LIMIT 1)) AS red_checks, " +
-                "EXISTS (SELECT 1 FROM seats WHERE seats.task_id = tasks.id AND seats.status = ?) AS lost " +
+                "EXISTS (SELECT 1 FROM seats WHERE seats.task_id = tasks.id AND seats.status = ?) AS lost, " +
+                "(tasks.status = 'reported' AND EXISTS (SELECT 1 FROM events WHERE events.subject = tasks.id AND events.kind = ? AND json_extract(events.data_json, '$.attempt') = (SELECT id FROM attempts WHERE task_id = tasks.id ORDER BY seq DESC LIMIT 1))) AS recheck " +
                 "FROM tasks WHERE workflow_id = ? ORDER BY created_at, rowid",
         )
-        .all(SEAT_WORKER_LOST, workflowId)
+        .all(SEAT_WORKER_LOST, CUSTODY_RECHECK, workflowId)
         .map((row) => ({
             id: text(row.id),
             key: optText(row.plan_key),
@@ -309,6 +313,7 @@ export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTas
             tryNo: Number(row.try_no),
             redChecks: optText(row.red_checks),
             lost: Number(row.lost) === 1,
+            recheck: Number(row.recheck) === 1,
             createdAt: text(row.created_at),
         }))
     const revivable = revivableTasks(db, rows)
@@ -325,7 +330,7 @@ export const nodeTasks = (nodes: readonly PlanNode[], tasks: readonly WorkflowTa
     for (const task of tasks) {
         if (task.key === null || hashes.get(task.key) !== task.hash) continue
         if (task.revive !== null) current.delete(task.key)
-        else current.set(task.key, { id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost })
+        else current.set(task.key, { id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost, recheck: task.recheck })
     }
     return current
 }

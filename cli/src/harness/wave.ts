@@ -13,7 +13,7 @@ import { inTransaction, now } from "./ledger.js"
 import { readMachine } from "./machine.js"
 import { loadOps } from "./ops.js"
 import { loadPolicy } from "./policy.js"
-import { recordBaselineFindings, runCheck } from "./run-checks.js"
+import { recheckOf, recordBaselineFindings, runCheck } from "./run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
 import { jobBusy, recordJob, waveJob } from "./jobs.js"
@@ -96,7 +96,7 @@ export interface WaveReport {
 const sourceOf = (db: DatabaseSync, task: TaskRow): ResultSource => {
     const attempt = latestAttempt(db, task.id)
     const filed = attempt === undefined ? undefined : resultOf(db, attempt.id)
-    return filed === undefined ? { missing: `task ${task.id} has no filed result` } : { output: filed.output, from: `the result filed on ${filed.attemptId}` }
+    return filed === undefined ? { missing: `task ${task.id} has no filed result` } : { output: filed.output, from: `the result filed on ${filed.attemptId}`, ...recheckOf(db, task, filed.attemptId) }
 }
 
 const toSlash = (path: string): string => path.replaceAll("\\", "/")

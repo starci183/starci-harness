@@ -12,13 +12,15 @@ import { judgeCites } from "./cite.js"
 import { testWorkerArgs, withHeavySlot } from "./heavy.js"
 import { VERIFY_INFRA } from "./clean-verify.js"
 import { changedCoverageScope, runsJest, scopedTests, withCoverageArgs } from "./coverage-scope.js"
-import { assertKeysHanded, CUSTODY_CODES, custodyFor, scrubbed } from "./custody.js"
+import { assertKeysHanded, CUSTODY_CODES, custodyFor, isCustodyRecheck, scrubbed } from "./custody.js"
 import type { Custody } from "./custody.js"
-import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
+import { RESULT_FILE, isRuleId, resolveChecks, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
+import { loadOps } from "./ops.js"
 import type { OutputType } from "./ops.js"
 import { ruleOwnerOf } from "./rule-pages.js"
 import { recordEvent } from "./tasks.js"
+import type { TaskRow } from "./tasks.js"
 import { WORK_DIR, judgeUatWalk, parseUatRecord, recordFileOfId } from "./work.js"
 
 /** The verdict of one check. */
@@ -37,8 +39,20 @@ export const recordBaselineFindings = (db: DatabaseSync, taskId: string, checks:
     for (const check of checks) if (check.baseline !== undefined) recordEvent(db, "baseline-findings", taskId, { check: check.name, ...check.baseline })
 }
 
-/** What a `@result` json check reads: the worker's output, or why there is none to read. */
-export type ResultSource = { readonly output: unknown; readonly from: string } | { readonly missing: string }
+/**
+ * What a `@result` json check reads: the worker's output, or why there is none to read. `setAside` names the keys of a report
+ * the harness judges by its own run instead (a custody recheck, harness/custody.ts CUSTODY_RECHECK: the worker's suite ran
+ * without the keys custody hands): a verdict command check holding one of them judges by the run's exit alone, and no json
+ * check reads them from the worker.
+ */
+export type ResultSource = { readonly output: unknown; readonly from: string; readonly setAside?: readonly string[] } | { readonly missing: string }
+
+/** The result keys a contract's verdict command checks hold the worker to (`suite-verdict`'s `verdict`): what a custody recheck sets aside. */
+export const verdictKeys = (checks: readonly ResolvedCheck[]): string[] => [...new Set(checks.flatMap((check) => (check.check.kind === "command" && check.check.verdict !== undefined ? [check.check.verdict] : [])))]
+
+/** The verdict keys a custody recheck of this attempt sets aside (ResultSource `setAside`), or nothing: what a filed result's source spreads in. */
+export const recheckOf = (db: DatabaseSync, task: TaskRow, attemptId: string): { readonly setAside?: readonly string[] } =>
+    isCustodyRecheck(db, task.id, attemptId) ? { setAside: verdictKeys(resolveChecks(task.contract, loadOps())) } : {}
 
 /**
  * Where the checks of one contract run and what they compare against: `diffBase` is the base a `starci check` verb diffs
@@ -72,7 +86,7 @@ const tailOf = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
  * How a command check runs: its deadline, the custody keys a live suite's run alone receives, and for a test run the work tree
  * whose custody a failed run's undeclared keys are checked against (`keysOf`, harness/custody.ts).
  */
-interface CommandOptions {
+export interface CommandOptions {
     readonly timeoutMs?: number
     readonly custody?: Custody
     readonly keysOf?: string
@@ -83,7 +97,7 @@ interface CommandOptions {
  * (harness/heavy.ts). Custody keys go into its child environment only, and every handed value is scrubbed from what it printed. A
  * failed test run that reports a key custody holds as not declared refuses VERIFY_INFRA (`assertKeysHanded`): no verdict, no try.
  */
-const heavyCommand = async (argv: readonly string[], cwd: string, options: CommandOptions): Promise<ToolRun> => {
+export const heavyCommand = async (argv: readonly string[], cwd: string, options: CommandOptions): Promise<ToolRun> => {
     const { custody, keysOf, ...rest } = options
     const ran = await withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, custody === undefined ? rest : { ...rest, env: custody.env }, (held) => captureCommand(testWorkerArgs(argv, held), cwd, held.options))
     const run = custody === undefined ? ran : { ...ran, stdout: scrubbed(ran.stdout, custody.values), stderr: scrubbed(ran.stderr, custody.values) }
@@ -196,20 +210,28 @@ const hasType = (value: unknown, type: OutputType): boolean => {
     }
 }
 
+/** The result keys a custody recheck sets aside for the harness's own run, when the task's report is one (ResultSource `setAside`). */
+const setAsideOf = (place: CheckPlace): readonly string[] | undefined => (place.result !== undefined && "output" in place.result ? place.result.setAside : undefined)
+
 const runJsonCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "json" } }, place: CheckPlace): CheckOutcome => {
     const document = readJsonDocument(check.check.file, place)
     if ("problem" in document) return outcome(check, [document.problem], "")
     const record = typeof document.value === "object" && document.value !== null ? (document.value as Record<string, unknown>) : {}
-    const missing = check.check.requiredKeys.filter((key) => !(key in record))
+    // A key the harness judges by its own run (a custody recheck) is not read from the worker.
+    const aside = new Set(check.check.file === RESULT_FILE ? (setAsideOf(place) ?? []) : [])
+    const judged = (key: string): boolean => !aside.has(key)
+    const missing = check.check.requiredKeys.filter((key) => judged(key) && !(key in record))
     const mistyped = Object.entries(check.check.types ?? {})
-        .filter(([key, type]) => key in record && !hasType(record[key], type))
+        .filter(([key, type]) => judged(key) && key in record && !hasType(record[key], type))
         .map(([key, type]) => `${key} is ${Array.isArray(record[key]) ? "an array" : typeof record[key]}, expected ${type}`)
-    const expected = Object.entries(check.check.expect ?? {})
+    const expected = Object.entries(check.check.expect ?? {}).filter(([key]) => judged(key))
     const wrong = expected.filter(([key, value]) => record[key] !== value).map(([key, value]) => `${key} is ${JSON.stringify(record[key])}, expected ${JSON.stringify(value)}`)
     const problems = [...(missing.length === 0 ? [] : [`${document.from} lacks keys: ${missing.join(", ")}`]), ...[...mistyped, ...wrong].map((line) => `${document.from}: ${line}`)]
     const andExpected = expected.length === 0 ? "" : " and " + String(expected.length) + " expected value(s)"
-    return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length)} required key(s)${andExpected}`)
+    const setAside = aside.size === 0 ? "" : `; ${[...aside].join(", ")} set aside: the worker's run lacked the custody keys, the harness's own run judges ${aside.size === 1 ? "it" : "them"}`
+    return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length - check.check.requiredKeys.filter((key) => aside.has(key)).length)} required key(s)${andExpected}${setAside}`)
 }
+
 
 /** The ids a file names, or every yaml file under a folder (a Work scope the task wrote); a path the checkout lacks names none. */
 const idsAt = (path: string): Set<string> => {
@@ -355,9 +377,13 @@ const runUatFlowCheck = (check: ResolvedCheck & { readonly check: { readonly kin
 const runVerdictCommand = async (check: ResolvedCheck, argv: readonly string[], key: string, place: CheckPlace, options: CommandOptions): Promise<CheckOutcome> => {
     const run = await heavyCommand(argv, place.cwd, options)
     const observed = run.exitCode === 0 ? "passed" : "failed"
+    const ran = `${argv.join(" ")} exited ${String(run.exitCode)} (${observed})${run.timedOut ? ", killed at the deadline" : ""}`
+    // A custody recheck: the worker's run lacked the keys this run was handed, so this run's exit is the verdict.
+    if (setAsideOf(place)?.includes(key) === true) {
+        return { ...fromRun(check, run), status: run.exitCode === 0 ? "green" : "red", detail: `${ran}; the result's ${key} is set aside (the worker's run lacked the custody keys), this run judges\n${tailOf(run)}` }
+    }
     const document = readJsonDocument(RESULT_FILE, place)
     const claimed = "problem" in document ? undefined : asRecord(document.value)[key]
-    const ran = `${argv.join(" ")} exited ${String(run.exitCode)} (${observed})${run.timedOut ? ", killed at the deadline" : ""}`
     if (claimed === observed) return { ...fromRun(check, run), status: "green", detail: `${ran}; the result's ${key} agrees\n${tailOf(run)}` }
     const why = "problem" in document ? document.problem : `the result's ${key} is ${JSON.stringify(claimed)}, but the harness saw ${observed}`
     return { ...fromRun(check, run), status: "red", detail: `${ran}; ${why}\n${tailOf(run)}` }
@@ -428,30 +454,42 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     return based === undefined ? outcome : { ...outcome, baseline: based }
 }
 
+/** A suite command made ready to run: its scoped argv, the options its run takes (custody keys among them) and the lines its detail opens with. */
+export type PreparedSuite = { readonly argv: readonly string[]; readonly given: CommandOptions; readonly lead: readonly string[]; readonly live: readonly string[] } | { readonly problem: string }
+
 /**
- * Runs a command check: its argv (a list, or a string split at blanks), held to its verdict key when it names one. A command that
- * runs jest (`runsJest`) runs the task's own spec files by path when it names test paths or runs the test world alone
- * (harness/coverage-scope.ts `scopedTests`: never a live-provider spec it did not name), and with `coverage: changed` has its
- * coverage narrowed to the task's changed logic files; the detail opens with the files it ran and judged. When what it runs holds
- * an opt-in live suite, the keys its world declares come from the app's custody into that run's environment alone
- * (harness/custody.ts); a key custody lacks, or a declaration it cannot read, refuses out of the check (CUSTODY_CODES), a
- * block awaiting the owner, never a red, and a run reporting a key custody holds as undeclared refuses VERIFY_INFRA. Any other
- * command runs as named.
+ * Makes a command ready the way a command check runs it: a command that runs jest (`runsJest`) runs the spec files it scopes to
+ * (harness/coverage-scope.ts `scopedTests`), with `coverage: changed` narrowed to the changed logic files, and when what it runs
+ * holds an opt-in live suite the keys its world declares come from the app's custody for that run alone (harness/custody.ts
+ * `custodyFor`, which refuses CUSTODY_CODES). `starci test live` makes a worker's run of a live suite with this same function.
+ */
+export const prepareSuite = async (named: readonly string[], place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number; readonly coverage?: "changed" }): Promise<PreparedSuite> => {
+    const jest = runsJest(named, place.cwd)
+    const tests = jest ? await scopedTests(named, place, allowPaths) : undefined
+    if (tests !== undefined && "problem" in tests) return { problem: tests.problem }
+    const scoped = tests?.argv ?? named
+    const scope = options.coverage === "changed" && jest ? await changedCoverageScope(place, allowPaths) : undefined
+    const argv = scope === undefined ? scoped : withCoverageArgs(scoped, scope)
+    const custody = tests === undefined || tests.live.length === 0 ? undefined : await custodyFor(tests.live, place.source ?? place.root, place.root)
+    const given: CommandOptions = { ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }), ...(custody === undefined ? {} : { custody }), ...(jest ? { keysOf: place.source ?? place.root } : {}) }
+    const lead = [tests?.detail, scope?.detail, custody?.detail].filter((line): line is string => line !== undefined)
+    return { argv, given, lead, live: tests?.live ?? [] }
+}
+
+/**
+ * Runs a command check: its argv (a list, or a string split at blanks), made ready by `prepareSuite` (scoped specs, coverage,
+ * custody) and held to its verdict key when it names one; the detail opens with the files it ran and judged. A custody refusal
+ * (CUSTODY_CODES, a block awaiting the owner) or VERIFY_INFRA (a run reporting a key custody holds as undeclared) leaves the
+ * check, never a red; any other failure is a red check.
  */
 const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
     const primitive = check.check
     const named = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
     try {
-        const jest = runsJest(named, place.cwd)
-        const tests = jest ? await scopedTests(named, place, allowPaths) : undefined
-        if (tests !== undefined && "problem" in tests) return outcome(check, [tests.problem], "")
-        const scoped = tests?.argv ?? named
-        const scope = primitive.coverage === "changed" && jest ? await changedCoverageScope(place, allowPaths) : undefined
-        const argv = scope === undefined ? scoped : withCoverageArgs(scoped, scope)
-        const custody = tests === undefined || tests.live.length === 0 ? undefined : await custodyFor(tests.live, place.source ?? place.root, place.root)
-        const given: CommandOptions = { ...options, ...(custody === undefined ? {} : { custody }), ...(jest ? { keysOf: place.source ?? place.root } : {}) }
+        const prepared = await prepareSuite(named, place, allowPaths, { ...options, ...(primitive.coverage === undefined ? {} : { coverage: primitive.coverage }) })
+        if ("problem" in prepared) return outcome(check, [prepared.problem], "")
+        const { argv, given, lead } = prepared
         const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, given) : fromRun(check, await heavyCommand(argv, place.cwd, given))
-        const lead = [tests?.detail, scope?.detail, custody?.detail].filter((line): line is string => line !== undefined)
         return lead.length === 0 ? judged : { ...judged, detail: `${lead.join("\n")}\n${judged.detail}` }
     } catch (error: unknown) {
         // A custody block is not the task's red: it leaves the check, and the verify ends awaiting the owner or with no verdict.
