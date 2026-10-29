@@ -24,6 +24,8 @@ const HFS_FLAGS = {
     remove: { kind: "list", summary: "recipients: a public age recipient or owner, removed from the environment's rule, once per recipient" },
     "force-nonempty": { kind: "boolean", summary: "let remove delete a member that still holds keys" },
     rotate: { kind: "boolean", summary: "server-key: make a new server identity, seal the environment to it, keep the old file dated on the server and drop its recipient" },
+    backup: { kind: "string", summary: "server-key: github, stream the server identity into the protected GitHub Environment secret SOPS_AGE_KEY_<ENV>" },
+    restore: { kind: "string", summary: "server-key: github, dispatch the managed stack-key-restore.yml that writes that secret back to the server" },
     ...QUIET_FLAG,
 } as const satisfies Readonly<Record<string, FlagSpec>>
 
@@ -34,6 +36,8 @@ const FLAGS = {
 
 const CHOICES = {
     action: z.enum(["init", "set", "get", "unset", "rename", "remove", "materialize", "list", "verify", "recipients", "migrate", "split", "audit", "server-key"]),
+    backup: z.enum(["github"]),
+    restore: z.enum(["github"]),
     generate: NUMBER,
 } as const
 

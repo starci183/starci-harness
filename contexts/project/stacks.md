@@ -113,7 +113,14 @@ image, so any digest-pinned supported reverse proxy serves.
   environment's rule beside the owner key, is recorded as `deploy.remote.serverRecipient`, and every member is wrapped again
   with `sops updatekeys`, the owner identity opening only the data key. `--rotate --execute` stages a new identity, wraps the
   members to it, swaps it in keeping the old file on the server as `keys.txt.retired-<UTC stamp>` until the owner deletes it,
-  then drops the old recipient. `stack deploy` opens the members where it runs (the owner machine, or CI with the protected
+  then drops the old recipient. The owner key is the first way back when the server loses its identity: production is
+  sealed to it, so the owner seals production again to a new server key. The owner chose a second way, a copy in GitHub,
+  accepting that whoever can deploy to that GitHub Environment can read the server key: `--backup github --execute` streams
+  the key file from the server's ssh stdout straight into `gh secret set SOPS_AGE_KEY_<ENV> --env <env>` of the app's origin
+  repository, never printed, held or written locally, and refuses unless that Environment exists with required reviewers or
+  deployment branches limited to main; GitHub never gives a secret back, so `--restore github --execute` dispatches the
+  managed `.github/workflows/stack-key-restore.yml`, which writes it to the server over the deploy's CI ssh key (umask 077,
+  mode 600, never echoed, never over an existing identity). `stack deploy` opens the members where it runs (the owner machine, or CI with the protected
   environment's SOPS_AGE_KEY) and hands each value to a Swarm secret over the deploy transport; a decrypt on the server reads
   this key file (@starci/hfs `stack/server-key.mjs`).
 - **Set in one write.** `starci app secret set <env> <provider> <KEY>...` prompts for each key with masked input on a
@@ -212,8 +219,8 @@ One key belongs to one class, and the manifest's `ci` block declares names and p
 A name is upper snake case, never in the CI provider's reserved prefix, and declared once across the classes; an
 environment-scoped name names its environment; a variable whose value only the owner may give is declared as such and
 set from standard input, never argv. A sealed key is never a CI secret, an app's runtime secret never reaches CI, and
-every workflow reference is declared and every required declaration read (R296, R297, R298). CI holds only the age
-identity and the deploy transport credentials, injected into the protected job that needs custody and removed when it
+every workflow reference is declared and every required declaration read (R296, R297, R298). CI holds only age
+identities (the deploy's, and the server identity's backup of PROJECT-STACKS-5) and the deploy transport credentials, injected into the protected job that needs custody and removed when it
 ends; a job that only builds or checks needs no key (R251, R252).
 
 ## PROJECT-STACKS-8 Quality services are declared and required

@@ -26,6 +26,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
     - `images.yml` — **app.ci-images** required · R05
     - `db-deploy.yml` — **app.ci-db** optional · R05
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05
+    - `stack-key-restore.yml` — **app.ci-stack-key-restore** optional · R05
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06
   - `{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}` — **app.github-meta** optional

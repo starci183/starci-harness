@@ -49,7 +49,7 @@ function parse(argv) {
       const value = inline ?? argv[++i];
       if (value === undefined || value.startsWith("--")) throw new SecretError(`${flag} needs a value`);
       (opts[flag.slice(2)] ??= []).push(value);
-    } else if (["--cwd", "--generate", "--to", "--group-file"].includes(flag)) {
+    } else if (["--cwd", "--generate", "--to", "--group-file", "--backup", "--restore"].includes(flag)) {
       valueOption(opts, flag, inline ?? argv[++i]);
     } else if (["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing", "--rotate"].includes(flag)) {
       if (inline !== undefined && !["true", "false"].includes(inline))
@@ -73,14 +73,15 @@ function usageArguments(verb) {
   if (verb === "migrate") return "<env> <slug> [--to <slug>] [--into-existing] [--execute]";
   if (verb === "split") return "<env> <slug> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]";
   if (verb === "audit") return "[<env>]";
-  if (verb === "server-key") return "<env> [--rotate] [--execute]";
+  if (verb === "server-key") return "<env> [--rotate | --backup github | --restore github] [--execute]";
   return "<env>";
 }
 
 function editOptionsFor(verb, opts) {
   if (opts.execute !== undefined && !EDIT_VERBS.has(verb) && !MOVE_VERBS.has(verb) && verb !== "server-key")
     throw new SecretError("--execute is only valid for unset, rename, remove, migrate, split and server-key");
-  if (opts.rotate !== undefined && verb !== "server-key") throw new SecretError("--rotate is only valid for server-key");
+  if ((opts.rotate !== undefined || opts.backup !== undefined || opts.restore !== undefined) && verb !== "server-key")
+    throw new SecretError("--rotate, --backup and --restore are only valid for server-key");
   if (opts.to !== undefined && verb !== "migrate") throw new SecretError("--to is only valid for migrate");
   if ((opts.group || opts["group-file"] !== undefined) && verb !== "split") throw new SecretError("--group and --group-file are only valid for split");
   if (opts["into-existing"] !== undefined && !MOVE_VERBS.has(verb)) throw new SecretError("--into-existing is only valid for migrate and split");
@@ -185,7 +186,7 @@ async function serverKeyVerb(repoRoot, environment, opts, { env, stdout, stderr,
   const ctx = stackContext({ cwd: repoRoot, env, stdout, stderr, openSops: open, ...serverKeyIo.io });
   try {
     const result = await serverKey(ctx, environment, {
-      execute: opts.execute === true, rotate: opts.rotate === true,
+      execute: opts.execute === true, rotate: opts.rotate === true, backup: opts.backup, restore: opts.restore,
     }, serverKeyIo.deps ?? {});
     for (const line of result.lines) stdout(`${line}\n`);
     return result.ok ? 0 : 1;
@@ -221,7 +222,7 @@ export async function secretMain(
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env> | recipients <env> | migrate <env> <slug> [--to <slug>] [--into-existing] | split <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [<env>] | server-key <env> [--rotate] [--execute]",
+        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env> | recipients <env> | migrate <env> <slug> [--to <slug>] [--into-existing] | split <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [<env>] | server-key <env> [--rotate | --backup github | --restore github] [--execute]",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);

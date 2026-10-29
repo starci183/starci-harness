@@ -1,0 +1,55 @@
+{{header}}
+# Restores the deploy server's age identity from its GitHub Environment backup (starci app secret server-key <env> --backup github
+# stored it; --restore github dispatches this file). It runs by hand only and writes {{serverAgeIdentity}} on the server when no
+# identity is there, with umask 077 and mode 600, owned by root; it never echoes the identity and never overwrites one.
+# The environment input names the protected GitHub environment of the deploy (required reviewers or main only), which holds:
+#   vars    VPS_HOST, VPS_USER (the swarm manager)
+#   secrets VPS_SSH_KEY (CI-only deploy key), VPS_KNOWN_HOSTS (pinned host keys), SOPS_AGE_KEY_<ENV> (the backup)
+name: restore stack key
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Protected environment holding the deploy transport and the server identity backup
+        required: true
+        type: environment
+      secret:
+        description: The backup secret, SOPS_AGE_KEY_<ENV> of that environment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stack-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 10
+    steps:
+      - name: write the identity on the server
+        env:
+          SECRET_NAME: ${{ inputs.secret }}
+          AGE_IDENTITY: ${{ secrets[inputs.secret] }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SECRET_NAME" =~ ^SOPS_AGE_KEY_[A-Z0-9_]+$ ]] || { echo "secret must be SOPS_AGE_KEY_<ENV>" >&2; exit 1; }
+          [ -n "$AGE_IDENTITY" ] || { echo "$SECRET_NAME is not set in this environment" >&2; exit 1; }
+          umask 077
+          dir="$(mktemp -d)"
+          trap 'rm -rf "$dir"' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" > "$dir/id"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$dir/known_hosts"
+          printf '%s\n' "$AGE_IDENTITY" | ssh -T -i "$dir/id" -o IdentitiesOnly=yes -o UserKnownHostsFile="$dir/known_hosts" \
+            -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 "$VPS_USER@$VPS_HOST" \
+            'if [ "$(id -u)" -eq 0 ]; then S=; else S="sudo -n"; fi; f={{serverAgeIdentity}}; if $S test -e "$f"; then cat >/dev/null; echo "the server already holds $f; move it aside first" >&2; exit 3; fi; $S sh -c '"'"'umask 077; mkdir -p "$(dirname "$1")"; cat > "$1"; chown root:root "$1"; chmod 600 "$1"; age-keygen -y "$1"'"'"' sh "$f"'

@@ -1,5 +1,6 @@
 // remote.mjs - how the stack verbs reach the Swarm manager: the ssh runner, remote command quoting, the CI transport setup.
-//   sshRunner(ctx, config, { sshCmd })  -> run(command, { input }) -> { status, stdout, stderr }   (`.cleanup()`, `.notes`)
+//   sshRunner(ctx, config, { sshCmd })  -> run(command, { input }) -> { status, stdout, stderr }   (`.cleanup()`, `.notes`, `.argv(command)`:
+//                                          the { command, args, env } a caller spawns itself to stream the remote stdout)
 //   transports, in this order: --ssh-cmd "ssh vps" (no shell) -> the owner-machine session opened from the sealed members
 //   (only when config.remote.sealed is declared and STARCI_STACK_SEALED_SSH=1) -> the ssh alias config.remote.host (CI after `connect`,
 //   or the operator's own ssh config).
@@ -53,7 +54,8 @@ function makeRunner(ctx, argv, { cleanup = noop, notes = [], connection } = {}) 
     if (result.error) return { status: 127, stdout: '', stderr: `cannot run ${command}: ${result.error.message}` };
     return { status: result.status ?? 1, stdout: result.stdout, stderr: result.stderr };
   };
-  return Object.assign(run, { cleanup, notes });
+  const argvOf = (remote) => (connection ? connection.remoteArgv(lfOnly(remote)) : { command, args: [...head, lfOnly(remote)], env: ctx.env });
+  return Object.assign(run, { cleanup, notes, argv: argvOf });
 }
 
 function sshCommandArgv(sshCmd) {

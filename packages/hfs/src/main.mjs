@@ -135,7 +135,7 @@ starci app secret remove <env> <slug> [--execute] [--force-nonempty] [--cwd <dir
 starci app secret materialize <env> [--cwd <dir>]
 starci app secret list <env> [--cwd <dir>]
 starci app secret verify <env> [--cwd <dir>]
-starci app secret server-key <env> [--rotate] [--execute] [--cwd <dir>]
+starci app secret server-key <env> [--rotate | --backup github | --restore github] [--execute] [--cwd <dir>]
 starci app ci secret set <NAME> [--env E | --dependabot] [--repo owner/name] [--cwd <dir>]
 starci app ci var set <NAME> [--env E] [--value v] [--repo owner/name] [--cwd <dir>]
 starci app ci var sync [--execute] [--repo owner/name] [--cwd <dir>]

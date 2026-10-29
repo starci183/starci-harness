@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.13.0
+version: 3.14.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -58,6 +58,8 @@ versioning:
 # 3.13.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
 # admits pgmq, the event bus, ruleParams.db.queueOutbox is retired with the pg_cron half of R258, the lite event-bus functions replace
 # event_bus_write in ruleParams.be.dbFunctions, and app.db.image moves to .starcistacks/images/db/Dockerfile (db/ keeps schema and data).
+# 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
+# deploy server's age identity back from its GitHub Environment backup.
 
 # Field meaning, per slot.
 #   id          stable name, never changes meaning inside a major.
@@ -669,6 +671,19 @@ slots:
     editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): both editions deploy their images to a Docker Swarm stack through the same starci stack verbs; the workflow lists the images the app declares."
     # The Swarm stack deploy workflow: workflow_dispatch only (like app.ci-db); a thin file that calls `starci app stack`, rendered by starci app sync.
     path: ".github/workflows/stack-deploy.yml"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.ci-stack-key-restore
+    since: 3.14.0
+    profiles: [app]
+    editionWhy: "ruling:app-secrets-one-standard: both editions deploy to a Docker Swarm server whose own age identity the owner backs up as a protected GitHub Environment secret; this workflow writes it back."
+    # The server identity restore workflow: workflow_dispatch only (like app.ci-stack-deploy); `starci app secret server-key <env> --restore github` dispatches it, rendered by starci app sync.
+    path: ".github/workflows/stack-key-restore.yml"
     presence: optional
     tracked: tracked
     tier: none

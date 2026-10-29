@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.13.0
+version: 3.14.0
 presenceValues:
   - required
   - optional
@@ -1022,6 +1022,20 @@ slots:
     editionWhy: both editions deploy their images to a Docker Swarm stack through the same starci stack
       verbs; the workflow lists the images the app declares.
     path: .github/workflows/stack-deploy.yml
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.ci-stack-key-restore
+    profiles:
+      - app
+    editionWhy: both editions deploy to a Docker Swarm server whose own age identity the owner backs up as a protected
+      GitHub Environment secret; this workflow writes it back (ruling app-secrets-one-standard).
+    path: .github/workflows/stack-key-restore.yml
     presence: optional
     tracked: tracked
     tier: none

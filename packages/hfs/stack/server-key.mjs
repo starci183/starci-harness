@@ -1,4 +1,4 @@
-// server-key.mjs - `starci app secret server-key <env> [--rotate] [--execute]`: the deploy
+// server-key.mjs - `starci app secret server-key <env> [--rotate | --backup github | --restore github] [--execute]`: the deploy
 // server's own age identity, made ON the server and never leaving it, and the environment sealed to it (ruling
 // app-secrets-one-standard, contexts/project/stacks.md PROJECT-STACKS-5).
 //   (none)     the server keeps SERVER_AGE_IDENTITY when it exists, else age-keygen makes it there (umask 077, mode 600, owner
@@ -7,6 +7,9 @@
 //              updatekeys: the owner identity opens the data key only, no value is decrypted).
 //   --rotate   a new identity is staged at <identity>.next, the members are wrapped to it, the server swaps it in keeping the old
 //              file as <identity>.retired-<UTC stamp> until the owner deletes it, then the old recipient leaves the rule.
+//   --backup github   the identity streams from the server's ssh stdout into `gh secret set SOPS_AGE_KEY_<ENV> --env <env>` of
+//              the app's origin repository, a protected GitHub Environment secret: never printed, held or written locally.
+//   --restore github  dispatches the managed .github/workflows/stack-key-restore.yml, which writes that secret back to the server.
 // The server is reached only through the deploy's own transport (remote.mjs withRunner): the same host, user and key source.
 // Every effect is a dry run until --execute.
 import path from 'node:path';
@@ -15,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { configuredRecipients, environmentRecipients } from '../runtime/scripts/hfs/secret-init.mjs';
 import { recordServerRecipient } from '../runtime/scripts/hfs/secret-standard.mjs';
 import { sealedFiles } from '../runtime/scripts/hfs/secret-store.mjs';
+import { github } from '../ci/github.mjs';
 import { AGE_INSTALL, installAge } from './age-install.mjs';
 import { STACKS_DIR, STACKS_FILE, loadDeployConfig } from './config.mjs';
 import { firstLine } from './context.mjs';
@@ -23,13 +27,19 @@ import { shellQuote, withRunner } from './remote.mjs';
 
 /**
  * The deploy server's age identity: sops' default key file of root, so a decrypt on the server reads it with nothing set, and
- * SOPS_AGE_KEY_FILE names it where one is set. The one owner of this path.
+ * SOPS_AGE_KEY_FILE names it where one is set. The one owner of this path; the restore workflow is rendered from it.
  */
 export const SERVER_AGE_IDENTITY = '/root/.config/sops/age/keys.txt';
+
+/** The managed workflow `--restore github` dispatches (templates/app/ci-workflows*). */
+export const RESTORE_WORKFLOW = 'stack-key-restore.yml';
 
 const RECIPIENT = /^age1[a-z0-9]+$/u;
 /** A command run as root: directly when the deploy user is root, else over passwordless sudo, the script read from stdin. */
 const AS_ROOT = 'if [ "$(id -u)" -eq 0 ]; then sh -s; else sudo -n sh -s; fi';
+
+/** The GitHub Environment secret that holds an environment's server identity: `SOPS_AGE_KEY_<ENV>`. */
+export const backupSecretName = (env) => `SOPS_AGE_KEY_${env.toUpperCase().replaceAll('-', '_')}`;
 
 /** The shell that keeps `file` when it is an ordinary file, else makes it with age-keygen (umask 077), then prints only its public key. */
 export function ensureIdentityScript(file) {
@@ -73,6 +83,10 @@ export function swapIdentityScript(file, retired) {
     'age-keygen -y "$f"',
   ].join('\n');
 }
+
+/** The one remote command that streams `file` to stdout as root; only --backup github runs it, into the stdin of gh. */
+export const streamIdentityCommand = (file) =>
+  `if [ "$(id -u)" -eq 0 ]; then cat -- ${shellQuote(file)}; else sudo -n cat -- ${shellQuote(file)}; fi`;
 
 /** The single public recipient a server script printed; anything else is refused without echoing a byte of it. */
 function recipientOf(result, what) {
@@ -189,11 +203,66 @@ async function rotateKey(ctx, config, { execute }, deps) {
 }
 
 /**
- * Runs one server-key action. `options`: { execute, rotate }; `deps` (specs): { ssh (an injected runner) }.
+ * The GitHub Environment that holds the backup, refused unless it exists in the app's origin repository and is protected: required
+ * reviewers, or deployment branches limited to main. Names what is missing.
+ */
+export function protectedEnvironment(gh, env) {
+  let repo;
+  try { repo = gh.repository(); } catch { throw refusal('STACK_SERVER_KEY_GITHUB', 'the app\'s origin repository cannot be read with gh (gh repo view); authenticate gh in the app checkout'); }
+  let environment;
+  try { environment = gh.json(['api', `repos/${repo}/environments/${env}`]); } catch {
+    throw refusal('STACK_SERVER_KEY_GITHUB_ENVIRONMENT', `the GitHub Environment ${env} of ${repo} does not exist or cannot be read; create it with required reviewers or deployment branches limited to main`);
+  }
+  const reviewers = (environment?.protection_rules ?? []).some((rule) => rule?.type === 'required_reviewers' && (rule.reviewers ?? []).length > 0);
+  let mainOnly = false;
+  if (environment?.deployment_branch_policy?.custom_branch_policies === true) {
+    const policies = gh.json(['api', `repos/${repo}/environments/${env}/deployment-branch-policies`])?.branch_policies ?? [];
+    mainOnly = policies.length > 0 && policies.every((policy) => policy?.name === 'main' && (policy.type ?? 'branch') === 'branch');
+  }
+  if (!reviewers && !mainOnly)
+    throw refusal('STACK_SERVER_KEY_UNPROTECTED', `the GitHub Environment ${env} of ${repo} has no protection rule: it has no required reviewers and its deployment branches are not limited to main; add either before it holds the server identity`);
+  return repo;
+}
+
+async function backupKey(ctx, config, { execute }, deps) {
+  const gh = deps.github ?? github({ cwd: config.repoRoot, env: ctx.env });
+  const repo = protectedEnvironment(gh, config.env);
+  const name = backupSecretName(config.env);
+  const sinkArgs = ['secret', 'set', name, '--env', config.env, '--repo', repo];
+  const plan = `stream ${SERVER_AGE_IDENTITY} from the server's ssh stdout into gh ${sinkArgs.join(' ')} (a GitHub Environment secret; never printed, held or written locally)`;
+  if (!execute) return { ok: true, lines: [`dry run: would ${plan} (--execute)`], data: { env: config.env, repo, secret: name, execute } };
+  return withRunner(ctx, config, {}, deps, async (run, notes) => {
+    const source = run.argv(streamIdentityCommand(SERVER_AGE_IDENTITY));
+    const gh = deps.ghCommand ?? { command: 'gh', args: [] };
+    const piped = await ctx.pipe(source, { command: gh.command, args: [...gh.args, ...sinkArgs], env: ctx.env, cwd: config.repoRoot });
+    if (piped.source !== 0) throw failure('STACK_SERVER_KEY_BACKUP', `the server could not stream ${SERVER_AGE_IDENTITY} (exit ${piped.source}); nothing was stored`);
+    if (piped.sink !== 0) throw failure('STACK_SERVER_KEY_BACKUP', `gh secret set ${name} failed (exit ${piped.sink}): ${piped.stderr}`);
+    return { ok: true, lines: [...notes, `stored the server identity of ${config.env} as the GitHub Environment secret ${name} of ${repo}`], data: { env: config.env, repo, secret: name, execute } };
+  });
+}
+
+async function restoreKey(ctx, config, { execute }, deps) {
+  const gh = deps.github ?? github({ cwd: config.repoRoot, env: ctx.env });
+  const repo = protectedEnvironment(gh, config.env);
+  const args = ['workflow', 'run', RESTORE_WORKFLOW, '--repo', repo, '-f', `environment=${config.env}`, '-f', `secret=${backupSecretName(config.env)}`];
+  if (!execute) return { ok: true, lines: [`dry run: would run gh ${args.join(' ')}; the workflow writes the secret to ${SERVER_AGE_IDENTITY} on the server when none is there (--execute)`], data: { env: config.env, repo, execute } };
+  try { gh.run(args); } catch { throw failure('STACK_SERVER_KEY_RESTORE', `gh could not dispatch ${RESTORE_WORKFLOW} in ${repo}; is the managed workflow rendered (starci app sync --write) and pushed?`); }
+  return { ok: true, lines: [`dispatched ${RESTORE_WORKFLOW} in ${repo} for ${config.env}; follow it with gh run list --workflow ${RESTORE_WORKFLOW} --repo ${repo}`], data: { env: config.env, repo, execute } };
+}
+
+/**
+ * Runs one server-key action. `options`: { execute, rotate, backup, restore };
+ * `deps` (specs): { ssh (an injected runner), github (the gh port of ci/github.mjs), ghCommand ({ command, args } the pipe's sink) }.
  */
 export async function serverKey(ctx, env, options, deps = {}) {
   const config = loadDeployConfig({ repoRoot: ctx.cwd, env });
   declaredRemote(ctx.cwd, env);
+  for (const [flag, value] of [['backup', options.backup], ['restore', options.restore]])
+    if (value !== undefined && value !== 'github') throw refusal('STACK_USAGE', `--${flag} takes github`);
+  if ([options.rotate === true, options.backup !== undefined, options.restore !== undefined].filter(Boolean).length > 1)
+    throw refusal('STACK_USAGE', '--rotate, --backup and --restore are separate actions; pass one');
+  if (options.backup) return backupKey(ctx, config, options, deps);
+  if (options.restore) return restoreKey(ctx, config, options, deps);
   if (options.rotate) return rotateKey(ctx, config, options, deps);
   return ensureKey(ctx, config, options, deps);
 }

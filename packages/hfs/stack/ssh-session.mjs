@@ -136,6 +136,12 @@ export function createSshSession(ctx, { argv, env = ctx.env, controlPath, socket
     return ctx.spawn(command, [...controls, ...head, remoteCommand], { ...options, env });
   }
 
+  /** The argv `remote` would spawn, for a caller that streams the command's stdout itself ({ command, args, env }). */
+  function remoteArgv(remoteCommand) {
+    if (!windows) start();
+    return { command, args: [...controls, ...head, remoteCommand], env };
+  }
+
   function dockerHost(alias) {
     start();
     return windows ? host : `ssh://${alias}`;
@@ -169,7 +175,7 @@ export function createSshSession(ctx, { argv, env = ctx.env, controlPath, socket
     }
   }
 
-  return { remote, dockerHost, close };
+  return { remote, remoteArgv, dockerHost, close };
 }
 
 /** A short private directory for an invocation whose SSH credentials already live in the operator or CI HOME. */
