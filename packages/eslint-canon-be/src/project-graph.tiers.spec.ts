@@ -653,7 +653,7 @@ test("scaffold env templates declare their own fields, while an empty options ex
         ].join("\n"),
         "src/modules/platform/database/index.ts": [
             "import type { EnvSource, Secret } from '../config';",
-            "export interface DatabaseConnectionConfig { readonly name: string; readonly provider: 'supabase'; readonly url: Secret }",
+            "export interface DatabaseConnectionConfig { readonly name: string; readonly provider: 'postgres'; readonly url: Secret }",
             "export interface DatabaseConnectionOptions extends DatabaseConnectionConfig { readonly schema?: string }",
             "export declare const parsePrimaryDatabaseConfig: (env: EnvSource) => DatabaseConnectionOptions;",
         ].join("\n"),
@@ -662,10 +662,10 @@ test("scaffold env templates declare their own fields, while an empty options ex
             "export interface HttpSecurityOptions { readonly origins: ReadonlyArray<string> }",
             "export declare const parseHttpSecurityConfig: (env: EnvSource) => HttpSecurityOptions;",
         ].join("\n"),
-        "src/modules/integrations/supabase/index.ts": [
+        "src/modules/integrations/storage/index.ts": [
             "import type { EnvSource } from '../../platform/config';",
-            "export interface SupabaseOptions { readonly url: string }",
-            "export declare const parseSupabaseConfig: (env: EnvSource) => SupabaseOptions;",
+            "export interface StorageOptions { readonly endpoint: string }",
+            "export declare const parseStorageConfig: (env: EnvSource) => StorageOptions;",
         ].join("\n"),
     }
     const apps = [{ name: "api", kind: "api" }, { name: "cli", kind: "cli" }]

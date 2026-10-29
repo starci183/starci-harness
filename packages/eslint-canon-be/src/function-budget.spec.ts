@@ -13,7 +13,7 @@ import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 /** A real declared HFS edition; the common parameter is supplied until C08 updates the manifest. */
 const fixtureHfs = (edition: "full" | "lite", max = 80) => {
     // the connection carries a provider, a field the fixture's declared connection shape does not list
-    const primary = { name: "primary", envPrefix: "PRIMARY_DB", owner: "core", isolation: "schema", provider: "supabase" }
+    const primary = { name: "primary", envPrefix: "PRIMARY_DB", owner: "core", isolation: "schema", provider: "postgres" }
     const declaration = appDeclaration("be", {
         apps: [{ name: "core", kind: "api" }],
         connections: [primary],

@@ -28,7 +28,7 @@ const FILES = {
     [LOOKALIKE_SQL]: "import { sql } from '../../../platform/database';\nexport const WRITE = sql`UPDATE purchases SET id = $1 WHERE id = $2`;\n",
     [UNBOUNDED_SQL]: "import { sql } from '../../../platform/database';\nexport const READ = sql`SELECT id FROM purchase`;\n",
 }
-/** A capability that owns purchase_lines itself under Supabase schema authority (its persistence folder names the table). */
+/** A capability that owns purchase_lines itself under sql schema authority (its persistence folder names the table). */
 const LINES_CAPABILITY = {
     "src/modules/domain/purchase-lines/index.ts": "export const purchaseLines = 1;\n",
     [LINES_ROWS]: "export type PurchaseLineRow = { readonly id: string };\n",
@@ -39,18 +39,8 @@ const ENTITIES = {
     "src/modules/domain/purchase/persistence/entities/purchases.entity.ts": 'import { Entity, PrimaryColumn } from "typeorm"; @Entity("purchases") export class PurchasesEntity { @PrimaryColumn({ type: "uuid" }) id!: string }',
     "src/modules/domain/identity/persistence/entities/identity.entity.ts": 'import { Entity, PrimaryColumn } from "typeorm"; @Entity("identity") export class IdentityEntity { @PrimaryColumn({ type: "uuid" }) id!: string }\n',
 }
-const DATABASE_TYPES = `export type Database = {
-    public: {
-        Tables: {
-            purchase: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
-            identity: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
-            purchase_lines: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
-            purchase_notes: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
-            purchases: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
-        }
-    }
-}
-`
+const TABLES_MIGRATION = ["purchase", "identity", "purchase_lines", "purchase_notes", "purchases"]
+    .map((table) => `CREATE TABLE public.${table} (id uuid PRIMARY KEY);`).join("\n") + "\n"
 
 for (const edition of ["lite", "full"] as const) {
     test(`R86 accepts bounded own-table SQL and rejects foreign writes and unbounded reads in ${edition}`, (t) => {
@@ -60,7 +50,7 @@ for (const edition of ["lite", "full"] as const) {
         const fixture = projectFixture({
             edition,
             files,
-            rootFiles: { "supabase/types/database.types.ts": DATABASE_TYPES },
+            rootFiles: { "db/migrations/20261023000000_tables.sql": TABLES_MIGRATION },
         })
         t.after(fixture.cleanup)
         fixture.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), {
@@ -78,7 +68,7 @@ for (const edition of ["lite", "full"] as const) {
                 ...(edition === "lite"
                     ? [{ filename: fixture.at(PREFIXED_SQL), code: FILES[PREFIXED_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] }]
                     : []),
-                // under Supabase schema authority a table that merely starts with the capability name is not its own (a full entity makes it so)
+                // under sql schema authority a table that merely starts with the capability name is not its own (a full entity makes it so)
                 ...(edition === "lite"
                     ? [{ filename: fixture.at(LOOKALIKE_SQL), code: FILES[LOOKALIKE_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] }]
                     : []),
@@ -93,8 +83,8 @@ const keyRead = (where: string) => sqlRead(`SELECT id FROM public.purchase WHERE
 const COMPOSITE_TABLE = "CREATE TABLE public.purchase (workspace_id uuid NOT NULL, id text NOT NULL, PRIMARY KEY (workspace_id, id));"
 const KEY_LOOKUP = "workspace_id = $1 AND id = $2"
 
-/** The key lookups and queries one Supabase key check reads, over its migrations (and an archived migration it must ignore). */
-interface SupabaseKeyCase {
+/** The key lookups and queries one lite key check reads, over its migrations (and an archived migration it must ignore). */
+interface LiteKeyCase {
     readonly migrations: readonly string[]
     readonly valid?: readonly string[]
     readonly validSql?: readonly string[]
@@ -103,8 +93,8 @@ interface SupabaseKeyCase {
     readonly archived?: string
 }
 
-/** The real Supabase authority: generated table identity plus ordered, tracked migration constraints. */
-const checkSupabaseKeys = (t: TestContext, { migrations, valid = [], validSql = [], invalid = [KEY_LOOKUP], invalidSql = [], archived = "" }: SupabaseKeyCase) => {
+/** The lite authority: ordered, tracked migrations under db/migrations. */
+const checkLiteKeys = (t: TestContext, { migrations, valid = [], validSql = [], invalid = [KEY_LOOKUP], invalidSql = [], archived = "" }: LiteKeyCase) => {
     const validFiles = Object.fromEntries([
         ...valid.map((where, index): [string, string] => [KEY_SQL.replace("key.sql", `valid-${index}.sql`), keyRead(where)]),
         ...validSql.map((text, index): [string, string] => [KEY_SQL.replace("key.sql", `valid-query-${index}.sql`), sqlRead(text)]),
@@ -114,9 +104,8 @@ const checkSupabaseKeys = (t: TestContext, { migrations, valid = [], validSql = 
         ...invalidSql.map((text, index): [string, string] => [KEY_SQL.replace("key.sql", `invalid-query-${index}.sql`), sqlRead(text)]),
     ])
     const rootFiles = {
-        "supabase/types/database.types.ts": DATABASE_TYPES,
-        ...Object.fromEntries(migrations.map((sql, index): [string, string] => [`supabase/migrations/20261024000${String(index).padStart(3, "0")}_keys.sql`, sql])),
-        ...(archived ? { "supabase/migrations/_archive/20261023000000_keys.sql": archived } : {}),
+        ...Object.fromEntries(migrations.map((sql, index): [string, string] => [`db/migrations/20261024000${String(index).padStart(3, "0")}_keys.sql`, sql])),
+        ...(archived ? { "db/migrations/archive/20261023000000_keys.sql": archived } : {}),
     }
     const fixture = projectFixture({ edition: "lite", files: { ...FILES, ...validFiles, ...invalidFiles }, rootFiles })
     t.after(fixture.cleanup)
@@ -126,8 +115,8 @@ const checkSupabaseKeys = (t: TestContext, { migrations, valid = [], validSql = 
     })
 }
 
-test("R86 proves a Supabase composite key lookup and keeps partial-key and OR reads unbounded", (t) => {
-    checkSupabaseKeys(t, {
+test("R86 proves a lite composite key lookup and keeps partial-key and OR reads unbounded", (t) => {
+    checkLiteKeys(t, {
         migrations: [COMPOSITE_TABLE, "ALTER TABLE public.purchase ENABLE ROW LEVEL SECURITY;"],
         valid: [
             KEY_LOOKUP,
@@ -156,7 +145,7 @@ test("R86 proves a Supabase composite key lookup and keeps partial-key and OR re
 })
 
 test("R86 does not infer a result bound across row multiplication or unbounded set operations", (t) => {
-    checkSupabaseKeys(t, {
+    checkLiteKeys(t, {
         migrations: [COMPOSITE_TABLE],
         invalid: [],
         validSql: [
@@ -183,7 +172,7 @@ test("R86 does not infer a result bound across row multiplication or unbounded s
 })
 
 test("R86 bounds a SELECT without FROM and an aggregate-only SELECT by construction, and keeps every multi-row shape unbounded", (t) => {
-    checkSupabaseKeys(t, {
+    checkLiteKeys(t, {
         migrations: [COMPOSITE_TABLE],
         invalid: [],
         validSql: [
@@ -217,7 +206,7 @@ test("R86 bounds a SELECT without FROM and an aggregate-only SELECT by construct
 })
 
 test("R86 never applies public key metadata to another schema's table with the same name", (t) => {
-    checkSupabaseKeys(t, {
+    checkLiteKeys(t, {
         migrations: ['CREATE SCHEMA private; CREATE TABLE private.purchase (workspace_id uuid, id text); CREATE TABLE public."Purchase" (workspace_id uuid, id text);', COMPOSITE_TABLE],
         valid: [KEY_LOOKUP],
         invalid: [],
@@ -230,13 +219,13 @@ test("R86 never applies public key metadata to another schema's table with the s
 })
 
 for (const constraint of ["id text PRIMARY KEY", "id text UNIQUE", "id text, CONSTRAINT identity UNIQUE (id)"]) {
-    test(`R86 proves a direct Supabase key constraint: ${constraint}`, (t) => {
-        checkSupabaseKeys(t, { migrations: [`CREATE TABLE public.purchase (${constraint});`], valid: ["id = $1"], invalid: [] })
+    test(`R86 proves a direct lite key constraint: ${constraint}`, (t) => {
+        checkLiteKeys(t, { migrations: [`CREATE TABLE public.purchase (${constraint});`], valid: ["id = $1"], invalid: [] })
     })
 }
 
-test("R86 reads later Supabase ADD CONSTRAINT keys in migration order", (t) => {
-    checkSupabaseKeys(t, {
+test("R86 reads later lite ADD CONSTRAINT keys in migration order", (t) => {
+    checkLiteKeys(t, {
         migrations: [
             "CREATE TABLE public.purchase (workspace_id uuid, id text);",
             "ALTER TABLE public.purchase ADD CONSTRAINT purchase_key UNIQUE (workspace_id, id);",
@@ -247,7 +236,7 @@ test("R86 reads later Supabase ADD CONSTRAINT keys in migration order", (t) => {
 })
 
 test("R86 proves a replacement key after a known table drops its old constraint", (t) => {
-    checkSupabaseKeys(t, {
+    checkLiteKeys(t, {
         migrations: [
             COMPOSITE_TABLE,
             "ALTER TABLE public.purchase DROP CONSTRAINT IF EXISTS purchase_pkey; ALTER TABLE public.purchase ADD CONSTRAINT replacement UNIQUE (workspace_id, id);",
@@ -266,8 +255,8 @@ for (const alteration of [
     "CREATE TABLE private.child (note text) INHERITS (public.purchase);",
     "CREATE FUNCTION public.remove_key() RETURNS void LANGUAGE plpgsql AS $$ BEGIN ALTER TABLE public.purchase DROP CONSTRAINT purchase_pkey; END $$; SELECT public.remove_key();",
 ]) {
-    test(`R86 does not retain stale Supabase uniqueness after ${alteration}`, (t) => {
-        checkSupabaseKeys(t, { migrations: [COMPOSITE_TABLE, alteration] })
+    test(`R86 does not retain stale lite uniqueness after ${alteration}`, (t) => {
+        checkLiteKeys(t, { migrations: [COMPOSITE_TABLE, alteration] })
     })
 }
 
@@ -282,16 +271,16 @@ for (const ddl of [
     "CREATE TABLE public.purchase (workspace_id uuid, id text); BEGIN; ALTER TABLE public.purchase ADD PRIMARY KEY (workspace_id, id); ROLLBACK;",
 ]) {
     test(`R86 requires proven unconditional public uniqueness: ${ddl}`, (t) => {
-        checkSupabaseKeys(t, { migrations: [ddl] })
+        checkLiteKeys(t, { migrations: [ddl] })
     })
 }
 
-test("R86 does not use archived Supabase constraints", (t) => {
-    checkSupabaseKeys(t, { migrations: ["CREATE TABLE public.purchase (workspace_id uuid, id text);"], archived: COMPOSITE_TABLE })
+test("R86 does not use archived lite constraints", (t) => {
+    checkLiteKeys(t, { migrations: ["CREATE TABLE public.purchase (workspace_id uuid, id text);"], archived: COMPOSITE_TABLE })
 })
 
 test("R86 keeps a known key when CREATE IF NOT EXISTS leaves its existing table unchanged", (t) => {
-    checkSupabaseKeys(t, {
+    checkLiteKeys(t, {
         migrations: [COMPOSITE_TABLE, "CREATE TABLE IF NOT EXISTS public.purchase (workspace_id uuid, id text);"],
         valid: [KEY_LOOKUP],
         invalid: [],
@@ -307,7 +296,7 @@ for (const executable of [
     "COPY (SELECT public.remove_key()) TO STDOUT;",
 ]) {
     test(`R86 invalidates key facts after executing DDL or COPY: ${executable}`, (t) => {
-        checkSupabaseKeys(t, { migrations: [COMPOSITE_TABLE, `${REMOVE_KEY_FUNCTION} ${executable}`] })
+        checkLiteKeys(t, { migrations: [COMPOSITE_TABLE, `${REMOVE_KEY_FUNCTION} ${executable}`] })
     })
 }
 
@@ -318,7 +307,7 @@ for (const alteration of [
 ]) {
     test(`R86 invalidates key facts after executing ALTER expressions: ${alteration}`, (t) => {
         const validation = alteration.includes("VALIDATE") ? "ALTER TABLE public.audit ADD CONSTRAINT effect CHECK (public.remove_key() = 1) NOT VALID;" : ""
-        checkSupabaseKeys(t, {
+        checkLiteKeys(t, {
             migrations: [
                 `CREATE TABLE public.audit (id integer); INSERT INTO public.audit VALUES (1); ${REMOVE_KEY_FUNCTION} ${validation}`,
                 COMPOSITE_TABLE,
@@ -329,7 +318,7 @@ for (const alteration of [
 }
 
 test("R86 does not trust later key declarations under a declared DDL event trigger", (t) => {
-    checkSupabaseKeys(t, {
+    checkLiteKeys(t, {
         migrations: [
             "CREATE FUNCTION public.remove_new_key() RETURNS event_trigger LANGUAGE plpgsql AS $$ BEGIN IF TG_TAG = 'CREATE TABLE' THEN ALTER TABLE public.purchase DROP CONSTRAINT IF EXISTS purchase_pkey; END IF; END $$; CREATE EVENT TRIGGER key_effect ON ddl_command_end EXECUTE FUNCTION public.remove_new_key();",
             COMPOSITE_TABLE,

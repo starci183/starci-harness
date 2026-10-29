@@ -1,4 +1,4 @@
-import type { SupabaseOptions } from "@modules/integrations/supabase"
+import type { StorageOptions } from "@modules/integrations/storage"
 import type { ServerOptions } from "@modules/platform/config"
 import type { DatabaseConnectionOptions } from "@modules/platform/database"
 import type { HttpSecurityOptions } from "@modules/platform/http-security"
@@ -9,8 +9,8 @@ export interface ApiOptions {
     readonly server: ServerOptions
     /** The origin allowlist and rate limits. */
     readonly httpSecurity: HttpSecurityOptions
-    /** The least-privilege PostgreSQL connection to the Supabase project. */
+    /** The least-privilege PostgreSQL connection to the app database. */
     readonly database: DatabaseConnectionOptions
-    /** Supabase Auth, Storage and token-verification configuration. */
-    readonly supabase: SupabaseOptions
+    /** The S3-compatible object storage configuration. */
+    readonly storage: StorageOptions
 }

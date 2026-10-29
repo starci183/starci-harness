@@ -20,6 +20,11 @@ import { byCodeUnit } from '../../lib/list.mjs';
  *     (`<c>` the camelCase capability name), and no other name coming from `persistence/`;
  *   - a migration file is `<epochMs13>-<kebab-name>.ts`, holds a class `<Pascal><epochMs13>` and a `name` property equal to
  *     that class name, and has no unit spec beside it.
+ *
+ * Lite (persistence.md BE-PERSISTENCE-3, ruling lite-persistence-typeorm-entities) has entities and no be migration: the
+ * capability's `persistence/entities/index.ts` declares `<c>Entities`, its `index.ts` exports that one persistence name, and
+ * `platform/database/entities.ts` names it in `PRIMARY_ENTITIES`, the one list the app composition registers; there is a
+ * single primary connection, so the per-connection checks do not apply.
  */
 export const SCHEMA_OWNER_RULE_IDS = ['BE_SCHEMA_OWNER'];
 
@@ -27,6 +32,8 @@ const RULE = 'BE_SCHEMA_OWNER';
 const PERSISTENCE_SLOT = 'be.persistence';
 const SCHEMA_FOLDERS = new Set(['entities', 'migrations']);
 const MIGRATION_FILE = /^(\d{13})-([a-z0-9]+(?:-[a-z0-9]+)*)\.ts$/u;
+/** The lite entity list every capability's `<c>Entities` is named in (BE-PERSISTENCE-3). */
+const LITE_ENTITY_LIST = `${DATABASE_DIR}/entities.ts`;
 const camel = name => { const text = pascal(name); return text[0].toLowerCase() + text.slice(1); };
 
 function noteSchemaOwner(found, persistence, kind) {
@@ -127,6 +134,22 @@ function reportRegistrationSites(registered, connections, resolver, report) {
   }
 }
 
+/** The identifiers a file of the graph declares or names, for the lite list checks. */
+function identifiersOf(ts, file) {
+  const names = new Set();
+  const visit = node => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, visit); };
+  if (file) visit(file.sourceFile);
+  return names;
+}
+
+function reportLiteEntityArrays(key, kinds, graph, ts, plain) {
+  const wanted = `${camel(kinds.name)}Entities`;
+  const listFile = `${key}/persistence/entities/index.ts`;
+  const declared = new Set((graph.files.get(listFile)?.sourceFile.statements.filter(ts.isVariableStatement).flatMap(statement => statement.declarationList.declarations) ?? []).map(item => item.name.text));
+  if (!declared.has(wanted)) plain(listFile, `${listFile} must export ${wanted}, the entities of the ${kinds.name} capability, the one file that lists them.`, { capability: kinds.name });
+  if (!identifiersOf(ts, graph.files.get(LITE_ENTITY_LIST)).has(wanted)) plain(LITE_ENTITY_LIST, `The ${kinds.name} capability has entities but ${LITE_ENTITY_LIST} does not name ${wanted} in PRIMARY_ENTITIES; list it there by name, the one list the app composition registers.`, { capability: kinds.name });
+}
+
 function reportDeclaredPersistenceArrays(key, kinds, registered, graph, ts, plain) {
   if (!registered.get(key)?.connections.size) plain(`${key}/persistence/connection.ts`, `The ${kinds.name} capability has entities or migrations but no app registers them; add ${camel(kinds.name)}Entities and ${camel(kinds.name)}Migrations to a connection of DatabaseModule.register and of the cli app.`, { capability: kinds.name });
   const connectionFile = graph.files.get(`${key}/persistence/connection.ts`);
@@ -160,6 +183,7 @@ function reportFoundCapability(input, kit, key, kinds, view) {
   const { registered, connections, plain, report } = view;
   const { graph } = input;
   const { resolver } = kit;
+  if (view.lite) { reportLiteEntityArrays(key, kinds, graph, kit.ts, plain); return; }
   reportDeclaredPersistenceArrays(key, kinds, registered, graph, kit.ts, plain);
   const only = registered.get(key)?.connections;
   if (!only || only.size < 1) return;
@@ -170,7 +194,7 @@ function reportFoundCapability(input, kit, key, kinds, view) {
 }
 
 function reportFoundCapabilities(input, kit, found, registered, connections, plain, report) {
-  const view = { registered, connections, plain, report };
+  const view = { registered, connections, plain, report, lite: kit.resolver.repo?.edition === 'lite' };
   for (const [key, kinds] of found) reportFoundCapability(input, kit, key, kinds, view);
 }
 
@@ -178,7 +202,7 @@ function reportPersistenceExport(capabilityRoot, index, statement, element, want
   const from = statement.moduleSpecifier?.text;
   const inPersistence = from?.startsWith('.') && path.posix.join(capabilityRoot, from).split('/').includes('persistence');
   if (inPersistence && !Object.values(wanted).includes(element.name.text)) {
-    report(index, element, `${element.name.text} is exported from persistence/; the persistence of a capability is exposed only as ${wanted.Entities} and ${wanted.Migrations}.`, { name: element.name.text });
+    report(index, element, `${element.name.text} is exported from persistence/; the persistence of a capability is exposed only as ${Object.values(wanted).join(' and ')}.`, { name: element.name.text });
   }
 }
 
@@ -204,10 +228,11 @@ function reportCapabilityIndex(input, kit, capabilityRoot, kinds, report) {
   const { graph } = input;
   const index = graph.files.get(`${capabilityRoot}/index.ts`);
   if (!index) return;
-  const wanted = { Entities: `${camel(kinds.name)}Entities`, Migrations: `${camel(kinds.name)}Migrations` };
+  const lite = kit.resolver.repo?.edition === 'lite';
+  const wanted = lite ? { Entities: `${camel(kinds.name)}Entities` } : { Entities: `${camel(kinds.name)}Entities`, Migrations: `${camel(kinds.name)}Migrations` };
   const exported = collectIndexExports(kit, capabilityRoot, index, wanted, report);
   for (const [kind, has] of [['Entities', kinds.entities], ['Migrations', kinds.migrations]]) {
-    if (has && !exported.has(wanted[kind])) report(index, index.sourceFile, `${capabilityRoot}/index.ts must export ${wanted[kind]}, the ${kind.toLowerCase()} of the capability; apps concatenate them per connection into DatabaseModule.register.`, { capability: kinds.name, expected: wanted[kind] });
+    if (has && wanted[kind] && !exported.has(wanted[kind])) report(index, index.sourceFile, `${capabilityRoot}/index.ts must export ${wanted[kind]}, the ${kind.toLowerCase()} of the capability; apps concatenate them per connection into DatabaseModule.register.`, { capability: kinds.name, expected: wanted[kind] });
   }
 }
 

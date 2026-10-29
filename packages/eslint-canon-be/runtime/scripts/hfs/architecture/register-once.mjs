@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { isComposeGroup, machineKit } from './machine-ast.mjs';
-import { callName } from './supabase-ast.mjs';
+import { callName } from './jwt-ast.mjs';
 import { isTestWorldSlot } from '../test-world-slot.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 

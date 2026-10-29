@@ -93,10 +93,13 @@ for (const edition of ["lite", "full"] as const) {
 
     test(`R35 accepts owned schema and rejects misplaced entities and undeclared connections in ${edition}`, (t) => {
         const misplaced = "src/features/api/checkout/application/invoice.entity.ts"
-        const correct = schemaRepo(t, edition, { [misplaced]: ENTITY })
+        // lite has no be migration: its owned shape is the entity list that PRIMARY_ENTITIES names (BE-PERSISTENCE-3)
+        const correct = edition === "full" ? schemaRepo(t, edition, { [misplaced]: ENTITY }) : liteRepo(t, LITE_NAMED, { [misplaced]: ENTITY })
         const unknown = schemaRepo(t, edition, { [APP]: registration("ledger"), "apps/cli/src/app.module.ts": registration("ledger") })
         correct.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-            valid: [source(correct, APP), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/connection.ts`), source(correct, `${OWNER}/persistence/entities/invoice.entity.ts`), source(correct, `${OWNER}/persistence/migrations/1789800000000-create-invoices.ts`)],
+            valid: edition === "full"
+                ? [source(correct, APP), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/connection.ts`), source(correct, `${OWNER}/persistence/entities/invoice.entity.ts`), source(correct, `${OWNER}/persistence/migrations/1789800000000-create-invoices.ts`)]
+                : [source(correct, LITE_LIST), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/entities/index.ts`), source(correct, `${OWNER}/persistence/entities/invoice.entity.ts`)],
             invalid: [
                 invalid(correct, misplaced, 3, /BE_SCHEMA_OWNER.*Entity InvoiceEntity is declared outside/),
             ],
@@ -109,3 +112,35 @@ for (const edition of ["lite", "full"] as const) {
         })
     })
 }
+
+/** The lite shape (BE-PERSISTENCE-3): entities and their list, no be migration, PRIMARY_ENTITIES the one registered list. */
+const LITE_SCHEMA_FILES = {
+    "src/modules/platform/database/index.ts": "export { DatabaseModule } from './database.module';\n",
+    "src/modules/platform/database/database.module.ts": "import { Module } from '@nestjs/common';\n@Module({})\nexport class DatabaseModule { static register(options: { entities: readonly unknown[] }) { return { module: DatabaseModule, ...options } } }\n",
+    [`${OWNER}/index.ts`]: "export { billingEntities } from './persistence/entities/index';\n",
+    [`${OWNER}/persistence/entities/index.ts`]: "import { InvoiceEntity } from './invoice.entity';\nexport const billingEntities = [InvoiceEntity];\n",
+    [`${OWNER}/persistence/entities/invoice.entity.ts`]: ENTITY,
+    "apps/core/src/main.ts": "void 0;\n",
+    "apps/cli/src/main.ts": "void 0;\n",
+}
+const LITE_LIST = "src/modules/platform/database/entities.ts"
+const LITE_NAMED = "import { billingEntities } from '../../domain/billing';\nexport const PRIMARY_ENTITIES = [...billingEntities];\n"
+const liteRepo = (t: TestContext, list: string, files: Readonly<Record<string, string>> = {}) => repo(t, {
+    edition: "lite",
+    apps: [{ name: "core", kind: "api" }, { name: "cli", kind: "cli" }],
+    declaration: { connections: [{ name: "primary", envPrefix: "PRIMARY", owner: "core", isolation: "database" }] },
+    files: { ...LITE_SCHEMA_FILES, [LITE_LIST]: list, ...files },
+})
+
+test("R35 lite: a capability's entity list is persistence/entities/index.ts and PRIMARY_ENTITIES names it", (t) => {
+    const named = liteRepo(t, LITE_NAMED)
+    const missing = liteRepo(t, "export const PRIMARY_ENTITIES = [];\n")
+    named.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
+        valid: [source(named, LITE_LIST), source(named, `${OWNER}/index.ts`), source(named, `${OWNER}/persistence/entities/index.ts`), source(named, `${OWNER}/persistence/entities/invoice.entity.ts`)],
+        invalid: [],
+    })
+    missing.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
+        valid: [source(missing, `${OWNER}/persistence/entities/index.ts`)],
+        invalid: [invalid(missing, LITE_LIST, 1, /BE_SCHEMA_OWNER.*does not name billingEntities in PRIMARY_ENTITIES/)],
+    })
+})

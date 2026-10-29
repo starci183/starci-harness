@@ -27,7 +27,7 @@ const ENV = at("apps/api/src/api.env.ts")
 const OPTIONS = at("apps/api/src/api.options.ts")
 const GROUP = at("apps/api/src/compose/platform.ts")
 /** The lite edition's one connection, on a managed provider (a declared field the fixture's connection type does not name). */
-const PRIMARY_CONNECTION = { name: "primary", envPrefix: "PRIMARY_DB", owner: "api", isolation: "schema", provider: "supabase" }
+const PRIMARY_CONNECTION = { name: "primary", envPrefix: "PRIMARY_DB", owner: "api", isolation: "schema", provider: "postgres" }
 
 // proves: BE_CONFIG_OWNER@lite BE_CONFIG_OWNER@full
 for (const edition of ["lite", "full"]) {

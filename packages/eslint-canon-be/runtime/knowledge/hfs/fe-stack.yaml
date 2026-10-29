@@ -37,10 +37,10 @@ concerns:
   - id: rest
     tier: core
     packages: [axios]
-    home: [fe.modules.api]
+    home: [fe.modules.api, fe.modules.auth]
     pattern: FE-API-REST
     forbids: [ky, superagent, node-fetch, cross-fetch, isomorphic-fetch]
-    why: modules/api/rest/<area>/*.ts for uploads, presigned URLs and auth endpoints only; GraphQL carries every other call.
+    why: modules/api/rest/<area>/*.ts for uploads and presigned URLs, and modules/auth/auth-door.ts for the app's own auth doors only; GraphQL carries every other call.
   - id: data
     tier: core
     packages: [swr]
@@ -99,8 +99,8 @@ concerns:
     packages: []
     home: [fe.modules.auth]
     pattern: FE-AUTH
-    forbids: []
-    why: modules/auth is the identity-provider client (lite - the @supabase/supabase-js auth client; full - the app's IdP client); it yields the session and the access token for the Apollo link and never reads data.
+    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js']
+    why: modules/auth is the session issuer's client (lite - auth-door.ts over the app's own back-end auth doors with the in-memory token store; full - the app's IdP client); it yields the session and the access token for the Apollo link and never reads data.
   - id: i18n
     tier: core
     packages: [next-intl]
@@ -256,13 +256,6 @@ concerns:
     pattern: FE-RULE-OWNERSHIP
     forbids: []
     why: The selected Grammar family's lint package runs beside the universal front-end canon; the family catalog declares the package and factory.
-  - id: auth-supabase
-    tier: opt
-    packages: ['@supabase/supabase-js', '@supabase/ssr']
-    home: [fe.modules.auth]
-    pattern: FE-AUTH
-    forbids: []
-    why: the lite auth provider client and PKCE server cookie adapter, confined to modules/auth; data still goes through the back end.
   - id: framework-support
     tier: opt
     packages: [server-only, rxjs]

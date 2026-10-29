@@ -2,7 +2,7 @@
 import ts from "typescript"
 import { typed } from "./lib/types.ts"
 import { isDeclarationFile } from "./lib/path.ts"
-import { jwtPolicyProblems } from "../runtime/scripts/hfs/architecture/supabase-ast.mjs"
+import { jwtPolicyProblems } from "../runtime/scripts/hfs/architecture/jwt-ast.mjs"
 import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** The text of a module specifier (a string literal), or undefined for any other expression. */

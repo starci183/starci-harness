@@ -6,7 +6,7 @@ import { appDeclaration } from "../fixtures/app.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { jwtAlgPinned, recommended, rules } from "./jwt-alg.ts"
 
-const SRC = at("src/modules/integrations/supabase/supabase.jwks.ts")
+const SRC = at("src/modules/integrations/passport/passport.tokens.ts")
 const verifier = ({ algorithms = "['ES256']", issuer = "options.url", guard = "if (payload.role !== 'authenticated') throw new Error('invalid role')", importLine = "import {jwtVerify} from 'jose'", call = "jwtVerify", before = "" } = {}) => `
 ${importLine}
 interface ProviderOptions { url: string }

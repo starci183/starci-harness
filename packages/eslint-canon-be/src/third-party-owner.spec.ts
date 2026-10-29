@@ -15,7 +15,7 @@ const OTHER = "src/modules/integrations/other/other.client.ts"
 const DEPENDENCIES = {
     nodemailer: "1.0.0", stripe: "1.0.0", googleapis: "1.0.0", "@new-vendor/io-sdk": "1.0.0",
     "class-validator": "1.0.0", rxjs: "1.0.0", "@nestjs/common": "1.0.0", "@nestjs/core": "1.0.0", typeorm: "1.0.0",
-    axios: "1.0.0", bullmq: "1.0.0", dotenv: "1.0.0", "@supabase/supabase-js": "1.0.0", jose: "1.0.0",
+    axios: "1.0.0", bullmq: "1.0.0", dotenv: "1.0.0", "@aws-sdk/client-s3": "1.0.0", jose: "1.0.0",
 }
 
 /** The settings entry of a RuleTester's own config (ESLint keeps it as the internal `testerConfig` array). */
@@ -80,7 +80,7 @@ for (const edition of ["lite", "full"] as const) {
                 valid: [
                     { filename: fixture.at(MAILER), code: 'import mail from "nodemailer"; export { mail }' },
                     { filename: fixture.at("src/modules/integrations/mailer/mailer.client.spec.ts"), code: 'import type { SendMailOptions } from "nodemailer/lib/mailer"; export type { SendMailOptions }' },
-                    { filename: fixture.at("src/modules/integrations/supabase/supabase.client.ts"), code: 'import { createClient } from "@supabase/supabase-js"; import { createRemoteJWKSet } from "jose"; export { createClient, createRemoteJWKSet }' },
+                    { filename: fixture.at("src/modules/integrations/storage/storage.client.ts"), code: 'import { S3Client } from "@aws-sdk/client-s3"; import { createLocalJWKSet } from "jose"; export { S3Client, createLocalJWKSet }' },
                 ],
                 invalid: [{ filename: fixture.at(OTHER), code: 'import mail from "nodemailer"; export { mail }', errors: [{ messageId: "multiple" }] }],
             }) })

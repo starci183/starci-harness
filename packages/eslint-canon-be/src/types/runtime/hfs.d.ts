@@ -68,7 +68,7 @@ declare module "*/runtime/scripts/hfs/edition-slots.mjs" {
     export function enforcerJudgedInEdition(rules: readonly EditionRule[], kind: string, id: string, edition?: string): boolean
 }
 
-declare module "*/runtime/scripts/hfs/architecture/supabase-ast.mjs" {
+declare module "*/runtime/scripts/hfs/architecture/jwt-ast.mjs" {
     import type ts from "typescript"
     /** The R260 (BE_JWT_ALG_PINNED) problems of a `jwtVerify` call, each a message. */
     export function jwtPolicyProblems(tsModule: typeof ts, checker: ts.TypeChecker, call: ts.CallExpression): string[]
