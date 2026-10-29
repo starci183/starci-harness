@@ -93,7 +93,7 @@ const routingSchema = z.object({
         exploreSharePercent: z.number().min(0).max(100),
     }),
     concurrency: z.object({ floor: z.number().int().positive(), decreaseCooldownMinutes: minutes, quietMinutes: minutes, increaseStepMinutes: minutes }),
-    budgets: z.object({ workflow: z.object({ minutes: z.number().int().positive(), tries: z.number().int().positive() }) }),
+    budgets: z.object({ workflow: z.object({ minutes: z.number().int().positive(), tries: z.number().int().positive() }), nearPercent: z.number().positive().max(100) }),
     workflowParallel: z.number().int().positive(),
     projectMaxWorkers: z.number().int().positive(),
 })

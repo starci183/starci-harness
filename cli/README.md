@@ -387,7 +387,11 @@ more, so the node is ready and its next dispatch retries it at the same try, its
 which its red names the cause. A retry past its contract's `budget.tries` is refused `TRIES_EXHAUSTED` (`retryOfNode` in
 `harness/workflow.ts`) until `budget raise <workflow> --task <key> --tries <n>` raises that one node's tries (a `tries-raised`
 event; by its Kernel, the Supervisor or the owner), the route out of a harness-caused exhaustion; a workflow-wide raise
-changes only the workflow's ceiling. Every other retry is the Kernel's amend: the red, check-premise or question decision carries its
+changes only the workflow's ceiling. A workflow with tasks left is `near` its ceiling (`budget show`, `budgetOutlooks` in
+`harness/budget-warn.ts`) once its minutes or tries reach `budgets.nearPercent` of [ops/routing.yaml](../ops/routing.yaml) or
+fewer tries are left than tasks to run; `supervisor tick` then asks the owner one `question:business` ticket per ceiling (deduped
+by `keyedFingerprint`, each later tick a repeat) proposing a raise sized to those tasks at the done tasks' pace, opened as the
+Supervisor's so the answer wakes it, and the workflow-wide `budget raise` answers it. Every other retry is the Kernel's amend: the red, check-premise or question decision carries its
 one legal route of [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). A failed task whose only reds are command checks its contract wrote, each output stating an
 expectation the otherwise green result contradicts, is a `check-premise` decision carrying each check's command and output
 (`premiseChecks` in `harness/check-premise.ts`), answered only by an edit that sets the task's checks: a worker never

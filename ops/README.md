@@ -88,4 +88,5 @@ verdicts say otherwise, and anything else is probation.
 - An unknown effect costs a try and is reconciled before the retry.
 - `awaiting_owner` costs nothing.
 - A task's tries are its contract's `budget.tries`; a workflow's minutes and tries are capped by `budgets` and raised only
-  by the owner or the Supervisor (`starci budget raise`).
+  by the owner or the Supervisor (`starci budget raise`), who are asked ahead once the workflow is near its ceiling
+  (`budgets.nearPercent`, or fewer tries left than tasks).

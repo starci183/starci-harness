@@ -187,6 +187,13 @@ export const fingerprintOf = (kind: TicketKind, title: string, text: string, cod
     return createHash("sha256").update(`${kind}\0${errorCode}\0${place}\0${rest}`).digest("hex").slice(0, 16)
 }
 
+/**
+ * The dedupe key of a ticket whose opener names the episode it belongs to (`TicketInput.key`) in place of `fingerprintOf`: its
+ * kind and that key, whatever its title says, so every repeat within one episode lands on one ticket and the next episode opens
+ * its own.
+ */
+export const keyedFingerprint = (kind: TicketKind, key: string): string => createHash("sha256").update(`${kind}\0key\0${key}`).digest("hex").slice(0, 16)
+
 /** What `openTicket` files. */
 export interface TicketInput {
     readonly kind: TicketKind
@@ -203,6 +210,8 @@ export interface TicketInput {
     readonly seat?: string | null
     readonly code?: string
     readonly module?: string
+    /** The episode it belongs to, when its opener owns one: it is deduped by `keyedFingerprint` of this key. */
+    readonly key?: string
     /** The tasks and decisions that wait on the fix or the answer. */
     readonly waiters: readonly WaiterInput[]
 }
@@ -242,7 +251,7 @@ const link = (db: DatabaseSync, ticket: Ticket, waiter: WaiterInput): void => {
 }
 
 /**
- * Files a ticket, deduped by its fingerprint (`fingerprintOf`): a defect or question with no ticket yet opens one; a repeat of a
+ * Files a ticket, deduped by its fingerprint (`fingerprintOf`, or `keyedFingerprint` of the episode key it names): a defect or question with no ticket yet opens one; a repeat of a
  * live ticket, of a wontfix one or of an answered question bumps its occurrences (and raises it to blocking when the repeat is);
  * a repeat of a `fixed` defect reopens it for another round, the fix it regressed kept in `fixedBy`; a duplicate's repeat lands
  * on the ticket it duplicates. Each waiter is linked to the ticket, released at once when it has ended without a fix to wait for
@@ -250,7 +259,8 @@ const link = (db: DatabaseSync, ticket: Ticket, waiter: WaiterInput): void => {
  */
 export const openTicket = (input: TicketInput): { readonly ticket: Ticket; readonly outcome: TicketOutcome } =>
     withMachine((db) => {
-        const fingerprint = fingerprintOf(input.kind, input.title, `${input.evidence.tail ?? ""}\n${input.evidence.question ?? ""}\n${input.tried ?? ""}`, input.code, input.module)
+        const fingerprint =
+            input.key === undefined ? fingerprintOf(input.kind, input.title, `${input.evidence.tail ?? ""}\n${input.evidence.question ?? ""}\n${input.tried ?? ""}`, input.code, input.module) : keyedFingerprint(input.kind, input.key)
         const at = now()
         const known = db.prepare("SELECT * FROM tickets WHERE fingerprint = ? ORDER BY opened_at DESC, id DESC LIMIT 1").get(fingerprint)
         const target = known === undefined ? undefined : followDuplicates(db, toTicket(known))
@@ -286,6 +296,13 @@ export const getTicket = (id: string): Ticket => {
     if (ticket === undefined) throw new Refusal("TICKET_UNKNOWN", `no ticket ${id} on this host (starci ticket list)`)
     return ticket
 }
+
+/** The live ticket (open or in progress) of a dedupe key (`fingerprintOf`, `keyedFingerprint`), or undefined. */
+export const liveTicketOf = (fingerprint: string): Ticket | undefined =>
+    readMachine((db) => {
+        const row = db.prepare("SELECT * FROM tickets WHERE fingerprint = ? AND state IN ('open', 'in-progress') ORDER BY opened_at DESC, id DESC LIMIT 1").get(fingerprint)
+        return row === undefined ? undefined : toTicket(row)
+    }, undefined)
 
 /** One ticket by id, or undefined. */
 export const findTicket = (id: string): Ticket | undefined => readMachine((db) => ticketRow(db, id), undefined)

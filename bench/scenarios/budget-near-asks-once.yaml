@@ -1,0 +1,108 @@
+schema: starci/scenario@1
+id: budget-near-asks-once
+group: budget
+title: a workflow past 85% of its minutes with tasks left is asked once, ahead of its ceiling, and a raise answers it
+inject: >-
+  a three-task inline workflow's minutes ceiling is set to 10 and its first attempt started 9 minutes ago (90%); two supervisor
+  ticks; then the owner raises the minutes
+expect: >-
+  budget show says near (minutes) with a raise sized to the tasks left; the first tick opens one question:business ticket
+  proposing that raise, the second repeats it (one ticket, seen twice); budget raise answers it and budget show says ok again
+pass:
+  - budget show names the near state before the ceiling, while dispatch still runs
+  - exactly one question ticket across two ticks, its occurrences bumped
+  - the raise answers the ticket and clears the near state
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: near
+        goal: bench workflow near
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args: { files: [docs/a.md] }
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths: [docs/b.md]
+            checks:
+              - preset: files-exist
+                args: { files: [docs/b.md] }
+          - id: c
+            label: docs
+            summary: write doc c
+            allowPaths: [docs/c.md]
+            checks:
+              - preset: files-exist
+                args: { files: [docs/c.md] }
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: the budget account
+    starci: [budget, raise, near, --minutes, "1", --by, owner, --reason, "bench: create the account"]
+  - sql:
+      db: machine
+      exec: UPDATE budgets SET minutes = 10, tries = 40 WHERE workflow_id = 'near'
+  - name: start
+    starci: [workflow, start, near]
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files a done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          a
+  - name: the first attempt ran 9 of the 10 minutes
+    sql:
+      db: ledger
+      exec: UPDATE attempts SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', ended_at, '-9 minutes')
+  - name: the step verifies a and dispatches b, under the ceiling
+    starci: [workflow, step, near]
+  - name: budget show says near, not exhausted
+    starci: [budget, show, near]
+    expect: { exit: 0, contains: '"state": "near"' }
+  - starci: [budget, show, near]
+    expect: { exit: 0, contains: '"remaining": 2' }
+  - name: the first tick asks the owner once
+    starci: [supervisor, tick]
+    expect: { exit: 0, contains: "budget near: workflow near (minutes" }
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) || ':' || MAX(occurrences) || ':' || MAX(state) FROM tickets WHERE kind = 'question:business' AND workflow_id = 'near' AND proposed_default LIKE 'starci budget raise near --minutes %'"
+        equals: ["1:1:open"]
+  - name: the second tick repeats it, never a second ticket
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) || ':' || MAX(occurrences) FROM tickets WHERE kind = 'question:business' AND workflow_id = 'near'"
+        equals: ["1:2"]
+  - name: the owner raises the minutes
+    starci: [budget, raise, near, --minutes, "60", --by, owner, --reason, "bench: two tasks left"]
+    expect: { exit: 0, contains: '"answered": "tk-' }
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || closed_by FROM tickets WHERE kind = 'question:business' AND workflow_id = 'near'"
+        equals: ["answered:owner"]
+  - name: the near state is gone
+    starci: [budget, show, near, --json]
+    expect: { exit: 0, contains: '"state": "ok"' }
+  - name: the next tick asks nothing new
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM tickets WHERE kind = 'question:business' AND workflow_id = 'near'"
+        equals: [1]

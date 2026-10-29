@@ -49,7 +49,9 @@ starci budget raise <workflow> --tries <n> --by owner --reason "<why>"
 starci budget raise <workflow> --task <key> --tries <n> --by <kernel|supervisor|owner> --reason "<why>"
 ```
 
-A workflow spends minutes and tries against its ceiling; a launch that never ran spends no try. At the
-ceiling, dispatch holds with `BUDGET_EXHAUSTED`. Raise only on the owner's explicit OK with their reason.
+A workflow spends minutes and tries against its ceiling; a launch that never ran spends no try. Near the ceiling with
+tasks left, `budget show` says `near` and `supervisor tick` asks the owner one question ticket proposing a raise sized to
+those tasks; at the ceiling, dispatch holds with `BUDGET_EXHAUSTED`. Raise only on the owner's explicit OK with their
+reason; the raise answers the question.
 A task's own tries are its contract's `budget.tries` plus what `--task` raised for it; a retry refused `TRIES_EXHAUSTED` is
 freed by `--task`: by its Kernel when the harness spent the tries (a red not the task's own), by the Supervisor ruling it.

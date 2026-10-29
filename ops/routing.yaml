@@ -185,6 +185,10 @@ workflowParallel: 10
 # it. The pools' maxParallel still binds every launch.
 projectMaxWorkers: 10
 
-# Per-workflow ceilings; only the owner or the Supervisor raises one (budget raise).
+# Per-workflow ceilings; only the owner or the Supervisor raises one (budget raise). A workflow with tasks left to run is near
+# its ceiling once its minutes or tries reach nearPercent of it, or once fewer tries are left than tasks: `budget show` says
+# near, and `supervisor tick` asks the owner one question proposing a raise sized to those tasks, answered by the raise
+# (harness/budget-warn.ts).
 budgets:
   workflow: {minutes: 480, tries: 40}
+  nearPercent: 85
