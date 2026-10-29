@@ -40,7 +40,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   (`file`, its `yaml` or `json` serialized after variables expand, `write`; `write.from` copies a file or folder in, `${ops}` naming the ops/ folder the CLI reads), act as a worker (`worker` writes its files in the task's checkout, the workflow's worktree, and files
   its result there), read a ledger value into a variable (`read`), run git, script the Orca stand-in (`orca`), inject a
   fault straight into a ledger (`sql`, the state a killed process or elapsed time leaves behind), serve a long-lived verb
-  or a stand-in (`stub`) until the scenario ends (`serve`, saving the `<as>.url` and `<as>.token` its ready line prints) and call it (`http`, with
+  or a stand-in (`stub`) until the scenario ends (`serve`, stopped with a SIGTERM first so a stand-in can undo what it set, saving the `<as>.url` and `<as>.token` its ready line prints) and call it (`http`, with
   `token`, `body`, `stream` for an event stream, and `expect` on status, text and JSON paths), and `assert` on the
   ledger (the scratch repository's, or `repo: <name>`'s), git (`in` another checkout such as `${worktree.<workflow>}`; `gitLog` reads `ref`, default HEAD, so a branch whose worktree is gone is still read), the stand-in's call log (`orcaCalls`, `match`
   filtering by flag) or the file system (`exists`, with `contains` for a substring of a present file). `when` and `unless` tie a step to a `--fault`.
@@ -58,7 +58,11 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   `hold` stand-in as its process, which `terminal close` ends), mail a seat sent. No real Orca is ever launched.
 - **The folder holder** is `stub/hold-stub.mjs`, served by `serve: {stub: hold, cwd: <folder>}`: a process that keeps its
   working folder from being removed, as a shell left open in a worktree does (its working directory on Windows, a read-only
-  parent elsewhere). It prints `stub hold: <url> token <pid>`; `POST <url>/__exit` or a SIGTERM lets go and ends it.
+  parent elsewhere). It prints `stub hold: <url> token <pid>`; `POST <url>/__exit` or a SIGTERM lets go and ends it. The read-only
+  parent is the served folder's own parent, so the folder a scenario names sits inside its run, never the run itself.
+- **The CPU burner** is `stub/busy-stub.mjs`, served by `serve: {stub: busy}`: a process that keeps one core busy, so the
+  heavy governor's CPU average is above a tiny `maxCpuPercent` on any host, an idle runner included. It prints
+  `stub busy: <url> token <pid>`; `POST <url>/__exit`, a SIGTERM or the scenario's end stops it.
 - **The Telegram stand-in** is `stub/telegram-stub.mjs`, served by `serve: {stub: telegram}`: a fake Bot API on 127.0.0.1
   that accepts only the token it mints for the run (`${<as>.token}`) and answers getMe, getUpdates and sendMessage. A
   scenario points the CLI at it per step (`TELEGRAM_BOT_TOKEN` and `STARCI_TELEGRAM_API` in `env`), plays whoever writes to
