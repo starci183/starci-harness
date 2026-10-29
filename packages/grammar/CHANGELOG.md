@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.16 - 2026-10-29
+
+- Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.16), which re-pin @starci/test-world 1.3.0 in the canon pins.
+
 ## 0.15.15 - 2026-10-29
 
 - Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.15), which re-pin the hfs 4.11.3 canon.

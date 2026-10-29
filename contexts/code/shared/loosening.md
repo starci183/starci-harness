@@ -9,8 +9,10 @@ this topic says what an author does instead.
 Source, specs, scripts and configs hold none of: `eslint-disable` in any form or an inline ESLint config comment,
 `stylelint-disable`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`, a coverage ignore (`istanbul`, `c8`, `v8`), a
 Sonar no-sonar or `sonar-disable` comment, `prettier-ignore`, a skipped or focused test (`.skip`, `.only`, `xit`,
-`fdescribe`), `|| true` on a command, `--no-verify`, or a widened allowlist, baseline or exclusion. An empty `catch`
-is a swallowed failure too: handle the error, return a typed outcome or rethrow.
+`fdescribe`), `|| true` on a command, `--no-verify`, TLS verification turned off (`NODE_TLS_REJECT_UNAUTHORIZED` set to 0
+in code, a script, a workflow, a Dockerfile or an env template, a client's `rejectUnauthorized: false`), or a widened
+allowlist, baseline or exclusion. An empty `catch` is a swallowed failure too: handle the error, return a typed
+outcome or rethrow.
 
 Why: an inline switch turns a rule into a convention that holds only where nobody wrote the comment; with no exit in
 the file, the only fixes left are the code and the rule.

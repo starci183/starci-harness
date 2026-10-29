@@ -45,6 +45,7 @@ const context = (overrides: Partial<RunContext["infra"]> = {}): RunContext => ({
         controlUrl: "http://127.0.0.1:1/control",
         entries: {
             sepay: { url: "http://127.0.0.1:4000", host: "127.0.0.1", port: 4000, values: { apiKey: "k" }, endpoints: { webhook: "http://127.0.0.1:4000/w" } },
+            idp: { url: "https://127.0.0.1:4002", host: "127.0.0.1", port: 4002, values: {}, endpoints: {}, ca: "-----BEGIN CERTIFICATE-----\nrun-ca\n-----END CERTIFICATE-----\n" },
         },
     },
     services: {},
@@ -126,6 +127,16 @@ test("apps get their reserved port and the host the caller names", () => {
     assert.equal(inContainer.db["primary"]?.host, "host.docker.internal")
     assert.equal(inContainer.fake["sepay"]?.url, "http://host.docker.internal:4000")
     assert.equal(inContainer.fake["sepay"]?.endpoints["webhook"], "http://host.docker.internal:4000/w")
+    assert.equal(inContainer.fake["sepay"]?.ca, undefined)
+})
+
+test("an https fake keeps its scheme on every host and hands the app the run CA to trust", () => {
+    const inHost = buildWiring(context())
+    const inContainer = buildWiring(context(), { host: "host.docker.internal" })
+    assert.equal(inHost.fake["idp"]?.url, "https://127.0.0.1:4002")
+    assert.equal(inContainer.fake["idp"]?.url, "https://host.docker.internal:4002")
+    assert.equal(inHost.fake["idp"]?.ca, "-----BEGIN CERTIFICATE-----\nrun-ca\n-----END CERTIFICATE-----\n")
+    assert.equal(inContainer.fake["idp"]?.ca, inHost.fake["idp"]?.ca)
 })
 
 test("redis is leased its own db index and minio and qdrant carry their prefixes", () => {

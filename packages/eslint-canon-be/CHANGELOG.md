@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.3 - 2026-10-29
+
+- Changed: the bundled canon pins name @starci/test-world 1.3.0 (HTTPS fakes over the run's ephemeral fake CA), hfs 4.11.4, eslint-canon-be 3.8.3, eslint-canon-fe 9.5.5 and the Grammar family 0.15.16. No rule changed.
+
 ## 3.8.2 - 2026-10-29
 
 - Added: R336 `BE_EVENT_BUS_LITE_SHAPE` (`src/event-bus-lite.ts`, contexts/code/be/event-bus.md BE-EVENT-BUS-6), lite only: `event-dedupe-key` refuses an event class of `src/modules/events/**` whose payload type has no `dedupeKey` (a literal, `EventPayload`, or an interface or alias of the file that declares it or extends `EventPayload`), and `event-subscription-static` refuses a `subscribe(queue, consumer, options?)` whose queue is not a `*_TOPIC_QUEUE` constant imported from `@modules/platform/event-bus` or whose options are not a literal object. Spec: `src/event-bus-lite.spec.ts`.

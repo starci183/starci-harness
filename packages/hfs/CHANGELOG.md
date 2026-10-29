@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.11.4 - 2026-10-29
+
+- Changed: the bundled canon pins name @starci/test-world 1.3.0 (HTTPS fakes over the run's ephemeral fake CA), hfs 4.11.4, eslint-canon-be 3.8.3, eslint-canon-fe 9.5.5 and the Grammar family 0.15.16. No rule changed.
+
 ## 4.11.3 - 2026-10-29
 
 Breaking for lite apps (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks): `npx starci app sync --write` moves the db image and removes `db/Dockerfile`; an app whose hfs.json declares `sides.be.queueOutbox` drops it, and a pg_cron job left in an active migration is rewritten as a `platform/jobs` tick.

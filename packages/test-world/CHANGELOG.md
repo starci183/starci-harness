@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 - 2026-10-29
+
+- Added: `defineHttpFake({ https: true, ... })` serves HTTPS on `https://127.0.0.1:<port>` with a server certificate signed by the run's ephemeral fake CA (made in memory once per process over `node:crypto`, X.509 v3, ECDSA P-256, valid for `127.0.0.1`, `::1`, `localhost` and `host.docker.internal`; no new dependency), for a provider whose contract requires TLS such as an OIDC issuer.
+- Added: the fake's CA PEM is published as `ca` on the started fake, the run state and the wiring (`w.fake.<name>.ca`), absent for a plain-HTTP or SMTP fake; the app trusts it through its own HTTP client option. Verification is never turned off and nothing is added to the process-wide trust store.
+- Added: `fakeTls()` (the run's `{ ca, cert, key }`) and `issueFakeTls()` (fresh, unrelated material) from `@starci/test-world/fakes`. Specs: `src/fakes/framework/https-fake.spec.ts` (an https fake answers, a client trusting the CA succeeds by every covered name, an untrusted client, another CA and global fetch are refused, the certificate shape), `src/nest/wiring.spec.ts` (the scheme and CA reach the wiring on every host).
+
 ## 1.2.3 - 2026-10-22
 
 - Changed: `sandbox.describe` no longer skips: when a required sandbox key is missing it registers one failing test naming the keys and never runs the body.

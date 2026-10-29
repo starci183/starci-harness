@@ -1,14 +1,18 @@
 /**
  * `defineHttpFake`: the one way to write an HTTP fake. The framework owns everything generic (loopback server, request
  * recording, armed failures, held sockets, truncated streams, timers, webhook delivery, control actions and the base client);
- * a fake supplies only its protocol: routes, state, values and its own steering actions.
+ * a fake supplies only its protocol: routes, state, values and its own steering actions. A fake that declares `https` serves
+ * TLS with the run's ephemeral fake CA (`./tls`) and publishes that CA's PEM for the app to trust.
  */
 import { createServer } from "node:http"
 import type { IncomingMessage, ServerResponse } from "node:http"
+import type { Server } from "node:net"
+import { createServer as createHttpsServer } from "node:https"
 import type { FailureSpec, FakeBridge, FakeClient, FakeDefinition, FakeInstance, FakeStartContext, WebhookDelivery } from "./contracts"
 import { FailureQueue, FakeControlRejected, FakeTimers, RequestLog, runBaseControl } from "./failures"
 import { closeServer, deliverWebhook, headersOf, listenLoopback, parseForm, parseJson, readBody, trackSockets } from "./http-kit"
 import type { WebhookRequest } from "./http-kit"
+import { fakeTls } from "./tls"
 
 /** One request a route function reads. */
 export interface FakeHttpRequest {
@@ -50,7 +54,7 @@ export interface HttpFakeContext<TState, TOptions> {
     /** The current state (replaced by the state factory on reset). */
     readonly state: TState
     readonly options: TOptions
-    /** The base URL of this fake. */
+    /** The base URL of this fake: `https://127.0.0.1:<port>` when the spec declares `https`, else `http://`. */
     readonly url: string
     readonly host: string
     readonly port: number
@@ -88,6 +92,12 @@ export type HttpFakeControlAction<TState, TOptions> = (
 
 /** What a fake declares. */
 export interface HttpFakeSpec<TClient extends FakeClient, TOptions, TState> {
+    /**
+     * Serve HTTPS (a provider whose contract requires TLS, such as an OIDC issuer). The server certificate is signed by the
+     * run's ephemeral fake CA and covers `127.0.0.1`, `::1`, `localhost` and `host.docker.internal`; the CA's PEM is
+     * published as the fake's `ca` (`w.fake.<name>.ca`) for the app's own HTTP client to trust. Default plain HTTP.
+     */
+    readonly https?: boolean
     /** Route table, tried in order. */
     readonly routes?: ReadonlyArray<HttpFakeRoute<TState, TOptions>>
     /** Fallback route function for anything the table does not match; without either the fake answers 404. */
@@ -285,7 +295,7 @@ export const defineHttpFake = <TClient extends FakeClient = FakeClient, TOptions
                 await sendReply(response, reply, undefined)
             }
 
-            const server = createServer((incoming, response) => {
+            const listener = (incoming: IncomingMessage, response: ServerResponse): void => {
                 dispatch(incoming, response).catch((cause: unknown) => {
                     if (response.headersSent) {
                         response.socket?.destroy()
@@ -294,10 +304,12 @@ export const defineHttpFake = <TClient extends FakeClient = FakeClient, TOptions
                     response.writeHead(500, { "content-type": "application/json" })
                     response.end(JSON.stringify({ error: cause instanceof Error ? cause.message : String(cause) }))
                 })
-            })
+            }
+            const tls = spec.https === true ? fakeTls() : undefined
+            const server: Server = tls === undefined ? createServer(listener) : createHttpsServer({ key: tls.key, cert: tls.cert }, listener)
             const sockets = trackSockets(server)
             boundPort = await listenLoopback(server)
-            baseUrl = `http://127.0.0.1:${boundPort}`
+            baseUrl = `${tls === undefined ? "http" : "https"}://127.0.0.1:${boundPort}`
 
             const reset = async (): Promise<void> => {
                 log.clear()
@@ -311,6 +323,7 @@ export const defineHttpFake = <TClient extends FakeClient = FakeClient, TOptions
                 url: baseUrl,
                 host: "127.0.0.1",
                 port: boundPort,
+                ...(tls === undefined ? {} : { ca: tls.ca }),
                 values: spec.values?.(context) ?? {},
                 endpoints: spec.endpoints?.(context) ?? {},
                 control: async (action, body) => {

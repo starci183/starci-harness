@@ -32,6 +32,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   the branch seals and `assertKeysHanded` turns a run that still lacks a key the branch holds into `VERIFY_INFRA`, never the
   task's red. A key sealed blank is `CUSTODY_KEY_MISSING` like an empty one. A bench `starci` step takes `stdin` (`input` of
   `shared/exec.ts`). Bench: `wave-verify-live-custody-branch`.
+### Added
+
+- `check loosening` bans `tls-unverified`: the `NODE_TLS_REJECT_UNAUTHORIZED` switch set to 0 (assigned in code or a spec, an
+  env object key, a shell script, a workflow env entry, a Dockerfile `ENV`, a `package.json` script, an env template the
+  security policy lets it read) and a client's `rejectUnauthorized: false`; reading or comparing the switch is no finding.
+  Env templates (`*.env.example`, `*.env.tpl`, ...) are a scanned kind for it; `.env` and `.env.*` stay `neverRead`. Bench:
+  `security-loosening-tls-unverified` (each form red, the test-world https fake path green).
 
 ## [1.1.0-alpha.13] - 2026-10-29
 

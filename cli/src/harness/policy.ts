@@ -34,6 +34,7 @@ export const LOOSENING_MARKERS = [
     "or-true",
     "no-verify",
     "gate-widening",
+    "tls-unverified",
 ] as const
 
 /** One loosening marker. */

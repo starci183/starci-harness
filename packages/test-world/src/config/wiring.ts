@@ -96,10 +96,16 @@ export interface WiredKeycloak {
 
 /** A fake at the network edge as the app is pointed at it. */
 export interface WiredFake {
-    /** The base URL of an HTTP fake (empty for an SMTP fake). */
+    /** The base URL of an HTTP fake (`https://` for a fake declared `https`; empty for an SMTP fake). */
     readonly url: string
     readonly host: string
     readonly port: number
+    /**
+     * PEM of the run's ephemeral fake CA an HTTPS fake's certificate chains to; absent for a plain-HTTP or SMTP fake. The app
+     * trusts it through its own HTTP client (an option the declaration passes, e.g. `ca: w.fake.idp.ca` into an
+     * `https.Agent` or an undici `Agent({ connect: { ca } })`); verification stays on, nothing is trusted process-wide.
+     */
+    readonly ca?: string
     /** What the fake exposes for the app options (`apiKey`, `webhookSecret`, `tmnCode`, ...), by name. */
     readonly values: Readonly<Record<string, string>>
     /** Any further endpoint the fake serves (`tokenUrl`, `webhookUrl`, ...), by name. */
