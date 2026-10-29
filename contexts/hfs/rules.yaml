@@ -685,7 +685,7 @@ rules:
       - {kind: eslint-fe, id: no-console}
   - id: R68
     code: BE_SQL_INTERPOLATED
-    law: SQL text carries no runtime substitution; values are numbered parameters.
+    law: "SQL text carries no runtime substitution; values are numbered parameters. The one exception is R334's lite call statement in `platform/database/database.client.ts`, which splices only the name parts and parameter list its own validator checked."
     failureCodes:
       - BE_SQL_INTERPOLATED
     enforcers:
@@ -2259,7 +2259,7 @@ rules:
       - {kind: hfs, id: db-drift}
   - id: R334
     code: BE_PERSISTENCE_NO_RAW_SQL
-    law: "Lite domain and feature code reads and writes through TypeORM entities on the injected EntityManager (find, save, update, delete, upsert, `createQueryBuilder(Entity, \"alias\")` with named parameters; never a table-name builder or a Repository); no `.query(` and no `sql` template outside `platform/database`, and a database function goes through its `callDbFunction`, `advisoryXactLock` or `notify` helper, naming only a function `ruleParams.be.dbFunctions` or hfs.json `sides.be.dbFunctions` lists with a reason."
+    law: "Lite domain and feature code reads and writes through TypeORM entities on the injected EntityManager (find, save, update, delete, upsert, `createQueryBuilder(Entity, \"alias\")` with named parameters; never a table-name builder or a Repository); no `.query(` and no `sql` template outside `platform/database`, and a database function goes through its `callDbFunction`, `advisoryXactLock` or `notify` helper of `platform/database/database.client.ts`, naming only a function `ruleParams.be.dbFunctions` or hfs.json `sides.be.dbFunctions` lists with a reason: a function of a migration schema-qualified (`public.job_claim`), a pg built-in bare (`pg_notify`, called in pg_catalog). That file alone composes the call statement, from the name parts its validator checked and double-quotes and a numbered parameter list."
     editions: [lite]
     failureCodes:
       - BE_PERSISTENCE_NO_RAW_SQL

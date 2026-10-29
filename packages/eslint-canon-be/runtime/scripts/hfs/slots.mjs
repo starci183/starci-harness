@@ -127,6 +127,13 @@ function sideDeclaration(manifest, declaration, name, edition, providers) {
   });
 }
 
+/** R334: an app's bare database function name must be a pg built-in the canon lists bare (ruleParams.be.dbFunctions); any other is schema.name. */
+function bareDbFunctionProblems(manifest, be) {
+  const builtins = new Set((manifest.ruleParams?.be?.dbFunctions ?? []).map((entry) => entry.name).filter((name) => !name.includes('.')));
+  return (be?.dbFunctions ?? []).filter((entry) => !entry.name.includes('.') && !builtins.has(entry.name))
+    .map((entry) => `sides.be.dbFunctions names ${entry.name} bare, but a bare name is only a pg built-in of the canon's list (ruleParams.be.dbFunctions); name a function of a migration schema-qualified (public.${entry.name})`);
+}
+
 /**
  * A declaration checked against the manifest: kind app, the pinned major the manifest's (HFS_MANIFEST_MAJOR_MISMATCH otherwise,
  * and there is no compatibility window), and per side: app kinds of that profile, optionalSlots naming only opt-in slots of the
@@ -142,7 +149,7 @@ export function resolveRepoDeclaration(manifest, declaration, { file = HFS_DECLA
   if (declaration.kind === RUNTIME_KIND) return runtimeDeclaration(manifest, declaration, file, side);
   const { edition, known, valid } = declarationEdition(manifest, declaration);
   if (!valid) fail('HFS_EDITION_INVALID', `hfs.json edition is ${JSON.stringify(declaration.edition)}; the editions this manifest knows are ${known.join(', ')} (absent means full)`, { file, edition: declaration.edition });
-  const bad = PROFILES.flatMap((name) => sideProblems(manifest, name, declaration.sides[name], edition));
+  const bad = [...PROFILES.flatMap((name) => sideProblems(manifest, name, declaration.sides[name], edition)), ...bareDbFunctionProblems(manifest, declaration.sides.be)];
   if (bad.length) declarationInvalid(bad, file);
   if (side !== null && !PROFILES.includes(side)) fail('HFS_DECLARATION_INVALID', `${side} is not a side of an app (be, fe)`, { file, side });
   // A provider declared on any connection enables the provider slots of every profile (a fe side declares none): each view carries the union.

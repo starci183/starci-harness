@@ -62,7 +62,7 @@ export class JobTickService implements OnApplicationBootstrap {
         const minute = tickMinute(this.clock.now())
         return this.writer().transaction(async (tx) => {
             await advisoryXactLock(tx, `tick:${tick.name}`)
-            const [claim] = await callDbFunction<TickClaim>(tx, "job_tick_claim", [tick.name, minute])
+            const [claim] = await callDbFunction<TickClaim>(tx, "public.job_tick_claim", [tick.name, minute])
             if (claim?.claimed !== true) return false
             await this.outbox.write(tx, tick.queue, tick.payload, `tick:${tick.name}:${minute}`)
             return true

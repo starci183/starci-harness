@@ -46,7 +46,7 @@ export class JobClaimService implements JobClaims {
     /** Claims the delivery; null when the job is done or another worker holds a claim that has not expired. */
     async claim(params: ClaimParams): Promise<ClaimResult> {
         const now = this.clock.now()
-        const rows = await callDbFunction<ClaimedRecord>(this.writer(), "job_claim", [
+        const rows = await callDbFunction<ClaimedRecord>(this.writer(), "public.job_claim", [
             params.kind,
             params.jobKey,
             params.workerId,
@@ -69,17 +69,17 @@ export class JobClaimService implements JobClaims {
 
     /** Records a finished step under the token the caller holds. */
     advance(write: AdvanceWrite): Promise<void> {
-        return this.guarded("job_advance", [write.jobId, write.expectedFencingToken, write.step, this.clock.now()], write)
+        return this.guarded("public.job_advance", [write.jobId, write.expectedFencingToken, write.step, this.clock.now()], write)
     }
 
     /** Completes the job under the token the caller holds. */
     complete(write: GuardedWrite): Promise<void> {
-        return this.guarded("job_complete", [write.jobId, write.expectedFencingToken, this.clock.now()], write)
+        return this.guarded("public.job_complete", [write.jobId, write.expectedFencingToken, this.clock.now()], write)
     }
 
     /** Marks the job failed under the token the caller holds, so BullMQ can retry it. */
     fail(write: FailWrite): Promise<void> {
-        return this.guarded("job_fail", [write.jobId, write.expectedFencingToken, write.reason, this.clock.now()], write)
+        return this.guarded("public.job_fail", [write.jobId, write.expectedFencingToken, write.reason, this.clock.now()], write)
     }
 
     /** The idempotency key of one step of this claim: it includes the token, so a zombie's repeat is a different key than the live worker's. */
@@ -99,7 +99,7 @@ export class JobClaimService implements JobClaims {
 
     /** Runs a guarded function that updates only when the token still matches; no row back means a newer worker owns the job. */
     private async guarded(
-        fn: "job_advance" | "job_complete" | "job_fail",
+        fn: "public.job_advance" | "public.job_complete" | "public.job_fail",
         parameters: Array<unknown>,
         write: GuardedWrite,
     ): Promise<void> {

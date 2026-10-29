@@ -15,6 +15,6 @@ export class QueueOutboxService implements QueueOutbox {
     /** Writes the job in the outbox of the transaction `tx`; the relay adds it to BullMQ after the commit. */
     async write(tx: EntityManager, queue: string, payload: object, correlationId: string): Promise<void> {
         if (!isCorrelationId(correlationId)) throw new QueueError({ code: QueueErrorCode.CorrelationInvalid })
-        await callDbFunction(tx, "queue_write", [queue, JSON.stringify(payload), this.clock.now(), correlationId])
+        await callDbFunction(tx, "public.queue_write", [queue, JSON.stringify(payload), this.clock.now(), correlationId])
     }
 }

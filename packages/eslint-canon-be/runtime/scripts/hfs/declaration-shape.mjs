@@ -92,7 +92,7 @@ function declarationSideProblems(side, value, names) {
   const at = `sides.${side}`;
   if (!isPlainObject(value)) return [`${at} must be an object`];
   for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'queueOutbox', 'dbFunctions'].includes(key)) bad.push(`${at} has unknown key ${key}`);
-  if (value.dbFunctions !== undefined && (side !== 'be' || !dbFunctionsOk(value.dbFunctions))) bad.push(`${at}.dbFunctions belongs to the be side and lists {name, reason} database functions with unique names`);
+  if (value.dbFunctions !== undefined && (side !== 'be' || !dbFunctionsOk(value.dbFunctions, { bare: true }))) bad.push(`${at}.dbFunctions belongs to the be side and lists {name, reason} database functions, each schema-qualified (schema.name, never pg_catalog) or a bare pg built-in of the canon's list, with unique names`);
   bad.push(...appShapeProblems(value.apps, at, side, names));
   if (isBadUniqueList(value.optionalSlots, (slot) => SLOT_ID.test(String(slot)))) bad.push(`${at}.optionalSlots must be a unique list of slot ids`);
   if (value.backing !== undefined && side !== 'be') bad.push('backing belongs to the be side');

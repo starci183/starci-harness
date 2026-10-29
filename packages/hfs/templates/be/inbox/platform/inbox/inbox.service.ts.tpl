@@ -54,7 +54,7 @@ export class PostgresInbox implements Inbox {
         if (!normalizedEventId) {
             throw new DatabaseError({ code: DatabaseErrorCode.WebhookDeliveryIdRequired })
         }
-        const rows = await callDbFunction<InboxEventRow>(tx, "inbox_claim_event", [source, normalizedEventId])
+        const rows = await callDbFunction<InboxEventRow>(tx, "public.inbox_claim_event", [source, normalizedEventId])
         return rows.length > 0
     }
 
@@ -64,7 +64,7 @@ export class PostgresInbox implements Inbox {
             throw new InboxError({ code: InboxErrorCode.TransactionRequired })
         const source = clientSource(request)
         const fingerprint = requestFingerprint(request.request)
-        const rows = await callDbFunction<ClaimClientRow<T>>(tx, "inbox_claim_client", [
+        const rows = await callDbFunction<ClaimClientRow<T>>(tx, "public.inbox_claim_client", [
             source,
             request.idempotencyKey,
             fingerprint,
@@ -84,7 +84,7 @@ export class PostgresInbox implements Inbox {
         } catch (cause) {
             throw new InboxError({ code: InboxErrorCode.OutcomeInvalid, cause })
         }
-        const saved = await callDbFunction<SavedClientOutcomeRow<T>>(tx, "inbox_save_client_outcome", [
+        const saved = await callDbFunction<SavedClientOutcomeRow<T>>(tx, "public.inbox_save_client_outcome", [
             source,
             request.idempotencyKey,
             outcome,
@@ -96,7 +96,7 @@ export class PostgresInbox implements Inbox {
 
     /** A row lock and SKIP LOCKED keep retention from competing with a live retry or another sweep worker. */
     async sweepClients(cutoff: Date, tx: EntityManager): Promise<number> {
-        const rows = await callDbFunction<InboxSweepRow>(tx, "inbox_sweep_clients", [cutoff, BATCH_ROWS])
+        const rows = await callDbFunction<InboxSweepRow>(tx, "public.inbox_sweep_clients", [cutoff, BATCH_ROWS])
         return rows[0]?.deleted_count ?? 0
     }
 }

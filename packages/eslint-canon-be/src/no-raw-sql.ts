@@ -6,7 +6,8 @@
  *   - `no-raw-sql` refuses, outside `platform/database`, every `.query(` call and every `sql` tagged template. A database function
  *     TypeORM cannot express is called through the typed helpers of `platform/database` (`callDbFunction(manager, name, args)`,
  *     `advisoryXactLock(manager, key)`, `notify(manager, channel, payload)`), and a literal function name handed to
- *     `callDbFunction` must be one `ruleParams.be.dbFunctions` lists (the canon's pg built-ins plus hfs.json `sides.be.dbFunctions`).
+ *     `callDbFunction` must be one `ruleParams.be.dbFunctions` lists (the canon's pg built-ins, bare, plus every other function
+ *     schema-qualified, `public.job_claim`, including hfs.json `sides.be.dbFunctions`).
  *     The allow-list governs WHICH functions may be called, the helper WHERE the SQL is built. A query builder names its entity
  *     (`createQueryBuilder(Entity, "alias")`): a builder over a table-name string, a builder with no entity, and a
  *     `getRepository(...)` are refused, because they bypass the entity mapping. The rule runs in lite only (the
@@ -40,7 +41,7 @@ export const noRawSql: RuleModule = {
             query: "`.query(` runs raw SQL outside `platform/database`. Read and write through the entity on the EntityManager (`find`, `save`, `update`, `upsert`, `createQueryBuilder(Entity, \"alias\")` with named parameters); call a database function TypeORM cannot express through `callDbFunction(manager, name, args)` (or `advisoryXactLock`, `notify`) of `platform/database`.",
             template: "A `sql` template outside `platform/database`. Lite persistence maps tables with TypeORM entities; build the query with the EntityManager or `createQueryBuilder`, or call a database function through `callDbFunction`.",
             builder: "A query builder must name its entity: `manager.createQueryBuilder(Entity, \"alias\")` on the injected EntityManager. A table-name string, a builder with no entity and a Repository bypass the entity mapping.",
-            unlisted: "`{{name}}` is not a listed database function. Add it to hfs.json `sides.be.dbFunctions` with the reason TypeORM cannot express it, or map the work with an entity.",
+            unlisted: "`{{name}}` is not a listed database function. Name a function of a migration schema-qualified (`public.job_claim`) and add it to hfs.json `sides.be.dbFunctions` with the reason TypeORM cannot express it; a pg built-in is named bare only when the canon lists it; or map the work with an entity.",
         },
     },
     create(context) {

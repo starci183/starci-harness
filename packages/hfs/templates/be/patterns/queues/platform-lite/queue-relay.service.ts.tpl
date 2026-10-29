@@ -44,7 +44,7 @@ export class QueueRelayService extends OutboxRelayPolicy<QueueRow> {
     }
 
     protected async select(tx: EntityManager): Promise<Array<QueueRow>> {
-        return [...(await callDbFunction<QueueRow>(tx, "queue_waiting", [this.options.relayBatch]))]
+        return [...(await callDbFunction<QueueRow>(tx, "public.queue_waiting", [this.options.relayBatch]))]
     }
 
     protected async deliver(rows: ReadonlyArray<QueueRow>): Promise<void> {
@@ -53,7 +53,7 @@ export class QueueRelayService extends OutboxRelayPolicy<QueueRow> {
     }
 
     protected async mark(tx: EntityManager, rows: ReadonlyArray<QueueRow>): Promise<void> {
-        await callDbFunction(tx, "queue_mark_sent", [rows.map((row) => row.id), this.clock.now()])
+        await callDbFunction(tx, "public.queue_mark_sent", [rows.map((row) => row.id), this.clock.now()])
     }
 
     protected idle(): Promise<void> {

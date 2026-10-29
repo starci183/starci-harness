@@ -11,7 +11,10 @@
  *   tag is called only in a persistence `<name>.sql.ts`.
  * - `no-query-builder` (R36) - no `createQueryBuilder(` call.
  * - `no-interpolated-sql` (R68 `BE_SQL_INTERPOLATED`) - a substitution inside the `sql` tag is a `SqlIdent`; a `.query(`
- *   string built by template or concatenation is refused.
+ *   string built by template or concatenation is refused. One file is the owner R334 names for the lite function-call statement,
+ *   `platform/database/database.client.ts` of a lite app: there a `.query(` template may substitute only the checked parts its own
+ *   validator brands (`DbFunctionPart`, `DbParameterList` declared in that file); any other substitution, a `+` and the same
+ *   template in any other file stay refused.
  * - `query-needs-limit` (R69 `BE_QUERY_UNBOUNDED`) - `find`, `findBy` and `findAndCount` on an `EntityManager` carry `take`.
  * - `no-query-in-loop` (R77 `BE_QUERY_IN_LOOP`) - an `EntityManager` read does not run once per element of a loop.
  *
@@ -19,7 +22,7 @@
  */
 import { keyName } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
-import { baseNameOf, infraTypeOf, isMigrationFile } from "./lib/persistence.ts"
+import { baseNameOf, inDatabaseCapability, infraTypeOf, isMigrationFile } from "./lib/persistence.ts"
 import { isPackageType, typeOrigins } from "./lib/types.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
 import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
@@ -103,6 +106,20 @@ export const noQueryBuilder: RuleModule = {
 
 // -- R68 -----------------------------------------------------------------------------------------------
 
+/** The one file R334 names as the composer of a lite function-call statement: `platform/database/database.client.ts`. */
+const CALL_STATEMENT_FILE = "database.client.ts"
+
+/** The brands the call-statement file gives the checked parts it splices: a function-name part and a numbered parameter list. */
+const CALL_STATEMENT_BRANDS = ["DbFunctionPart", "DbParameterList"]
+
+/** Whether a file is the lite call-statement owner of the platform database capability. */
+const isCallStatementFile = (hfs: HfsView, filename: string): boolean =>
+    hfs.edition === "lite" && baseNameOf(filename) === CALL_STATEMENT_FILE && inDatabaseCapability(hfs, filename)
+
+/** Whether a substitution has a brand the call-statement file itself declares for the parts it checked. */
+const isCheckedCallPart = (context: Context, hfs: HfsView, node: Node): boolean =>
+    typeOrigins(context, node).some((origin) => CALL_STATEMENT_BRANDS.includes(origin.name) && isCallStatementFile(hfs, origin.file))
+
 /** A statement is text plus parameters; a value never becomes part of the text. */
 export const noInterpolatedSql: RuleModule = {
     meta: {
@@ -121,6 +138,10 @@ export const noInterpolatedSql: RuleModule = {
         const sourceCode = context.sourceCode || context.getSourceCode()
         const filename = context.filename || context.getFilename()
         const migration = isMigrationFile(hfs, filename)
+        const callStatementFile = isCallStatementFile(hfs, filename)
+        /** A `.query(` template is built text, unless every substitution is a part the call-statement file checked (R334). */
+        const builtTemplate = (template: TSESTree.TemplateLiteral): boolean =>
+            template.expressions.length > 0 && !(callStatementFile && template.expressions.every((expression) => isCheckedCallPart(context, hfs, expression)))
         return {
             TaggedTemplateExpression(node) {
                 if (!typeOrigins(context, node.tag).some((origin) => origin.name === "sql" && fromDatabaseCapability(hfs, origin))) return
@@ -133,7 +154,7 @@ export const noInterpolatedSql: RuleModule = {
             CallExpression(node) {
                 if (migration || !isQueryCall(context, node)) return
                 const first = node.arguments[0]
-                if (first?.type === "TemplateLiteral" && first.expressions.length > 0) context.report({ node: first, messageId: "built" })
+                if (first?.type === "TemplateLiteral" && builtTemplate(first)) context.report({ node: first, messageId: "built" })
                 else if (first?.type === "BinaryExpression" && first.operator === "+") context.report({ node: first, messageId: "built" })
             },
         }

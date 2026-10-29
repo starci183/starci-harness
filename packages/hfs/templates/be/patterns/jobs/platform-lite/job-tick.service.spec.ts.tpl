@@ -10,7 +10,7 @@ import { JobTickService, tickMinute } from "./job-tick.service"
 
 // The statements advisoryXactLock and callDbFunction of platform/database send for one firing.
 const LOCK_TICK = "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))"
-const CLAIM_TICK = "SELECT * FROM job_tick_claim($1, $2)"
+const CLAIM_TICK = 'SELECT * FROM "public"."job_tick_claim"($1, $2)'
 
 const AT = "2026-02-03T04:05:06.000Z"
 const TICK: JobTick = { name: "nightly-digest", cron: "0 2 * * *", timeZone: "UTC", queue: "digests", payload: { kind: "nightly" } }

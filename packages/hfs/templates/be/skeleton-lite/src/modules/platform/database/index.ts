@@ -1,5 +1,5 @@
 export { DatabaseModule } from "./database.module"
-export { advisoryXactLock, callDbFunction, notify } from "./database.functions"
+export { advisoryXactLock, callDbFunction, notify } from "./database.client"
 export { DATABASE_PROBE, InjectDatabaseProbe, InjectPrimaryEntityManager, PRIMARY_ENTITY_MANAGER } from "./primary.decorators"
 export { DatabaseProbeService } from "./database-probe.service"
 export type { DatabaseConnectionOptions } from "./database.options"
