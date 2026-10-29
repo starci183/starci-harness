@@ -17,6 +17,8 @@ export interface StartedFake {
     readonly url: string
     readonly host: string
     readonly port: number
+    /** PEM of the CA an HTTPS fake's certificate chains to (the run's ephemeral fake CA); absent for a plain-HTTP or SMTP fake. */
+    readonly ca?: string
     readonly values: Readonly<Record<string, string>>
     readonly endpoints: Readonly<Record<string, string>>
 }
@@ -55,6 +57,7 @@ export class FakesHost {
                     port: instance.port,
                     values: instance.values,
                     endpoints: instance.endpoints,
+                    ...(instance.ca === undefined ? {} : { ca: instance.ca }),
                 }
             }
             const server = createServer((request, response) => {

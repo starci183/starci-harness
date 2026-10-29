@@ -47,7 +47,7 @@ export const { useTestWorld, useSandbox } = defineTestWorld({
 })
 ```
 
-`w` (the wiring) carries every URL of the run, built before any app boots: `w.apps.<name>.{url,port}` (ports are reserved first, so apps that call each other know each other), `w.db.<conn>.{url,host,port,user,password,database,schema}`, `w.redis`, `w.minio`, `w.qdrant`, `w.kafka.{brokers,topic(name),group(name),clientId(name)}` (every topic, consumer group and client id of an app under test comes from here, so it is the slot's), `w.keycloak.{baseUrl,realm,issuer,tokenUrl,jwksUrl,clientId,clientSecret(client)}` (every confidential client of the realm file gets a secret generated per run; the file never carries one), `w.fake.<name>.{url,port,values,endpoints}`, `w.services`, `w.cluster`, `w.directory(name)`, `w.secret(label)`. A service the declaration does not run throws `TEST_WORLD_NOT_DECLARED` when read.
+`w` (the wiring) carries every URL of the run, built before any app boots: `w.apps.<name>.{url,port}` (ports are reserved first, so apps that call each other know each other), `w.db.<conn>.{url,host,port,user,password,database,schema}`, `w.redis`, `w.minio`, `w.qdrant`, `w.kafka.{brokers,topic(name),group(name),clientId(name)}` (every topic, consumer group and client id of an app under test comes from here, so it is the slot's), `w.keycloak.{baseUrl,realm,issuer,tokenUrl,jwksUrl,clientId,clientSecret(client)}` (every confidential client of the realm file gets a secret generated per run; the file never carries one), `w.fake.<name>.{url,port,values,endpoints,ca}`, `w.services`, `w.cluster`, `w.directory(name)`, `w.secret(label)`. A service the declaration does not run throws `TEST_WORLD_NOT_DECLARED` when read.
 
 ## The spec-facing API (frozen)
 
@@ -107,6 +107,16 @@ outage API takes it. Only the world that injected an outage restores proxies at 
 ## Fakes
 
 `@starci/test-world/fakes`: `defineHttpFake` (recording, failure injection, control channel), `smtpFake`, `openaiCompatibleFake` (streaming, embeddings), `vnpayFake`, `momoFake`, `payosFake`, `sepayFake` with the providers' real signature schemes and payload fixtures. Repo-specific fakes are built with `defineHttpFake` in `src/tests/world/fakes/`.
+
+A provider whose contract requires TLS (an OIDC issuer: discovery and JWKS over `https`) declares `defineHttpFake({ https: true, routes })`. The fake then listens on `https://127.0.0.1:<port>` with a server certificate signed by the run's ephemeral fake CA (made in memory per run over `node:crypto`, ECDSA P-256, valid for `127.0.0.1`, `::1`, `localhost` and `host.docker.internal`; no file, no dependency), and publishes that CA's PEM as `w.fake.<name>.ca`. The app trusts it through its own HTTP client, as an option the declaration passes from the wiring:
+
+```ts
+fakes: { idp: oidcIssuerFake() },   // defineHttpFake({ https: true, routes: [/* discovery, jwks, token */] })
+apps: { api: { module: ApiApp, options: (w) => ({ oidc: { issuer: w.fake.idp.url, ca: w.fake.idp.ca } }) } },
+// in the app: new https.Agent({ ca }) for node:https, or new Agent({ connect: { ca } }) from undici for fetch
+```
+
+A client that does not hold the CA is refused by the handshake, so the app's issuer validation runs unchanged. TLS verification is never turned off: no `NODE_TLS_REJECT_UNAUTHORIZED=0`, no `rejectUnauthorized: false`, nothing added to the process-wide trust store. `fakeTls()` answers the run's material (`{ ca, cert, key }`) for a repo fake that is not built on `defineHttpFake`; `issueFakeTls()` makes fresh, unrelated material (a spec's untrusted CA).
 
 ## Developing the library
 

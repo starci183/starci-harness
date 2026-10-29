@@ -27,6 +27,8 @@ export { FailureQueue, FakeControlRejected, FakeTimers, RequestLog, runBaseContr
 export type { BaseControlTargets, RecordingHandle } from "./framework/failures"
 export { answerJson, deliverWebhook, headersOf, parseForm, parseJson, readBody } from "./framework/http-kit"
 export type { WebhookRequest } from "./framework/http-kit"
+export { fakeTls, issueFakeTls } from "./framework/tls"
+export type { FakeTls } from "./framework/tls"
 export { parseMessage } from "./framework/mime"
 export type { MailAttachment, ParsedMessage } from "./framework/mime"
 

@@ -85,6 +85,8 @@ export interface FakeInstance {
     readonly url: string
     readonly host: string
     readonly port: number
+    /** PEM of the CA an HTTPS fake's certificate chains to (the run's ephemeral fake CA); absent for a plain-HTTP or SMTP fake. */
+    readonly ca?: string
     /** Values the app options need (`apiKey`, `webhookSecret`, `tmnCode`, ...). */
     readonly values: Readonly<Record<string, string>>
     /** Further named endpoints (`tokenUrl`, ...). */
