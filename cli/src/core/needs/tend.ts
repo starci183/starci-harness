@@ -24,8 +24,11 @@ import {
     needsOfWorkflow,
     packageFolderOf,
     patchNeed,
+    RELAY_VERSION,
     recordNeedEvent,
+    relayReopenDue,
     reopenNeed,
+    reopenRejected,
     sameRepo,
     waiterRowsOfTask,
     waitersOf,
@@ -54,7 +57,9 @@ import type { StepAction } from "../workflow/engine.js"
  *    deadline (ops/liveness.yaml), or whose decision was answered with no owner (an escalation), goes one level up;
  * 3. a resolver is judged: done resolves the need, failed, cancelled or removed reopens it at its router;
  * 4. a resolved or rejected need releases its waiters in the workflow: the resolver's commit is carried onto the workflow's
- *    branch when it landed elsewhere, then each waiter's key is retried, its new attempt starting from the preserved work.
+ *    branch when it landed elsewhere, then each waiter's key is retried, its new attempt starting from the preserved work; a
+ *    need rejected after its relay conflicted under an older relay (relayReopenDue) is reopened once through its last resolver
+ *    instead, so the changed relay carries its commits.
  */
 
 /** A step of a release amend calls this router again; the nested call does nothing, the outer one finishes the pass. */
@@ -467,7 +472,7 @@ const relay = async (place: Place, need: NeedRow): Promise<Relay> => {
     } finally {
         db.close()
     }
-    if (done.status === "relayed" || done.status === "present") withMachine((machine) => { recordNeedEvent(machine, "relayed", need.project, need.key, { workflow: place.workflow, round: need.round, branch, commits, relay: done }) })
+    if (done.status === "relayed" || done.status === "present") withMachine((machine) => { recordNeedEvent(machine, "relayed", need.project, need.key, { workflow: place.workflow, round: need.round, branch, commits, relay: done, relayVersion: RELAY_VERSION }) })
     return done
 }
 
@@ -515,7 +520,7 @@ const routeRelay = async (place: Place, need: NeedRow, done: Relay, mine: readon
     } catch (error: unknown) {
         return [action(`need ${need.key}: relay node ${task.key} not added yet (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}; the next step retries`, "problem")]
     }
-    withMachine((machine) => { recordNeedEvent(machine, "relay-conflict", need.project, need.key, { workflow: place.workflow, round: need.round, branch: done.branch ?? null, commits, node: task.key, waiters, relay: done }) })
+    withMachine((machine) => { recordNeedEvent(machine, "relay-conflict", need.project, need.key, { workflow: place.workflow, round: need.round, branch: done.branch ?? null, commits, node: task.key, waiters, relay: done, relayVersion: RELAY_VERSION }) })
     return [action(`need ${need.key}: its commits do not apply to this branch (${done.files.join(", ") || "git named no file"}); relay node ${task.key} added, ${waiters.join(", ") || "no waiter"} depend on it`, "dispatched", null, task.key)]
 }
 
@@ -572,7 +577,7 @@ const relayedByNode = (place: Place, need: NeedRow, key: string, view: NodeView)
     if (recorded !== undefined) return { ...recorded, status: "present" }
     const conflict = relayEvents(need, place.workflow, "relay-conflict").find((data) => data.node === key)
     const done: Relay = { status: "relayed", relayed: [], files: conflict?.relay?.files ?? [], detail: `relay node ${key} (task ${view.task?.id ?? "?"}) applied the resolving commits`, commits: conflict?.relay?.commits ?? [] }
-    withMachine((machine) => { recordNeedEvent(machine, "relayed", need.project, need.key, { workflow: place.workflow, round: need.round, node: key, commits: done.commits, relay: done }) })
+    withMachine((machine) => { recordNeedEvent(machine, "relayed", need.project, need.key, { workflow: place.workflow, round: need.round, node: key, commits: done.commits, relay: done, relayVersion: RELAY_VERSION }) })
     return done
 }
 
@@ -620,7 +625,7 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
         }
         actions.push(action(`need ${need.key} ${need.state}: released ${keys.join(", ")} (retried from their preserved work)${carried === null ? "" : `; ${carried}`}`, "dispatched"))
     }
-    const how = { by: need.state, round: need.round, reason: need.reason, carried, relay: { status: relayed.status, relayed: relayed.relayed, files: relayed.files }, retried: keys }
+    const how = { by: need.state, round: need.round, reason: need.reason, carried, relay: { status: relayed.status, relayed: relayed.relayed, files: relayed.files, relayVersion: RELAY_VERSION }, retried: keys }
     withMachine((db) => {
         for (const waiter of ready) {
             db.prepare("UPDATE shared_need_waiters SET released_at = ?, release_json = ? WHERE project = ? AND repo = ? AND task_id = ? AND released_at IS NULL").run(now(), JSON.stringify(how), need.project, waiter.repo, waiter.task)
@@ -681,8 +686,12 @@ const tendOne = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
             return after?.state === "resolved" ? [...moved, ...(await release(place, after))] : moved
         }
         case "resolved":
-        case "rejected":
             return release(place, need)
+        case "rejected": {
+            if (!withMachine((db) => relayReopenDue(db, need))) return release(place, need)
+            const reopened = withMachine((db) => reopenRejected(db, need, `rejected after its relay conflicted under an older relay; the relay changed (version ${String(RELAY_VERSION)}), so it is tried once more`, "harness", true))
+            return [action(`need ${need.key} reopened under relay version ${String(RELAY_VERSION)}: ${String(reopened.parked)} waiter(s) parked again, ${reopened.need.state}`), ...(await tendOne(place, reopened.need))]
+        }
         case "merged":
             return []
     }
