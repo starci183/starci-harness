@@ -73,6 +73,29 @@ const framedBody = (head: Head, otherwise: Body): Body => {
     return /^\d+$/.test(length) ? Number(length) : "off"
 }
 
+/** A run of bytes still to pass through (a body, or a chunk with its CRLF), then the state to read in after it. */
+interface Skip {
+    readonly left: number
+    readonly next: "head" | "size"
+}
+
+type ReaderState = "head" | "size" | "trailer" | "close" | "off" | Skip
+
+/** The state after a head whose body is framed as `body`. */
+const afterHead = (body: Body): ReaderState => {
+    if (body === "chunked") return "size"
+    if (typeof body === "number") return { left: body, next: "head" }
+    return body
+}
+
+/** The state after a chunk-size line: off when it is not hex, the trailer after the last chunk, else the chunk to skip. */
+const afterSize = (line: string): ReaderState => {
+    const size = Number.parseInt(line.split(";")[0] ?? "", 16)
+    if (Number.isNaN(size)) return "off"
+    if (size === 0) return "trailer"
+    return { left: size + CRLF.length, next: "size" }
+}
+
 /**
  * A reader of one direction of an HTTP/1.x connection: it splits the bytes into heads and bodies (a length, chunks with their
  * trailers, or the rest of the connection) and hands each head to `onHead`, which says how its body is framed. Anything it
@@ -80,7 +103,7 @@ const framedBody = (head: Head, otherwise: Body): Body => {
  */
 const httpReader = (onHead: (head: Head) => Body): ((chunk: Buffer) => void) => {
     let buffered = Buffer.alloc(0)
-    let state: "head" | "size" | "trailer" | "close" | "off" | { readonly left: number; readonly then: "head" | "size" } = "head"
+    let state: ReaderState = "head"
     const step = (): boolean => {
         if (state === "off" || state === "close") {
             buffered = Buffer.alloc(0)
@@ -89,7 +112,7 @@ const httpReader = (onHead: (head: Head) => Body): ((chunk: Buffer) => void) => 
         if (typeof state === "object") {
             const taken = Math.min(state.left, buffered.length)
             buffered = buffered.subarray(taken)
-            state = state.left === taken ? state.then : { left: state.left - taken, then: state.then }
+            state = state.left === taken ? state.next : { left: state.left - taken, next: state.next }
             return taken > 0 || state === "head" || state === "size"
         }
         if (state === "head") {
@@ -105,7 +128,7 @@ const httpReader = (onHead: (head: Head) => Body): ((chunk: Buffer) => void) => 
             }
             const body = onHead(headOf(buffered.subarray(0, end).toString("latin1")))
             buffered = buffered.subarray(end + HEAD_END.length)
-            state = body === "chunked" ? "size" : typeof body === "number" ? { left: body, then: "head" } : body
+            state = afterHead(body)
             return true
         }
         const end = buffered.indexOf(CRLF)
@@ -116,8 +139,7 @@ const httpReader = (onHead: (head: Head) => Body): ((chunk: Buffer) => void) => 
             if (line === "") state = "head"
             return true
         }
-        const size = Number.parseInt(line.split(";")[0] ?? "", 16)
-        state = Number.isNaN(size) ? "off" : size === 0 ? "trailer" : { left: size + CRLF.length, then: "size" }
+        state = afterSize(line)
         return true
     }
     return (chunk: Buffer): void => {
