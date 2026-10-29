@@ -471,7 +471,10 @@ files defer to that waiter, whose check and the workflow's final verify judge th
 commit as data (`relayHeadOf`), never copied onto the branch; and a finding its relayed files already held at that commit (the
 same rule, file and message, whichever ESLint report printed it: a deferral's json findings print their message as the stylish
 report does, `judgeDeferred` in `core/check/composition.ts`) is the source's baseline, judged there and kept as `baseline-findings` evidence, wherever `check run` judges them (as the node,
-its composer or the final verify), a composition rule excepted (`core/check/relay-baseline.ts`). Every waiter of the need in
+its composer or the final verify), a composition rule excepted (`core/check/relay-baseline.ts`); a red command check of the
+node is run again, same argv and folder, in a clean checkout of that commit, and when it is red there with every finding the
+node's run printed it is the source's red too: green, its detail saying so, the inherited findings a `baseline-findings` event
+(`judgeAtRelayHead` in `harness/run-checks.ts`), while a finding the head lacks keeps it red. Every waiter of the need in
 that workflow depends on it and stays parked with its work kept, spending no try, until it lands; the add is a `need-relay-conflict` event naming the node and the files, and the node's landing a `need-relayed` event
 naming it. Like a revert node, a relay node's key and contract are the harness's own (no file adds or edits one), it is outside
 the goal's scope paths, the Work records' lanes and the foreign-source rule, since it carries what another workflow's lane built.

@@ -35,6 +35,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A relay node's command check that is red exactly as at the relayed source's head is the source's red.** The relay of
+  capability:platform.http carries its source's skeleton parity check, which the relay's own later commit (the exported
+  port in `index.ts`) makes red at the source's head too, so no relay of it could pass unchanged. A red command check of a
+  relay node is now run again, same argv and folder, in a clean checkout of the last relayed commit with the install linked
+  (`judgeAtRelayHead`, `harness/run-checks.ts`, reading findings as `core/check/base-findings.ts` does for a scoped check):
+  red there with every finding the node printed, the check is green with its detail saying the red is the source's, and the
+  inherited findings are a `baseline-findings` event (step `command`, at the head) in the verify and the wave; a finding the
+  head lacks, or a head that is green, keeps it red, naming how many. Bench: `needs-relay-command-baseline` (and its
+  `own-finding` fault).
 - **A shared need's release never runs a key a hold keeps (tk-2607eb9c7960).** platform-http-ca was parked on
   config:root-package and held on open ticket tk-50ca764c5426; when the need resolved, its release retried the key as
   t-07e4bcc3 past the hold, and cancelling that retry discarded the key's kept patch. The release (`release` in
