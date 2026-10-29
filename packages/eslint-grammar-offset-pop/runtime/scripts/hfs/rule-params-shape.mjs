@@ -36,11 +36,7 @@ const formsOk = (v) => Array.isArray(v) && v.length > 0 && v.every((x) => FORM_N
 const doubleOk = (v) => isPlainObject(v) && /^[A-Za-z][A-Za-z0-9]*$/.test(String(v.double)) && formsOk(v.forms);
 const regexOk = (v) => { try { return typeof v === 'string' && v.length > 0 && Boolean(new RegExp(v)); } catch { return false; } };
 const dbExtensionsOk = (value) => Array.isArray(value) && value.every((name) => typeof name === 'string' && name.length > 0) && new Set(value).size === value.length;
-const SQL_NAME = /^[a-z_][a-z0-9_]*$/;
-const queueOutboxOk = (value) => isPlainObject(value) && Object.keys(value).sort(byCodeUnit).join() === 'columns,table'
-  && typeof value.table === 'string' && value.table.split('.').length === 2 && value.table.split('.').every((part) => SQL_NAME.test(part))
-  && nonemptyUniqueList(value.columns, (column) => SQL_NAME.test(String(column))) && value.columns.includes('queue');
-const DB_PARAMS = { extensions: dbExtensionsOk, queueOutbox: queueOutboxOk };
+const DB_PARAMS = { extensions: dbExtensionsOk };
 const dbParamsOk = (db) => db === undefined || (isPlainObject(db) && Object.entries(db).every(([key, value]) => Object.hasOwn(DB_PARAMS, key) && DB_PARAMS[key](value)));
 
 function beSpecificProblems(be, manifest) {
@@ -83,7 +79,7 @@ export function ruleParamsProblems(m) {
     if (!sideOk(rp.be, BE_OWN, ['schemaAuthority', 'lite', 'dbFunctions']) || (rp.be.schemaAuthority !== undefined && !SCHEMA_AUTHORITIES.includes(rp.be.schemaAuthority)) || !dbFunctionsOk(rp.be.dbFunctions, { bare: true }) || !liteOk(rp.be.lite, [...BE_OWN, ...SHARED_KEYS, 'schemaAuthority', 'dbFunctions'])) bad.push('ruleParams.be needs infraOwners, eventBus, specDoubles, paramNames, suffixes, bannedSuffixes, contractShape {helper}, unitRoles, logicRoles, thinRoles, patternScenarios, kindPatterns, addKinds and backing (shared parameters live in ruleParams.common, a side may override them); optional: schemaAuthority (' + SCHEMA_AUTHORITIES.join(' | ') + '), dbFunctions ([{name, reason}]: a pg built-in bare, every other function schema.name) and lite (overrides of the same keys)'); else bad.push(...unitRolesProblems(rp.be), ...roleListProblems(rp.be));
     bad.push(...beSpecificProblems(rp.be, m));
     if (rp.fe !== undefined && (!sideOk(rp.fe, [], ['lite']) || !liteOk(rp.fe.lite, SHARED_KEYS))) bad.push('ruleParams.fe may only restate the shared parameters of ruleParams.common, and carry a lite override of them');
-    if (!dbParamsOk(rp.db)) bad.push('ruleParams.db may contain only extensions (a list of unique non-empty extension names) and queueOutbox ({table: <schema>.<table>, columns: [unique column names including queue]})');
+    if (!dbParamsOk(rp.db)) bad.push('ruleParams.db may contain only extensions (a list of unique non-empty extension names)');
   }
   return bad;
 }

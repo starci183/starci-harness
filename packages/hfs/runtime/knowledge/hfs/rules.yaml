@@ -4310,22 +4310,21 @@ rules:
   - id: R258
     code: "DB_PGMQ_DECLARED"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes the db service lite's database and ruling:R212/case-10 moves the lite queue to Redis; the pgmq retirement and pg_cron ownership requirements apply to that backing."
+    editionWhy: "ruling:lite-pgmq-bus-bullmq-jobs makes pgmq in the db service the lite event bus while jobs run on BullMQ over the declared Redis; full's bus is Kafka."
     docs: [docs/microservices.md#r258]
-    templateNa: "Queue declarations and enqueue-only cron commands depend on product-owned work and are authored in its db migrations."
-    law: "DB_QUEUE_CRON: the queue is BullMQ on Redis (ruling:R212/case-10), so the active migrations leave no pgmq queue named by a queue constant under modules/queues; a pgmq queue a migration created for one is dropped by a later migration. Every pgmq queue the active migrations leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under platform/event-bus, every such constant has its pgmq queue, and pgmq objects are granted only to the application role while they exist. A pg_cron job belongs to a migration and only enqueues; its name is scheduled once while it is active, so a later migration schedules it again only after its own cron.unschedule of that name, and one tick function has one live job at a time. Its command, directly or through one enqueue-only *_tick function, inserts one row of a literal queue constant into the queue outbox table of ruleParams.db.queueOutbox, writing only its declared columns (the relay hands it to BullMQ). An app whose hfs.json sides.be.backing declares redis may declare its own outbox in sides.be.queueOutbox ({table, enqueue, queueParameter}); the command, or the tick, then calls the declared enqueue function with a literal queue constant for the declared parameter and pure other arguments, while the active definition of that function only inserts one row into the declared table with its queue column bound to that parameter (an ON CONFLICT DO NOTHING, a read of the declared table and pure expressions are the only other work). A direct insert into the app's outbox table, or any other function, stays refused. The job executes no business DML or HTTP request and shares no tick with an app scheduler. A pgmq.send validates only in the original body of a job an older migration scheduled while that queue existed; the live job and its current tick never enqueue that way. Removing a tick unschedules its job."
+    templateNa: "Topic queues and their bindings depend on product-owned consumer groups and are authored in its db migrations."
+    law: "DB_PGMQ_DECLARED: pgmq is the event bus and jobs run on BullMQ (ruling:lite-pgmq-bus-bullmq-jobs), so the active migrations leave no pgmq queue named by a queue constant under modules/queues; a pgmq queue a migration created for one is dropped by a later migration. Every pgmq queue the active migrations leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under platform/event-bus, every such constant has its pgmq queue, a topic binding (pgmq.bind_topic) names a literal pattern and a queue an earlier pgmq.create declared, no queue or binding is created by dynamic SQL or inside a function, and pgmq objects are granted only to the application role while they exist."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["DB_PGMQ_DECLARED", "DB_CRON_OWNED"]
+    failureCodes: ["DB_PGMQ_DECLARED"]
     enforcers:
       - {kind: hfs, id: db-queue-cron, at: scripts/hfs/rules/database-queues.mjs}
     proves:
-      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED, DB_CRON_OWNED]}
-      - {path: packages/hfs/src/hfs-queue-outbox-declaration.spec.mjs, edition: lite, codes: [DB_CRON_OWNED]}
+      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED]}
     exemplifiedBy:
-      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED, DB_CRON_OWNED]}
+      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED]}
     witness:
-      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED, DB_CRON_OWNED]}
+      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED]}
   - id: R259
     code: "DB_EXTENSION_ALLOWED"
     editions: [lite]
@@ -4701,7 +4700,7 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-full-fixtures.spec.mjs, edition: full}
   - id: R276
     code: "STACKS_LITE_SELFHOSTED_DB"
-    law: "Lite runs exactly one database, its db component of the image its managed db/Dockerfile builds (the digest-pinned official postgres image plus pgvector, ruling:lite-official-postgres-image) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector, ruling:lite-self-hosted-postgres-passport-minio). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
+    law: "Lite runs exactly one database, its db component of the image its managed .starcistacks/images/db/Dockerfile builds (the digest-pinned official postgres image plus pgvector, ruling:lite-official-postgres-image) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector, ruling:lite-self-hosted-postgres-passport-minio). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["STACKS_LITE_SELFHOSTED_DB", "STACKS_SIDECAR_VOLUME_UNDECLARED", "STACKS_SIDECAR_DB_UNSUPPORTED", "STACKS_LITE_REDIS_PERSISTENCE"]
@@ -5873,3 +5872,21 @@ rules:
         source: owner
         quote: "chạy postgresql thuần image chính chủ nhé ko phải supebase"
         ruling: "The lite db image carries no pg_cron, so recurring work moves to a Nest schedule tick of platform/jobs under an advisory lock and a minute claim (ruling lite-official-postgres-image)."
+  - id: R336
+    code: "BE_EVENT_BUS_LITE_SHAPE"
+    law: "On the lite event bus (pgmq, delivery at least once and unordered), every event payload type declares dedupeKey, the business key a consumer inbox claims as (consumer, dedupeKey), and a reactor subscribes with a *_TOPIC_QUEUE constant imported from platform/event-bus and literal options, so every subscription is static data. The payload type is a literal, EventPayload, or an interface or type alias of the event file that declares dedupeKey or extends EventPayload (ruling lite-pgmq-bus-bullmq-jobs)."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_EVENT_BUS_LITE_SHAPE"]
+    enforcers:
+      - {kind: eslint-be, id: event-dedupe-key}
+      - {kind: eslint-be, id: event-subscription-static}
+    editions: [lite]
+    docs: [contexts/code/be/event-bus.md]
+    proves:
+      - packages/eslint-canon-be/src/event-bus-lite.spec.ts
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/inbox/delivery-recorded.event.ts.tpl, edition: lite}
+      - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}
+    witness:
+      - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}

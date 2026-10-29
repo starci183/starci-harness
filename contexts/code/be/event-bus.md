@@ -29,14 +29,16 @@ nothing publishes to the broker directly. No in-process transport exists; unit s
 The correlation id (BE-LOGGING-4) is validated before SQL, stored in the outbox `correlation_id` column and authoritative in the
 outbound metadata. A delivery whose metadata is absent may derive its root id from a bounded, safe event id only when the envelope
 has the basic shape, and is promoted to explicit metadata before execution, retry or dead letter; present malformed metadata is
-rejected. In lite the broker is one queue per consumer group of a topic (`<service>__<event>__<group>`, created by a
-migration, named by a literal constant of `platform/event-bus`, granted only to the application role), or by in-process delivery
-after commit for a back end with a single api app; publish, outbox, inbox and consumers are unchanged.
+rejected. In lite the broker is pgmq in the db service and there is no outbox or relay (ruling `lite-pgmq-bus-bullmq-jobs`):
+`publish` sends the envelope once to the pgmq topic of the event's name with `event_bus_send` on the transaction's connection,
+so the send commits or rolls back with the change, and pgmq copies it into every consumer queue bound to that name (BE-EVENT-BUS-6).
+The application role reaches pgmq only through the security-definer `event_bus_*` functions of the bus migration, listed in
+`ruleParams.be.dbFunctions`. Jobs never ride on pgmq: they are BullMQ (BE-QUEUES-1).
 
-Why: the outbox row commits with the change, so a rolled-back change never emits and a committed one is never lost; the broker
-gives ordered, replayable, cross-service delivery.
+Why: the outbox row (the pgmq message in lite) commits with the change, so a rolled-back change never emits and a committed one
+is never lost; the broker gives ordered, replayable, cross-service delivery.
 
-Enforced by: R152 BE_OUTBOX_WRITE_TX, R90 BE_INFRA_OWNER, R258 DB_PGMQ_DECLARED.
+Enforced by: R152 BE_OUTBOX_WRITE_TX, R90 BE_INFRA_OWNER, R258 DB_PGMQ_DECLARED, R334 BE_PERSISTENCE_NO_RAW_SQL.
 
 ## BE-EVENT-BUS-4 A consumer is a thin door; delivery is at least once with retry and dead letter
 A consumer is `transport/message/<event>.consumer.ts` implementing `EventConsumer<E>` with `readonly event = <Event>Event`;
@@ -44,7 +46,7 @@ A consumer is `transport/message/<event>.consumer.ts` implementing `EventConsume
 claims the event first (BE-IDEMPOTENCY-1). A throw schedules a retry with exponential backoff on `events.<service>.retry`; after the
 event's attempts the message goes to `events.<service>.dlq`, which an operator reads and requeues through `eventBus.deadLetters(event)`
 and `eventBus.requeue(id)` from a cli command; `eventBus.pendingRetries(event)` lets a failure-injection spec wait for a retry. The
-retry budget fits the consumer's side effects.
+retry budget fits the consumer's side effects. Lite's consumer loop, dedupe key and dead letter are BE-EVENT-BUS-6.
 
 Why: delivery repeats and fails; a thin door keeps the decision in the domain and a dead letter keeps a poison message from blocking
 the topic.
@@ -59,3 +61,29 @@ nothing is relayed for a rollback, a failing consumer is retried then buried, an
 Why: delivery behaviour is invisible to a linter; a real broker run is the only proof.
 
 Enforced by: R155 BE_PATTERN_SPEC_MISSING, R284 BE_LITE_PROOF_LANE_MISSING.
+
+## BE-EVENT-BUS-6 Lite fans out on pgmq topics, dedupes on a business key and parks poison per consumer
+Lite (ruling `lite-pgmq-bus-bullmq-jobs`):
+
+- Fan-out is pgmq's own topic routing. Each consumer of an event has one queue `<topic>__<consumer>` (the event name with dots
+  and dashes as underscores, then the consumer; at most 41 characters so its dead-letter queue fits pgmq's 47), named by a literal
+  `<TOPIC>_<CONSUMER>_TOPIC_QUEUE` constant of `platform/event-bus`. The reactor's migration creates the queue and its
+  dead-letter queue `<topic>__<consumer>__dead` and binds the queue to the event's name with `pgmq.bind_topic`; publish sends
+  once. A reactor subscribes with that constant and literal options (`subscribe(QUEUE, consumer, { maxDeliveries })`), so the
+  subscriptions are static data.
+- Every event payload carries `dedupeKey`, the business identity of the fact (an order id, a receipt id), stable across
+  redelivery and replay. The service the consumer's command reaches claims `(delivery.consumer, delivery.dedupeKey)` in the inbox
+  in the transaction of its effect (BE-IDEMPOTENCY-1), so a redelivery changes nothing twice.
+- The read loop of `platform/event-bus` (`EventConsumerService`, started at application bootstrap and stopped at shutdown; no
+  tick, so no scheduler, BE-JOBS-6) reads a bounded batch of each consumer queue with a visibility timeout. A handled message is
+  archived; a throw leaves it to reappear when the timeout lapses; a message read more than the consumer's `maxDeliveries`
+  (default 5), or with a malformed envelope or dedupe key, moves to `<queue>__dead` while the original is archived, and the move is
+  logged with the event and the consumer. An operator reads and replays it through `eventBus.deadLetters(queue, limit)` and
+  `eventBus.requeue(queue, id)`.
+- Delivery is unordered: two events of one aggregate may arrive in either order and either may repeat, so a reactor reads the
+  current state it acts on instead of trusting the order of events.
+
+Why: pgmq gives each consumer its own cursor and dead letter without a relay; a business key survives the replays a message id does
+not; a poison message parked per consumer blocks no other consumer.
+
+Enforced by: R258 DB_PGMQ_DECLARED, R336 BE_EVENT_BUS_LITE_SHAPE, R80 BE_INBOX_DEDUPE_MISSING.

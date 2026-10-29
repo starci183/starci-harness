@@ -158,7 +158,7 @@ files:
 liteAdapter:
   summary: >-
     Under lite a reactor is unchanged: a thin consumer of another context's events that dispatches one command. Its deliveries
-    come from the lite event bus (its own pgmq queue per consumer group).
+    come from the lite event bus (its own pgmq queue per consumer group, bound to the event's topic).
   ports:
     - {port: EventConsumer delivery, adapter: "the reactor's pgmq queue (see event-bus.yaml liteAdapter)"}
   proof: >-

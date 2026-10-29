@@ -50,6 +50,9 @@ Two kinds, named by the project:
   base images in [stack/pins.yaml](../stack/pins.yaml) `images`), secrets are versioned external Swarm secrets, and
   every service declares healthcheck, placement and rollout (R266, R267, R294).
 
+Beside the environments, a lite app keeps the managed Dockerfile of its db image at `images/db/Dockerfile` (slot
+`app.db.image`, ruling `lite-db-image-in-stacks`); `images/` is no environment and holds no custody.
+
 Each environment has its own `README.md`, the runbook: the operations of PROJECT-STACKS-6 with the project's real
 commands, the components it binds, its secret custody and its data custody (which volumes are authoritative, which are
 rebuildable).

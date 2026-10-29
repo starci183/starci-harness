@@ -107,7 +107,7 @@ with their attributes and no password, their memberships, their allowed role set
 bootstrap creates and the database-wide default privileges, none of which a per-database dump keeps; `starci app sync` judges and keeps
 the rest of the file), `db/seed.sql` (the rows of `--seed-tables`, `insert ... on conflict do nothing` in foreign-key order with their
 sequences set; a table without a primary key or unique constraint is refused) and moves the chain to `db/migrations/archive/`. Before
-writing, a scratch container of the app's db image (built from `db/Dockerfile`, or `--image`) replays bootstrap, baseline and seed (the
+writing, a scratch container of the app's db image (built from `.starcistacks/images/db/Dockerfile`, or `--image`) replays bootstrap, baseline and seed (the
 seed twice); the same projection read from the replay must equal the source's, or the verb refuses with the differences. Docker runs every
 PostgreSQL client, so the host needs none. Without `--apply` it writes nothing.
 

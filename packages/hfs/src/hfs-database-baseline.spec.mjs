@@ -279,13 +279,14 @@ for (const edition of ['lite', 'full']) {
     const tickCommand = 'select public.events_tick();';
     const role = 'create role app_be nologin noinherit nosuperuser nobypassrls nocreatedb nocreaterole;';
     const tickSql = "create function public.events_tick() returns void language sql as $$insert into public.queue (queue, payload, created_at) values ('sweep', '{}'::jsonb, now());$$;";
-    const initialSql = `${role}\nselect pgmq.create('events');\ngrant select, insert on pgmq.q_events to app_be;\n${tickSql}\nselect cron.schedule('events-tick', '* * * * *', '${tickCommand}');\n`;
-    // The pgmq queue is an event-bus topic queue; the tick enqueues through the queue outbox (ruling:R212/case-10).
+    const initialSql = `${role}\nselect pgmq.create('events');\nselect pgmq.create('events__dead');\ngrant select, insert on pgmq.q_events to app_be;\n${tickSql}\nselect cron.schedule('events-tick', '* * * * *', '${tickCommand}');\n`;
+    // The pgmq queue is an event-bus topic queue with its dead-letter queue (ruling:lite-pgmq-bus-bullmq-jobs); the tick enqueues through the queue outbox.
+    const deadQueues = [{ name: 'events' }, { name: 'events__dead' }];
     const topic = 'be/src/modules/platform/event-bus/event-bus.contracts.ts';
     const queue = 'be/src/modules/queues/sweep/sweep.queue.ts';
     const contents = { [old]: initialSql, [topic]: "export const EVENTS_TOPIC_QUEUE = 'events';\n", [queue]: "export const SWEEP_QUEUE = 'sweep';\n" };
     const root = fixture(edition, contents);
-    const inventories = remoteInventory(root, { cron: [{ name: 'events-tick', schedule: '* * * * *', commandHash: createHash('sha256').update(tickCommand).digest('hex'), active: true }], vault: [] });
+    const inventories = remoteInventory(root, { queues: deadQueues, cron: [{ name: 'events-tick', schedule: '* * * * *', commandHash: createHash('sha256').update(tickCommand).digest('hex'), active: true }], vault: [] });
     const query = inventories.ports.runPostgres;
     inventories.ports.runPostgres = (cwd, op) => op.kind === 'query' ? query(cwd, op) : { status: 0, stdout: op.kind === 'dump' ? tickSql : '' };
     assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], inventories.ports), 0, inventories.err.join(''));
@@ -298,7 +299,7 @@ for (const edition of ['lite', 'full']) {
     const all = [baseline, retired, topic, queue];
     assert.deepEqual(databaseQueuesFindings({ repoRoot: root, all, files: all, repo: { kind: 'app', edition }, inScope: () => true }), []);
     assert.deepEqual(judge(root, edition, { [baseline]: sql, [retired]: initialSql }, history({ [old]: initialSql })), []);
-    const planned = remoteInventory(root, { migrations: [{ version: replacement }], cron: [{ name: 'events-tick', schedule: '* * * * *', commandHash: createHash('sha256').update(tickCommand).digest('hex'), active: true }], vault: [] });
+    const planned = remoteInventory(root, { migrations: [{ version: replacement }], queues: deadQueues, cron: [{ name: 'events-tick', schedule: '* * * * *', commandHash: createHash('sha256').update(tickCommand).digest('hex'), active: true }], vault: [] });
     assert.equal(dbPlanMain(['--json'], planned.ports), 0, planned.err.join(''));
   });
 

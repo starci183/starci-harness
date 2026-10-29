@@ -1827,17 +1827,6 @@ DB_BASELINE_SHAPE:
 
 
 
-DB_CRON_OWNED:
-  title: "A uniquely owned migration cron job only enqueues through the queue outbox"
-  title_vi: "Lịch pg_cron thiếu chủ sở hữu hoặc thực hiện nghiệp vụ"
-  meaning_vi: "Tên lịch bị trùng, hằng hàng đợi hoặc hàm tick không tồn tại, lệnh thực hiện DML nghiệp vụ hay HTTP thay vì chỉ chèn một dòng của hằng hàng đợi vào bảng outbox của ruleParams.db.queueOutbox (chỉ các cột đã khai báo), lịch đang chạy vẫn gọi pgmq.send, hoặc cùng tick còn được lập lịch ở ứng dụng."
-  causes_vi:
-    - "Vi phạm R258: pg_cron chỉ đưa việc vào hàng đợi qua outbox, mỗi tick có đúng một nơi lập lịch và được hủy lịch khi loại bỏ."
-    - "Lịch đang chạy (hoặc tick hiện tại của nó) vẫn gửi bằng pgmq.send; pgmq.send chỉ hợp lệ trong thân gốc của lịch cũ."
-  nextStep_vi: "Đặt lịch trong migration với tên duy nhất, chèn đúng một dòng của hằng hàng đợi vào outbox hàng đợi (trực tiếp hoặc qua một hàm *_tick chỉ làm việc đó), bỏ lịch trùng và gọi cron.unschedule khi xóa tick."
-  owner: op-retry
-  kind: check-finding
-
 DB_DEFINER_REVOKE:
   title: "Exposed security definer functions revoke browser execution"
   title_vi: "Function security definer chưa thu hồi quyền trình duyệt"
@@ -1909,14 +1898,14 @@ DB_MIGRATION_SHAPE:
   kind: check-finding
 
 DB_PGMQ_DECLARED:
-  title: "A queue constant keeps a pgmq queue, a pgmq queue has no event-bus owner, or a pgmq object is declared or granted unsafely"
-  title_vi: "Hằng hàng đợi còn hàng đợi pgmq, hàng đợi pgmq không có chủ event-bus, hoặc đối tượng pgmq khai báo hay cấp quyền sai"
-  meaning_vi: "Hàng đợi là BullMQ trên Redis (ruling:R212/case-10), nhưng các migration đang hoạt động vẫn để lại một hàng đợi pgmq trùng tên một hằng hàng đợi trong modules/queues, hoặc một hàng đợi pgmq không được hằng literal *_TOPIC_QUEUE nào trong platform/event-bus đặt tên (hay một hằng như vậy không có hàng đợi pgmq); hoặc pgmq.create không có tên literal trong migration, tên hằng không phải literal, hay quyền trên đối tượng pgmq vượt vai trò ứng dụng."
+  title: "A queue constant keeps a pgmq queue, a pgmq queue has no event-bus owner, or a pgmq queue, binding or grant is declared unsafely"
+  title_vi: "Hằng hàng đợi còn hàng đợi pgmq, hàng đợi pgmq không có chủ event-bus, hoặc hàng đợi, liên kết topic hay quyền pgmq khai báo sai"
+  meaning_vi: "pgmq là event bus và job chạy trên BullMQ (ruling:lite-pgmq-bus-bullmq-jobs), nhưng các migration đang hoạt động vẫn để lại một hàng đợi pgmq trùng tên một hằng hàng đợi trong modules/queues, hoặc một hàng đợi pgmq không được hằng literal *_TOPIC_QUEUE nào trong platform/event-bus đặt tên (hay một hằng như vậy không có hàng đợi pgmq); hoặc pgmq.create hay pgmq.bind_topic không có tên literal trong migration, liên kết một hàng đợi chưa được tạo, tên hằng không phải literal, hay quyền trên đối tượng pgmq vượt vai trò ứng dụng."
   causes_vi:
-    - "Vi phạm R258: hàng đợi của app vẫn chạy trên Supabase Queues (pgmq) thay vì BullMQ trên Redis."
-    - "Một hàng đợi pgmq bị bỏ lại hoặc đổi tên mà không có chủ event-bus."
+    - "Vi phạm R258: một job của app chạy trên pgmq thay vì BullMQ trên Redis."
+    - "Một hàng đợi pgmq bị bỏ lại hoặc đổi tên mà không có chủ event-bus, hoặc một liên kết topic trỏ tới hàng đợi chưa tạo."
     - "Migration, mã nguồn hoặc quyền truy cập khai báo đối tượng pgmq ngoài migration tĩnh hoặc cho vai trò khác vai trò ứng dụng."
-  nextStep_vi: "Chuyển hàng đợi sang BullMQ trên Redis đã khai báo, rồi xóa hàng đợi pgmq bằng pgmq.drop_queue trong một migration mới; hàng đợi topic của event bus được đặt tên bằng một hằng literal *_TOPIC_QUEUE trong platform/event-bus; chỉ cấp quyền trên q_<queue>, a_<queue> cho vai trò ứng dụng."
+  nextStep_vi: "Chuyển job sang BullMQ trên Redis đã khai báo, rồi xóa hàng đợi pgmq bằng pgmq.drop_queue trong một migration mới; hàng đợi của một nhóm consumer được đặt tên bằng một hằng literal *_TOPIC_QUEUE trong platform/event-bus, tạo bằng pgmq.create rồi liên kết với tên event bằng pgmq.bind_topic trong cùng migration; vai trò ứng dụng đi qua các hàm event_bus_* thay vì nhận quyền trên schema pgmq."
   owner: op-retry
   kind: check-finding
 
@@ -5598,6 +5587,17 @@ BE_PERSISTENCE_NO_RAW_SQL:
   causes_vi:
     - "Vi phạm R334: dữ liệu của app lite đi qua entity TypeORM trên EntityManager (find, save, update, upsert, createQueryBuilder)."
   nextStep_vi: "Khai entity ở persistence/entities/<table>.entity.ts và đọc/ghi bằng EntityManager hoặc createQueryBuilder với tham số có tên; hàm pg/SECURITY DEFINER không diễn đạt được thì khai vào rawSqlFunctions kèm lý do."
+  owner: op-retry
+  kind: check-finding
+
+BE_EVENT_BUS_LITE_SHAPE:
+  title: "A lite event payload without dedupeKey, or a subscription that is not static"
+  title_vi: "Payload event của bản lite thiếu dedupeKey, hoặc đăng ký consumer không tĩnh"
+  meaning_vi: "File `<path>` khai một event (lớp kế thừa BaseEvent trong modules/events) mà kiểu payload không có `dedupeKey`, hoặc gọi `subscribe` với tên hàng đợi không phải hằng `*_TOPIC_QUEUE` import từ `@modules/platform/event-bus`, hay với options không phải object literal của giá trị literal."
+  causes_vi:
+    - "Vi phạm R336: event bus pgmq giao ít nhất một lần và không theo thứ tự, nên inbox của consumer claim (consumer, dedupeKey); thiếu dedupeKey thì không khử trùng được."
+    - "Một đăng ký tính tên hàng đợi lúc chạy, nên không ai thấy được nó trong hằng và migration (R258)."
+  nextStep_vi: "Thêm `readonly dedupeKey: string` (khoá nghiệp vụ, như id đơn hàng) vào kiểu payload hoặc kế thừa `EventPayload`; khai hằng `<TOPIC>_<CONSUMER>_TOPIC_QUEUE` trong platform/event-bus, tạo hàng đợi, hàng đợi `__dead` và bind_topic trong migration, rồi subscribe bằng hằng đó."
   owner: op-retry
   kind: check-finding
 

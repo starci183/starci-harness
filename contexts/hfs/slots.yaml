@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.12.0
+version: 3.13.0
 presenceValues:
   - required
   - optional
@@ -229,13 +229,7 @@ ruleParams:
       - uuid-ossp
       - unaccent
       - btree_gist
-    queueOutbox:
-      table: public.queue
-      columns:
-        - queue
-        - payload
-        - created_at
-        - correlation_id
+      - pgmq
   common:
     fileLines:
       soft: 500
@@ -790,7 +784,12 @@ ruleParams:
       - {name: public.inbox_claim_client, reason: "platform/inbox (add webhook, lite): the client claim upsert returning its committed outcome"}
       - {name: public.inbox_save_client_outcome, reason: "platform/inbox (add webhook, lite): the saved client outcome"}
       - {name: public.inbox_sweep_clients, reason: "platform/inbox (add webhook, lite): the bounded retention sweep FOR UPDATE SKIP LOCKED"}
-      - {name: public.event_bus_write, reason: "platform/event-bus (add webhook, lite): the typed envelope insert of the outbox"}
+      - {name: public.event_bus_send, reason: "platform/event-bus (add webhook, lite): the send of a typed envelope to its pgmq topic in the publisher's transaction"}
+      - {name: public.event_bus_read, reason: "platform/event-bus (add webhook, lite): a consumer's pgmq read with a visibility timeout"}
+      - {name: public.event_bus_archive, reason: "platform/event-bus (add webhook, lite): the archive of a handled message"}
+      - {name: public.event_bus_bury, reason: "platform/event-bus (add webhook, lite): the move of an exhausted or malformed message to its consumer's dead-letter queue"}
+      - {name: public.event_bus_dead_letters, reason: "platform/event-bus (add webhook, lite): the operator read of a consumer's dead-letter queue"}
+      - {name: public.event_bus_requeue, reason: "platform/event-bus (add webhook, lite): the operator requeue of one dead letter"}
     lite:
       schemaAuthority: sql
       infraOwners:
@@ -1264,6 +1263,7 @@ slots:
         - application-stacks.yaml
       allows:
         - application-stacks.yaml
+        - images/db/Dockerfile
         - <env>/README.md
         - <env>/environment.json
         - <env>/infra/swarm/**
@@ -1397,7 +1397,7 @@ slots:
       - app
     editions:
       - lite
-    path: db/Dockerfile
+    path: .starcistacks/images/db/Dockerfile
     presence: required
     tracked: tracked
     managedBy: db-image
@@ -2501,7 +2501,7 @@ slots:
   - id: be.platform.event-bus
     profiles:
       - be
-    editionWhy: lite implements the event ports with outbox and pgmq; full uses its Kafka adapter.
+    editionWhy: lite implements the event ports on pgmq; full uses its Kafka adapter.
     path: src/modules/platform/event-bus/
     presence: opt-in
     pattern: event-bus
@@ -2509,11 +2509,11 @@ slots:
     tier: platform
     owner: true
     lite:
-      why: "the same EventPublisher and EventConsumer ports on pgmq queues: the outbox relay
-        sends each committed row to the pgmq queue of every consumer group of its topic through the
-        shared EntityManager, a consumer reads with a visibility timeout, retries by letting it
-        lapse and archives the message on dead letter (read_ct over the budget); a single api may
-        deliver in process. No Kafka (contexts/code/be/event-bus.yaml liteAdapter)"
+      why: "the EventBus and EventConsumer ports on pgmq (ruling lite-pgmq-bus-bullmq-jobs): publish
+        sends the envelope to its topic in the publisher's transaction, so no outbox or relay runs; each consumer
+        group reads its own queue bound to the event's name with a visibility timeout, archives a handled message,
+        lets a failed one reappear and buries one past its maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ
+        (platform/queue). No Kafka (contexts/code/be/event-bus.md)"
     requires:
       - index.ts
       - event-bus.module.ts

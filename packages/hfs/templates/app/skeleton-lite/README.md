@@ -8,7 +8,7 @@ The starter keeps one deployable API and one web app, with the same code structu
 
 ## Stack
 
-TypeScript everywhere, NestJS in `be/`, Next.js with next-intl in `fe/`, PostgreSQL (the `db` service: the official postgres image plus pgvector, built from `db/Dockerfile`), Passport for Google and password sign-in, S3-compatible storage (MinIO), npm workspaces, and Turbo for front-end tasks.
+TypeScript everywhere, NestJS in `be/`, Next.js with next-intl in `fe/`, PostgreSQL (the `db` service: the official postgres image plus pgvector, built from `.starcistacks/images/db/Dockerfile`), Passport for Google and password sign-in, S3-compatible storage (MinIO), npm workspaces, and Turbo for front-end tasks.
 
 ## Repository layout
 
@@ -24,7 +24,7 @@ Declare `ci.github.repository` and `ci.github.defaultBranch` in `.starcistacks/a
 
 ## Development
 
-Every development dependency runs in Docker Linux containers. Create the local database once with `npm run db:create`, start it with `npm run db:start` (one container of the image `db/Dockerfile` builds, on 127.0.0.1:54322), export `DATABASE_URL=postgresql://postgres@127.0.0.1:54322/postgres` and apply `db/bootstrap.sql` and the migrations with `npm run db:push`; start any other declared dependency through its managed `<dep>:create`, `<dep>:start` and `<dep>:stop` scripts or the declared container model. Compose is an implementation detail. Configure the local environment and start the API and web app using the package scripts for the declared development profile. In production, the app and its dependencies, the database included, run on Docker Swarm; pgvector owns vector search.
+Every development dependency runs in Docker Linux containers. Create the local database once with `npm run db:create`, start it with `npm run db:start` (one container of the image `.starcistacks/images/db/Dockerfile` builds, on 127.0.0.1:54322), export `DATABASE_URL=postgresql://postgres@127.0.0.1:54322/postgres` and apply `db/bootstrap.sql` and the migrations with `npm run db:push`; start any other declared dependency through its managed `<dep>:create`, `<dep>:start` and `<dep>:stop` scripts or the declared container model. Compose is an implementation detail. Configure the local environment and start the API and web app using the package scripts for the declared development profile. In production, the app and its dependencies, the database included, run on Docker Swarm; pgvector owns vector search.
 
 ```sh
 npm install

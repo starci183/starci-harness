@@ -98,12 +98,11 @@ rules:
         write: 'order-expiry.queue.ts declares scheduler { every: 5 minutes } for the expire-orders job; the processor dispatches ExpireOrdersCommand.'
       - id: case-2
         when: A lite app sends booking reminders every fifteen minutes
-        write: "A migration declares private.booking_reminder_tick() as one insert into public.queue (queue, payload, created_at) values ('booking_reminder', jsonb_build_object('tick', true), now()) and schedules it with cron.schedule('booking_reminder_tick', '*/15 * * * *', ...); the send-reminder processor is the queue's."
+        write: "platform/jobs declares a booking_reminder tick every fifteen minutes (BE-JOBS-6): each firing claims its slot and writes one booking_reminder row through the queue outbox; the send-reminder processor is the queue's."
     verification:
       automated:
         - BE_INFRA_OWNER
         - DB_PGMQ_DECLARED
-        - DB_CRON_OWNED
       manual:
         - Confirm the cadence and the job's idempotence.
     relatedExamples: [queue]
@@ -277,7 +276,7 @@ liteAdapter:
     its append-only file (WAITAOF) and still holds it, so a job Redis loses inside the at most one second fsync window leaves
     its row waiting and is added again; that is why a lite queue does not lose a job. Without a declared Redis there is no queue
     pattern: the work is a direct call inside the request, or a declared replicated-job running a cli command. pgmq
-    is not a queue transport. `starci app add queue|job` writes this adapter in a lite app, with the outbox and job
+    is the event bus, not a queue transport (ruling:lite-pgmq-bus-bullmq-jobs). `starci app add queue|job` writes this adapter in a lite app, with the outbox and job
     tables as one db migration, the Redis declaration and the persisted Redis of every docker-swarm environment.
   ports:
     - {port: QueueOutbox (platform/queue), adapter: "the outbox row written through the caller's tx by queue_write, and the relay's queue_waiting and queue_mark_sent, functions of the queue migration in db/migrations called through callDbFunction of platform/database (R334)"}

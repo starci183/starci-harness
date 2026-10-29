@@ -3,7 +3,7 @@
 // maps tables that already exist and can drift from them. The verb builds TypeORM's metadata from the app's entity list
 // (be/src/modules/platform/database/entities.ts, compiled in-process with the app's own typescript and loaded with the app's own typeorm) through a
 // DataSource that never connects, applies the migrations to a scratch database (a throwaway container of the image the app's managed
-// db/Dockerfile builds, or the empty database named by --url-env), reads that schema from
+// .starcistacks/images/db/Dockerfile builds, or the empty database named by --url-env), reads that schema from
 // information_schema.columns and pg_catalog, and reports every entity column whose table or column is missing, whose type differs (both
 // normalised to PostgreSQL's format_type names) or whose nullability differs, under BE_ENTITY_SCHEMA_DRIFT. Database columns no entity maps
 // are fine. Exit 0 is green, 1 is drift (or a migration that does not apply to an empty database), 2 is a refusal: no verdict, which is
@@ -16,7 +16,7 @@ import { runVerb } from '../release/index.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
 import { firstLine, tool } from '../stack/context.mjs';
 import { ENTITY_LIST, hasEntityList } from './entity-list.mjs';
-import { DB_DOCKERFILE } from './image.mjs';
+import { DB_DOCKERFILE, DB_IMAGE_CONTEXT } from './image.mjs';
 import { BOOTSTRAP_FILE } from '../runtime/scripts/hfs/rules/database-constants.mjs';
 
 export { BOOTSTRAP_FILE };
@@ -145,15 +145,15 @@ export function migrationFiles(root) {
 }
 
 /**
- * Builds the app's db image from db/Dockerfile and starts a throwaway container of it on a loopback port; returns { connection, stop }.
- * Docker missing or failing is no verdict; an app without db/Dockerfile is refused (sync writes it).
+ * Builds the app's db image from its managed Dockerfile (DB_DOCKERFILE) and starts a throwaway container of it on a loopback port;
+ * returns { connection, stop }. Docker missing or failing is no verdict; an app without that Dockerfile is refused (sync writes it).
  */
 function startScratch(ctx, root) {
   if (!fs.existsSync(path.join(root, DB_DOCKERFILE))) throw refusal('DB_DRIFT_NO_IMAGE', `${DB_DOCKERFILE} is missing: run "npx starci app sync --write" (the scratch database runs the app's own db image) or pass --url-env`);
   const docker = (args, env) => tool(ctx, 'docker', args, { env: { ...ctx.env, ...env } });
   const probe = docker(['version', '--format', '{{.Server.Version}}']);
   if (probe.error || probe.status !== 0) throw needsDatabase('Docker is not available on this host; start it, or pass --url-env naming an empty database');
-  const build = docker(['build', '--quiet', '--file', path.join(root, DB_DOCKERFILE), path.join(root, 'db')]);
+  const build = docker(['build', '--quiet', '--file', path.join(root, DB_DOCKERFILE), path.join(root, DB_IMAGE_CONTEXT)]);
   const image = /sha256:[a-f0-9]{64}/u.exec(String(build.stdout ?? ''))?.[0];
   if (build.status !== 0 || !image) throw needsDatabase(`docker could not build ${DB_DOCKERFILE}: ${firstLine(build.stderr)}`);
   const password = randomBytes(18).toString('hex');

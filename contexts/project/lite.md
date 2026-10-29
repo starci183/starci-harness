@@ -15,15 +15,17 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 ## Backing services
 
 - PostgreSQL is self-hosted: the `db` service in Docker in dev and on the Swarm stack in production, migrated by
-  `starci app db migrate --url-env <NAME>`. Its image is the managed `db/Dockerfile`: the Docker Official `postgres` image
-  pinned by digest plus pgvector from PGDG, so its extensions are pgvector and the image's contrib set (pgcrypto, pg_trgm,
-  unaccent, uuid-ossp, btree_gist), with no pg_cron, pg_net or supabase_vault; the local container (`npm run
-  db:create`), the drift scratch database and the release image all build that file. An allowed extension is created
-  `with schema extensions`, the schema the managed `db/bootstrap.sql` creates with USAGE for its roles, and the app role's
-  search_path is `public, extensions`, so a migration may name `extensions.vector` or set its function's search_path to `''`. Identity is the app's own Passport
+  `starci app db migrate --url-env <NAME>`. Its image is the managed `.starcistacks/images/db/Dockerfile`: the Docker Official `postgres` image
+  pinned by digest plus pgvector from PGDG and pgmq from its pinned release (verified by sha256), so its extensions are
+  pgvector, pgmq and the image's contrib set (pgcrypto, pg_trgm, unaccent, uuid-ossp, btree_gist), with no pg_cron, pg_net
+  or supabase_vault; the local container (`npm run db:create`), the drift scratch database and the release image all build
+  that file. An allowed extension is created `with schema extensions`, the schema the managed `db/bootstrap.sql` creates
+  with USAGE for its roles, and the app role's search_path is `public, extensions`, so a migration may name
+  `extensions.vector` or set its function's search_path to `''`; pgmq is the one exception, since its control file fixes
+  its own schema `pgmq` (`create extension pgmq`, never `with schema extensions`). Identity is the app's own Passport
   integration and storage the S3-compatible MinIO of the host. Owners: slots `app.db*` and `ruleParams.db.extensions` in
-  [hfs/slots.yaml](../hfs/slots.yaml); rulings `lite-self-hosted-postgres-passport-minio` and
-  `lite-official-postgres-image`; the `postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
+  [hfs/slots.yaml](../hfs/slots.yaml); rulings `lite-self-hosted-postgres-passport-minio`,
+  `lite-official-postgres-image` and `lite-pgmq-bus-bullmq-jobs`; the `postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
 - Redis is the only declarable backing service (`sides.be.backing`), run durably; vectors use pgvector in the db service,
   so no Qdrant. Owners: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml); ruling `lite-vector-is-pgvector`;
   R276.
@@ -39,11 +41,10 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 - Identity is the app's own: Google OAuth and email and password through Passport, its own access tokens verified
   against its own JWKS, a rotating httpOnly refresh cookie, and a front end that holds no credential. Owners: R328 to
   R330; [code/be/api-auth.md](../code/be/api-auth.md); [code/fe/transport.md](../code/fe/transport.md) FE-AUTH.
-- The event bus is the outbox on pgmq topics or in-process delivery, not Kafka. Owners: slot `be.platform.event-bus`;
-  [code/be/event-bus.md](../code/be/event-bus.md) BE-EVENT-BUS-3.
-- Open: pgmq topics need the pgmq extension, which the db image does not carry (ruling `lite-official-postgres-image`),
-  so until the owner rules between a delivery on BullMQ, on the app's own tables or in process only, a lite event bus
-  delivers in process.
+- The event bus is pgmq, not Kafka: a publish sends the event to its pgmq topic in the publisher's transaction, and each
+  consumer group reads its own queue with a visibility timeout; jobs stay on BullMQ. Owners: ruling
+  `lite-pgmq-bus-bullmq-jobs`; slot `be.platform.event-bus`; R258; [code/be/event-bus.md](../code/be/event-bus.md)
+  BE-EVENT-BUS-3, -4.
 - A recurring task is a tick of `platform/jobs`, fired by `@nestjs/schedule` in the back end and enqueued once per
   minute for the whole deployment. Owners: R335; [code/be/jobs.md](../code/be/jobs.md) BE-JOBS-6.
 - Jobs and projections keep their tables in db migrations. Owners: slots `be.platform.jobs`, `be.projections`.
@@ -94,11 +95,11 @@ optional `db` block (`forceRls`, `appRole`), set every connection's `provider` t
 (it renders `db/bootstrap.sql`, the db scripts, codegen and CI, and removes a leftover `supabase/types/`); restore the
 data with `starci app db migrate --url-env DATABASE_URL --execute` on an empty database after `pg_restore` of the hosted
 dump, which keeps the `supabase_migrations.schema_migrations` history the migrate verb reads. On hfs 4.11 the db service
-moves to the official image: `npx starci app sync --write` writes `db/Dockerfile` and the db scripts, the stack's db
+moves to the official image: `npx starci app sync --write` writes `.starcistacks/images/db/Dockerfile` (ruling `lite-db-image-in-stacks`; it removes a `db/Dockerfile` an earlier sync wrote) and the db scripts, the stack's db
 component and service take the app's own `db` image (`deploy.images.db: {app: db}`, pushed with the release), and a
 migration that needs what the Supabase image carried is rewritten in a new forward migration: a `pg_net` call becomes an
 outbound call of the back end through its integration (BE-INFRA-2), a `pgmq` queue becomes a BullMQ queue of
-`platform/queue` (an event-bus topic stays open, above), a `pg_cron` job becomes a `platform/jobs` tick (BE-JOBS-6),
+`platform/queue` (an event-bus topic stays on pgmq, above), a `pg_cron` job becomes a `platform/jobs` tick (BE-JOBS-6),
 and the `supabase_realtime` publication is dropped; the `extensions` schema stays. Owners: R332; rulings
 `lite-self-hosted-postgres-passport-minio` and `lite-official-postgres-image`.
 

@@ -204,6 +204,7 @@ const checkStackEntry=(entry,environmentNames,add,{stacksRoot,lite})=>{
   if(!entry.isDirectory()||entry.isSymbolicLink())return;
   if(entry.name==='tmp'){add('STACKS_SCRATCH_IN_CANONICAL',`${STACKS_DIR}/tmp`,'scratch belongs in the OS temp directory, not a tracked .starcistacks/tmp');return;}
   if(entry.name==='k8s')return;
+  if(lite&&entry.name==='images')return; // the managed db image (slot app.db.image, ruling lite-db-image-in-stacks), no environment
   if(lite&&liteCustodyDirectory(path.join(stacksRoot,entry.name)))return;
   if(!environmentNames.has(entry.name))add('STACKS_UNDECLARED_ENVIRONMENT',`${STACKS_DIR}/${entry.name}`,`${entry.name} is not an environment the declaration admits; either the declaration admits it or it is not an environment`);
 };

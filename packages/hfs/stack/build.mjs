@@ -45,7 +45,7 @@ function ownerOf(ctx, config) {
   return match[1].toLowerCase();
 }
 
-/** The Dockerfile of an app: be/apps/<app>/Dockerfile or fe/apps/<app>/Dockerfile, or db/Dockerfile for the db image; ambiguity and absence are refusals. */
+/** The Dockerfile of an app: be/apps/<app>/Dockerfile or fe/apps/<app>/Dockerfile, or the managed .starcistacks/images/db/Dockerfile for the db image; ambiguity and absence are refusals. */
 function dockerfileOf(config, app) {
   if (app === DB_IMAGE_APP && fs.existsSync(path.join(config.repoRoot, DB_DOCKERFILE))) return DB_DOCKERFILE;
   const found = SIDES.map((side) => `${side}/apps/${app}/Dockerfile`).filter((file) => fs.existsSync(path.join(config.repoRoot, file)));

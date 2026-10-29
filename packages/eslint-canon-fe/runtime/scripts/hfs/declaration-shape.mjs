@@ -69,18 +69,6 @@ function extraPackageProblems(side, entries) {
   return [];
 }
 
-/** `sides.be.queueOutbox`: the app's own queue outbox ({table, enqueue, queueParameter}), which a pg_cron tick may enqueue through (R258); it needs the redis backing the relay hands rows to. */
-function queueOutboxProblems(side, value) {
-  const declared = value.queueOutbox;
-  if (declared === undefined) return [];
-  if (side !== 'be') return ['queueOutbox belongs to the be side'];
-  const name = (item) => typeof item === 'string' && /^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$/.test(item);
-  const bad = [];
-  if (!isPlainObject(declared) || Object.keys(declared).sort().join() !== 'enqueue,queueParameter,table' || !name(declared.table) || !name(declared.enqueue) || !/^[a-z_][a-z0-9_]*$/.test(String(declared.queueParameter))) bad.push('sides.be.queueOutbox must be {table: <schema>.<table>, enqueue: <schema>.<function>, queueParameter: <parameter name>}');
-  if (!(value.backing ?? []).includes('redis')) bad.push('sides.be.queueOutbox needs sides.be.backing to declare redis, which the relay hands its rows to');
-  return bad;
-}
-
 function grammarProblems(side, grammar) {
   if (grammar === undefined) return [];
   if (side !== 'fe') return ['grammar belongs to the fe side'];
@@ -91,7 +79,7 @@ function declarationSideProblems(side, value, names) {
   const bad = [];
   const at = `sides.${side}`;
   if (!isPlainObject(value)) return [`${at} must be an object`];
-  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'queueOutbox', 'dbFunctions'].includes(key)) bad.push(`${at} has unknown key ${key}`);
+  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'dbFunctions'].includes(key)) bad.push(`${at} has unknown key ${key}`);
   if (value.dbFunctions !== undefined && (side !== 'be' || !dbFunctionsOk(value.dbFunctions, { bare: true }))) bad.push(`${at}.dbFunctions belongs to the be side and lists {name, reason} database functions, each schema-qualified (schema.name, never pg_catalog) or a bare pg built-in of the canon's list, with unique names`);
   bad.push(...appShapeProblems(value.apps, at, side, names));
   if (isBadUniqueList(value.optionalSlots, (slot) => SLOT_ID.test(String(slot)))) bad.push(`${at}.optionalSlots must be a unique list of slot ids`);
@@ -100,7 +88,7 @@ function declarationSideProblems(side, value, names) {
   bad.push(...patternShapeProblems(value, at, NAME), ...kindShapeProblems(value, at, NAME));
   if (isBadUniqueList(value.reads, (read) => typeof read === 'string' && read.length > 0)) bad.push(`${at}.reads must be a unique list of paths`);
   if (value.connections !== undefined) bad.push(...connectionProblems(side, value));
-  bad.push(...extraPackageProblems(side, value.extraPackages), ...grammarProblems(side, value.grammar), ...queueOutboxProblems(side, value));
+  bad.push(...extraPackageProblems(side, value.extraPackages), ...grammarProblems(side, value.grammar));
   return bad;
 }
 

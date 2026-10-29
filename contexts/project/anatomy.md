@@ -78,13 +78,13 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 - `{be,fe}/` — **app.sides** required
 - `.starciwork/` — **app.starciwork** optional · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), HFS_IDENTITY_CUSTODY (no rule)
+  - `images/db/Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
 - `.sops.yaml` — **app.sops** required
 - `db/` — **app.db** required
   - `migrations/`
     - `<stamp>_<name>.sql` — **app.db.migrations** required · R213 (hfs `db-migration-shape`), R332 (hfs `lite-db-path`)
     - `archive/` — **app.db.migrations.archive** optional
   - `seed.sql` — **app.db.seed** optional
-  - `Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
   - `bootstrap.sql` — **app.db.bootstrap** required · R05 (hfs `managed-file-drift`)
 
 Git-ignored: `app.build-output`.

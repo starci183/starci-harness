@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { DB_DOCKERFILE } from '../../../db/image.mjs';
+import { DB_DOCKERFILE, DB_IMAGE_CONTEXT } from '../../../db/image.mjs';
 import { DbVerbError } from './db-errors.mjs';
 import { BOOTSTRAP_FILE, BOOTSTRAP_SQUASH_BEGIN, BOOTSTRAP_SQUASH_END, SEED_FILE, bootstrapSection } from './rules/database-constants.mjs';
 
@@ -63,10 +63,10 @@ function startScratch(image) {
   return scratch;
 }
 
-/** The app's own db image, built from db/Dockerfile; its id names it. */
+/** The app's own db image, built from its managed Dockerfile (DB_DOCKERFILE); its id names it. */
 function buildImage(root) {
   if (!docker(['version', '--format', '{{.Server.Version}}']).ok) throw new DbVerbError('baseline --squash needs Docker for its scratch replay; start it');
-  const build = docker(['build', '--quiet', '--file', path.join(root, DB_DOCKERFILE), path.join(root, 'db')]);
+  const build = docker(['build', '--quiet', '--file', path.join(root, DB_DOCKERFILE), path.join(root, DB_IMAGE_CONTEXT)]);
   const image = /sha256:[a-f0-9]{64}/.exec(build.stdout)?.[0];
   if (!build.ok || !image) throw new DbVerbError(`docker could not build ${DB_DOCKERFILE}: ${firstLines(build.stderr, 2)}`);
   return image;
