@@ -42,6 +42,16 @@ presets:
       kind: command
       run: "{command}"
       coverage: changed
+  # A package fix edits a @starci package on its package edit branch, outside the task's own checkout, so the harness runs that
+  # package's own gates where the edit is (starci pkg test, cli/src/core/pkg/test.ts): a Supervisor worker of a package need
+  # carries it without being asked (workerChecks, cli/src/core/supervisor/workers.ts).
+  package-specs:
+    summary: the harness runs the package's own typecheck, lint and specs (npm test) in packages/<name> of this app's package edit worktree, each under a heavy-command slot, and they pass
+    behavioural: true
+    args: [package]
+    check:
+      kind: starci
+      args: [pkg, test, "{package}"]
   # A verify task reports a suite; the harness reruns it on the clean checkout and the result's verdict must agree with the exit.
   suite-verdict:
     summary: the harness reruns the suite on the clean checkout and the result's verdict agrees with its exit (0 passed, else failed)

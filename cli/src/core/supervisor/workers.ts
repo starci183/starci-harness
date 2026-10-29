@@ -3,13 +3,14 @@ import { randomUUID } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { CONTRACT_SCHEMA, DEFAULT_BUDGET, contractProblems, parseContract } from "../../harness/contract.js"
+import { behaviouralPresets, budgetProblems, CONTRACT_SCHEMA, DEFAULT_BUDGET, contractProblems, lacksBehaviouralCheck, parseContract, resolveChecks, resolveContract } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
 import { harnessWorktree } from "../../harness/kernel.js"
 import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
 import type { Verdict } from "../../harness/liveness.js"
 import { loadOps } from "../../harness/ops.js"
+import type { Ops } from "../../harness/ops.js"
 import type { OrcaBinary } from "../../harness/orca/client.js"
 import { endWorker, noteHanded, projectSlots, recordWorker, workersOf } from "../../harness/project-workers.js"
 import type { WorkerEnd, WorkerRecord } from "../../harness/project-workers.js"
@@ -52,6 +53,8 @@ export interface WorkerOrder {
     readonly repo?: string | undefined
     readonly allow: readonly string[]
     readonly inputs: readonly string[]
+    /** Check presets the contract adds (`--check`), their arguments taken from the inputs of the same name. */
+    readonly checks: readonly string[]
     readonly topic?: string | undefined
 }
 
@@ -76,18 +79,77 @@ const inputsOf = (label: string, given: readonly string[]): { readonly base?: Re
     return { ...(Object.keys(base).length === 0 ? {} : { base }), ...(Object.keys(extend).length === 0 ? {} : { extend }) }
 }
 
+/** The preset that proves a package fix: the package's own gates in its package edit worktree (ops/checks.yaml). */
+const PACKAGE_SPECS = "package-specs"
+
+/** The `@starci` package a package fix edits, named by its `package` input; undefined for any other worker. */
+const packageOf = (order: WorkerOrder): string | undefined => order.inputs.find((entry) => entry.startsWith("package="))?.slice("package=".length)
+
 /**
- * The contract of a worker: the label's op (its base context, output and checks), the brief as the input, and the paths it may
- * write; with no `--allow`, its one report file `starci-worker-<id>.md` (an investigation writes nothing else).
+ * A package fix's inputs: the order's, plus `side=package` and `edition=harness` where the label's op declares an input the
+ * order leaves out, so the worker reads the package contexts (ops/ops/code.md), never the CLI's.
  */
-const workerContract = (order: WorkerOrder, id: string, topic: string, revision: string, brief: string): Contract =>
-    parseContract({
+const orderInputs = (order: WorkerOrder, ops: Ops): string[] => {
+    if (packageOf(order) === undefined) return [...order.inputs]
+    const declared = ops.labels[order.label]?.input.base ?? {}
+    const defaults = Object.entries({ side: "package", edition: "harness" }).filter(([name]) => name in declared && !order.inputs.some((entry) => entry.startsWith(`${name}=`)))
+    return [...order.inputs, ...defaults.map(([name, value]) => `${name}=${value}`)]
+}
+
+/**
+ * A worker's checks.extend: a package fix of a label that needs a behavioural check carries its package's own specs
+ * (`package-specs`, run where the edit is), then each `--check` preset.
+ */
+const workerChecks = (order: WorkerOrder, ops: Ops): string[] => {
+    const derived = packageOf(order) !== undefined && ops.labels[order.label]?.checks.behavioural === true ? [PACKAGE_SPECS] : []
+    return [...new Set([...derived, ...order.checks])]
+}
+
+/**
+ * The contract of a worker: the label's op (its base context, output and checks), the brief as the input, the checks it adds
+ * (`workerChecks`), and the paths it may write; with no `--allow`, its one report file `starci-worker-<id>.md` (an
+ * investigation writes nothing else).
+ */
+const workerContract = (order: WorkerOrder, ops: Ops, id: string, topic: string, revision: string, brief: string): Contract => {
+    const checks = workerChecks(order, ops)
+    return parseContract({
         schema: CONTRACT_SCHEMA,
         label: order.label,
         context: { revision, allowPaths: order.allow.length === 0 ? [`starci-worker-${id}.md`] : [...order.allow] },
-        input: { summary: topic, details: brief, ...inputsOf(order.label, order.inputs) },
+        input: { summary: topic, details: brief, ...inputsOf(order.label, orderInputs(order, ops)) },
+        ...(checks.length === 0 ? {} : { checks: { extend: checks } }),
         budget: { ...DEFAULT_BUDGET },
     })
+}
+
+/** Refuses a `--check` that names no preset of ops/checks.yaml, before anything is made. */
+const assertPresets = (order: WorkerOrder, ops: Ops): void => {
+    const unknown = order.checks.filter((name) => !(name in ops.presets))
+    if (unknown.length > 0) throw new Refusal("CONTRACT_UNKNOWN_PRESET", `--check names no preset: ${unknown.join(", ")}; presets: ${Object.keys(ops.presets).join(", ")}`)
+}
+
+/** What a dispatch can change to make an unfit worker contract fit: the flag or input that answers each problem it can answer. */
+const unfitRemedies = (contract: Contract, order: WorkerOrder, ops: Ops): string[] => {
+    const remedies: string[] = []
+    const packageFix = packageOf(order) !== undefined
+    try {
+        const resolved = resolveContract(contract, ops)
+        if (budgetProblems(resolved, ops).length > 0) {
+            remedies.push(
+                packageFix
+                    ? "a package fix reads the package contexts: drop --input side (side=package is filled)"
+                    : `the ${order.label} op's context for these inputs is over its budget (ops/ops/${order.label}.md); a @starci package fix names --input package=<name> and reads the package contexts (side=package)`,
+            )
+        }
+        if (lacksBehaviouralCheck(resolved, resolveChecks(contract, ops))) {
+            const forms = behaviouralPresets(ops).map((preset) => [`--check ${preset.name}`, ...preset.args.map((arg) => `--input ${arg}=<${arg}>`)].join(" "))
+            remedies.push(`name a behavioural check: ${forms.join("; ")}${packageFix ? "" : "; a @starci package fix (--input package=<name>) carries package-specs itself"}`)
+        }
+    } catch (error: unknown) {
+        if (asRefusal(error).code === "CONTRACT_PRESET_ARGS") remedies.push("give each --check preset its arguments as --input <name>=<value>")
+    }
+    return remedies
+}
 
 /** What a dispatch did: the worker, its task and worktree, and whether it launched now or waits for a slot. */
 export interface WorkerDispatched {
@@ -165,9 +227,14 @@ export const dispatchWorker = async (context: VerbContext, seat: AttachedSupervi
     const brief = briefText(context.cwd, order.brief)
     const topic = clip((order.topic ?? brief.split("\n").find((line) => line.trim() !== "") ?? brief).replace(/^#+\s*/, "").trim(), TOPIC_CHARS)
     const id = `w-${randomUUID().slice(0, 8)}`
-    const contract = workerContract(order, id, topic, await resolveSha(repo, "HEAD"), brief)
-    const problems = contractProblems(contract, loadOps())
-    if (problems.length > 0) throw new Refusal("CONTRACT_UNFIT", `the worker's contract is not fit to send:\n${problems.join("\n")}`)
+    const ops = loadOps()
+    assertPresets(order, ops)
+    const contract = workerContract(order, ops, id, topic, await resolveSha(repo, "HEAD"), brief)
+    const problems = contractProblems(contract, ops)
+    if (problems.length > 0) {
+        const remedies = unfitRemedies(contract, order, ops).map((remedy) => `fix: ${remedy}`)
+        throw new Refusal("CONTRACT_UNFIT", `the worker's contract is not fit to send:\n${[...problems, ...remedies].join("\n")}`)
+    }
     const made = await harnessWorktree(repo, id)
     const task = withLedger(repo, (db) =>
         inTransaction(db, () => {

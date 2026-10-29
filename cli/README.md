@@ -311,7 +311,7 @@ replan refuse `NEEDS_REQUIRED`, with this route as guidance, a new task whose in
 hands the need to the Supervisor (a `resolver` may list several task keys); the Supervisor answers with a `need-owner` command
 (`workflow` the owner, whose Kernel then gets the `shared-need`; with `need.resolver`, the task keys that workflow holds, landed or
 not, resolve it at once; or `need.reject`) or `supervisor dispatch --need <key>` (a `[Worker]` owns it; a package need fills
-`--input package`, and its worker's `pkg handoff` is linked to the need). A wrong answer (another key, an unknown or waiting
+`--input package`, so its contract reads the package contexts and carries the `package-specs` check, and its worker's `pkg handoff` is linked to the need). A wrong answer (another key, an unknown or waiting
 resolver, a resolver from the Supervisor, a need that moved on) is refused `NEED_ANSWER_INVALID` with how to answer, and the
 decision stays open (`harness/need-answer.ts`, `core/needs/answer.ts`). A need routed past `needs.ownerDeadlineMinutes` of
 [ops/liveness.yaml](../ops/liveness.yaml), or whose decision was answered with no owner, climbs one router: Kernel, Supervisor,
@@ -350,8 +350,10 @@ event, so a vanished folder never fails a launch, a sync or a verify; `worktree 
 removed a package edit worktree. `--local` takes `packages/` of the harness's main checkout unless `--from` names another
 folder. The push gate is `judgePush` (`core/deps/push-gate.ts`), run by `deps check` (the app pre-push hook of
 `@starci/hfs`), `release push`, `release cut` and an executed `app release`. A package is fixed on a package edit branch
-(`core/pkg/edit.ts`): `pkg branch` cuts it into a worktree of the harness with a push guard, `pkg handoff` records it in
-the host store's `package_handoffs` for Debug, and `release push` and `release publish` refuse it to every role but
+(`core/pkg/edit.ts`): `pkg branch` cuts it into a worktree of the harness with a push guard, `pkg test <package>`
+(`core/pkg/test.ts`) runs the package's typecheck and lint scripts its `test` does not run already, then `npm test`, in
+`packages/<name>` of the newest package edit worktree of the app that changes it, each under a heavy-command slot, and
+is the `package-specs` check preset, `pkg handoff` records it in the host store's `package_handoffs` for Debug, and `release push` and `release publish` refuse it to every role but
 debug and owner (`PKG_EDIT_PUSH_REFUSED`).
 
 **Seats as a tree.** `[Supervisor] <project>` (one per project, [state.md](../contexts/harness/state.md) "How a project is
@@ -435,10 +437,16 @@ or a ruling in a Kernel's place, the Kernel's own `workflow-change` or `escalati
 and its `answers` close decisions and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
 The Supervisor works through workers (`core/supervisor/workers.ts`). `supervisor dispatch --brief <file|text> [--need <key>] [--label]
-[--repo] [--allow]... [--input name=value]...`, from its terminal, makes the worker's own worktree of `--repo` (default the
+[--repo] [--allow]... [--input name=value]... [--check <preset>]...`, from its terminal, makes the worker's own worktree of `--repo` (default the
 project's Work-root repository, or any other checkout; a `@starci` package fix stays in the app's repository with
 `--input package=<name>`, and the worker cuts its own package edit branch, `pkg branch`, and hands it off) at `<project state>/worktrees/<worker>` on branch `starci/<worker>`, queues in that repository's ledger a task
-whose contract is the brief on the label's op (default `code`; with no `--allow`, its one report file),
+whose contract is the brief on the label's op (default `code`; with no `--allow`, its one report file) plus its checks
+(`workerContract`): each `--check` preset of ops/checks.yaml, its arguments taken from the `--input` of the same name (a
+name no preset has is refused `CONTRACT_UNKNOWN_PRESET`), and for a package fix of a label that needs a behavioural check
+the `package-specs` check of its package, with `side=package` and `edition=harness` filled where the op declares them, so
+it reads the package contexts of ops/ops/code.md rather than the CLI's; a contract still unfit is refused `CONTRACT_UNFIT`
+with a `fix:` line per problem the dispatch can answer (the `--check` and `--input` that supply a behavioural check, the
+package input that fits the context budget), before any worktree is made,
 records the worker in `supervisor_workers`, and launches it as `seat start` does (`startSeat` with the Supervisor as
 coordinator: `--run/--parent/--from` of the Supervisor, title `[Worker] <project>: <topic>`), routed by the label's worker
 tier. Every `supervisor next` round from the Supervisor's terminal tends the project's workers (`tendWorkers`): it pings each

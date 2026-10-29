@@ -532,7 +532,7 @@ export const contextTokens = (resolved: ResolvedContract, ops: Ops, root?: strin
 }
 
 /** The context budget of the op: a context estimated heavier than it is unfit, so a task never starts by reading past its window. */
-const budgetProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
+export const budgetProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
     const budget = resolved.op.context.budget
     if (budget === undefined) return []
     const { tokens, bytes } = contextTokens(resolved, ops)
@@ -556,15 +556,22 @@ const contextProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
     return problems
 }
 
+/** Whether the label's op asks for a behavioural check and none of the expanded checks is one. */
+export const lacksBehaviouralCheck = (resolved: ResolvedContract, checks: readonly ResolvedCheck[]): boolean => resolved.op.checks.behavioural && !checks.some((check) => check.behavioural)
+
+/** The presets that prove behaviour, each with the arguments it needs. */
+export const behaviouralPresets = (ops: Ops): { readonly name: string; readonly args: readonly string[] }[] =>
+    Object.entries(ops.presets)
+        .filter(([, preset]) => preset.behavioural)
+        .map(([name, preset]) => ({ name, args: preset.args ?? [] }))
+
 /** Problems of the expanded checks: there must be one, and a behavioural label needs a behavioural check (resolving may refuse). */
 const checkProblems = (contract: Contract, resolved: ResolvedContract, ops: Ops): string[] => {
     const problems: string[] = []
     const checks = resolveChecks(contract, ops)
     if (checks.length === 0) problems.push("the contract has no check; add one to checks.extend")
-    if (resolved.op.checks.behavioural && !checks.some((check) => check.behavioural)) {
-        const forms = Object.entries(ops.presets)
-            .filter(([, preset]) => preset.behavioural)
-            .map(([name, preset]) => presetForm(name, preset.args ?? []))
+    if (lacksBehaviouralCheck(resolved, checks)) {
+        const forms = behaviouralPresets(ops).map((preset) => presetForm(preset.name, preset.args))
         problems.push(
             `label ${contract.label} needs at least one behavioural check, one the harness observes itself (T0) or reads from a receipted run (T1); lint, typecheck and the worker's own result (T2) prove nothing about behaviour. Add one of these to checks.extend: ${forms.join(", ")}`,
         )

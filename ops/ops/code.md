@@ -30,13 +30,17 @@ context:
     - file: "harness:contexts/code/{side}/README.md"
       when: {side: [be, fe]}
     - file: "harness:CONTRIBUTING.md"
-      when: {side: harness}
+      when: {side: [harness, package]}
     - file: "harness:cli/README.md"
       when: {side: harness}
+    - file: "harness:packages/README.md"
+      when: {side: package}
+    - file: "harness:contexts/authority/packages.md"
+      when: {side: package}
 input:
   base:
-    side: the side the task writes, be (the NestJS back end), fe (the Next.js front end) or harness (this harness repository itself)
-    edition: the app's edition, `edition` of its hfs.json (lite or full; full when absent); harness for a harness task
+    side: the side the task writes, be (the NestJS back end), fe (the Next.js front end) harness (this harness repository itself) or package (one `@starci` package of this harness, named by the `package` input, on its package edit branch)
+    edition: the app's edition, `edition` of its hfs.json (lite or full; full when absent); harness for a harness or package task
 output:
   base:
     summary: {type: string, summary: "what you changed and why"}
