@@ -1,4 +1,4 @@
-import type { EntityManager } from "typeorm"
+import type { EntityManager, EntityTarget, ObjectLiteral, QueryDeepPartialEntity } from "typeorm"
 
 /** The authenticated scope and complete normalized body of a client operation; the key is never part of the body. */
 export interface ClientOperation {
@@ -26,4 +26,29 @@ export interface Inbox {
     runClient<T>(request: ClientOperation, tx: EntityManager, effect: ClientOperationEffect<T>): Promise<T>
     /** Deletes one bounded batch of completed client claims older than the cutoff. */
     sweepClients(cutoff: Date, tx: EntityManager): Promise<number>
+}
+
+/** A provider's receipt row: its entity, mapping a table with an `id` column, and the complete row, delivery key and payload included. */
+export interface InboxEntityReceipt<Row extends ObjectLiteral> {
+    /** The provider's receipt entity. */
+    readonly entity: EntityTarget<Row>
+    /** The row the receipt holds; the deferred consumer reads it, so it carries no credential. */
+    readonly row: QueryDeepPartialEntity<Row>
+}
+
+/** The id of the receipt row a winning claim inserted; undefined when the delivery was a repeat or its receipt already existed. */
+export type InboxReceiptId = string | undefined
+
+/** The inbox of a capability whose provider receipt is an entity row, so it records the receipt without raw SQL. */
+export interface EntityInbox extends Inbox {
+    /**
+     * Claims once per source and event id, then inserts the receipt row, both in the caller transaction. Answers the id the
+     * winning insert returned; a repeated delivery, or a receipt row that already exists, inserts nothing and answers undefined.
+     */
+    claimRow<Row extends ObjectLiteral>(
+        source: string,
+        eventId: InboxEventId,
+        tx: EntityManager,
+        receipt: InboxEntityReceipt<Row>,
+    ): Promise<InboxReceiptId>
 }

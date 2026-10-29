@@ -1,9 +1,17 @@
 import { Injectable } from "@nestjs/common"
-import type { EntityManager } from "typeorm"
+import type { EntityManager, ObjectLiteral } from "typeorm"
 import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
-import { BATCH_ROWS, DatabaseError, DatabaseErrorCode, callDbFunction } from "@modules/platform/database"
-import type { ClientOperation, ClientOperationEffect, Inbox, InboxEventId } from "./inbox.port"
+import { BATCH_ROWS, DatabaseError, DatabaseErrorCode, callDbFunction, returnedRows, rowShape } from "@modules/platform/database"
+import type {
+    ClientOperation,
+    ClientOperationEffect,
+    EntityInbox,
+    Inbox,
+    InboxEntityReceipt,
+    InboxEventId,
+    InboxReceiptId,
+} from "./inbox.port"
 import { IdempotencyError, IdempotencyErrorCode } from "@modules/platform/idempotency"
 import { InboxError, InboxErrorCode } from "./errors/inbox.error"
 import { clientSource } from "./client-operation.policy"
@@ -43,9 +51,12 @@ interface InboxSweepRow {
     readonly deleted_count: number
 }
 
+/** The row a receipt insert returns to the transaction that won it. */
+const isReceiptRow = rowShape({ id: "string" })
+
 @Injectable()
 /** Claims a delivery with the receipt transaction, so a failure can be retried without losing the delivery. */
-export class PostgresInbox implements Inbox {
+export class PostgresInbox implements Inbox, EntityInbox {
     constructor(@InjectClock() private readonly clock: Clock) {}
 
     /** The first claim wins; the same source and delivery id becomes a no-op on redelivery. */
@@ -56,6 +67,24 @@ export class PostgresInbox implements Inbox {
         }
         const rows = await callDbFunction<InboxEventRow>(tx, "public.inbox_claim_event", [source, normalizedEventId])
         return rows.length > 0
+    }
+
+    /** The claim first; only its winner inserts the receipt row, and a row that already exists is left as it is. */
+    async claimRow<Row extends ObjectLiteral>(
+        source: string,
+        eventId: InboxEventId,
+        tx: EntityManager,
+        receipt: InboxEntityReceipt<Row>,
+    ): Promise<InboxReceiptId> {
+        if (!(await this.claim(source, eventId, tx))) return undefined
+        const inserted = await tx
+            .createQueryBuilder(receipt.entity, "receipt")
+            .insert()
+            .values(receipt.row)
+            .orIgnore()
+            .returning("id")
+            .execute()
+        return returnedRows(inserted.raw, isReceiptRow)[0]?.id
     }
 
     /** Runs once in the domain transaction, returning the persisted JSON outcome on both the first call and every retry. */

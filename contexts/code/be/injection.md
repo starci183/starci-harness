@@ -52,7 +52,8 @@ Enforced by: `injector-only`, `injector-shape`, `injection-token-exported`, `no-
 
 When the capability exists its injector is `Inject<Conn>EntityManager`, `InjectAfterCommit` (platform/database),
 `InjectClock`, `InjectIds`, `InjectLogger`, `InjectHttpClient`, `InjectQueueOutbox`, `InjectJobClaims`,
-`InjectJobProcessorRegistry`, `InjectInbox`, `InjectRealtimeHub`, `InjectMessageCatalog`, `InjectRequestLocale`,
+`InjectJobProcessorRegistry`, `InjectInbox`, `InjectEntityInbox` (its `EntityInbox`
+extension), `InjectRealtimeHub`, `InjectMessageCatalog`, `InjectRequestLocale`,
 `InjectCommandBus`, `InjectQueryBus` (their platform owners), `Inject<Queue>Queue` per queue, `Inject<Cap>Options` per
 configured capability and `Inject<Provider>` per integration client.
 
