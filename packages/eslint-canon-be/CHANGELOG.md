@@ -2,6 +2,7 @@
 
 ## 3.8.16 - 2026-10-30
 
+- Fixed: `persisting-builder-in-builders-slot` no longer judges a raw INSERT (`.query(`) in the test world (`be.tests.world`, `be.tests.world.kit`) as a builder: it is a named probe of what entities cannot express (an RLS probe, a pgmq queue, a pre-migration schema), which `no-raw-sql` admits only in the test world and refuses in the builders slot, so no such helper could pass both. An entity write (`save`, `insert`, `upsert`) in the world, and a raw INSERT anywhere else in the test tree, is still a builder.
 - Fixed: `event-consumer-shape` names a consumer file after its event with dots AND underscores as dashes (`installation_changed` -> `installation-changed.consumer.ts`), the kebab case `source-suffix` requires of every file; the two rules could not both pass for an underscored event name. Spec: an underscored event in `src/event-bus.spec.ts` (typed fixture `InstallationChangedEvent`).
 - Fixed: `jobs-scheduler-owner` requires the tick claim as `callDbFunction(tx, "public.job_tick_claim", ...)`, the schema-qualified name `no-raw-sql` lists and the hfs jobs template calls; the bare `"job_tick_claim"` could not pass both rules.
 - Changed: the bundled canon pins name ai-router 0.4.0 (mounted keys), hfs 4.11.17, eslint-canon-be 3.8.16, eslint-canon-fe 9.5.18 and the Grammar family 0.15.29. No rule changed.

@@ -122,6 +122,9 @@ const BUILDERS = "be.tests.fixtures.builders"
 const SPEC_SLOTS = new Set(["be.tests.integration", "be.tests.e2e", "be.tests.contract"])
 const CREATING_METHODS = new Set(["save", "insert", "upsert"])
 
+/** The test world slots: the one test owner of raw SQL (no-raw-sql), for what entities cannot express (an RLS probe, a pgmq queue, a pre-migration schema). */
+const WORLD_SLOTS = new Set(["be.tests.world", "be.tests.world.kit"])
+
 /** A file of the test tree that is not a spec and is not the builders slot. */
 const isTestSupport = (slot: string | null | undefined) => typeof slot === "string" && slot.startsWith("be.tests.") && slot !== BUILDERS && !SPEC_SLOTS.has(slot)
 
@@ -151,7 +154,11 @@ export const persistingBuilderInBuildersSlot: RuleModule = {
         },
     },
     create(context) {
-        if (!isTestSupport(hfsOf(context).slotOf(context.filename || context.getFilename()))) return {}
+        const slot = hfsOf(context).slotOf(context.filename || context.getFilename())
+        if (!isTestSupport(slot)) return {}
+        // A raw INSERT in the test world is a named probe of what entities cannot express, which no-raw-sql admits there and refuses in
+        // the builders slot; an entity write (save, insert, upsert) in the world still arranges data and belongs to a builder.
+        const rawIsWorldProbe = WORLD_SLOTS.has(slot ?? "")
         const sourceCode = context.sourceCode || context.getSourceCode()
         const writes = new Set<Node>()
         const references = new Map<Node, Set<string>>()
@@ -159,7 +166,7 @@ export const persistingBuilderInBuildersSlot: RuleModule = {
             const method = methodOf(node)
             if (!method || node.callee.type !== "MemberExpression" || !isDatabaseReceiver(context, node.callee.object)) return false
             if (CREATING_METHODS.has(method)) return true
-            return method === "query" && INSERTING_SQL.test(queryText(node.arguments[0], sourceCode.getScope(node)) ?? "")
+            return method === "query" && !rawIsWorldProbe && INSERTING_SQL.test(queryText(node.arguments[0], sourceCode.getScope(node)) ?? "")
         }
         return {
             CallExpression(node) {

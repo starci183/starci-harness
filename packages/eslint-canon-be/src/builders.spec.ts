@@ -82,6 +82,8 @@ test("BE-TEST-16: a module of the test tree that creates persisted rows is a bui
             { filename: BUILDER, code: `${IMPORT}export const orderBuilder = (em: EntityManager) => ({ build: async () => em.save({ id: 1 }) })` },
             // reads and a non-exported helper do not make a builder
             { filename: WORLD, code: `${IMPORT}export const countOrders = async (em: EntityManager) => em.query("SELECT count(*) FROM orders")` },
+            // a raw INSERT in the test world is a named probe of what entities cannot express (no-raw-sql admits raw SQL only there)
+            { filename: WORLD, code: `${IMPORT}export const browserWriteAvatar = async (em: EntityManager) => em.query("INSERT INTO storage.objects (name) VALUES ($1)", ["a.png"])` },
             { filename: FIXTURES, code: `${IMPORT}declare const em: EntityManager\nconst warm = async () => em.save({ id: 1 })\nwarm()\nexport const value = 1` },
             // a value with a write-shaped name that is not a database receiver
             { filename: WORLD, code: "declare const cache: { save(x: number): void }\nexport const remember = () => cache.save(1)" },
