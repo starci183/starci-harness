@@ -65,9 +65,8 @@ export class FetchHttpClient implements HttpClient, OnModuleDestroy {
                 method: request.method,
                 headers: this.headersOf(request),
                 ...(body === undefined ? {} : { body }),
-                signal,
             }
-            return await fetch(request.url, this.routed(init))
+            return await fetch(request.url, { ...this.routed(init), signal })
         } catch (cause) {
             throw this.failure(cause)
         }

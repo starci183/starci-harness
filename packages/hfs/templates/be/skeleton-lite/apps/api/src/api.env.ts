@@ -1,6 +1,7 @@
 import type { EnvSource } from "@modules/platform/config"
 import { parseServerConfig } from "@modules/platform/config"
 import { parsePrimaryDatabaseConfig } from "@modules/platform/database"
+import { parseHttpConfig } from "@modules/platform/http"
 import { parseHttpSecurityConfig } from "@modules/platform/http-security"
 import { parsePassportConfig } from "@modules/integrations/passport"
 import { parseObjectStorageConfig } from "@modules/integrations/object-storage"
@@ -11,6 +12,8 @@ export interface ApiEnv {
     readonly server: ReturnType<typeof parseServerConfig>
     /** The origin allowlist and rate limits. */
     readonly httpSecurity: ReturnType<typeof parseHttpSecurityConfig>
+    /** What the outbound HTTP client trusts beyond Node's bundled certificate authorities. */
+    readonly http: ReturnType<typeof parseHttpConfig>
     /** The least-privilege PostgreSQL connection to the app's own database. */
     readonly database: ReturnType<typeof parsePrimaryDatabaseConfig>
     /** Google OAuth, the app's own access tokens and the refresh cookie. */
@@ -23,6 +26,7 @@ export interface ApiEnv {
 export const readApiEnv = (env: EnvSource): ApiEnv => ({
     server: parseServerConfig(env),
     httpSecurity: parseHttpSecurityConfig(env),
+    http: parseHttpConfig(env),
     database: parsePrimaryDatabaseConfig(env),
     passport: parsePassportConfig(env),
     objectStorage: parseObjectStorageConfig(env),
