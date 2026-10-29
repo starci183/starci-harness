@@ -19,10 +19,11 @@ export const worktreeGcVerb = defineVerb({
     schema: "starci/worktree-gc@1",
     flags: {
         "dry-run": { kind: "boolean", summary: "judge every harness worktree and change nothing" },
+        now: { kind: "boolean", summary: "retry a folder left busy now instead of after its backoff" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
-        const entries = await worktreeGc(root, flags["dry-run"])
+        const entries = await worktreeGc(root, flags["dry-run"], flags.now)
         const state = (entry: (typeof entries)[number]): string => {
             if (entry.busy === true) return "busy"
             if (!entry.due) return "kept"

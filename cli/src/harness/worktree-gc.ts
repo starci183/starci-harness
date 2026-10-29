@@ -176,15 +176,15 @@ const remnantsUnder = (repo: string, listed: readonly Listed[]): Collected[] => 
         .map((path) => ({ path, kind: "orphan", owner: null, due: true, reason: "git no longer lists it: a removal stopped half way", preserved: null, removed: false, detail: "", remnant: true }))
 }
 
-/** The busy records of the ledger (harness/worktree-busy.ts) no other entry covers, each due once its backoff ran out. */
-const busyLeftovers = (root: string, judged: readonly GcEntry[]): (GcEntry & { readonly repo: string })[] => {
+/** The busy records of the ledger (harness/worktree-busy.ts) no other entry covers, each due once its backoff ran out (or `now`). */
+const busyLeftovers = (root: string, judged: readonly GcEntry[], now: boolean): (GcEntry & { readonly repo: string })[] => {
     const db = openExistingLedger(root)
     if (db === undefined) return []
     try {
         return openBusyRecords(db)
             .filter((record) => !judged.some((entry) => samePath(entry.path, record.path)))
             .map((record) => {
-                const due = busyDue(record) || !existsSync(record.path)
+                const due = now || busyDue(record) || !existsSync(record.path)
                 const reason = `left busy at attempt ${String(record.attempt)}${record.holders === "" ? "" : ` (${record.holders})`}${due ? "" : `; retried from ${record.nextAt}`}`
                 return { path: record.path, kind: (WORKTREE_KINDS.includes(record.kind as WorktreeKind) ? record.kind : "orphan") as WorktreeKind, owner: record.owner, due, reason, preserved: null, removed: false, busy: true, detail: "", repo: record.repo }
             })
@@ -260,9 +260,9 @@ const retiredLeftovers = async (dryRun: boolean): Promise<GcEntry[]> => {
  * work is preserved first, it is reaped (harness/reap.ts: its Orca terminals closed, the processes the harness started in it or
  * that work inside it ended), its install links are unlinked (link only, never a recursive delete through one), then it is
  * removed, git prunes and Orca drops it; branches stay, so nothing committed is lost. A folder still held names its holder and is
- * retried with backoff. `dryRun` judges and changes nothing.
+ * retried with backoff, or at once with `now`. `dryRun` judges and changes nothing.
  */
-export const worktreeGc = async (root: string, dryRun: boolean): Promise<GcEntry[]> => {
+export const worktreeGc = async (root: string, dryRun: boolean, now = false): Promise<GcEntry[]> => {
     const stateWorktrees = join(projectDir(root), "worktrees")
     const listed = await listWorktrees(root)
     const owned = [
@@ -275,7 +275,7 @@ export const worktreeGc = async (root: string, dryRun: boolean): Promise<GcEntry
     ]
     const remnants = remnantsUnder(root, listed).filter((remnant) => !owned.some((entry) => samePath(entry.path, remnant.path)))
     const known: Collected[] = [...owned, ...remnants]
-    const judged: Collected[] = [...known, ...busyLeftovers(root, known)]
+    const judged: Collected[] = [...known, ...busyLeftovers(root, known, now)]
     const verify = dryRun ? [] : (await pruneVerifyWorktrees(root)).map((path): GcEntry => ({ path, kind: "orphan", owner: null, due: true, reason: "a clean-verify checkout whose verifier is gone", preserved: null, removed: true, detail: "pruned" }))
     const retired = await retiredLeftovers(dryRun)
     if (dryRun) return [...judged.map(reported), ...retired]
@@ -292,7 +292,7 @@ export const worktreeGc = async (root: string, dryRun: boolean): Promise<GcEntry
                 db?.close()
             }
         })()
-        if (busy !== undefined && !busyDue(busy) && existsSync(entry.path)) return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}${busy.holders === "" ? "" : `; ${busy.holders}`}); retried from ${busy.nextAt}` }
+        if (busy !== undefined && !now && !busyDue(busy) && existsSync(entry.path)) return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}${busy.holders === "" ? "" : `; ${busy.holders}`}); retried from ${busy.nextAt}` }
         const preserved = await preserveCheckout(root, entry.path)
         const removal =
             entry.kind === "op" && entry.owner !== null
