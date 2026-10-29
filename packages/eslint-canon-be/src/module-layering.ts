@@ -7,7 +7,9 @@
  *
  *   - `import-owner-entry` - a cross-owner import targets the owner's `index.ts` (`@modules/domain/plan`,
  *     `@features/api/plan`), never a file inside it, and an alias that names a tier but no owner (`@modules/domain`) names
- *     nothing importable. A same-owner import is relative and never goes through the owner's own `index.ts`.
+ *     nothing importable. A same-owner import is relative and never goes through the owner's own `index.ts`. The entity
+ *     registry (slot role `entity-registry`, `@modules/platform/database/entities`) is the one file reached by deep path, and only
+ *     from the files its slot's `importedBy` names (persistence.md BE-PERSISTENCE-3).
  *   - `no-self-module-alias` - inside an owner, imports are relative, never the owner's own alias.
  *   - `no-relative-capability-escape` - a relative import never walks out of its own owner.
  *   - `no-folder-reexport` - a specifier that names a directory is refused; a nested `index.ts` (any index that is not
@@ -24,6 +26,7 @@ import type { TSESTree } from "@typescript-eslint/utils"
 import { hfsOf } from "./lib/hfs.ts"
 import { baseName } from "./lib/ports.ts"
 import { resolveAlias } from "./lib/specifier.ts"
+import { ENTITY_REGISTRY_ROLE, registryImporter } from "../runtime/scripts/hfs/architecture/entity-registry.mjs"
 import type { Recommended, RuleListener, RuleModule, Rules } from "./lib/rule.ts"
 import type { HfsView } from "./lib/hfs.ts"
 
@@ -78,6 +81,13 @@ const indexExportBudget = (hfs: HfsView, filename: string) =>
 
 // -- R30: import-owner-entry -----------------------------------------------------------------------
 
+/** Whether `filename` may reach the import path `target` (absolute, no extension) by deep path: it is the entity registry and its slot's `importedBy` names the importer. */
+const importsRegistry = (hfs: HfsView, filename: string, target: string) => {
+  const id = hfs.slotOf(`${target}.ts`)
+  const slot = id ? hfs.slot(id) : undefined
+  return slot?.role === ENTITY_REGISTRY_ROLE && registryImporter(null, slot, hfs.relative(filename))
+}
+
 /**
  * A cross-owner import targets the owner's public entry: the alias and the owner, nothing deeper. A same-owner import
  * is relative and never goes through the owner's own `index.ts` (BE-CONVENTION 2.4).
@@ -124,7 +134,7 @@ export const importOwnerEntry: RuleModule = {
       if (owner === self) return
       const ownerAbsolute = absolute(hfs, owner)
       const inside = alias.target === ownerAbsolute ? "" : alias.target.slice(ownerAbsolute.length + 1)
-      if (inside !== "" && inside !== "index") context.report({ node, messageId: "deep", data: { specifier } })
+      if (inside !== "" && inside !== "index" && !importsRegistry(hfs, filename, alias.target)) context.report({ node, messageId: "deep", data: { specifier } })
     })
   },
 }

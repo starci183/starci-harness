@@ -1,4 +1,5 @@
 import { byCodeUnit } from '../../lib/list.mjs';
+import { registryListImport, registrySlot } from './entity-registry.mjs';
 
 /**
  * HFS checks 1 and 2 (knowledge/hfs/slots.yaml `tiers`):
@@ -8,7 +9,9 @@ import { byCodeUnit } from '../../lib/list.mjs';
  *      kind (slot field `trigger`: api, webhooks, realtime, saga, reactors, jobs, cli) importing a feature of another is
  *      BE_KIND_ISOLATION, whose fix is the event bus,
  *      an app never imports another app (BE_SERVICE_ISOLATION / FE_APP_ISOLATION), and a component layer imports only the layers after it;
- *   2. owner cycles: a strongly connected component of the owner graph, type-only imports included (ARCH_OWNER_CYCLE),
+ *      the entity registry naming a capability's `<c>Entities` from its public entry is the one platform-to-domain edge (entity-registry.mjs);
+ *   2. owner cycles: a strongly connected component of the owner graph, type-only imports included (ARCH_OWNER_CYCLE), the entity
+ *      registry counted as a unit of its own,
  *      reported with the cycle path and the import that closes each hop.
  * Importing inside one owner is always allowed; the public-entry rule stays with owners.mjs (ARCH_OWNER_EXPORT_BYPASS).
  */
@@ -138,15 +141,23 @@ function inspectTierEdge(graph, edge, tierRule, counts, violations, coverage) {
     return;
   }
   coverage.edgesChecked += 1;
+  if (verdict.reason === 'tierDirection' && registryListImport(graph.resolver, edge)) return;
   reportReasonedTierViolation(graph, edge, verdict, tierRule, counts, violations);
 }
+
+/**
+ * The cycle unit of a file: its owner unit, except the entity registry (entity-registry.mjs), which is a unit of its own. It sits in
+ * platform/database but is composition-level by role (it imports every capability's `<c>Entities`), so it never closes a cycle
+ * among capabilities through the owner it lives in.
+ */
+const cycleUnit = (graph, resolver, rel) => (registrySlot(resolver, rel) ? `entity-registry:${rel}` : graph.unit(rel));
 
 function ownerAdjacency(graph, resolver) {
   const adjacency = new Map();
   const witness = new Map();
   for (const edge of graph.edges) {
-    const a = graph.unit(edge.from);
-    const b = graph.unit(edge.to);
+    const a = cycleUnit(graph, resolver, edge.from);
+    const b = cycleUnit(graph, resolver, edge.to);
     if (!a || !b || a === b) continue;
     if (resolver.tierOf(edge.from) === 'none' || resolver.tierOf(edge.to) === 'none') continue;
     if (!adjacency.has(a)) adjacency.set(a, new Set());

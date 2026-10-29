@@ -229,7 +229,7 @@ rules:
       - {kind: eslint-fe, id: dead-exports}
   - id: R26
     code: BE_TIER_DIRECTION
-    law: "Imports follow the tier direction matrix: no shared package imports an app, only page and layout owners import overlays, and no other cross-owner feature edge exists."
+    law: "Imports follow the tier direction matrix: no shared package imports an app, only page and layout owners import overlays, no other cross-owner feature edge exists, and the one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`."
     failureCodes:
       - BE_TIER_DIRECTION
       - FE_TIER_DIRECTION
@@ -268,7 +268,7 @@ rules:
       - {kind: eslint-be, id: application-never-imports-transport}
   - id: R30
     code: BE_PUBLIC_SURFACE
-    law: Every owner exposes one `index.ts` of named re-exports within its slot's export budget; cross-owner imports go through it, same-owner imports stay relative, and no alias re-export exists.
+    law: Every owner exposes one `index.ts` of named re-exports within its slot's export budget; cross-owner imports go through it, except the lite entity registry, reached by deep path only from the files its slot's `importedBy` names; same-owner imports stay relative, and no alias re-export exists.
     failureCodes:
       - BE_PUBLIC_SURFACE
       - ARCH_OWNER_EXPORT_BYPASS

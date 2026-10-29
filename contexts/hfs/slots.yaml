@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.9.0
+version: 3.10.0
 presenceValues:
   - required
   - optional
@@ -2438,6 +2438,28 @@ slots:
       - BE_TIER_DIRECTION
       - ARCH_OWNER_CYCLE
       - BE_MODULE_SHAPE
+  - id: be.platform.database.entities
+    profiles:
+      - be
+    editions:
+      - lite
+    editionWhy: lite registers the one PRIMARY_ENTITIES list on its single primary connection; full registers each capability's <c>Entities per connection from persistence/connection.ts.
+    path: src/modules/platform/database/entities.ts
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    role: entity-registry
+    importedBy:
+      - apps/*/src/compose/*.ts
+      - apps/*/src/app.module.ts
+      - src/tests/world/**
+    tests: none
+    coverage: none
+    why: "the entity registry (persistence.md BE-PERSISTENCE-3): it lists every capability's <c>Entities array by name, no glob, as PRIMARY_ENTITIES, the one list the primary connection maps, and exports nothing else. It is the one platform file that imports domain and platform capabilities, each import naming only that capability's <c>Entities from its index.ts (BE_TIER_DIRECTION, ARCH_OWNER_EXPORT_BYPASS); DatabaseModule and the platform/database index never import it, and only the files importedBy names (app composition and the test world) import it, by the deep path @modules/platform/database/entities (BE_PUBLIC_SURFACE), since database.module, this list and the capability indexes would otherwise form a cycle that fails at boot"
+    rules:
+      - BE_TIER_DIRECTION
+      - BE_PUBLIC_SURFACE
+      - BE_SCHEMA_OWNER
   - id: be.platform.logging
     profiles:
       - be

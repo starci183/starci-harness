@@ -87,7 +87,9 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m) => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy'];
+/** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mjs). */
+const SLOT_ROLES = ['entity-registry'];
 /** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
 const LITE_OVERLAY_KEYS = ['path', 'requires', 'allows', 'forbids', 'minInstances', 'requiredInstances', 'why'];
 /** A runtime slot has no app kind, side composition, layer or managed template; it may name the generator of a generated copy. */
@@ -249,6 +251,8 @@ function slotEntryProblems(slot, at) {
     else if (Array.isArray(slot.allows) && slot.entries.some((entry) => !slot.allows.includes(entry))) bad.push(`${at}: every entry must be one of the names the slot allows`);
   }
   if (slot.outcomeHome !== undefined && !(slot.outcomeHome === true && typeof slot.path === 'string' && slot.path && !slot.path.endsWith('/'))) bad.push(`${at}: outcomeHome is true and belongs to a file slot (the one file that declares the repository's Outcome union)`);
+  if (slot.role !== undefined && !(SLOT_ROLES.includes(slot.role) && typeof slot.path === 'string' && slot.path && !slot.path.endsWith('/'))) bad.push(`${at}: role is one of ${SLOT_ROLES.join(', ')} and belongs to a file slot`);
+  if (slot.importedBy !== undefined && !(slot.role !== undefined && strList(slot.importedBy) && slot.importedBy.length && new Set(slot.importedBy).size === slot.importedBy.length && slot.importedBy.every(relPath))) bad.push(`${at}: importedBy is a non-empty list of unique relative path patterns of the only files that import the slot's file by deep path, on a slot with a role`);
   return bad;
 }
 

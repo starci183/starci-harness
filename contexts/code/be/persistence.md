@@ -1,5 +1,5 @@
 ---
-slots: [be.persistence]
+slots: [be.persistence, be.platform.database.entities]
 ---
 # Persistence and migrations
 
@@ -40,17 +40,23 @@ technical tables). An entity is `@Entity({ schema, name: "<plural_snake>" })`, e
 no GraphQL or validator decorator. No `*.repository.ts`. Full keeps `persistence/migrations/` beside them and
 `persistence/connection.ts` exports the `<c>Entities` and `<c>Migrations` arrays the apps register per connection. Lite
 has no be migration: each capability's `persistence/entities/index.ts` exports its `<c>Entities` array (a sanctioned
-re-export), and `platform/database/entities.ts` lists those arrays by name, no glob, as `PRIMARY_ENTITIES`.
-`DatabaseOptions.entities` is required, and only the composition root of an app passes `PRIMARY_ENTITIES`, imported
-from the deep path `@modules/platform/database/entities`: `DatabaseModule` never imports that file and the
-`platform/database` barrel never exports it, because database.module, the entity list and the capability barrels would
-form a cycle that fails at boot (`InjectPrimaryEntityManager is not a function`).
+re-export), and the entity registry `platform/database/entities.ts` (slot `be.platform.database.entities`, role
+`entity-registry`) lists those arrays by name, no glob, as `PRIMARY_ENTITIES` and exports nothing else. The registry is
+its own slot, not ordinary platform code: it is the one platform file that imports domain and platform capabilities, and
+each of those imports takes only that capability's `<c>Entities` from its `index.ts`. `DatabaseOptions.entities` is
+required, and the registry is imported only by the files its slot's `importedBy` names, app composition
+(`apps/<app>/src/compose/*.ts`, `app.module.ts`) and the test world (`src/tests/world/**`), from the deep path
+`@modules/platform/database/entities`: `DatabaseModule` never imports that file and the `platform/database` barrel never
+exports it, because database.module, the entity list and the capability barrels would form a cycle that fails at boot
+(`InjectPrimaryEntityManager is not a function`).
 
-Why: one owner per table gives every schema change one reviewer and keeps platform free of domain types.
+Why: one owner per table gives every schema change one reviewer and keeps platform free of domain types; the one
+registry that names every list is the only place that knowledge meets.
 
 Enforced by: `schema-owner`, `require-entity-table-name`, `no-eager-relation`, `no-entity-in-contract` (R35, R83, R37);
-the deep `PRIMARY_ENTITIES` import from app composition only is held by review (open gap: the import-boundary rule does not
-name that path yet).
+the registry's imports and importers by `tier-direction` (R26), `owner-export-bypass` and `import-owner-entry` (R30),
+which admit exactly the registry's `<c>Entities` imports and its `importedBy` importers; `owner-cycle` (R27)
+counts the registry as a unit of its own, so it never closes a cycle among capabilities through `platform/database`.
 
 ## BE-PERSISTENCE-4 Lite reads and writes through entities; full SQL is a `sql`-tagged constant
 

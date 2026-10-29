@@ -474,7 +474,7 @@ rules:
     witness:
       - {path: packages/eslint/be/legacy-owner-graph.a16.spec.mjs, editions: [lite, full]}
     templateNa: "Tier and package direction are constraints on cross-owner import graphs; no dedicated cross-owner graph scaffold is generated."
-    law: "The tier direction matrix; a shared package never imports an app. Front-end page and layout owners may import overlay entries; every other cross-owner feature-to-feature edge is forbidden, including layout-to-page and overlay-to-overlay. Components never import overlays."
+    law: "The tier direction matrix; a shared package never imports an app. Front-end page and layout owners may import overlay entries; every other cross-owner feature-to-feature edge is forbidden, including layout-to-page and overlay-to-overlay. Components never import overlays. The one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`."
     kinds: [lint, design]
     gates: [settle, land, ci]
     failureCodes: ["BE_TIER_DIRECTION", "FE_TIER_DIRECTION", "ARCH_PACKAGE_IMPORTS_APP"]
@@ -541,7 +541,7 @@ rules:
       - {path: packages/eslint/be/a16-r29-r31.spec.mjs, edition: full}
   - id: R30
     code: "BE_PUBLIC_SURFACE"
-    law: "Every owner has one `index.ts`; cross-owner imports use it, same-owner imports are relative and never go through it; it holds only named `export { }` lines, no `export *`, no alias re-export (`export { X as Y }`, `export const Y = X`, `export type Y = X`, `export interface Y extends X {}`: one declaration has one name), within the owner slot's `indexExports` budget (60 for domain and feature owners, 80 for `be.integrations` provider entries); cross-package imports use the package name and a declared export."
+    law: "Every owner has one `index.ts`; cross-owner imports use it, except the lite entity registry, reached by deep path only from the files its slot's `importedBy` names; same-owner imports are relative and never go through it; it holds only named `export { }` lines, no `export *`, no alias re-export (`export { X as Y }`, `export const Y = X`, `export type Y = X`, `export interface Y extends X {}`: one declaration has one name), within the owner slot's `indexExports` budget (60 for domain and feature owners, 80 for `be.integrations` provider entries); cross-package imports use the package name and a declared export."
     kinds: [lint, codemod]
     gates: [settle, land, ci]
     failureCodes: ["BE_PUBLIC_SURFACE", "ARCH_OWNER_EXPORT_BYPASS", "ARCH_OWNER_EXPORT_STAR", "HFS_ALIAS_REEXPORT", "ARCH_PACKAGE_EXPORT_BYPASS"]
