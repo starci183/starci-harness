@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.29 - 2026-10-30
+
+- Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.29), which re-pin ai-router 0.4.0.
+
 ## 0.15.28 - 2026-10-30
 
 - Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.28), which re-pin hfs 4.11.16.

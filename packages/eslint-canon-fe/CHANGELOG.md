@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.5.18 - 2026-10-30
+
+- Changed: the bundled canon pins name ai-router 0.4.0 (mounted keys), hfs 4.11.17, eslint-canon-be 3.8.16, eslint-canon-fe 9.5.18 and the Grammar family 0.15.29. No rule changed.
+
 ## 9.5.17 - 2026-10-30
 
 - Changed: the bundled architecture machine's `jwt-ast.mjs` and `identity.mjs` carry the R260 policy of eslint-canon-be 3.8.15 (a configured audience or the authenticated role binds the principal). No rule of this package changed.

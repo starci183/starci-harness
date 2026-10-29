@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 - 2026-10-30
+
+- Added: mounted keys, `GatewayOptions.mountedKeys` (and so `AiRouterGatewayModule`'s options): virtual keys from secrets the app already holds (`{ label, secret: string | (() => string), owner?, profiles?, models?, allowFallback?, quota?, enabled? }`, the `MountedKeySpec` type), so a deploy needs no `keys create`. Each secret is read once at startup, must start with `sk-starci-<label>-` followed by at least 32 letters, digits, `_` or `-`, and is kept only as its SHA-256 with its bindings in memory; a mounted key is never written to the key store. A bearer token is matched against the mounted keys before the store. Each mounted key has the stable id `key_` + 16 hex of `sha256("mounted:<label>")`, so its quota counters and usage rows survive a new secret and every deploy.
+- Added: `MountedKeyError` (`code` `invalid`, `duplicate_label` or `collision`, and the `label`), naming the label and key id, never the secret. An invalid mounted key or a label given twice throws from `createGateway`; a secret or id a stored key already holds rejects the new `gateway.ready()`, which `listen`, `handle` and `AiRouterGatewayModule` (whose gateway provider is now async) await, so the app refuses to start.
+- Added: `VirtualKey.mounted` (`true` on a mounted key, absent otherwise); `KeyAdmin.list` and `get` show mounted keys, and `revoke`, `rotate` and `update` refuse one with the new `KeyAdminError` code `mounted`, which the admin API answers 409 `key_mounted`. `KeyAdmin`'s options are the exported `KeyAdminOptions` (`catalog`, `clock`, `mounted`).
+
 ## 0.3.0 - 2026-10-28
 
 - Added: an OpenAI-compatible HTTP gateway over the same router (`createGateway(router, options)`): `POST /v1/chat/completions` (SSE streaming in OpenAI's chunk format, ending with `[DONE]`), `POST /v1/embeddings`, `GET /v1/models` (the profiles and pool models the calling key may use), `GET /health`, and OpenAI error objects with 400, 401, 403, 404, 413, 429 (with `Retry-After`), 502, 503 and 504. A request's `model` names a profile or a pool model id or alias.

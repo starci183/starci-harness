@@ -5,12 +5,20 @@ import type { AddressInfo } from "node:net"
 import { AiRouterError } from "../errors.ts"
 import type { AiRouter, CallOptions, CatalogModel, ChatCompletionChunk, ChatCompletionRequest, EmbeddingsRequest, MaybePromise, ModelPolicy, RouterCatalog, Usage } from "../types.ts"
 import { dayOf, KeyAdmin, KeyAdminError } from "./keys.ts"
-import type { KeySpec, KeyStore, StoredKey } from "./keys.ts"
+import type { KeySpec, KeyStore, MountedKeySpec, StoredKey } from "./keys.ts"
 
 /** How a gateway is built over a router. */
 export interface GatewayOptions {
     /** Where virtual keys and their usage live. */
     readonly keys: KeyStore
+    /**
+     * Keys mounted from secrets the app already holds, so a deploy needs no `keys create`. Each secret is read once
+     * here, checked to start with `sk-starci-<label>-`, and kept only as its SHA-256; the key is never written to
+     * the store, has the stable id `key_<16 hex>` of its label (its quota and usage survive a new secret), lists with
+     * `mounted: true`, and refuses revoke, rotate and update. An invalid key or a label given twice throws a
+     * `MountedKeyError` here; a secret or id a stored key holds rejects `ready()`.
+     */
+    readonly mountedKeys?: readonly MountedKeySpec[]
     /** Returns the admin token at each admin request; absent, or an empty answer, turns the admin API off. */
     readonly adminToken?: () => MaybePromise<string | undefined>
     /** The largest request body read, in bytes. Default 4 MiB. */
@@ -25,6 +33,11 @@ export interface GatewayOptions {
 export interface AiRouterGateway {
     /** The key administration the admin API and the CLI share. */
     readonly admin: KeyAdmin
+    /**
+     * Resolves once the mounted keys are checked against the store, and rejects with a `MountedKeyError` when a stored
+     * key holds a mounted key's secret or id. `listen`, `handle` and the Nest module wait for it.
+     */
+    ready(): Promise<void>
     /** Answers one HTTP request; mount it on any Node HTTP server or framework (a body a framework parsed is used as is). */
     handle(request: IncomingMessage, response: ServerResponse): Promise<void>
     /** Listens on a port (0: any free port) and resolves to the bound address. */
@@ -193,7 +206,10 @@ interface Captured {
 export function createGateway(router: AiRouter, options: GatewayOptions): AiRouterGateway {
     const clock = options.clock ?? Date.now
     const catalog = router.catalog()
-    const admin = new KeyAdmin(options.keys, { catalog, clock })
+    const admin = new KeyAdmin(options.keys, { catalog, clock, ...(options.mountedKeys === undefined ? {} : { mounted: options.mountedKeys }) })
+    const checked = admin.checkMounted()
+    // A refusal surfaces through ready(), listen() and handle(); it must not also be an unhandled rejection.
+    checked.catch(() => undefined)
     const maxBody = options.maxBodyBytes ?? DEFAULT_MAX_BODY
     const servers = new Set<Server>()
     // A stream's usage reaches the gateway through the attempt event of its request id.
@@ -428,6 +444,7 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         if (!(error instanceof KeyAdminError)) throw error
         if (error.code === "not_found") return new GatewayError(404, "key_not_found", error.message)
         if (error.code === "revoked") return new GatewayError(409, "key_revoked", error.message)
+        if (error.code === "mounted") return new GatewayError(409, "key_mounted", error.message)
         return new GatewayError(400, "invalid_key_spec", error.message)
     }
 
@@ -517,6 +534,7 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
 
     async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
         try {
+            await checked
             await route(request, response)
         } catch (error) {
             if (response.headersSent) {
@@ -534,8 +552,10 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
 
     return {
         admin,
+        ready: () => checked,
         handle,
         async listen(port, host = "127.0.0.1") {
+            await checked
             const server = createServer((request, response) => {
                 void handle(request, response)
             })
