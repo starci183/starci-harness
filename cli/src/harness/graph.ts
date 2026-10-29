@@ -138,6 +138,13 @@ export const isGeneratedKey = (key: string): boolean => key.startsWith(REVERT_PR
 /** True for a relay node's key. */
 export const isRelayKey = (key: string): boolean => key.startsWith(RELAY_PREFIX)
 
+/**
+ * The key of the task that composes the module a node writes (core/check/composition.ts): its contract's `composedBy`, and for a
+ * relay node its first waiter, the first node of the graph that depends on it, since a relay carries what that waiter consumes.
+ */
+export const composerOf = (node: Pick<PlanTask, "key" | "contract">, graph: readonly Pick<PlanTask, "key" | "dependsOn">[]): string | undefined =>
+    isRelayKey(node.key) ? graph.find((other) => other.dependsOn.includes(node.key))?.key : node.contract.context.composedBy
+
 /** The refusal text of a key a file may not write: the harness's own. */
 const GENERATED_KEY = `a key starting with ${REVERT_PREFIX} or ${RELAY_PREFIX} is the harness's own (a revert or relay node)`
 

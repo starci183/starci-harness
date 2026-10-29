@@ -2,13 +2,14 @@ import { canonOf, loadPolicy, resolveProfile } from "../../harness/policy.js"
 import type { Policy, RuntimeGate } from "../../harness/policy.js"
 import type { RunOptions } from "../../shared/exec.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
-import { baseCwd, judgeAgainstBase, judgedAgainstBase } from "./base-findings.js"
-import type { BaseJudgement } from "./base-findings.js"
+import { baseCwd, judgeAgainstRuns, judgedAgainstBase, runAtBase } from "./base-findings.js"
+import type { BaseJudgement, BaseRun } from "./base-findings.js"
 import { canonPackage } from "./canon.js"
 import type { CanonByTool } from "./canon.js"
 import { describeLoosening, scanLoosening } from "./loosening-scan.js"
+import { relaySources } from "./relay-baseline.js"
 import { describeScope, describeStep, lintPackage, resolveScope, typecheckPackage } from "./scope.js"
-import type { Scope, ScopeTarget, StepResult } from "./scope.js"
+import type { Judging, Scope, ScopeTarget, StepResult } from "./scope.js"
 import { describeSecrets, scanSecrets } from "./secrets-scan.js"
 import { treeFiles } from "./tree-files.js"
 import { DEP_BUILD_FAILED, buildWorkspaceDependencies } from "./workspace-deps.js"
@@ -35,7 +36,7 @@ interface RunData {
     readonly verdict: "green" | "red"
     readonly gates: readonly GateResult[]
     readonly steps: readonly StepResult[]
-    /** The findings of a widened run that were already at its base (base-findings.ts): evidence, never this change's red. */
+    /** The findings already at a base (base-findings.ts): a widened run's base, a relayed source's head. Evidence, never this change's red. */
     readonly baseline: BaseJudgement | null
 }
 
@@ -116,9 +117,16 @@ interface TierFlags {
     readonly paths: readonly string[]
 }
 
+/** Whom the flags judge as: a task, a workflow's final verify or a wave's tasks (scope.ts Judging). */
+const judgingOf = (flags: TierFlags): Judging => ({
+    ...(flags.task === undefined ? {} : { task: flags.task }),
+    ...(flags.workflow === undefined ? {} : { workflow: flags.workflow }),
+    ...(flags.wave === undefined ? {} : { wave: flags.wave.split(",").filter((id) => id !== "") }),
+})
+
 /** One run of the profile's runtime tier from `cwd`: the scope, the repository gates, then each package step. */
 const runTier = async (cwd: string, treeRoot: string | undefined, flags: TierFlags) => {
-    const scope = await resolveScope(cwd, flags.base, flags.all, flags.paths, { ...(flags.task === undefined ? {} : { task: flags.task }), ...(flags.workflow === undefined ? {} : { workflow: flags.workflow }), ...(flags.wave === undefined ? {} : { wave: flags.wave.split(",").filter((id) => id !== "") }) }, flags.within)
+    const scope = await resolveScope(cwd, flags.base, flags.all, flags.paths, judgingOf(flags), flags.within)
     const policy = loadPolicy(scope.root)
     const choice = resolveProfile(policy, treeRoot)
     const tier = choice.profile.runtime
@@ -153,15 +161,26 @@ export const checkRunVerb = defineVerb({
     run: async (context, flags) => {
         const ran = await runTier(context.cwd, context.treeRoot, flags)
         const { scope, choice, tier, canon, policy, gates } = ran
-        // A run an app-wide configuration file widened (never --all) is judged against the same run at its base: findings already
-        // there are the base's, kept as baseline-findings evidence, and only new ones are red (base-findings.ts).
-        const widened = scope.all && !flags.all && judgedAgainstBase(ran.steps)
-        const based = widened
-            ? await judgeAgainstBase(scope.root, scope.base, ran.steps, async (dir) => {
-                  const cwd = baseCwd(scope.root, context.cwd, dir)
-                  return (await runTier(cwd, locateTree(cwd).root, { all: true, within: false, paths: [] })).steps
-              })
-            : undefined
+        // A red step is judged against the same run where its findings may already be: a run an app-wide configuration file
+        // widened (never --all) against its base, and the files a relay node carries against the source's head it relays
+        // (relay-baseline.ts), whether judged as the relay node, its composer or the final verify. Findings already there are that
+        // base's, kept as baseline-findings evidence, and only new ones are red (base-findings.ts).
+        const judgedRed = judgedAgainstBase(ran.steps)
+        const rerun =
+            (atBase: TierFlags) =>
+            async (dir: string): Promise<StepResult[]> => {
+                const cwd = baseCwd(scope.root, context.cwd, dir)
+                return (await runTier(cwd, locateTree(cwd).root, atBase)).steps
+            }
+        const runs: BaseRun[] = []
+        if (judgedRed && scope.all && !flags.all) runs.push(await runAtBase(scope.root, scope.base, rerun({ all: true, within: false, paths: [] })))
+        // At the source's head the relayed files are judged as they stand there: tracked files under their paths, no diff.
+        // Its composition findings are never the source's: the relay node defers them to its composer, which answers for them.
+        const except = policy.quality.runtime.compositionRules
+        for (const source of judgedRed ? relaySources(scope.root, judgingOf(flags)) : []) {
+            runs.push(await runAtBase(scope.root, source.head, rerun({ base: "HEAD", all: false, within: false, paths: source.paths }), { paths: source.paths, except }))
+        }
+        const based = runs.length === 0 ? undefined : judgeAgainstRuns(scope.root, ran.steps, runs)
         const steps = based?.steps ?? ran.steps
         const red = [...gates, ...steps].some((result) => result.status === "red")
         const verdict = red ? "red" : "green"
@@ -181,7 +200,7 @@ export const checkRunVerb = defineVerb({
             describeScope(scope),
             ...gates.map((gate) => `${gate.status.padEnd(7)} ${gate.gate.padEnd(9)} (repository)${findingSuffix(gate)}`),
             ...steps.map(describeStep),
-            ...(data.baseline === null ? [] : data.baseline.steps.map((each) => [`baseline-findings ${each.package} ${each.step}, already at ${based?.judgement.base.slice(0, 12) ?? ""}:`, ...each.findings.map((key) => `  ${key}`)].join("\n"))),
+            ...(data.baseline === null ? [] : data.baseline.steps.map((each) => [`baseline-findings ${each.package} ${each.step}, already at ${each.at.slice(0, 12)}:`, ...each.findings.map((key) => `  ${key}`)].join("\n"))),
             `verdict: ${verdict}`,
             ...gates.filter((gate) => gate.status === "red").map((gate) => `--- ${gate.gate}\n${gate.output}`),
             ...steps.filter((step) => step.status === "red").map((step) => `--- ${step.package} ${step.step}\n${step.output}`),

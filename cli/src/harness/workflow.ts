@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { normaliseRepoPath, parseContract } from "./contract.js"
 import type { Contract } from "./contract.js"
-import { LIVE_STATES, storedHeader, STUCK_STATES, viewNodes } from "./graph.js"
+import { LIVE_STATES, composerOf, storedHeader, STUCK_STATES, viewNodes } from "./graph.js"
 import type { Classified, Difficulty, NodeTask, NodeView, PlanNode, TaskRoute, WorkflowHeader } from "./graph.js"
 import { recordFirstGoal } from "./goal.js"
 import { loadRouting } from "./routing.js"
@@ -394,9 +394,9 @@ export const snapshotOf = (db: DatabaseSync, id: string): Snapshot => {
 
 /**
  * Whether a workflow's graph needs a final verify before it is done: a task of it deferred its composition rules to its composer
- * (`composedBy`), so the modules it wrote are judged once more, in full, on the code every task left (core/workflow/engine.ts).
+ * (graph.ts composerOf), so the modules it wrote are judged once more, in full, on the code every task left (core/workflow/engine.ts).
  */
-export const needsFinalVerify = (snapshot: Snapshot): boolean => snapshot.nodes.some((node) => node.contract.context.composedBy !== undefined)
+export const needsFinalVerify = (snapshot: Snapshot): boolean => snapshot.nodes.some((node) => composerOf(node, snapshot.nodes) !== undefined)
 
 /** The final verify that judges the workflow's current graph, if one ran. */
 export const currentFinalVerify = (snapshot: Snapshot): FinalVerify | null =>

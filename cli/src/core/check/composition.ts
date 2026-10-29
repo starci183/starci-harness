@@ -1,6 +1,7 @@
 import { relative, sep } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { underPaths } from "../../harness/contract.js"
+import { composerOf } from "../../harness/graph.js"
 import { openExistingLedger } from "../../harness/ledger.js"
 import { loadPolicy } from "../../harness/policy.js"
 import { getTask } from "../../harness/tasks.js"
@@ -8,9 +9,9 @@ import { getWorkflow, graphOf } from "../../harness/workflow.js"
 import type { ToolRun } from "../../shared/exec.js"
 
 /**
- * The composition rules (policy/quality.yaml runtime.compositionRules) a task defers: a task whose contract names the task that
- * composes the module it writes (`context.composedBy`) does not answer for those rules on its own allowPaths, since the module
- * is meant to stand unused until that task wires it in. The deferral is an obligation, never a waiver: the composer's check
+ * The composition rules (policy/quality.yaml runtime.compositionRules) a task defers: a task with a composer (its contract's
+ * `context.composedBy`, a relay node's first waiter: graph.ts composerOf) does not answer for those rules on its own
+ * allowPaths, since the module is meant to stand unused until that task wires it in. The deferral is an obligation, never a waiver: the composer's check
  * judges the module with no deferral, and so does the workflow's final verify before the workflow is done.
  */
 export interface Deferral {
@@ -45,28 +46,29 @@ const withLedger = <T>(root: string, read: (db: DatabaseSync) => T, absent: T): 
     }
 }
 
-/** The obligations a workflow's current graph carries: every node whose contract names its composer. */
+/** The obligations a workflow's current graph carries: every node with a composer. */
 const obligationsOf = (db: DatabaseSync, workflowId: string): Obligation[] => {
-    const workflow = getWorkflow(db, workflowId)
-    return graphOf(db, workflowId, workflow.graphVersion).flatMap((node) => {
-        const to = node.contract.context.composedBy
+    const graph = graphOf(db, workflowId, getWorkflow(db, workflowId).graphVersion)
+    return graph.flatMap((node) => {
+        const to = composerOf(node, graph)
         return to === undefined ? [] : [{ producer: node.key, to, paths: node.contract.context.allowPaths }]
     })
 }
 
 /**
- * The composition a task's check applies: its own deferral when its contract names a composer, and the modules of its
- * workflow whose producers named it (by plan key) as their composer, which its check judges with no deferral.
+ * The composition a task's check applies: its own deferral when it has a composer, and the modules of its workflow whose
+ * producers have it (by plan key) as their composer, which its check judges with no deferral.
  */
 export const taskComposition = (root: string, taskId: string): Composition =>
     withLedger(
         root,
         (db) => {
             const task = getTask(db, taskId)
-            const to = task.contract.context.composedBy
-            const deferral = to === undefined ? null : { to, paths: task.contract.context.allowPaths, rules: loadPolicy(root).quality.runtime.compositionRules }
             const row = db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(taskId)
             const key = typeof row?.plan_key === "string" ? row.plan_key : undefined
+            const graph = task.workflowId === null ? [] : graphOf(db, task.workflowId, getWorkflow(db, task.workflowId).graphVersion)
+            const to = key === undefined ? task.contract.context.composedBy : composerOf({ key, contract: task.contract }, graph)
+            const deferral = to === undefined ? null : { to, paths: task.contract.context.allowPaths, rules: loadPolicy(root).quality.runtime.compositionRules }
             const obligations = task.workflowId === null || key === undefined ? [] : obligationsOf(db, task.workflowId).filter((each) => each.to === key)
             return { deferral, obligations }
         },

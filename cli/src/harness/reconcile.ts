@@ -217,7 +217,11 @@ export interface RelayPlan {
  * The relay node of a shared need whose resolving commits do not apply to a waiting branch (core/needs/tend.ts): built on
  * `template` (the resolver's node, so its label, inputs and checks prove the capability on this branch too), it may write the
  * conflicting files and every file the commits touch, and its work is to apply exactly those commits, resolving each conflict
- * so that both sides' intent holds. Its verify is its label's own; the engine's `applyGenerated` does the mechanics first.
+ * so that both sides' intent holds. Its verify is its label's own, judging it as the transport of work the source already settled:
+ * its first waiter composes it (graph.ts composerOf), consuming what the commits export, so the composition rules on the relayed
+ * files defer to that waiter (core/check/composition.ts); a context file the source owns is read at the last relayed commit
+ * (relayHeadOf); and a finding the relayed files already held there is the source's baseline (core/check/relay-baseline.ts). The
+ * engine's `applyGenerated` does the mechanics first.
  */
 export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: RelayPlan): PlanTask => {
     const listed = plan.commits.map((commit) => commit.slice(0, 12)).join(" ")
@@ -225,7 +229,8 @@ export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: 
     const how = "`git cherry-pick --no-commit <commit>` for each in that order, then `git reset -q`"
     const contract = parseContract({
         ...template.contract,
-        context: { ...template.contract.context, allowPaths },
+        // The template's own composer is a key of the source's graph; a relay node's is its first waiter (composerOf).
+        context: { ...template.contract.context, allowPaths, composedBy: undefined },
         input: {
             ...template.contract.input,
             summary: `relay shared need ${plan.need}: apply commits ${listed} onto this branch, resolving conflicts preserving both sides' intent`,
@@ -240,9 +245,17 @@ export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: 
     return { key: relayKeyOf(plan.need, plan.round), contract, dependsOn: [], route: template.route, round: 0 }
 }
 
+/** The commits a relay contract carries, in order; none for any other contract. */
+const relayedBy = (contract: Pick<Contract, "input">): string[] => (contract.input.extend?.[RELAY_COMMITS] ?? "").split(" ").filter((commit) => commit !== "")
+
 /** The commits a relay node carries, in order; none for any other node. */
-export const relayCommitsOf = (node: Pick<PlanNode, "key" | "contract">): string[] =>
-    isRelayKey(node.key) ? (node.contract.input.extend?.[RELAY_COMMITS] ?? "").split(" ").filter((commit) => commit !== "") : []
+export const relayCommitsOf = (node: Pick<PlanNode, "key" | "contract">): string[] => (isRelayKey(node.key) ? relayedBy(node.contract) : [])
+
+/**
+ * The source's settled head a relay contract stands on: its last relayed commit, whose tree holds the source's work as it was
+ * judged there (the Work records the commits reference included). Undefined for a contract that relays nothing.
+ */
+export const relayHeadOf = (contract: Pick<Contract, "input">): string | undefined => relayedBy(contract).at(-1)
 
 /**
  * Applies `commits` in order to the work tree, committing nothing and leaving the index as it was: the mechanics of a relay

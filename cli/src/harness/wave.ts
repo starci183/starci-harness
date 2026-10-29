@@ -7,6 +7,7 @@ import { assertNoInfraFailure, inCleanCheckout, prepareCheckout, VERIFY_INFRA } 
 import { blockOnCustody, CUSTODY_CODES } from "./custody.js"
 import { resolveChecks } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
+import { composerOf } from "./graph.js"
 import { enablePatterns, patternsOfFindings } from "./hfs-patterns.js"
 import { opWorktreeOf } from "./land.js"
 import { inTransaction, now } from "./ledger.js"
@@ -66,12 +67,13 @@ interface WaveTask {
     readonly answers: readonly string[]
 }
 
-/** The allowPaths of every node of the task's workflow that names this task (by plan key) as its composer. */
+/** The allowPaths of every node of the task's workflow whose composer (graph.ts composerOf) is this task, by plan key. */
 const answersOf = (db: DatabaseSync, task: TaskRow): string[] => {
     if (task.workflowId === null) return []
     const key = db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(task.id)?.plan_key
     if (typeof key !== "string") return []
-    return graphOf(db, task.workflowId, getWorkflow(db, task.workflowId).graphVersion).flatMap((node) => (node.contract.context.composedBy === key ? node.contract.context.allowPaths : []))
+    const graph = graphOf(db, task.workflowId, getWorkflow(db, task.workflowId).graphVersion)
+    return graph.flatMap((node) => (composerOf(node, graph) === key ? node.contract.context.allowPaths : []))
 }
 
 /** What a wave verify judged: the tasks, its base and head, the outcomes per task, and the tasks it returned red. */
