@@ -542,6 +542,21 @@ whose lease expired is `stalled (lease expired at ...)`, never alive),
 `supervisor stop` closes its tab (the agent in it goes with it) and retires its row, and `supervisor ensure` starts one only
 when Orca says it is gone (or replays a launch whose answer was lost), closing the old tab first; the host driver below does
 the same for every project on every tick.
+`project park [--project] [--dry-run]` frees a project of every agent and keeps everything resumable (`core/project/park-engine.ts`):
+it records a `project-parked` host event first, pauses each running, blocked or paused workflow with the reason `parked: was
+<status>[: <reason>]`, stops each live worker seat (an Op's or a `[Worker]`'s), a working task cancelled with `task-parked` in
+the cancel's own transaction so its work settles KEEP as the key's one patch and its node comes back at the same try (revive.ts
+`harnessCause` `parked`, counted toward no `reviveMax`), a task past its work only having its seats closed; then it closes each
+workflow's Kernel terminal (`workflow-parked`, worktree and graph untouched), stops the Supervisor (`ended_by` `parked`), and
+closes every Orca terminal of the project still listed (one a seat, Kernel or Supervisor record names, one working in a
+workflow, Op or worker worktree, or one titled for the project) and force-closes each of those worktrees (`closeFolderTerminals`
+in `harness/reap.ts`), recording on the event what it closed and what Orca still lists (`left`, exit 1 unless empty). Orca
+itself keeps running. While parked, `ensureSupervisor` starts nothing for the project and no sweep counts a parked workflow as
+coordinated, so no tick relaunches its Supervisor, Kernels or seats. `project unpark [--project] [--wait <seconds>]` records
+`project-unparked`, starts the Supervisor and, once it attached, relaunches each parked workflow's Kernel on its own worktree
+and restores its status (a running or blocked one through `workflow resume`, whose dispatch re-sends the parked tasks from
+their patches; a worker's parked task is retried and launched); a Supervisor not attached within the wait leaves the rest to
+`supervisor tick`, which finishes it (`finishUnpark`).
 `workflow start` of an orca workflow runs only in the terminal of the Supervisor of the workflow's project
 (`SUPERVISOR_REQUIRED` elsewhere): it makes (or reuses) the workflow's one git worktree (`workflows.worktree`, default
 `<project state>/worktrees/<workflow>` on branch `starci/<workflow>`) and launches the Kernel by `worker-start
@@ -657,8 +672,8 @@ any registered ledger still unreconciled past `effectUnknownDeadlineMinutes` wit
 it (retiring also removes the project's harness worktrees, their work preserved, and detaches the repository from Orca's
 project list with `orca project setup-delete` once Orca lists no other worktree of it); then `ensureSupervisors` keeps
 the Supervisor of every project that owns a running orca workflow, or whose last Supervisor ended by anything but the
-owner's `supervisor stop` (started when Orca says it is gone); then, acting for each attached Supervisor (its terminal as
-`--from`, its lease left to its own calls), it runs the Kernel sweep of that project's repositories with the Ops' stall
+owner's `supervisor stop` or `project park` (started when Orca says it is gone; a parked project gets none); then, acting for each attached Supervisor (its terminal as
+`--from`, its lease left to its own calls), it finishes a pending unpark of its project, then runs the Kernel sweep of that project's repositories with the Ops' stall
 ladder and the ready-idle wake of each owned workflow (below), and that Supervisor's own ladder. A host store of version 2 kept one host Supervisor in its
 `supervisors` table; a workflow whose Kernel was launched into that Supervisor's Run is adopted by its project's Supervisor
 on the first tick (a `workflow-coordinator` event naming `adoptedFrom`), its Kernel left running there while Orca shows

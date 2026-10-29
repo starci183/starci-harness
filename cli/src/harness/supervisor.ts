@@ -8,6 +8,7 @@ import { coordinatorLaunch } from "./coordinator-launch.js"
 import { leaseEnd, loadCoordinatorLiveness, olderThan } from "./coordinator-liveness.js"
 import { now, runtimeRoot } from "./ledger.js"
 import { readMachine, withMachine } from "./machine.js"
+import { isProjectParked } from "./park.js"
 import { agentLaunch, isSelectorNotFound, launchOperationOf, locateOrca, mailOrType, OrcaFailure, repoAdd, requestIdOf, runCreate, taskCreate, terminalClose, terminalList, terminalRename } from "./orca/client.js"
 import type { AgentLaunchInput, MailSend, OrcaBinary } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
@@ -38,8 +39,8 @@ const supervisorSchema = z.object({
 /** A project's Supervisor (machine.sqlite `project_supervisors`), including a launch reserved before Orca answered. */
 export type SupervisorRecord = z.infer<typeof supervisorSchema>
 
-/** Who retired a Supervisor row: the owner's stop, ensure finding its terminal gone, or the stall ladder replacing it. */
-export type SupervisorEnd = "owner" | "gone" | "stalled"
+/** Who retired a Supervisor row: the owner's stop, ensure finding its terminal gone, the stall ladder replacing it, or `project park`. */
+export type SupervisorEnd = "owner" | "gone" | "stalled" | "parked"
 
 /** The project a Supervisor row serves. */
 export const projectOfRecord = (seat: SupervisorRecord): Project => ({ root: seat.project_root, key: seat.project, name: basename(seat.project_root) })
@@ -57,13 +58,13 @@ export const liveSupervisors = (): SupervisorRecord[] =>
 
 /**
  * The projects whose Supervisor the host driver keeps: a live one, or one whose last Supervisor ended by anything but the owner's
- * `supervisor stop` (gone or stalled). The driver adds the projects that own running workflows.
+ * `supervisor stop` or `project park` (gone or stalled). The driver adds the projects that own running workflows.
  */
 export const keptProjects = (): Project[] =>
     readMachine(
         (db) =>
             db
-                .prepare("SELECT * FROM project_supervisors s WHERE started_at = (SELECT MAX(started_at) FROM project_supervisors WHERE project = s.project) AND (ended_at IS NULL OR ended_by IS NOT 'owner')")
+                .prepare("SELECT * FROM project_supervisors s WHERE started_at = (SELECT MAX(started_at) FROM project_supervisors WHERE project = s.project) AND (ended_at IS NULL OR ended_by NOT IN ('owner', 'parked'))")
                 .all(),
         [],
     ).map((row) => projectOfRecord(supervisorSchema.parse(row)))
@@ -201,9 +202,11 @@ export interface SupervisorEnsured {
 /**
  * Keeps a project's one Supervisor alive (`supervisor ensure`, and every `supervisor tick`): absent or gone by Orca's word ->
  * start; a reserved launch with an unknown answer -> replay it with its operation id; no operation id past the effect-unknown
- * deadline -> stuck (reported, never relaunched blind); alive or unknown -> nothing. Unknown is not dead.
+ * deadline -> stuck (reported, never relaunched blind); alive or unknown -> nothing. Unknown is not dead. A parked project
+ * (harness/park.ts) gets nothing until `project unpark`.
  */
 export const ensureSupervisor = async (binary: OrcaBinary, cwd: string, project: Project): Promise<SupervisorEnsured> => {
+    if (isProjectParked(project.key)) return { project, action: "none", liveness: "absent", supervisor: supervisorRecord(project.key), detail: `project ${project.name} is parked; starci project unpark --project ${project.root} starts it` }
     const status = await supervisorStatus(binary, cwd, project)
     const { supervisor, liveness } = status
     if (liveness === "absent" || liveness === "gone") {

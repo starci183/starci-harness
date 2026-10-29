@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite"
 import { CONSUMER_FENCED_OUTCOME } from "./budget.js"
 import { loadLiveness } from "./liveness.js"
+import { TASK_PARKED } from "./park.js"
 import { loadStallRules } from "./stall.js"
 
 /**
@@ -8,9 +9,10 @@ import { loadStallRules } from "./stall.js"
  * (`consumer-fenced`), a launch that never started its worker's turn (`launch-lost`), a verify the harness stopped (`verify-infra`,
  * clean-verify.ts `assertNoInfraFailure`) or its lock's deadline stopped (`verify-deadline`), a done task whose work never landed, returned
  * with that work preserved by `task verify --recover` (`land-orphaned`, core/task/verify.ts), or an attempt whose walk met no app,
- * every page it opened answering 5xx (`walk-unserved`, core/task/result.ts).
+ * every page it opened answering 5xx (`walk-unserved`, core/task/result.ts), or a live attempt `project park` stopped, its work kept
+ * (`parked`, core/project/park-engine.ts).
  */
-export type HarnessCause = "wave-foreign" | "consumer-fenced" | "launch-lost" | "verify-infra" | "verify-deadline" | "land-orphaned" | "walk-unserved"
+export type HarnessCause = "wave-foreign" | "consumer-fenced" | "launch-lost" | "verify-infra" | "verify-deadline" | "land-orphaned" | "walk-unserved" | "parked"
 
 /** The event `task verify --recover` records when it returns a done task whose work never landed. */
 export const LAND_ORPHANED = "land-orphaned"
@@ -51,6 +53,7 @@ export const harnessCause = (db: DatabaseSync, taskId: string): HarnessCause | n
     const status = text(db.prepare("SELECT status FROM tasks WHERE id = ?").get(taskId)?.status)
     if (status !== "failed" && status !== "cancelled") return null
     if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(LAND_ORPHANED, taskId) !== undefined) return LAND_ORPHANED
+    if (status === "cancelled" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(TASK_PARKED, taskId) !== undefined) return "parked"
     const attempt = db.prepare("SELECT id, outcome, verdict FROM attempts WHERE task_id = ? ORDER BY seq DESC LIMIT 1").get(taskId)
     if (attempt === undefined || text(attempt.verdict) === "red") return null
     const attemptId = text(attempt.id) ?? ""
@@ -74,8 +77,8 @@ export const HOLD_REVIVED = "hold-revived"
 
 /**
  * The harness-killed tasks of each node (plan key and hash) that come back to ready: each one whose cause `harnessCause` names,
- * up to `reviveMax` of ops/liveness.yaml per node, and any such one a released hold revived (`hold-revived`); one past it stays
- * ended, its node red for the Kernel with the cause in evidence.
+ * up to `reviveMax` of ops/liveness.yaml per node, and any such one a released hold revived (`hold-revived`) or a park stopped
+ * (`parked`, which says nothing of the task and counts toward no limit); one past it stays ended, its node red for the Kernel with the cause in evidence.
  */
 export const revivableTasks = (db: DatabaseSync, tasks: readonly { readonly id: string; readonly key: string | null; readonly hash: string | null; readonly status: string }[]): Map<string, HarnessCause> => {
     const max = loadLiveness().reviveMax
@@ -85,6 +88,10 @@ export const revivableTasks = (db: DatabaseSync, tasks: readonly { readonly id: 
         if (task.key === null || (task.status !== "failed" && task.status !== "cancelled")) continue
         const cause = harnessCause(db, task.id)
         if (cause === null) continue
+        if (cause === "parked") {
+            revivable.set(task.id, cause)
+            continue
+        }
         const node = `${task.key}\0${task.hash ?? ""}`
         const count = (seen.get(node) ?? 0) + 1
         seen.set(node, count)

@@ -5,13 +5,15 @@ import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
 import { removeOpWorktree } from "../../harness/land.js"
 import type { WorktreeRemoval } from "../../harness/land.js"
+import { TASK_PARKED } from "../../harness/park.js"
 import { claimIntent, clearIntent, getTask, noteIntentDir, recordEvent, setStatus, TASK_DISCARDED, taskCheckout, TRANSITIONS } from "../../harness/tasks.js"
 import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 
-interface CancelData {
+/** What a cancel did: the task, the status it left, its seats, its preserved work and its Op worktree. */
+export interface CancelData {
     readonly task: string
     readonly from: TaskStatus
     readonly status: TaskStatus
@@ -43,6 +45,64 @@ const preserveForCancel = async (db: Parameters<typeof noteIntentDir>[0], root: 
 }
 
 /**
+ * Cancels one task as `task cancel` does (see the verb). `parked` records `task-parked` in the transaction that ends it, so the
+ * harness owns the stop (revive.ts `harnessCause` names it `parked`): its work is settled KEEP as one patch and its node comes
+ * back to ready at the same try (`project park`).
+ */
+export const cancelTask = async (cwd: string, taskId: string, reason: string | undefined, parked = false): Promise<{ readonly data: CancelData; readonly message: string }> => {
+    const callerRoot = await repositoryRoot(cwd)
+    const db = openLedger(callerRoot)
+    try {
+        const current = getTask(db, taskId)
+        if (current.intent !== "cancelling" && !CANCELLABLE.includes(current.status)) throw new Refusal("TASK_NOT_CANCELLABLE", `task ${current.id} is ${current.status}; it cannot be cancelled`)
+        // The claim comes before any Orca or git side effect.
+        const { task: before, resumed } = claimIntent(db, current.id, "cancelling", CANCELLABLE)
+        const from = before.intentData?.from ?? before.status
+        // A worktree removed out of band (by hand, its branch with it) holds no work to judge or keep: the cancel is its DISCARD.
+        const gone = await taskCheckout(before, callerRoot).then(
+            () => false,
+            (error: unknown) => {
+                if (asRefusal(error).code !== "TASK_WORKTREE_GONE") throw error
+                return true
+            },
+        )
+        const root = gone ? callerRoot : await taskCheckout(before, callerRoot)
+        const seats = await closeSeatsOfTask(root, before.id)
+        const running = seats.filter((seat) => seat.outcome === "not-stopped")
+        if (running.length > 0) {
+            const detail = running.map((seat) => `seat ${seat.seat} (dispatch ${seat.handle ?? "-"}): stop ${seat.closed?.stop ?? "-"}`).join("; ")
+            throw new Refusal("SEAT_NOT_STOPPED", `task ${before.id} stays cancelling: Orca did not stop its worker, which may still write (${detail}); run task cancel again once Orca answers`)
+        }
+        const unknown = seats.filter((seat) => seat.outcome === "launch-unknown")
+        if (unknown.length > 0) {
+            throw new Refusal(
+                "SEAT_LAUNCH_UNKNOWN",
+                `task ${before.id} stays cancelling: the launch of seat ${unknown.map((seat) => seat.seat).join(", ")} named no dispatch, so a worker may run that nobody can stop yet; learn its dispatch with starci seat start ${before.id} --resume, then cancel again`,
+            )
+        }
+        const preserved = gone ? { dir: null, patch: null, tracked: [], untracked: [] } : await preserveForCancel(db, root, getTask(db, before.id))
+        const ended = inTransaction(db, () => {
+            const task = setStatus(db, before.id, "cancelled")
+            clearIntent(db, task.id)
+            // An attempt still open when its task is cancelled ends here, so no attempt stays open forever.
+            db.prepare("UPDATE attempts SET outcome = 'cancelled', ended_at = ? WHERE task_id = ? AND ended_at IS NULL").run(now(), task.id)
+            recordEvent(db, "task-cancelled", task.id, { from, reason: reason ?? null, seats, preserved: preserved.dir, resumed, checkout: root })
+            // A park's cancel is the harness's stop, not the task's end: the task comes back at the same try with its work kept.
+            if (parked) recordEvent(db, TASK_PARKED, task.id, { from, reason: reason ?? null, preserved: preserved.dir })
+            if (gone) recordEvent(db, TASK_DISCARDED, task.id, { reason: "worktree gone", worktree: before.worktree })
+            return task
+        })
+        const worktree = (await removeOpWorktree(callerRoot, ended.id).catch(() => undefined)) ?? null
+        const data: CancelData = { task: ended.id, from, status: ended.status, reason: reason ?? null, seats, preserved, worktree, resumed }
+        const kept = gone ? `; its worktree ${before.worktree ?? "-"} was already gone, so it is discarded with nothing kept` : preserved.dir === null ? "; nothing dirty to preserve" : `; dirty work preserved in ${preserved.dir}`
+        const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
+        return { data, message: `cancelled ${data.task} (was ${data.from}${resumed ? ", resumed" : ""}); ${seatNote(seats)}${kept}${removed}` }
+    } finally {
+        db.close()
+    }
+}
+
+/**
  * `starci task cancel <task-id>`: claims the `cancelling` intent first (a verify or result arriving later is refused, one that
  * claimed the task first makes the cancel refuse), then stops and releases the task's open seats through Orca, preserves its
  * dirty work under its allowPaths in the task's own checkout and puts those paths back to HEAD, then ends the task as
@@ -62,54 +122,5 @@ export const taskCancelVerb = defineVerb({
         task: { kind: "string", summary: "the task id", required: true, positional: true },
         reason: { kind: "string", summary: "why, recorded in the ledger's events" },
     },
-    run: async (context, flags) => {
-        const callerRoot = await repositoryRoot(context.cwd)
-        const db = openLedger(callerRoot)
-        try {
-            const current = getTask(db, flags.task)
-            if (current.intent !== "cancelling" && !CANCELLABLE.includes(current.status)) throw new Refusal("TASK_NOT_CANCELLABLE", `task ${current.id} is ${current.status}; it cannot be cancelled`)
-            // The claim comes before any Orca or git side effect.
-            const { task: before, resumed } = claimIntent(db, current.id, "cancelling", CANCELLABLE)
-            const from = before.intentData?.from ?? before.status
-            // A worktree removed out of band (by hand, its branch with it) holds no work to judge or keep: the cancel is its DISCARD.
-            const gone = await taskCheckout(before, callerRoot).then(
-                () => false,
-                (error: unknown) => {
-                    if (asRefusal(error).code !== "TASK_WORKTREE_GONE") throw error
-                    return true
-                },
-            )
-            const root = gone ? callerRoot : await taskCheckout(before, callerRoot)
-            const seats = await closeSeatsOfTask(root, before.id)
-            const running = seats.filter((seat) => seat.outcome === "not-stopped")
-            if (running.length > 0) {
-                const detail = running.map((seat) => `seat ${seat.seat} (dispatch ${seat.handle ?? "-"}): stop ${seat.closed?.stop ?? "-"}`).join("; ")
-                throw new Refusal("SEAT_NOT_STOPPED", `task ${before.id} stays cancelling: Orca did not stop its worker, which may still write (${detail}); run task cancel again once Orca answers`)
-            }
-            const unknown = seats.filter((seat) => seat.outcome === "launch-unknown")
-            if (unknown.length > 0) {
-                throw new Refusal(
-                    "SEAT_LAUNCH_UNKNOWN",
-                    `task ${before.id} stays cancelling: the launch of seat ${unknown.map((seat) => seat.seat).join(", ")} named no dispatch, so a worker may run that nobody can stop yet; learn its dispatch with starci seat start ${before.id} --resume, then cancel again`,
-                )
-            }
-            const preserved = gone ? { dir: null, patch: null, tracked: [], untracked: [] } : await preserveForCancel(db, root, getTask(db, before.id))
-            const ended = inTransaction(db, () => {
-                const task = setStatus(db, before.id, "cancelled")
-                clearIntent(db, task.id)
-                // An attempt still open when its task is cancelled ends here, so no attempt stays open forever.
-                db.prepare("UPDATE attempts SET outcome = 'cancelled', ended_at = ? WHERE task_id = ? AND ended_at IS NULL").run(now(), task.id)
-                recordEvent(db, "task-cancelled", task.id, { from, reason: flags.reason ?? null, seats, preserved: preserved.dir, resumed, checkout: root })
-                if (gone) recordEvent(db, TASK_DISCARDED, task.id, { reason: "worktree gone", worktree: before.worktree })
-                return task
-            })
-            const worktree = (await removeOpWorktree(callerRoot, ended.id).catch(() => undefined)) ?? null
-            const data: CancelData = { task: ended.id, from, status: ended.status, reason: flags.reason ?? null, seats, preserved, worktree, resumed }
-            const kept = gone ? `; its worktree ${before.worktree ?? "-"} was already gone, so it is discarded with nothing kept` : preserved.dir === null ? "; nothing dirty to preserve" : `; dirty work preserved in ${preserved.dir}`
-            const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
-            return { data, message: `cancelled ${data.task} (was ${data.from}${resumed ? ", resumed" : ""}); ${seatNote(seats)}${kept}${removed}` }
-        } finally {
-            db.close()
-        }
-    },
+    run: async (context, flags) => cancelTask(context.cwd, flags.task, flags.reason),
 })

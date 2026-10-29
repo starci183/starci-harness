@@ -6,6 +6,20 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **`project park` and `project unpark` (owner decision `project-park`).** `starci project park [--project <checkout>] [--dry-run]`
+  pauses every running, blocked or paused workflow of the project (reason `parked: was <status>`), stops each live Op or
+  `[Worker]` seat with its task cancelled as parked (`task-parked`, revive.ts cause `parked`: its work settles KEEP as one
+  patch and its key comes back at the same try, outside `reviveMax`), closes each workflow's Kernel terminal (`workflow-parked`;
+  worktree and graph untouched), stops the Supervisor (`ended_by` `parked`), then closes every Orca terminal of the project by
+  Orca's list and force-closes its worktrees (`closeFolderTerminals`, shared with the reap), and records it all on a
+  `project-parked` host event; exit 1 while Orca still lists one. Orca itself is left running. While parked,
+  `ensureSupervisor` starts nothing and the Kernel sweep skips parked workflows, so no tick relaunches anything.
+  `starci project unpark [--project] [--wait <seconds>]` starts the Supervisor and, once it attached, relaunches each Kernel on
+  its worktree, resumes the workflow, which re-dispatches the parked tasks from their patches, and retries a parked worker's
+  task; a Supervisor that attaches later has the rest finished by `supervisor tick`. Bench: `project-park-unpark-resumes`.
+
 ## [1.1.0-alpha.14] - 2026-10-29
 
 ### Added
