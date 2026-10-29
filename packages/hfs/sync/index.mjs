@@ -30,6 +30,7 @@ import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
+import { DB_DOCKERFILE, DB_IMAGE_APP } from '../db/image.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { ciWorkflowCommands } from './ci-commands.mjs';
@@ -156,9 +157,16 @@ function trailingNewline(text) {
   return text.slice(0, end) + '\n';
 }
 
+/**
+ * The base image of a lite app's managed db/Dockerfile (contexts/stack/pins.yaml images postgres, ruling:lite-official-postgres-image): the
+ * Docker Official postgres image by digest, to which the Dockerfile adds only PGVECTOR_PACKAGE from PGDG.
+ */
+export const DB_BASE_IMAGE = 'postgres:17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f';
+/** The PGDG package of pgvector at the exact version the db image installs (the one extension the image does not ship). */
+export const PGVECTOR_PACKAGE = 'postgresql-17-pgvector=0.8.7-1.pgdg13+1';
+/** The local tag the development db container and the drift scratch database run, built from the app's db/Dockerfile. */
+export const dbLocalImage = project => `${project}-db:local`;
 /** The digest-pinned image of a lite app's declared Redis, in every environment that runs it (ruling:R212/case-10). */
-/** The pinned image of a lite app's db service (contexts/stack/pins.yaml images): PostgreSQL with pg_cron, pg_net, pgmq and pgvector. */
-export const DB_IMAGE = 'supabase/postgres:17.11.0.006@sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2';
 export const REDIS_IMAGE = 'redis:7@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f';
 
 const redisDevText = project => render(readBundled('app/package-scripts/redis-dev.json'), { project, redisImage: REDIS_IMAGE });
@@ -322,17 +330,19 @@ function imageEntries(app, source) {
 }
 
 /**
- * The build matrix of the images workflow: one entry per declared app (be then fe), each with the image name and its Dockerfile. The workflow
+ * The build matrix of the images workflow: one entry per declared app (be then fe, then a lite app's db image), each with the image name and its Dockerfile. The workflow
  * runs on the release tag, so every image is built there; no path filter narrows it. A YAML block mapping per entry, indented for
  * `strategy.matrix.include`.
  */
 export function imageMatrix(app, source) {
   const entry = (side, item) => `          - name: ${item.name}\n            file: ${dockerfilePath(side, item.name)}`;
-  return imageEntries(app, source).map(image => entry(image.side, image.entry)).join('\n');
+  const db = app.edition === 'lite' ? [`          - name: ${DB_IMAGE_APP}\n            file: ${DB_DOCKERFILE}`] : [];
+  return [...imageEntries(app, source).map(image => entry(image.side, image.entry)), ...db].join('\n');
 }
 
-/** The Dockerfile of the app a deploy image names (be first, then fe); an app hfs.json does not declare cannot be built by the managed workflow. */
+/** The Dockerfile of the app a deploy image names (be first, then fe, then a lite app's db image); an app hfs.json does not declare cannot be built by the managed workflow. */
 function stackDockerfile(app, name) {
+  if (app.edition === 'lite' && name === DB_IMAGE_APP) return DB_DOCKERFILE;
   const side = ['be', 'fe'].find(which => app.sides[which].apps.some(entry => entry.name === name));
   if (!side) throw new SyncError('HFS_SYNC_STACK_IMAGE', `deploy.images names the app ${name}, which hfs.json does not declare under be or fe`);
   return dockerfilePath(side, name);
@@ -375,8 +385,10 @@ export function variables(app, scope, presets, sonarKey, manifest = loadSlotMani
     project: app.project,
     appBinary: APP_BINARY,
     appScripts: appScripts(app, source),
-    // A lite app's own database runs in development as one container of the pinned db image (ruling:lite-self-hosted-postgres-passport-minio).
-    dbImage: DB_IMAGE,
+    // A lite app's own database runs in development as one container of the image its db/Dockerfile builds (ruling:lite-official-postgres-image).
+    dbImage: dbLocalImage(app.project),
+    dbBaseImage: DB_BASE_IMAGE,
+    pgvectorPackage: PGVECTOR_PACKAGE,
     // A lite app's declared Redis (sides.be.backing, ruling:R212/case-10) runs in development as one container of its pinned image.
     backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
     // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both.

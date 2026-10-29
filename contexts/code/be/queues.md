@@ -42,15 +42,15 @@ Enforced by: `infra-import-owner` (R90).
 
 ## BE-QUEUES-3 A schedule fires once per deployment
 
-A recurring task is, in lite, a uniquely named `pg_cron` job in a migration whose command only inserts one row
-into the queue outbox through the enqueue function `hfs.json` `sides.be.queueOutbox` declares (the app's scheduler list
-stays empty); otherwise a BullMQ job scheduler the app passes as `QueueModule.register({ schedulers })`. The job runs
-through the same processor as any enqueued job. No cron decorator, `setInterval` or host crontab.
+A recurring task is, in lite, a tick of `platform/jobs` (BE-JOBS-6), which enqueues one job through the queue outbox
+once per minute for the deployment (the app's scheduler list stays empty); in full, a BullMQ job scheduler the app
+passes as `QueueModule.register({ schedulers })`. The job runs through the same processor as any enqueued job. No cron
+decorator outside the tick scheduler, no `setInterval` and no host crontab.
 
-Why: one database job or one Redis scheduler fires once for the whole deployment, where cron in a replicated process
-fires once per replica.
+Why: one minute claim in the database or one Redis scheduler fires once for the whole deployment, where cron in a
+replicated process fires once per replica.
 
-Enforced by: R258, R268, R250 (hfs), `infra-import-owner` (R90).
+Enforced by: R335, R268, R250 (hfs), `infra-import-owner` (R90).
 
 ## BE-QUEUES-4 The queue is proven on real infrastructure
 

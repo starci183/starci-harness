@@ -16,13 +16,14 @@ follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). The S3 client (`@aws-sdk/client-s3`, `
 imported only by `integrations/object-storage`, the ObjectStorage port with presigned PUT and GET over S3-compatible storage
 (MinIO in lite), and `minio` nowhere; in lite the identity libraries belong to `integrations/passport`
 ([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
-`dotenv`, `@nestjs/schedule` and `@nestjs/event-emitter` are imported nowhere. In lite a backing library is legal only
+`dotenv` and `@nestjs/event-emitter` are imported nowhere; `@nestjs/schedule` and `cron` only by the tick scheduler of
+`platform/jobs` ([jobs.md](jobs.md) BE-JOBS-6). In lite a backing library is legal only
 when `sides.be.backing` declares it (Redis for the queue and the realtime hub); vectors are pgvector.
 
 Why: a library used in two places has two configurations, two failure behaviours and two upgrade paths.
 
 - When code must run something later → a typed queue producer and a job (BE-QUEUES-1, BE-JOBS-4), never `setTimeout`
-  or a cron decorator.
+  or a cron decorator; on a schedule → a tick of `platform/jobs` (BE-JOBS-6).
 
 Enforced by: `infra-import-owner`, `third-party-import-owner` (R90, R279, R328, R331), `no-ambient-id` (R142).
 

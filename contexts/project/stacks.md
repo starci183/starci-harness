@@ -61,7 +61,7 @@ never own the runtime topology; creating or joining a swarm, DNS and key rotatio
 names.
 
 **Scheduled work.** Swarm has no native schedule, so recurring work stays inside the app: the back end's queue
-scheduler (BE-QUEUES-3), a lite `pg_cron` tick that enqueues through the queue outbox, or a declared `replicated-job`
+scheduler (BE-QUEUES-3), a lite `platform/jobs` tick (BE-JOBS-6) that enqueues through the queue outbox, or a declared `replicated-job`
 component that runs a named back-end CLI action on a cron `schedule`, started by a declared `role: scheduler`
 component. Never a host crontab, systemd timer or deploy-script loop (R250, R268). The command owns its completion,
 retry and overlap; a healthy scheduler container is no proof that the job finished.

@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.10.0
+version: 3.11.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -52,6 +52,9 @@ versioning:
 # slot field rewrittenBy, so the release gate's clean-tree check passes over an untracked file a declared dev server writes, and over nothing else.
 # 3.10.0 is a minor (2026-10-29): it ADDS the lite be.platform.database.entities slot, the entity registry (slot fields role and importedBy), so the
 # tier matrix and the public-entry rules admit exactly its <c>Entities imports and its deep importers (persistence.md BE-PERSISTENCE-3).
+# 3.11.0 (ruling:lite-official-postgres-image, 2026-10-29) is, like 3.9.0, a change for lite only: it ADDS the managed app.db.image slot
+# (db/Dockerfile, written by `starci app sync --write`), narrows ruleParams.db.extensions to the extensions that image carries, and gives
+# @nestjs/schedule and cron one owner, platform/jobs (R335).
 
 # Field meaning, per slot.
 #   id          stable name, never changes meaning inside a major.
@@ -127,8 +130,8 @@ testValues: [unit-beside, e2e, none]
 # specs (unitRoles, logicRoles, 100 per file, @starci/jest-preset doubles, builders). What differs is ADAPTERS and DELIVERY
 # (ruling:R212/case-10): schema authority in db/migrations, the queue port on BullMQ over the Redis hfs.json
 # sides.be.backing declares (as in full, fed by the Postgres outbox), event-bus ports on pgmq-backed topics or in-process
-# delivery, cache and locks on Postgres or the declared Redis, schedules on pg_cron (+ pg_net) enqueueing through the queue
-# outbox, storage on S3-compatible MinIO (integrations/object-storage) and auth through integrations/passport. Realtime uses SSE or the socket.io gateway
+# delivery, cache and locks on Postgres or the declared Redis, schedules as platform/jobs ticks enqueueing through the queue
+# outbox (R335), storage on S3-compatible MinIO (integrations/object-storage) and auth through integrations/passport. Realtime uses SSE or the socket.io gateway
 # in the api process, which scales horizontally and stateless (memory hub for one replica or tests; the Redis hub and @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter, for N replicas; websocket only, no sticky sessions). Integration and provider sandbox contract specs are optional;
 # declared patterns owe their integration proofs (R284). Lite has no e2e world. Production uses declared docker-swarm under
 # .starcistacks/production/infra/swarm/ (owner ruling 2026-10-14); lite runs its PostgreSQL as the db service of its
@@ -205,8 +208,9 @@ crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 ruleParams:
   db:
     # R259: btree_gist supplies UUID equality for the booking interval exclusion constraint.
-    # R259: unaccent ships in the supabase/postgres image of the db service, used by Vietnamese-content search functions.
-    extensions: [pgmq, pg_cron, pgcrypto, pg_trgm, vector, uuid-ossp, pg_net, supabase_vault, unaccent, btree_gist]
+    # R259: the extensions the db image carries (ruling:lite-official-postgres-image): the official postgres image's contrib set and pgvector
+    # from PGDG; unaccent serves Vietnamese-content search functions. No pg_cron, pg_net, pgmq or supabase_vault.
+    extensions: [pgcrypto, pg_trgm, vector, uuid-ossp, unaccent, btree_gist]
     # R258 DB_CRON_OWNED: THE queue outbox of a lite schema (the relay hands its unsent rows to BullMQ, ruling:R212/case-10). A pg_cron
     # job enqueues only by inserting one row into this table, writing only these columns, one of which is `queue`.
     queueOutbox: {table: public.queue, columns: [queue, payload, created_at, correlation_id]}
@@ -255,7 +259,8 @@ ruleParams:
       bull: [platform/queue]
       "@nestjs/bull": [platform/queue]
       kafkajs: [platform/event-bus]          # pattern event-bus: Kafka is the only event transport
-      "@nestjs/schedule": []                 # no @Cron / @Interval / @Timeout anywhere: a schedule is a BullMQ job scheduler of a queue
+      "@nestjs/schedule": [platform/jobs]    # R335: only the tick scheduler of platform/jobs (jobs.scheduler.ts); elsewhere a schedule is a BullMQ job scheduler of a queue
+      cron: [platform/jobs]                  # R335: CronJob of the tick scheduler
       eventemitter2: []
       setInterval: [platform/retry, platform/event-bus, platform/queue, platform/http, platform/realtime]
       setTimeout: [platform/retry, platform/event-bus, platform/queue, platform/http]
@@ -438,6 +443,7 @@ ruleParams:
       - {name: job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
       - {name: job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
       - {name: job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
+      - {name: job_tick_claim, reason: "platform/jobs (add job, lite): the once-per-minute claim of a scheduler tick, jobs.sql (R335)"}
       - {name: queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
       - {name: queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
       - {name: queue_mark_sent, reason: "platform/queue (add queue, lite): the relay mark of queue-outbox.sql"}
@@ -861,7 +867,7 @@ slots:
              "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.enc", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
     forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
     # Owner ruling 2026-10-14: lite declares docker-swarm production, app runtime config, sealed custody and seed data.
-    # The db service supplies the database and broker (pgmq, pg_cron); production has no Compose or host cron.
+    # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
       allows: [application-stacks.yaml, "<env>/README.md", "<env>/environment.json", "<env>/infra/swarm/**", "<env>/infra/metadata.json",
@@ -925,7 +931,7 @@ slots:
     rules: [HFS_PLAINTEXT_SECRET]
 
   # ----- app root: the database of a lite app (ruling:lite-self-hosted-postgres-passport-minio): a self-hosted PostgreSQL in the app's
-  # stack (the `db` service, image supabase/postgres for pg_cron, pg_net, pgmq, vector, unaccent and pgcrypto), migrated by
+  # stack (the `db` service, built from the managed db/Dockerfile: the official postgres image plus pgvector, ruling:lite-official-postgres-image), migrated by
   # `starci app db migrate --url-env <NAME>`. A full app keeps its TypeORM migrations under be/ and has no such folder.
   - id: app.db
     profiles: [app]
@@ -975,12 +981,26 @@ slots:
     tier: none
     tests: none
     since: 3.9.0
+  - id: app.db.image
+    profiles: [app]
+    editions: [lite]
+    # The managed image of the db service (templates/app/db-image, ruling:lite-official-postgres-image): FROM the digest-pinned official
+    # postgres image plus postgresql-17-pgvector from PGDG. The stack's db service, the local db container and the scratch database
+    # of `starci app db drift` all build it.
+    path: "db/Dockerfile"
+    presence: required
+    tracked: tracked
+    managedBy: db-image
+    tier: none
+    tests: none
+    since: 3.11.0
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.db.bootstrap
     profiles: [app]
     editions: [lite]
-    # The managed pre-migration bootstrap (templates/app/db-bootstrap): the auth, storage and extensions schemas, auth.users with the
-    # GoTrue column set, auth.uid/role/jwt stubs, the NOLOGIN browser roles and the realtime publication, so migrations written for a
-    # hosted Supabase apply to the self-hosted db service. `starci app db migrate` applies it before the first migration of an empty database.
+    # The managed pre-migration bootstrap (templates/app/db-bootstrap): the auth and storage schemas, auth.users with the GoTrue column
+    # set, auth.uid/role/jwt stubs and the NOLOGIN browser roles, so migrations written for a hosted Supabase apply to the db service's
+    # official postgres image (nothing else of Supabase: no supabase_admin, extensions schema or realtime publication). `starci app db migrate` applies it before the first migration of an empty database.
     path: "db/bootstrap.sql"
     presence: required
     tracked: tracked
@@ -1800,7 +1820,7 @@ slots:
         the same QueueOutbox and QueueWorkerRegistry ports and full's BullMQ adapter on the declared Redis (backing: [redis]): the
         relay adds each committed outbox row with the outbox id as the job id, workers retry with exponential backoff and keep a
         job that exhausts its attempts as failed (the dead letter); the outbox table comes from a db migration, and a
-        schedule is a BullMQ job scheduler or a pg_cron tick that inserts one outbox row (knowledge/patterns/be/queues.yaml liteAdapter)
+        schedule is a BullMQ job scheduler or a platform/jobs tick that writes one outbox row, R335 (knowledge/patterns/be/queues.yaml liteAdapter)
     requires: [index.ts, queue.module.ts, queue.port.ts, queue.contracts.ts, queue-outbox.service.ts, queue-outbox.service.spec.ts]
     tests: unit-beside
     coverage: required

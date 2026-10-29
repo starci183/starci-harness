@@ -7,7 +7,7 @@ import {
 import { databaseExecutableTokens, databaseSqlStatements, databaseSqlTokens, destructiveMigrationFindings } from './database-migrations.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 
-const DEFAULT_EXTENSIONS = ['pgmq', 'pg_cron', 'pgcrypto', 'pg_trgm', 'vector', 'uuid-ossp', 'pg_net', 'supabase_vault', 'unaccent'];
+const DEFAULT_EXTENSIONS = ['pgcrypto', 'pg_trgm', 'vector', 'uuid-ossp', 'unaccent', 'btree_gist'];
 const word = (token, value) => token?.t === 'word' && token.v === value;
 const identifier = (token) => token && ['word', 'ident'].includes(token.t) ? token.v : null;
 

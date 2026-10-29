@@ -670,7 +670,7 @@ files:
     optional: true
   - path: db/migrations/<timestamp>_realtime-events.sql
     slot: repo.side-root-forbidden
-    role: Lite edition migration (created with `npm run db:new`) of the same two tables, forced row level security for app_be, and the pg_cron tick of the retention queue.
+    role: Lite edition migration (created with `npm run db:new`) of the same two tables, forced row level security for app_be; the retention queue is fired by a platform/jobs tick (R335).
     optional: true
   - path: src/features/reactors/<name>/transport/message/<event>.consumer.ts
     slot: be.transport.message

@@ -76,3 +76,19 @@ driving the real runner through `useTestWorld`, in full e2e.
 Why: the fence is a runtime property; only a stale worker resuming after reassignment shows it holds.
 
 Enforced by: R155, R284.
+
+## BE-JOBS-6 A recurring task is a tick of `platform/jobs`, fired once per minute for the deployment
+
+`platform/jobs` alone owns the schedule: `job-ticks.contracts.ts` lists the ticks as data (`JOB_TICKS`, each
+`{ name, cron, timeZone: "UTC", queue, payload }`) and `job-tick.service.ts` (`JobTickService`, composed by the jobs
+module with `ScheduleModule.forRoot()`) registers one `CronJob` per tick in `SchedulerRegistry`. Every replica fires a
+tick; each firing runs one transaction on the jobs connection that takes `advisoryXactLock(tx, "tick:<name>")`, claims
+the tick's UTC minute through `job_tick_claim` (the `job_ticks` row of the jobs migration, moved forward only) and, only
+when it moved the row, writes one job of the tick's queue into the queue outbox with correlation id
+`tick:<name>:<minute>`. The job runs through its processor like any enqueued job. No other file imports
+`@nestjs/schedule` or `cron`, and no file uses a cron decorator.
+
+Why: cron in a replicated process fires once per replica; the lock serialises the replicas and the forward-only minute
+claim lets exactly one of them enqueue, in the transaction that writes the outbox row.
+
+Enforced by: R335, `infra-import-owner` (R90).

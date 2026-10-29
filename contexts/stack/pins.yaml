@@ -8,18 +8,18 @@ schema: starci/stack-pins@1
 pins:
   '@starci/heroicons': {version: 0.3.4, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
-  '@starci/grammar': {version: 0.15.12, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
-  '@starci/eslint-canon-be': {version: 3.7.1, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
-  '@starci/eslint-canon-fe': {version: 9.5.1, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
-  '@starci/eslint-grammar-core': {version: 0.15.12, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
-  '@starci/eslint-grammar-offset-pop': {version: 0.15.12, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/grammar': {version: 0.15.13, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/eslint-canon-be': {version: 3.8.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
+  '@starci/eslint-canon-fe': {version: 9.5.2, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-grammar-core': {version: 0.15.13, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.15.13, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
   '@starci/stylelint-canon': {version: 2.2.1, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
   '@starci/tsconfig': {version: 2.1.0, group: starci, side: both, install: registry}
   '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}
   '@starci/jest-preset': {version: 2.5.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 1.2.3, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
   '@starci/ai-router': {version: 0.3.0, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 4.10.1, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/hfs': {version: 4.11.0, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.1, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.0, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}
   typescript: {version: 5.9.3, group: tooling, side: both}
@@ -118,6 +118,8 @@ pins:
   '@types/pg': {version: 8.23.1, group: framework, side: be, why: "types of the pg driver"}
   '@as-integrations/express5': {version: 1.1.2, group: framework, side: be, why: "the runtime peer of peers.nestjs-apollo-express5"}
   '@nestjs/passport': {version: 11.0.5, group: framework, side: be, why: "PassportStrategy of integrations/passport; 11.0.5 is CommonJS on the Nest 11 line (12.0.0 is ESM-only and breaks Nest 11 jest under the jest-preset CommonJS transform)"}
+  '@nestjs/schedule': {version: 6.1.3, group: framework, side: be, why: "the tick scheduler of platform/jobs (R335); 6.1.3 is CommonJS on the Nest 11 line (12.x is ESM-only and breaks Nest 11 jest under the jest-preset CommonJS transform)"}
+  cron: {version: 4.4.0, group: framework, side: be, why: "CronJob of platform/jobs' tick scheduler; the exact version @nestjs/schedule 6.1.3 depends on"}
   passport: {version: 0.7.0, group: framework, side: be, why: "the strategy runtime under @nestjs/passport"}
   passport-google-oauth20: {version: 2.0.0, group: framework, side: be, why: "Google OAuth 2.0 with state and PKCE in integrations/passport"}
   passport-local: {version: 1.0.0, group: framework, side: be, why: "email and password sign-in in integrations/passport"}
@@ -130,7 +132,7 @@ pins:
 # Base images an app's Dockerfiles build FROM (R190); the image tag is pinned here and nowhere else.
 images:
   node: {version: 22.14.0-alpine3.21, why: "the base image of every back-end and front-end Dockerfile"}
-  supabase/postgres: {version: 17.11.0.006@sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2, why: "the db service of a lite app (pg_cron, pg_net, pgmq, vector, unaccent, pgcrypto); hfs sync DB_IMAGE renders it"}
+  postgres: {version: 17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f, why: "the Docker Official image the managed db/Dockerfile of a lite app builds FROM (PG_VERSION 17.11-1.pgdg13+2), adding only postgresql-17-pgvector 0.8.7-1.pgdg13+1 from PGDG; hfs sync DB_BASE_IMAGE and PGVECTOR_PACKAGE render it"}
 # Runtime peers a driver needs and npm does not install for it (R111): an app whose root package.json depends on every
 # package of `when` (at `major` when named) also declares `requires`. A missing peer passes the type check and the unit
 # specs and fails only when the app boots, so an entry is added the day such a boot failure is found.

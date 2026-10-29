@@ -287,8 +287,11 @@ liteAdapter:
   ports:
     - {port: job claim (platform/jobs), adapter: "the claim and guarded writes as the job_claim, job_advance, job_complete and job_fail functions of the jobs migration in db/migrations, called through callDbFunction of platform/database (R334)"}
     - {port: processor delivery, adapter: "full's BullMQ worker (attempts and exponential backoff from the queue policy, failed jobs kept as the dead letter)"}
+    - {port: tick scheduler (platform/jobs), adapter: "JOB_TICKS of job-ticks.contracts.ts as data and JobTickService (job-tick.service.ts, composed with ScheduleModule.forRoot() by the lite jobs.module.ts): one CronJob per tick in SchedulerRegistry, each firing taking advisoryXactLock and claiming the tick's UTC minute through the job_tick_claim function of the jobs migration before it writes the queue outbox (R335, contexts/code/be/jobs.md BE-JOBS-6)"}
   proof: >-
     Unit specs as full (job-claim.service.spec.ts); declaring fenced-job requires integration specs titled
     `fenced-job/<scenario>: ...` for every declared scenario on the local db service (R284, which runs no container of its
     own): the claim, the fencing token and the guarded writes are Postgres facts, driven there by the real runner without BullMQ.
+    The tick scheduler's unit spec (job-tick.service.spec.ts) proves the lock, the minute claim and that a replica that comes
+    second enqueues nothing.
   see: [knowledge/patterns/be/queues.yaml]

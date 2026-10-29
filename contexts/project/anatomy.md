@@ -84,6 +84,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
     - `<stamp>_<name>.sql` — **app.db.migrations** required · R213 (hfs `db-migration-shape`), R332 (hfs `lite-db-path`)
     - `archive/` — **app.db.migrations.archive** optional
   - `seed.sql` — **app.db.seed** optional
+  - `Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
   - `bootstrap.sql` — **app.db.bootstrap** required · R05 (hfs `managed-file-drift`)
 
 Git-ignored: `app.build-output`.

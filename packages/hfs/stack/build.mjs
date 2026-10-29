@@ -13,6 +13,7 @@ import { buildArgs } from './build-args.mjs';
 import { firstLine, lines as splitLines, tool } from './context.mjs';
 import { failure, refusal } from './errors.mjs';
 import { requireAgeIdentity } from './sealed.mjs';
+import { DB_DOCKERFILE, DB_IMAGE_APP } from '../db/image.mjs';
 import { scanImage } from './image-scan.mjs';
 
 const RELEASE_TAG = /^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u;
@@ -44,8 +45,9 @@ function ownerOf(ctx, config) {
   return match[1].toLowerCase();
 }
 
-/** The Dockerfile of an app: be/apps/<app>/Dockerfile or fe/apps/<app>/Dockerfile; ambiguity and absence are refusals. */
+/** The Dockerfile of an app: be/apps/<app>/Dockerfile or fe/apps/<app>/Dockerfile, or db/Dockerfile for the db image; ambiguity and absence are refusals. */
 function dockerfileOf(config, app) {
+  if (app === DB_IMAGE_APP && fs.existsSync(path.join(config.repoRoot, DB_DOCKERFILE))) return DB_DOCKERFILE;
   const found = SIDES.map((side) => `${side}/apps/${app}/Dockerfile`).filter((file) => fs.existsSync(path.join(config.repoRoot, file)));
   if (found.length === 0) throw refusal('STACK_BUILD_NO_DOCKERFILE', `no Dockerfile for app ${app} (be/apps/${app}/Dockerfile or fe/apps/${app}/Dockerfile)`);
   if (found.length > 1) throw refusal('STACK_BUILD_AMBIGUOUS', `app ${app} has a Dockerfile on both sides: ${found.join(', ')}`);

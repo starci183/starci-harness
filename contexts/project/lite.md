@@ -1,7 +1,7 @@
 # Lite: what differs
 
 Only the differences of a lite app from the shared project model ([README.md](README.md)); everything not named here
-is the same in both editions, including the code structure, the front-end standard, the queue (BullMQ on Redis) and
+is the same in both editions, including the code structure, the front-end standard, the queue (BullMQ on Redis, ruling `lite-queue-bullmq`) and
 the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](README.md) (R212 in
 [hfs/rules.yaml](../hfs/rules.yaml)). Each line names the owner of the fact; the slot, rule or ruling is the authority, not this page.
 
@@ -14,11 +14,14 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 ## Backing services
 
-- PostgreSQL is self-hosted: the `db` service (image supabase/postgres, for pg_cron, pg_net, pgmq, vector, unaccent and
-  pgcrypto) in Docker in dev and on the Swarm stack in production, migrated by `starci app db migrate --url-env <NAME>`.
-  Identity is the app's own Passport integration and storage the S3-compatible MinIO of the host. Owners: slots
-  `app.db*`, `be.integrations.passport`, `be.integrations.object-storage` in [hfs/slots.yaml](../hfs/slots.yaml); ruling
-  `lite-self-hosted-postgres-passport-minio`; the `supabase/postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
+- PostgreSQL is self-hosted: the `db` service in Docker in dev and on the Swarm stack in production, migrated by
+  `starci app db migrate --url-env <NAME>`. Its image is the managed `db/Dockerfile`: the Docker Official `postgres` image
+  pinned by digest plus pgvector from PGDG, so its extensions are pgvector and the image's contrib set (pgcrypto, pg_trgm,
+  unaccent, uuid-ossp, btree_gist), with no pg_cron, pg_net, pgmq or supabase_vault; the local container (`npm run
+  db:create`), the drift scratch database and the release image all build that file. Identity is the app's own Passport
+  integration and storage the S3-compatible MinIO of the host. Owners: slots `app.db*` and `ruleParams.db.extensions` in
+  [hfs/slots.yaml](../hfs/slots.yaml); rulings `lite-self-hosted-postgres-passport-minio` and
+  `lite-official-postgres-image`; the `postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
 - Redis is the only declarable backing service (`sides.be.backing`), run durably; vectors use pgvector in the db service,
   so no Qdrant. Owners: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml); ruling `lite-vector-is-pgvector`;
   R276.
@@ -36,6 +39,11 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   R330; [code/be/api-auth.md](../code/be/api-auth.md); [code/fe/transport.md](../code/fe/transport.md) FE-AUTH.
 - The event bus is the outbox on pgmq topics or in-process delivery, not Kafka. Owners: slot `be.platform.event-bus`;
   [code/be/event-bus.md](../code/be/event-bus.md) BE-EVENT-BUS-3.
+- Open: pgmq topics need the pgmq extension, which the db image does not carry (ruling `lite-official-postgres-image`),
+  so until the owner rules between a delivery on BullMQ, on the app's own tables or in process only, a lite event bus
+  delivers in process.
+- A recurring task is a tick of `platform/jobs`, fired by `@nestjs/schedule` in the back end and enqueued once per
+  minute for the whole deployment. Owners: R335; [code/be/jobs.md](../code/be/jobs.md) BE-JOBS-6.
 - Jobs and projections keep their tables in db migrations. Owners: slots `be.platform.jobs`, `be.projections`.
 - Reactor, saga and projection: open. The pattern topics ([saga.md](../code/be/saga.md),
   [projections.md](../code/be/projections.md), [event-bus.md](../code/be/event-bus.md)) describe each one
@@ -83,8 +91,14 @@ optional `db` block (`forceRls`, `appRole`), set every connection's `provider` t
 `sides.<side>.reads`, and list the app's database functions in `sides.be.dbFunctions`; run `npx starci app sync --write`
 (it renders `db/bootstrap.sql`, the db scripts, codegen and CI, and removes a leftover `supabase/types/`); restore the
 data with `starci app db migrate --url-env DATABASE_URL --execute` on an empty database after `pg_restore` of the hosted
-dump, which keeps the `supabase_migrations.schema_migrations` history the migrate verb reads. Owners: R332; ruling
-`lite-self-hosted-postgres-passport-minio`.
+dump, which keeps the `supabase_migrations.schema_migrations` history the migrate verb reads. On hfs 4.11 the db service
+moves to the official image: `npx starci app sync --write` writes `db/Dockerfile` and the db scripts, the stack's db
+component and service take the app's own `db` image (`deploy.images.db: {app: db}`, pushed with the release), and a
+migration that needs what the Supabase image carried is rewritten in a new forward migration: a `pg_net` call becomes an
+outbound call of the back end through its integration (BE-INFRA-2), a `pgmq` queue becomes a BullMQ queue of
+`platform/queue` (an event-bus topic stays open, above), a `pg_cron` job becomes a `platform/jobs` tick (BE-JOBS-6),
+and a reference to the `extensions` schema or the `supabase_realtime` publication
+is dropped. Owners: R332; rulings `lite-self-hosted-postgres-passport-minio` and `lite-official-postgres-image`.
 
 ## Read with
 

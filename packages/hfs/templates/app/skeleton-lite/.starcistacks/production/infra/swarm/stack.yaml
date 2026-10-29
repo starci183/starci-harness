@@ -83,7 +83,7 @@ services:
         condition: on-failure
         delay: 5s
   db:
-    image: "supabase/postgres:17.11.0.006@sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2"
+    image: "{{project}}/db:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
     environment:
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD_FILE: /run/secrets/db-password
