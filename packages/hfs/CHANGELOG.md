@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.11.12 - 2026-10-29
+
+- Changed: R334 `BE_PERSISTENCE_NO_RAW_SQL` covers test code with one owner exception (ruling lite-test-sql-owner): specs, builders and fixtures seed and assert through entities on `world.db.<connection>`, and only `src/tests/world` holds raw SQL beside `platform/database`, as named world helpers for what entities cannot express. The bundled catalog law and the failure-code hint say so; the bundled canon pins name hfs 4.11.12, eslint-canon-be 3.8.11, eslint-canon-fe 9.5.13 and the Grammar family 0.15.24.
+
 ## 4.11.10 - 2026-10-29
 
 - Fixed: the skeleton's `platform/http` passes the canon it ships with, so an app that copies it byte-identical lints clean. `FetchHttpClient.send` hands `fetch` its deadline at the call (`fetch(request.url, { ...this.routed(init), signal })`): the signal was set inside `init` and handed through `routed`, whose declared `RequestInit` leaves `signal` optional, so `starci-be/http-needs-timeout` (R70) could not prove it. The client spec provides `HTTP_OPTIONS` with the kit's `builder<HttpOptions>({})(overrides)`, the double `starci-be/spec-infra-double-from-kit` (R48) asks for an `*_OPTIONS` token, instead of a parameter it cannot trace.

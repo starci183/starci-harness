@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.24 - 2026-10-29
+
+- Changed: the peer moves to the 0.15.24 cohort (eslint-canon-fe 9.5.13); the bundled canon pins name hfs 4.11.12, eslint-canon-be 3.8.11, eslint-canon-fe 9.5.13 and the Grammar family 0.15.24. No rule changed.
+
 ## 0.15.22 - 2026-10-29
 
 - Changed: the peer moves to the 0.15.22 cohort (eslint-canon-fe 9.5.11); the bundled canon pins name hfs 4.11.10, eslint-canon-be 3.8.9, eslint-canon-fe 9.5.11 and the Grammar family 0.15.22. No rule changed.
