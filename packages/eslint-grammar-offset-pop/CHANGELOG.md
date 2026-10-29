@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.21 - 2026-10-29
+
+- Changed: the bundled canon pins name hfs 4.11.9, eslint-canon-be 3.8.8, eslint-canon-fe 9.5.10 and the Grammar family 0.15.21; it depends on eslint-grammar-core 0.15.21. No rule changed.
+
 ## 0.15.20 - 2026-10-29
 
 - Changed: the bundled canon pins name hfs 4.11.8, eslint-canon-be 3.8.7, eslint-canon-fe 9.5.9 and the Grammar family 0.15.20; it depends on eslint-grammar-core 0.15.20. No rule changed.

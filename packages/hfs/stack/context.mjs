@@ -17,6 +17,34 @@ const realSpawn = (command, args, options = {}) => {
   return { status: run.status, stdout: run.stdout ?? '', stderr: run.stderr ?? '', error: run.error };
 };
 
+/** Bytes of a stream's stderr a pipe keeps, for the first line of a failure. */
+const STDERR_KEPT = 4096;
+
+/**
+ * Streams `source`'s stdout into `sink`'s stdin, neither through a shell, and resolves { source, sink, stderr } (exit codes and
+ * the first stderr line of a failure). The bytes pass through the OS pipe only: they are never collected, logged or written to disk.
+ */
+const realPipe = (source, sink) => new Promise((resolve) => {
+  const options = (end, stdio) => ({ env: end.env, cwd: end.cwd, stdio, windowsHide: true });
+  const from = spawn(source.command, source.args, options(source, ['ignore', 'pipe', 'pipe']));
+  const to = spawn(sink.command, sink.args, options(sink, ['pipe', 'ignore', 'pipe']));
+  const codes = {};
+  let stderr = '';
+  const keep = (chunk) => { if (stderr.length < STDERR_KEPT) stderr += String(chunk).slice(0, STDERR_KEPT - stderr.length); };
+  from.stderr.on('data', keep);
+  to.stderr.on('data', keep);
+  to.stdin.on('error', () => {});
+  from.stdout.pipe(to.stdin);
+  const settle = (name) => (code) => {
+    codes[name] = code ?? 1;
+    if ('source' in codes && 'sink' in codes) resolve({ ...codes, stderr: stderr.trim().split(/\r?\n/u)[0] ?? '' });
+  };
+  from.on('error', () => { from.stdout.unpipe(to.stdin); to.stdin.end(); settle('source')(127); });
+  to.on('error', () => settle('sink')(127));
+  from.on('close', settle('source'));
+  to.on('close', settle('sink'));
+});
+
 const realSleep = (ms) => new Promise((done) => { setTimeout(done, ms); });
 
 /**
@@ -28,7 +56,8 @@ const realSleep = (ms) => new Promise((done) => { setTimeout(done, ms); });
  *   sleep, now     await sleep(ms); now() -> epoch ms
  *   stdout, stderr text writers
  *   fetch          the HTTP seam of verify (url, init) -> Response
- *   sops           the secret seam (decrypt(file, format) -> map; decryptBinary(file) -> text); `io.sops` or, on first use, the app's own sops/age tools
+ *   pipe           (source, sink) -> Promise<{ source, sink, stderr }>: one process's stdout streamed into another's stdin (realPipe)
+ *   sops           the secret seam (decrypt(file, format) -> map; decryptBinary(file) -> text); `io.sops`, else on first use `io.openSops()` or the app's own sops/age tools
  */
 export function stackContext(io = {}) {
   const cwd = io.cwd ?? process.cwd();
@@ -46,9 +75,10 @@ export function stackContext(io = {}) {
     stdout: io.stdout ?? ((text) => process.stdout.write(text)),
     stderr: io.stderr ?? ((text) => process.stderr.write(text)),
     fetch: io.fetch ?? globalThis.fetch,
+    pipe: io.pipe ?? realPipe,
     /** The secret seam: the app's own sops/age tools, created on first use so verbs that open no custody never need them. */
     get sops() {
-      sops ??= defaultSops(env, cwd);
+      sops ??= io.openSops?.() ?? defaultSops(env, cwd);
       return sops;
     },
   });

@@ -65,6 +65,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
     - `images.yml` — **app.ci-images** required · R05 (hfs `managed-file-drift`)
     - `db-deploy.yml` — **app.ci-db** optional · R05 (hfs `managed-file-drift`)
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05 (hfs `managed-file-drift`)
+    - `stack-key-restore.yml` — **app.ci-stack-key-restore** optional · R05 (hfs `managed-file-drift`)
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
   - `{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}` — **app.github-meta** optional
@@ -245,6 +246,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
     - `images.yml` — **app.ci-images** required · R05 (hfs `managed-file-drift`)
     - `db-deploy.yml` — **app.ci-db** optional · R05 (hfs `managed-file-drift`)
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05 (hfs `managed-file-drift`)
+    - `stack-key-restore.yml` — **app.ci-stack-key-restore** optional · R05 (hfs `managed-file-drift`)
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
   - `{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}` — **app.github-meta** optional

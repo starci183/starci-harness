@@ -41,6 +41,7 @@ import { LIST } from '../runtime/scripts/lib/loosening-config.mjs';
 import { readTruths } from '../runtime/scripts/lib/loosening-state.mjs';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 import { bootstrapSection } from '../runtime/scripts/hfs/rules/database-constants.mjs';
+import { SERVER_AGE_IDENTITY } from '../stack/server-key.mjs';
 
 export const TEMPLATES_DIR = path.join(import.meta.dirname, '..', 'templates');
 const NODE_MAJOR = 22;
@@ -412,6 +413,8 @@ export function variables(app, scope, presets, sonarKey, manifest = loadSlotMani
     // The typed lint reads the types the fe packages declare (their dist, turbo.json: lint dependsOn ^build), so the packages are built first.
     lintPrefix: packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : 'npm run codegen --silent && ',
     nodeMajor: String(NODE_MAJOR),
+    // The deploy server's age identity the restore workflow writes (stack/server-key.mjs owns the path).
+    serverAgeIdentity: SERVER_AGE_IDENTITY,
     sonarKey: sonarKey ?? app.project,
     sonarHostLine: sonarHostLine(quality.sonar),
     sonarExclusions: sonarScope(presets).exclusions.join(','),

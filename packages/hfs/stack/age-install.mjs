@@ -6,7 +6,8 @@ const AGE_VERSION = 'v1.2.1';
 const AGE_URL = `https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz`;
 /** sha256 of the official linux/amd64 archive of AGE_VERSION. */
 const AGE_SHA256 = '7df45a6cc87d4da11cc03a539a7470c15b1041ab2b396af088fe9990f7c79d50';
-const INSTALL = { dnf: 'sudo -n dnf install -y age', yum: 'sudo -n yum install -y age', apk: 'sudo -n apk add age', 'apt-get': 'sudo -n apt-get install -y age' };
+/** The install command of each package manager installAge detects; a refusal names them for a host it cannot install on. */
+export const AGE_INSTALL = { dnf: 'sudo -n dnf install -y age', yum: 'sudo -n yum install -y age', apk: 'sudo -n apk add age', 'apt-get': 'sudo -n apt-get install -y age' };
 
 const STATIC_INSTALL = [
   'set -e',
@@ -26,8 +27,8 @@ export function installAge(run, report) {
   if (present(run)) return;
   const manager = packageManager(run);
   let failure = 'no package manager (dnf, yum, apk, apt-get) found';
-  if (Object.hasOwn(INSTALL, manager)) {
-    const packaged = run(INSTALL[manager]);
+  if (Object.hasOwn(AGE_INSTALL, manager)) {
+    const packaged = run(AGE_INSTALL[manager]);
     if (packaged.status === 0 && present(run)) { report.note(`installed age with ${manager}`); return; }
     failure = `${manager} could not install age: ${firstLine(packaged.stderr)}`;
   }
