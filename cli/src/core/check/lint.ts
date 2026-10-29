@@ -16,7 +16,7 @@ export const checkLintVerb = defineVerb({
     roles: EVERYONE,
     schema: "starci/check-lint@1",
     flags: {
-        base: { kind: "string", summary: "compare against this ref (default origin/main, else HEAD)" },
+        base: { kind: "string", summary: "compare against this ref (default the branch base: origin/main on main, else the fork point from main or origin/main)" },
         all: { kind: "boolean", summary: "lint every package in full" },
         within: { kind: "boolean", summary: "judge only the changed files under the given paths, never the rest of the diff (a wave hands the files its tasks landed)" },
         paths: { kind: "rest", summary: "when the diff changes nothing, judge the tracked files under these repository paths instead (what a task that changes nothing proves)" },

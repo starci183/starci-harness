@@ -64,7 +64,7 @@ settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`h
 check steps by input digest (`harness/check-reuse.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
 `pool_concurrency`, `route_picks`, `budgets`, `budget_raises`, `host_events`, `owner_requests`, the heavy-command
-governor's `heavy_slots`, `cpu_samples` and `heavy_meta` (`harness/heavy.ts`), `project_supervisors`, one live
+governor's `heavy_slots`, `cpu_samples`, `managed_cpu_samples` and `heavy_meta` (`harness/heavy.ts`), `project_supervisors`, one live
 Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), `supervisor_workers`, each `[Worker]` a
 Supervisor dispatched (`harness/project-workers.ts`), and the Telegram channel's
 `telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`) with the ticket cards' `telegram_files`,
@@ -224,10 +224,15 @@ build, `npm ci` or `npm install`, a contract's setup, a uat container) runs thro
 `harness/heavy.ts`: one slot of a host-wide semaphore (`heavy_slots` in the machine.sqlite of the harness's main checkout,
 or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
 it) while it runs, admitted dynamically at every poll: free RAM less a reserve must cover the RAM estimate of every running
-command plus its own, fewer than floor(logical cores / 2) may run, and none starts while the CPU average over a window
-(samples in `cpu_samples`) is above its ceiling until the queue admitted nothing for `cpuStarveMinutes` (`last-admit-ms` in
-`heavy_meta`): then its first command RAM admits starts anyway, one at a time, so a hot CPU slows the queue and never stops
-it. The queue is served by age, a project (the repository of a command's folder, `repositoryKeyOf`) with fewer commands
+command plus its own, and fewer than floor(logical cores / 2) may run. The CPU ceiling governs the harness's own
+contribution: while the CPU average over a window (samples in `cpu_samples`) is above it, `managedCpuPercent` reads the share
+of the host's CPU the running heavy commands and their process trees burn over the same window (`managedCpuTimes` of
+`harness/host-holders.ts`, the Windows process table's kernel and user time or `/proc` on Linux, readings in
+`managed_cpu_samples`, one process host-wide taking one per `MANAGED_SAMPLE_MS`). Under `managedCpuFloorPercent` the load is foreign:
+holding the harness back would not lower it, so up to `underForeignPressureSlots` commands run under it (`cpuRuleOf`). At or
+above the floor, or with the table unreadable, none starts until the queue admitted nothing for `cpuStarveMinutes`
+(`last-admit-ms` in `heavy_meta`): then its first command RAM admits starts anyway, one at a time, so a hot CPU slows the
+queue and never stops it. The CPU never lifts a RAM rule. The queue is served by age, a project (the repository of a command's folder, `repositoryKeyOf`) with fewer commands
 running first, and a project running `projectSlots` commands is passed over while another project's command waits under
 its own cap (`servingOrder`). The reserve, estimates, per-kind timeouts, memory caps and seat floor are
 the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command's timeout starts at its admission, never in the
@@ -248,7 +253,8 @@ records the hold (`seat_holds`: since when, on what memory) until the task launc
 `workflow status` names why a node stands still instead of a bare state: a queued task the floor holds ("held: free RAM
 2.6 GB below seat floor 6 GB (since 21:02Z)"), a verify waiting for a heavy slot ("held: heavy-command slot for test, free
 RAM 2.6 GB below reserve 8 GB (since …)"), a task awaiting the owner with the reason its verify recorded.
-`host load` prints the load, the slots in use with each child's pid and RSS, the queue with how long each command waited
+`host load` prints the load with the CPU rule that applied ("CPU 94% is foreign (managed 3%, under
+heavy.managedCpuFloorPercent 25%): 2 slots under foreign pressure, 0 in use"), the slots in use with each child's pid and RSS, the queue with how long each command waited
 and why, the seat holds, and who holds the memory (`harness/host-holders.ts`): the top processes by working set, managed
 (a recorded heavy command or seat, a process under one, or one working in the harness's state folder) or unmanaged (other
 node, WSL and Docker, IDEs, agents, the rest), each command line clipped and redacted. Another app's `starci app` run is

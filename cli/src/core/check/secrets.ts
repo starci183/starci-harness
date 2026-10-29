@@ -1,6 +1,6 @@
 import { loadPolicy, resolveProfile } from "../../harness/policy.js"
 import { Refusal } from "../../shared/errors.js"
-import { changedFiles, refExists, repositoryRoot } from "../../shared/git.js"
+import { branchBase, changedFiles, refExists, repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 import { describeSecrets, scanSecrets } from "./secrets-scan.js"
 import type { SecretReport } from "./secrets-scan.js"
@@ -20,7 +20,7 @@ export const checkSecretsVerb = defineVerb({
     roles: EVERYONE,
     schema: "starci/check-secrets@1",
     flags: {
-        base: { kind: "string", summary: "compare against this ref (default origin/main, else HEAD)" },
+        base: { kind: "string", summary: "compare against this ref (default the branch base: origin/main on main, else the fork point from main or origin/main)" },
         all: { kind: "boolean", summary: "scan every file of the tree" },
     },
     run: async (context, flags) => {
@@ -31,7 +31,7 @@ export const checkSecretsVerb = defineVerb({
         let files: string[]
         if (flags.all) files = await treeFiles(root)
         else {
-            base = flags.base ?? ((await refExists(root, "origin/main")) ? "origin/main" : "HEAD")
+            base = flags.base ?? (await branchBase(root))
             if (!(await refExists(root, base))) throw new Refusal("CHECK_BASE_UNKNOWN", `the base ${base} does not exist here`)
             files = await changedFiles(root, base)
         }

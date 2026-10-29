@@ -51,6 +51,8 @@ steps:
         equals: [1]
   - name: a CPU ceiling no host is under
     starci: [config, set, liveness.heavy.maxCpuPercent, "0.0001"]
+  - name: every load counts as the harness's own, so the ceiling is what is under test
+    starci: [config, set, liveness.heavy.managedCpuFloorPercent, "0"]
   - name: another program keeps a core busy, so even an idle host reads above the ceiling
     serve: { stub: busy, as: burner }
   - name: host load admits none and names the CPU

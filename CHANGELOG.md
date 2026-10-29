@@ -6,6 +6,29 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.12] - 2026-10-29
+
+### Fixed
+
+- **The CPU ceiling governs the harness's own contribution** (monitor report #12). Above `heavy.maxCpuPercent` the governor held
+  every new heavy command and admitted one per `cpuStarveMinutes`, although the CPU was burned by another project's unmanaged
+  eslint and tsc: holding the harness back lowered nothing and starved its workflows (an install waited 8 min, a tsc 12, each
+  verify about 25, serially). Now `managedCpuPercent` (`harness/heavy.ts`) samples the share the running heavy commands and
+  their process trees burn over the CPU window (`managedCpuTimes` of `harness/host-holders.ts`, Windows and Linux): under the
+  new `heavy.managedCpuFloorPercent` the load is foreign and up to the new `heavy.underForeignPressureSlots` commands run under
+  it, by age with the project fair share; at or above it, or unknown, the ceiling and the starve rule hold as before. RAM rules
+  are unchanged and still block. `host load`, the queue's wait reasons and `workflow status` name the rule that applied. Bench:
+  `heavy-foreign-cpu-admits-managed`, `heavy-own-cpu-still-waits`.
+- **A governed tsc runs under the same heap as eslint** (nivo-lite lane r-4). `check typecheck` died of a node heap OOM on a
+  large back end: its tsc child ran under `heavy.memoryMb.tsc` 2048, below node's default heap. `memoryMb.tsc` and
+  `estimateMb.tsc` now equal eslint's, so the admission's RAM estimate matches the heap; the child gets it through
+  NODE_OPTIONS of its `node <bin>` spawn (`withHeavySlot`). Bench: `heavy-heap-reaches-tsc-eslint`.
+- **A change check on a branch judges the branch's own files** (nivo-lite lane r-4). `check lint`, `check typecheck`,
+  `check run` and `check secrets` without `--base` compared against `origin/main`, so a lane cut from a local main that ran
+  ahead of origin linted 212 files of main's unpushed merges. The default base is now the branch base (`branchBase` of
+  `shared/git.ts`): `origin/main` on main, else the newest fork point of the branch from main or origin/main. `--all` and the
+  app-root widening are unchanged. Bench: `check-lint-branch-base`.
+
 ## [1.1.0-alpha.11] - 2026-10-29
 
 ### Fixed

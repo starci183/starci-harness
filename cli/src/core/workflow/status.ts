@@ -3,7 +3,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { workflowBudgets } from "../../harness/budget.js"
 import { currentGoal } from "../../harness/goal.js"
 import type { NodeView } from "../../harness/graph.js"
-import { clockOf, cpuPercent, heavySlots, heldWhy, loadHeavyRules, runningHeavyKinds, seatHolds, seatHoldWhy, seatRoom } from "../../harness/heavy.js"
+import { clockOf, cpuLoad, heavySlots, heldWhy, loadHeavyRules, runningHeavyKinds, seatHolds, seatHoldWhy, seatRoom } from "../../harness/heavy.js"
 import type { HeavyKind } from "../../harness/heavy.js"
 import { openExistingLedger } from "../../harness/ledger.js"
 import { lastEvent } from "../../harness/tasks.js"
@@ -27,7 +27,7 @@ const heldViews = async (db: DatabaseSync, views: readonly NodeView[]): Promise<
     const waiting = heavySlots().filter((slot) => slot.state === "waiting")
     const freeMb = Math.floor(freemem() / 1_048_576)
     const running = runningHeavyKinds()
-    const cpu = waiting.length === 0 ? 0 : await cpuPercent(rules)
+    const cpu = waiting.length === 0 ? { cpu: 0, managed: null } : await cpuLoad(rules)
     return views.map((view) => {
         const task = view.task
         if (task === null || !live.includes(view)) return view
@@ -39,7 +39,7 @@ const heldViews = async (db: DatabaseSync, views: readonly NodeView[]): Promise<
         if (seat !== undefined) return { ...view, why: `held: ${seat}` }
         const slot = waiting.find((each) => each.label.includes(task.id) || each.cwd.includes(task.id))
         if (slot === undefined) return view
-        const why = heldWhy(rules, { freeMb, cpuPercent: cpu }, running, slot.kind as HeavyKind) ?? "admitted at its next poll"
+        const why = heldWhy(rules, { freeMb, cpuPercent: cpu.cpu, managedCpuPercent: cpu.managed }, running, slot.kind as HeavyKind) ?? "admitted at its next poll"
         return { ...view, why: `held: heavy-command slot for ${slot.kind}, ${why} (since ${clockOf(slot.at)})` }
     })
 }

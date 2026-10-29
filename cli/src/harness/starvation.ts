@@ -1,6 +1,6 @@
 import { freemem } from "node:os"
 import { dirname } from "node:path"
-import { clockOf, endStarvation, gb, loadHeavyRules, markStarvationTicketed, starvation, starvationTicketed } from "./heavy.js"
+import { clockOf, endStarvation, gb, heavySlots, loadHeavyRules, markStarvationTicketed, starvation, starvationTicketed } from "./heavy.js"
 import { memoryHolders } from "./host-holders.js"
 import { locateOps } from "./ops.js"
 import { openTicket } from "./tickets.js"
@@ -38,7 +38,7 @@ export const tickStarvation = async (): Promise<StarvationTick> => {
     const heldMinutes = Math.floor(minutesSince(since))
     const already = starvationTicketed()
     if (minutesSince(since) <= rules.starvedTicketMinutes || already !== null) return { since, heldMinutes, ticket: already, line: null }
-    const holders = await memoryHolders(40)
+    const holders = await memoryHolders(heavySlots(), 40)
     const unmanaged = holders.top.filter((item) => !item.managed).slice(0, TOP_UNMANAGED)
     const freeMb = Math.floor(freemem() / 1_048_576)
     const parts = [

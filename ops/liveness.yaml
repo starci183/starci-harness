@@ -37,9 +37,13 @@ reviveMax: 3
 # admitted dynamically from this host's RAM and CPU and re-judged at every poll: a command of kind K is admitted when
 # (free RAM - reserveMb) covers the estimateMb of every running command plus K's own, and fewer commands run than the cap,
 # floor(logical cores / 2) or maxSlots when set lower; while nothing runs, one is admitted once free RAM covers its own estimate.
-# New admissions pause while the CPU average over cpuWindowSeconds is above maxCpuPercent; running commands keep going. High CPU
-# slows the queue and never stops it: once the queue admitted nothing for cpuStarveMinutes, its first command that RAM admits
-# starts anyway, one per cpuStarveMinutes. The queue is served by age, a project with fewer commands running first; a project
+# The CPU ceiling governs the harness's own contribution. While the CPU average over cpuWindowSeconds is above maxCpuPercent,
+# the share the governor's running commands and their process trees burn decides (managed CPU, sampled over the same window):
+# under managedCpuFloorPercent of the host's total CPU the load is foreign, holding the harness back would not lower it, and up
+# to underForeignPressureSlots commands run under it; at or above it (or unknown) new admissions pause and running commands keep
+# going. A floor of 0 makes every load the harness's own. The CPU never lifts a RAM rule. High CPU slows the queue and never
+# stops it: once the queue admitted nothing for cpuStarveMinutes, its first command that RAM admits starts anyway, one per
+# cpuStarveMinutes. The queue is served by age, a project with fewer commands running first; a project
 # running projectSlots commands is passed over while another project's command waits under its own cap. A command
 # not admitted waits in the queue, polling every pollSeconds; a coordinator's turn (`kernel next`, `kernel submit`, `supervisor
 # next`, `supervisor tick`) never waits in it: its own heavy command is refused and its step's verifies and waves run as detached jobs; the wait is logged (stderr and a `heavy-wait` host event) and
@@ -49,12 +53,14 @@ reviveMax: 3
 # priority; a node tool under `--max-old-space-size` of its kind's memoryMb, a uat container under `--memory`; a test runner
 # (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure (fewer admitted than the cap). A worker seat launches
 # only while free memory is at least seatFreeMb; otherwise its task stays queued and the hold is recorded (since when, on what
-# memory), so `workflow status` names it. `starci host load` shows the capacity, each queued command's wait and why, and who
-# holds the memory (managed: the harness's heavy commands and seats; unmanaged: other node, WSL or Docker, IDEs, agents).
+# memory), so `workflow status` names it. `starci host load` shows the capacity, the CPU rule that applied, each queued
+# command's wait and why, and who holds the memory (managed: the harness's heavy commands and seats; unmanaged: other node,
+# WSL or Docker, IDEs, agents).
 # When admission or seat launch has been held for more than starvedTicketMinutes without a break, `supervisor tick` opens one
 # harness-defect ticket naming the top unmanaged holders, once per episode; these rules do not change for it.
-# maxSlots (optional) caps the count below floor(logical cores / 2). The eslint memory is also the heap of the ESLint child an app lint
-# or app check spawns (a typed lint of a large app's back end outgrew node's default 4 GB), and its estimate matches it. bootProofTimeoutSeconds
+# maxSlots (optional) caps the count below floor(logical cores / 2). A typecheck and a typed lint of a large app's back end outgrow
+# node's default heap (4 GB), so the memoryMb of tsc and eslint is above it and each estimate matches its heap; the eslint memory is also the
+# heap of the ESLint child an app lint or app check spawns. bootProofTimeoutSeconds
 # is the budget of the lite boot proof's worker, counted from its spawn: one timeout is retried, a second is BOOT_PROOF_TIMEOUT, not a failure.
 # @starci/hfs reads both through the environment the CLI sets (cli/src/harness/heavy.ts hfsLimitsEnv).
 # On Windows `host load` also reads the CPU of Defender's real-time scan (MsMpEng, percent of one core): at scannerCpuPercent or
@@ -65,17 +71,19 @@ heavy:
   maxCpuPercent: 85
   cpuWindowSeconds: 60
   cpuStarveMinutes: 5
+  managedCpuFloorPercent: 25
+  underForeignPressureSlots: 2
   projectSlots: 2
   pollSeconds: 2
   estimateMb:
-    tsc: 2048
+    tsc: 8192
     eslint: 8192
     test: 2048
     build: 3072
     install: 1500
     uat: 2048
   memoryMb:
-    tsc: 2048
+    tsc: 8192
     eslint: 8192
     test: 4096
     build: 4096

@@ -37,6 +37,8 @@ steps:
   - name: a CPU ceiling no host is under, and a queue that never counts as starved
     starci: [config, set, liveness.heavy.maxCpuPercent, "0.0001"]
   - starci: [config, set, liveness.heavy.cpuStarveMinutes, "600"]
+  - name: every load counts as the harness's own, so the ceiling holds the busy stub's load too
+    starci: [config, set, liveness.heavy.managedCpuFloorPercent, "0"]
   - name: a verify deadline shorter than the queue wait, which never counts against it
     starci: [config, set, liveness.verifyDeadlineMinutes, "0.5"]
   - git: [commit, -q, -am, "bench: a host that admits nothing"]
