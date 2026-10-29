@@ -88,6 +88,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   recorded as `baseline-findings` evidence (data.baseline, a `baseline-findings` ledger event of the task), and only a new finding
   stays red (`cli/src/core/check/base-findings.ts`). Bench: `verify-hfs-pattern-declared-by-harness`,
   `verify-widened-check-judged-against-base` (fault `new-finding`).
+- **A harness-side code worker fits the code budget** (every `side=harness` worker was refused `CONTRACT_UNFIT` at about 30.3k of
+  the code op's 24k tokens, 72 KB of it cli/README.md loaded whole). cli/README.md's harness part is split into `###` sections
+  (each opened by `starci contexts anchor cli/README.md#<slug>`), and `starci contexts anatomy --write` generates their index,
+  `contexts/harness/cli-sections.md` (anchor, size and first sentence per section; `--check` fails on drift;
+  `cli/src/core/contexts/sections-render.ts`). `side: harness` of the code op reads CONTRIBUTING.md, that index and
+  contexts/authority/branch.md (about 13.5k tokens) and opens the README's sections on demand. The 24000 budget is unchanged.
+  The generated files that repeat another file are one list (`repeatingFiles` in `cli/src/core/contexts/index-render.ts`) that
+  the contexts index and the search corpus both skip. Bench: `supervisor-dispatch-harness-side-fits-budget`.
 - **A hot CPU slows the heavy queue and never freezes it** (monitor report 5: 0 admissions for 2 h 33 with 23.7 GB free). Once
   the queue admitted nothing for `heavy.cpuStarveMinutes`, its first command RAM admits starts despite the CPU ceiling, one at a
   time. The queue is served by age, a project with fewer commands running first, and a project running `heavy.projectSlots`

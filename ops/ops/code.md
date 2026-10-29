@@ -31,7 +31,9 @@ context:
       when: {side: [be, fe]}
     - file: "harness:CONTRIBUTING.md"
       when: {side: [harness, package]}
-    - file: "harness:cli/README.md"
+    - file: "harness:contexts/harness/cli-sections.md"
+      when: {side: harness}
+    - file: "harness:contexts/authority/branch.md"
       when: {side: harness}
     - file: "harness:packages/README.md"
       when: {side: package}
