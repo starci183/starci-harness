@@ -16,6 +16,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 - `starci app release push --urgent --lint-baseline <tag>`: the lint of an urgent release judged against a release tag's findings
   (owner ruling `urgent-lint-baseline`): only a finding new since the tag is red.
 
+### Changed
+
+- The CLI requires @starci/hfs 4.11.15 (was 4.11.13), its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2).
+
 ### Removed
 
 - **The stress bench (owner ruling `bench-removed`, 2026-10-29: "xóa bench đi").** `bench/` (scenarios, fixtures, stand-ins,
