@@ -62,13 +62,17 @@ export function isSopsEnvelope(text) {
   try { return sopsTree(parseYaml(src)); } catch { return false; }
 }
 
-/** Admit one flat age envelope for the native selected-identity invocation; this is shape admission, never cryptographic proof. */
+/** A refused admission, named by its reason. */
 const refusal = (reason) => ({ ok: false, reason });
 
+const DOTENV_AGE_FIELD = /^age__list_(0|[1-9]\d{0,2})__map_(recipient|enc)$/u;
+
 function dotenvMetadataValue(meta, age, key, value) {
-  if (key === 'age__list_0__map_recipient') age.recipient = value;
-  else if (key === 'age__list_0__map_enc') age.enc = value;
-  else if (key === 'mac_only_encrypted') {
+  const field = DOTENV_AGE_FIELD.exec(key);
+  if (field) {
+    const entry = (age[Number(field[1])] ??= {});
+    entry[field[2]] = value;
+  } else if (key === 'mac_only_encrypted') {
     if (value !== 'false') return 'partial-mac';
     meta[key] = false;
   } else if (key.includes('__')) return 'unsupported-key-group';
@@ -88,13 +92,14 @@ function readDotenvMetadata(text) {
     pairs.set(name, line.slice(at + 1).replaceAll(String.raw`\n`, '\n'));
   }
   const meta = {};
-  const age = {};
+  const age = [];
   for (const [name, value] of pairs) {
     if (!name.startsWith('sops_')) continue;
     const reason = dotenvMetadataValue(meta, age, name.slice('sops_'.length), value);
     if (reason) return { refusal: reason };
   }
-  meta.age = [age];
+  // A gap in the list indices is an entry sops never wrote: refused as an empty entry, never skipped.
+  meta.age = Array.from(age, (entry) => entry ?? null);
   return { meta };
 }
 
@@ -142,15 +147,35 @@ function validateAgeMetadata(meta, text, recipient) {
   const fields = new Set([...providers, 'age', 'lastmodified', 'mac', 'version', 'unencrypted_suffix', 'encrypted_suffix', 'unencrypted_regex', 'encrypted_regex', 'unencrypted_comment_regex', 'encrypted_comment_regex', 'mac_only_encrypted']);
   if (Object.keys(meta).some(name => !fields.has(name))) return refusal('unknown-metadata');
   if (Object.hasOwn(meta, 'mac_only_encrypted') && meta.mac_only_encrypted !== false) return refusal('partial-mac');
-  if (!Array.isArray(meta.age) || meta.age.length !== 1) return refusal('unsupported-age-set');
-  const entry = meta.age[0];
-  if (!isAgeEntry(entry)) return refusal('invalid-age-entry');
-  if (typeof entry.recipient !== 'string' || entry.recipient !== recipient) return refusal('recipient-mismatch');
-  if (!hasValidAgePayload(entry)) return refusal('invalid-age-entry');
+  const set = ageSet(meta.age);
+  if (!set.ok) return set;
+  if (!set.recipients.includes(recipient)) return refusal('recipient-mismatch');
   if (!hasValidEnvelopeVersion(meta)) return refusal('invalid-envelope');
   return { ok: true };
 }
 
+const AGE_RECIPIENT = /^age1[ac-hj-np-z02-9]+$/u;
+
+/**
+ * The age set of an envelope: one or more entries (the owner key and an environment's server key are the standard pair), each a
+ * well-formed recipient with its wrapped data key; an empty entry or a recipient named twice is refused.
+ */
+function ageSet(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return refusal('unsupported-age-set');
+  const recipients = [];
+  for (const entry of entries) {
+    if (!isAgeEntry(entry) || typeof entry.recipient !== 'string' || !AGE_RECIPIENT.test(entry.recipient) || !hasValidAgePayload(entry))
+      return refusal('invalid-age-entry');
+    if (recipients.includes(entry.recipient)) return refusal('duplicate-age-recipient');
+    recipients.push(entry.recipient);
+  }
+  return { ok: true, recipients };
+}
+
+/**
+ * Admit one flat age envelope for the native selected-identity invocation when `recipient` (the selected identity's public key) is
+ * one of its age set. Shape admission, never cryptographic proof.
+ */
 export function selectedAgeEnvelope(text, format, recipient) {
   if (!['binary', 'json', 'yaml', 'dotenv'].includes(format)) return refusal('unsupported-format');
   const parsed = readAgeMetadata(text, format);

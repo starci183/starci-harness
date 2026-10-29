@@ -230,7 +230,7 @@ one key its whole text or several one `KEY=value` line each, `--from-file KEY=pa
 A member is sealed to its environment's rule of the managed `.sops.yaml`; `recipients <env> [--add|--remove <age1...|owner>]`
 rewrites that rule (`environmentRecipients`, `secret-init.mjs`), and `init` takes the owner's identity as the app's recipient.
 Re-sealing a member whose every key the set replaces needs no age identity; adding a key to one does, and the identity is found
-by itself (`localAgeIdentity`): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the app's git-ignored
+by itself (`decryptionIdentity`, the one lookup every decrypt of a member uses: secret, stack, release, db): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the app's git-ignored
 `.claude/secret.env`, else of its main checkout's when the app is a git worktree, else the `hostIdentity` the harness CLI passes
 (its own secret.env), else the sops `keys.txt`; with none, the verb refuses before asking for a value, naming every place it
 looked and the one line that fixes it. `audit [<env>]` names every deviation and exits 1; `migrate <env> <member> [--to

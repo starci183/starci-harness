@@ -208,7 +208,7 @@ test("an identity that is not the member's recipient is refused naming where it 
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };
   const result = await run(["get", "dev", "sepay", "SEPAY_MERCHANT_ID", "--to-file"], { cwd: root, env, tools: selectedTools([]), hostIdentity: host });
   assert.equal(result.code, 2);
-  assert.ok(result.err.includes(`the age identity of /harness/secret.env (SOPS_AGE_KEY) does not open sepay.enc, sealed to ${other}`), result.err);
+  assert.ok(result.err.includes(`the age identity of /harness/secret.env (SOPS_AGE_KEY) (recipient ${RECIPIENT}) does not open sepay.enc, sealed to ${other}`), result.err);
   privateAbsent(result, [HOST_KEY]);
 });
 

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { hostAgeIdentity, lookupSecret, secretHome } from "../../harness/secret-env.js"
+import { lookupSecret, secretHome } from "../../harness/secret-env.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { FlagSpec } from "../../shared/verb.js"
@@ -71,12 +71,11 @@ export const appSecretVerb = defineVerb({
     run: (context, flags) => {
         const { "from-host": fromHost, ...rest } = flags
         const argv = hfsArgv(HFS_FLAGS, rest, CHOICES)
-        const extra = { hostIdentity: hostAgeIdentity() }
-        if (fromHost === undefined) return runHfs(context, "secret", argv, false, undefined, extra)
+        if (fromHost === undefined) return runHfs(context, "secret", argv, false)
         if (rest.action !== "set") throw new UsageError("--from-host is only valid for set")
         if (rest.generate !== undefined) throw new UsageError("--from-host and --generate each give set its value; pass one")
         if (rest.keys.length !== 1) throw new UsageError("--from-host seals one key; name exactly one")
         const value = hostValue(fromHost)
-        return runHfs(context, "secret", argv, false, () => value, extra)
+        return runHfs(context, "secret", argv, false, () => value)
     },
 })

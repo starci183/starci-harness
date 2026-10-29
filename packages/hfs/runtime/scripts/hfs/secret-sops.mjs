@@ -1,5 +1,6 @@
 // secret-sops.mjs - runtime SOPS adapter and age identity selection.
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { runProgram } from "../api/process/run-program.mjs";
 import { resolveRealTool } from "../api/process/resolve-real-tool.mjs";
@@ -9,8 +10,8 @@ import { updateKeys as sopsUpdateKeys } from "../api/sops/update-keys.mjs";
 import { isLegacyName } from "../lib/sealed-member.mjs";
 import { invocationDir } from "../lib/roots.mjs";
 import { envelopeOf } from "./secret-document.mjs";
-import { configuredRecipients, localAgeIdentity, secretTools } from "./secret-init.mjs";
-import { outsideRepository, secretRoots } from "./secret-files.mjs";
+import { configuredRecipients, decryptionIdentity, secretTools } from "./secret-init.mjs";
+import { outsideRepository } from "./secret-files.mjs";
 import { SecretError, publicStorage } from "./secret-errors.mjs";
 
 const sopsInvocation = Object.freeze({ runProgram, resolveRealTool });
@@ -45,13 +46,25 @@ function recipientsOf(file) {
  * The refusal of a decrypt whose selected identity is not one `file` is sealed to: names where the identity came from and the
  * member's recipients, and the two ways out. It carries no value.
  */
-function identityMismatch(repoRoot, identity, file) {
+function identityMismatch(repoRoot, identity, file, publicRecipient) {
   const recipients = recipientsOf(file);
+  const own = publicRecipient ? ` (recipient ${publicRecipient})` : "";
   return new SecretError(
-    `the age identity of ${identity.source ?? "the environment"} does not open ${path.basename(file)}, ` +
-      `sealed to ${recipients.join(", ") || "another recipient"}. Fix: put that recipient's age secret key in ${path.join(repoRoot, ".claude", "secret.env")} as SOPS_AGE_KEY, ` +
-      "or, when no one holds it any more, seal the member's keys again (remove it and set them) after .sops.yaml names this identity's recipient",
+    `the age identity of ${identity.source ?? "the environment"}${own} does not open ${path.basename(file)}, ` +
+      `sealed to ${recipients.join(", ") || "another recipient"}. Fix: put one of those recipients' age secret key in ${path.join(repoRoot, ".claude", "secret.env")} as SOPS_AGE_KEY, ` +
+      "or, when no one holds any of them any more, seal the member's keys again (remove it and set them) after .sops.yaml names this identity's recipient",
   );
+}
+
+/**
+ * Any other refusal of a decrypt: the member, the format it was read as, the recipients it is sealed to, where the age identity
+ * came from and (when derived) its recipient, then the refusal itself. Public facts only.
+ */
+function identityRefused(identity, file, format, error) {
+  const recipients = recipientsOf(file);
+  const own = error.publicRecipient ? `, recipient ${error.publicRecipient}` : "";
+  const source = identity.source ? `the age identity of ${identity.source}${own}` : `no age identity (looked in ${identity.looked.join(", ") || "the environment"})`;
+  return `${path.basename(file)} (read as ${format ?? "its own format"}, sealed to ${recipients.join(", ") || "no age recipient"}) cannot be opened with ${source}: ${error.message}`;
 }
 
 /**
@@ -70,8 +83,40 @@ function identityMissing(repoRoot, identity, file) {
 }
 
 /**
- * The default sops seam: the runtime's sops api, which finds the binary on this machine; the age identity is localAgeIdentity's
- * (`host` its last source), then the legacy sops keys.txt. `identity` says where the age identity
+ * The recipient set a seal of `file` writes: the caller's `named` set, else the environment's .sops.yaml rule, else the full set
+ * the existing member is sealed to, so no rewrite (set, migrate, split, an edit) drops a recipient such as the deploy server's.
+ * `ruled` says whether a rule of the app's .sops.yaml matches the file. Refused, as the rule refuses, when none names one.
+ */
+function sealRecipients(repoRoot, file, named) {
+  try {
+    const rule = configuredRecipients(repoRoot, file);
+    return { recipients: named.length ? named : rule, ruled: true };
+  } catch (error) {
+    const existing = named.length ? named : fs.existsSync(file) ? recipientsOf(file) : [];
+    if (existing.length) return { recipients: existing, ruled: false };
+    throw error;
+  }
+}
+
+/**
+ * Runs `seal` with a private sops configuration naming only `recipients` when the app's .sops.yaml has no rule for the member
+ * (sops refuses a file no rule matches even with --age); the folder is removed after. Public keys only.
+ */
+function withOwnRule(ruled, recipients, seal) {
+  if (ruled) return seal(null);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "starci-sops-rule-"));
+  try {
+    const config = path.join(dir, ".sops.yaml");
+    fs.writeFileSync(config, `creation_rules:\n  - age: ${recipients.join(",")}\n`);
+    return seal(config);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The default sops seam: the runtime's sops api, which finds the binary on this machine; the age identity is decryptionIdentity's
+ * (`host` the harness CLI's secret.env, then sops' keys.txt). `identity` says where the age identity
  * was found (`source`, null when nowhere) and where it was looked for; `requireIdentity(file)` refuses, before any value is
  * read, an operation that must decrypt `file` with no identity.
  */
@@ -83,7 +128,7 @@ export function defaultSops(
   host = null,
 ) {
   const { sops: binary } = publicStorage(() => secretTools(env, tools));
-  const local = localAgeIdentity(repoRoot, env, tools, host);
+  const local = decryptionIdentity(repoRoot, env, { tools, host, platform });
   const selectedEnv = local.env;
   const identity = { source: local.source, looked: [...local.looked] };
   const invocation = {
@@ -109,27 +154,16 @@ export function defaultSops(
         );
       checkIdentity(value);
     }
-  if (
-    !Object.keys(selectedEnv).some((name) => AGE_IDENTITY_NAME.test(name))
-  ) {
-    const keys = secretRoots(env, platform).identity;
-    checkIdentity(keys);
-    identity.looked.push(keys);
-    if (fs.existsSync(keys)) {
-      selectedEnv.SOPS_AGE_KEY_FILE = keys;
-      identity.source = keys;
-    }
-  }
   const requireIdentity = (file) => {
     if (identity.source === null) throw identityMissing(repoRoot, identity, file);
   };
-  const refuse = (what, result, file) => {
+  const refuse = (what, result, file, format) => {
     if (result.error?.identityRefusal === "identity-not-supplied" && file)
       return identityMissing(repoRoot, identity, file);
     if (result.error?.identityRefusal === "recipient-mismatch" && file)
-      return identityMismatch(repoRoot, identity, file);
+      return identityMismatch(repoRoot, identity, file, result.error.publicRecipient);
     if (result.error?.identityRefusal)
-      return Object.assign(new SecretError(result.error.message), {
+      return Object.assign(new SecretError(file ? identityRefused(identity, file, format, result.error) : result.error.message), {
         identityRefusal: result.error.identityRefusal,
       });
     if (result.error?.code === "SOPS_MISSING")
@@ -157,6 +191,7 @@ export function defaultSops(
           `decrypt ${path.basename(file)}; is the age identity installed?`,
           result,
           file,
+          format,
         );
       if (exact) return exactMap(result.stdout);
       const map = Object.create(null);
@@ -193,6 +228,7 @@ export function defaultSops(
           `decrypt ${path.basename(file)}; is the age identity installed?`,
           result,
           file,
+          types[0],
         );
       return String(result.stdout);
     },
@@ -207,21 +243,17 @@ export function defaultSops(
         { env: selectedEnv, cwd: repoRoot, invocation },
       );
       if (result.status !== 0)
-        throw refuse(`update the keys of ${path.basename(file)}; is the age identity a recipient of it?`, result, file);
+        throw refuse(`update the keys of ${path.basename(file)}; is the age identity a recipient of it?`, result, file, isLegacyName(file) ? "dotenv" : "yaml");
     },
     seal(request) {
-      const recipients = request.recipients.length
-        ? request.recipients
-        : publicStorage(() =>
-            configuredRecipients(repoRoot, request.filenameOverride),
-          );
-      // Sealing needs only public recipients, so it runs with no identity selected and may name several (an environment's
+      const { recipients, ruled } = publicStorage(() => sealRecipients(repoRoot, request.filenameOverride, request.recipients));
+      // Sealing needs only public recipients, so it runs with no identity selected and seals to the whole set (an environment's
       // server key and the owner key both).
-      const result = sopsSeal(
+      const result = withOwnRule(ruled, recipients, (config) => sopsSeal(
         binary,
-        { ...request, recipients },
+        { ...request, recipients, config },
         { env: withoutIdentity(selectedEnv), cwd: repoRoot, invocation },
-      );
+      ));
       if (result.status !== 0) throw refuse("seal the secret", result);
       return result.stdout;
     },
