@@ -16,7 +16,9 @@ import { projectOf } from "./work.js"
  * Custody into a live suite: when a task's own spec is an opt-in live suite (`useSandbox`, harness/coverage-scope.ts) whose world
  * declares the keys it needs (`keys: ["OPENROUTER_API_KEY"]`, or a `const` holding them), the harness reads those keys from the
  * app's custody, the sealed members of `.starcistacks/<env>/secrets`, with the same @starci/hfs code `starci app secret
- * materialize` decrypts with, and hands them to that one test run's child environment. Never a file, an argument, a log line or
+ * materialize` decrypts with, and hands them to that one test run's child environment: a command check's run, or a worker's own
+ * through `starci test live` (core/test/live.ts); a worker's report of a run custody stopped is judged by the harness's own run
+ * (CUSTODY_RECHECK). Never a file, an argument, a log line or
  * evidence: the run's output has every handed value scrubbed. A declared key no member of the environment holds (or holds empty)
  * is CUSTODY_KEY_MISSING, an owner-gated block that spends no try (core/task/verify.ts); a declaration the harness cannot read is
  * CUSTODY_KEYS_UNRESOLVED, the same block filed as the harness's defect; a run that still reports a key custody holds as not
@@ -311,7 +313,7 @@ export const custodyFor = async (liveSpecs: readonly string[], root: string, che
 }
 
 /** The key names a failed run reports as not declared: every upper-case name on a `TEST_WORLD_NOT_DECLARED` line but the code itself. */
-const undeclaredIn = (output: string): string[] => [
+export const undeclaredIn = (output: string): string[] => [
     ...new Set(
         output
             .split("\n")
@@ -348,8 +350,31 @@ export const assertKeysHanded = async (output: string, root: string): Promise<vo
         module: CUSTODY_MODULE,
         waiters: [],
     })
-    throw new Refusal(VERIFY_INFRA, `the run reports ${held.join(", ")} as not declared although custody of ${environment} holds ${held.length === 1 ? "it" : "them"} (${held.map((key) => `${key} in ${holder.get(key) ?? ""}`).join(", ")}): the harness did not hand ${held.length === 1 ? "it" : "them"} to the run (an infrastructure failure, not the task's; harness-defect ticket ${ticket.id})`)
+    throw new Refusal(VERIFY_INFRA, `the run reports ${held.join(", ")} as not declared although custody of ${environment} holds ${held.length === 1 ? "it" : "them"} (${held.map((key) => `${key} in ${holder.get(key) ?? ""}`).join(", ")}): the harness did not hand ${held.length === 1 ? "it" : "them"} to the run (${CUSTODY_KEY_NOT_HANDED}: an infrastructure failure, not the task's; harness-defect ticket ${ticket.id})`)
 }
+
+/** The event that hands a worker's custody-stopped report to the harness's own run (core/task/result.ts), keyed by the attempt it judges. */
+export const CUSTODY_RECHECK = "custody-recheck"
+
+/** What a worker's filed output shows custody stopped: the keys its run reported as not declared, and the custody refusals it met. */
+export interface CustodyEvidence {
+    readonly keys: readonly string[]
+    readonly codes: readonly string[]
+}
+
+/**
+ * The custody evidence of a worker's filed output (every string in it read as one text): the key names on its
+ * `TEST_WORLD_NOT_DECLARED` lines and each custody refusal code it names. Undefined when it shows neither, so its report stands.
+ */
+export const custodyEvidence = (output: unknown): CustodyEvidence | undefined => {
+    const text = JSON.stringify(output).replaceAll("\\n", "\n")
+    const codes = [...CUSTODY_CODES, CUSTODY_KEY_NOT_HANDED].filter((code) => text.includes(code))
+    return codes.length === 0 && !text.includes("TEST_WORLD_NOT_DECLARED") ? undefined : { keys: undeclaredIn(text), codes }
+}
+
+/** Whether the harness took over the judgement of this attempt's report from a custody-stopped worker run (CUSTODY_RECHECK). */
+export const isCustodyRecheck = (db: DatabaseSync, taskId: string, attemptId: string): boolean =>
+    db.prepare("SELECT 1 FROM events WHERE subject = ? AND kind = ? AND json_extract(data_json, '$.attempt') = ?").get(taskId, CUSTODY_RECHECK, attemptId) !== undefined
 
 /** Text with every handed value replaced by `[redacted:custody]`, so a run that echoes one leaves it in no output or evidence. */
 export const scrubbed = (text: string, values: readonly string[]): string => values.reduce((out, value) => (value.length < 4 ? out : out.split(value).join("[redacted:custody]")), text)

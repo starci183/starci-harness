@@ -140,7 +140,7 @@ a folder outside any StarCi tree show every verb. The groups:
 | `config` | the harness settings: list, get and set a key of the ops/ yaml that owns it, validated before it is written |
 | `host` | the services of [ops/host.yaml](ops/host.yaml) this machine runs for the harness: status, up, install, uninstall |
 | `connect` | the owner's outside channel, Telegram ([ops/telegram.yaml](ops/telegram.yaml)): store the owner's chat, report it, send the notices due; `supervisor telegram-bridge` runs it as a host service |
-| `uat` | a Playwright script in the pinned image of [ops/uat.yaml](ops/uat.yaml) |
+| `uat`, `test` | a Playwright script in the pinned image of [ops/uat.yaml](ops/uat.yaml); a worker's run of a live-provider suite, its custody keys handed to that run unseen (`test live`) |
 | `app` | one product repository: what a lite app declares, its Sonar scope, and the app commands of `@starci/hfs` (scaffold, sync, check, lint, add, new, emit, explain, hygiene, coverage, codemod, ci, db, secret, stack, release, upgrade), run in-process; a product pins `starci-harness` as its devDependency and its hooks and CI run `npx starci app ...` |
 
 Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wait`,

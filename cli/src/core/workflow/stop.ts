@@ -39,7 +39,7 @@ export const workflowStopVerb = defineVerb({
                 db.close()
             }
         })()
-        const ending = mode === "hard" ? live : live.filter((task) => task.status === "reported" && task.result !== "done")
+        const ending = mode === "hard" ? live : live.filter((task) => task.status === "reported" && task.result !== "done" && !task.recheck)
         const actions: StepAction[] = await cancelTasks(context, ending.map((task) => ({ key: task.key, task: task.id })), `workflow ${flags.workflow}: ${mode} stop`)
         const snapshot = reconcile(root, flags.workflow)
         actions.push(...(await closeKernelActions(context, root, snapshot)))

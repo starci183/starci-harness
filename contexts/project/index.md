@@ -138,7 +138,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: SHARED-NAMING-1 Identifier case follows what the identifier is · SHARED-NAMING-2 Exports are named; a default export only where a framework loads one · SHARED-NAMING-3 Module-level functions are arrow constants
 - [code/shared/scripts.md](../code/shared/scripts.md) · 3 KB — What an op runs in an app, what the app's CI runs after the push, and who commits.
   - sections: SHARED-SCRIPTS-1 The app's scripts are managed; an op calls them by name · SHARED-SCRIPTS-2 Generated code is produced by its command, never written by hand · SHARED-SCRIPTS-3 CI judges the app after the push · SHARED-SCRIPTS-4 An op never commits; the harness does
-- [code/shared/test.md](../code/shared/test.md) · 3 KB — Which side carries tests, what a coding op tests and what it runs.
+- [code/shared/test.md](../code/shared/test.md) · 4 KB — Which side carries tests, what a coding op tests and what it runs.
   - sections: SHARED-TEST-1 The back end is tested; the front end has no tests · SHARED-TEST-2 An op tests what it changed and runs only those tests · SHARED-TEST-3 An op writes no test kind its edition forbids
 - [code/shared/typing.md](../code/shared/typing.md) · 4 KB — How strict the compiler is and which spellings tell it something it cannot check.
   - sections: SHARED-TYPING-1 The repository tsconfig extends the canon preset and adds only paths · SHARED-TYPING-2 No type escape; untrusted values are `unknown` and narrowed · SHARED-TYPING-3 Arrays are `Array<T>` or `ReadonlyArray<T>` · SHARED-TYPING-4 The type-aware rules hold on both sides

@@ -6,6 +6,27 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **A dispatch left pasted in a composer is submitted, and the step never dies on it.** The composer re-submit sent a bare
+  Enter with `--retry-request`, which Orca refuses (`invalid_argument: --retry-request and --wait-submit require --text with
+  --enter and without --interrupt`); the refusal escaped `kernel next`, so every call failed (lesson-ai from 00:49Z) and a Devin
+  dispatch sat pasted unsent. `terminalSubmit` now sends a bare Enter with no request id, the recorded resubmit count bounds the
+  replays, and a refused Enter returns no action instead of throwing. The bench Orca stand-in refuses the same flag set, so the
+  composer scenarios now prove it.
+- **A live suite's verify is no longer settled red by a worker that ran it without custody.** The `verify` worker of
+  starci-next-app's `ai-router-live` ran `npm run test:e2e` itself, met `TEST_WORLD_NOT_DECLARED` for `OPENROUTER_API_KEY` and
+  filed `failed`, which failed the task with no harness run: four tries spent while custody held the key, since custody was
+  handed only inside the harness's own command checks. Workers now run a live suite through `starci test live <spec...>
+  [--run <suite>]` (`cli/src/core/test/live.ts`), the same `prepareSuite` the command check uses: the declared keys reach that
+  one child process from custody under a heavy-command slot, every value scrubbed, refusing `CUSTODY_KEY_MISSING`,
+  `CUSTODY_UNREADABLE` and `CUSTODY_KEYS_UNRESOLVED` before it runs. A `failed` or `blocked` result whose output shows
+  `TEST_WORLD_NOT_DECLARED` or a custody refusal leaves the task `reported` with a `custody-recheck` event and spends no try;
+  its verify runs the suite with custody and judges by that run's exit, the worker's verdict set aside (the task's verify and
+  the wave alike), and a key custody lacks ends it `awaiting_owner` on the credentials question. The verify op, the worker
+  procedure and SHARED-TEST-2 say a `useSandbox` suite runs only through that verb. Bench: `verify-worker-custody-recheck`,
+  `test-live-custody`.
+
 ## [1.1.0-alpha.8] - 2026-10-29
 
 ### Fixed

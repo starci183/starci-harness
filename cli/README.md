@@ -263,7 +263,9 @@ harness never runs.
 ### Custody into a live suite
 
 A command check whose scoped jest run holds an opt-in live suite (`useSandbox`, named by
-the task's command or its own changed spec) reads the keys the suite's world declares from the app's
+the task's command or its own changed spec), and a worker's own run of one through `starci test live <spec...> [--run
+<suite>]` (`core/test/live.ts`, made by the same `prepareSuite` of `harness/run-checks.ts` under a heavy-command slot,
+the worker seeing only key names), reads the keys the suite's world declares from the app's
 custody, the sealed members of `.starcistacks/<env>/secrets` (`dev`, else the one environment that has secrets), with the
 @starci/hfs code `app secret materialize` decrypts with, read in the app's main checkout where its age identity lives, and
 hands them to that test run's child environment alone (`harness/custody.ts`): never a file, an argument or a log, and
@@ -279,6 +281,12 @@ try unspent, and the tick files it as the owner's blocking `question:business` o
 as one blocking `harness-defect` (code `CUSTODY_KEYS_UNRESOLVED`) every such task waits on. A failed test run that still
 reports a key custody holds as `TEST_WORLD_NOT_DECLARED` is the harness's failure, not the task's: `VERIFY_INFRA`, no
 verdict and no try, and one blocking `harness-defect` ticket deduped by `CUSTODY_KEY_NOT_HANDED` (`assertKeysHanded`).
+A worker's report is never the verdict of a run custody stopped: a `failed` or `blocked` result (no `--needs`) whose
+output shows `TEST_WORLD_NOT_DECLARED` or a custody refusal (`custodyEvidence`) leaves the task `reported`, its work kept,
+with a `custody-recheck` event on its attempt (`core/task/result.ts`); its node stays `reported`, not returned, so the
+next step verifies it, and the verify runs the contract's checks with custody as above, the result's verdict keys set
+aside (`recheckOf`, `ResultSource.setAside`): the suite's own exit is the verdict, in the task's verify and in the wave
+alike. Green settles it, a genuine red fails it, and a key custody lacks ends it `awaiting_owner` as above.
 
 ### Result reuse
 

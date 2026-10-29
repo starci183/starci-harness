@@ -38,8 +38,10 @@ live-provider spec only when named, and narrows its coverage to the changed logi
 `cli/src/harness/coverage-scope.ts`). A named live-provider spec gets the keys its `useSandbox` declares from the app's
 custody (`.starcistacks/<env>` sealed members) in that run's environment only; seal a key there (`starci app secret set
 <env> <member> <KEY> --from-host <KEY>`), never in a file or the spec; declare the keys as string literals, inline or in a `const` of the spec or
-of a relative module it imports, so the harness can read them. A key custody lacks blocks the task for the owner, no try
-spent (`cli/src/harness/custody.ts`).
+of a relative module it imports, so the harness can read them. An agent runs a live-provider spec only through the same run,
+`starci test live <spec...>` (or its contract's dry replay), never by `npm run test:e2e` or jest directly: a run outside
+custody fails `TEST_WORLD_NOT_DECLARED`, and a result showing that, or a custody refusal, is judged by the harness's own
+run with custody instead. A key custody lacks blocks the task for the owner, no try spent (`cli/src/harness/custody.ts`).
 
 ## SHARED-TEST-3 An op writes no test kind its edition forbids
 

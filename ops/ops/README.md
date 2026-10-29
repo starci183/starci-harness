@@ -78,7 +78,9 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
    run refused `HOST_HELD` judged nothing (the host held its heavy command for the whole budget): it is no red of yours, so
    file `done` with what it did judge, and the harness's own verify judges the work once the host has room.
    Your checkout is a worktree of your own, cut from the workflow's branch, that the harness removes once your task settled. A check on `@result` reads the
-   output file. Beyond it you run only what tier 1 allows ([contexts/authority/branch.md](../../contexts/authority/branch.md)):
+   output file. The replay hands a live-provider suite (specs calling `useSandbox`) the keys its world declares from the
+   app's custody; a suite your op runs itself (a `verify` suite) runs through `starci test live <spec...>` for the same keys,
+   never by its own command. Beyond that you run only what tier 1 allows ([contexts/authority/branch.md](../../contexts/authority/branch.md)):
    no tests, build, bench or full suite, and no install of your own; the harness gives your checkout the app's `@starci`
    packages as the app takes them (npm, or local copies under `starci deps source --local`).
 4. Return exactly one result with `starci task result {taskId} --status <s> --output @{outputFile}` (the `@` reads the file):

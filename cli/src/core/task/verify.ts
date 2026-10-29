@@ -6,7 +6,7 @@ import { briefFiles } from "../../harness/brief.js"
 import { cleanVerify, declaredFiles, pruneVerifyWorktrees, VERIFY_INFRA } from "../../harness/clean-verify.js"
 import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.js"
 import { contractHash, contractProblems, readContract, resolveChecks } from "../../harness/contract.js"
-import { blockOnCustody, CUSTODY_CODES } from "../../harness/custody.js"
+import { blockOnCustody, CUSTODY_CODES, isCustodyRecheck } from "../../harness/custody.js"
 import type { Contract } from "../../harness/contract.js"
 import { enablePatterns, patternsOfFindings, patternsOfPaths } from "../../harness/hfs-patterns.js"
 import type { PatternNeed, PatternsEnabled } from "../../harness/hfs-patterns.js"
@@ -17,7 +17,7 @@ import type { Ops } from "../../harness/ops.js"
 import { PreserveIncomplete, preserveTaskPaths, resetPreserved } from "../../harness/preserve.js"
 import type { Preserved } from "../../harness/preserve.js"
 import { LAND_ORPHANED } from "../../harness/revive.js"
-import { recordBaselineFindings, runCheck } from "../../harness/run-checks.js"
+import { recheckOf, recordBaselineFindings, runCheck } from "../../harness/run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
 import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
@@ -110,10 +110,13 @@ const recordRuns = (db: DatabaseSync, taskId: string | null, attemptId: string |
     for (const check of checks) insert.run(taskId, attemptId, hash, check.name, check.status, check.exitCode, redactSecrets(check.detail), at)
 }
 
-/** What `@result` json checks read for a task: its filed result, else (before filing, in the worker's dry replay) its output file. */
+/**
+ * What `@result` json checks read for a task: its filed result, else (before filing, in the worker's dry replay) its output file.
+ * A result the harness took over from a custody-stopped run (harness/custody.ts CUSTODY_RECHECK) has its verdict keys set aside.
+ */
 const resultSource = (db: DatabaseSync, root: string, task: TaskRow, attempt: AttemptRow | undefined, fileFallback: boolean): ResultSource => {
     const filed = attempt === undefined ? undefined : resultOf(db, attempt.id)
-    if (filed !== undefined) return { output: filed.output, from: `the result filed on ${filed.attemptId}` }
+    if (filed !== undefined) return { output: filed.output, from: `the result filed on ${filed.attemptId}`, ...recheckOf(db, task, filed.attemptId) }
     if (fileFallback) {
         const file = briefFiles(root, task.id).output
         if (existsSync(file)) {
@@ -214,7 +217,8 @@ const verifiable = (db: DatabaseSync, task: TaskRow, commit: boolean): AttemptRo
     }
     if (task.status !== "reported") throw new Refusal("TASK_NOT_VERIFIABLE", `task ${task.id} is ${task.status}; only a reported task is verified and settled`)
     const result = resultOf(db, attempt.id)
-    if (result?.status !== "done") {
+    // A failed or blocked report custody stopped is the harness's to judge by its own run (core/task/result.ts).
+    if (result?.status !== "done" && !isCustodyRecheck(db, task.id, attempt.id)) {
         throw new Refusal("RESULT_NOT_DONE", `attempt ${attempt.id} reported ${result?.status ?? "nothing"}; only a done result is verified, a ${result?.status ?? "missing"} result goes back to the sender`)
     }
     return attempt
