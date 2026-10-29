@@ -11,7 +11,7 @@ import { secretMain } from "../runtime/scripts/hfs/secret.mjs";
 import { parseYaml } from "../runtime/engine/yaml.mjs";
 import { auditSecrets } from "../runtime/scripts/hfs/secret-standard.mjs";
 import {
-  SERVER_AGE_IDENTITY, backupSecretName, ensureIdentityScript, publicKeyScript, streamIdentityCommand, swapIdentityScript,
+  BACKUP_SECRET, SERVER_AGE_IDENTITY, ensureIdentityScript, publicKeyScript, streamIdentityCommand, swapIdentityScript,
 } from "../stack/server-key.mjs";
 
 const OWNER = `age1${"q".repeat(58)}`;
@@ -204,14 +204,23 @@ test("audit holds production to the server key plus the owner key (RECIPIENT_DRI
   assert.match(ownerless[0].detail, /names only the deploy server recipient/u);
 });
 
-/** A gh port double: the origin repository and the Environment `environment` answers. */
-const fakeGithub = (environment, policies = []) => {
+/**
+ * A gh port double: the origin repository, the Environment `environment` answers, and the names of the repository's own Actions
+ * secrets (`repoSecrets`, or null when they cannot be read). Every gh api call is recorded; none reaches GitHub.
+ */
+const fakeGithub = (environment, policies = [], repoSecrets = []) => {
   const runs = [];
+  const reads = [];
   return {
-    runs,
+    runs, reads,
     port: {
       repository: () => "owner/app",
       json: (args) => {
+        reads.push(args);
+        if (args[1].startsWith("repos/owner/app/actions/secrets")) {
+          if (repoSecrets === null) throw new Error("403");
+          return { total_count: repoSecrets.length, secrets: repoSecrets.map((name) => ({ name, created_at: "2026-10-29T00:00:00Z" })) };
+        }
         if (args[1].endsWith("/deployment-branch-policies")) return { branch_policies: policies };
         if (environment === null) throw new Error("404");
         return environment;
@@ -244,10 +253,10 @@ test("server-key --backup github streams the identity through a pipe into a prot
   const result = await serverKey(fixture, ["production", "--backup", "github", "--execute"], { deps: { ssh: runner, github: gh.port, ghCommand: sink } });
   assert.equal(result.code, 0, result.err);
   assert.deepEqual(remotes, [streamIdentityCommand(SERVER_AGE_IDENTITY)]);
-  assert.match(result.out, /as the GitHub Environment secret SOPS_AGE_KEY_PRODUCTION of owner\/app/u);
+  assert.match(result.out, /as the secret SOPS_AGE_KEY of the GitHub Environment production of owner\/app/u);
+  assert.doesNotMatch(result.out, /warning/u, "no repository SOPS_AGE_KEY, no warning");
   assert.doesNotMatch(result.out + result.err, /AGE-SECRET-KEY/u);
   nowhereOnDisk(path.dirname(fixture.root), PRIVATE);
-  assert.equal(backupSecretName("staging-eu"), "SOPS_AGE_KEY_STAGING_EU");
 });
 
 test("server-key --backup github refuses an Environment without protection, and one that does not exist, before any ssh", async (t) => {
@@ -269,10 +278,34 @@ test("server-key --backup github refuses an Environment without protection, and 
   assert.match(mainOnly.out, /dry run: would stream/u);
 });
 
-test("server-key --restore github dispatches the managed restore workflow for a protected Environment", async (t) => {
+test("server-key --restore github dispatches the managed restore workflow with the recorded server recipient", async (t) => {
   const fixture = await productionApp(t);
   const gh = fakeGithub({ protection_rules: [{ type: "required_reviewers", reviewers: [{ type: "Team" }] }] });
+  const unrecorded = await serverKey(fixture, ["production", "--restore", "github", "--execute"], { deps: { github: gh.port } });
+  assert.equal(unrecorded.code, 2);
+  assert.match(unrecorded.err, /STACK_SERVER_KEY_NO_RECIPIENT: environments\.production\.deploy\.remote records no serverRecipient/u);
+  assert.deepEqual([gh.runs, gh.reads], [[], []], "refused before gh is asked anything");
+  assert.equal((await serverKey(fixture, ["production", "--execute"], { server: fakeServer() })).code, 0);
   const result = await serverKey(fixture, ["production", "--restore", "github", "--execute"], { deps: { github: gh.port } });
   assert.equal(result.code, 0, result.err);
-  assert.deepEqual(gh.runs, [["workflow", "run", "stack-key-restore.yml", "--repo", "owner/app", "-f", "environment=production", "-f", "secret=SOPS_AGE_KEY_PRODUCTION"]]);
+  assert.deepEqual(gh.runs, [["workflow", "run", "stack-key-restore.yml", "--repo", "owner/app", "-f", "environment=production", "-f", `recipient=${SERVER}`]]);
+});
+
+test("server-key --backup and --restore github warn, by name only, while the repository holds its own SOPS_AGE_KEY", async (t) => {
+  const fixture = await productionApp(t);
+  assert.equal((await serverKey(fixture, ["production", "--execute"], { server: fakeServer() })).code, 0);
+  const environment = { protection_rules: [{ type: "required_reviewers", reviewers: [{ type: "User" }] }] };
+  const held = fakeGithub(environment, [], ["NPM_TOKEN", BACKUP_SECRET]);
+  for (const action of ["--backup", "--restore"]) {
+    const result = await serverKey(fixture, ["production", action, "github"], { deps: { github: held.port } });
+    assert.equal(result.code, 0, result.err);
+    assert.match(result.out, /warning: owner\/app holds a repository secret SOPS_AGE_KEY; .*gh secret delete SOPS_AGE_KEY --repo owner\/app\. The owner key never belongs in GitHub\./u, action);
+  }
+  assert.ok(held.reads.some((args) => args[0] === "api" && args[1].startsWith("repos/owner/app/actions/secrets")), "the names are read from the repository's Actions secrets");
+  const clean = await serverKey(fixture, ["production", "--backup", "github"], { deps: { github: fakeGithub(environment, [], ["NPM_TOKEN"]).port } });
+  assert.doesNotMatch(clean.out, /warning/u);
+  assert.match(clean.out, /gh secret set SOPS_AGE_KEY --env production --repo owner\/app/u);
+  const unreadable = await serverKey(fixture, ["production", "--backup", "github"], { deps: { github: fakeGithub(environment, [], null).port } });
+  assert.equal(unreadable.code, 0, unreadable.err);
+  assert.match(unreadable.out, /warning: the repository secret names of owner\/app cannot be read/u);
 });

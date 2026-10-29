@@ -1,10 +1,12 @@
 {{header}}
 # Restores the deploy server's age identity from its GitHub Environment backup (starci app secret server-key <env> --backup github
 # stored it; --restore github dispatches this file). It runs by hand only and writes {{serverAgeIdentity}} on the server when no
-# identity is there, with umask 077 and mode 600, owned by root; it never echoes the identity and never overwrites one.
+# identity is there and the secret's public key is the recipient input (deploy.remote.serverRecipient), with umask 077 and mode 600,
+# owned by root; it never echoes the identity and never overwrites one.
 # The environment input names the protected GitHub environment of the deploy (required reviewers or main only), which holds:
 #   vars    VPS_HOST, VPS_USER (the swarm manager)
-#   secrets VPS_SSH_KEY (CI-only deploy key), VPS_KNOWN_HOSTS (pinned host keys), SOPS_AGE_KEY_<ENV> (the backup)
+#   secrets SOPS_AGE_KEY (that environment's server identity, the one its deploy jobs read), VPS_SSH_KEY (CI-only deploy key),
+#           VPS_KNOWN_HOSTS (pinned host keys)
 name: restore stack key
 
 on:
@@ -14,8 +16,8 @@ on:
         description: Protected environment holding the deploy transport and the server identity backup
         required: true
         type: environment
-      secret:
-        description: The backup secret, SOPS_AGE_KEY_<ENV> of that environment
+      recipient:
+        description: The public age recipient of the server identity, deploy.remote.serverRecipient of that environment
         required: true
         type: string
 
@@ -34,8 +36,8 @@ jobs:
     steps:
       - name: write the identity on the server
         env:
-          SECRET_NAME: ${{ inputs.secret }}
-          AGE_IDENTITY: ${{ secrets[inputs.secret] }}
+          RECIPIENT: ${{ inputs.recipient }}
+          AGE_IDENTITY: ${{ secrets.SOPS_AGE_KEY }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
           VPS_HOST: ${{ vars.VPS_HOST }}
@@ -43,13 +45,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ "$SECRET_NAME" =~ ^SOPS_AGE_KEY_[A-Z0-9_]+$ ]] || { echo "secret must be SOPS_AGE_KEY_<ENV>" >&2; exit 1; }
-          [ -n "$AGE_IDENTITY" ] || { echo "$SECRET_NAME is not set in this environment" >&2; exit 1; }
+          [[ "$RECIPIENT" =~ ^age1[a-z0-9]+$ ]] || { echo "recipient must be one public age recipient (age1...)" >&2; exit 1; }
+          [ -n "$AGE_IDENTITY" ] || { echo "SOPS_AGE_KEY is not set in this environment" >&2; exit 1; }
           umask 077
           dir="$(mktemp -d)"
           trap 'rm -rf "$dir"' EXIT
           printf '%s\n' "$VPS_SSH_KEY" > "$dir/id"
           printf '%s\n' "$VPS_KNOWN_HOSTS" > "$dir/known_hosts"
+          # The server writes the identity beside its target, keeps it only when its public key is the recipient, then moves it in.
+          remote="f={{serverAgeIdentity}}; r=$RECIPIENT; "'if [ "$(id -u)" -eq 0 ]; then S=; else S="sudo -n"; fi; if $S test -e "$f"; then cat >/dev/null; echo "the server already holds $f; move it aside first" >&2; exit 3; fi; $S sh -c '"'"'umask 077; f="$1"; r="$2"; d="$(dirname "$f")"; mkdir -p "$d"; t="$(mktemp "$d/.restore.XXXXXX")"; cat > "$t"; if [ "$(age-keygen -y "$t" 2>/dev/null)" != "$r" ]; then rm -f "$t"; echo "the secret is not the identity of $r (or age-keygen is missing); nothing was written" >&2; exit 6; fi; chown root:root "$t"; chmod 600 "$t"; mv "$t" "$f"; age-keygen -y "$f"'"'"' sh "$f" "$r"'
           printf '%s\n' "$AGE_IDENTITY" | ssh -T -i "$dir/id" -o IdentitiesOnly=yes -o UserKnownHostsFile="$dir/known_hosts" \
-            -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 "$VPS_USER@$VPS_HOST" \
-            'if [ "$(id -u)" -eq 0 ]; then S=; else S="sudo -n"; fi; f={{serverAgeIdentity}}; if $S test -e "$f"; then cat >/dev/null; echo "the server already holds $f; move it aside first" >&2; exit 3; fi; $S sh -c '"'"'umask 077; mkdir -p "$(dirname "$1")"; cat > "$1"; chown root:root "$1"; chmod 600 "$1"; age-keygen -y "$1"'"'"' sh "$f"'
+            -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 "$VPS_USER@$VPS_HOST" "$remote"

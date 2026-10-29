@@ -1,6 +1,8 @@
 {{header}}
 # Builds the image of every app on its release tag, so a Dockerfile that no longer builds fails that release.
 # It never pushes: publishing an image is the product's decision, not this file's.
+# When an environment declares images, the job is bound to that protected GitHub environment and opens its sealed build
+# arguments with that environment's SOPS_AGE_KEY (its server identity, starci app secret server-key <env> --backup github).
 name: images
 
 on:

@@ -7,9 +7,13 @@
 //              updatekeys: the owner identity opens the data key only, no value is decrypted).
 //   --rotate   a new identity is staged at <identity>.next, the members are wrapped to it, the server swaps it in keeping the old
 //              file as <identity>.retired-<UTC stamp> until the owner deletes it, then the old recipient leaves the rule.
-//   --backup github   the identity streams from the server's ssh stdout into `gh secret set SOPS_AGE_KEY_<ENV> --env <env>` of
-//              the app's origin repository, a protected GitHub Environment secret: never printed, held or written locally.
-//   --restore github  dispatches the managed .github/workflows/stack-key-restore.yml, which writes that secret back to the server.
+//   --backup github   the identity streams from the server's ssh stdout into `gh secret set SOPS_AGE_KEY --env <env>` of the
+//              app's origin repository: the protected GitHub Environment <env> holds it as SOPS_AGE_KEY, the secret every CI job
+//              bound to <env> (environment: <env>) reads to open that environment's members; never printed, held or written locally.
+//   --restore github  dispatches the managed .github/workflows/stack-key-restore.yml, which writes that secret back to the server
+//              only when its public key is the recorded deploy.remote.serverRecipient.
+// Both GitHub actions warn when the repository itself holds a SOPS_AGE_KEY secret (names only): a job bound to no environment
+// reads it, and the owner key never belongs in GitHub.
 // The server is reached only through the deploy's own transport (remote.mjs withRunner): the same host, user and key source.
 // Every effect is a dry run until --execute.
 import path from 'node:path';
@@ -38,8 +42,11 @@ const RECIPIENT = /^age1[a-z0-9]+$/u;
 /** A command run as root: directly when the deploy user is root, else over passwordless sudo, the script read from stdin. */
 const AS_ROOT = 'if [ "$(id -u)" -eq 0 ]; then sh -s; else sudo -n sh -s; fi';
 
-/** The GitHub Environment secret that holds an environment's server identity: `SOPS_AGE_KEY_<ENV>`. */
-export const backupSecretName = (env) => `SOPS_AGE_KEY_${env.toUpperCase().replaceAll('-', '_')}`;
+/**
+ * The GitHub Environment secret that holds an environment's server identity. It carries the name the deploy workflows read
+ * (secrets.SOPS_AGE_KEY), scoped to the Environment <env>: for a job bound to <env> it overrides a repository secret of that name.
+ */
+export const BACKUP_SECRET = 'SOPS_AGE_KEY';
 
 /** The shell that keeps `file` when it is an ordinary file, else makes it with age-keygen (umask 077), then prints only its public key. */
 export function ensureIdentityScript(file) {
@@ -224,30 +231,51 @@ export function protectedEnvironment(gh, env) {
   return repo;
 }
 
+/**
+ * The warning lines about a repository-level SOPS_AGE_KEY of `repo`, read by name only (gh api repos/<repo>/actions/secrets): a job
+ * bound to no Environment, or to one without its own SOPS_AGE_KEY, reads that one. Empty when the repository holds none.
+ */
+export function repositoryKeyWarnings(gh, repo) {
+  let names;
+  try {
+    names = (gh.json(['api', `repos/${repo}/actions/secrets?per_page=100`])?.secrets ?? []).map((secret) => secret?.name);
+  } catch {
+    return [`warning: the repository secret names of ${repo} cannot be read (gh api repos/${repo}/actions/secrets needs admin access); make sure the repository holds no ${BACKUP_SECRET} of its own`];
+  }
+  if (!names.includes(BACKUP_SECRET)) return [];
+  return [`warning: ${repo} holds a repository secret ${BACKUP_SECRET}; a job bound to no Environment, or to one without its own ${BACKUP_SECRET}, reads it. Once every environment holds its server key (server-key <env> --backup github --execute), delete it: gh secret delete ${BACKUP_SECRET} --repo ${repo}. The owner key never belongs in GitHub.`];
+}
+
 async function backupKey(ctx, config, { execute }, deps) {
   const gh = deps.github ?? github({ cwd: config.repoRoot, env: ctx.env });
   const repo = protectedEnvironment(gh, config.env);
-  const name = backupSecretName(config.env);
-  const sinkArgs = ['secret', 'set', name, '--env', config.env, '--repo', repo];
-  const plan = `stream ${SERVER_AGE_IDENTITY} from the server's ssh stdout into gh ${sinkArgs.join(' ')} (a GitHub Environment secret; never printed, held or written locally)`;
-  if (!execute) return { ok: true, lines: [`dry run: would ${plan} (--execute)`], data: { env: config.env, repo, secret: name, execute } };
+  const warnings = repositoryKeyWarnings(gh, repo);
+  const sinkArgs = ['secret', 'set', BACKUP_SECRET, '--env', config.env, '--repo', repo];
+  const plan = `stream ${SERVER_AGE_IDENTITY} from the server's ssh stdout into gh ${sinkArgs.join(' ')} (the ${config.env} Environment's ${BACKUP_SECRET}, which every job bound to ${config.env} reads; never printed, held or written locally)`;
+  const data = { env: config.env, repo, secret: BACKUP_SECRET, repositorySecret: warnings.length > 0, execute };
+  if (!execute) return { ok: true, lines: [`dry run: would ${plan} (--execute)`, ...warnings], data };
   return withRunner(ctx, config, {}, deps, async (run, notes) => {
     const source = run.argv(streamIdentityCommand(SERVER_AGE_IDENTITY));
-    const gh = deps.ghCommand ?? { command: 'gh', args: [] };
-    const piped = await ctx.pipe(source, { command: gh.command, args: [...gh.args, ...sinkArgs], env: ctx.env, cwd: config.repoRoot });
+    const sink = deps.ghCommand ?? { command: 'gh', args: [] };
+    const piped = await ctx.pipe(source, { command: sink.command, args: [...sink.args, ...sinkArgs], env: ctx.env, cwd: config.repoRoot });
     if (piped.source !== 0) throw failure('STACK_SERVER_KEY_BACKUP', `the server could not stream ${SERVER_AGE_IDENTITY} (exit ${piped.source}); nothing was stored`);
-    if (piped.sink !== 0) throw failure('STACK_SERVER_KEY_BACKUP', `gh secret set ${name} failed (exit ${piped.sink}): ${piped.stderr}`);
-    return { ok: true, lines: [...notes, `stored the server identity of ${config.env} as the GitHub Environment secret ${name} of ${repo}`], data: { env: config.env, repo, secret: name, execute } };
+    if (piped.sink !== 0) throw failure('STACK_SERVER_KEY_BACKUP', `gh secret set ${BACKUP_SECRET} failed (exit ${piped.sink}): ${piped.stderr}`);
+    return { ok: true, lines: [...notes, `stored the server identity of ${config.env} as the secret ${BACKUP_SECRET} of the GitHub Environment ${config.env} of ${repo}`, ...warnings], data };
   });
 }
 
 async function restoreKey(ctx, config, { execute }, deps) {
+  const recipient = config.remote.serverRecipient;
+  if (!recipient)
+    throw refusal('STACK_SERVER_KEY_NO_RECIPIENT', `environments.${config.env}.deploy.remote records no serverRecipient, so the restore cannot tell the server key from another identity: starci app secret server-key ${config.env} --execute records it`);
   const gh = deps.github ?? github({ cwd: config.repoRoot, env: ctx.env });
   const repo = protectedEnvironment(gh, config.env);
-  const args = ['workflow', 'run', RESTORE_WORKFLOW, '--repo', repo, '-f', `environment=${config.env}`, '-f', `secret=${backupSecretName(config.env)}`];
-  if (!execute) return { ok: true, lines: [`dry run: would run gh ${args.join(' ')}; the workflow writes the secret to ${SERVER_AGE_IDENTITY} on the server when none is there (--execute)`], data: { env: config.env, repo, execute } };
+  const warnings = repositoryKeyWarnings(gh, repo);
+  const args = ['workflow', 'run', RESTORE_WORKFLOW, '--repo', repo, '-f', `environment=${config.env}`, '-f', `recipient=${recipient}`];
+  const data = { env: config.env, repo, recipient, repositorySecret: warnings.length > 0, execute };
+  if (!execute) return { ok: true, lines: [`dry run: would run gh ${args.join(' ')}; the workflow writes the ${config.env} Environment's ${BACKUP_SECRET} to ${SERVER_AGE_IDENTITY} on the server when none is there and its public key is ${recipient} (--execute)`, ...warnings], data };
   try { gh.run(args); } catch { throw failure('STACK_SERVER_KEY_RESTORE', `gh could not dispatch ${RESTORE_WORKFLOW} in ${repo}; is the managed workflow rendered (starci app sync --write) and pushed?`); }
-  return { ok: true, lines: [`dispatched ${RESTORE_WORKFLOW} in ${repo} for ${config.env}; follow it with gh run list --workflow ${RESTORE_WORKFLOW} --repo ${repo}`], data: { env: config.env, repo, execute } };
+  return { ok: true, lines: [`dispatched ${RESTORE_WORKFLOW} in ${repo} for ${config.env}; follow it with gh run list --workflow ${RESTORE_WORKFLOW} --repo ${repo}`, ...warnings], data };
 }
 
 /**

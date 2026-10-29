@@ -236,7 +236,9 @@ by itself (`localAgeIdentity`): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environ
 looked and the one line that fixes it. `audit [<env>]` names every deviation and exits 1; `migrate <env> <member> [--to
 <provider>]` and `split <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). `server-key <env>` makes
 the deploy server's own age identity on the server through the deploy's transport and seals the environment to it beside the
-owner key, `--rotate` replaces it (`stack/server-key.mjs`). No output carries a value except `get --reveal`.
+owner key, `--rotate` replaces it, `--backup github` stores it as the SOPS_AGE_KEY of the GitHub Environment `<env>` that
+every CI job bound to `<env>` reads, and `--restore github` writes it back (`stack/server-key.mjs`). No output carries a value
+except `get --reveal`.
 
 ## Sonar
 

@@ -15,6 +15,9 @@ import { ALL_CHECK_CODES, checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { deployWorkflowFindings } from '../runtime/scripts/hfs/rules/deploy-workflow.mjs';
 import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.mjs';
 import { OR_ECHO, OR_TRUE } from './fixtures/loosening/swallows.mjs';
+import { renderTargets } from '../sync/index.mjs';
+import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
+import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
 
 const SHA = 'a'.repeat(40);
 const HASH = 'b'.repeat(64);
@@ -113,6 +116,28 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(run(t, edition, { on: ciOn, jobs: { lint: { 'runs-on': 'ubuntu-latest', steps: [{ run: '# deploy is prose\nstarci app lint' }] } } }, '.github/workflows/ci.yml'), []);
     assert.deepEqual(run(t, edition, { on: ciOn, jobs: { lint: { steps: [{ run: 'cat deploy/README.md\nprintf "deploy documentation"' }] } } }, '.github/workflows/ci.yml'), []);
     assert.deepEqual(run(t, edition, { on, jobs: { 'authorize-deploy-key': { steps: [{ uses: `vendor/ssh-agent@${SHA}` }] } } }, '.github/workflows/authorize-deploy-key.yml'), []);
+  });
+
+  test(`HFS_DEPLOY_WORKFLOW ${edition}: a job that reads SOPS_AGE_KEY is bound to its environment, deployment job or not`, (t) => {
+    const build = (job, extra = {}) => ({ name: 'images', on, permissions: { contents: 'read' }, ...extra, jobs: { image: { 'runs-on': 'ubuntu-latest', ...job } } });
+    const step = { env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') }, run: 'npx --no-install starci app stack build-args --env production --app api' };
+    const file = '.github/workflows/images.yml';
+    const unbound = run(t, edition, build({ steps: [step] }), file);
+    assert.equal(hasCode(unbound, 'HFS_DEPLOY_WORKFLOW'), true, 'a build job opening sealed build arguments without an environment');
+    assert.match(unbound[0].message, /job image reads secrets\.SOPS_AGE_KEY without an environment/u);
+    for (const [name, doc] of [
+      ['bracket reference', build({ steps: [{ run: 'echo "${{ secrets[\'SOPS_AGE_KEY\'] }}" | starci app secret verify production' }] })],
+      ['job env', build({ env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') }, steps: [{ run: 'starci app lint' }] })],
+      ['workflow env', build({ steps: [{ run: 'starci app lint' }] }, { env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') } })],
+      ['reusable workflow secret', { on, jobs: { call: { uses: './.github/workflows/build.yml', secrets: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') } } } }],
+    ]) assert.equal(hasCode(run(t, edition, doc, file), 'HFS_DEPLOY_WORKFLOW'), true, name);
+    assert.deepEqual(run(t, edition, build({ environment: 'production', steps: [step] }), file), []);
+    assert.deepEqual(run(t, edition, build({ environment: '${{ inputs.environment }}', steps: [step] }), file), []);
+    assert.deepEqual(run(t, edition, build({ steps: [{ ...step, if: '${{ false }}' }, { run: 'docker build .' }] }), file), [], 'a disabled step opens nothing');
+    assert.deepEqual(run(t, edition, build({ steps: [{ run: 'echo SOPS_AGE_KEY is read in the deploy job only' }] }), file), [], 'prose naming the key is no read');
+    const deploy = workflow();
+    delete deploy.jobs.deploy.environment;
+    assert.equal(run(t, edition, deploy).filter((finding) => finding.code === 'HFS_DEPLOY_WORKFLOW').length, 1, 'a deployment job is named once, by its own environment rule');
   });
 
   test(`HFS_DEPLOY_WORKFLOW ${edition}: dotenv output targets preserve path and filename boundaries`, (t) => {
@@ -238,4 +263,32 @@ test('R251 scopes to app editions, tracked workflows and the requested paths, wi
   assert.deepEqual(deployWorkflowFindings(context).map((finding) => `${finding.code} ${finding.path}`).sort(compare), workflows.flatMap((file) => [`HFS_APP_WORKFLOW_TRIGGER ${file}`, `HFS_APP_WORKFLOW_TRIGGER ${file}`]).sort(compare));
   const pins = workflowFindings(context).filter((finding) => finding.code === 'HFS_WORKFLOW_PIN').map((finding) => finding.path);
   assert.deepEqual([...new Set(pins)].sort(compare), workflows.slice().sort(compare), 'every tracked workflow keeps a floating action');
+});
+
+test('R251: every managed workflow that opens sealed members is bound to the environment whose server key it reads', (t) => {
+  const stacks = {
+    'no image': { images: [], passEnv: [], imageEnvironments: {} },
+    'one environment': { images: [{ service: 'api', app: 'core', buildArgs: true }], passEnv: [], imageEnvironments: { production: ['core'] } },
+    'two environments': { images: [{ service: 'api', app: 'core', buildArgs: true }], passEnv: [], imageEnvironments: { production: ['core'], staging: ['core'] } },
+  };
+  for (const edition of ['lite', 'full']) {
+    for (const [name, stack] of Object.entries(stacks)) {
+      const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source: { files: [], read: () => '', stack, hasImage: () => true } });
+      const workflows = Object.fromEntries(targets.filter((target) => target.path.startsWith('.github/workflows/')).map((target) => [target.path, target.content]));
+      const files = Object.keys(workflows);
+      const findings = deployWorkflowFindings({ repoRoot: tree(t, workflows), files, repo: { kind: 'app', edition } });
+      assert.deepEqual(findings.filter((finding) => finding.code === 'HFS_DEPLOY_WORKFLOW'), [], `${edition} ${name}`);
+      for (const [file, content] of Object.entries(workflows)) {
+        for (const [job, body] of Object.entries(parseWorkflow(content).jobs ?? {})) {
+          if (JSON.stringify(body).includes('secrets.SOPS_AGE_KEY') && !(name === 'no image' && file.endsWith('images.yml')))
+            assert.ok(body.environment, `${edition} ${name}: ${file} job ${job} reads SOPS_AGE_KEY and is bound to an environment`);
+        }
+      }
+      const restore = parseWorkflow(workflows['.github/workflows/stack-key-restore.yml']);
+      assert.deepEqual(Object.keys(restore.on.workflow_dispatch.inputs), ['environment', 'recipient']);
+      assert.equal(restore.jobs.restore.environment, '${{ inputs.environment }}');
+      assert.equal(restore.jobs.restore.steps[0].env.AGE_IDENTITY, '${{ secrets.SOPS_AGE_KEY }}');
+      assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml'], /secrets\[|SOPS_AGE_KEY_/u);
+    }
+  }
 });
