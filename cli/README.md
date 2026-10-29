@@ -330,8 +330,10 @@ but string literals `CUSTODY_KEYS_UNRESOLVED` naming its `spec:line`, before the
 `awaiting_owner` (from `verifying` in its verify, from `done` in the wave that runs its deferred tests), never red, its
 try unspent, and the tick files it as the owner's blocking `question:business` on credentials, an unresolved declaration
 as one blocking `harness-defect` (code `CUSTODY_KEYS_UNRESOLVED`) every such task waits on. A failed test run that still
-reports a key custody holds as `TEST_WORLD_NOT_DECLARED` is the harness's failure, not the task's: `VERIFY_INFRA`, no
-verdict and no try, and one blocking `harness-defect` ticket deduped by `CUSTODY_KEY_NOT_HANDED` (`assertKeysHanded`).
+reports keys as `TEST_WORLD_NOT_DECLARED` is never the task's red either (`assertKeysHanded`): a key custody holds is the
+harness's failure, `VERIFY_INFRA`, no verdict and no try, and one blocking `harness-defect` ticket deduped by
+`CUSTODY_KEY_NOT_HANDED`; keys custody holds none of refuse `CUSTODY_KEY_MISSING` naming them and end the task
+`awaiting_owner` as a declared one does.
 A worker's report is never the verdict of a run custody stopped: a `failed` or `blocked` result (no `--needs`) whose
 output shows `TEST_WORLD_NOT_DECLARED` or a custody refusal (`custodyEvidence`) leaves the task `reported`, its work kept,
 with a `custody-recheck` event on its attempt (`core/task/result.ts`); its node stays `reported`, not returned, so the

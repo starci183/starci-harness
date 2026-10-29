@@ -19,6 +19,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A live suite whose keys the app's custody lacks waits on the owner, never a findings red, however the harness meets
+  them.** A failed test run reporting as `TEST_WORLD_NOT_DECLARED` keys custody holds none of was let stand as the task's red
+  (`assertKeysHanded` returned when no sealed member held them), so a wave whose spec custody did not catch before the run
+  failed the task, set the worker's report aside and spent a try (starci-next-app subscription-premium payos-live, with
+  PAYOS_CLIENT_ID, PAYOS_API_KEY and PAYOS_CHECKSUM_KEY sealed nowhere). Such a run now refuses `CUSTODY_KEY_MISSING`
+  naming the keys, the same owner block a declaration naming them gives before the run (`harness/custody.ts`): the task
+  ends `awaiting_owner` with no try spent and no red verdict, in its verify and in the wave alike. A key custody holds is
+  still `VERIFY_INFRA`. Bench: `wave-live-custody-missing-owner-blocked`.
 - **A deregistered worktree folder that kept its `.git` file is removed once nothing holds it.** Git deletes a worktree's
   admin folder whatever its delete of the work tree did, and that delete stops at the first entry it cannot remove, so a
   held file listed before `.git` leaves a `.git` file naming a git dir that is gone. Removal (`removeWorktreeFolder` in

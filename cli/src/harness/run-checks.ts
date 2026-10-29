@@ -97,7 +97,8 @@ export interface CommandOptions {
 /**
  * A command check's argv (a test runner, a suite, a build) runs under a host heavy-command slot, a test runner at its worker count
  * (harness/heavy.ts). Custody keys go into its child environment only, and every handed value is scrubbed from what it printed. A
- * failed test run that reports a key custody holds as not declared refuses VERIFY_INFRA (`assertKeysHanded`): no verdict, no try.
+ * failed test run that reports a key as not declared refuses (`assertKeysHanded`): VERIFY_INFRA when custody holds it, no verdict and
+ * no try; CUSTODY_KEY_MISSING when custody holds none of them, the owner's block.
  */
 export const heavyCommand = async (argv: readonly string[], cwd: string, options: CommandOptions): Promise<ToolRun> => {
     const { custody, keysOf, ...rest } = options
@@ -528,7 +529,8 @@ export const prepareSuite = async (named: readonly string[], place: CheckPlace, 
 /**
  * Runs a command check: its argv (a list, or a string split at blanks), made ready by `prepareSuite` (scoped specs, coverage,
  * custody) and held to its verdict key when it names one; the detail opens with the files it ran and judged. A custody refusal
- * (CUSTODY_CODES, a block awaiting the owner) or VERIFY_INFRA (a run reporting a key custody holds as undeclared) leaves the
+ * (CUSTODY_CODES, a block awaiting the owner, before the run or from a run reporting keys custody lacks as undeclared) or
+ * VERIFY_INFRA (a run reporting a key custody holds as undeclared) leaves the
  * check, never a red; any other failure is a red check.
  */
 const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {

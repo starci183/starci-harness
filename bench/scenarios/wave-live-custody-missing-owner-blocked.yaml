@@ -1,0 +1,171 @@
+schema: starci/scenario@1
+id: wave-live-custody-missing-owner-blocked
+group: verify
+title: "a verify-only task whose live suite needs keys the app's custody lacks waits on the owner in the wave, whether its declaration names them before the run or the run reports them as not declared; no try is spent, no findings red, the worker's report stands"
+inject: >-
+  the app's dev custody holds an ai member with OPENROUTER_API_KEY and nothing of payOS, as starci-next-app's did when
+  subscription-premium's payos-live (t-870996d3) ran. One verify task names a live suite whose typed
+  `useSandbox<PayosClient>({ keys: [...] })` declares PAYOS_CLIENT_ID, PAYOS_API_KEY and PAYOS_CHECKSUM_KEY; its worker ran the
+  suite without custody and files failed with TEST_WORLD_NOT_DECLARED. A second verify task names a live suite that boots its
+  world through a helper module, so the spec holds no `useSandbox(` call and the harness hands nothing; its worker files
+  passed. Neither task changes a file, so both suites run in the workflow's wave
+expect: >-
+  the failed report goes to a custody recheck and both verifies settle green with the suite deferred to the wave; the wave
+  refuses CUSTODY_KEY_MISSING for the typed spec before the suite runs, and for the helper spec when its run reports
+  PAYOS_CLIENT_ID and PAYOS_API_KEY as not declared while custody holds neither; each task ends awaiting_owner at try 1 with a
+  verify-stuck event for the owner naming the keys, no red verdict, no wave-returned event and no red check row
+pass:
+  - a typed live spec whose keys custody lacks blocks for the owner before the suite runs
+  - a run reporting as not declared keys custody holds none of blocks for the owner, never a findings red
+  - both tasks stay at try 1 with no red verdict and are never returned by the wave
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  OPENROUTER_API_KEY: ""
+  PAYOS_CLIENT_ID: ""
+  PAYOS_API_KEY: ""
+  PAYOS_CHECKSUM_KEY: ""
+  STARCI_OPS_DIR: ${repo}/ops
+# The jest stand-in runs exactly the paths --runTestsByPath gives it. A spec passes only when every upper-case key quoted in it is
+# in the environment; a missing key fails the way @starci/test-world's sandbox does, with a TEST_WORLD_NOT_DECLARED line naming it.
+repo:
+  files:
+    README.md: "# bench scratch custody lacking the keys\n"
+    hfs.json: '{"hfs": 3, "kind": "app", "edition": "full", "project": "bench-custody-missing"}'
+    package.json: '{"name": "bench-custody-missing", "version": "1.0.0", "private": true, "scripts": {"test:contract": "cd be && node ../node_modules/jest/bin/jest.js --selectProjects contract"}}'
+    be/jest.config.js: |
+      module.exports = { projects: [{ displayName: "contract", testMatch: ["<rootDir>/src/tests/contract/**/*.contract-spec.ts"] }] }
+    be/src/tests/contract/payos/payos.contract-spec.ts: |
+      import { useSandbox } from "../../world/use-test-world"
+      import type { PayosClient } from "../../world/payos"
+
+      const sandbox = useSandbox<PayosClient>({
+          provider: "payos",
+          keys: ["PAYOS_CLIENT_ID", "PAYOS_API_KEY", "PAYOS_CHECKSUM_KEY"],
+      })
+    be/src/tests/contract/payos-helper/payos-helper.contract-spec.ts: |
+      import { payosSandbox } from "../../world/payos-sandbox"
+
+      const sandbox = payosSandbox(["PAYOS_CLIENT_ID", "PAYOS_API_KEY"])
+    node_modules/jest/bin/jest.js: |
+      const { readFileSync } = require("node:fs")
+      const args = process.argv.slice(2)
+      const files = args.filter((a) => !a.startsWith("-") && a !== "contract")
+      let failed = 0
+      for (const f of files) {
+        const text = readFileSync(f, "utf8")
+        const keys = [...new Set([...text.matchAll(/"([A-Z][A-Z0-9_]*)"/g)].map((m) => m[1]))]
+        const missing = keys.filter((k) => !process.env[k])
+        if (missing.length > 0) {
+          failed += 1
+          console.log("FAIL " + f + " TestWorldError: TEST_WORLD_NOT_DECLARED: the payos sandbox keys are not declared in the environment: " + missing.join(", "))
+          continue
+        }
+        console.log("PASS " + f)
+      }
+      process.exit(failed === 0 ? 0 : 1)
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - write: { path: contexts/project/work.md, from: "${ops}/../contexts/project/work.md" }
+  - write: { path: contexts/project/lint.md, from: "${ops}/../contexts/project/lint.md" }
+  - name: the suites run whatever else this host runs (the governor is not under test here)
+    starci: [config, set, liveness.heavy.maxCpuPercent, "100"]
+  - starci: [config, set, liveness.heavy.reserveMb, "0"]
+  - name: the dev custody holds the ai member and nothing of payOS
+    file:
+      path: ${run}/secret.env
+      content: |
+        OPENROUTER_API_KEY=bench-fixture-custody-value
+  - starci: [app, secret, init]
+  - starci: [app, secret, set, dev, ai, OPENROUTER_API_KEY, --from-host, OPENROUTER_API_KEY]
+    expect: { exit: 0, lacks: bench-fixture-custody-value }
+  - name: the host secret.env is gone, so only custody could hand a key over
+    file:
+      path: ${run}/secret.env
+      content: "# empty\n"
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: dev custody without payOS"]
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: premium
+        goal: bench live payOS proofs whose keys custody lacks
+        runner: inline
+        tasks:
+          - id: payos-live
+            label: verify
+            summary: live proof of the payOS client against its sandbox
+            allowPaths: [be/src/tests/reports/payos]
+            inputs: {suite: "npm run test:contract -- src/tests/contract/payos", step: live}
+          - id: payos-helper-live
+            label: verify
+            summary: live proof of the payOS client through the sandbox helper
+            allowPaths: [be/src/tests/reports/payos-helper]
+            inputs: {suite: "npm run test:contract -- src/tests/contract/payos-helper", step: live}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - name: the workflow dispatches its tasks one at a time, the helper suite's first
+    starci: [workflow, start, premium]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'payos-helper-live'"
+      as: helper
+  - name: the helper worker reports the suite it was asked to prove
+    worker:
+      task: ${helper}
+      output:
+        summary: "the live payOS helper suite is the proof; the harness runs it with custody"
+        files: []
+        verdict: passed
+        findings: []
+  - name: the step verifies it green with its suite deferred to the wave, and dispatches the typed suite's task
+    starci: [workflow, step, premium]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'payos-live'"
+      as: payos
+  - name: the payos worker ran the suite itself, without custody, and files the red it saw
+    worker:
+      task: ${payos}
+      status: failed
+      output:
+        summary: "the live payOS contract failed with TEST_WORLD_NOT_DECLARED: PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY are not declared"
+        files: []
+        verdict: failed
+        findings:
+          - id: payos-keys-not-in-env
+            message: "TestWorldError: TEST_WORLD_NOT_DECLARED: the payos sandbox keys are not declared in the environment: PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY"
+  - name: the failed report is handed to the harness's own run, not settled red
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT t.status || ':' || (SELECT COUNT(*) FROM events e WHERE e.subject = t.id AND e.kind = 'custody-recheck') FROM tasks t WHERE t.id = '${payos}'"
+        equals: ["reported:1"]
+  - name: the step verifies it, the wave runs both deferred suites, and the workflow is blocked with both tasks awaiting the owner
+    starci: [workflow, step, premium]
+    expect: { exit: 1, lacks: bench-fixture-custody-value }
+  - name: the typed spec's keys custody lacks block the task for the owner before its suite runs, no try spent, no red verdict
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT t.status || ':' || t.try_no || ':' || (SELECT COUNT(*) FROM attempts a WHERE a.task_id = t.id AND a.verdict = 'red') || ':' || (SELECT COUNT(*) FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' AND json_extract(e.data_json, '$.code') = 'CUSTODY_KEY_MISSING' AND json_extract(e.data_json, '$.reason') LIKE 'custody lacks PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_CLIENT_ID in dev%' AND json_extract(e.data_json, '$.owner') = 1) FROM tasks t WHERE t.id = '${payos}'"
+        equals: ["awaiting_owner:1:0:1"]
+  - name: the helper run reporting keys custody holds none of blocks the task for the owner, not a findings red
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT t.status || ':' || t.try_no || ':' || (SELECT COUNT(*) FROM attempts a WHERE a.task_id = t.id AND a.verdict = 'red') || ':' || (SELECT COUNT(*) FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' AND json_extract(e.data_json, '$.code') = 'CUSTODY_KEY_MISSING' AND json_extract(e.data_json, '$.reason') LIKE 'custody lacks PAYOS_API_KEY, PAYOS_CLIENT_ID in dev%' AND json_extract(e.data_json, '$.owner') = 1) FROM tasks t WHERE t.id = '${helper}'"
+        equals: ["awaiting_owner:1:0:1"]
+  - name: the wave returned neither task and wrote no red check for either
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM events WHERE kind = 'wave-returned' AND subject IN ('${payos}', '${helper}')) || ':' || (SELECT COUNT(*) FROM check_runs WHERE task_id IN ('${payos}', '${helper}') AND status = 'red')"
+        equals: ["0:0"]
+  - name: the value is in no check row and no event
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM check_runs WHERE detail LIKE '%bench-fixture-custody-value%') + (SELECT COUNT(*) FROM events WHERE data_json LIKE '%bench-fixture-custody-value%')"
+        equals: [0]
