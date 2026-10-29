@@ -163,11 +163,33 @@ export const workflowWorktree = (db: DatabaseSync, workflowId: string | undefine
 }
 
 /**
- * The try number a retry of `previous` takes: the next one, unless the harness ended `previous` (revive.ts `harnessCause`: a wave
- * red not proven its own, a fenced or lost launch, a verify stopped by infrastructure or its deadline), which spends no try: the
- * retry keeps its number, even past the last try.
+ * The ledger event of a verify of a task the host held (HOST_HELD of harness/heavy.ts), whichever way it ran (settling,
+ * `--no-commit`, or a worker's `--contract` replay naming the task); data.attempt names the attempt it judged nothing of.
  */
-export const tryAfter = (db: DatabaseSync, previous: TaskRow): number => previous.tryNo + (harnessCause(db, previous.id) === null ? 1 : 0)
+export const VERIFY_HOST_HELD = "verify-host-held"
+
+/**
+ * Whether the newest attempt of a task is harness-held: its worker filed blocked or failed, no verify judged it red, and a verify
+ * of it was held by the host (`verify-host-held`). The host held the work, so its outcome is the harness's: a retry of it spends
+ * no try (`tryAfter`) and the decision on it no route (harness/routes.ts).
+ */
+export const hostHeldAttempt = (db: DatabaseSync, taskId: string): boolean => {
+    const attempt = latestAttempt(db, taskId)
+    if (attempt === undefined || attempt.verdict === "red") return false
+    const result = resultOf(db, attempt.id)
+    if (result === undefined || result.status === "done" || result.status === "mismatch") return false
+    const held = db
+        .prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ? AND (json_extract(data_json, '$.attempt') = ? OR (json_extract(data_json, '$.attempt') IS NULL AND at >= ?)) LIMIT 1")
+        .get(VERIFY_HOST_HELD, taskId, attempt.id, attempt.startedAt)
+    return held !== undefined
+}
+
+/**
+ * The try number a retry of `previous` takes: the next one, unless the harness ended `previous` (revive.ts `harnessCause`: a wave
+ * red not proven its own, a fenced or lost launch, a verify stopped by infrastructure or its deadline) or the host held it
+ * (`hostHeldAttempt`), which spends no try: the retry keeps its number, even past the last try.
+ */
+export const tryAfter = (db: DatabaseSync, previous: TaskRow): number => previous.tryNo + (harnessCause(db, previous.id) === null && !hostHeldAttempt(db, previous.id) ? 1 : 0)
 
 /**
  * Registers a queued task for a fit contract; a retry names the task it retries and gets its try number (tryAfter). The task's

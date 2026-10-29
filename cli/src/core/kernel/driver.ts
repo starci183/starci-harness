@@ -23,7 +23,7 @@ import type { SeatRow } from "../../harness/seats.js"
 import { supervisorTerminals, wakeSupervisor } from "../../harness/supervisor.js"
 import { projectOf } from "../../harness/work.js"
 import { getTask, lastEvent, latestAttempt, recordEvent, resultOf, setStatus } from "../../harness/tasks.js"
-import { LAND_CONFLICT, LAND_CONFLICT_EVENT } from "../../harness/land.js"
+import { LAND_CONFLICT, LAND_CONFLICT_EVENT, opWorktreeOf } from "../../harness/land.js"
 import { DISPATCHING, getWorkflow, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
 import type { Snapshot } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
@@ -39,7 +39,7 @@ import { harnessCause } from "../../harness/revive.js"
 import { CHECK_PREMISE, premiseChecks } from "../../harness/check-premise.js"
 import { assertKernelNeed, recordKernelNeed } from "../needs/answer.js"
 import { recordHolds } from "../../harness/holds.js"
-import { refuseHeavyWaits } from "../../harness/heavy.js"
+import { refuseHeavyWaits, taskQueuedMs } from "../../harness/heavy.js"
 import type { StepAction } from "../workflow/engine.js"
 
 /** The reason a workflow carries while the harness holds it for an unreachable Orca; only this pause is lifted by the driver. */
@@ -374,7 +374,8 @@ const claimBudgetNudge = (db: DatabaseSync, task: string, attemptId: string, dat
 
 /**
  * The budget ladder for a workflow's Ops (harness/budget-ladder.ts, the `budget` block of ops/liveness.yaml): an attempt whose task
- * still runs with no result filed past its contract's budget.minutes, whatever its worker is doing, is asked once to wrap up and
+ * still runs with no result filed past its contract's budget.minutes, whatever its worker is doing, the time its heavy commands
+ * waited in the host's queue left out (heavy.ts `taskQueuedMs`), is asked once to wrap up and
  * file now (the budget prompt, typed into its open seat's terminal); budget.graceMinutes after that ask it is fenced
  * (harness/fence.ts `fenceAttempt`): its seats closed, its dirty allowPaths preserved and reset, the task failed `over-budget` with
  * its try spent; the next workflow step removes its worktree. A result filed in the grace takes the task out of running, so it is judged as any other.
@@ -390,7 +391,8 @@ export const sweepOpBudgets = async (root: string, binary: OrcaBinary, cwd: stri
             if (task.status !== "running" || attempt?.endedAt !== null) return []
             const seat = seatsOfTask(db, task.id).find((candidate) => candidate.role === "worker" && isSeatOpen(candidate)) ?? null
             const minutes = task.contract.budget.minutes
-            return [{ key: view.key, task: task.id, attempt: attempt.id, minutes, seat, step: budgetStep(attempt.startedAt, minutes, budgetNudgeOf(db, attempt.id), rules) }]
+            const queued = (since: string): number => taskQueuedMs(task.id, opWorktreeOf(db, task.id)?.path ?? null, since)
+            return [{ key: view.key, task: task.id, attempt: attempt.id, minutes, seat, step: budgetStep(attempt.startedAt, minutes, budgetNudgeOf(db, attempt.id), rules, queued) }]
         }),
     )
     const done = await inOrder(targets, async ({ key, task, attempt, minutes, seat, step }): Promise<StepAction | null> => {

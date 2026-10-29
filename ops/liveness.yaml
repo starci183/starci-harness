@@ -124,10 +124,12 @@ coordinators:
   nextWaitSeconds: 540
   nextPollSeconds: 30
 
-# The budget ladder (orca runner): an Op whose attempt has run past its contract's budget.minutes with no result filed is asked
-# once to wrap up and file now (the prompt below, `terminal send`); graceMinutes after that ask it is fenced: its seat closed
-# (worker-stop, release, tab), its dirty allowPaths preserved and reset as a red verify does, the task failed `over-budget` with
-# its try spent; the next workflow step removes its worktree. A result filed in the grace is judged as any other.
+# The budget ladder (orca runner): an Op whose attempt has run past its contract's budget.minutes with no result filed, the
+# time its heavy commands waited in the heavy queue (its verifies' and those run in its own checkout) left out, is asked
+# once to wrap up and file now (the prompt below, `terminal send`); graceMinutes after that ask, counted the same way, it is
+# fenced: its seat closed (worker-stop, release, tab), its dirty allowPaths preserved and reset as a red verify does, the task
+# failed `over-budget` with its try spent; the next workflow step removes its worktree. A result filed in the grace is judged as
+# any other.
 # Run by `supervisor tick` and `kernel next`.
 budget:
   graceMinutes: 15

@@ -10,7 +10,7 @@ import { opWorktreeOf } from "./land.js"
 import { laneOf, loadLanes, recordsOf, repoOfLedger } from "./lanes.js"
 import { loadOps } from "./ops.js"
 import type { Ops } from "./ops.js"
-import { getTask, latestAttempt, resultOf } from "./tasks.js"
+import { getTask, hostHeldAttempt, latestAttempt, resultOf } from "./tasks.js"
 import { getWorkflow, graphOf } from "./workflow.js"
 
 /** The schema tag of ops/routes.yaml. */
@@ -59,10 +59,15 @@ export interface LegalRoute {
     readonly limit: number
 }
 
-/** What a red or question decision on a task allows: its cause, its legal route (none past the limit) and the gate it falls to. */
+/**
+ * What a red or question decision on a task allows: its cause, its legal route (none past the limit) and the gate it falls to.
+ * `held` marks a decision on a harness-held attempt (tasks.ts `hostHeldAttempt`): the host held its work, so taking its route
+ * spends nothing of the limit and the route stays legal past it.
+ */
 export interface RouteOptions {
     readonly key: string
     readonly cause: string
+    readonly held: boolean
     readonly routes: readonly LegalRoute[]
     readonly gate: "owner" | null
 }
@@ -79,13 +84,16 @@ const causeOf = (db: DatabaseSync, taskId: string, kind: RoutedKind): string => 
     return result.status === "failed" ? "failed" : "rejected"
 }
 
-/** How many applied commands of a workflow, the Kernel's and the Supervisor's rulings in its place, took a route for decisions on one task key. */
+/**
+ * How many applied commands of a workflow, the Kernel's and the Supervisor's rulings in its place, took a route for decisions on
+ * one task key; one answering only harness-held decisions (evidence `held`) spent nothing.
+ */
 const takenOf = (db: DatabaseSync, workflowId: string, route: string, key: string): number =>
     Number(
         db
             .prepare(
                 "SELECT COUNT(DISTINCT c.cmd_id) AS n FROM commands c JOIN decisions d ON d.answered_by = c.cmd_id AND d.scope = 'kernel' WHERE c.workflow_id = ? AND c.status = 'applied' " +
-                    "AND json_extract(c.body_json, '$.route') = ? AND json_extract(d.evidence_json, '$.key') = ?",
+                    "AND json_extract(c.body_json, '$.route') = ? AND json_extract(d.evidence_json, '$.key') = ? AND COALESCE(json_extract(d.evidence_json, '$.held'), 0) = 0",
             )
             .get(workflowId, route, key)?.n ?? 0,
     )
@@ -99,13 +107,14 @@ const targetOf = (route: Route, label: string, build: () => string | undefined):
 
 /**
  * The routes of a decision on a task (ops/routes.yaml): the first route matching its kind, the task's label and its cause whose
- * `to` resolves is legal while it was taken fewer times than its limit for this task key; past it, or with none, the decision
- * falls to the owner gate (the Kernel escalates, kind owner).
+ * `to` resolves is legal while it was taken fewer times than its limit for this task key, and always for a harness-held attempt
+ * (`held`); past it, or with none, the decision falls to the owner gate (the Kernel escalates, kind owner).
  */
 export const routeOptions = (db: DatabaseSync, workflowId: string, kind: RoutedKind, taskId: string): RouteOptions => {
     const task = getTask(db, taskId)
     const key = String(db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(taskId)?.plan_key ?? taskId)
     const cause = causeOf(db, taskId, kind)
+    const held = hostHeldAttempt(db, taskId)
     const ops = loadOps()
     const build = (): string | undefined => {
         // A settled task's Op worktree is removed: its records are read where it lands, else from the ledger's repository.
@@ -122,10 +131,10 @@ export const routeOptions = (db: DatabaseSync, workflowId: string, kind: RoutedK
         if (label === undefined) continue
         const taken = takenOf(db, workflowId, route.id, key)
         const to = typeof route.to === "string" ? route.to : `label ${route.to.label}`
-        if (taken >= route.limit) return { key, cause, routes: [], gate: "owner" }
-        return { key, cause, routes: [{ id: route.id, to, label, taken, limit: route.limit }], gate: null }
+        if (taken >= route.limit && !held) return { key, cause, held, routes: [], gate: "owner" }
+        return { key, cause, held, routes: [{ id: route.id, to, label, taken, limit: route.limit }], gate: null }
     }
-    return { key, cause, routes: [], gate: "owner" }
+    return { key, cause, held, routes: [], gate: "owner" }
 }
 
 /** True for a Kernel decision that carries routes: red, check-premise or question on a task. */

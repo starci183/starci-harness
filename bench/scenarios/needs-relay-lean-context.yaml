@@ -1,0 +1,203 @@
+schema: starci/scenario@1
+id: needs-relay-lean-context
+group: needs
+title: "orca: a relay node built on a template whose context no longer fits its op's budget gets a lean contract that fits, and launches"
+inject: >-
+  the resolver's node (auth's http) reads a large harness topic file beside its op's base; it was admitted and landed, and then
+  the docs op's context budget (an ops/ copy) was set below what that node's context measures now. Its commits conflict with
+  sub's own client, so sub gets a relay node built on it
+expect: >-
+  the relay node's contract carries its op's base and the conflicting file, never the template's harness topic file, with the
+  need's evidence (the waiter's note) in its details; contract check finds it fit under the budget, the amend that adds it is
+  never refused CONTRACT_UNFIT, and its Op launches, lands the merged file and releases the waiter
+pass:
+  - one relay node in sub's graph, running, whose context.extend is the conflicting file alone
+  - its details carry the waiter's note as the need's evidence
+  - contract check of its contract is fit under the docs op's budget and names no template topic file
+  - the relay node lands done and a need-relayed event names it
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_OPS_DIR: ${repo}/ops
+steps:
+  - name: copy ops/ into the scratch repository, with the contexts its labels read
+    write: { path: ops, from: "${ops}" }
+  - write: { path: contexts, from: "${ops}/../contexts" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy"]
+  - file:
+      path: auth.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: auth
+        goal: sign in, with the shared http client
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: http
+            label: docs
+            summary: write the shared http client
+            allowPaths: [platform/http/client.md]
+            context: ["harness:contexts/harness/decisions.md"]
+            checks:
+              - preset: files-exist
+                args: {files: [platform/http/client.md]}
+  - file:
+      path: sub.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: sub
+        goal: premium subscription payments
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: pay
+            label: docs
+            summary: write the payment rails doc
+            allowPaths: [docs/pay.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/pay.md]}
+          - id: own
+            label: docs
+            summary: write sub's own client
+            allowPaths: [platform/http/client.md]
+            checks:
+              - preset: files-exist
+                args: {files: [platform/http/client.md]}
+  - boot:
+      file: ${run}/auth.yaml
+      workflow: auth
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - boot:
+      file: ${run}/sub.yaml
+      workflow: sub
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http'"
+      as: http
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'pay'"
+      as: pay
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'own'"
+      as: own
+  - worker:
+      task: ${http}
+      files:
+        platform/http/client.md: "# HttpClient by auth\n"
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - worker:
+      task: ${own}
+      files:
+        platform/http/client.md: "# sub's own client, written otherwise\n"
+  - worker:
+      task: ${pay}
+      status: blocked
+      output:
+        summary: needs the shared http client
+        files: []
+        rulesApplied: []
+        needs: [{key: "capability:platform.http", paths: [platform/http/client.md], note: "pay calls the gateway through it"}]
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - name: the docs op's context budget drops below what http's context measures now (its op's base fits it)
+    file:
+      path: ${repo}/ops/ops/docs.md
+      content: |
+        ---
+        schema: starci/op@1
+        summary: documentation and product content
+        floor: easy
+        hostTools: [git]
+        context:
+          budget: 4000
+          base:
+            - harness:contexts/project/work.md
+        input:
+          base: {}
+        output:
+          base:
+            summary: {type: string, summary: "what you wrote or changed"}
+            files: {type: "string[]", summary: "the documents you changed"}
+            rulesApplied: {type: "string[]", minItems: 0, cites: context, summary: "the ids of the writing or record rules you applied"}
+            workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records you wrote or changed"}
+        checks:
+          base: [paths-only, rules-cited]
+          behavioural: false
+        ---
+        Write present-tense prose that states what is true now, one fact in its one owning file.
+  - git: [commit, -q, -am, "bench: a docs context budget http's context no longer fits"]
+  - file:
+      path: owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-http-by-auth
+        kind: need-owner
+        workflow: auth
+        basedOn: {}
+        need: {key: "capability:platform.http", resolver: http}
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/owner.yaml"]
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - name: sub's step routes the conflict as a relay node, which is fit and launches
+    seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || json_extract(contract_json, '$.context.extend') FROM tasks WHERE workflow_id = 'sub' AND plan_key = 'relay.capability-platform.http.r1'"
+        equals: ['running:["platform/http/client.md"]']
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT instr(json_extract(contract_json, '$.input.details'), 'pay: pay calls the gateway through it') > 0 FROM tasks WHERE plan_key = 'relay.capability-platform.http.r1'"
+        equals: [1]
+  - read:
+      db: ledger
+      query: "SELECT contract_json FROM tasks WHERE plan_key = 'relay.capability-platform.http.r1'"
+      as: relayContract
+  - file:
+      path: relay.json
+      content: ${relayContract}
+  - name: contract check measures the relay node's contract fit under the docs op's budget
+    starci: [contract, check, "${run}/relay.json"]
+    expect:
+      exit: 0
+      contains: "\"fit\": true"
+      lacks: decisions.md
+  - starci: [contract, check, "${run}/relay.json"]
+    expect:
+      contains: "\"budget\": 4000"
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'relay.capability-platform.http.r1'"
+      as: relay
+  - name: the relay node's worker merges both sides
+    worker:
+      task: ${relay}
+      files:
+        platform/http/client.md: "# HttpClient by auth\n# sub's own client, written otherwise\n"
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${relay}'"
+        equals: [done]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT json_extract(data_json, '$.node') || ':' || json_extract(data_json, '$.relay.status') FROM host_events WHERE kind = 'need-relayed'"
+        equals: ["relay.capability-platform.http.r1:relayed"]

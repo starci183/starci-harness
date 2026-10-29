@@ -6,6 +6,22 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **The host's heavy queue no longer runs down a task's budget.** The budget ladder's clocks (the ask at `budget.minutes`
+  and the fence `budget.graceMinutes` later) leave out the wall clock a task's heavy commands waited in the queue: those its
+  verifies ran, tagged with the task by `withHeavyBound` (a baseline checkout included), and those run in its own checkout
+  (`taskQueuedMs` of `harness/heavy.ts`; heavy slots carry their task). A verify of a task the host held records
+  `verify-host-held` on its attempt whichever way it ran, and an attempt whose worker then filed blocked or failed is
+  harness-held (`hostHeldAttempt`): its retry spends no try and the decision on it no route of `ops/routes.yaml`, so a
+  host-held `be-sign-in` keeps its `blocked-answered` route. The worker procedure says the queue's time is not its own.
+  Bench: `budget-queue-wait-not-counted`, `kernel-host-held-blocked-keeps-route`.
+- **A relay node fits its op's context budget.** Its contract carries a lean context: its op's base, the conflicting files and
+  the repository files the template reads (the Work records the commits implement), with the need's evidence (each waiter's
+  rules and note) in its details, never the template's pinned base or harness topic and canon files; lesson-ai's
+  `relay.capability-domain.entitlement.r4` measured 24564 tokens against the code op's 24000 and measures 21396 lean. It is held
+  to the budget like any task. Bench: `needs-relay-lean-context`.
+
 ## [1.1.0-alpha.13] - 2026-10-29
 
 ### Fixed
