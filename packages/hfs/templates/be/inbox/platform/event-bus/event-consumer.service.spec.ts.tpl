@@ -9,9 +9,9 @@ import type { EventConsumer } from "./event-bus.port"
 import { EventConsumerService } from "./event-consumer.service"
 
 // The statements callDbFunction of platform/database sends for the bus functions of the migration.
-const READ = "SELECT * FROM event_bus_read($1, $2, $3)"
-const ARCHIVE = "SELECT * FROM event_bus_archive($1, $2)"
-const BURY = "SELECT * FROM event_bus_bury($1, $2, $3, $4, $5)"
+const READ = 'SELECT * FROM "public"."event_bus_read"($1, $2, $3)'
+const ARCHIVE = 'SELECT * FROM "public"."event_bus_archive"($1, $2)'
+const BURY = 'SELECT * FROM "public"."event_bus_bury"($1, $2, $3, $4, $5)'
 const QUEUE = "spec_delivery_recorded__mailer"
 
 class ReceiptRecordedEvent extends BaseEvent {

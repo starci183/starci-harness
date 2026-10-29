@@ -6,9 +6,9 @@ import { BaseEvent } from "./event-bus.contracts"
 import { EventBusService } from "./event-bus.service"
 
 // The statements callDbFunction of platform/database sends for the bus functions of the migration.
-const SEND = "SELECT * FROM event_bus_send($1, $2)"
-const DEAD_LETTERS = "SELECT * FROM event_bus_dead_letters($1, $2)"
-const REQUEUE = "SELECT * FROM event_bus_requeue($1, $2)"
+const SEND = 'SELECT * FROM "public"."event_bus_send"($1, $2)'
+const DEAD_LETTERS = 'SELECT * FROM "public"."event_bus_dead_letters"($1, $2)'
+const REQUEUE = 'SELECT * FROM "public"."event_bus_requeue"($1, $2)'
 const QUEUE = "spec_delivery_recorded__mailer"
 
 class ReceiptRecordedEvent extends BaseEvent {

@@ -29,7 +29,7 @@ test("no-raw-sql: the lite pgmq event bus templates call only listed database fu
         invalid: [
             {
                 filename: at("src/modules/platform/event-bus/event-bus.service.ts"),
-                code: "declare const callDbFunction: (manager: unknown, name: string, args: unknown[]) => Promise<unknown>; declare const tx: unknown\nexport const write = () => callDbFunction(tx, \"event_bus_write\", [])",
+                code: "declare const callDbFunction: (manager: unknown, name: string, args: unknown[]) => Promise<unknown>; declare const tx: unknown\nexport const write = () => callDbFunction(tx, \"public.event_bus_write\", [])",
                 errors: [{ messageId: "unlisted" }],
             },
         ],

@@ -31,11 +31,11 @@ export class EventBusService implements EventBus {
             eventName: event.eventName,
             payload: event.payload,
         }
-        await callDbFunction(tx, "event_bus_send", [event.eventName, JSON.stringify(envelope)])
+        await callDbFunction(tx, "public.event_bus_send", [event.eventName, JSON.stringify(envelope)])
     }
 
     async deadLetters(queue: string, limit: number): Promise<ReadonlyArray<DeadLetter>> {
-        const rows = await callDbFunction<DeadLetterRow>(this.entityManager, "event_bus_dead_letters", [queue, limit])
+        const rows = await callDbFunction<DeadLetterRow>(this.entityManager, "public.event_bus_dead_letters", [queue, limit])
         return rows.map((row) => ({
             id: row.msg_id,
             reason: String(row.message.reason),
@@ -45,7 +45,7 @@ export class EventBusService implements EventBus {
     }
 
     async requeue(queue: string, id: string): Promise<boolean> {
-        const [row] = await callDbFunction<RequeueRow>(this.entityManager, "event_bus_requeue", [queue, id])
+        const [row] = await callDbFunction<RequeueRow>(this.entityManager, "public.event_bus_requeue", [queue, id])
         return row?.event_bus_requeue === true
     }
 }

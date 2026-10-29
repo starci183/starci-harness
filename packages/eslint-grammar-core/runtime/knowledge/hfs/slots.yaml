@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.12.0
+version: 3.13.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -53,7 +53,7 @@ versioning:
 # 3.11.0 (ruling:lite-official-postgres-image, 2026-10-29) is, like 3.9.0, a change for lite only: it ADDS the managed app.db.image slot
 # (db/Dockerfile, written by `starci app sync --write`), narrows ruleParams.db.extensions to the extensions that image carries, and gives
 # @nestjs/schedule and cron one owner, platform/jobs (R335).
-# 3.12.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
+# 3.13.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
 # admits pgmq, the event bus, ruleParams.db.queueOutbox is retired with the pg_cron half of R258, the lite event-bus functions replace
 # event_bus_write in ruleParams.be.dbFunctions, and app.db.image moves to .starcistacks/images/db/Dockerfile (db/ keeps schema and data).
 

@@ -71,7 +71,7 @@ export class EventConsumerService implements EventConsumerRegistry, OnApplicatio
 
     /** Reads one batch of the consumer's queue and settles each message in order; answers how many it read. */
     async drain(subscription: EventSubscription): Promise<number> {
-        const rows = await callDbFunction<MessageRow>(this.entityManager, "event_bus_read", [
+        const rows = await callDbFunction<MessageRow>(this.entityManager, "public.event_bus_read", [
             subscription.queue,
             this.options.visibilitySeconds ?? 30,
             this.options.batch ?? 10,
@@ -108,12 +108,12 @@ export class EventConsumerService implements EventConsumerRegistry, OnApplicatio
             this.logger.error(EventBusLogEvent.ConsumerFailed, cause, { consumer: subscription.queue, event: event.eventName, attempt: message.readCt })
             return
         }
-        await callDbFunction(this.entityManager, "event_bus_archive", [subscription.queue, message.msgId])
+        await callDbFunction(this.entityManager, "public.event_bus_archive", [subscription.queue, message.msgId])
     }
 
     /** Moves the message to `<queue>__dead` and archives the original, in one call. */
     private async dead(subscription: EventSubscription, message: EventMessage, reason: string, eventName: string | null): Promise<void> {
         this.logger.warn(EventBusLogEvent.DeliveryDead, { consumer: subscription.queue, event: eventName, msgId: message.msgId, reason, attempt: message.readCt })
-        await callDbFunction(this.entityManager, "event_bus_bury", [subscription.queue, message.msgId, message.readCt, JSON.stringify(message.message), reason])
+        await callDbFunction(this.entityManager, "public.event_bus_bury", [subscription.queue, message.msgId, message.readCt, JSON.stringify(message.message), reason])
     }
 }

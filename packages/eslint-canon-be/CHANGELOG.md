@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.8.2 - 2026-10-29
+
+- Added: R336 `BE_EVENT_BUS_LITE_SHAPE` (`src/event-bus-lite.ts`, contexts/code/be/event-bus.md BE-EVENT-BUS-6), lite only: `event-dedupe-key` refuses an event class of `src/modules/events/**` whose payload type has no `dedupeKey` (a literal, `EventPayload`, or an interface or alias of the file that declares it or extends `EventPayload`), and `event-subscription-static` refuses a `subscribe(queue, consumer, options?)` whose queue is not a `*_TOPIC_QUEUE` constant imported from `@modules/platform/event-bus` or whose options are not a literal object. Spec: `src/event-bus-lite.spec.ts`.
+- Changed: the bundled slot manifest 3.13.0 admits `pgmq` in `ruleParams.db.extensions` (the lite event bus, ruling lite-pgmq-bus-bullmq-jobs), retires `ruleParams.db.queueOutbox` and `sides.be.queueOutbox` with the pg_cron half of R258, lists `public.event_bus_send`, `public.event_bus_read`, `public.event_bus_archive`, `public.event_bus_bury`, `public.event_bus_dead_letters` and `public.event_bus_requeue` in place of `public.event_bus_write` in `ruleParams.be.dbFunctions`, and moves slot `app.db.image` to `.starcistacks/images/db/Dockerfile` (ruling lite-db-image-in-stacks, admitted by the lite `app.starcistacks` allows); the bundled rule catalog keeps R258 `DB_PGMQ_DECLARED` as the event-bus law, retires `DB_CRON_OWNED` and adds R336 `BE_EVENT_BUS_LITE_SHAPE`; the bundled canon pins name hfs 4.11.3, eslint-canon-be 3.8.2, eslint-canon-fe 9.5.4 and the Grammar family 0.15.15. Spec `src/lite-event-bus-template.spec.ts` lints the lite pgmq event-bus templates of @starci/hfs with `no-raw-sql` (R334).
+
 ## 3.8.1 - 2026-10-29
 
 - Changed: `no-interpolated-sql` (R68 `BE_SQL_INTERPOLATED`) knows the owner R334 names for the lite function-call statement, `platform/database/database.client.ts` of a lite app: there a `.query(` template may substitute only values whose type is a brand that file declares for the parts its validator checked (`DbFunctionPart`, `DbParameterList`); any other substitution, a `+`, the same template in any other file and the same file in full stay refused. Spec: `src/query-safety.spec.ts`.
