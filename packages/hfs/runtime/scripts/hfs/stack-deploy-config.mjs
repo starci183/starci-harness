@@ -13,6 +13,7 @@ export const KEY = /^[A-Z][A-Z0-9_]*$/u;
 const VOLUME = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/u;
 const HOST_ALIAS = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
 const REMOTE_BASE = /^\/[A-Za-z0-9._/-]+$/u;
+const AGE_RECIPIENT = /^age1[a-z0-9]+$/u;
 const HTTP_URL = /^https?:\/\/[^\s]+$/u;
 const PINNED_HELPER_IMAGE = /^[a-z0-9./_-]+(?::[A-Za-z0-9._-]+)?@sha256:(?!0{64}$)[0-9a-f]{64}$/u;
 const ARGUMENT = /^[A-Za-z0-9_@%+=:,./-]+$/u;
@@ -20,7 +21,7 @@ const UPPER_ENV = KEY;
 
 const FIELDS = {
   deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'ingress', 'registry'],
-  remote: ['host', 'releasesBase', 'sealed'],
+  remote: ['host', 'releasesBase', 'sealed', 'serverRecipient'],
   sealed: ['ops', 'sshKey', 'knownHosts'],
   image: ['app', 'buildArgs'],
   buildArgs: ['values', 'sealed'],
@@ -51,9 +52,15 @@ function stringList(c, at, value, itemPattern, { nonEmpty = false } = {}) {
   return value;
 }
 
+/**
+ * `deploy.remote`: the ssh alias, the releases root, the sealed owner-machine session and `serverRecipient`, the public age
+ * recipient of the server's own identity that `starci app secret server-key` records.
+ */
 function remote(c, block) {
-  if (block === undefined) return { host: 'vps', releasesBase: null, sealed: null };
-  if (!closedFields(c, 'deploy.remote', block, FIELDS.remote)) return { host: 'vps', releasesBase: null, sealed: null };
+  const fallback = { host: 'vps', releasesBase: null, sealed: null, serverRecipient: null };
+  if (block === undefined) return fallback;
+  if (!closedFields(c, 'deploy.remote', block, FIELDS.remote)) return fallback;
+  if (block.serverRecipient !== undefined) patternField(c, 'deploy.remote.serverRecipient', block.serverRecipient, AGE_RECIPIENT);
   if (block.host !== undefined) nameField(c, 'deploy.remote.host', block.host, HOST_ALIAS);
   if (block.releasesBase !== undefined && (!REMOTE_BASE.test(String(block.releasesBase)) || String(block.releasesBase).includes('..')))
     c.problem('deploy.remote.releasesBase', 'must be an absolute path without ..');
@@ -62,7 +69,7 @@ function remote(c, block) {
     for (const key of FIELDS.sealed) nameField(c, `deploy.remote.sealed.${key}`, block.sealed[key]);
     sealed = { ...block.sealed };
   }
-  return { host: block.host ?? 'vps', releasesBase: block.releasesBase ?? null, sealed };
+  return { host: block.host ?? 'vps', releasesBase: block.releasesBase ?? null, sealed, serverRecipient: block.serverRecipient ?? null };
 }
 
 function imageBuildArgs(c, at, block, members) {

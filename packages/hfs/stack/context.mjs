@@ -28,7 +28,7 @@ const realSleep = (ms) => new Promise((done) => { setTimeout(done, ms); });
  *   sleep, now     await sleep(ms); now() -> epoch ms
  *   stdout, stderr text writers
  *   fetch          the HTTP seam of verify (url, init) -> Response
- *   sops           the secret seam (decrypt(file, format) -> map; decryptBinary(file) -> text); `io.sops` or, on first use, the app's own sops/age tools
+ *   sops           the secret seam (decrypt(file, format) -> map; decryptBinary(file) -> text); `io.sops`, else on first use `io.openSops()` or the app's own sops/age tools
  */
 export function stackContext(io = {}) {
   const cwd = io.cwd ?? process.cwd();
@@ -48,7 +48,7 @@ export function stackContext(io = {}) {
     fetch: io.fetch ?? globalThis.fetch,
     /** The secret seam: the app's own sops/age tools, created on first use so verbs that open no custody never need them. */
     get sops() {
-      sops ??= defaultSops(env, cwd);
+      sops ??= io.openSops?.() ?? defaultSops(env, cwd);
       return sops;
     },
   });

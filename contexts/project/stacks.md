@@ -98,19 +98,31 @@ image, so any digest-pinned supported reverse proxy serves.
 - **One owner identity, found by itself; one rule per environment.** Every member is sealed to the public recipients of
   its environment's rule in the app's `.sops.yaml`, which `starci app secret init` and `recipients` manage: dev to the owner
   key, production to the production server key and the owner key both, so the owner sets and rotates production from his
-  machine and the server decrypts at deploy through SOPS_AGE_KEY_FILE, its key never in a repository or the harness. The
-  owner's private identity is `SOPS_AGE_KEY` in the harness's secret.env, backed up by the owner (R253); every
+  machine and the server opens it with its own key. The owner's private identity is `SOPS_AGE_KEY` in the harness's secret.env, backed up by the owner (R253); every
   `starci app secret` verb finds it with nothing exported or pointed to, taking the first of: SOPS_AGE_KEY or
   SOPS_AGE_KEY_FILE of the environment, the app's git-ignored `.claude/secret.env` (its main checkout's for a worktree), the
   harness secret.env, the sops `keys.txt` (`localAgeIdentity`, @starci/hfs `secret-init.mjs`), and with none refuses before
   asking for a value, naming each place. Whoever holds that identity can decrypt every member in the whole git history, so
   it never leaves the harness secret.env and the app repositories stay private.
+- **The server's own identity, made on the server.** `starci app secret server-key <env>` (a dry run until `--execute`)
+  reaches the environment's deploy server the way the deploy does (`deploy.remote`, the same host, user and key source;
+  without one it refuses) and there keeps `/root/.config/sops/age/keys.txt`, sops' default key file of root that a decrypt on
+  the server reads with nothing set (SOPS_AGE_KEY_FILE names it where one is set), or makes it with `age-keygen` (umask 077,
+  mode 600, owner root), installing age through stack prepare's installer when it is missing. Only `age-keygen -y` comes
+  back: the private key never leaves the server and the owner's key never makes it. Locally the recipient joins the
+  environment's rule beside the owner key, is recorded as `deploy.remote.serverRecipient`, and every member is wrapped again
+  with `sops updatekeys`, the owner identity opening only the data key. `--rotate --execute` stages a new identity, wraps the
+  members to it, swaps it in keeping the old file on the server as `keys.txt.retired-<UTC stamp>` until the owner deletes it,
+  then drops the old recipient. `stack deploy` opens the members where it runs (the owner machine, or CI with the protected
+  environment's SOPS_AGE_KEY) and hands each value to a Swarm secret over the deploy transport; a decrypt on the server reads
+  this key file (@starci/hfs `stack/server-key.mjs`).
 - **Set in one write.** `starci app secret set <env> <provider> <KEY>...` prompts for each key with masked input on a
   terminal (or reads redirected stdin, or `--from-file KEY=path` byte for byte) and seals them all in one write, so no member
   is left half filled. `starci app secret audit [<env>]` names every deviation (a legacy member, a member mixing providers by
   the first word of its keys unless the stack groups it on purpose, every key of it declared in `secrets:` with that
   `member`; one sealed to other recipients than its rule, a key not declared, a declared member not sealed, an untracked
-  member) and exits 1 while any stands; `migrate` and `split` repair them, dry runs until `--execute`, decrypting in
+  member, a rule that does not name the recorded `deploy.remote.serverRecipient` beside the owner key, a production swarm
+  deploy that records none) and exits 1 while any stands; `migrate` and `split` repair them, dry runs until `--execute`, decrypting in
   memory only. Either merges into a member that already exists only with `--into-existing`: a key the target holds with
   another value refuses the whole move, naming the key, an identical one merges, each target is written once and the
   source goes only after every target is written. The audit is a verb, not a gate row, until every app has moved.
@@ -119,7 +131,8 @@ image, so any digest-pinned supported reverse proxy serves.
      recipients.
   2. `starci app sync --write` renders the `.gitignore` block that tracks `secrets/*.enc.yaml`.
   3. `starci app secret recipients <env> --add owner` puts the owner key on each environment; a recipient no one holds any
-     more leaves with `--remove <age1...>`, and production gains the server key with `--add <age1 of the server>`.
+     more leaves with `--remove <age1...>`, and `starci app secret server-key production --execute` makes the server key and
+     seals production to it.
   4. `starci app secret migrate <env> <member> [--to <provider>] [--into-existing]`, then the same with `--execute`, moves
      each legacy member, or merges one into an existing member; `split <env> <member> [--group KEY=member ...]
      [--group-file <yaml>] [--into-existing]` (dry run, then `--execute`) divides one that mixes providers, each key to its

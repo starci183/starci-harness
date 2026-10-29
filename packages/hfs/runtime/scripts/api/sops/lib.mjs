@@ -310,6 +310,36 @@ export function runSelectedSops(bin, request, { selection, invocation, env, cwd,
   }
 }
 
+/**
+ * `sops --config <config> updatekeys -y --input-type <type> <file>` under an inline selected identity: the member's data key is
+ * opened with SOPS_AGE_KEY in an isolated child environment and wrapped again to the recipients the config's rule names; no value
+ * is decrypted to stdout or disk. The tool profile is the selected one; captures are wiped.
+ */
+export function runSelectedUpdateKeys(bin, { file, config, inputType }, { selection, invocation, env, cwd, timeout } = {}) {
+  if (selection?.error?.identityRefusal !== 'inline-context-unqualified' || typeof selection.inlineName !== 'string' || !env || typeof env !== 'object') return held('selected-context-missing');
+  if (!invocation || typeof invocation.runProgram !== 'function' || typeof invocation.resolveRealTool !== 'function') return held('selected-context-missing');
+  if (!['yaml', 'dotenv', 'json'].includes(inputType) || !path.isAbsolute(file ?? '') || !path.isAbsolute(config ?? '')) return held('invalid-request');
+  const key = env[selection.inlineName];
+  if (typeof key !== 'string' || !/^AGE-SECRET-KEY-1[0-9A-Z]+$/.test(key.trim())) return held('invalid-inline');
+  const captures = [];
+  try {
+    const exe = bin ?? resolveSops(env), age = invocation.resolveRealTool('age-keygen', { env });
+    if (!nativeFile(exe) || !nativeFile(age)) return held('native-tool-unavailable');
+    if (!auditAbsent(cwd)) return held('unsupported-audit-context');
+    const publicEnv = isolatedSopsEnv(env, null);
+    const options = { cwd, shell: false, encoding: 'buffer', windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], timeout: timeout ?? IDENTITY_TIMEOUT_MS, maxBuffer: CREDENTIAL_FILE_MAX_BYTES };
+    const run = (program, args, childEnv) => {
+      const result = invocation.runProgram(program, args, { ...options, env: childEnv });
+      captures.push(result); return result;
+    };
+    if (!toolProfileSupported(run(exe, ['--disable-version-check', '--version'], publicEnv), run(age, ['--version'], publicEnv))) return held('unsupported-tool-profile');
+    const result = run(exe, ['--disable-version-check', '--config', config, 'updatekeys', '-y', '--input-type', inputType, file], isolatedSopsEnv(env, selection.inlineName));
+    if (!captured(result)) return { status: result?.status ?? null, stdout: '', stderr: '', error: result?.error ?? null };
+    return { status: 0, stdout: '', stderr: '', error: null };
+  } catch { return held('selected-native-refused'); }
+  finally { wipeCaptures(captures); }
+}
+
 const identityRequestValid = ({ env, cwd, invocation, assertLease, consume }) =>
   env && typeof env === 'object' && path.isAbsolute(cwd ?? '') && typeof consume === 'function'
     && typeof assertLease === 'function' && typeof invocation?.runProgram === 'function'

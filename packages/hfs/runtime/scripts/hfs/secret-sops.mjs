@@ -5,6 +5,8 @@ import { runProgram } from "../api/process/run-program.mjs";
 import { resolveRealTool } from "../api/process/resolve-real-tool.mjs";
 import { decrypt as sopsDecrypt } from "../api/sops/decrypt.mjs";
 import { seal as sopsSeal } from "../api/sops/seal.mjs";
+import { updateKeys as sopsUpdateKeys } from "../api/sops/update-keys.mjs";
+import { isLegacyName } from "../lib/sealed-member.mjs";
 import { invocationDir } from "../lib/roots.mjs";
 import { envelopeOf } from "./secret-document.mjs";
 import { configuredRecipients, localAgeIdentity, secretTools } from "./secret-init.mjs";
@@ -193,6 +195,19 @@ export function defaultSops(
           file,
         );
       return String(result.stdout);
+    },
+    /**
+     * Wraps member `file` again to the recipients its environment's rule of the app's .sops.yaml names (sops updatekeys): the
+     * selected identity opens the data key only, no value is decrypted, nothing is printed.
+     */
+    updateKeys(file) {
+      const result = sopsUpdateKeys(
+        binary,
+        { file: path.resolve(file), config: path.join(path.resolve(repoRoot), ".sops.yaml"), inputType: isLegacyName(file) ? "dotenv" : "yaml" },
+        { env: selectedEnv, cwd: repoRoot, invocation },
+      );
+      if (result.status !== 0)
+        throw refuse(`update the keys of ${path.basename(file)}; is the age identity a recipient of it?`, result, file);
     },
     seal(request) {
       const recipients = request.recipients.length

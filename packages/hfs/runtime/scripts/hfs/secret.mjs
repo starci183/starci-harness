@@ -5,6 +5,7 @@
 // Every verb runs at the app root or --cwd. Exit 0 done, 2 refusal; --reveal is the only plaintext stdout path.
 // unset, rename and remove edit one sealed member and are dry runs until --execute (scripts/hfs/secret-edit.mjs).
 // verify decrypts each member in memory and names only keys and violated shapes, never a value (R249).
+// server-key makes the deploy server's own age identity on the server and seals the environment to it (stack/server-key.mjs).
 import fs from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
@@ -19,11 +20,14 @@ import { SecretError, publicStorage, secretErrorMessage } from "./secret-errors.
 import { editSecret, validateEditNames } from "./secret-edit.mjs";
 import { verifySecrets } from "./rules/env-value-shape.mjs";
 import { setValues } from "./secret-prompt.mjs";
+import { stackContext } from "../../../stack/context.mjs";
+import { StackError } from "../../../stack/errors.mjs";
+import { serverKey } from "../../../stack/server-key.mjs";
 
 export { envelopeOf, formatOf, plaintextOf } from "./secret-document.mjs";
 export { setSecretValues } from "./secret-store.mjs";
 
-const VERBS = new Set(["init", "list", "get", "set", "unset", "rename", "remove", "materialize", "verify", "recipients", "migrate", "split", "audit"]);
+const VERBS = new Set(["init", "list", "get", "set", "unset", "rename", "remove", "materialize", "verify", "recipients", "migrate", "split", "audit", "server-key"]);
 const MOVE_VERBS = new Set(["migrate", "split"]);
 const LIST_FLAGS = ["--add", "--remove", "--from-file", "--group"];
 const EDIT_VERBS = new Set(["unset", "rename", "remove"]);
@@ -47,7 +51,7 @@ function parse(argv) {
       (opts[flag.slice(2)] ??= []).push(value);
     } else if (["--cwd", "--generate", "--to", "--group-file"].includes(flag)) {
       valueOption(opts, flag, inline ?? argv[++i]);
-    } else if (["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing"].includes(flag)) {
+    } else if (["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing", "--rotate"].includes(flag)) {
       if (inline !== undefined && !["true", "false"].includes(inline))
         throw new SecretError(`${flag} expects true or false`);
       opts[flag.slice(2)] = inline !== "false";
@@ -69,12 +73,14 @@ function usageArguments(verb) {
   if (verb === "migrate") return "<env> <slug> [--to <slug>] [--into-existing] [--execute]";
   if (verb === "split") return "<env> <slug> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]";
   if (verb === "audit") return "[<env>]";
+  if (verb === "server-key") return "<env> [--rotate] [--execute]";
   return "<env>";
 }
 
 function editOptionsFor(verb, opts) {
-  if (opts.execute !== undefined && !EDIT_VERBS.has(verb) && !MOVE_VERBS.has(verb))
-    throw new SecretError("--execute is only valid for unset, rename, remove, migrate and split");
+  if (opts.execute !== undefined && !EDIT_VERBS.has(verb) && !MOVE_VERBS.has(verb) && verb !== "server-key")
+    throw new SecretError("--execute is only valid for unset, rename, remove, migrate, split and server-key");
+  if (opts.rotate !== undefined && verb !== "server-key") throw new SecretError("--rotate is only valid for server-key");
   if (opts.to !== undefined && verb !== "migrate") throw new SecretError("--to is only valid for migrate");
   if ((opts.group || opts["group-file"] !== undefined) && verb !== "split") throw new SecretError("--group and --group-file are only valid for split");
   if (opts["into-existing"] !== undefined && !MOVE_VERBS.has(verb)) throw new SecretError("--into-existing is only valid for migrate and split");
@@ -110,6 +116,7 @@ function optionsFor(verb, opts) {
     migrate: [2, 2],
     split: [2, 2],
     audit: [0, 1],
+    "server-key": [1, 1],
   }[verb];
   if (count < bounds[0] || count > bounds[1])
     throw new SecretError(
@@ -173,6 +180,22 @@ function sealedLine(environment, slug, keys, file, created, seam) {
   return `${head}; a new member: adding keys to it later needs the age identity${of}${held}\n`;
 }
 
+/** `server-key`: the deploy server's identity through the stack transport (`serverKeyIo`: { io, deps } of the specs), lines out. */
+async function serverKeyVerb(repoRoot, environment, opts, { env, stdout, stderr, open, serverKeyIo }) {
+  const ctx = stackContext({ cwd: repoRoot, env, stdout, stderr, openSops: open, ...serverKeyIo.io });
+  try {
+    const result = await serverKey(ctx, environment, {
+      execute: opts.execute === true, rotate: opts.rotate === true,
+    }, serverKeyIo.deps ?? {});
+    for (const line of result.lines) stdout(`${line}\n`);
+    return result.ok ? 0 : 1;
+  } catch (error) {
+    if (!(error instanceof StackError)) throw error;
+    stderr(`starci app secret: ${error.message}\n`);
+    return error.exit;
+  }
+}
+
 /**
  * All app secrets verbs; stdin, prompt, sops, random and tool ports permit isolated custody specs. `hostIdentity`
  * (`{ label, read }`) is the harness CLI's secret.env SOPS_AGE_KEY, the last place before keys.txt the age identity is looked for.
@@ -191,13 +214,14 @@ export async function secretMain(
     cwd = invocationDir(),
     platform = process.platform,
     tools,
+    serverKeyIo = {},
   } = {},
 ) {
   const [verb, ...rest] = argv;
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env> | recipients <env> | migrate <env> <slug> [--to <slug>] [--into-existing] | split <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [<env>]",
+        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env> | recipients <env> | migrate <env> <slug> [--to <slug>] [--into-existing] | split <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [<env>] | server-key <env> [--rotate] [--execute]",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);
@@ -215,6 +239,11 @@ export async function secretMain(
         }),
       );
     const [environment, slug, key] = opts.positional;
+    if (verb === "server-key")
+      return await serverKeyVerb(repoRoot, environment, opts, {
+        env, stdout, stderr, serverKeyIo,
+        open: () => sops ?? defaultSops(env, repoRoot, platform, tools, hostIdentity),
+      });
     const directory = secretsDirectory(repoRoot, environment);
     if (verb === "list") return listSecrets(directory, stdout);
     const open = () => sops ?? defaultSops(env, repoRoot, platform, tools, hostIdentity);

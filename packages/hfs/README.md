@@ -24,7 +24,7 @@ starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app new service <dir> <name> [--inject <binding>...] [--cwd <dir>]
 starci app new spec <file>.service.ts [--cwd <dir>]
 starci app new image [--cwd <dir>]
-starci app secret init|set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit ... [--cwd <dir>]
+starci app secret init|set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit|server-key ... [--cwd <dir>]
 starci app hygiene [--cwd <dir>]
 ```
 
@@ -234,8 +234,9 @@ by itself (`localAgeIdentity`): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environ
 `.claude/secret.env`, else of its main checkout's when the app is a git worktree, else the `hostIdentity` the harness CLI passes
 (its own secret.env), else the sops `keys.txt`; with none, the verb refuses before asking for a value, naming every place it
 looked and the one line that fixes it. `audit [<env>]` names every deviation and exits 1; `migrate <env> <member> [--to
-<provider>]` and `split <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). No output carries a
-value except `get --reveal`.
+<provider>]` and `split <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). `server-key <env>` makes
+the deploy server's own age identity on the server through the deploy's transport and seals the environment to it beside the
+owner key, `--rotate` replaces it (`stack/server-key.mjs`). No output carries a value except `get --reveal`.
 
 ## Sonar
 

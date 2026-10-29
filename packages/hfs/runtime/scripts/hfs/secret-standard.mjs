@@ -86,6 +86,8 @@ export function auditSecrets(repoRoot, environment = null) {
       }
       if (tracked && !tracked.has(name)) add("UNTRACKED", "is not committed; commit it (it is ciphertext)");
     }
+    const drift = serverRecipientDrift(repoRoot, env, spec);
+    if (drift) findings.push({ code: "RECIPIENT_DRIFT", env, member: ".sops.yaml", detail: drift });
     for (const entry of Array.isArray(spec?.secrets) ? spec.secrets : []) {
       const member = entry?.member ?? /^secrets\/([a-z0-9-]+)/u.exec(entry?.where ?? "")?.[1];
       if (member && !fs.existsSync(fileOf(directory, member)))
@@ -163,6 +165,58 @@ export function declareKeys(repoRoot, environment, member, keys) {
   if (JSON.stringify(parsed) !== JSON.stringify(expected)) return { declared: [], byHand: missing };
   fs.writeFileSync(file, edited);
   return { declared: missing, byHand: [] };
+}
+
+/**
+ * Records `recipient` as `environments.<environment>.deploy.remote.serverRecipient` of application-stacks.yaml: the public age
+ * recipient of the deploy server's own identity, which `starci app secret server-key` made on the server and audit holds the
+ * environment's rule to. Edits the text in place (comments and order kept), replacing the line or adding it as the last child of
+ * `remote:`, and proves the result parses to the expected document; a shape this edit cannot place is refused.
+ */
+export function recordServerRecipient(repoRoot, environment, recipient) {
+  const file = path.join(repoRoot, ".starcistacks", "application-stacks.yaml");
+  const text = fs.readFileSync(file, "utf8");
+  const document = parseYaml(text) ?? {};
+  const newline = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.replace(/\r\n/gu, "\n").split("\n");
+  const root = lines.findIndex((line) => /^environments:\s*(?:#.*)?$/u.test(line));
+  const envLine = root < 0 ? -1 : childLine(lines, blockOf(lines, root), environment);
+  const deploy = envLine < 0 ? -1 : childLine(lines, blockOf(lines, envLine), "deploy");
+  const remote = deploy < 0 ? -1 : childLine(lines, blockOf(lines, deploy), "remote");
+  const unplaced = new SecretError(`cannot record the server recipient in environments.${environment}.deploy.remote of application-stacks.yaml; add serverRecipient: ${recipient} there by hand`);
+  if (remote < 0 || !/^ *remote:\s*(?:#.*)?$/u.test(lines[remote])) throw unplaced;
+  const block = blockOf(lines, remote);
+  const own = childLine(lines, block, "serverRecipient");
+  const first = lines.slice(block.from, block.to).find(meaningful);
+  const pad = " ".repeat(first === undefined ? indentOf(lines[remote]) + 2 : indentOf(first));
+  if (own >= 0) lines[own] = `${pad}serverRecipient: ${recipient}`;
+  else lines.splice(block.to, 0, `${pad}serverRecipient: ${recipient}`);
+  const expected = structuredClone(document);
+  expected.environments[environment].deploy.remote.serverRecipient = recipient;
+  const edited = lines.join(newline);
+  let parsed;
+  try { parsed = parseYaml(edited); } catch { parsed = undefined; }
+  if (JSON.stringify(parsed) !== JSON.stringify(expected)) throw unplaced;
+  if (edited !== text) fs.writeFileSync(file, edited);
+}
+
+/**
+ * The RECIPIENT_DRIFT of an environment's rule against its deploy server: a rule that does not name the recorded
+ * `deploy.remote.serverRecipient` together with another recipient (the owner key), or a production swarm deploy with a remote
+ * and no server recipient recorded. Null when the rule holds.
+ */
+function serverRecipientDrift(repoRoot, env, spec) {
+  const remote = spec?.deploy?.remote;
+  if (!remote || typeof remote !== "object") return null;
+  const server = remote.serverRecipient;
+  if (server === undefined)
+    return env === "production" && spec.runtime === "docker-swarm"
+      ? `records no deploy server recipient; production is sealed to the server key and the owner key: starci app secret server-key ${env} --execute`
+      : null;
+  const rule = recipientsFor(repoRoot, path.join(repoRoot, ".starcistacks", env, "secrets", `member${MEMBER_SUFFIX}`));
+  if (!rule.includes(server)) return `its rule names ${keyList(rule) || "no recipient"}, not the deploy server recipient ${server}; run starci app secret server-key ${env} --execute`;
+  if (rule.length < 2) return `its rule names only the deploy server recipient ${server}; add the owner key: starci app secret recipients ${env} --add owner, then starci app secret server-key ${env} --execute`;
+  return null;
 }
 
 /** `starci app secret audit [<env>]`: each deviation on its own line and exit 1, else one clean line and exit 0. */
