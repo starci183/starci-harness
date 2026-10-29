@@ -13,6 +13,7 @@ export const buildWiringProof = () => ({
             rateLimit: { windowMs: 60000, defaultLimit: 100, strictLimit: 10 },
             webhooks: {},
         },
+        http: {},
         database: {
             name: "primary",
             provider: "postgres",

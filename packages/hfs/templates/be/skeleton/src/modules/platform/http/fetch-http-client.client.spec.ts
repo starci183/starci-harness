@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing"
-import { mock } from "@starci/jest-preset"
+import { builder, mock } from "@starci/jest-preset"
 import { Agent } from "undici"
 import { HttpErrorCode } from "./errors/http.error"
 import { FetchHttpClient } from "./fetch-http-client.client"
@@ -10,9 +10,9 @@ import type { HttpOptions } from "./http.options"
 const anyOf = (type: unknown): unknown => expect.any(type)
 const objectLike = (shape: Record<string, unknown>): unknown => expect.objectContaining(shape)
 
-const build = async (options: HttpOptions = {}): Promise<FetchHttpClient> => {
+const build = async (overrides?: Partial<HttpOptions>): Promise<FetchHttpClient> => {
     const moduleRef = await Test.createTestingModule({
-        providers: [FetchHttpClient, { provide: HTTP_OPTIONS, useValue: options }],
+        providers: [FetchHttpClient, { provide: HTTP_OPTIONS, useValue: builder<HttpOptions>({})(overrides) }],
     }).compile()
     return moduleRef.get(FetchHttpClient)
 }
