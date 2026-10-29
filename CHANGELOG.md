@@ -30,6 +30,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A walk serves the app with the project's local package sources, as the wave judged it (tk-aa27c447e9e5).**
+  starci-next-app's fe-sign-in-audit (t-a2824c1c) walked an Op worktree whose install was copied from the cache at the registry
+  pin `@starci/grammar` 0.15.3, which lacks `Page` from `/common`, so SignInPage answered 500 on all 13 pages; its seat start's
+  copy of the local sources had failed in the heavy queue, and `uat run` never applied them. The wave judged the same app green
+  with grammar 0.15.4+ from the local packages. The wave's install and its local copies are now one function,
+  `installCheckout` (`harness/install-cache.ts`), which the clean verify and the wave call and `uat run` calls through
+  `prepareWorkspace` for each install its checkout holds, before its workspace dependencies are built; a copy that cannot be
+  made refuses `UAT_APP_SETUP_FAILED`. Bench: `audit-walk-serves-local-package-mode`.
 - **The secret scan reads a key's name and a contract spec's inputs as what they are.** starci-next-app auth-sign-in
   `keycloak-contract-spec` (t-15237b2c) failed verify on `secrets` for two lines of `keycloak.contract-spec.ts`: a const holding
   the custody key name `IDENTITY_KEYCLOAK_CLIENT_SECRET`, and the deliberately wrong password of its invalid-credentials case.

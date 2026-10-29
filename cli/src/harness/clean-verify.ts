@@ -12,9 +12,8 @@ import { describeSecrets, scanSecrets } from "../core/check/secrets-scan.js"
 import { describeLoosening, scanLoosening } from "../core/check/loosening-scan.js"
 import { excludedSpec, notOwn } from "./baseline.js"
 import { rebaseCandidate } from "./land.js"
-import { readRecord, reapplyLocal } from "../core/deps/packages.js"
 import { withHeavySlot } from "./heavy.js"
-import { cachedInstall, INSTALL_INPUTS, isInstalled, unlinkCheckoutLinks } from "./install-cache.js"
+import { INSTALL_INPUTS, installCheckout, unlinkCheckoutLinks } from "./install-cache.js"
 import { cleanCheckoutsPath } from "./ledger.js"
 import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
@@ -222,27 +221,17 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
 
 
 /**
- * The install where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none. It
- * comes from the shared install cache keyed by the candidate's own install inputs (its lockfile and every manifest it installs),
- * Node and npm (harness/install-cache.ts installKey): a hit links the cached node_modules into the checkout, a miss (a lockfile or
- * manifest the task changed) runs `npm ci` and caches it, so a changed lockfile is never served the base's install. When the repository is in local package mode (`starci deps
- * source --local`) the cached tree is copied, not linked, and the same local copies are applied after it, so the candidate runs
- * against the package the work tree runs against (`reapplyLocal`).
+ * The install where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none or
+ * it has nothing to give. It is installCheckout (harness/install-cache.ts), the one install a walk's checkout is given too: the
+ * shared install cache keyed by the candidate's own install inputs (its lockfile and every manifest it installs), Node and npm, so
+ * a changed lockfile is never served the base's install, and in local package mode (`starci deps source --local`) the same local
+ * copies the work tree runs against.
  */
 const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => {
     const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")) || existsSync(join(candidate, "npm-shrinkwrap.json")))
-    // An install an earlier prepare of the same checkout made (a wave's other cwd) is not made twice.
-    if (dir === undefined || isInstalled(dir)) return undefined
-    const source = place.source ?? place.root
-    const local = (readRecord(source)?.packages.length ?? 0) > 0
-    const cached = await cachedInstall(dir, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }, local)
-    const exitCode = cached.run?.exitCode ?? 0
-    const tail = cached.run === null ? "" : `\n${evidenceTail(cached.run.stdout, cached.run.stderr)}`
-    const installed: CheckOutcome = { name: "install", kind: "install", status: exitCode === 0 ? "green" : "red", exitCode, detail: `${cached.note}${tail}` }
-    if (installed.status === "red" || !local) return installed
-    const reapplied = await reapplyLocal(source, dir)
-    if (reapplied === undefined) return installed
-    return { ...installed, status: reapplied.status, detail: `${installed.detail}\nlocal package sources (starci deps source):\n${reapplied.detail}` }
+    if (dir === undefined) return undefined
+    const given = await installCheckout(dir, place.source ?? place.root, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
+    return given === undefined ? undefined : { name: "install", kind: "install", ...given }
 }
 
 /** The refusal of a verify or wave stopped by the harness's own step (an install or setup out of time, an install no change explains): no verdict on the work. */

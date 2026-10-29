@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto"
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, relative, resolve, sep } from "node:path"
 import { workspaceBuildCachePath } from "../../harness/ledger.js"
 import { withHeavySlot } from "../../harness/heavy.js"
+import { installCheckout, lockfileFolders } from "../../harness/install-cache.js"
 import { captureNpm } from "../../shared/exec.js"
 import type { RunOptions } from "../../shared/exec.js"
 import { git, nulPaths } from "../../shared/git.js"
@@ -217,8 +218,22 @@ export const buildWorkspaceDependencies = async (root: string, given: readonly W
 }
 
 /**
- * Prepares the checkout a walk serves the app from as check run prepares the packages it judges: every in-repository workspace
- * dependency any package of the checkout imports is restored or built (buildWorkspaceDependencies), so the app the walk opens
- * resolves its siblings' build output instead of answering 5xx for a missing module. Its steps; a red one names the package.
+ * Prepares the checkout a walk serves the app from as a wave prepares the checkout it judges: each lockfile folder that holds an
+ * install is given what a wave's install gives it (harness/install-cache.ts installCheckout: in local package mode the
+ * repository's local `@starci` copies, the very packages the wave ran against, never the registry pins), then every
+ * in-repository workspace dependency any package of the checkout imports is restored or built (buildWorkspaceDependencies), so
+ * the app the walk opens resolves what the wave resolved instead of answering 5xx for a missing module or export. Its steps; a
+ * red one names the folder or package, and a red install builds nothing after it.
  */
-export const prepareWorkspace = async (root: string, options: RunOptions): Promise<readonly StepResult[]> => (await buildWorkspaceDependencies(root, listPackages(root), options)).steps
+export const prepareWorkspace = async (root: string, options: RunOptions): Promise<readonly StepResult[]> => {
+    const installs: StepResult[] = []
+    for (const folder of lockfileFolders(root)) {
+        const dir = join(root, folder)
+        if (lstatSync(join(dir, "node_modules"), { throwIfNoEntry: false }) === undefined) continue
+        const given = await installCheckout(dir, root, options)
+        if (given === undefined) continue
+        installs.push({ package: folder, step: "install", command: `install of ${folder}`, status: given.status, reason: given.detail.split("\n").filter((line) => line.trim() !== "").join("; "), output: given.detail })
+        if (given.status === "red") return installs
+    }
+    return [...installs, ...(await buildWorkspaceDependencies(root, listPackages(root), options)).steps]
+}

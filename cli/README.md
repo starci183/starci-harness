@@ -506,8 +506,9 @@ shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with 
 An app pins npm versions of its `@starci` packages in committed files; `deps source --local`
 takes them from a package folder on this machine instead, the mechanism and its reasons in the doc comment of
 `core/deps/packages.ts`. Every checkout of a repository in local mode gets the same copies (`reapplyLocal`): a worker's
-before its launch (`seat start`), a clean verify's after its `npm ci`, a work tree's after its own (`deps source
---sync`). Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
+before its launch (`seat start`), a clean verify's or a wave's and a walk's over its install (`installCheckout` in
+`harness/install-cache.ts`, which `uat run` calls through `prepareWorkspace` for each install its checkout holds), a work
+tree's after its own `npm ci` (`deps source --sync`). Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
 the harness's own `packages/` folder of that name, or dropped to npm when the harness has none, with a `deps-local-healed`
 event, so a vanished folder never fails a launch, a sync or a verify; `worktree gc` heals every project's record once it
 removed a package edit worktree. `--local` takes `packages/` of the harness's main checkout unless `--from` names another
