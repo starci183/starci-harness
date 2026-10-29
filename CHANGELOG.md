@@ -6,6 +6,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.17] - 2026-10-30
+
+### Changed
+
+- The CLI requires @starci/hfs 4.11.16 (was 4.11.15), its pin in contexts/stack/pins.yaml: the OriginGuard requires an actual
+  Origin for cookie mutations and the GraphQL platform template specs pass the app canon gates (CONTRIB-20 step 2).
+
 ## [1.1.0-alpha.16] - 2026-10-29
 
 ### Added
