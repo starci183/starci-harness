@@ -8,9 +8,16 @@
 // `stub hold: <url> token <pid>`; `POST <url>/__exit` (or a SIGTERM) lets go of the folder and ends it. The Orca stand-in ends
 // it that way when the terminal a scenario named it the process of is closed.
 // It is preloaded with the Orca stand-in like every node of a bench run, which returns at once outside a binary named orca.
+import { spawn } from "node:child_process"
 import { chmodSync, closeSync, openSync, constants, statSync } from "node:fs"
 import { createServer } from "node:http"
 import { dirname, resolve } from "node:path"
+
+// With `--child <folder>` it also starts a child node process that idles with that folder as its working directory, as a
+// shell's command outlives the line that started it; the child is ended with the stub.
+const childAt = process.argv.indexOf("--child")
+const child = childAt >= 0 && process.argv[childAt + 1] !== undefined ? spawn(process.execPath, ["-e", "setInterval(() => {}, 1e9)"], { cwd: resolve(process.argv[childAt + 1]), stdio: "ignore", windowsHide: true }) : undefined
+process.on("exit", () => child?.kill())
 
 // libuv's UV_FS_O_EXLOCK on Windows: open with no share mode.
 const EXCLUSIVE = 0x10000000
@@ -34,6 +41,11 @@ process.on("SIGTERM", () => {
 })
 
 const server = createServer((request, response) => {
+    if (request.method === "GET" && request.url === "/__child") {
+        response.writeHead(200, { "Content-Type": "application/json" })
+        response.end(JSON.stringify({ pid: child?.pid ?? null }))
+        return
+    }
     if (request.method === "POST" && request.url === "/__exit") {
         release()
         response.writeHead(200, { "Content-Type": "application/json" })

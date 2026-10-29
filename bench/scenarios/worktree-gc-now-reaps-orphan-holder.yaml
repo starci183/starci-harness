@@ -1,0 +1,107 @@
+schema: starci/scenario@1
+id: worktree-gc-now-reaps-orphan-holder
+group: lifecycle
+title: "worktree gc reaps an orphan harness worktree, and gc --now a fresh unlisted folder: each real process working inside and its child are ended, then the folder goes"
+inject: >-
+  a harness worktree no ledger row owns (made by hand under the project's worktrees folder) with a real node process working
+  inside it that has started a child working elsewhere; and a folder under the worktrees folder that git does not list, made a
+  moment ago (a removal that deregistered it and stopped), with a real process working inside it
+expect: >-
+  worktree gc --dry-run lists the orphan as due and changes nothing; worktree gc reaps and removes the orphan (the process working
+  inside it found by its working folder, its child as its descendant) and leaves the fresh unlisted folder to its quiet period;
+  worktree gc --now takes that folder at once, reaps it and removes it
+pass:
+  - the dry run lists the orphan due and its process's child still answers
+  - gc removes the orphan after ending the process working in it and that process's child
+  - the fresh unlisted folder outlives the plain gc and is removed by gc --now after its process is ended
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: docs/base.md
+      content: "base\n"
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: base"]
+  - name: a workflow gives the project its state folder
+    file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: host
+        goal: bench workflow host
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - name: a worktree made by hand under the project's worktrees folder, owned by no ledger row
+    git: [worktree, add, -q, -b, debug/reap-test, "${project}/worktrees/reap-test", HEAD]
+  - name: a real process works inside it and has started a child that works elsewhere
+    serve:
+      stub: hold
+      args: [--child, "${run}"]
+      cwd: ${project}/worktrees/reap-test
+      as: shell
+  - name: a folder git does not list, made a moment ago, with a real process working inside it
+    write:
+      path: ${project}/worktrees/fresh-left/left.txt
+      content: "left behind\n"
+  - serve:
+      stub: hold
+      cwd: ${project}/worktrees/fresh-left
+      as: left
+  - name: the dry run lists the orphan due
+    starci: [worktree, gc, --dry-run]
+    expect:
+      contains: reap-test
+  - http:
+      method: GET
+      url: "${shell.url}/__child"
+      expect:
+        status: 200
+  - name: gc reaps and removes the orphan
+    starci: [worktree, gc]
+    expect:
+      contains: reap-test
+  - assert:
+      exists:
+        path: ${project}/worktrees/reap-test
+        present: false
+  - name: the process working inside it was ended, found by its working folder
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'worktree-reaped' AND data_json LIKE '%\"pid\":${shell.token},%\"why\":\"cwd\"%'"
+        equals: [1]
+  - name: and its child, found as its descendant
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'worktree-reaped' AND data_json LIKE '%reap-test%' AND data_json LIKE '%\"why\":\"descendant\"%'"
+        equals: [1]
+  - name: the fresh unlisted folder waits out its quiet period under a plain gc
+    assert:
+      exists:
+        path: ${project}/worktrees/fresh-left
+        present: true
+  - name: gc --now takes it at once
+    starci: [worktree, gc, --now]
+    expect:
+      contains: fresh-left
+  - assert:
+      exists:
+        path: ${project}/worktrees/fresh-left
+        present: false
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'worktree-reaped' AND data_json LIKE '%\"pid\":${left.token},%\"why\":\"cwd\"%'"
+        equals: [1]

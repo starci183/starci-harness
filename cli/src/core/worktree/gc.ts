@@ -19,7 +19,7 @@ export const worktreeGcVerb = defineVerb({
     schema: "starci/worktree-gc@1",
     flags: {
         "dry-run": { kind: "boolean", summary: "judge every harness worktree and change nothing" },
-        now: { kind: "boolean", summary: "retry a folder left busy now instead of after its backoff" },
+        now: { kind: "boolean", summary: "retry a folder left busy now instead of after its backoff, and take a folder git no longer lists however recently it changed" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)

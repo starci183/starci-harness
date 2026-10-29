@@ -258,6 +258,8 @@ export interface TrackedWorktree {
     readonly links?: readonly string[]
     /** True for a harness folder git no longer lists that a removal left half done: its remaining files may be deleted. */
     readonly remnant?: boolean
+    /** True to try a folder left busy at once, whatever its backoff says (`worktree gc --now`). */
+    readonly now?: boolean
 }
 
 /** How a tracked removal ended: removed, left (busy, retried by `worktree gc` from `retryAt`), or left for another reason. */
@@ -270,13 +272,14 @@ export interface TrackedRemoval {
 
 /**
  * Removes a harness worktree (removeWorktreeFolder) with its busy record in the ledger of `root` (harness/worktree-busy.ts): a
- * folder whose earlier removal was refused as busy is not tried again before its backoff runs out; a busy refusal now, or any
- * refusal of a folder already busy, records the next attempt; a removal that succeeds ends the record. Never throws for a
- * refused removal, so no settle waits on or fails over a held folder.
+ * folder whose earlier removal was refused as busy is not tried again before its backoff runs out, unless `now` asks for it;
+ * a tried folder is reaped and removed whatever its earlier attempts said; a busy refusal now, or any refusal of a folder
+ * already busy, records the next attempt; a removal that succeeds ends the record. Never throws for a refused removal, so no
+ * settle waits on or fails over a held folder.
  */
 export const removeTracked = async (root: string, worktree: TrackedWorktree): Promise<TrackedRemoval> => {
     const pending = withLedger(root, (db) => busyRecordOf(db, worktree.path))
-    if (pending !== undefined && !busyDue(pending) && existsSync(worktree.path)) {
+    if (pending !== undefined && worktree.now !== true && !busyDue(pending) && existsSync(worktree.path)) {
         return { removed: false, busy: true, detail: `left busy (attempt ${String(pending.attempt)}: ${pending.detail}); worktree gc retries it from ${pending.nextAt}`, retryAt: pending.nextAt }
     }
     const removal = await removeWorktreeFolder(worktree.repo, worktree.path, worktree.viaOrca, worktree.links ?? [], worktree.remnant === true || pending !== undefined)
@@ -411,19 +414,19 @@ export interface WorktreeRemoval {
 }
 
 /**
- * Removes a settled task's Op worktree by code (removeTracked: its Orca terminals closed, its install links unlinked as links,
- * then Orca and git), then deletes its branch once its tip is on the target branch (it landed, or carries nothing); a branch
- * holding commits that never landed is kept and named. A folder the host holds is left busy for `worktree gc` to retry and never
- * fails the caller. Undefined when the task has no Op worktree or it was removed already.
+ * Removes a settled task's Op worktree by code (removeTracked: reaped, its install links unlinked as links, then Orca and git;
+ * `now` tries a folder left busy whatever its backoff), then deletes its branch once its tip is on the target branch (it landed,
+ * or carries nothing); a branch holding commits that never landed is kept and named. A folder the host holds is left busy for
+ * `worktree gc` to retry and never fails the caller. Undefined when the task has no Op worktree or it was removed already.
  */
-export const removeOpWorktree = async (root: string, taskId: string): Promise<WorktreeRemoval | undefined> => {
+export const removeOpWorktree = async (root: string, taskId: string, now = false): Promise<WorktreeRemoval | undefined> => {
     const { made, gone, orca } = withLedger(root, (db) => {
         const task = getTask(db, taskId)
         const runner = task.workflowId === null ? undefined : getWorkflow(db, task.workflowId).header.runner
         return { made: opWorktreeOf(db, taskId), gone: lastEvent(db, REMOVED_EVENT, taskId) !== undefined, orca: runner === "orca" }
     })
     if (made === undefined || gone) return undefined
-    const removal = await removeTracked(root, { path: made.path, repo: made.target, owner: taskId, kind: "op", viaOrca: orca, links: made.links, remnant: true })
+    const removal = await removeTracked(root, { path: made.path, repo: made.target, owner: taskId, kind: "op", viaOrca: orca, links: made.links, remnant: true, now })
     if (!removal.removed) {
         if (removal.busy) return { task: taskId, path: made.path, removed: false, branch: "kept", detail: removal.detail, busy: true }
         const detail = `worktree remove failed (${removal.detail}); the next workflow step tries again`
