@@ -1,5 +1,6 @@
 import { RAISERS, raiseWorkflowBudget } from "../../harness/budget.js"
 import type { WorkflowBudget } from "../../harness/budget.js"
+import { answerNearTicket } from "../../harness/budget-warn.js"
 import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { raiseNodeTries } from "../../harness/workflow.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
@@ -19,6 +20,8 @@ interface RaiseData {
     readonly after?: WorkflowBudget
     readonly workflow?: string
     readonly task?: { readonly key: string; readonly task: string | null; readonly before: number; readonly after: number }
+    /** The near question of the raised ceiling (harness/budget-warn.ts) this raise answered, if one was open. */
+    readonly answered?: string | null
 }
 
 /** Who may raise one task's tries (`--task`): the raisers of a workflow's ceiling, and the workflow's Kernel for a task the harness exhausted. */
@@ -27,7 +30,8 @@ const TASK_RAISERS = [...RAISERS, "kernel"] as const
 /**
  * `starci budget raise <workflow>`: raises a workflow's minutes or tries ceiling (owner or Supervisor), or with `--task` one task's
  * try budget over its contract's `budget.tries` (owner, Supervisor, or its Kernel), the route out of TRIES_EXHAUSTED for a single
- * task, a harness-caused exhaustion above all; who and why are kept.
+ * task, a harness-caused exhaustion above all; who and why are kept. A workflow raise answers the near question the tick asked of
+ * the ceiling it raised (`answerNearTicket`).
  */
 export const budgetRaiseVerb = defineVerb({
     path: ["budget", "raise"],
@@ -74,9 +78,10 @@ export const budgetRaiseVerb = defineVerb({
         if (minutes === 0 && tries === 0) throw new Refusal("CLI_USAGE", "give --minutes, --tries or both", EXIT_USAGE)
         const raised = raiseWorkflowBudget(root, flags.workflow, { minutes, tries, by, reason: flags.reason.trim() })
         const { before, after } = raised
+        const answered = answerNearTicket(before, after, by, flags.reason.trim())
         return {
-            data: raised,
-            message: `workflow ${flags.workflow}: minutes ${String(before.ceiling.minutes)} -> ${String(after.ceiling.minutes)}, tries ${String(before.ceiling.tries)} -> ${String(after.ceiling.tries)} (by ${by}: ${flags.reason.trim()})`,
+            data: { ...raised, answered: answered?.id ?? null },
+            message: `workflow ${flags.workflow}: minutes ${String(before.ceiling.minutes)} -> ${String(after.ceiling.minutes)}, tries ${String(before.ceiling.tries)} -> ${String(after.ceiling.tries)} (by ${by}: ${flags.reason.trim()})${answered === null ? "" : `; its near question ${answered.id} is answered`}`,
         }
     },
 })

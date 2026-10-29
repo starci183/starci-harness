@@ -1,0 +1,80 @@
+schema: starci/scenario@1
+id: budget-near-tries-below-tasks
+group: budget
+title: a workflow with fewer tries left than tasks to run is near its ceiling below 85%, and is asked once
+inject: a three-task inline workflow's tries ceiling is set to 2; its first task spends one try
+expect: >-
+  with one try left and two tasks to run (50% of the tries) budget show says near (tasks); the tick opens one question:business
+  ticket proposing more tries; the raise answers it and budget show says ok
+pass:
+  - fewer tries left than tasks is near whatever the percentage
+  - the question proposes a tries raise
+  - the raise answers it
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: few
+        goal: bench workflow few
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args: { files: [docs/a.md] }
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths: [docs/b.md]
+            checks:
+              - preset: files-exist
+                args: { files: [docs/b.md] }
+          - id: c
+            label: docs
+            summary: write doc c
+            allowPaths: [docs/c.md]
+            checks:
+              - preset: files-exist
+                args: { files: [docs/c.md] }
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: the budget account
+    starci: [budget, raise, few, --tries, "1", --by, owner, --reason, "bench: create the account"]
+  - sql:
+      db: machine
+      exec: UPDATE budgets SET minutes = 480, tries = 2 WHERE workflow_id = 'few'
+  - name: start
+    starci: [workflow, start, few]
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files a done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          a
+  - name: the step verifies a and dispatches b; one try is left for two tasks
+    starci: [workflow, step, few]
+  - name: budget show says near at 1 of 2 tries, by the tasks left
+    starci: [budget, show, few]
+    expect: { exit: 0, contains: '"state": "near"' }
+  - name: the tick asks the owner, proposing tries for the two tasks
+    starci: [supervisor, tick]
+    expect: { exit: 0, contains: "budget near: workflow few (tasks" }
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) || ':' || MAX(state) FROM tickets WHERE kind = 'question:business' AND workflow_id = 'few' AND proposed_default LIKE 'starci budget raise few --tries %'"
+        equals: ["1:open"]
+  - name: the owner raises the tries the question proposed
+    starci: [budget, raise, few, --tries, "3", --by, owner, --reason, "bench: the proposed raise"]
+    expect: { exit: 0, contains: '"answered": "tk-' }
+  - starci: [budget, show, few]
+    expect: { exit: 0, contains: '"state": "ok"' }

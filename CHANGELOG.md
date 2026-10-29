@@ -6,6 +6,17 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **A workflow near its budget is asked ahead, not after the stop.** lesson-ai reached 67/70 tries and 929/1000 minutes with
+  8 tasks left before anyone was asked. A workflow with tasks left is now `near` once its minutes or tries reach
+  `budgets.nearPercent` (85) of its ceiling in `ops/routing.yaml`, or fewer tries are left than tasks to run (`budgetOutlooks`
+  in `harness/budget-warn.ts`). `budget show` adds the tasks left and the state `near` with the raise it proposes, sized to the
+  remaining tasks at the done tasks' pace; `supervisor tick` opens one `question:business` ticket per ceiling (opened as the
+  Supervisor's, so the owner's answer wakes it), each later tick a repeat that bumps occurrences, and a workflow-wide
+  `budget raise` answers it. A ticket opener may name its episode (`TicketInput.key`, `keyedFingerprint` in
+  `harness/tickets.ts`) to be deduped by it. Bench: `budget-near-asks-once`, `budget-near-tries-below-tasks`.
+
 ### Changed
 
 - **An Op's attempt is settled before anything of it goes, and a key keeps at most one patch (owner ruling
