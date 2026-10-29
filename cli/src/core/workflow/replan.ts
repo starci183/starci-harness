@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite"
+import { contractHash } from "../../harness/contract.js"
 import { assertOwnSources } from "../../harness/foreign-source.js"
 import { assertDeliverables, assertScope, currentGoal, withGoal } from "../../harness/goal.js"
 import type { Goal } from "../../harness/goal.js"
@@ -124,9 +125,12 @@ const tasksOfWorkflowFile = (snapshot: Snapshot, file: string, source: WorkflowS
 
 const unfit = (workflowId: string, problems: readonly string[]): Refusal => new Refusal("WORKFLOW_INVALID", `the replan of ${workflowId} is not fit:\n${problems.map((problem) => "- " + problem).join("\n")}`)
 
-/** Builds a task list into nodes: fit, hashes carried for unchanged nodes, re-added keys moved to a fresh round. */
+/**
+ * Builds a task list into nodes: fit (a contract the current graph holds keeps the budget it was admitted under, buildGraph),
+ * hashes carried for unchanged nodes, re-added keys moved to a fresh round.
+ */
 const nodesOf = (db: DatabaseSync, snapshot: Snapshot, tasks: readonly PlanTask[], ops: Ops): { readonly nodes: PlanNode[]; readonly notes: readonly string[] } => {
-    const built = buildGraph(tasks, ops)
+    const built = buildGraph(tasks, ops, new Set(snapshot.nodes.map((node) => contractHash(node.contract))))
     if (built.problems.length > 0) throw unfit(snapshot.workflow.id, built.problems)
     return { nodes: freshRounds(db, snapshot.workflow.id, carryHashes(built.nodes, snapshot.nodes), snapshot.nodes), notes: built.notes }
 }
@@ -158,7 +162,7 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     const plannedUnder = graphVersions(db, workflow.id).find((version) => version.version === workflow.graphVersion)?.goalVersion ?? goal.version
     assertDeliverables(workflow.id, snapshot.nodes, built.nodes, plannedUnder, goal)
     assertFlow(workflow.id, built.nodes, { repo: place.repo, db, requires: header.requires ?? [] }, ops)
-    assertOwnSources(db, workflow.id, built.nodes, new Set(snapshot.nodes.map((node) => node.contractHash)))
+    assertOwnSources(db, workflow.id, built.nodes, new Set(snapshot.nodes.map((node) => contractHash(node.contract))))
     const problems: string[] = []
     for (const row of classification) {
         if (!STARTS.has(row.class)) continue

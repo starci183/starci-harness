@@ -487,16 +487,19 @@ const ancestorsOf = (key: string, tasks: ReadonlyMap<string, PlanTask>, into: Se
 
 /**
  * Builds the graph of a task list: every contract must be fit (contractProblems), keys unique, dependencies known and the
- * edges acyclic. A node's hash is its contract hash and round only (nodeHashOf); the nodes come in dependency order.
- * Two tasks with no order between them whose allowPaths overlap are a note: the path lease serializes them at dispatch.
+ * edges acyclic. A contract the current graph holds already (its hash among `held`: a replan's unchanged, done or retried
+ * node) is history and keeps the context budget it was admitted under; only a contract the list adds or edits is measured
+ * against the files as they are now. A node's hash is its contract hash and round only (nodeHashOf); the nodes come in
+ * dependency order. Two tasks with no order between them whose allowPaths overlap are a note: the path lease serializes them
+ * at dispatch.
  */
-export const buildGraph = (tasks: readonly PlanTask[], ops: Ops): BuiltGraph => {
+export const buildGraph = (tasks: readonly PlanTask[], ops: Ops, held: ReadonlySet<string> = new Set<string>()): BuiltGraph => {
     const problems: string[] = []
     const byKey = new Map<string, PlanTask>()
     for (const task of tasks) {
         if (byKey.has(task.key)) problems.push(`task ${task.key} is defined twice`)
         byKey.set(task.key, task)
-        for (const problem of contractProblems(task.contract, ops)) problems.push(`task ${task.key}: ${problem}`)
+        for (const problem of contractProblems(task.contract, ops, { budget: !held.has(contractHash(task.contract)) })) problems.push(`task ${task.key}: ${problem}`)
         problems.push(...dependencyProblems(task, tasks))
     }
     const { order, cycles } = orderOf(byKey)
