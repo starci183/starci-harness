@@ -6,6 +6,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- `starci app stack deploy --urgent --first-start --db-service <service>`: the first start of a self-hosted database the release
+  starts itself (owner ruling `urgent-first-start`, @starci/hfs 4.11.15): the floor proves the database empty instead of backing it
+  up and migrates it inside its container before converge.
+
 ### Fixed
 
 - **A relay node's command check that is red exactly as at the relayed source's head is the source's red.** The relay of

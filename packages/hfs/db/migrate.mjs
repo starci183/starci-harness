@@ -132,7 +132,7 @@ export function buildModel(root, decl) {
 /* ---- the target */
 
 /** The database of `--url-env` (default DATABASE_URL). */
-export const resolveTarget = (ctx, options = {}) => dbTarget(ctx, options.urlEnv ?? DEFAULT_DB_URL_ENV);
+export const resolveTarget = (ctx, options = {}) => options.target ?? dbTarget(ctx, options.urlEnv ?? DEFAULT_DB_URL_ENV);
 
 /** True for a database on this machine's loopback (the local db service): applying to it needs no arming. */
 export const isLoopback = (url) => ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(url).hostname);

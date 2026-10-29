@@ -135,3 +135,94 @@ test('STACK_URGENT_DECRYPT_UNAVAILABLE: without an age identity the backup canno
   await assert.rejects(urgentDeploy({ ...ctx, env: {} }, config, OPTIONS, run, deps), (error) => error.code === 'STACK_URGENT_DECRYPT_UNAVAILABLE');
   assert.deepEqual(calls, []);
 });
+
+// The first start (--first-start --db-service): no backup and no test decrypt; the deploy's first-start step (between edge and converge) waits for
+// the database container, proves it empty and migrates inside it; each failure is its own code and the deploy rolls back.
+const FIRST = { ...OPTIONS, firstStart: true, dbService: 'postgres' };
+const URL_ENV = { DATABASE_URL: 'postgresql://supabase_admin:s3cret@nivo-postgres:5432/postgres' };
+const CONTAINER = 'f00dfeed0123456789';
+
+/** The collaborators of a first start: the deploy runs the first-start step it is handed and rolls back when it is red. */
+function firstWorld(fail = {}) {
+  const calls = [];
+  const deps = {
+    backup: async () => { calls.push('backup'); throw new Error('a first start never backs up'); },
+    decrypt: async () => { calls.push('decrypt'); throw new Error('a first start never decrypts'); },
+    dbContainer: async () => { calls.push('container'); return fail.noContainer ? undefined : CONTAINER; },
+    emptiness: async (_ctx, target) => {
+      calls.push('empty?');
+      assert.equal(target.container, CONTAINER);
+      assert.ok(target.url.includes('127.0.0.1'), 'the in-container target reaches the database on loopback');
+      return fail.notEmpty ? { empty: false, history: true, publicTables: 3 } : { empty: true, history: false, publicTables: 0 };
+    },
+    migrate: async (_ctx, { target, execute }) => {
+      calls.push(execute ? 'migrate' : 'preview');
+      assert.equal(target.target.container, CONTAINER);
+      if (!execute && fail.preview) return { ok: false, lines: ['RED'] };
+      return { ok: true, lines: [execute ? 'applied 3' : 'plan 3'] };
+    },
+  };
+  const run = {
+    render: async () => { calls.push('render'); return { releaseId: 'c'.repeat(16) }; },
+    dryRun: async () => { calls.push('dry-run'); return { ok: true, lines: ['dry run'], data: { executed: false } }; },
+    openStore: async () => ({ current: async () => { calls.push('current'); return fail.noPrevious ? '' : 'b'.repeat(16); } }),
+    deployExecute: async (extra = {}) => {
+      calls.push('deploy');
+      assert.equal(typeof extra.firstStartStep, 'function', 'a first start hands the deploy its first-start step');
+      const step = await extra.firstStartStep();
+      if (!step.ok) return { ok: false, lines: [...step.lines, 'rolled back'], data: { previous: 'b'.repeat(16), rolledBack: true, steps: [{ step: 'deploy', ok: true }, { step: 'first-start', ok: false }] } };
+      calls.push('converge+verify');
+      return { ok: true, lines: [...step.lines, 'deployed release c'], data: { releaseId: 'c'.repeat(16), steps: [{ step: 'deploy', ok: true }, { step: 'first-start', ok: true }] } };
+    },
+    sha256,
+  };
+  return { calls, deps, run };
+}
+
+test('a first start backs nothing up, proves the database empty and migrates it inside its container before converge', async (t) => {
+  const { ctx, config } = app(t);
+  ctx.env = { ...URL_ENV };
+  const { calls, deps, run } = firstWorld();
+  const result = await urgentDeploy(ctx, config, FIRST, run, deps);
+  assert.equal(result.ok, true, result.lines.join('\n'));
+  assert.equal(result.data.urgent, 'v1.0.0');
+  assert.deepEqual(calls, ['render', 'current', 'deploy', 'container', 'empty?', 'preview', 'migrate', 'converge+verify']);
+  assert.ok(result.lines.some((line) => line.includes('is empty') && line.includes('nothing to back up')));
+  assert.ok(!result.lines.join('\n').includes('s3cret'));
+});
+
+test('a first start dry run plans it and touches nothing', async (t) => {
+  const { ctx, config } = app(t);
+  ctx.env = { ...URL_ENV };
+  const { calls, deps, run } = firstWorld();
+  const result = await urgentDeploy(ctx, config, { ...FIRST, execute: false }, run, deps);
+  assert.equal(result.ok, true);
+  assert.ok(result.lines.some((line) => line.includes('first start of floor_postgres')));
+  assert.deepEqual(calls, ['dry-run']);
+});
+
+const FIRST_REFUSALS = [
+  ['no previous release to roll back to', { noPrevious: true }, 'STACK_URGENT_NO_ROLLBACK_TARGET', ['render', 'current']],
+  ['no database container accepting connections', { noContainer: true }, 'STACK_FIRST_START_NO_DATABASE', ['render', 'current', 'deploy', 'container']],
+  ['a database that is not empty', { notEmpty: true }, 'STACK_FIRST_START_NOT_EMPTY', ['render', 'current', 'deploy', 'container', 'empty?']],
+  ['a red migration preview', { preview: true }, 'STACK_FIRST_START_MIGRATE_RED', ['render', 'current', 'deploy', 'container', 'empty?', 'preview']],
+];
+
+for (const [title, fail, code, steps] of FIRST_REFUSALS) {
+  test(`${code}: a first start with ${title} is refused, rolled back, and nothing after it runs`, async (t) => {
+    const { ctx, config } = app(t);
+    ctx.env = { ...URL_ENV };
+    const { calls, deps, run } = firstWorld(fail);
+    const result = await urgentDeploy(ctx, config, FIRST, run, deps);
+    assert.equal(result.ok, false);
+    assert.equal(result.refused.code, code);
+    assert.deepEqual(calls, steps);
+  });
+}
+
+test('STACK_FIRST_START_USAGE: a first start without --db-service is refused before any step', async (t) => {
+  const { ctx, config } = app(t);
+  const { calls, deps, run } = firstWorld();
+  await assert.rejects(urgentDeploy(ctx, config, { ...FIRST, dbService: undefined }, run, deps), (error) => error.code === 'STACK_FIRST_START_USAGE');
+  assert.deepEqual(calls, []);
+});

@@ -3,7 +3,8 @@
 // after the stack deploy redeploys the previous accepted release from its STORED bytes; a failure before it leaves the services untouched.
 // Without `execute` a deploy renders locally and prints the plan: NO remote call at all. A rollback cannot undo data effects.
 // An urgent deploy (`urgent`, owner ruling urgent-release 2026-10-29) runs the safety floor of urgent-floor.mjs first (fresh verified encrypted
-// backup with a test decrypt, rollback target, migrate preview then execute) and refuses with the floor's own code when a step of it fails.
+// backup with a test decrypt, rollback target, migrate preview then execute) and refuses with the floor's own code when a step of it fails; its
+// first start (`firstStart`) proves the database empty and migrates it inside its own container, a `first-start` step between edge and converge.
 //
 // `deps` are the collaborators, all factories or functions with the signature of their module, defaulting to lazy dynamic imports so this
 // module never needs render.mjs / provision.mjs / remote.mjs at load time (the specs inject stubs):
@@ -197,6 +198,9 @@ async function deployExecute(ctx, config, options, d, out, cleanups) {
   const failed = await runSteps([
     ['deploy', () => stackDeploy(ctx, config, path.join(out, 'stack.yaml'))],
     ['edge', async () => d.reconcileEdge(ctx, config, path.join(out, 'stack.yaml'))],
+    // The first start of a self-hosted database (urgent-floor.mjs): its schema is bootstrapped and migrated once the database runs, before the
+    // services that need it are waited for.
+    ...(options.firstStartStep ? [['first-start', options.firstStartStep]] : []),
     ['converge', () => d.convergeStack(ctx, config, { since, timeoutSeconds: options.timeoutSeconds })],
     ...(config.postDeploy.length > 0 ? [['post-deploy', () => d.postDeployStack(ctx, config)]] : []),
     ['verify', () => d.verifyStack(ctx, config, { retrySeconds: options.retrySeconds, skipPublic: skipPublic === true, stackFile: path.join(out, 'stack.yaml') })],
@@ -245,7 +249,7 @@ export async function deployRelease(ctx, config, options = {}, deps = {}) {
     };
     if (options.urgent === true) {
       return await urgentDeploy(ctx, config, options, {
-        render, dryRun, openStore: () => openStore(ctx, config, options, d, cleanups), deployExecute: () => deployExecute(ctx, config, options, d, out, cleanups), sha256: fileSha256,
+        render, dryRun, openStore: () => openStore(ctx, config, options, d, cleanups), deployExecute: (extra = {}) => deployExecute(ctx, config, { ...options, ...extra }, d, out, cleanups), sha256: fileSha256,
       }, d.floor);
     }
     if (options.execute !== true) return await dryRun();
