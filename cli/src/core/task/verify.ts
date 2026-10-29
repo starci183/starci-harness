@@ -27,7 +27,7 @@ import { HOST_HELD, withHeavyBound } from "../../harness/heavy.js"
 import { reapplyLocal } from "../deps/packages.js"
 import type { LandTarget, OpWorktree, WorktreeRemoval } from "../../harness/land.js"
 import type { Settlement, Verifier, WorkWrite } from "../../harness/settle.js"
-import { clearIntent, getTask, lastEvent, latestAttempt, markIntent, recordEvent, recordSettleCommit, resultOf, setStatus, setVerdict, taskCheckout } from "../../harness/tasks.js"
+import { clearIntent, getTask, lastEvent, latestAttempt, markIntent, recordEvent, recordSettleCommit, resultOf, setStatus, setVerdict, taskCheckout, VERIFY_HOST_HELD } from "../../harness/tasks.js"
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { commitWithMessage, repositoryRoot, resolveSha, samePath } from "../../shared/git.js"
@@ -176,11 +176,13 @@ const verifyContract = async (cwd: string, file: string, taskId: string | undefi
         if (fork !== undefined) place = { ...place, diffBase: fork }
     }
     const own = made !== undefined && taskId !== undefined && samePath(made.path, root) ? { task: taskId, made } : undefined
-    const checks = await withHeavyBound(contract.budget.minutes * MINUTE_MS, async () => {
-        const installed = own === undefined ? [] : await opInstall(root, own.task, own.made)
-        if (installed.some((check) => check.status === "red")) return installed
-        return [...installed, ...(await inOrder(resolveChecks(contract, ops), (check) => runCheck(check, contract, place)))]
-    })
+    const checks = await heldFor(root, taskId, () =>
+        withHeavyBound(contract.budget.minutes * MINUTE_MS, taskId, async () => {
+            const installed = own === undefined ? [] : await opInstall(root, own.task, own.made)
+            if (installed.some((check) => check.status === "red")) return installed
+            return [...installed, ...(await inOrder(resolveChecks(contract, ops), (check) => runCheck(check, contract, place)))]
+        }),
+    )
     const verdict = checks.every((check) => check.status === "green") ? "green" : "red"
     const hash = contractHash(contract)
     if (record) {
@@ -194,6 +196,27 @@ const verifyContract = async (cwd: string, file: string, taskId: string | undefi
     }
     const data: ContractVerifyData = { mode: "contract", contract: file, hash, verdict, checks, recorded: record }
     return { data, message: report(checks, verdict, []), exitCode: verdict === "green" ? 0 : 1 }
+}
+
+/**
+ * Runs a verify of `taskId` that settles nothing (a `--contract` replay naming the task, or `--no-commit`): one the host held
+ * (HOST_HELD) records `verify-host-held` on the task's newest attempt before it refuses, so a question its worker files after it
+ * is harness-held (harness/routes.ts). Without a task, or in a repository with no ledger, it only runs.
+ */
+const heldFor = async <T>(root: string, taskId: string | undefined, run: () => Promise<T>): Promise<T> => {
+    try {
+        return await run()
+    } catch (error: unknown) {
+        const db = taskId === undefined || asRefusal(error).code !== HOST_HELD ? undefined : openExistingLedger(root)
+        if (db !== undefined && taskId !== undefined) {
+            try {
+                recordEvent(db, VERIFY_HOST_HELD, taskId, { attempt: latestAttempt(db, taskId)?.id ?? null, settle: false, error: asRefusal(error).message })
+            } finally {
+                db.close()
+            }
+        }
+        throw error
+    }
 }
 
 /** Refuses a task that cannot be verified now; returns the attempt whose result is judged. */
@@ -266,7 +289,7 @@ const noVerdict = (db: DatabaseSync, taskId: string, attemptId: string, kind: st
 const hostHeld = (db: DatabaseSync, taskId: string, error: unknown): Refusal => {
     const refusal = asRefusal(error)
     inTransaction(db, () => {
-        recordEvent(db, "verify-host-held", taskId, { error: refusal.message })
+        recordEvent(db, VERIFY_HOST_HELD, taskId, { attempt: latestAttempt(db, taskId)?.id ?? null, settle: true, error: refusal.message })
         setStatus(db, taskId, "reported", "verifying")
     })
     return new Refusal(HOST_HELD, `${refusal.message}\ntask ${taskId} is reported again (host-held: no verdict, no try spent); it is verified again on the next step`, refusal.exitCode)
@@ -555,7 +578,9 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
     const db = openLedger(callerRoot)
     try {
         const task = getTask(db, taskId)
-        return await withHeavyBound(task.contract.budget.minutes * MINUTE_MS, () => judgeTask(db, callerRoot, ops, task, commit))
+        const judge = (): Promise<VerbResult<VerifyData>> => withHeavyBound(task.contract.budget.minutes * MINUTE_MS, task.id, () => judgeTask(db, callerRoot, ops, task, commit))
+        // A settling verify the host held records it itself (`hostHeld`), returning its task to reported.
+        return await (commit ? judge() : heldFor(callerRoot, task.id, judge))
     } finally {
         db.close()
     }

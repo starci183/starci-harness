@@ -241,8 +241,11 @@ the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command's time
 queue. A command not admitted waits in the queue, says so on stderr and records a `heavy-wait` host event; waiting never
 fails it: a coordinator's turn is refused `HEAVY_DEFERRED` at once instead of waiting, and a command of `task verify` (or a
 process it started) still in the queue at the verify's timeout, its contract budget (`withHeavyBound`), is refused
-`HOST_HELD` (exit 75): a host-held verify reached no verdict, the settling one returns its task to reported with no try spent
-and no count toward `settleNoVerdictMax` (`verify-host-held`), and the next step verifies it again. A verify or wave stopped by the harness reaches no verdict (VERIFY_INFRA, `assertNoInfraFailure` of
+`HOST_HELD` (exit 75): a host-held verify reached no verdict and records `verify-host-held` on the task's attempt, whichever
+way it ran; the settling one returns its task to reported with no try spent and no count toward `settleNoVerdictMax`, and the
+next step verifies it again. An attempt whose verify the host held and whose worker then filed blocked or failed is
+harness-held (`hostHeldAttempt` of `harness/tasks.ts`): its retry spends no try and the decision on it no route of
+[ops/routes.yaml](../ops/routes.yaml), whose limit never closes on it. A verify or wave stopped by the harness reaches no verdict (VERIFY_INFRA, `assertNoInfraFailure` of
 `harness/clean-verify.ts`): an install or setup out of time, or an install red although the work changed no file an install
 reads (package.json, package-lock.json, npm-shrinkwrap.json, .npmrc), which also opens one harness-defect ticket
 (`INSTALL_RED_HARNESS`, every repeat landing on it). No try is spent, a wave fails, returns and revives no task (they stay
@@ -389,7 +392,10 @@ fast-forwarded, once per need round and workflow, recorded as a `need-relayed` h
 commit. A textual conflict moves nothing by itself and is never a dead end: it becomes work of the waiting workflow, one
 generated relay node `relay.<need>.r<round>` (`relayTask` in `harness/reconcile.ts`, added by `amendWithRelays`) owned by its
 Kernel like any task, built on the resolver's node (its label, inputs and checks), allowed the conflicting files and every file
-the commits touch, whose contract is to apply exactly those commits preserving both sides' intent; before its worker starts the
+the commits touch, whose contract is to apply exactly those commits preserving both sides' intent. That work is mechanical, so its
+context is lean: its op's base, the conflicting files and the repository files the template reads (the Work records the
+commits implement), with the need's evidence (each waiter's rules and note) in its details, never the template's pinned base or
+its harness topic and canon files, and it is held to its op's context budget like any task; before its worker starts the
 engine applies them up to the first that conflicts and leaves git's markers (`applyGenerated`). Its verify runs its label's
 checks and judges it as the transport of work the source already settled: its first waiter (the first node that depends on
 it, `composerOf` in `harness/graph.ts`) composes it, consuming what the commits export, so the composition rules on the relayed
@@ -508,7 +514,9 @@ Coordinators decide; deterministic drivers do the rest, and a coordinator never 
 (it loops on the blocking `next`). `kernel next <workflow>` is the Kernel's driver: it drains the Kernel Run's mail, steps
 the workflow (dispatch, verify, close seats), runs the budget ladder on its Ops (an attempt past its contract's
 budget.minutes with no result is asked once to wrap up and file, then fenced `budget.graceMinutes` later as a red verify ends
-one: seats closed, dirty allowPaths preserved and reset, the task failed `over-budget` with its try spent, its leases
+one, both clocks leaving out the time the task's heavy commands waited in the heavy queue, those its verifies ran (tagged with
+the task by `withHeavyBound`, a baseline checkout included) and those run in its own checkout (`taskQueuedMs` of
+`harness/heavy.ts`), so the host's queue never asks or fences a task: seats closed, dirty allowPaths preserved and reset, the task failed `over-budget` with its try spent, its leases
 released; `sweepOpBudgets` in `core/kernel/driver.ts`, `fenceAttempt` in `harness/fence.ts`; `supervisor tick` runs it too),
 runs the stall ladder on its Ops (below), resolves an effect_unknown
 launch through `request-show` with its attempt's request id (completed with a dispatch: that dispatch is judged by worker-show,

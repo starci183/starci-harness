@@ -176,6 +176,12 @@ CREATE TABLE IF NOT EXISTS host_starvation (id INTEGER PRIMARY KEY CHECK (id = 1
 CREATE TABLE IF NOT EXISTS heavy_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `
 
+/** Creates the governor's tables, adding the `task` column a store made before it lacks. */
+const ensureTables = (db: DatabaseSync): void => {
+    db.exec(TABLES)
+    if (!db.prepare("PRAGMA table_info(heavy_slots)").all().some((column) => column.name === "task")) db.exec("ALTER TABLE heavy_slots ADD COLUMN task TEXT")
+}
+
 /** The heavy_meta row holding the epoch ms of the governor's last admission, what the starvation clock runs from. */
 const LAST_ADMIT = "last-admit-ms"
 
@@ -202,7 +208,7 @@ export const cpuPercent = async (rules: HeavyRules): Promise<number> => {
     const reading = (): { readonly idle: number; readonly total: number; readonly atMs: number } => ({ ...cpuTimes(), atMs: Date.now() })
     const record = (sample: ReturnType<typeof reading>): { readonly idle: number; readonly total: number } | undefined =>
         withGovernor((db) => {
-            db.exec(TABLES)
+            ensureTables(db)
             db.prepare("INSERT INTO cpu_samples (at_ms, idle, total) VALUES (?, ?, ?)").run(sample.atMs, sample.idle, sample.total)
             db.prepare("DELETE FROM cpu_samples WHERE at_ms < ?").run(sample.atMs - windowMs * 5)
             const old =
@@ -290,7 +296,7 @@ export const managedCpuPercent = async (rules: HeavyRules): Promise<number | nul
     }
     // One open of the store decides: a reading is due (and claimed), or the stored pair answers.
     const decided = withGovernor((db): { readonly due: true } | { readonly due: false; readonly found: ManagedPair | undefined } => {
-        db.exec(TABLES)
+        ensureTables(db)
         const at = Date.now()
         const newest = Number(db.prepare("SELECT MAX(at_ms) AS at FROM managed_cpu_samples").get()?.at ?? 0)
         const claimed = Number(db.prepare("SELECT value FROM heavy_meta WHERE key = ?").get(MANAGED_CLAIM)?.value ?? 0)
@@ -393,6 +399,8 @@ export interface HeavySlot {
     readonly kind: string
     readonly label: string
     readonly cwd: string
+    /** The task whose verify the command runs for (`withHeavyBound`), else null. */
+    readonly task: string | null
     readonly state: "running" | "waiting"
     readonly at: string
 }
@@ -400,7 +408,7 @@ export interface HeavySlot {
 /** Every slot row of a live process, running first; rows of a process that is gone are dropped on the way. */
 export const heavySlots = (): HeavySlot[] =>
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         const rows = db.prepare("SELECT * FROM heavy_slots ORDER BY state, at").all()
         const live: HeavySlot[] = []
         for (const row of rows) {
@@ -408,7 +416,17 @@ export const heavySlots = (): HeavySlot[] =>
                 db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
                 continue
             }
-            live.push({ id: String(row.id), pid: Number(row.pid), childPid: row.child_pid === null ? null : Number(row.child_pid), kind: String(row.kind), label: String(row.label), cwd: String(row.cwd), state: row.state === "running" ? "running" : "waiting", at: String(row.at) })
+            live.push({
+                id: String(row.id),
+                pid: Number(row.pid),
+                childPid: row.child_pid === null ? null : Number(row.child_pid),
+                kind: String(row.kind),
+                label: String(row.label),
+                cwd: String(row.cwd),
+                task: typeof row.task === "string" ? row.task : null,
+                state: row.state === "running" ? "running" : "waiting",
+                at: String(row.at),
+            })
         }
         return live
     })
@@ -423,9 +441,9 @@ export const heavySlots = (): HeavySlot[] =>
  */
 const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: HeavyRules, cpu: { readonly cpu: number; readonly managed: number | null }): { readonly load: HostLoad; readonly holders: string[] | null } =>
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         for (const row of db.prepare("SELECT id, pid FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
-        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES (?, ?, ?, ?, ?, 'waiting', ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, now())
+        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, task, state, at) VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, slot.task, now())
         const rows = db.prepare("SELECT id, kind, cwd, state, at FROM heavy_slots").all().map((row) => ({ id: String(row.id), kind: String(row.kind), cwd: String(row.cwd), state: String(row.state), at: String(row.at) }))
         const running = db.prepare("SELECT label, pid FROM heavy_slots WHERE state = 'running'").all()
         const kinds = runningKinds(db)
@@ -451,7 +469,7 @@ const setChild = (id: string, pid: number): void => {
 
 const release = (id: string): void => {
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(id)
     })
 }
@@ -516,16 +534,22 @@ const HOLD_ENV = "STARCI_HEAVY_HOLD_MS"
 /** The environment variable naming the pid whose wait a heavy command's queue time counts toward (`heavyOwner`). */
 const OWNER_ENV = "STARCI_HEAVY_OWNER"
 
+/** The environment variable naming the task whose verify a heavy command runs for (`withHeavyBound`, `taskQueuedMs`). */
+const TASK_ENV = "STARCI_HEAVY_TASK"
+
 /**
  * Runs a verify (`task verify`) whose heavy commands, and those of every process it starts while it runs, wait in the queue at most
  * `holdMs` (the verify's timeout) and are then refused HOST_HELD: the host held the work, nothing judged it, so the verify ends with
  * no verdict and spends no try. Their queue time is counted toward the verify's process (`heavyOwner`, `queuedSince`), so its lock
- * deadline counts only the time its commands ran. The bound ends with `work`: whatever the same process runs after it waits as before.
+ * deadline counts only the time its commands ran, and toward `task`, the task it verifies (`taskQueuedMs`), so that task's budget
+ * clock leaves it out. The bound ends with `work`: whatever the same process runs after it waits as before.
  */
-export const withHeavyBound = async <T>(holdMs: number, work: () => Promise<T>): Promise<T> => {
-    const before = { hold: process.env[HOLD_ENV], owner: process.env[OWNER_ENV] }
+export const withHeavyBound = async <T>(holdMs: number, task: string | undefined, work: () => Promise<T>): Promise<T> => {
+    const before = { hold: process.env[HOLD_ENV], owner: process.env[OWNER_ENV], task: process.env[TASK_ENV] }
     process.env[HOLD_ENV] = String(holdMs)
     process.env[OWNER_ENV] = before.owner ?? String(process.pid)
+    const owned = before.task ?? task
+    if (owned !== undefined) process.env[TASK_ENV] = owned
     const restore = (name: string, value: string | undefined): void => {
         if (value === undefined) Reflect.deleteProperty(process.env, name)
         else process.env[name] = value
@@ -535,6 +559,7 @@ export const withHeavyBound = async <T>(holdMs: number, work: () => Promise<T>):
     } finally {
         restore(HOLD_ENV, before.hold)
         restore(OWNER_ENV, before.owner)
+        restore(TASK_ENV, before.task)
     }
 }
 
@@ -548,7 +573,7 @@ export const heavyOwner = (): number => Number(process.env[OWNER_ENV] ?? process
  */
 export const queuedSince = (owner: number, since: string): number =>
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         const from = Date.parse(since)
         const finished = db
             .prepare("SELECT at, data_json FROM host_events WHERE kind = 'heavy-wait' AND at >= ? AND json_extract(data_json, '$.owner') = ?")
@@ -559,6 +584,46 @@ export const queuedSince = (owner: number, since: string): number =>
             .all(`${String(owner)}-%`)
             .reduce((sum, row) => sum + Date.now() - Math.max(Date.parse(String(row.at)), from), 0)
         return finished + waiting
+    })
+
+/** A folder as `taskQueuedMs` compares it: resolved, forward slashes, no trailing slash, lower case on Windows. */
+const folderKey = (path: string): string => {
+    const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    return process.platform === "win32" ? slashed.toLowerCase() : slashed
+}
+
+/**
+ * How long, in ms of wall clock between `since` (an ISO time) and `at`, at least one heavy command of a task waited in the queue:
+ * a command a verify of the task ran (`withHeavyBound` tags it with the task, its baseline checkout included) or one that ran in
+ * the task's own checkout `worktree` (its worker's own checks), finished waits from their `heavy-wait` host events and waits
+ * still in the queue from their slot rows. Overlapping waits count once. What a task's budget clock leaves out
+ * (harness/budget-ladder.ts): time the host held its work is no time the task spent.
+ */
+export const taskQueuedMs = (task: string, worktree: string | null, since: string, at: number = Date.now()): number =>
+    withGovernor((db) => {
+        ensureTables(db)
+        const from = Date.parse(since)
+        const home = worktree === null ? null : folderKey(worktree)
+        const owns = (owner: string | null, cwd: string): boolean => owner === task || (home !== null && cwd !== "" && (folderKey(cwd) === home || folderKey(cwd).startsWith(`${home}/`)))
+        const spans: (readonly [number, number])[] = []
+        const finished = db.prepare("SELECT at, data_json FROM host_events WHERE kind = 'heavy-wait' AND at >= ?").all(since)
+        for (const row of finished) {
+            const data = JSON.parse(String(row.data_json)) as { readonly waitedMs?: unknown; readonly task?: unknown; readonly cwd?: unknown }
+            if (!owns(typeof data.task === "string" ? data.task : null, typeof data.cwd === "string" ? data.cwd : "")) continue
+            const end = Math.min(Date.parse(String(row.at)), at)
+            spans.push([Math.max(end - Number(data.waitedMs ?? 0), from), end])
+        }
+        for (const row of db.prepare("SELECT at, cwd, task FROM heavy_slots WHERE state = 'waiting'").all()) {
+            if (owns(typeof row.task === "string" ? row.task : null, String(row.cwd))) spans.push([Math.max(Date.parse(String(row.at)), from), at])
+        }
+        let total = 0
+        let reached = from
+        for (const [start, end] of spans.filter(([start, end]) => end > start).sort((left, right) => left[0] - right[0])) {
+            if (end <= reached) continue
+            total += end - Math.max(start, reached)
+            reached = end
+        }
+        return total
     })
 
 /**
@@ -582,7 +647,8 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     const base: RunOptions = { ...timed, env, priority: constants.priority.PRIORITY_BELOW_NORMAL }
     if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, pressure: false, rules })
     const owner = heavyOwner()
-    const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd }
+    const task = process.env[TASK_ENV] ?? null
+    const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd, task }
     const started = Date.now()
     const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
     let announced = false
@@ -598,7 +664,7 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
         }
         if (Number.isFinite(holdMs) && Date.now() - started >= holdMs) {
             release(slot.id)
-            withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs: Date.now() - started, pid: process.pid, owner, held: true })))
+            withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs: Date.now() - started, pid: process.pid, owner, task, held: true })))
             throw new Refusal(HOST_HELD, `${label} waited ${String(Math.round((Date.now() - started) / 60_000))} min in the heavy queue, past its verify's bound of ${String(Math.round(holdMs / 60_000))} min (${load.reason}): the host held it, nothing judged the work; no verdict, no try spent, it is verified again once the host has room`, EXIT_HOST_HELD)
         }
         if (!announced) {
@@ -609,7 +675,7 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     }
     if (announced) {
         const waitedMs = Date.now() - started
-        withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner })))
+        withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner, task })))
     }
     try {
         return await work({ options: { ...base, onSpawn: (pid) => { setChild(slot.id, pid) } }, pressure: load.pressure, rules })
@@ -658,7 +724,7 @@ export const heldWhy = (rules: HeavyRules, load: Pick<HostLoad, "freeMb" | "cpuP
 /** The kinds of the heavy commands running now, from the governor's store (live rows only after `heavySlots`). */
 export const runningHeavyKinds = (): string[] =>
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         return runningKinds(db)
     })
 
@@ -681,7 +747,7 @@ export const seatHoldWhy = (hold: Pick<SeatHold, "freeMb" | "floorMb" | "since">
  */
 export const recordSeatHold = (repo: string, task: string, room: { readonly freeMb: number; readonly floorMb: number }): void => {
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         const at = now()
         db.prepare("INSERT INTO seat_holds (task, repo, since, last_at, free_mb, floor_mb) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (task) DO UPDATE SET last_at = excluded.last_at, free_mb = excluded.free_mb, floor_mb = excluded.floor_mb").run(task, repo.replaceAll("\\", "/"), at, at, room.freeMb, room.floorMb)
     })
@@ -690,7 +756,7 @@ export const recordSeatHold = (repo: string, task: string, room: { readonly free
 /** Ends the seat holds of `task`, or every one when no task is named (the floor admits again: nothing it held is held any more). */
 export const clearSeatHolds = (task?: string): void => {
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         if (task === undefined) db.prepare("DELETE FROM seat_holds").run()
         else db.prepare("DELETE FROM seat_holds WHERE task = ?").run(task)
     })
@@ -699,7 +765,7 @@ export const clearSeatHolds = (task?: string): void => {
 /** Every open seat hold, oldest first. */
 export const seatHolds = (): SeatHold[] =>
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         return db
             .prepare("SELECT * FROM seat_holds ORDER BY since, task")
             .all()
@@ -732,7 +798,7 @@ export const starvation = (rules: HeavyRules = loadHeavyRules()): Starvation => 
  */
 export const starvationTicketed = (): string | null =>
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         const row = db.prepare("SELECT ticket FROM host_starvation WHERE id = 1").get()
         return row === undefined || row.ticket === null ? null : String(row.ticket)
     })
@@ -740,7 +806,7 @@ export const starvationTicketed = (): string | null =>
 /** Records the ticket the starvation episode that began at `since` opened. */
 export const markStarvationTicketed = (since: string, ticket: string): void => {
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         db.prepare("INSERT INTO host_starvation (id, since, ticket) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET since = excluded.since, ticket = excluded.ticket").run(since, ticket)
     })
 }
@@ -748,7 +814,7 @@ export const markStarvationTicketed = (since: string, ticket: string): void => {
 /** Ends the starvation episode: nothing is held any more. */
 export const endStarvation = (): void => {
     withGovernor((db) => {
-        db.exec(TABLES)
+        ensureTables(db)
         db.prepare("DELETE FROM host_starvation").run()
     })
 }

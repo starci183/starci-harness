@@ -50,10 +50,16 @@ export type BudgetStep =
  * The budget ladder of one running attempt, from when it started, its contract's budget.minutes and when it was asked to wrap
  * up: inside the budget nothing happens; past it the worker is asked once for its result; graceMinutes after that ask with no
  * result filed, the attempt is fenced. A result filed in the grace ends the attempt's run, so the ladder never sees it again.
+ * Both clocks leave out the time the host held the task's work in the heavy queue: `queued(since)` is how long, in ms since then,
+ * a heavy command of the task waited (heavy.ts `taskQueuedMs`), so a task is neither asked nor fenced for its host's queue.
  */
-export const budgetStep = (startedAt: string, budgetMinutes: number, nudgedAt: string | null, rules: BudgetLadder, at: number = Date.now()): BudgetStep => {
-    if (!olderThan(startedAt, budgetMinutes, at)) return { kind: "within" }
+export const budgetStep = (startedAt: string, budgetMinutes: number, nudgedAt: string | null, rules: BudgetLadder, queued: (since: string) => number, at: number = Date.now()): BudgetStep => {
+    const held = (since: string): string => {
+        const ms = queued(since)
+        return ms < 60_000 ? "" : `, not counting ${String(Math.round(ms / 60_000))} min its heavy commands waited in the host's queue`
+    }
+    if (!olderThan(startedAt, budgetMinutes, at - queued(startedAt))) return { kind: "within" }
     if (nudgedAt === null) return { kind: "nudge" }
-    if (!olderThan(nudgedAt, rules.graceMinutes, at)) return { kind: "grace", detail: `asked to wrap up at ${nudgedAt}; fenced after ${String(rules.graceMinutes)} min` }
-    return { kind: "fence", detail: `past its budget of ${String(budgetMinutes)} min and ${String(rules.graceMinutes)} min of grace since it was asked at ${nudgedAt}` }
+    if (!olderThan(nudgedAt, rules.graceMinutes, at - queued(nudgedAt))) return { kind: "grace", detail: `asked to wrap up at ${nudgedAt}; fenced after ${String(rules.graceMinutes)} min${held(nudgedAt)}` }
+    return { kind: "fence", detail: `past its budget of ${String(budgetMinutes)} min and ${String(rules.graceMinutes)} min of grace since it was asked at ${nudgedAt}${held(startedAt)}` }
 }

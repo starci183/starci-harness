@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { headline } from "../shared/exec.js"
 import { captureGit, git } from "../shared/git.js"
-import { normaliseRepoPath, parseContract } from "./contract.js"
+import { HARNESS_PREFIX, normaliseRepoPath, parseContract } from "./contract.js"
 import type { Contract } from "./contract.js"
 import { LIVE_STATES, RELAY_PREFIX, REVERT_PREFIX, isGeneratedKey, isRelayKey, nodeHashOf, sha } from "./graph.js"
 import type { Classified, NodeState, NodeView, PlanNode, PlanTask, PriorWork, RevertOf } from "./graph.js"
@@ -204,20 +204,27 @@ export const relayKeyOf = (need: string, round: number): string => {
     return plain.length <= KEY_MAX ? plain : `${RELAY_PREFIX}${sha(`${need}#${String(round)}`).slice(0, 16)}`
 }
 
-/** What a relay node carries: the need and its round, the commits in landing order, the files git could not merge and the files they touch. */
+/**
+ * What a relay node carries: the need and its round, the commits in landing order, the files git could not merge, the files they
+ * touch, and the need's evidence (what each waiter reported it for: its rules and note).
+ */
 export interface RelayPlan {
     readonly need: string
     readonly round: number
     readonly commits: readonly string[]
     readonly conflicts: readonly string[]
     readonly files: readonly string[]
+    readonly evidence: readonly string[]
 }
 
 /**
  * The relay node of a shared need whose resolving commits do not apply to a waiting branch (core/needs/tend.ts): built on
  * `template` (the resolver's node, so its label, inputs and checks prove the capability on this branch too), it may write the
  * conflicting files and every file the commits touch, and its work is to apply exactly those commits, resolving each conflict
- * so that both sides' intent holds. Its verify is its label's own, judging it as the transport of work the source already settled:
+ * so that both sides' intent holds. That work is mechanical, so its context is lean: its op's base, the conflicting files, the
+ * repository files the template reads (the Work records the commits implement) and the need's evidence (in its details), never
+ * the template's pinned base or its harness topic and canon files, which served the source's design and could carry the node past
+ * its op's context budget, which it is held to like any task. Its verify is its label's own, judging it as the transport of work the source already settled:
  * its first waiter composes it (graph.ts composerOf), consuming what the commits export, so the composition rules on the relayed
  * files defer to that waiter (core/check/composition.ts); a context file the source owns is read at the last relayed commit
  * (relayHeadOf); and a finding the relayed files already held there is the source's baseline (core/check/relay-baseline.ts). The
@@ -227,10 +234,18 @@ export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: 
     const listed = plan.commits.map((commit) => commit.slice(0, 12)).join(" ")
     const allowPaths = [...new Set([...plan.conflicts, ...plan.files])].sort((left, right) => left.localeCompare(right))
     const how = "`git cherry-pick --no-commit <commit>` for each in that order, then `git reset -q`"
+    const records = (template.contract.context.extend ?? []).filter((entry) => !entry.startsWith(HARNESS_PREFIX))
+    const extend = [...new Set([...records, ...plan.conflicts.map(normaliseRepoPath)])]
     const contract = parseContract({
         ...template.contract,
-        // The template's own composer is a key of the source's graph; a relay node's is its first waiter (composerOf).
-        context: { ...template.contract.context, allowPaths, composedBy: undefined },
+        // Never the template's context: its composer is a key of the source's graph (a relay node's is its first waiter, composerOf).
+        context: {
+            revision: template.contract.context.revision,
+            allowPaths,
+            ...(template.contract.context.cwd === undefined ? {} : { cwd: template.contract.context.cwd }),
+            ...(template.contract.context.setup === undefined ? {} : { setup: template.contract.context.setup }),
+            ...(extend.length === 0 ? {} : { extend }),
+        },
         input: {
             ...template.contract.input,
             summary: `relay shared need ${plan.need}: apply commits ${listed} onto this branch, resolving conflicts preserving both sides' intent`,
@@ -238,7 +253,8 @@ export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: 
                 `Shared need ${plan.need} (round ${String(plan.round)}) was resolved on another workflow's branch by ${plan.commits.join(", ")} (oldest first), ` +
                 `and they do not apply cleanly here: ${plan.conflicts.join(", ") || "git named no file"} conflict. Apply exactly those commits and nothing else: ` +
                 `${how} (the harness applied them up to the first that conflicts, leaving git's markers in its files). Resolve every conflict so that both ` +
-                "sides' intent holds: keep what this branch built and what the need's commits add, never dropping either side to make it apply.",
+                "sides' intent holds: keep what this branch built and what the need's commits add, never dropping either side to make it apply." +
+                (plan.evidence.length === 0 ? "" : ` The need's evidence, what its waiters reported it for: ${plan.evidence.join("; ")}.`),
             extend: { ...(template.contract.input.extend ?? {}), [RELAY_COMMITS]: plan.commits.join(" ") },
         },
     })

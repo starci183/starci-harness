@@ -1,0 +1,101 @@
+schema: starci/scenario@1
+id: budget-queue-wait-not-counted
+group: budget
+title: "an Op whose heavy commands waited in the host's queue past its budget is neither asked nor fenced for that wait, and settles normally"
+inject: >-
+  the Op's attempt started two hours ago against a 60 minute budget; for 50 minutes of it a verify of the task waited in the
+  heavy queue (a heavy-wait host event tagged with the task, its baseline checkout's folder), and a heavy command in the Op's own
+  checkout has been waiting in the queue for the last 40 minutes (a waiting slot row of a store made before slots carried
+  their task); the supervisor ticks twice
+expect: >-
+  the budget clock leaves the 90 minutes of queue out (30 minutes of its own), so no tick asks it to wrap up or fences it; once
+  its command was admitted and its worker files done, the next step verifies and settles the task done at its first try
+pass:
+  - no budget-nudged event and no over-budget outcome after two ticks
+  - the task stays running, then is done at try 1 once its result is filed
+  - the waiting row of a store made before slots carried their task counts by its folder and is kept
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: queued
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: queued
+  - seat: kernel:queued
+    starci: [kernel, next, queued, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: task
+  - name: a process that stays alive for the waiting slot row
+    serve: { stub: busy, as: waiter }
+  - name: the attempt has run two hours against its 60 minute budget
+    sql:
+      db: ledger
+      exec: UPDATE attempts SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-120 minutes')
+  - name: a verify of the task waited 50 minutes in the queue, and a command in its checkout waits since 40 minutes ago
+    sql:
+      db: machine
+      exec: >-
+        INSERT INTO host_events (at, kind, subject, data_json) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'),
+        'heavy-wait', 'tsc tsconfig.json', json_object('kind', 'tsc', 'cwd', '${run}/checkouts/starci-verify-baseline', 'waitedMs',
+        3000000, 'pid', 1, 'owner', 1, 'task', '${task}'));
+        CREATE TABLE IF NOT EXISTS heavy_slots (id TEXT PRIMARY KEY, pid INTEGER NOT NULL, child_pid INTEGER, kind TEXT NOT NULL,
+        label TEXT NOT NULL, cwd TEXT NOT NULL, state TEXT NOT NULL, at TEXT NOT NULL);
+        INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES ('${waiter.token}-bench', ${waiter.token}, 'eslint',
+        'eslint docs', '${project}/worktrees/queued.ops/${task}/docs', 'waiting', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-40 minutes'))
+  - name: the tick leaves the queue's time out of the budget clock
+    starci: [supervisor, tick]
+  - starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'budget-nudged' AND subject = '${task}'"
+        equals: [0]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT t.status || ':' || COALESCE(a.outcome, 'none') FROM tasks t JOIN attempts a ON a.task_id = t.id WHERE t.id = '${task}'"
+        equals: ["running:none"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) || ':' || COALESCE(MAX(task), 'none') FROM heavy_slots WHERE id = '${waiter.token}-bench'"
+        equals: ["1:none"]
+  - name: the command was admitted and ran; its worker files done
+    sql:
+      db: machine
+      exec: DELETE FROM heavy_slots WHERE id = '${waiter.token}-bench'
+  - worker:
+      task: ${task}
+      files:
+        docs/a.md: "# a\n"
+  - seat: kernel:queued
+    starci: [kernel, next, queued, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || try_no FROM tasks WHERE id = '${task}'"
+        equals: ["done:1"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind IN ('budget-nudged', 'task-over-budget') AND subject = '${task}'"
+        equals: [0]

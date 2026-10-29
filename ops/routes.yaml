@@ -17,8 +17,9 @@
 # to: same (the task's own label: retry or edit the task itself, or add a scoped task of its label for the change it
 #   needs outside its allowPaths), build (the build label of the lane of a record the task is over), or {label: <label>}.
 #   A change does it by adding a task of that label, or by retrying or editing a task the graph holds with it.
-# limit: how many applied commands may take this route for one task key; the router moves a retry of a timed-out, stalled
-# or never-started attempt to another pool (ops/README.md "The router", step 4).
+# limit: how many applied commands may take this route for one task key; a decision on a harness-held attempt (a verify of it
+# the host held, HOST_HELD: cli/src/harness/tasks.ts hostHeldAttempt) spends none of it and keeps its route past it. The router
+# moves a retry of a timed-out, stalled or never-started attempt to another pool (ops/README.md "The router", step 4).
 schema: starci/routes@1
 routes:
   - {id: audit-drift-repairs-code, on: {decision: red, from: audit, cause: findings}, to: {label: code}, limit: 5}

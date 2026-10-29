@@ -501,8 +501,8 @@ const relayTemplate = (place: Place, need: NeedRow, waiters: readonly WaiterRow[
 /**
  * Routes a relay that does not apply as work of the waiting workflow, never as a dead end: one relay node (`relay.<need>.r<round>`,
  * reconcile.ts relayTask) is added to its graph, owned by its Kernel like any task, allowed the conflicting files and every file
- * the commits touch, whose work is to apply exactly those commits preserving both sides' intent; every waiter of the need in
- * this workflow depends on it, and the first composes what the commits export (graph.ts composerOf). The add is recorded as a
+ * the commits touch, whose work is to apply exactly those commits preserving both sides' intent, with the waiters' reports as the
+ * need's evidence; every waiter of the need in this workflow depends on it, and the first composes what the commits export (graph.ts composerOf). The add is recorded as a
  * `need-relay-conflict` event naming the node and the files, once per need round and workflow. No waiter spends a try on it: they
  * stay parked, their work kept, until the node lands.
  */
@@ -513,7 +513,10 @@ const routeRelay = async (place: Place, need: NeedRow, done: Relay, mine: readon
     const target = withLedger(place.root, (db) => workflowWorktreeOf(db, place.workflow)) ?? place.root
     const files: string[] = []
     for (const commit of commits) files.push(...(await filesOf(target, commit)))
-    const task = relayTask(template, { need: need.key, round: need.round, commits, conflicts: done.files, files })
+    const evidence = mine
+        .map((waiter) => `${waiter.taskKey ?? waiter.task}${waiter.rules.length === 0 ? "" : ` (rules ${waiter.rules.join(", ")})`}${waiter.note === null ? "" : `: ${waiter.note}`}`)
+        .sort((left, right) => left.localeCompare(right))
+    const task = relayTask(template, { need: need.key, round: need.round, commits, conflicts: done.files, files, evidence: [...new Set(evidence)] })
     const waiters = [...new Set(mine.map((waiter) => waiter.taskKey).filter((key): key is string => key !== null))]
     const cmdId = `need-relay-${createHash("sha256").update(`${need.project}\0${need.key}\0${String(need.round)}\0${place.workflow}`).digest("hex").slice(0, 16)}`
     try {
