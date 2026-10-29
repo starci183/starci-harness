@@ -1,13 +1,11 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
-import { withHeavySlot } from "../../harness/heavy.js"
 import { captureGit, currentBranch, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { assertMayPushBranch } from "../pkg/edit.js"
 import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
+import { assertCliPins } from "../check/cli-pins.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 
@@ -66,65 +64,17 @@ const publishRow = async (row: PlanRow, packages: readonly WorkspacePackage[], r
 
 /**
  * The package held for the second phase: the CLI. Every CI job installs it from its lockfile, which can name only versions npm
- * already serves, so its commit requires a sibling at a published version and CI moves it after the siblings are published.
+ * already serves, so it is published after the siblings, as its commit stands: its @starci requirements and lockfile at their
+ * stack pins (assertCliPins), each a version npm serves (judgeRequires).
  */
 const HELD_DIR = "cli"
 
-const SIBLING_FIELDS = ["dependencies", "peerDependencies"] as const
-
-/** A manifest whose sibling requirements name the siblings' folder versions, with the moves made (empty when none differ). */
-const movedManifest = (text: string, packages: readonly WorkspacePackage[]): { readonly text: string; readonly moves: readonly WorkspacePackage[] } => {
-    const manifest = JSON.parse(text) as Record<string, unknown>
-    const moves: WorkspacePackage[] = []
-    for (const field of SIBLING_FIELDS) {
-        const specs = manifest[field]
-        if (typeof specs !== "object" || specs === null) continue
-        const record = specs as Record<string, unknown>
-        for (const [name, spec] of Object.entries(record)) {
-            const sibling = packages.find((pkg) => pkg.name === name)
-            if (sibling === undefined || spec === sibling.version) continue
-            record[name] = sibling.version
-            if (!moves.includes(sibling)) moves.push(sibling)
-        }
-    }
-    return { text: `${JSON.stringify(manifest, null, 2)}\n`, moves }
-}
-
-/**
- * Publishes the held CLI: its sibling requirements move to the siblings' folder versions, each read on npm first, its lockfile is
- * refreshed against them, and it is published; its package.json and lockfile are put back afterwards.
- */
-const publishHeld = async (row: PlanRow, packages: readonly WorkspacePackage[], root: string): Promise<string | undefined> => {
-    const pkg = packages.find((candidate) => candidate.name === row.package)
-    if (pkg === undefined) return undefined
-    const manifestPath = join(pkg.dir, "package.json")
-    const lockPath = join(pkg.dir, "package-lock.json")
-    const manifest = readFileSync(manifestPath, "utf8")
-    const lock = existsSync(lockPath) ? readFileSync(lockPath, "utf8") : undefined
-    const moved = movedManifest(manifest, packages)
-    try {
-        if (moved.moves.length > 0) {
-            for (const sibling of moved.moves) {
-                if (!(await settledOnRegistry(sibling, root, Date.now() + REGISTRY_SETTLE_MS))) {
-                    throw new Refusal("RELEASE_DEPENDENCY_UNPUBLISHED", `${row.package}@${row.version} moves to ${sibling.name}@${sibling.version}, which npm does not serve`)
-                }
-            }
-            writeFileSync(manifestPath, moved.text)
-            const refresh = await withHeavySlot("install", "npm install --package-lock-only", pkg.dir, {}, (held) => captureNpm(["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], pkg.dir, held.options))
-            if (refresh.exitCode !== 0) throw new Refusal("PUBLISH_LOCK_REFRESH_FAILED", `the lockfile of ${row.package} could not move to ${moved.moves.map((sibling) => `${sibling.name}@${sibling.version}`).join(", ")}: ${(refresh.stderr || refresh.stdout).split("\n").slice(-3).join(" ")}`)
-        }
-        return await publishRow(row, packages, root)
-    } finally {
-        writeFileSync(manifestPath, manifest)
-        if (lock !== undefined) writeFileSync(lockPath, lock)
-    }
-}
-
-/** Publishes the due rows one after the other (npm publishes stay ordered); stops at the first refusal. */
+/** Publishes the due rows one after the other (npm publishes stay ordered), the held CLI only at its pins; stops at the first refusal. */
 const publishDue = async (due: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string, published: string[]): Promise<void> => {
     await due.reduce(async (previous, row) => {
         await previous
-        const done = row.dir === HELD_DIR ? await publishHeld(row, packages, root) : await publishRow(row, packages, root)
+        if (row.dir === HELD_DIR) assertCliPins(root)
+        const done = await publishRow(row, packages, root)
         if (done !== undefined) published.push(done)
     }, Promise.resolve())
 }
@@ -154,8 +104,8 @@ const versionOnRegistry = async (name: string, version: string, cwd: string): Pr
  * Refuses a plan that would publish a package against a sibling it does not ship with. A package due in this run requires every
  * sibling it names (dependencies and peerDependencies) at that sibling's version at this commit, on npm or due in the same run,
  * never private; the dependency and the version move in one commit. The held CLI instead requires each sibling at a version npm
- * serves (its lockfile installs from npm), the folder's or an older one, and is published after the siblings with its requirement
- * moved to the folder's version (publishHeld).
+ * already serves (its lockfile installs from npm); that it is the sibling's stack pin is judged in the CLI's own phase
+ * (assertCliPins), so a CLI waiting on a sibling never holds the packages that sibling is published with.
  */
 const judgeRequires = async (rows: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string): Promise<void> => {
     for (const row of rows.filter((candidate) => candidate.action === "publish")) {
@@ -166,7 +116,7 @@ const judgeRequires = async (rows: readonly PlanRow[], packages: readonly Worksp
             if (sibling.action === "private") throw new Refusal("RELEASE_DEPENDENCY_UNPUBLISHED", `${row.package}@${row.version} requires ${name}@${spec}, which is private: it is neither on npm nor published by this run`)
             if (row.dir === HELD_DIR) {
                 if (!(await versionOnRegistry(name, spec, root))) {
-                    throw new Refusal("RELEASE_DEPENDENCY_SKEW", `${row.package}@${row.version} requires ${name}@${spec}, which npm does not serve; the CLI installs its siblings from npm, so it requires a published ${name} and CI moves it to ${sibling.version} when it publishes`)
+                    throw new Refusal("RELEASE_DEPENDENCY_SKEW", `${row.package}@${row.version} requires ${name}@${spec}, which npm does not serve; the CLI installs its siblings from npm, so it moves to ${sibling.version} once npm serves it`)
                 }
                 continue
             }
@@ -261,6 +211,8 @@ export const releasePublishVerb = defineVerb({
         if (flags.base !== undefined) await judgeBumped(everyRow, root, flags.base)
         const rows = everyRow.filter((row) => packages.some((pkg) => pkg.name === row.package))
         const due = publicationOrder(rows.filter((row) => row.action === "publish"), all)
+        // The CLI's own phase (CI's publish-cli plans it alone): a due CLI is judged at its stack pins before it is planned.
+        if (packages.every((pkg) => pkg.relativeDir === HELD_DIR) && due.length > 0) assertCliPins(root)
         const published: string[] = []
         if (flags.publish && due.length > 0) {
             const dirty = await trackedChanges(root)
@@ -271,7 +223,6 @@ export const releasePublishVerb = defineVerb({
                 throw new Refusal("PUBLISH_NOT_ON_REMOTE_MAIN", "push the commit first (starci release push); a published version must come from a commit on main")
             }
             await requireCiGreen(context, root, "release.publish", head)
-            // Every package, not the --package selection: the held CLI moves its requirements to its siblings' folder versions.
             await publishDue(due, all, root, published)
         }
         const data: PublishData = { mode: flags.publish ? "publish" : "plan", rows, published }

@@ -153,7 +153,7 @@ change affects. Its `plan` job measures a pull request from its base and a push 
 succeeded (else its parent), and `starci release affected` names the packages to test, each with the siblings it needs
 (the ones it requires, its `file:` dependencies, the ones its files read by relative path), and whether the harness and app
 jobs run. Then, in parallel: one `gates` job per light gate over the whole tree (anatomy, anchor and search-index checks of
-`contexts/`, the loosening, secret and shape gates), one `package` job per affected package (install and build its siblings
+`contexts/`, the loosening, secret and shape gates, and `check pins`: the CLI's `@starci` packages at their pins), one `package` job per affected package (install and build its siblings
 and itself, its declarations name `.js`, its specs), the `harness` job when `cli/`, `contexts/`, `ops/`, `policy/`, `bench/`
 or a package the CLI requires changed (the CLI's typecheck, lint and build, sops and age pinned and checksum-verified for the secret scenarios, and the bench), the `app` job when the desktop
 app is affected, and the Sonar new-code gate; a change under `.github/`, a manual run or an unreadable base checks

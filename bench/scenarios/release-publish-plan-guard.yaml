@@ -1,21 +1,24 @@
 schema: starci/scenario@1
 id: release-publish-plan-guard
 group: release
-title: the release plan refuses a package published against a sibling it does not ship with, and holds the CLI on a published sibling
+title: the release plan refuses a package published against a sibling it does not ship with, and holds the CLI on a published sibling at its pin
 inject: >-
   a scratch repository whose packages/lint requires its packages/hfs sibling at another version than the sibling's own, then at
   the sibling's version while the sibling is private; then a cli/ that requires an older @starci/hfs npm serves while the
-  folder holds an unpublished one, and then that unpublished folder version
+  folder holds an unpublished one, planned with every package and then alone against a stack pin naming the unpublished
+  version and one naming the version it requires, and then that unpublished folder version
 expect: >-
   `release publish` (the plan CI's publish job judges before anything reaches npm) refuses RELEASE_DEPENDENCY_SKEW while the
   due lint requires another hfs than the folder holds, RELEASE_DEPENDENCY_UNPUBLISHED while that hfs is private, and passes
-  once lint requires the hfs due in the same run; the held CLI passes on an older hfs npm serves (CI moves it after the
-  packages are published) and is refused RELEASE_DEPENDENCY_SKEW on an hfs npm does not serve (reads the public registry)
+  once lint requires the hfs due in the same run; the held CLI on an older hfs npm serves never holds the packages' plan,
+  is refused CLI_PIN_SKEW in its own phase while contexts/stack/pins.yaml pins another hfs and passes at its pin, and is
+  refused RELEASE_DEPENDENCY_SKEW on an hfs npm does not serve (reads the public registry)
 pass:
   - the skewed requirement is refused RELEASE_DEPENDENCY_SKEW
   - a private sibling is refused RELEASE_DEPENDENCY_UNPUBLISHED
   - lint requiring the hfs due in the same run plans both, exit 0
   - the CLI on an older published hfs while a newer one is due plans both, exit 0
+  - the CLI planned alone off its stack pin is refused CLI_PIN_SKEW, and at its pin plans, exit 0
   - the CLI on an hfs npm does not serve is refused RELEASE_DEPENDENCY_SKEW
   - no human intervention beyond the injected fault
 automation: automated
@@ -61,8 +64,36 @@ steps:
       path: cli/package.json
       content: |
         {"name":"starci-bench-guard-cli","version":"1.0.0","dependencies":{"@starci/hfs":"4.9.5"}}
-  - name: the held CLI stays on an older hfs npm serves while a newer one is due
+  - name: the held CLI on an older hfs npm serves never holds the packages' plan
     starci: [release, publish]
+    expect:
+      exit: 0
+      ok: true
+      contains: "\"package\": \"starci-bench-guard-cli\""
+  - write:
+      path: cli/package-lock.json
+      content: |
+        {"name":"starci-bench-guard-cli","lockfileVersion":3,"packages":{"":{"dependencies":{"@starci/hfs":"4.9.5"}},"node_modules/@starci/hfs":{"version":"4.9.5"}}}
+  - write:
+      path: contexts/stack/pins.yaml
+      content: |
+        schema: starci/stack-pins@1
+        pins:
+          '@starci/hfs': {version: 4.9.999-bench, group: starci, side: both, install: registry}
+  - name: the CLI's own phase refuses it off its stack pin
+    starci: [release, publish, --package, cli]
+    expect:
+      exit: 1
+      code: CLI_PIN_SKEW
+      contains: "@starci/hfs: cli/package.json dependencies has 4.9.5, contexts/stack/pins.yaml pins 4.9.999-bench"
+  - write:
+      path: contexts/stack/pins.yaml
+      content: |
+        schema: starci/stack-pins@1
+        pins:
+          '@starci/hfs': {version: 4.9.5, group: starci, side: both, install: registry}
+  - name: the CLI's own phase plans it at its pin
+    starci: [release, publish, --package, cli]
     expect:
       exit: 0
       ok: true

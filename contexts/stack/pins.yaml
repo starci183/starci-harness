@@ -1,7 +1,7 @@
 # The exact version of every shared dependency: one version per dependency for every app and package, except the command line
 # itself, whose version in an app is the starci-harness that judges and scaffolds it (@starci/hfs takes it from the CLI). Raising a
-# version changes this file first (with the package release when it is a @starci package), then each app moves in
-# its own upgrade. `side` is the side whose code uses it; `install: registry` marks a published @starci package that
+# version changes this file first (with the package release when it is a @starci package), then the CLI's requirement of it
+# (CONTRIBUTING.md CONTRIB-20, `starci check pins`), and each app moves in its own upgrade. `side` is the side whose code uses it; `install: registry` marks a published @starci package that
 # apps pin and CI installs from npm, never by path: a local folder is taken only on one machine by `starci deps source --local`,
 # outside every committed file. `why` is one line; history lives in the package CHANGELOG.
 schema: starci/stack-pins@1

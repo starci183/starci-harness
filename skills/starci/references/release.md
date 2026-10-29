@@ -59,8 +59,8 @@ starci release publish
 On the harness, CI publishes on every push to main (CONTRIBUTING.md CONTRIB-20); run it by hand only as Debug's fallback
 when CI cannot. Without `--publish` it only prints the plan: every package version not yet on npm (`--package <p>`
 narrows it). The plan is judged before anything is published: a due package requiring a sibling at another version than
-the sibling's folder holds is `RELEASE_DEPENDENCY_SKEW` (the CLI, published last with its requirements moved to the
-folders' versions, may require an older one npm serves), one requiring a private sibling `RELEASE_DEPENDENCY_UNPUBLISHED`,
+the sibling's folder holds is `RELEASE_DEPENDENCY_SKEW` (the CLI, published last as committed, requires one npm serves, and each `@starci` package at
+its `contexts/stack/pins.yaml` pin, else `CLI_PIN_SKEW`), one requiring a private sibling `RELEASE_DEPENDENCY_UNPUBLISHED`,
 and with `--base <commit>` (CI passes its plan's base) a package changed since then whose version is already on npm is
 `RELEASE_VERSION_NOT_BUMPED`: raise its version and CHANGELOG. `--publish` publishes a dependency before its dependent.
 npm is public and permanent: show the plan and get the owner's OK for exactly those packages and versions every time,
