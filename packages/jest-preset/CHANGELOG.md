@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.1 - 2026-10-29
+
+- Fixed: `fakeTransaction` records a `query` that calls a migration's database function the way `callDbFunction` writes it (`SELECT * FROM "<schema>"."<fn>"(...)`, any schema but `pg_catalog`) as a write, so a rolled-back inbox claim or event send appears in `rolledBackWrites`; any other `SELECT` stays a read.
+- Added: `fakeInbox().claimRow(source, eventId, tx, { entity, row })`, the double of the lite `EntityInbox` claim: it refuses a missing or blank id (`DATABASE_WEBHOOK_DELIVERY_ID_REQUIRED`), claims the trimmed id and, for the winning claim only, records the row `row(id)` builds in `receipts` (with the manager and `inTransaction`) and answers `receipt-<n>`; a repeat, or a pair marked by `receiptExists(source, eventId)`, answers undefined. `failNext("claimRow", error)` scripts a failure.
+
 ## 2.5.0 - 2026-10-29
 
 - Added: `fakeQueryBuilder(answers)` and `queueQueryBuilders(em, answers)` (also at `@starci/jest-preset/query-builder`), the double of `createQueryBuilder(Entity, "alias")` beside `mockEntityManager`: every chained call is recorded and returned to the chain, the terminals resolve the spec's answers. Lite persistence reads through entities and that builder (ruling `lite-persistence-typeorm-entities`), so the double moves here from the apps.

@@ -36,7 +36,7 @@ class SpecReceiptEntity {
     deliveryId!: string
 }
 
-const RECEIPT = { entity: SpecReceiptEntity, row: { provider: "spec", deliveryId: "delivery-1" } }
+const RECEIPT = { entity: SpecReceiptEntity, row: (deliveryId: string) => ({ provider: "spec", deliveryId }) }
 
 const build = async () => {
     const module = await Test.createTestingModule({
@@ -104,16 +104,16 @@ describe("PostgresInbox delivery rollback and validation", () => {
 })
 
 describe("PostgresInbox entity receipts", () => {
-    it("claims, then inserts the receipt row in the caller's transaction and answers its id", async () => {
+    it("claims the trimmed delivery id, then inserts the receipt row it keys in the caller's transaction and answers its id", async () => {
         const subject = await build()
         const manager = mockEntityManager({ query: [CLAIM_EVENT, [{ event_id: "delivery-1" }]] })
         const [insert] = queueQueryBuilders(manager, [{ execute: { raw: [{ id: "receipt-1" }] } }])
 
-        await expect(subject.claimRow("webhook:spec", "delivery-1", manager, RECEIPT)).resolves.toBe("receipt-1")
+        await expect(subject.claimRow("webhook:spec", "  delivery-1  ", manager, RECEIPT)).resolves.toBe("receipt-1")
 
         expect(manager.query).toHaveBeenCalledWith(CLAIM_EVENT, ["webhook:spec", "delivery-1"])
         expect(manager.createQueryBuilder).toHaveBeenCalledWith(SpecReceiptEntity, "receipt")
-        expect(insert?.callsOf("values")).toEqual([[RECEIPT.row]])
+        expect(insert?.callsOf("values")).toEqual([[{ provider: "spec", deliveryId: "delivery-1" }]])
         expect(insert?.callsOf("orIgnore")).toEqual([[]])
         expect(insert?.callsOf("returning")).toEqual([["id"]])
     })

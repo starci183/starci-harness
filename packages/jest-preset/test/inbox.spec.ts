@@ -249,3 +249,48 @@ test('fakeInbox scripts client failures once and clear removes outcomes, entries
   assert.deepEqual([inbox.claims, inbox.claimed, inbox.clientEntries, inbox.sweeps], [[], [], [], []]);
   assert.deepEqual(await inbox.runClient(request(), {}, async () => ({ orderId: 'after-clear' })), { orderId: 'after-clear' });
 });
+
+class ReceiptEntity { id = ''; deliveryId = '' }
+const receipt = { entity: ReceiptEntity, row: (deliveryId: string) => ({ deliveryId }) };
+
+test('fakeInbox claimRow inserts the receipt row only for the winning claim, in the caller transaction', async () => {
+  const inbox = fakeInbox();
+  const tx = fakeTransaction(mockEntityManager());
+  const managers: EntityManager[] = [];
+  const answers = await tx.em.transaction(async (manager) => {
+    managers.push(manager);
+    return [
+      await inbox.claimRow('webhook.spec', '  delivery-1  ', manager, receipt),
+      await inbox.claimRow('webhook.spec', 'delivery-1', manager, receipt),
+    ];
+  });
+  assert.deepEqual(answers, ['receipt-1', undefined]);
+  assert.deepEqual(inbox.claims, [{ source: 'webhook.spec', eventId: 'delivery-1' }, { source: 'webhook.spec', eventId: 'delivery-1' }]);
+  assert.deepEqual(inbox.receipts, [{
+    id: 'receipt-1', source: 'webhook.spec', eventId: 'delivery-1', entity: ReceiptEntity, row: { deliveryId: 'delivery-1' },
+    tx: managers[0], inTransaction: true,
+  }]);
+  assert.equal(await inbox.claimRow('webhook.spec', 'delivery-2', tx.em, receipt), 'receipt-2');
+  assert.equal(inbox.receipts[1]?.inTransaction, false);
+});
+
+test('fakeInbox claimRow answers undefined for a redelivery or an existing receipt and refuses a missing delivery id', async () => {
+  const inbox = fakeInbox();
+  inbox.seen('webhook.spec', 'delivery-1');
+  assert.equal(await inbox.claimRow('webhook.spec', 'delivery-1', {}, receipt), undefined);
+  inbox.receiptExists('webhook.spec', 'delivery-2');
+  assert.equal(await inbox.claimRow('webhook.spec', 'delivery-2', {}, receipt), undefined);
+  assert.deepEqual(inbox.claimed.map((entry) => entry.eventId).sort(), ['delivery-1', 'delivery-2']);
+  assert.deepEqual(inbox.receipts, []);
+  for (const eventId of [undefined, '   ']) {
+    await assert.rejects(inbox.claimRow('webhook.spec', eventId, {}, receipt), codeIs('DATABASE_WEBHOOK_DELIVERY_ID_REQUIRED'));
+  }
+  assert.equal(inbox.claims.length, 2);
+  const failure = new Error('database down');
+  inbox.failNext('claimRow', failure);
+  await assert.rejects(inbox.claimRow('webhook.spec', 'delivery-3', {}, receipt), (error: unknown) => error === failure);
+  assert.equal(await inbox.claimRow('webhook.spec', 'delivery-3', {}, receipt), 'receipt-1');
+  inbox.clear();
+  assert.deepEqual([inbox.receipts, inbox.claims], [[], []]);
+  assert.equal(await inbox.claimRow('webhook.spec', 'delivery-2', {}, receipt), 'receipt-1');
+});

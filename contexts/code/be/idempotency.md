@@ -32,10 +32,10 @@ Enforced by: `inbox-dedupe-required` (R80), `infra-needs-injector` (R85).
 with `ON CONFLICT DO NOTHING RETURNING`: `true` for a new pair, `false` for a duplicate, without aborting the caller's
 transaction. A provider receipt is written in the claim's transaction: in full by the same claim through its `insert`; in
 lite, where the receipt is an entity row, by `claimRow(source, eventId, manager, { entity, row })` of the `EntityInbox`
-port, injected with `InjectEntityInbox()` (the same `INBOX` provider), which inserts the row only for the winning claim
-and answers its id. No capability creates another dedupe table. Open gap: `inbox-dedupe-required` (R80) and
-`webhook-inbox-key` (R263) recognise only `claim` as a delivery method's first await, so they refuse a method that
-claims with `claimRow`.
+port, injected with `InjectEntityInbox()` (the same `INBOX` provider): `row(deliveryId)` builds the row from the id the
+claim trimmed, and only the winning claim inserts it and answers its id, undefined on a repeat. A delivery method awaits
+it first and returns when it answers undefined, as the lite provider intake `add webhook` writes does (its
+`<Provider>InboxEntity` maps the provider inbox table). No capability creates another dedupe table.
 
 Why: one owner keeps "claims at most once" in one place, and the conflict-safe insert holds under concurrent delivery.
 

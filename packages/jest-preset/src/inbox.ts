@@ -8,7 +8,22 @@ export interface InboxEntry {
   readonly eventId: string
 }
 /** The inbox operations `failNext` can make reject. */
-export type InboxOperation = "claim" | "release" | "runClient" | "sweepClients"
+export type InboxOperation = "claim" | "claimRow" | "release" | "runClient" | "sweepClients"
+
+/** The receipt `claimRow` inserts for a winning claim: its entity, and its row built from the normalized delivery id. */
+export interface InboxReceiptRequest<Row> {
+  readonly entity: unknown
+  readonly row: (eventId: string) => Row
+}
+
+/** One receipt row `claimRow` inserted, with the id it answered and the manager passed by its caller. */
+export interface InboxReceipt extends InboxEntry {
+  readonly id: string
+  readonly entity: unknown
+  readonly row: unknown
+  readonly tx: unknown
+  readonly inTransaction: boolean
+}
 
 /** The client operation namespace, exact key and JSON request whose outcome the inbox stores. */
 export interface InboxClientOperation {
@@ -35,6 +50,13 @@ export interface InboxSweep {
 export interface FakeInbox {
   /** True for the first claim of a (source, eventId) pair, false for every later one until it is released. */
   claim(source: string, eventId: string): Promise<boolean>
+  /**
+   * The `EntityInbox` claim: refuses a missing or blank delivery id, claims the trimmed id, and only for the winning claim
+   * inserts the receipt row and answers its id (`receipt-<n>`); a repeat, or a receipt that already exists, answers undefined.
+   */
+  claimRow<Row>(source: string, eventId: string | undefined, tx: unknown, receipt: InboxReceiptRequest<Row>): Promise<string | undefined>
+  /** Marks the receipt row of a pair as already inserted: its next winning `claimRow` inserts nothing and answers undefined. */
+  receiptExists(source: string, eventId: string): void
   /** Gives an ordinary delivery claim back while preserving client receipts and their outcomes. */
   release(source: string, eventId: string): Promise<void>
   /** Runs once for the client namespace and key, replays the JSON outcome and refuses a different body. */
@@ -55,6 +77,8 @@ export interface FakeInbox {
   readonly clientEntries: ReadonlyArray<InboxClientEntry>
   /** Every sweep attempt with its cutoff and transaction, including a scripted failure. */
   readonly sweeps: ReadonlyArray<InboxSweep>
+  /** Every receipt row `claimRow` inserted, in order, with its id, row and manager. */
+  readonly receipts: ReadonlyArray<InboxReceipt>
   clear(): void
 }
 
@@ -93,7 +117,9 @@ interface ClientClaim {
  * real unique key; `release(source, eventId)` gives an ordinary delivery claim back while preserving client outcomes.
  * `claims` is every claim in order, `claimed` the pairs that are held now, `released` every release, `seen(source, eventId)` marks a
  * pair as already delivered (a redelivery), and `failNext(operation, error)` makes the next call of that operation reject once, so
- * a spec drives the failure path.
+ * a spec drives the failure path. `claimRow(source, eventId, tx, { entity, row })` is the `EntityInbox` claim: it refuses a
+ * missing or blank id with `DATABASE_WEBHOOK_DELIVERY_ID_REQUIRED`, claims the trimmed id and, for the winning claim only, records
+ * the receipt row `row(id)` builds in `receipts` and answers its id; `receiptExists(source, eventId)` makes that insert a no-op.
  */
 /** The inbox double. Pass a driven clock to test retention; omitted clocks stamp client claims at the Unix epoch. */
 export function fakeInbox(clock?: { now(): Date }): FakeInbox {
@@ -103,6 +129,8 @@ export function fakeInbox(clock?: { now(): Date }): FakeInbox {
   const clients = new Map<string, ClientClaim>()
   const clientEntries: InboxClientEntry[] = []
   const sweeps: InboxSweep[] = []
+  const receipts: InboxReceipt[] = []
+  const existingReceipts = new Set<string>()
   const failures = new Map<InboxOperation, Error>()
   const keyOf = (source: string, eventId: string): string => `${source}\u0000${eventId}`
   const failIfScripted = (operation: InboxOperation): void => {
@@ -162,6 +190,24 @@ export function fakeInbox(clock?: { now(): Date }): FakeInbox {
       held.add(key)
       return true
     },
+    async claimRow(source, eventId, tx, receipt) {
+      failIfScripted("claimRow")
+      const normalized = eventId?.trim()
+      if (!normalized) throw inboxError("DATABASE_WEBHOOK_DELIVERY_ID_REQUIRED")
+      claims.push({ source, eventId: normalized })
+      const key = keyOf(source, normalized)
+      if (held.has(key)) return undefined
+      held.add(key)
+      if (existingReceipts.has(key)) return undefined
+      existingReceipts.add(key)
+      const id = `receipt-${String(receipts.length + 1)}`
+      receipts.push({ id, source, eventId: normalized, entity: receipt.entity, row: receipt.row(normalized), tx, inTransaction: isTransactionManager(tx) })
+      return id
+    },
+    /** Marks the receipt row of a pair as already inserted, so its next winning `claimRow` answers undefined. */
+    receiptExists(source, eventId) {
+      existingReceipts.add(keyOf(source, eventId))
+    },
     async release(source, eventId) {
       failIfScripted("release")
       released.push({ source, eventId })
@@ -213,7 +259,13 @@ export function fakeInbox(clock?: { now(): Date }): FakeInbox {
     get sweeps() {
       return [...sweeps]
     },
+    /** Every receipt row `claimRow` inserted, in order. */
+    get receipts() {
+      return [...receipts]
+    },
     clear() {
+      receipts.length = 0
+      existingReceipts.clear()
       held.clear()
       claims.length = 0
       released.length = 0

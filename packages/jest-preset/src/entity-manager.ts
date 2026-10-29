@@ -15,7 +15,9 @@
  *
  * `fakeTransaction(em)` makes `em.transaction(work)` (and `em.transaction(isolation, work)`) run `work` with a scoped view
  * of the same double and record how it ended (`commit` when `work` resolves, `rollback` when it throws and the error is
- * rethrown) and which writes it made, so a spec can assert that a rolled-back transaction committed nothing.
+ * rethrown) and which writes it made, so a spec can assert that a rolled-back transaction committed nothing. A write is a
+ * write method (`save`, `insert`, ...), a `query` of a DML statement, or a `query` calling a migration's database function
+ * the way `callDbFunction` does (`SELECT * FROM "public"."inbox_claim_event"($1, $2)`); any other `SELECT` is a read.
  */
 import type { DeleteResult, EntityManager, InsertResult, UpdateResult } from "typeorm"
 import { createMock, jestFn } from "./mock.ts"
@@ -121,6 +123,15 @@ const WRITE_METHODS = new Set([
   "increment", "decrement", "clear",
 ])
 const WRITE_SQL = /^\s*(insert|update|delete|upsert|merge|truncate)\b/i
+/**
+ * A call of a migration's database function in the shape `callDbFunction` writes (`SELECT * FROM "<schema>"."<fn>"(...)`), in
+ * any schema but the pg_catalog built-ins: such a function holds a write TypeORM cannot express (an inbox claim, an event send),
+ * so the transaction that makes the call records it as a write.
+ */
+const DB_FUNCTION_SQL = /^\s*select\s+\*\s+from\s+"(?!pg_catalog")[^"]+"\."[^"]+"\s*\(/i
+
+/** Whether a `query` writes: a DML statement, or a call of a migration's database function. */
+const isWriteSql = (sql: unknown): boolean => WRITE_SQL.test(String(sql)) || DB_FUNCTION_SQL.test(String(sql))
 
 const describeTarget = (target: unknown): string =>
   typeof target === "function" ? target.name || "<anonymous class>" : JSON.stringify(String(target)).slice(0, 80)
@@ -207,7 +218,7 @@ export function createEntityManagerKit(makeFn: (implementation?: (...args: never
           if (typeof property !== "string" || typeof value !== "function") return value
           if (!WRITE_METHODS.has(property) && property !== "query") return value
           return (...args: unknown[]): unknown => {
-            if (property !== "query" || WRITE_SQL.test(String(args[0]))) run.writes.push({ method: property, args })
+            if (property !== "query" || isWriteSql(args[0])) run.writes.push({ method: property, args })
             return value(...args)
           }
         },
