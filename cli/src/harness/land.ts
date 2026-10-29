@@ -3,7 +3,7 @@ import { dirname, join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { headline } from "../shared/exec.js"
-import { captureGit, currentBranch, git, isAncestor, refExists, resolveSha, samePath } from "../shared/git.js"
+import { captureGit, currentBranch, git, refExists, resolveSha, samePath } from "../shared/git.js"
 import { readRecord } from "../core/deps/packages.js"
 import { enablePatterns, patternsOfPaths } from "./hfs-patterns.js"
 import { linkCachedInstall, lockfileFolders, modulesFolders, reinstallStale, unlinkCheckoutLinks, unlinkInstallLinks } from "./install-cache.js"
@@ -11,6 +11,7 @@ import type { Reinstalled } from "./install-cache.js"
 import { openLedger, projectDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
 import { thisVerifier, withSettleLock } from "./settle.js"
+import { settleTask } from "./prior.js"
 import { getTask, isTerminal, lastEvent, listTasks, recordEvent, recordTaskWorktree } from "./tasks.js"
 import type { TaskRow } from "./tasks.js"
 import { orcaBinarySync, worktreeRemove, worktreeState } from "./orca/client.js"
@@ -414,12 +415,15 @@ export interface WorktreeRemoval {
 }
 
 /**
- * Removes a settled task's Op worktree by code (removeTracked: reaped, its install links unlinked as links, then Orca and git;
- * `now` tries a folder left busy whatever its backoff), then deletes its branch once its tip is on the target branch (it landed,
- * or carries nothing); a branch holding commits that never landed is kept and named. A folder the host holds is left busy for
- * `worktree gc` to retry and never fails the caller. Undefined when the task has no Op worktree or it was removed already.
+ * Removes an ended task's Op worktree and its branch, only after its attempt is settled (harness/prior.ts `settleTask`: MERGE,
+ * DISCARD, or a KEEP or REPAIR whose one patch is saved first); while its Kernel has not decided, nothing is removed. The folder
+ * goes by code (removeTracked: reaped, its install links unlinked as links, then Orca and git; `now` tries a folder left busy
+ * whatever its backoff), then its branch is deleted whatever it carries, since what it held landed, was kept or was discarded.
+ * A folder the host holds is left busy for `worktree gc` to retry and never fails the caller. Undefined when the task has no Op
+ * worktree, it was removed already, or its settle awaits its Kernel.
  */
 export const removeOpWorktree = async (root: string, taskId: string, now = false): Promise<WorktreeRemoval | undefined> => {
+    if ((await settleTask(root, taskId)) === null) return undefined
     const { made, gone, orca } = withLedger(root, (db) => {
         const task = getTask(db, taskId)
         const runner = task.workflowId === null ? undefined : getWorkflow(db, task.workflowId).header.runner
@@ -435,21 +439,21 @@ export const removeOpWorktree = async (root: string, taskId: string, now = false
     }
     await captureGit(["worktree", "prune"], made.target)
     const branch = await settleBranch(made)
-    const detail = branch === "kept" ? `branch ${made.branch} kept: it carries commits that never landed on ${made.targetBranch}` : `branch ${made.branch} ${branch}`
+    const detail = `branch ${made.branch} ${branch}`
     withLedger(root, (db) => { recordEvent(db, REMOVED_EVENT, taskId, { path: made.path, branch, detail, removal: removal.detail }) })
     return { task: taskId, path: made.path, removed: true, branch, detail }
 }
 
 /**
- * Deletes a removed Op worktree's branch once its tip is on the target branch. Another settler (a detached verify job, a step's
- * sweep) may delete it at any point between the looks and the delete: a git failure while the branch is gone means it is gone.
+ * Deletes a removed Op worktree's branch: its attempt is settled, so what it carried landed (MERGE), was saved as the key's one
+ * patch (KEEP, REPAIR) or was discarded (DISCARD), and no branch that never landed outlives its decision. Another settler (a
+ * detached verify job, a step's sweep) may delete it at any point between the look and the delete: a git failure while the
+ * branch is gone means it is gone.
  */
-const settleBranch = async (made: OpWorktree): Promise<WorktreeRemoval["branch"]> => {
+const settleBranch = async (made: OpWorktree): Promise<"deleted" | "gone"> => {
     const ref = `refs/heads/${made.branch}`
     try {
         if (!(await refExists(made.target, ref))) return "gone"
-        const tip = await resolveSha(made.target, ref)
-        if (tip !== made.fork && !(await isAncestor(made.target, tip, `refs/heads/${made.targetBranch}`))) return "kept"
         await git(made.target, ["branch", "-D", made.branch])
         return "deleted"
     } catch (error: unknown) {
@@ -459,9 +463,10 @@ const settleBranch = async (made: OpWorktree): Promise<WorktreeRemoval["branch"]
 }
 
 /**
- * Removes the Op worktree of every task of the repository's ledger that settled (done, failed or cancelled, holding no intent)
- * and still has one: the safety net behind the removal each verify and cancel does, for a task a fence, a stall or a crash
- * ended. A task awaiting the owner keeps its worktree, where its work was left for the owner.
+ * Removes the Op worktree of every task of the repository's ledger that ended (done, failed or cancelled, holding no intent)
+ * and still has one, once its attempt is settled (`removeOpWorktree`): the safety net behind the removal each verify and cancel
+ * does, for a task a fence, a stall, a crash or its Kernel's later decision ended. A task awaiting the owner keeps its
+ * worktree, where its work was left for the owner.
  */
 export const sweepOpWorktrees = async (root: string, workflowId?: string): Promise<WorktreeRemoval[]> => {
     const due = withLedger(root, (db) =>

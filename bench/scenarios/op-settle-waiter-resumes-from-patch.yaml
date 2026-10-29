@@ -1,0 +1,148 @@
+schema: starci/scenario@1
+id: op-settle-waiter-resumes-from-patch
+group: needs
+title: "a waiter parked on a shared need keeps one patch of its half-done work, and its released attempt resumes from it"
+inject: "the Op of task a writes half of its doc, then files blocked with --needs: the shared http client it calls is missing"
+expect: >-
+  the step parks the waiter (cancelled) and settles it keep by the harness, cause waiter: one patch stored, its preserve folder,
+  worktree and branch gone; the Kernel adds the resolver, which lands; the release retries the waiter, whose new attempt applies
+  the patch at launch, lands green, and its merge deletes the patch
+pass:
+  - the parked waiter is settled keep (cause waiter) with one stored patch, its worktree and branch removed
+  - the released attempt applies the patch and its checkout holds the half-written doc
+  - after it merges, the store holds no patch
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: wai
+        goal: bench workflow waiter
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a, which calls the shared http client
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/a.md]}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, wai]
+    save:
+      a: data.nodes.0.task.id
+  - name: the Op writes half its doc, then finds the shared client missing
+    worker:
+      task: ${a}
+      status: blocked
+      files:
+        docs/a.md: "# a, half written\n"
+      output:
+        summary: platform/http has no HttpClient
+        files: [docs/a.md]
+        rulesApplied: []
+        needs:
+          - {key: "capability:platform/http", rule: BE-INFRA-2, note: HttpClient is missing}
+  - name: the step parks it
+    starci: [workflow, step, wai]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT status FROM tasks WHERE id = '${a}') || ':' || json_extract(data_json, '$.decision') || ':' || json_extract(data_json, '$.cause') || ':' || (SELECT COUNT(*) FROM prior_work WHERE task_id = '${a}') FROM events WHERE kind = 'op-settled' AND subject = '${a}'"
+        equals: ["cancelled:keep:waiter:1"]
+  - assert:
+      exists:
+        path: ${project}/worktrees/wai.ops/${a}
+        present: false
+  - assert:
+      exists:
+        path: ${project}/preserved/${a}
+        present: false
+  - git: [rev-parse, --verify, --quiet, "refs/heads/starci/wai.ops/${a}"]
+    expect:
+      exit: 1
+  - starci: [kernel, next, wai, --wait, "0"]
+    expect:
+      contains: '"kind": "shared-need"'
+    save:
+      decision: data.decision.id
+      graph: data.digest.graphVersion
+  - file:
+      path: add-http.yaml
+      content: |
+        schema: starci/workflow-change@1
+        workflow: wai
+        reason: build the shared http client once
+        changes:
+          - op: add
+            task:
+              id: http
+              label: docs
+              summary: write the shared http client
+              allowPaths: [platform/http/client.md]
+              checks:
+                - preset: files-exist
+                  args: {files: [platform/http/client.md]}
+  - file:
+      path: cmd.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-wai-need-http
+        kind: workflow-change
+        workflow: wai
+        basedOn: {graph: ${graph}}
+        answers: [${decision}]
+        change: add-http.yaml
+        need: {key: "capability:platform.http", resolver: http}
+  - starci: [kernel, submit, "${run}/cmd.yaml"]
+  - starci: [workflow, step, wai]
+    expect: {}
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http'"
+      as: http
+  - worker:
+      task: ${http}
+      files:
+        platform/http/client.md: "# HttpClient\n"
+  - name: the step that lands the resolver releases the waiter
+    starci: [workflow, step, wai]
+    expect: {}
+  - name: the next step begins the released attempt
+    starci: [workflow, step, wai]
+    expect: {}
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'a' AND id <> '${a}'"
+      as: a2
+  - name: the released attempt starts from the waiter's patch
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.outcome') FROM events WHERE kind = 'prior-applied' AND subject = '${a2}' ORDER BY id LIMIT 1"
+        equals: [applied]
+  - assert:
+      exists:
+        path: ${project}/worktrees/wai.ops/${a2}/docs/a.md
+        present: true
+        contains: half written
+  - worker:
+      task: ${a2}
+      files:
+        docs/a.md: "# a\n\nIt calls the shared HttpClient.\n"
+  - starci: [workflow, step, wai]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${a2}'"
+        equals: [done]
+  - name: once the released attempt merged, the kept patch is deleted
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM prior_work) || ':' || (SELECT COUNT(*) FROM events WHERE kind = 'prior-dropped' AND subject = '${a}')"
+        equals: ["0:1"]

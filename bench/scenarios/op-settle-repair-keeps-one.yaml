@@ -1,0 +1,156 @@
+schema: starci/scenario@1
+id: op-settle-repair-keeps-one
+group: verify
+title: "the Kernel REPAIRs a red attempt: one patch is kept, the one repair attempt starts from it, and it is deleted once that attempt merges"
+inject: the Op files done with a stray draft but never writes the file its check asks for
+expect: >-
+  the Kernel answers the red decision with a retry naming settle repair: the attempt is settled repair, its one patch stored and its
+  preserve folder, worktree and branch removed; the retry applies the patch at launch, lands green, and its merge deletes the patch
+pass:
+  - nothing is removed before the Kernel decides
+  - the repair settle stores exactly one patch and removes the preserve folder, the worktree and the branch
+  - the repair attempt applies the patch and its checkout holds the draft
+  - after it merges, the store holds no patch (one prior-dropped event)
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: rep
+        goal: bench workflow repair
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/a/final.md]}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, rep]
+    save:
+      a: data.nodes.0.task.id
+  - worker:
+      task: ${a}
+      files:
+        docs/a/draft.md: "draft\n"
+  - starci: [workflow, step, rep]
+    expect: {exit: 1}
+  - name: nothing is removed before the decision
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT status FROM tasks WHERE id = '${a}') || ':' || (SELECT COUNT(*) FROM events WHERE kind IN ('op-settled', 'op-worktree-removed') AND subject = '${a}')"
+        equals: ["failed:0"]
+  - assert:
+      exists:
+        path: ${project}/worktrees/rep.ops/${a}
+        present: true
+  - starci: [kernel, next, rep, --wait, "0"]
+    expect:
+      contains: '"kind": "red"'
+    save:
+      red: data.decision.id
+      graph: data.digest.graphVersion
+  - file:
+      path: retry.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: rep
+        changes:
+          - {op: retry, id: a}
+  - name: a settle on a command that answers no decision on a task is refused
+    file:
+      path: cmd-bad.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-rep-bad-1
+        kind: workflow-change
+        workflow: rep
+        basedOn: {graph: ${graph}}
+        change: retry.yaml
+        settle: repair
+  - starci: [kernel, submit, "${run}/cmd-bad.yaml"]
+    expect:
+      exit: 1
+      code: COMMAND_INVALID
+  - file:
+      path: cmd.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-rep-repair-1
+        kind: workflow-change
+        workflow: rep
+        basedOn: {graph: ${graph}}
+        answers: [${red}]
+        route: rejected-retries
+        change: retry.yaml
+        settle: repair
+  - starci: [kernel, submit, "${run}/cmd.yaml"]
+  - starci: [workflow, step, rep]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.decision') || ':' || json_extract(data_json, '$.by') || ':' || (json_extract(data_json, '$.kept') IS NOT NULL) FROM events WHERE kind = 'op-settled' AND subject = '${a}'"
+        equals: ["repair:kernel:1"]
+  - name: one patch is kept, and no preserve folder, worktree or branch beside it
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) || ':' || MIN(task_id) FROM prior_work"
+        equals: ["1:${a}"]
+  - assert:
+      exists:
+        path: ${project}/preserved/${a}
+        present: false
+  - assert:
+      exists:
+        path: ${project}/worktrees/rep.ops/${a}
+        present: false
+  - git: [rev-parse, --verify, --quiet, "refs/heads/starci/rep.ops/${a}"]
+    expect:
+      exit: 1
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'a' AND id <> '${a}'"
+      as: a2
+  - name: the one repair attempt starts from the kept patch
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.outcome') FROM events WHERE kind = 'prior-applied' AND subject = '${a2}' ORDER BY id LIMIT 1"
+        equals: [applied]
+  - assert:
+      exists:
+        path: ${project}/worktrees/rep.ops/${a2}/docs/a/draft.md
+        present: true
+  - name: the repair finishes the work
+    worker:
+      task: ${a2}
+      files:
+        docs/a/final.md: "# a\n"
+  - starci: [workflow, step, rep]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${a2}'"
+        equals: [done]
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a2}"
+        count: 1
+  - name: once the repair attempt settled (merged), the kept patch is deleted
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM prior_work) || ':' || (SELECT COUNT(*) FROM events WHERE kind = 'prior-dropped' AND subject = '${a}')"
+        equals: ["0:1"]
+  - assert:
+      exists:
+        path: ${project}/worktrees/rep.ops/${a2}
+        present: false

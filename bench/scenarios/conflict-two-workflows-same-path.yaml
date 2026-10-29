@@ -6,11 +6,11 @@ inject: workflows w1 and w2 each have a task writing docs/a.md, each different, 
 expect: >-
   both workflows queue their task at once, each in an Op worktree of its own; w1 lands on the checkout's branch under its
   land lock; w2's work no longer rebases onto that head, so w2's task returns conflict with its work preserved, nothing is
-  resolved by the harness, and both Op worktrees are removed
+  resolved by the harness; the landed Op's worktree is removed, the conflicted one waits for its Kernel's settle
 pass:
   - w2 has a live task while w1's task is live
   - w1 done; w2 failed with attempt outcome conflict and its work preserved
-  - both Op worktrees removed
+  - the landed Op's worktree removed; the conflicted one kept until its Kernel settles it
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -126,4 +126,4 @@ steps:
         db: ledger
         query: SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed'
         equals:
-          - 2
+          - 1

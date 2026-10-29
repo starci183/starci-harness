@@ -1,0 +1,77 @@
+schema: starci/scenario@1
+id: op-settle-green-merges
+group: verify
+title: "a green verify is the attempt's MERGE: it lands, then its Op worktree and branch go and no prior work is left"
+inject: nothing; the Op writes the file its check asks for
+expect: >-
+  the step verifies the task green and lands it; the attempt is settled merge by the harness, its Op worktree is removed and its
+  branch deleted, and the prior-work store holds nothing for its key
+pass:
+  - the task is done with its commit on the workflow's branch
+  - one op-settled event, decision merge
+  - the Op worktree is removed and its branch is gone
+  - no prior_work row and no preserve folder of the task
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: mrg
+        goal: bench workflow merge
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/a/final.md]}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, mrg]
+    save:
+      a: data.nodes.0.task.id
+  - worker:
+      task: ${a}
+      files:
+        docs/a/final.md: "# a\n"
+  - starci: [workflow, step, mrg]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${a}'"
+        equals: [done]
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.decision') || ':' || json_extract(data_json, '$.by') FROM events WHERE kind = 'op-settled' AND subject = '${a}'"
+        equals: ["merge:harness"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed' AND subject = '${a}'"
+        equals: [1]
+  - assert:
+      exists:
+        path: ${project}/worktrees/mrg.ops/${a}
+        present: false
+  - name: its branch is gone
+    git: [rev-parse, --verify, --quiet, "refs/heads/starci/mrg.ops/${a}"]
+    expect:
+      exit: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM prior_work"
+        equals: [0]
+  - assert:
+      exists:
+        path: ${project}/preserved/${a}
+        present: false

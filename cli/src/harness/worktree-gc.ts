@@ -6,6 +6,7 @@ import { pruneVerifyWorktrees } from "./clean-verify.js"
 import { opWorktreeOf, removeOpWorktree, removeTracked } from "./land.js"
 import { now, openExistingLedger, openMachine, projectDir } from "./ledger.js"
 import { readMachine } from "./machine.js"
+import { pruneUnkeptPrior, settlePending } from "./prior.js"
 import { inOrder } from "./sequential.js"
 import { getTask, isTerminal, lastEvent, listTasks, recordEvent } from "./tasks.js"
 import { busyDue, busyRecordOf, openBusyRecords } from "./worktree-busy.js"
@@ -61,8 +62,12 @@ const judge = (root: string, entry: Listed, stateWorktrees: string): Omit<GcEntr
         if (first.endsWith(".ops") && second !== undefined) {
             const task = db === undefined ? undefined : (() => { try { return getTask(db, second) } catch { return undefined } })()
             if (task === undefined) return { path: entry.path, kind: "orphan", owner: null, due: true, reason: `no task ${second} in the ledger` }
-            const settled = isTerminal(task.status) && task.status !== "awaiting_owner" && task.intent === null
-            return { path: entry.path, kind: "op", owner: task.id, due: settled, reason: settled ? `task ${task.id} is ${task.status}` : `task ${task.id} is ${task.status}${task.intent === null ? "" : " (" + task.intent + ")"}` }
+            const ended = isTerminal(task.status) && task.status !== "awaiting_owner" && task.intent === null
+            // An ended attempt whose Kernel has not decided keeps its worktree: nothing is removed before its settle (harness/prior.ts).
+            const pending = ended && db !== undefined && settlePending(db, task)
+            const settled = ended && !pending
+            const reason = settled ? `task ${task.id} is ${task.status}` : pending ? `task ${task.id} is ${task.status}; its Kernel has not settled it (merge, discard or repair)` : `task ${task.id} is ${task.status}${task.intent === null ? "" : " (" + task.intent + ")"}`
+            return { path: entry.path, kind: "op", owner: task.id, due: settled, reason }
         }
         if (db?.prepare("SELECT 1 FROM workflows WHERE id = ?").get(first) !== undefined) {
             const workflow = getWorkflow(db, first)
@@ -132,7 +137,7 @@ const unlistedOpLeftovers = (root: string, listed: readonly Listed[]): GcEntry[]
     if (db === undefined) return []
     try {
         return listTasks(db)
-            .filter((task) => isTerminal(task.status) && task.status !== "awaiting_owner" && task.intent === null && lastEvent(db, "op-worktree-removed", task.id) === undefined)
+            .filter((task) => isTerminal(task.status) && task.status !== "awaiting_owner" && task.intent === null && !settlePending(db, task) && lastEvent(db, "op-worktree-removed", task.id) === undefined)
             .flatMap((task): GcEntry[] => {
                 const made = opWorktreeOf(db, task.id)
                 if (made === undefined || !existsSync(made.path) || listed.some((entry) => samePath(entry.path, made.path))) return []
@@ -281,6 +286,8 @@ export const worktreeGc = async (root: string, dryRun: boolean, now = false): Pr
     const verify = dryRun ? [] : (await pruneVerifyWorktrees(root)).map((path): GcEntry => ({ path, kind: "orphan", owner: null, due: true, reason: "a clean-verify checkout whose verifier is gone", preserved: null, removed: true, detail: "pruned" }))
     const retired = await retiredLeftovers(dryRun)
     if (dryRun) return [...judged.map(reported), ...retired]
+    // The prior-work store keeps one patch per key, of a kept kind only; each other row is dropped with a prior-dropped event.
+    pruneUnkeptPrior(root)
     const done = await inOrder(judged, async (collected): Promise<GcEntry> => {
         const { repo, remnant } = collected
         const entry = reported(collected)

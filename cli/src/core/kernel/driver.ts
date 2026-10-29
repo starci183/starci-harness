@@ -23,7 +23,8 @@ import type { SeatRow } from "../../harness/seats.js"
 import { supervisorTerminals, wakeSupervisor } from "../../harness/supervisor.js"
 import { projectOf } from "../../harness/work.js"
 import { getTask, lastEvent, latestAttempt, recordEvent, resultOf, setStatus } from "../../harness/tasks.js"
-import { LAND_CONFLICT, LAND_CONFLICT_EVENT, opWorktreeOf } from "../../harness/land.js"
+import { LAND_CONFLICT, LAND_CONFLICT_EVENT, opWorktreeOf, removeOpWorktree } from "../../harness/land.js"
+import { recordRuledSettle } from "../../harness/prior.js"
 import { DISPATCHING, getWorkflow, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
 import type { Snapshot } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
@@ -38,7 +39,7 @@ import { carriesNeeds } from "../../harness/needs.js"
 import { harnessCause } from "../../harness/revive.js"
 import { CHECK_PREMISE, premiseChecks } from "../../harness/check-premise.js"
 import { assertKernelNeed, recordKernelNeed } from "../needs/answer.js"
-import { recordHolds } from "../../harness/holds.js"
+import { decidedTasks, isHold, recordHolds } from "../../harness/holds.js"
 import { refuseHeavyWaits, taskQueuedMs } from "../../harness/heavy.js"
 import type { StepAction } from "../workflow/engine.js"
 
@@ -672,11 +673,35 @@ const answersSharedNeed = (root: string, command: Command): boolean =>
     withLedger(root, (db) => (command.answers ?? []).some((id) => db.prepare("SELECT 1 FROM decisions WHERE id = ? AND scope = 'kernel' AND kind = 'shared-need'").get(id) !== undefined))
 
 /**
- * Applies a Kernel command, the Kernel's own or a Supervisor's ruling in its place (`rulingAsKernel`): a workflow-change through
- * `workflow amend` (and the shared need it answers), or with no change the holds it makes (`recordHolds`); an escalation or
- * handoff as a Supervisor decision with a wake-up mail.
+ * Records the settle a Kernel command decides for each task whose decision it answers (`settle`, discard when it names none;
+ * harness/prior.ts), before anything it applies can start the next attempt of that task's key; a hold settles nothing.
+ */
+const recordSettles = (root: string, command: Command): string[] => {
+    if (command.kind !== "workflow-change" && command.kind !== "escalation") return []
+    if (isHold(command)) return []
+    return withLedger(root, (db) =>
+        decidedTasks(db, command.answers ?? []).map((one) => {
+            recordRuledSettle(db, one.task, command.settle ?? "discard", command.cmdId)
+            return one.task
+        }),
+    )
+}
+
+/**
+ * Applies a Kernel command, the Kernel's own or a Supervisor's ruling in its place (`rulingAsKernel`): first the settle it decides
+ * for the tasks whose decisions it answers (`recordSettles`), then a workflow-change through `workflow amend` (and the shared need
+ * it answers), or with no change the holds it makes (`recordHolds`); an escalation or handoff as a Supervisor decision with a
+ * wake-up mail. Each settled task's Op worktree and branch go once it is applied.
  */
 export const applyKernel = async (context: VerbContext, root: string, command: Command, dir: string): Promise<unknown> => {
+    const settled = recordSettles(root, command)
+    const outcome = await applyCommand(context, root, command, dir)
+    await inOrder(settled, (task) => removeOpWorktree(root, task).catch(() => undefined))
+    return outcome
+}
+
+/** applyKernel's command, once its settles are recorded. */
+const applyCommand = async (context: VerbContext, root: string, command: Command, dir: string): Promise<unknown> => {
     // An escalation answering a shared-need decision hands the need to the Supervisor: the need's router raises its decision there.
     if (command.kind === "escalation" && answersSharedNeed(root, command)) return { needEscalated: true, answered: command.answers ?? [] }
     if (command.kind === "workflow-change") {
