@@ -106,7 +106,7 @@ pins:
   '@graphql-tools/utils': {version: 12.1.0, group: framework, side: be, why: "an override of every app root, never a dependency: closes an advisory under @nestjs/graphql 13; drop with the 14 upgrade"}
   multer: {version: 2.5.0, group: framework, side: be, why: "an override of every app root, never a dependency: closes an advisory under @nestjs/platform-express; drop when Nest depends on a fixed release"}
   '@nestjs/apollo': {version: 13.4.5, group: framework, side: be, why: "the Apollo driver, on the @nestjs/graphql line"}
-  '@aws-sdk/client-s3': {version: 3.1150.0, group: framework, side: be, why: "the S3 client of integrations/storage, the one ObjectStorage adapter of both editions (MinIO in lite)"}
+  '@aws-sdk/client-s3': {version: 3.1150.0, group: framework, side: be, why: "the S3 client of integrations/object-storage, the one ObjectStorage adapter of both editions (MinIO in lite)"}
   '@aws-sdk/s3-request-presigner': {version: 3.1150.0, group: framework, side: be, why: "signs presigned PUT and GET; the client-s3 release"}
   '@apollo/server': {version: 5.5.1, group: framework, side: be, why: "the server behind @nestjs/apollo"}
   '@nestjs/websockets': {version: 11.2.5, group: framework, side: be, why: "the socket.io gateway; the @nestjs/core line"}
@@ -117,11 +117,10 @@ pins:
   ioredis: {version: 5.11.1, group: framework, side: be, why: "the one Redis client; held on 5.x because typeorm's peer range excludes 6"}
   '@types/pg': {version: 8.23.1, group: framework, side: be, why: "types of the pg driver"}
   '@as-integrations/express5': {version: 1.1.2, group: framework, side: be, why: "the runtime peer of peers.nestjs-apollo-express5"}
-  '@nestjs/passport': {version: 12.0.0, group: framework, side: be, why: "PassportStrategy of integrations/passport; declares @nestjs/common ^11 || ^12"}
+  '@nestjs/passport': {version: 11.0.5, group: framework, side: be, why: "PassportStrategy of integrations/passport; 11.0.5 is CommonJS on the Nest 11 line (12.0.0 is ESM-only and breaks Nest 11 jest under the jest-preset CommonJS transform)"}
   passport: {version: 0.7.0, group: framework, side: be, why: "the strategy runtime under @nestjs/passport"}
   passport-google-oauth20: {version: 2.0.0, group: framework, side: be, why: "Google OAuth 2.0 with state and PKCE in integrations/passport"}
   passport-local: {version: 1.0.0, group: framework, side: be, why: "email and password sign-in in integrations/passport"}
-  '@nestjs/jwt': {version: 12.0.3, group: framework, side: be, why: "the Nest JWT module, owned by integrations/passport"}
   bcryptjs: {version: 3.0.3, group: framework, side: be, why: "bcrypt without a native build; verifies the hashes auth.users carries over"}
   '@types/passport-google-oauth20': {version: 2.0.17, group: framework, side: be}
   '@types/passport-local': {version: 1.0.38, group: framework, side: be}

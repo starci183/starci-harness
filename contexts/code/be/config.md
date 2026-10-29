@@ -14,7 +14,11 @@ declared `<KEY>_FILE` supplies the exact contents of `<KEY>` (an unreadable path
 (`string`, `int`, `bool`, `url`, `enum`, `duration`, `secret`, `optional`, `has`, `anyDeclared`) name the missing or
 malformed key in a `ConfigError`. Each app has `<app>.env.ts` exporting the `<App>Options` interface (members typed
 `ReturnType<typeof parse<C>Config>`) and `read<App>Env(env: EnvSource): <App>Options`, which only calls parsers; only
-`main.ts` calls it. Nothing else reads the environment: no config service, dotenv or module-level read.
+`main.ts` calls it. Nothing else reads the environment: no config service, dotenv or module-level read. The env file keeps
+its budget of 150 lines in both editions (`<app>.env.ts` in the `budget` of the app slots): as integrations grow (lite's
+passport and object storage among them), each integration's keys live in its own grouped options file and parser
+(`<integration>.options.ts`, `parse<Integration>Config` in `<integration>.config.ts`), and the env file only names one
+member per integration; it never inlines their keys.
 
 Why: one reader makes every dependency on the environment visible and fails boot on the first bad key, by name.
 

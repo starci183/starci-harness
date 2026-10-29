@@ -17,7 +17,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 - PostgreSQL is self-hosted: the `db` service (image supabase/postgres, for pg_cron, pg_net, pgmq, vector, unaccent and
   pgcrypto) in Docker in dev and on the Swarm stack in production, migrated by `starci app db migrate --url-env <NAME>`.
   Identity is the app's own Passport integration and storage the S3-compatible MinIO of the host. Owners: slots
-  `app.db*`, `be.integrations.passport`, `be.integrations.storage` in [hfs/slots.yaml](../hfs/slots.yaml); ruling
+  `app.db*`, `be.integrations.passport`, `be.integrations.object-storage` in [hfs/slots.yaml](../hfs/slots.yaml); ruling
   `lite-self-hosted-postgres-passport-minio`; the `supabase/postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
 - Redis is the only declarable backing service (`sides.be.backing`), run durably; vectors use pgvector in the db service,
   so no Qdrant. Owners: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml); ruling `lite-vector-is-pgvector`;
@@ -29,7 +29,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 ## Patterns
 
 - Schema authority is `db/migrations`; TypeORM entities only map those tables and domain code writes no raw SQL.
-  Owners: `ruleParams.be.lite.schemaAuthority` and slot `be.persistence`; R213 to R215, R255 to R259, R332, R333;
+  Owners: `ruleParams.be.lite.schemaAuthority` and slot `be.persistence`; R213 to R215, R255 to R259, R332, R334;
   ruling `lite-persistence-typeorm-entities`; [code/be/persistence.md](../code/be/persistence.md).
 - Identity is the app's own: Google OAuth and email and password through Passport, its own access tokens verified
   against its own JWKS, a rotating httpOnly refresh cookie, and a front end that holds no credential. Owners: R328 to

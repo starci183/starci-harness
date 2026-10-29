@@ -1579,7 +1579,7 @@ rules:
       - {kind: eslint-be, id: app-options-composition-free}
   - id: R246
     code: BE_APP_COMPOSITION_BUDGET
-    law: Each app file stays within the absolute line budget its `be.app.*` slot names (hfs/slots.yaml).
+    law: Each app file stays within the absolute line budget its `be.app.*` slot names (hfs/slots.yaml), counted in lines excluding import declarations (a multi-line import counts none of its lines).
     failureCodes:
       - BE_APP_COMPOSITION_BUDGET
     enforcers:
@@ -2236,7 +2236,7 @@ rules:
       - {kind: eslint-be, id: refresh-token-cookie-only}
   - id: R331
     code: BE_STORAGE_OWNER
-    law: "The S3 client (@aws-sdk/client-s3, @aws-sdk/s3-request-presigner) is imported only by `integrations/storage`; minio is imported nowhere."
+    law: "The S3 client (@aws-sdk/client-s3, @aws-sdk/s3-request-presigner) is imported only by `integrations/object-storage`; minio is imported nowhere."
     failureCodes:
       - BE_STORAGE_OWNER
     enforcers:
@@ -2250,6 +2250,14 @@ rules:
     enforcers:
       - {kind: hfs, id: lite-db-path}
   - id: R333
+    code: BE_ENTITY_SCHEMA_DRIFT
+    law: Every TypeORM entity column of a lite app's entity list matches the schema its `db/migrations` build; `starci app db drift` applies `db/bootstrap.sql` and every migration to an empty database and compares each column.
+    editions: [lite]
+    failureCodes:
+      - BE_ENTITY_SCHEMA_DRIFT
+    enforcers:
+      - {kind: hfs, id: db-drift}
+  - id: R334
     code: BE_PERSISTENCE_NO_RAW_SQL
     law: "Lite domain and feature code reads and writes through TypeORM entities on the injected EntityManager (find, save, update, delete, upsert, `createQueryBuilder(Entity, \"alias\")` with named parameters; never a table-name builder or a Repository); no `.query(` and no `sql` template outside `platform/database`, and a database function goes through its `callDbFunction`, `advisoryXactLock` or `notify` helper, naming only a function `ruleParams.be.dbFunctions` or hfs.json `sides.be.dbFunctions` lists with a reason."
     editions: [lite]

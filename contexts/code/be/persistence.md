@@ -86,7 +86,7 @@ export const CANCEL_ORDER = sql`WITH changed AS (
 SELECT id, workspace_id, order_no, status, created_at FROM changed`
 ```
 
-Enforced by: lite `no-raw-sql` (R333); full `sql-text-only`, `no-query-builder`, `no-interpolated-sql` (R36, R68).
+Enforced by: lite `no-raw-sql` (R334); full `sql-text-only`, `no-query-builder`, `no-interpolated-sql` (R36, R68).
 
 ## BE-PERSISTENCE-5 Work that must follow a write is written in the same transaction
 
