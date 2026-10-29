@@ -2,14 +2,14 @@ import { existsSync, globSync, readFileSync, statSync } from "node:fs"
 import { isAbsolute, join, posix } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
-import { Refusal } from "../shared/errors.js"
+import { EXIT_HOST_HELD, Refusal } from "../shared/errors.js"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
 import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
-import { testWorkerArgs, withHeavySlot } from "./heavy.js"
+import { HOST_HELD, testWorkerArgs, withHeavySlot } from "./heavy.js"
 import { VERIFY_INFRA } from "./clean-verify.js"
 import { changedCoverageScope, runsJest, scopedTests, withCoverageArgs } from "./coverage-scope.js"
 import { assertKeysHanded, CUSTODY_CODES, custodyFor, scrubbed } from "./custody.js"
@@ -94,6 +94,15 @@ ${run.stderr}`, keysOf)
 
 /** This CLI's own entry, so a `starci` check runs the same build that verifies. */
 const selfEntry = (): string => fileURLToPath(new URL("../main.js", import.meta.url))
+
+/**
+ * A starci verb a check ran as a child that the host held in the heavy queue (HOST_HELD, exit EXIT_HOST_HELD) judged nothing: the
+ * refusal leaves the check, so the verify reaches no verdict instead of a red. Returns the run otherwise.
+ */
+const unlessHeld = (run: ToolRun, detail: string): ToolRun => {
+    if (run.exitCode === EXIT_HOST_HELD) throw new Refusal(HOST_HELD, detail === "" ? tailOf(run) : detail, EXIT_HOST_HELD)
+    return run
+}
 
 const fromRun = (check: ResolvedCheck, run: ToolRun): CheckOutcome => ({
     name: check.name,
@@ -403,8 +412,9 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     try {
         envelope = asRecord(JSON.parse(run.stdout))
     } catch {
-        return fromRun(check, run)
+        return fromRun(check, unlessHeld(run, ""))
     }
+    unlessHeld(run, envelope.code === HOST_HELD ? String(envelope.message) : "")
     if (envelope.ok !== true) return { ...fromRun(check, run), status: "red", detail: `${String(envelope.code)}: ${String(envelope.message)}` }
     const data = asRecord(envelope.data)
     const scope = asRecord(data.scope)
@@ -454,13 +464,17 @@ const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readon
         const lead = [tests?.detail, scope?.detail, custody?.detail].filter((line): line is string => line !== undefined)
         return lead.length === 0 ? judged : { ...judged, detail: `${lead.join("\n")}\n${judged.detail}` }
     } catch (error: unknown) {
-        // A custody block is not the task's red: it leaves the check, and the verify ends awaiting the owner or with no verdict.
-        if (error instanceof Refusal && (CUSTODY_CODES.has(error.code) || error.code === VERIFY_INFRA)) throw error
+        // A custody block is not the task's red: it leaves the check, and the verify ends awaiting the owner or with no verdict. A
+        // command the host held in the heavy queue judged nothing: it leaves the check too, and the verify reaches no verdict.
+        if (error instanceof Refusal && (CUSTODY_CODES.has(error.code) || error.code === VERIFY_INFRA || error.code === HOST_HELD)) throw error
         return outcome(check, [error instanceof Error ? error.message : String(error)], "")
     }
 }
 
-/** Runs one primitive check of a contract. A missing tool or file is a red check, never a crash of the verify. */
+/**
+ * Runs one primitive check of a contract. A missing tool or file is a red check, never a crash of the verify; a check the host held
+ * in the heavy queue past the verify's bound throws HOST_HELD, never a red.
+ */
 export const runCheck = async (check: ResolvedCheck, contract: Contract, place: CheckPlace): Promise<CheckOutcome> => {
     const primitive = check.check
     const options = place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }
@@ -468,7 +482,7 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
         case "starci": {
             const [group, verb] = primitive.args
             if (group === "check" && verb !== undefined && SCOPED_CHECK_VERBS.has(verb)) return runScopedCheck(check, primitive.args, place, contract.context.allowPaths)
-            return fromRun(check, await captureTool(process.execPath, [selfEntry(), "--cwd", place.cwd, ...primitive.args], place.cwd, options))
+            return fromRun(check, unlessHeld(await captureTool(process.execPath, [selfEntry(), "--cwd", place.cwd, ...primitive.args], place.cwd, options), ""))
         }
         case "command":
             return runCommandCheck({ ...check, check: primitive }, place, contract.context.allowPaths, options)

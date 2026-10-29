@@ -74,7 +74,9 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
 2. Write your output to `{outputFile}`: one json object carrying every key the brief lists under "Output", with its type.
    When it asks for `rulesApplied`, name the ids of the rules you applied, each as it appears in a file you read (a heading such as
    `BE-ERROR-1` or a yaml `id: R01`); never cite a rule you did not read.
-3. Prove your own work: run `starci task verify {taskId} --contract {contractFile}` until it is green, within the budget.
+3. Prove your own work: run `starci task verify {taskId} --contract {contractFile}` until it is green, within the budget. A
+   run refused `HOST_HELD` judged nothing (the host held its heavy command for the whole budget): it is no red of yours, so
+   file `done` with what it did judge, and the harness's own verify judges the work once the host has room.
    Your checkout is a worktree of your own, cut from the workflow's branch, that the harness removes once your task settled. A check on `@result` reads the
    output file. Beyond it you run only what tier 1 allows ([contexts/authority/branch.md](../../contexts/authority/branch.md)):
    no tests, build, bench or full suite, and no install of your own; the harness gives your checkout the app's `@starci`

@@ -22,17 +22,19 @@ import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-c
 import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
 import { assertSettleLockHeld, blockWork, settle, settleLockHolder, settleMessage, thisVerifier, verifyLockKey, withSettleLock, workLine } from "../../harness/settle.js"
-import { LAND_CONFLICT, LAND_CONFLICT_EVENT, LandConflict, landLockKey, landTargetOf, opWorktreeOf, removeOpWorktree } from "../../harness/land.js"
-import type { LandTarget, WorktreeRemoval } from "../../harness/land.js"
+import { LAND_CONFLICT, LAND_CONFLICT_EVENT, LandConflict, landLockKey, landTargetOf, opWorktreeOf, refreshOpInstall, removeOpWorktree } from "../../harness/land.js"
+import { HOST_HELD, withHeavyBound } from "../../harness/heavy.js"
+import { reapplyLocal } from "../deps/packages.js"
+import type { LandTarget, OpWorktree, WorktreeRemoval } from "../../harness/land.js"
 import type { Settlement, Verifier, WorkWrite } from "../../harness/settle.js"
 import { clearIntent, getTask, lastEvent, latestAttempt, markIntent, recordEvent, recordSettleCommit, resultOf, setStatus, setVerdict, taskCheckout } from "../../harness/tasks.js"
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
-import { commitWithMessage, repositoryRoot, resolveSha } from "../../shared/git.js"
+import { commitWithMessage, repositoryRoot, resolveSha, samePath } from "../../shared/git.js"
 import { inOrder } from "../../harness/sequential.js"
 import { needsInstall, splitChecks } from "../../harness/wave.js"
 import { getWorkflow, setWorkflowStatus } from "../../harness/workflow.js"
-import { formatTable } from "../../shared/output.js"
+import { evidenceTail, formatTable } from "../../shared/output.js"
 import { redactSecrets } from "../../shared/secrets.js"
 import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
@@ -126,8 +128,28 @@ const resultSource = (db: DatabaseSync, root: string, task: TaskRow, attempt: At
 }
 
 /**
+ * The install of the task's Op worktree made to match its own lockfile before its checks run (harness/land.ts refreshOpInstall),
+ * with the local package sources reapplied over a new install in local package mode: one `install` outcome per folder installed
+ * anew, none when every install still holds.
+ */
+const opInstall = async (root: string, taskId: string, made: OpWorktree): Promise<CheckOutcome[]> => {
+    const reinstalled = await refreshOpInstall(root, taskId, made)
+    if (reinstalled.length === 0) return []
+    const outcomes = reinstalled.map((one): CheckOutcome => {
+        const exitCode = one.run?.exitCode ?? 0
+        const tail = one.run === null ? "" : `\n${evidenceTail(one.run.stdout, one.run.stderr)}`
+        return { name: "install", kind: "install", status: exitCode === 0 ? "green" : "red", exitCode, detail: `${one.folder}: ${one.note}${tail}` }
+    })
+    if (outcomes.some((outcome) => outcome.status === "red")) return outcomes
+    const reapplied = await reapplyLocal(made.target, made.path)
+    return reapplied === undefined ? outcomes : [...outcomes, { name: "deps-local", kind: "install", status: reapplied.status, exitCode: null, detail: reapplied.detail }]
+}
+
+/**
  * The dry replay of `--contract`: the checks run in the working tree as it is, and the ledger only hears of it with --record.
- * Naming the task scopes the files check to what that task may have written and lets `@result` read its output file.
+ * Naming the task scopes the files check to what that task may have written and lets `@result` read its output file; in the
+ * task's Op worktree its install is first made to match the worktree's own lockfile (`opInstall`). A check the host held in the
+ * heavy queue past the contract's budget refuses HOST_HELD: no verdict, nothing of the work judged.
  */
 const verifyContract = async (cwd: string, file: string, taskId: string | undefined, record: boolean): Promise<VerbResult<VerifyData>> => {
     const ops = loadOps()
@@ -135,12 +157,14 @@ const verifyContract = async (cwd: string, file: string, taskId: string | undefi
     unfit(contract, ops)
     const root = await repositoryRoot(cwd)
     let place: CheckPlace = { root, cwd: join(root, contract.context.cwd ?? ".") }
+    let made: OpWorktree | undefined
     if (taskId !== undefined) {
         const db = openExistingLedger(root)
         if (db === undefined) throw new Refusal("TASK_UNKNOWN", `no task ${taskId}: this project has no ledger yet`)
         try {
             const task = getTask(db, taskId)
             place = { ...place, taskId, since: task.createdAt, result: resultSource(db, root, task, latestAttempt(db, taskId), true) }
+            made = opWorktreeOf(db, taskId)
         } finally {
             db.close()
         }
@@ -148,7 +172,12 @@ const verifyContract = async (cwd: string, file: string, taskId: string | undefi
         const fork = await opForkOf(root, taskId)
         if (fork !== undefined) place = { ...place, diffBase: fork }
     }
-    const checks = await inOrder(resolveChecks(contract, ops), (check) => runCheck(check, contract, place))
+    const own = made !== undefined && taskId !== undefined && samePath(made.path, root) ? { task: taskId, made } : undefined
+    const checks = await withHeavyBound(contract.budget.minutes * MINUTE_MS, async () => {
+        const installed = own === undefined ? [] : await opInstall(root, own.task, own.made)
+        if (installed.some((check) => check.status === "red")) return installed
+        return [...installed, ...(await inOrder(resolveChecks(contract, ops), (check) => runCheck(check, contract, place)))]
+    })
     const verdict = checks.every((check) => check.status === "green") ? "green" : "red"
     const hash = contractHash(contract)
     if (record) {
@@ -223,6 +252,20 @@ const noVerdict = (db: DatabaseSync, taskId: string, attemptId: string, kind: st
         refusal.code,
         `${refusal.message}\ntask ${taskId} reached no verdict ${String(ends)} times in a row: it is awaiting_owner, its work left in the work tree; fix the cause and send a retry (starci task send <contract> --retry-of ${taskId})`,
     )
+}
+
+/**
+ * A settling verify the host held (HOST_HELD: a heavy command of it waited in the queue past the verify's timeout) judged nothing:
+ * its task goes back to reported with no try spent and no count toward settleNoVerdictMax, recorded `verify-host-held`, and the
+ * next workflow step or supervisor tick verifies it again.
+ */
+const hostHeld = (db: DatabaseSync, taskId: string, error: unknown): Refusal => {
+    const refusal = asRefusal(error)
+    inTransaction(db, () => {
+        recordEvent(db, "verify-host-held", taskId, { error: refusal.message })
+        setStatus(db, taskId, "reported", "verifying")
+    })
+    return new Refusal(HOST_HELD, `${refusal.message}\ntask ${taskId} is reported again (host-held: no verdict, no try spent); it is verified again on the next step`, refusal.exitCode)
 }
 
 /**
@@ -450,6 +493,7 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
     } catch (error: unknown) {
         assertSettleLockHeld(db, me, verifyLockKey(task.id))
         if (CUSTODY_CODES.has(asRefusal(error).code)) throw blockOnCustody(db, task.id, "verifying", asRefusal(error))
+        if (asRefusal(error).code === HOST_HELD) throw hostHeld(db, task.id, error)
         if (!(error instanceof LandConflict)) throw noVerdict(db, task.id, attempt.id, asRefusal(error).code === VERIFY_INFRA ? "verify-infra" : "verify-error", error)
         const { preserved } = await preserveEnding(db, root, task, attempt.id)
         const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
@@ -498,7 +542,8 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
  * verify holds the task's verifier lock throughout; the target's land lock is held only while a verified commit lands, so verifies
  * of one workflow run side by side and land one after another. The first pass verifies without the land lock; when another task
  * landed meanwhile, the second pass verifies again on the new head under the land lock, so what is verified is what lands. Once
- * the task ended, its seats are closed and its Op worktree is removed.
+ * the task ended, its seats are closed and its Op worktree is removed. Its heavy commands wait in the queue at most the contract's
+ * budget (harness/heavy.ts withHeavyBound); one held past it ends the verify host-held (`hostHeld`), never red.
  */
 const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise<VerbResult<VerifyData>> => {
     const callerRoot = await repositoryRoot(cwd)
@@ -506,67 +551,73 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
     const db = openLedger(callerRoot)
     try {
         const task = getTask(db, taskId)
-        const attempt = verifiable(db, task, commit)
-        // The task's work lives in its own checkout, which may not be the caller's: it is judged there and lands on its target.
-        const root = await taskCheckout(task, callerRoot)
-        const pruned = await pruneVerifyWorktrees(root)
-        unfit(task.contract, ops)
-        const target = await landTargetOf(db, task, root)
-        const made = opWorktreeOf(db, taskId)
-        // The wave tier leaves a workflow task's heavy checks (typecheck, lint, tests) to its workflow's wave verify (harness/wave.ts).
-        const split = splitChecks(root, task, resolveChecks(task.contract, ops))
-        const deferred = split.wave.map((check) => check.name)
-        const input: CleanVerifyInput = {
-            root,
-            contract: task.contract,
-            checks: split.own,
-            install: needsInstall(split.own),
-            name: taskId,
-            message: settleMessage(task.contract, taskId),
-            taskId,
-            since: task.createdAt,
-            result: resultSource(db, root, task, attempt, false),
-            timeoutMs: task.contract.budget.minutes * MINUTE_MS,
-            ...(target.own ? {} : { target: target.checkout }),
-        }
-        const unsettled: Ending = { status: task.status, settlement: null, work: null, preserved: null, conflict: null, seats: [] }
-        const noted = (built: CleanVerify | null): CleanVerify | null => (built === null || deferred.length === 0 ? built : { ...built, notes: [...built.notes, `left to the workflow's wave verify: ${deferred.join(", ")}`] })
-        if (!commit) {
-            const onto = target.own ? undefined : await resolveSha(target.checkout, `refs/heads/${target.branch}`)
-            const built = await cleanVerify({ ...input, ...(onto === undefined ? {} : { onto }), ...(made === undefined ? {} : { fork: made.fork }) })
-            recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
-            recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: false })
-            return reply(taskId, attempt, task, noted(built), { ...unsettled, status: getTask(db, taskId).status }, false, pruned, null)
-        }
-        const frozen = await freezeWorker(root, taskId)
-        const me = thisVerifier(taskId)
-        const settled = await deadlined(db, taskId, attempt.id, () => withSettleLock(db, me, MINUTE_MS, verifyLockKey(taskId), async (): Promise<Exclude<Pass, "moved">> => {
-            const fresh = getTask(db, taskId)
-            if (fresh.status !== "reported") throw new Refusal("TASK_NOT_VERIFIABLE", `task ${taskId} is ${fresh.status} now; another verify took it while this one waited`)
-            // The claim, by compare-and-swap, before any git side effect; the parent lets --recover find a landing.
-            setStatus(db, taskId, "verifying", "reported")
-            recordEvent(db, "verify-started", taskId, { ...me, parent: await resolveSha(target.checkout, `refs/heads/${target.branch}`), checkout: root, target: target.checkout, branch: target.branch })
-            const at: Settling = { db, root, task: fresh, attempt, input, target, me, unsettled, deferred }
-            const paths = [...fresh.contract.context.allowPaths, ...resultFiles(resultOf(db, attempt.id)?.output)]
-            await declarePatterns(at, "verify", await patternsOfPaths(target.checkout, paths))
-            const first = await settlePass(at, false)
-            if (first !== "moved") return first
-            recordEvent(db, "verify-head-moved", taskId, { branch: target.branch })
-            const second = await withSettleLock(db, me, input.timeoutMs ?? MINUTE_MS, landLockKey(target), () => settlePass(at, true))
-            if (second === "moved") throw noVerdict(db, taskId, attempt.id, "settle-refused", new Refusal("HEAD_MOVED", `${target.branch} moved under its land lock`))
-            return second
-        }))
-        // The task ended; its worker has nothing left to do. Closing talks to Orca, so it runs outside every lock and transaction.
-        const closing = await closeSeatsOfTask(root, taskId).then(
-            (seats): Pick<Ending, "seats" | "seatProblem"> => ({ seats }),
-            (error: unknown): Pick<Ending, "seats" | "seatProblem"> => ({ seats: [], seatProblem: asRefusal(error).message }),
-        )
-        const seats = closing.seats.length > 0 ? closing.seats : frozen
-        const worktree = getTask(db, taskId).intent === null ? ((await removeOpWorktree(callerRoot, taskId).catch(() => undefined)) ?? null) : null
-        return reply(taskId, attempt, task, noted(settled.built), { ...settled.ending, ...closing, seats }, true, pruned, worktree)
+        return await withHeavyBound(task.contract.budget.minutes * MINUTE_MS, () => judgeTask(db, callerRoot, ops, task, commit))
     } finally {
         db.close()
     }
+}
+
+/** verifyTask's judgement of `task` under its heavy bound, on the caller's ledger `db`. */
+const judgeTask = async (db: DatabaseSync, callerRoot: string, ops: Ops, task: TaskRow, commit: boolean): Promise<VerbResult<VerifyData>> => {
+    const taskId = task.id
+    const attempt = verifiable(db, task, commit)
+    // The task's work lives in its own checkout, which may not be the caller's: it is judged there and lands on its target.
+    const root = await taskCheckout(task, callerRoot)
+    const pruned = await pruneVerifyWorktrees(root)
+    unfit(task.contract, ops)
+    const target = await landTargetOf(db, task, root)
+    const made = opWorktreeOf(db, taskId)
+    // The wave tier leaves a workflow task's heavy checks (typecheck, lint, tests) to its workflow's wave verify (harness/wave.ts).
+    const split = splitChecks(root, task, resolveChecks(task.contract, ops))
+    const deferred = split.wave.map((check) => check.name)
+    const input: CleanVerifyInput = {
+        root,
+        contract: task.contract,
+        checks: split.own,
+        install: needsInstall(split.own),
+        name: taskId,
+        message: settleMessage(task.contract, taskId),
+        taskId,
+        since: task.createdAt,
+        result: resultSource(db, root, task, attempt, false),
+        timeoutMs: task.contract.budget.minutes * MINUTE_MS,
+        ...(target.own ? {} : { target: target.checkout }),
+    }
+    const unsettled: Ending = { status: task.status, settlement: null, work: null, preserved: null, conflict: null, seats: [] }
+    const noted = (built: CleanVerify | null): CleanVerify | null => (built === null || deferred.length === 0 ? built : { ...built, notes: [...built.notes, `left to the workflow's wave verify: ${deferred.join(", ")}`] })
+    if (!commit) {
+        const onto = target.own ? undefined : await resolveSha(target.checkout, `refs/heads/${target.branch}`)
+        const built = await cleanVerify({ ...input, ...(onto === undefined ? {} : { onto }), ...(made === undefined ? {} : { fork: made.fork }) })
+        recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
+        recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: false })
+        return reply(taskId, attempt, task, noted(built), { ...unsettled, status: getTask(db, taskId).status }, false, pruned, null)
+    }
+    const frozen = await freezeWorker(root, taskId)
+    const me = thisVerifier(taskId)
+    const settled = await deadlined(db, taskId, attempt.id, () => withSettleLock(db, me, MINUTE_MS, verifyLockKey(taskId), async (): Promise<Exclude<Pass, "moved">> => {
+        const fresh = getTask(db, taskId)
+        if (fresh.status !== "reported") throw new Refusal("TASK_NOT_VERIFIABLE", `task ${taskId} is ${fresh.status} now; another verify took it while this one waited`)
+        // The claim, by compare-and-swap, before any git side effect; the parent lets --recover find a landing.
+        setStatus(db, taskId, "verifying", "reported")
+        recordEvent(db, "verify-started", taskId, { ...me, parent: await resolveSha(target.checkout, `refs/heads/${target.branch}`), checkout: root, target: target.checkout, branch: target.branch })
+        const at: Settling = { db, root, task: fresh, attempt, input, target, me, unsettled, deferred }
+        const paths = [...fresh.contract.context.allowPaths, ...resultFiles(resultOf(db, attempt.id)?.output)]
+        await declarePatterns(at, "verify", await patternsOfPaths(target.checkout, paths))
+        const first = await settlePass(at, false)
+        if (first !== "moved") return first
+        recordEvent(db, "verify-head-moved", taskId, { branch: target.branch })
+        const second = await withSettleLock(db, me, input.timeoutMs ?? MINUTE_MS, landLockKey(target), () => settlePass(at, true))
+        if (second === "moved") throw noVerdict(db, taskId, attempt.id, "settle-refused", new Refusal("HEAD_MOVED", `${target.branch} moved under its land lock`))
+        return second
+    }))
+    // The task ended; its worker has nothing left to do. Closing talks to Orca, so it runs outside every lock and transaction.
+    const closing = await closeSeatsOfTask(root, taskId).then(
+        (seats): Pick<Ending, "seats" | "seatProblem"> => ({ seats }),
+        (error: unknown): Pick<Ending, "seats" | "seatProblem"> => ({ seats: [], seatProblem: asRefusal(error).message }),
+    )
+    const seats = closing.seats.length > 0 ? closing.seats : frozen
+    const worktree = getTask(db, taskId).intent === null ? ((await removeOpWorktree(callerRoot, taskId).catch(() => undefined)) ?? null) : null
+    return reply(taskId, attempt, task, noted(settled.built), { ...settled.ending, ...closing, seats }, true, pruned, worktree)
 }
 
 /** `--recover` of a repair intent: finishes the reset from the preserve's manifest, then drops the intent. */

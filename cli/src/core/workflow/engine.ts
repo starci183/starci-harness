@@ -31,7 +31,7 @@ import { loadPolicy } from "../../harness/policy.js"
 import { runWave, verifyIsHeavy, WAVE_RUNNING, waveJobOf } from "../../harness/wave.js"
 import { claimJob, finalJob, recordJob, verifyJob } from "../../harness/jobs.js"
 import type { SettleJob } from "../../harness/jobs.js"
-import { heavyWaitsRefused } from "../../harness/heavy.js"
+import { heavyWaitsRefused, HOST_HELD } from "../../harness/heavy.js"
 import { startDetached } from "../../shared/exec.js"
 import { fileURLToPath } from "node:url"
 import { tendNeeds } from "../needs/tend.js"
@@ -202,8 +202,8 @@ const settleReported = async (context: VerbContext, root: string, snapshot: Snap
             return { key, task, action: "verified", detail: `verdict ${String(data.verdict)}, task ${String(data.status)}${redNote}` }
         } catch (error: unknown) {
             const refusal = asRefusal(error)
-            // Another verifier took it first: that one settles it.
-            return { key, task, action: refusal.code === "TASK_NOT_VERIFIABLE" ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` }
+            // Another verifier took it first: that one settles it. The host held it: it is reported again, a later step verifies it.
+            return { key, task, action: refusal.code === "TASK_NOT_VERIFIABLE" || refusal.code === HOST_HELD ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` }
         }
     })
 }

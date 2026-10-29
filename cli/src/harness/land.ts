@@ -6,7 +6,8 @@ import { headline } from "../shared/exec.js"
 import { captureGit, currentBranch, git, isAncestor, refExists, resolveSha, samePath } from "../shared/git.js"
 import { readRecord } from "../core/deps/packages.js"
 import { enablePatterns, patternsOfPaths } from "./hfs-patterns.js"
-import { linkCachedInstall, lockfileFolders, modulesFolders, unlinkCheckoutLinks, unlinkInstallLinks } from "./install-cache.js"
+import { linkCachedInstall, lockfileFolders, modulesFolders, reinstallStale, unlinkCheckoutLinks, unlinkInstallLinks } from "./install-cache.js"
+import type { Reinstalled } from "./install-cache.js"
 import { openLedger, projectDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
 import { thisVerifier, withSettleLock } from "./settle.js"
@@ -97,6 +98,25 @@ export const linkInstall = (target: string, worktree: string): string[] => {
         symlinkSync(join(target, folder), path, process.platform === "win32" ? "junction" : "dir")
         return [folder]
     })
+}
+
+/**
+ * Gives an Op worktree the install of its own lockfile once its task changed it (harness/install-cache.ts reinstallStale over the
+ * folders linkInstall gave it): a node_modules that no longer satisfies the worktree's lockfile, such as the target's install a
+ * task's new dependency is absent from, is replaced by the install of the worktree's own inputs, from the cache or by `npm ci`
+ * under the heavy governor; copied, not linked, in local package mode, whose copies the caller then reapplies (`reapplyLocal`).
+ * Run before the Op's work is checked (seat start after its prior work is applied, the worker's dry replay); records
+ * `op-install-refreshed` for each folder it installed. Returns what it installed, none when every install still holds.
+ */
+export const refreshOpInstall = async (root: string, taskId: string, made: OpWorktree): Promise<Reinstalled[]> => {
+    const local = (readRecord(made.target)?.packages.length ?? 0) > 0
+    const reinstalled = await reinstallStale(made.path, made.links, {}, local)
+    if (reinstalled.length > 0) {
+        withLedger(root, (db) => {
+            for (const one of reinstalled) recordEvent(db, "op-install-refreshed", taskId, { worktree: made.path, folder: one.folder, key: one.key, reused: one.reused, exitCode: one.run?.exitCode ?? 0, note: one.note })
+        })
+    }
+    return reinstalled
 }
 
 /** How one worktree folder's removal ended: removed (or gone already), or left with what refused it and whether that reads as busy. */

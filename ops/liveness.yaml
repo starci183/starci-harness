@@ -22,7 +22,8 @@ goneErrors: [dispatch_not_found]
 # Settle liveness (both runners): a verify that reaches no verdict returns its task to reported for free, but once one result
 # has reached no verdict this many times the failure is persistent and the task ends awaiting_owner with the last reason.
 settleNoVerdictMax: 3
-# A verify holds its verifier lock (and a land lock) at most this long (cli/src/harness/settle.ts): past it the holder gives it up
+# A verify holds its verifier lock (and a land lock) at most this long, the time its heavy commands waited in the heavy queue
+# aside (cli/src/harness/settle.ts): past it the holder gives it up
 # and its task reaches no verdict, and a holder still listed past it (hung in-process, its heartbeat beating) counts as gone, so
 # the next `workflow step`, `kernel next` or `supervisor tick` reconciles its task (`task verify --recover`) and verifies it again.
 verifyDeadlineMinutes: 45
@@ -42,7 +43,8 @@ reviveMax: 3
 # running projectSlots commands is passed over while another project's command waits under its own cap. A command
 # not admitted waits in the queue, polling every pollSeconds; a coordinator's turn (`kernel next`, `kernel submit`, `supervisor
 # next`, `supervisor tick`) never waits in it: its own heavy command is refused and its step's verifies and waves run as detached jobs; the wait is logged (stderr and a `heavy-wait` host event) and
-# never fails its check. Its timeout starts at admission, never in the queue: timeoutMinutes for its kind (an install's budget is
+# never fails its check: a `task verify` command still waiting at the verify's contract budget is refused HOST_HELD, a verify with
+# no verdict that spends no try and is verified again on the next step. Its timeout starts at admission, never in the queue: timeoutMinutes for its kind (an install's budget is
 # sized for a cold npm ci on this host), else the caller's (a test command's comes from its contract). Each runs below normal OS
 # priority; a node tool under `--max-old-space-size` of its kind's memoryMb, a uat container under `--memory`; a test runner
 # (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure (fewer admitted than the cap). A worker seat launches

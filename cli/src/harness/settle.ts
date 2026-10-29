@@ -9,6 +9,7 @@ import { headline, pidAlive } from "../shared/exec.js"
 import { captureGit, currentBranch, git, gitSucceeds, resolveSha } from "../shared/git.js"
 import type { CleanVerify } from "./clean-verify.js"
 import type { Contract } from "./contract.js"
+import { heavyOwner, queuedSince } from "./heavy.js"
 import type { LandTarget } from "./land.js"
 import { now } from "./ledger.js"
 import { loadLiveness } from "./liveness.js"
@@ -86,13 +87,17 @@ const LOCK_BEAT_MS = 10_000
 
 const LOCK_STALE_MS = 120_000
 
-/** The settle lock row as stored: the verifier, its last heartbeat and when it took the lock. */
+/** The settle lock row as stored: the verifier, its last heartbeat, when it took the lock and how long its heavy commands have waited in the queue since. */
 interface LockRow extends Verifier {
     readonly beat: string
     readonly since: string
+    readonly queuedMs: number
 }
 
-/** How long one verify may hold a lock (ops/liveness.yaml verifyDeadlineMinutes): past it the holder gives the lock up, and counts as gone. */
+/**
+ * How long one verify may hold a lock (ops/liveness.yaml verifyDeadlineMinutes), counted over the time its heavy commands ran,
+ * never the time they waited in the heavy queue (`queuedMs`): past it the holder gives the lock up, and counts as gone.
+ */
 const verifyDeadlineMs = (): number => loadLiveness().verifyDeadlineMinutes * 60_000
 
 const readLock = (db: DatabaseSync, key: string): LockRow | undefined => {
@@ -101,17 +106,17 @@ const readLock = (db: DatabaseSync, key: string): LockRow | undefined => {
     const value: unknown = JSON.parse(String(row.value))
     const verifier = asVerifier(value)
     if (verifier === undefined) return undefined
-    const { beat, since } = value as Record<string, unknown>
-    return { ...verifier, beat: typeof beat === "string" ? beat : verifier.at, since: typeof since === "string" ? since : verifier.at }
+    const { beat, since, queuedMs } = value as Record<string, unknown>
+    return { ...verifier, beat: typeof beat === "string" ? beat : verifier.at, since: typeof since === "string" ? since : verifier.at, queuedMs: typeof queuedMs === "number" ? queuedMs : 0 }
 }
 
 /**
- * True while the lock's holder lives: its heartbeat is fresh, it took the lock less than the verify deadline ago, and on this host
+ * True while the lock's holder lives: its heartbeat is fresh, it held the lock less than the verify deadline outside the heavy queue, and on this host
  * its pid still runs. A stale heartbeat frees the lock even when the pid runs, since Windows reuses pids and a reused pid would
  * otherwise hold the lock forever; a holder past the deadline (a verify hung in-process, its heartbeat still beating) is gone too,
  * so `task verify --recover` takes its task over.
  */
-const holderAlive = (holder: LockRow): boolean => Date.now() - Date.parse(holder.beat) < LOCK_STALE_MS && Date.now() - Date.parse(holder.since) < verifyDeadlineMs() && verifierAlive(holder)
+const holderAlive = (holder: LockRow): boolean => Date.now() - Date.parse(holder.beat) < LOCK_STALE_MS && Date.now() - Date.parse(holder.since) - holder.queuedMs < verifyDeadlineMs() && verifierAlive(holder)
 
 /** The live holder of a lock (`verifyLockKey` of a task, or a land lock), if any: a verifying task with no live holder has no verifier left. */
 export const settleLockHolder = (db: DatabaseSync, key: string): Verifier | undefined => {
@@ -164,27 +169,45 @@ export const assertSettleLockHeld = (db: DatabaseSync, me: Verifier, key: string
  * settling verify, or a land lock (harness/land.ts `landLockKey`), one per target branch, only while a verified commit is
  * integrated, so landings onto one branch run one at a time and each lands on the head the previous one left. A holder whose
  * process died is taken over; waiting longer than `waitMs` refuses with SETTLE_BUSY and changes nothing. The holder stamps a
- * heartbeat while it works, so a lock whose holder stopped beating is taken over even when its pid was reused, and gives the
- * lock up at the verify deadline, refusing with VERIFY_DEADLINE (work that resumes later is fenced by assertSettleLockHeld).
+ * heartbeat while it works (with the time its heavy commands have waited in the queue since it took the lock), so a lock whose
+ * holder stopped beating is taken over even when its pid was reused, and gives the lock up once it held it for the verify deadline
+ * outside the heavy queue, refusing with VERIFY_DEADLINE (work that resumes later is fenced by assertSettleLockHeld).
  */
 export const withSettleLock = async <T>(db: DatabaseSync, me: Verifier, waitMs: number, key: string, work: () => Promise<T>): Promise<T> => {
     await acquireLock(db, me, key, Date.now() + waitMs)
+    const taken = Date.now()
+    const since = new Date(taken).toISOString()
     const keys = [key, me.task, me.pid, me.host] as const
+    // An unreadable governor store counts no queue time: the deadline then runs as if every wait had run.
+    const queued = (): number => {
+        try {
+            return queuedSince(heavyOwner(), since)
+        } catch {
+            return 0
+        }
+    }
     const beat = setInterval(() => {
         try {
-            db.prepare(`UPDATE meta SET value = json_set(value, '$.beat', ?) WHERE ${mine}`).run(now(), ...keys)
+            db.prepare(`UPDATE meta SET value = json_set(value, '$.beat', ?, '$.queuedMs', ?) WHERE ${mine}`).run(now(), queued(), ...keys)
         } catch {
             // A busy ledger skips one beat; the next one, well inside the stale window, lands.
         }
     }, LOCK_BEAT_MS)
     beat.unref()
-    // The holder gives the lock up itself at the verify deadline: a verify hung on an await never holds it past that.
+    // The holder gives the lock up itself at the verify deadline, counted outside the heavy queue: a verify hung on an await
+    // never holds it past that, and one whose commands wait for the host is never stopped for the wait.
     let deadline: NodeJS.Timeout | undefined
     const expired = new Promise<never>((_, refuse) => {
-        deadline = setTimeout(() => {
-            refuse(new Refusal("VERIFY_DEADLINE", `the verify of ${me.task} held the lock ${key} past its deadline (ops/liveness.yaml verifyDeadlineMinutes) and gave it up; it reached no verdict`))
-        }, verifyDeadlineMs())
-        deadline.unref()
+        const arm = (): void => {
+            const left = verifyDeadlineMs() - (Date.now() - taken - queued())
+            if (left <= 0) {
+                refuse(new Refusal("VERIFY_DEADLINE", `the verify of ${me.task} held the lock ${key} past its deadline (ops/liveness.yaml verifyDeadlineMinutes, the heavy queue's wait aside) and gave it up; it reached no verdict`))
+                return
+            }
+            deadline = setTimeout(arm, left)
+            deadline.unref()
+        }
+        arm()
     })
     try {
         return await Promise.race([work(), expired])

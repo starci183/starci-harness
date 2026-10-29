@@ -31,13 +31,68 @@ interface OwnLink {
 
 const toSlash = (path: string): string => path.split(sep).join("/")
 
-/** The key of an install: the lockfile's bytes, Node's version and npm's, so any of them changing installs anew. */
-export const installKey = (lockfile: string): string =>
-    createHash("sha256")
-        .update(readFileSync(lockfile))
-        .update(`\0${process.version}\0${npmVersion() ?? "no-npm"}`)
-        .digest("hex")
-        .slice(0, 24)
+/** The names of the files an npm install reads in a folder: only a change to one of them can change what the install holds. */
+export const INSTALL_INPUTS: readonly string[] = ["package-lock.json", "npm-shrinkwrap.json", "package.json", ".npmrc"]
+
+interface Locked {
+    readonly version?: unknown
+    readonly link?: unknown
+    readonly optional?: unknown
+}
+
+/** A lockfile's `packages` map, or an empty one when the file is missing or unreadable. */
+const lockedPackages = (file: string): Readonly<Record<string, Locked | undefined>> => {
+    try {
+        const parsed = JSON.parse(readFileSync(file, "utf8")) as { readonly packages?: unknown }
+        return typeof parsed.packages === "object" && parsed.packages !== null ? (parsed.packages as Readonly<Record<string, Locked>>) : {}
+    } catch {
+        return {}
+    }
+}
+
+/** The lockfile of an install folder: npm-shrinkwrap.json wins over package-lock.json, as npm reads them. */
+const lockfileOf = (dir: string): string => (existsSync(join(dir, "npm-shrinkwrap.json")) ? join(dir, "npm-shrinkwrap.json") : join(dir, "package-lock.json"))
+
+/**
+ * The install inputs of a lockfile folder, relative to it and sorted: its own INSTALL_INPUTS, and those of each workspace member
+ * its lockfile names (a `packages` key outside node_modules), so a member's manifest or lockfile changing changes the key too.
+ */
+export const installInputs = (dir: string): string[] => {
+    const members = Object.keys(lockedPackages(lockfileOf(dir))).filter((key) => key !== "" && !key.split("/").includes("node_modules"))
+    return ["", ...members]
+        .flatMap((member) => INSTALL_INPUTS.map((name) => (member === "" ? name : `${member}/${name}`)))
+        .filter((path) => existsSync(join(dir, path)))
+        .sort((left, right) => left.localeCompare(right))
+}
+
+/**
+ * The key of the install of a lockfile folder: the path and bytes of every install input (`installInputs`: the folder's lockfile,
+ * manifest and .npmrc, and each workspace member's), Node's version and npm's. A candidate whose lockfile or any manifest differs
+ * from the one a cache entry was made from therefore never gets that entry: it runs `npm ci` and is cached under its own key.
+ */
+export const installKey = (dir: string): string => {
+    const hash = createHash("sha256")
+    for (const path of installInputs(dir)) hash.update(`${path}\0`).update(readFileSync(join(dir, path))).update("\0")
+    return hash.update(`\0${process.version}\0${npmVersion() ?? "no-npm"}`).digest("hex").slice(0, 24)
+}
+
+/**
+ * Whether the install a folder holds (its node_modules, or the folder it links to) satisfies its lockfile: every package the
+ * lockfile places under node_modules is in npm's record of that install (node_modules/.package-lock.json, which npm ci writes and
+ * the cache carries) at the locked version and link, an optional one (a platform build npm may skip) aside. Undefined when it
+ * cannot be told: no node_modules, no lockfile, or no record.
+ */
+export const installSatisfies = (dir: string): boolean | undefined => {
+    const record = join(dir, "node_modules", ".package-lock.json")
+    const lockfile = lockfileOf(dir)
+    if (!existsSync(lockfile) || !existsSync(record)) return undefined
+    const installed = lockedPackages(record)
+    return Object.entries(lockedPackages(lockfile)).every(([key, locked]) => {
+        if (locked === undefined || !key.split("/").includes("node_modules") || locked.optional === true) return true
+        const found = installed[key]
+        return found !== undefined && found.version === locked.version && found.link === locked.link
+    })
+}
 
 /** The entries of a node_modules folder one level down, a `@scope` folder opened to its members, as paths relative to it. */
 const entriesOf = (modules: string): string[] =>
@@ -109,8 +164,8 @@ const fromCache = (dir: string, entry: string, materialize: boolean): void => {
  * the cached node_modules into the checkout without running npm; a miss runs `npm ci` under a heavy-command slot and caches its
  * result for the next checkout. A cache entry that cannot be read falls back to `npm ci`.
  */
-export const cachedInstall = async (dir: string, lockfile: string, options: RunOptions, materialize: boolean): Promise<CachedInstall> => {
-    const key = installKey(lockfile)
+export const cachedInstall = async (dir: string, options: RunOptions, materialize: boolean): Promise<CachedInstall> => {
+    const key = installKey(dir)
     const entry = installCachePath(key)
     // A checkout that already holds a node_modules (a tracked one) can take nothing from the cache: npm ci runs over it.
     if (existsSync(join(dir, "node_modules"))) return freshInstall(dir, entry, key, options)
@@ -217,9 +272,8 @@ export const isInstalled = (dir: string): boolean => existsSync(join(dir, "node_
  * has no lockfile or already holds a node_modules.
  */
 export const linkCachedInstall = (dir: string): boolean => {
-    const lockfile = join(dir, "package-lock.json")
-    if (!existsSync(lockfile) || existsSync(join(dir, "node_modules"))) return false
-    const entry = installCachePath(installKey(lockfile))
+    if (!existsSync(lockfileOf(dir)) || existsSync(join(dir, "node_modules"))) return false
+    const entry = installCachePath(installKey(dir))
     if (!existsSync(join(entry, LINKS_FILE))) return false
     try {
         fromCache(dir, entry, false)
@@ -283,6 +337,42 @@ export const unlinkInstallLinks = (checkout: string, links: readonly string[] = 
         if (stat.isSymbolicLink()) unlinkFolder(modules)
         else if (stat.isDirectory()) for (const name of entriesOf(modules)) unlinkFolder(join(modules, name))
     }
+}
+
+/** One install folder reinstallStale made anew: the lockfile folder (relative to the checkout) and what its install did. */
+export interface Reinstalled extends CachedInstall {
+    readonly folder: string
+}
+
+/**
+ * Makes every install of a long-lived checkout (an Op worktree) match its own lockfile again: a lockfile folder whose node_modules
+ * does not satisfy its lockfile (`installSatisfies`: the task changed the lockfile after the checkout was given the install of the
+ * branch it was cut from, that install was already behind, or npm left no record of it), or that lacks a node_modules the
+ * checkout was given (`expected`, folders relative to it: an earlier reinstall stopped half-way), has that node_modules removed
+ * (link only when it is a link to the target's install; a real one has its package links unlinked first) and is installed anew
+ * through `cachedInstall` under the key of its own inputs: from the cache when that key is cached, else by `npm ci` under a
+ * heavy-command slot, one fill per key. The caller reapplies local package sources afterwards.
+ */
+export const reinstallStale = async (checkout: string, expected: readonly string[], options: RunOptions, materialize: boolean): Promise<Reinstalled[]> => {
+    const owed = new Set(expected)
+    const stale = lockfileFolders(checkout).filter((folder) => {
+        const modules = folder === "." ? "node_modules" : `${folder}/node_modules`
+        if (lstatSync(join(checkout, modules), { throwIfNoEntry: false }) === undefined) return owed.has(modules)
+        return installSatisfies(join(checkout, folder)) !== true
+    })
+    const done: Reinstalled[] = []
+    for (const folder of stale) {
+        const dir = join(checkout, folder)
+        const modules = join(dir, "node_modules")
+        const stat = lstatSync(modules, { throwIfNoEntry: false })
+        if (stat?.isSymbolicLink() === true) unlinkFolder(modules)
+        else if (stat !== undefined) {
+            for (const name of entriesOf(modules)) unlinkFolder(join(modules, name))
+            rmSync(modules, { recursive: true, force: true })
+        }
+        done.push({ folder, ...(await cachedInstall(dir, options, materialize)) })
+    }
+    return done
 }
 
 /**
