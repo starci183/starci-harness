@@ -399,27 +399,7 @@ slots:
     holds: the Grammar's Storybook configuration
     rule: packages/README.md
 
-  # --- bench, skills and the app
-  - id: bench.map
-    path: bench/README.md
-    presence: required
-    holds: how the stress bench runs and its scoreboard
-    rule: cli-proven-by-bench
-  - id: bench.scenarios
-    path: "bench/scenarios/*.yaml"
-    presence: required
-    holds: one scenario per file (starci/scenario@1), validated by cli/src/core/bench/scenario.ts
-    rule: cli-proven-by-bench; CONTRIB-1
-  - id: bench.stub
-    path: "bench/stub/*.mjs"
-    presence: required
-    holds: the bench stand-ins, the Orca one preloaded into a copied node binary and the Telegram Bot API one run by node, so they stay plain JavaScript
-    rule: bench/README.md
-  - id: bench.fixtures
-    path: "bench/fixtures/**"
-    presence: optional
-    holds: data a scenario copies into its scratch repo (a product shaped to prove one law); never compiled by the harness
-    rule: cli-proven-by-bench; CONTRIB-9 data is data
+  # --- skills and the app
   - id: skills.skill
     path: "skills/<skill>/{SKILL.md,references/*.md,agents/*.yaml}"
     presence: required

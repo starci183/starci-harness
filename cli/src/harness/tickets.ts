@@ -156,7 +156,7 @@ const toWaiter = (row: Record<string, unknown>): TicketWaiter => ({
 })
 
 const ERROR_CODE = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/
-const MODULE = /\b(?:cli\/src|ops|policy|packages|contexts|skills|bench)\/[\w./-]*\.(?:ts|mts|mjs|js|ya?ml|md|json)\b/
+const MODULE = /\b(?:cli\/src|ops|policy|packages|contexts|skills)\/[\w./-]*\.(?:ts|mts|mjs|js|ya?ml|md|json)\b/
 
 /** The first refusal or error code a text names (`TELEGRAM_API`), or null. */
 export const errorCodeOf = (text: string): string | null => ERROR_CODE.exec(text)?.[0] ?? null

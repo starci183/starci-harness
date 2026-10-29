@@ -564,9 +564,9 @@ rulings:
     ruling: "Message catalogs are excluded from copy-paste detection only; they stay linted and held to every other rule."
     owner: "policy (sonar configuration of the app template)"
   - id: cli-proven-by-bench
-    date: '2026-10-27'
+    date: '2026-10-29'
     status: live
-    ruling: "The harness CLI is proven by the bench and by runs of the built CLI, not by unit coverage: Sonar analyses cli/src for issues and duplication and excludes it from coverage only."
+    ruling: "The harness CLI is proven by runs of the built CLI, not by unit coverage; the stress bench that also proved it is removed (owner ruling bench-removed, contexts/harness/decisions.md) and orchestration proof is to come from real test results in Orca. Sonar analyses cli/src for issues and duplication and excludes it from coverage only."
     owner: "CONTRIBUTING.md CONTRIB-1; sonar-project.properties"
   - id: rules-pending-enforcers-2026-10-27
     date: '2026-10-27'

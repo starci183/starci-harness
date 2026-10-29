@@ -3,14 +3,8 @@ import { dirname, join } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { loadPolicy, locatePolicy } from "./policy.js"
 
-/** Replaces the path of the harness's secret.env; the bench points it at a file of its run. */
-export const SECRET_ENV_FILE_ENV = "STARCI_SECRET_ENV"
-
-/** The harness's secret.env: STARCI_SECRET_ENV, else secret.env at the harness root (the folder that holds policy/). */
-export const secretEnvPath = (): string => {
-    const override = process.env[SECRET_ENV_FILE_ENV]
-    return override === undefined || override === "" ? join(dirname(locatePolicy()), "secret.env") : override
-}
+/** The harness's secret.env: secret.env at the harness root (the folder that holds policy/). */
+export const secretEnvPath = (): string => join(dirname(locatePolicy()), "secret.env")
 
 /** Where a secret was found: the process environment wins over secret.env. */
 export type SecretSource = "environment" | "secret.env"

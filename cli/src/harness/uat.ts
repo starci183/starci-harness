@@ -63,8 +63,8 @@ const dockerfileOf = (image: string, version: string): string =>
         "",
     ].join("\n")
 
-/** The docker client every uat call runs: STARCI_DOCKER_BIN when set (the bench's stand-in), else docker on PATH. */
-export const dockerBin = (): string => process.env.STARCI_DOCKER_BIN ?? "docker"
+/** The docker client every uat call runs: docker on PATH. */
+export const dockerBin = (): string => "docker"
 
 const preambleFile = (): string => join(dirname(fileURLToPath(import.meta.url)), "uat-preamble.js")
 

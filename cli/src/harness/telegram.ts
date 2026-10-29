@@ -37,9 +37,6 @@ const configSchema = z.strictObject({
 /** ops/telegram.yaml, validated: the owner's Telegram channel. */
 export type TelegramConfig = z.infer<typeof configSchema>
 
-/** Replaces `apiBase` of ops/telegram.yaml; the bench points it at its stand-in. */
-export const TELEGRAM_API_ENV = "STARCI_TELEGRAM_API"
-
 /** Loads and validates ops/telegram.yaml from the ops folder (STARCI_OPS_DIR honoured). */
 export const loadTelegram = (dir: string = locateOps()): TelegramConfig => {
     const file = join(dir, "telegram.yaml")
@@ -75,8 +72,7 @@ const replySchema = z.looseObject({ ok: z.boolean(), result: z.unknown().optiona
 export const telegramBot = (config: TelegramConfig = loadTelegram()): TelegramBot => {
     const token = lookupSecret(config.tokenVariable)?.value
     if (token === undefined) throw new Refusal("TELEGRAM_NOT_CONFIGURED", `${config.tokenVariable} is not set; ${secretHome(config.tokenVariable)}`)
-    const override = process.env[TELEGRAM_API_ENV]
-    const api = (override === undefined || override === "" ? config.apiBase : override).replace(/\/+$/, "")
+    const api = config.apiBase.replace(/\/+$/, "")
     const redact = (text: string): string => text.replaceAll(token, "<token>")
     const call = async <T>(method: string, body: Readonly<Record<string, unknown>> | FormData, schema: z.ZodType<T>, waitSeconds = 0): Promise<T> => {
         const form = body instanceof FormData

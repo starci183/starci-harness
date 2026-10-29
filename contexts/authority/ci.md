@@ -1,7 +1,7 @@
 # Tier 3: CI
 
 CI is the critic. After a green wave ([wave.md](wave.md)) is pushed to main, CI runs the full suite: unit tests with
-coverage, e2e, build, Sonar, the Grammar's plays and DNA measurement, and the bench. It publishes every package version
+coverage, e2e, build, Sonar, and the Grammar's plays and DNA measurement. It publishes every package version
 not on npm yet as soon as that package's own jobs are green, never waiting for the whole run, so the push that carries a
 bumped version is the act of publishing (decision "Coded is usable; publishing is CI's" in
 [harness/decisions.md](../harness/decisions.md); [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20 owns the jobs, which

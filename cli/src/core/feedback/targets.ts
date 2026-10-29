@@ -7,21 +7,14 @@ import type { FeedbackTargetKind } from "../../harness/feedback.js"
 import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureGitSync } from "../../shared/git.js"
-import { loadScenarios } from "../bench/scenario.js"
 import { knowledgeDir } from "../contexts/anatomy.js"
 import { readCorpus } from "../contexts/search-corpus.js"
 
 /** The folder of the harness checkout a commit target must touch, per commit kind. */
 const COMMIT_FOLDERS: Readonly<Partial<Record<FeedbackTargetKind, string>>> = { grammar: "packages/grammar/", cli: "cli/", app: "app/" }
 
-/** Replaces the checkout whose commits close a feedback (the harness checkout): the bench points it at a fixture repository. */
-export const FEEDBACK_REPO_ENV = "STARCI_FEEDBACK_REPO"
-
-/** The checkout a commit target resolves in: STARCI_FEEDBACK_REPO, else the harness checkout. */
-const commitRepo = (): string => {
-    const repo = process.env[FEEDBACK_REPO_ENV]
-    return repo === undefined || repo === "" ? runtimeRoot() : repo
-}
+/** The checkout a commit target resolves in: the harness checkout. */
+const commitRepo = (): string => runtimeRoot()
 
 /** A target kind as `--kind` gives it; refuses one that is not a closing kind. */
 export const targetKindOf = (kind: string): FeedbackTargetKind => {
@@ -71,18 +64,10 @@ const resolveContext = (target: string): { readonly target: string; readonly evi
     return { target, evidence: `${chunk.path}:${String(chunk.line)} ${chunk.title}` }
 }
 
-/** A scenario of bench/scenarios. */
-const resolveBench = (target: string): { readonly target: string; readonly evidence: string } => {
-    const scenario = loadScenarios().find((item) => item.id === target)
-    if (scenario === undefined) throw unresolved("bench", target, "no scenario of bench/scenarios has this id")
-    return { target, evidence: `bench scenario ${scenario.id} (${scenario.automation}): ${scenario.title}` }
-}
-
 /** Resolves a closing target or refuses FEEDBACK_TARGET_UNRESOLVED; the answer is the target as stored and what proved it. */
 export const resolveTarget = (kind: FeedbackTargetKind, target: string): { readonly target: string; readonly evidence: string } => {
     const folder = COMMIT_FOLDERS[kind]
     if (folder !== undefined) return resolveCommit(kind, folder, target)
     if (kind === "rule") return resolveRule(target)
-    if (kind === "context") return resolveContext(target)
-    return resolveBench(target)
+    return resolveContext(target)
 }

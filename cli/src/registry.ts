@@ -76,8 +76,6 @@ import { testLiveVerb } from "./core/test/live.js"
 import { contextsAnatomyVerb } from "./core/contexts/anatomy.js"
 import { contextsAnchorVerb } from "./core/contexts/anchors-verb.js"
 import { contextsSearchVerb } from "./core/contexts/search.js"
-import { benchListVerb } from "./core/bench/list.js"
-import { benchRunVerb } from "./core/bench/run.js"
 import { supervisorStartVerb } from "./core/supervisor/start.js"
 import { supervisorStatusVerb } from "./core/supervisor/status.js"
 import { supervisorStopVerb } from "./core/supervisor/stop.js"
@@ -212,8 +210,6 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     contextsAnatomyVerb,
     contextsAnchorVerb,
     contextsSearchVerb,
-    benchRunVerb,
-    benchListVerb,
     supervisorStartVerb,
     supervisorStatusVerb,
     supervisorStopVerb,

@@ -154,8 +154,8 @@ succeeded (else its parent), and `starci release affected` names the packages to
 (the ones it requires, its `file:` dependencies, the ones its files read by relative path), and whether the harness and app
 jobs run. Then, in parallel: one `gates` job per light gate over the whole tree (anatomy, anchor and search-index checks of
 `contexts/`, the loosening, secret and shape gates, and `check pins`: the CLI's `@starci` packages at their pins), one `package` job per affected package (install and build its siblings
-and itself, its declarations name `.js`, its specs), the `harness` job when `cli/`, `contexts/`, `ops/`, `policy/`, `bench/`
-or a package the CLI requires changed (the CLI's typecheck, lint and build, sops and age pinned and checksum-verified for the secret scenarios, and the bench), the `app` job when the desktop
+and itself, its declarations name `.js`, its specs), the `harness` job when `cli/`, `contexts/`, `ops/`, `policy/`
+or a package the CLI requires changed (the CLI's typecheck, lint and build), the `app` job when the desktop
 app is affected, and the Sonar new-code gate; a change under `.github/`, a manual run or an unreadable base checks
 everything. The `ci` job is the one required check, green when every job the plan needed passed. On a push to main that
 affects a package or the CLI, the `publish-packages` and `publish-cli` jobs publish every version not yet on npm once its
