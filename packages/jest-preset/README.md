@@ -1,6 +1,6 @@
 # @starci/jest-preset
 
-The jest config of a Nest repository and the one shared unit-test double kit (`mock<T>()`, `mockEntityManager`, `fakeTransaction`, `fakeCache`, `fakeLock`, `recordingEventBus`, `recordingQueueOutbox`, `fakeInbox`, `builder`, `FakeClock`, `fakeIds` and the Outcome matchers). Install it from the npm registry at the exact version in the StarCi runtime's `knowledge/stack/pins.yaml` (see [`packages/README.md`](../README.md)).
+The jest config of a Nest repository and the one shared unit-test double kit (`mock<T>()`, `mockEntityManager`, `fakeTransaction`, `fakeQueryBuilder`, `queueQueryBuilders`, `fakeCache`, `fakeLock`, `recordingEventBus`, `recordingQueueOutbox`, `fakeInbox`, `builder`, `FakeClock`, `fakeIds` and the Outcome matchers). Install it from the npm registry at the exact version in the StarCi runtime's `knowledge/stack/pins.yaml` (see [`packages/README.md`](../README.md)).
 
 ```js
 // jest.config.js (a managed file: `starci app sync` renders it, `starci app check` compares it; do not edit)
@@ -72,7 +72,7 @@ const service = moduleRef.get(CommissionService)
 No `new` of the service, no `imports`, no `overrideProvider`, no `jest.mock`, no casts, no `Date.now()` and no `process.env`. The
 full rules and the dependency-to-double-to-cases table are `contexts/code/be/test.md` (the BE-TEST rules). Every
 export below is on the package root (`@starci/jest-preset`); the sub-paths `./mock`, `./clock`, `./entity-manager`, `./ids`,
-`./matchers`, `./cache`, `./lock`, `./event-bus`, `./queue`, `./inbox` and `./builders` exist as well.
+`./query-builder`, `./matchers`, `./cache`, `./lock`, `./event-bus`, `./queue`, `./inbox` and `./builders` exist as well.
 
 ## `mockEntityManager` and `fakeTransaction`
 
@@ -104,6 +104,21 @@ The stubbable methods are `findOne`, `findOneBy`, `findOneOrFail`, `findOneByOrF
 `findAndCountBy`, `count`, `countBy`, `exists`, `existsBy`, `save`, `remove`, `softRemove`, `recover`, `insert`, `update`, `upsert`,
 `delete`, `softDelete`, `restore`, `increment`, `decrement` and `query`. `fakeTransaction(em)` returns `{ em, outcomes, commits,
 rollbacks, committedWrites, rolledBackWrites }`.
+
+## `fakeQueryBuilder` and `queueQueryBuilders`
+
+The double of `createQueryBuilder(Entity, "alias")`, the builder a lite service reads with. Every chained method records
+`{ method, args }` and returns the builder; a terminal (`execute`, `getMany`, `getOne`, `getRawMany`, `getRawOne`, `getCount`,
+`getManyAndCount`) resolves the answer the spec gave it, and a function answer is called when the terminal runs.
+
+```ts
+import { mockEntityManager, queueQueryBuilders } from "@starci/jest-preset"
+
+const em = mockEntityManager()
+const [open] = queueQueryBuilders(em, [{ getMany: [order] }])   // one fake per createQueryBuilder call, in order
+await service.listOpen(owner)
+expect(open.callsOf("where")).toEqual([["o.ownerId = :owner", { owner }]])
+```
 
 ## `fakeCache(clock)`, `fakeLock(clock)`, `recordingEventBus()` and `recordingQueueOutbox()`
 

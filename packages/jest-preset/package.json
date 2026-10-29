@@ -1,7 +1,7 @@
 {
   "name": "@starci/jest-preset",
-  "version": "2.4.1",
-  "description": "The StarCi jest config for Nest repositories (unit, integration, e2e and contract projects, ts-jest with diagnostics off, per-file 100 coverage of *.service.ts only) and the one shared unit-test double kit: typed mock<T>(), mockEntityManager(), fakeTransaction(), fakeCache(), fakeLock(), recordingEventBus(), recordingQueueOutbox(), fakeInbox(), FakeClock, fakeIds(), builder() and the Outcome matchers toBeRefused/toSucceedWith.",
+  "version": "2.5.0",
+  "description": "The StarCi jest config for Nest repositories (unit, integration, e2e and contract projects, ts-jest with diagnostics off, per-file 100 coverage of *.service.ts only) and the one shared unit-test double kit: typed mock<T>(), mockEntityManager(), fakeTransaction(), fakeQueryBuilder(), queueQueryBuilders(), fakeCache(), fakeLock(), recordingEventBus(), recordingQueueOutbox(), fakeInbox(), FakeClock, fakeIds(), builder() and the Outcome matchers toBeRefused/toSucceedWith.",
   "license": "MIT",
   "author": "starci183",
   "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/jest-preset#readme",
@@ -33,6 +33,10 @@
     "./entity-manager": {
       "types": "./dist/entity-manager.d.ts",
       "default": "./dist/entity-manager.js"
+    },
+    "./query-builder": {
+      "types": "./dist/query-builder.d.ts",
+      "default": "./dist/query-builder.js"
     },
     "./ids": {
       "types": "./dist/ids.d.ts",
