@@ -6,6 +6,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.10] - 2026-10-29
+
+### Changed
+
+- **`starci app db` on a self-hosted PostgreSQL** (ruling lite-self-hosted-postgres-passport-minio): the verb takes `new`, `baseline`, `restamp`, `plan`, `migrate`, `post-cutover`, `dump` and `drift` with `--url-env <NAME>` (default `DATABASE_URL`); `reset`, `--linked`, `--local`, `--target-binding`, `--auth`, `--storage` and `--backup` are gone (`cli/src/core/app/db.ts`), and `app add` has no `--no-types` (`cli/src/core/app/add.ts`). It runs with @starci/hfs 4.10.0.
+
 ## [1.1.0-alpha.9] - 2026-10-29
 
 ### Fixed
@@ -91,8 +97,6 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `app-lint-eslint-heap-flag`; the boot proof timeout is held by `packages/hfs/src/hfs-boot-proof.spec.mjs` on a real worker.
 
 ### Changed
-
-- **`starci app db` on a self-hosted PostgreSQL** (ruling lite-self-hosted-postgres-passport-minio): the verb takes `new`, `baseline`, `restamp`, `plan`, `migrate`, `post-cutover`, `dump` and `drift` with `--url-env <NAME>` (default `DATABASE_URL`); `reset`, `--linked`, `--local`, `--target-binding`, `--auth`, `--storage` and `--backup` are gone (`cli/src/core/app/db.ts`), and `app add` has no `--no-types` (`cli/src/core/app/add.ts`). It runs with @starci/hfs 4.10.0.
 
 - **The release gate's load defects.** The eslint memory of ops/liveness.yaml `heavy` is 8192 MB, its admission estimate matches,
   and the CLI hands it to the ESLint child of an app lint or app check as its heap; `heavy.bootProofTimeoutSeconds` (300) is the
