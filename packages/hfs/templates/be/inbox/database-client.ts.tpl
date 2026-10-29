@@ -1,5 +1,6 @@
 import type { EntityManager } from "typeorm"
 import { DatabaseError, DatabaseErrorCode } from "./errors/database.error"
+import { returnedRows, rowShape } from "./returned-rows.policy"
 
 interface RecordWebhookDelivery {
     readonly manager: EntityManager
@@ -11,6 +12,9 @@ interface RecordWebhookDelivery {
 }
 
 type WebhookReceiptId = string | undefined
+
+/** The row the receipt insert returns to the winning transaction. */
+const isReceiptRow = rowShape({ id: "string" })
 
 /** A provider inbox table name: a lowercase identifier, never a value. */
 const TABLE = /^[a-z_][a-z0-9_]*$/
@@ -36,10 +40,10 @@ export const recordWebhookDelivery = async ({
     if (!normalizedDeliveryId) {
         throw new DatabaseError({ code: DatabaseErrorCode.WebhookDeliveryIdRequired })
     }
-    const rows: Array<{ readonly id: string }> = await manager.query(webhookReceiptInsert(table), [
+    const inserted: unknown = await manager.query(webhookReceiptInsert(table), [
         provider,
         normalizedDeliveryId,
         JSON.stringify(payload),
     ])
-    return rows[0]?.id
+    return returnedRows(inserted, isReceiptRow)[0]?.id
 }

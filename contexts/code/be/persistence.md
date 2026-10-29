@@ -77,15 +77,19 @@ named bare and called in `pg_catalog`. `callDbFunction` refuses any other name w
 double-quotes each checked part and passes the arguments as numbered parameters; that file is the one place a call
 statement is composed (R68 names it). TypeORM 0.3 traps the builder hides: a dotted join (`innerJoin("public.x", ...)`)
 throws, so join the entity or the unqualified table; `InsertQueryBuilder.returning()` takes the string form and ignores an array; an
-`UPDATE ... RETURNING` stays one builder statement, never a write followed by a read. A query builder names its entity:
+`UPDATE ... RETURNING` stays one builder statement, never a write followed by a read, and the `raw` rows a builder's `execute()`
+answers are read through `returnedRows(result.raw, rowShape({ column: kind }))` of `platform/database`, which checks each row
+against the returned columns and refuses another shape (`DATABASE_RETURNING_ROW_REJECTED`), never cast. A query builder names its entity:
 a table-name builder and a Repository are refused. The unit doubles are `mockEntityManager` of `@starci/jest-preset`
 (`{ method: [Entity, result] }`) and, for a builder, its `queueQueryBuilders(em, answers)` (`fakeQueryBuilder` per call).
 
 Full: every statement is an UPPER_SNAKE constant built with the `sql` tag of `platform/database` in
 `persistence/<name>.sql.ts`, documented with what it does and its numbered parameters. Values are `$n` parameters with
 explicit casts; the only substitution the tag takes is a `SqlIdent` from `ident(name, allowed)`. Row shapes are
-readonly snake_case interfaces `<Name>Row` in `persistence/<name>.rows.ts`. No SQL literal elsewhere, no query
-builder, no `+` or template building a `.query` string.
+readonly snake_case interfaces `<Name>Row` in `persistence/<name>.rows.ts`, each beside its guard
+(`is<Name>Row: (value: unknown) => value is <Name>Row = rowShape({ ... })`), and a statement's rows are read as
+`returnedRows(await manager.query(SQL, [params]), is<Name>Row)`, never typed by a cast or a `query<T>` argument. No SQL
+literal elsewhere, no query builder, no `+` or template building a `.query` string.
 
 Why: SQL in one reviewed file per owner is a data boundary that can be parsed, checked for ownership and never
 concatenated.
@@ -126,7 +130,7 @@ Enforced by: `no-external-call-in-transaction` (R82).
 
 A domain service (or a platform capability owning a `persistence/`) injects
 `@InjectPrimaryEntityManager() private readonly entityManager: EntityManager` and calls its entity API (lite,
-BE-PERSISTENCE-4) or `entityManager.query<Array<Row>>(SQL, [params])` (full). No `getRepository`, `@InjectRepository`, `Repository<T>`, repository
+BE-PERSISTENCE-4) or `returnedRows(await entityManager.query(SQL, [params]), isRow)` (full). No `getRepository`, `@InjectRepository`, `Repository<T>`, repository
 or store class, injected `DataSource` or `QueryRunner` outside `platform/database` and the cli, and no manager in a
 door, integration or app.
 
@@ -172,7 +176,7 @@ Why: one transaction identity per scenario makes atomicity checkable.
 
 ```ts
 return this.entityManager.transaction(async (manager) => {
-    const [row] = await manager.query<Array<InsertedRow>>(INSERT_GENERATION, [workspaceId, kind, input])
+    const [row] = returnedRows(await manager.query(INSERT_GENERATION, [workspaceId, kind, input]), isInsertedRow)
     if (row === undefined) throw new GenerationsError({ code: GenerationsErrorCode.NotCreated })
     await this.queue.enqueueGenerate({ generationId: row.id, workspaceId }, manager)
     return { id: row.id, status: "queued" }

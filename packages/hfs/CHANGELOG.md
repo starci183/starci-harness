@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.11.15 - 2026-10-29
+
+- Added: `platform/database/returned-rows.policy.ts` in the skeleton of both editions, exported from the database barrel: `rowShape({ column: kind })` builds the guard of the rows a RETURNING clause answers (kinds `string`, `number`, `boolean`, `date`, `json`, and `string?`, `number?`, `boolean?`, `date?` that also admit SQL null; a column the statement does not return is refused), and `returnedRows(raw, isRow)` narrows the result of `manager.query` or the `raw` of a query builder's `execute()` to typed rows with no cast. A result that is not a list of rows (the `[rows, count]` of a bare UPDATE included) or a row the guard refuses throws the new `DATABASE_RETURNING_ROW_REJECTED` (internal) of both editions' `DatabaseErrorCode`. The policy spec proves every kind, null, a missing column and both refusals.
+- Changed: the skeleton's RETURNING call sites read their rows through it: full `NoteService.create` (`isNoteRow` beside `NoteRow` in `note.rows.ts`) and the full `RateLimitGuard` (`isRateWindowRow` in `rate-limit.rows.ts`); the lite webhook receipt insert (`webhook-inbox.client.ts`, the `inbox` templates' `database-client.ts.tpl`), with a spec for a receipt row of another shape.
+- Changed: the lite `RateLimitGuard` counts a live window in one query builder `UPDATE ... SET hits = hits + 1 ... RETURNING hits` read through `returnedRows`, no longer an `increment` followed by a `findOneBy` (BE-PERSISTENCE-4: an UPDATE that answers rows stays one statement); the spec reads the counting builder's calls and refuses a returned row whose hits are not a number.
+- Changed: the bundled canon pins name hfs 4.11.15, eslint-canon-be 3.8.14, eslint-canon-fe 9.5.16 and the Grammar family 0.15.27.
+
 ## 4.11.14 - 2026-10-29
 
 - Fixed: R253 (`HFS_CANON_COPY_DRIFT`, `rules/canon-copy-drift.mjs`) judges a hash-sensitive canon copy against the be/skeleton of the @starci/hfs version the app pins (its lockfile's resolution of `node_modules/@starci/hfs`, else an exact package.json pin), never against a newer hfs that runs the check: this package's own templates serve when it is that version or the app pins none, else an installed copy at the pinned version; with neither at hand the copy is left to the app's own run of its pinned hfs. A skeleton change reaches an app only when the app raises its hfs.

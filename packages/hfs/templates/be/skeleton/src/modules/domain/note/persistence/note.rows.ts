@@ -1,3 +1,4 @@
+import { rowShape } from "@modules/platform/database"
 import type { Note } from "../note.contracts"
 
 /** The row INSERT_NOTE answers. */
@@ -9,6 +10,9 @@ export interface NoteRow {
     /** When the note was written. */
     created_at: Date
 }
+
+/** Proves one row INSERT_NOTE answered is a NoteRow. */
+export const isNoteRow: (value: unknown) => value is NoteRow = rowShape({ id: "string", body: "string", created_at: "date" })
 
 /** The note of the row an insert answers, or null when it answered none. */
 export const toNote = (rows: ReadonlyArray<NoteRow>): Note | null => {

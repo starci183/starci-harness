@@ -30,7 +30,7 @@ export class OrdersService {
 
     /** Cancels a draft and answers it; null when the order is no longer a draft, so a repeat changes nothing. */
     async cancel(workspaceId: string, orderId: string): Promise<OptionalOrder> {
-        const rows = await this.entityManager.query<Array<OrderRow>>(CANCEL_ORDER, [workspaceId, orderId])
+        const rows = returnedRows(await this.entityManager.query(CANCEL_ORDER, [workspaceId, orderId]), isOrderRow)
         return rows[0] ?? null
     }
 }

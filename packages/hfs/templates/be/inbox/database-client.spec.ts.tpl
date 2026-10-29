@@ -35,6 +35,12 @@ describe("recordWebhookDelivery", () => {
         expect(receiptId).toBeUndefined()
     })
 
+    it("refuses a receipt row of another shape instead of reading its id", async () => {
+        const manager = mockEntityManager({ query: [INSERT, [{ id: 7 }]] })
+
+        await expect(record(manager, "delivery-1")).rejects.toMatchObject({ code: DatabaseErrorCode.ReturningRowRejected })
+    })
+
     it.each([["no", undefined], ["a blank", "   "]])("refuses %s delivery id before writing a receipt", async (_label, deliveryId) => {
         const manager = mockEntityManager()
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.27 - 2026-10-29
+
+- Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.27), which re-pin hfs 4.11.15.
+
 ## 0.15.26 - 2026-10-29
 
 - Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.26), which re-pin hfs 4.11.14.
