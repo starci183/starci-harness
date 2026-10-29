@@ -20,6 +20,7 @@ starci app upgrade [--plan]
 starci app stack <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
 starci app explain <path> [--cwd <dir>] [--json]
 starci app emit [--cwd <dir>]
+starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app new service <dir> <name> [--inject <binding>...] [--cwd <dir>]
 starci app new spec <file>.service.ts [--cwd <dir>]
 starci app new image [--cwd <dir>]
@@ -79,6 +80,19 @@ The lite additions are deliberately narrow:
 
 `starci app emit` continues to emit the enabled back-end snapshots and also writes `supabase/types/database.types.ts` when
 the `app.supabase.types` slot is enabled. The local Supabase stack must be running for generation.
+
+`starci app db drift` holds a lite app's TypeORM entities to the schema its migrations build (R333, `BE_ENTITY_SCHEMA_DRIFT`; `db/drift.mjs`).
+It loads the entity list `be/src/platform/database/entities.ts` with the app's own `typescript`, `typeorm` and `pg` (its `be/tsconfig.json`
+path aliases resolved) and builds TypeORM's metadata through a postgres `DataSource` with `synchronize` false that never connects. It applies
+`db/bootstrap.sql`, when present, and every active `db/migrations/*.sql`, each file in one transaction, to a scratch database: a throwaway
+container of the image `.starcistacks/application-stacks.yaml` declares for `components.db`, or with `--url-env <NAME>` the database that
+variable names, which must hold no relation in `public` yet (`DB_DRIFT_TARGET_NOT_EMPTY`). It reads the result from
+`information_schema.columns` and `pg_catalog` and reports each entity column whose table or column is missing, whose type differs once
+both are spelled as `format_type` names (an enum matches an enum of the name the entity gives), or whose nullability differs; a column no
+entity maps is fine. Exit 0 is green, 1 is drift or a migration that does not apply to an empty database (`DB_DRIFT_MIGRATION_FAILED`),
+and 2 is no verdict: a host without Docker or without the app's packages gets `DB_DRIFT_NEEDS_DATABASE` (needs a database), never a
+green. An app with an entity list runs it as the `db-drift` row of `starci app release gate` and in the database step of its managed CI's
+build job.
 
 Input bounds stay with the backend DTO: `MaxLength`, `ArrayMaxSize`, `Min` and `Max` become GraphQL `@inputBounds`
 input-field directives or JSON Schema constraints on the REST operation table's DTO properties. Codegen derives

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { refusal } from '../stack/errors.mjs';
 import { byCodeUnit } from '../report/order.mjs';
+import { ENTITY_LIST } from '../db/entity-list.mjs';
 
 // One command vocabulary for managed CI rendering and the runtime coverage gate.
 const exampleCommand = (source, command) => source?.runtimeExample
@@ -195,7 +196,8 @@ export function ciWorkflowCommands(source, lcovReport = 'be/coverage/lcov.info',
     ciLintSonar: exampleCommand(source, 'npm run lint -- --sonar reports/lint.sonar.json'),
     // The coverage judgement alone over the merged report: the fast and lint jobs already ran every other rule of the app check.
     ciCoverageProof: exampleCommand(source, 'npx starci app coverage verify ' + lcovReport),
-    ciDatabaseLint: exampleCommand(source, 'npm run db:lint'),
+    // An app with an entity list also checks its entities against the schema its migrations build, in the build job (a runner with Docker).
+    ciDatabaseLint: exampleCommand(source, (source?.files ?? []).includes(ENTITY_LIST.slice('be/'.length)) ? 'npm run db:lint && npx starci app db drift' : 'npm run db:lint'),
     auditCommand: `npm audit${audit.omitDev ? ' --omit=dev' : ''} --audit-level=${audit.level}`,
     sonarTokenSecret: sonar?.token ?? 'SONAR_TOKEN',
     sonarHostVar: sonar?.hostVar ?? 'SONAR_HOST_URL',

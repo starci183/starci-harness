@@ -19,7 +19,7 @@ Why: when an ORM diffs the schema at boot, the live schema is whatever the code 
 run.
 
 Enforced by: `no-runtime-schema` (R34), `migration-down-reversible` (R74), R213, R257 (lite migration and baseline
-shape).
+shape); lite entities are checked against the migrated schema by `starci app db drift` (BE_ENTITY_SCHEMA_DRIFT, R333).
 
 ## BE-PERSISTENCE-2 The cli applies migrations; serving apps never do
 
