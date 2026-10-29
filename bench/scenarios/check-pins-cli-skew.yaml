@@ -1,0 +1,76 @@
+schema: starci/scenario@1
+id: check-pins-cli-skew
+group: release
+title: a CLI whose @starci requirement or locked copy differs from its stack pin turns check pins red, naming each skew
+inject: >-
+  a scratch tree whose contexts/stack/pins.yaml pins @starci/hfs 4.10.0 while cli/package.json and cli/package-lock.json
+  name 4.9.5 (the state 1.1.0-alpha.10 was cut in); then the requirement raised alone; then the lockfile raised too; then an
+  unpinned @starci package required
+expect: >-
+  check pins is red CLI_PIN_SKEW naming the requirement and the locked copy with the pin and the version found, red on the
+  lockfile alone once the requirement moved, green once both agree, and red for a @starci package no pin names
+pass:
+  - the skewed requirement and lockfile are each named, exit 1
+  - the lockfile alone is named once the requirement agrees
+  - requirement and lockfile at the pin are green, exit 0
+  - an unpinned @starci requirement is red
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    contexts/stack/pins.yaml: |
+      schema: starci/stack-pins@1
+      pins:
+        '@starci/hfs': {version: 4.10.0, group: starci, side: both, install: registry}
+    cli/package.json: |
+      {"name":"starci-bench-pins-cli","version":"1.0.0","dependencies":{"@starci/hfs":"4.9.5","yaml":"2.9.1"}}
+    cli/package-lock.json: |
+      {"name":"starci-bench-pins-cli","lockfileVersion":3,"packages":{"":{"dependencies":{"@starci/hfs":"4.9.5","yaml":"2.9.1"}},"node_modules/@starci/hfs":{"version":"4.9.5"},"node_modules/yaml":{"version":"2.9.1"}}}
+steps:
+  - name: the requirement is off the pin
+    starci: [check, pins]
+    expect:
+      exit: 1
+      contains: "\"where\": \"cli/package.json dependencies\""
+  - name: the skew carries its code
+    starci: [check, pins]
+    expect:
+      exit: 1
+      contains: "\"code\": \"CLI_PIN_SKEW\""
+  - name: the locked copy is named too
+    starci: [check, pins]
+    expect:
+      exit: 1
+      contains: "\"where\": \"cli/package-lock.json node_modules/@starci/hfs\""
+  - write:
+      path: cli/package.json
+      content: |
+        {"name":"starci-bench-pins-cli","version":"1.0.0","dependencies":{"@starci/hfs":"4.10.0","yaml":"2.9.1"}}
+  - name: the lockfile alone still runs the old package
+    starci: [check, pins]
+    expect:
+      exit: 1
+      contains: "\"where\": \"cli/package-lock.json node_modules/@starci/hfs\""
+  - name: the requirement no longer is
+    starci: [check, pins]
+    expect:
+      exit: 1
+      lacks: "\"where\": \"cli/package.json dependencies\""
+  - write:
+      path: cli/package-lock.json
+      content: |
+        {"name":"starci-bench-pins-cli","lockfileVersion":3,"packages":{"":{"dependencies":{"@starci/hfs":"4.10.0","yaml":"2.9.1"}},"node_modules/@starci/hfs":{"version":"4.10.0"},"node_modules/yaml":{"version":"2.9.1"}}}
+  - name: requirement and lockfile at the pin
+    starci: [check, pins]
+    expect:
+      exit: 0
+      contains: "\"verdict\": \"green\""
+  - write:
+      path: cli/package.json
+      content: |
+        {"name":"starci-bench-pins-cli","version":"1.0.0","dependencies":{"@starci/hfs":"4.10.0","@starci/unpinned":"1.0.0"}}
+  - name: a @starci package no pin names
+    starci: [check, pins]
+    expect:
+      exit: 1
+      contains: "\"package\": \"@starci/unpinned\""

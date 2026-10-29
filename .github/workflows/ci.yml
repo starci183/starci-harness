@@ -108,6 +108,9 @@ jobs:
           - gate: harness shape (contexts/hfs/harness.yaml)
             scope: repo
             run: check shape
+          - gate: CLI pins (the CLI's @starci requirements and lockfile at contexts/stack/pins.yaml)
+            scope: harness
+            run: check pins
           - gate: heavy spawn sites (every heavy command through the governor of cli/src/harness/heavy.ts)
             scope: harness
             run: check heavy-sites
@@ -318,7 +321,7 @@ jobs:
         run: npm run build
       # Refused before anything reaches npm: RELEASE_VERSION_NOT_BUMPED names a package changed since the plan's base whose
       # version is already on npm, RELEASE_DEPENDENCY_SKEW and RELEASE_DEPENDENCY_UNPUBLISHED a due package against its siblings
-      # (the CLI may require an older sibling npm serves: publish-cli moves it to the folder's version). A due package then
+      # (the CLI requires a sibling npm serves; publish-cli judges it at its stack pins). A due package then
       # publishes only when every `gate (repo)` job is green and the `package` job of each folder of its build order (itself
       # and the siblings it needs) that this run tested is green; any other due package is held, and named.
       - name: Judge the plan and this run's jobs
@@ -358,8 +361,8 @@ jobs:
           for dir in $PUBLISH; do node cli/dist/main.js release publish --publish --base "$BASE" --package "$dir"; done
 
   # Phase 2: the CLI (starci-harness), after publish-packages, once the harness job and every gate are green (Sonar and the app
-  # job never gate a publish). Its sibling requirements and lockfile move to the folder versions the packages publish put on
-  # npm; a due sibling it requires that publish-packages held refuses it here.
+  # job never gate a publish). It publishes as committed, its @starci requirements and lockfile at their stack pins
+  # (CLI_PIN_SKEW otherwise, also the `check pins` gate); a due sibling it requires that publish-packages held refuses it here.
   publish-cli:
     needs: [plan, gates, harness, publish-packages]
     if: >-

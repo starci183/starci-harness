@@ -42,6 +42,7 @@ import { seatStopVerb } from "./core/seat/stop.js"
 import { checkLooseningVerb } from "./core/check/loosening.js"
 import { checkSecretsVerb } from "./core/check/secrets.js"
 import { checkShapeVerb } from "./core/check/shape.js"
+import { checkPinsVerb } from "./core/check/pins.js"
 import { checkHeavySitesVerb } from "./core/check/heavy-sites.js"
 import { checkCiVerb } from "./core/check/ci.js"
 import { checkStoriesVerb } from "./core/check/stories.js"
@@ -175,6 +176,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     checkLooseningVerb,
     checkSecretsVerb,
     checkShapeVerb,
+    checkPinsVerb,
     checkHeavySitesVerb,
     checkCiVerb,
     checkStoriesVerb,

@@ -210,10 +210,14 @@ at another version than the sibling's folder holds at that commit, or at a versi
 same run. A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
 (the CLI's is [CHANGELOG.md](CHANGELOG.md)) in the commit that makes it; a package and the sibling version it requires
 move in one commit. The CLI is the one exception, held for the second phase: `cli/package-lock.json` installs its
-siblings from npm, so its commit requires each at a version npm serves (the folder's or an older one), every CI job
-installs it with the siblings of the commit packed over those copies ([.github/actions/cli-install](.github/actions/cli-install/action.yml)),
-and `publish-cli` moves its requirements and lockfile to the sibling versions the first phase published before
-publishing it, refusing while a sibling it requires is held. `starci release publish --publish` from a
+siblings from npm, so its commit requires each at a version npm serves, and it requires every `@starci` package
+(`cli/package.json` and each copy its lockfile resolves) at its pin in [contexts/stack/pins.yaml](contexts/stack/pins.yaml),
+refused `CLI_PIN_SKEW` by the `check pins` gate on every push and by `release publish` before the CLI publishes. A pin
+of a package the CLI requires is therefore raised together with the CLI's requirement and lockfile, in the same commit when npm
+already serves the new version, else in the next one once the first phase published it (the gate is red in between and
+holds only `publish-cli`). Every CI job installs the CLI with the siblings of the commit packed over the registry copies
+([.github/actions/cli-install](.github/actions/cli-install/action.yml)), and `publish-cli` publishes it as committed,
+refusing while a sibling it requires is held. `starci release publish --publish` from a
 workstation is Debug's fallback when CI cannot publish, with the owner's approval.
 
 The job reads one repository secret, `NPM_TOKEN`, handed to npm alone in the publish step: an npm granular access token

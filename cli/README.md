@@ -9,7 +9,9 @@ builds nothing, as it would run after the copies and index them), which then cop
 [package.json](package.json)), with the repository's README as the package's own and this file as `cli/README.md`; `postpack` puts this README back and removes the copies. A published CLI therefore carries its data,
 resolves every `harness:` context file of the op files from itself, and holds the very corpus its search index was
 built from, so `contexts search --check` is green in an installed package too. The checks a change must pass are in
-[CONTRIBUTING.md](../CONTRIBUTING.md); publishing is CI's, on every push to main (CONTRIB-20).
+[CONTRIBUTING.md](../CONTRIBUTING.md); publishing is CI's, on every push to main (CONTRIB-20). The CLI runs the
+`@starci` packages its lockfile installs, so `check pins` (`core/check/cli-pins.ts`, a CI gate) and `release publish`
+refuse a CLI whose requirement or locked copy of one differs from its pin in `contexts/stack/pins.yaml` (`CLI_PIN_SKEW`).
 
 ## Source layout
 

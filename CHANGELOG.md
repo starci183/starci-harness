@@ -6,6 +6,16 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.13] - 2026-10-29
+
+### Fixed
+
+- **A CLI off its pins is refused.** `check pins` (a CI gate on every push) and `release publish` before the CLI publishes
+  refuse `CLI_PIN_SKEW`, naming each package, where, the pin and the version found, when a `@starci` requirement of
+  `cli/package.json` or a copy `cli/package-lock.json` resolves differs from `contexts/stack/pins.yaml`; 1.1.0-alpha.10
+  shipped on @starci/hfs 4.9.5 under a 4.10.0 pin and nothing caught it. `publish-cli` publishes the CLI as committed and no
+  longer moves its requirements to the siblings' folder versions. Bench: `check-pins-cli-skew`, `release-publish-plan-guard`.
+
 ## [1.1.0-alpha.12] - 2026-10-29
 
 ### Fixed
