@@ -26,7 +26,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/app-v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Compare the tag with the app versions
         env:
           TAG: ${{ github.ref_name }}
@@ -66,9 +66,9 @@ jobs:
         working-directory: app
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -108,14 +108,14 @@ jobs:
           done
 
       - name: Build desktop bundles
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         with:
           projectPath: app
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
 
       - name: Upload bundles
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: starci-harness-${{ matrix.name }}
           path: ${{ matrix.bundles }}
@@ -132,9 +132,9 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TAG: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: starci-harness-*
           path: bundles
