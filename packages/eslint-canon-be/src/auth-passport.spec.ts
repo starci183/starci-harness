@@ -18,7 +18,7 @@ const tester = canonRuleTester({
 })
 
 const PASSPORT = at("src/modules/integrations/passport/passport.tokens.ts")
-const STORAGE = at("src/modules/integrations/storage/storage.client.ts")
+const STORAGE = at("src/modules/integrations/object-storage/object-storage.client.ts")
 const IDENTITY = at("src/modules/domain/identity/auth.guard.ts")
 const DOMAIN = at("src/modules/domain/order/order.service.ts")
 
@@ -56,7 +56,7 @@ test("refresh-token-cookie-only: the refresh token is never a body field and onl
     })
 })
 
-test("infra-import-owner: the identity libraries belong to integrations/passport and the S3 client to integrations/storage", () => {
+test("infra-import-owner: the identity libraries belong to integrations/passport and the S3 client to integrations/object-storage", () => {
     tester.run("infra-import-owner", infraImportOwner, {
         valid: [
             { filename: PASSPORT, code: `import { PassportStrategy } from "@nestjs/passport"; import { compare } from "bcryptjs"; export const p = [PassportStrategy, compare]` },

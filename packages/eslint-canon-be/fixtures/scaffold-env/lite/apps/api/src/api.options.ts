@@ -1,4 +1,4 @@
-import type { StorageOptions } from "@modules/integrations/storage"
+import type { ObjectStorageOptions } from "@modules/integrations/object-storage"
 import type { ServerOptions } from "@modules/platform/config"
 import type { DatabaseConnectionOptions } from "@modules/platform/database"
 import type { HttpSecurityOptions } from "@modules/platform/http-security"
@@ -12,5 +12,5 @@ export interface ApiOptions {
     /** The least-privilege PostgreSQL connection to the app database. */
     readonly database: DatabaseConnectionOptions
     /** The S3-compatible object storage configuration. */
-    readonly storage: StorageOptions
+    readonly objectStorage: ObjectStorageOptions
 }

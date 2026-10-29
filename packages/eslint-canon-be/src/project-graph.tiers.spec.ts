@@ -662,10 +662,10 @@ test("scaffold env templates declare their own fields, while an empty options ex
             "export interface HttpSecurityOptions { readonly origins: ReadonlyArray<string> }",
             "export declare const parseHttpSecurityConfig: (env: EnvSource) => HttpSecurityOptions;",
         ].join("\n"),
-        "src/modules/integrations/storage/index.ts": [
+        "src/modules/integrations/object-storage/index.ts": [
             "import type { EnvSource } from '../../platform/config';",
-            "export interface StorageOptions { readonly endpoint: string }",
-            "export declare const parseStorageConfig: (env: EnvSource) => StorageOptions;",
+            "export interface ObjectStorageOptions { readonly endpoint: string }",
+            "export declare const parseObjectStorageConfig: (env: EnvSource) => ObjectStorageOptions;",
         ].join("\n"),
     }
     const apps = [{ name: "api", kind: "api" }, { name: "cli", kind: "cli" }]

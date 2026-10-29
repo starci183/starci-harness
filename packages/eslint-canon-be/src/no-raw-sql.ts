@@ -1,5 +1,5 @@
 /**
- * The lite persistence law (catalog R333 `BE_PERSISTENCE_NO_RAW_SQL`; contexts/code/be/persistence.md BE-PERSISTENCE-1 and -2):
+ * The lite persistence law (catalog R334 `BE_PERSISTENCE_NO_RAW_SQL`; contexts/code/be/persistence.md BE-PERSISTENCE-1 and -2):
  * domain and feature code reads and writes through TypeORM entities on the injected EntityManager (`find`, `save`, `update`,
  * `delete`, `upsert`, `createQueryBuilder(Entity, "alias")` with named parameters), never through raw SQL.
  *

@@ -80,7 +80,7 @@ for (const edition of ["lite", "full"] as const) {
                 valid: [
                     { filename: fixture.at(MAILER), code: 'import mail from "nodemailer"; export { mail }' },
                     { filename: fixture.at("src/modules/integrations/mailer/mailer.client.spec.ts"), code: 'import type { SendMailOptions } from "nodemailer/lib/mailer"; export type { SendMailOptions }' },
-                    { filename: fixture.at("src/modules/integrations/storage/storage.client.ts"), code: 'import { S3Client } from "@aws-sdk/client-s3"; import { createLocalJWKSet } from "jose"; export { S3Client, createLocalJWKSet }' },
+                    { filename: fixture.at("src/modules/integrations/object-storage/object-storage.client.ts"), code: 'import { S3Client } from "@aws-sdk/client-s3"; import { createLocalJWKSet } from "jose"; export { S3Client, createLocalJWKSet }' },
                 ],
                 invalid: [{ filename: fixture.at(OTHER), code: 'import mail from "nodemailer"; export { mail }', errors: [{ messageId: "multiple" }] }],
             }) })

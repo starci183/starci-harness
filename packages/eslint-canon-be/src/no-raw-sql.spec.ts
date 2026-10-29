@@ -1,5 +1,5 @@
 /**
- * Twin tests for the lite persistence law (R333 `BE_PERSISTENCE_NO_RAW_SQL`).
+ * Twin tests for the lite persistence law (R334 `BE_PERSISTENCE_NO_RAW_SQL`).
  *
  *   node --test src/no-raw-sql.spec.ts
  */

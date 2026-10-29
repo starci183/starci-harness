@@ -135,9 +135,9 @@ test("R30: a provider-specific integration slot inherits the integrations tier b
   assert.ok(connections, "the fixture declares connections")
   const declaration = { ...BE_DECLARATION, connections: connections.map(connection => ({ ...connection, provider: "postgres" })) }
   const hfs = fixtureHfs(declaration)
-  const filename = at("src/modules/integrations/storage/index.ts")
+  const filename = at("src/modules/integrations/object-storage/index.ts")
   assert.equal(hfs.classify(filename).status, "owned")
-  assert.equal(hfs.slotOf(filename), "be.integrations.storage")
+  assert.equal(hfs.slotOf(filename), "be.integrations.object-storage")
   assert.equal(hfs.tierOf(filename), "integrations")
   assert.equal(slotBudgetOf(hfs, filename), undefined)
 
