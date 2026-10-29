@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.16] - 2026-10-29
+
 ### Added
 
 - `starci app stack deploy --urgent --first-start --db-service <service>`: the first start of a self-hosted database the release
