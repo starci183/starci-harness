@@ -42,15 +42,34 @@ export function dbAppRoot(cwd, opts) {
   return root;
 }
 
-/** Immediate SQL files only, never secrets or credential files. */
+/** A refusal that lists every offending file with the rule it broke, one distinct `<file>: <reason>` line each. */
+const offendersError = (heading, offenders) => new DbVerbError(`${heading}:\n${[...new Set(offenders)].map((line) => `  ${line}`).join('\n')}`);
+
+/** One rule finding as an offender line: its file, its message and its code. */
+const findingLine = (item) => `${item.message.startsWith(item.path) ? item.message : `${item.path}: ${item.message}`} (${item.code})`;
+
+/**
+ * Why one SQL filename cannot join its chain, or null. The active chain holds R213 (`<ts14>_<kebab>.sql`, a valid UTC
+ * stamp; a stamp after now is no breach). The archive is frozen history (R257): it needs only the leading stamp that
+ * orders it, so snake_case names, impossible times and shared stamps of a retired chain stay as they were committed.
+ */
+function chainProblem(directory, name) {
+  const match = /^(\d{14})_/.exec(name);
+  if (directory === MIGRATIONS_ARCHIVE_DIR) return match ? null : 'an archived name starts with its 14-digit stamp and an underscore (R257)';
+  if (!isMigrationName(name)) return 'name is not <ts14>_<kebab>.sql (R213)';
+  if (migrationStamp(match[1]) === null) return `stamp ${match[1]} is no valid UTC time (R213)`;
+  return null;
+}
+
+/** Immediate SQL files only, never secrets or credential files, sorted by full name; every offender is named before the refusal. */
 export function dbSqlFiles(root, directory = MIGRATIONS_DIR) {
   const dir = path.join(root, directory);
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith('.sql')).map((entry) => {
-    const match = /^(\d{14})_/.exec(entry.name);
-    if (!isMigrationName(entry.name) || !match || migrationStamp(match[1]) === null) throw new DbVerbError('migration filenames must carry valid UTC stamps');
-    return { file: `${directory}/${entry.name}`, name: entry.name, stamp: match[1] };
-  }).sort((left, right) => left.name < right.name ? -1 : Number(left.name > right.name));
+  const sqlNames = fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith('.sql')).map((entry) => entry.name);
+  const offenders = sqlNames.flatMap((name) => { const problem = chainProblem(directory, name); return problem ? [`${directory}/${name}: ${problem}`] : []; });
+  if (offenders.length) throw offendersError('migration filenames break their chain rules', offenders.sort());
+  return sqlNames.map((name) => ({ file: `${directory}/${name}`, name, stamp: name.slice(0, 14) }))
+    .sort((left, right) => left.name < right.name ? -1 : Number(left.name > right.name));
 }
 
 /** The database of `--url-env` (default DATABASE_URL): the URL without its password and the password for PGPASSWORD. */
@@ -103,12 +122,17 @@ function baselinePlan(root, opts, now) {
   const active = dbSqlFiles(root);
   if (!active.length) throw new DbVerbError('baseline requires an existing active migration chain');
   const archived = dbSqlFiles(root, MIGRATIONS_ARCHIVE_DIR);
-  const oldStamps = [...active, ...archived].map((entry) => entry.stamp);
-  const last = oldStamps.toSorted((left, right) => left.localeCompare(right)).at(-1);
+  const archivedNames = new Set(archived.map((entry) => entry.name));
+  const twice = active.filter((entry) => archivedNames.has(entry.name)).map((entry) => `${entry.file}: also archived as ${MIGRATIONS_ARCHIVE_DIR}/${entry.name}; a migration is active or archived, never both (R257)`);
+  if (twice.length) throw offendersError('baseline would overwrite an existing migration', twice);
+  const chain = [...active, ...archived].sort((left, right) => left.stamp < right.stamp ? -1 : Number(left.stamp > right.stamp) || (left.name < right.name ? -1 : Number(left.name > right.name)));
+  // The new version sorts after every file; the header names the last valid stamp, the boundary R257 judges.
+  const boundary = chain.at(-1);
+  const last = chain.filter((entry) => migrationStamp(entry.stamp) !== null).at(-1)?.stamp ?? boundary.stamp;
   const stamp = opts.stamp ?? now().toISOString().replace(/\D/g, '').slice(0, 14);
-  if (!/^\d{14}$/.test(stamp) || migrationStamp(stamp) === null || stamp <= last) throw new DbVerbError('--stamp must be a valid UTC version after the archive boundary');
+  if (!/^\d{14}$/.test(stamp) || migrationStamp(stamp) === null || stamp <= boundary.stamp) throw new DbVerbError(`--stamp must be a valid UTC version after the archive boundary ${boundary.stamp} (${boundary.file})`);
   const file = `${MIGRATIONS_DIR}/${stamp}_baseline.sql`;
-  if (fs.existsSync(path.join(root, file)) || active.some((entry) => fs.existsSync(path.join(root, MIGRATIONS_ARCHIVE_DIR, entry.name)))) throw new DbVerbError('baseline would overwrite an existing migration');
+  if (fs.existsSync(path.join(root, file))) throw new DbVerbError(`baseline would overwrite an existing migration: ${file}`);
   return { active, last, stamp, file };
 }
 
@@ -255,12 +279,19 @@ function baselineStatement(state, stmt, sql) {
 
 function baselineMetadata(root, plan, files) {
   const queues = databaseQueueDeclarations({ repoRoot: root, files, all: files });
-  if (queues.findings.length) throw new DbVerbError('baseline requires valid migration-owned queues, grants and cron declarations');
+  if (queues.findings.length) throw offendersError('baseline requires valid migration-owned queues, grants and cron declarations', queues.findings.map(findingLine));
   const state = { roles: new Map(), extensions: new Map() };
+  const offenders = [];
   for (const migration of plan.active) {
     const text = fs.readFileSync(path.join(root, migration.file), 'utf8');
-    for (const entry of parsed(text).stmts ?? []) baselineStatement(state, entry.stmt, statementSql(text, entry));
+    try {
+      for (const entry of parsed(text).stmts ?? []) baselineStatement(state, entry.stmt, statementSql(text, entry));
+    } catch (error) {
+      if (!(error instanceof DbVerbError)) throw error;
+      offenders.push(`${migration.file}: ${error.message}`);
+    }
   }
+  if (offenders.length) throw offendersError('baseline cannot rebuild the active chain from a schema-only dump', offenders);
   return { ...queues, roles: [...state.roles.values()].flat().join(''), extensions: [...state.extensions.values()].join('') };
 }
 
@@ -279,7 +310,8 @@ export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) =>
     const root = dbAppRoot(cwd, opts);
     const plan = baselinePlan(root, opts, now);
     const files = baselineFiles(root);
-    if (baselineSourceFindings({ repoRoot: root, files, all: files, git: ports.git }).length) throw new DbVerbError('baseline sources and archives must match committed migration history');
+    const sourceFindings = baselineSourceFindings({ repoRoot: root, files, all: files, git: ports.git });
+    if (sourceFindings.length) throw offendersError('baseline sources and archives must match committed migration history', sourceFindings.map(findingLine));
     const metadata = baselineMetadata(root, plan, files);
     if (dbPlanMain(['--json', '--url-env', urlEnv], { ...ports, cwd: root, stdout: () => {}, stderr: () => {} }) !== 0) throw new DbVerbError('baseline requires a clean database plan with every migration already applied');
     const schema = runDbPostgres(root, { kind: 'dump' }, ports, urlEnv);

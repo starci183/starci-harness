@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (db-baseline-archive)
+
+- Fixed: `starci app db baseline` judges the archive (`db/migrations/archive/`) as frozen history (R257): an archived file needs only its leading 14-digit stamp and an underscore, so a retired chain's snake_case names, impossible times (`20261014300000`) and shared stamps no longer refuse the cutover. The active chain keeps R213 in full (`<ts14>_<kebab>.sql` with a valid UTC stamp); R213 and R332 set no upper bound, so an active stamp after now is no breach. A file both active and archived is refused by name. The new version sorts after every archived and active file, and the baseline header names the last valid stamp, the boundary R257 judges.
+- Fixed: a refusal over the migration chain lists every offender as `<file>: <reason> (<rule>)`, all at once: a misnamed or invalid-time active file (`db baseline`, `db restamp`, `db plan`), and for `db baseline` the `--stamp` boundary file, the committed-history findings (R257), the queue and cron findings (R258) and each active migration a schema-only dump cannot rebuild. Spec: `src/hfs-database-baseline.spec.mjs`.
+
 ## 4.10.1 - 2026-10-29
 
 - Changed: the bundled slot manifest 3.10.0 adds the lite slot `be.platform.database.entities`, the entity registry (slot fields `role: entity-registry` and `importedBy`, validated by the manifest shape); the bundled architecture machine reads it (`architecture/entity-registry.mjs`): `tier-direction` (R26 `BE_TIER_DIRECTION`) admits the registry's import of a domain or platform capability's `index.ts` that binds only that capability's `<c>Entities`, and `owner-export-bypass` (R30 `ARCH_OWNER_EXPORT_BYPASS`) admits a direct import of the registry from the files `importedBy` names (`apps/*/src/compose/*.ts`, `apps/*/src/app.module.ts`, `src/tests/world/**`); every other import of either shape stays refused, and full has no registry; the bundled canon pins name hfs 4.10.1, eslint-canon-be 3.7.1, eslint-canon-fe 9.5.1 and the Grammar family 0.15.12; the lite skeleton's `platform/database/entities.ts` names its importers (app composition and the test world).
