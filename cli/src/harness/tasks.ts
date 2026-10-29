@@ -24,7 +24,7 @@ export const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = 
     verifying: ["done", "failed", "awaiting_owner", "reported"],
     effect_unknown: ["running", "failed", "queued", "cancelled"],
     // done -> failed: the workflow's wave verify found the task's files red (harness/wave.ts); its lease was freed when it settled.
-    // done -> awaiting_owner: the wave running its deferred live suite found a key the app's custody lacks (harness/custody.ts).
+    // done -> awaiting_owner: the wave running its deferred live suite found a key the app's custody lacks, or a declaration it cannot read (harness/custody.ts).
     done: ["failed", "awaiting_owner"],
     failed: [],
     awaiting_owner: [],

@@ -37,8 +37,9 @@ command, runs the spec files it names (or, for an integration, e2e or contract r
 live-provider spec only when named, and narrows its coverage to the changed logic files (`coverage: changed`,
 `cli/src/harness/coverage-scope.ts`). A named live-provider spec gets the keys its `useSandbox` declares from the app's
 custody (`.starcistacks/<env>` sealed members) in that run's environment only; seal a key there (`starci app secret set
-<env> <member> <KEY> --from-host <KEY>`), never in a file or the spec, and a key custody lacks blocks the task for the
-owner, no try spent (`cli/src/harness/custody.ts`).
+<env> <member> <KEY> --from-host <KEY>`), never in a file or the spec; declare the keys as string literals, inline or in a `const` of the spec or
+of a relative module it imports, so the harness can read them. A key custody lacks blocks the task for the owner, no try
+spent (`cli/src/harness/custody.ts`).
 
 ## SHARED-TEST-3 An op writes no test kind its edition forbids
 
