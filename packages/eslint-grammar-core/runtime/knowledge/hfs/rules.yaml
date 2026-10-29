@@ -4310,22 +4310,21 @@ rules:
   - id: R258
     code: "DB_PGMQ_DECLARED"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes the db service lite's database and ruling:R212/case-10 moves the lite queue to Redis; the pgmq retirement and pg_cron ownership requirements apply to that backing."
+    editionWhy: "ruling:lite-pgmq-bus-bullmq-jobs makes pgmq in the db service the lite event bus while jobs run on BullMQ over the declared Redis; full's bus is Kafka."
     docs: [docs/microservices.md#r258]
-    templateNa: "Queue declarations and enqueue-only cron commands depend on product-owned work and are authored in its db migrations."
-    law: "DB_QUEUE_CRON: the queue is BullMQ on Redis (ruling:R212/case-10), so the active migrations leave no pgmq queue named by a queue constant under modules/queues; a pgmq queue a migration created for one is dropped by a later migration. Every pgmq queue the active migrations leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under platform/event-bus, every such constant has its pgmq queue, and pgmq objects are granted only to the application role while they exist. A pg_cron job belongs to a migration and only enqueues; its name is scheduled once while it is active, so a later migration schedules it again only after its own cron.unschedule of that name, and one tick function has one live job at a time. Its command, directly or through one enqueue-only *_tick function, inserts one row of a literal queue constant into the queue outbox table of ruleParams.db.queueOutbox, writing only its declared columns (the relay hands it to BullMQ). An app whose hfs.json sides.be.backing declares redis may declare its own outbox in sides.be.queueOutbox ({table, enqueue, queueParameter}); the command, or the tick, then calls the declared enqueue function with a literal queue constant for the declared parameter and pure other arguments, while the active definition of that function only inserts one row into the declared table with its queue column bound to that parameter (an ON CONFLICT DO NOTHING, a read of the declared table and pure expressions are the only other work). A direct insert into the app's outbox table, or any other function, stays refused. The job executes no business DML or HTTP request and shares no tick with an app scheduler. A pgmq.send validates only in the original body of a job an older migration scheduled while that queue existed; the live job and its current tick never enqueue that way. Removing a tick unschedules its job."
+    templateNa: "Topic queues and their bindings depend on product-owned consumer groups and are authored in its db migrations."
+    law: "DB_PGMQ_DECLARED: pgmq is the event bus and jobs run on BullMQ (ruling:lite-pgmq-bus-bullmq-jobs), so the active migrations leave no pgmq queue named by a queue constant under modules/queues; a pgmq queue a migration created for one is dropped by a later migration. Every pgmq queue the active migrations leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under platform/event-bus, every such constant has its pgmq queue, a topic binding (pgmq.bind_topic) names a literal pattern and a queue an earlier pgmq.create declared, no queue or binding is created by dynamic SQL or inside a function, and pgmq objects are granted only to the application role while they exist."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["DB_PGMQ_DECLARED", "DB_CRON_OWNED"]
+    failureCodes: ["DB_PGMQ_DECLARED"]
     enforcers:
       - {kind: hfs, id: db-queue-cron, at: scripts/hfs/rules/database-queues.mjs}
     proves:
-      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED, DB_CRON_OWNED]}
-      - {path: packages/hfs/src/hfs-queue-outbox-declaration.spec.mjs, edition: lite, codes: [DB_CRON_OWNED]}
+      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED]}
     exemplifiedBy:
-      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED, DB_CRON_OWNED]}
+      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED]}
     witness:
-      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED, DB_CRON_OWNED]}
+      - {path: packages/hfs/src/hfs-database-queues.spec.mjs, edition: lite, codes: [DB_PGMQ_DECLARED]}
   - id: R259
     code: "DB_EXTENSION_ALLOWED"
     editions: [lite]

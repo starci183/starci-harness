@@ -20,12 +20,12 @@ export class @@Provider@@DeliveryRecordedEvent extends BaseEvent {
         super()
     }
 
-    /** The receipt identity is stable across relay retries and distinct from a consumer's inbox source. */
+    /** The receipt identity is stable across redeliveries and distinct from a consumer's inbox source. */
     static create(payload: @@Provider@@DeliveryRecordedPayload): @@Provider@@DeliveryRecordedEvent {
         return new @@Provider@@DeliveryRecordedEvent(payload.receiptId, payload)
     }
 
-    /** Reads an outbox envelope; malformed deliveries never reach a processing consumer. */
+    /** Reads the event envelope; malformed deliveries never reach a processing consumer. */
     static parse(envelope: unknown): ParsedEvent<@@Provider@@DeliveryRecordedEvent> {
         if (typeof envelope !== "object" || envelope === null || !("eventId" in envelope) || !("payload" in envelope)) return null
         const { eventId, payload } = envelope

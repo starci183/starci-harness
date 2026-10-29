@@ -29,14 +29,17 @@ nothing publishes to the broker directly. No in-process transport exists; unit s
 The correlation id (BE-LOGGING-4) is validated before SQL, stored in the outbox `correlation_id` column and authoritative in the
 outbound metadata. A delivery whose metadata is absent may derive its root id from a bounded, safe event id only when the envelope
 has the basic shape, and is promoted to explicit metadata before execution, retry or dead letter; present malformed metadata is
-rejected. In lite the broker is one queue per consumer group of a topic (`<service>__<event>__<group>`, created by a
-migration, named by a literal constant of `platform/event-bus`, granted only to the application role), or by in-process delivery
-after commit for a back end with a single api app; publish, outbox, inbox and consumers are unchanged.
+rejected. In lite the broker is pgmq in the db service and there is no outbox or relay (ruling `lite-pgmq-bus-bullmq-jobs`):
+`publish` sends the envelope to the pgmq topic of the event's name with `event_bus_send` on the transaction's connection, so the
+send commits or rolls back with the change. Each consumer group has its own queue (`<service>__<event>__<group>`, at most 47
+characters), created and bound to the event's name by a migration and named by a literal `*_TOPIC_QUEUE` constant of
+`platform/event-bus`; the application role reaches pgmq only through the security-definer `event_bus_*` functions of that
+migration, listed in `ruleParams.be.dbFunctions`. Jobs never ride on pgmq: they are BullMQ (BE-QUEUES-1).
 
-Why: the outbox row commits with the change, so a rolled-back change never emits and a committed one is never lost; the broker
-gives ordered, replayable, cross-service delivery.
+Why: the outbox row (the pgmq message in lite) commits with the change, so a rolled-back change never emits and a committed one
+is never lost; the broker gives ordered, replayable, cross-service delivery.
 
-Enforced by: R152 BE_OUTBOX_WRITE_TX, R90 BE_INFRA_OWNER, R258 DB_PGMQ_DECLARED.
+Enforced by: R152 BE_OUTBOX_WRITE_TX, R90 BE_INFRA_OWNER, R258 DB_PGMQ_DECLARED, R334 BE_PERSISTENCE_NO_RAW_SQL.
 
 ## BE-EVENT-BUS-4 A consumer is a thin door; delivery is at least once with retry and dead letter
 A consumer is `transport/message/<event>.consumer.ts` implementing `EventConsumer<E>` with `readonly event = <Event>Event`;
@@ -44,7 +47,11 @@ A consumer is `transport/message/<event>.consumer.ts` implementing `EventConsume
 claims the event first (BE-IDEMPOTENCY-1). A throw schedules a retry with exponential backoff on `events.<service>.retry`; after the
 event's attempts the message goes to `events.<service>.dlq`, which an operator reads and requeues through `eventBus.deadLetters(event)`
 and `eventBus.requeue(id)` from a cli command; `eventBus.pendingRetries(event)` lets a failure-injection spec wait for a retry. The
-retry budget fits the consumer's side effects.
+retry budget fits the consumer's side effects. In lite a reactor subscribes its consumer to its group's queue through the
+`EventConsumerRegistry`, and the read loop of `platform/event-bus`, started at application bootstrap and stopped at shutdown,
+reads a bounded batch with a visibility timeout: a handled message is archived, a throw leaves it to reappear when the timeout
+lapses, and a message past its attempts or with a malformed envelope goes to the `event_bus_dead_letter` queue, which
+`deadLetters(limit)` and `requeue(id)` read and replay. The loop is no tick, so it needs no scheduler (BE-JOBS-6).
 
 Why: delivery repeats and fails; a thin door keeps the decision in the domain and a dead letter keeps a poison message from blocking
 the topic.

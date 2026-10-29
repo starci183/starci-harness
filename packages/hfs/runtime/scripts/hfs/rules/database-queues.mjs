@@ -1,25 +1,20 @@
-// R258: the queue is BullMQ on Redis (ruling:R212/case-10), so the active migrations leave no pgmq queue for a queue constant, and
-// every pgmq queue they leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under platform/event-bus. A
-// pg_cron tick has one migration owner and only enqueues: it inserts one row of a queue constant into the queue outbox table of
-// ruleParams.db.queueOutbox. A pgmq.send to a queue that existed when the job was scheduled is the historical form an older
-// migration may still hold; the live job never enqueues that way.
+// R258: pgmq is the event bus (ruling:lite-pgmq-bus-bullmq-jobs) and jobs run on BullMQ, so the active migrations leave no pgmq queue
+// for a queue constant, and every pgmq queue they leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under
+// platform/event-bus. A topic binding names a declared queue and a literal pattern, and pgmq grants reach only the q_ and a_ tables
+// of declared queues, for the application role alone.
 // Initialize PostgreSQL's WASM parser at module load; the exported finder itself is synchronous.
 // SQL and TypeScript ASTs keep comments, quoted identifiers and inert string literals out of the inventory.
 import pg from 'libpg-query';
 import { sqlStringParts as strings, walkSqlAst as walk, sqlParser, sqlCallArgument as argument, sqlStringLiteral as sqlLiteral } from '../../lib/sql-ast.mjs';
-import { queueSourceFacts, queueSchedulers, queueProblem as problem } from './database-queue-sources.mjs';
+import { queueSourceFacts, queueProblem as problem } from './database-queue-sources.mjs';
 import { readJson, readText } from './read.mjs';
-import { DB_CRON_OWNED, DB_PGMQ_DECLARED, isActiveMigration } from './database-constants.mjs';
-import { loadSlotManifest } from '../slots.mjs';
-import { queueOutboxDeclaration, outboxEnqueueQueueIndex } from './database-queue-outbox.mjs';
+import { DB_PGMQ_DECLARED, isActiveMigration } from './database-constants.mjs';
 
 await pg.loadModule();
 
-const PURE_CALLS = new Set(['jsonb_build_object', 'json_build_object', 'jsonb_build_array', 'json_build_array', 'to_jsonb', 'now', 'clock_timestamp', 'date_trunc']);
 const TABLE_PRIVILEGES = ['select', 'insert', 'update', 'delete', 'truncate', 'references', 'trigger', 'maintain'];
 const sqlName = (nodes) => strings(nodes).join('.');
 const callName = (call) => sqlName(call.funcname);
-const qualified = (name, schema = 'public') => name.includes('.') ? name : `${schema}.${name}`;
 
 const sqlTree = sqlParser(pg);
 const walkExecutable = (tree, visit) => walk(tree, visit, true);
@@ -36,7 +31,8 @@ function inspectCalls(state, tree, file, migration) {
   });
   for (const call of callsOf(tree)) {
     inspectQueueCall(state, call, file, migration);
-    inspectCronCall(state, call, file, migration);
+    inspectBindingCall(state, call, file, migration);
+    recordSchedule(state, call, migration);
   }
 }
 
@@ -54,36 +50,30 @@ function inspectQueueCall(state, call, file, migration) {
   }
 }
 
-function recordSchedule(state, call, file) {
-  const job = sqlLiteral(argument(call, 0, ['job_name']));
-  // The names scheduled and not unscheduled since, in migration order: a name is a duplicate only while it is still scheduled.
-  const entry = { call, file, created: new Map(state.created), functions: new Map(state.functions), active: new Set(state.scheduledNames) };
-  state.schedules.push(entry);
-  if (job !== null) state.scheduledNames.add(job);
-  const schedule = sqlLiteral(argument(call, 1, ['schedule']));
-  const command = sqlLiteral(argument(call, 2, ['command']));
-  if (job !== null && schedule !== null && command !== null) {
-    state.activeCron.set(job, { name: job, schedule, command });
-    state.liveSchedules.set(job, entry);
-  }
+/** A topic binding routes the events of a name to a consumer group's queue: both literal, in an active migration, the queue declared. */
+function inspectBindingCall(state, call, file, migration) {
+  const name = callName(call);
+  if (name !== 'pgmq.bind_topic' && name !== 'pgmq.unbind_topic') return;
+  const pattern = sqlLiteral(argument(call, 0, ['pattern']));
+  const queue = sqlLiteral(argument(call, 1, ['queue_name']));
+  if (!migration || pattern === null || queue === null) problem(state, DB_PGMQ_DECLARED, file, `${name} must name a literal pattern and queue in an active migration`);
+  else if (name === 'pgmq.bind_topic' && !state.created.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq.bind_topic binds ${queue}, which no earlier pgmq.create declares`);
 }
 
-function inspectCronCall(state, call, file, migration) {
+/**
+ * The pg_cron jobs an archived chain still schedules, which `starci app db baseline` carries over. pg_cron is not an allowed extension
+ * (R259), so no rule judges them here.
+ */
+function recordSchedule(state, call, migration) {
+  if (!migration) return;
   const name = callName(call);
-  if (name === 'cron.schedule' || name === 'cron.schedule_in_database') {
-    if (!migration || name !== 'cron.schedule') problem(state, DB_CRON_OWNED, file, 'cron jobs must be declared by cron.schedule in an active migration');
-    else recordSchedule(state, call, file);
-    return;
-  }
-  if (name !== 'cron.unschedule' || !migration) return;
   const job = sqlLiteral(argument(call, 0, ['job_name']));
-  if (job !== null) {
-    state.unschedules.push({ name: job, file });
-    state.activeCron.delete(job);
-    state.scheduledNames.delete(job);
-    state.liveSchedules.delete(job);
-  }
-  else problem(state, DB_CRON_OWNED, file, 'cron.unschedule must identify the migration-owned job by literal name');
+  if (job === null) return;
+  if (name === 'cron.unschedule') state.activeCron.delete(job);
+  if (name !== 'cron.schedule') return;
+  const schedule = sqlLiteral(argument(call, 1, ['schedule']));
+  const command = sqlLiteral(argument(call, 2, ['command']));
+  if (schedule !== null && command !== null) state.activeCron.set(job, { name: job, schedule, command });
 }
 
 function plpgsqlTree(body, parameters = []) {
@@ -103,8 +93,7 @@ function dynamicOwnership(state, expression, file, migration) {
     const tree = sqlTree(sql.replace(/%[ILs]/g, 'NULL'));
     walkExecutable(tree, (node) => { if (node.GrantStmt || node.AlterDefaultPrivilegesStmt) recordGrant(state, node, file, migration); });
     for (const call of callsOf(tree)) {
-      if (callName(call) === 'pgmq.create') problem(state, DB_PGMQ_DECLARED, file, 'dynamic SQL cannot own a queue declaration; write the call as static migration SQL');
-      if (callName(call).startsWith('cron.')) problem(state, DB_CRON_OWNED, file, 'dynamic SQL cannot own a cron declaration; write the call as static migration SQL');
+      if (['pgmq.create', 'pgmq.bind_topic'].includes(callName(call))) problem(state, DB_PGMQ_DECLARED, file, 'dynamic SQL cannot own a queue declaration or binding; write the call as static migration SQL');
     }
   }
 }
@@ -155,121 +144,6 @@ function updateQueuePrivilege(acl, grant, privilege) {
   else if (acl.has(privilege)) acl.set(privilege, false);
 }
 
-function migrationStatement(state, node, file) {
-  if (node.CreateFunctionStmt) {
-    const fn = node.CreateFunctionStmt;
-    state.functions.set(qualified(sqlName(fn.funcname)), { node: fn, file });
-    inspectFunctionDeclarations(state, fn, file);
-  }
-  if (node.DropStmt?.removeType === 'OBJECT_FUNCTION') {
-    for (const item of node.DropStmt.objects ?? []) {
-      const name = qualified(sqlName(item.ObjectWithArgs?.objname));
-      state.drops.push({ name, file });
-      state.functions.delete(name);
-    }
-  }
-  if (node.DoStmt) inspectDo(state, node.DoStmt, file);
-}
-
-function migrationFacts(state, files) {
-  for (const file of files.filter((item) => item.endsWith('.sql') && !item.startsWith('db/migrations/archive/')).sort((left, right) => left.localeCompare(right))) {
-    const text = readText(state.repoRoot, file);
-    if (text === null) continue;
-    const tree = sqlTree(text);
-    const active = isActiveMigration(file);
-    const scheduleStart = state.schedules.length;
-    for (const entry of tree?.stmts ?? []) {
-      inspectCalls(state, { stmts: [entry] }, file, active);
-      if (active) migrationStatement(state, entry.stmt, file);
-    }
-    completeScheduleInventory(state, scheduleStart);
-  }
-}
-
-function completeScheduleInventory(state, start) {
-  for (const schedule of state.schedules.slice(start)) {
-    for (const [queue, file] of state.created) if (!schedule.created.has(queue)) schedule.created.set(queue, file);
-    for (const [name, fn] of state.functions) if (!schedule.functions.has(name)) schedule.functions.set(name, fn);
-  }
-}
-
-function singleCall(tree) {
-  if (tree?.stmts?.length !== 1) return null;
-  if (tree.stmts[0].stmt?.ReturnStmt) return tree.stmts[0].stmt.ReturnStmt.returnval?.FuncCall ?? null;
-  const select = tree.stmts[0].stmt?.SelectStmt;
-  if (!select || select.targetList?.length !== 1 || !/^SETOP_NONE$/.test(select.op) || Object.keys(select).some((key) => !['targetList', 'op', 'limitOption'].includes(key))) return null;
-  return select.targetList[0].ResTarget?.val?.FuncCall ?? null;
-}
-
-/** The historical pgmq.send of an existing queue; only a job's original body may hold it. */
-function enqueue(state, call) {
-  if (callName(call) !== 'pgmq.send') return null;
-  const queue = sqlLiteral(argument(call, 0, ['queue_name']));
-  const safe = pureArguments(call);
-  return queue !== null && state.created.has(queue) && safe ? queue : null;
-}
-
-function pureCall(call) {
-  return uuidConstructor(call) || PURE_CALLS.has(callName(call).replace(/^pg_catalog\./, ''));
-}
-
-function pureArguments(call) {
-  return pureExpressions(call.args);
-}
-
-function pureExpressions(nodes) {
-  let safe = callsOf(nodes).every(pureCall);
-  walk(nodes, (node) => {
-    if (['SubLink', 'SelectStmt', 'InsertStmt', 'UpdateStmt', 'DeleteStmt', 'MergeStmt'].some((key) => node[key])) safe = false;
-  });
-  return safe;
-}
-
-/** The queue outbox table and the columns an enqueue may write, from ruleParams.db.queueOutbox; null refuses every outbox enqueue. */
-function queueOutbox(manifest) {
-  const declared = manifest?.ruleParams?.db?.queueOutbox;
-  return declared ? { table: declared.table, columns: new Set(declared.columns) } : null;
-}
-
-/** The queue constant a call of the app's declared outbox enqueue function enqueues (hfs.json sides.be.queueOutbox), or null. */
-function declaredEnqueue(state, call) {
-  const declared = state.declaredOutbox;
-  if (!declared || qualified(callName(call)) !== declared.enqueue) return null;
-  const index = outboxEnqueueQueueIndex(declared, state.functions.get(declared.enqueue), pureCall);
-  const queue = index < 0 ? null : sqlLiteral(argument(call, index, [declared.parameter]));
-  return queue !== null && state.constants.has(queue) && pureArguments(call) ? queue : null;
-}
-
-/** The queue constant one outbox row enqueues: `insert into <outbox> (queue, ...) values ('<queue constant>', ...)` with pure values. */
-function outboxEnqueue(state, insert) {
-  if (!state.outbox || insert.returningClause || insert.returningList || insert.onConflictClause || insert.withClause) return null;
-  if (`${insert.relation?.schemaname || 'public'}.${insert.relation?.relname}` !== state.outbox.table) return null;
-  const columns = (insert.cols ?? []).map((item) => item.ResTarget?.name);
-  if (new Set(columns).size !== columns.length || columns.some((column) => !state.outbox.columns.has(column))) return null;
-  const rows = insert.selectStmt?.SelectStmt?.valuesLists ?? [];
-  const values = rows.length === 1 ? rows[0].List?.items ?? [] : [];
-  const at = columns.indexOf('queue');
-  if (at < 0 || values.length !== columns.length) return null;
-  const queue = sqlLiteral(values[at]);
-  return queue !== null && state.constants.has(queue) && pureExpressions(values) ? queue : null;
-}
-
-/** The queue one statement enqueues to (an outbox row of a queue constant; a pgmq.send only when `legacy`), or null. */
-function singleEnqueue(state, tree, legacy) {
-  const insert = tree?.stmts?.length === 1 ? tree.stmts[0].stmt?.InsertStmt : undefined;
-  if (insert) return outboxEnqueue(state, insert);
-  const call = singleCall(tree);
-  if (!call) return null;
-  return declaredEnqueue(state, call) ?? (legacy ? enqueue(state, call) : null);
-}
-
-/** PostgreSQL's catalog-owned scalar UUID constructor adds an envelope identity without doing work in the tick. */
-function uuidConstructor(call) {
-  return callName(call) === 'pg_catalog.gen_random_uuid' && (call.args?.length ?? 0) === 0
-    && (call.agg_order?.length ?? 0) === 0 && !call.agg_filter && !call.over && !call.agg_star
-    && !call.agg_distinct && !call.agg_within_group && !call.func_variadic;
-}
-
 function functionBody(fn) {
   const option = (name) => (fn.options ?? []).find((item) => item.DefElem?.defname === name)?.DefElem?.arg;
   return { body: strings(option('as')?.List?.items).join(''), language: option('language')?.String?.sval ?? 'sql' };
@@ -289,107 +163,41 @@ function inspectFunctionDeclarations(state, fn, file) {
   }
 }
 
-function standardSqlBody(node) {
-  if (!node) return [];
-  if (node.List) return node.List.items.flatMap(standardSqlBody);
-  return [{ stmts: [{ stmt: node }] }];
+function migrationStatement(state, node, file) {
+  if (node.CreateFunctionStmt) inspectFunctionDeclarations(state, node.CreateFunctionStmt, file);
+  if (node.DoStmt) inspectDo(state, node.DoStmt, file);
 }
 
-function plpgsqlTickTrees(fn, body) {
-  const tree = plpgsqlTree(body, fn.parameters);
-  if (!tree) return null;
-  const trees = [];
-  let safe = true;
-  walk(tree, (item) => {
-    for (const key of Object.keys(item)) {
-      if (key.startsWith('PLpgSQL_stmt_') && !['PLpgSQL_stmt_block', 'PLpgSQL_stmt_perform', 'PLpgSQL_stmt_execsql', 'PLpgSQL_stmt_return'].includes(key)) safe = false;
-      if (key === 'PLpgSQL_expr') trees.push(sqlTree(item[key].query));
+function migrationFacts(state, files) {
+  for (const file of files.filter((item) => item.endsWith('.sql') && !item.startsWith('db/migrations/archive/')).sort((left, right) => left.localeCompare(right))) {
+    const text = readText(state.repoRoot, file);
+    if (text === null) continue;
+    const tree = sqlTree(text);
+    const active = isActiveMigration(file);
+    for (const entry of tree?.stmts ?? []) {
+      inspectCalls(state, { stmts: [entry] }, file, active);
+      if (active) migrationStatement(state, entry.stmt, file);
     }
-  });
-  return safe ? trees : null;
-}
-
-function tickTrees(fn) {
-  const { body, language } = functionBody(fn);
-  if (language === 'plpgsql') return plpgsqlTickTrees(fn, body);
-  if (language !== 'sql') return null;
-  if (fn.sql_body) return standardSqlBody(fn.sql_body);
-  return sqlTree(body)?.stmts?.map((entry) => ({ stmts: [entry] })) ?? null;
-}
-
-function tickQueues(state, fn, legacy) {
-  const trees = tickTrees(fn.node);
-  if (!trees) return null;
-  const queues = trees.map((tree) => singleEnqueue(state, tree, legacy));
-  return queues.length && queues.every(Boolean) ? queues : null;
-}
-
-/** What a cron command enqueues; `legacy` judges a job's original body, which may still pgmq.send to a queue that existed then. */
-function scheduleTarget(state, command, legacy) {
-  const tree = sqlTree(command);
-  const target = singleCall(tree);
-  if (!target) return { tick: null, queues: singleEnqueue(state, tree, legacy) };
-  if (!callName(target).endsWith('_tick')) return { tick: null, queues: declaredEnqueue(state, target) ?? (legacy ? enqueue(state, target) : null) };
-  const tick = qualified(callName(target));
-  const fn = state.functions.get(tick);
-  const queues = fn && pureArguments(target) && tickQueues(state, fn, legacy);
-  return { tick, queues };
-}
-
-function tickRemoval(state, tick, name) {
-  if (!tick) return;
-  for (const drop of state.drops.filter((item) => item.name === tick)) {
-    if (!state.unschedules.some((item) => item.name === name && item.file === drop.file)) problem(state, DB_CRON_OWNED, drop.file, 'removing a scheduled tick requires cron.unschedule of its job name in the same migration');
   }
 }
 
-function scheduleCheck(state, schedule, schedulers, ticks) {
-  const { call, file } = schedule;
-  const name = sqlLiteral(argument(call, 0, ['job_name']));
-  const command = sqlLiteral(argument(call, 2, ['command']));
-  if (name === null || command === null || sqlLiteral(argument(call, 1, ['schedule'])) === null) {
-    problem(state, DB_CRON_OWNED, file, 'cron.schedule requires literal job name, cadence and command for migration ownership');
-    return;
-  }
-  if (schedule.active.has(name)) problem(state, DB_CRON_OWNED, file, 'a cron job name is scheduled once while it is active: cron.unschedule it before a later migration schedules it again');
-  const historical = { ...state, created: schedule.created, functions: schedule.functions };
-  const { tick, queues } = scheduleTarget(historical, command, true);
-  if (!queues) problem(state, DB_CRON_OWNED, file, 'a cron command inserts one row of a queue constant into the queue outbox, directly or through one existing *_tick function that only does that; business DML, dynamic SQL and network calls are refused');
-  if (state.liveSchedules.get(name) === schedule && !scheduleTarget(state, command, false).queues) problem(state, DB_CRON_OWNED, file, 'the live cron job must insert one outbox row of a queue constant (ruling:R212/case-10): it targets a missing queue or tick, still enqueues with pgmq.send, or its current tick no longer only does that');
-  tickOwner(state, tick, name, schedule, ticks);
-  const owners = [name, ...(tick ? [tick, tick.split('.').at(-1)] : []), ...[queues ?? []].flat()];
-  if (owners.some((owner) => schedulers.has(owner))) problem(state, DB_CRON_OWNED, file, 'the tick is also declared in an application scheduler list; give it one owner');
-  tickRemoval(state, tick, name);
-}
-
-/** One tick function has one cron owner at a time: an earlier job of the tick that is still scheduled is a second owner. */
-function tickOwner(state, tick, name, schedule, ticks) {
-  if (!tick) return;
-  const owners = ticks.get(tick) ?? [];
-  if (owners.some((owner) => schedule.active.has(owner))) problem(state, DB_CRON_OWNED, schedule.file, 'a tick function has more than one cron owner');
-  ticks.set(tick, [...owners, name]);
-}
-
-function queueState({ repoRoot, files = [], all = files, repo = {}, manifest }) {
+function queueState({ repoRoot, files = [], all = files, repo = {} }) {
   const paths = [...new Set(all)];
   const declaration = readJson(repoRoot, 'hfs.json') ?? repo;
   if (repo.edition !== 'lite' && declaration.edition !== 'lite' && !paths.some((file) => file.startsWith('db/'))) return null;
-  const state = { repoRoot, appRole: declaration.db?.appRole ?? 'app_be', findings: [], outbox: queueOutbox(manifest ?? loadSlotManifest()), declaredOutbox: queueOutboxDeclaration(declaration), scheduledNames: new Set(), constants: new Map(), topics: new Map(), created: new Map(), functions: new Map(), schedules: [], activeCron: new Map(), liveSchedules: new Map(), unschedules: [], drops: [], grants: [], queueAcls: new Map() };
-  state.sources = queueSourceFacts(state, paths, inspectCalls);
+  const state = { repoRoot, appRole: declaration.db?.appRole ?? 'app_be', findings: [], constants: new Map(), topics: new Map(), created: new Map(), activeCron: new Map(), grants: [], queueAcls: new Map() };
+  queueSourceFacts(state, paths, inspectCalls);
   migrationFacts(state, paths);
   return state;
 }
 
 function validateQueues(state, inScope) {
   for (const [queue, file] of state.created) {
-    if (state.constants.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq queue ${queue} is the queue constant of ${state.constants.get(queue)}, and the queue is BullMQ on Redis (ruling:R212/case-10): drop it with pgmq.drop_queue in a later migration`);
+    if (state.constants.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq queue ${queue} is the queue constant of ${state.constants.get(queue)}, and jobs run on BullMQ (ruling:lite-pgmq-bus-bullmq-jobs): drop it with pgmq.drop_queue in a later migration`);
     else if (!state.topics.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq queue ${queue} has no event-bus owner: name it in a literal *_TOPIC_QUEUE constant under platform/event-bus, or drop it with pgmq.drop_queue in a later migration`);
   }
   for (const [topic, file] of state.topics) if (!state.created.has(topic)) problem(state, DB_PGMQ_DECLARED, file, `event-bus topic queue ${topic} has no pgmq.create in an active migration`);
   for (const { node, file, created, executed } of state.grants) grantCheck({ ...state, created: executed ? created : state.created }, node, file);
-  const ticks = new Map();
-  const schedulers = queueSchedulers(state.sources);
-  for (const schedule of state.schedules) scheduleCheck(state, schedule, schedulers, ticks);
   return state.findings.filter((finding) => inScope(finding.path));
 }
 

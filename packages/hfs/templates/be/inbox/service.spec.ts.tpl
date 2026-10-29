@@ -63,7 +63,7 @@ describe("@@Provider@@InboxService", () => {
 
         it("rolls back the receipt when publishing fails", async () => {
             const { inbox, events, transaction } = await build(true)
-            const failure = new Error("outbox unavailable")
+            const failure = new Error("event bus unavailable")
             events.failNext("publish", failure)
 
             await expect(inbox.record@@Provider@@Delivery({ eventId: "delivery-1", delivery: DELIVERY, correlationId: "request-1" })).rejects.toBe(failure)

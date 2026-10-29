@@ -161,11 +161,20 @@ function trailingNewline(text) {
 
 /**
  * The base image of a lite app's managed db/Dockerfile (contexts/stack/pins.yaml images postgres, ruling:lite-official-postgres-image): the
- * Docker Official postgres image by digest, to which the Dockerfile adds only PGVECTOR_PACKAGE from PGDG.
+ * Docker Official postgres image by digest, to which the Dockerfile adds PGVECTOR_PACKAGE from PGDG and the PGMQ release.
  */
 export const DB_BASE_IMAGE = 'postgres:17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f';
 /** The PGDG package of pgvector at the exact version the db image installs (the one extension the image does not ship). */
 export const PGVECTOR_PACKAGE = 'postgresql-17-pgvector=0.8.7-1.pgdg13+1';
+/**
+ * The pgmq release the db image installs for the event bus (ruling:lite-pgmq-bus-bullmq-jobs): its source tarball, verified by sha256
+ * when Docker adds it. PGDG does not package pgmq; it is SQL objects only, so the Dockerfile copies its control and script files.
+ */
+export const PGMQ = Object.freeze({
+  version: '1.13.1',
+  source: 'https://github.com/pgmq/pgmq/archive/refs/tags/v1.13.1.tar.gz',
+  sha256: '67221f288f42f95c002a64df40f7d660e765e32df8ada0f2672ba915a14827f7',
+});
 /** The local tag the development db container and the drift scratch database run, built from the app's db/Dockerfile. */
 export const dbLocalImage = project => `${project}-db:local`;
 /** The digest-pinned image of a lite app's declared Redis, in every environment that runs it (ruling:R212/case-10). */
@@ -391,6 +400,9 @@ export function variables(app, scope, presets, sonarKey, manifest = loadSlotMani
     dbImage: dbLocalImage(app.project),
     dbBaseImage: DB_BASE_IMAGE,
     pgvectorPackage: PGVECTOR_PACKAGE,
+    pgmqVersion: PGMQ.version,
+    pgmqSource: PGMQ.source,
+    pgmqSha256: PGMQ.sha256,
     // A lite app's declared Redis (sides.be.backing, ruling:R212/case-10) runs in development as one container of its pinned image.
     backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
     // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both.

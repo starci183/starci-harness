@@ -1672,11 +1672,10 @@ rules:
       - {kind: hfs, id: db-baseline-shape}
   - id: R258
     code: DB_PGMQ_DECLARED
-    law: pgmq serves only event-bus topic queues, and every pg_cron job is migration-owned, scheduled once and only enqueues one row into the declared queue outbox.
+    law: pgmq is the event bus and carries no job queue; every pgmq queue is an event-bus topic queue named by a literal constant, bound to its topic by a literal binding, and granted only to the application role.
     editions: [lite]
     failureCodes:
       - DB_PGMQ_DECLARED
-      - DB_CRON_OWNED
     enforcers:
       - {kind: hfs, id: db-queue-cron}
   - id: R259

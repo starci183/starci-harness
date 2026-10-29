@@ -125,8 +125,8 @@ testValues: [unit-beside, e2e, none]
 # event bus, saga, reactors, projection, realtime, webhooks, fenced job), declared in hfs.json the same way, and the same unit
 # specs (unitRoles, logicRoles, 100 per file, @starci/jest-preset doubles, builders). What differs is ADAPTERS and DELIVERY
 # (ruling:R212/case-10): schema authority in db/migrations, the queue port on BullMQ over the Redis hfs.json
-# sides.be.backing declares (as in full, fed by the Postgres outbox), event-bus ports on pgmq-backed topics or in-process
-# delivery, cache and locks on Postgres or the declared Redis, schedules as platform/jobs ticks enqueueing through the queue
+# sides.be.backing declares (as in full, fed by the Postgres outbox), event-bus ports on pgmq topics sent in the publisher's
+# transaction (ruling:lite-pgmq-bus-bullmq-jobs), cache and locks on Postgres or the declared Redis, schedules as platform/jobs ticks enqueueing through the queue
 # outbox (R335), storage on S3-compatible MinIO (integrations/object-storage) and auth through integrations/passport. Realtime uses SSE or the socket.io gateway
 # in the api process, which scales horizontally and stateless (memory hub for one replica or tests; the Redis hub and @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter, for N replicas; websocket only, no sticky sessions). Integration and provider sandbox contract specs are optional;
 # declared patterns owe their integration proofs (R284). Lite has no e2e world. Production uses declared docker-swarm under
@@ -205,11 +205,9 @@ ruleParams:
   db:
     # R259: btree_gist supplies UUID equality for the booking interval exclusion constraint.
     # R259: the extensions the db image carries (ruling:lite-official-postgres-image): the official postgres image's contrib set and pgvector
-    # from PGDG; unaccent serves Vietnamese-content search functions. No pg_cron, pg_net, pgmq or supabase_vault.
-    extensions: [pgcrypto, pg_trgm, vector, uuid-ossp, unaccent, btree_gist]
-    # R258 DB_CRON_OWNED: THE queue outbox of a lite schema (the relay hands its unsent rows to BullMQ, ruling:R212/case-10). A pg_cron
-    # job enqueues only by inserting one row into this table, writing only these columns, one of which is `queue`.
-    queueOutbox: {table: public.queue, columns: [queue, payload, created_at, correlation_id]}
+    # from PGDG; unaccent serves Vietnamese-content search functions; pgmq is the event bus (ruling:lite-pgmq-bus-bullmq-jobs), installed
+    # from its pinned release. No pg_cron, pg_net or supabase_vault.
+    extensions: [pgcrypto, pg_trgm, vector, uuid-ossp, unaccent, btree_gist, pgmq]
   common:
     # HFS_SIZE_GROWTH: a file above soft may not grow against its parent commit; a new file stays within soft. Slot
     # budgets (component.tsx 300, hooks 200, modules 400) are stricter than this cap where they apply.
@@ -425,7 +423,7 @@ ruleParams:
     # logic roles and spec doubles are full's (owner ruling 2026-10-12 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4). infraOwners: full's owners,
     # bullmq in platform/queue and ioredis/redis in integrations/cache and integrations/redis (ruling:R212/case-10: the queue is
     # Redis in both editions; a backing library is legal only when hfs.json sides.be.backing declares its service, which
-    # HFS_BACKING_UNDECLARED checks), except Kafka, which is owned nowhere (platform/event-bus runs pgmq queues through
+    # HFS_BACKING_UNDECLARED checks), except Kafka, which is owned nowhere (platform/event-bus runs pgmq topics through
     # the shared EntityManager); realtime is the same socket.io gateway as full, run inside the api process, scaled horizontally and stateless (hub redis when
     # Redis is declared, else hub postgres with @socket.io/postgres-adapter; no sticky sessions).
     # R334: the database functions code may call through platform/database's callDbFunction, advisoryXactLock and notify helpers,
@@ -449,7 +447,12 @@ ruleParams:
       - {name: public.inbox_claim_client, reason: "platform/inbox (add webhook, lite): the client claim upsert returning its committed outcome"}
       - {name: public.inbox_save_client_outcome, reason: "platform/inbox (add webhook, lite): the saved client outcome"}
       - {name: public.inbox_sweep_clients, reason: "platform/inbox (add webhook, lite): the bounded retention sweep FOR UPDATE SKIP LOCKED"}
-      - {name: public.event_bus_write, reason: "platform/event-bus (add webhook, lite): the typed envelope insert of the outbox"}
+      - {name: public.event_bus_send, reason: "platform/event-bus (add webhook, lite): the send of a typed envelope to its pgmq topic in the publisher's transaction"}
+      - {name: public.event_bus_read, reason: "platform/event-bus (add webhook, lite): a consumer's pgmq read with a visibility timeout"}
+      - {name: public.event_bus_archive, reason: "platform/event-bus (add webhook, lite): the archive of a handled message"}
+      - {name: public.event_bus_bury, reason: "platform/event-bus (add webhook, lite): the move of an exhausted or malformed message to its consumer's dead-letter queue"}
+      - {name: public.event_bus_dead_letters, reason: "platform/event-bus (add webhook, lite): the operator read of a consumer's dead-letter queue"}
+      - {name: public.event_bus_requeue, reason: "platform/event-bus (add webhook, lite): the operator requeue of one dead letter"}
 
     lite:
       schemaAuthority: sql
@@ -1773,7 +1776,7 @@ slots:
   - id: be.platform.event-bus
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite implements the event ports with outbox and pgmq; full uses its Kafka adapter."
+    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite implements the event ports on pgmq (ruling:lite-pgmq-bus-bullmq-jobs); full uses its Kafka adapter."
     path: "src/modules/platform/event-bus/"
     presence: opt-in
     pattern: event-bus            # the ONE durable event transport: transactional outbox, relay, Kafka, inbox, retry and dead letter (knowledge/patterns/be/event-bus.yaml)
@@ -1782,10 +1785,10 @@ slots:
     owner: true
     lite:
       why: >-
-        the same EventPublisher and EventConsumer ports on pgmq queues: the outbox relay sends each committed row to the
-        pgmq queue of every consumer group of its topic through the shared EntityManager, a consumer reads with a visibility
-        timeout, retries by letting it lapse and archives the message on dead letter (read_ct over the budget); a single api may
-        deliver in process. No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)
+        the EventBus and EventConsumer ports on pgmq (ruling:lite-pgmq-bus-bullmq-jobs): publish sends the envelope to its
+        topic in the publisher's transaction, so no outbox or relay runs; each consumer group reads its own queue bound to the
+        event's name with a visibility timeout, archives a handled message, lets a failed one reappear and buries one past its
+        attempts in the dead-letter queue. Jobs stay on BullMQ (platform/queue). No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)
     requires: [index.ts, event-bus.module.ts, event-bus.port.ts, event-bus.contracts.ts, event-bus.service.ts, event-bus.service.spec.ts]
     tests: unit-beside
     coverage: required

@@ -11,8 +11,8 @@ import { @@Event@@Request } from "./dto/@@event@@.request"
 @Controller("webhooks/@@provider@@")
 /**
  * POST /webhooks/@@provider@@, the signed intake door of the @@provider@@ notifier. The signature and replay window are proven
- * first; the verified delivery goes to one domain intake that records a receipt and typed outbox event in its transaction. A separate
- * reactor or job consumes the committed row and dispatches the command.
+ * first; the verified delivery goes to one domain intake that records a receipt and sends its typed event in its transaction. A separate
+ * reactor reads the committed event from its pgmq queue and dispatches the command.
  */
 export class @@Provider@@Webhook {
     constructor(

@@ -1,15 +1,28 @@
 import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
 import { isCorrelationId } from "@modules/platform/logging"
+import { callDbFunction, InjectPrimaryEntityManager } from "@modules/platform/database"
 import { EventBusError, EventBusErrorCode } from "./errors/event-bus.error"
-import type { BaseEvent, EventEnvelope } from "./event-bus.contracts"
+import type { BaseEvent, DeadLetter, EventEnvelope } from "./event-bus.contracts"
 import type { EventBus } from "./event-bus.port"
-import { callDbFunction } from "@modules/platform/database"
+
+/** One row of event_bus_dead_letters: pgmq returns the bigint id as text. */
+interface DeadLetterRow {
+    readonly msg_id: string
+    readonly message: { readonly queue?: unknown; readonly reason?: unknown; readonly message?: unknown }
+}
+
+/** The one row event_bus_requeue answers. */
+interface RequeueRow {
+    readonly event_bus_requeue: boolean | null
+}
 
 @Injectable()
-/** Writes a receipt event into the same transaction as its inbox receipt, without running any consumer. */
+/** Sends a typed event to its pgmq topic inside the publisher's transaction; no outbox and no relay stand between them. */
 export class EventBusService implements EventBus {
-    /** The outbox commits or rolls back with the receipt; only a later reactor or job processes it. */
+    constructor(@InjectPrimaryEntityManager() private readonly entityManager: EntityManager) {}
+
+    /** The send commits or rolls back with the change; every queue bound to the event's name receives it once. */
     async publish(event: BaseEvent, tx: EntityManager, correlationId: string): Promise<void> {
         if (!isCorrelationId(correlationId)) throw new EventBusError({ code: EventBusErrorCode.CorrelationInvalid })
         const envelope: EventEnvelope = {
@@ -18,6 +31,21 @@ export class EventBusService implements EventBus {
             eventName: event.eventName,
             payload: event.payload,
         }
-        await callDbFunction(tx, "public.event_bus_write", [event.eventId, event.eventName, JSON.stringify(envelope), correlationId])
+        await callDbFunction(tx, "event_bus_send", [event.eventName, JSON.stringify(envelope)])
+    }
+
+    async deadLetters(limit: number): Promise<ReadonlyArray<DeadLetter>> {
+        const rows = await callDbFunction<DeadLetterRow>(this.entityManager, "event_bus_dead_letters", [limit])
+        return rows.map((row) => ({
+            id: row.msg_id,
+            queue: String(row.message.queue),
+            reason: String(row.message.reason),
+            message: row.message.message,
+        }))
+    }
+
+    async requeue(id: string): Promise<boolean> {
+        const [row] = await callDbFunction<RequeueRow>(this.entityManager, "event_bus_requeue", [id])
+        return row?.event_bus_requeue === true
     }
 }

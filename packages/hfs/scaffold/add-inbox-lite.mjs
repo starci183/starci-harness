@@ -102,7 +102,7 @@ const databasePatches = (root) => {
   ];
 };
 
-/** The first webhook installs only the lite inbox claim and transactional event publisher, shared by all providers. */
+/** The first webhook installs only the lite inbox claim and the pgmq event bus, shared by all providers. */
 const handoffPlatformFiles = (root, values) => {
   const planned = [];
   for (const capability of ["inbox", "idempotency", "event-bus"]) {
@@ -229,7 +229,7 @@ export function addLiteWebhookInbox({
     ...handoffPlatformFiles(root, renderValues),
   ];
   const hasHandoffStorage = migrations.some((file) =>
-    /create\s+table\s+public\.event_bus\b/i.test(fs.readFileSync(path.join(migrationsDir, file), "utf8")),
+    /create\s+function\s+public\.event_bus_send\b/i.test(fs.readFileSync(path.join(migrationsDir, file), "utf8")),
   );
   if (!hasHandoffStorage)
     planned[0].text = `${template("platform/migration.sql.tpl", renderValues)}\n${template("platform/client-operation-outcomes.sql.tpl", renderValues)}\n${planned[0].text}`;

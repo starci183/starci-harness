@@ -95,7 +95,7 @@ function dependencyFindings(rel, pkg, { removed, catalog, declared }) {
     for (const name of Object.keys(deps)) {
       const service = serviceOfClient(catalog, name);
       if (LITE_FORBIDDEN_TEST_INFRA.test(name)) findings.push(found(HFS_EDITION_FORBIDDEN_PRESENT, rel, `${rel} ${section} has ${name}: a lite app runs no test containers, fault proxy or browser journey - its integration specs run against \`supabase start\``, { section, name }));
-      else if (removed.has(name)) findings.push(found(HFS_EDITION_FORBIDDEN_PRESENT, rel, `${rel} ${section} has ${name}: lite runs no self-hosted Kafka - the event bus port is implemented on Supabase (pgmq) or in process`, { section, name }));
+      else if (removed.has(name)) findings.push(found(HFS_EDITION_FORBIDDEN_PRESENT, rel, `${rel} ${section} has ${name}: lite runs no self-hosted Kafka - the event bus port is implemented on pgmq in the db service`, { section, name }));
       else if (service !== null && !judgedInEdition(catalog[service], 'lite')) findings.push(found(HFS_BACKING_UNDECLARED, rel, `${rel} ${section} has ${name}, a client of ${service}, which the lite edition does not admit: remove the dependency`, { section, name, service }));
       else if (service !== null && !declared.has(service)) findings.push(found(HFS_BACKING_UNDECLARED, rel, `${rel} ${section} has ${name}, a client of ${service}, which hfs.json sides.be.backing does not declare: declare ${service} for the capability that needs it, or remove the dependency`, { section, name, service }));
     }

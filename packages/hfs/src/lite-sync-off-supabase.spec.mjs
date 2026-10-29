@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { renderTargets, retiredFiles } from '../sync/index.mjs';
+import { PGMQ, renderTargets, retiredFiles } from '../sync/index.mjs';
 import { bundledPresets } from '../sync/index.mjs';
 import { starterDeclaration } from '../scaffold/app.mjs';
 
@@ -24,11 +24,14 @@ test('a lite app has no Supabase reference in its managed files but the bootstra
   assert.ok(byPath.has('db/bootstrap.sql'), 'the bootstrap is managed');
 });
 
-test('the managed db/Dockerfile builds the digest-pinned official postgres image plus pgvector, and the local db container runs it', () => {
+test('the managed db/Dockerfile builds the digest-pinned official postgres image plus pgvector and the checksum-verified pgmq release, and the local db container runs it', () => {
   const dockerfile = String(byPath.get('db/Dockerfile').content);
   assert.match(dockerfile, /^FROM postgres:17\.\d+@sha256:[a-f0-9]{64}$/mu);
   assert.match(dockerfile, /apt-get install -y --no-install-recommends postgresql-17-pgvector=\S+/u);
-  assert.equal(/pg_cron|pg_net|pgmq|shared_preload_libraries/u.test(dockerfile), false, 'pgvector is the one package the image adds');
+  // pgmq is the event bus (ruling lite-pgmq-bus-bullmq-jobs): its pinned release source, added only when its sha256 matches.
+  assert.ok(dockerfile.includes(`ADD --checksum=sha256:${PGMQ.sha256} ${PGMQ.source} /tmp/pgmq.tar.gz`));
+  assert.ok(dockerfile.includes(`pgmq.sql "$extension/pgmq--${PGMQ.version}.sql"`));
+  assert.equal(/pg_cron|pg_net|shared_preload_libraries/u.test(dockerfile), false, 'pgvector and pgmq are the extensions the image adds');
   const scripts = String(byPath.get('package.json').content);
   assert.match(scripts, /^db:image: docker build --tag demo-db:local db$/mu);
   assert.match(scripts, /^db:create: npm run db:image && docker create .* demo-db:local$/mu);
