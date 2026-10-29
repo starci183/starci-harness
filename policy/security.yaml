@@ -5,7 +5,7 @@
 # its kinds, the stale rule and the refusal are those of policy/loosening.yaml. A line of this file that declares a
 # `match` is that declaration, not a finding.
 schema: starci/security-policy@1
-# A sops envelope (a .enc file carrying sops metadata and ENC[...] values) is ciphertext, not a secret, unless the
+# A sops envelope (a .enc or .enc.yaml file carrying sops metadata and ENC[...] values) is ciphertext, not a secret, unless the
 # profile refuses envelopes: the runtime is public and tracks none.
 sopsEnvelopes:
   default: allowed

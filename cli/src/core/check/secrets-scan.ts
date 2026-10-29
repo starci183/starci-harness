@@ -3,7 +3,7 @@ import { join, relative, sep } from "node:path"
 import { parse } from "yaml"
 import { envelopesAllowed, neverRead } from "../../harness/policy.js"
 import type { Policy } from "../../harness/policy.js"
-import { judgedText, lineFindings, scanDiff } from "../../shared/secrets.js"
+import { isSealedPath, judgedText, lineFindings, scanDiff } from "../../shared/secrets.js"
 import type { SecretFinding, SecretHit } from "../../shared/secrets.js"
 import { applyExceptions, coverageLabel } from "./exceptions.js"
 import type { Coverage, StaleEntry } from "./exceptions.js"
@@ -36,7 +36,7 @@ const lineHits = (file: string, text: string): SecretHit[] =>
     text.split(/\r?\n/).flatMap((line, index) => lineFindings(file, line).map((pattern) => ({ file, line: index + 1, pattern, text: line.trim() })))
 
 /** Judges one readable file: a sops envelope as a whole, any other file line by line. */
-const judgeFile = (file: string, text: string): SecretHit[] => (file.endsWith(".enc") ? scanDiff(asAddedFile(file, text), [], () => text) : lineHits(file, text))
+const judgeFile = (file: string, text: string): SecretHit[] => (isSealedPath(file) ? scanDiff(asAddedFile(file, text), [], () => text) : lineHits(file, text))
 
 /** The `:line` of a finding, empty for a finding of a whole file. */
 const lineSuffix = (line: number | null): string => (line === null ? "" : ":" + String(line))
@@ -89,13 +89,13 @@ export const scanSecrets = (root: string, files: readonly string[], policy: Poli
     const unjudged: string[] = []
     let unread = 0
     for (const file of present) {
-        if (file.endsWith(".enc") && !allowed) raw.push({ file, line: null, pattern: "sops-envelope-refused", text: "" })
+        if (isSealedPath(file) && !allowed) raw.push({ file, line: null, pattern: "sops-envelope-refused", text: "" })
         if (neverRead(policy, file)) {
             unread += 1
             continue
         }
         // A sops envelope is judged whole; any other file is bounded by the text the rules judge, its embedded content payloads set aside.
-        const read = readTreeFile(root, file, maxBytes, file.endsWith(".enc") ? undefined : judgedText)
+        const read = readTreeFile(root, file, maxBytes, isSealedPath(file) ? undefined : judgedText)
         if ("unread" in read) {
             if (read.unread === "too-large") unjudged.push(file)
             unread += 1

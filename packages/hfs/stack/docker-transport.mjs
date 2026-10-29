@@ -4,6 +4,7 @@
 // an explicit environment are affected (the minimal environment of `docker stack config` stays exactly as the render built it). The key lives in
 // a private temp directory that is overwritten and removed when the verb ends; it is never in argv, a line or an error.
 import fs from 'node:fs';
+import { memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
 import path from 'node:path';
 import { writePrivate } from './private-file.mjs';
 import { openSealedSession } from './remote.mjs';
@@ -21,7 +22,7 @@ function needed(ctx, config, sshCmd) {
   if (sshCmd || ctx.env.DOCKER_HOST || ctx.env.GITHUB_ACTIONS === 'true' || ctx.env.STARCI_STACK_SEALED_SSH === '0') return false;
   const { sealed } = config.remote;
   if (!sealed) return false;
-  return [sealed.ops, sealed.sshKey, sealed.knownHosts].every((slug) => fs.existsSync(path.join(config.secretsDir, `${slug}.enc`)));
+  return [sealed.ops, sealed.sshKey, sealed.knownHosts].every((slug) => fs.existsSync(memberFile(config.secretsDir, slug)));
 }
 
 function sshConfig(session, controlPath, windows) {

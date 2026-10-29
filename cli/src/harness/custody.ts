@@ -320,7 +320,7 @@ export const custodyFor = async (liveSpecs: readonly string[], checkout: string)
     const empty = keys.filter((key) => (env[key] ?? "").trim() === "")
     if (empty.length > 0) throw lacking(empty, environment)
     const values = Object.values(env)
-    const members = [...new Set(holder.values())].map((file) => file.replace(/\.enc$/, "")).join(", ")
+    const members = [...new Set(holder.values())].map((file) => file.replace(/\.enc(?:\.yaml)?$/, "")).join(", ")
     return { env, values, detail: `custody: ${keys.join(", ")} from ${environment}/${members}, handed to this run's environment only` }
 }
 

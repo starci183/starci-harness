@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { isSealedName, memberOfName } from '../lib/sealed-member.mjs';
 import { list } from '../lib/list.mjs';
 import { parseYaml } from '../../engine/yaml.mjs';
 
@@ -70,7 +71,7 @@ function entries(dir, fs) {
 export function sealedKeyNames(root, { fs }) {
   const out = [], base = path.join(root, '.starcistacks');
   for (const env of entries(base, fs).filter((entry) => entry.isDirectory())) {
-    for (const member of entries(path.join(base, env.name, 'secrets'), fs).filter((entry) => entry.isFile() && entry.name.endsWith('.enc'))) {
+    for (const member of entries(path.join(base, env.name, 'secrets'), fs).filter((entry) => entry.isFile() && isSealedName(entry.name))) {
       const file = `.starcistacks/${env.name}/secrets/${member.name}`;
       const source = fs.readFileSync(path.join(root, file), 'utf8');
       const dotenv = [...source.matchAll(/^([A-Za-z_]\w*)=ENC\[/gm)].map((match) => match[1]).filter((key) => !key.startsWith('sops_'));
@@ -79,7 +80,7 @@ export function sealedKeyNames(root, { fs }) {
         const doc = parseYaml(source);
         keys = doc && typeof doc === 'object' && !Array.isArray(doc) ? Object.keys(doc).filter((key) => key !== 'sops' && !key.startsWith('sops_')) : [];
       }
-      for (const key of keys) out.push({ env: env.name, member: member.name.slice(0, -4), key, file });
+      for (const key of keys) out.push({ env: env.name, member: memberOfName(member.name), key, file });
     }
   }
   return out;

@@ -99,7 +99,10 @@ export const redactSecrets = (text: string): string =>
 
 const HUNK_HEADER =/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 
-const isEncryptedFile = (file: string, readFile: (file: string) => string | undefined): boolean => file.endsWith(".enc") && isSopsEnvelope(readFile(file) ?? "")
+/** True for the path of a sops envelope a repository commits: a legacy `.enc`, or an app member `.enc.yaml` (ruling app-secrets-one-standard). */
+export const isSealedPath = (file: string): boolean => file.endsWith(".enc") || file.endsWith(".enc.yaml")
+
+const isEncryptedFile = (file: string, readFile: (file: string) => string | undefined): boolean => isSealedPath(file) && isSopsEnvelope(readFile(file) ?? "")
 
 const forbiddenPathFindings = (files: readonly string[]): SecretHit[] =>
     files.flatMap((file) => FORBIDDEN_PATHS.filter((rule) => rule.test(file)).map((rule): SecretHit => ({ file, line: null, pattern: rule.name, text: "" })))

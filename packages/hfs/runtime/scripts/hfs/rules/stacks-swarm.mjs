@@ -161,7 +161,7 @@ function safeRegularFile(repoRoot, file) {
 }
 
 function trackedConfigText(input, relative) {
-  if (!present(relative) || relative.endsWith('.enc') || path.isAbsolute(relative)) return null;
+  if (!present(relative) || /\.enc(?:\.yaml)?$/.test(relative) || path.isAbsolute(relative)) return null;
   const directory = `.starcistacks/${input.environment}/`;
   const stack = input.spec.renderedModel ?? input.spec.composeFiles?.[0] ?? 'infra/swarm/stack.yaml';
   const file = path.posix.normalize(path.posix.join(directory, path.posix.dirname(stack), relative));

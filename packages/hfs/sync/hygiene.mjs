@@ -58,7 +58,7 @@ export function hygieneFindings(files, ignored) {
     if (file.startsWith(WORK) && ignored.has(file)) {
       findings.push({ file, code: 'HFS_WORK_AGENT_DATA', message: 'is agent output, which .starciwork/.gitignore refuses; keep it in the scratchpad or the blob store' });
     }
-    if (file.startsWith(STACKS) && !file.endsWith('.enc') && !file.endsWith('.env.example') && !file.endsWith('/secrets/.gitkeep')) {
+    if (file.startsWith(STACKS) && !/\.enc(?:\.yaml)?$/.test(file) && !file.endsWith('.env.example') && !file.endsWith('/secrets/.gitkeep')) {
       if (file.includes('/secrets/')) findings.push({ file, code: 'HFS_PLAINTEXT_SECRET', message: 'sits under secrets/ but is not sealed; only <slug>.enc may be tracked' });
       else if (PLAINTEXT_NAME.test(file)) findings.push({ file, code: 'HFS_PLAINTEXT_SECRET', message: 'is a plaintext secret; seal it to .starcistacks/<env>/secrets/<slug>.enc' });
     }

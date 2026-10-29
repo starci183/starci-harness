@@ -11,7 +11,7 @@ const LOCKFILE = /(^|\/)package-lock\.json$/u;
 const ROOT_ENV = /^\.env(?:\..*)?$/iu;
 const SECRETS_ENV = /^secrets\.env$/iu;
 const SECRETS_DIRECTORY = /^\.secrets(?:\/|$)/iu;
-const SEALED_HOME = /^\.starcistacks\/[^/]+\/secrets\/[^/]+\.enc$/iu;
+const SEALED_HOME = /^\.starcistacks\/[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/iu;
 
 const LITE_SECRET_PATTERNS = Object.freeze([
   { name: 'supabase-personal-access-token', re: /\bsbp_[A-Za-z0-9_-]{20,}\b/u },
@@ -52,10 +52,10 @@ function custodyPathFinding(file, repo, findings) {
       findings.push(found(LITE_SECRET_CUSTODY, file, `${file} is forbidden at the lite app root; lite keeps no .env*, secrets.env or .secrets/ custody path.`, { pattern: 'lite-forbidden-entry' }));
       return true;
     }
-    if (file.endsWith('.enc') && !SEALED_HOME.test(file)) {
+    if (/\.enc(?:\.yaml)?$/iu.test(file) && !SEALED_HOME.test(file)) {
       findings.push(found(LITE_SECRET_CUSTODY, file, `${file} is a sealed file outside .starcistacks/<env>/secrets/; lite has exactly one encrypted custody path.`, { pattern: 'sealed-file-home' }));
     }
-  } else if (file.endsWith('.enc')) {
+  } else if (/\.enc(?:\.yaml)?$/iu.test(file)) {
     findings.push(found(LITE_SECRET_CUSTODY, file, `${file} is a sealed file inside a side tree; lite keeps *.enc only at the app root under .starcistacks/<env>/secrets/.`, { pattern: 'sealed-file-home' }));
   }
   return false;

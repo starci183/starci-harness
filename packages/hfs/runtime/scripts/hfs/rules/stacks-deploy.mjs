@@ -3,6 +3,7 @@
 // probe of the real tree: the files below .starcistacks/<env>/, the services of the first composeFiles entry and the sealed members.
 // One finding per problem; an environment without a deploy block is not a finding.
 import fs from 'node:fs';
+import { isSealedName, memberOfName } from '../../lib/sealed-member.mjs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { findStackDeclaration, readDeclaration, STACK_ROOT } from '../../lib/stack-declaration.mjs';
@@ -23,7 +24,7 @@ function stackServices(envDir, spec) {
 
 function sealedMembers(envDir) {
   try {
-    return new Set(fs.readdirSync(path.join(envDir, 'secrets')).filter((name) => name.endsWith('.enc')).map((name) => name.slice(0, -4)));
+    return new Set(fs.readdirSync(path.join(envDir, 'secrets')).filter(isSealedName).map(memberOfName));
   } catch { return new Set(); }
 }
 

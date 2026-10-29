@@ -38,7 +38,7 @@ export function secretFileFindings({ file, text, manifestText }) {
   const being = FORBIDDEN_FILES.find((rule) => rule.test(file));
   if (being) return [found(PLAINTEXT_SECRET, file, `${file} is a plaintext secret by being (${being.name}); a secret is committed only as a sops envelope at .starcistacks/<env>/secrets/<slug>.enc`, { pattern: being.name })];
   if (text === null || text === undefined || NOT_SCANNED.test(file)) return [];
-  if (file.endsWith('.enc')) return isSopsEnvelope(text) ? [] : [found(PLAINTEXT_SECRET, file, `${file} is named like a sealed secret but is not a sops envelope; encrypt the value with sops and commit only the envelope`, { pattern: 'sops-not-envelope' })];
+  if (/\.enc(?:\.yaml)?$/.test(file)) return isSopsEnvelope(text) ? [] : [found(PLAINTEXT_SECRET, file, `${file} is named like a sealed secret but is not a sops envelope; encrypt the value with sops and commit only the envelope`, { pattern: 'sops-not-envelope' })];
   const findings = [];
   const seen = new Set();
   for (const { line, pattern } of secretHitsInFile(file, text, { manifestText })) {

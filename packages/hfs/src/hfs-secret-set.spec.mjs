@@ -11,6 +11,7 @@ import { app, run, privateAbsent } from "./helpers/hfs-secret-fixture.mjs";
 import { promptHidden, stdinValues } from "../runtime/scripts/hfs/secret-prompt.mjs";
 import { defaultSops } from "../runtime/scripts/hfs/secret-sops.mjs";
 import { envelopeOf } from "../runtime/scripts/hfs/secret-document.mjs";
+import { parseYaml } from "../runtime/engine/yaml.mjs";
 
 const RECIPIENT = `age1${"q".repeat(58)}`;
 const HOST_KEY = `AGE-SECRET-KEY-1${"H".repeat(58)}`;
@@ -24,13 +25,17 @@ const sealedDotenv = (keys, recipient = RECIPIENT) =>
   `sops_age__list_0__map_enc=-----BEGIN AGE ENCRYPTED FILE-----\\nYWdl\\n-----END AGE ENCRYPTED FILE-----\n` +
   `sops_mac=${ENC}\nsops_version=3.13.2\nsops_lastmodified=2026-01-01T00:00:00Z\n`;
 
-/** A sops seam double: records each seal's plaintext keys and values, returns an envelope naming the keys. */
+/** A sops YAML envelope naming `keys` (what a new member is sealed as). */
+const sealedYaml = (keys) =>
+  `${keys.map((key) => `${key}: ${ENC}`).join("\n")}\nsops:\n  age:\n    - recipient: ${RECIPIENT}\n      enc: |\n        -----BEGIN AGE ENCRYPTED FILE-----\n        YWdl\n        -----END AGE ENCRYPTED FILE-----\n  mac: ${ENC}\n  version: 3.13.2\n`;
+
+/** A sops seam double: records each seal's keys and values (YAML for a member, dotenv for a legacy one), returns its envelope. */
 const fakeSeal = (seals) => (request) => {
-  const map = Object.fromEntries(
-    request.plaintext.split("\n").filter(Boolean).map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]),
-  );
+  const map = request.inputType === "yaml"
+    ? parseYaml(request.plaintext)
+    : Object.fromEntries(request.plaintext.split("\n").filter(Boolean).map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
   seals.push(map);
-  return sealedDotenv(Object.keys(map));
+  return request.inputType === "yaml" ? sealedYaml(Object.keys(map)) : sealedDotenv(Object.keys(map));
 };
 
 const fakeSops = (seals, existing = {}) => ({
@@ -123,7 +128,7 @@ test("an empty typed value seals nothing", async (t) => {
   assert.equal(result.code, 2);
   assert.match(result.err, /K2 is empty; nothing was sealed/u);
   assert.equal(seals.length, 0);
-  assert.equal(fs.existsSync(path.join(dir, "sepay.enc")), false);
+  assert.equal(fs.existsSync(path.join(dir, "sepay.enc.yaml")), false);
 });
 
 test("redirected stdin gives one key its whole text, or one KEY=value line per key, sealed in one write", async (t) => {
@@ -131,7 +136,7 @@ test("redirected stdin gives one key its whole text, or one KEY=value line per k
   const seals = [];
   const one = await run(["set", "dev", "solo", "K1"], { cwd: root, env, stdin: () => `${FAKE[0]}\nsecond line\n`, sops: fakeSops(seals) });
   assert.equal(one.code, 0, one.err);
-  assert.deepEqual(seals[0], { K1: `${FAKE[0]}\\nsecond line` }, "a multi-line value survives (sops dotenv escapes LF)");
+  assert.deepEqual(seals[0], { K1: `${FAKE[0]}\nsecond line` }, "a multi-line value survives byte for byte in the YAML member");
   const many = await run(["set", "dev", "sepay", "K1", "K2"], {
     cwd: root, env, stdin: () => `# comment\r\nK2=${FAKE[1]}\r\nK1=${FAKE[0]}=tail\r\n`, sops: fakeSops(seals),
   });
@@ -239,7 +244,7 @@ test("the first set names the identity a later set needs, or the fix when this m
   assert.equal(other.code, 0, other.err);
   assert.ok(other.out.includes(`this machine holds none: add SOPS_AGE_KEY to ${path.join(root, ".claude", "secret.env")} before the next set`));
   privateAbsent(other, [HOST_KEY, FAKE[0]]);
-  assert.deepEqual(envelopeOf(fs.readFileSync(path.join(root, ".starcistacks", "dev", "secrets", "ops.enc"), "utf8")).keys, ["K1"]);
+  assert.deepEqual(envelopeOf(fs.readFileSync(path.join(root, ".starcistacks", "dev", "secrets", "ops.enc.yaml"), "utf8")).keys, ["K1"]);
 });
 
 // The default wiring end to end: a child whose stdin claims a terminal (a pipe with isTTY forced, since a spec has no real
@@ -270,7 +275,7 @@ test("with no stdin port, a terminal stdin gets the masked prompt instead of a r
   assert.equal(code, 0, stderr);
   const result = JSON.parse(fs.readFileSync(out, "utf8"));
   assert.equal(result.code, 0, stderr);
-  assert.deepEqual(result.seals, [`SEPAY_SIGNING_SECRET_KEY=${FAKE[0]}\n`]);
+  assert.deepEqual(result.seals, [`SEPAY_SIGNING_SECRET_KEY: "${FAKE[0]}"\n`]);
   assert.ok(stderr.startsWith("SEPAY_SIGNING_SECRET_KEY: "), stderr);
   assert.ok(stderr.includes("*".repeat(FAKE[0].length)));
   assert.ok(!stderr.includes(FAKE[0]) && !stdout.includes(FAKE[0]), "the value is never echoed");

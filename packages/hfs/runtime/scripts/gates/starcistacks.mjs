@@ -329,7 +329,10 @@ const checkTrackedCustody = ({ repo, root, add }) => {
     // infra/** is tracked source, but a value file inside it (.env*, *.env, *.key, *.pem, *.tfvars)
     // is plaintext custody (inc-5360513a96b3: infra/compose/.env.generated was trackable).
     const infraValue = parts.length > 3 && parts[2] === 'infra' && isInfrastructureValueFile(base) && !base.endsWith('.enc') && !base.endsWith('.example');
-    if ((custodyArea && !base.endsWith('.enc') && !['KEYS.md', '.gitkeep'].includes(base)) || infraValue)
+    // An app's sealed member is `<env>/secrets/<member>.enc.yaml` (ruling app-secrets-one-standard, scripts/lib/sealed-member.mjs);
+    // runtime custody keeps `<name>.<fmt>.enc`.
+    const appMember = parts.length === 4 && parts[2] === 'secrets' && base.endsWith('.enc.yaml');
+    if ((custodyArea && !base.endsWith('.enc') && !appMember && !['KEYS.md', '.gitkeep'].includes(base)) || infraValue)
       add('refuse', 'STACKS_PLAINTEXT_TRACKED', file, /\.enc\.(?:ya?ml|json|env)$/u.test(base)
         ? `${base} is named the wrong way round: a custody file is <name>.<fmt>.enc (rename it to ${base.replace(/\.enc\.(ya?ml|json|env)$/u, '.$1.enc')}) and every read states the format (scripts/api/sops/exec-env.mjs)`
         : 'a custody member is tracked in plaintext; untrack it (git rm --cached), rotate the value and commit only its .enc twin');

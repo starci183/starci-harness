@@ -7,7 +7,7 @@ const PLAINTEXT_LOAD = 'HFS_SCRIPT_PLAINTEXT_LOAD';
 const XTRACE = 'HFS_SCRIPT_XTRACE';
 const SECRET_ENV_FILE = /(?:^|\/)(?:secrets?\.env|\.env)(?:\.[^/]*)?/iu;
 const SECRET_NIVO_FILE = /(?:^|\/)\.nivo-lite(?:\/|$)/iu;
-const SECRET_ENC_FILE = /\.enc$/iu;
+const SECRET_ENC_FILE = /\.enc(?:\.yaml)?$/iu;
 const isSecretFile = (file) => SECRET_ENV_FILE.test(file) || SECRET_NIVO_FILE.test(file) || SECRET_ENC_FILE.test(file);
 const EXCLUDED_TREE = /(?:^|\/)(?:node_modules|\.git|\.claude|\.secrets|secrets|tests?|__tests__|docs|coverage|dist|build)(?:\/|$)/u;
 const TEST_FILE = /(?:\.(?:spec|test)|-spec)\.[cm]?[jt]sx?$/u;

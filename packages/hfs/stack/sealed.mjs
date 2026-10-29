@@ -2,6 +2,7 @@
 // service is granted (the shared half of the release tools). No value is ever written to disk, printed or put in an argument list:
 // callers receive `value` and must keep it in memory. Config objects (non-secret files mounted into services) are versioned by content.
 import { createHash, createHmac } from 'node:crypto';
+import { memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { secretRoots } from '../runtime/scripts/hfs/secret-files.mjs';
@@ -65,10 +66,10 @@ export function requireAgeIdentity(ctx, config, purpose) {
   if (!hasAgeIdentity(ctx, config)) throw refusal('STACK_AGE_IDENTITY_MISSING', `${purpose} needs the sealed members, and no age identity is available: ${AGE_HINT}`);
 }
 
-/** Opens one sealed member (`<secretsDir>/<member>.enc`) into a { KEY: value } map. Names the member only on failure. */
+/** Opens one sealed member (`<secretsDir>/<member>.enc.yaml`, or a legacy `.enc`) into a { KEY: value } map. Names the member only on failure. */
 export function openMember(ctx, config, member) {
   try {
-    const map = readMap(path.join(config.secretsDir, `${member}.enc`), ctx.sops);
+    const map = readMap(memberFile(config.secretsDir, member), ctx.sops);
     return Object.fromEntries(Object.entries(map).map(([key, value]) => [key, typeof value === 'string' && !value.includes(String.fromCodePoint(0)) ? lfText(value) : value]));
   } catch {
     throw refusal('STACK_SECRET_MEMBER_UNREADABLE', `the sealed member ${member} cannot be opened${hasAgeIdentity(ctx, config) ? ' (is the age identity a recipient of this member?)' : `: no age identity is available, ${AGE_HINT}`}`);

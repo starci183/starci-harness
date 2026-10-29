@@ -14,6 +14,25 @@ import { SecretError, publicStorage } from "./secret-errors.mjs";
 const sopsInvocation = Object.freeze({ runProgram, resolveRealTool });
 const AGE_IDENTITY_NAME = /^SOPS_AGE_KEY(?:_FILE)?$/i;
 
+/** The environment with no age identity selected: what a seal runs with. */
+const withoutIdentity = (env) =>
+  Object.fromEntries(Object.entries(env).filter(([name]) => !AGE_IDENTITY_NAME.test(name)));
+
+/** The KEY map of sops' JSON output: a flat object of string values, else refused naming no value. */
+function exactMap(stdout) {
+  let document;
+  try { document = JSON.parse(String(stdout)); }
+  catch { throw new SecretError("sops returned an invalid JSON document"); }
+  if (!document || typeof document !== "object" || Array.isArray(document))
+    throw new SecretError("sops returned an invalid JSON document");
+  const map = Object.create(null);
+  for (const [key, value] of Object.entries(document)) {
+    if (typeof value !== "string") throw new SecretError(`${key} is not a string value; a member holds string values only`);
+    map[key] = value;
+  }
+  return map;
+}
+
 /** The public age recipients a sealed member names, read without decrypting; none when it cannot be read. */
 function recipientsOf(file) {
   try { return envelopeOf(fs.readFileSync(file, "utf8")).recipients; }
@@ -120,10 +139,15 @@ export function defaultSops(
   return {
     identity,
     requireIdentity,
+    /**
+     * The KEY map of a member. A YAML or JSON member decrypts to JSON, so every value comes back byte for byte (a multi-line
+     * key, a trailing newline, a carriage return); a legacy dotenv member decrypts to dotenv, whose LF is escaped.
+     */
     decrypt(file, format) {
+      const exact = format === "yaml" || format === "json";
       const result = sopsDecrypt(
         binary,
-        ["decrypt", "--input-type", format, "--output-type", "dotenv", file],
+        ["decrypt", "--input-type", format, "--output-type", exact ? "json" : "dotenv", file],
         { env: selectedEnv, cwd: repoRoot, invocation },
       );
       if (result.status !== 0)
@@ -132,6 +156,7 @@ export function defaultSops(
           result,
           file,
         );
+      if (exact) return exactMap(result.stdout);
       const map = Object.create(null);
       for (const line of String(result.stdout).split(/\r?\n/u)) {
         if (!line || line.startsWith("#")) continue;
@@ -175,10 +200,12 @@ export function defaultSops(
         : publicStorage(() =>
             configuredRecipients(repoRoot, request.filenameOverride),
           );
+      // Sealing needs only public recipients, so it runs with no identity selected and may name several (an environment's
+      // server key and the owner key both).
       const result = sopsSeal(
         binary,
         { ...request, recipients },
-        { env: selectedEnv, cwd: repoRoot, invocation },
+        { env: withoutIdentity(selectedEnv), cwd: repoRoot, invocation },
       );
       if (result.status !== 0) throw refuse("seal the secret", result);
       return result.stdout;

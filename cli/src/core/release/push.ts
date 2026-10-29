@@ -4,7 +4,7 @@ import { assertMayPushBranch } from "../pkg/edit.js"
 import { exceptSecrets } from "../check/secrets-scan.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, currentBranch, git, nulPaths, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
-import { scanDiff } from "../../shared/secrets.js"
+import { isSealedPath, scanDiff } from "../../shared/secrets.js"
 import type { SecretFinding } from "../../shared/secrets.js"
 import { defineVerb } from "../../shared/verb.js"
 
@@ -66,7 +66,7 @@ export const releasePushVerb = defineVerb({
         const encrypted = new Map<string, string>()
         const shownFiles = await Promise.all(
             files
-                .filter((name) => name.endsWith(".enc"))
+                .filter((name) => isSealedPath(name))
                 .map(async (file) => ({ file, shown: await captureGit(["show", `${head}:${file}`], root) })),
         )
         for (const { file, shown } of shownFiles) if (shown.exitCode === 0) encrypted.set(file, shown.stdout)

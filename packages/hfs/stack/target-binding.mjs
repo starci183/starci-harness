@@ -1,5 +1,6 @@
 // Public endpoint assertions for admitted native consumers; this module never opens custody.
 import fs from 'node:fs';
+import { memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
 import path from 'node:path';
 import { refusal } from './errors.mjs';
 
@@ -52,7 +53,7 @@ export function bindStackTarget(ctx, config, binding) {
     || !config.remote.sealed || ctx.env.DOCKER_HOST || ctx.env.DOCKER_CONTEXT || ctx.env.GITHUB_ACTIONS
     || ctx.env.STARCI_STACK_SEALED_SSH !== undefined) denied();
   for (const member of Object.values(config.remote.sealed)) {
-    const file = path.join(config.secretsDir, `${member}.enc`);
+    const file = memberFile(config.secretsDir, member);
     assertBoundCustody(config.repoRoot, file);
   }
   return { ...config, nativeTarget: binding };

@@ -18,7 +18,12 @@ import {
   secretRoots,
 } from "./secret-files.mjs";
 
-const PATH_RULE = String.raw`\.starcistacks[/\\][^/\\]+[/\\]secrets[/\\][^/\\]+\.enc$`;
+const PATH_RULE = String.raw`\.starcistacks[/\\][^/\\]+[/\\]secrets[/\\][^/\\]+\.enc(?:\.yaml)?$`;
+/** The rule an earlier init wrote, which matches legacy `.enc` members only; init and recipients treat it as the app's own. */
+const LEGACY_PATH_RULE = String.raw`\.starcistacks[/\\][^/\\]+[/\\]secrets[/\\][^/\\]+\.enc$`;
+/** The path_regex of one environment's rule: its members, current or legacy. */
+export const environmentRule = (environment) =>
+  String.raw`\.starcistacks[/\\]` + environment + String.raw`[/\\]secrets[/\\][^/\\]+\.enc(?:\.yaml)?$`;
 const AGE_IDENTITY_NAME = /^SOPS_AGE_KEY(?:_FILE)?$/i;
 
 /** Bootstrap a new app with its own age identity; only its public recipient leaves this owner. */
@@ -123,12 +128,16 @@ export function configuredRecipients(repoRoot, file) {
     throw new Error(
       ".sops.yaml requires creation_rules; run starci app secret init",
     );
+  // A `.enc.yaml` member also matches a rule written for the legacy `.enc` spelling, so an app's existing .sops.yaml keeps
+  // sealing until `starci app secret recipients` rewrites it.
+  const spellings = [relative, ...(relative.endsWith(".enc.yaml") ? [relative.slice(0, -".yaml".length)] : [])];
   const rule = config.creation_rules.find((entry) => {
     try {
       return (
         !entry.path_regex ||
-        new RegExp(entry.path_regex).test(relative) ||
-        new RegExp(entry.path_regex).test(relative.replaceAll("/", "\\"))
+        spellings.some((spelling) =>
+          new RegExp(entry.path_regex).test(spelling) ||
+          new RegExp(entry.path_regex).test(spelling.replaceAll("/", "\\")))
       );
     } catch {
       throw new Error(".sops.yaml has an invalid path_regex");
@@ -188,7 +197,7 @@ function readInitializationConfig(configFile) {
 function existingInitializationRule(rules) {
   const canonical = rules.find(
     (rule) =>
-      rule?.path_regex === PATH_RULE &&
+      [PATH_RULE, LEGACY_PATH_RULE].includes(rule?.path_regex) &&
       typeof rule.age === "string" &&
       rule.age.trim(),
   );
@@ -275,8 +284,73 @@ function initializationRecipient(repoRoot, env, platform, tool, tools) {
   return result.publicRecipient;
 }
 
+/**
+ * The public recipient of the owner's age identity, as localAgeIdentity finds it (`host` its last source). Only an inline
+ * SOPS_AGE_KEY is derived; with none the caller names the recipient itself.
+ */
+export function ownerRecipient(repoRoot, env, { platform, tools, host = null }) {
+  const local = localAgeIdentity(repoRoot, env, tools, host);
+  if (!Object.keys(local.env).some((name) => /^SOPS_AGE_KEY$/i.test(name)))
+    throw new Error(
+      `no SOPS_AGE_KEY found (looked in the environment${local.looked.length ? `, ${local.looked.join(", ")}` : ""}); name the owner's public recipient (age1...) instead of owner`,
+    );
+  return initializationRecipient(repoRoot, local.env, platform, secretTools(env, tools), tools);
+}
+
+/**
+ * `starci app secret recipients <env> [--add <age1...|owner>] [--remove <age1...|owner>]`: prints the public recipients a
+ * member of the environment is sealed to, or rewrites the environment's own rule of the app's managed .sops.yaml (one rule per
+ * environment, written before the app-wide rule, public keys only). `owner` is the owner identity's recipient (ownerRecipient).
+ * A member sealed before keeps its recipients until it is sealed again.
+ */
+export function environmentRecipients(repoRoot, environment, { add = [], remove = [], owner, stdout }) {
+  const configFile = path.join(repoRoot, ".sops.yaml");
+  const config = readInitializationConfig(configFile);
+  const rules = Array.isArray(config.creation_rules) ? config.creation_rules : [];
+  const probe = path.join(repoRoot, ".starcistacks", environment, "secrets", "member.enc.yaml");
+  let current = [];
+  try { current = configuredRecipients(repoRoot, probe); } catch { current = []; }
+  if (!add.length && !remove.length) {
+    stdout(`${environment}: ${current.join(", ") || "no rule names a recipient; run starci app secret init"}\n`);
+    return 0;
+  }
+  let ownerValue;
+  const resolve = (value) => {
+    if (value !== "owner") return value;
+    ownerValue ??= owner();
+    return ownerValue;
+  };
+  const next = [...current];
+  for (const value of add.map(resolve)) {
+    if (!/^age1[a-z0-9]+$/u.test(value)) throw new Error(`${value} is not a public age recipient (age1...)`);
+    if (!next.includes(value)) next.push(value);
+  }
+  for (const value of remove.map(resolve)) {
+    const at = next.indexOf(value);
+    if (at < 0) throw new Error(`${environment} is not sealed to ${value}`);
+    next.splice(at, 1);
+  }
+  if (!next.length) throw new Error(`${environment} keeps at least one recipient`);
+  const regex = environmentRule(environment);
+  const own = rules.findIndex((rule) => rule?.path_regex === regex);
+  if (own >= 0) rules[own] = { ...rules[own], age: next.join(",") };
+  else {
+    const appWide = rules.findIndex((rule) => !rule?.path_regex || [PATH_RULE, LEGACY_PATH_RULE].includes(rule.path_regex));
+    rules.splice(appWide < 0 ? rules.length : appWide, 0, { path_regex: regex, age: next.join(",") });
+  }
+  config.creation_rules = rules;
+  fs.writeFileSync(
+    configFile,
+    `# Managed by starci app secret init and recipients: one rule per environment, public age recipients only.\n${stringifyYaml(config)}`,
+  );
+  stdout(
+    `${environment}: ${next.join(", ")}; a member sealed before keeps its recipients until it is sealed again (starci app secret migrate ${environment} <member> --execute)\n`,
+  );
+  return 0;
+}
+
 /** Reuse an existing matching age rule; initialization must not rotate an app's recipient. */
-export function initializeSecrets(repoRoot, { env, platform, tools, stdout }) {
+export function initializeSecrets(repoRoot, { env, platform, tools, stdout, host = null }) {
   const configFile = path.join(repoRoot, ".sops.yaml");
   const config = readInitializationConfig(configFile);
   const rules = config.creation_rules ?? [];
@@ -289,7 +363,7 @@ export function initializeSecrets(repoRoot, { env, platform, tools, stdout }) {
     throw new Error(
       ".sops.yaml must name valid public age recipients; initialization never prints private key material",
     );
-  const localEnv = ageIdentityEnv(repoRoot, {}, tools);
+  const localEnv = localAgeIdentity(repoRoot, {}, tools, host).env;
   const selectedEnv = ageIdentityEnv(repoRoot, existing ? env : { ...env, ...localEnv }, tools);
   if (!existing && !Object.keys(localEnv).some((name) => /^SOPS_AGE_KEY$/i.test(name))) {
     const initialized = initializeAppIdentity(repoRoot, { tools });
@@ -301,7 +375,7 @@ export function initializeSecrets(repoRoot, { env, platform, tools, stdout }) {
   const inline = Object.keys(selectedEnv).some((name) => /^SOPS_AGE_KEY$/i.test(name));
   const derived = existing && !inline ? existing.age : initializationRecipient(repoRoot, selectedEnv, platform, tool, tools);
   const recipient = existing?.age ?? derived;
-  const exact = rules.findIndex((rule) => rule?.path_regex === PATH_RULE);
+  const exact = rules.findIndex((rule) => [PATH_RULE, LEGACY_PATH_RULE].includes(rule?.path_regex));
   if (exact >= 0) rules[exact] = { ...rules[exact], age: recipient };
   // SOPS uses the first matching rule: keep any existing environment-specific recipients in force.
   else rules.push({ path_regex: PATH_RULE, age: recipient });

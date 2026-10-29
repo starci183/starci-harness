@@ -18,7 +18,7 @@ const issueFinding = (file, issue) => found(CODE, file, `${file}: ${issue.at}: $
 /** The app's tracked automation sources; locations are reported without returning any source text. */
 export function hostCrontabFindings({ repoRoot, files }) {
   const findings = [];
-  for (const file of files.filter(file => HOST_CRON_PATH.test(file) && !file.endsWith('.enc'))) {
+  for (const file of files.filter(file => HOST_CRON_PATH.test(file) && !/\.enc(?:\.yaml)?$/.test(file))) {
     const text = readText(repoRoot, file);
     if (text === null) continue;
     for (const [index, line] of text.split(/\r?\n/).entries()) {
@@ -81,7 +81,7 @@ function loadSwarmModel({ repoRoot, environment, spec, files, findings }) {
 function swarmDeploymentFiles(repoRoot, files) {
   return files.filter(file => {
     const environment = /^\.starcistacks\/([^/]+)\/infra\/swarm\//.exec(file)?.[1];
-    if (!environment || file.endsWith('.enc')) return false;
+    if (!environment || /\.enc(?:\.yaml)?$/.test(file)) return false;
     const target = safeStackFile(repoRoot, path.resolve(repoRoot, '.starcistacks', environment), file.split('/').slice(2).join('/'));
     if (!target) return true;
     const parsed = readDeclaration(target);
