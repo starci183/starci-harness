@@ -13,6 +13,12 @@ export const LEDGER_VERSION = 9
 export const MACHINE_VERSION = 3
 
 /**
+ * How long an open of a ledger waits on another process's write lock before SQLite answers "database is locked": every
+ * coordinator, worker verb and governor shares these files, and a host at full CPU stretches each write past seconds.
+ */
+export const LEDGER_BUSY_MS = 30_000
+
+/**
  * The tables of a project ledger: the eight of the task protocol, plus the workflow graph (plan_nodes, edges and
  * graph_versions, one set per graph version, since version 4). Status rules live in the code's one state machine, not in
  * triggers; the tables only keep facts (contracts, results and recorded graphs are immutable once written). Provider health is host-wide and lives in
@@ -292,7 +298,7 @@ const damaged = (file: string, error: unknown): unknown => {
  */
 const connect = (file: string, readOnly = false): DatabaseSync => {
     // The busy timeout must hold before the WAL switch, or a concurrent open fails with "database is locked".
-    const db = new DatabaseSync(file, { readOnly, timeout: 5000 })
+    const db = new DatabaseSync(file, { readOnly, timeout: LEDGER_BUSY_MS })
     try {
         if (readOnly) db.prepare("SELECT 1 FROM sqlite_master LIMIT 1").get()
         else db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;")

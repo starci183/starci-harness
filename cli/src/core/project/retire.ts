@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { DatabaseSync } from "node:sqlite"
-import { now } from "../../harness/ledger.js"
+import { LEDGER_BUSY_MS, now } from "../../harness/ledger.js"
 import { readMachine, textOf, withMachine } from "../../harness/machine.js"
 import { closeWorkspaceTerminals, locateOrca, projectSetupDelete, projectSetups, terminalList, worktreeList } from "../../harness/orca/client.js"
 import type { OrcaBinary } from "../../harness/orca/client.js"
@@ -23,7 +23,7 @@ interface ProjectRetireData {
 /** The open seats of a ledger file with the terminal each recorded, read-only; none when the file is gone. */
 const openSeatsOf = (file: string): { readonly id: string; readonly terminal: string | null }[] => {
     if (!existsSync(file)) return []
-    const db = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+    const db = new DatabaseSync(file, { readOnly: true, timeout: LEDGER_BUSY_MS })
     try {
         return db
             .prepare("SELECT id, status, terminal FROM seats WHERE ended_at IS NULL")

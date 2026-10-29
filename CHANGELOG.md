@@ -6,6 +6,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **A ledger open waits 30 s for another process's write lock** (`LEDGER_BUSY_MS` in `harness/ledger.ts`, every open). At 5 s a
+  host at 97% CPU answered `kernel next` with `CLI_UNEXPECTED: database is locked` while a governor or worker held the write.
+
 ## [1.1.0-alpha.8] - 2026-10-29
 
 ### Fixed

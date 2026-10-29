@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { DatabaseSync } from "node:sqlite"
-import { now } from "./ledger.js"
+import { LEDGER_BUSY_MS, now } from "./ledger.js"
 import { readMachine, textOf, withMachine } from "./machine.js"
 import type { Qualification, Routing } from "./routing.js"
 
@@ -37,7 +37,7 @@ interface Ended {
 const endedOf = (file: string, since: string): Ended[] => {
     let ledger: DatabaseSync | undefined
     try {
-        ledger = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+        ledger = new DatabaseSync(file, { readOnly: true, timeout: LEDGER_BUSY_MS })
         const rows = ledger
             .prepare("SELECT a.id, a.agent, a.model, a.outcome, a.verdict, a.started_at, a.ended_at, t.label FROM attempts a JOIN tasks t ON t.id = a.task_id WHERE a.ended_at IS NOT NULL AND a.ended_at >= ?")
             .all(since)

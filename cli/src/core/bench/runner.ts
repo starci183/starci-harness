@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite"
 import { pathToFileURL } from "node:url"
 import { isDeepStrictEqual } from "node:util"
 import { stringify } from "yaml"
-import { runtimeRoot, stateBase } from "../../harness/ledger.js"
+import { LEDGER_BUSY_MS, runtimeRoot, stateBase } from "../../harness/ledger.js"
 import { locateOps } from "../../harness/ops.js"
 import { inOrder } from "../../harness/sequential.js"
 import { captureTool, startServing } from "../../shared/exec.js"
@@ -60,7 +60,7 @@ const ledgerFolder = (state: string, repo: string): string | undefined => {
     if (!existsSync(root)) return undefined
     const machine = join(state, "machine.sqlite")
     if (existsSync(machine)) {
-        const db = new DatabaseSync(machine, { readOnly: true, timeout: 5000 })
+        const db = new DatabaseSync(machine, { readOnly: true, timeout: LEDGER_BUSY_MS })
         try {
             const row = db.prepare("SELECT ledger_id, repo_root FROM ledgers").all().find((candidate) => samePath(String(candidate.repo_root), repo))
             if (row !== undefined) return join(root, String(row.ledger_id))
@@ -236,7 +236,7 @@ const worker = async (run: RunState, step: NonNullable<Step["worker"]>, label: s
 const openDb = (run: RunState, db: "ledger" | "machine", label: string, repo?: string): DatabaseSync => {
     const file = db === "machine" ? join(run.state, "machine.sqlite") : join(ledgerFolder(run.state, repoNamed(run, repo)) ?? run.state, "runtime.sqlite")
     if (!existsSync(file)) unmet(run, label, `${db} database ${file} does not exist`)
-    return new DatabaseSync(file, { timeout: 5000 })
+    return new DatabaseSync(file, { timeout: LEDGER_BUSY_MS })
 }
 
 const query = (run: RunState, db: "ledger" | "machine", sql: string, label: string, repo?: string): unknown => {

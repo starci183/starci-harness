@@ -3,7 +3,7 @@ import { resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { asRefusal } from "../shared/errors.js"
-import { ledgerPath, now } from "./ledger.js"
+import { LEDGER_BUSY_MS, ledgerPath, now } from "./ledger.js"
 import { holdsSlot, listedTerminals, readMachine, textOf, withMachine } from "./machine.js"
 import type { ListedTerminals } from "./machine.js"
 import { loadRouting } from "./routing.js"
@@ -87,7 +87,7 @@ const openWorkerSeats = (repo: string, listed: ListedTerminals | null): string[]
     if (file === undefined) return []
     let ledger: DatabaseSync | undefined
     try {
-        ledger = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+        ledger = new DatabaseSync(file, { readOnly: true, timeout: LEDGER_BUSY_MS })
         return ledger
             .prepare("SELECT * FROM seats WHERE role = 'worker' AND ended_at IS NULL")
             .all()

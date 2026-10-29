@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { DatabaseSync } from "node:sqlite"
-import { inTransaction, machinePath, openMachine } from "./ledger.js"
+import { inTransaction, LEDGER_BUSY_MS, machinePath, openMachine } from "./ledger.js"
 import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js"
 
 /**
@@ -185,7 +185,7 @@ export const runningWorkers = (): RunningWorkers => {
         if (file === "" || !existsSync(file)) continue
         let ledger: DatabaseSync | undefined
         try {
-            ledger = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+            ledger = new DatabaseSync(file, { readOnly: true, timeout: LEDGER_BUSY_MS })
             for (const row of ledger.prepare("SELECT * FROM seats WHERE role IN ('worker', 'kernel')").all()) {
                 const agent = textOf(row.agent)
                 if (agent !== null && holdsSlot(row, listed)) count(agent, textOf(row.model), textOf(row.role) === "kernel")
