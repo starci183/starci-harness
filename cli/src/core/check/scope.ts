@@ -280,6 +280,8 @@ const lintGroup = async (scope: Scope, pkg: WorkspacePackage, group: LintGroup, 
     const { deferral } = scope.composition
     const deferring = deferral !== null && group.paths.some((path) => underPaths(toSlash(relative(scope.root, join(group.dir, path))), deferral.paths)) ? deferral : null
     let deferred = 0
+    // What the deferral took, named on the label of a red run too, so a red judged against a base still shows it.
+    const noted = (): string => (deferring === null || deferred === 0 ? "" : `, deferred-to:${deferring.to}: ${String(deferred)} ${deferring.rules.join("/")} finding(s) on its own allowPaths`)
     for (const paths of chunked(group.paths)) {
         const run = await withHeavySlot("eslint", `eslint ${label}`, group.dir, options, (held) => captureTool(process.execPath, [eslint, "--max-warnings=0", "--no-warn-ignored", ...(deferring === null ? [] : ["--format", "json"]), ...paths], group.dir, held.options))
         const judged = deferring === null ? undefined : judgeDeferred(run, scope.root, deferring)
@@ -288,10 +290,9 @@ const lintGroup = async (scope: Scope, pkg: WorkspacePackage, group: LintGroup, 
             continue
         }
         deferred += judged.deferred
-        if (judged.remaining.length > 0) return { label, ran: true, red: true, output: evidenceTail(judged.remaining.join("\n"), run.stderr) }
+        if (judged.remaining.length > 0) return { label: label + noted(), ran: true, red: true, output: evidenceTail(judged.remaining.join("\n"), run.stderr) }
     }
-    const note = deferring === null || deferred === 0 ? "" : `, deferred-to:${deferring.to}: ${String(deferred)} ${deferring.rules.join("/")} finding(s) on its own allowPaths`
-    return { label: label + note, ran: true, red: false, output: "" }
+    return { label: label + noted(), ran: true, red: false, output: "" }
 }
 
 /**

@@ -374,9 +374,15 @@ commit. A textual conflict moves nothing by itself and is never a dead end: it b
 generated relay node `relay.<need>.r<round>` (`relayTask` in `harness/reconcile.ts`, added by `amendWithRelays`) owned by its
 Kernel like any task, built on the resolver's node (its label, inputs and checks), allowed the conflicting files and every file
 the commits touch, whose contract is to apply exactly those commits preserving both sides' intent; before its worker starts the
-engine applies them up to the first that conflicts and leaves git's markers (`applyGenerated`), and its verify is its label's
-own. Every waiter of the need in that workflow depends on it and stays parked with its work kept, spending no try, until it
-lands; the add is a `need-relay-conflict` event naming the node and the files, and the node's landing a `need-relayed` event
+engine applies them up to the first that conflicts and leaves git's markers (`applyGenerated`). Its verify runs its label's
+checks and judges it as the transport of work the source already settled: its first waiter (the first node that depends on
+it, `composerOf` in `harness/graph.ts`) composes it, consuming what the commits export, so the composition rules on the relayed
+files defer to that waiter, whose check and the workflow's final verify judge them in full; a context file its checkout lacks
+(a Work record of the source's, on the source's branch alone) is read, by its brief and its read trace, at the last relayed
+commit as data (`relayHeadOf`), never copied onto the branch; and a finding its relayed files already held at that commit is
+the source's baseline, judged there and kept as `baseline-findings` evidence, wherever `check run` judges them (as the node,
+its composer or the final verify), a composition rule excepted (`core/check/relay-baseline.ts`). Every waiter of the need in
+that workflow depends on it and stays parked with its work kept, spending no try, until it lands; the add is a `need-relay-conflict` event naming the node and the files, and the node's landing a `need-relayed` event
 naming it. Like a revert node, a relay node's key and contract are the harness's own (no file adds or edits one), it is outside
 the goal's scope paths, the Work records' lanes and the foreign-source rule, since it carries what another workflow's lane built.
 Only a relay node its Kernel removed raises one Supervisor `escalation` of kind `conflict`, whose answer releases the waiters as

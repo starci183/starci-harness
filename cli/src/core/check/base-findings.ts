@@ -1,22 +1,37 @@
 import { join, relative } from "node:path"
 import { inCleanCheckout } from "../../harness/clean-verify.js"
+import { underPaths } from "../../harness/contract.js"
 import { linkInstall } from "../../harness/land.js"
 import type { StepResult } from "./scope.js"
 
 /** The steps whose output lists findings a base can already hold: a widened typecheck, lint or canon is judged against its base. */
 const JUDGED_STEPS: ReadonlySet<StepResult["step"]> = new Set<StepResult["step"]>(["typecheck", "lint", "canon"])
 
-/** The findings of one red step that were already at the base: judged there, never blamed on the change. */
+/** The findings of one red step that were already at a base (`at`): judged there, never blamed on the change. */
 export interface BaseFindings {
     readonly package: string
     readonly step: StepResult["step"]
+    readonly at: string
     readonly findings: readonly string[]
 }
 
-/** What judging a widened run against its base found: the base, and per step the findings that were there already. */
+/** What judging a run against its bases found: the first base, and per step and base the findings that were there already. */
 export interface BaseJudgement {
     readonly base: string
     readonly steps: readonly BaseFindings[]
+}
+
+/**
+ * The same tier run at another commit in a clean checkout (`dir`): a widened run's base, or a relayed source's head
+ * (relay-baseline.ts), whose findings answer only for the files under `paths` it relays and never for a rule of `except` (the
+ * composition rules, which the relay's composer answers for).
+ */
+export interface BaseRun {
+    readonly base: string
+    readonly dir: string
+    readonly steps: readonly StepResult[]
+    readonly paths?: readonly string[] | undefined
+    readonly except?: readonly string[] | undefined
 }
 
 /** A line that counts or labels findings and is none itself: a summary (`✖ 5 problems`, `Found 3 errors`) or a group label (`--- config ...`). */
@@ -42,10 +57,12 @@ export const findingKeys = (output: string, roots: readonly string[]): string[] 
             file = line.trim()
             continue
         }
+        // A path's own colon (`file: error`, `file(1,2): error`) goes too, so one finding meets as one key in any report shape.
         const text = line
             .replace(/\(\d+,\d+\)/g, "")
             .replace(/\b\d+:\d+\b/g, "")
             .replace(/:\d+(?::\d+)?\b/g, "")
+            .replace(/^(\s*\S+?):(?=\s)/, "$1")
             .replace(/\s+/g, " ")
             .trim()
         keys.push(indented && file !== "" ? `${file} ${text}` : text)
@@ -65,43 +82,61 @@ const newKeys = (candidate: readonly string[], base: readonly string[]): string[
     })
 }
 
-/** Whether a widened run has a red step a base can explain: a typecheck, lint or canon step with findings to compare. */
-export const judgedAgainstBase = (steps: readonly StepResult[]): boolean => steps.some((step) => step.status === "red" && JUDGED_STEPS.has(step.step))
+/** The repository file a finding key names first (findingKeys), when it names one. */
+const fileOfKey = (key: string): string | undefined => /^[^\s(:]+/.exec(key)?.[0]
+
+/** The rule name a lint finding key ends with (`<plugin>/<name>` or `<name>`). */
+const ruleOfKey = (key: string): string => key.split(" ").at(-1)?.split("/").at(-1) ?? ""
+
+/** Whether a base run answers for a finding: on a file under its paths, of a rule it does not except. */
+const answers = (run: BaseRun, key: string): boolean => {
+    const file = fileOfKey(key)
+    return (run.paths === undefined || (file !== undefined && underPaths(file, run.paths))) && !(run.except ?? []).includes(ruleOfKey(key))
+}
 
 /**
- * Judges the red steps of a run that an app-wide configuration file widened to whole packages against the same run at its base
- * commit (`rerun`, called with the folder of a clean checkout of the base, the scope's install linked in): a red step whose every
- * finding the base holds already (the rule, file and message, line-insensitive) turns green, its findings kept as `baseline-findings`
- * evidence, so the change is blamed for none of them; a step with one new finding stays red and names the base's count. Any
- * other step is left as it ran.
+ * Judges the red typecheck, lint and canon steps of a run against the same steps at other commits: a finding a base run holds
+ * already (the rule, file and message, line-insensitive) and answers for (`answers`) is that base's, kept as `baseline-findings` evidence; a step whose every finding a base holds turns green, and a step with one new
+ * finding stays red and names how many each base held. Any other step is left as it ran.
  */
-export const judgeAgainstBase = async (
-    root: string,
-    base: string,
-    steps: readonly StepResult[],
-    rerun: (dir: string) => Promise<readonly StepResult[]>,
-): Promise<{ readonly steps: StepResult[]; readonly judgement: BaseJudgement }> => {
-    const atBase = await inCleanCheckout(root, base, "baseline", async (dir) => {
-        linkInstall(root, dir)
-        const ran = await rerun(dir)
-        return { dir, ran }
-    })
-    const roots = [root, atBase.dir]
+export const judgeAgainstRuns = (root: string, steps: readonly StepResult[], runs: readonly BaseRun[]): { readonly steps: StepResult[]; readonly judgement: BaseJudgement } => {
+    const roots = [root, ...runs.map((run) => run.dir)]
     const found: BaseFindings[] = []
     const judged = steps.map((step): StepResult => {
         if (step.status !== "red" || !JUDGED_STEPS.has(step.step)) return step
         const mine = findingKeys(step.output, roots)
-        const there = atBase.ran.find((other) => other.package === step.package && other.step === step.step)
-        const theirs = there === undefined ? [] : findingKeys(there.output, roots)
-        const fresh = newKeys(mine, theirs)
-        const old = mine.length - fresh.length
-        if (mine.length === 0 || old === 0) return step
-        found.push({ package: step.package, step: step.step, findings: mine.filter((key) => !fresh.includes(key)) })
-        if (fresh.length > 0) return { ...step, reason: `${step.reason}${step.reason === "" ? "" : "; "}${String(fresh.length)} new finding(s), ${String(old)} already at the base ${base.slice(0, 12)}` }
-        return { ...step, status: "green", reason: `baseline-findings: ${String(old)} finding(s), every one already at the base ${base.slice(0, 12)}; none is this change's` }
+        let fresh = mine
+        const held: string[] = []
+        for (const run of runs) {
+            const there = run.steps.find((other) => other.package === step.package && other.step === step.step)
+            const theirs = (there === undefined ? [] : findingKeys(there.output, roots)).filter((key) => answers(run, key))
+            const left = newKeys(fresh, theirs)
+            const old = fresh.filter((key) => !left.includes(key))
+            if (old.length > 0) {
+                found.push({ package: step.package, step: step.step, at: run.base, findings: old })
+                held.push(`${String(old.length)} already at ${run.base.slice(0, 12)}`)
+            }
+            fresh = left
+        }
+        if (mine.length === 0 || held.length === 0) return step
+        if (fresh.length > 0) return { ...step, reason: `${step.reason}${step.reason === "" ? "" : "; "}${String(fresh.length)} new finding(s), ${held.join(", ")}` }
+        return { ...step, status: "green", reason: `${step.reason}${step.reason === "" ? "" : "; "}baseline-findings: ${String(mine.length)} finding(s), every one already at a base (${held.join(", ")}); none is this change's` }
     })
-    return { steps: judged, judgement: { base, steps: found } }
+    return { steps: judged, judgement: { base: runs[0]?.base ?? "", steps: found } }
 }
+
+/** Whether a widened run has a red step a base can explain: a typecheck, lint or canon step with findings to compare. */
+export const judgedAgainstBase = (steps: readonly StepResult[]): boolean => steps.some((step) => step.status === "red" && JUDGED_STEPS.has(step.step))
+
+/**
+ * The same run at `base` (`rerun`, called with the folder of a clean checkout of it, the scope's install linked in), as a base run
+ * judgeAgainstRuns compares with: a widened run's base commit, or a relayed source's head answering for its relayed files.
+ */
+export const runAtBase = async (root: string, base: string, rerun: (dir: string) => Promise<readonly StepResult[]>, answering: Pick<BaseRun, "paths" | "except"> = {}): Promise<BaseRun> =>
+    inCleanCheckout(root, base, "baseline", async (dir) => {
+        linkInstall(root, dir)
+        return { base, dir, steps: await rerun(dir), ...answering }
+    })
 
 /** The working folder of the base checkout matching `cwd` of the run at `root`. */
 export const baseCwd = (root: string, cwd: string, dir: string): string => join(dir, relative(root, cwd))

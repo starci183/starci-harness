@@ -502,8 +502,9 @@ const relayTemplate = (place: Place, need: NeedRow, waiters: readonly WaiterRow[
  * Routes a relay that does not apply as work of the waiting workflow, never as a dead end: one relay node (`relay.<need>.r<round>`,
  * reconcile.ts relayTask) is added to its graph, owned by its Kernel like any task, allowed the conflicting files and every file
  * the commits touch, whose work is to apply exactly those commits preserving both sides' intent; every waiter of the need in
- * this workflow depends on it. The add is recorded as a `need-relay-conflict` event naming the node and the files, once per
- * need round and workflow. No waiter spends a try on it: they stay parked, their work kept, until the node lands.
+ * this workflow depends on it, and the first composes what the commits export (graph.ts composerOf). The add is recorded as a
+ * `need-relay-conflict` event naming the node and the files, once per need round and workflow. No waiter spends a try on it: they
+ * stay parked, their work kept, until the node lands.
  */
 const routeRelay = async (place: Place, need: NeedRow, done: Relay, mine: readonly WaiterRow[]): Promise<StepAction[]> => {
     const commits = done.commits ?? []

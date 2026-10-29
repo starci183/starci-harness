@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../shared/errors.js"
@@ -12,6 +12,7 @@ import { waitersOfPlanKey } from "./needs.js"
 import { OP_FILES, OPS_README, workerProcedure } from "./ops.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
 import { priorWorkSection } from "./prior.js"
+import { relayHeadOf } from "./reconcile.js"
 import type { TaskRow } from "./tasks.js"
 import { closeLine, releasedTicketsOfWorkflow } from "./tickets.js"
 
@@ -167,6 +168,12 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
     const { op } = resolved
     const checks = resolveChecks(contract, ops)
     const fixed = resolved.context.filter((file) => file.source !== "paths")
+    // A relay node reads a context file of the source's work its checkout lacks at the source's head (run-checks.ts TraceSource).
+    const relayHead = relayHeadOf(contract)
+    const readAt = (file: (typeof fixed)[number]): string => {
+        const path = slashed(contextPath(file, ops, checkout))
+        return relayHead === undefined || file.harness || existsSync(path) ? path : `${file.path}, the relayed source's: \`git show ${relayHead.slice(0, 12)}:${file.path}\``
+    }
     const paged = resolved.context.filter((file) => file.source === "paths")
     const prior = priorWorkSection(root, task)
     const needs = needsSection(root, task)
@@ -209,7 +216,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         "### Read exactly these files",
         bullets(
             // A shared file is background every task of the label reads; its ids are never cited (citableContext).
-            fixed.map((file) => `${slashed(contextPath(file, ops, checkout))} (${file.source}${file.shared ? ", background: not citable" : ""})`),
+            fixed.map((file) => `${readAt(file)} (${file.source}${file.shared ? ", background: not citable" : ""})`),
             "none: the input and the files under allowPaths are the whole context",
         ),
         ...(paged.length === 0

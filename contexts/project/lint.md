@@ -13,16 +13,19 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
   never another task's uncommitted work in the same checkout (`cli/src/harness/baseline.ts`). It widens to every package when the diff touches an app-wide
   configuration file every side reads (the root paths of the app-root declaration, manifest, lockfile and tool-config
   slots of [hfs/slots.yaml](../hfs/slots.yaml) and any canon tool's config file, `cli/src/core/check/scope.ts`), so each
-  side's lint config loads and lints its whole package, and such a widened run is judged against the same run at its base:
-  a finding the base holds already (rule, file and message, line numbers aside) is the base's, kept as `baseline-findings`
-  evidence and never the change's, and only a new one is red (`cli/src/core/check/base-findings.ts`); a task that changes nothing is judged on the tracked files
+  side's lint config loads and lints its whole package, and such a widened run is judged against the same run at its base,
+  as the files a shared need's relay node carries are judged against the same run at the source's head it relays
+  (`cli/src/core/check/relay-baseline.ts`): a finding the base holds already (rule, file and message, line numbers aside) is
+  the base's, kept as `baseline-findings` evidence and never the change's, and only a new one is red, a relayed source never
+  answering for a composition rule (`cli/src/core/check/base-findings.ts`); a task that changes nothing is judged on the tracked files
   under its allowPaths and their packages. A task waits for it. Each package is judged against its workspace
   dependencies as a consumer sees them: before its typecheck and lint, every dependency in its workspace (npm, yarn or
   pnpm), transitively and dependencies first, whose manifest entries (`exports`, `main`, `module`, `types`) name a file not on disk is
   restored from the build cache under its content key or built with its own `build` script. A dependency that cannot be
   built is red with `CHECK_WORKSPACE_DEP_BUILD_FAILED` naming it, and holds the steps of the packages that import it
   (`cli/src/core/check/workspace-deps.ts`). A module built before the task that wires it in names that task in its
-  contract's `composedBy`: its findings of the composition rules (`runtime.compositionRules` of
+  contract's `composedBy`, and a shared need's relay node is composed by its first waiter (`composerOf` of
+  `cli/src/harness/graph.ts`): its findings of the composition rules (`runtime.compositionRules` of
   [policy/quality.yaml](../../policy/quality.yaml)) on its own allowPaths are deferred to that task, whose check judges the
   module in full, and so does the workflow's final verify before the workflow is done; a module whose task names no
   composer answers for them itself (`cli/src/core/check/composition.ts`). The tail of every red step's output, secrets redacted, is kept as the task's

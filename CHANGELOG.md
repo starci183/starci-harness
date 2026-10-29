@@ -6,6 +6,22 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **A relay node is judged as the transport of work its source already settled** (ticket tk-405c2bb94dbd). lesson-ai's relay of
+  `capability:domain.entitlement` applied every commit byte-identical to subscription-premium's landed state and still filed
+  BLOCKED on two reds that were the source's: rules-cited could not read the source's Work record its context names (it lives on
+  the source's branch alone; the relay carries code commits), and check-run-green flagged exports only its waiter consumes
+  (dead-exports) and a form the source had settled (public-contract-form), so the waiter and the workflow's tail stayed blocked.
+  Now a relay node is composed by its first waiter (the first node that depends on it, `composerOf` in `harness/graph.ts`, so
+  a relay node added before this fix is judged so too), and the composition rules on the relayed files defer to that waiter,
+  which judges them in full; its read trace and its brief read a context file the checkout lacks at the last relayed commit, as
+  data (`relayHeadOf`), never copying the source's records onto the branch; and a finding the relayed files already held at that
+  head (rule, file and message, line-insensitive) is the source's baseline in `check run`, whether judged as the relay node, its
+  composer or the final verify (`core/check/relay-baseline.ts`, `judgeAgainstRuns` in `core/check/base-findings.ts`), recorded
+  as `baseline-findings` evidence, except a composition rule, which stays the composer's. Bench:
+  `needs-relay-node-judged-as-transport`.
+
 ## [1.1.0-alpha.8] - 2026-10-29
 
 ### Fixed

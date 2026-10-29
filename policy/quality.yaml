@@ -7,9 +7,10 @@
 schema: starci/quality-policy@1
 runtime:
   stepTimeoutSeconds: 300
-  # Lint rules (the rule name, any plugin) that judge whether a module is composed. A task whose contract names its
-  # composer (`composedBy`) defers their findings on its own allowPaths to that task; the composer's verify and the
-  # workflow's final verify enforce them (cli/src/core/check/composition.ts).
+  # Lint rules (the rule name, any plugin) that judge whether a module is composed. A task with a composer (its contract's
+  # `composedBy`, a relay node's first waiter: cli/src/harness/graph.ts composerOf) defers their findings on its own
+  # allowPaths to that task; the composer's verify and the workflow's final verify enforce them, and a relayed source's
+  # head never answers for them as its baseline (cli/src/core/check/composition.ts, relay-baseline.ts).
   compositionRules: [dead-exports, feature-not-composed]
 # Where a task's heavy checks run (typecheck, lint and tests: the scoped `starci check` presets and every command check).
 # wave: `task verify` runs only the cheap checks of each task (lands, secrets and loosening on its diff, paths, files, json,

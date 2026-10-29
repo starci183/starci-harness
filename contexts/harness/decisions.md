@@ -33,7 +33,8 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   workflow or `[Worker]` the Supervisor assigns (a `@starci` package always a worker's package edit, never the owner's); every
   other workflow waits on that owner as a recorded dependency and is released, from its kept work, once the resolving commits
   are relayed onto its own branch (a relay that conflicts becomes a relay node of that workflow, owned by its Kernel, that the
-  waiters depend on; only one its Kernel removed goes to the Supervisor as a `conflict`). It
+  waiters depend on and the first waiter composes, judged as the transport of the source's settled work; only one its Kernel
+  removed goes to the Supervisor as a `conflict`). It
   runs always, with no switch to turn it off (`cli/src/harness/needs.ts`, `cli/src/core/needs/tend.ts`).
 - **Telegram carries only what needs the owner's decision.** The owner's channel is the Supervisor's terminal, the desktop
   app and Telegram. Telegram sends a question ticket awaiting his answer (scope, money, credentials, legal, a product choice with
@@ -178,6 +179,8 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
 - **Open source under MIT.** The harness and every package it publishes are MIT, copyright starci183
   ([LICENSE](../../LICENSE)); the CLI ships on npm as `starci-harness`, published by CI.
 - **Findings already on a branch are the base's (`r-b910f07221cf`).** A scoped check an app-wide configuration change widens is
-  judged against the same check at its base, and a finding the base holds fails no task and spends no try; it is kept as
-  `baseline-findings` evidence (`cli/src/core/check/base-findings.ts`). An opt-in pattern of `hfs.json` is declared by the harness,
+  judged against the same check at its base, and the files a relay node carries against the same check at the source's head it
+  relays (ticket tk-405c2bb94dbd: a relay node transports work its source already settled); a finding that base holds fails no
+  task and spends no try, and is kept as `baseline-findings` evidence, a composition rule excepted for a relayed source, which
+  the relay's composer answers for (`cli/src/core/check/base-findings.ts`, `cli/src/core/check/relay-baseline.ts`). An opt-in pattern of `hfs.json` is declared by the harness,
   never by a task (`cli/src/harness/hfs-patterns.ts`).
