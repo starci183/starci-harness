@@ -12,7 +12,7 @@ const FLAGS = {
     repo: { kind: "string", summary: "override the app repository with owner/name" },
     value: { kind: "string", summary: "public variable value that must agree with the manifest; var set ownerValue requires stdin instead" },
     execute: { kind: "boolean", summary: "apply the variable sync plan; var sync skips ownerValue variables" },
-    jobs: { kind: "string", summary: "local: the jobs to run, comma separated (default fast,lint,test,coverage,build; sonar and db-types only when named)" },
+    jobs: { kind: "string", summary: "local: the jobs to run, comma separated (default fast,lint,test,coverage,build; sonar only when named)" },
     parallel: { kind: "string", summary: "local: job instances run at once (default half the CPUs, at most 4)" },
     logs: { kind: "string", summary: "local: the directory the job logs go to (default a new temp directory)" },
     "dry-run": { kind: "boolean", summary: "local: print which steps would run and which only GitHub can run" },
