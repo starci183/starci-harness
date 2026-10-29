@@ -8,18 +8,18 @@ schema: starci/stack-pins@1
 pins:
   '@starci/heroicons': {version: 0.3.4, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
-  '@starci/grammar': {version: 0.15.10, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
-  '@starci/eslint-canon-be': {version: 3.6.8, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
-  '@starci/eslint-canon-fe': {version: 9.4.9, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
-  '@starci/eslint-grammar-core': {version: 0.15.10, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
-  '@starci/eslint-grammar-offset-pop': {version: 0.15.10, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/grammar': {version: 0.15.11, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/eslint-canon-be': {version: 3.7.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
+  '@starci/eslint-canon-fe': {version: 9.5.0, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-grammar-core': {version: 0.15.11, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.15.11, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
   '@starci/stylelint-canon': {version: 2.2.1, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
   '@starci/tsconfig': {version: 2.1.0, group: starci, side: both, install: registry}
   '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}
-  '@starci/jest-preset': {version: 2.4.1, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
+  '@starci/jest-preset': {version: 2.5.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 1.2.3, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
   '@starci/ai-router': {version: 0.3.0, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 4.9.11, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/hfs': {version: 4.10.0, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.1, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.0, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}
   typescript: {version: 5.9.3, group: tooling, side: both}
@@ -106,7 +106,7 @@ pins:
   '@graphql-tools/utils': {version: 12.1.0, group: framework, side: be, why: "an override of every app root, never a dependency: closes an advisory under @nestjs/graphql 13; drop with the 14 upgrade"}
   multer: {version: 2.5.0, group: framework, side: be, why: "an override of every app root, never a dependency: closes an advisory under @nestjs/platform-express; drop when Nest depends on a fixed release"}
   '@nestjs/apollo': {version: 13.4.5, group: framework, side: be, why: "the Apollo driver, on the @nestjs/graphql line"}
-  '@aws-sdk/client-s3': {version: 3.1150.0, group: framework, side: be, why: "the one ObjectStorage adapter of both editions"}
+  '@aws-sdk/client-s3': {version: 3.1150.0, group: framework, side: be, why: "the S3 client of integrations/storage, the one ObjectStorage adapter of both editions (MinIO in lite)"}
   '@aws-sdk/s3-request-presigner': {version: 3.1150.0, group: framework, side: be, why: "signs presigned PUT and GET; the client-s3 release"}
   '@apollo/server': {version: 5.5.1, group: framework, side: be, why: "the server behind @nestjs/apollo"}
   '@nestjs/websockets': {version: 11.2.5, group: framework, side: be, why: "the socket.io gateway; the @nestjs/core line"}
@@ -117,15 +117,21 @@ pins:
   ioredis: {version: 5.11.1, group: framework, side: be, why: "the one Redis client; held on 5.x because typeorm's peer range excludes 6"}
   '@types/pg': {version: 8.23.1, group: framework, side: be, why: "types of the pg driver"}
   '@as-integrations/express5': {version: 1.1.2, group: framework, side: be, why: "the runtime peer of peers.nestjs-apollo-express5"}
-  '@supabase/ssr': {version: 0.12.7, group: framework, side: fe, why: "the lite identity client factory"}
-  '@supabase/supabase-js': {version: 2.117.2, group: framework, side: both, why: "the lite identity client and the back end's Auth and Storage integration"}
-  jose: {version: 6.2.12, group: framework, side: be, why: "verifies access tokens against the identity provider's JWKS"}
-  supabase: {version: 2.119.0, group: tooling, side: both, why: "the CLI that owns the local schema lifecycle and generated database types"}
+  '@nestjs/passport': {version: 12.0.0, group: framework, side: be, why: "PassportStrategy of integrations/passport; declares @nestjs/common ^11 || ^12"}
+  passport: {version: 0.7.0, group: framework, side: be, why: "the strategy runtime under @nestjs/passport"}
+  passport-google-oauth20: {version: 2.0.0, group: framework, side: be, why: "Google OAuth 2.0 with state and PKCE in integrations/passport"}
+  passport-local: {version: 1.0.0, group: framework, side: be, why: "email and password sign-in in integrations/passport"}
+  '@nestjs/jwt': {version: 12.0.3, group: framework, side: be, why: "the Nest JWT module, owned by integrations/passport"}
+  bcryptjs: {version: 3.0.3, group: framework, side: be, why: "bcrypt without a native build; verifies the hashes auth.users carries over"}
+  '@types/passport-google-oauth20': {version: 2.0.17, group: framework, side: be}
+  '@types/passport-local': {version: 1.0.38, group: framework, side: be}
+  jose: {version: 6.2.12, group: framework, side: be, why: "signs the app's own access tokens and verifies them against its own key set in integrations/passport"}
   class-transformer: {version: 0.5.1, group: framework, side: be, why: "Nest request transformation, pinned with class-validator"}
   class-validator: {version: 0.15.1, group: framework, side: be, why: "Nest boundary validation, pinned with class-transformer"}
 # Base images an app's Dockerfiles build FROM (R190); the image tag is pinned here and nowhere else.
 images:
   node: {version: 22.14.0-alpine3.21, why: "the base image of every back-end and front-end Dockerfile"}
+  supabase/postgres: {version: 17.11.0.006@sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2, why: "the db service of a lite app (pg_cron, pg_net, pgmq, vector, unaccent, pgcrypto); hfs sync DB_IMAGE renders it"}
 # Runtime peers a driver needs and npm does not install for it (R111): an app whose root package.json depends on every
 # package of `when` (at `major` when named) also declares `requires`. A missing peer passes the type check and the unit
 # specs and fails only when the app boots, so an entry is added the day such a boot failure is found.

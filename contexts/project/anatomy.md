@@ -79,17 +79,15 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 - `.starciwork/` — **app.starciwork** optional · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), HFS_IDENTITY_CUSTODY (no rule)
 - `.sops.yaml` — **app.sops** required
-- `supabase/` — **app.supabase** required
-  - `config.toml` — **app.supabase.config** required
+- `db/` — **app.db** required
   - `migrations/`
-    - `<stamp>_<name>.sql` — **app.supabase.migrations** required
-    - `_archive/` — **app.supabase.migrations.archive** opt-in
-  - `seed.sql` — **app.supabase.seed** optional
-  - `types/database.types.ts` — **app.supabase.types** required
-  - `templates/*.html` — **app.supabase.templates** optional
+    - `<stamp>_<name>.sql` — **app.db.migrations** required · R213 (hfs `db-migration-shape`), R332 (hfs `lite-db-path`)
+    - `archive/` — **app.db.migrations.archive** optional
+  - `seed.sql` — **app.db.seed** optional
+  - `bootstrap.sql` — **app.db.bootstrap** required · R05 (hfs `managed-file-drift`)
 
-Git-ignored: `app.build-output`, `app.supabase.local-state`.
-Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`, `app.supabase.functions`.
+Git-ignored: `app.build-output`.
+Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### lite · be/
 
@@ -144,7 +142,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.bro
     - `domain/<capability>/` — **be.domain** optional · [be/domain](../code/be/domain.md), [be/error](../code/be/error.md), [be/messages](../code/be/messages.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R30 (eslint-be `import-owner-entry` `no-folder-reexport` `owner-export-bypass` `alias-reexport` `no-relative-capability-escape` `no-self-module-alias` `package-export-bypass`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R43 (eslint-be `no-direct-env-read` `config-parsed-in-main`), R175 (eslint-be `context-coupling`), R176 (eslint-be `context-transaction`)
     - `{domain,integrations}/<capability>/errors/` — **be.errors** optional · [be/error](../code/be/error.md), [be/messages](../code/be/messages.md) · R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`)
     - `{domain,platform,integrations}/<capability>/messages/` — **be.domain.messages** optional · [be/domain](../code/be/domain.md), [be/event-bus](../code/be/event-bus.md), [be/idempotency](../code/be/idempotency.md), [be/jobs](../code/be/jobs.md), [be/queues](../code/be/queues.md) · R78 (eslint-be `user-copy-through-catalog`)
-    - `{domain,platform,projections}/<capability>/persistence/` — **be.persistence** optional · [be/persistence](../code/be/persistence.md) · R35 (eslint-be `schema-owner`), R34 (eslint-be `no-runtime-schema`), R36 (eslint-be `sql-text-only` `no-query-builder`), R86 (eslint-be `sql-owner`), R181 (eslint-be `sql-returning`), R175 (eslint-be `context-coupling`), R178 (eslint-be `context-platform-tables`)
+    - `{domain,platform,projections}/<capability>/persistence/` — **be.persistence** optional · [be/persistence](../code/be/persistence.md) · R35 (eslint-be `schema-owner`), R34 (eslint-be `no-runtime-schema`), R36 (eslint-be `sql-text-only` `no-query-builder`), R333 (eslint-be `no-raw-sql`), R86 (eslint-be `sql-owner`), R181 (eslint-be `sql-returning`), R175 (eslint-be `context-coupling`), R178 (eslint-be `context-platform-tables`)
     - `platform/`
       - `<capability>/` — **be.platform** required · [be/config](../code/be/config.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md), [be/temporal](../code/be/temporal.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R45 (eslint-be `no-global-decorator` `is-global-only-in-app` `no-cross-owner-module-import` `capability-module-shape` `typed-module-definition` `static-module-register` `no-new-injectable` `no-module-let` `one-module-per-file` `register-once` `module-per-transport` `module-registration`)
       - `logging/` — **be.platform.logging** required · [be/logging](../code/be/logging.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R45 (eslint-be `no-global-decorator` `is-global-only-in-app` `no-cross-owner-module-import` `capability-module-shape` `typed-module-definition` `static-module-register` `no-new-injectable` `no-module-let` `one-module-per-file` `register-once` `module-per-transport` `module-registration`)
@@ -157,7 +155,8 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.bro
     - `integrations/`
       - `<provider>/` — **be.integrations** optional · [be/ai](../code/be/ai.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R112 (hfs `integration-specs`), R326 (eslint-be `provider-key-custody`), R327 (eslint-be `ai-client-through-gateway`)
         - `model/` — **be.integrations.model** opt-in · [be/ai](../code/be/ai.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`), R112 (hfs `integration-specs`)
-      - `supabase/` — **be.integrations.supabase** required · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`)
+      - `passport/` — **be.integrations.passport** required · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`), R328 (eslint-be `infra-import-owner`), R329 (machine `own-jwks-principal`; eslint-be `own-jwks-only`), R330 (eslint-be `refresh-token-cookie-only`)
+      - `storage/` — **be.integrations.storage** required · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`), R331 (eslint-be `infra-import-owner`)
   - `tests/`
     - `world/` — **be.tests.world** optional · [be/test](../code/be/test.md) · R47 (hfs `test-topology` `staged-spec-presence`; machine `test-kind-unsupported` `contract-fixture-guard`; eslint-be `test-world-files` `unit-test-colocated` `tests-infra-only-in-world` `tests-no-override` `test-world-shape`), R100 (eslint-be `tests-keep-constraints`)
       - `kit/` — **be.tests.world.kit** optional · [be/test](../code/be/test.md)
@@ -190,7 +189,6 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `be.tool-config-loc
   - `public/` — **fe.app-optional** optional
   - `src/`
     - `app/` — **fe.route** required · [fe/architecture](../code/fe/architecture.md), [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/function](../code/fe/function.md) · R54 (eslint-fe `no-middleware-file` `page-exports-metadata` `route-files-thin` `route-adapter`), R55 (eslint-fe `use-client-only-at-boundary` `client-no-server-import` `server-module-marks-server-only` `web-storage-only-in-modules` `no-dangerous-html` `client-reaches-server`), R57 (eslint-fe `no-hardcoded-route` `owner-reachable`), R243 (machine `server-action-forbidden`; eslint-fe `no-server-action`)
-      - `auth/callback/route.ts` — **fe.route.callback** opt-in · [fe/architecture](../code/fe/architecture.md), [fe/transport](../code/fe/transport.md) · R243 (machine `server-action-forbidden`; eslint-fe `no-server-action`), R287 (eslint-fe `callback-shape`), R217 (machine `supabase-client-owner` `supabase-service-role`)
     - `{proxy.ts,instrumentation.ts,instrumentation-client.ts,sentry.server.config.ts,sentry.edge.config.ts}` — **fe.source-root-pinned** optional · [fe/architecture](../code/fe/architecture.md) · R54 (eslint-fe `no-middleware-file` `page-exports-metadata` `route-files-thin` `route-adapter`)
     - `features/{pages,layouts,overlays}/<name>/` — **fe.feature** required · [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R57 (eslint-fe `no-hardcoded-route` `owner-reachable`), R58 (eslint-fe `no-hardcoded-copy` `html-lang-from-locale` `no-copy-resolution-below-block`), FE_SIZE_BUDGET (no rule)
     - `components/`
@@ -218,7 +216,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `be.tool-config-loc
       - `routes/` — **fe.modules.routes** required · [fe/i18n](../code/fe/i18n.md) · R57 (eslint-fe `no-hardcoded-route` `owner-reachable`)
       - `types/` — **fe.modules.types** optional · R22 (eslint-fe `no-type-assertion` `no-non-null-assertion` `no-explicit-any` `no-double-cast`; hfs `ts-strict`)
         - `ambient/` — **fe.modules.types.ambient** optional · R22 (eslint-fe `no-type-assertion` `no-non-null-assertion` `no-explicit-any` `no-double-cast`; hfs `ts-strict`)
-      - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R217 (machine `supabase-client-owner` `supabase-service-role`)
+      - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R244 (hfs `fe-stack`; eslint-fe `fe-stack-import`), R50 (eslint-fe `fetch-only-in-api-client` `client-fetch-has-signal` `no-shared-transport-state` `no-data-fetch-in-effect` `transport-owner` `api-client-attaches-the-locale` `locale-header-belongs-to-the-link` `swr-data-lifecycle`)
       - `toast/` — **fe.modules.toast** optional · [fe/form](../code/fe/form.md) · R58 (eslint-fe `no-hardcoded-copy` `html-lang-from-locale` `no-copy-resolution-below-block`), R56 (eslint-fe `hooks-folder-holds-hooks-only` `hooks-are-hooks` `hook-location`), R51 (eslint-fe `client-maps-auth-to-refused` `no-failure-collapse` `outcome-kinds-exhaustive` `one-outcome-union`)
 
 Git-ignored: `repo.build-output`, `repo.generated`, `fe.transport.generated`.
@@ -260,17 +258,9 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `.starciwork/` — **app.starciwork** required · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), HFS_IDENTITY_CUSTODY (no rule)
 - `.sops.yaml` — **app.sops** required
-- `supabase/` — **app.supabase** opt-in
-  - `config.toml` — **app.supabase.config** opt-in
-  - `migrations/`
-    - `<stamp>_<name>.sql` — **app.supabase.migrations** opt-in
-    - `_archive/` — **app.supabase.migrations.archive** opt-in
-  - `seed.sql` — **app.supabase.seed** optional
-  - `types/database.types.ts` — **app.supabase.types** opt-in
-  - `templates/*.html` — **app.supabase.templates** optional
 
-Git-ignored: `app.build-output`, `app.supabase.local-state`.
-Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`, `app.supabase.functions`.
+Git-ignored: `app.build-output`.
+Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### full · be/
 
@@ -325,7 +315,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
     - `domain/<capability>/` — **be.domain** optional · [be/domain](../code/be/domain.md), [be/error](../code/be/error.md), [be/messages](../code/be/messages.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R30 (eslint-be `import-owner-entry` `no-folder-reexport` `owner-export-bypass` `alias-reexport` `no-relative-capability-escape` `no-self-module-alias` `package-export-bypass`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R43 (eslint-be `no-direct-env-read` `config-parsed-in-main`), R175 (eslint-be `context-coupling`), R176 (eslint-be `context-transaction`)
     - `{domain,integrations}/<capability>/errors/` — **be.errors** optional · [be/error](../code/be/error.md), [be/messages](../code/be/messages.md) · R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`)
     - `{domain,platform,integrations}/<capability>/messages/` — **be.domain.messages** optional · [be/domain](../code/be/domain.md), [be/event-bus](../code/be/event-bus.md), [be/idempotency](../code/be/idempotency.md), [be/jobs](../code/be/jobs.md), [be/queues](../code/be/queues.md) · R78 (eslint-be `user-copy-through-catalog`)
-    - `{domain,platform,projections}/<capability>/persistence/` — **be.persistence** optional · [be/persistence](../code/be/persistence.md) · R35 (eslint-be `schema-owner`), R34 (eslint-be `no-runtime-schema`), R36 (eslint-be `sql-text-only` `no-query-builder`), R86 (eslint-be `sql-owner`), R181 (eslint-be `sql-returning`), R175 (eslint-be `context-coupling`), R178 (eslint-be `context-platform-tables`)
+    - `{domain,platform,projections}/<capability>/persistence/` — **be.persistence** optional · [be/persistence](../code/be/persistence.md) · R35 (eslint-be `schema-owner`), R34 (eslint-be `no-runtime-schema`), R36 (eslint-be `sql-text-only` `no-query-builder`), R333 (eslint-be `no-raw-sql`), R86 (eslint-be `sql-owner`), R181 (eslint-be `sql-returning`), R175 (eslint-be `context-coupling`), R178 (eslint-be `context-platform-tables`)
     - `platform/`
       - `<capability>/` — **be.platform** required · [be/config](../code/be/config.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md), [be/temporal](../code/be/temporal.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R45 (eslint-be `no-global-decorator` `is-global-only-in-app` `no-cross-owner-module-import` `capability-module-shape` `typed-module-definition` `static-module-register` `no-new-injectable` `no-module-let` `one-module-per-file` `register-once` `module-per-transport` `module-registration`)
       - `logging/` — **be.platform.logging** required · [be/logging](../code/be/logging.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R45 (eslint-be `no-global-decorator` `is-global-only-in-app` `no-cross-owner-module-import` `capability-module-shape` `typed-module-definition` `static-module-register` `no-new-injectable` `no-module-let` `one-module-per-file` `register-once` `module-per-transport` `module-registration`)
@@ -338,7 +328,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
     - `integrations/`
       - `<provider>/` — **be.integrations** optional · [be/ai](../code/be/ai.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R112 (hfs `integration-specs`), R326 (eslint-be `provider-key-custody`), R327 (eslint-be `ai-client-through-gateway`)
         - `model/` — **be.integrations.model** opt-in · [be/ai](../code/be/ai.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`), R112 (hfs `integration-specs`)
-      - `supabase/` — **be.integrations.supabase** opt-in · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`)
+      - `storage/` — **be.integrations.storage** optional · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`), R331 (eslint-be `infra-import-owner`)
   - `tests/`
     - `world/` — **be.tests.world** optional · [be/test](../code/be/test.md) · R47 (hfs `test-topology` `staged-spec-presence`; machine `test-kind-unsupported` `contract-fixture-guard`; eslint-be `test-world-files` `unit-test-colocated` `tests-infra-only-in-world` `tests-no-override` `test-world-shape`), R100 (eslint-be `tests-keep-constraints`)
       - `kit/` — **be.tests.world.kit** optional · [be/test](../code/be/test.md)
@@ -372,7 +362,6 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `be.tool-config-loc
   - `public/` — **fe.app-optional** optional
   - `src/`
     - `app/` — **fe.route** required · [fe/architecture](../code/fe/architecture.md), [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/function](../code/fe/function.md) · R54 (eslint-fe `no-middleware-file` `page-exports-metadata` `route-files-thin` `route-adapter`), R55 (eslint-fe `use-client-only-at-boundary` `client-no-server-import` `server-module-marks-server-only` `web-storage-only-in-modules` `no-dangerous-html` `client-reaches-server`), R57 (eslint-fe `no-hardcoded-route` `owner-reachable`), R243 (machine `server-action-forbidden`; eslint-fe `no-server-action`)
-      - `auth/callback/route.ts` — **fe.route.callback** opt-in · [fe/architecture](../code/fe/architecture.md), [fe/transport](../code/fe/transport.md) · R243 (machine `server-action-forbidden`; eslint-fe `no-server-action`), R287 (eslint-fe `callback-shape`), R217 (machine `supabase-client-owner` `supabase-service-role`)
     - `{proxy.ts,instrumentation.ts,instrumentation-client.ts,sentry.server.config.ts,sentry.edge.config.ts}` — **fe.source-root-pinned** optional · [fe/architecture](../code/fe/architecture.md) · R54 (eslint-fe `no-middleware-file` `page-exports-metadata` `route-files-thin` `route-adapter`)
     - `features/{pages,layouts,overlays}/<name>/` — **fe.feature** required · [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R57 (eslint-fe `no-hardcoded-route` `owner-reachable`), R58 (eslint-fe `no-hardcoded-copy` `html-lang-from-locale` `no-copy-resolution-below-block`), FE_SIZE_BUDGET (no rule)
     - `components/`
@@ -400,7 +389,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `be.tool-config-loc
       - `routes/` — **fe.modules.routes** required · [fe/i18n](../code/fe/i18n.md) · R57 (eslint-fe `no-hardcoded-route` `owner-reachable`)
       - `types/` — **fe.modules.types** optional · R22 (eslint-fe `no-type-assertion` `no-non-null-assertion` `no-explicit-any` `no-double-cast`; hfs `ts-strict`)
         - `ambient/` — **fe.modules.types.ambient** optional · R22 (eslint-fe `no-type-assertion` `no-non-null-assertion` `no-explicit-any` `no-double-cast`; hfs `ts-strict`)
-      - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R217 (machine `supabase-client-owner` `supabase-service-role`)
+      - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R244 (hfs `fe-stack`; eslint-fe `fe-stack-import`), R50 (eslint-fe `fetch-only-in-api-client` `client-fetch-has-signal` `no-shared-transport-state` `no-data-fetch-in-effect` `transport-owner` `api-client-attaches-the-locale` `locale-header-belongs-to-the-link` `swr-data-lifecycle`)
       - `toast/` — **fe.modules.toast** optional · [fe/form](../code/fe/form.md) · R58 (eslint-fe `no-hardcoded-copy` `html-lang-from-locale` `no-copy-resolution-below-block`), R56 (eslint-fe `hooks-folder-holds-hooks-only` `hooks-are-hooks` `hook-location`), R51 (eslint-fe `client-maps-auth-to-refused` `no-failure-collapse` `outcome-kinds-exhaustive` `one-outcome-union`)
 
 Git-ignored: `repo.build-output`, `repo.generated`, `fe.transport.generated`.

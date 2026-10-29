@@ -50,11 +50,6 @@ exceptions:
     kind: detector
     match: "const PLAINTEXT_SECRET = 'HFS_PLAINTEXT_SECRET';"
     reason: "a failure-code name (HFS_PLAINTEXT_SECRET) in the secret rule itself, not a secret value"
-  - path: packages/hfs/src/fixtures/hfs-db/config-clean.toml
-    rule: assigned-secret
-    kind: fixture
-    match: "jwt_secret = \"env(SUPABASE_JWT_SECRET)\""
-    reason: "the clean Supabase config the hfs-db rule is proved against reads its JWT secret from the environment"
   - path: packages/hfs/templates/be/patterns/realtime/channel.gateway.spec.ts.tpl
     rule: assigned-secret
     kind: template

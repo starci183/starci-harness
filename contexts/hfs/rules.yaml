@@ -317,7 +317,7 @@ rules:
       - {kind: eslint-be, id: no-runtime-schema}
   - id: R35
     code: BE_SCHEMA_OWNER
-    law: Entities and migrations live in the owning capability's `persistence/` and register under exactly one declared connection, except platform capabilities the manifest lists as `perConnection`.
+    law: Entities and migrations live in the owning capability's `persistence/` and register under exactly one declared connection, except platform capabilities the manifest lists as `perConnection`; in lite a capability's `persistence/entities/index.ts` declares its `<c>Entities` and `platform/database/entities.ts` names it in `PRIMARY_ENTITIES`.
     failureCodes:
       - BE_SCHEMA_OWNER
     enforcers:
@@ -325,6 +325,7 @@ rules:
   - id: R36
     code: BE_SQL_OUTSIDE_PERSISTENCE
     law: Raw SQL is `sql`-tagged `SqlText` in the owning capability's `persistence/<name>.sql.ts`, `.query()` takes only `SqlText`, and no QueryBuilder is used.
+    editions: [full]
     failureCodes:
       - BE_SQL_OUTSIDE_PERSISTENCE
     enforcers:
@@ -1498,7 +1499,7 @@ rules:
       - {kind: hfs, id: lite-brand-work}
   - id: R213
     code: DB_MIGRATION_SHAPE
-    law: A migration is `supabase/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, and is immutable once on the base.
+    law: A migration is `db/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, and is immutable once on the base.
     failureCodes:
       - DB_MIGRATION_SHAPE
     enforcers:
@@ -1520,33 +1521,6 @@ rules:
       - DB_STORAGE_POLICY
     enforcers:
       - {kind: hfs, id: db-privileged-objects}
-  - id: R216
-    code: DB_CONFIG_POLICY
-    law: "`supabase/config.toml` reads credentials only through `env()`, matches the Supabase block of `hfs.json`, and the committed database types equal their emit from the applied migrations."
-    failureCodes:
-      - DB_CONFIG_POLICY
-      - DB_TYPES_DRIFT
-      - HFS_EMIT_DB_TYPES_STALE
-    enforcers:
-      - {kind: hfs, id: db-config-types}
-      - {kind: hfs, id: db-types-emit}
-  - id: R217
-    code: FE_SUPABASE_CLIENT_OWNER
-    law: "Each side has one Supabase door: the front end uses only the auth API from `fe.modules.auth` and holds no credential, and the back end uses it only from `be.integrations.supabase` with the committed `Database` type."
-    failureCodes:
-      - FE_SUPABASE_CLIENT_OWNER
-      - BE_SUPABASE_CLIENT_OWNER
-      - FE_SERVICE_ROLE_FORBIDDEN
-    enforcers:
-      - {kind: machine, id: supabase-client-owner}
-      - {kind: machine, id: supabase-service-role}
-  - id: R219
-    code: BE_SUPABASE_JWT_VERIFIED
-    law: A back-end principal comes only from a Supabase access token verified against the project JWKS.
-    failureCodes:
-      - BE_SUPABASE_JWT_VERIFIED
-    enforcers:
-      - {kind: machine, id: supabase-principal}
   - id: R220
     code: HFS_LITE_SECRET_CUSTODY
     law: A lite app holds no secret material in the tree outside the sealed `.starcistacks/<env>/secrets/<slug>.enc` members.
@@ -1581,7 +1555,7 @@ rules:
       - {kind: eslint-fe, id: max-params}
   - id: R243
     code: FE_SERVER_ACTION_FORBIDDEN
-    law: "The front end serves no API: no `\"use server\"` directive, and no route handler but the health and auth-callback routes."
+    law: "The front end serves no API: no `\"use server\"` directive, and no route handler but the health route."
     failureCodes:
       - FE_SERVER_ACTION_FORBIDDEN
       - FE_ROUTE_HANDLER_FORBIDDEN
@@ -1651,11 +1625,10 @@ rules:
       - {kind: hfs, id: supply-chain}
   - id: R252
     code: HFS_SCRIPT_PLAINTEXT_LOAD
-    law: Scripts and workflows never load plaintext secret files, enable xtrace or reveal secrets, and only the back-end Supabase integration references the service role.
+    law: Scripts and workflows never load plaintext secret files, enable xtrace or reveal secrets.
     failureCodes:
       - HFS_SCRIPT_PLAINTEXT_LOAD
       - HFS_SCRIPT_XTRACE
-      - HFS_SERVICE_ROLE_SCOPE
     enforcers:
       - {kind: hfs, id: script-hygiene}
   - id: R253
@@ -1667,15 +1640,6 @@ rules:
     enforcers:
       - {kind: hfs, id: secret-age-key-custody}
       - {kind: hfs, id: canon-copy-drift}
-  - id: R254
-    code: DB_BE_ONLY_ACCESS
-    law: Browser data access stays closed on exposed schemas except tables `hfs.json` `supabase.directAccess` declares; the front end uses Supabase only for auth.
-    editions: [lite]
-    failureCodes:
-      - DB_BE_ONLY_ACCESS
-      - DB_REALTIME_UNLISTED
-    enforcers:
-      - {kind: hfs, id: db-be-only-access}
   - id: R255
     code: DB_APP_ROLE
     law: The declared back-end database role holds only the privileges it needs, and the tables it owns force row level security unless exempted with a reason.
@@ -1721,7 +1685,6 @@ rules:
     editions: [lite]
     failureCodes:
       - DB_EXTENSION_ALLOWED
-      - DB_API_EXPOSED
       - DB_MIGRATION_DESTRUCTIVE
       - HFS_SEED_PII
       - DB_VAULT_WRITE
@@ -1968,13 +1931,6 @@ rules:
       - {kind: eslint-fe, id: no-copy-in-call}
       - {kind: eslint-fe, id: no-alert}
       - {kind: eslint-grammar-core, id: no-inline-svg-outside-brand-mark-leaf}
-  - id: R287
-    code: FE_CALLBACK_SHAPE
-    law: The auth callback handler only exchanges the code or verifies the email OTP and redirects, using the auth owner and pure route helpers.
-    failureCodes:
-      - FE_CALLBACK_SHAPE
-    enforcers:
-      - {kind: eslint-fe, id: callback-shape}
   - id: R288
     code: FE_STACK_UNLISTED
     law: Every direct front-end dependency is listed in contexts/stack/fe.yaml or declared with a reason, and every product Next app declares the catalog's core packages.
@@ -2253,6 +2209,54 @@ rules:
       - BE_AI_GATEWAY_CLIENT
     enforcers:
       - {kind: eslint-be, id: ai-client-through-gateway}
+  - id: R328
+    code: BE_AUTH_PASSPORT_OWNER
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose, bcryptjs) are imported only by `integrations/passport`; bcrypt and every Supabase client are imported nowhere."
+    editions: [lite]
+    failureCodes:
+      - BE_AUTH_PASSPORT_OWNER
+    enforcers:
+      - {kind: eslint-be, id: infra-import-owner}
+  - id: R329
+    code: BE_AUTH_JWT_OWN_JWKS
+    law: A lite principal comes only from the app's own access token, verified in `integrations/passport` against its own key set with issuer, audience and algorithms pinned; never a remote JWKS, an unverified decode or a body claim.
+    editions: [lite]
+    failureCodes:
+      - BE_AUTH_JWT_OWN_JWKS
+    enforcers:
+      - {kind: machine, id: own-jwks-principal}
+      - {kind: eslint-be, id: own-jwks-only}
+  - id: R330
+    code: BE_AUTH_REFRESH_COOKIE
+    law: A refresh token travels only in the httpOnly, Secure, SameSite=Strict cookie that `integrations/passport` sets, rotates and clears; it is never a field of a body.
+    editions: [lite]
+    failureCodes:
+      - BE_AUTH_REFRESH_COOKIE
+    enforcers:
+      - {kind: eslint-be, id: refresh-token-cookie-only}
+  - id: R331
+    code: BE_STORAGE_OWNER
+    law: "The S3 client (@aws-sdk/client-s3, @aws-sdk/s3-request-presigner) is imported only by `integrations/storage`; minio is imported nowhere."
+    failureCodes:
+      - BE_STORAGE_OWNER
+    enforcers:
+      - {kind: eslint-be, id: infra-import-owner}
+  - id: R332
+    code: LITE_DB_MIGRATION
+    law: A lite app's schema lives only in `db/` (`db/migrations/<ts14>_<kebab>.sql`, its archive, `db/seed.sql`, the managed `db/bootstrap.sql`); the tree holds no `supabase/` folder and no SQL outside `db/` but a `.starcistacks` seed.
+    editions: [lite]
+    failureCodes:
+      - LITE_DB_MIGRATION
+    enforcers:
+      - {kind: hfs, id: lite-db-path}
+  - id: R333
+    code: BE_PERSISTENCE_NO_RAW_SQL
+    law: "Lite domain and feature code reads and writes through TypeORM entities on the injected EntityManager (find, save, update, delete, upsert, `createQueryBuilder(Entity, \"alias\")` with named parameters; never a table-name builder or a Repository); no `.query(` and no `sql` template outside `platform/database`, and a database function goes through its `callDbFunction`, `advisoryXactLock` or `notify` helper, naming only a function `ruleParams.be.dbFunctions` or hfs.json `sides.be.dbFunctions` lists with a reason."
+    editions: [lite]
+    failureCodes:
+      - BE_PERSISTENCE_NO_RAW_SQL
+    enforcers:
+      - {kind: eslint-be, id: no-raw-sql}
 
 # Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

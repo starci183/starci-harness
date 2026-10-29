@@ -34,8 +34,8 @@ Enforced by: R285 (`operations-only-in-swr-hooks`, `swr-only-in-family`), R50 (`
 `@heroui/react` is imported for `cn` in a `classNames.ts`, and for the runtime providers (`I18nProvider`, the toast
 region) in `app/[locale]/providers.tsx` and `modules/toast` only (the router reaches the grammar through the grammar
 root, FE-I18N-4); glyph sets only in
-`components/leaves/Icon` ([ui.md](ui.md) FE-ICON); `@supabase/*` only in `modules/auth`; `@apollo/client` only in
-`modules/api`; `axios` only in `modules/api/rest`.
+`components/leaves/Icon` ([ui.md](ui.md) FE-ICON); no identity SDK (`@supabase/*` is forbidden); `@apollo/client` only in
+`modules/api`; `axios` only in `modules/api/rest` and the auth door `modules/auth/auth-door.ts`.
 
 Why: a vendor import anywhere else is a second owner of what the grammar or the module already owns, and the start of
 a local fork.

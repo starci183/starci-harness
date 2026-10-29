@@ -22,7 +22,6 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
   `be-bounded-contexts`; [code/be/event-bus.md](../code/be/event-bus.md).
 - Identity is the project's own identity provider (Keycloak in the full stack verbs). Owners:
   [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [code/be/api-auth.md](../code/be/api-auth.md) BE-AUTH-2.
-- Supabase is used only through a declared connection. Owners: slots `app.supabase*`, `be.integrations.supabase`.
 
 ## Patterns
 

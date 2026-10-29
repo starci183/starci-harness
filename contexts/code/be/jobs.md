@@ -9,7 +9,7 @@ Starting a job is queues.md; which process runs it background.md. A lite app dec
 
 ## BE-JOBS-1 `platform/jobs` alone writes the job row, claiming it atomically
 
-`platform/jobs` owns the job table (a migration of the app; in lite under `supabase/migrations/`), its `jobs.sql.ts`
+`platform/jobs` owns the job table (a migration of the app; in lite under `db/migrations/`), its `jobs.sql.ts`
 and `JobClaims`. `claim` is one atomic upsert keyed by the delivery (the outbox id) that bumps and returns
 `fencingToken`; a finished job or a live claim answers `null`. The runner claims each delivery, calls the processor and
 settles with a guarded `complete` or `fail`. Nothing else writes the row.

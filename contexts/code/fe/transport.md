@@ -67,12 +67,15 @@ Enforced by: review only.
 
 ## FE-AUTH The auth client yields identity, never data
 
-`modules/auth` is the only importer of the identity-provider SDK and uses only its auth API: the client entry exports
-the sign-in, sign-up, sign-out and password actions (each returning `GraphQLResponse<T>`), the session, the
-access-token getter the Apollo links and the event stream read, and an auth-change subscription; `modules/auth/server`
-holds the code exchange and session refresh for the callback and the proxy.
+`modules/auth` is the session issuer's client: its entry exports the sign-in, sign-up, sign-out and password actions, the
+session, the access-token getter the Apollo links and the event stream read (the import direction is api -> auth, never
+auth -> api), and an auth-change subscription. In lite one file, `modules/auth/auth-door.ts`, calls the app's own back-end
+auth doors (`/auth/...`: login, signup, refresh, logout, password reset, resend verification) with the REST client and
+credentials, and one file, `modules/auth/token-store.ts`, keeps the access token in memory; the refresh token never
+reaches script. Every other REST call stays in `modules/api/rest`.
 
-Why: the back end authorizes every read and write; the front end only proves who the user is, and holds no service key.
+Why: the back end authorizes every read and write; the front end only proves who the user is, and holds no credential.
 
-Enforced by: R217 (machine `supabase-client-owner`, `supabase-service-role`), R244 (`fe-stack-import`), R287
-(`callback-shape`).
+Enforced by: R244 (`fe-stack-import`), R50 (`fetch-only-in-api-client`, `no-shared-transport-state` and the machine
+`transport-owner` admit the door and the store only; a door call whose path the rule can read must name `/auth/`, a fully
+dynamic path is held by review).

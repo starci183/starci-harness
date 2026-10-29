@@ -42,7 +42,7 @@ Enforced by: `infra-import-owner` (R90).
 
 ## BE-QUEUES-3 A schedule fires once per deployment
 
-A recurring task is, on Supabase, a uniquely named `pg_cron` job in a migration whose command only inserts one row
+A recurring task is, in lite, a uniquely named `pg_cron` job in a migration whose command only inserts one row
 into the queue outbox through the enqueue function `hfs.json` `sides.be.queueOutbox` declares (the app's scheduler list
 stays empty); otherwise a BullMQ job scheduler the app passes as `QueueModule.register({ schedulers })`. The job runs
 through the same processor as any enqueued job. No cron decorator, `setInterval` or host crontab.
@@ -55,7 +55,7 @@ Enforced by: R258, R268, R250 (hfs), `infra-import-owner` (R90).
 ## BE-QUEUES-4 The queue is proven on real infrastructure
 
 An app declaring `queue` proves `enqueue-atomic-with-transaction`, `relay-job-id-is-outbox-id` and
-`scheduler-fires-once` in specs titled `queue/<scenario>: ...`: in lite integration specs on the local Supabase and
+`scheduler-fires-once` in specs titled `queue/<scenario>: ...`: in lite integration specs on the local db service and
 Redis, in full e2e.
 
 Why: atomicity and once-only firing are runtime facts.

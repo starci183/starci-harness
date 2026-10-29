@@ -21,9 +21,13 @@ Enforced by: `default-deny-app-guard`, `public-needs-reason`, `public-reason-clo
 
 ## BE-AUTH-2 Identity verifies the caller; the domain service authorizes the resource
 
-Token verification belongs to `domain/identity` over the provider integration (in lite, Supabase Auth through its
-JWKS): the verifier pins a literal asymmetric algorithm list, checks issuer and audience, and builds the principal
-only after verification. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
+Token verification belongs to `domain/identity` over the provider integration (in lite, `integrations/passport`,
+which verifies the app's own ES256 access tokens against its own key set with `createLocalJWKSet`; in full, the
+project's identity provider): the verifier pins a literal asymmetric algorithm list, checks issuer and audience, and
+builds the principal only after verification. In lite `integrations/passport` alone holds Passport (Google OAuth 2.0
+with state and PKCE, email and password with bcrypt), signs the access tokens, serves their public JWKS and rotates the
+refresh token, which lives only in an httpOnly, Secure, SameSite=Strict cookie scoped to the refresh door; a refresh
+presented twice revokes its whole family. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
 proves membership or ownership before it reads or writes, so jobs and other doors cannot bypass it.
 
 Why: authentication is a capability with its own state and errors, and authorization kept in the service holds for
@@ -38,7 +42,9 @@ async find(userId: string, workspaceId: string, orderId: string): Promise<OrderV
 }
 ```
 
-Enforced by: `jwt-alg-pinned` (R260), `tier-direction` (R26); resource authorization in the service is review only.
+Enforced by: `jwt-alg-pinned` (R260), `tier-direction` (R26), lite `infra-import-owner` (R328), `own-jwks-only` and the
+machine `own-jwks-principal` (R329), `refresh-token-cookie-only` (R330); refresh rotation with reuse detection and
+resource authorization in the service are held by specs and review.
 
 ## BE-AUTH-3 Constant-time comparison and safe cookies
 

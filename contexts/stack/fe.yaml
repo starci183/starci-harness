@@ -36,7 +36,7 @@ concerns:
   - id: rest
     tier: core
     packages: [axios]
-    home: [fe.modules.api]
+    home: [fe.modules.api, fe.modules.auth]
     pattern: FE-API-REST
     forbids: [ky, superagent, node-fetch, cross-fetch, isomorphic-fetch]
     why: one HTTP client, only for what GraphQL cannot carry.
@@ -94,15 +94,8 @@ concerns:
     packages: []
     home: [fe.modules.auth]
     pattern: FE-AUTH
-    forbids: []
-    why: the identity-provider client of the app; identity only, never data.
-  - id: auth-supabase
-    tier: opt
-    packages: ['@supabase/supabase-js', '@supabase/ssr']
-    home: [fe.modules.auth]
-    pattern: FE-AUTH
-    forbids: []
-    why: the lite identity client and its PKCE cookie adapter, confined to modules/auth.
+    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js']
+    why: the session issuer's client of the app (lite - auth-door.ts over the app's own back-end auth doors); identity only, never data.
   - id: i18n
     tier: core
     packages: [next-intl]

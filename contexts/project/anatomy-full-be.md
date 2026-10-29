@@ -41,17 +41,9 @@ has this shape and how a line reads: path, slot, presence, the topics that teach
 - `.starciwork/` — **app.starciwork** required · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), HFS_IDENTITY_CUSTODY (no rule)
 - `.sops.yaml` — **app.sops** required
-- `supabase/` — **app.supabase** opt-in
-  - `config.toml` — **app.supabase.config** opt-in
-  - `migrations/`
-    - `<stamp>_<name>.sql` — **app.supabase.migrations** opt-in
-    - `_archive/` — **app.supabase.migrations.archive** opt-in
-  - `seed.sql` — **app.supabase.seed** optional
-  - `types/database.types.ts` — **app.supabase.types** opt-in
-  - `templates/*.html` — **app.supabase.templates** optional
 
-Git-ignored: `app.build-output`, `app.supabase.local-state`.
-Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`, `app.supabase.functions`.
+Git-ignored: `app.build-output`.
+Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### full · be/
 
@@ -106,7 +98,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
     - `domain/<capability>/` — **be.domain** optional · [be/domain](../code/be/domain.md), [be/error](../code/be/error.md), [be/messages](../code/be/messages.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R30 (eslint-be `import-owner-entry` `no-folder-reexport` `owner-export-bypass` `alias-reexport` `no-relative-capability-escape` `no-self-module-alias` `package-export-bypass`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R43 (eslint-be `no-direct-env-read` `config-parsed-in-main`), R175 (eslint-be `context-coupling`), R176 (eslint-be `context-transaction`)
     - `{domain,integrations}/<capability>/errors/` — **be.errors** optional · [be/error](../code/be/error.md), [be/messages](../code/be/messages.md) · R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`)
     - `{domain,platform,integrations}/<capability>/messages/` — **be.domain.messages** optional · [be/domain](../code/be/domain.md), [be/event-bus](../code/be/event-bus.md), [be/idempotency](../code/be/idempotency.md), [be/jobs](../code/be/jobs.md), [be/queues](../code/be/queues.md) · R78 (eslint-be `user-copy-through-catalog`)
-    - `{domain,platform,projections}/<capability>/persistence/` — **be.persistence** optional · [be/persistence](../code/be/persistence.md) · R35 (eslint-be `schema-owner`), R34 (eslint-be `no-runtime-schema`), R36 (eslint-be `sql-text-only` `no-query-builder`), R86 (eslint-be `sql-owner`), R181 (eslint-be `sql-returning`), R175 (eslint-be `context-coupling`), R178 (eslint-be `context-platform-tables`)
+    - `{domain,platform,projections}/<capability>/persistence/` — **be.persistence** optional · [be/persistence](../code/be/persistence.md) · R35 (eslint-be `schema-owner`), R34 (eslint-be `no-runtime-schema`), R36 (eslint-be `sql-text-only` `no-query-builder`), R333 (eslint-be `no-raw-sql`), R86 (eslint-be `sql-owner`), R181 (eslint-be `sql-returning`), R175 (eslint-be `context-coupling`), R178 (eslint-be `context-platform-tables`)
     - `platform/`
       - `<capability>/` — **be.platform** required · [be/config](../code/be/config.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md), [be/temporal](../code/be/temporal.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R45 (eslint-be `no-global-decorator` `is-global-only-in-app` `no-cross-owner-module-import` `capability-module-shape` `typed-module-definition` `static-module-register` `no-new-injectable` `no-module-let` `one-module-per-file` `register-once` `module-per-transport` `module-registration`)
       - `logging/` — **be.platform.logging** required · [be/logging](../code/be/logging.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R27 (eslint-be `owner-cycle`), R45 (eslint-be `no-global-decorator` `is-global-only-in-app` `no-cross-owner-module-import` `capability-module-shape` `typed-module-definition` `static-module-register` `no-new-injectable` `no-module-let` `one-module-per-file` `register-once` `module-per-transport` `module-registration`)
@@ -119,7 +111,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
     - `integrations/`
       - `<provider>/` — **be.integrations** optional · [be/ai](../code/be/ai.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R112 (hfs `integration-specs`), R326 (eslint-be `provider-key-custody`), R327 (eslint-be `ai-client-through-gateway`)
         - `model/` — **be.integrations.model** opt-in · [be/ai](../code/be/ai.md) · R26 (eslint-be `tier-direction` `package-imports-app`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`), R112 (hfs `integration-specs`)
-      - `supabase/` — **be.integrations.supabase** opt-in · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`)
+      - `storage/` — **be.integrations.storage** optional · R26 (eslint-be `tier-direction` `package-imports-app`), R38 (eslint-be `error-home` `throw-domain-error` `error-family-shape` `error-code-unique`), R44 (eslint-be `no-secret-default`), R90 (eslint-be `infra-import-owner` `http-client-only-in-integrations`), R331 (eslint-be `infra-import-owner`)
   - `tests/`
     - `world/` — **be.tests.world** optional · [be/test](../code/be/test.md) · R47 (hfs `test-topology` `staged-spec-presence`; machine `test-kind-unsupported` `contract-fixture-guard`; eslint-be `test-world-files` `unit-test-colocated` `tests-infra-only-in-world` `tests-no-override` `test-world-shape`), R100 (eslint-be `tests-keep-constraints`)
       - `kit/` — **be.tests.world.kit** optional · [be/test](../code/be/test.md)
