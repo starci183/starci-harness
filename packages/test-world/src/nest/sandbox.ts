@@ -46,6 +46,23 @@ export interface SandboxAnswer {
     readonly body: unknown
 }
 
+/** A browser-style sandbox request. Cookies set by one call stay on this handle for later calls. */
+export interface SandboxBrowserRequest {
+    readonly method: "GET" | "POST"
+    /** The absolute URL. Redirects are returned to the caller and are never followed automatically. */
+    readonly url: string
+    readonly headers?: Readonly<Record<string, string>>
+    /** Form fields encoded as `application/x-www-form-urlencoded`; supported for POST. */
+    readonly form?: Readonly<Record<string, string>>
+}
+
+/** The unparsed response from a browser-style request. Multiple Set-Cookie headers stay separate. */
+export interface SandboxBrowserAnswer {
+    readonly status: number
+    readonly headers: Readonly<Record<string, string | ReadonlyArray<string>>>
+    readonly body: string
+}
+
 /** The handle a contract spec holds. */
 export interface SandboxHandle<T> {
     /** True when every required key is declared. */
@@ -58,6 +75,8 @@ export interface SandboxHandle<T> {
     value(key: string): string
     /** A raw JSON call to the provider, for comparing the real payload (not what the client parsed out of it) with a fixture. */
     fetchJson(request: SandboxRequest): Promise<SandboxAnswer>
+    /** A cookie-preserving request that returns each response without following redirects. */
+    request(request: SandboxBrowserRequest): Promise<SandboxBrowserAnswer>
 }
 
 @Module({})
@@ -77,6 +96,70 @@ const readJson = (text: string): unknown => {
     }
 }
 
+interface SandboxCookie {
+    readonly name: string
+    readonly value: string
+    readonly domain: string
+    readonly path: string
+    readonly hostOnly: boolean
+    readonly secure: boolean
+}
+
+const defaultCookiePath = (pathname: string): string => {
+    if (!pathname.startsWith("/") || pathname === "/") return "/"
+    const lastSlash = pathname.lastIndexOf("/")
+    return lastSlash <= 0 ? "/" : pathname.slice(0, lastSlash)
+}
+
+const cookieMatches = (cookie: SandboxCookie, url: URL): boolean => {
+    const hostMatches = cookie.hostOnly ? url.hostname === cookie.domain : url.hostname === cookie.domain || url.hostname.endsWith(`.${cookie.domain}`)
+    const pathMatches = url.pathname === cookie.path || (url.pathname.startsWith(cookie.path) && (cookie.path.endsWith("/") || url.pathname[cookie.path.length] === "/"))
+    return hostMatches && pathMatches && (!cookie.secure || url.protocol === "https:")
+}
+
+const storeCookies = (jar: Map<string, SandboxCookie>, url: URL, setCookies: ReadonlyArray<string>): void => {
+    for (const line of setCookies) {
+        const [pair, ...attributes] = line.split(";")
+        if (pair === undefined) continue
+        const separator = pair.indexOf("=")
+        if (separator <= 0) continue
+        const name = pair.slice(0, separator).trim()
+        const value = pair.slice(separator + 1).trim()
+        if (!name) continue
+        let domain = url.hostname.toLowerCase()
+        let hostOnly = true
+        let path = defaultCookiePath(url.pathname)
+        let secure = false
+        let remove = false
+        for (const attribute of attributes) {
+            const [rawName, ...rawValue] = attribute.trim().split("=")
+            const attributeName = rawName?.toLowerCase()
+            const attributeValue = rawValue.join("=").trim()
+            if (attributeName === "domain" && attributeValue) {
+                const candidate = attributeValue.replace(/^\./, "").toLowerCase()
+                if (url.hostname !== candidate && !url.hostname.endsWith(`.${candidate}`)) { domain = ""; break }
+                domain = candidate
+                hostOnly = false
+            } else if (attributeName === "path" && attributeValue.startsWith("/")) path = attributeValue
+            else if (attributeName === "secure") secure = true
+            else if (attributeName === "max-age" && Number(attributeValue) <= 0) remove = true
+            else if (attributeName === "expires" && Number.isFinite(Date.parse(attributeValue)) && Date.parse(attributeValue) <= Date.now()) remove = true
+        }
+        if (!domain) continue
+        const key = `${domain}\n${path}\n${name}`
+        if (remove) jar.delete(key)
+        else jar.set(key, { name, value, domain, path, hostOnly, secure })
+    }
+}
+
+const responseHeaders = (headers: Headers): Readonly<Record<string, string | ReadonlyArray<string>>> => {
+    const result: Record<string, string | ReadonlyArray<string>> = {}
+    for (const [name, value] of headers) result[name.toLowerCase()] = value
+    const setCookies = headers.getSetCookie()
+    if (setCookies.length > 0) result["set-cookie"] = setCookies
+    return result
+}
+
 /** Builds the sandbox handle of one provider; nothing is booted until the described body runs. */
 export const createSandbox = <T>(spec: SandboxSpec<T>, base: () => ReadonlyArray<DynamicModule>): SandboxHandle<T> => {
     const values: Record<string, string> = {}
@@ -85,6 +168,7 @@ export const createSandbox = <T>(spec: SandboxSpec<T>, base: () => ReadonlyArray
         if (value !== undefined && value !== "") values[key] = value
     }
     const missing = spec.keys.filter((key) => values[key] === undefined)
+    const cookieJar = new Map<string, SandboxCookie>()
     let context: INestApplicationContext | null = null
     return {
         available: missing.length === 0,
@@ -105,6 +189,21 @@ export const createSandbox = <T>(spec: SandboxSpec<T>, base: () => ReadonlyArray
                 signal: AbortSignal.timeout(30_000),
             })
             return { status: response.status, body: readJson(await response.text()) }
+        },
+        request: async (request) => {
+            if (request.form !== undefined && request.method !== "POST") throw new TypeError("sandbox form data requires POST")
+            const url = new URL(request.url)
+            const cookie = [...cookieJar.values()].filter((item) => cookieMatches(item, url)).map((item) => `${item.name}=${item.value}`).join("; ")
+            const headers = new Headers(request.headers)
+            if (cookie) headers.set("cookie", cookie)
+            let body: string | undefined
+            if (request.form !== undefined) {
+                headers.set("content-type", "application/x-www-form-urlencoded")
+                body = new URLSearchParams(request.form).toString()
+            }
+            const response = await fetch(url, { method: request.method, headers, ...(body === undefined ? {} : { body }), redirect: "manual", signal: AbortSignal.timeout(30_000) })
+            storeCookies(cookieJar, url, response.headers.getSetCookie())
+            return { status: response.status, headers: responseHeaders(response.headers), body: await response.text() }
         },
         describe: (name, body) => {
             if (missing.length > 0) {
