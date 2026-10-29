@@ -110,7 +110,7 @@ const preserveCheckout = async (root: string, path: string): Promise<string | nu
 }
 
 /**
- * Removes one worktree (harness/land.ts removeTracked: its Orca terminals closed, links unlinked, then `orca worktree rm` for a
+ * Removes one worktree (harness/land.ts removeTracked: reaped by harness/reap.ts, links unlinked, then `orca worktree rm` for a
  * worktree Orca lists, else git, under the folder's busy record in the ledger of `root`) from its own repository's main checkout
  * (a package edit worktree is the harness's), then prunes; its branch stays. A held folder is left busy for a later gc.
  */
@@ -185,7 +185,7 @@ const busyLeftovers = (root: string, judged: readonly GcEntry[]): (GcEntry & { r
             .filter((record) => !judged.some((entry) => samePath(entry.path, record.path)))
             .map((record) => {
                 const due = busyDue(record) || !existsSync(record.path)
-                const reason = `left busy at attempt ${String(record.attempt)}${due ? "" : `; retried from ${record.nextAt}`}`
+                const reason = `left busy at attempt ${String(record.attempt)}${record.holders === "" ? "" : ` (${record.holders})`}${due ? "" : `; retried from ${record.nextAt}`}`
                 return { path: record.path, kind: (WORKTREE_KINDS.includes(record.kind as WorktreeKind) ? record.kind : "orphan") as WorktreeKind, owner: record.owner, due, reason, preserved: null, removed: false, busy: true, detail: "", repo: record.repo }
             })
     } finally {
@@ -257,8 +257,10 @@ const retiredLeftovers = async (dryRun: boolean): Promise<GcEntry[]> => {
  * The worktree collector: every worktree the harness made for a repository is judged by its owner (an Op's task settled, a
  * workflow done or stopped with its Kernel closed, a Supervisor's worker accepted or rejected, a package edit landed on main)
  * or found an orphan no ledger row owns; clean-verify checkouts whose verifier is gone are pruned. A due worktree's uncommitted
- * work is preserved first, its install links are unlinked (link only, never a recursive delete through one), then it is removed
- * and git prunes; branches stay, so nothing committed is lost. `dryRun` judges and changes nothing.
+ * work is preserved first, it is reaped (harness/reap.ts: its Orca terminals closed, the processes the harness started in it or
+ * that work inside it ended), its install links are unlinked (link only, never a recursive delete through one), then it is
+ * removed, git prunes and Orca drops it; branches stay, so nothing committed is lost. A folder still held names its holder and is
+ * retried with backoff. `dryRun` judges and changes nothing.
  */
 export const worktreeGc = async (root: string, dryRun: boolean): Promise<GcEntry[]> => {
     const stateWorktrees = join(projectDir(root), "worktrees")
@@ -290,7 +292,7 @@ export const worktreeGc = async (root: string, dryRun: boolean): Promise<GcEntry
                 db?.close()
             }
         })()
-        if (busy !== undefined && !busyDue(busy) && existsSync(entry.path)) return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}); retried from ${busy.nextAt}` }
+        if (busy !== undefined && !busyDue(busy) && existsSync(entry.path)) return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}${busy.holders === "" ? "" : `; ${busy.holders}`}); retried from ${busy.nextAt}` }
         const preserved = await preserveCheckout(root, entry.path)
         const removal =
             entry.kind === "op" && entry.owner !== null

@@ -28,6 +28,18 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   13643, full/fe 18720 → 11418, lite/fe 19515 → 12176, harness 13783 → 12738, package 14340 → 13293; test full 27334 →
   19109, lite 28157 → 19857; draw and audit core 17849 → 8880, offset-pop 18171 → 9203; uat 7679 → 1435; deliver 4341 →
   779; Kernel 32475 → 12668; Supervisor 11306 → 9930. No budget changed. Bench: `cited-through-section-index`.
+- **An Op worktree no longer stays behind held by what the harness started.** Removal reaps the worktree first: it closes the
+  Orca terminals working there (each tab, then `orca terminal close --worktree path:<folder> --all`), unlinks the install links,
+  has Orca forget the worktree and waits for it (`orca worktree rm` is asynchronous; Orca's watcher holds a workspace it lists),
+  then ends the processes the harness recorded starting there (`op_processes` of the host store, fed by the spawn observer of
+  `shared/exec.ts` and by a seat launch, which records the seat's shell and agent by their working folder since Orca names no
+  pid), the heavy commands working there, every process whose working folder is inside it (read from the process itself:
+  Windows PEB, `/proc`, `lsof`) and every process under those, by pid and never by name, sparing this process, its ancestors and
+  Orca; it reads again and ends what the first kill missed. A removed worktree Orca still lists as "Delete failed" is dropped.
+  A folder still held records `worktree-held` with its holder, is retried and reaped again by `worktree gc`, and is listed by
+  `worktree gc` and `host load` (`harness/reap.ts`, `harness/process-table.ts`, `harness/land.ts`). Bench:
+  `worktree-reap-op-processes`; `worktree-remove-busy-gc-retries` now holds the folder from outside, as a process the harness
+  never started.
 
 ## [1.1.0-alpha.13] - 2026-10-29
 

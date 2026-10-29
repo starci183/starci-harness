@@ -161,7 +161,8 @@ export const stateBase = (): string => {
     return local === undefined || local === "" ? join(runtimeRoot(), ".runtime") : resolve(local)
 }
 
-const projectsRoot = (): string => {
+/** The folder holding every project's state folder (`<ledger_id>/`): STARCI_PROJECTS_ROOT, else `<state base>/projects`. */
+export const projectsRoot = (): string => {
     const projects = process.env[PROJECTS_ROOT_ENV]
     return projects === undefined || projects === "" ? join(stateBase(), "projects") : resolve(projects)
 }

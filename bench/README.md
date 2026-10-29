@@ -50,7 +50,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   terminal), task-create, worker-start (refused unless `--from` is the coordinator of `--run` and `--parent` a task of
   it), worker show, stop, release and abandon, request-show, `orchestration check` and `send` (one mailbox per Run or
   dispatch, deliveries acked; a send from a Dispatch's agent terminal to another Run is refused `dispatch_run_mismatch`, as Orca
-  refuses it), terminal create, list (each terminal's title, its last rename, and orphaned flag), close and rename, repo add, worktree show, set, rm and list (each git worktree of `--repo` with the parent its lineage names), project setups (the scripted `setups`) and setup-delete, and the idle signals the stall ladder reads (`terminal wait --for tui-idle`, `terminal show`, the
+  refuses it), terminal create, list (each terminal's title, its last rename, and orphaned flag), close and rename, repo add, worktree show (listed while its folder is there, or while a failed removal's `removalError` stands, scripted with `removalErrors`), set, rm (a git removal of the checkout; a held folder stays listed with its `removalError`, as Orca's "Delete failed") and list (each git worktree of `--repo` with the parent its lineage names), project setups (the scripted `setups`) and setup-delete, and the idle signals the stall ladder reads (`terminal wait --for tui-idle`, `terminal show`, the
   terminal list's lastOutputAt, worker-show's heartbeat and agentWait, and `terminal send`, which keeps each typed prompt). It
   dedupes by retry-request like Orca,
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,
@@ -59,8 +59,11 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   `hold` stand-in as its process, which `terminal close` ends), mail a seat sent. No real Orca is ever launched.
 - **The folder holder** is `stub/hold-stub.mjs`, served by `serve: {stub: hold, cwd: <folder>}`: a process that keeps its
   working folder from being removed, as a shell left open in a worktree does (its working directory on Windows, a read-only
-  parent elsewhere). It prints `stub hold: <url> token <pid>`; `POST <url>/__exit` or a SIGTERM lets go and ends it. The read-only
-  parent is the served folder's own parent, so the folder a scenario names sits inside its run, never the run itself.
+  parent elsewhere). With `args: [--hold, <file>]` it holds that file's folder from outside instead, working elsewhere, as a
+  program the harness never started does (the file open with no share mode on Windows, the folder's parent read-only
+  elsewhere), which a reap never ends. It prints `stub hold: <url> token <pid>`; `POST <url>/__exit` or a SIGTERM lets go and
+  ends it. The read-only parent is the held folder's own parent, so the folder a scenario names sits inside its run, never the
+  run itself.
 - **The CPU burner** is `stub/busy-stub.mjs`, served by `serve: {stub: busy}`: a process that keeps one core busy, so the
   heavy governor's CPU average is above a tiny `maxCpuPercent` on any host, an idle runner included. It prints
   `stub busy: <url> token <pid>`; `POST <url>/__exit`, a SIGTERM or the scenario's end stops it.
@@ -91,6 +94,7 @@ design asks for.
 | [lifecycle-empty-graph](scenarios/lifecycle-empty-graph.yaml) | lifecycle | a workflow with no tasks is refused, never 'done' with nothing done | automated | pass | 2026-10-27 |
 | [lifecycle-inline-chain](scenarios/lifecycle-inline-chain.yaml) | lifecycle | fresh inline workflow of two dependent tasks runs to done | automated | pass | 2026-10-27 |
 | [worktree-gc-every-kind](scenarios/worktree-gc-every-kind.yaml) | lifecycle | worktree gc removes every harness worktree whose owner ended, and an orphan's dirty work is preserved first | automated | pass | 2026-10-28 |
+| [worktree-reap-op-processes](scenarios/worktree-reap-op-processes.yaml) | lifecycle | removing an Op worktree ends the processes working in it, drops Orca's failed record, and never touches a process outside it | automated | pass | 2026-10-29 |
 | [lifecycle-kernel-episodic](scenarios/lifecycle-kernel-episodic.yaml) | lifecycle | the Kernel is woken only for decisions and exits after one command | automated | pending |  |
 | [lifecycle-orca-single-op](scenarios/lifecycle-orca-single-op.yaml) | lifecycle | fresh orca workflow: Kernel tree, one Op, verify, release, tabs closed | automated | pass | 2026-10-27 |
 | [lifecycle-orca-supervisor-never-launches-op](scenarios/lifecycle-orca-supervisor-never-launches-op.yaml) | lifecycle | a step from the Supervisor's terminal queues a Kernel's Op and never launches it; a fenced launch spends nothing | automated | pass | 2026-10-29 |

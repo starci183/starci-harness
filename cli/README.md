@@ -121,10 +121,27 @@ harness made is removed once its owner's work ends ([contexts/authority/README.m
 "Worktrees"): an Op's by verify, cancel and a failed result at once, and by every `workflow step` for a task a fence,
 a stall or a crash ended (`sweepOpWorktrees`); every other kind, and any orphan, by the collector `worktree gc`, which
 `supervisor tick`, `supervisor accept` and `reject`, and a workflow step of a done or stopped workflow run
-(`harness/worktree-gc.ts`). Removal preserves uncommitted work first, unlinks the install links with a plain unlink,
-never a recursive delete through a link, then removes the worktree through `orca worktree rm` for an orca run (git
-when Orca is not used or left the folder) and prunes; an Op's branch is deleted once its tip is on the branch it
-landed on, every other branch is kept.
+(`harness/worktree-gc.ts`). Removal preserves uncommitted work first, then reaps the worktree before it removes it
+(`removeWorktreeFolder` in `harness/land.ts`, `reapWorktree` in `harness/reap.ts`), in this order: it reads the process
+table, closes every Orca terminal working there (each tab, then Orca's forced close `orca terminal close --worktree
+path:<folder> --all`, which also stops a terminal no list shows), unlinks the install links with a plain unlink (never a
+recursive delete through a link), has Orca forget the worktree when the run is an orca one or Orca lists it (`orca worktree
+rm`, waited for until Orca no longer lists it or records the removal failed, since Orca's own watcher and terminal host hold a
+workspace it lists), and then, for a folder under the harness's state, ends the processes that are the harness's there:
+those it recorded starting in the Op worktree (`op_processes` of the host store: every run, detached and served program
+the CLI starts there, git aside, through the spawn observer of `shared/exec.ts`, and the seat's shell and agent found working
+in the folder right after Orca starts the seat, since Orca names no pid for a terminal), the heavy commands working there
+(`heavy_slots`), every process whose working folder lies inside it (read from the process itself: its PEB on Windows,
+`/proc` or `lsof` elsewhere, `harness/process-table.ts`) and every process under one of those, each hop started after its
+parent so a reused pid never makes a stranger a child. Each is ended by pid (`taskkill /F`, or SIGTERM then SIGKILL after
+a grace), a second read ends what the first kill left or started, and the reap is recorded `worktree-reaped`. Nothing is
+chosen by its name; this process, its ancestors and Orca are never ended. Orca forgets a removal it could not finish once the
+processes are gone, git removes what is left and prunes, and a removed worktree Orca still lists (a "Delete failed") is
+dropped from Orca's list. A folder still held is never a failure of the settle: it is recorded `worktree-held` with its
+holder (the processes still working in it, Orca still listing it, a handle tool's answer, or what was tried), retried by
+`worktree gc` with backoff and reaped again each time, ticketed for Debug at the attempt cap (`harness/worktree-busy.ts`),
+and listed by `worktree gc` and `host load`. An Op's branch is deleted once its tip is on the branch it landed on, every
+other branch is kept.
 
 ### Settling
 

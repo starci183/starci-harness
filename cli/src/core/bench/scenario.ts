@@ -151,12 +151,12 @@ const stepSchema = z.strictObject({
     sql: z.strictObject({ db: z.enum(["ledger", "machine"]), repo: z.string().optional(), exec: z.string() }).optional(),
     /**
      * Starts a long-lived verb (`starci ui --port 0`) or a bench stand-in (`stub: telegram`, bench/stub/telegram-stub.mjs; `stub:
-     * hold`, a process that holds its working folder; `stub: busy`, a process that keeps one core busy) in the scratch repository, or in `cwd`, until the scenario ends, and saves
+     * hold`, a process that holds its working folder, or with `args: [--hold, <file>]` that file's folder from outside; `stub: busy`, a process that keeps one core busy) in the scratch repository, or in `cwd`, until the scenario ends, and saves
      * the URL and token its ready line prints (`starci ui: <url> token <token>`, `stub telegram: <url> token <token>`) as
      * `<as>.url` and `<as>.token`.
      */
     serve: z
-        .strictObject({ starci: z.array(z.string()).min(1).optional(), stub: z.enum(["telegram", "hold", "busy"]).optional(), cwd: z.string().optional(), as: z.string().regex(/^[\w-]+$/) })
+        .strictObject({ starci: z.array(z.string()).min(1).optional(), stub: z.enum(["telegram", "hold", "busy"]).optional(), args: z.array(z.string()).optional(), cwd: z.string().optional(), as: z.string().regex(/^[\w-]+$/) })
         .refine((serve) => (serve.starci === undefined) !== (serve.stub === undefined), "serve names exactly one of starci and stub")
         .optional(),
     /**

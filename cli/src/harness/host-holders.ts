@@ -4,6 +4,8 @@ import { captureTool } from "../shared/exec.js"
 import { redactSecrets } from "../shared/secrets.js"
 import type { HeavySlot } from "./heavy.js"
 import { stateBase } from "./ledger.js"
+import { listProcesses, psTimeMs } from "./process-table.js"
+import type { HostProcess } from "./process-table.js"
 
 /**
  * Who holds this host's memory: the processes with the largest working set, each grouped as managed (a heavy command the
@@ -13,17 +15,6 @@ import { stateBase } from "./ledger.js"
  * (`managedCpuTimes`), which the CPU rule of harness/heavy.ts (`managedCpuPercent`) samples. A read of the process table only,
  * never a kill.
  */
-
-/** One process as the host lists it. */
-interface HostProcess {
-    readonly pid: number
-    readonly ppid: number
-    readonly name: string
-    readonly workingSetMb: number
-    readonly commandLine: string
-    /** The CPU time it has used so far (user and kernel, over all its threads) in ms, when the table carries it (Windows). */
-    readonly cpuMs: number | null
-}
 
 /** The groups a holder falls in: the harness's own work, or what the harness does not manage. */
 export type HolderGroup = "heavy" | "harness" | "node" | "wsl-docker" | "ide" | "agent" | "other"
@@ -79,37 +70,6 @@ const unmanagedGroup = (item: HostProcess): HolderGroup => {
     if (AGENT.test(item.name) || AGENT_COMMAND.test(item.commandLine)) return "agent"
     if (NODE.test(item.name)) return "node"
     return "other"
-}
-
-/** Every process of the host with its parent, image name, working set and command line; a host without the tool answers why not. */
-const listProcesses = async (): Promise<HostProcess[] | string> => {
-    if (process.platform === "win32") {
-        const script = "Get-CimInstance Win32_Process | ForEach-Object { [pscustomobject]@{ p = $_.ProcessId; q = $_.ParentProcessId; n = $_.Name; w = $_.WorkingSetSize; c = $_.CommandLine; k = $_.KernelModeTime; u = $_.UserModeTime } } | ConvertTo-Json -Compress"
-        const shell = join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
-        const run = await captureTool(shell, ["-NoProfile", "-NonInteractive", "-Command", script], process.cwd(), { timeoutMs: 60_000 }).catch((error: unknown) => (error instanceof Error ? error.message : String(error)))
-        if (typeof run === "string") return `powershell Win32_Process: ${run}`
-        if (run.exitCode !== 0) return `powershell Win32_Process exited ${String(run.exitCode)}`
-        let rows: unknown
-        try {
-            rows = JSON.parse(run.stdout)
-        } catch {
-            return "powershell Win32_Process printed no json"
-        }
-        return (Array.isArray(rows) ? rows : [rows]).map((raw) => {
-            const row = raw as { readonly p?: number; readonly q?: number; readonly n?: string; readonly w?: number; readonly c?: string | null; readonly k?: number | null; readonly u?: number | null }
-            // KernelModeTime and UserModeTime count 100 ns units.
-            const cpuMs = typeof row.k === "number" && typeof row.u === "number" ? (row.k + row.u) / 10_000 : null
-            return { pid: row.p ?? 0, ppid: row.q ?? 0, name: row.n ?? "", workingSetMb: Math.round((row.w ?? 0) / 1_048_576), commandLine: row.c ?? "", cpuMs }
-        })
-    }
-    const run = await captureTool("ps", ["-eo", "pid=,ppid=,rss=,comm=,args="], process.cwd(), { timeoutMs: 30_000 }).catch((error: unknown) => (error instanceof Error ? error.message : String(error)))
-    if (typeof run === "string") return `ps: ${run}`
-    if (run.exitCode !== 0) return `ps exited ${String(run.exitCode)}`
-    return run.stdout.split("\n").flatMap((line) => {
-        const match = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s*(.*)$/.exec(line)
-        if (match === null) return []
-        return [{ pid: Number(match[1]), ppid: Number(match[2]), name: match[4] ?? "", workingSetMb: Math.round(Number(match[3]) / 1024), commandLine: match[5] ?? "", cpuMs: null }]
-    })
 }
 
 /** Adds to `managed` every process under one it already holds, with its root's value; a walk of at most 32 parents. */
@@ -196,13 +156,6 @@ const procCpuMs = (pid: number): number | null => {
     } catch {
         return null
     }
-}
-
-/** A `ps -o time=` value ("[dd-][hh:]mm:ss[.cc]") in ms; null when it does not parse. */
-const psTimeMs = (text: string): number | null => {
-    const match = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+(?:\.\d+)?)$/.exec(text.trim())
-    if (match === null) return null
-    return (((Number(match[1] ?? 0) * 24 + Number(match[2] ?? 0)) * 60 + Number(match[3])) * 60 + Number(match[4])) * 1000
 }
 
 /** The CPU time of `pid` in ms where the process table does not carry it: /proc on Linux, `ps -o time=` elsewhere. */

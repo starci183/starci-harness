@@ -390,7 +390,7 @@ const SERVED = /(?:starci ui|stub \w+): (http:\/\/\S+) token (\S+)/
 
 /** Starts a long-lived verb or bench stand-in in the scratch repository and saves the URL and token its ready line prints. */
 const serve = async (run: RunState, step: NonNullable<Step["serve"]>, label: string): Promise<void> => {
-    const args = step.stub === undefined ? [cliPath(), ...(step.starci ?? []).map((arg) => expand(run, arg)), "--cwd", run.repo] : [join(benchRoot(), "stub", `${step.stub}-stub.mjs`)]
+    const args = step.stub === undefined ? [cliPath(), ...(step.starci ?? []).map((arg) => expand(run, arg)), "--cwd", run.repo] : [join(benchRoot(), "stub", `${step.stub}-stub.mjs`), ...(step.args ?? []).map((arg) => expand(run, arg))]
     const cwd = step.cwd === undefined ? run.repo : inRepo(run, step.cwd)
     const served = await startServing(process.execPath, args, cwd, { env: run.env, ready: SERVED, timeoutMs: 60_000 }).catch((error: unknown) =>
         unmet(run, label, `${args.join(" ")} did not serve: ${error instanceof Error ? error.message : String(error)}`),

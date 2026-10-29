@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { resolve } from "node:path"
 import { Command, CommanderError } from "commander"
+import { recordSpawn } from "./harness/reap.js"
 import { verbsFor } from "./registry.js"
+import { observeSpawns } from "./shared/exec.js"
 import { asRefusal, EXIT_USAGE, UsageError } from "./shared/errors.js"
 import { printRefusal, printResult } from "./shared/output.js"
 import type { OutputMode } from "./shared/output.js"
@@ -141,5 +143,7 @@ const lastResort = (error: unknown): void => {
 }
 process.on("uncaughtException", lastResort)
 process.on("unhandledRejection", lastResort)
+// Every process the CLI starts inside an Op worktree is recorded, so the worktree's removal ends it (harness/reap.ts).
+observeSpawns(recordSpawn)
 
 await main()

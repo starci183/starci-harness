@@ -3,10 +3,11 @@ id: worktree-remove-busy-gc-retries
 group: lifecycle
 title: "a worktree the host holds is left busy without failing the task, retried by worktree gc with backoff, ticketed at the cap"
 inject: >-
-  a process that is no Orca terminal holds an inline task's Op worktree (its working folder on Windows, a read-only parent
-  elsewhere) when the task is cancelled, and lets go only later
+  a program the harness never started and that works elsewhere holds an inline task's Op worktree from outside (a file in it
+  open with no share mode on Windows, a read-only parent elsewhere) when the task is cancelled, and lets go only later
 expect: >-
-  the cancel settles the task and records the removal busy; worktree gc does not retry before the backoff runs out, retries
+  the reap ends nothing (the holder is not the harness's and works elsewhere); the cancel settles the task and records the
+  removal busy with who holds it (worktree-held); worktree gc does not retry before the backoff runs out, retries
   once it has, opens one harness-defect ticket at the attempt cap, and removes the folder once the holder lets go, ending the
   busy record
 pass:
@@ -46,10 +47,11 @@ steps:
     starci: [workflow, start, held]
     save:
       a: data.nodes.0.task.id
-  - name: a process that is no Orca terminal holds the folder
+  - name: a program the harness never started, working elsewhere, holds the folder from outside
     serve:
       stub: hold
-      cwd: ${project}/worktrees/held.ops/${a}
+      args: [--hold, "${project}/worktrees/held.ops/${a}/docs/base.md"]
+      cwd: ${run}
       as: holder
   - name: the cancel settles the task although the removal is refused
     starci: [task, cancel, "${a}", --reason, bench]
@@ -67,6 +69,17 @@ steps:
         db: ledger
         query: "SELECT json_extract(data_json, '$.attempt') FROM events WHERE kind = 'worktree-remove-busy'"
         equals: [1]
+  - name: the held folder names what was tried to find its holder, and the reap ended nothing
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'worktree-held' AND json_extract(data_json, '$.holders') != ''"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'worktree-reaped' AND json_array_length(data_json, '$.killed') > 0"
+        equals: [0]
   - name: a gc before the backoff runs out retries nothing
     starci: [worktree, gc]
   - assert:
