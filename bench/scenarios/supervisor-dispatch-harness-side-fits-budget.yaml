@@ -1,0 +1,59 @@
+schema: starci/scenario@1
+id: supervisor-dispatch-harness-side-fits-budget
+group: worker
+title: a harness-side code worker reads CONTRIBUTING.md, the branch tier and the CLI section index, never cli/README.md whole, and fits the code budget
+inject: "the Supervisor dispatches a code job on the harness itself (side=harness), first with its brief alone, then with a behavioural check"
+expect: >-
+  supervisor dispatch on the code label with side harness is never refused for its context: with the brief alone its CONTRACT_UNFIT
+  names only the missing behavioural check, never the budget; with --check tests-pass it is fit and launches the worker, and the
+  contract its brief names reads CONTRIBUTING.md, contexts/harness/cli-sections.md and contexts/authority/branch.md, not
+  cli/README.md, at under the code op's 24000 tokens
+pass:
+  - the brief-alone dispatch is refused for the behavioural check alone, and its text carries no budget problem
+  - the dispatch with --check tests-pass launches a worker
+  - the worker's contract, checked by contract check, is fit under the budget and lists the core files, not cli/README.md
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - name: boot the project's Supervisor
+    boot: {}
+  - name: the brief alone is refused for its check, never its context
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "fix a harness verb", --input, side=harness, --input, edition=harness, --allow, cli/src]
+    expect:
+      exit: 1
+      code: CONTRACT_UNFIT
+      contains: "--check tests-pass --input command=<command>"
+      lacks: "over the code op's budget"
+  - name: with a behavioural check the harness worker is fit and launched
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "fix a harness verb", --input, side=harness, --input, edition=harness, --allow, cli/src, --check, tests-pass, --input, "command=npm test"]
+    expect:
+      exit: 0
+      contains: routed
+    save:
+      task: data.task
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(contract_json, '$.label') || ':' || json_extract(contract_json, '$.input.base.side') || ':' || json_extract(contract_json, '$.checks.extend[0].preset') FROM tasks WHERE id = '${task}'"
+        equals: ["code:harness:tests-pass"]
+  - name: the same contract reads the core files, not cli/README.md, under the budget
+    starci: [contract, new, --label, code, --summary, "fix a harness verb", --allow, cli/src, --input, "side=harness;edition=harness", --check, "tests-pass:command=npm test", --out, harness-worker.json]
+  - starci: [contract, check, harness-worker.json]
+    expect:
+      exit: 0
+      contains: "\"fit\": true"
+      lacks: "harness:cli/README.md"
+  - starci: [contract, check, harness-worker.json]
+    expect:
+      contains: "\"budget\": 24000"
+  - starci: [contract, check, harness-worker.json]
+    expect:
+      contains: "harness:contexts/harness/cli-sections.md"
+  - starci: [contract, check, harness-worker.json]
+    expect:
+      contains: "harness:CONTRIBUTING.md"
+  - starci: [contract, check, harness-worker.json]
+    expect:
+      contains: "harness:contexts/authority/branch.md"

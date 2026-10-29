@@ -52,7 +52,9 @@ src/
 
 ## The harness inside the CLI
 
-**Ledgers.** [contexts/harness/state.md](../contexts/harness/state.md) says where the files are; `harness/ledger.ts` owns
+### Ledgers
+
+[contexts/harness/state.md](../contexts/harness/state.md) says where the files are; `harness/ledger.ts` owns
 every path. A project ledger (`runtime.sqlite`) holds `workflows`; `plan_nodes`, `edges` and `graph_versions` (each
 graph version's nodes with contract hash, node hash, routing hints and retry round, and why the version was recorded);
 `tasks`; `attempts` (one per dispatch, with the router's pick record); `results` (immutable, one per attempt);
@@ -75,7 +77,9 @@ Additive migrations bump the corresponding machine schema version or `LEDGER_VER
 store is opened through one function (`connect` in `harness/ledger.ts`), which reads its header first: a file that is
 no SQLite database or a damaged one is refused `LEDGER_CORRUPT`, naming the file and its recovery, and is never written.
 
-**Task states.** `TRANSITIONS` in `harness/tasks.ts` is the one state machine, changed only through `setStatus`, a
+### Task states
+
+`TRANSITIONS` in `harness/tasks.ts` is the one state machine, changed only through `setStatus`, a
 compare-and-swap on the status it read (the loser of a race is refused `TASK_STATUS_RACE`):
 `queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a
 launch Orca could not confirm or deny, or a running task whose worker Orca reported gone). A launch that certainly
@@ -90,7 +94,9 @@ with an intent keeps its worktree, and `task verify --recover` finishes the rese
 Each task records its checkout (its Op worktree, else the one it was sent from), and verify, cancel and a failed result
 act there whatever checkout the caller is in.
 
-**Op worktrees.** Every task of a workflow, under either runner, works in a git worktree of its own,
+### Op worktrees
+
+Every task of a workflow, under either runner, works in a git worktree of its own,
 `<project state>/worktrees/<workflow>.ops/<task>` on branch `starci/<workflow>.ops/<task>`, cut when its seat starts (or
 its inline step hands it out) from the head of the branch its workflow's worktree has checked out (an inline workflow
 without one: the checkout it runs in), beside that worktree rather than inside it, since git keeps no branch below another
@@ -114,7 +120,9 @@ never a recursive delete through a link, then removes the worktree through `orca
 when Orca is not used or left the folder) and prunes; an Op's branch is deleted once its tip is on the branch it
 landed on, every other branch is kept.
 
-**Settling.** `task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when
+### Settling
+
+`task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when
 Orca cannot confirm the stop), then builds a candidate from HEAD of the task's checkout plus its work under its
 `allowPaths`, rebases it onto the head of the branch it lands on without a work tree (`git merge-tree --write-tree` with
 the candidate's parent as the base, `rebaseCandidate` in `harness/land.ts`), and replays every check on a clean checkout
@@ -163,7 +171,9 @@ the verify started from), else back to `reported`, which the same step verifies.
 `shared/git.ts`) with `core.quotePath` off and `core.longpaths` on, and every path listing the harness parses is
 NUL-separated (`-z`), so a non-ASCII or deep path is never quoted or cut.
 
-**Wave verify.** The tiers are [contexts/authority/](../contexts/authority/README.md)'s; policy/quality.yaml `verify.tier`
+### Wave verify
+
+The tiers are [contexts/authority/](../contexts/authority/README.md)'s; policy/quality.yaml `verify.tier`
 picks where a workflow task's heavy checks run. In `wave` (the default) `task verify` splits the contract's checks
 (`splitChecks` in `harness/wave.ts`): the heavy ones, a scoped `starci check` verb or any command check (typecheck, lint,
 tests, a suite), are left to the wave and recorded `wave-due` when the task settles; the rest run in its own verify, and
@@ -185,7 +195,9 @@ wave, the verify of a reported task whose own checks run a tool (`verifyIsHeavy`
 (`starci workflow wave`, `starci task verify`, `starci workflow wave --final`), one per job row (`harness/jobs.ts`: a job is
 busy while its lock is held or its process lives), and a later step reads their verdicts.
 
-**Install cache.** A clean checkout and an Op worktree never run their own `npm ci` when the shared install exists: `cachedInstall`
+### Install cache
+
+A clean checkout and an Op worktree never run their own `npm ci` when the shared install exists: `cachedInstall`
 (`harness/install-cache.ts`) keys an install by the lockfile's bytes, Node's version and npm's
 (`<state base>/cache/installs/<key>`, path in `harness/ledger.ts`). A miss runs `npm ci` in the checkout and copies its
 node_modules into the cache (staged, then renamed into place), recording the links npm made to the checkout's own folders
@@ -195,7 +207,9 @@ local package mode gets a copy instead, then the same `reapplyLocal`. Before a c
 one is pruned, every install link it holds (a node_modules that is itself a link, and every link inside a real one) is removed with a
 plain unlink (`unlinkInstallLinks`), never a recursive delete through it.
 
-**Heavy-command governor.** Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package
+### Heavy-command governor
+
+Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package
 build, `npm ci` or `npm install`, a contract's setup, a uat container) runs through `withHeavySlot` of
 `harness/heavy.ts`: one slot of a host-wide semaphore (`heavy_slots` in the machine.sqlite of the harness's main checkout,
 or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
@@ -233,7 +247,9 @@ On Windows `host load` also reads the CPU of Defender's real-time scan (MsMpEng)
 prints the owner's `Add-MpPreference -ExclusionPath` command for the state base and every registered repository, which the
 harness never runs.
 
-**Custody into a live suite.** A command check whose scoped jest run holds an opt-in live suite (`useSandbox`, named by
+### Custody into a live suite
+
+A command check whose scoped jest run holds an opt-in live suite (`useSandbox`, named by
 the task's command or its own changed spec) reads the keys the suite's world declares (`keys: [...]`) from the app's
 custody, the sealed members of `.starcistacks/<env>/secrets` (`dev`, else the one environment that has secrets), with the
 @starci/hfs code `app secret materialize` decrypts with, read in the app's main checkout where its age identity lives, and
@@ -243,13 +259,17 @@ every handed value is scrubbed from the run's output before it becomes evidence.
 either ends the task `awaiting_owner` (from `verifying` in its verify, from `done` in the wave that runs its deferred
 tests), never red, its try unspent, and the tick files it as the owner's blocking `question:business` on credentials.
 
-**Result reuse.** `check run` keys each typecheck and lint step by the digest of its inputs (`checkDigest` in
+### Result reuse
+
+`check run` keys each typecheck and lint step by the digest of its inputs (`checkDigest` in
 `harness/check-reuse.ts`: the gate, the judged files, the content of the package and the workspace packages it reaches
 and of the repository's root files, dirty files hashed as they stand, Node's version and the tool's) and keeps green
 steps in the project ledger's `check_rows`; a step whose digest has a green row is that row, reused and never rerun, in a
 wave, in Debug's scoped round and before a push alike.
 
-**Workflow graph.** A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`) built for
+### Workflow graph
+
+A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`) built for
 a goal version (`harness/goal.ts`): goal text, acceptance ids and a scope ceiling (path prefixes, max tasks). Goal 1 is
 the file's; `workflow regoal` (owner, Supervisor) records goal n+1 from a `starci/goal-change@1` file, based on goal n
 (`STALE` otherwise) and idempotent by its cmdId. A node's hash is its contract hash and retry round; its dependencies
@@ -290,7 +310,9 @@ expectation the otherwise green result contradicts, is a `check-premise` decisio
 changes its own checks, so the Kernel amends a stale premise. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
 moves.
 
-**Shared needs.** A worker that finds a shared thing missing never builds it: it files `task result --status blocked
+### Shared needs
+
+A worker that finds a shared thing missing never builds it: it files `task result --status blocked
 --needs <key> [--rule <id>] [--paths <p>...] [--note <text>]`, or a `needs` list in its output (keys, or `{key, rule, paths,
 note}`). A key is `<kind>:<target>`, kind `capability`, `package` or `config`; a capability or config target is lowercase
 dotted segments (`/` and `\` read as dots), a package target an npm name (`normalizeNeedKey`, `NEED_KEY_INVALID`). A reported
@@ -339,7 +361,9 @@ they stand. Then every waiter whose needs all ended is
 retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its brief. `needs list`
 and `needs show <key>` read the store.
 
-**Seat launch.** The claim comes first, in one transaction: the queued task goes to running and an attempt and a
+### Seat launch
+
+The claim comes first, in one transaction: the queued task goes to running and an attempt and a
 `starting` seat carrying the launch record are opened; only then is Orca called, so two starts never both launch.
 Orca's `run-create` and `worker-start` run under retry-request ids derived from the attempt. The brief, the contract
 copy and the worker's output file live in the project's state folder, and the spec only points at the brief (the
@@ -351,7 +375,9 @@ its receipt names is read once, a screen at one of `blockedPrompts` ([ops/routin
 shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with its worktree and seat open, and
 `seat start <task> --resume` replays the same requests.
 
-**Package sources.** An app pins npm versions of its `@starci` packages in committed files; `deps source --local`
+### Package sources
+
+An app pins npm versions of its `@starci` packages in committed files; `deps source --local`
 takes them from a package folder on this machine instead, the mechanism and its reasons in the doc comment of
 `core/deps/packages.ts`. Every checkout of a repository in local mode gets the same copies (`reapplyLocal`): a worker's
 before its launch (`seat start`), a clean verify's after its `npm ci`, a work tree's after its own (`deps source
@@ -367,7 +393,9 @@ folder. The push gate is `judgePush` (`core/deps/push-gate.ts`), run by `deps ch
 is the `package-specs` check preset, `pkg handoff` records it in the host store's `package_handoffs` for Debug, and `release push` and `release publish` refuse it to every role but
 debug and owner (`PKG_EDIT_PUSH_REFUSED`).
 
-**Seats as a tree.** `[Supervisor] <project>` (one per project, [state.md](../contexts/harness/state.md) "How a project is
+### Seats as a tree
+
+`[Supervisor] <project>` (one per project, [state.md](../contexts/harness/state.md) "How a project is
 found") > `[Kernel] <workflow>` (one per running orca workflow) > `[Op] <label> (<task id>) - <summary>` (one per attempt),
 and `[Supervisor] <project>` > `[Worker] <project>: <topic>` (one per job the Supervisor hands out), each a real Orca agent, so
 Orca lists a project's main checkout with its Supervisor, each workflow worktree under it with its Kernel, each Op worktree under that ("Op worktrees" above) with its Op, and each worker's
@@ -404,6 +432,8 @@ in `core/workflow/engine.ts`); `seat start` refuses such a launch before claimin
 Orca fences anyway is a harness error: its attempt ends `consumer-fenced`, which spends no try or minutes, marks no stall,
 reports nothing to the provider circuit and is no step of the lineage, and the task is queued again (`CONSUMER_FENCED`, a
 `wait`, never a problem the Kernel acts on).
+
+### Coordinators and their drivers
 
 Coordinators decide; deterministic drivers do the rest, and a coordinator never ends its turn while its driver is its own
 (it loops on the blocking `next`). `kernel next <workflow>` is the Kernel's driver: it drains the Kernel Run's mail, steps
@@ -447,6 +477,9 @@ it in the project's mailbox, machine.sqlite `owner_requests`, and mail the Super
 or a ruling in a Kernel's place, the Kernel's own `workflow-change` or `escalation` answering a `kernel-undecided` decision,
 and its `answers` close decisions and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
+
+### Supervisor dispatch
+
 The Supervisor works through workers (`core/supervisor/workers.ts`). `supervisor dispatch --brief <file|text> [--need <key>] [--label]
 [--repo] [--allow]... [--input name=value]... [--check <preset>]...`, from its terminal, makes the worker's own worktree of `--repo` (default the
 project's Work-root repository, or any other checkout; a `@starci` package fix stays in the app's repository with
@@ -455,7 +488,9 @@ whose contract is the brief on the label's op (default `code`; with no `--allow`
 (`workerContract`): each `--check` preset of ops/checks.yaml, its arguments taken from the `--input` of the same name (a
 name no preset has is refused `CONTRACT_UNKNOWN_PRESET`), and for a package fix of a label that needs a behavioural check
 the `package-specs` check of its package, with `side=package` and `edition=harness` filled where the op declares them, so
-it reads the package contexts of ops/ops/code.md rather than the CLI's; a contract still unfit is refused `CONTRACT_UNFIT`
+it reads the package contexts of ops/ops/code.md; a harness fix (`--input side=harness`) reads CONTRIBUTING.md, the
+branch tier and the generated section index of this file (`contexts/harness/cli-sections.md`, `contexts anatomy` keeps it
+fresh), never this whole file, and opens the sections it needs with `contexts anchor`; a contract still unfit is refused `CONTRACT_UNFIT`
 with a `fix:` line per problem the dispatch can answer (the `--check` and `--input` that supply a behavioural check, the
 package input that fits the context budget), before any worktree is made,
 records the worker in `supervisor_workers`, and launches it as `seat start` does (`startSeat` with the Supervisor as
@@ -471,7 +506,9 @@ workers elsewhere counted together (`projectSlots` in `harness/project-workers.t
 Kernel's launch past it is a wait whose task stays queued (`launchTask` in `core/workflow/engine.ts`), before any route is
 picked, so the cap never sends work to another provider.
 
-**The host driver** keeps the tree alive with no LLM awake. `supervisor tick` is one idempotent pass for a scheduler to run
+### The host driver
+
+The host driver keeps the tree alive with no LLM awake. `supervisor tick` is one idempotent pass for a scheduler to run
 every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`, and once a new build of the
 CLI's dist stands it starts its replacement from that build, detached onto its own stdout and stderr, records a
 `supervisor-watch-reloaded` host event and exits, so it never ticks with modules a build replaced and one watch process runs): first the terminal sweep
@@ -494,7 +531,9 @@ on the first tick (a `workflow-coordinator` event naming `adoptedFrom`), its Ker
 that terminal, and relaunched into the project Supervisor's Run once the tick retires the host row (ended when Orca reports
 its terminal gone, never deleted; `adoptFromHost` in `core/supervisor/driver.ts`). The scheduler that runs it is registered by the `host` verbs below.
 
-**The desktop app's API.** `starci ui` (`core/ui/`) serves the contract of the StarCi Harness desktop app
+### The desktop app's API
+
+`starci ui` (`core/ui/`) serves the contract of the StarCi Harness desktop app
 (`core/ui/contract.ts`, the one owner of the types, which the app in [app/](../app/README.md) imports) on 127.0.0.1 with a bearer token it prints beside its URL; CORS answers only
 the Tauri origins and the app's dev server, and a Host that is not that loopback address is refused. Its reads go through the
 readers behind the read verbs (`core/ui/read.ts`: the registry's repositories and projects, each ledger's workflows, graph,
@@ -507,7 +546,9 @@ by `supervisor submit`; each inbox decision carries that exact command. A task's
 terminal renders, read from Orca once per request (`terminalRead`), never polled. `/api/events` polls each ledger's newest event id, the host store's rows and the settings files every second while a
 client listens and sends each change as a `data:` line, with a heartbeat comment every 15 seconds (`core/ui/live.ts`).
 
-**The host.** [ops/host.yaml](../ops/host.yaml) lists what a host runs for the harness (Orca, Docker, the Supervisors, the
+### The host
+
+[ops/host.yaml](../ops/host.yaml) lists what a host runs for the harness (Orca, Docker, the Supervisors, the
 scheduled tick, the Telegram bridge), each with its check, its start and how it is installed; `harness/host.ts` reads it and runs every argv
 without a shell. The owner runs `host install` once: on Windows each schedule is a `StarCi <name>` scheduled task whose
 action is `wscript //B <state base>/host/<service>.vbs`, which runs the `.cmd` beside it with its window hidden (changing
@@ -517,7 +558,9 @@ platforms are refused (`supervisor watch` in a terminal serves there). `host sta
 installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
 `host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
 
-**Host secrets.** `harness/secret-env.ts` is the one reader of a credential: `lookupSecret(key)` returns the key from the
+### Host secrets
+
+`harness/secret-env.ts` is the one reader of a credential: `lookupSecret(key)` returns the key from the
 process environment, else from `secret.env` at the harness root (the folder above policy/; `STARCI_SECRET_ENV` replaces the
 path, and the bench points it at its run's own file), parsing dotenv lines (`KEY=VALUE`, `export`, quotes, `#` comments) and
 keeping no other key. It reads only the keys [policy/security.yaml](../policy/security.yaml) `secretKeys` lists and refuses any
@@ -531,7 +574,9 @@ a listed one the host lacks `HOST_SECRET_MISSING`. Full and lite apps keep the s
 under the app's `.sops.yaml`), so the verb serves both. Another shared key is one line in `secretKeys`, its entry in
 secret.env.example and one `set --from-host` per app.
 
-**The owner's Telegram channel.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram
+### The owner's Telegram channel
+
+The owner's channel is the Supervisor's terminal, the desktop app and Telegram
 ([ops/telegram.yaml](../ops/telegram.yaml), `harness/telegram.ts`, `harness/telegram-bridge.ts`). The bot token
 (`tokenVariable`) comes from the secret loader above; a verb that would call the bot without it refuses
 `TELEGRAM_NOT_CONFIGURED`, naming the key and where it is set, `connect telegram status` reports its `source` (never its value),
@@ -569,7 +614,10 @@ ticket and "Đã đóng hôm nay"; `/ticket <id>` shows one in full, its evidenc
 (`callback_query`) is acted on only from the owner's chat, through the ticket functions the verbs use, then answered
 (`answerCallbackQuery`) and its card's keyboard edited to the new state (`editMessageReplyMarkup`); a press from any other
 chat is ignored and logged by its chat id. `supervisor telegram-bridge status` (alive, stale or absent) is the host service's check.
-**Tickets.** What the Supervisor cannot resolve within its authority is one ticket in machine.sqlite `tickets`
+
+### Tickets
+
+What the Supervisor cannot resolve within its authority is one ticket in machine.sqlite `tickets`
 (`harness/tickets.ts`): a defect (`harness-defect`, `package`, `launch`, `verify`, `routing`, `other`) for Debug, or a question
 (`question:business`, `question:code`, `question:spec`) for the owner, with its severity, evidence (task, attempt, seat,
 decision, the red tail, redacted), what was tried, its proposed default, who opened it (role and Orca terminal) and every role
@@ -622,6 +670,8 @@ in its `rulings` once to the Kernel seat (`supervisor-ruling-told`). A ruling es
 question to the owner or a defect for Debug. A route a ruling takes counts toward its limit as the Kernel's does. Nudges,
 wakes, give-ups and a ruling told are never progress.
 
+### Coordinator commands
+
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
 (decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`, `hold`; `project` for the Supervisor).
 A `workflow-change` that answers a red, question, check-premise or conflict decision on a task with no change and no need holds
@@ -641,7 +691,9 @@ seat's terminal lives exactly as long as the seat: its tab is closed right after
 retained), and the tick's sweep closes one that outlived it (`closeWorker` in `harness/orca/client.ts`). Inline workflows touch nothing in Orca: the chat agent is
 their Kernel, and `kernel next` returns `idle` naming its next task.
 
-**Routing and liveness** are data: [ops/routing.yaml](../ops/routing.yaml) (tiers, pools, balance, quota, Orca usage,
+### Routing and liveness
+
+Routing and liveness are data: [ops/routing.yaml](../ops/routing.yaml) (tiers, pools, balance, quota, Orca usage,
 provider circuit and its half-open probe, outcomes, qualification, scoring, AIMD concurrency, the workflow and project
 parallel caps, workflow budgets, and the
 `coordinators` tiers: a Supervisor or Kernel is routed through the same circuit, quota, probe, scoring and balance as an

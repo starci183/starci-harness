@@ -6,7 +6,7 @@ workflow of the project has a `[Kernel] <workflow>` under it, each task attempt 
 `supervisor submit`), never ending their turn while the driver is theirs. They run on their own: `supervisor tick` nudges a
 coordinator that stops, wakes a Kernel whose ready work idles with no live Op or that leaves a decision undecided, and relaunches
 either when that does not move it; a decision a woken Kernel still leaves undecided is the Supervisor's to rule in its place, never
-a ticket by itself; a task the harness ended returns to ready by itself; [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs. Inline workflows use the chat
+a ticket by itself; a task the harness ended returns to ready by itself; [cli/README.md](../../cli/README.md) "Seats as a tree", "Coordinators and their drivers" and "Supervisor dispatch" own the verbs. Inline workflows use the chat
 agent as Kernel and worker without Orca seats. Who may edit, commit, merge to main, push and publish, and which checks
 each role runs, is [contexts/authority/](../authority/README.md), the same under both runners; a verb's `effect` and
 `roles` (cli/README.md "The verb standard") hold it where the CLI enforces it.

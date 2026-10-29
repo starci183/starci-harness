@@ -51,7 +51,7 @@ into a workflow of its project, starts it from its own terminal, or hands a one-
 (`starci supervisor dispatch`), reads each worker's result and accepts it, and answers its Kernels' escalations; it never
 works hands-on. Each orca workflow's `[Kernel]` plans (every contract and the workflow file) and drives
 it with `kernel next` / `kernel submit`; Ops run their label's op file ([ops/ops/](../../ops/ops/README.md)) on one
-contract. [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs and the command file.
+contract. [cli/README.md](../../cli/README.md) "Seats as a tree", "Coordinators and their drivers" and "Supervisor dispatch" own the verbs, "Coordinator commands" the command file.
 
 A chat agent outside Orca is Debug: it diagnoses the harness and works the ticket queue (`starci ticket list --state open`,
 then `ticket take` and `ticket close --fixed-by <sha>`), changes nothing but a harness setting (`starci config set`),

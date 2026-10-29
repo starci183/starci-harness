@@ -2,10 +2,9 @@ import { createHash } from "node:crypto"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join, relative } from "node:path"
 import { ruleIdsIn } from "../../harness/contract.js"
-import { SLICE_EDITIONS, SLICE_SIDES, sliceFile } from "./anatomy-render.js"
 import { choiceIds, headingAnchors, isAnchorId, linkFragments, parseHeading, slug } from "./anchors-parse.js"
 import type { LinkFragment } from "./anchors-parse.js"
-import { INDEX_FILE } from "./index-render.js"
+import { repeatingFiles } from "./index-render.js"
 
 /** The scopes a search can be narrowed to: a folder of contexts/, or `harness` for the harness's own documents and data. */
 export const SEARCH_SCOPES = ["ui", "grammars", "vendor", "code", "hfs", "stack", "decisions", "project", "harness"] as const
@@ -61,13 +60,9 @@ const filesUnder = (root: string, dir: string, pattern: RegExp): string[] =>
               .map((entry) => relative(root, join(entry.parentPath, entry.name)).replaceAll("\\", "/"))
         : []
 
-/** Generated files that repeat another file of the tree: the contexts index and the anatomy slices. */
-const repeated = (): Set<string> =>
-    new Set([`contexts/${INDEX_FILE}`, ...SLICE_EDITIONS.flatMap((edition) => SLICE_SIDES.map((side) => `contexts/project/${sliceFile(edition, side)}`))])
-
 /** The files searched, relative to the runtime root: contexts/, the op files and ops data, policy/, the starci skill and the harness documents. */
 export const corpusFiles = (root: string): string[] => {
-    const skip = repeated()
+    const skip = new Set([...repeatingFiles()].map((file) => `contexts/${file}`))
     const docs = ["README.md", "CONTRIBUTING.md", "cli/README.md", "packages/README.md"].filter((file) => existsSync(join(root, file)))
     return [
         ...filesUnder(root, "contexts", /\.(md|ya?ml)$/),
