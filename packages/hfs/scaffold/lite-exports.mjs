@@ -51,6 +51,22 @@ const REGISTRATIONS = Object.freeze({
       names: ["sql"],
       beforeSource: "./errors/database.error",
     },
+    {
+      // The outbox write and the relay call the queue functions of their migration (R334).
+      file: "be/src/modules/platform/database/index.ts",
+      source: "./database.client",
+      names: ["callDbFunction"],
+      beforeSource: "./primary.decorators",
+    },
+  ],
+  // The jobs capability (add job, the fenced-job pattern): its tick takes a transaction-scoped lock before it claims the minute (R335).
+  jobs: [
+    {
+      file: "be/src/modules/platform/database/index.ts",
+      source: "./database.client",
+      names: ["advisoryXactLock", "callDbFunction"],
+      beforeSource: "./primary.decorators",
+    },
   ],
   webhook: [
     {
@@ -58,6 +74,13 @@ const REGISTRATIONS = Object.freeze({
       source: "./database.sql",
       names: ["BATCH_ROWS", "sql"],
       beforeSource: "./errors/database.error",
+    },
+    {
+      // The inbox claim and the lite event bus call the functions of their migration (R334).
+      file: "be/src/modules/platform/database/index.ts",
+      source: "./database.client",
+      names: ["callDbFunction"],
+      beforeSource: "./primary.decorators",
     },
     {
       // PRIMARY_ENTITY_MANAGER: the token the inbox service's unit spec provides its EntityManager double under.

@@ -84,12 +84,14 @@ const DATABASE_ERROR = 'be/src/modules/platform/database/errors/database.error.t
 
 /** Skeleton files the lite starter leaves out and the queue capabilities use, each from its skeleton template. */
 const SKELETON_FILES = Object.freeze([
+  ['be/src/modules/platform/database/database.client.ts', 'skeleton-lite/src/modules/platform/database/database.client.ts'],
+  ['be/src/modules/platform/database/database.client.spec.ts', 'skeleton-lite/src/modules/platform/database/database.client.spec.ts'],
   ['be/src/modules/platform/database/database.sql.ts', 'skeleton-lite/src/modules/platform/database/database.sql.ts'],
   ['be/src/modules/platform/primitives/sequence.policy.ts', 'skeleton/src/modules/platform/primitives/sequence.policy.ts'],
   ['be/src/modules/platform/primitives/sequence.policy.spec.ts', 'skeleton/src/modules/platform/primitives/sequence.policy.spec.ts'],
 ]);
 
-/** The sql tag of the outbox and claim statements (with its identifier error) and the in-order relay the queue adapters walk their rows with. */
+/** The database-function call and the sql tag of the outbox and claim statements (with its identifier error) and the in-order relay the queue adapters walk their rows with. */
 function skeletonFiles(repoRoot) {
   const created = SKELETON_FILES.filter(([relative]) => !fs.existsSync(path.join(repoRoot, ...relative.split('/'))))
     .map(([relative, source]) => ({ relative, text: render(template(`be/${source}`), {}) }));
@@ -364,7 +366,10 @@ export function planLiteQueue({ repoRoot, repo, noun, patterns, now }) {
         fs.writeFileSync(target, entry.text);
       }
       for (const patch of patches) fs.writeFileSync(patch.file, patch.text);
-      const exported = registerLiteExports({ root: repoRoot, generator: 'queue' });
+      const exported = [
+        ...registerLiteExports({ root: repoRoot, generator: 'queue' }),
+        ...(patterns.includes('fenced-job') ? registerLiteExports({ root: repoRoot, generator: 'jobs' }) : []),
+      ];
       const sealed = sealRedisMembers(repoRoot, stack.environments);
       const changed = patches.map((patch) => path.relative(repoRoot, patch.file).split(path.sep).join('/'));
       return [...new Set([...created.map((entry) => entry.relative), ...changed, ...exported, ...sealed])];
