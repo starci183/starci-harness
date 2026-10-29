@@ -106,7 +106,7 @@ pins:
     source: packages/ai-router/package.json
     why: 'the AI pool router of a back end: a NestJS module that routes OpenAI-compatible chat, stream and embeddings calls across keys, models and providers, with @starci/ai-router/testing for its specs; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/hfs':
-    version: 4.11.0
+    version: 4.11.1
     group: starci
     install: registry
     side: both

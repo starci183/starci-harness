@@ -304,11 +304,24 @@ function metadataSql(metadata) {
   return `${queueSql}${grants}${cron}`;
 }
 
+/**
+ * The squash source holds the whole active chain: its history records every active stamp and nothing else. Only the history is read; the
+ * queues and cron jobs a plan also compares are what the squash itself drops or carries from the database.
+ */
+function sourceHistory(root, plan, ports, urlEnv) {
+  const rows = (sql) => JSON.parse(runDbPostgres(root, { kind: 'query', sql }, ports, urlEnv));
+  if (!rows("select pg_catalog.to_regclass('supabase_migrations.schema_migrations') is not null as present")[0]?.present) throw new DbVerbError(`the source records no migration history (${HISTORY}); apply its chain with starci app db migrate`);
+  const recorded = new Set(rows(`select version from ${HISTORY}`).map((row) => String(row.version)));
+  const active = new Set(plan.active.map((entry) => entry.stamp));
+  const offenders = [...[...active].filter((stamp) => !recorded.has(stamp)).map((stamp) => `${stamp}: active, not applied to the source`), ...[...recorded].filter((stamp) => !active.has(stamp)).map((stamp) => `${stamp}: applied to the source, not in the active chain`)];
+  if (offenders.length) throw offendersError('baseline --squash reads a source with exactly the active chain applied', offenders.sort());
+}
+
 /** Numeric CLI exit code, injectable IO/clock/CLI; neither files nor history change without --apply. */
 export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), now = () => new Date(), ...ports } = {}) {
   try {
-    const opts = dbOptions(argv, ['cwd', 'stamp', 'apply', 'url-env', 'squash', 'drop-extension', 'seed-tables', 'image']);
-    if (!opts.squash && ['drop-extension', 'seed-tables', 'image'].some((name) => Object.hasOwn(opts, name))) throw new DbVerbError('--drop-extension, --seed-tables and --image belong to --squash');
+    const opts = dbOptions(argv, ['cwd', 'stamp', 'apply', 'url-env', 'squash', 'drop-extension', 'drop-pgmq-queue', 'seed-tables', 'image']);
+    if (!opts.squash && ['drop-extension', 'drop-pgmq-queue', 'seed-tables', 'image'].some((name) => Object.hasOwn(opts, name))) throw new DbVerbError('--drop-extension, --drop-pgmq-queue, --seed-tables and --image belong to --squash');
     if (opts.squash && !opts['url-env']) throw new DbVerbError('baseline --squash reads a database the whole active chain is applied to: pass --url-env NAME');
     const urlEnv = opts['url-env'] ?? 'DATABASE_URL';
     const root = dbAppRoot(cwd, opts);
@@ -321,7 +334,7 @@ export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) =>
       for (const entry of plan.active) fs.renameSync(path.join(root, entry.file), path.join(root, MIGRATIONS_ARCHIVE_DIR, entry.name));
     };
     if (opts.squash) {
-      const precondition = (runPostgres) => dbPlanMain(['--json', '--url-env', urlEnv], { ...ports, runPostgres, cwd: root, stdout: () => {}, stderr: () => {} });
+      const precondition = (runPostgres) => sourceHistory(root, plan, { ...ports, runPostgres }, urlEnv);
       return squashBaseline({ root, opts, plan, urlEnv, connection: connectionOf(ports.env ?? process.env, urlEnv), commandOf, precondition, managedSchema: excludedSchema, archive, stdout });
     }
     const metadata = baselineMetadata(root, plan, files);

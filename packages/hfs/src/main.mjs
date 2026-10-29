@@ -108,7 +108,7 @@ starci app codemod button-intent [--write] [--format json|markdown] [--report <f
 starci app sync (--check | --write) [--cwd <dir>]
 starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--wiring] [--coverage-from <lcov>]
 starci app db new <kebab-name> [--json] [--cwd <dir>]
-starci app db baseline [--stamp <version>] [--url-env <NAME>] [--apply] [--cwd <dir>]
+starci app db baseline [--stamp <version>] [--url-env <NAME>] [--squash [--drop-extension <a,b>] [--drop-pgmq-queue <q,job_*>] [--seed-tables <t1,t2>] [--image <ref>]] [--apply] [--cwd <dir>]
 starci app db restamp --map <restamp.yaml> [--url-env <NAME>] [--apply] [--cwd <dir>]
 starci app db plan [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app db dump [--url-env <NAME>] --out <dir> [--schema-only] [--json] [--cwd <dir>]
