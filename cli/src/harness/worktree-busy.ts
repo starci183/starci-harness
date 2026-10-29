@@ -6,15 +6,22 @@ import { recordEvent } from "./tasks.js"
 import { openTicket } from "./tickets.js"
 
 /**
- * A worktree removal the host refused because something holds the folder (EBUSY, EPERM, EACCES: a process working in it, a file
- * held open). The removal is left, recorded here and retried by `worktree gc` with backoff; it never fails or blocks the settle
- * of the task that asked for it. At the attempt cap a `harness-defect` ticket names the folder and, when the host can tell, the
- * process that holds it; retries go on at the longest interval, so the folder goes once the lock does.
+ * A worktree removal the host refused because something still holds the folder after its reap (harness/reap.ts) ended what the
+ * harness may end (EBUSY, EPERM, EACCES: a process it may not end working in it, a file held open). The removal is left,
+ * recorded here with who holds it (`worktree-held`) and retried by `worktree gc` with backoff, each retry reaping again; it never
+ * fails or blocks the settle of the task that asked for it. At the attempt cap a `harness-defect` ticket names the folder and its
+ * holder; retries go on at the longest interval, so the folder goes once the lock does.
  */
 export const BUSY_EVENT = "worktree-remove-busy"
 
 /** The event that ends a busy record: the folder was removed, or is gone. */
 export const BUSY_CLEARED_EVENT = "worktree-remove-busy-cleared"
+
+/** The event naming who still held a folder after its reap: the processes left, or what was tried to name its holder. */
+export const HELD_EVENT = "worktree-held"
+
+/** The event of a reap that ended processes before a removal, or found some it could not end. */
+export const REAPED_EVENT = "worktree-reaped"
 
 /** The event of the ticket a busy record opened at the cap. */
 export const BUSY_TICKETED_EVENT = "worktree-remove-busy-ticketed"
@@ -28,7 +35,7 @@ const BUSY_BACKOFF_MAX_MS = 60 * 60_000
 export const BUSY_ATTEMPT_CAP = 6
 
 /** What the host says when a folder or a file in it is held: Node's and git's words on Windows and POSIX. */
-const BUSY = /\bEBUSY\b|\bEPERM\b|\bEACCES\b|resource busy|device or resource busy|permission denied|being used by another process|access is denied/i
+const BUSY = /\bEBUSY\b|\bEPERM\b|\bEACCES\b|resource busy|device or resource busy|permission denied|being used by another process|access is denied|open in another program/i
 
 /** True when a removal failure reads as the folder being held, not as a missing or invalid worktree. */
 export const isBusyFailure = (detail: string): boolean => BUSY.test(detail)
@@ -43,6 +50,8 @@ export interface BusyRecord {
     readonly nextAt: string
     readonly detail: string
     readonly terminals: readonly string[]
+    /** Who held the folder at this attempt (harness/reap.ts heldBy), or what was tried to name its holder. */
+    readonly holders: string
 }
 
 /** The subject a folder's busy events are kept under: one spelling of the path, whatever slashes or case a caller used. */
@@ -66,6 +75,7 @@ const asRecord = (data: unknown): BusyRecord | undefined => {
         nextAt: row.nextAt,
         detail: typeof row.detail === "string" ? row.detail : "",
         terminals: Array.isArray(row.terminals) ? row.terminals.filter((one): one is string => typeof one === "string") : [],
+        holders: typeof row.holders === "string" ? row.holders : "",
     }
 }
 
@@ -119,14 +129,13 @@ export const lockersOf = async (path: string): Promise<{ readonly lockers: strin
 }
 
 const ticketBusy = async (repo: string, record: BusyRecord): Promise<string> => {
-    const { lockers, how } = await lockersOf(record.path)
-    const named = lockers === null ? `the locking process is unknown (${how})` : `held by (${how}):\n${lockers}`
+    const named = record.holders !== "" ? record.holders : await lockersOf(record.path).then(({ lockers, how }) => (lockers === null ? `the locking process is unknown (${how})` : `held by (${how}):\n${lockers}`))
     const { ticket } = openTicket({
         kind: "harness-defect",
         severity: "normal",
         title: `worktree ${record.path} stays locked after ${String(record.attempt)} removal attempts`,
         evidence: { ...(record.owner === null ? {} : { task: record.owner }), tail: `${record.detail}\n${named}` },
-        tried: `closed its Orca terminals (${record.terminals.join(", ") || "none listed"}) and retried with backoff ${String(record.attempt)} times; worktree gc keeps retrying hourly`,
+        tried: `closed its Orca terminals (${record.terminals.join(", ") || "none listed"}), ended the processes the harness started in it or that worked inside it, and retried with backoff ${String(record.attempt)} times; worktree gc keeps retrying hourly`,
         proposedDefault: null,
         options: [],
         project: { root: repo, key: findLedgerId(repo) ?? "", name: basename(repo) },

@@ -37,11 +37,13 @@ verb standard") are how the CLI holds this table where it holds it.
 
 Every worktree the harness creates is removed by the harness when its work ends, under `inline` and `orca` alike; no role
 removes one by hand or keeps one alive past its owner. Before removal its uncommitted work is preserved as a red verify
-preserves it (a patch and its untracked files, in the project's `preserved/`), every Orca terminal whose worktree it is
-is closed, its install links are unlinked as links (never a recursive delete through one, never `robocopy /MIR`), and git
-prunes; a branch with commits that never landed is kept. A folder the host still holds (EBUSY, EPERM) is left busy and
-never fails or blocks the settle that asked for it: the collector retries it with backoff and tickets it for Debug at the
-cap (`cli/src/harness/worktree-busy.ts`).
+preserves it (a patch and its untracked files, in the project's `preserved/`), then it is reaped: every Orca terminal
+whose worktree it is is closed, its install links are unlinked as links (never a recursive delete through one, never
+`robocopy /MIR`), Orca forgets it, and the processes the harness started in it or that work inside it are ended and seen
+gone (by pid, never by name, never the caller or Orca: `cli/src/harness/reap.ts`); then it is removed and git prunes; a
+branch with commits that never landed is kept. A folder the host still holds (EBUSY, EPERM) is left busy with its holder
+recorded and never fails or blocks the settle that asked for it: the collector reaps and retries it with backoff and
+tickets it for Debug at the cap (`cli/src/harness/worktree-busy.ts`).
 
 | worktree | made by | removed when |
 |---|---|---|

@@ -437,11 +437,11 @@ export const closeWorktreeTerminals = async (binary: OrcaBinary, worktree: strin
 /**
  * `orca terminal close --worktree path:<folder> --all`: stops every terminal of one workspace and durably drops its tabs, layouts
  * and resume records, the saved workspace details that make `project setup-delete` refuse (and that a forced delete leaves behind
- * as an "Unknown" project in Orca's sidebar).
+ * as an "Unknown" project in Orca's sidebar). It reaches terminals `terminal list` does not show (a hidden one still running).
+ * Returns Orca's answer as it gave it (what it closed and stopped), for the caller's record.
  */
-export const closeWorkspaceTerminals = async (binary: OrcaBinary, folder: string, cwd: string): Promise<void> => {
-    await callOrcaArgv(binary, orcaToolArgv("terminal", "close", { worktree: `path:${folder.replaceAll("\\", "/")}`, all: true }), "orca terminal close --all", z.unknown(), cwd, SETTLE_TIMEOUT_MS)
-}
+export const closeWorkspaceTerminals = async (binary: OrcaBinary, folder: string, cwd: string): Promise<unknown> =>
+    callOrcaArgv(binary, orcaToolArgv("terminal", "close", { worktree: `path:${folder.replaceAll("\\", "/")}`, all: true }), "orca terminal close --all", z.unknown(), cwd, SETTLE_TIMEOUT_MS)
 
 /** `orca repo add --path <path>`: registers a repository with Orca, so a `path:` worktree selector inside it resolves. */
 export const repoAdd = async (binary: OrcaBinary, path: string, cwd: string): Promise<void> => {
@@ -522,6 +522,24 @@ export const projectSetups = async (binary: OrcaBinary, cwd: string): Promise<Or
 export const projectSetupDelete = async (binary: OrcaBinary, setup: string, cwd: string): Promise<void> => {
     await callOrcaArgv(binary, orcaToolArgv("project", "setup-delete", { setup }), "orca project setup-delete", z.unknown(), cwd, SETTLE_TIMEOUT_MS)
 }
+
+const worktreeShowSchema = z.looseObject({ worktree: z.looseObject({ removalError: z.string().nullish() }).nullish() })
+
+/** Whether Orca lists a worktree, and, when a removal it began failed, the error it recorded (the "Delete failed" it shows). */
+export interface OrcaWorktreeState {
+    readonly listed: boolean
+    readonly removalError: string | null
+}
+
+/** `orca worktree show`: whether Orca still lists the worktree at `folder` (a removal it could not finish stays listed, with its removalError). */
+export const worktreeState = async (binary: OrcaBinary, folder: string, cwd: string): Promise<OrcaWorktreeState> =>
+    callOrcaArgv(binary, orcaToolArgv("worktree", "show", { worktree: `path:${folder.replaceAll("\\", "/")}` }), "orca worktree show", worktreeShowSchema, cwd, ORCA_TIMEOUT_MS).then(
+        (shown) => ({ listed: true, removalError: shown.worktree?.removalError ?? null }),
+        (error: unknown) => {
+            if (error instanceof OrcaFailure && error.effect === "none" && error.orcaCode === "selector_not_found") return { listed: false, removalError: null }
+            throw error
+        },
+    )
 
 /** `orca worktree rm --force`: removes a worktree from Orca's metadata and git together (archive hooks skipped). */
 export const worktreeRemove = async (binary: OrcaBinary, worktree: string, cwd: string): Promise<void> => {

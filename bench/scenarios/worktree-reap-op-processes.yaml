@@ -1,0 +1,108 @@
+schema: starci/scenario@1
+id: worktree-reap-op-processes
+group: lifecycle
+title: "removing an Op worktree ends the processes working in it, drops Orca's failed record, and never touches a process outside it"
+inject: >-
+  a process left behind by a seat (no Orca terminal, no record, its working folder inside an inline task's Op worktree, as an
+  orphaned `python3 -` a seat's agent left), Orca still listing the worktree as a removal that failed, and a second process of the
+  same image working elsewhere, when the task is cancelled
+expect: >-
+  task cancel closes the worktree's terminals with Orca's forced close, has Orca forget the worktree, ends the leftover process
+  and sees it gone, removes the folder, records the reap, and leaves the other process running
+pass:
+  - the cancel succeeds and the Op worktree is gone right after it
+  - the leftover process is ended and recorded as reaped by its working folder
+  - Orca's forced close of the workspace's terminals and its worktree removal were asked, and Orca no longer lists the worktree
+  - the process working elsewhere still answers
+  - no busy removal is recorded
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: docs/base.md
+      content: "base\n"
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: base"]
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: reap
+        goal: bench workflow reap
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start makes the inline task's Op worktree
+    starci: [workflow, start, reap]
+    save:
+      a: data.nodes.0.task.id
+  - name: a process a seat left behind works in the Op worktree
+    serve:
+      stub: hold
+      cwd: ${project}/worktrees/reap.ops/${a}
+      as: stray
+  - name: a process of the same image works elsewhere
+    serve:
+      stub: telegram
+      as: elsewhere
+  - name: Orca still lists the worktree as a removal that failed
+    orca:
+      set:
+        removalErrors:
+          ${project}/worktrees/reap.ops/${a}: "the folder is open in another program"
+  - name: the cancel reaps the worktree and removes it
+    starci: [task, cancel, "${a}", --reason, bench]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${a}'"
+        equals: [cancelled]
+  - assert:
+      exists:
+        path: ${project}/worktrees/reap.ops/${a}
+        present: false
+  - name: the leftover process was ended, found by its working folder
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'worktree-reaped' AND data_json LIKE '%\"pid\":${stray.token},%\"why\":\"cwd\"%'"
+        equals: [1]
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          worktree: "reap\\.ops"
+        min: 1
+  - assert:
+      orcaCalls:
+        command: worktree rm
+        match:
+          worktree: "reap\\.ops"
+        min: 1
+  - name: Orca no longer lists the worktree
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed' AND subject = '${a}' AND json_extract(data_json, '$.removal') LIKE '%Orca''s record dropped%'"
+        equals: [1]
+  - name: the process working elsewhere still answers
+    http:
+      method: GET
+      url: "${elsewhere.url}/__sent"
+      expect:
+        status: 200
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'worktree-remove-busy'"
+        equals: [0]

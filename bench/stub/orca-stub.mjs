@@ -282,8 +282,13 @@ const defaults = (command, flags, state) => {
             return { ok: true, result: {} }
         case "repo add":
             return { ok: true, result: {} }
-        case "worktree show":
-            return { ok: true, result: { worktree: { path: String(flags.worktree ?? "").replace(/^path:/, ""), parentWorktreeId: state.worktreeParents?.[String(flags.worktree)] ?? null } } }
+        case "worktree show": {
+            // Orca lists a worktree while its folder is there, and one whose removal failed (its removalError) after the folder went.
+            const path = String(flags.worktree ?? "").replace(/^path:/, "")
+            const removalError = Object.entries(state.removalErrors ?? {}).find(([folder]) => sameFolder(folder, path))?.[1] ?? null
+            if (!existsSync(path) && removalError === null) return refuse("selector_not_found", "selector_not_found")
+            return { ok: true, result: { worktree: { path, parentWorktreeId: state.worktreeParents?.[String(flags.worktree)] ?? null, removalError } } }
+        }
         case "worktree list": {
             // Orca lists every git worktree of the repository, each with the parent its lineage names (null at top level).
             const repo = String(flags.repo ?? "").replace(/^path:/, "")
@@ -302,10 +307,21 @@ const defaults = (command, flags, state) => {
         case "project setup-delete":
             state.setups = (state.setups ?? []).filter((setup) => setup.id !== flags.setup)
             return { ok: true, result: { deleted: flags.setup } }
-        case "worktree rm":
-            // The stub keeps no checkout: it forgets the lineage and leaves the folder, which the harness then removes through git.
+        case "worktree rm": {
+            // As Orca does, it removes the checkout through git; a folder something holds stays listed with its removalError (the
+            // "Delete failed" Orca shows), which a later rm of the gone folder drops.
+            const path = String(flags.worktree ?? "").replace(/^path:/, "")
             if (state.worktreeParents !== undefined) delete state.worktreeParents[String(flags.worktree)]
-            return { ok: true, result: { removed: true } }
+            state.removalErrors = Object.fromEntries(Object.entries(state.removalErrors ?? {}).filter(([folder]) => !sameFolder(folder, path)))
+            if (existsSync(path)) {
+                try {
+                    execFileSync("git", ["worktree", "remove", "--force", path], { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
+                } catch (error) {
+                    state.removalErrors[path] = `${path} is open in another program: ${String(error.stderr ?? error.message).trim().split("\n")[0]}`
+                }
+            }
+            return { ok: true, result: { removed: true, removing: true } }
+        }
         case "worktree set":
             // Orca's worktree lineage: the parent and display name a worktree is listed under.
             state.worktreeParents = { ...(state.worktreeParents ?? {}), [String(flags.worktree)]: flags["parent-worktree"] ?? null }

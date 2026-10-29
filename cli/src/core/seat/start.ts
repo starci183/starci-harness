@@ -41,6 +41,7 @@ import { callerTerminal, ensureKernel, launchableKernel, mayActAs, opTitle, work
 import { CONSUMER_FENCED_OUTCOME } from "../../harness/budget.js"
 import { beginWork } from "../../harness/baseline.js"
 import { ensureOpWorktree, opWorktreeOf, opWorktreePlace, refreshOpInstall } from "../../harness/land.js"
+import { recordSeatProcesses } from "../../harness/reap.js"
 import type { KernelLaunch } from "../../harness/kernel.js"
 import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, noteTab, openSeat, recordSeat, recordSeatLaunch, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -231,6 +232,9 @@ const launch = async (db: DatabaseSync, binary: OrcaBinary, seat: SeatRow, given
     }
     try {
         const ran = await startWorker(db, binary, seat, record, runId, root, cwd)
+        // Orca names no pid of a terminal it starts, so the seat's shell and agent are recorded by the folder they work in, now,
+        // before either can move: the Op worktree's removal ends them however far they wander (harness/reap.ts).
+        await recordSeatProcesses(ran.record.start.worktree.replace(/^path:/, ""), ran.started.terminal).catch(() => 0)
         return { kind: "ready", record: ran.record, runId, started: ran.started }
     } catch (error: unknown) {
         record = launchRecordSchema.safeParse(getSeat(db, seat.id).launch).data ?? record

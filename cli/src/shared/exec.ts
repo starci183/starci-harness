@@ -38,6 +38,33 @@ export interface RunOptions {
     readonly onSpawn?: (pid: number) => void
 }
 
+/** One process this CLI started: its pid, the folder it was started in, and its argv. */
+export interface Spawned {
+    readonly pid: number
+    readonly cwd: string
+    readonly tool: string
+    readonly args: readonly string[]
+}
+
+let spawnObserver: ((spawned: Spawned) => void) | undefined
+
+/**
+ * Sets the one observer told of every process this module starts (a run, a detached program, a served one), so the harness can
+ * record what it started in a worktree it later removes (harness/reap.ts). An observer that throws never fails the run.
+ */
+export const observeSpawns = (observer: ((spawned: Spawned) => void) | undefined): void => {
+    spawnObserver = observer
+}
+
+const told = (pid: number | undefined, cwd: string, tool: string, args: readonly string[]): void => {
+    if (pid === undefined || spawnObserver === undefined) return
+    try {
+        spawnObserver({ pid, cwd, tool, args })
+    } catch {
+        // Recording what was started is bookkeeping; the run goes on without it.
+    }
+}
+
 interface Finished extends ToolRun {
     /** Why the process never started (ENOENT, EINVAL, EACCES ...), or undefined when it ran. */
     readonly notStarted: string | undefined
@@ -154,6 +181,7 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
         if (child.pid !== undefined) {
             if (options.priority !== undefined) lowerPriority(child.pid, options.priority)
             options.onSpawn?.(child.pid)
+            told(child.pid, cwd, tool, args)
         }
         child.stdout.on("data", stdout.push)
         child.stderr.on("data", stderr.push)
@@ -310,6 +338,7 @@ export const startDetached = (argv: readonly string[], cwd: string, env: NodeJS.
             refuse(new ToolNotStarted(tool, typeof code === "string" ? code : error.message))
         })
         child.once("spawn", () => {
+            told(child.pid, cwd, tool, args)
             child.unref()
             settle(child.pid ?? 0)
         })
@@ -329,6 +358,7 @@ export const startServing = (tool: string, args: readonly string[], cwd: string,
     new Promise((settle, refuse) => {
         const env = options.env === undefined ? process.env : { ...process.env, ...options.env }
         const child = spawn(tool, [...args], { cwd, env, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] })
+        told(child.pid, cwd, tool, args)
         const output = collector()
         let seen = ""
         let waiting = true

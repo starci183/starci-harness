@@ -4,7 +4,8 @@ import { gb, heavySlots, heldWhy, hostLoad, loadHeavyRules, runningHeavyKinds, s
 import type { HeavyKind, HeavyRules, HeavySlot, HostLoad, SeatHold, Starvation } from "../../harness/heavy.js"
 import { memoryHolders } from "../../harness/host-holders.js"
 import type { Holders } from "../../harness/host-holders.js"
-import { stateBase } from "../../harness/ledger.js"
+import { openExistingLedger, stateBase } from "../../harness/ledger.js"
+import { openBusyRecords } from "../../harness/worktree-busy.js"
 import { registeredRepositories } from "../../harness/project-workers.js"
 import { captureTool } from "../../shared/exec.js"
 import { formatTable } from "../../shared/output.js"
@@ -32,7 +33,34 @@ interface LoadData {
     readonly holders: Holders
     /** On Windows, the CPU Defender's real-time scan burns and, past heavy.scannerCpuPercent, the owner's exclusion command. */
     readonly scanner: Scanner | null
+    /** The harness worktrees left held after their reap (harness/worktree-busy.ts), each with who holds it and when gc retries. */
+    readonly heldWorktrees: readonly HeldWorktree[]
 }
+
+/** One worktree whose removal stays busy: its repository, folder, attempt, next retry and holder. */
+interface HeldWorktree {
+    readonly repo: string
+    readonly path: string
+    readonly attempt: number
+    readonly nextAt: string
+    readonly holders: string
+}
+
+/** The open busy records of every registered project's ledger; a ledger that cannot be opened is skipped. */
+const heldWorktrees = (): HeldWorktree[] =>
+    registeredRepositories().flatMap((repo) => {
+        try {
+            const db = openExistingLedger(repo)
+            if (db === undefined) return []
+            try {
+                return openBusyRecords(db).map((record) => ({ repo, path: record.path, attempt: record.attempt, nextAt: record.nextAt, holders: record.holders === "" ? record.detail : record.holders }))
+            } finally {
+                db.close()
+            }
+        } catch {
+            return []
+        }
+    })
 
 /**
  * Windows Defender's real-time scan as `host load` reads it: the CPU its engine (MsMpEng) burns, in percent of one core (300 is
@@ -108,7 +136,7 @@ const residentMb = async (pids: readonly number[]): Promise<Map<number, number>>
  */
 export const hostLoadVerb = defineVerb({
     path: ["host", "load"],
-    summary: "show the host's heavy-command governor: free RAM and CPU, the CPU rule that applied (a foreign load or the harness's own, by the managed share), how many heavy commands they admit, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
+    summary: "show the host's heavy-command governor: free RAM and CPU, the CPU rule that applied (a foreign load or the harness's own, by the managed share), how many heavy commands they admit, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
@@ -133,7 +161,9 @@ export const hostLoadVerb = defineVerb({
         const starved = starvation(rules)
         const scanner = await scannerLoad(rules)
         const holds = seatHolds().map((hold) => ({ ...hold, why: seatHoldWhy(hold) }))
-        const data: LoadData = { load, slots: load.cap, running: rows.filter((row) => row.state === "running"), queue: rows.filter((row) => row.state === "waiting"), seat: seatRoom(rules), seatHolds: holds, starvation: starved, holders, scanner }
+        const held = heldWorktrees()
+        const data: LoadData = { load, slots: load.cap, running: rows.filter((row) => row.state === "running"), queue: rows.filter((row) => row.state === "waiting"), seat: seatRoom(rules), seatHolds: holds, starvation: starved, holders, scanner, heldWorktrees: held }
+        const heldTable = held.length === 0 ? [] : [`held worktrees (${String(held.length)}), retried by worktree gc:`, formatTable([["WORKTREE", "ATTEMPT", "RETRY", "HELD BY"], ...held.map((one) => [one.path, String(one.attempt), one.nextAt, one.holders])])]
         const runningTable = data.running.length === 0 ? [`running (0): none`] : [`running (${String(data.running.length)}):`, formatTable([["KIND", "LABEL", "PID", "CHILD", "RSS MB", "SINCE"], ...data.running.map((row) => [row.kind, row.label, String(row.pid), row.childPid === null ? "-" : String(row.childPid), row.rssMb === null ? "-" : String(row.rssMb), row.at])])]
         const queueTable = data.queue.length === 0 ? [`queue (0): none`] : [`queue (${String(data.queue.length)}):`, formatTable([["KIND", "LABEL", "PID", "WAITED", "WHY"], ...data.queue.map((row) => [row.kind, row.label, String(row.pid), waited(row.waitedSeconds ?? 0), row.why ?? "-"])])]
         const holdTable = holds.length === 0 ? [] : [`seat holds (${String(holds.length)}):`, formatTable([["TASK", "REPO", "WAITED", "WHY"], ...holds.map((hold) => [hold.task, hold.repo, waited(Math.max(0, Math.round((nowMs - Date.parse(hold.since)) / 1000))), hold.why])])]
@@ -150,6 +180,7 @@ export const hostLoadVerb = defineVerb({
             ...runningTable,
             ...queueTable,
             ...holdTable,
+            ...heldTable,
             ...holderLines,
             ...(scanner?.ownerCommand == null
                 ? []
