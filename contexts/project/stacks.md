@@ -88,10 +88,20 @@ image, so any digest-pinned supported reverse proxy serves.
 - **Sealed only.** A secret exists in the tree only as a SOPS envelope `<env>/secrets/<slug>.enc` (R06, R277); the
   back end reads it through `*_FILE` as BE-CONFIG-4 in [code/be/config.md](../code/be/config.md) says. Nothing else
   under `.starcistacks/` is ciphertext.
-- **One recipient.** Every envelope is encrypted with age to the one shared master recipient; the root `.sops.yaml`
-  names only that public recipient. The matching private identity is the shared master identity, kept by the owner at
-  `~/.starci/master.identity` (`%USERPROFILE%\.starci\master.identity` on Windows), outside every repository and
-  backed up by the owner (R253).
+- **One owner identity, found by itself.** Every envelope is encrypted with age to the recipients the app's root
+  `.sops.yaml` names, public keys only. The owner's private identity is `SOPS_AGE_KEY` in the harness's secret.env, outside
+  every repository and backed up by the owner (R253); every `starci app secret` verb finds it with nothing exported or
+  pointed to, taking the first of: SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, the app's git-ignored
+  `.claude/secret.env` (its main checkout's for a worktree), the harness secret.env, the sops `keys.txt`
+  (`localAgeIdentity`, @starci/hfs `secret-init.mjs`). With none it refuses before asking for a value, naming each place.
+  Whoever holds that identity can decrypt every member in the whole git history, so it never leaves the harness secret.env
+  and the app repositories stay private.
+- **One member per provider, set in one write.** A member holds the keys of one provider or service;
+  `starci app secret set <env> <member> <KEY>...` prompts for each key with masked input on a terminal (or reads redirected
+  stdin) and seals them all in one write, so no member is left half filled. Open gaps of ruling `app-secrets-one-standard`,
+  not built yet: the `<member>.enc.yaml` YAML format with byte-exact multi-line values and `--from-file`, a recipient rule per
+  environment (production to the server key and the owner key), per-key declarations in `secrets:` rendered as one mounted
+  `<KEY>_FILE` each, and the `migrate`, `split` and `audit` verbs.
 - **Plaintext never enters the tree.** A decrypted member reaches a process through `*_FILE` from host-local custody
   (the `goesTo` of slot `app.plaintext-env`) or memory, never a file in the checkout, ignored or not. Each
   environment's `.gitignore` still ignores everything under `secrets/` except `*.enc`, so a mistaken decrypt cannot be

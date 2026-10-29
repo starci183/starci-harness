@@ -1,6 +1,6 @@
 {
   "name": "@starci/eslint-grammar-offset-pop",
-  "version": "0.15.16",
+  "version": "0.15.17",
   "description": "Offset Pop Grammar lint: the inherited Common component contract over its own visual family.",
   "keywords": [
     "eslint",
@@ -44,7 +44,7 @@
   "peerDependencies": {
     "eslint": ">=9",
     "typescript": ">=5.9",
-    "@starci/eslint-grammar-core": "0.15.16"
+    "@starci/eslint-grammar-core": "0.15.17"
   },
   "devDependencies": {
     "@starci/eslint-canon-fe": "file:../eslint-canon-fe",

@@ -24,7 +24,7 @@ starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app new service <dir> <name> [--inject <binding>...] [--cwd <dir>]
 starci app new spec <file>.service.ts [--cwd <dir>]
 starci app new image [--cwd <dir>]
-starci app secret list|show|set|gen ... [--cwd <dir>]
+starci app secret init|set|get|unset|rename|remove|materialize|list|verify ... [--cwd <dir>]
 starci app hygiene [--cwd <dir>]
 ```
 
@@ -216,6 +216,20 @@ pass.
 
 Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (not a Git work tree, bad flag, `--fast` with no merge-base). `starci app check` and `starci app lint` never write to the app
 (`starci app lint --fix` lets ESLint and stylelint fix in place).
+
+## Secrets
+
+`starci app secret` keeps an app's sealed members, `.starcistacks/<env>/secrets/<member>.enc`, encrypted to the recipient of
+the app's `.sops.yaml` (the custody law is the harness's PROJECT-STACKS-5). `set <env> <member> <KEY> [KEY ...]` seals every
+named key in one sops write (`runtime/scripts/hfs/secret.mjs`): on a terminal it prompts `<KEY>: ` for each with masked input
+(one `*` per character; a paste, backspace, Enter, Ctrl+C to cancel with nothing written), redirected stdin gives one key its
+whole text or several one `KEY=value` line each (`secret-prompt.mjs`), and `--generate <bytes>` makes a random value per key.
+Re-sealing a member whose every key the set replaces needs no age identity; adding a key to a member does, and the identity is
+found by itself (`localAgeIdentity` of `secret-init.mjs`): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the
+app's git-ignored `.claude/secret.env`, else of its main checkout's when the app is a git worktree, else the `hostIdentity` the
+harness CLI passes (its own secret.env), else the sops `keys.txt`. With none, the verb refuses before asking for a value,
+naming every place it looked and the one line that fixes it; the success line of a set that creates a member names the
+recipient and where this machine holds its identity. No output carries a value except `get --reveal`.
 
 ## Sonar
 

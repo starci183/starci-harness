@@ -41,6 +41,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   the branch seals and `assertKeysHanded` turns a run that still lacks a key the branch holds into `VERIFY_INFRA`, never the
   task's red. A key sealed blank is `CUSTODY_KEY_MISSING` like an empty one. A bench `starci` step takes `stdin` (`input` of
   `shared/exec.ts`). Bench: `wave-verify-live-custody-branch`.
+- **`starci app secret set` works in a terminal and on an existing member.** It prompts for each key with masked input instead of
+  refusing without redirected stdin, takes several keys (`set <env> <member> K1 K2 K3`) sealed in one write, and every `app secret`
+  verb (and `harness/custody.ts`) hands @starci/hfs the harness secret.env's `SOPS_AGE_KEY` (`hostAgeIdentity`,
+  `harness/secret-env.ts`; `SOPS_AGE_KEY` joins `secretKeys` of policy/security.yaml) as its last age identity source, so adding a
+  key to a member no longer fails `identity-not-supplied` when the identity lives there. The `key` and `new-key` operands become one
+  `keys` rest operand; `--from-host` names exactly one key. Needs @starci/hfs 4.11.5: the CLI's requirement moves once npm serves it.
+  Bench: `app-secret-identity-from-harness`.
 ### Added
 
 - `check loosening` bans `tls-unverified`: the `NODE_TLS_REJECT_UNAUTHORIZED` switch set to 0 (assigned in code or a spec, an

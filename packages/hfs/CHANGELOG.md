@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.11.5 - 2026-10-29
+
+- Changed: `starci app secret set <env> <member> <KEY> [KEY ...]` seals every named key in one sops write, so no member is left half filled. On a terminal it prompts `<KEY>: ` for each key with masked input (`runtime/scripts/hfs/secret-prompt.mjs` `promptHidden`: one `*` per character, a paste in one chunk, backspace, Enter; Ctrl+C or end of input cancels with nothing written; an empty value is refused) instead of refusing "set reads a value from redirected stdin"; redirected stdin gives one key its whole text (a multi-line value kept) or several one `KEY=value` line each, every key once and no other; `--generate <bytes>` makes one value per key. `secretMain` is async and takes `prompt` and `hostIdentity` ports, which `main` passes through.
+- Changed: the age identity is found by itself (`localAgeIdentity`, `secret-init.mjs`): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the app's `.claude/secret.env`, else of its main checkout's when the app is a git worktree (`mainCheckout`, `secret-files.mjs`), else the `hostIdentity` the harness CLI passes (its secret.env's SOPS_AGE_KEY), else the sops `keys.txt`. `defaultSops` takes that port and exposes `identity` and `requireIdentity`; a `set` that adds to an existing member, and any decrypt, with no identity is refused before a value is asked for, naming the recipient, every place looked and the one-line fix. A decrypt whose identity is not the member's recipient is refused naming where the identity came from and the recipient, instead of `SOPS selected identity [recipient-mismatch]`. Re-sealing a member whose every key the set replaces decrypts nothing (`secret-store.mjs`). The success line of a set that creates a member names its recipient and where this machine holds the identity, or the fix.
+- Changed: the bundled canon pins name hfs 4.11.5, eslint-canon-be 3.8.4, eslint-canon-fe 9.5.6 and the Grammar family 0.15.17.
+- Spec: `src/hfs-secret-set.spec.mjs` (fake values only; a child process with a forced-TTY stdin drives the real prompt).
+
 ## 4.11.4 - 2026-10-29
 
 - Changed: the bundled canon pins name @starci/test-world 1.3.0 (HTTPS fakes over the run's ephemeral fake CA), hfs 4.11.4, eslint-canon-be 3.8.3, eslint-canon-fe 9.5.5 and the Grammar family 0.15.16. No rule changed.

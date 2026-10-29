@@ -318,7 +318,7 @@ the worker seeing only key names), reads the keys the suite's world declares fro
 custody, the sealed members of `.starcistacks/<env>/secrets` (`dev`, else the one environment that has secrets) in the
 checkout the run executes (a wave's branch head, a verify's candidate, the worker's worktree), so a member sealed on a
 workflow's branch is found before it reaches main, opened with the @starci/hfs code `app secret materialize` decrypts with
-and the age identity of the app's main checkout, and
+and the age identity found from the app's main checkout in the order of PROJECT-STACKS-5, and
 hands them to that test run's child environment alone (`harness/custody.ts`): never a file, an argument or a log, and
 every handed value is scrubbed from the run's output before it becomes evidence. The keys are read from each
 `useSandbox(...)` call's options with the TypeScript compiler (the app's, else the CLI's): a literal array of strings, or
@@ -690,7 +690,11 @@ other `SECRET_KEY_UNLISTED` before it opens the file; no message, envelope or ev
 for several apps (`OPENROUTER_API_KEY`) reaches each app's sealed custody through `app secret set <env> <member> <KEY>
 --from-host <HOST_KEY>` (`core/app/secret.ts`): the CLI reads HOST_KEY through the loader and hands the value to @starci/hfs as
 the stdin `set` reads, so no shell, argument, output, error or evidence carries it; an unlisted key is `SECRET_KEY_UNLISTED`,
-a listed one the host lacks `HOST_SECRET_MISSING`. Full and lite apps keep the same custody (`.starcistacks/<env>/secrets/<member>.enc`
+a listed one the host lacks `HOST_SECRET_MISSING`, and `--from-host` names exactly one key. Without it, `app secret set <env>
+<member> <KEY>...` prompts on a terminal for each key with masked input and reads redirected stdin otherwise (the whole of it
+for one key, one `KEY=value` line per key for several), sealing every key in one write. `SOPS_AGE_KEY` is one of
+`secretKeys`: every `app secret` verb and `harness/custody.ts` hand @starci/hfs the loader's reader of it
+(`hostAgeIdentity`), read only when neither the environment nor the app's own `.claude/secret.env` selects an identity. Full and lite apps keep the same custody (`.starcistacks/<env>/secrets/<member>.enc`
 under the app's `.sops.yaml`), so the verb serves both. Another shared key is one line in `secretKeys`, its entry in
 secret.env.example and one `set --from-host` per app.
 
