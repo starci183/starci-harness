@@ -1,5 +1,7 @@
 // secret.mjs - app secret init|set|get|unset|rename|remove|materialize|list|verify: sealed custody and private KEY files.
 // SOPS plaintext travels on stdin and stays in memory; normal CLI output contains names and local file paths only.
+// set seals one or more keys in one sops write: typed at a masked prompt on a terminal, KEY=value lines on redirected stdin
+// (the whole stdin for one key), or --generate (scripts/hfs/secret-prompt.mjs).
 // Every verb runs at the app root or --cwd. Exit 0 done, 2 refusal; --reveal is the only plaintext stdout path.
 // unset, rename and remove edit one sealed member and are dry runs until --execute (scripts/hfs/secret-edit.mjs).
 // verify decrypts each member in memory and names only keys and violated shapes, never a value (R249).
@@ -8,13 +10,14 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { invocationDir } from "../lib/roots.mjs";
 import { initializeSecrets } from "./secret-init.mjs";
-import { validateKey } from "./secret-document.mjs";
+import { envelopeOf, validateKey } from "./secret-document.mjs";
 import { defaultSops } from "./secret-sops.mjs";
 import { fileOf, secretsDirectory, writeSecret } from "./secret-store.mjs";
 import { getSecret, listSecrets, materializeSecrets } from "./secret-output.mjs";
 import { SecretError, publicStorage, secretErrorMessage } from "./secret-errors.mjs";
 import { editSecret, validateEditNames } from "./secret-edit.mjs";
 import { verifySecrets } from "./rules/env-value-shape.mjs";
+import { setValues } from "./secret-prompt.mjs";
 
 export { envelopeOf, formatOf, plaintextOf } from "./secret-document.mjs";
 export { setSecretValues } from "./secret-store.mjs";
@@ -48,17 +51,9 @@ function parse(argv) {
   return opts;
 }
 
-const readStdin = () => {
-  if (process.stdin.isTTY)
-    throw new SecretError(
-      "set reads a value from redirected stdin; use --generate <bytes> to generate one",
-    );
-  return fs.readFileSync(0, "utf8");
-};
-
 function usageArguments(verb) {
   if (verb === "init") return "";
-  if (verb === "set") return "<env> <slug> <KEY> [--generate <bytes>]";
+  if (verb === "set") return "<env> <slug> <KEY> [KEY ...] [--generate <bytes>]";
   if (verb === "get") return "<env> <slug> [KEY] --to-file [--reveal]";
   if (verb === "unset") return "<env> <slug> <KEY> [--execute]";
   if (verb === "rename") return "<env> <slug> <OLD> <NEW> [--execute]";
@@ -90,7 +85,7 @@ function optionsFor(verb, opts) {
     list: [1, 1],
     materialize: [1, 1],
     verify: [1, 1],
-    set: [3, 3],
+    set: [3, Infinity],
     get: [2, 3],
     unset: [3, 3],
     rename: [4, 4],
@@ -105,40 +100,50 @@ function optionsFor(verb, opts) {
   outputOptionsFor(verb, opts);
   editOptionsFor(verb, opts);
   if (EDIT_VERBS.has(verb)) validateEditNames(verb, opts.positional.slice(2));
-  if (verb === "set") validateKey(opts.positional[2]);
+  if (verb === "set") {
+    const keys = opts.positional.slice(2);
+    for (const key of keys) validateKey(key);
+    const twice = keys.find((key, index) => keys.indexOf(key) !== index);
+    if (twice) throw new SecretError(`set names ${twice} twice`);
+  }
   if (verb === "get" && opts.positional[2] !== undefined)
     validateKey(opts.positional[2]);
 }
 
-function secretValue(opts, stdin, random) {
-  let value;
-  if (opts.generate !== undefined) {
-    const bytes = Number(opts.generate);
-    if (!Number.isInteger(bytes) || bytes < 1 || bytes > 1024)
-      throw new SecretError(
-        "--generate must be a whole byte count from 1 to 1024",
-      );
-    value = random(bytes).toString("base64url");
-  } else {
-    if (typeof stdin !== "function" && stdin?.isTTY)
-      throw new SecretError("set requires redirected stdin");
-    value = String(
-      typeof stdin === "function"
-        ? stdin()
-        : fs.readFileSync(stdin?.fd ?? 0, "utf8"),
-    ).replace(/\r?\n$/u, "");
-  }
-  if (!value) throw new SecretError("the value on stdin is empty");
-  return value;
+/** The app root of a sealed member: `<root>/.starcistacks/<env>/secrets/<slug>.enc`. */
+const appRootOf = (file) => path.resolve(path.dirname(file), "..", "..", "..");
+
+/**
+ * The success line of set: the member and its keys and, for a member this set created, the age identity a later set needs to
+ * open it (the recipient it is sealed to, and where this machine holds that identity, or the fix when it holds none). Names
+ * and paths only.
+ */
+function sealedLine(environment, slug, keys, file, created, seam) {
+  const head = `sealed ${environment}/${slug} (${keys.join(", ")})`;
+  if (!created) return `${head}\n`;
+  let recipients = [];
+  try { recipients = envelopeOf(fs.readFileSync(file, "utf8")).recipients; }
+  catch { recipients = []; }
+  const of = recipients.length ? ` of ${recipients.join(", ")}` : "";
+  let held = "";
+  if (seam.identity?.source) held = `; this machine holds it in ${seam.identity.source}`;
+  else if (seam.identity)
+    held = `; this machine holds none: add SOPS_AGE_KEY to ${path.join(appRootOf(file), ".claude", "secret.env")} before the next set`;
+  return `${head}; a new member: adding keys to it later needs the age identity${of}${held}\n`;
 }
 
-/** All app secrets verbs; stdin, sops, random and tool ports permit isolated custody specs. */
-export function secretMain(
+/**
+ * All app secrets verbs; stdin, prompt, sops, random and tool ports permit isolated custody specs. `hostIdentity`
+ * (`{ label, read }`) is the harness CLI's secret.env SOPS_AGE_KEY, the last place before keys.txt the age identity is looked for.
+ */
+export async function secretMain(
   argv,
   {
     stdout = (s) => process.stdout.write(s),
     stderr = (s) => process.stderr.write(s),
-    stdin = readStdin,
+    stdin,
+    prompt,
+    hostIdentity = null,
     sops = null,
     random = randomBytes,
     env = process.env,
@@ -151,7 +156,7 @@ export function secretMain(
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init | set <env> <slug> <KEY> | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env>",
+        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env>",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);
@@ -163,7 +168,7 @@ export function secretMain(
     const [environment, slug, key] = opts.positional;
     const directory = secretsDirectory(repoRoot, environment);
     if (verb === "list") return listSecrets(directory, stdout);
-    const open = () => sops ?? defaultSops(env, repoRoot, platform, tools);
+    const open = () => sops ?? defaultSops(env, repoRoot, platform, tools, hostIdentity);
     if (EDIT_VERBS.has(verb))
       return editSecret(verb, {
         directory, environment, slug, names: opts.positional.slice(2),
@@ -177,9 +182,12 @@ export function secretMain(
       return materializeSecrets(directory, seam, output);
     const file = fileOf(directory, slug);
     if (verb === "get") return getSecret(file, key, seam, opts, output, stderr);
-    const value = secretValue(opts, stdin, random);
-    writeSecret({ file, values: { [key]: value }, age: [], sops: seam });
-    stdout(`sealed ${environment}/${slug} (${key})\n`);
+    const keys = opts.positional.slice(2);
+    const created = !fs.existsSync(file);
+    if (!created) seam.requireIdentity?.(file);
+    const values = await setValues(keys, { generate: opts.generate, stdin, prompt, random });
+    writeSecret({ file, values, age: [], sops: seam });
+    stdout(sealedLine(environment, slug, keys, file, created, seam));
     return 0;
   } catch (error) {
     const message = secretErrorMessage(error);

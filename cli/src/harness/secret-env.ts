@@ -70,3 +70,16 @@ export const lookupSecret = (key: string): Secret | undefined => {
 
 /** Where the owner sets `key`, for a refusal or a status line. */
 export const secretHome = (key: string): string => `set ${key} in secret.env (see secret.env.example) or in the environment`
+
+/** The host key that holds the age identity apps' sealed members open with. */
+const AGE_IDENTITY_KEY = "SOPS_AGE_KEY"
+
+/**
+ * The harness secret.env's SOPS_AGE_KEY as @starci/hfs's last age identity source (after the environment and the app's own
+ * `.claude/secret.env`): its label is the file's path, named in a refusal or a success line, and its value is read only when
+ * nothing before it selects an identity, and handed to the sops child alone.
+ */
+export const hostAgeIdentity = (): { readonly label: string; readonly read: () => string | undefined } => ({
+    label: secretEnvPath(),
+    read: () => lookupSecret(AGE_IDENTITY_KEY)?.value,
+})

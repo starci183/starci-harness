@@ -122,3 +122,19 @@ export function writeSecretFile(directory, key, value) {
   }
   return file;
 }
+
+/**
+ * The main checkout of a git worktree (its `.git` file names `<main>/.git/worktrees/<name>`), else `root` itself: a worktree
+ * keeps no git-ignored `.claude/secret.env` of its own, so the app's age identity is read from the checkout it was cut from.
+ */
+export function mainCheckout(root) {
+  const dotGit = path.join(root, ".git");
+  const stat = fs.lstatSync(dotGit, { throwIfNoEntry: false });
+  if (!stat?.isFile()) return root;
+  const gitdir = /^gitdir:\s*(.+)$/mu
+    .exec(fs.readFileSync(dotGit, "utf8"))?.[1]
+    ?.trim()
+    .replaceAll("\\", "/");
+  const main = gitdir && /^(.*)\/\.git\/worktrees\/[^/]+$/u.exec(gitdir)?.[1];
+  return main && fs.existsSync(main) ? path.resolve(main) : root;
+}

@@ -7,6 +7,7 @@ import { evidenceTail } from "../shared/output.js"
 import { VERIFY_INFRA } from "./clean-verify.js"
 import { inTransaction } from "./ledger.js"
 import { loadTypeScript } from "./shapes-parse.js"
+import { hostAgeIdentity } from "./secret-env.js"
 import { recordEvent, setStatus } from "./tasks.js"
 import type { TaskStatus } from "./tasks.js"
 import { openTicket } from "./tickets.js"
@@ -303,7 +304,7 @@ export const custodyFor = async (liveSpecs: readonly string[], checkout: string)
     for (const member of new Set(holder.values())) {
         let map: Readonly<Record<string, string>>
         try {
-            map = store.readMap(join(directory, member), defaultSops(process.env, app))
+            map = store.readMap(join(directory, member), defaultSops(process.env, app, process.platform, undefined, hostAgeIdentity()))
         } catch (error: unknown) {
             // The message of a sops or identity failure names the file and the cause, never a value.
             throw new Refusal(CUSTODY_UNREADABLE, `custody of ${environment} holds ${[...holder].filter(([, file]) => file === member).map(([key]) => key).join(", ")} in ${member} but it cannot be opened here: ${error instanceof Error ? (error.message.split("\n")[0] ?? error.message) : "sops refused"}`)

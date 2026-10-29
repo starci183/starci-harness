@@ -460,11 +460,12 @@ function errorMessage(error) {
 /**
  * `harness` ({ version }) is the CLI that runs this package in-process: its version is the starci-harness an app is judged and
  * scaffolded at (runtime/scripts/hfs/canon-pins.mjs). `run` injects the database runner, `runLinter` the linter transport, `checkApp`
- * the HFS check and `stackIo` Swarm tools; production defaults execute every check.
+ * the HFS check and `stackIo` Swarm tools; production defaults execute every check. `hostIdentity` ({ label, read }) is the
+ * harness CLI's own secret.env SOPS_AGE_KEY, which `secret` reads last for the age identity; `prompt` replaces its masked prompt.
  */
 export async function main(argv, {
   cwd: baseCwd = process.cwd(), harness, stdout = (s) => process.stdout.write(s), stderr = (s) => process.stderr.write(s), presets, prettier, lock, run, stackMain,
-  env = process.env, stdin, sops, tools, platform, stackIo, runLinter, checkApp,
+  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp,
 } = {}) {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
@@ -472,7 +473,7 @@ export async function main(argv, {
     const out = global.quiet ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb)) { stderr(USAGE); return 2; }
-    return await dispatchMain(verb, rest, { cwd: global.cwd, harness, edition: global.edition, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, sops, tools, platform, stackIo, runLinter, checkApp });
+    return await dispatchMain(verb, rest, { cwd: global.cwd, harness, edition: global.edition, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp });
   } catch (error) {
     stderr(errorMessage(error));
     return 2;

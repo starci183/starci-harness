@@ -12,6 +12,7 @@ import { generateAppIdentity } from "./secret-bootstrap-crypto.mjs";
 import { materializeDeclaredPlaceholders } from "./sealed-members.mjs";
 import { defaultSops } from "./secret-sops.mjs";
 import {
+  mainCheckout,
   outsideRepository,
   privateDirectory,
   secretRoots,
@@ -63,22 +64,46 @@ export function initializeAppIdentity(repoRoot, { write, tools } = {}) {
   }
 }
 
-/** Load host-local age selections below the explicit environment, without copying any other credentials. */
-export function ageIdentityEnv(repoRoot, env, tools) {
+/**
+ * The app's host-local age selection: SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the explicit environment, else of the git-ignored
+ * `.claude/secret.env` of the app root, else of its main checkout's when the root is a git worktree, else the SOPS_AGE_KEY the
+ * `host` port reads (the harness CLI's secret.env: `{ label, read }`, read only when nothing before it selects one). `env` is the explicit
+ * environment with that selection added below it (no other credential is copied); `source` names where it came from, or is
+ * null; `looked` lists every secret.env read, for a refusal that names them. No value ever leaves in `source` or `looked`.
+ */
+export function localAgeIdentity(repoRoot, env, tools, host = null) {
+  const own = Object.keys(env).filter((name) => AGE_IDENTITY_NAME.test(name));
+  if (own.length) return { env: { ...env }, source: `the environment (${own.join(", ")})`, looked: [] };
   const load = tools?.secretEnv ?? secretEnv;
-  let resolved = {};
-  try {
-    resolved = load(path.join(repoRoot, ".claude"), env) ?? {};
-  } catch {
-    return { ...env };
+  const roots = [...new Set([repoRoot, mainCheckout(repoRoot)].map((root) => path.resolve(root)))];
+  const looked = [];
+  for (const root of roots) {
+    const file = path.join(root, ".claude", "secret.env");
+    looked.push(file);
+    let resolved;
+    try {
+      resolved = load(path.join(root, ".claude"), env) ?? {};
+    } catch {
+      continue;
+    }
+    const local = Object.fromEntries(
+      Object.entries(resolved).filter(([name]) => AGE_IDENTITY_NAME.test(name)),
+    );
+    if (Object.keys(local).length)
+      return { env: { ...env, ...local }, source: `${file} (${Object.keys(local).join(", ")})`, looked };
   }
-  const own = new Set(Object.keys(env).map((name) => name.toUpperCase()));
-  const local = Object.fromEntries(
-    Object.entries(resolved).filter(
-      ([name]) => AGE_IDENTITY_NAME.test(name) && !own.has(name.toUpperCase()),
-    ),
-  );
-  return { ...env, ...local };
+  if (host) {
+    looked.push(host.label);
+    const value = host.read();
+    if (typeof value === "string" && value.trim())
+      return { env: { ...env, SOPS_AGE_KEY: value.trim() }, source: `${host.label} (SOPS_AGE_KEY)`, looked };
+  }
+  return { env: { ...env }, source: null, looked };
+}
+
+/** Load host-local age selections below the explicit environment (localAgeIdentity), without copying any other credentials. */
+export function ageIdentityEnv(repoRoot, env, tools) {
+  return localAgeIdentity(repoRoot, env, tools).env;
 }
 
 /** Select the first matching public age rule, including for SOPS's isolated CI identity path. */

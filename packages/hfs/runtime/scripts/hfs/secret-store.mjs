@@ -53,13 +53,17 @@ export const fileOf = (directory, slug) => {
   return path.join(directory, `${slug}.enc`);
 };
 
-/** Build and validate a replacement envelope without publishing it. */
+/**
+ * Build and validate a replacement envelope without publishing it. An existing member is decrypted only when it holds a key
+ * `values` does not replace; a member whose every key is replaced (the one-key member a `set` re-seals) needs no age identity.
+ */
 function sealSecretMap({ file, values, age, sops }) {
   let map = Object.create(null);
   let recipients = age;
   if (fs.existsSync(file)) {
     const envelope = envelopeOf(fs.readFileSync(file, "utf8"));
-    map = sops.decrypt(file, envelope.format);
+    if (!envelope.keys.every((key) => Object.hasOwn(values, key)))
+      map = sops.decrypt(file, envelope.format);
     if (!age.length) recipients = envelope.recipients;
   }
   validateMap(map);

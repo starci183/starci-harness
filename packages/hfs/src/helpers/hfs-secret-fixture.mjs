@@ -58,10 +58,10 @@ export function app(t, files = {}, environment = "dev") {
   };
 }
 
-export function run(argv, options = {}) {
+export async function run(argv, options = {}) {
   const out = [];
   const err = [];
-  const code = secretMain(argv, {
+  const code = await secretMain(argv, {
     stdout: (s) => out.push(s),
     stderr: (s) => err.push(s),
     ...options,

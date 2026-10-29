@@ -9,9 +9,11 @@ export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "
 
 /**
  * What the CLI hands @starci/hfs besides its version, for the verbs that use it: the caller's role an urgent release record names, and the
- * ticket queue a red release back-fill files its fix ticket into (returns the ticket id).
+ * ticket queue a red release back-fill files its fix ticket into (returns the ticket id), and the harness secret.env's age identity
+ * `app secret` reads last (`hostIdentity`, handed to @starci/hfs as its own io port, never inside `harness`).
  */
 export interface HfsHarness {
+    readonly hostIdentity?: { readonly label: string; readonly read: () => string | undefined }
     readonly role?: string
     readonly openTicket?: (input: { readonly title: string; readonly tail: string; readonly code: string; readonly tag: string; readonly head: string }) => string | null
 }
@@ -101,10 +103,11 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     let stdout = ""
     let stderr = ""
     Object.assign(process.env, hfsLimitsEnv())
-    const harness = { version: packageVersion(), ...extra }
+    const { hostIdentity, ...more } = extra
+    const harness = { version: packageVersion(), ...more }
     const io = context.json
-        ? { cwd: context.cwd, harness, stdin, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
-        : { cwd: context.cwd, harness, stdin, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
+        ? { cwd: context.cwd, harness, stdin, hostIdentity, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
+        : { cwd: context.cwd, harness, stdin, hostIdentity, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
     const { main } = await import("@starci/hfs")
     const exitCode = await main([verb, ...full], io)
     const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr }

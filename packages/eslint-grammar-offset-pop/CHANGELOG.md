@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.17 - 2026-10-29
+
+- Changed: the peer moves to the 0.15.17 cohort (eslint-canon-fe 9.5.6); the bundled canon pins name hfs 4.11.5, eslint-canon-be 3.8.4, eslint-canon-fe 9.5.6 and the Grammar family 0.15.17. No rule changed.
+
 ## 0.15.16 - 2026-10-29
 
 - Changed: the peer moves to the 0.15.16 cohort; the bundled canon pins name @starci/test-world 1.3.0 (HTTPS fakes over the run's ephemeral fake CA), hfs 4.11.4, eslint-canon-be 3.8.3, eslint-canon-fe 9.5.5 and the Grammar family 0.15.16. No rule changed.

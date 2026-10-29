@@ -34,6 +34,7 @@ neverRead:
 secretKeys:
   - TELEGRAM_BOT_TOKEN
   - OPENROUTER_API_KEY
+  - SOPS_AGE_KEY
 exceptions:
   - path: packages/eslint-canon-be/runtime/scripts/hfs/rules/secrets.mjs
     rule: assigned-secret

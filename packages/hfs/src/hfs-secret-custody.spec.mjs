@@ -380,14 +380,14 @@ const keyNeverVisible = (calls, result, keys) => {
   privateAbsent(result, keys);
 };
 
-test("SOPS_AGE_KEY of .claude/secret.env reaches the sops child env only, and wins over keys.txt", (t) => {
+test("SOPS_AGE_KEY of .claude/secret.env reaches the sops child env only, and wins over keys.txt", async (t) => {
   const { root, dir, env } = app(t);
   write(dir, "app.enc", sealedDotenv(["TOKEN"]));
   const keys = secretRoots(env, process.platform).identity;
   fs.mkdirSync(path.dirname(keys), { recursive: true });
   fs.writeFileSync(keys, `${OTHER_KEY}\n`, { mode: 0o600 });
   const calls = [];
-  const result = run(["get", "dev", "app", "TOKEN", "--to-file"], {
+  const result = await run(["get", "dev", "app", "TOKEN", "--to-file"], {
     cwd: root,
     env,
     tools: selectedTools(calls),
@@ -402,12 +402,12 @@ test("SOPS_AGE_KEY of .claude/secret.env reaches the sops child env only, and wi
   keyNeverVisible(calls, result, [PRIVATE_KEY, OTHER_KEY]);
 });
 
-test("an explicit environment SOPS_AGE_KEY is not displaced by secret.env", (t) => {
+test("an explicit environment SOPS_AGE_KEY is not displaced by secret.env", async (t) => {
   const { root, dir, env } = app(t);
   write(dir, "app.enc", sealedDotenv(["TOKEN"]));
   env.SOPS_AGE_KEY = OTHER_KEY;
   const calls = [];
-  const result = run(["get", "dev", "app", "TOKEN", "--to-file"], {
+  const result = await run(["get", "dev", "app", "TOKEN", "--to-file"], {
     cwd: root,
     env,
     tools: selectedTools(calls),
@@ -418,7 +418,7 @@ test("an explicit environment SOPS_AGE_KEY is not displaced by secret.env", (t) 
   keyNeverVisible(calls, result, [PRIVATE_KEY, OTHER_KEY]);
 });
 
-test("the CLI loads .claude/secret.env itself before considering legacy keys.txt", (t) => {
+test("the CLI loads .claude/secret.env itself before considering legacy keys.txt", async (t) => {
   const { root, dir, env } = app(t);
   write(dir, "app.enc", sealedDotenv(["TOKEN"]));
   write(root, ".claude/secret.env", `SOPS_AGE_KEY=${PRIVATE_KEY}\n`);
@@ -428,7 +428,7 @@ test("the CLI loads .claude/secret.env itself before considering legacy keys.txt
   const calls = [];
   const tools = selectedTools(calls);
   delete tools.secretEnv;
-  const result = run(["get", "dev", "app", "TOKEN", "--to-file"], {
+  const result = await run(["get", "dev", "app", "TOKEN", "--to-file"], {
     cwd: root, env, tools,
   });
   assert.equal(result.code, 0, "the real local credential loader resolves the identity");
@@ -439,7 +439,7 @@ test("the CLI loads .claude/secret.env itself before considering legacy keys.txt
   keyNeverVisible(calls, result, [PRIVATE_KEY, OTHER_KEY]);
 });
 
-test("an empty SOPS_AGE_KEY in secret.env refuses instead of falling back to keys.txt", (t) => {
+test("an empty SOPS_AGE_KEY in secret.env refuses instead of falling back to keys.txt", async (t) => {
   const { root, dir, env } = app(t);
   write(dir, "app.enc", sealedDotenv(["TOKEN"]));
   const keys = secretRoots(env, process.platform).identity;
@@ -447,7 +447,7 @@ test("an empty SOPS_AGE_KEY in secret.env refuses instead of falling back to key
   fs.writeFileSync(keys, `${OTHER_KEY}\n`, { mode: 0o600 });
   const calls = [];
   const tools = { ...selectedTools(calls), secretEnv: () => ({ SOPS_AGE_KEY: "" }) };
-  const result = run(["get", "dev", "app", "TOKEN", "--to-file"], {
+  const result = await run(["get", "dev", "app", "TOKEN", "--to-file"], {
     cwd: root,
     env,
     tools,

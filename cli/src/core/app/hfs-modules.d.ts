@@ -8,6 +8,8 @@ declare module "@starci/hfs" {
         readonly harness: { readonly version: string }
         /** Replaces the process stdin of a verb that reads one (`secret set`): the value it returns stays in memory. */
         readonly stdin?: (() => string) | undefined
+        /** The harness secret.env's age identity, the last place `secret` looks: its path, and its reader (read only when needed). */
+        readonly hostIdentity?: { readonly label: string; readonly read: () => string | undefined } | undefined
         readonly stdout: (text: string) => void
         readonly stderr: (text: string) => void
     }
@@ -41,8 +43,8 @@ declare module "@starci/hfs/runtime/scripts/hfs/secret-document.mjs" {
 }
 
 declare module "@starci/hfs/runtime/scripts/hfs/secret-sops.mjs" {
-    /** The sops seam of the app at `repoRoot`, with its age identity resolved as `starci app secret` resolves it. */
-    export function defaultSops(env?: NodeJS.ProcessEnv, repoRoot?: string): unknown
+    /** The sops seam of the app at `repoRoot`, with its age identity resolved as `starci app secret` resolves it (`host` its last source). */
+    export function defaultSops(env?: NodeJS.ProcessEnv, repoRoot?: string, platform?: NodeJS.Platform, tools?: undefined, host?: { readonly label: string; readonly read: () => string | undefined }): unknown
 }
 
 // The slot reader opt-in pattern ownership uses (harness/hfs-patterns.ts): the manifest, and the slot owning one app-relative path.
