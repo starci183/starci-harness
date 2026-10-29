@@ -89,6 +89,12 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   rollback (`packages/hfs/stack/urgent-floor.mjs`). `starci app release gate --backfill <tag>` later runs the full gate on the
   same commit: green promotes the record to a normal L4 with no re-release, red opens a `verify` ticket and changes nothing on
   prod (`packages/hfs/release/gate.mjs`). Owner, 2026-10-29: "deploy gấp không cần ci cd gì hết!!!! cái này là tính năng nha".
+  Its first start (`urgent-first-start`, owner 2026-10-29: "Thêm first-start"): a self-hosted database the release itself starts
+  has nothing to back up and is reachable only inside the stack, so `stack deploy --urgent --first-start --db-service <service>`
+  replaces the backup and test decrypt by a proof that the database is empty (no migration history, no table in public) and runs
+  migrate preview then execute (db/bootstrap.sql first) inside the database's own container, between the stack deploy and
+  converge; the record, the rollback target, the readiness verify and the automatic rollback hold, and a database that is not
+  empty is refused (`STACK_FIRST_START_NOT_EMPTY`) for the plain floor.
 - **One authority for both runners (`authority-both-modes`).** The tiers and the role table of
   [contexts/authority/](../authority/README.md) hold identically under `inline` and `orca`, for Debug's lanes, the
   Supervisor's workers and an app session. Owner, 2026-10-28: "bộ author phải áp dụng dc cho cả inline mode lẫn orca mode".

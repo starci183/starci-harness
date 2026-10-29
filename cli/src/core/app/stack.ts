@@ -39,6 +39,8 @@ const FLAGS = {
     urgent: { kind: "boolean", summary: "deploy: an urgent release (owner ruling 2026-10-29): its pushed urgent record stands in for CI, and the safety floor runs first and is never skipped (fresh verified encrypted backup with a test decrypt, migrate preview then execute, readiness verify, automatic rollback)" },
     "db-url-env": { kind: "string", summary: "deploy --urgent: the environment variable holding the database URL the floor backs up and migrates (default the linked project of the database block)" },
     "backup-out": { kind: "string", summary: "deploy --urgent: the folder outside every repository that receives the floor's encrypted backup (default ~/.starci-backups/<project>)" },
+    "first-start": { kind: "boolean", summary: "deploy --urgent: the first start of a self-hosted database the release itself starts: no backup (the floor proves the database empty), migrate preview then execute inside its container before converge; needs --db-service" },
+    "db-service": { kind: "string", summary: "deploy --urgent --first-start: the stack service the database runs as" },
     ...QUIET_FLAG,
 } as const satisfies Readonly<Record<string, FlagSpec>>
 

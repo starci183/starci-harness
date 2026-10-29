@@ -14,8 +14,8 @@ const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollb
 
 export const ACTIONS = Object.freeze(['prepare', 'doctor', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept']);
 
-const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent']);
-const VALUE = new Set(['--env', '--image', '--source-sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out']);
+const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start']);
+const VALUE = new Set(['--env', '--image', '--source-sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service']);
 const REPEAT = new Set(['--image', '--keep', '--extra-compose', '--project']);
 
 /** Splits argv into { flags, positional }; an unknown flag or a flag without its value is a refusal. */
@@ -72,6 +72,7 @@ const OPTIONS = {
     images: parseImages(flags.image), sourceSha: flags['source-sha'], execute: flags.execute === true,
     out: flags.out ? path.resolve(cwd, flags.out) : null, timeoutSeconds: number(flags, 'timeout'), retrySeconds: number(flags, 'retry'), skipPublic: flags['skip-public'] === true,
     urgent: flags.urgent === true, dbUrlEnv: flags['db-url-env'], backupOut: flags['backup-out'] ? path.resolve(cwd, flags['backup-out']) : undefined,
+    firstStart: flags['first-start'] === true, dbService: flags['db-service'],
   }),
   converge: ({ flags }) => ({ since: flags.since, timeoutSeconds: number(flags, 'timeout') }),
   verify: ({ flags }) => ({ retrySeconds: number(flags, 'retry'), skipPublic: flags['skip-public'] === true, skipInternal: flags['skip-internal'] === true }),
@@ -126,7 +127,8 @@ export async function stackMain(argv, io = {}) {
     if (binding && (!['deploy', 'verify'].includes(action) || flags['ssh-cmd'] || flags['skip-public'] || flags['skip-internal']))
       throw refusal('STACK_USAGE', 'the bound native consumer supports only complete deploy or verify');
     const config = bindStackTarget(ctx, loadDeployConfig({ repoRoot: ctx.cwd, env: flags.env ?? 'production' }), binding);
-    if (action !== 'deploy' && (flags.urgent || flags['db-url-env'] || flags['backup-out'])) throw refusal('STACK_USAGE', '--urgent, --db-url-env and --backup-out belong to deploy');
+    if (action !== 'deploy' && (flags.urgent || flags['db-url-env'] || flags['backup-out'] || flags['first-start'] || flags['db-service'])) throw refusal('STACK_USAGE', '--urgent, --db-url-env, --backup-out, --first-start and --db-service belong to deploy');
+    if (!flags.urgent && (flags['first-start'] || flags['db-service'])) throw refusal('STACK_USAGE', '--first-start and --db-service are the first start of an empty database under the urgent floor: add --urgent');
     if (action === 'deploy' && !flags.urgent && (flags['db-url-env'] || flags['backup-out'])) throw refusal('STACK_USAGE', '--db-url-env and --backup-out choose the urgent floor\'s database and backup folder: add --urgent');
     const options = OPTIONS[action]({ flags, positional, cwd: ctx.cwd });
     const handler = await handlerOf(action, io.importer ?? ((file) => import(file)));

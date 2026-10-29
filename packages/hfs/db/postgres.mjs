@@ -1,6 +1,8 @@
 // postgres.mjs - the one door of the `starci app db` verbs to a self-hosted PostgreSQL: psql and pg_dump through ctx.spawn (never a
 // shell). The database is named by an environment variable holding a postgres connection URL (`--url-env <NAME>`, default
-// DATABASE_URL); the password travels only in the child's PGPASSWORD, never in argv, a file, a line or an error.
+// DATABASE_URL); the password travels only in the child's PGPASSWORD, never in argv, a file, a line or an error. An in-container target
+// (`inContainer`) runs the same tools inside the database's own container through docker exec, the password on stdin.
+import path from 'node:path';
 import { failure, refusal } from '../stack/errors.mjs';
 import { firstLine, tool } from '../stack/context.mjs';
 
@@ -34,10 +36,43 @@ export function dbTarget(ctx, name = DEFAULT_DB_URL_ENV) {
   return { kind: 'url', how: `connection string from ${name}`, urlEnv: name, url: parsed.url, env: parsed.password ? { PGPASSWORD: parsed.password } : {}, secrets: [value, parsed.password].filter(Boolean) };
 }
 
+/** Where a `-f` file of an in-container target is copied before the client reads it. */
+const CONTAINER_DIR = '/tmp/starci-db';
+/** The shell an in-container client runs under: the password comes in on stdin into PGPASSWORD, then the tool runs with its arguments. */
+const STDIN_PASSWORD = 'IFS= read -r PGPASSWORD; export PGPASSWORD; exec "$@"';
+
+/**
+ * `target` reached inside the running container `container` (`docker exec` through this invocation's daemon), for a database only the stack's
+ * network reaches (the first start of a self-hosted database, `stack deploy --urgent --first-start`): the image's own client tools run there
+ * against the URL's database on 127.0.0.1, a `-f` file is copied in first, and the password travels on the exec's stdin, never in argv, a file
+ * or an environment of this machine.
+ */
+export function inContainer(target, container) {
+  const url = new URL(target.url);
+  url.hostname = '127.0.0.1';
+  return { ...target, how: `${target.how}, inside container ${container.slice(0, 12)}`, url: url.toString(), container };
+}
+
+/** Runs `command` of an in-container target: copies each `-f` file in, then execs the tool through the stdin-password shell. */
+function containerRun(ctx, target, command, args) {
+  const short = target.container.slice(0, 12);
+  const step = (what, run) => {
+    if (run.error || run.status !== 0) throw failure('DB_CLI_FAILED', `${what} in container ${short} failed: ${scrub(firstLine(run.stderr), target.secrets)}`);
+  };
+  step('mkdir', tool(ctx, 'docker', ['exec', target.container, 'mkdir', '-p', CONTAINER_DIR]));
+  const inside = args.map((arg, index) => {
+    if (args[index - 1] !== '-f') return arg;
+    const copied = `${CONTAINER_DIR}/${index}-${path.basename(arg)}`;
+    step(`docker cp of ${path.basename(arg)}`, tool(ctx, 'docker', ['cp', arg, `${target.container}:${copied}`]));
+    return copied;
+  });
+  return tool(ctx, 'docker', ['exec', '-i', target.container, 'sh', '-c', STDIN_PASSWORD, 'sh', command, ...inside], { input: `${target.env.PGPASSWORD ?? ''}\n` });
+}
+
 /** Runs a PostgreSQL client tool against `target`; a failure names the first stderr line with every secret scrubbed (or withholds it). */
 export function pgTool(ctx, target, command, args, { withhold = false, code = 'DB_CLI_FAILED' } = {}) {
-  const run = tool(ctx, command, args, { cwd: ctx.cwd, env: { ...ctx.env, ...target.env } });
-  if (run.error) throw failure('DB_CLI_MISSING', `cannot run ${command}; install the PostgreSQL client tools (psql, pg_dump)`);
+  const run = target.container ? containerRun(ctx, target, command, args) : tool(ctx, command, args, { cwd: ctx.cwd, env: { ...ctx.env, ...target.env } });
+  if (run.error) throw failure('DB_CLI_MISSING', target.container ? `cannot run docker exec ${command} in container ${target.container.slice(0, 12)}` : `cannot run ${command}; install the PostgreSQL client tools (psql, pg_dump)`);
   if (run.status !== 0) throw failure(code, withhold ? `${command} failed; output withheld` : `${command} failed: ${scrub(firstLine(run.stderr), target.secrets)}`);
   return { stdout: run.stdout ?? '', text: `${run.stdout ?? ''}${run.stderr ?? ''}` };
 }
