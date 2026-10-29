@@ -123,7 +123,8 @@ for (const edition of ['lite', 'full']) {
       for (const flags of [[], ['--apply']]) {
         const refused = io(root);
         assert.equal(dbRestampMain(['--map', 'restamp.yaml', ...flags], refused.ports), 2, name);
-        assert.match(refused.err.join(''), /migration filenames must carry valid UTC stamps/);
+        assert.ok(refused.err.join('').includes(`migration filenames break their chain rules:\n  ${MIGRATIONS_DIR}/${name}: `), name);
+        assert.match(refused.err.join(''), /\(R213\)\n$/);
         assert.deepEqual(refused.out, []);
         assert.deepEqual(refused.calls, []);
         assert.deepEqual(snapshot(root), before);

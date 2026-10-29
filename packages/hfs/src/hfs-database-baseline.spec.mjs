@@ -194,6 +194,50 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(judge(root, edition, contents, history({ [old]: 'select 1;\n' })), []);
   });
 
+  test(`app db baseline ${edition}: a frozen archive of snake_case names, an impossible time and shared stamps previews; a future active stamp is no breach`, () => {
+    const root = fixture(edition, {
+      [`${archive}/20260929000000_nivo_prototype.sql`]: 'select 1;\n',
+      [`${archive}/20261013100000_first_shared.sql`]: 'select 1;\n',
+      [`${archive}/20261013100000_second-shared.sql`]: 'select 1;\n',
+      [`${archive}/20261014300000_account-sessions-shell-be.sql`]: 'select 1;\n',
+      [`${migrations}/20261020000000_baseline.sql`]: '-- starci:baseline 20261013100000\nselect 1;\n',
+      [`${migrations}/20991231000000_future-step.sql`]: 'select 1;\n',
+    });
+    assert.deepEqual(dbSqlFiles(root, archive).map((entry) => entry.name), ['20260929000000_nivo_prototype.sql', '20261013100000_first_shared.sql', '20261013100000_second-shared.sql', '20261014300000_account-sessions-shell-be.sql']);
+    const preview = io(root);
+    assert.equal(dbBaselineMain(['--stamp', '20991231000600'], preview.ports), 0, preview.err.join(''));
+    assert.ok(preview.out.join('').startsWith(`preview baseline ${migrations}/20991231000600_baseline.sql; archive 2 migrations`));
+    assert.ok(fs.existsSync(path.join(root, `${migrations}/20991231000000_future-step.sql`)));
+    assert.equal(fs.existsSync(path.join(root, `${migrations}/20991231000600_baseline.sql`)), false);
+    const early = io(root);
+    assert.equal(dbBaselineMain(['--stamp', '20991230000000'], early.ports), 2);
+    assert.ok(early.err.join('').includes(`after the archive boundary 20991231000000 (${migrations}/20991231000000_future-step.sql)`));
+  });
+
+  test(`app db baseline ${edition}: every misnamed file is named with the rule it broke, before any database call`, () => {
+    const root = fixture(edition, {
+      [`${migrations}/20260101000000_Bad_Name.sql`]: 'select 1;',
+      [`${migrations}/20260230000000_bad-time.sql`]: 'select 1;',
+      [`${migrations}/20260301000000_fine.sql`]: 'select 1;',
+    });
+    const err = [];
+    const calls = [];
+    assert.equal(dbBaselineMain(['--stamp', replacement], { cwd: root, stdout: () => {}, stderr: (text) => err.push(text), runPostgres: (...args) => calls.push(args) }), 2);
+    assert.equal(err.join(''), [
+      'starci app db baseline: migration filenames break their chain rules:',
+      `  ${migrations}/20260101000000_Bad_Name.sql: name is not <ts14>_<kebab>.sql (R213)`,
+      `  ${migrations}/20260230000000_bad-time.sql: stamp 20260230000000 is no valid UTC time (R213)`,
+    ].join('\n') + '\n');
+    assert.deepEqual(calls, []);
+    const unstamped = fixture(edition, { [old]: 'select 1;', [`${archive}/prototype.sql`]: 'select 1;' });
+    assert.throws(() => dbSqlFiles(unstamped, archive), /db\/migrations\/archive\/prototype\.sql: an archived name starts with its 14-digit stamp/);
+    const twice = fixture(edition, { [old]: 'select 1;', [retired]: 'select 1;' });
+    const twiceErr = [];
+    assert.equal(dbBaselineMain(['--stamp', replacement], { cwd: twice, stdout: () => {}, stderr: (text) => twiceErr.push(text), runPostgres: (...args) => calls.push(args) }), 2);
+    assert.ok(twiceErr.join('').includes(`${old}: also archived as ${retired}; a migration is active or archived, never both (R257)`));
+    assert.deepEqual(calls, []);
+  });
+
   test(`app db baseline ${edition}: invalid cutovers and private CLI failures never mutate files`, () => {
     for (const argv of [['--stamp', first], ['--stamp', '20260230000000'], ['--apply', '--unknown'], ['--apply', '--apply']]) {
       const root = fixture(edition, { [old]: 'select 1;' });
@@ -264,6 +308,7 @@ for (const edition of ['lite', 'full']) {
       const ports = io(root);
       assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], ports.ports), 2);
       assert.ok(ports.calls.every((args) => args[1] === 'query' || args[1] === 'dump'));
+      assert.ok(ports.err.join('').includes(`baseline cannot rebuild the active chain from a schema-only dump:\n  ${old}: baseline cannot reconstruct`));
       assert.ok(fs.existsSync(path.join(root, old)));
       assert.equal(fs.existsSync(path.join(root, baseline)), false);
     }
