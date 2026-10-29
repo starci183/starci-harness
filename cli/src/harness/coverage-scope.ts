@@ -215,14 +215,14 @@ const changedSpecs = async (place: TestPlace, allowPaths: readonly string[], fol
     const changed = (await changedFiles(place.root, place.diffBase ?? "HEAD")).filter((file) => underPaths(file, allowPaths) && SOURCE.test(file)).map((file) => join(place.root, file))
     const inside = (file: string): boolean => existsSync(file) && !relative(folder, file).startsWith("..")
     const beside = changed
-        .filter((file) => !SPEC.test(file) && existsSync(dirname(file)))
+        .filter((file) => !SPEC_FILE.test(file) && existsSync(dirname(file)))
         .flatMap((file) => {
             const stem = `${basename(file).replace(SOURCE, "")}.`
             return readdirSync(dirname(file))
-                .filter((name) => name.startsWith(stem) && SPEC.test(name))
+                .filter((name) => name.startsWith(stem) && SPEC_FILE.test(name))
                 .map((name) => join(dirname(file), name))
         })
-    return [...new Set([...changed.filter((file) => SPEC.test(file)), ...beside])].filter(inside)
+    return [...new Set([...changed.filter((file) => SPEC_FILE.test(file)), ...beside])].filter(inside)
 }
 
 /**
