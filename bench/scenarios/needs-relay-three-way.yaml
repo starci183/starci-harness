@@ -1,0 +1,223 @@
+schema: starci/scenario@1
+id: needs-relay-three-way
+group: needs
+title: "orca: the waiting branch holds a diverged version of the shared file and the resolver landed in two rounds; the relay carries both rounds and merges three-way, cleanly, with no relay node"
+inject: "auth's http key creates platform/http/retry.md and edits the end of platform/http/client.md, then a retry of it edits retry.md again; workflow sub edited the head of client.md on its own branch"
+expect: >-
+  the need's resolving commits are every commit the resolver key landed, both rounds, oldest first; sub's step replays them onto
+  its branch by a three-way merge against each commit's parent, so client.md keeps sub's head and auth's end and retry.md holds
+  auth's second round; no relay node, no need-relay-conflict and no escalation, and the waiter is released by the relay
+pass:
+  - both of http's commits on sub's branch, and sub's own edit kept beside auth's
+  - one need-relayed event with two relayed commits, and no need-relay-conflict
+  - no relay node in sub's graph and no Supervisor escalation
+  - the waiter released by resolved and launched again
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: platform/http/client.md
+      content: "# HttpClient\nbase: shared\ntimeout: none\nretries: none\n"
+  - git: [-C, "${repo}", add, platform/http/client.md]
+  - git: [-C, "${repo}", commit, -q, -m, "bench: the shared client both workflows start from"]
+  - file:
+      path: auth.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: auth
+        goal: sign in, with the shared http client
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: http
+            label: docs
+            summary: give the shared http client its retries
+            allowPaths: [platform/http/client.md, platform/http/retry.md]
+            checks:
+              - preset: files-exist
+                args: {files: [platform/http/client.md, platform/http/retry.md]}
+          - id: login
+            label: docs
+            summary: write the login doc
+            allowPaths: [docs/login.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/login.md]}
+  - file:
+      path: sub.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: sub
+        goal: premium subscription payments
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: pay
+            label: docs
+            summary: write the payment rails doc, which retries through the shared client
+            allowPaths: [docs/pay.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/pay.md, platform/http/retry.md]}
+          - id: own
+            label: docs
+            summary: name the client as sub reads it
+            allowPaths: [platform/http/client.md]
+            checks:
+              - preset: files-exist
+                args: {files: [platform/http/client.md]}
+  - boot:
+      file: ${run}/auth.yaml
+      workflow: auth
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - boot:
+      file: ${run}/sub.yaml
+      workflow: sub
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http'"
+      as: http
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'pay'"
+      as: pay
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'own'"
+      as: own
+  - name: auth's first round creates retry.md and edits the end of the client
+    worker:
+      task: ${http}
+      files:
+        platform/http/client.md: "# HttpClient\nbase: shared\ntimeout: none\nretries: three\n"
+        platform/http/retry.md: "# Retry\nbackoff: fixed\n"
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - file:
+      path: retry.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: auth
+        reason: the backoff grows
+        changes:
+          - op: retry
+            id: http
+  - seat: kernel:auth
+    starci: [workflow, amend, auth, --change, "${run}/retry.yaml"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http' AND status IN ('queued', 'running')"
+      as: http2
+  - name: auth's second round edits retry.md only
+    worker:
+      task: ${http2}
+      files:
+        platform/http/retry.md: "# Retry\nbackoff: exponential\n"
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'http' AND status = 'done' AND settle_commit IS NOT NULL"
+        equals: [2]
+  - name: sub edits the head of the client on its own branch
+    worker:
+      task: ${own}
+      files:
+        platform/http/client.md: "# HttpClient, as sub reads it\nbase: shared\ntimeout: none\nretries: none\n"
+  - worker:
+      task: ${pay}
+      status: blocked
+      output:
+        summary: platform/http has no retry on this branch
+        files: []
+        rulesApplied: []
+        needs: [{key: "capability:platform.http", paths: [platform/http/retry.md]}]
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - file:
+      path: owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-http-by-auth
+        kind: need-owner
+        workflow: auth
+        basedOn: {}
+        need: {key: "capability:platform.http", resolver: [http]}
+        note: auth landed the client already
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/owner.yaml"]
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - name: the need records both rounds of http
+    assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || json_array_length(resolver_json, '$.commits') FROM shared_needs"
+        equals: ["resolved:2"]
+  - name: sub's step relays both rounds by a three-way merge
+    seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${http}"
+        count: 1
+        in: ${worktree.sub}
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${http2}"
+        count: 1
+        in: ${worktree.sub}
+  - name: client.md keeps sub's head and auth's end
+    assert:
+      exists:
+        path: ${worktree.sub}/platform/http/client.md
+        present: true
+        contains: "# HttpClient, as sub reads it"
+  - assert:
+      exists:
+        path: ${worktree.sub}/platform/http/client.md
+        present: true
+        contains: "retries: three"
+  - assert:
+      exists:
+        path: ${worktree.sub}/platform/http/retry.md
+        present: true
+        contains: "backoff: exponential"
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT json_extract(data_json, '$.relay.status') || ':' || json_array_length(data_json, '$.relay.relayed') FROM host_events WHERE kind = 'need-relayed'"
+        equals: ["relayed:2"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM host_events WHERE kind = 'need-relay-conflict'"
+        equals: [0]
+  - name: no relay node and no escalation
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key LIKE 'relay.%'"
+        equals: [0]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'supervisor' AND kind = 'escalation'"
+        equals: [0]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT json_extract(release_json, '$.by') || ':' || json_extract(release_json, '$.relay.status') FROM shared_need_waiters"
+        equals: ["resolved:relayed"]
+  - name: the waiter runs again
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'pay' AND status IN ('queued', 'running')"
+        equals: [1]

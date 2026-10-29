@@ -4,8 +4,10 @@ import { join, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { answerDecision, decisionId, getDecision, raiseDecision, SHARED_NEED } from "../../harness/coordinator-commands.js"
 import { CHANGE_SCHEMA } from "../../harness/graph.js"
+import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { workflowWorktreeOf } from "../../harness/kernel.js"
 import { LandConflict, rebaseCandidate } from "../../harness/land.js"
+import { relayKeyOf, relayTask } from "../../harness/reconcile.js"
 import { now, openLedger, projectDir } from "../../harness/ledger.js"
 import { readMachine, withMachine } from "../../harness/machine.js"
 import { KERNEL_NEED_GUIDANCE, SUPERVISOR_NEED_GUIDANCE } from "../../harness/need-answer.js"
@@ -40,7 +42,7 @@ import { captureGit, currentBranch, gitSucceeds, mainCheckout, resolveSha } from
 import type { VerbContext } from "../../shared/verb.js"
 import { listHandoffs } from "../pkg/edit.js"
 import { taskCancelVerb } from "../task/cancel.js"
-import { workflowAmendVerb } from "../workflow/amend.js"
+import { amendWithRelays, workflowAmendVerb } from "../workflow/amend.js"
 import type { StepAction } from "../workflow/engine.js"
 
 /**
@@ -291,8 +293,37 @@ const taskStatus = async (repo: string, taskId: string): Promise<ResolverStatus>
 const keysOf = (resolver: Extract<NeedResolver, { readonly kind: "task" }>): readonly string[] => resolver.keys ?? (resolver.key === null ? [] : [resolver.key])
 
 /**
- * Resolver tasks of a workflow by key: done once every one landed (their commits in landing order), failed when one failed, was
- * cancelled, left the graph or its workflow stopped, else pending.
+ * Every commit the tasks of a workflow's keys landed, in the order the branch holds them: each attempt and round of every key
+ * (a rework lands on top of the round before it, and a later key on the keys before it), so a relay carries the capability's
+ * whole history and never a commit without the commits it stands on. Each carries its task's `Starci-Task` trailer; with none
+ * found, the tasks' settle commits in landing order.
+ */
+const keyCommits = async (repo: string, workflow: string, keys: readonly string[]): Promise<string[]> => {
+    if (keys.length === 0) return []
+    const tasks = withLedger(repo, (db) =>
+        db
+            .prepare(`SELECT id, settle_commit FROM tasks WHERE workflow_id = ? AND plan_key IN (${keys.map(() => "?").join(", ")}) ORDER BY updated_at`)
+            .all(workflow, ...keys)
+            .map((row) => ({ id: String(row.id), settle: row.settle_commit === null ? null : String(row.settle_commit) })),
+    )
+    const tips = [...new Set(tasks.flatMap((task) => (task.settle === null ? [] : [task.settle])))]
+    if (tips.length === 0) return []
+    const listed = await captureGit(["log", "--reverse", "--topo-order", "--format=%H", "--fixed-strings", ...tasks.map((task) => `--grep=Starci-Task: ${task.id}`), ...tips], repo)
+    const found = listed.exitCode === 0 ? listed.stdout.split(/\r?\n/).filter((line) => line !== "") : []
+    return found.length === 0 ? tips : found
+}
+
+/** The commits that resolve a need: every commit its resolver keys landed (keyCommits), or the commits recorded for a task resolver. */
+const resolvingCommits = async (need: NeedRow): Promise<string[]> => {
+    const resolver = need.resolver
+    if (need.state !== "resolved" || resolver?.kind !== "task") return []
+    if (resolver.task !== null || resolver.workflow === null) return [...(resolver.commits ?? [])]
+    return keyCommits(resolver.repo, resolver.workflow, keysOf(resolver))
+}
+
+/**
+ * Resolver tasks of a workflow by key: done once every one landed (with every commit their keys landed, keyCommits), failed
+ * when one failed, was cancelled, left the graph or its workflow stopped, else pending.
  */
 const workflowStatus = async (repo: string, workflow: string, keys: readonly string[]): Promise<ResolverStatus> => {
     const judged = withLedger(repo, (db): { readonly status: ResolverStatus | null; readonly done: readonly { readonly key: string; readonly task: TaskRow }[] } => {
@@ -309,9 +340,7 @@ const workflowStatus = async (repo: string, workflow: string, keys: readonly str
     })
     if (judged.status !== null) return judged.status
     const ordered = judged.done.toSorted((left, right) => left.task.updatedAt.localeCompare(right.task.updatedAt))
-    const commits: string[] = []
-    for (const one of ordered) commits.push(...(await landedCommits(repo, one.task.id, one.task.settleCommit)))
-    return { kind: "done", commits: [...new Set(commits)], detail: `${ordered.map((one) => `${workflow}:${one.key} (task ${one.task.id})`).join(", ")} landed` }
+    return { kind: "done", commits: await keyCommits(repo, workflow, keys), detail: `${ordered.map((one) => `${workflow}:${one.key} (task ${one.task.id})`).join(", ")} landed` }
 }
 
 /** How the resolver of a resolving need stands, read from its ledger, its package handoff and git. */
@@ -355,40 +384,59 @@ interface Relayed {
 /**
  * What a relay did on a waiting workflow's branch: `relayed` the commits it put there, `present` when the branch held them all
  * already (or a relay of this round did), `conflict` with the files git could not merge (nothing moved), `skipped` when no
- * relay applies (no commit, the resolver landed on this branch or in another repository), or `failed`.
+ * relay applies (no commit, the resolver landed on this branch or in another repository), or `failed`. `commits` are the
+ * resolving commits it carried, in order.
  */
 interface Relay {
     readonly status: "relayed" | "present" | "conflict" | "skipped" | "failed"
     readonly relayed: readonly Relayed[]
     readonly files: readonly string[]
     readonly detail: string
+    readonly commits?: readonly string[]
+    readonly branch?: string
 }
 
+/** A recorded relay event of a need: the workflow, round and relay node it names, and what it did. */
+interface RelayEvent {
+    readonly workflow?: string
+    readonly round?: number
+    readonly node?: string
+    readonly relay?: Relay
+}
+
+/** The relay events of a need's round for a workflow, newest first: `need-relayed`, or `need-relay-conflict`. */
+const relayEvents = (need: NeedRow, workflow: string, kind: "relayed" | "relay-conflict"): RelayEvent[] =>
+    readMachine((db) => db.prepare("SELECT data_json FROM host_events WHERE kind = ? AND subject = ? ORDER BY id DESC").all(`need-${kind}`, `${need.project}|${need.key}`), [])
+        .map((row) => JSON.parse(String(row.data_json)) as RelayEvent)
+        .filter((data) => data.workflow === workflow && data.round === need.round)
+
 /** The relay of this need's round already recorded for a workflow, so a later pass of the same round never relays twice. */
-const recordedRelay = (need: NeedRow, workflow: string): Relay | undefined => {
-    const rows = readMachine((db) => db.prepare("SELECT data_json FROM host_events WHERE kind = 'need-relayed' AND subject = ? ORDER BY id DESC").all(`${need.project}|${need.key}`), [])
-    for (const row of rows) {
-        const data = JSON.parse(String(row.data_json)) as { readonly workflow?: string; readonly round?: number; readonly relay?: Relay }
-        if (data.workflow === workflow && data.round === need.round && data.relay !== undefined) return data.relay
-    }
-    return undefined
+const recordedRelay = (need: NeedRow, workflow: string): Relay | undefined => relayEvents(need, workflow, "relayed").find((data) => data.relay !== undefined)?.relay
+
+/** True when the branch at `head` holds `commit`'s change already, under another hash (an equal patch: `git cherry`). */
+const heldAs = async (target: string, commit: string, head: string): Promise<boolean> => {
+    const cherry = await captureGit(["cherry", head, commit, `${commit}^`], target)
+    return cherry.exitCode === 0 && cherry.stdout.trim().startsWith("-")
 }
 
 /**
- * The cross-branch relay: a need resolved on another branch is resolved for a waiter only once the resolving commits are on the
- * waiter's branch. Under the waiting branch's land lock, each commit the resolver landed that the branch lacks is replayed onto
- * its head in order (harness/land.ts rebaseCandidate, a cherry-pick with no work tree), and the workflow's checkout is moved to the
- * result by a fast-forward, as a landing does. A textual conflict moves nothing; the relay is recorded as a `need-relayed` (or
- * `need-relay-conflict`) host event.
+ * The cross-branch relay: a need resolved on another branch is resolved for a waiter only once the resolving commits
+ * (resolvingCommits: every commit its resolver keys landed) are on the waiter's branch. Under the waiting branch's land lock,
+ * each one the branch lacks is replayed onto its head in order by a three-way merge against the commit's parent
+ * (harness/land.ts rebaseCandidate, a cherry-pick with no work tree), so a file both sides changed merges wherever their
+ * changes do not overlap; a commit whose change the branch holds already (an equal patch, or a merge that changes nothing, as
+ * when both created the same file alike) is skipped. The workflow's checkout is moved to the result by a fast-forward, as a
+ * landing does, recorded as a `need-relayed` host event. A textual conflict moves nothing and returns the files.
  */
 const relay = async (place: Place, need: NeedRow): Promise<Relay> => {
     const resolver = need.resolver
-    const commits = need.state === "resolved" && resolver?.kind === "task" ? (resolver.commits ?? []) : []
+    const commits = await resolvingCommits(need)
     if (resolver?.kind !== "task" || commits.length === 0) return { status: "skipped", relayed: [], files: [], detail: "no resolving commit to relay" }
     if (resolver.workflow === place.workflow && sameRepo(resolver.repo, place.repo)) return { status: "skipped", relayed: [], files: [], detail: "the resolver landed on this branch" }
     if (!sameRepo(resolver.repo, place.repo)) return { status: "skipped", relayed: [], files: [], detail: `the resolver landed in ${resolver.repo}, another repository` }
     const recorded = recordedRelay(need, place.workflow)
-    if (recorded !== undefined && recorded.status !== "conflict") return { ...recorded, status: recorded.status === "relayed" ? "present" : recorded.status }
+    if (recorded !== undefined) return { ...recorded, status: recorded.status === "relayed" ? "present" : recorded.status }
+    if (JSON.stringify(commits) !== JSON.stringify(resolver.commits ?? [])) withMachine((db) => patchNeed(db, need.project, need.key, { resolver: { ...resolver, commits } }, "commits-completed"))
     const target = withLedger(place.root, (db) => workflowWorktreeOf(db, place.workflow)) ?? place.root
     const branch = await currentBranch(target)
     if (branch === undefined) return { status: "failed", relayed: [], files: [], detail: `${target} is on a detached HEAD` }
@@ -400,39 +448,86 @@ const relay = async (place: Place, need: NeedRow): Promise<Relay> => {
             let head = start
             const relayed: Relayed[] = []
             for (const commit of commits) {
-                if (await gitSucceeds(target, ["merge-base", "--is-ancestor", commit, head])) continue
+                if ((await gitSucceeds(target, ["merge-base", "--is-ancestor", commit, head])) || (await heldAs(target, commit, head))) continue
                 const made = await rebaseCandidate(target, commit, await resolveSha(target, `${commit}^`), head)
+                if (made.tree === (await captureGit(["rev-parse", `${head}^{tree}`], target)).stdout.trim()) continue
                 relayed.push({ from: commit, to: made.commit })
                 head = made.commit
             }
-            if (head === start) return { status: "present", relayed, files: [], detail: `${branch} holds every resolving commit` }
+            if (head === start) return { status: "present", relayed, files: [], detail: `${branch} holds every resolving commit`, commits, branch }
             const ff = await captureGit(["merge", "--ff-only", "--quiet", head], target)
             if (ff.exitCode !== 0) throw new Refusal("NEED_RELAY_FAILED", `git merge --ff-only in ${target}: ${ff.stderr.trim()}`)
-            return { status: "relayed", relayed, files: [], detail: `relayed ${String(relayed.length)} commit(s) onto ${branch}: ${relayed.map((one) => `${one.from.slice(0, 9)} -> ${one.to.slice(0, 9)}`).join(", ")}` }
+            return { status: "relayed", relayed, files: [], detail: `relayed ${String(relayed.length)} commit(s) onto ${branch}: ${relayed.map((one) => `${one.from.slice(0, 9)} -> ${one.to.slice(0, 9)}`).join(", ")}`, commits, branch }
         })
     } catch (error: unknown) {
         done =
             error instanceof LandConflict
-                ? { status: "conflict", relayed: [], files: error.files, detail: `the resolving commits do not apply to ${branch}: ${error.files.join(", ") || "git named no file"} conflict` }
+                ? { status: "conflict", relayed: [], files: error.files, detail: `the resolving commits do not apply to ${branch}: ${error.files.join(", ") || "git named no file"} conflict`, commits, branch }
                 : { status: "failed", relayed: [], files: [], detail: `${asRefusal(error).code}: ${asRefusal(error).message.split("\n")[0] ?? ""}` }
     } finally {
         db.close()
     }
-    if (done.status === "relayed" || done.status === "present" || done.status === "conflict") {
-        const kind = done.status === "conflict" ? "relay-conflict" : "relayed"
-        withMachine((machine) => { recordNeedEvent(machine, kind, need.project, need.key, { workflow: place.workflow, round: need.round, branch, commits, relay: done }) })
-    }
+    if (done.status === "relayed" || done.status === "present") withMachine((machine) => { recordNeedEvent(machine, "relayed", need.project, need.key, { workflow: place.workflow, round: need.round, branch, commits, relay: done }) })
     return done
 }
 
+/** The files a commit changes, both sides of a rename. */
+const filesOf = async (target: string, commit: string): Promise<string[]> => {
+    const listed = await captureGit(["diff-tree", "-r", "--root", "--no-commit-id", "--name-only", "--no-renames", commit], target)
+    return listed.exitCode === 0 ? listed.stdout.split(/\r?\n/).filter((line) => line !== "") : []
+}
+
 /**
- * The Supervisor's `conflict` decision for a relay that did not apply: an escalation of kind conflict in the waiting workflow,
- * once per need round and workflow, naming the commits and files; the waiters stay parked, their work preserved. Its answer is the
- * Supervisor's ruling (it rules who reworks what), after which the waiters are released as they stand.
+ * The node a relay node of a need is built on: the resolver's first key in its workflow's graph (its label, inputs and checks
+ * proved the capability), else the waiting workflow's node of the first waiter.
+ */
+const relayTemplate = (place: Place, need: NeedRow, waiters: readonly WaiterRow[]): PlanNode | undefined => {
+    const resolver = need.resolver
+    if (resolver?.kind === "task" && resolver.workflow !== null) {
+        const { workflow } = resolver
+        const nodes = withLedger(resolver.repo, (db) => snapshotOf(db, workflow).nodes)
+        const found = keysOf(resolver).flatMap((key) => nodes.filter((node) => node.key === key))[0]
+        if (found !== undefined) return found
+    }
+    const nodes = withLedger(place.root, (db) => snapshotOf(db, place.workflow).nodes)
+    return waiters.flatMap((waiter) => nodes.filter((node) => node.key === waiter.taskKey))[0]
+}
+
+/**
+ * Routes a relay that does not apply as work of the waiting workflow, never as a dead end: one relay node (`relay.<need>.r<round>`,
+ * reconcile.ts relayTask) is added to its graph, owned by its Kernel like any task, allowed the conflicting files and every file
+ * the commits touch, whose work is to apply exactly those commits preserving both sides' intent; every waiter of the need in
+ * this workflow depends on it. The add is recorded as a `need-relay-conflict` event naming the node and the files, once per
+ * need round and workflow. No waiter spends a try on it: they stay parked, their work kept, until the node lands.
+ */
+const routeRelay = async (place: Place, need: NeedRow, done: Relay, mine: readonly WaiterRow[]): Promise<StepAction[]> => {
+    const commits = done.commits ?? []
+    const template = relayTemplate(place, need, mine)
+    if (template === undefined) return [action(`need ${need.key}: its commits do not apply to this branch (${done.detail}) and no node to build a relay node on; the next step tries again`, "problem")]
+    const target = withLedger(place.root, (db) => workflowWorktreeOf(db, place.workflow)) ?? place.root
+    const files: string[] = []
+    for (const commit of commits) files.push(...(await filesOf(target, commit)))
+    const task = relayTask(template, { need: need.key, round: need.round, commits, conflicts: done.files, files })
+    const waiters = [...new Set(mine.map((waiter) => waiter.taskKey).filter((key): key is string => key !== null))]
+    const cmdId = `need-relay-${createHash("sha256").update(`${need.project}\0${need.key}\0${String(need.round)}\0${place.workflow}`).digest("hex").slice(0, 16)}`
+    try {
+        await amendWithRelays({ ...place.context, cwd: place.root }, place.workflow, [{ task, waiters }], `shared need ${need.key}: its commits do not apply to this branch; relay node ${task.key} applies them`, cmdId)
+    } catch (error: unknown) {
+        return [action(`need ${need.key}: relay node ${task.key} not added yet (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}; the next step retries`, "problem")]
+    }
+    withMachine((machine) => { recordNeedEvent(machine, "relay-conflict", need.project, need.key, { workflow: place.workflow, round: need.round, branch: done.branch ?? null, commits, node: task.key, waiters, relay: done }) })
+    return [action(`need ${need.key}: its commits do not apply to this branch (${done.files.join(", ") || "git named no file"}); relay node ${task.key} added, ${waiters.join(", ") || "no waiter"} depend on it`, "dispatched", null, task.key)]
+}
+
+/**
+ * The Supervisor's `conflict` decision for a relay whose relay node the waiting workflow's Kernel removed: an escalation of kind
+ * conflict in the waiting workflow, once per need round and workflow, naming the commits and files; the waiters stay parked,
+ * their work preserved. Its answer is the Supervisor's ruling (it rules who reworks what), after which the waiters are released
+ * as they stand.
  */
 const relayConflict = (place: Place, need: NeedRow, done: Relay): { readonly id: string; readonly answeredBy: string | null } => {
     const subject = `need-relay:${need.key}#${String(need.round)}`
-    const commits = need.resolver?.kind === "task" ? (need.resolver.commits ?? []) : []
+    const commits = done.commits ?? []
     return withLedger(place.root, (db) => {
         const id = raiseDecision(db, {
             scope: "supervisor",
@@ -445,7 +540,7 @@ const relayConflict = (place: Place, need: NeedRow, done: Relay): { readonly id:
                 commits,
                 escalation: {
                     kind: "conflict",
-                    question: `shared need ${need.key} was resolved on another branch, but its commits ${commits.map((commit) => commit.slice(0, 9)).join(", ")} do not apply to workflow ${place.workflow}'s branch (${done.files.join(", ") || "git named no file"}); its waiters stay parked with their work kept. Rule who reworks it (a goal-change to the owner or this workflow), then answer this escalation to release them as they stand`,
+                    question: `shared need ${need.key} was resolved on another branch, but its commits ${commits.map((commit) => commit.slice(0, 9)).join(", ")} do not apply to workflow ${place.workflow}'s branch (${done.files.join(", ") || "git named no file"}) and its Kernel removed the relay node that applied them; its waiters stay parked with their work kept. Rule who reworks it (a goal-change to the owner or this workflow), then answer this escalation to release them as they stand`,
                     paths: [...done.files],
                 },
             },
@@ -462,20 +557,45 @@ const allEnded = (db: DatabaseSync, project: string, rows: readonly WaiterRow[])
     })
 
 /**
- * Releases the waiters of an ended need in this workflow, once the resolving commits are on its branch (the cross-branch relay;
- * a relay that does not apply raises the Supervisor's conflict and holds them, and its ruling releases them as they stand): each
- * waiter whose every need ended is retried in one amend, unless its Kernel already moved it on; then its rows are marked released
- * with how, the relayed commits included. A waiter outside any workflow (a worker) is marked released for its Supervisor.
+ * Where the relay of a need stands in a waiting workflow: a relay node in its graph (relayed by the node once it is done; its
+ * waiters wait while it runs), one the Kernel removed after the harness added it, or none (the harness relays it itself).
+ */
+const relayByNode = (place: Place, need: NeedRow): { readonly key: string; readonly view: NodeView | undefined; readonly added: boolean } => {
+    const key = relayKeyOf(need.key, need.round)
+    const view = withLedger(place.root, (db) => snapshotOf(db, place.workflow).views.find((candidate) => candidate.key === key))
+    return { key, view, added: relayEvents(need, place.workflow, "relay-conflict").some((data) => data.node === key) }
+}
+
+/** The relay a done relay node made, recorded once as a `need-relayed` event: its commits are on the branch, by its worker's hand. */
+const relayedByNode = (place: Place, need: NeedRow, key: string, view: NodeView): Relay => {
+    const recorded = recordedRelay(need, place.workflow)
+    if (recorded !== undefined) return { ...recorded, status: "present" }
+    const conflict = relayEvents(need, place.workflow, "relay-conflict").find((data) => data.node === key)
+    const done: Relay = { status: "relayed", relayed: [], files: conflict?.relay?.files ?? [], detail: `relay node ${key} (task ${view.task?.id ?? "?"}) applied the resolving commits`, commits: conflict?.relay?.commits ?? [] }
+    withMachine((machine) => { recordNeedEvent(machine, "relayed", need.project, need.key, { workflow: place.workflow, round: need.round, node: key, commits: done.commits, relay: done }) })
+    return done
+}
+
+/**
+ * Releases the waiters of an ended need in this workflow, once the resolving commits are on its branch: the harness relays them
+ * itself, or a relay node applies what does not apply cleanly (routeRelay) and the waiters, which depend on it, wait for it to
+ * land; only a relay node its Kernel removed raises the Supervisor's conflict, whose ruling releases them as they stand. Each
+ * waiter whose every need ended is retried in one amend, unless its Kernel already moved it on; then its rows are marked
+ * released with how, the relayed commits included. A waiter outside any workflow (a worker) is marked released for its Supervisor.
  */
 const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const mine = waiting(withMachine((db) => waitersOf(db, need.project, need.key))).filter((waiter) => waiter.workflow === place.workflow && sameRepo(waiter.repo, place.repo))
     const ready = withMachine((db) => mine.filter((waiter) => allEnded(db, need.project, waiterRowsOfTask(db, need.project, waiter.repo, waiter.task))))
     if (ready.length === 0) return []
-    const relayed = await relay(place, need)
+    const node = relayByNode(place, need)
+    if (node.view !== undefined && node.view.state !== "done") return [action(`need ${need.key}: waiters wait on relay node ${node.key} (${node.view.state}), which applies its commits onto this branch`, "wait", node.view.task?.id ?? null, node.key)]
+    const relayed = node.view === undefined ? await relay(place, need) : relayedByNode(place, need, node.key, node.view)
     let ruled: string | null = null
-    if (relayed.status === "conflict" || relayed.status === "failed") {
-        const decision = relayed.status === "conflict" ? relayConflict(place, need, relayed) : null
-        if (decision?.answeredBy == null) return [action(`need ${need.key}: waiters not released, the resolving commits are not on this branch (${relayed.detail})${decision === null ? "; the next step tries again" : `; conflict ${decision.id} is the Supervisor's`}`, "problem")]
+    if (relayed.status === "failed") return [action(`need ${need.key}: waiters not released, the resolving commits are not on this branch (${relayed.detail}); the next step tries again`, "problem")]
+    if (relayed.status === "conflict") {
+        if (!node.added) return routeRelay(place, need, relayed, mine)
+        const decision = relayConflict(place, need, relayed)
+        if (decision.answeredBy === null) return [action(`need ${need.key}: waiters not released, the resolving commits are not on this branch (${relayed.detail}) and relay node ${node.key} was removed; conflict ${decision.id} is the Supervisor's`, "problem")]
         ruled = `relay conflict ruled by ${decision.answeredBy}`
     }
     const carried = ruled ?? (relayed.status === "skipped" ? null : relayed.detail)

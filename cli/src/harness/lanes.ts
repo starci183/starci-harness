@@ -7,6 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { captureGitSync } from "../shared/git.js"
 import { HARNESS_PREFIX, normaliseRepoPath, parseContract } from "./contract.js"
 import type { Contract } from "./contract.js"
+import { isRelayKey } from "./graph.js"
 import { readMachine, textOf } from "./machine.js"
 import { loadOps } from "./ops.js"
 import type { Ops } from "./ops.js"
@@ -433,7 +434,8 @@ const overlaps = (left: string, right: string): boolean => left === right || lef
 
 /**
  * The tasks of a perRecord label (ops/ops/README.md) that work more than one Work record: they carry lane steps of several
- * records, or their allowPaths reach the owner paths of several impl records.
+ * records, or their allowPaths reach the owner paths of several impl records. A relay node works no record: it carries a shared
+ * need's commits that another workflow's lane already walked.
  */
 const splitProblems = (nodes: readonly FlowNode[], report: FlowReport, repo: string, ops: Ops): string[] => {
     const features = join(repo, WORK, "features")
@@ -442,7 +444,7 @@ const splitProblems = (nodes: readonly FlowNode[], report: FlowReport, repo: str
         : []
     const owned = impls.map((ref) => ({ id: ref.id, paths: ownerPaths(ref, repo) }))
     return nodes.flatMap((node) => {
-        if (ops.labels[node.contract.label]?.perRecord !== true) return []
+        if (ops.labels[node.contract.label]?.perRecord !== true || isRelayKey(node.key)) return []
         const allowed = node.contract.context.allowPaths.map(normaliseRepoPath)
         const records = new Set([
             ...report.records.filter((flow) => flow.steps.some((step) => step.tasks.includes(node.key))).map((flow) => flow.record),
@@ -456,9 +458,11 @@ const splitProblems = (nodes: readonly FlowNode[], report: FlowReport, repo: str
 /**
  * The flow of a graph (ops/lanes.yaml): every Work record a task is over walks its lane, and so does every record a held step
  * waits on. Each step is optional, satisfied by evidence, carried by tasks of its label over the record, or missing; a carrying
- * task must depend on the tasks carrying the steps before it and on those carrying the records its step is held until.
+ * task must depend on the tasks carrying the steps before it and on those carrying the records its step is held until. A relay
+ * node is outside the flow: the records its commits implement walked their lane in the workflow that built them.
  */
-export const evaluateFlow = (nodes: readonly FlowNode[], place: FlowPlace, lanes: readonly Lane[]): FlowReport => {
+export const evaluateFlow = (graph: readonly FlowNode[], place: FlowPlace, lanes: readonly Lane[]): FlowReport => {
+    const nodes = graph.filter((node) => !isRelayKey(node.key))
     const { repo } = place
     const refsOf = new Map(nodes.map((node) => [node.key, recordsOf(node.contract, repo)]))
     const covered = new Map<string, WorkRef>()

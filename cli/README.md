@@ -272,7 +272,7 @@ in the lane's order (`assertFlow` in `harness/lanes.ts`); `kernel next` digests 
 nothing is cancelled), rework (done and its contract changed: a new attempt from its previous commit with the contract
 diff), redo-live (live and changed: cancelled through task cancel, relaunched from its preserved patch), redo, add or
 drop (live: cancelled; done: a generated `revert.<key>` node undoes the commits it landed, verified like any task,
-unless the removal says `keepEffect`). `plan diff` prints the classification without applying it, and
+unless the removal says `keepEffect`); the generated `relay.<need>.r<round>` node is a shared need's ("Shared needs"). `plan diff` prints the classification without applying it, and
 `workflowActions` gives the step and `kernel next` the same per-key actions for the current graph. A red or stuck task
 blocks its dependents and the workflow, naming the red checks; independent tasks keep going. A task the harness ended with no
 red of its own (`harnessCause` in `harness/revive.ts`: a wave red not proven its own, a launch Orca fenced or one whose worker
@@ -316,15 +316,26 @@ resolver, a resolver from the Supervisor, a need that moved on) is refused `NEED
 decision stays open (`harness/need-answer.ts`, `core/needs/answer.ts`). A need routed past `needs.ownerDeadlineMinutes` of
 [ops/liveness.yaml](../ops/liveness.yaml), or whose decision was answered with no owner, climbs one router: Kernel, Supervisor,
 then an `escalation` of kind `owner` (`harness` for a package). The resolver is judged on every step: its tasks landed resolve the
-need, recording the commits they landed (each carries its `Starci-Task` trailer); a package edit resolves it once its
+need, recording every commit its keys landed, each attempt and round of each key in the order the branch holds them (each
+carries its `Starci-Task` trailer: `keyCommits`), so a relay never carries a commit without the ones it stands on; a package edit resolves it once its
 handed-off head is on harness main; a resolver failed, cancelled, removed or stopped, or one that closes a cycle (it waits,
 through other needs, on a waiter of this one: `findCycle`), reopens it at its router in a new round with the reason named. A
 need is resolved for a waiter only when its resolving commits are on the waiter's branch, so each waiting workflow's own step
 first relays them (`relay`): under that branch's land lock, every resolving commit the branch lacks is replayed onto its head in
-order (`rebaseCandidate`, a cherry-pick with no work tree) and the workflow's checkout fast-forwarded, once per need round and
-workflow, recorded as a `need-relayed` host event that `needs show` prints commit by commit. A textual conflict moves nothing:
-it is a `need-relay-conflict` event and one Supervisor `escalation` of kind `conflict` in the waiting workflow, its waiters stay
-parked with their work kept, and the Supervisor's answer releases them as they stand. Then every waiter whose needs all ended is
+order by a three-way merge against the commit's parent (`rebaseCandidate`, a cherry-pick with no work tree), a commit whose
+change the branch holds already (an equal patch, or a merge that changes nothing) skipped, and the workflow's checkout
+fast-forwarded, once per need round and workflow, recorded as a `need-relayed` host event that `needs show` prints commit by
+commit. A textual conflict moves nothing by itself and is never a dead end: it becomes work of the waiting workflow, one
+generated relay node `relay.<need>.r<round>` (`relayTask` in `harness/reconcile.ts`, added by `amendWithRelays`) owned by its
+Kernel like any task, built on the resolver's node (its label, inputs and checks), allowed the conflicting files and every file
+the commits touch, whose contract is to apply exactly those commits preserving both sides' intent; before its worker starts the
+engine applies them up to the first that conflicts and leaves git's markers (`applyGenerated`), and its verify is its label's
+own. Every waiter of the need in that workflow depends on it and stays parked with its work kept, spending no try, until it
+lands; the add is a `need-relay-conflict` event naming the node and the files, and the node's landing a `need-relayed` event
+naming it. Like a revert node, a relay node's key and contract are the harness's own (no file adds or edits one), it is outside
+the goal's scope paths, the Work records' lanes and the foreign-source rule, since it carries what another workflow's lane built.
+Only a relay node its Kernel removed raises one Supervisor `escalation` of kind `conflict`, whose answer releases the waiters as
+they stand. Then every waiter whose needs all ended is
 retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its brief. `needs list`
 and `needs show <key>` read the store.
 

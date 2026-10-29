@@ -73,7 +73,7 @@ const fileTaskSchema = z.strictObject({ id: keySchema, ...taskFieldsShape })
 
 /**
  * The scope ceiling of a goal: the path prefixes every task's allowPaths must lie under and the most tasks the graph may hold
- * (the harness's generated revert nodes not counted). A desired graph or an amend past it is refused SCOPE_EXCEEDED.
+ * (the harness's generated revert and relay nodes not counted). A desired graph or an amend past it is refused SCOPE_EXCEEDED.
  */
 export const scopeSchema = z.strictObject({ paths: z.array(z.string().min(1)).min(1).optional(), maxTasks: z.number().int().min(1).optional() })
 
@@ -122,13 +122,24 @@ const changeEntrySchema = z.discriminatedUnion("op", [
 const changeFileSchema = z.strictObject({ schema: z.literal(CHANGE_SCHEMA), workflow: keySchema, reason: z.string().min(1).optional(), changes: z.array(changeEntrySchema).min(1) })
 
 /**
- * The key prefix of the compensating nodes the harness generates when a replan drops a done task: `revert.<key>`. A workflow
- * or change file never adds such a key; a desired graph that leaves one out keeps it, since the harness owns it.
+ * The key prefixes of the nodes the harness generates: `revert.<key>`, the compensating node of a done task a replan drops, and
+ * `relay.<need>`, the node that carries a shared need's resolving commits onto a waiting branch they do not apply to
+ * (core/needs/tend.ts). A workflow or change file never adds or edits such a key; a desired graph that leaves one out keeps it,
+ * since the harness owns it.
  */
 export const REVERT_PREFIX = "revert."
 
-/** True for a key the harness generated (a compensating revert node). */
-export const isGeneratedKey = (key: string): boolean => key.startsWith(REVERT_PREFIX)
+/** The key prefix of a relay node (see REVERT_PREFIX). */
+export const RELAY_PREFIX = "relay."
+
+/** True for a key the harness generated (a revert or a relay node). */
+export const isGeneratedKey = (key: string): boolean => key.startsWith(REVERT_PREFIX) || key.startsWith(RELAY_PREFIX)
+
+/** True for a relay node's key. */
+export const isRelayKey = (key: string): boolean => key.startsWith(RELAY_PREFIX)
+
+/** The refusal text of a key a file may not write: the harness's own. */
+const GENERATED_KEY = `a key starting with ${REVERT_PREFIX} or ${RELAY_PREFIX} is the harness's own (a revert or relay node)`
 
 /** One entry of a change file. */
 export type ChangeEntry = z.infer<typeof changeEntrySchema>
@@ -321,7 +332,7 @@ export const readPlanSource = (file: string, ops: Ops, place: PlanPlace): PlanSo
     const tasks: PlanTask[] = []
     for (const { id, ...fields } of written) {
         if (isGeneratedKey(id)) {
-            problems.push(`task ${id}: a key starting with ${REVERT_PREFIX} is the harness's own (a compensating revert node)`)
+            problems.push(`task ${id}: ${GENERATED_KEY}`)
             continue
         }
         try {
@@ -367,7 +378,7 @@ const applyChange = (
     const existing = tasks.get(key)
     if (change.op === "add") {
         if (existing !== undefined) throw new Refusal("WORKFLOW_INVALID", "the graph has this task already; edit it instead")
-        if (isGeneratedKey(key)) throw new Refusal("WORKFLOW_INVALID", `a key starting with ${REVERT_PREFIX} is the harness's own (a compensating revert node)`)
+        if (isGeneratedKey(key)) throw new Refusal("WORKFLOW_INVALID", GENERATED_KEY)
         const { id, ...fields } = change.task
         tasks.set(id, { key: id, contract: resolveContract(fields, dir, base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
         return
@@ -375,6 +386,7 @@ const applyChange = (
     if (existing === undefined) throw new Refusal("WORKFLOW_INVALID", "no such task in the graph")
     switch (change.op) {
         case "edit": {
+            if (isRelayKey(key)) throw new Refusal("WORKFLOW_INVALID", `${key} is a relay node, the harness's own: its contract carries exactly a shared need's commits; retry, accept or remove it`)
             const touchesContract = change.set.contract !== undefined || change.set.uat !== undefined || INLINE_FIELDS.some((name) => change.set[name] !== undefined)
             tasks.set(key, {
                 key,

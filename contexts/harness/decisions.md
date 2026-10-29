@@ -32,7 +32,8 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   workflow, waits on one need. Exactly one owner resolves it, the workflow's Kernel when one workflow needs it, else the one
   workflow or `[Worker]` the Supervisor assigns (a `@starci` package always a worker's package edit, never the owner's); every
   other workflow waits on that owner as a recorded dependency and is released, from its kept work, once the resolving commits
-  are relayed onto its own branch (a relay that conflicts goes to the Supervisor as a `conflict`). It
+  are relayed onto its own branch (a relay that conflicts becomes a relay node of that workflow, owned by its Kernel, that the
+  waiters depend on; only one its Kernel removed goes to the Supervisor as a `conflict`). It
   runs always, with no switch to turn it off (`cli/src/harness/needs.ts`, `cli/src/core/needs/tend.ts`).
 - **Telegram carries only what needs the owner's decision.** The owner's channel is the Supervisor's terminal, the desktop
   app and Telegram. Telegram sends a question ticket awaiting his answer (scope, money, credentials, legal, a product choice with

@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
+import { isRelayKey } from "./graph.js"
 import type { PlanNode } from "./graph.js"
 
 /** The refusal of a contract that takes another workflow's code as its source instead of routing the need. */
@@ -30,7 +31,9 @@ const foreignSources = (db: DatabaseSync, workflowId: string): { readonly branch
 /**
  * Refuses NEEDS_REQUIRED when a task of a workflow's graph names another workflow's branch (`starci/<workflow>`, its Op branches
  * included) or a commit another workflow's task landed as part of its input: a workflow never copies another's landed code, it
- * reports the shared thing missing and the need's one owner builds it once (cli/README.md "Shared needs"). `checked` names the
+ * reports the shared thing missing and the need's one owner builds it once (cli/README.md "Shared needs"). A relay node is that
+ * route itself: the harness builds it to carry exactly a resolved need's commits (its key and contract are the harness's own, no
+ * file adds or edits one), so it is not judged. `checked` names the
  * contract hashes judged already (a contract of the current graph), which are not judged again. A ledger that does not exist
  * yet holds no other workflow.
  */
@@ -39,7 +42,7 @@ export const assertOwnSources = (db: DatabaseSync | undefined, workflowId: strin
     const { branches, commits } = foreignSources(db, workflowId)
     if (branches.length === 0 && commits.length === 0) return
     const problems = nodes
-        .filter((node) => !checked.has(node.contractHash))
+        .filter((node) => !checked.has(node.contractHash) && !isRelayKey(node.key))
         .flatMap((node) => {
             const text = inputTexts(node).join("\n")
             const named = [

@@ -5,7 +5,7 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { underPaths } from "./contract.js"
-import { isGeneratedKey, scopeSchema } from "./graph.js"
+import { isGeneratedKey, isRelayKey, scopeSchema } from "./graph.js"
 import type { PlanNode, Scope, WorkflowHeader } from "./graph.js"
 import { inTransaction, now } from "./ledger.js"
 import { recordEvent } from "./tasks.js"
@@ -200,15 +200,16 @@ export const withGoal = (header: WorkflowHeader, goal: Pick<Goal, "text" | "acce
 }
 
 /**
- * The ways a graph exceeds a scope ceiling: a task whose allowPaths leave the scope's path prefixes, or more tasks than its
- * maxTasks (the generated revert nodes not counted). Empty when the graph fits or the goal has no ceiling.
+ * The ways a graph exceeds a scope ceiling: a task whose allowPaths leave the scope's path prefixes (a relay node aside: it
+ * writes what a shared need's owner built), or more tasks than its maxTasks (the generated revert and relay nodes not
+ * counted). Empty when the graph fits or the goal has no ceiling.
  */
 export const scopeProblems = (nodes: readonly Pick<PlanNode, "key" | "contract">[], scope: Scope | null | undefined): string[] => {
     if (scope === null || scope === undefined) return []
     const problems: string[] = []
     const { paths, maxTasks } = scope
     if (paths !== undefined) {
-        for (const node of nodes) {
+        for (const node of nodes.filter((one) => !isRelayKey(one.key))) {
             const outside = node.contract.context.allowPaths.filter((path) => !underPaths(path, paths))
             if (outside.length > 0) problems.push(`task ${node.key} writes ${outside.join(", ")}, outside the scope ${paths.join(", ")}`)
         }
@@ -230,7 +231,7 @@ type Owned = readonly Pick<PlanNode, "key" | "contract">[]
 
 /**
  * The deliverables of the goal a replan would drop. The task keys of a graph planned under the current goal version are what
- * that goal asks for, so a replan removes one only when it is a revert node the harness generated, or when keys the replan
+ * that goal asks for, so a replan removes one only when it is a revert or relay node the harness generated, or when keys the replan
  * adds take it over (every allowPath of the removed key lies under theirs). The first replan after a goal change answers that
  * change: the graph it replaces was planned under an older goal version (`plannedUnder`), so it may drop any key.
  */
