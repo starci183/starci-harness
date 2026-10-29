@@ -108,7 +108,7 @@ const residentMb = async (pids: readonly number[]): Promise<Map<number, number>>
  */
 export const hostLoadVerb = defineVerb({
     path: ["host", "load"],
-    summary: "show the host's heavy-command governor: free RAM and CPU, how many heavy commands they admit, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
+    summary: "show the host's heavy-command governor: free RAM and CPU, the CPU rule that applied (a foreign load or the harness's own, by the managed share), how many heavy commands they admit, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
@@ -118,7 +118,7 @@ export const hostLoadVerb = defineVerb({
         const rules = loadHeavyRules()
         const load = await hostLoad(rules)
         const slots = heavySlots()
-        const [rss, holders] = await Promise.all([residentMb(slots.flatMap((slot) => (slot.childPid === null ? [] : [slot.childPid]))), memoryHolders()])
+        const [rss, holders] = await Promise.all([residentMb(slots.flatMap((slot) => (slot.childPid === null ? [] : [slot.childPid]))), memoryHolders(slots)])
         const running = runningHeavyKinds()
         const nowMs = Date.now()
         const rows = slots.map((slot): LoadRow => {

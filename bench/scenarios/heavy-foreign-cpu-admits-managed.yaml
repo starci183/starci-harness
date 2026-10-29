@@ -1,0 +1,62 @@
+schema: starci/scenario@1
+id: heavy-foreign-cpu-admits-managed
+group: resources
+title: "a CPU another program burns does not hold the harness's own heavy commands back"
+inject: >-
+  the heavy rules of an ops/ copy set so the host's CPU average is always above maxCpuPercent, burned by a process the
+  governor does not manage (another project's lint, a virus scan), with RAM to spare and a queue that never counts as
+  starved within the run; two check runs queue at once
+expect: >-
+  the share of the CPU the governor's own running commands burn is under heavy.managedCpuFloorPercent, so the load is
+  foreign and up to heavy.underForeignPressureSlots commands start at once instead of waiting cpuStarveMinutes each; host
+  load names the foreign rule
+pass:
+  - host load says the CPU is foreign and names the slots under foreign pressure
+  - two check runs at once both exit 0 under a CPU ceiling no host is under, with a starve time no run outlasts
+  - no command waited in the heavy queue for as long as a minute
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_OPS_DIR: ${repo}/ops
+repo:
+  files:
+    package.json: '{"name": "bench-heavy-foreign", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"fe": {"grammar": "core"}}}'
+    tsconfig.json: '{"compilerOptions": {"strict": true}, "include": ["src"]}'
+    eslint.config.js: "module.exports = []\n"
+    src/index.ts: "export const index = 1\n"
+    node_modules/typescript/bin/tsc: "setTimeout(() => process.exit(0), 1000)\n"
+    node_modules/eslint/bin/eslint.js: "process.exit(0)\n"
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy"]
+  - name: RAM never holds a command back
+    starci: [config, set, liveness.heavy.reserveMb, "0"]
+  - name: a CPU ceiling no host is under
+    starci: [config, set, liveness.heavy.maxCpuPercent, "0.0001"]
+  - name: the starve rule never admits within the run, so only the foreign rule can
+    starci: [config, set, liveness.heavy.cpuStarveMinutes, "600"]
+  - name: the foreign rule as ops/liveness.yaml ships it, pinned so the scenario reads the same on any copy
+    starci: [config, set, liveness.heavy.managedCpuFloorPercent, "25"]
+  - starci: [config, set, liveness.heavy.underForeignPressureSlots, "2"]
+  - git: [commit, -q, -am, "bench: a CPU another program burns"]
+  - write: { path: src/changed.ts, content: "export const changed = 1\n" }
+  - name: another program the governor does not manage keeps a core busy
+    serve: { stub: busy, as: burner }
+  - name: host load names the foreign rule
+    starci: [host, load]
+    expect: { exit: 0, contains: "is foreign (managed 0%" }
+  - starci: [host, load]
+    expect: { exit: 0, contains: "2 slots under foreign pressure" }
+  - name: two check runs at once both end green without waiting for the starve rule
+    starci: [check, run, --base, HEAD]
+    parallel: 2
+    expect: { exit: 0 }
+  - name: no command waited as long as a minute (each would have waited cpuStarveMinutes under a ceiling blind to who burns the CPU)
+    assert:
+      sql:
+        db: machine
+        query: "SELECT COALESCE(MAX(json_extract(data_json, '$.waitedMs')), 0) < 60000 FROM host_events WHERE kind = 'heavy-wait'"
+        equals: [1]

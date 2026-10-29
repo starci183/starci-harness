@@ -37,6 +37,8 @@ steps:
     starci: [config, set, liveness.heavy.maxCpuPercent, "0.0001"]
   - name: the queue counts as starved after three seconds with nothing admitted
     starci: [config, set, liveness.heavy.cpuStarveMinutes, "0.05"]
+  - name: every load counts as the harness's own, so the ceiling and its starve rule are what is under test
+    starci: [config, set, liveness.heavy.managedCpuFloorPercent, "0"]
   - git: [commit, -q, -am, "bench: a CPU that never cools"]
   - write: { path: src/changed.ts, content: "export const changed = 1\n" }
   - name: another program keeps a core busy, so even an idle host reads above the ceiling

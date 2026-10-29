@@ -6,6 +6,18 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **The CPU ceiling governs the harness's own contribution** (monitor report #12). Above `heavy.maxCpuPercent` the governor held
+  every new heavy command and admitted one per `cpuStarveMinutes`, although the CPU was burned by another project's unmanaged
+  eslint and tsc: holding the harness back lowered nothing and starved its workflows (an install waited 8 min, a tsc 12, each
+  verify about 25, serially). Now `managedCpuPercent` (`harness/heavy.ts`) samples the share the running heavy commands and
+  their process trees burn over the CPU window (`managedCpuTimes` of `harness/host-holders.ts`, Windows and Linux): under the
+  new `heavy.managedCpuFloorPercent` the load is foreign and up to the new `heavy.underForeignPressureSlots` commands run under
+  it, by age with the project fair share; at or above it, or unknown, the ceiling and the starve rule hold as before. RAM rules
+  are unchanged and still block. `host load`, the queue's wait reasons and `workflow status` name the rule that applied. Bench:
+  `heavy-foreign-cpu-admits-managed`, `heavy-own-cpu-still-waits`.
+
 ## [1.1.0-alpha.9] - 2026-10-29
 
 ### Fixed
