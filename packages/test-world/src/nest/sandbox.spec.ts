@@ -84,3 +84,33 @@ test("a configured sandbox runs the body inside a describe that boots and closes
         assert.deepEqual(registered.map((entry) => entry.kind), ["describe", "beforeAll", "afterAll"])
     })
 })
+
+test("sandbox requests preserve cookies per handle, return redirects, and encode POST forms", async () => {
+    const originalFetch = globalThis.fetch
+    const calls: Array<{ url: string; init: RequestInit }> = []
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input)
+        const actual = init ?? {}
+        calls.push({ url, init: actual })
+        if (url.endsWith("/login")) return new Response("redirect body", { status: 302, headers: { location: "/form", "set-cookie": "sid=abc; Path=/; HttpOnly" } })
+        return new Response("done", { status: 200, headers: { "content-type": "text/plain" } })
+    }) as typeof fetch
+    try {
+        const first = createSandbox(spec, () => [])
+        const second = createSandbox(spec, () => [])
+        const redirect = await first.request({ method: "GET", url: "https://sandbox.example/login" })
+        assert.equal(redirect.status, 302)
+        assert.equal(redirect.headers.location, "/form")
+        assert.deepEqual(redirect.headers["set-cookie"], ["sid=abc; Path=/; HttpOnly"])
+        assert.equal(redirect.body, "redirect body")
+        assert.equal(calls[0]?.init.redirect, "manual")
+        await first.request({ method: "POST", url: "https://sandbox.example/form", form: { username: "a b", password: "p&x" } })
+        await second.request({ method: "GET", url: "https://sandbox.example/form" })
+        assert.equal(new Headers(calls[1]?.init.headers).get("cookie"), "sid=abc")
+        assert.equal(new Headers(calls[1]?.init.headers).get("content-type"), "application/x-www-form-urlencoded")
+        assert.equal(calls[1]?.init.body, "username=a+b&password=p%26x")
+        assert.equal(new Headers(calls[2]?.init.headers).has("cookie"), false)
+    } finally {
+        globalThis.fetch = originalFetch
+    }
+})

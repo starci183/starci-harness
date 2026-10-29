@@ -19,7 +19,15 @@ export async function verify(token: string, options: Options) {
   return { id: payload.sub, role: 'authenticated' };
 }`;
 
-const jwtPolicyFindings = (t, edition, algorithms, shorthandIssuer = false) => {
+const oidcVerifier = (audience) => `
+import { jwtVerify } from 'jose';
+interface KeycloakOptions { issuer: string; clientId: string }
+export async function exchange(token: string, options: KeycloakOptions) {
+  const { payload } = await jwtVerify(token, {}, { issuer: options.issuer, audience: ${audience}, algorithms: ['RS256'] });
+  return { subject: payload.sub };
+}`;
+
+const jwtPolicyFindings = (t, edition, algorithms, shorthandIssuer = false, source = { 'src/modules/integrations/supabase/supabase.jwks.ts': verifier(algorithms, shorthandIssuer) }) => {
   const declaration = appDeclaration('be', {
     apps: [{ name: 'core', kind: 'api' }],
     connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' }],
@@ -29,7 +37,7 @@ const jwtPolicyFindings = (t, edition, algorithms, shorthandIssuer = false) => {
     '../hfs.json': JSON.stringify(declaration),
     '../node_modules/jose/package.json': JSON.stringify({ name: 'jose', version: '1.0.0', types: 'index.d.ts' }),
     '../node_modules/jose/index.d.ts': 'export declare function jwtVerify(token: string, keys: unknown, options: unknown): Promise<{payload: {role: string; sub: string}}>;',
-    'src/modules/integrations/supabase/supabase.jwks.ts': verifier(algorithms, shorthandIssuer),
+    ...source,
   } });
   const config = loadArchitectureConfig(root);
   const context = buildTypeScriptContext(config, ts, []);
@@ -50,5 +58,15 @@ for (const edition of ['lite', 'full']) {
     const findings = jwtPolicyFindings(t, edition, "['HS256']");
     assert.equal(findings.length, 1);
     assert.equal(findings[0].ruleId, 'BE_JWT_ALG_PINNED');
+  });
+
+  test(`R260 BE_JWT_ALG_PINNED admits a role-free OIDC verifier whose audience is typed configuration (${edition})`, (t) => {
+    assert.deepEqual(jwtPolicyFindings(t, edition, null, false, { 'src/modules/integrations/keycloak/keycloak.client.ts': oidcVerifier('options.clientId') }), []);
+  });
+
+  test(`R260 BE_JWT_ALG_PINNED rejects a role-free OIDC verifier with a literal audience (${edition})`, (t) => {
+    const findings = jwtPolicyFindings(t, edition, null, false, { 'src/modules/integrations/keycloak/keycloak.client.ts': oidcVerifier("'authenticated'") });
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].message, /audience must derive from typed configuration/);
   });
 }

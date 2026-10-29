@@ -19,6 +19,31 @@ const textAt = (files: Readonly<Record<string, string>>, file: string) => {
 const sourceCase = (fixture: ProjectFixture, files: Readonly<Record<string, string>>, file: string) => ({ filename: fixture.at(file), code: textAt(files, file) });
 
 for (const edition of ['lite', 'full'] as const) {
+  test(`${edition} unit service and logic client specs consume public injection tokens through module aliases`, t => {
+    const files = {
+      'tsconfig.json': JSON.stringify({ compilerOptions: {
+        target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', noEmit: true,
+        paths: { '@modules/*': ['./src/modules/*'] },
+      }, include: ['src/**/*', 'apps/**/*'] }),
+      'apps/core/src/app.module.ts': "import { KeycloakClient } from '../../../src/modules/integrations/keycloak'; import { HttpClient } from '../../../src/modules/platform/http'; export const AppModule = [KeycloakClient, HttpClient];",
+      'src/modules/integrations/keycloak/index.ts': 'export const KEYCLOAK = Symbol(); export class KeycloakClient {}',
+      'src/modules/platform/http/index.ts': 'export const HTTP_CLIENT = Symbol(); export class HttpClient {}',
+      'src/modules/domain/identity/session.service.ts': 'export class SessionService {}',
+      'src/modules/domain/identity/session.service.spec.ts': "import { KEYCLOAK } from '@modules/integrations/keycloak'; const providers = [{ provide: KEYCLOAK, useValue: {} }];",
+      'src/modules/integrations/keycloak/keycloak.client.ts': 'export class KeycloakClient {}',
+      'src/modules/integrations/keycloak/keycloak.client.spec.ts': "import { HTTP_CLIENT } from '@modules/platform/http'; const providers = [{ provide: HTTP_CLIENT, useValue: {} }];",
+    };
+    const fixture = projectFixture({ profile: 'be', edition, files });
+    t.after(fixture.cleanup);
+    fixture.tester.run('dead-exports', ruleNamed(beRules, 'dead-exports'), {
+      valid: [
+        sourceCase(fixture, files, 'src/modules/integrations/keycloak/index.ts'),
+        sourceCase(fixture, files, 'src/modules/platform/http/index.ts'),
+      ],
+      invalid: [],
+    });
+  });
+
   test(`${edition} back-end dead exports accept consumed exports and reached files and reject unused exports and files`, t => {
     const files = {
       'apps/core/src/app.module.ts': "import { used } from '../../../src/modules/domain/liveness';\nimport { live } from '../../../src/modules/domain/live';\nexport const AppModule = [used, live];\n",

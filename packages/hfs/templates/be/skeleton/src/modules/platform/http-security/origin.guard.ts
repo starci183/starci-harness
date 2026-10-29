@@ -4,7 +4,7 @@ import type { Reflector } from "@nestjs/core"
 import { InjectReflector } from "@modules/platform/composition"
 import { HttpSecurityError, HttpSecurityErrorCode } from "./errors/http-security.error"
 import { requestOf } from "./execution-request.mapper"
-import { InjectHttpSecurityOptions } from "./http-security.decorators"
+import { InjectHttpSecurityOptions, REQUIRE_ORIGIN_KEY } from "./http-security.decorators"
 import type { HttpSecurityOptions } from "./http-security.options"
 
 const SAFE_METHODS: ReadonlySet<string> = new Set(["GET", "HEAD", "OPTIONS"])
@@ -26,9 +26,8 @@ const originOf = (origin: string | undefined, referer: string | undefined): stri
 
 @Injectable()
 /**
- * The second app guard, the CSRF defence: a state-changing request must name an allowed origin, by its Origin header or,
- * when Origin is absent, by its Referer. A request that names none is refused, since a session cookie rides on it
- * whatever sent it. A door marked `ServerToServer` proves its caller itself and owes no origin.
+ * The second app guard, the CSRF defence: cookie-bearing mutations and doors marked RequireOrigin need an actual allowed
+ * Origin. Other mutations retain Referer fallback and the ServerToServer exemption for callers proving themselves.
  */
 export class OriginGuard implements CanActivate {
     constructor(
@@ -40,12 +39,19 @@ export class OriginGuard implements CanActivate {
     canActivate(context: ExecutionContext): boolean {
         const request = requestOf(context)
         if (SAFE_METHODS.has(request.method)) return true
+        const requiresOrigin =
+            this.reflector.getAllAndOverride<boolean | undefined>(REQUIRE_ORIGIN_KEY, [
+                context.getHandler(),
+                context.getClass(),
+            ]) === true || request.headers.cookie !== undefined
         const exempt = this.reflector.getAllAndOverride<boolean | undefined>(SERVER_TO_SERVER_KEY, [
             context.getHandler(),
             context.getClass(),
         ])
-        if (exempt === true) return true
-        const origin = originOf(request.headers.origin, request.headers.referer)
+        if (!requiresOrigin && exempt === true) return true
+        const origin = requiresOrigin
+            ? request.headers.origin
+            : originOf(request.headers.origin, request.headers.referer)
         if (origin !== undefined && this.options.allowedOrigins.includes(origin)) return true
         throw new HttpSecurityError({ code: HttpSecurityErrorCode.OriginRejected })
     }

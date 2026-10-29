@@ -76,6 +76,8 @@ const world = useTestWorld({ apps: ["todo", "worker"] })   // or { todo: true },
 | `world.interruptDatabase(fn, connection?)` | `infra.postgresql.during(fn)`, or `infra.postgresql.connection(name).during(fn)` with a connection. |
 | `useSandbox({ provider, keys, module, client })` | contract layer: the real client against a provider sandbox; the library reads the keys and the contract spec fails, naming them, when one is absent. |
 
+Inside a sandbox contract spec, `sandbox.request({ method: "GET" | "POST", url, headers?, form? })` makes one raw request and returns `{ status, headers, body }` without following redirects. Each sandbox handle keeps its own cookie jar, sends matching cookies on later calls, and exposes response headers including `location` and every `set-cookie`; `form` sends form-encoded POST fields.
+
 
 GraphQL subscriptions: `world.apps.<name>.api.as(token).subscribe(operation, { variables })` opens a graphql-ws subscription (the caller's bearer goes in `connectionParams.authorization`) and resolves once the server acknowledged it; trigger the push afterwards, `await sub.next()` for the next frame, `sub.frames()` to prove nothing arrived, `await sub.close()` to release it.
 ## One warm stack for all repos

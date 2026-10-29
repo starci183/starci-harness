@@ -140,7 +140,7 @@ function checkOwnJwks(input) {
   return { violations, coverage: { status: 'checked', integrationFiles: integrations.length, verifyCalls: counters.verifyCalls, verifiedCalls: counters.verifiedCalls } };
 }
 
-/** R260 BE_JWT_ALG_PINNED: every jose jwtVerify call pins a literal secure algorithm list, a configured issuer and the authenticated role. */
+/** R260 BE_JWT_ALG_PINNED: every jose jwtVerify call pins a literal secure algorithm list and a configured issuer, and binds the principal by a configured audience or the authenticated role. */
 export function checkJwtPolicy(input) {
   const kit = machineKit(input);
   const violations = [];

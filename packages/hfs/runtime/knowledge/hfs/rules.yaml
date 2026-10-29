@@ -4346,7 +4346,7 @@ rules:
       - {path: packages/hfs/src/hfs-database-config.spec.mjs, editions: [lite], codes: [DB_EXTENSION_ALLOWED, DB_MIGRATION_DESTRUCTIVE, HFS_SEED_PII, DB_VAULT_WRITE]}
   - id: R260
     code: "BE_JWT_ALG_PINNED"
-    law: "A back-end JWT verifier pins a nonempty literal subset of ES256, RS256 and EdDSA and obtains its issuer from configuration. A principal is built only after verification and rejection of every role other than authenticated, in lite and full."
+    law: "Every back-end JWT verifier pins a nonempty literal subset of ES256, RS256 and EdDSA and obtains its issuer from typed configuration. A principal is built only after verification and is bound either by an audience read from typed configuration (an OIDC verifier such as the Keycloak of full, or the app's own Passport access tokens of lite) or, where every token of the issuer shares one audience (Supabase-style), by rejecting every role other than authenticated first, in lite and full."
     kinds: [check, lint]
     gates: ["pre-commit","settle","land","ci"]
     failureCodes: ["BE_JWT_ALG_PINNED"]

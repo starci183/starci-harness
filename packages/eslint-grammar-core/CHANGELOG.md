@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.28 - 2026-10-30
+
+- Changed: the bundled `rules.yaml` states R260 with the configured-audience binding of an OIDC verifier. No rule of this package changed.
+- Changed: the peer moves to eslint-canon-fe 9.5.17; the bundled canon pins name hfs 4.11.16, eslint-canon-be 3.8.15, eslint-canon-fe 9.5.17, the Grammar family 0.15.28 and test-world 1.3.2. No rule of this package changed.
+
 ## 0.15.27 - 2026-10-29
 
 - Changed: the peer moves to eslint-canon-fe 9.5.16; the bundled canon pins name hfs 4.11.15, eslint-canon-be 3.8.14, eslint-canon-fe 9.5.16, the Grammar family 0.15.27 and jest-preset 2.5.1; the bundled `rules.yaml` states R80 and R263 with the `claimRow` claim of the `EntityInbox`. No rule of this package changed.

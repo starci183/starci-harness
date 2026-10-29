@@ -1,11 +1,35 @@
 import type { GraphQLRequestContext, GraphQLRequestContextWillSendResponse, GraphQLResponse } from "@apollo/server"
+import { Test } from "@nestjs/testing"
 import { mock } from "@starci/jest-preset"
 import type { Request } from "express"
 import type { GraphQLFormattedError } from "graphql"
+import { ERRORS_SERVICE } from "@modules/platform/errors"
 import type { ErrorsService } from "@modules/platform/errors"
+import { REQUEST_LOCALE } from "@modules/platform/i18n"
 import type { RequestLocale } from "@modules/platform/i18n"
 import type { GraphqlContext } from "./graphql.contracts"
 import { localizeError, localizeErrorsPlugin } from "./localize-errors.mapper"
+
+const build = async () => {
+    const errorsDouble = mock<ErrorsService>()
+    const localeDouble = mock<RequestLocale>()
+    const moduleRef = await Test.createTestingModule({
+        providers: [
+            { provide: ERRORS_SERVICE, useValue: errorsDouble },
+            { provide: REQUEST_LOCALE, useValue: localeDouble },
+        ],
+    }).compile()
+    return {
+        errors: moduleRef.get<typeof errorsDouble>(ERRORS_SERVICE),
+        requestLocale: moduleRef.get<typeof localeDouble>(REQUEST_LOCALE),
+    }
+}
+
+const errorWith = (extensions?: GraphQLFormattedError["extensions"]): GraphQLFormattedError =>
+    extensions === undefined ? { message: "syntax error" } : { message: "syntax error", extensions }
+
+const acceptLanguage = (language?: string): Request["headers"] =>
+    language === undefined ? {} : { "accept-language": language }
 
 const singleResponse = (errors?: ReadonlyArray<GraphQLFormattedError>): GraphQLResponse =>
     mock<GraphQLResponse>({ body: { kind: "single", singleResult: errors === undefined ? {} : { errors } } })
@@ -33,17 +57,17 @@ const sendResponse = async (
 describe("localizeError", () => {
     it.each([undefined, {}, { code: 400 }, { code: null }, { code: false }])(
         "returns an error without a string code unchanged (%p)",
-        (extensions) => {
-            const errors = mock<ErrorsService>()
-            const error: GraphQLFormattedError = { message: "syntax error", extensions }
+        async (extensions) => {
+            const { errors } = await build()
+            const error = errorWith(extensions)
 
             expect(localizeError(errors, "en", error)).toBe(error)
             expect(errors.text).not.toHaveBeenCalled()
         },
     )
 
-    it("replaces a coded error's message with the catalog text and keeps only string and number params", () => {
-        const errors = mock<ErrorsService>()
+    it("replaces a coded error's message with the catalog text and keeps only string and number params", async () => {
+        const { errors } = await build()
         errors.text.mockReturnValue("The item was not found")
         const error: GraphQLFormattedError = {
             message: "ITEM_NOT_FOUND",
@@ -67,8 +91,8 @@ describe("localizeError", () => {
 
     it.each([undefined, null, ["i-1"], "i-1", 42, false])(
         "interpolates no params when extensions.params is %p",
-        (params) => {
-            const errors = mock<ErrorsService>()
+        async (params) => {
+            const { errors } = await build()
             errors.text.mockReturnValue("The item was not found")
             const error: GraphQLFormattedError = {
                 message: "ITEM_NOT_FOUND",
@@ -83,8 +107,7 @@ describe("localizeError", () => {
 
 describe("localizeErrorsPlugin", () => {
     it("forwards the Accept-Language preferences and localizes every coded error in the resolved locale", async () => {
-        const errors = mock<ErrorsService>()
-        const requestLocale = mock<RequestLocale>()
+        const { errors, requestLocale } = await build()
         requestLocale.of.mockReturnValue("vi")
         errors.text.mockReturnValueOnce("localized: not found").mockReturnValueOnce("localized: denied")
         const coded: GraphQLFormattedError = { message: "ITEM_NOT_FOUND", extensions: { code: "ITEM_NOT_FOUND" } }
@@ -115,15 +138,14 @@ describe("localizeErrorsPlugin", () => {
     it.each([undefined, ""])(
         "delegates an absent or empty Accept-Language header to the locale default (%p)",
         async (language) => {
-            const errors = mock<ErrorsService>()
-            const requestLocale = mock<RequestLocale>()
+            const { errors, requestLocale } = await build()
             requestLocale.of.mockReturnValue("vi")
             errors.text.mockReturnValue("localized: not found")
             const coded: GraphQLFormattedError = { message: "ITEM_NOT_FOUND", extensions: { code: "ITEM_NOT_FOUND" } }
 
             const response = singleResponse([coded])
 
-            await sendResponse(errors, requestLocale, requestContext(response, { "accept-language": language }))
+            await sendResponse(errors, requestLocale, requestContext(response, acceptLanguage(language)))
 
             expect(requestLocale.of).toHaveBeenCalledWith(language)
             expect(errors.text).toHaveBeenCalledWith("ITEM_NOT_FOUND", {}, "vi")
@@ -132,10 +154,11 @@ describe("localizeErrorsPlugin", () => {
             ])
         },
     )
+})
 
+describe("localizeErrorsPlugin on a response with nothing to localize", () => {
     it("leaves a response without errors alone", async () => {
-        const errors = mock<ErrorsService>()
-        const requestLocale = mock<RequestLocale>()
+        const { errors, requestLocale } = await build()
 
         const response = singleResponse()
         const body = response.body
@@ -149,14 +172,13 @@ describe("localizeErrorsPlugin", () => {
     })
 
     it("leaves an incremental response alone", async () => {
-        const errors = mock<ErrorsService>()
-        const requestLocale = mock<RequestLocale>()
+        const { errors, requestLocale } = await build()
         const coded: GraphQLFormattedError = { message: "ITEM_NOT_FOUND", extensions: { code: "ITEM_NOT_FOUND" } }
         const response = mock<GraphQLResponse>({
             body: {
                 kind: "incremental",
                 initialResult: { errors: [coded], hasNext: true },
-                subsequentResults: mock<AsyncGenerator>(),
+                subsequentResults: mock<AsyncIterable<never>>(),
             },
         })
         const body = response.body

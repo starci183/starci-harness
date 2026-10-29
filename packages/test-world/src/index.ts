@@ -50,7 +50,7 @@ export type {
     WorldWiring,
 } from "./config/wiring"
 export type { KeycloakEvent, KeycloakSession } from "./nest/keycloak"
-export type { ModuleRegistration, SandboxAnswer, SandboxHandle, SandboxRequest, SandboxSpec } from "./nest/sandbox"
+export type { ModuleRegistration, SandboxAnswer, SandboxBrowserAnswer, SandboxBrowserRequest, SandboxHandle, SandboxRequest, SandboxSpec } from "./nest/sandbox"
 export { TestWorldError, TestWorldErrorCode } from "./errors"
 export type { TestWorldErrorCodeValue } from "./errors"
 export type {
