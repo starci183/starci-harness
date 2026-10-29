@@ -61,7 +61,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 
 | task | read, in order |
 |---|---|
-| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with this file, the anatomy slice of the side and edition (`anatomy-<edition>-<side>.md`) and [lint.md](lint.md) → the records the contract names |
+| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with the anatomy slice of the side and edition (`anatomy-<edition>-<side>.md`) and opens this file and [lint.md](lint.md) on demand → the records the contract names |
 | change UI | [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the `ui` record of the screen ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
 | write or change product records | [work.md](work.md) → the feature's `index.yaml` and the records it cites |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |

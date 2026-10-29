@@ -7,7 +7,7 @@ import { cleanVerify, declaredFiles, pruneVerifyWorktrees, VERIFY_INFRA } from "
 import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.js"
 import { contractHash, contractProblems, readContract, resolveChecks } from "../../harness/contract.js"
 import { blockOnCustody, CUSTODY_CODES, isCustodyRecheck } from "../../harness/custody.js"
-import type { Contract } from "../../harness/contract.js"
+import type { Contract, ContractJudging } from "../../harness/contract.js"
 import { enablePatterns, patternsOfFindings, patternsOfPaths } from "../../harness/hfs-patterns.js"
 import type { PatternNeed, PatternsEnabled } from "../../harness/hfs-patterns.js"
 import { inTransaction, now, openExistingLedger, openLedger } from "../../harness/ledger.js"
@@ -27,7 +27,7 @@ import { HOST_HELD, withHeavyBound } from "../../harness/heavy.js"
 import { reapplyLocal } from "../deps/packages.js"
 import type { LandTarget, OpWorktree, WorktreeRemoval } from "../../harness/land.js"
 import type { Settlement, Verifier, WorkWrite } from "../../harness/settle.js"
-import { clearIntent, getTask, lastEvent, latestAttempt, markIntent, recordEvent, recordSettleCommit, resultOf, setStatus, setVerdict, taskCheckout, VERIFY_HOST_HELD } from "../../harness/tasks.js"
+import { clearIntent, getTask, isAdmitted, lastEvent, latestAttempt, markIntent, recordEvent, recordSettleCommit, resultOf, setStatus, setVerdict, taskCheckout, VERIFY_HOST_HELD } from "../../harness/tasks.js"
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { commitWithMessage, repositoryRoot, resolveSha, samePath } from "../../shared/git.js"
@@ -92,8 +92,9 @@ type VerifyData = ContractVerifyData | TaskVerifyData | RecoverData
 
 const MINUTE_MS = 60_000
 
-const unfit = (contract: Contract, ops: Ops): void => {
-    const problems = contractProblems(contract, ops)
+/** Refuses an unfit contract; `judging` sets aside the context budget of a contract the ledger admitted already (tasks.ts isAdmitted). */
+const unfit = (contract: Contract, ops: Ops, judging: ContractJudging): void => {
+    const problems = contractProblems(contract, ops, judging)
     if (problems.length > 0) throw new Refusal("CONTRACT_UNFIT", `the contract is not fit to verify:\n${problems.join("\n")}`)
 }
 
@@ -157,8 +158,8 @@ const opInstall = async (root: string, taskId: string, made: OpWorktree): Promis
 const verifyContract = async (cwd: string, file: string, taskId: string | undefined, record: boolean): Promise<VerbResult<VerifyData>> => {
     const ops = loadOps()
     const contract = readContract(file)
-    unfit(contract, ops)
     const root = await repositoryRoot(cwd)
+    unfit(contract, ops, { budget: !isAdmitted(root, contract) })
     let place: CheckPlace = { root, cwd: join(root, contract.context.cwd ?? ".") }
     let made: OpWorktree | undefined
     if (taskId !== undefined) {
@@ -593,7 +594,8 @@ const judgeTask = async (db: DatabaseSync, callerRoot: string, ops: Ops, task: T
     // The task's work lives in its own checkout, which may not be the caller's: it is judged there and lands on its target.
     const root = await taskCheckout(task, callerRoot)
     const pruned = await pruneVerifyWorktrees(root)
-    unfit(task.contract, ops)
+    // The task's contract was admitted when it was queued, so the context that grew under it since is no refusal.
+    unfit(task.contract, ops, { budget: false })
     const target = await landTargetOf(db, task, root)
     const made = opWorktreeOf(db, taskId)
     // The wave tier leaves a workflow task's heavy checks (typecheck, lint, tests) to its workflow's wave verify (harness/wave.ts).

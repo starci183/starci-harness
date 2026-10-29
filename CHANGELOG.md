@@ -6,6 +6,22 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **An admitted contract is never refused for a context that grew under it.** The op's context budget is judged when a
+  contract is admitted (`task send`, `supervisor dispatch`, `workflow define`, a workflow change that adds or edits it). Its
+  verify, settle, relaunch and a resend or retry of the same contract hash keep the budget it passed then (`isAdmitted` in
+  `harness/tasks.ts`: a task or graph node of the ledger carries the hash; `task verify` judges a task's own contract
+  without it). starci-next-app's `be-purchase` was refused `CONTRACT_UNFIT` at its verify (24564 tokens against 24000) after
+  its worker had done the work. Bench: `admitted-contract-settles-after-context-grows`.
+- **The code op's app base is a small core again.** Canon growth had taken the `be`/`fe` base to about 20.7k of the code op's
+  24000 tokens, so a contract with more than about 3.3k tokens of its own context was unfit. The anatomy slices name each
+  rule by id alone (its enforcers stay in anatomy.md's full tree), and project/README.md, project/lint.md and the shared
+  format and scripts topics move from the code and test op bases to on-demand reads (contexts/code/README.md "Read for a
+  coding task", the core column of contexts/code/shared/README.md). Measured with `contract check`: full/be 21120 → 12712,
+  lite/be 21943 → 13461, full/fe 18720 → 11236, lite/fe 19515 → 11994, harness 13783 → 12554 tokens; the test op's
+  base (budget 30000) full 27334 → 19109, lite 28157 → 19857.
+
 ## [1.1.0-alpha.13] - 2026-10-29
 
 ### Fixed

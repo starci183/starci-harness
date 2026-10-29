@@ -7,20 +7,16 @@ perRecord: true
 context:
   budget: 30000
   base:
-    - {file: "harness:contexts/project/README.md", shared: true}
     - harness:contexts/project/anatomy-{edition}-be.md
-    - {file: "harness:contexts/project/lint.md", shared: true}
     - harness:contexts/project/{edition}.md
     - {file: "harness:contexts/code/README.md", shared: true}
     - {file: "harness:contexts/code/shared/README.md", shared: true}
     - {file: "harness:contexts/code/shared/typing.md", shared: true}
-    - {file: "harness:contexts/code/shared/format.md", shared: true}
     - {file: "harness:contexts/code/shared/loosening.md", shared: true}
     - {file: "harness:contexts/code/shared/comment.md", shared: true}
     - {file: "harness:contexts/code/shared/naming.md", shared: true}
     - {file: "harness:contexts/code/shared/imports.md", shared: true}
     - {file: "harness:contexts/code/shared/test.md", shared: true}
-    - {file: "harness:contexts/code/shared/scripts.md", shared: true}
     - harness:contexts/code/be/README.md
     - harness:contexts/code/be/test.md
     - harness:packages/jest-preset/README.md

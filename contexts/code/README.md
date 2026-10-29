@@ -19,10 +19,10 @@ both sides hold in the same words lives once in `shared/`; how a rule changes is
 
 An op that writes code or tests reads, in this order, and cites the rule ids it applied:
 
-1. **The project map:** [project/README.md](../project/README.md), [anatomy.md](../project/anatomy.md) (where the
-   slot's code lives), [lint.md](../project/lint.md) (what machines judge), and the edition file
-   ([lite.md](../project/lite.md) or [full.md](../project/full.md)).
-2. **Shared:** [shared/README.md](shared/README.md) and every topic it lists.
+1. **The project map:** the [anatomy](../project/anatomy.md) slice of its side and edition
+   (`anatomy-<edition>-<side>.md`: where the slot's code lives and the ids of the rules that judge it) and the edition
+   file ([lite.md](../project/lite.md) or [full.md](../project/full.md)).
+2. **Shared:** [shared/README.md](shared/README.md) and the topics it marks core.
 3. **The side:** [be/README.md](be/README.md) or [fe/README.md](fe/README.md); a front-end screen also reads the ui and
    grammar files of the [knowledge reading order](../README.md#reading-order-by-task).
 4. **The slot topics:** the side topics whose front matter `slots` names a slot the task touches (the anatomy prints
@@ -33,8 +33,12 @@ An op that writes code or tests reads, in this order, and cites the rule ids it 
    the documentation of its enforcer: the front-end canon's `packages/eslint-canon-fe/docs/<law>.md`, the back-end
    canon's rule source header in `packages/eslint-canon-be/<law>.mjs`, and the grammar lint for a grammar call.
 
-Steps 1 to 3 are each op label's `context.base`; step 4 comes from the task's allowPaths, and step 5 and any topic a
-task needs beyond its paths are the task's `context.extend`, which the Kernel writes from the anatomy.
+Steps 1 to 3 are the mandatory core of each op label's `context.base`, kept within the op's context budget. The rest of the
+map is read on demand, through `starci contexts search` or `starci contexts anchor`, when the task meets it:
+[project/README.md](../project/README.md) (what a project is, the Work life cycle), [lint.md](../project/lint.md) (what
+machines judge, opened at a red check or a gate the task adds), the full [anatomy.md](../project/anatomy.md) tree (the
+enforcers of each rule) and the shared topics outside the core. Step 4 comes from the task's allowPaths, and step 5 and
+any topic a task needs beyond its paths are the task's `context.extend`, which the Kernel writes from the anatomy.
 
 ## Review obligations
 

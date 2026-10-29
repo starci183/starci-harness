@@ -596,15 +596,17 @@ const allowPathProblems = (allowPaths: readonly string[]): string[] => {
     return problems
 }
 
-/** What a contract is judged on: every problem, or (`budget: false`) all but the context budget, for a contract a graph holds already. */
+/** What a contract is judged on: every problem, or (`budget: false`) all but the context budget, for a contract already admitted. */
 export interface ContractJudging {
     readonly budget?: boolean
 }
 
 /**
  * Problems that make a contract unfit to send, beyond its schema: label, base kept, paths, context files, the context budget and
- * the behavioural rule. The budget measures the context files as they are now, so it is judged on a contract being written; a
- * contract a workflow's graph holds already passed it when it was added (`budget: false`, graph.ts buildGraph).
+ * the behavioural rule. The budget measures the context files as they are now, so it is judged once, when the contract is
+ * admitted (task send, supervisor dispatch, workflow define, or a workflow change that adds or edits it). An admitted contract
+ * (`budget: false`) keeps the budget it passed then: its verify, relaunch, retry of the same hash and settle never refuse it for
+ * a context that grew under it (tasks.ts isAdmitted, graph.ts buildGraph's `held`, task verify).
  */
 export const contractProblems = (contract: Contract, ops: Ops, judging: ContractJudging = {}): string[] => {
     const problems = allowPathProblems(contract.context.allowPaths)

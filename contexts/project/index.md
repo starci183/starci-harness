@@ -16,7 +16,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Grammar edits are content only
 - [authority/wave.md](../authority/wave.md) · 2 KB — A wave is one scoped round on a merged tree.
   - sections: The scope decision comes first · Reuse and repair
-- [code/README.md](../code/README.md) · 6 KB — How app code is written: shared holds the rules both sides follow, be (NestJS) and fe (Next.js) the rules of one side.
+- [code/README.md](../code/README.md) · 7 KB — How app code is written: shared holds the rules both sides follow, be (NestJS) and fe (Next.js) the rules of one side.
   - sections: Read for a coding task · Review obligations
   - ids: CODE-REVIEW-1, CODE-REVIEW-2, CODE-REVIEW-3, CODE-REVIEW-4, CODE-REVIEW-5, CODE-REVIEW-6, CODE-REVIEW-7
 - [code/be/README.md](../code/be/README.md) · 9 KB — How back-end code is placed and shaped, one Markdown file per topic, true to the lite reference app and to `@starci/eslint-canon-be`, in the rule form of code/README.md.
@@ -125,7 +125,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: FE-TYPING-1 Props are readonly all the way down, and unused props are not declared · FE-TYPING-2 Vocabularies are literal unions, never enums · FE-TYPING-3 Wire, feature and view types are distinct
 - [code/fe/ui.md](../code/fe/ui.md) · 5 KB — The one place that says what an app may style.
   - sections: FE-UI-1 Compose the selected grammar; the app makes no visual choice · FE-CSS-1 App CSS is layout only · FE-CSS-2 `globals.css` imports in the cascade order · FE-CSS-3 Colour lives in one brand file · FE-ICON One glyph vocabulary through one owner
-- [code/shared/README.md](../code/shared/README.md) · 1 KB — The coding rules both sides of an app follow, back end and front end alike: one rule here replaces a copy on each side.
+- [code/shared/README.md](../code/shared/README.md) · 2 KB — The coding rules both sides of an app follow, back end and front end alike: one rule here replaces a copy on each side.
 - [code/shared/comment.md](../code/shared/comment.md) · 2 KB — Whether a declaration or statement carries a comment and what it says.
   - sections: SHARED-COMMENT-1 Every export carries a docblock that states responsibility · SHARED-COMMENT-2 A line comment sits above its statement and says why · SHARED-COMMENT-3 Source text is English, with no emoji
 - [code/shared/format.md](../code/shared/format.md) · 2 KB — How source text is laid out.

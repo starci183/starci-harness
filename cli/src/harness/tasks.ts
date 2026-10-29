@@ -5,7 +5,7 @@ import { Refusal } from "../shared/errors.js"
 import { gitCommonDir, repositoryRoot, samePath } from "../shared/git.js"
 import type { Contract } from "./contract.js"
 import { contractHash, parseContract } from "./contract.js"
-import { now } from "./ledger.js"
+import { now, openExistingLedger } from "./ledger.js"
 import { harnessCause } from "./revive.js"
 
 /** The states of a task. Transitions are allowed only along TRANSITIONS; the ledger keeps facts, this module keeps the rules. */
@@ -210,6 +210,22 @@ export const createTask = (
     ).run(id, options.workflowId ?? null, contract.label, JSON.stringify(contract), contractHash(contract), previous === undefined ? 1 : tryAfter(db, previous), options.retryOf ?? null, at, at, worktree)
     recordEvent(db, "task-created", id, { label: contract.label, retryOf: options.retryOf ?? null })
     return getTask(db, id)
+}
+
+/**
+ * Whether the ledger of `root` admitted `contract` already: a task or a workflow graph node carries its hash (a project with no
+ * ledger yet admitted nothing). An admitted contract passed its op's context budget when it was admitted, so it is never
+ * refused for that budget again (contract.ts contractProblems).
+ */
+export const isAdmitted = (root: string, contract: Contract): boolean => {
+    const db = openExistingLedger(root)
+    if (db === undefined) return false
+    try {
+        const hash = contractHash(contract)
+        return db.prepare("SELECT 1 FROM tasks WHERE contract_hash = ? UNION ALL SELECT 1 FROM plan_nodes WHERE contract_hash = ? LIMIT 1").get(hash, hash) !== undefined
+    } finally {
+        db.close()
+    }
 }
 
 /** One task by id; refuses an unknown id. */
