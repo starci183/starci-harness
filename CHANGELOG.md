@@ -19,6 +19,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A deregistered worktree folder that kept its `.git` file is removed once nothing holds it.** Git deletes a worktree's
+  admin folder whatever its delete of the work tree did, and that delete stops at the first entry it cannot remove, so a
+  held file listed before `.git` leaves a `.git` file naming a git dir that is gone. Removal (`removeWorktreeFolder` in
+  `harness/land.ts`) refused every such folder as "still holds files" forever; it now refuses only a live checkout
+  (`holdsLiveCheckout`: a `.git` folder, or a `.git` file whose git dir exists). The bench's folder holder makes the held
+  folder itself read-only off Windows instead of its parent, so its siblings can still be made, and
+  `supervisor-tick-sweeps-terminals` counts the reap's forced workspace close beside the tab close. Bench (Linux and
+  Windows): `worktree-gc-now-reaps-orphan-holder`, `worktree-reap-busy-unlisted-now`, `worktree-remove-busy-gc-retries`,
+  `worktree-reap-op-processes`, `supervisor-tick-sweeps-terminals`.
 - **A cancel of an attempt whose worktree was removed out of band settles it at once.** It has nothing to preserve, so it ends
   cancelled with a `task-discarded` event (worktree gone) and its redo spends no try, instead of every step refusing
   `TASK_WORKTREE_GONE` (ticket tk-cb03efd533f1: `auth-sign-in`'s superseded t-2184122d). Bench: `op-settle-worktree-gone-discards`.

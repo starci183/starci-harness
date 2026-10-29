@@ -4,7 +4,7 @@ group: lifecycle
 title: "a worktree the host holds is left busy without failing the task, retried by worktree gc with backoff, ticketed at the cap"
 inject: >-
   a program the harness never started and that works elsewhere holds an inline task's Op worktree from outside (a file in it
-  open with no share mode on Windows, a read-only parent elsewhere) when the task is cancelled, and lets go only later
+  open with no share mode on Windows, its folder read-only elsewhere) when the task is cancelled, and lets go only later
 expect: >-
   the reap ends nothing (the holder is not the harness's and works elsewhere); the cancel settles the task and records the
   removal busy with who holds it (worktree-held); worktree gc does not retry before the backoff runs out, retries

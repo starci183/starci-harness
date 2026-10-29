@@ -58,13 +58,14 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone or one of its own (with a title, orphaned or not, the worktree `terminal list` names for it, and a served
   `hold` stand-in as its process, which `terminal close` ends), mail a seat sent. No real Orca is ever launched.
 - **The folder holder** is `stub/hold-stub.mjs`, served by `serve: {stub: hold, cwd: <folder>}`: a process that keeps its
-  working folder from being removed, as a shell left open in a worktree does (its working directory on Windows, a read-only
-  parent elsewhere). With `args: [--hold, <file>]` it holds that file's folder from outside instead, working elsewhere, as a
-  program the harness never started does (the file open with no share mode on Windows, the folder's parent read-only
-  elsewhere), which a reap never ends. It prints `stub hold: <url> token <pid>`; `POST <url>/__exit` or a SIGTERM lets go and
-  ends it. `args: [--child, <folder>]` also starts a child node process working in that folder, ended with the stub, whose pid
-  `GET <url>/__child` answers. The read-only parent is the held folder's own parent, so the folder a scenario names sits inside its run, never the
-  run itself.
+  working folder from being removed, as a shell left open in a worktree does (its working directory on Windows). With
+  `args: [--hold, <file>]` it holds that file's folder from outside instead, working elsewhere, as a program the harness never
+  started does (the file open with no share mode on Windows), which a reap never ends. Elsewhere, where neither holds a
+  folder, it makes the held folder itself read-only while it runs, so the folder and every folder above it cannot be removed
+  while its parent and siblings stay writable; a removal tried meanwhile keeps the folder's files where Windows may empty it,
+  and the scenarios assert only what both leave. It prints `stub hold: <url> token <pid>`; `POST <url>/__exit` or a SIGTERM
+  lets go and ends it. `args: [--child, <folder>]` also starts a child node process working in that folder, ended with the
+  stub, whose pid `GET <url>/__child` answers.
 - **The CPU burner** is `stub/busy-stub.mjs`, served by `serve: {stub: busy}`: a process that keeps one core busy, so the
   heavy governor's CPU average is above a tiny `maxCpuPercent` on any host, an idle runner included. It prints
   `stub busy: <url> token <pid>`; `POST <url>/__exit`, a SIGTERM or the scenario's end stops it.

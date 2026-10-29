@@ -50,6 +50,11 @@ steps:
       args: [--hold, "${project}/worktrees/stuck.ops/${a}/docs/base.md"]
       cwd: ${run}
       as: outside
+  - name: git lists the worktree by its admin folder
+    assert:
+      exists:
+        path: .git/worktrees/${a}
+        present: true
   - starci: [task, cancel, "${a}", --reason, bench]
   - assert:
       sql:
@@ -62,11 +67,18 @@ steps:
       url: "${outside.url}/__exit"
       expect:
         status: 200
+  # Git deletes the admin folder whatever its delete of the work tree did, and that delete stops at the first file it cannot
+  # remove, so whether the worktree's `.git` file went too depends on the order the host lists the folder; the admin folder is
+  # what git lists a worktree by.
   - name: git no longer lists the worktree (the busy removal deregistered it), yet its folder stays with files in it
     assert:
       exists:
-        path: ${project}/worktrees/stuck.ops/${a}/.git
+        path: .git/worktrees/${a}
         present: false
+  - assert:
+      exists:
+        path: ${project}/worktrees/stuck.ops/${a}/docs/base.md
+        present: true
   - write:
       path: ${project}/worktrees/stuck.ops/${a}/left.txt
       content: "left behind\n"
