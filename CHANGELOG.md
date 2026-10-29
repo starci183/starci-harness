@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.7] - 2026-10-29
+
 ### Added
 
 - **The urgent release** (owner, 2026-10-29: "deploy gấp không cần ci cd gì hết!!!! cái này là tính năng nha"). `starci app release
@@ -27,6 +29,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A yaml key's comment is searched with that key.** `contexts search` cut a yaml file at each key line, so the comment written
+  above a key landed in the chunk of the key before it (`neverRead`'s "files no agent opens" sat in `sopsEnvelopes`); a cut now
+  starts at the comment block directly above its key, the file's leading comment staying its header (chunker 4,
+  `cli/src/core/contexts/search-corpus.ts`). The hybrid recall@5 of the search eval is 0.978 on a fresh index.
+- **A served bench stand-in ends on SIGTERM.** `Serving.stop` (`cli/src/shared/exec.ts`) sends the served tree a SIGTERM, waits up
+  to 5 s, then kills what is left, so the hold stand-in gives its folder's parent its mode back; a SIGKILL left `.runtime/bench`
+  read-only on Linux and the next scenario failed EACCES. A scenario whose run cannot be set up is that scenario's error, and the
+  bench goes on. A `busy` stand-in (`bench/stub/busy-stub.mjs`) keeps a core busy for the scenarios that need a hot CPU on an idle
+  host; `heavy-project-fair-share` runs on two slots, one per project, and checks the host has them before it queues.
 - **A shared need's relay is never a dead end** (monitor report 7, ticket tk-069fd4d52ad3: lesson-ai waited forever on
   `capability:domain.entitlement`). A need resolved by a workflow's keys records every commit those keys landed, each attempt and
   round of each key in branch order (`keyCommits` in `cli/src/core/needs/tend.ts`), not only each key's last task, so a relay no
