@@ -40,6 +40,8 @@ const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint'
 const WORLD_SCRIPTS = ['test:integration', 'test:e2e', 'test:contract'];
 const DB_TYPES_SCRIPTS = ['db:start', 'db:reset', 'db:types', 'db:stop'];
 const DB_TYPES_COMMITTED = { name: 'db-types-committed', command: ['git', 'diff', '--exit-code', '--', 'supabase/types/database.types.ts'], summary: null, env: {} };
+// An app with an entity list (db/entity-list.mjs) checks its entities against the migrated schema: a row of every gate, declared or default.
+const DB_DRIFT = { name: 'db-drift', command: ['npx', 'starci', 'app', 'db', 'drift'], summary: null, env: {} };
 
 /** True for a branch or remote name git can take as one argument (no leading dash, only path-like characters). */
 export const refName = (value) => typeof value === 'string' && REF_NAME.test(value);
@@ -61,11 +63,11 @@ function dbTypesGates(scripts) {
   return [start, reset, types, DB_TYPES_COMMITTED, { ...stop, teardownOf: start.name }];
 }
 
-/** Default gates run app-check, the enabled audit, then every managed script present in the app and the database-types rows, Sonar following when it is declared. */
-function defaultGates(scripts, audit) {
+/** Default gates run app-check, the enabled audit, then every managed script present in the app, the database-types rows and the entity drift row, Sonar following when it is declared. */
+function defaultGates(scripts, audit, entities) {
   const present = SCRIPT_GATES.filter((script) => typeof scripts?.[script] === 'string');
   const world = typeof scripts?.['test:e2e'] === 'string' ? WORLD_SCRIPTS.filter((script) => typeof scripts?.[script] === 'string') : [];
-  return [{ name: 'app-check', command: ['npx', 'starci', 'app', 'check'], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...world.map(scriptGate), ...dbTypesGates(scripts)];
+  return [{ name: 'app-check', command: ['npx', 'starci', 'app', 'check'], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...world.map(scriptGate), ...dbTypesGates(scripts), ...(entities ? [DB_DRIFT] : [])];
 }
 
 /** Shared quality settings retain the release reader's audit validation, disabled mode and legacy string host compatibility. */
@@ -150,8 +152,9 @@ export function normalizeRelease(block, scripts = {}, services = {}, options = {
   if (typeof requireCi !== 'boolean') problems.push('release.requireCi: must be true or false');
   const quality = releaseServices(services, options);
   const audit = auditGate(quality.audit);
-  const gates = raw.gates === undefined ? defaultGates(scripts, audit) : gatesOf(raw.gates, problems);
+  const gates = raw.gates === undefined ? defaultGates(scripts, audit, options.entities === true) : gatesOf(raw.gates, problems);
   if (raw.gates !== undefined && audit && !gates.some((gate) => gate.name === 'audit')) gates.push(audit);
+  if (raw.gates !== undefined && options.entities === true && !gates.some((gate) => gate.name === DB_DRIFT.name)) gates.push(DB_DRIFT);
   return problems.length === 0 ? { config: { gates, tagPrefix, defaultBranch, requireCi, services: quality } } : { problems };
 }
 

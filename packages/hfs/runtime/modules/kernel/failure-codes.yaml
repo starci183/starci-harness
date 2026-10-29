@@ -5639,3 +5639,14 @@ STACK_TOOLING_REIMPLEMENTED:
   nextStep_vi: "Xóa tệp hoặc lệnh đó và gọi động từ được nêu trong thông báo (starci app stack render, deploy, converge, verify, prune, rollback, prepare, doctor), đặt hằng số của ứng dụng vào khối deploy của application-stacks.yaml."
   owner: op-retry
   kind: check-finding
+
+BE_ENTITY_SCHEMA_DRIFT:
+  title: "A TypeORM entity column differs from the schema the migrations build"
+  title_vi: "Cột entity TypeORM lệch với schema mà migration tạo ra"
+  meaning_vi: "starci app db drift áp db/bootstrap.sql và mọi migration vào một cơ sở dữ liệu tạm, rồi so từng cột entity với schema đó: bảng hoặc cột không tồn tại, kiểu khác nhau sau khi chuẩn hóa theo tên của PostgreSQL, hoặc khả năng nhận NULL khác nhau."
+  causes_vi:
+    - "Vi phạm R333: entity được sửa mà không có migration tương ứng, hoặc migration đổi bảng mà entity chưa theo kịp."
+    - "Entity khai báo sai kiểu (ví dụ timestamp thay vì timestamptz) hoặc quên nullable cho một cột cho phép NULL."
+  nextStep_vi: "Viết migration mới trong db/migrations để schema có đúng cột đó, hoặc sửa entity cho khớp schema hiện tại, rồi chạy lại starci app db drift cho đến khi xanh."
+  owner: op-retry
+  kind: check-finding

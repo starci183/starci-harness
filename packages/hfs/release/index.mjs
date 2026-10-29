@@ -10,6 +10,7 @@ import path from 'node:path';
 import { isPlainObject as plain } from '../runtime/engine/plain-object.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
+import { hasEntityList } from '../db/entity-list.mjs';
 import { STACKS_DIR, STACKS_FILE } from '../stack/config.mjs';
 import { stackContext } from '../stack/context.mjs';
 import { EXIT, StackError, refusal } from '../stack/errors.mjs';
@@ -61,7 +62,7 @@ function loadReleaseConfig(root) {
   const pkg = readPackage(root);
   if (typeof pkg.version !== 'string' || !VERSION.test(pkg.version)) throw refusal(RELEASE_CODE, 'package.json needs a version like 1.2.3 (the release tag derives from it)');
   const declaration = readDeclaration(root);
-  const { config, problems } = normalizeRelease(declaration.release, pkg.scripts, declaration.services, { example: isRuntimeExampleApp(root) });
+  const { config, problems } = normalizeRelease(declaration.release, pkg.scripts, declaration.services, { example: isRuntimeExampleApp(root), entities: hasEntityList(root) });
   if (!config) throw refusal(RELEASE_CODE, `${problems.length} problem(s) in release: ${problems.slice(0, 6).join('; ')}`);
   return { root, version: pkg.version, ...config };
 }

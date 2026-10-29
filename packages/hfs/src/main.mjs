@@ -96,10 +96,11 @@ import { dbMigrateMain } from '../db/migrate.mjs';
 import { dbPostCutoverMain } from '../db/post-cutover.mjs';
 import { dbDumpMain } from '../db/dump.mjs';
 import { dbResetMain } from '../db/reset.mjs';
+import { dbDriftMain } from '../db/drift.mjs';
 import { codemodMain } from '../codemod/button-intent.mjs';
 
 export const VERBS = Object.freeze(['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'release', 'explain', 'emit', 'new', 'secret', 'ci', 'db', 'hygiene', 'coverage', 'codemod']);
-const DATABASE_VERBS = new Map([['baseline', dbBaselineMain], ['restamp', dbRestampMain], ['plan', dbPlanMain], ['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['reset', dbResetMain]]);
+const DATABASE_VERBS = new Map([['baseline', dbBaselineMain], ['restamp', dbRestampMain], ['plan', dbPlanMain], ['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['reset', dbResetMain], ['drift', dbDriftMain]]);
 
 const USAGE = `starci app scaffold <name> [--into <dir>] [--edition full|lite] [--registry-visibility public|private] [--cwd <dir>]
 starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|composite|branch|leaf|page|overlay|layout> <name> [options] [--cwd <dir>]
@@ -114,6 +115,7 @@ starci app db dump (--linked | --local | --url-env <NAME>) --out <dir> [--schema
 starci app db reset --linked --auth keep|drop --storage keep|drop --backup <receipt.json> [--execute] [--json] [--cwd <dir>]
 starci app db migrate [--execute] [--local | --linked | --url-env <NAME>] [--json] [--cwd <dir>]
 starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--linked | --url-env <NAME>] [--json] [--cwd <dir>]
+starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app release gate [--execute] [--source <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json] [--cwd <dir>]
 starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json] [--cwd <dir>]
 starci app upgrade [--plan] [--cwd <dir>]
@@ -343,7 +345,7 @@ async function installedStackMain(cwd) {
 function databaseMain(argv, io) {
   const [verb, ...rest] = argv;
   const dispatch = DATABASE_VERBS.get(verb);
-  if (!dispatch) throw new Error('starci app db takes baseline, restamp, plan, migrate, post-cutover, dump or reset');
+  if (!dispatch) throw new Error('starci app db takes baseline, restamp, plan, migrate, post-cutover, dump, reset or drift');
   return dispatch(rest, io);
 }
 

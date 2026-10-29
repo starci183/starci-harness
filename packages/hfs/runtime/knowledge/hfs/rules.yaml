@@ -5802,3 +5802,28 @@ rules:
         source: owner
         quote: "nhớ làm langchain nhé update .claude lun là call thẳng từ code phải dùng langchain với embeded context"
         ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): the LangChain clients point at the gateway's base URL with its virtual key."
+  - id: R333
+    code: "BE_ENTITY_SCHEMA_DRIFT"
+    law: "Every TypeORM entity column of an app's entity list (be/src/platform/database/entities.ts) matches the schema its SQL migrations build: `starci app db drift` applies db/bootstrap.sql and every active db/migrations/*.sql to a scratch database (a container of the app's db image, or the empty database --url-env names), reads information_schema.columns and pg_catalog, and refuses a missing table, a missing column, a type that differs once both are normalised to PostgreSQL's format_type names (an enum by its type name), and a nullability that differs. A database column no entity maps is fine. A host that cannot provide the scratch database gets no verdict (exit 2, needs a database), never a green."
+    kinds: [check]
+    gates: [ci]
+    failureCodes: ["BE_ENTITY_SCHEMA_DRIFT"]
+    enforcers:
+      - {kind: hfs, id: db-drift, at: packages/hfs/db/drift.mjs}
+    editions: [lite]
+    editionWhy: "The owner ruling of 2026-10-29 maps lite tables with TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false, so only lite entities can drift from a schema they do not create; full entities ship with their own TypeORM migrations."
+    docs: [contexts/code/be/persistence.md]
+    templateNa: "The entities and the migrations are the product's tables; the check judges whichever an app writes, and a template scaffolds no table."
+    proves:
+      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
+      - {path: packages/hfs/src/db-drift-docker.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
+    witness:
+      - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "lite persistence moves to TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false"
+        ruling: "Lite entities only map tables the migrations create, so each entity column is checked against the migrated schema by starci app db drift, which CI runs in the build job and the release gate runs as its db-drift row."
