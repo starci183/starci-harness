@@ -173,6 +173,12 @@ export const kernelSeatsOf = (db: DatabaseSync, workflowId: string): SeatRow[] =
 /** The open Kernel seat of a workflow (the newest), if any. */
 export const kernelSeatOf = (db: DatabaseSync, workflowId: string): SeatRow | undefined => kernelSeatsOf(db, workflowId)[0]
 
+/** The Orca Run whose Dispatch a seat's terminal is (the newest seat of that terminal recording one); null when no seat of this ledger names it. */
+export const dispatchRunOf = (db: DatabaseSync, terminal: string): string | null => {
+    const row = db.prepare("SELECT run_id FROM seats WHERE terminal = ? AND run_id IS NOT NULL ORDER BY started_at DESC LIMIT 1").get(terminal)
+    return row === undefined ? null : String(row.run_id)
+}
+
 /** Renews a seat's TTL lease; every harness call a seat makes (attach, next, submit, ping) renews its own. */
 export const renewSeatLease = (db: DatabaseSync, seatId: string, minutes: number): void => {
     db.prepare("UPDATE seats SET lease_until = ? WHERE id = ?").run(new Date(Date.now() + minutes * 60_000).toISOString(), seatId)

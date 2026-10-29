@@ -224,18 +224,24 @@ export const ensureSupervisor = async (binary: OrcaBinary, cwd: string, project:
 }
 
 /**
- * Wakes a project's Supervisor by mail to its Run (`run:<id>`), from the caller's terminal when it runs in one: a Kernel's
- * escalation or handoff (`kernel submit`) and an owner request (`supervisor ask`) alike. The ledger row is the content, so a
- * Supervisor not attached yet, or a mail Orca refuses, changes nothing: `supervisor next` reads the row.
+ * Wakes a project's Supervisor by mail to its Run (`run:<id>`), every Kernel-to-Supervisor mail (`kernel submit`: an escalation,
+ * a question or a handoff) and an owner request (`supervisor ask`) alike. The sender is looked up at send time: the caller's
+ * terminal when it runs in one that belongs to the Supervisor's current Run, else the Supervisor's own terminal. A Kernel stays
+ * the Dispatch of the Run that launched it (Orca moves no Dispatch to another Run), so once its Supervisor was replaced its own
+ * terminal is the Dispatch of an older Run, which Orca refuses as a sender to the new one (`dispatch_run_mismatch`);
+ * `dispatchRun` names that Run (seats.ts dispatchRunOf) and the mail goes from the current Run's terminal. A mail Orca still
+ * refuses is replaced by the loop prompt typed into the Supervisor's terminal (mailOrType). The ledger row is the content, so a
+ * Supervisor not attached yet changes nothing: `supervisor next` reads the row.
  */
-export const wakeSupervisor = async (project: string, cwd: string, mail: Omit<MailSend, "to" | "from">): Promise<string> => {
+export const wakeSupervisor = async (project: string, cwd: string, mail: Omit<MailSend, "to" | "from">, dispatchRun: string | null = null): Promise<string> => {
     const supervisor = supervisorRecord(project)
     if (supervisor?.run_id == null) return "no Supervisor attached: it waits for supervisor next"
     try {
-        // Orca needs a sender terminal: the caller's when it runs inside one (a Kernel), else the Supervisor's own terminal,
-        // so the owner's `supervisor ask` from a shell or the desktop app still wakes it. A mail Orca refuses (a Kernel that is a
-        // Dispatch of a replaced Supervisor's Run) is replaced by the loop prompt typed into the Supervisor's terminal.
-        const from = process.env.ORCA_TERMINAL_HANDLE ?? supervisor.terminal ?? undefined
+        // Orca needs a sender terminal: the caller's when it runs inside one of the current Run, else the Supervisor's own, so
+        // the owner's `supervisor ask` from a shell or the desktop app still wakes it.
+        const caller = process.env.ORCA_TERMINAL_HANDLE
+        const inRun = dispatchRun === null || dispatchRun === supervisor.run_id
+        const from = (inRun ? caller : undefined) ?? supervisor.terminal ?? caller
         const text = promptOf(loadStallRules().prompts.supervisor, { wait: String(loadCoordinatorLiveness().nextWaitSeconds) })
         const woke = await mailOrType(await locateOrca(cwd), { ...mail, to: `run:${supervisor.run_id}`, from }, { terminal: supervisor.terminal, text }, cwd)
         return woke === "mailed" ? "mailed the Supervisor's Run" : `${woke}; the ledger row waits for supervisor next`

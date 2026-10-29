@@ -18,7 +18,7 @@ import { inLaunchGrace, judgeStart, loadLiveness } from "../../harness/liveness.
 import { closeWorker, locateOrca, mailCheck, OrcaFailure, requestIdOf, requestShow, terminalList, terminalSend, UNKNOWN_STATES, workerAbandon, workerShow } from "../../harness/orca/client.js"
 import type { MailMessage, OrcaBinary, TerminalInventory } from "../../harness/orca/client.js"
 import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, stallKindOf, stallStep } from "../../harness/stall.js"
-import { holdTerminal, isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
+import { dispatchRunOf, holdTerminal, isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { supervisorTerminals, wakeSupervisor } from "../../harness/supervisor.js"
 import { projectOf } from "../../harness/work.js"
@@ -710,7 +710,9 @@ export const applyKernel = async (context: VerbContext, root: string, command: C
     )
     const body = command.escalation?.question ?? command.handoff?.summary ?? command.note ?? command.kind
     const mail = { type: kind, subject: `${kernelTitle(command.workflow)}: ${command.kind}`, body, payload: { cmdId: command.cmdId, decision }, retryRequest: requestIdOf("kernel-mail", command.cmdId) } as const
-    return { decision, mail: await wakeSupervisor((await projectOf(root)).key, context.cwd, mail) }
+    const caller = process.env.ORCA_TERMINAL_HANDLE
+    const dispatchRun = caller === undefined || caller === "" ? null : withLedger(root, (db) => dispatchRunOf(db, caller))
+    return { decision, mail: await wakeSupervisor((await projectOf(root)).key, context.cwd, mail, dispatchRun) }
 }
 
 /**
