@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.29 - 2026-10-30
+
+- Changed: the peer moves to eslint-canon-fe 9.5.18; the bundled canon pins name ai-router 0.4.0 (mounted keys), hfs 4.11.17, eslint-canon-be 3.8.16, eslint-canon-fe 9.5.18 and the Grammar family 0.15.29. No rule of this package changed.
+
 ## 0.15.28 - 2026-10-30
 
 - Changed: the bundled `rules.yaml` states R260 with the configured-audience binding of an OIDC verifier. No rule of this package changed.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.11.17 - 2026-10-30
+
+- Changed: the bundled canon pins name ai-router 0.4.0 (mounted keys), hfs 4.11.17, eslint-canon-be 3.8.16, eslint-canon-fe 9.5.18 and the Grammar family 0.15.29. No rule or template changed.
+
 ## 4.11.16 - 2026-10-30
 
 - Fixed: the back-end skeleton's `OriginGuard` (`platform/http-security`, BE-AUTH-5) requires an actual allowed `Origin` header on a cookie-bearing mutation (`POST`, `PUT`, `PATCH`, `DELETE` with a `Cookie` header) and on a door or handler marked with the new `RequireOrigin()` (`http-security.decorators.ts`, metadata `REQUIRE_ORIGIN_KEY`), which covers the start of a cookie-authenticated flow before the first cookie exists. A missing, empty, opaque (`null`) or foreign `Origin` is refused with `HTTP_SECURITY_ORIGIN_REJECTED` (403), and an allowed `Referer` no longer stands in for it there; `ServerToServer` does not exempt such a request. Safe methods, and mutations without a cookie on unmarked doors, keep their rules (Referer fallback when Origin is absent, the `ServerToServer` exemption). Spec `origin.guard.spec.ts`: class and handler markers, the first sign-in, cookie-bearing requests and the preserved admission paths, split into describe groups within the function budget.

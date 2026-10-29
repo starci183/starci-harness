@@ -30,7 +30,17 @@ function withGateway(base: DynamicModule, name: string | undefined): DynamicModu
         {
             provide: token,
             inject: [getAiRouterToken(name), MODULE_OPTIONS_TOKEN],
-            useFactory: (router: AiRouter, options: AiRouterGatewayModuleOptions): AiRouterGateway => createGateway(router, options),
+            // The mounted keys are checked against the store here, so a refused key fails the app at init.
+            useFactory: async (router: AiRouter, options: AiRouterGatewayModuleOptions): Promise<AiRouterGateway> => {
+                const gateway = createGateway(router, options)
+                try {
+                    await gateway.ready()
+                } catch (error) {
+                    await gateway.close()
+                    throw error
+                }
+                return gateway
+            },
         },
         {
             // Nest calls the lifecycle hooks of every provider instance that has them.

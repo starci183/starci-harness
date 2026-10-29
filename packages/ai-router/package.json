@@ -1,6 +1,6 @@
 {
   "name": "@starci/ai-router",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A router for OpenAI-compatible calls across a pool of keys, models and providers: an OpenAI-compatible gateway with virtual keys, quotas and usage (the ai-router bin), a NestJS module (AiRouterModule, AiRouterService, AiRouterGatewayModule), and createRouter for plain Node, with health-aware selection, circuit breakers, rate-limit awareness, failover, model fallback and redacted telemetry.",
   "keywords": [
     "ai",

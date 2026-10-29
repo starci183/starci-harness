@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.16 - 2026-10-30
+
+- Changed: the bundled canon pins name ai-router 0.4.0 (mounted keys), hfs 4.11.17, eslint-canon-be 3.8.16, eslint-canon-fe 9.5.18 and the Grammar family 0.15.29. No rule changed.
+
 ## 3.8.15 - 2026-10-30
 
 - Changed: R260 `jwt-alg-pinned` (`BE_JWT_ALG_PINNED`) admits a non-Supabase OIDC verifier such as the Keycloak client of full: every `jose` `jwtVerify` still pins a non-empty literal subset of ES256, RS256 and EdDSA and derives its issuer from typed configuration, and the principal is now bound either by an `audience` that derives from typed configuration (traced like the issuer: a `*Options`/`*Config`/`*Env` parameter or property, a configuration file, a local variable or a string transformation of one) or, where the audience is the issuer-wide literal (Supabase-style `authenticated`), by rejecting every role other than authenticated before the principal is returned, as before. A verifier with neither is refused naming both. The lite Passport verifier (own ES256 tokens, configured audience) passes on its audience. Shared in `runtime/scripts/hfs/architecture/jwt-ast.mjs` (`fromConfig`, formerly `issuerFromConfig`); the bundled `rules.yaml` states the law. Specs: `src/jwt-alg.spec.ts` (role-free OIDC verifiers with a configured client id, audience list, aliased or namespace `jwtVerify` admitted; a literal, `authenticated`, missing or untyped audience, a literal issuer and insecure algorithms refused; the Passport-shaped verifier with a configured audience admitted; every Supabase-style guard case unchanged).

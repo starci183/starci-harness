@@ -31,6 +31,8 @@ export interface VirtualKey {
     readonly createdAt: number
     readonly rotatedAt: number | null
     readonly revokedAt: number | null
+    /** True for a key mounted from a secret the app holds (`GatewayOptions.mountedKeys`): read only, never in the store. Absent otherwise. */
+    readonly mounted?: true
 }
 
 /** A virtual key as a store holds it: the public record plus the SHA-256 of its secret. */
@@ -50,6 +52,16 @@ export interface KeySpec {
     readonly quota?: KeyQuota
     /** Default true. */
     readonly enabled?: boolean
+}
+
+/**
+ * A key mounted from a secret the app already holds: the gateway keeps its hash and bindings in memory and never
+ * writes it to the store. The secret is `sk-starci-<label>-` and at least 32 more letters, digits, `_` or `-`; the key
+ * changes by changing the secret (or the bindings) and redeploying.
+ */
+export interface MountedKeySpec extends KeySpec {
+    /** The secret, or a function read once at startup; only its SHA-256 is kept. */
+    readonly secret: string | (() => string)
 }
 
 /** The bindings of a key an update may change; the label and the secret stay. */
@@ -164,15 +176,33 @@ export class MemoryKeyStore implements KeyStore {
     }
 }
 
-/** Why an admin operation was refused: an unknown id, an invalid spec, or a change to a revoked key. */
+/** Why an admin operation was refused: an unknown id, an invalid spec, a change to a revoked key, or a change to a mounted key. */
 export class KeyAdminError extends Error {
-    readonly code: "not_found" | "invalid" | "revoked"
+    readonly code: "not_found" | "invalid" | "revoked" | "mounted"
 
     /** Builds the error. */
     constructor(code: KeyAdminError["code"], message: string) {
         super(message)
         this.name = "KeyAdminError"
         this.code = code
+    }
+}
+
+/**
+ * Why the gateway refused to start over its mounted keys: an invalid key, a label given twice, or a secret or id a
+ * stored key already holds. It names the label and the key id, never the secret.
+ */
+export class MountedKeyError extends Error {
+    readonly code: "invalid" | "duplicate_label" | "collision"
+    /** The label of the mounted key refused. */
+    readonly label: string
+
+    /** Builds the error. */
+    constructor(code: MountedKeyError["code"], label: string, message: string) {
+        super(message)
+        this.name = "MountedKeyError"
+        this.code = code
+        this.label = label
     }
 }
 
@@ -204,9 +234,15 @@ export function dayOf(time: number): string {
     return new Date(time).toISOString().slice(0, 10)
 }
 
+/** The id of a mounted key: stable per label, so its quota and usage carry over secret changes and deploys. */
+export function mountedKeyId(label: string): string {
+    return `key_${hashSecret(`mounted:${label}`).slice(0, 16)}`
+}
+
 /** The public view of a stored key. */
 export function publicKey(key: StoredKey): VirtualKey {
     return {
+        ...(key.mounted === true ? { mounted: true } : {}),
         id: key.id,
         label: key.label,
         owner: key.owner,
@@ -265,20 +301,86 @@ function bool(value: boolean | undefined, field: string, fallback: boolean): boo
     return value
 }
 
-/** Issues, lists, revokes, rotates and updates virtual keys over a store, and reports their usage. */
+/** What a `KeyAdmin` is built with. */
+export interface KeyAdminOptions {
+    /** With a catalog, a key may only name the pool's profiles and models. */
+    readonly catalog?: RouterCatalog
+    readonly clock?: () => number
+    /** Keys mounted from secrets the app holds, resolved in memory and never written to the store. */
+    readonly mounted?: readonly MountedKeySpec[]
+}
+
+/** Reads a mounted key's secret once and checks its shape; a refusal names the label, never the value. */
+function mountedSecret(spec: MountedKeySpec, label: string): string {
+    let secret: unknown
+    try {
+        secret = typeof spec.secret === "function" ? spec.secret() : spec.secret
+    } catch {
+        // The reader's own failure may quote what it read, so it is not carried.
+        throw new MountedKeyError("invalid", label, `the secret of mounted key "${label}" could not be read`)
+    }
+    const prefix = `sk-starci-${label}-`
+    if (typeof secret !== "string" || !secret.startsWith(prefix)) throw new MountedKeyError("invalid", label, `the secret of mounted key "${label}" must start with ${prefix}`)
+    if (!/^[A-Za-z0-9_-]{32,}$/.test(secret.slice(prefix.length))) {
+        throw new MountedKeyError("invalid", label, `the secret of mounted key "${label}" needs at least 32 letters, digits, "_" or "-" after ${prefix}`)
+    }
+    return secret
+}
+
+/** Issues, lists, revokes, rotates and updates virtual keys over a store, and reports their usage; mounted keys are listed and read only. */
 export class KeyAdmin {
     readonly store: KeyStore
     readonly #clock: () => number
     readonly #profiles: ReadonlySet<string> | null
     readonly #models: ReadonlySet<string> | null
+    /** The mounted keys by the hash of their secret, and by id; the secret itself is not kept. */
+    readonly #mountedByHash = new Map<string, StoredKey>()
+    readonly #mountedById = new Map<string, StoredKey>()
 
-    /** Binds the admin to a store; with a catalog, a key may only name the pool's profiles and models. */
-    constructor(store: KeyStore, options: { readonly catalog?: RouterCatalog; readonly clock?: () => number } = {}) {
+    /** Binds the admin to a store and resolves the mounted keys; an invalid or duplicated mounted key throws a `MountedKeyError`. */
+    constructor(store: KeyStore, options: KeyAdminOptions = {}) {
         this.store = store
         this.#clock = options.clock ?? Date.now
         const catalog = options.catalog
         this.#profiles = catalog === undefined ? null : new Set(catalog.profiles.map((profile) => profile.name))
         this.#models = catalog === undefined ? null : new Set(catalog.models.flatMap((model) => [model.id, ...model.aliases]))
+        const now = this.#clock()
+        for (const spec of options.mounted ?? []) {
+            // Mounted keys may arrive from config, so their types are checked, not trusted.
+            const label: unknown = spec.label
+            if (typeof label !== "string" || !LABEL.test(label)) throw new MountedKeyError("invalid", String(label), "a mounted key's label must be 1 to 32 lowercase letters, digits or underscores")
+            const id = mountedKeyId(label)
+            if (this.#mountedById.has(id)) throw new MountedKeyError("duplicate_label", label, `the mounted key label "${label}" is given twice`)
+            const secret = mountedSecret(spec, label)
+            let bindings: Pick<VirtualKey, "owner" | "profiles" | "models" | "allowFallback" | "quota" | "enabled">
+            try {
+                bindings = this.#bindings(spec, null)
+            } catch (error) {
+                throw new MountedKeyError("invalid", label, `mounted key "${label}": ${error instanceof Error ? error.message : "invalid bindings"}`)
+            }
+            const key: StoredKey = {
+                id,
+                label,
+                hint: `sk-starci-${label}-...${secret.slice(-4)}`,
+                ...bindings,
+                createdAt: now,
+                rotatedAt: null,
+                revokedAt: null,
+                mounted: true,
+                hash: hashSecret(secret),
+            }
+            this.#mountedByHash.set(key.hash, key)
+            this.#mountedById.set(id, key)
+        }
+    }
+
+    /** Refuses a mounted key whose secret or id a stored key already holds; the gateway awaits it before it serves. */
+    async checkMounted(): Promise<void> {
+        for (const key of this.#mountedById.values()) {
+            const byHash = await this.store.byHash(key.hash)
+            if (byHash !== undefined) throw new MountedKeyError("collision", key.label, `the secret of mounted key "${key.label}" (${key.id}) is also the secret of stored key ${byHash.id}`)
+            if ((await this.store.get(key.id)) !== undefined) throw new MountedKeyError("collision", key.label, `mounted key "${key.label}" has id ${key.id}, which a stored key already holds`)
+        }
     }
 
     #issue(label: string): { secret: string; hash: string; hint: string } {
@@ -303,8 +405,15 @@ export class KeyAdmin {
     }
 
     async #find(id: string): Promise<StoredKey> {
-        const key = await this.store.get(id)
+        const key = this.#mountedById.get(id) ?? (await this.store.get(id))
         if (key === undefined) throw new KeyAdminError("not_found", `no key has id "${id}"`)
+        return key
+    }
+
+    /** A key an admin change may touch: a mounted key is refused. */
+    async #changeable(id: string): Promise<StoredKey> {
+        const key = await this.#find(id)
+        if (key.mounted === true) throw new KeyAdminError("mounted", `key "${id}" is mounted from a secret the app holds: it changes by changing that secret and redeploying`)
         return key
     }
 
@@ -326,10 +435,9 @@ export class KeyAdmin {
         return { key: publicKey(key), secret: issued.secret }
     }
 
-    /** Lists every key, oldest first. */
+    /** Lists every key, mounted and stored, oldest first. */
     async list(): Promise<VirtualKey[]> {
-        const keys = await this.store.list()
-        return [...keys].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)).map(publicKey)
+        return [...this.#mountedById.values(), ...(await this.store.list())].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)).map(publicKey)
     }
 
     /** Reads one key. */
@@ -339,7 +447,7 @@ export class KeyAdmin {
 
     /** Revokes a key for good: its secret answers 401 from now on. Revoking twice is a no-op. */
     async revoke(id: string): Promise<VirtualKey> {
-        const key = await this.#find(id)
+        const key = await this.#changeable(id)
         if (key.revokedAt !== null) return publicKey(key)
         const revoked: StoredKey = { ...key, enabled: false, revokedAt: this.#clock() }
         await this.store.put(revoked)
@@ -348,7 +456,7 @@ export class KeyAdmin {
 
     /** Replaces a key's secret, keeping its id, bindings and usage; the old secret answers 401 from now on. */
     async rotate(id: string): Promise<IssuedKey> {
-        const key = await this.#find(id)
+        const key = await this.#changeable(id)
         if (key.revokedAt !== null) throw new KeyAdminError("revoked", `key "${id}" is revoked`)
         const issued = this.#issue(key.label)
         const rotated: StoredKey = { ...key, hash: issued.hash, hint: issued.hint, rotatedAt: this.#clock() }
@@ -358,7 +466,7 @@ export class KeyAdmin {
 
     /** Changes a key's bindings; a field left out keeps its value. */
     async update(id: string, patch: KeyPatch): Promise<VirtualKey> {
-        const key = await this.#find(id)
+        const key = await this.#changeable(id)
         if (key.revokedAt !== null) throw new KeyAdminError("revoked", `key "${id}" is revoked`)
         const updated: StoredKey = { ...key, ...this.#bindings(patch, key) }
         await this.store.put(updated)
@@ -388,9 +496,10 @@ export class KeyAdmin {
         return { key: publicKey(key), from, to, rows, totals: { ...totals, outcomes } }
     }
 
-    /** The stored key a secret names, or undefined; the caller decides what a revoked or disabled key means. */
+    /** The mounted or stored key a secret names, or undefined; the caller decides what a revoked or disabled key means. */
     async authenticate(secret: string): Promise<StoredKey | undefined> {
         if (!secret.startsWith("sk-starci-")) return undefined
-        return this.store.byHash(hashSecret(secret))
+        const hash = hashSecret(secret)
+        return this.#mountedByHash.get(hash) ?? this.store.byHash(hash)
     }
 }

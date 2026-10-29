@@ -141,6 +141,40 @@ Keys live in a key store. `{ type: memory }` loses them on restart; `{ type: sql
 interface; `KEY_STORE_SCHEMA` is the reference schema (it carries over to Postgres with `BIGINT` times,
 `DOUBLE PRECISION` cost and `JSONB` lists).
 
+### Mounted keys
+
+An app that already holds a key's secret (an env variable, a mounted secret file) mounts it with `mountedKeys`, so a
+deploy needs no `keys create`. A mounted key is never written to the store: the gateway reads each secret once at
+startup, keeps only its SHA-256 and bindings in memory, and authenticates a bearer token against the mounted keys before
+the store.
+
+```ts
+AiRouterGatewayModule.registerAsync({
+    useFactory: async () => ({
+        keys: await openSqliteKeyStore("/data/keys.sqlite"),
+        mountedKeys: [
+            // The secret is sk-starci-<label>- and at least 32 letters, digits, "_" or "-": openssl rand -hex 24
+            { label: "nivo_lite", secret: () => readFileSync("/run/secrets/nivo_lite_ai_key", "utf8").trim(), profiles: ["lesson"], owner: "nivo-lite", quota: { costPerMonth: 20 } },
+        ],
+        listen: true,
+    }),
+})
+```
+
+| case | what happens |
+|---|---|
+| a request bears the secret | it authenticates as the mounted key, with its bindings and quota |
+| the key's id | `key_` and 16 hex of `sha256("mounted:<label>")`: stable per label, so its quota counters and usage rows carry over a new secret and every deploy |
+| a new secret for the label, or new bindings | change it and redeploy; the old secret answers 401 |
+| `GET /admin/keys`, `GET /admin/keys/{id}`, usage | listed and read like a stored key, with `mounted: true` |
+| revoke, rotate or update (`PATCH`) | refused, 409 `key_mounted` (`KeyAdminError` code `mounted`): it changes by changing the secret and redeploying |
+| a secret not starting with `sk-starci-<label>-`, too short after it, or a function that throws | `createGateway` throws `MountedKeyError` (`invalid`); the Nest module fails at init |
+| a label given twice | `MountedKeyError` (`duplicate_label`) |
+| a stored key holds the same secret or the same id | `ready()` rejects with `MountedKeyError` (`collision`); `listen`, `handle` and the Nest module wait for `ready()`, so the app refuses to start |
+
+A refusal names the label and key id, never the secret, and drops the cause of a secret function that threw (its
+message may quote what it read). The key's `hint` shows the last four characters, as for every key.
+
 ### Admin API
 
 Guarded by `Authorization: Bearer <admin token>` (403 `admin_disabled` when no token is configured).
@@ -148,7 +182,7 @@ Guarded by `Authorization: Bearer <admin token>` (403 `admin_disabled` when no t
 | route | does |
 |---|---|
 | `POST /admin/keys` | create from a key spec; 201 `{ key, secret }` |
-| `GET /admin/keys` | list (never a secret or hash) |
+| `GET /admin/keys` | list (never a secret or hash), mounted keys with `mounted: true` |
 | `GET /admin/keys/{id}`, `PATCH /admin/keys/{id}` | read, or change bindings (`owner`, `profiles`, `models`, `allowFallback`, `quota`, `enabled`) |
 | `POST /admin/keys/{id}/revoke` | revoke for good |
 | `POST /admin/keys/{id}/rotate` | new secret, same id, bindings and usage; 200 `{ key, secret }` |
