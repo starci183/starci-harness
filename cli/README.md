@@ -433,10 +433,11 @@ carries its `Starci-Task` trailer: `keyCommits`), so a relay never carries a com
 handed-off head is on harness main; a resolver failed, cancelled, removed or stopped, or one that closes a cycle (it waits,
 through other needs, on a waiter of this one: `findCycle`), reopens it at its router in a new round with the reason named. A
 need is resolved for a waiter only when its resolving commits are on the waiter's branch, so each waiting workflow's own step
-first relays them (`relay`): under that branch's land lock, every resolving commit the branch lacks is replayed onto its head in
-order by a three-way merge against the commit's parent (`rebaseCandidate`, a cherry-pick with no work tree), a commit whose
-change the branch holds already (an equal patch, or a merge that changes nothing) skipped, and the workflow's checkout
-fast-forwarded, once per need round and workflow, recorded as a `need-relayed` host event that `needs show` prints commit by
+first relays them (`relay`). The branch holds them when it holds their content: every file they change reads at its
+head as at the last of them (`holdsFinal`), whatever older copy of those files it held. Else, under that branch's land lock,
+every resolving commit that is not an ancestor of its head is replayed onto it in order by a three-way merge against the
+commit's parent (`rebaseCandidate`, a cherry-pick with no work tree), only a commit whose merge changes nothing skipped (never
+one judged by an equal patch in the branch's history), and the workflow's checkout fast-forwarded, once per need round and workflow, recorded as a `need-relayed` host event that `needs show` prints commit by
 commit. A textual conflict moves nothing by itself and is never a dead end: it becomes work of the waiting workflow, one
 generated relay node `relay.<need>.r<round>` (`relayTask` in `harness/reconcile.ts`, added by `amendWithRelays`) owned by its
 Kernel like any task, built on the resolver's node (its label, inputs and checks), allowed the conflicting files and every file
@@ -459,8 +460,8 @@ that workflow depends on it and stays parked with its work kept, spending no try
 naming it. Like a revert node, a relay node's key and contract are the harness's own (no file adds or edits one), it is outside
 the goal's scope paths, the Work records' lanes and the foreign-source rule, since it carries what another workflow's lane built.
 Only a relay node its Kernel removed raises one Supervisor `escalation` of kind `conflict`, whose answer releases the waiters as
-they stand. Then every waiter whose needs all ended is
-retried in one amend, its new attempt starting from the one patch its park kept ("Settling an attempt") with a "Shared needs" section in its brief. A rejection
+they stand. A waiter is released from each need on its own: its row of a need is marked released with that need's own relay,
+and the waiter, once every need it waits on ended and the last of its rows is released, is retried in one amend, its new attempt starting from the one patch its park kept ("Settling an attempt") with a "Shared needs" section in its brief. A rejection
 is taken back by `needs reopen <key> --reason <why>` (Supervisor, Debug; `NEED_NOT_REJECTED` for a need in another state): the
 waiters the rejection released are parked again and a new round resolves through the newest task resolver a round recorded,
 judged afresh, so the next step relays its commits; with none it opens at its router (`reopenRejected` in `harness/needs.ts`).

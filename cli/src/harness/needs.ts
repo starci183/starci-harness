@@ -433,7 +433,7 @@ export const reopenNeed = (db: DatabaseSync, need: NeedRow, reason: string, leve
  * to how it carries a need's commits. Each relay event and waiter release records it (`relayVersion`; a record with none is
  * version 1), so a need rejected because its relay failed is tried again once under a relay that changed (relayReopenDue).
  */
-export const RELAY_VERSION = 2
+export const RELAY_VERSION = 3
 
 /** The relay version a recorded relay carries; 1 for a record made before relays were versioned. */
 const relayVersionOf = (data: unknown): number => {
