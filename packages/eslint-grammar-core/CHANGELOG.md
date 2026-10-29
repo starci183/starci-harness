@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.19 - 2026-10-29
+
+- Changed: the peer moves to the 0.15.19 cohort (eslint-canon-fe 9.5.8); the bundled canon pins name hfs 4.11.7, eslint-canon-be 3.8.6, eslint-canon-fe 9.5.8 and the Grammar family 0.15.19. No rule changed.
+
 ## 0.15.18 - 2026-10-29
 
 - Changed: the peer moves to the 0.15.18 cohort (eslint-canon-fe 9.5.7); the bundled canon pins name hfs 4.11.6, @starci/test-world 1.3.1, eslint-canon-be 3.8.5, eslint-canon-fe 9.5.7 and the Grammar family 0.15.18, and pin `undici` 6.29.0 (owner `platform/http`). No rule changed.

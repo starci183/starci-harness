@@ -6,6 +6,7 @@
 - Changed: a failed history read of the squash source names the psql failure (password and URL withheld) instead of "database command failed; inspect psql privately".
 - Changed: `starci app db plan` refuses a dynamic migration block naming every `EXECUTE` of every active migration as `<file>:<line>` under "dynamic migration blocks cannot prove database inventory", instead of the bare heading at the first one (`repositoryState`, `runtime/scripts/hfs/db-plan-verb.mjs`; the line is the DO body's opening quote plus the statement's body line).
 - Changed: `starci app db baseline` passes the plan's refusal through (`cleanPlan`, `db-baseline-verb.mjs`) after "baseline requires a clean database plan with every migration already applied; the plan refused: ", and on drift names each inventory that differs with its missing, unexpected and changed counts, instead of the bare heading with the plan's output discarded.
+- Changed: the bundled canon pins name hfs 4.11.7, eslint-canon-be 3.8.6, eslint-canon-fe 9.5.8 and the Grammar family 0.15.19.
 - Spec: `src/hfs-db-squash.spec.mjs`: its source, published on 127.0.0.1 only, is the loopback route CI's Linux engine proves; a source no route reaches is refused. `src/hfs-database-baseline.spec.mjs`: two EXECUTEs in one block after a multi-byte comment and one in a second migration are named by file and line, with no database query; baseline's pass-through of a plan refusal and of a drift.
 
 ## 4.11.6 - 2026-10-29
