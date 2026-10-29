@@ -6,6 +6,7 @@ import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
 import { assertCliPins } from "../check/cli-pins.js"
+import { SPEC_FILE } from "../../shared/spec-file.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 
@@ -129,8 +130,6 @@ const judgeRequires = async (rows: readonly PlanRow[], packages: readonly Worksp
 
 /** A path of a package folder under one of its test folders, which never ship. */
 const TEST_FOLDER = /(?:^|\/)(?:test|tests|__tests__)\//
-/** A spec or test file of a package folder, which never ships. */
-const SPEC_FILE = /\.(?:spec|test)\.[cm]?[jt]sx?$/
 /** Whether a path of a package folder never ships: its specs and test folders. */
 const unshipped = (path: string): boolean => TEST_FOLDER.test(path) || SPEC_FILE.test(path)
 

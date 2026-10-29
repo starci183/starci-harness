@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { basename, dirname, extname, join, posix, relative, resolve, sep } from "node:path"
 import { captureTool } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
+import { SPEC_FILE } from "../shared/spec-file.js"
 import { underPaths } from "./contract.js"
 
 /** The config file names jest resolves in a folder, in its own order of preference. */
@@ -142,9 +143,6 @@ export const runsJest = (argv: readonly string[], cwd: string): boolean => {
     return /(?:^|[^\w-])jest(?:[^\w-]|$)/.test(scriptOf(argv, cwd) ?? "")
 }
 
-/** A test file of any jest project kind: `<name>.spec.ts`, `<name>.e2e-spec.ts`, `<name>.integration-spec.ts`, `<name>.test.ts`. */
-const SPEC = /\.(?:[\w-]+-)?(?:spec|test)\.[cm]?[jt]sx?$/
-
 /** The jest projects that boot the test world; a run of them only is a world run (`@starci/jest-preset`: integration, e2e, contract). */
 const WORLD_PROJECTS: ReadonlySet<string> = new Set(["integration", "e2e", "contract"])
 
@@ -197,7 +195,7 @@ const selectedProjects = (script: string): string[] => {
 /** Every spec file under `dir` (a file is itself when it is a spec), skipping installs and builds. */
 const specsUnder = (dir: string): string[] => {
     if (!existsSync(dir)) return []
-    if (statSync(dir).isFile()) return SPEC.test(dir) ? [dir] : []
+    if (statSync(dir).isFile()) return SPEC_FILE.test(dir) ? [dir] : []
     return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() && SKIPPED.has(entry.name) ? [] : specsUnder(join(dir, entry.name))))
 }
 
@@ -245,7 +243,7 @@ export const scopedTests = async (argv: readonly string[], place: TestPlace, all
         why = `the spec files under ${named.join(", ")}${dropped.length === 0 ? "" : `; live-provider specs not named, left out: ${dropped.join(", ")}`}`
     } else {
         const kinds = projects.map((project) => `.${project}-spec.`)
-        const changed = (await changedFiles(place.root, place.diffBase ?? "HEAD")).filter((file) => underPaths(file, allowPaths) && SPEC.test(file)).map((file) => join(place.root, file))
+        const changed = (await changedFiles(place.root, place.diffBase ?? "HEAD")).filter((file) => underPaths(file, allowPaths) && SPEC_FILE.test(file)).map((file) => join(place.root, file))
         const own = changed.filter((file) => existsSync(file) && kinds.some((kind) => file.includes(kind)))
         files = own.length > 0 ? own : specsUnder(folder).filter((file) => kinds.some((kind) => file.includes(kind)) && !isLive(file))
         why = own.length > 0 ? "the task's own changed spec files" : `every ${projects.join(", ")} spec under ${toSlash(relative(place.root, folder)) || "."}, live-provider specs left out`

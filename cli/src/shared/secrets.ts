@@ -1,3 +1,5 @@
+import { SPEC_FILE } from "./spec-file.js"
+
 /** One secret the scan found: where, and which rule, never the value. */
 export interface SecretFinding {
     readonly file: string
@@ -20,8 +22,8 @@ interface ValueRule {
     readonly pattern: RegExp
     /** Files whose values are inputs, not credentials (specs), or identifiers (source for the unquoted form). */
     readonly skipFile?: RegExp
-    /** A captured value that names itself a stand-in is no candidate. */
-    readonly placeholder?: RegExp
+    /** A captured value that is no credential, so no candidate: a stand-in that names itself one, or a key's name. */
+    readonly notCredential?: (value: string) => boolean
 }
 
 /** Paths that are secrets by being what they are. */
@@ -34,7 +36,14 @@ const FORBIDDEN_PATHS: readonly PathRule[] = [
 
 const PLACEHOLDER = /fixture|stub|fake|dummy|placeholder|example|sample|changeme|redacted|mock/i
 
-const SPEC_FILE = /\.(?:spec|test|e2e-spec)\.[cm]?[jt]sx?$/
+/**
+ * The name of an environment or custody key (`IDENTITY_KEYCLOAK_CLIENT_SECRET`, an error code alike): two or more words of
+ * capitals and digits, each opening with a capital, joined by underscores. It names where a credential lives, never holds one.
+ */
+const KEY_NAME = /^[A-Z][A-Z0-9]*(?:_[A-Z][A-Z0-9]*)+$/
+
+/** A captured value that is no credential: a stand-in that says so, or a key's name. */
+const notCredential = (value: string): boolean => PLACEHOLDER.test(value) || KEY_NAME.test(value)
 
 const SECRET_WORD = "password|passwd|passphrase|secret|credentials?|token|api[_-]?key|private[_-]?key|secret[_-]?key|signing[_-]?key|service[_-]?role[_-]?key"
 
@@ -56,7 +65,7 @@ const VALUE_RULES: readonly ValueRule[] = [
         name: "assigned-secret",
         pattern: new RegExp(`(?<![A-Za-z0-9_$])[A-Za-z_$][A-Za-z0-9_$.-]*(?:${SECRET_WORD})\\s*[:=]\\s*['"\`]([^'"\`\\n\\s$<{]{12,})['"\`]`, "i"),
         skipFile: SPEC_FILE,
-        placeholder: PLACEHOLDER,
+        notCredential,
     },
 ]
 
@@ -79,20 +88,20 @@ export const lineFindings = (file: string, text: string): string[] => {
         if (rule.skipFile?.test(file) === true) return false
         const hit = rule.pattern.exec(judged)
         if (hit === null) return false
-        return !rule.placeholder?.test(hit[1] ?? "")
+        return rule.notCredential?.(hit[1] ?? "") !== true
     }).map((rule) => rule.name)
 }
 
 /**
  * The text with every value a value rule recognises replaced by `[redacted:<rule>]` (an assigned secret keeps its name, a
- * stand-in its value): the one redactor of tool output the harness shows or keeps as evidence.
+ * stand-in or a key's name its value): the one redactor of tool output the harness shows or keeps as evidence.
  */
 export const redactSecrets = (text: string): string =>
     VALUE_RULES.reduce(
         (out, rule) =>
             out.replace(new RegExp(rule.pattern.source, `${rule.pattern.flags}g`), (match: string, value: unknown) => {
                 if (typeof value !== "string") return `[redacted:${rule.name}]`
-                return rule.placeholder?.test(value) === true ? match : match.replace(value, `[redacted:${rule.name}]`)
+                return rule.notCredential?.(value) === true ? match : match.replace(value, `[redacted:${rule.name}]`)
             }),
         text,
     )

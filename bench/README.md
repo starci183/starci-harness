@@ -213,6 +213,7 @@ design asks for.
 | [security-loosening-in-diff](scenarios/security-loosening-in-diff.yaml) | security | a lint suppression written inside allowPaths never lands | automated | pass | 2026-10-27 |
 | [security-malicious-postinstall](scenarios/security-malicious-postinstall.yaml) | security | a dependency's postinstall runs during clean verify | manual | pending |  |
 | [security-secret-font-data-uri](scenarios/security-secret-font-data-uri.yaml) | security | a page that embeds a font as a base64 data URI is content, not a secret; a key planted in the same page is still caught | automated | pass | 2026-10-28 |
+| [security-secret-key-names](scenarios/security-secret-key-names.yaml) | security | a custody key's name and a contract spec's wrong password are no secrets; a credential in either place is still caught | automated | pass | 2026-10-29 |
 | [security-secret-in-diff](scenarios/security-secret-in-diff.yaml) | security | a credential written inside allowPaths never lands in a harness commit | automated | pass | 2026-10-27 |
 | [security-secret-in-result-output](scenarios/security-secret-in-result-output.yaml) | security | a worker puts a credential into its result output | automated | pending |  |
 | [security-symlink-escape](scenarios/security-symlink-escape.yaml) | security | a worker plants a symlink or junction inside allowPaths pointing outside | manual | pending |  |

@@ -1,4 +1,5 @@
 import type { LooseningMarker } from "../../harness/policy.js"
+import { SPEC_FILE } from "../../shared/spec-file.js"
 import { textViews } from "./code-text.js"
 import type { TextSyntax, TextView } from "./code-text.js"
 import { NON_SOURCE_DIRS, judgeSonarProperties } from "./sonar-properties.js"
@@ -82,9 +83,8 @@ const DETECTORS: readonly Detector[] = [
 ]
 
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue|svelte|css|scss|less)$/
-const SPEC_NAME = /\.(?:spec|test|e2e-spec|integration-spec)\.[cm]?[jt]sx?$/
 const SPEC_DIR = /(?:^|\/)(?:__tests__|tests?|e2e)\/.+\.[cm]?[jt]sx?$/
-const isSpecFile = (file: string): boolean => SPEC_NAME.test(file) || SPEC_DIR.test(file)
+const isSpecFile = (file: string): boolean => SPEC_FILE.test(file) || SPEC_DIR.test(file)
 const SHELL_FILE = /(?:^|\/)(?:\.(?:husky|githooks)\/(?!_\/)[^/]+|[^/]+\.(?:sh|bash))$/
 const WORKFLOW_FILE = /(?:^|\/)(?:\.github\/(?:workflows|actions)\/.+\.ya?ml|\.gitlab-ci\.ya?ml|lefthook\.ya?ml)$/
 const DOCKERFILE = /(?:^|\/)Dockerfile(?:\.[\w-]+)?$/

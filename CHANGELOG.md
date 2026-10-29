@@ -30,6 +30,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **The secret scan reads a key's name and a contract spec's inputs as what they are.** starci-next-app auth-sign-in
+  `keycloak-contract-spec` (t-15237b2c) failed verify on `secrets` for two lines of `keycloak.contract-spec.ts`: a const holding
+  the custody key name `IDENTITY_KEYCLOAK_CLIENT_SECRET`, and the deliberately wrong password of its invalid-credentials case.
+  `assigned-secret` now takes a value that is a key's name (capital words joined by underscores) for no credential, beside a
+  self-named stand-in (`notCredential` in `shared/secrets.ts`), and every spec suffix of the jest projects
+  (`*.contract-spec.ts` among them) is one pattern, `shared/spec-file.ts`, read by the secret scan, the loosening markers, the
+  scoped coverage and the release plan, which each kept a copy, the three outside coverage narrower. A credential assigned to a secret-worded name, and a
+  provider-shaped one in any spec, are still caught; the three `HFS_PLAINTEXT_SECRET` exceptions of `policy/security.yaml`
+  covered nothing any more and are gone. Bench: `security-secret-key-names`.
 - **A live suite whose keys the app's custody lacks waits on the owner, never a findings red, however the harness meets
   them.** A failed test run reporting as `TEST_WORLD_NOT_DECLARED` keys custody holds none of was let stand as the task's red
   (`assertKeysHanded` returned when no sealed member held them), so a wave whose spec custody did not catch before the run
