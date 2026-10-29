@@ -22,3 +22,19 @@ export const MIGRATIONS_ARCHIVE_DIR = `${MIGRATIONS_DIR}/archive`;
 /** True for a migration `starci app db migrate` applies: a path under db/migrations/ outside the archive. */
 export const isActiveMigration = (file) => file.startsWith(`${MIGRATIONS_DIR}/`) && !file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`);
 export const SEED_FILE = `${DB_DIR}/seed.sql`;
+/** The managed pre-migration bootstrap (slot app.db.bootstrap): `starci app sync` renders it, and `db baseline --squash` owns one marked section. */
+export const BOOTSTRAP_FILE = `${DB_DIR}/bootstrap.sql`;
+export const BOOTSTRAP_SQUASH_BEGIN = '-- >>> starci app db baseline --squash: roles, role settings and grants a per-database dump loses (regenerate with the verb; do not edit) >>>';
+export const BOOTSTRAP_SQUASH_END = '-- <<< starci app db baseline --squash <<<';
+/**
+ * db/bootstrap.sql split into the part sync renders (`head`) and the squash section (`section`, from its begin line through its end line, or
+ * null). A begin marker without its end marker is no section, so the whole text stays the rendered part and differs from the render.
+ */
+export function bootstrapSection(text) {
+  const start = text.indexOf(BOOTSTRAP_SQUASH_BEGIN);
+  const end = start < 0 ? -1 : text.indexOf(BOOTSTRAP_SQUASH_END, start);
+  if (start < 0 || end < 0 || (start > 0 && text[start - 1] !== '\n')) return { head: text, section: null };
+  const newline = text.indexOf('\n', end);
+  const stop = newline < 0 ? text.length : newline + 1;
+  return { head: text.slice(0, start) + text.slice(stop), section: text.slice(start, stop) };
+}

@@ -12,14 +12,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../runtime/engine/plain-object.mjs';
 import { byCodeUnit } from '../runtime/engine/by-code-unit.mjs';
-import { MIGRATIONS_DIR } from '../runtime/scripts/hfs/rules/database-constants.mjs';
+import { BOOTSTRAP_FILE, MIGRATIONS_DIR } from '../runtime/scripts/hfs/rules/database-constants.mjs';
+
+export { BOOTSTRAP_FILE };
 import { approvalMissing, failure, refusal } from '../stack/errors.mjs';
 import { readDeclaration, runVerb } from '../release/index.mjs';
 import { DEFAULT_DB_URL_ENV, HISTORY_DDL, dbTarget, historyVersions, markApplied, markReverted, psqlTransaction } from './postgres.mjs';
 
 const DATABASE_CODE = 'DB_CONFIG_INVALID';
-/** The managed pre-migration bootstrap (slot app.db.bootstrap), applied before the first migration of an empty database. */
-export const BOOTSTRAP_FILE = 'db/bootstrap.sql';
 
 const SEGMENT = /^[A-Za-z0-9._-]+$/u;
 const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/u;

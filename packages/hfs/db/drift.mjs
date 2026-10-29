@@ -17,10 +17,12 @@ import { failure, refusal } from '../stack/errors.mjs';
 import { firstLine, tool } from '../stack/context.mjs';
 import { ENTITY_LIST, hasEntityList } from './entity-list.mjs';
 import { DB_DOCKERFILE } from './image.mjs';
+import { BOOTSTRAP_FILE } from '../runtime/scripts/hfs/rules/database-constants.mjs';
+
+export { BOOTSTRAP_FILE };
 
 export const DRIFT_CODE = 'BE_ENTITY_SCHEMA_DRIFT';
 export const MIGRATIONS_DIR = 'db/migrations';
-export const BOOTSTRAP_FILE = 'db/bootstrap.sql';
 const NEEDS_DATABASE = 'DB_DRIFT_NEEDS_DATABASE';
 const KEY = /^[A-Z][A-Z0-9_]*$/u;
 const MIGRATION = /^\d{14}_[a-z0-9][a-z0-9_-]*\.sql$/u;

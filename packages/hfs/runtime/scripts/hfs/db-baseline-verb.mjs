@@ -10,10 +10,12 @@ import { baselineMarkers, baselineSourceFindings } from './rules/database-baseli
 import { databaseQueueDeclarations } from './rules/database-queues.mjs';
 import { MIGRATIONS_DIR, MIGRATIONS_ARCHIVE_DIR } from './rules/database-constants.mjs';
 import { dbPlanMain } from './db-plan-verb.mjs';
+import { DbVerbError } from './db-errors.mjs';
+import { squashBaseline } from './db-squash.mjs';
 
 await pg.loadModule();
 
-export class DbVerbError extends Error {}
+export { DbVerbError };
 
 /** Strict shared options; unknown flags never reach the database CLI. */
 export function dbOptions(argv, allowed) {
@@ -22,7 +24,7 @@ export function dbOptions(argv, allowed) {
     const [flag, inline] = argv[index].split(/=(.*)/s);
     const name = flag.slice(2);
     if (!flag.startsWith('--') || !allowed.includes(name) || Object.hasOwn(opts, name)) throw new DbVerbError('unknown or duplicate database option');
-    if (['apply', 'json'].includes(name)) {
+    if (['apply', 'json', 'squash'].includes(name)) {
       if (inline !== undefined && !['true', 'false'].includes(inline)) throw new DbVerbError(`${flag} expects true or false`);
       opts[name] = inline !== 'false';
     } else {
@@ -73,7 +75,7 @@ export function dbSqlFiles(root, directory = MIGRATIONS_DIR) {
 }
 
 /** The database of `--url-env` (default DATABASE_URL): the URL without its password and the password for PGPASSWORD. */
-function connectionOf(env, urlEnv) {
+export function connectionOf(env, urlEnv) {
   if (!/^[A-Z][A-Z0-9_]*$/.test(urlEnv)) throw new DbVerbError('--url-env must name an UPPER_CASE environment variable');
   let url;
   try { url = new URL(String(env[urlEnv] ?? '')); } catch { throw new DbVerbError(`${urlEnv} must hold a postgres connection URL`); }
@@ -87,7 +89,7 @@ const HISTORY = 'supabase_migrations.schema_migrations';
 const sqlLiteral = (value) => `'${String(value).replaceAll("'", "''")}'`;
 
 /** The psql and pg_dump invocation of one operation: a JSON rows query, a schema-only dump, or one history row applied or reverted. */
-function commandOf(op, url) {
+export function commandOf(op, url) {
   const psql = ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-d', url];
   if (op.kind === 'query') return ['psql', [...psql, '-A', '-t', '-c', `select coalesce(json_agg(row_to_json(q)), '[]'::json) from (${op.sql.replace(/;\s*$/, '')}) q`]];
   if (op.kind === 'dump') return ['pg_dump', ['--schema-only', '--schema', 'public', '--dbname', url]];
@@ -140,7 +142,7 @@ const EXCLUDED_SCHEMAS = new Set(['information_schema', '_analytics', '_realtime
 const ROLE_OPTIONS = new Set(['canlogin', 'inherit', 'superuser', 'createdb', 'createrole', 'isreplication', 'bypassrls', 'connectionlimit']);
 const identifier = (name) => `"${name.replaceAll('"', '""')}"`;
 const literal = (value) => `'${value.replaceAll("'", "''")}'`;
-const excludedSchema = (name) => EXCLUDED_SCHEMAS.has(name) || /^(?:pg_|timescaledb_|_timescaledb_)/.test(name ?? '');
+export const excludedSchema = (name) => EXCLUDED_SCHEMAS.has(name) || /^(?:pg_|timescaledb_|_timescaledb_)/.test(name ?? '');
 
 /** Inventory source paths only; no credential, generated or vendor tree is traversed. */
 function baselineFiles(root) {
@@ -305,13 +307,23 @@ function metadataSql(metadata) {
 /** Numeric CLI exit code, injectable IO/clock/CLI; neither files nor history change without --apply. */
 export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), now = () => new Date(), ...ports } = {}) {
   try {
-    const opts = dbOptions(argv, ['cwd', 'stamp', 'apply', 'url-env']);
+    const opts = dbOptions(argv, ['cwd', 'stamp', 'apply', 'url-env', 'squash', 'drop-extension', 'seed-tables', 'image']);
+    if (!opts.squash && ['drop-extension', 'seed-tables', 'image'].some((name) => Object.hasOwn(opts, name))) throw new DbVerbError('--drop-extension, --seed-tables and --image belong to --squash');
+    if (opts.squash && !opts['url-env']) throw new DbVerbError('baseline --squash reads a database the whole active chain is applied to: pass --url-env NAME');
     const urlEnv = opts['url-env'] ?? 'DATABASE_URL';
     const root = dbAppRoot(cwd, opts);
     const plan = baselinePlan(root, opts, now);
     const files = baselineFiles(root);
     const sourceFindings = baselineSourceFindings({ repoRoot: root, files, all: files, git: ports.git });
     if (sourceFindings.length) throw offendersError('baseline sources and archives must match committed migration history', sourceFindings.map(findingLine));
+    const archive = () => {
+      fs.mkdirSync(path.join(root, MIGRATIONS_ARCHIVE_DIR), { recursive: true });
+      for (const entry of plan.active) fs.renameSync(path.join(root, entry.file), path.join(root, MIGRATIONS_ARCHIVE_DIR, entry.name));
+    };
+    if (opts.squash) {
+      const precondition = (runPostgres) => dbPlanMain(['--json', '--url-env', urlEnv], { ...ports, runPostgres, cwd: root, stdout: () => {}, stderr: () => {} });
+      return squashBaseline({ root, opts, plan, urlEnv, connection: connectionOf(ports.env ?? process.env, urlEnv), commandOf, precondition, managedSchema: excludedSchema, archive, stdout });
+    }
     const metadata = baselineMetadata(root, plan, files);
     if (dbPlanMain(['--json', '--url-env', urlEnv], { ...ports, cwd: root, stdout: () => {}, stderr: () => {} }) !== 0) throw new DbVerbError('baseline requires a clean database plan with every migration already applied');
     const schema = runDbPostgres(root, { kind: 'dump' }, ports, urlEnv);
@@ -321,9 +333,8 @@ export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) =>
     for (const op of repairs) stdout(`${repairLine(op)}\n`);
     if (!opts.apply) return 0;
     for (const op of repairs) runDbPostgres(root, op, ports, urlEnv);
-    fs.mkdirSync(path.join(root, MIGRATIONS_ARCHIVE_DIR), { recursive: true });
     fs.writeFileSync(path.join(root, plan.file), `-- starci:baseline ${plan.last}\n${metadata.extensions}${metadata.roles}${schema.replace(/^\s+/, '')}\n${metadataSql(metadata)}`, { flag: 'wx' });
-    for (const entry of plan.active) fs.renameSync(path.join(root, entry.file), path.join(root, MIGRATIONS_ARCHIVE_DIR, entry.name));
+    archive();
     return 0;
   } catch (error) { return dbFailure('baseline', error, stderr); }
 }
