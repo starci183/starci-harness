@@ -418,20 +418,36 @@ const relayEvents = (need: NeedRow, workflow: string, kind: "relayed" | "relay-c
 /** The relay of this need's round already recorded for a workflow, so a later pass of the same round never relays twice. */
 const recordedRelay = (need: NeedRow, workflow: string): Relay | undefined => relayEvents(need, workflow, "relayed").find((data) => data.relay !== undefined)?.relay
 
-/** True when the branch at `head` holds `commit`'s change already, under another hash (an equal patch: `git cherry`). */
-const heldAs = async (target: string, commit: string, head: string): Promise<boolean> => {
-    const cherry = await captureGit(["cherry", head, commit, `${commit}^`], target)
-    return cherry.exitCode === 0 && cherry.stdout.trim().startsWith("-")
+/** The files a commit changes, both sides of a rename. */
+const filesOf = async (target: string, commit: string): Promise<string[]> => {
+    const listed = await captureGit(["diff-tree", "-r", "--root", "--no-commit-id", "--name-only", "--no-renames", commit], target)
+    return listed.exitCode === 0 ? listed.stdout.split(/\r?\n/).filter((line) => line !== "") : []
+}
+
+/** Every file the resolving commits change, in the order they first touch it: the need's paths as the source settled them. */
+const pathsOf = async (target: string, commits: readonly string[]): Promise<string[]> => {
+    const files: string[] = []
+    for (const commit of commits) files.push(...(await filesOf(target, commit)))
+    return [...new Set(files)]
 }
 
 /**
+ * True when the branch at `head` holds the source's final content at every one of the need's paths: each file the resolving
+ * commits change reads at `head` as it reads at the last of them (a file the source deleted is absent from both). This, never a
+ * commit's hash, an equal patch, or an earlier copy of the folder being there, is what "already held" means.
+ */
+const holdsFinal = async (target: string, head: string, last: string, paths: readonly string[]): Promise<boolean> =>
+    paths.length > 0 && (await captureGit(["diff", "--quiet", head, last, "--", ...paths.map((path) => `:(literal)${path}`)], target)).exitCode === 0
+
+/**
  * The cross-branch relay: a need resolved on another branch is resolved for a waiter only once the resolving commits
- * (resolvingCommits: every commit its resolver keys landed) are on the waiter's branch. Under the waiting branch's land lock,
- * each one the branch lacks is replayed onto its head in order by a three-way merge against the commit's parent
- * (harness/land.ts rebaseCandidate, a cherry-pick with no work tree), so a file both sides changed merges wherever their
- * changes do not overlap; a commit whose change the branch holds already (an equal patch, or a merge that changes nothing, as
- * when both created the same file alike) is skipped. The workflow's checkout is moved to the result by a fast-forward, as a
- * landing does, recorded as a `need-relayed` host event. A textual conflict moves nothing and returns the files.
+ * (resolvingCommits: every commit its resolver keys landed) are on the waiter's branch. A branch holds them when it holds their
+ * content (holdsFinal: every file they change reads as at the last of them), whatever copy of the folder it held before. Else,
+ * under the waiting branch's land lock, every one of them that is not an ancestor of its head is replayed onto it in order by a
+ * three-way merge against the commit's parent (harness/land.ts rebaseCandidate, a cherry-pick with no work tree), so a file both
+ * sides changed merges wherever their changes do not overlap; only a commit whose merge changes nothing (as when both sides
+ * created the same file alike) is skipped, never one judged by an equal patch elsewhere in the branch's history. The workflow's
+ * checkout is moved to the result by a fast-forward, as a landing does, recorded as a `need-relayed` host event. A textual conflict moves nothing and returns the files.
  */
 const relay = async (place: Place, need: NeedRow): Promise<Relay> => {
     const resolver = need.resolver
@@ -450,16 +466,19 @@ const relay = async (place: Place, need: NeedRow): Promise<Relay> => {
     try {
         done = await withSettleLock(db, thisVerifier(`need-relay:${place.workflow}`), 60_000, `land-lock:${branch}`, async (): Promise<Relay> => {
             const start = await resolveSha(target, "HEAD")
+            const last = commits.at(-1) ?? start
+            const paths = await pathsOf(target, commits)
+            if (await holdsFinal(target, start, last, paths)) return { status: "present", relayed: [], files: [], detail: `${branch} holds the resolving commits' content at all ${String(paths.length)} of their file(s)`, commits, branch }
             let head = start
             const relayed: Relayed[] = []
             for (const commit of commits) {
-                if ((await gitSucceeds(target, ["merge-base", "--is-ancestor", commit, head])) || (await heldAs(target, commit, head))) continue
+                if (await gitSucceeds(target, ["merge-base", "--is-ancestor", commit, head])) continue
                 const made = await rebaseCandidate(target, commit, await resolveSha(target, `${commit}^`), head)
                 if (made.tree === (await captureGit(["rev-parse", `${head}^{tree}`], target)).stdout.trim()) continue
                 relayed.push({ from: commit, to: made.commit })
                 head = made.commit
             }
-            if (head === start) return { status: "present", relayed, files: [], detail: `${branch} holds every resolving commit`, commits, branch }
+            if (head === start) return { status: "present", relayed, files: [], detail: `${branch} holds every resolving commit's change`, commits, branch }
             const ff = await captureGit(["merge", "--ff-only", "--quiet", head], target)
             if (ff.exitCode !== 0) throw new Refusal("NEED_RELAY_FAILED", `git merge --ff-only in ${target}: ${ff.stderr.trim()}`)
             return { status: "relayed", relayed, files: [], detail: `relayed ${String(relayed.length)} commit(s) onto ${branch}: ${relayed.map((one) => `${one.from.slice(0, 9)} -> ${one.to.slice(0, 9)}`).join(", ")}`, commits, branch }
@@ -474,12 +493,6 @@ const relay = async (place: Place, need: NeedRow): Promise<Relay> => {
     }
     if (done.status === "relayed" || done.status === "present") withMachine((machine) => { recordNeedEvent(machine, "relayed", need.project, need.key, { workflow: place.workflow, round: need.round, branch, commits, relay: done, relayVersion: RELAY_VERSION }) })
     return done
-}
-
-/** The files a commit changes, both sides of a rename. */
-const filesOf = async (target: string, commit: string): Promise<string[]> => {
-    const listed = await captureGit(["diff-tree", "-r", "--root", "--no-commit-id", "--name-only", "--no-renames", commit], target)
-    return listed.exitCode === 0 ? listed.stdout.split(/\r?\n/).filter((line) => line !== "") : []
 }
 
 /**
@@ -511,8 +524,7 @@ const routeRelay = async (place: Place, need: NeedRow, done: Relay, mine: readon
     const template = relayTemplate(place, need, mine)
     if (template === undefined) return [action(`need ${need.key}: its commits do not apply to this branch (${done.detail}) and no node to build a relay node on; the next step tries again`, "problem")]
     const target = withLedger(place.root, (db) => workflowWorktreeOf(db, place.workflow)) ?? place.root
-    const files: string[] = []
-    for (const commit of commits) files.push(...(await filesOf(target, commit)))
+    const files = await pathsOf(target, commits)
     const evidence = mine
         .map((waiter) => `${waiter.taskKey ?? waiter.task}${waiter.rules.length === 0 ? "" : ` (rules ${waiter.rules.join(", ")})`}${waiter.note === null ? "" : `: ${waiter.note}`}`)
         .sort((left, right) => left.localeCompare(right))
@@ -588,9 +600,11 @@ const relayedByNode = (place: Place, need: NeedRow, key: string, view: NodeView)
 /**
  * Releases the waiters of an ended need in this workflow, once the resolving commits are on its branch: the harness relays them
  * itself, or a relay node applies what does not apply cleanly (routeRelay) and the waiters, which depend on it, wait for it to
- * land; only a relay node its Kernel removed raises the Supervisor's conflict, whose ruling releases them as they stand. Each
- * waiter whose every need ended is retried in one amend, unless its Kernel already moved it on; then its rows are marked
- * released with how, the relayed commits included. A waiter outside any workflow (a worker) is marked released for its Supervisor.
+ * land; only a relay node its Kernel removed raises the Supervisor's conflict, whose ruling releases them as they stand. A waiter
+ * whose every need ended is released from this need alone: its row of this need is marked released with how, this need's relayed
+ * commits included, and its row of another need stays until that need's own relay put its commits on the branch. The waiters
+ * whose every other row is released already are retried in one amend, unless their Kernel already moved them on. A waiter
+ * outside any workflow (a worker) is marked released for its Supervisor.
  */
 const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const mine = waiting(withMachine((db) => waitersOf(db, need.project, need.key))).filter((waiter) => waiter.workflow === place.workflow && sameRepo(waiter.repo, place.repo))
@@ -609,7 +623,8 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     }
     const carried = ruled ?? (relayed.status === "skipped" ? null : relayed.detail)
     const snapshot = withLedger(place.root, (db) => snapshotOf(db, place.workflow))
-    const retry = ready.filter((waiter) => {
+    const lastNeed = withMachine((db) => ready.filter((waiter) => waiterRowsOfTask(db, need.project, waiter.repo, waiter.task).every((row) => row.key === need.key || row.releasedAt !== null)))
+    const retry = lastNeed.filter((waiter) => {
         const view = snapshot.views.find((candidate) => candidate.key === waiter.taskKey)
         return view !== undefined && (view.task === null || view.task.id === waiter.task)
     })
@@ -632,7 +647,7 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const how = { by: need.state, round: need.round, reason: need.reason, carried, relay: { status: relayed.status, relayed: relayed.relayed, files: relayed.files, relayVersion: RELAY_VERSION }, retried: keys }
     withMachine((db) => {
         for (const waiter of ready) {
-            db.prepare("UPDATE shared_need_waiters SET released_at = ?, release_json = ? WHERE project = ? AND repo = ? AND task_id = ? AND released_at IS NULL").run(now(), JSON.stringify(how), need.project, waiter.repo, waiter.task)
+            db.prepare("UPDATE shared_need_waiters SET released_at = ?, release_json = ? WHERE project = ? AND key = ? AND repo = ? AND task_id = ? AND released_at IS NULL").run(now(), JSON.stringify(how), need.project, need.key, waiter.repo, waiter.task)
         }
     })
     return actions

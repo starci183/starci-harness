@@ -51,6 +51,25 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   that fails reaches no verdict and spends no try. A green ending no longer files the target's dirt as the task's own preserve,
   which its merge settle deleted. Bench: `land-stale-target-dirty-settles`, `land-stale-escape-cleared-then-lands`.
 
+- **A walk serves the app with the project's local package sources, as the wave judged it (tk-aa27c447e9e5).**
+  starci-next-app's fe-sign-in-audit (t-a2824c1c) walked an Op worktree whose install was copied from the cache at the registry
+  pin `@starci/grammar` 0.15.3, which lacks `Page` from `/common`, so SignInPage answered 500 on all 13 pages; its seat start's
+  copy of the local sources had failed in the heavy queue, and `uat run` never applied them. The wave judged the same app green
+  with grammar 0.15.4+ from the local packages. The wave's install and its local copies are now one function,
+  `installCheckout` (`harness/install-cache.ts`), which the clean verify and the wave call and `uat run` calls through
+  `prepareWorkspace` for each install its checkout holds, before its workspace dependencies are built; a copy that cannot be
+  made refuses `UAT_APP_SETUP_FAILED`. Bench: `audit-walk-serves-local-package-mode`.
+- **A waiter parked on several shared needs gets every one of them relayed (tk-afbe3f7152a7).** subscription-premium's
+  `relay.capability-identity.session-principal.r3` (t-95b710de) waited on `capability:platform.cqrs` and
+  `capability:platform.http-security` (round 2, resolved by auth-sign-in's http-security-store, origin-strict and
+  origin-require-form: a8ccad16, b83b797c, ca785edd). The cqrs need's release relayed its one commit (a20f48934) and marked the
+  waiter's rows of both needs released, so the http-security need found no waiter and never relayed; the retry t-1242f3d6 met
+  no RequireOrigin (TS2305). A release now marks only its own need's row, carrying that need's relay, and retries the waiter
+  once the last of its rows is released (`release` in `core/needs/tend.ts`). The relay judges "already held" by content: the
+  branch holds the resolving commits when every file they change reads as at the last of them (`holdsFinal`), and otherwise
+  replays every one that is not an ancestor of its head, skipping only a commit whose merge changes nothing, never one judged
+  by an equal patch in the branch's history (`git cherry` is gone), so an older copy of the folder never stands for the
+  resolver's work. `RELAY_VERSION` is 3. Bench: `needs-relay-every-commit-over-older-copy`.
 - **The secret scan reads a key's name and a contract spec's inputs as what they are.** starci-next-app auth-sign-in
   `keycloak-contract-spec` (t-15237b2c) failed verify on `secrets` for two lines of `keycloak.contract-spec.ts`: a const holding
   the custody key name `IDENTITY_KEYCLOAK_CLIENT_SECRET`, and the deliberately wrong password of its invalid-credentials case.

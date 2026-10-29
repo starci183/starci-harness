@@ -2,8 +2,10 @@ import { createHash, randomBytes } from "node:crypto"
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
+import { readRecord, reapplyLocal } from "../core/deps/packages.js"
 import { captureNpm, npmVersion, pidAlive } from "../shared/exec.js"
 import type { RunOptions, ToolRun } from "../shared/exec.js"
+import { evidenceTail } from "../shared/output.js"
 import { withHeavySlot } from "./heavy.js"
 import { installCachePath } from "./ledger.js"
 
@@ -265,6 +267,38 @@ const freshInstall = async (dir: string, entry: string, key: string, options: Ru
 
 /** Whether a folder holds an install already made in it: npm's own record of it, or the marker of one linked from the cache. */
 export const isInstalled = (dir: string): boolean => existsSync(join(dir, "node_modules", ".package-lock.json")) || existsSync(join(dir, "node_modules", LINKED_MARKER))
+
+/** What giving one lockfile folder its install did: green or red, npm's exit (0 when npm did not run), and where node_modules and its local copies came from. */
+export interface CheckoutInstall {
+    readonly status: "green" | "red"
+    readonly exitCode: number
+    readonly detail: string
+}
+
+/**
+ * Gives a lockfile folder `dir` of a checkout the install every judged or served copy of the app runs against, a wave's clean
+ * checkout and a walk's checkout alike: an install the folder does not hold yet comes from the cache (cachedInstall; copied, not
+ * linked, when the repository of `source` is in local package mode, `starci deps source --local`), and in local package mode the
+ * repository's local copies are applied over whichever install the folder holds (reapplyLocal), so the checkout runs the `@starci`
+ * packages its work tree runs, never the registry pins. Undefined when the folder holds an install and the repository is in npm
+ * mode: there is nothing to give it.
+ */
+export const installCheckout = async (dir: string, source: string, options: RunOptions): Promise<CheckoutInstall | undefined> => {
+    const local = (readRecord(source)?.packages.length ?? 0) > 0
+    let installed: CheckoutInstall | undefined
+    if (!isInstalled(dir)) {
+        const cached = await cachedInstall(dir, options, local)
+        const exitCode = cached.run?.exitCode ?? 0
+        const tail = cached.run === null ? "" : `\n${evidenceTail(cached.run.stdout, cached.run.stderr)}`
+        installed = { status: exitCode === 0 ? "green" : "red", exitCode, detail: `${cached.note}${tail}` }
+        if (installed.status === "red") return installed
+    }
+    if (!local) return installed
+    const reapplied = await reapplyLocal(source, dir)
+    if (reapplied === undefined) return installed
+    const lines = [installed?.detail ?? "node_modules already installed", "local package sources (starci deps source):", reapplied.detail]
+    return { status: reapplied.status, exitCode: installed?.exitCode ?? 0, detail: lines.join("\n") }
+}
 
 /**
  * Links the cached install of a lockfile folder `dir` into it when the install cache holds its key (a real node_modules whose

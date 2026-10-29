@@ -437,10 +437,11 @@ carries its `Starci-Task` trailer: `keyCommits`), so a relay never carries a com
 handed-off head is on harness main; a resolver failed, cancelled, removed or stopped, or one that closes a cycle (it waits,
 through other needs, on a waiter of this one: `findCycle`), reopens it at its router in a new round with the reason named. A
 need is resolved for a waiter only when its resolving commits are on the waiter's branch, so each waiting workflow's own step
-first relays them (`relay`): under that branch's land lock, every resolving commit the branch lacks is replayed onto its head in
-order by a three-way merge against the commit's parent (`rebaseCandidate`, a cherry-pick with no work tree), a commit whose
-change the branch holds already (an equal patch, or a merge that changes nothing) skipped, and the workflow's checkout
-fast-forwarded, once per need round and workflow, recorded as a `need-relayed` host event that `needs show` prints commit by
+first relays them (`relay`). The branch holds them when it holds their content: every file they change reads at its
+head as at the last of them (`holdsFinal`), whatever older copy of those files it held. Else, under that branch's land lock,
+every resolving commit that is not an ancestor of its head is replayed onto it in order by a three-way merge against the
+commit's parent (`rebaseCandidate`, a cherry-pick with no work tree), only a commit whose merge changes nothing skipped (never
+one judged by an equal patch in the branch's history), and the workflow's checkout fast-forwarded, once per need round and workflow, recorded as a `need-relayed` host event that `needs show` prints commit by
 commit. A textual conflict moves nothing by itself and is never a dead end: it becomes work of the waiting workflow, one
 generated relay node `relay.<need>.r<round>` (`relayTask` in `harness/reconcile.ts`, added by `amendWithRelays`) owned by its
 Kernel like any task, built on the resolver's node (its label, inputs and checks), allowed the conflicting files and every file
@@ -463,8 +464,8 @@ that workflow depends on it and stays parked with its work kept, spending no try
 naming it. Like a revert node, a relay node's key and contract are the harness's own (no file adds or edits one), it is outside
 the goal's scope paths, the Work records' lanes and the foreign-source rule, since it carries what another workflow's lane built.
 Only a relay node its Kernel removed raises one Supervisor `escalation` of kind `conflict`, whose answer releases the waiters as
-they stand. Then every waiter whose needs all ended is
-retried in one amend, its new attempt starting from the one patch its park kept ("Settling an attempt") with a "Shared needs" section in its brief. A rejection
+they stand. A waiter is released from each need on its own: its row of a need is marked released with that need's own relay,
+and the waiter, once every need it waits on ended and the last of its rows is released, is retried in one amend, its new attempt starting from the one patch its park kept ("Settling an attempt") with a "Shared needs" section in its brief. A rejection
 is taken back by `needs reopen <key> --reason <why>` (Supervisor, Debug; `NEED_NOT_REJECTED` for a need in another state): the
 waiters the rejection released are parked again and a new round resolves through the newest task resolver a round recorded,
 judged afresh, so the next step relays its commits; with none it opens at its router (`reopenRejected` in `harness/needs.ts`).
@@ -510,8 +511,9 @@ shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with 
 An app pins npm versions of its `@starci` packages in committed files; `deps source --local`
 takes them from a package folder on this machine instead, the mechanism and its reasons in the doc comment of
 `core/deps/packages.ts`. Every checkout of a repository in local mode gets the same copies (`reapplyLocal`): a worker's
-before its launch (`seat start`), a clean verify's after its `npm ci`, a work tree's after its own (`deps source
---sync`). Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
+before its launch (`seat start`), a clean verify's or a wave's and a walk's over its install (`installCheckout` in
+`harness/install-cache.ts`, which `uat run` calls through `prepareWorkspace` for each install its checkout holds), a work
+tree's after its own `npm ci` (`deps source --sync`). Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
 the harness's own `packages/` folder of that name, or dropped to npm when the harness has none, with a `deps-local-healed`
 event, so a vanished folder never fails a launch, a sync or a verify; `worktree gc` heals every project's record once it
 removed a package edit worktree. `--local` takes `packages/` of the harness's main checkout unless `--from` names another

@@ -53,7 +53,7 @@ export interface Judging {
 /** The result of one check step on one package. */
 export interface StepResult {
     readonly package: string
-    readonly step: "dep-build" | "typecheck" | "lint" | "canon" | "secrets" | "loosening" | "unit"
+    readonly step: "install" | "dep-build" | "typecheck" | "lint" | "canon" | "secrets" | "loosening" | "unit"
     readonly command: string
     readonly status: "green" | "red" | "skipped"
     readonly reason: string

@@ -138,9 +138,10 @@ const describeRun = (data: UatRunData, timeoutMs: number): string[] => {
 }
 
 /**
- * Gives the checkout the walk serves the app from what check run gives the packages it judges (core/check/workspace-deps.ts
- * prepareWorkspace, each build under the heavy governor), before any container runs; a dependency that does not build refuses
- * UAT_APP_SETUP_FAILED, the walk's environment failing, never a finding of the screens.
+ * Gives the checkout the walk serves the app from what a wave gives the checkout it judges (core/check/workspace-deps.ts
+ * prepareWorkspace: the install with the project's local package sources, then its workspace dependencies, each under the heavy
+ * governor), before any container runs; an install or a dependency that cannot be given refuses UAT_APP_SETUP_FAILED, the walk's
+ * environment failing, never a finding of the screens.
  */
 const prepareApp = async (root: string, timeoutMs: number, progress: (line: string) => void): Promise<readonly StepResult[]> => {
     const steps = await prepareWorkspace(root, { timeoutMs })
@@ -153,7 +154,7 @@ const prepareApp = async (root: string, timeoutMs: number, progress: (line: stri
 /** `starci uat run <script>`: runs a Playwright script in the pinned Playwright image, with host ports forwarded on 127.0.0.1 and an evidence folder. */
 export const uatRunVerb = defineVerb({
     path: ["uat", "run"],
-    summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml), after giving the checkout the workspace dependencies its app imports as check run does (UAT_APP_SETUP_FAILED when one does not build): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green. The harness keeps a receipt of the run (script digest, image, container, exit, times, every evidence file by digest in its store), the only source a uat-flow check reads observations from, and the pages the walk opened; a walk whose every page answered 5xx refuses UAT_APP_UNSERVED, an environment failure",
+    summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml), after giving the checkout what a wave gives the checkout it judges, its install with the project's local @starci package sources (starci deps source --local) and the workspace dependencies its app imports (UAT_APP_SETUP_FAILED when one cannot be given): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green. The harness keeps a receipt of the run (script digest, image, container, exit, times, every evidence file by digest in its store), the only source a uat-flow check reads observations from, and the pages the walk opened; a walk whose every page answered 5xx refuses UAT_APP_UNSERVED, an environment failure",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["op", "worker", "agent", "kernel", "supervisor", "owner"],
