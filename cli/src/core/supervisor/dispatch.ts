@@ -31,10 +31,11 @@ export const supervisorDispatchVerb = defineVerb({
         label: { kind: "string", summary: "the worker label the router and the checks go by (an op of ops/ops/; default code)" },
         repo: { kind: "string", summary: "the checkout the worker branches from and writes (default: the project's Work-root repository); a @starci package fix keeps the default and names the package with --input package=<name>" },
         allow: { kind: "list", summary: "a path the worker may write (repeat or comma-separate); default its one report file starci-worker-<id>.md" },
-        input: { kind: "list", summary: "an input of the label's op as name=value (code: side=be|fe|harness, edition=lite|full|harness)" },
+        input: { kind: "list", summary: "an input of the label's op as name=value (code: side=be|fe|harness|package, edition=lite|full|harness); a check preset takes its arguments from these" },
+        check: { kind: "list", summary: "a check preset of ops/checks.yaml the contract adds to checks.extend (repeat or comma-separate), e.g. tests-pass with --input command=<argv>; a package fix carries package-specs itself" },
         topic: { kind: "string", summary: "the topic in the worker's title (default the brief's first line)" },
         project: { kind: "string", summary: "any checkout or worktree of the project's repositories (default: the working directory)" },
-        need: { kind: "string", summary: "the shared need this worker owns and resolves (starci needs list); a package need fills --input package" },
+        need: { kind: "string", summary: "the shared need this worker owns and resolves (starci needs list); a package need fills --input package, which reads side=package and carries the package-specs check" },
     },
     run: async (context, flags) => {
         const project = await projectFrom(context, flags.project)
@@ -42,7 +43,7 @@ export const supervisorDispatchVerb = defineVerb({
         const need = flags.need === undefined ? undefined : assertWorkerNeed(project.key, flags.need)
         const packageInput = need !== undefined && isPackageNeed(need.key) && !flags.input.some((input) => input.startsWith("package=")) ? [`package=${need.key.slice("package:".length)}`] : []
         const seat = await requireSupervisor(await locateOrca(context.cwd), context.cwd, project)
-        const data = await dispatchWorker(context, seat, project, { brief: flags.brief, label: flags.label ?? "code", repo: flags.repo, allow: listOf(flags.allow), inputs: [...flags.input, ...packageInput], topic: flags.topic })
+        const data = await dispatchWorker(context, seat, project, { brief: flags.brief, label: flags.label ?? "code", repo: flags.repo, allow: listOf(flags.allow), inputs: [...flags.input, ...packageInput], checks: listOf(flags.check), topic: flags.topic })
         const owned = need === undefined ? null : recordWorkerNeed(project.key, need.key, { worker: data.worker, repo: data.repo, task: data.task })
         const lines = [`worker ${data.worker} "${data.title}": task ${data.task} in ${data.repo}, worktree ${data.worktree} on ${data.branch}`, data.detail, ...(owned === null ? [] : [`owns shared need ${owned.key} (${owned.state})`])]
         return { data: { ...data, need: owned?.key ?? null }, message: lines.join("\n") }

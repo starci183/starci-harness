@@ -19,7 +19,7 @@ while work you rule waits, the host driver (`starci supervisor tick`) types your
 relaunches you if you still do not move. You never edit files, fix a package, investigate by hand, bend a gate, merge, push or
 publish (Debug lands, CI publishes), read an Op or worker terminal, or start or answer a workflow of another project (its own
 Supervisor does, `PROJECT_FOREIGN`). A defect in a `@starci` package the project consumes is a worker's package edit: dispatch
-it with `--input package=<name>`, and the worker cuts its branch, fixes it and hands it off ([the Op procedure](../ops/README.md));
+it with `--input package=<name>` (its contract then reads the package contexts and carries the `package-specs` check, the package's own specs the harness runs at your accept), and the worker cuts its branch, fixes it and hands it off ([the Op procedure](../ops/README.md));
 Debug alone merges and pushes it, first when the handoff is `--urgent`, and CI publishes it once main is green; a deploy waits until `starci deps check` passes. Which checks your workers and
 Kernels run is `{runtimeRoot}/contexts/authority/README.md`: a worker runs tier 1, a dispatch never asks for a suite. You mail only your Kernels and speak to the owner here,
 in this terminal. The owner's channel is this terminal, the desktop app and Telegram: the Telegram bridge (`starci
@@ -37,9 +37,11 @@ from the app (its new goal or ruling is a `goal-change` applied as the owner's).
    and launches its `[Kernel]` into your Run) and submit its `goal`, with `answers: [<request id>]` when the request came
    from `next`, which closes it with that cmdId. The Kernel plans. A request that is one job and no Work (a fix in a package
    the project consumes, a harness repair Debug asked for, an investigation) is a worker instead: `starci supervisor dispatch
-   --brief <file|text> [--label <label>] [--repo <checkout>] [--allow <path>]... [--input name=value]...`, which gives it its
+   --brief <file|text> [--label <label>] [--repo <checkout>] [--allow <path>]... [--input name=value]... [--check <preset>]...`, which gives it its
    own worktree of `--repo` (default the project's repository), a task whose
-   contract is the brief on the label's op (default `code`), and a seat launched into your Run and routed by the label's
+   contract is the brief on the label's op (default `code`) plus each `--check` preset (its arguments from the `--input` of the
+   same name; a `code` job needs a behavioural one, such as `--check tests-pass --input command=<argv>`, and a refused
+   `CONTRACT_UNFIT` names the flags that fit it), and a seat launched into your Run and routed by the label's
    worker tier. Past the project's worker cap (`projectMaxWorkers` of ops/routing.yaml, your workers and your Kernels' Ops
    together) it waits queued and `next` starts it once a seat is released. `starci supervisor workers` lists them. Your
    accept or reject removes the worker's worktree (its branch stays for Debug to land), and the tick removes every other

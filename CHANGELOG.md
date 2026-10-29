@@ -40,6 +40,17 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   and files. Only a relay node its Kernel removed raises the Supervisor's `conflict`. Relay keys are the harness's own like revert
   keys (no file adds or edits one) and sit outside the goal's scope paths, the lanes and the foreign-source rule. Bench:
   `needs-relay-conflict` (rewritten to the relay node), `needs-relay-three-way`.
+- **A package need gets its package-fix worker** (ticket tk-3d5e1c4da017: every code-label `supervisor dispatch` was refused
+  `CONTRACT_UNFIT`, so `package:@starci/eslint-canon-be` could never be fixed). A package fix's worker contract carries its
+  behavioural check itself, the new `package-specs` preset: `starci pkg test <package>` (`cli/src/core/pkg/test.ts`) runs the
+  package's typecheck and lint scripts its `test` does not run already, then `npm test`, in `packages/<name>` of the app's
+  package edit worktree, each under a heavy-command slot. It reads `side: package` of the code op (CONTRIBUTING.md,
+  packages/README.md, contexts/authority/packages.md: about 14k of the op's 24k tokens) instead of `side: harness`, whose
+  cli/README.md put it at 29.6k; `side=package` and `edition=harness` are filled when the dispatch names neither.
+  `supervisor dispatch --check <preset>` adds any preset of ops/checks.yaml to a worker's contract (an unknown one is refused
+  `CONTRACT_UNKNOWN_PRESET`), and its `CONTRACT_UNFIT` refusal names the fix in `fix:` lines (`workerChecks` and
+  `unfitRemedies` in `cli/src/core/supervisor/workers.ts`). Bench: `needs-package-worker-specs-check`,
+  `supervisor-dispatch-check-preset-fixes-unfit`.
 - **A hot CPU slows the heavy queue and never freezes it** (monitor report 5: 0 admissions for 2 h 33 with 23.7 GB free). Once
   the queue admitted nothing for `heavy.cpuStarveMinutes`, its first command RAM admits starts despite the CPU ceiling, one at a
   time. The queue is served by age, a project with fewer commands running first, and a project running `heavy.projectSlots`

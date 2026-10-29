@@ -115,6 +115,7 @@ import { depsCheckVerb } from "./core/deps/check.js"
 import { depsSourceVerb } from "./core/deps/source.js"
 import { pkgBranchVerb } from "./core/pkg/branch.js"
 import { pkgHandoffVerb } from "./core/pkg/handoff.js"
+import { pkgTestVerb } from "./core/pkg/test.js"
 import { ticketAnswerVerb } from "./core/ticket/answer.js"
 import { ticketCloseVerb } from "./core/ticket/close.js"
 import { ticketListVerb } from "./core/ticket/list.js"
@@ -245,6 +246,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     depsCheckVerb,
     pkgBranchVerb,
     pkgHandoffVerb,
+    pkgTestVerb,
     ticketOpenVerb,
     ticketListVerb,
     ticketShowVerb,
