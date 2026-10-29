@@ -4,8 +4,9 @@ group: resources
 title: "a CPU the harness's own heavy commands burn still holds new ones back"
 inject: >-
   the heavy rules of an ops/ copy set so the host's CPU average is always above maxCpuPercent, burned by a process the
-  governor runs as one of its heavy commands (a running row of heavy_slots), with RAM to spare and a managed CPU floor of 1%;
-  a check run queues behind it
+  governor runs as one of its heavy commands (a running row of heavy_slots), with RAM to spare whatever the host's memory (no
+  reserve, a one-megabyte estimate per tsc and eslint, so the burner's row never holds the second slot), two slots and a managed
+  CPU floor of 1%; a check run queues behind it
 expect: >-
   the managed share is at or above heavy.managedCpuFloorPercent, so the load is the harness's own and the ceiling holds the
   queue until it admitted nothing for cpuStarveMinutes, then the oldest fitting command starts; host load names that rule
@@ -30,8 +31,13 @@ steps:
     write: { path: ops, from: "${ops}" }
   - git: [add, -A]
   - git: [commit, -q, -m, "bench: ops copy"]
-  - name: RAM never holds a command back
+  - name: RAM never holds a command back, the managed burner's tsc row included (no reserve, and one megabyte per tsc or eslint)
     starci: [config, set, liveness.heavy.reserveMb, "0"]
+  - starci: [config, set, liveness.heavy.estimateMb.tsc, "1"]
+  - starci: [config, set, liveness.heavy.estimateMb.eslint, "1"]
+  - name: two slots, the burner's and the one the starve rule opens, both in this project
+    starci: [config, set, liveness.heavy.maxSlots, "2"]
+  - starci: [config, set, liveness.heavy.projectSlots, "2"]
   - name: a CPU ceiling no host is under
     starci: [config, set, liveness.heavy.maxCpuPercent, "0.0001"]
   - name: the queue counts as starved after three seconds with nothing admitted
@@ -41,9 +47,9 @@ steps:
   - starci: [config, set, liveness.heavy.underForeignPressureSlots, "2"]
   - git: [commit, -q, -am, "bench: a CPU the harness burns"]
   - write: { path: src/changed.ts, content: "export const changed = 1\n" }
-  - name: the governor's store exists
+  - name: the governor's store exists, and the host has the two slots this needs (floor(cores / 2) at least 2) instead of a wait that never ends
     starci: [host, load]
-    expect: { exit: 0 }
+    expect: { exit: 0, contains: '"cap": 2,' }
   - name: a process that keeps a core busy
     serve: { stub: busy, as: burner }
   - name: the governor runs it as one of its heavy commands, and no managed reading predates it
