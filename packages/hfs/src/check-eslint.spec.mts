@@ -139,17 +139,3 @@ test('CLI app check refuses an unavailable ESLint transport with exit 2 and pres
   assert.deepEqual(checked.report.eslint.errors, ['ESLint transport did not complete.', 'ESLint transport did not complete.']);
 });
 
-test('CLI app check --fast runs the combined FE config only over changed source files', async context => {
-  const app = fixture(context), runs: Run[] = [];
-  execFileSync('git', ['init', '-q', '-b', 'main', app.root]);
-  execFileSync('git', ['-C', app.root, 'add', '--', 'hfs.json', 'package.json', 'be', 'fe']);
-  execFileSync('git', ['-C', app.root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '-qm', 'Fixture']);
-  fs.appendFileSync(path.join(app.root, 'fe/src/family.tsx'), 'export const changed = 2;\n');
-  const checked = await invoke(['check', '--fast'], app, ({ repoRoot, fast }) => {
-    assert.equal(fast, true);
-    return cleanCheck(repoRoot);
-  }, transport(app, runs));
-  assert.deepEqual(runs.map(run => [run.side, run.args]), [['fe', ['--format', 'json', 'src/family.tsx']]]);
-  assert.equal(checked.exit, 0, 'one ordinary finding is under the threshold');
-  assert.deepEqual(checked.report.findings.map(finding => finding.code), [familyCode]);
-});

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added: the committed app check cache (ruling app-check-cache, contexts/project/check-cache.md). `starci app check` runs every family diff-only against `.starcistacks/cache/` and writes what it judged back; `--full` runs the selected families in full; the selectors `--hfs --format --db --secrets --wiring --types --lint --test --sonar` run one family each and combine. Each family prints one diagnosis line (full or diff and why, checked, reused, findings new, known, fixed); progress goes to stderr with a percentage (whole lines off a terminal, `--quiet` silences it); timings go to the untracked tool cache. `STARCI_APP_CHECK_CACHE=verify` runs diff then full and fails with exit 2 on any difference; `=full` never reads the cache (the release gate sets it on every gate row). New `cache/` modules: types, hashing (CRLF to LF), JSON Lines, fingerprint, content index, trust (host: the working tree; CI: the cache at the merge-base or first parent), session, progress, run log, the hfs, secrets, db, wiring and format families, an in-memory fake session.
+- Added: slot `app.starcistacks.cache` (slots 3.15.0, both editions); rule R342 with HFS_CHECK_CACHE_FORGED (hard blocker at any count), HFS_CHECK_CACHE_STALE and HFS_CHECK_CACHE_MISSING (warnings); the managed `.gitignore` re-includes the folder, `.gitattributes` marks it `merge=union linguist-generated`, the managed CI runs `app check --format` and sets the cache env to full on release candidates and tags, `db:lint` runs `app check --db`.
+- Changed: Prettier (HFS_FORMAT) runs in batches of 64 files spread over worker threads that load the repository's prettier once, with configuration resolved once per directory (it was one lookup per file).
+- Removed: `app check --fast`, `--base` and `--force`; `--wiring` is now the wiring family.
+
 ## 4.12.2 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context). R340 FE_RAISED_SURFACE_IN_SURFACE joins the bundled rule catalog.

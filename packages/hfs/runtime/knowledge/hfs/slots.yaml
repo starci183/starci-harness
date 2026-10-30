@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.14.0
+version: 3.15.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -58,6 +58,7 @@ versioning:
 # 3.13.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
 # admits pgmq, the event bus, ruleParams.db.queueOutbox is retired with the pg_cron half of R258, the lite event-bus functions replace
 # event_bus_write in ruleParams.be.dbFunctions, and app.db.image moves to .starcistacks/images/db/Dockerfile (db/ keeps schema and data).
+# 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
 # 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
 # deploy server's age identity back from its GitHub Environment backup.
 
@@ -1023,6 +1024,17 @@ slots:
     tests: none
     since: 3.11.0
     rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.starcistacks.cache
+    profiles: [app]
+    # The committed result cache of `starci app check` and `starci app lint` (ruling app-check-cache, contexts/project/check-cache.md): JSON Lines records keyed by
+    # content, one folder per family. App-owned and written only by the CLI; sync never renders, overwrites or judges it. Both editions.
+    path: ".starcistacks/cache/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    since: 3.15.0
+    allows: ["fingerprint.jsonl", "check/**", "lint/**", "test-coverage/**", "sonar-baseline/**", "codecov-baseline/**"]
   - id: app.db.bootstrap
     profiles: [app]
     editions: [lite]

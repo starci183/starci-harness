@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+# The committed check cache (.starcistacks/cache, contexts/project/check-cache.md): a run judges only what differs from the cache at its trusted base
+# (the first parent of a push to main). A release candidate and a release tag judge in full and never read the cache.
+env:
+  STARCI_APP_CHECK_CACHE: ${{ (startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/release/candidate-')) && 'full' || '' }}
+
 # One run per ref: a release tag is never cancelled by another run.
 concurrency:
   group: ci-${{ github.ref }}
@@ -27,7 +32,7 @@ jobs:
       - name: production dependency audit
         run: {{auditCommand}}
       - name: format
-        run: npm run format:check
+        run: npx --no-install starci app check --format
       - name: typecheck
         run: npm run typecheck
         env:

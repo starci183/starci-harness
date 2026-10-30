@@ -101,8 +101,10 @@ export interface CheckSession {
   decide(family: FamilyId): FamilyDecision;
   /** The trusted records of a folder (`lint/be`, `check/format`, `test-coverage`), unfiltered: the step compares hashes itself. */
   records(folder: string): readonly CacheRecord[];
-  /** Replaces every record of a folder with `records`; written on `flush`. */
-  replace(folder: string, records: readonly CacheRecord[]): void;
+  /** Replaces every record of a folder with `records`; written on `flush`. `depth` is how many folders of a path name its area file (default 2). */
+  replace(folder: string, records: readonly CacheRecord[], options?: { readonly depth?: number }): void;
+  /** True when none of `paths` changed in the work tree since the run began: a scoped step stores nothing keyed on a file edited during the run. */
+  unchanged(paths: readonly string[]): boolean;
   report(report: FamilyReport): void;
   readonly progress: ProgressSink;
   flush(): FlushResult;
