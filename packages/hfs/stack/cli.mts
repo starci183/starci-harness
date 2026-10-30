@@ -94,7 +94,7 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
   ingress: ['--execute', ...SSH],
   retire: ['--project', '--execute', ...SSH],
   build: ['--push', '--execute'],
-  accept: ['--release', '--execute', '--retry', ...SSH],
+  accept: ['--release', '--execute', '--retry', '--db-url-env', ...SSH],
 });
 
 /** The operands of the actions that take any, as the usage prints them. */
@@ -131,7 +131,6 @@ function checkDeployForm(flags: Flags): void {
     if (flags.sha || flags.image) throw refusal('STACK_USAGE', '--reason and --remote belong to the one-command urgent deploy without --image and --sha; the image form deploys a commit whose urgent record was already pushed');
   }
   if (!flags.urgent && (flags['first-start'] || flags['db-service'])) throw refusal('STACK_USAGE', '--first-start and --db-service are the first start of an empty database under the urgent floor: add --urgent');
-  if (!flags.urgent && (flags['db-url-env'] || flags['backup-out'])) throw refusal('STACK_USAGE', '--db-url-env and --backup-out choose the urgent floor\'s database and backup folder: add --urgent');
 }
 
 /** `--image api=ghcr.io/o/x@sha256:...` (repeatable or comma separated) -> { api: 'ghcr.io/o/x@sha256:...' }. */
@@ -177,7 +176,7 @@ const OPTIONS: Record<Action, (input: OptionInput) => Record<string, unknown>> =
   backup: ({ flags }) => ({ swarmState: flags['swarm-state'] === true, execute: flags.execute === true }),
   ingress: ({ flags, positional }) => ({ action: positional[0], execute: flags.execute === true, args: positional.slice(1) }),
   build: ({ flags }) => ({ push: flags.push === true, execute: flags.execute === true }),
-  accept: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, retrySeconds: number(flags, 'retry') }),
+  accept: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, retrySeconds: number(flags, 'retry'), dbUrlEnv: flags['db-url-env'] }),
   retire: ({ flags }) => ({ projects: flags.project ?? [], execute: flags.execute === true }),
   jobs: ({ flags, positional }) => ({ action: positional[0], args: positional.slice(1), execute: flags.execute === true }),
   task: ({ flags, positional }) => ({ name: positional[0], args: positional.slice(1), execute: flags.execute === true }),

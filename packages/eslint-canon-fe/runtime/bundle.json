@@ -32,6 +32,7 @@
     "scripts/api/git/remote.mjs",
     "scripts/api/git/rev-parse-query.mjs",
     "scripts/api/git/show.mjs",
+    "scripts/api/git/tag.mjs",
     "scripts/hfs/allows.mjs",
     "scripts/hfs/architecture/ast-walks.mjs",
     "scripts/hfs/architecture/automatic-gates.mjs",

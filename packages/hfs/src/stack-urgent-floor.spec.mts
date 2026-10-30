@@ -107,12 +107,12 @@ test('a dry run plans the floor and touches nothing', async (t) => {
 });
 
 const REFUSALS: [string, Fail, string, string[]][] = [
-  ['a failed backup', { backup: true }, 'STACK_URGENT_BACKUP_FAILED', ['backup']],
-  ['a backup whose receipt does not match its archive', { hash: true }, 'STACK_URGENT_BACKUP_UNVERIFIED', ['backup']],
-  ['a failed test decrypt', { decrypt: true }, 'STACK_URGENT_DECRYPT_FAILED', ['backup', 'decrypt']],
+  ['a failed backup', { backup: true }, 'STACK_DEPLOY_BACKUP_FAILED', ['backup']],
+  ['a backup whose receipt does not match its archive', { hash: true }, 'STACK_DEPLOY_BACKUP_UNVERIFIED', ['backup']],
+  ['a failed test decrypt', { decrypt: true }, 'STACK_DEPLOY_BACKUP_DECRYPT_FAILED', ['backup', 'decrypt']],
   ['no previous release to roll back to', { noPrevious: true }, 'STACK_URGENT_NO_ROLLBACK_TARGET', ['backup', 'decrypt', 'render', 'current']],
-  ['a red migration preview', { preview: true }, 'STACK_URGENT_MIGRATE_PREVIEW_RED', ['backup', 'decrypt', 'render', 'current', 'preview']],
-  ['a failed migration', { migrate: true }, 'STACK_URGENT_MIGRATE_FAILED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate']],
+  ['a red migration preview', { preview: true }, 'STACK_DEPLOY_MIGRATE_PREVIEW_RED', ['backup', 'decrypt', 'render', 'current', 'preview']],
+  ['a failed migration', { migrate: true }, 'STACK_DEPLOY_MIGRATE_FAILED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate']],
   ['a red readiness verify that rolled back', { deploy: 'rolled-back' }, 'STACK_URGENT_RED_ROLLED_BACK', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
   ['a red release whose rollback did not converge', { deploy: 'stuck' }, 'STACK_URGENT_ROLLBACK_FAILED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
   ['a release red before the stack deploy', { deploy: 'early' }, 'STACK_URGENT_DEPLOY_NOT_STARTED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
@@ -145,10 +145,10 @@ for (const [title, shape, options, code] of PRECONDITIONS) {
   });
 }
 
-test('STACK_URGENT_DECRYPT_UNAVAILABLE: without an age identity the backup cannot be proven, so nothing runs', async (t) => {
+test('STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE: without an age identity the backup cannot be proven, so nothing runs', async (t) => {
   const { ctx, config, root } = app(t);
   const { calls, deps, run } = world(root);
-  await assert.rejects(urgentDeploy({ ...ctx, env: {} }, config, OPTIONS, run, deps), (error: { code?: string }) => error.code === 'STACK_URGENT_DECRYPT_UNAVAILABLE');
+  await assert.rejects(urgentDeploy({ ...ctx, env: {} }, config, OPTIONS, run, deps), (error: { code?: string }) => error.code === 'STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE');
   assert.deepEqual(calls, []);
 });
 
