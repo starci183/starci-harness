@@ -7,10 +7,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { coverageMain } from '../coverage/cli.mjs';
 
-const io = () => { const out = { stdout: '', stderr: '' }; return { out, stdout: (s) => { out.stdout += s; }, stderr: (s) => { out.stderr += s; } }; };
+type CoverageIo = NonNullable<Parameters<typeof coverageMain>[1]>;
+type Merge = NonNullable<CoverageIo['merge']>;
+type Prove = NonNullable<CoverageIo['prove']>;
+
+const io = () => { const out = { stdout: '', stderr: '' }; return { out, stdout: (s: string) => { out.stdout += s; }, stderr: (s: string) => { out.stderr += s; } }; };
 
 test('the verb hands the absolute shard inputs and the lcov directory to the preset merge', async () => {
-  const seen = [];
+  const seen: Parameters<Merge>[0][] = [];
   const { out, stdout, stderr } = io();
   const code = await coverageMain(['merge', '--out', 'be/coverage/lcov.info', 'be/coverage/shards'], { cwd: '/app', stdout, stderr, merge: (args) => { seen.push(args); return { reports: 6, files: 40 }; } });
   assert.equal(code, 0, out.stderr);
@@ -34,9 +38,9 @@ test('a merge that found no report, a bad usage and an app without the preset re
 });
 
 test('verify proves the merged report with the coverage judgement alone: exit 0 proved, 1 refused, 2 when it cannot run', async () => {
-  const calls = [];
+  const calls: Parameters<Prove>[0][] = [];
   const proved = io();
-  const ok = (args) => { calls.push(args); return { ok: true, measured: ['src/modules/domain/a/a.service.ts'], unmeasured: [], unmeasuredScopes: [], findings: [], scope: { roots: [], roles: ['service'] } }; };
+  const ok = (args: Parameters<Prove>[0]) => { calls.push(args); return { ok: true, measured: ['src/modules/domain/a/a.service.ts'], unmeasured: [], unmeasuredScopes: [], findings: [], scope: { roots: [], roles: ['service'] } }; };
   assert.equal(await coverageMain(['verify', 'be/coverage/lcov.info'], { cwd: '/app', ...proved, prove: ok }), 0, proved.out.stderr);
   assert.deepEqual(calls, [{ repoRoot: path.resolve('/app'), coverageFrom: 'be/coverage/lcov.info' }]);
   assert.match(proved.out.stdout, /^coverage: passed \(1 measured logic files/u);

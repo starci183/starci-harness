@@ -5,6 +5,7 @@
 // proves: STACKS_RELEASE_UNDECLARED@full BACKUP_UNDECLARED@full BACKUP_PROOF_MISSING@full STACKS_MODEL_UNAVAILABLE@full
 // proves: HFS_SCHEDULE_UNDECLARED@full STACKS_INGRESS_UNDECLARED@full STACKS_INGRESS_UNKNOWN@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,10 +14,19 @@ import { stacksSwarmFindings } from '../runtime/scripts/hfs/rules/stacks-swarm.m
 import { stacksIngressFindings } from '../runtime/scripts/hfs/rules/stacks-ingress.mjs';
 import { stacksReleaseFindings } from '../runtime/scripts/hfs/rules/stacks-release.mjs';
 
-const RECORDS = {
-  'model-unavailable': (await import('./fixtures/hfs-stacks-full/model-unavailable.mjs')).default,
-  passing: (await import('./fixtures/hfs-stacks-full/passing.mjs')).default,
-  violating: (await import('./fixtures/hfs-stacks-full/violating.mjs')).default,
+/** A recorded fixture (src/fixtures/hfs-stacks-full/*.mjs): the files of a repository and the finding codes each rule is expected to report. */
+interface StacksRecord {
+  edition: string;
+  files: Record<string, unknown> & { 'hfs.json': object };
+  expect: Record<'R266' | 'R267' | 'R268' | 'R275', string[]>;
+}
+type RecordName = 'model-unavailable' | 'passing' | 'violating';
+// reason: the fixtures are plain-data .mjs modules outside the typechecked tree; the variable specifier keeps the import untyped and the result is typed here.
+const load = async (name: RecordName): Promise<StacksRecord> => (await import(`./fixtures/hfs-stacks-full/${name}.mjs`)).default;
+const RECORDS: Record<RecordName, StacksRecord> = {
+  'model-unavailable': await load('model-unavailable'),
+  passing: await load('passing'),
+  violating: await load('violating'),
 };
 const HARDENING_CODES = [
   'STACKS_SECRET_NOT_EXTERNAL', 'STACKS_SECRET_UNVERSIONED', 'STACKS_SECRET_ENV_LITERAL',
@@ -26,7 +36,7 @@ const HARDENING_CODES = [
 const RELEASE_CODES = ['STACKS_RELEASE_UNDECLARED', 'BACKUP_UNDECLARED', 'BACKUP_PROOF_MISSING'];
 const INGRESS_CODES = ['STACKS_SECOND_INGRESS', 'STACKS_INGRESS_UNDECLARED', 'STACKS_INGRESS_UNKNOWN'];
 
-function fixture(t, name) {
+function fixture(t: TestContext, name: RecordName) {
   const record = structuredClone(RECORDS[name]);
   assert.equal(record.edition, 'full');
   const base = path.resolve(os.tmpdir());
@@ -45,8 +55,8 @@ function fixture(t, name) {
     repo: { ...record.files['hfs.json'], profile: 'app' } }, expect: record.expect };
 }
 
-const compareCodes = (left, right) => left.localeCompare(right);
-const distinctCodes = findings => [...new Set(findings.map(finding => finding.code))].sort(compareCodes);
+const compareCodes = (left: string, right: string) => left.localeCompare(right);
+const distinctCodes = (findings: { code: string }[]) => [...new Set(findings.map(finding => finding.code))].sort(compareCodes);
 
 for (const code of HARDENING_CODES) {
   test(`${code}@full: dedicated tracked passing fixture passes`, t => {
@@ -104,7 +114,7 @@ test('HFS_SCHEDULE_UNDECLARED@full: dedicated undeclared replicated job fails', 
   assert.ok(stacksReleaseFindings(value.context).some(finding => finding.code === 'HFS_SCHEDULE_UNDECLARED'));
 });
 
-for (const name of ['passing', 'violating', 'model-unavailable']) {
+for (const name of ['passing', 'violating', 'model-unavailable'] as const) {
   test(`R266/R267/R268/R275@full: dedicated ${name} fixture matches every recorded expectation`, t => {
     const value = fixture(t, name);
     const swarm = stacksSwarmFindings(value.context);

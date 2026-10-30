@@ -7,8 +7,8 @@ import { archFixture, runArch, findings } from './helpers/hfs-arch-fixture.mjs';
 // a folder name; the same-kind and no-kind cases keep the older code BE_FEATURE_IMPORTS_FEATURE.
 
 const PATTERNS = { patterns: ['event-bus', 'fenced-job'] };
-const kind = report => findings(report, 'BE_KIND_ISOLATION');
-const featureImports = report => findings(report, 'BE_FEATURE_IMPORTS_FEATURE');
+const kind = (report: Parameters<typeof findings>[0]) => findings(report, 'BE_KIND_ISOLATION');
+const featureImports = (report: Parameters<typeof findings>[0]) => findings(report, 'BE_FEATURE_IMPORTS_FEATURE');
 
 test('BE_KIND_ISOLATION: a jobs feature importing a reactors feature, and an api feature importing a jobs feature, are each refused with the event bus as the fix', t => {
   const root = archFixture(t, {
@@ -27,7 +27,7 @@ test('BE_KIND_ISOLATION: a jobs feature importing a reactors feature, and an api
   assert.match(byPath['src/features/jobs/send/index.ts'].message, /eventBus\.publish\(event, tx\)/);
   assert.equal(byPath['src/features/api/orders/index.ts'].typeOnly, true);
   assert.deepEqual(featureImports(report), [], 'a cross-kind import is the kind finding, not a second one');
-  assert.ok(report.coverage.checkedRuleIds.includes('BE_KIND_ISOLATION'));
+  assert.ok('checkedRuleIds' in report.coverage && report.coverage.checkedRuleIds?.includes('BE_KIND_ISOLATION'));
 });
 
 test('BE_KIND_ISOLATION: a sub-folder file of a kind is judged by its owner, so a step reaching another kind is refused', t => {
@@ -58,5 +58,5 @@ test('BE_KIND_ISOLATION: imports inside one owner, down into modules, and betwee
   assert.deepEqual(kind(report), []);
   const same = featureImports(report);
   assert.equal(same.length, 1, 'two jobs features still never import each other (R28)');
-  assert.equal(same[0].path, 'src/features/jobs/other/index.ts');
+  assert.equal(same[0]?.path, 'src/features/jobs/other/index.ts');
 });

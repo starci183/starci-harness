@@ -4,12 +4,14 @@
 // declared queue.
 // queue named by a *_TOPIC_QUEUE constant under platform/event-bus, and a live pg_cron job enqueues only through the queue outbox table.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { databaseQueueDeclarations, databaseQueuesFindings } from '../runtime/scripts/hfs/rules/database-queues.mjs';
 import { a15Findings, FINDERS } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
+import type { Finding } from '../runtime/scripts/hfs/rules/rule-types.mjs';
 const MIGRATION = 'db/migrations/20261014010000_queues.sql';
 const NEXT = 'db/migrations/20261014020000_ticks.sql';
 const QUEUE = 'be/src/modules/queues/receipts/receipts.queue.ts';
@@ -21,11 +23,22 @@ const TOPIC_FILE = 'be/src/modules/platform/event-bus/event-bus.contracts.ts';
 const TOPIC_CONSTANT = `export const RECEIPT_PAID_MAILER_TOPIC_QUEUE = '${TOPIC}' as const;`;
 const CREATE_DEAD = `select pgmq.create('${TOPIC}__dead');`;
 const CREATE_TOPIC = `select pgmq.create('${TOPIC}'); ${CREATE_DEAD}`;
-const topicMigration = (sql) => ({ [TOPIC_FILE]: TOPIC_CONSTANT, [MIGRATION]: `${CREATE_TOPIC}\n${sql}` });
-const codes = (findings) => [...new Set(findings.map((finding) => finding.code))].sort();
+const topicMigration = (sql: string) => ({ [TOPIC_FILE]: TOPIC_CONSTANT, [MIGRATION]: `${CREATE_TOPIC}\n${sql}` });
+const codes = (findings: { code: string }[]) => [...new Set(findings.map((finding) => finding.code))].sort();
 const BIND_TOPIC = `select pgmq.bind_topic('billing.receipt-paid', '${TOPIC}');`;
 
-function fixture(t, edition, contents, db = {}, be = {}) {
+/** The files of a repository by path. */
+type Contents = Record<string, string>;
+/** The context the queue finders read: the repository root and declaration, its files and the scope predicate. */
+interface QueueContext {
+  repoRoot: string;
+  repo: Record<string, unknown>;
+  files: string[];
+  all: string[];
+  inScope: (file: string) => boolean;
+}
+
+function fixture(t: TestContext, edition: string, contents: Contents, db: object = {}, be: object = {}): QueueContext {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-queues-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const repo = { hfs: 3, kind: 'app', project: 'queues', edition, db, sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...be } } };
@@ -38,14 +51,14 @@ function fixture(t, edition, contents, db = {}, be = {}) {
   return { repoRoot, repo, files: Object.keys(files), all: Object.keys(files), inScope: () => true };
 }
 
-function judge(t, edition, contents, db, be) {
-  const findings = databaseQueuesFindings(fixture(t, edition, contents, db, be));
+function judge(t: TestContext, edition: string, contents: Contents, db?: object, be?: object) {
+  const findings: Finding[] = databaseQueuesFindings(fixture(t, edition, contents, db, be));
   assert.equal(Array.isArray(findings), true, 'the finder is synchronous');
   assert.ok(findings.every((finding) => finding.level === 'error' && finding.path && finding.message));
   return findings;
 }
 
-function expectCode(t, edition, contents, code, db, be) {
+function expectCode(t: TestContext, edition: string, contents: Contents, code: string, db?: object, be?: object) {
   // A full app without a db/ tree runs no pgmq and is not judged (ruling lite-self-hosted-postgres-passport-minio).
   if (edition === 'full' && !Object.keys(contents).some((file) => file.startsWith('db/'))) return [];
   const findings = judge(t, edition, contents, db, be);
@@ -53,7 +66,7 @@ function expectCode(t, edition, contents, code, db, be) {
   return findings;
 }
 
-const pgmqFailures = [
+const pgmqFailures: [string, Contents][] = [
   ['a pgmq queue left for a queue constant', { [QUEUE]: CONSTANT, [MIGRATION]: CREATE }],
   ['a quoted named-argument pgmq queue for a queue constant', { [QUEUE]: CONSTANT, [MIGRATION]: `select "pgmq"."create"(queue_name => 'receipts'::text);` }],
   ['a queue constant recreated after its drop', { [QUEUE]: CONSTANT, [MIGRATION]: `${CREATE}\n${DROP}`, [NEXT]: CREATE }],
@@ -93,7 +106,7 @@ const badGrants = [
 for (const edition of ['lite', 'full']) {
   test(`${edition}: the app root judges the migrations while a side scope is not judged twice`, (t) => {
     const context = fixture(t, edition, { [QUEUE]: CONSTANT, [MIGRATION]: CREATE });
-    assert.ok(databaseQueuesFindings({ ...context, isRoot: true }).some((finding) => finding.code === 'DB_PGMQ_DECLARED'));
+    assert.ok(databaseQueuesFindings({ ...context, isRoot: true }).some((finding: Finding) => finding.code === 'DB_PGMQ_DECLARED'));
     assert.deepEqual(databaseQueuesFindings({ ...context, isRoot: false, appSide: true }), []);
   });
 
@@ -101,7 +114,7 @@ for (const edition of ['lite', 'full']) {
     const queue = QUEUE.slice(3);
     const context = fixture(t, edition, { [queue]: CONSTANT, [MIGRATION]: CREATE });
     const standalone = { ...context, repo: { ...context.repo, profile: 'be' }, isRoot: false, appSide: false };
-    assert.ok(databaseQueuesFindings(standalone).some((finding) => finding.code === 'DB_PGMQ_DECLARED' && finding.path === MIGRATION));
+    assert.ok(databaseQueuesFindings(standalone).some((finding: Finding) => finding.code === 'DB_PGMQ_DECLARED' && finding.path === MIGRATION));
     const retired = fixture(t, edition, { [queue]: CONSTANT, [MIGRATION]: CREATE, [NEXT]: DROP });
     assert.deepEqual(databaseQueuesFindings({ ...retired, repo: { ...retired.repo, profile: 'be' }, isRoot: false, appSide: false }), []);
   });
@@ -133,8 +146,8 @@ for (const edition of ['lite', 'full']) {
     ['a binding in application SQL', { [TOPIC_FILE]: TOPIC_CONSTANT, [MIGRATION]: CREATE_TOPIC, 'be/src/modules/platform/event-bus/persistence/bind.sql.ts': `export const bind = sql\`${BIND_TOPIC}\`;` }],
     ['a binding inside a function', topicMigration(`create function private.bind_topics() returns void language sql as $$${BIND_TOPIC}$$;`)],
     ['a binding by dynamic SQL', topicMigration(`do $$begin execute 'select pgmq.bind_topic(''billing.receipt-paid'', ''${TOPIC}'')'; end$$;`)],
-  ]) {
-    test(`${edition}: DB_PGMQ_DECLARED ${name}`, (t) => expectCode(t, edition, contents, 'DB_PGMQ_DECLARED'));
+  ] as [string, Contents][]) {
+    test(`${edition}: DB_PGMQ_DECLARED ${name}`, (t) => { expectCode(t, edition, contents, 'DB_PGMQ_DECLARED'); });
   }
 
   test(`${edition}: a pgmq queue of a queue constant dropped by a later migration passes`, (t) => {
@@ -142,7 +155,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   for (const [name, contents] of pgmqFailures) {
-    test(`${edition}: DB_PGMQ_DECLARED ${name}`, (t) => expectCode(t, edition, contents, 'DB_PGMQ_DECLARED'));
+    test(`${edition}: DB_PGMQ_DECLARED ${name}`, (t) => { expectCode(t, edition, contents, 'DB_PGMQ_DECLARED'); });
   }
 
   for (const grant of badGrants) {
@@ -185,7 +198,7 @@ for (const edition of ['lite', 'full']) {
     assert.ok(FINDERS.includes(databaseQueuesFindings));
     const context = fixture(t, edition, { [QUEUE]: CONSTANT, [MIGRATION]: CREATE });
     context.files = [QUEUE];
-    assert.ok(databaseQueuesFindings(context).some((finding) => finding.code === 'DB_PGMQ_DECLARED' && finding.path === MIGRATION));
+    assert.ok(databaseQueuesFindings(context).some((finding: Finding) => finding.code === 'DB_PGMQ_DECLARED' && finding.path === MIGRATION));
     context.inScope = (file) => file === MIGRATION;
     assert.ok(a15Findings(context).some((finding) => finding.code === 'DB_PGMQ_DECLARED' && finding.path === MIGRATION));
     context.inScope = () => false;

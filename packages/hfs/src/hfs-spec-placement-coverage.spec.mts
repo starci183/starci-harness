@@ -6,7 +6,7 @@ import { createSlotResolver, loadSlotManifest, resolveRepoDeclaration } from '..
 import { specPlacementFindings } from '../runtime/scripts/hfs/rules/spec-placement.mjs';
 
 const manifest = loadSlotManifest();
-const resolverFor = (edition) => createSlotResolver(manifest, resolveRepoDeclaration(manifest, {
+const resolverFor = (edition: string) => createSlotResolver(manifest, resolveRepoDeclaration(manifest, {
   hfs: manifest.major,
   kind: 'app',
   project: 'placement-proof',

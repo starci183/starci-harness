@@ -9,17 +9,15 @@ import { normalizeRelease, releaseGate } from '../release/gate.mjs';
 import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { ciStandardFindings } from '../runtime/scripts/hfs/rules/ci-standard.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import fs from 'node:fs';
-import path from 'node:path';
-import { tempRoot } from '../runtime/engine/temp-root.mjs';
+import type { VerbContext } from '../release/index.mjs';
 
 const ESCAPE_HATCHES = [/continue-on-error/, /fail_ci_if_error:\s*false/, /--passWithNoTests/, /--coverageThreshold/, /\|\|\s*true/, /SONAR_TOKEN\s*!=/, /availability/, /skipped/];
 
-const declaration = (edition) => ({ hfs: 3, kind: 'app', edition, project: 'no-loosening', sides: {
+const declaration = (edition: string) => ({ hfs: 3, kind: 'app', edition, project: 'no-loosening', sides: {
   be: { apps: [{ name: 'api', kind: 'api' }] },
   fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
 } });
-const rendered = (edition, file) => renderTargets(declaration(edition), {}).find((item) => item.path === file)?.content;
+const rendered = (edition: string, file: string) => renderTargets(declaration(edition), { sonarExclusions: '' }).find((item) => item.path === file)?.content;
 
 for (const edition of ['full', 'lite']) {
   test(`${edition} managed CI renders no escape hatch and its Sonar token check fails the job`, () => {
@@ -27,10 +25,10 @@ for (const edition of ['full', 'lite']) {
     assert.ok(text, 'the managed CI is rendered');
     for (const pattern of ESCAPE_HATCHES) assert.doesNotMatch(text, pattern, String(pattern));
     const doc = parseYaml(text);
-    const token = doc.jobs.sonar.steps.find((step) => step.name === 'Sonar token');
+    const token = doc.jobs.sonar.steps.find((step: { name: string }) => step.name === 'Sonar token');
     assert.match(token.run, /-z "\$SONAR_TOKEN"/u, 'a missing token is checked');
     assert.match(token.run, /exit 1/u, 'and refused');
-    const upload = doc.jobs.coverage.steps.find((step) => step.name === 'coverage upload');
+    const upload = doc.jobs.coverage.steps.find((step: { name: string }) => step.name === 'coverage upload');
     assert.equal(upload.with.fail_ci_if_error, true);
     assert.deepEqual(ciStandardFindings({ doc, file: '.github/workflows/ci.yml', scope: 'app-ci', edition }), []);
   });
@@ -40,8 +38,8 @@ for (const edition of ['full', 'lite']) {
     assert.ok(pushHook);
     assert.doesNotMatch(pushHook, /\|\|\s*true/);
     const scripts = rendered(edition, 'package.json');
-    assert.ok(scripts.length > 0);
-    assert.doesNotMatch(scripts, /--passWithNoTests|--coverageThreshold|test:affected/u);
+    assert.ok((scripts as string).length > 0);
+    assert.doesNotMatch(scripts as string, /--passWithNoTests|--coverageThreshold|test:affected/u);
   });
 }
 
@@ -52,7 +50,7 @@ test('an optional setting no longer exists: Sonar and Codecov normalize without 
 });
 
 /** The specs jest gives each of `shards` shards: shard i takes the slice of size ceil(specs / shards) starting at (i - 1) * size. */
-const shardSizes = (specs, shards) => {
+const shardSizes = (specs: number, shards: number) => {
   const size = Math.ceil(specs / shards);
   return Array.from({ length: shards }, (_, index) => Math.max(0, Math.min(specs, (index + 1) * size) - index * size));
 };
@@ -103,7 +101,13 @@ test('the CI standard refuses continue-on-error, a probe, a secret-gated provide
 
 const SCRIPTS = Object.fromEntries(['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test', 'test:integration', 'test:e2e', 'test:contract'].map((name) => [name, 'x']));
 const SERVICES = { sonar: { provider: 'sonarqube', mode: 'hosted', host: { public: 'https://sonar.example.invalid' } } };
-const gateNames = (requireCi) => normalizeRelease({ requireCi }, SCRIPTS, SERVICES).config.gates.map((gate) => gate.name);
+/** The release config a spec's scripts and services normalize to; a refusal to normalize fails the spec. */
+const configOf = (block: unknown, scripts: Record<string, unknown>) => {
+  const { config } = normalizeRelease(block, scripts, SERVICES);
+  if (!config) throw new Error('the release block did not normalize');
+  return config;
+};
+const gateNames = (requireCi: boolean | undefined) => configOf({ requireCi }, SCRIPTS).gates.map((gate) => gate.name);
 
 test('requireCi does not change the local gate: every CI row runs whether or not the push waits for the candidate CI', () => {
   assert.deepEqual(gateNames(false), gateNames(true));
@@ -114,10 +118,10 @@ test('requireCi does not change the local gate: every CI row runs whether or not
 });
 
 test('the local gate has a row for every npm script step of the managed CI', () => {
-  const doc = parseYaml(rendered('lite', '.github/workflows/ci.yml'));
-  const rows = new Set(normalizeRelease({}, SCRIPTS, SERVICES).config.gates.map((gate) => gate.command.join(' ')));
+  const doc = parseYaml(rendered('lite', '.github/workflows/ci.yml') as string);
+  const rows = new Set(configOf({}, SCRIPTS).gates.map((gate) => gate.command.join(' ')));
   const scriptSteps = Object.entries(doc.jobs).filter(([id]) => id !== 'sonar')
-    .flatMap(([, job]) => job.steps ?? []).map((step) => step.run).filter((run) => typeof run === 'string')
+    .flatMap(([, job]) => (job as { steps?: { run?: unknown }[] }).steps ?? []).map((step) => step.run).filter((run): run is string => typeof run === 'string')
     .map((run) => /^npm run ([a-z:]+)/u.exec(run)?.[1]).filter(Boolean);
   assert.ok(scriptSteps.length >= 4, 'the lite CI runs npm scripts');
   for (const script of new Set(scriptSteps.filter((name) => name !== 'codegen' && name !== 'lint:fix'))) assert.ok(rows.has(`npm run ${script}`), `the gate has a row for npm run ${script}`);
@@ -126,13 +130,15 @@ test('the local gate has a row for every npm script step of the managed CI', () 
 test('a lite app has no test world rows', () => {
   const { 'test:e2e': removed, 'test:contract': alsoRemoved, ...lite } = SCRIPTS;
   assert.equal(typeof removed + typeof alsoRemoved, 'stringstring');
-  const names = normalizeRelease({}, lite, SERVICES).config.gates.map((gate) => gate.name);
+  const names = configOf({}, lite).gates.map((gate) => gate.name);
   assert.equal(names.some((name) => /^test-(integration|e2e|contract)$/u.test(name)), false);
 });
 
 test('a declared Sonar is a row of the local gate and a missing token refuses instead of skipping', async () => {
-  const config = normalizeRelease({}, SCRIPTS, SERVICES).config;
-  await assert.rejects(releaseGate({ env: {}, cwd: '.' }, config, {}), (error) => error.code === 'RELEASE_SONAR_UNAVAILABLE');
+  const config = configOf({}, SCRIPTS);
+  // reason: a test double carrying only the env and cwd the gate reads before it refuses; the full stack context is not needed to reach the refusal.
+  const ctx = { env: {}, cwd: '.' } as unknown as VerbContext;
+  await assert.rejects(releaseGate(ctx, config, {}), (error: { code?: string }) => error.code === 'RELEASE_SONAR_UNAVAILABLE');
 });
 
 

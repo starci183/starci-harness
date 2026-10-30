@@ -1,6 +1,7 @@
 // proves: DB_STORAGE_POLICY@lite
 // proves: DB_STORAGE_POLICY@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,7 +12,7 @@ import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/sl
 const FILE = 'db/migrations/20260101120000_avatars.sql';
 const BUCKET = "insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('avatars', 'avatars', false, 1048576, '{image/png}');\n";
 
-async function judge(t, edition, sql) {
+async function judge(t: TestContext, edition: string, sql: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-storage-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({
@@ -34,9 +35,9 @@ for (const edition of ['lite', 'full']) {
   test(`DB_STORAGE_POLICY@${edition} rejects a bucket without an objects policy`, async (t) => {
     const findings = await judge(t, edition, BUCKET);
     assert.deepEqual(findings.map(({ code }) => code), ['DB_STORAGE_POLICY']);
-    assert.equal(findings[0].path, FILE);
-    assert.equal(findings[0].bucket, 'avatars');
-    assert.match(findings[0].message, /no storage.objects policy/);
+    assert.equal(findings[0]?.path, FILE);
+    assert.equal(findings[0]?.bucket, 'avatars');
+    assert.match(findings[0]?.message ?? '', /no storage.objects policy/);
   });
 
   test(`DB_STORAGE_POLICY@${edition} accepts a private bounded bucket with a matching owner policy`, async (t) => {

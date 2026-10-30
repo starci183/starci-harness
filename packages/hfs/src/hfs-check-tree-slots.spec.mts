@@ -15,8 +15,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkRepo as checkRepoWith, checkRepository as checkRepositoryWith } from '../runtime/scripts/hfs/check.mjs';
+import type { CheckFinding, CheckRepoInput, CheckRepositoryInput } from '../runtime/scripts/hfs/check.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { APP, TWO_FE_APPS, cleanup, gitAdd, installTypeScript, writeCleanRepo } from './helpers/hfs-cli-fixture.mjs';
+import type { AppDeclaration } from './helpers/hfs-cli-fixture.mjs';
 
 const SLOT_REQUIRED_MISSING = 'HFS_SLOT_REQUIRED_MISSING';
 const MIN_INSTANCES = 'HFS_MIN_INSTANCES';
@@ -26,10 +28,10 @@ const EMPTY_DIR = 'HFS_EMPTY_DIR';
 const GHOST_TREE = 'HFS_GHOST_TREE';
 
 const manifest = loadSlotManifest();
-const checkRepo = (options) => checkRepoWith({ ...options, manifest });
-const checkRepository = (options) => checkRepositoryWith({ ...options, manifest });
-const made = [];
-const repoOf = (declaration, edition, mutate) => {
+const checkRepo = (options: Omit<CheckRepoInput, 'manifest'>) => checkRepoWith({ ...options, manifest });
+const checkRepository = (options: Omit<CheckRepositoryInput, 'manifest'>) => checkRepositoryWith({ ...options, manifest });
+const made: string[] = [];
+const repoOf = (declaration: AppDeclaration, edition: string, mutate?: (dir: string) => unknown) => {
   const dir = writeCleanRepo({ ...declaration, edition });
   made.push(dir);
   if (mutate) mutate(dir);
@@ -37,28 +39,28 @@ const repoOf = (declaration, edition, mutate) => {
 };
 test.after(() => cleanup(made));
 
-const put = (dir, relative, text = 'export {};\n') => {
+const put = (dir: string, relative: string, text = 'export {};\n') => {
   const target = path.join(dir, ...relative.split('/'));
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, text);
 };
-const drop = (dir, relative) => fs.rmSync(path.join(dir, ...relative.split('/')), { recursive: true, force: true });
-const mkdir = (dir, relative) => fs.mkdirSync(path.join(dir, ...relative.split('/')), { recursive: true });
-const only = (result, code) => result.findings.filter((f) => f.code === code);
+const drop = (dir: string, relative: string) => fs.rmSync(path.join(dir, ...relative.split('/')), { recursive: true, force: true });
+const mkdir = (dir: string, relative: string) => fs.mkdirSync(path.join(dir, ...relative.split('/')), { recursive: true });
+const only = (result: { findings: CheckFinding[] }, code: string) => result.findings.filter((f) => f.code === code);
 
 for (const edition of ['lite', 'full']) {
   test(`${edition} violating: a missing required file is ${SLOT_REQUIRED_MISSING}, per slot and per app of a side with several apps`, () => {
     const be = checkRepo({ repoRoot: repoOf(APP, edition, (dir) => drop(dir, '.nvmrc')) });
     assert.equal(be.ok, false);
     const [rootFile] = only(be, SLOT_REQUIRED_MISSING);
-    assert.equal(rootFile.path, '.nvmrc');
-    assert.equal(rootFile.slot, 'app.tool-config');
+    assert.equal(rootFile?.path, '.nvmrc');
+    assert.equal(rootFile?.slot, 'app.tool-config');
 
     const fe = checkRepo({ repoRoot: repoOf(TWO_FE_APPS, edition, (dir) => drop(dir, 'fe/apps/admin/src/app/global-error.tsx')) });
     const [perApp] = only(fe, SLOT_REQUIRED_MISSING);
     assert.equal(only(fe, SLOT_REQUIRED_MISSING).length, 1);
-    assert.equal(perApp.app, 'admin');
-    assert.equal(perApp.slot, 'fe.app.next');
+    assert.equal(perApp?.app, 'admin');
+    assert.equal(perApp?.slot, 'fe.app.next');
 
     const feature = checkRepo({ repoRoot: repoOf(APP, edition, (dir) => drop(dir, 'be/src/features/api/orders/index.ts')) });
     assert.deepEqual(only(feature, SLOT_REQUIRED_MISSING).map((f) => f.path), ['be/src/features/api/orders/index.ts']);
@@ -75,9 +77,9 @@ for (const edition of ['lite', 'full']) {
   test(`${edition} violating: a be side without a feature is ${MIN_INSTANCES}`, () => {
     const result = checkRepo({ repoRoot: repoOf(APP, edition, (dir) => drop(dir, 'be/src/features')) });
     const [finding] = only(result, MIN_INSTANCES);
-    assert.equal(finding.slot, 'be.feature');
-    assert.equal(finding.min, 1);
-    assert.equal(finding.count, 0);
+    assert.equal(finding?.slot, 'be.feature');
+    assert.equal(finding?.min, 1);
+    assert.equal(finding?.count, 0);
   });
 
   test(`${edition} violating: the machine reports a feature without its index as ${REQUIRED_FILE_MISSING}`, () => {
@@ -85,9 +87,9 @@ for (const edition of ['lite', 'full']) {
     const result = checkRepository({ repoRoot: dir });
     const [finding] = only(result, REQUIRED_FILE_MISSING);
     assert.equal(result.ok, false);
-    assert.equal(finding.level, 'error');
-    assert.equal(finding.source, 'machine');
-    assert.equal(finding.path, 'be/src/modules/domain/order/index.ts');
+    assert.equal(finding?.level, 'error');
+    assert.equal(finding?.source, 'machine');
+    assert.equal(finding?.path, 'be/src/modules/domain/order/index.ts');
     assert.equal(result.machine.status, 'ran');
   });
 
@@ -102,7 +104,7 @@ for (const edition of ['lite', 'full']) {
     const dir = repoOf(APP, edition, (d) => { mkdir(d, 'be/src/modules/business/a/b'); mkdir(d, 'be/src/modules/business/c'); });
     const found = only(checkRepo({ repoRoot: dir }), EMPTY_DIR);
     assert.deepEqual(found.map((f) => [f.path, f.below]), [['be/src/modules/business', 3]]);
-    assert.equal(found[0].level, 'error');
+    assert.equal(found[0]?.level, 'error');
   });
 
   test(`${edition} valid: one file below makes a chain not empty, and ignored slots are not reported for ${EMPTY_DIR}`, () => {
@@ -119,7 +121,7 @@ for (const edition of ['lite', 'full']) {
     const result = checkRepo({ repoRoot: dir });
     const ghosts = only(result, GHOST_TREE);
     assert.equal(ghosts.length, 1, 'platform-extras is far from every sibling');
-    assert.deepEqual([ghosts[0].path, ghosts[0].of, ghosts[0].distance], ['be/src/modules/bussiness', 'be/src/modules/business', 1]);
+    assert.deepEqual([ghosts[0]?.path, ghosts[0]?.of, ghosts[0]?.distance], ['be/src/modules/bussiness', 'be/src/modules/business', 1]);
     assert.ok(only(result, EMPTY_DIR).some((f) => f.path === 'be/src/modules/bussiness'), 'the ghost is also an empty directory');
   });
 

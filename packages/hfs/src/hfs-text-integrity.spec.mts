@@ -1,5 +1,6 @@
 // proves: HFS_TEXT_CORRUPT@lite HFS_TEXT_CORRUPT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,9 +8,11 @@ import path from 'node:path';
 import { textIntegrityFindings } from '../runtime/scripts/hfs/rules/text-integrity.mjs';
 
 const GOOD = 'Kh\u00F3a thao t\u00E1c \u0111\u00E3 \u0111\u01B0\u1EE3c d\u00F9ng cho n\u1ED9i dung kh\u00E1c.';
-const bundle = (vi) => `export const M = {\n    vi: {\n        "errors.A": ${JSON.stringify(vi)},\n    },\n    en: {\n        "errors.A": "Is this right? Yes.",\n    },\n}\n`;
+const bundle = (vi: string) => `export const M = {\n    vi: {\n        "errors.A": ${JSON.stringify(vi)},\n    },\n    en: {\n        "errors.A": "Is this right? Yes.",\n    },\n}\n`;
 
-function tree(t, files) {
+type Files = Record<string, string | Buffer>;
+
+function tree(t: TestContext, files: Files) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-text-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, value] of Object.entries(files)) {
@@ -20,7 +23,7 @@ function tree(t, files) {
   return root;
 }
 
-const run = (root, files, edition) => textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: { profile: 'be', edition } });
+const run = (root: string, files: Files, edition: string) => textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: { profile: 'be', edition } });
 const CATALOG = 'src/modules/platform/idempotency/messages/idempotency.messages.ts';
 
 for (const edition of ['lite', 'full']) {
@@ -47,15 +50,15 @@ for (const edition of ['lite', 'full']) {
     const files = { [CATALOG]: Buffer.concat([Buffer.from('export const M = {\n    vi: {\n        "errors.A": "Kh'), Buffer.from([0xf3]), Buffer.from('a",\n    },\n}\n')]) };
     const findings = run(tree(t, files), files, edition);
     assert.equal(findings.length, 1);
-    assert.match(findings[0].message, /not valid UTF-8/);
-    assert.equal(findings[0].line, 3);
+    assert.match(findings[0]?.message ?? '', /not valid UTF-8/);
+    assert.equal(findings[0]?.line, 3);
   });
 
   test(`HFS_TEXT_CORRUPT ${edition}: a vi.json locale file is judged by its string values`, (t) => {
     const files = { 'src/modules/i18n/messages/vi.json': JSON.stringify({ home: { title: 'Trang ch?nh', ok: GOOD } }), 'src/modules/i18n/messages/en.json': JSON.stringify({ home: { title: 'Home?' } }) };
     const findings = run(tree(t, files), files, edition);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].path, 'src/modules/i18n/messages/vi.json');
+    assert.equal(findings[0]?.path, 'src/modules/i18n/messages/vi.json');
   });
 
   test(`HFS_TEXT_CORRUPT ${edition}: unreadable, unrelated and non-catalog files are skipped`, (t) => {
