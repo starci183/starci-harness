@@ -25,6 +25,8 @@ verify:
 # contexts/harness/decisions.md: an urgent deploy needs no CI; its full gate runs later as `app release gate --backfill <tag>`, and
 # the deploy's safety floor is never skipped). release.publish is not listed: on the harness CI's own publish jobs run it once each
 # package's own jobs are green, and Debug's workstation fallback runs when CI cannot (CONTRIBUTING.md CONTRIB-20).
+# A deploy that passes --ci-run <run> (the CI deploy job, contexts/project/cicd.md) is judged by the CLI on that run instead of this list: every job the
+# CI standard requires (@starci/hfs knowledge/hfs/ci-standard.yaml, not the workflow file) must have concluded success for the exact --sha, for any environment.
 requireCi: [release.cut, deploy.prod]
 # `starci app check` and `starci app lint` are green while fewer than errorLimit error findings remain and none is a hard blocker
 # (a plaintext secret, the boot proof, a migration finding), so a release is not held back finding by finding by the last
