@@ -64,7 +64,16 @@ export interface VerbDefinition<T, F extends Readonly<Record<string, FlagSpec>>>
     readonly effect: Effect
     readonly roles: readonly Role[]
     readonly schema: `starci/${string}@${number}`
+    /**
+     * The verb's flags. A flag named `cwd` is the CLI's own `--cwd`: a verb that declares it receives the folder as typed and
+     * runs in the caller's directory; every other verb runs as if started in that folder.
+     */
     readonly flags: F
+    /**
+     * An @starci/hfs verb (`starci app <verb>`): the CLI hands it every argument after its path as typed (`--help` included) in
+     * its one `rest` flag, and @starci/hfs owns the flags and the help; the CLI's own `--json` and `--cwd` are taken out first.
+     */
+    readonly forward?: true
     readonly run: (context: VerbContext, flags: FlagValues<F>) => Promise<VerbResult<T>>
 }
 
@@ -90,5 +99,5 @@ export const EVERYONE: readonly Role[] = ["owner", "release", "coordinator", "le
 /** The roles that may run a local-write verb open to all: everyone but debug, whose writing verbs are `config set`, `supervisor ask` and the `ticket` verbs. */
 export const WRITERS: readonly Role[] = EVERYONE.filter((role) => role !== "debug")
 
-/** The command spelling of a verb, e.g. `release ci-status`. */
+/** The command spelling of a verb, e.g. `check ci`. */
 export const spellingOf = (verb: AnyVerb): string => verb.path.join(" ")
