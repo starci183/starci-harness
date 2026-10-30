@@ -19,6 +19,8 @@
         --grammar-mascot-md: 10rem;
         --grammar-mascot-lg: 15rem;
         --grammar-mascot-hero-max: 30rem;
+        /* The accent corner: the one logical corner a SurfaceCard or MediaFrame names in `accentCorner`. */
+        --grammar-accent-corner: 2.5rem;
         min-width: 0;
     }
 
@@ -940,6 +942,49 @@
         border-radius: var(--starci-core-surface-radius, 1rem);
         background: var(--surface, Canvas);
         color: var(--surface-foreground, CanvasText);
+    }
+
+    /* The accent corner: one logical corner of a surface or a media viewport at the Common accent radius. */
+    [data-grammar-accent-corner="start-start"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-start-start-radius: var(--grammar-accent-corner, 2.5rem); }
+    [data-grammar-accent-corner="start-end"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-start-end-radius: var(--grammar-accent-corner, 2.5rem); }
+    [data-grammar-accent-corner="end-start"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-end-start-radius: var(--grammar-accent-corner, 2.5rem); }
+    [data-grammar-accent-corner="end-end"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-end-end-radius: var(--grammar-accent-corner, 2.5rem); }
+
+    /*
+     * The brand backdrop: the brand's light tint, full-bleed in its host, with no card anatomy (no border, shadow or card
+     * inset; its corners stay square but the accent one). The copy sits at the top; the artwork takes the height left, so
+     * a hero Mascot fills it.
+     */
+    .starci-core-backdrop {
+        position: relative;
+        display: flex;
+        box-sizing: border-box;
+        min-width: 0;
+        min-block-size: 100%;
+        block-size: 100%;
+        flex-direction: column;
+        gap: var(--grammar-region-gap, 1.5rem);
+        padding: var(--grammar-page-inset, 2rem);
+        overflow: hidden;
+        background: var(--accent-soft, var(--starci-core-accent-soft, Canvas));
+        color: var(--foreground, CanvasText);
+    }
+
+    .starci-core-backdrop-content {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+    }
+
+    .starci-core-backdrop-artwork {
+        display: flex;
+        min-width: 0;
+        min-block-size: 0;
+        flex: 1 1 auto;
+        align-items: flex-end;
+        justify-content: center;
+        pointer-events: none;
     }
 
     @property --starci-core-highlight-angle {
@@ -2249,9 +2294,14 @@
         }
     }
 
+    /*
+     * The shell is at least one viewport tall, so the root's canvas runs to the bottom of the screen under a short page
+     * instead of stopping where the content ends (viewport="fixed" sets its own block size below).
+     */
     .starci-core-workspace-shell {
         position: relative;
         min-width: 0;
+        min-block-size: 100dvh;
         container: starci-core-workspace-shell / inline-size;
     }
 

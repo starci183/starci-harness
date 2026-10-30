@@ -34,6 +34,28 @@ export const ShellHeader: Story = {
   },
 };
 
+/** A short page in a page-scrolling shell: the shell is one viewport tall, so the root's canvas runs to the screen's bottom. */
+export const ShortPageFillsViewport: Story = {
+  render: () => (
+    <G.WorkspaceShell
+      navigation={<G.Text>Desktop navigation</G.Text>}
+      navigationLabel="Workspace"
+      navigationDrawer={{ title: 'Navigation', openLabel: 'Open navigation', closeLabel: 'Close navigation', source: EllipsisGlyph, content: <G.Text>Mobile navigation</G.Text> }}
+      primaryLabel="Page"
+      primary={<G.Text>One short line.</G.Text>}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const shell = canvasElement.querySelector('[data-component="WorkspaceShell"]');
+      const root = shell?.closest('.grammar-common-root');
+      if (!(shell instanceof HTMLElement) || !(root instanceof HTMLElement)) throw new Error('the shell renders inside a GrammarRoot');
+      expect(shell.getBoundingClientRect().height).toBeGreaterThanOrEqual(window.innerHeight);
+      expect(root.getBoundingClientRect().height).toBeGreaterThanOrEqual(window.innerHeight);
+    });
+  },
+};
+
 /** A client-owned drawer opener defaults the fixed shell to wide-only inline navigation. */
 export const ShellSlotHeader: Story = {
   render: () => (

@@ -49,7 +49,7 @@ No size. Width follows measure rules; a form card caps itself with the surface's
 Loading renders the same card in skeleton mode; a failed card fails in place (STATE-8).
 
 ## Owner split
-- **Grammar owns:** face, corner, elevation by depth, inset, band and joined composition, highlight, form measure.
+- **Grammar owns:** face, corner (one accent corner through `accentCorner`, ruling accent-corner), elevation by depth, inset, band and joined composition, highlight, form measure.
 - **Knowledge decides:** card vs section, bands vs inner cards, hairline budget, nesting depth.
 - **App author decides:** the subject, its content, the label.
 

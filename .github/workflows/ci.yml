@@ -340,7 +340,11 @@ jobs:
           set -euo pipefail
           export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          for dir in $PUBLISH; do node cli/dist/main.js release publish --execute --base "$BASE" --package "$dir"; done
+          # Every package gets its attempt, so one transient registry failure (a Sigstore 409) holds back only that package;
+          # the job still fails, naming each one, and a rerun publishes what is left.
+          failed=""
+          for dir in $PUBLISH; do node cli/dist/main.js release publish --execute --base "$BASE" --package "$dir" || failed="$failed $dir"; done
+          if [ -n "$failed" ]; then echo "::error::not published:$failed"; exit 1; fi
 
   # Phase 2: the CLI (starci-harness), after publish-packages, once the harness job and every gate are green (Sonar and the app
   # job never gate a publish). It publishes as committed, its @starci requirements and lockfile at their stack pins

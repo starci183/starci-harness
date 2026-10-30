@@ -305,6 +305,24 @@ rulings:
     words: "EmptyNotice có slot artwork"
     ruling: "EmptyNotice has an artwork slot: generated character art drawn as the Mascot at md and tied to its asset slot, and a first-run empty state uses EmptyNotice with that artwork."
     owner: "@starci/grammar src/core/composite/EmptyNotice; contexts/ui/components/empty-state.md empty-state.choose.cause"
+  - id: accent-corner
+    date: '2026-10-30'
+    status: live
+    words: "Thêm vào grammar"
+    ruling: "A one-corner rounding is a grammar prop, never app paint: SurfaceCard and MediaFrame take `accentCorner` (start-start, start-end, end-start or end-end), which draws that one logical corner at the Common accent radius `--grammar-accent-corner` while the other corners keep the family's surface radius. An app's `rounded-br` and its kin give way to it."
+    owner: "@starci/grammar src/core/branch/SurfaceCard, src/core/primitive/MediaFrame, src/common/styles.css; contexts/grammars/contract.md Corners are roles; contexts/grammars/contract.yaml DNA-COMMON-ACCENT-CORNER"
+  - id: backdrop
+    date: '2026-10-30'
+    status: live
+    words: "à đổi thành component background đi chứ nó cũng không phải là surfacecard, chốt vậy đi; Backdrop + giữ accentCorner"
+    ruling: "The brand half of a split screen (a sign-in) is a Backdrop, not a SurfaceCard: the brand's light tint full-bleed in its host, no card anatomy, the brand copy over it and a hero Mascot as its artwork, with one corner through `accentCorner`. SurfaceCard and MediaFrame keep `accentCorner` too."
+    owner: "@starci/grammar src/core/composite/Backdrop, src/common/styles.css; contexts/grammars/contract.md Backdrop; contexts/ui/components/backdrop.md"
+  - id: workspace-shell-fills-viewport
+    date: '2026-10-30'
+    status: live
+    words: "sao mà background dc nửa màn thôi thế???"
+    ruling: "A WorkspaceShell is at least one viewport tall, so the canvas under a short page runs to the bottom of the screen."
+    owner: "@starci/grammar src/common/styles.css .starci-core-workspace-shell"
   - id: STATE-8/loading-keeps-anatomy
     date: '2026-10-11'
     status: live

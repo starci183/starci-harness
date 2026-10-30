@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.12.1 - 2026-10-30
+
+- Changed: the bundled canon pins name @starci/grammar 0.16.1 (accentCorner, Backdrop, the shell filling the viewport).
+
 ## 4.12.0 - 2026-10-30
 
 - Changed: the package is strict TypeScript. Every source is a .mts compiled in place to .mjs and .d.mts at the path it always shipped at, so every import specifier and the exports map answer as before (src/package-exports.spec.mjs proves each one from the packed tarball). The specs, their fixtures and helpers stay .mjs and ran unchanged against the TypeScript build.

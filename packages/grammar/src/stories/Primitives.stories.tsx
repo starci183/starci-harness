@@ -176,7 +176,9 @@ export const StatusDot: Story = {
         const dotStyle = getComputedStyle(dot);
         const chipStyle = getComputedStyle(chip);
         for (const side of PADDING_SIDES) {
-          if (dotStyle[side] !== chipStyle[side]) throw new Error(`${size}: ${side} ${dotStyle[side]} differs from Chip ${chipStyle[side]}`);
+          // The sm chip pads 8px inline (HeroUI's sm Chip pads 4px), so a status word clears the pill edge.
+          const expected = size === 'sm' && (side === 'paddingLeft' || side === 'paddingRight') ? '8px' : chipStyle[side];
+          if (dotStyle[side] !== expected) throw new Error(`${size}: ${side} ${dotStyle[side]} differs from ${expected}`);
         }
         if (dot.getBoundingClientRect().height !== chip.getBoundingClientRect().height) throw new Error(`${size}: height ${dot.getBoundingClientRect().height} differs from Chip ${chip.getBoundingClientRect().height}`);
         const label = dot.querySelector('.starci-core-status-dot-label');

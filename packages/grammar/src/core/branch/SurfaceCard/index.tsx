@@ -17,6 +17,7 @@ import {
     surfaceLabelClassName,
     surfaceArtworkClassName,
     surfaceOrbitClassName,
+    type AccentCorner,
     type SurfaceCardHeight,
     type SurfaceCardMeasure,
     type SurfaceCardMotif,
@@ -116,6 +117,12 @@ export type SurfaceCardProps = (LabelledSurfaceCard | SelfNamedSurfaceCard) & (P
      * outside. Stamped as `data-grammar-surface-placement`.
      */
     readonly placement?: SurfaceCardPlacement
+    /**
+     * One logical corner of the painted face drawn at the Common accent radius (`--grammar-accent-corner`), the
+     * brand's signature corner on a raised card (owner ruling accent-corner). The other corners keep the family's
+     * surface radius. Stamped as `data-grammar-accent-corner`.
+     */
+    readonly accentCorner?: AccentCorner
 }
 
 export type SurfaceCardPlacement = "floating" | "panel"
@@ -162,6 +169,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
         height = "auto",
         isHighlight = false,
         placement = "floating",
+        accentCorner,
     } = props
     const depth = useSurfaceNesting() ? "nested" : "top"
     const treatment: SurfaceCardTreatment = props.treatment ?? "surface"
@@ -207,6 +215,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             aria-labelledby={label === undefined ? undefined : headingId}
             className={surfaceClassName}
             data-contract={contentContract}
+            data-grammar-accent-corner={accentCorner}
             data-grammar-frame="bounded"
             data-grammar-surface-composition={composition}
             data-grammar-surface-height={height}

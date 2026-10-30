@@ -247,6 +247,12 @@
         background: var(--surface);
     }
 
+    /* The accent corner survives this family's surface radius. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-start"][data-grammar-surface-depth] { border-start-start-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-end"][data-grammar-surface-depth] { border-start-end-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-start"][data-grammar-surface-depth] { border-end-start-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-end"][data-grammar-surface-depth] { border-end-end-radius: var(--grammar-accent-corner); }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="top"] {
         box-shadow: var(--shadow-surface);

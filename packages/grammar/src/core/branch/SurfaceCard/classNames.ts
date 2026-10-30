@@ -51,6 +51,11 @@ export const surfaceHighlightSweepClassName = cn("starci-core-surface-highlight-
  * foreground; `ink` is the one signature band painted on the family's brand ink.
  */
 export type SurfaceCardTreatment = "surface" | "soft" | "ink"
+/**
+ * The one logical corner drawn at the Common accent radius (`--grammar-accent-corner`); the other corners keep the
+ * family's surface radius. Logical, so it follows the writing direction.
+ */
+export type AccentCorner = "start-start" | "start-end" | "end-start" | "end-end"
 /** Decorative motif of the ink band's artwork zone. */
 export type SurfaceCardMotif = "none" | "orbit"
 

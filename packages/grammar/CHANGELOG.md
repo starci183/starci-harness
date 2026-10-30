@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.1 - 2026-10-30
+
+- Added: `accentCorner` on SurfaceCard and MediaFrame (start-start, start-end, end-start or end-end): that one logical corner is drawn at the Common accent radius `--grammar-accent-corner` (2.5rem) while the others keep the family's surface radius (owner ruling accent-corner); the type is exported as `AccentCorner`. Story Surfaces / Accent corner checks both families.
+- Added: Backdrop, the brand's own ground in a split screen (a sign-in brand half): the family's accentSoft tint full-bleed in its host, no border, shadow or card inset, the brand copy as children at the top and an `artwork` slot (a hero Mascot) taking the height left, with `accentCorner` (owner ruling backdrop). Story Surfaces / Backdrop.
+- Fixed: a page-scrolling WorkspaceShell is at least one viewport tall (min-block-size 100dvh), so the canvas under a short page runs to the bottom of the screen instead of ending under the content (owner ruling workspace-shell-fills-viewport). Story App shell layers / Short page fills viewport.
+- Fixed: the StatusDot play expects the sm chip's 8px inline pad (the 2026-10-28 fix) instead of HeroUI's 4px.
+
 ## 0.16.0 - 2026-10-30
 
 - Changed: the build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots) are TypeScript, typechecked by tsconfig.scripts.json; no component change.

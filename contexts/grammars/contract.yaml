@@ -328,6 +328,18 @@ roles:
     states: ["loading (transparent, no plate)", loaded, "error (the Image's fallback)"]
     grammarMayChange: ["nothing: fit contain, the transparent ground with no plate, and the scale are Common's"]
     dna: []
+
+  - id: backdrop
+    ui: ui/components/backdrop.md
+    renderers: [Backdrop]
+    vendorParity: []                              # no HeroUI part: a Common region
+    slots: ["children: the brand copy (logo, heading, tagline)", "artwork: decorative, usually a hero Mascot"]
+    variants:
+      accentCorner: { values: [start-start, start-end, end-start, end-end], chosenBy: app, meaning: "that one logical corner at --grammar-accent-corner; the others square" }
+    sizes: { fills: "its host's block size" }
+    states: []
+    grammarMayChange: ["nothing: the tint is the family's accentSoft, the inset and the accent radius are Common's"]
+    dna: [DNA-COMMON-BACKDROP-GROUND, DNA-COMMON-ACCENT-CORNER]
     lint: [starci-grammar/generated-art-in-mascot-or-media-frame, starci-grammar/mascot-asset-slot-required]
 
   - id: shell
@@ -643,6 +655,16 @@ mustKeep:
           - { select: '[data-grammar-surface-treatment] [data-component="Stepper"] [data-grammar-step-marker]' }
           - { select: '[data-grammar-surface-treatment] :is([data-component="Text"], [data-grammar-section-header] :is(h2, h3, p))' }
       owner: surfacecard-soft-treatment; COLOR-5; story Navigation & Data / Stepper on every treatment, Surfaces / Soft surface card
+    - id: DNA-COMMON-ACCENT-CORNER
+      role: card
+      law: The corner a SurfaceCard or MediaFrame names in accentCorner is drawn at the Common accent radius.
+      measure: { kind: style, select: '[data-grammar-accent-corner="end-end"]', metric: border-end-end-radius, op: "=", value: { token: --grammar-accent-corner } }
+      owner: accent-corner
+    - id: DNA-COMMON-BACKDROP-GROUND
+      role: backdrop
+      law: A Backdrop's ground is the family's accent-soft tint, with no border and no shadow.
+      measure: { kind: style, select: '[data-component="Backdrop"]', metric: background-color, op: "=", value: { token: --accent-soft } }
+      owner: backdrop
     # --- lists
     - id: DNA-COMMON-LIST-SEAMS
       role: list

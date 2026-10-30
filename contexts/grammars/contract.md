@@ -54,7 +54,10 @@ the box is the ramp, the hit area meets its floor without redrawing the box (`DN
 three times `radius`, so whether a Button is a pill follows from the grammar's radius, never from a per-button
 choice. The grammar publishes the corner roles an app may name (`tiny`, `compact`, `control`, `surface`, `hero`,
 `pill`) as `--grammar-radius-*`, each set from its base radius; an app never writes a literal corner, which would
-freeze one grammar's value into every grammar.
+freeze one grammar's value into every grammar. One corner may stand out: a SurfaceCard or MediaFrame names it in
+`accentCorner` (a logical corner, `start-start` to `end-end`), drawn at the Common accent radius
+`--grammar-accent-corner` while the others keep the family's radius (ruling accent-corner); an app never rounds one
+corner itself.
 
 ## Intent x placement -> variant
 
@@ -225,6 +228,13 @@ with no loading plate; below 48rem a square step drops one step, and a hero is a
 it. It is decorative unless its `alt` names it. It carries the asset-slot props of `Image` and `MediaFrame`, so the
 render is tied to the request that generated it; generated art reaches the page only through `Mascot` or a
 `MediaFrame` (lint R338, R339). The scale is Common's: a grammar changes nothing about it.
+
+### Backdrop
+
+A backdrop is the brand's own ground in a split screen: the family's light tint (`accentSoft`), full-bleed in its host,
+with the brand copy at the top and the artwork (a hero `Mascot`) filling the height left. It is a ground, not a card:
+no border, no shadow, no card inset, and square corners except the one `accentCorner` names (ruling backdrop). A brand
+moment among other content stays a soft `SurfaceCard`.
 
 ### PageHeader
 
