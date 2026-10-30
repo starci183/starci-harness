@@ -6,29 +6,46 @@
 // held. Writes `publish` (folders, a dependency before its dependent), `build` (their build orders) and `held` to GITHUB_OUTPUT.
 import { appendFileSync, readFileSync } from "node:fs"
 
-const read = (variable) => readFileSync(process.env[variable], "utf8")
-const rows = JSON.parse(read("PLAN")).data.rows
-const every = JSON.parse(read("EVERY")).data.packages
-const jobs = read("JOBS").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line))
-const tested = new Set(JSON.parse(process.env.MATRIX || '{"include":[]}').include.map((entry) => entry.package))
+interface PlanRow {
+    action: string
+    dir: string
+    package: string
+    version: string
+}
+interface EveryPackage {
+    dir: string
+    name: string
+    build?: string[]
+}
+interface JobRow {
+    name: string
+    conclusion: string
+}
+
+const read = (variable: string): string => readFileSync(process.env[variable]!, "utf8")
+// Parsed input boundary: the three JSON documents the job writes to files, trusted at the fields read below.
+const rows = (JSON.parse(read("PLAN")) as { data: { rows: PlanRow[] } }).data.rows
+const every = (JSON.parse(read("EVERY")) as { data: { packages: EveryPackage[] } }).data.packages
+const jobs = read("JOBS").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as JobRow)
+const tested = new Set((JSON.parse(process.env.MATRIX || '{"include":[]}') as { include: Array<{ package: string }> }).include.map((entry) => entry.package))
 
 const repoGates = jobs.filter((job) => job.name.startsWith("gate (repo) "))
 const gatesGreen = repoGates.length > 0 && repoGates.every((job) => job.conclusion === "success")
 for (const job of repoGates) console.log(`${job.name}: ${job.conclusion}`)
 
-const buildOf = (dir) => every.find((pkg) => pkg.dir === dir)?.build ?? [dir]
-const nameOf = (dir) => every.find((pkg) => pkg.dir === dir)?.name ?? rows.find((row) => row.dir === dir)?.package ?? dir
+const buildOf = (dir: string): string[] => every.find((pkg) => pkg.dir === dir)?.build ?? [dir]
+const nameOf = (dir: string): string => every.find((pkg) => pkg.dir === dir)?.name ?? rows.find((row) => row.dir === dir)?.package ?? dir
 /** A folder the plan tested whose package job did not pass (failed, cancelled, skipped or missing). */
-const red = (dir) => tested.has(dir) && jobs.find((job) => job.name === `package (${nameOf(dir)})`)?.conclusion !== "success"
+const red = (dir: string): boolean => tested.has(dir) && jobs.find((job) => job.name === `package (${nameOf(dir)})`)?.conclusion !== "success"
 
 const due = rows.filter((row) => row.action === "publish" && row.dir !== "cli")
-const reasonOf = (row) => {
+const reasonOf = (row: PlanRow): string | undefined => {
     if (!gatesGreen) return "a gate (repo) job is not green"
     const failed = buildOf(row.dir).filter(red)
     return failed.length > 0 ? `not green: ${failed.map((dir) => `package (${nameOf(dir)})`).join(", ")}` : undefined
 }
-const held = []
-const ready = new Set()
+const held: string[] = []
+const ready = new Set<string>()
 for (const row of due) {
     const reason = reasonOf(row)
     if (reason === undefined) ready.add(row.dir)
@@ -38,8 +55,8 @@ for (const row of due) {
     }
 }
 
-const order = []
-const build = []
+const order: string[] = []
+const build: string[] = []
 for (const row of due.filter((candidate) => ready.has(candidate.dir))) {
     for (const dir of buildOf(row.dir)) {
         if (ready.has(dir) && !order.includes(dir)) order.push(dir)
@@ -47,4 +64,4 @@ for (const row of due.filter((candidate) => ready.has(candidate.dir))) {
     }
 }
 for (const row of rows) console.log(`${row.package}@${row.version}: ${ready.has(row.dir) ? "publish" : held.includes(row.dir) ? "held" : row.action}`)
-appendFileSync(process.env.GITHUB_OUTPUT, `publish=${order.join(" ")}\nbuild=${build.join(" ")}\nheld=${held.join(" ")}\n`)
+appendFileSync(process.env.GITHUB_OUTPUT!, `publish=${order.join(" ")}\nbuild=${build.join(" ")}\nheld=${held.join(" ")}\n`)

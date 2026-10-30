@@ -9,21 +9,34 @@
 import { execFileSync } from "node:child_process"
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs"
 
-const npm = (args, cwd = "cli") => execFileSync("npm", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], shell: process.platform === "win32" }).trim()
-const served = (name, version) => {
+interface Skew {
+    package: string
+    expected?: string
+}
+interface PinsReport {
+    data: { skews: Skew[] }
+}
+interface CliManifest {
+    name: string
+    version: string
+}
+
+const npm = (args: string[], cwd = "cli"): string => execFileSync("npm", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], shell: process.platform === "win32" }).trim()
+const served = (name: string, version: string): boolean => {
   try {
     return npm(["view", `${name}@${version}`, "version"], ".") === version
   } catch {
     return false
   }
 }
-const output = (key, value) => {
+const output = (key: string, value: string): void => {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`)
   console.log(`${key}=${value}`)
 }
 
-const skews = JSON.parse(readFileSync(process.env.SKEWS, "utf8")).data.skews
-const pins = new Map(skews.filter((skew) => skew.expected !== undefined).map((skew) => [skew.package, skew.expected]))
+// Parsed input boundary: the JSON shape `check pins --json` writes is trusted at the fields the script reads.
+const skews = (JSON.parse(readFileSync(process.env.SKEWS!, "utf8")) as PinsReport).data.skews
+const pins = new Map(skews.filter((skew) => skew.expected !== undefined).map((skew) => [skew.package, skew.expected!]))
 if (pins.size === 0) {
   console.log("the CLI takes every @starci package at its pin: nothing to follow")
   output("changed", "false")
@@ -38,7 +51,8 @@ if (waiting.length > 0) {
 
 const specs = [...pins].map(([name, version]) => `${name}@${version}`)
 npm(["install", "--save-exact", "--no-audit", "--no-fund", ...specs])
-const manifest = JSON.parse(readFileSync("cli/package.json", "utf8"))
+// Parsed input boundary: the CLI's own package.json.
+const manifest = JSON.parse(readFileSync("cli/package.json", "utf8")) as CliManifest
 let version = manifest.version
 const bumped = served(manifest.name, version)
 if (bumped) version = npm(["version", "prerelease", "--no-git-tag-version"]).replace(/^v/u, "")
@@ -48,7 +62,7 @@ const entry = `- The CLI requires ${moved}, its pin in contexts/stack/pins.yaml 
 const changelog = readFileSync("CHANGELOG.md", "utf8")
 const today = new Date().toISOString().slice(0, 10)
 const heading = `## [${version}]`
-let next
+let next: string
 if (changelog.includes(heading)) {
   // An unpublished version already has its section: the move joins it, under its "### Changed" when it has one.
   const at = changelog.indexOf(heading)

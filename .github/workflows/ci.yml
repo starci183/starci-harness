@@ -191,6 +191,8 @@ jobs:
       - name: Typecheck the CLI
         working-directory: cli
         run: npm run typecheck
+      - name: Typecheck the CI scripts
+        run: node cli/node_modules/typescript/bin/tsc -p .github/scripts/tsconfig.json
       - name: Lint the CLI
         working-directory: cli
         run: npm run lint
@@ -313,7 +315,7 @@ jobs:
           node cli/dist/main.js release affected --json > "$every"
           gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" \
             --jq '.jobs[] | {name, conclusion}' > "$jobs"
-          PLAN="$plan" EVERY="$every" JOBS="$jobs" node .github/scripts/publish-gate.mjs
+          PLAN="$plan" EVERY="$every" JOBS="$jobs" node .github/scripts/publish-gate.mts
       # npm publish packs each package through its prepack build, which needs its devDependencies and the siblings it installs.
       - name: Install and build the publishable packages after the siblings they need
         if: steps.due.outputs.build != ''
@@ -410,7 +412,7 @@ jobs:
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
           node cli/dist/main.js release publish --publish --base "$BASE" --package cli
 
-  # The CLI follows its siblings by itself (.github/scripts/cli-follow.mjs): once publish-packages put the pinned versions on npm,
+  # The CLI follows its siblings by itself (.github/scripts/cli-follow.mts): once publish-packages put the pinned versions on npm,
   # this job raises the CLI's requirement and lockfile to the stack pins, bumps its prerelease when that version is on npm, records
   # it in CHANGELOG.md and pushes the commit to main. It pushes with HARNESS_BOT_TOKEN (a fine-grained token with contents: write on
   # this repository), because a push made with GITHUB_TOKEN starts no workflow run; the run of that commit publishes the CLI. With
@@ -451,7 +453,7 @@ jobs:
           status=0
           node cli/dist/main.js check pins --json > "$RUNNER_TEMP/pins.json" || status=$?
           if [ "$status" -gt 1 ]; then exit "$status"; fi
-          SKEWS="$RUNNER_TEMP/pins.json" node .github/scripts/cli-follow.mjs
+          SKEWS="$RUNNER_TEMP/pins.json" node .github/scripts/cli-follow.mts
       - name: Report a missing bot token
         if: steps.follow.outputs.changed == 'true' && env.HAS_BOT_TOKEN != 'true'
         run: echo "::warning::the CLI trails its pins but HARNESS_BOT_TOKEN is not set, so cli-follow cannot push its commit; add the secret (contents write on this repository) or move the CLI by hand"
