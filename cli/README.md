@@ -47,8 +47,12 @@ src/
   `{schema: "starci/refusal@1", ok: false, code, message}`. Exit 0 is done, 1 is refused or red (nothing moved),
   2 is bad usage. A refusal is thrown as `Refusal(code, message)`.
 - **The app commands.** `core/app/hfs.ts` runs the `starci app` verbs that `@starci/hfs` implements in-process in the
-  app's directory: each verb file maps its typed flags to the hfs arguments (`hfsArgv`, values checked by zod first) and
-  `runHfs` streams hfs's output in human mode (the verb's message is empty) or, under `--json`, passes `--json` to a verb
+  app's directory. Such a verb is `forward: true` with one `rest` flag: `main.ts` hands it every argument after its path
+  as typed, `--help` included, once the CLI's own `--json` and `--cwd` are taken out, and @starci/hfs owns its flags, their
+  parsing and its help. The CLI still does what is its own before it forwards: the role and the harness (its version,
+  the caller's role, the ticket queue of a back-fill, the age identity), `STARCI_GATE_ERROR_LIMIT` from policy/quality.yaml,
+  the green-CI or urgent-record gate of an executed production `app stack deploy`, the install judgement of an executed
+  `app release`, and `app secret set --from-host`, which it takes out and resolves. `runHfs` streams hfs's output in human mode (the verb's message is empty) or, under `--json`, passes `--json` to a verb
   that prints a report and carries it in the envelope; the exit code is hfs's, 3 included (a database mutation not
   armed). `core/app/input-bounds.ts` is the package export `starci-harness/input-bounds` an app's codegen loads.
 - **Roles.** A verb lists the roles that may run it. They are enforced when `STARCI_ROLE` names the caller's role: a
