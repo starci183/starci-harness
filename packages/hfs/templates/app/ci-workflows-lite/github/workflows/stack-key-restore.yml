@@ -1,5 +1,5 @@
 {{header}}
-# Restores the deploy server's age identity from its GitHub Environment backup (starci app secret server-key <env> --backup github
+# Restores the deploy server's age identity from its GitHub Environment backup (starci app secret server-key --env <env> --backup github --execute
 # stored it; --restore github dispatches this file). It runs by hand only and writes {{serverAgeIdentity}} on the server when no
 # identity is there and the secret's public key is the recipient input (deploy.remote.serverRecipient), with umask 077 and mode 600,
 # owned by root; it never echoes the identity and never overwrites one.

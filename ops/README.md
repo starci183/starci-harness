@@ -25,7 +25,7 @@ failure accounting use the numbers of `routing.yaml`; it never restates them.
 ## The router
 
 The router alone picks every Op and Kernel: no workflow or task names an agent, a model or a preference, and a task gives it
-only its label, difficulty and `risk` tags; a Supervisor or Kernel seat gives its role as its label. `starci route explain`
+only its label, difficulty and `risk` tags; a Supervisor or Kernel seat gives its role as its label. `starci route show`
 prints every step for a label, a difficulty and risk tags, or for a coordinator label (`supervisor`, `kernel`) through the
 same `pickCoordinator` the seat launch calls (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` implements them.
 

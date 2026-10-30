@@ -1,8 +1,8 @@
 /** Infra doubles follow the genuine port; business names containing Inbox do not change collaborator semantics. */
 // proves: BE_SPEC_FORM_ALL_ROLES@lite BE_SPEC_FORM_ALL_ROLES@full
 import test from "node:test"
-import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { specInfraDoubleFromKit } from "./unit-spec.ts"
 

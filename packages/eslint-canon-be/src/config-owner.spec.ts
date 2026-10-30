@@ -8,8 +8,8 @@
  */
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, BE_DECLARATION, fixtureHfs, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, BE_DECLARATION, fixtureHfs, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { configParsedInMain, noDirectEnvRead, noSecretDefault, secretCompareTimingSafe } from "./config-owner.ts"
 

@@ -82,14 +82,14 @@ export const pkgTestVerb = defineVerb({
     flags: {
         package: { kind: "string", summary: "the package, @starci/<name> or <name>", required: true, positional: true },
         worktree: { kind: "string", summary: "the package edit worktree to test (default: the newest pkg/<app>-* worktree of the harness that changes the package)" },
-        harness: { kind: "string", summary: "the harness repository the edit branched from (default the one this CLI runs from)" },
+        cwd: { kind: "string", summary: "the harness repository the edit branched from (default the one this CLI runs from)" },
     },
     run: async (context, flags) => {
         const folder = folderOf(flags.package)
         let tree: EditTree | undefined
         if (flags.worktree === undefined) {
             const app = await appName(context.cwd)
-            tree = (await editTreesOf(await harnessRepository(flags.harness), app, folder))[0]
+            tree = (await editTreesOf(await harnessRepository(flags.cwd), app, folder))[0]
             if (tree === undefined) throw new Refusal("PKG_EDIT_MISSING", `no package edit worktree of ${app} (${BRANCH_PREFIX}${app}-*) changes packages/${folder}; cut one with starci pkg branch <topic>, commit the fix there, then test it`)
         } else {
             tree = { path: flags.worktree, branch: (await git(flags.worktree, ["branch", "--show-current"])).trim(), at: 0 }

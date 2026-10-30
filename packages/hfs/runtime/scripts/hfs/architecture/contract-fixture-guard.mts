@@ -1,0 +1,191 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import type {
+  CallExpression, ImportDeclaration, Node, PropertyAccessExpression, SourceFile, StringLiteral,
+} from 'typescript';
+import { checkerScope } from './required-files.mjs';
+import type { RepositoryTree } from './required-files.mjs';
+import type { Resolver } from '../slots.mjs';
+import type { RuleParams } from '../manifest-shape.mjs';
+import { allowsFile } from '../allows.mjs';
+import { unwrapEach } from './ast-walks.mjs';
+import type { Violation } from './ast-walks.mjs';
+import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
+import { byCodeUnit } from '../../lib/list.mjs';
+
+/** The facts one contract spec establishes. */
+interface SpecFacts {
+  referenced: Set<string>;
+  compares: boolean;
+}
+
+export interface ContractFixtureGuardResult {
+  violations: Violation[];
+  coverage: { status: 'checked'; fixtureFakes: number; contractSpecs: number };
+}
+
+/**
+ * R47 `contract-fixture-guard` (BE_CONTRACT_UNGUARDED). A fake at the network edge serves payload fixtures; a fixture drifts
+ * from the real provider silently unless a sandbox contract spec compares them. So every `fakes/<provider>/` of the test
+ * world that holds payload fixtures (`payloads/*.json`) needs at least one `src/tests/contract/<provider>/*.contract-spec.ts`
+ * (slot be.tests.contract) that, in its AST,
+ *   1. references that provider's fixtures: a call whose argument is the provider's name as a string literal (the world's
+ *      fixture accessor, `renderPayload("<provider>", ...)`), an import from `fakes/<provider>/`, or a string that names
+ *      `fakes/<provider>/`; and
+ *   2. compares shapes: an `expect(<... shapeOf(real) ...>).toEqual(<... shapeOf(fixture) ...>)` (or `toStrictEqual`), where
+ *      `shapeOf` is the helper the world vocabulary names (knowledge/hfs/slots.yaml ruleParams.be.contractShape.helper) and
+ *      is imported, never declared in the spec.
+ * A fake with fixtures and no such spec is a finding at its first fixture. The tree is the tracked one over the world's own
+ * slot; nothing names a path. Fakes the test-world library provides (declared in `test-world.config.ts`, held in the library
+ * package) have no tracked fixtures here and are guarded by the library's own contract specs, so only the repository's own
+ * `fakes/<provider>/` folders are judged.
+ */
+export const CONTRACT_FIXTURE_GUARD_RULE_IDS = ['BE_CONTRACT_UNGUARDED'];
+
+const RULE = 'BE_CONTRACT_UNGUARDED';
+const WORLD_SLOT = 'be.tests.world';
+const CONTRACT_SLOT = 'be.tests.contract';
+const FAKES_DIRECTORY = 'fakes/';
+const PAYLOADS = /^([^/]+)\/payloads\/[^/]+\.json$/u;
+const SHAPE_MATCHERS = new Set(['toEqual', 'toStrictEqual']);
+
+const unwrap = (ts: TypeScriptApi, node: Node | null | undefined): Node | null | undefined => unwrapEach(ts, node, [ts.isParenthesizedExpression, ts.isAsExpression, ts.isNonNullExpression, ts.isAwaitExpression]);
+
+/** Every node under `root`, itself included. */
+function walk(ts: TypeScriptApi, root: Node, visit: (node: Node) => void): void {
+  const step = (node: Node): void => { visit(node); ts.forEachChild(node, step); };
+  step(root);
+}
+
+const importsFakesOf = (from: string, provider: string): boolean => from.includes(`${FAKES_DIRECTORY}${provider}/`) || from.endsWith(`${FAKES_DIRECTORY}${provider}`);
+
+const shapeNamesOf = (ts: TypeScriptApi, statement: ImportDeclaration, helper: string): string[] => {
+  const named = statement.importClause?.namedBindings;
+  if (!named || !ts.isNamedImports(named)) return [];
+  return named.elements.filter(element => (element.propertyName ?? element.name).text === helper).map(element => element.name.text);
+};
+
+const importsOfSpec = (ts: TypeScriptApi, sourceFile: SourceFile, helper: string, providers: ReadonlySet<string>): { shapeNames: Set<string>; referenced: Set<string> } => {
+  const shapeNames = new Set<string>();
+  const referenced = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    // The module specifier of an import declaration is a string literal by the grammar.
+    const from = (statement.moduleSpecifier as StringLiteral).text;
+    for (const provider of providers) if (importsFakesOf(from, provider)) referenced.add(provider);
+    for (const name of shapeNamesOf(ts, statement, helper)) shapeNames.add(name);
+  }
+  return { shapeNames, referenced };
+};
+
+const callsShape = (ts: TypeScriptApi, node: Node, shapeNames: ReadonlySet<string>): boolean => {
+  let found = false;
+  walk(ts, node, inner => { if (ts.isCallExpression(inner) && ts.isIdentifier(inner.expression) && shapeNames.has(inner.expression.text)) found = true; });
+  return found;
+};
+
+const TEST_BLOCKS: ReadonlySet<string | null> = new Set(['describe', 'it', 'test']);
+
+const referenceProviders = (ts: TypeScriptApi, node: Node, providers: ReadonlySet<string>, referenced: Set<string>): void => {
+  if (ts.isStringLiteralLike(node)) for (const provider of providers) if (node.text.includes(`${FAKES_DIRECTORY}${provider}/`)) referenced.add(provider);
+  if (!ts.isCallExpression(node)) return;
+  const named = ts.isIdentifier(node.expression) ? node.expression.text : null;
+  for (const argument of node.arguments) {
+    const value = unwrap(ts, argument);
+    if (value && ts.isStringLiteralLike(value) && providers.has(value.text) && !TEST_BLOCKS.has(named)) referenced.add(value.text);
+  }
+};
+
+/** The `expect(...)` call a shape matcher call hangs off (through `.not` / `.resolves`), or null. */
+const expectReceiverOf = (ts: TypeScriptApi, callee: PropertyAccessExpression): CallExpression | null => {
+  let receiver = unwrap(ts, callee.expression);
+  while (receiver && ts.isPropertyAccessExpression(receiver)) receiver = unwrap(ts, receiver.expression);
+  return receiver && ts.isCallExpression(receiver) && ts.isIdentifier(receiver.expression) && receiver.expression.text === 'expect' ? receiver : null;
+};
+
+const comparesShapes = (ts: TypeScriptApi, node: Node, shapeNames: ReadonlySet<string>): boolean => {
+  if (!ts.isCallExpression(node)) return false;
+  const callee = node.expression;
+  if (!ts.isPropertyAccessExpression(callee) || !SHAPE_MATCHERS.has(callee.name.text)) return false;
+  const receiver = expectReceiverOf(ts, callee);
+  if (!receiver) return false;
+  const [actual] = receiver.arguments;
+  const [expected] = node.arguments;
+  return Boolean(actual && expected && callsShape(ts, actual, shapeNames) && callsShape(ts, expected, shapeNames));
+};
+
+const referenceAndCompare = (ts: TypeScriptApi, node: Node, providers: ReadonlySet<string>, referenced: Set<string>, shapeNames: ReadonlySet<string>): boolean => {
+  referenceProviders(ts, node, providers, referenced);
+  return comparesShapes(ts, node, shapeNames);
+};
+
+/** Facts one contract spec establishes: the providers whose fixtures it references and whether it compares shapes. */
+function readSpec(ts: TypeScriptApi, sourceFile: SourceFile, helper: string, providers: ReadonlySet<string>): SpecFacts {
+  const { shapeNames, referenced } = importsOfSpec(ts, sourceFile, helper, providers);
+  let compares = false;
+  walk(ts, sourceFile, node => { if (referenceAndCompare(ts, node, providers, referenced, shapeNames)) compares = true; });
+  return { referenced, compares };
+}
+
+/** The payload fixture a file of the world slot is, as `[provider, file]`, or null. */
+const payloadFixtureOf = (resolver: Resolver, file: string): [string, string] | null => {
+  const verdict: { slot: string; relative: string } | null = allowsFile(resolver, file);
+  if (verdict?.slot !== WORLD_SLOT || !verdict.relative.startsWith(FAKES_DIRECTORY)) return null;
+  const match = PAYLOADS.exec(verdict.relative.slice(FAKES_DIRECTORY.length));
+  const provider = match?.[1];
+  return provider === undefined ? null : [provider, file];
+};
+
+const fixtureFilesOf = (tree: RepositoryTree, resolver: Resolver): { fixtures: Map<string, string>; specs: Map<string, string[]> } => {
+  const fixtures = new Map<string, string>(); // provider -> first payload fixture file
+  const specs = new Map<string, string[]>(); // provider -> [contract spec file]
+  for (const file of [...tree.files].sort(byCodeUnit)) {
+    const classified = resolver.classifyPath(file);
+    if (classified.status !== 'owned') continue;
+    if (classified.slot === CONTRACT_SLOT) {
+      const provider = classified.bindings?.provider;
+      if (provider && file.endsWith('.contract-spec.ts')) specs.set(provider, [...(specs.get(provider) ?? []), file]);
+      continue;
+    }
+    const fixture = classified.slot === WORLD_SLOT ? payloadFixtureOf(resolver, file) : null;
+    if (fixture && !fixtures.has(fixture[0])) fixtures.set(...fixture);
+  }
+  return { fixtures, specs };
+};
+
+const guardedProvidersOf = (config: ArchitectureConfig, ts: TypeScriptApi, contractShape: { helper: string }, providers: ReadonlySet<string>, specs: Map<string, string[]>): Set<string> => {
+  const guarded = new Set<string>();
+  for (const [provider, files] of specs) {
+    for (const file of files) {
+      const absolute = path.join(config.root, ...file.split('/'));
+      if (!fs.existsSync(absolute)) continue;
+      const sourceFile = ts.createSourceFile(absolute, fs.readFileSync(absolute, 'utf8'), ts.ScriptTarget.Latest, true); // the contract tree is outside the root program
+      const facts = readSpec(ts, sourceFile, contractShape.helper, providers);
+      if (facts.compares && facts.referenced.has(provider)) guarded.add(provider);
+    }
+  }
+  return guarded;
+};
+
+export function checkContractFixtureGuard(input: { config: ArchitectureConfig; graph: { resolver: Resolver }; context: { ts: TypeScriptApi } }): ContractFixtureGuardResult {
+  const { config, ts, tree } = checkerScope(input);
+  const { resolver } = input.graph;
+  // reason: the machine runs this check on a back-end tree, whose scope resolver always carries rule parameters
+  const { contractShape } = resolver.ruleParams() as RuleParams;
+  const violations: Violation[] = [];
+  const { fixtures, specs } = fixtureFilesOf(tree, resolver);
+  const providers = new Set(fixtures.keys());
+  const guarded = guardedProvidersOf(config, ts, contractShape, providers, specs);
+  for (const [provider, file] of [...fixtures].sort(([a], [b]) => a.localeCompare(b))) {
+    if (guarded.has(provider)) continue;
+    const has = specs.get(provider)?.length ?? 0;
+    const why = has === 0
+      ? `there is no src/tests/contract/${provider}/*.contract-spec.ts`
+      : `none of the ${has} contract spec(s) under src/tests/contract/${provider}/ both references the ${provider} fixtures and asserts expect(${contractShape.helper}(real)).toEqual(${contractShape.helper}(fixture))`;
+    violations.push({
+      ruleId: RULE, path: file, line: 1, column: 1, slot: WORLD_SLOT,
+      message: `fakes/${provider}/ serves payload fixtures but no contract spec guards them: ${why}. A fixture that is not compared with the real provider drifts silently; add the sandbox contract spec (the contract helper of the world skips it when the sandbox config is absent).`,
+    });
+  }
+  return { violations, coverage: { status: 'checked', fixtureFakes: fixtures.size, contractSpecs: [...specs.values()].flat().length } };
+}

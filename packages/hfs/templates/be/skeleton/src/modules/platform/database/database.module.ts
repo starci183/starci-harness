@@ -19,6 +19,12 @@ const ENTITY_MANAGER_TOKENS: ReadonlyMap<string, EntityManagerToken> = new Map<s
     [PRIMARY_CONNECTION, PRIMARY_ENTITY_MANAGER],
 ])
 
+/**
+ * How long a connection waits for its database at boot: 10 attempts 3 s apart (about 30 s), so an app that starts beside the db
+ * service of its stack outlives the database's own start instead of exiting and rolling the release back.
+ */
+const CONNECT_RETRY = { retryAttempts: 10, retryDelay: 3000 } as const
+
 @Module({})
 /**
  * The database capability: opens one named TypeORM connection per entry of the options and provides its shared
@@ -54,7 +60,7 @@ export class DatabaseModule extends ConfigurableModuleClass {
                         url: connection.url.reveal(),
                         entities: [...connection.entities],
                         synchronize: false,
-                        retryAttempts: 2,
+                        ...CONNECT_RETRY,
                     }),
                 ),
             ],

@@ -1663,7 +1663,7 @@ rules:
       - {kind: hfs, id: db-definer-revoke}
   - id: R257
     code: DB_BASELINE_SHAPE
-    law: An archived migration chain has exactly one active baseline, archive contents stay immutable, and the db baseline verbs are read-only unless `--apply` is explicit.
+    law: An archived migration chain has exactly one active baseline, archive contents stay immutable, and the db baseline verbs are read-only unless `--execute` is explicit.
     editions: [lite]
     failureCodes:
       - DB_BASELINE_SHAPE
@@ -2280,8 +2280,29 @@ rules:
     enforcers:
       - {kind: eslint-be, id: event-dedupe-key}
       - {kind: eslint-be, id: event-subscription-static}
+  - id: R337
+    code: HFS_AUTH_COOKIE_DOMAIN_MISSING
+    law: "In a lite app whose api uses the skeleton's passport (a tracked src/modules/integrations/passport/passport.config.ts), a docker-swarm environment whose rendered stack serves the web and the api on different hosts gives the api an AUTH_COOKIE_DOMAIN: a declared value in services.api.environment, a row of the environment's runtime/env/KEYS.md or a key sealed under its secrets/. Otherwise the refresh cookie is host-only on the api host, is absent from the Cookie header the web server forwards to the api, the api refuses the session and the user loops back to sign-in. The hosts are read from the rendered stack (web: NEXT_PUBLIC_SITE_URL, AUTH_WEB_ORIGIN, deploy.verify.http, HTTP_SECURITY_ALLOWED_ORIGINS; api: AUTH_JWT_ISSUER, GOOGLE_CALLBACK_URL, NEXT_PUBLIC_API_URL, deploy.verify.http), ports ignored, an unknown host is not judged. The finding names both hosts and their common parent domain as the value to set. A declared AUTH_COOKIE_DOMAIN that is not a bare domain (no scheme, port, path, leading dot or IP) or is not a parent of the web and the api hosts is a finding too. Same host: no key is required."
+    failureCodes:
+      - HFS_AUTH_COOKIE_DOMAIN_MISSING
+    enforcers:
+      - {kind: hfs, id: stacks-auth-cookie-domain}
+  - id: R338
+    code: FE_GENERATED_ART_OUTSIDE_FRAME
+    law: Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives.
+    failureCodes:
+      - FE_GENERATED_ART_OUTSIDE_FRAME
+    enforcers:
+      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+  - id: R339
+    code: FE_MASCOT_ASSET_SLOT_MISSING
+    law: Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged.
+    failureCodes:
+      - FE_MASCOT_ASSET_SLOT_MISSING
+    enforcers:
+      - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
 
-# Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
+# Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
 # dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is
 # red (ANATOMY_PENDING_UNRULED) and one that holds no open gap is red (ANATOMY_PENDING_STALE), so this list only shrinks.

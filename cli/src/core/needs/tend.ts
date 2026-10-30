@@ -648,7 +648,7 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
         const why = need.state === "resolved" ? `shared need ${need.key} resolved` : `shared need ${need.key} rejected: ${need.reason ?? "not shared"}`
         writeFileSync(file, JSON.stringify({ schema: CHANGE_SCHEMA, workflow: place.workflow, reason: why, changes: keys.map((key) => ({ op: "retry", id: key })) }, null, 2))
         try {
-            await workflowAmendVerb.run({ ...place.context, cwd: place.root }, { workflow: place.workflow, desired: undefined, change: file, "based-on": undefined, "cmd-id": id, "keep-effect": undefined, accept: undefined })
+            await workflowAmendVerb.run({ ...place.context, cwd: place.root }, { workflow: place.workflow, desired: undefined, change: file, goal: undefined, "based-on": undefined, "cmd-id": id, "keep-effect": undefined, accept: undefined })
         } catch (error: unknown) {
             return [action(`need ${need.key}: waiters ${keys.join(", ")} not released yet (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}; the next step retries`, "problem")]
         }

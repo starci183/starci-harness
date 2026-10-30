@@ -2,10 +2,10 @@
 // proves: BE_SQL_TABLE_OWNER@lite
 // proves: BE_SQL_TABLE_OWNER@full
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const OWN_SQL = "src/modules/domain/purchase/persistence/purchase.sql.ts"
 const FOREIGN_SQL = "src/modules/domain/purchase/persistence/foreign.sql.ts"
@@ -323,5 +323,32 @@ test("R86 does not trust later key declarations under a declared DDL event trigg
             "CREATE FUNCTION public.remove_new_key() RETURNS event_trigger LANGUAGE plpgsql AS $$ BEGIN IF TG_TAG = 'CREATE TABLE' THEN ALTER TABLE public.purchase DROP CONSTRAINT IF EXISTS purchase_pkey; END IF; END $$; CREATE EVENT TRIGGER key_effect ON ddl_command_end EXECUTE FUNCTION public.remove_new_key();",
             COMPOSITE_TABLE,
         ],
+    })
+})
+
+/** Reads of the purchase table whose entity takes its primary key from the entity base it extends: by that key, by a plain column, by an inherited plain column. */
+const BY_ID_SQL = "src/modules/domain/purchase/persistence/by-id.sql.ts"
+const BY_NOTE_SQL = "src/modules/domain/purchase/persistence/by-note.sql.ts"
+const BY_CREATED_SQL = "src/modules/domain/purchase/persistence/by-created.sql.ts"
+const BASE_READS: Readonly<Record<string, string>> = {
+    [BY_ID_SQL]: sqlRead("SELECT note FROM purchase WHERE id = $1"),
+    [BY_NOTE_SQL]: sqlRead("SELECT note FROM purchase WHERE note = $1"),
+    [BY_CREATED_SQL]: sqlRead("SELECT note FROM purchase WHERE created_at = $1"),
+}
+/** A full entity whose primary key is a column of the entity base it extends (persistence.md BE-PERSISTENCE-3, ruling entity-base). */
+const BASE_ENTITY_FILES = {
+    "src/modules/platform/database/index.ts": "export { sql } from './sql';\nexport { UuidAbstractEntity } from './abstract.entity';\n",
+    "src/modules/platform/database/abstract.entity.ts": 'import { Column, PrimaryGeneratedColumn } from "typeorm"; export abstract class AbstractEntity { @Column({ name: "created_at", type: "timestamptz", insert: false, update: false }) createdAt!: Date } export abstract class UuidAbstractEntity extends AbstractEntity { @PrimaryGeneratedColumn("uuid", { name: "id" }) id!: string }\n',
+    "src/modules/domain/purchase/persistence/entities/purchase.entity.ts": 'import { UuidAbstractEntity } from "../../../../platform/database"; import { Column, Entity } from "typeorm"; @Entity("purchase") export class PurchaseEntity extends UuidAbstractEntity { @Column({ name: "note", type: "text" }) note!: string }\n',
+    "src/modules/domain/identity/persistence/entities/identity.entity.ts": ENTITIES["src/modules/domain/identity/persistence/entities/identity.entity.ts"],
+}
+
+test("R86 reads the primary key an entity inherits from its entity base, and only that key bounds a full read", (t) => {
+    const fixture = projectFixture({ edition: "full", files: { ...FILES, ...BASE_ENTITY_FILES, ...BASE_READS } })
+    t.after(fixture.cleanup)
+    const read = (file: string) => ({ filename: fixture.at(file), code: BASE_READS[file] ?? "" })
+    fixture.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), {
+        valid: [read(BY_ID_SQL)],
+        invalid: [BY_NOTE_SQL, BY_CREATED_SQL].map((file) => ({ ...read(file), errors: [{ message: /BE_SQL_TABLE_OWNER/ }] })),
     })
 })

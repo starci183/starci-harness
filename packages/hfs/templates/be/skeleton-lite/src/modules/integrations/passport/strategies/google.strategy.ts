@@ -25,7 +25,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
             scope: ["openid", "email"],
             pkce: true,
             state: true,
-            store: new CookieStateStore(new URL(options.google.callbackUrl).pathname),
+            store: new CookieStateStore(new URL(options.google.callbackUrl).pathname, options.refresh.cookieDomain),
         })
     }
 

@@ -6,7 +6,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 import { asyncNeedsAwait, rules } from "./async-discipline.ts"
 
 const tester = canonRuleTester({

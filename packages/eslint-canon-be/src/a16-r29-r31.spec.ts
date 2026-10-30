@@ -9,13 +9,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { projectFixture } from '../fixtures/project/tester.mjs';
+import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';
 import { checkFeatureShape } from '../runtime/scripts/hfs/architecture/feature-shape.mjs';
 import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
 import type { TestContext } from "node:test"
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const FEATURE = 'src/features/api/orders';
 const VALUE = 'export const value = 1;\n';

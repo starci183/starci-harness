@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.0 - 2026-10-30
+
+- Changed: the bundled runtime copies are now generated from the hfs build (TypeScript emitted as .mjs) per runtime/bundle.json, with a drift check in CI; the copies the package keeps as its own are listed there and stay hand-maintained; R86 sql-owner reads the columns an entity inherits from its base (UuidAbstractEntity); the bundled canon pins name hfs 4.12.0, eslint-canon-be 3.9.0, eslint-canon-fe 9.6.0, the Grammar family 0.16.0, jest-preset 2.5.3 and test-world 1.3.3.
+
 ## 3.8.21 - 2026-10-30
 
 - Changed: the bundled canon pins name hfs 4.11.22 (app check and lint pass under 20 findings), eslint-canon-be 3.8.21, eslint-canon-fe 9.5.23 and the Grammar family 0.15.34. No rule changed.

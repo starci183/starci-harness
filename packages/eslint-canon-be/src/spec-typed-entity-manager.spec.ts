@@ -4,7 +4,7 @@
  *   node --test src/spec-typed-entity-manager.spec.ts
  */
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { specTypedEntityManager } from "./spec-quality.ts"
 
 const SPEC = at("src/modules/domain/order/order.service.spec.ts")

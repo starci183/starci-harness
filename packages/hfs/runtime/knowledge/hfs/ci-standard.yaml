@@ -9,7 +9,7 @@ title: The one StarCi CI standard
 #   runtime        the runtime repository's own workflows (.github/workflows/*.yml), checked by the same rules, not rendered
 # Enforcers: rule R301 CI_STANDARD (scripts/hfs/rules/ci-standard.mjs over app-ci in the app check and the example apps, scripts/hfs/runtime-rules/runtime-ci-standard.mjs
 # over the runtime's own workflows) checks every item marked `check: ci-standard`; the other items are owned by the rule or render named in `by`.
-# Apps get the standard only through `starci app sync`: the managed CI files are sync targets, and `starci app sync --check` / the app check refuse drift.
+# Apps get the standard only through `starci app sync`: the managed CI files are sync targets, and `starci app sync` (the dry run) / the app check refuse drift.
 
 # The jobs of the managed app CI (job ids, in this order), per edition; `sonar` exists when the Sonar service is enabled.
 jobs:
@@ -54,7 +54,7 @@ items:
     check: ci-standard
   - id: sonar-lint-per-side
     title: the Sonar lint runs per side
-    requires: "a lint with a Sonar import (--sonar) names its side (--side be|fe); the reports are merged into reports/lint.sonar.json afterwards; no combined lint with Sonar"
+    requires: "a lint with a Sonar import (--out) names its side (--side be|fe); the reports are merged into reports/lint.sonar.json afterwards; no combined lint with Sonar"
     covers: [app-ci, runtime]
     check: ci-standard
   - id: test-sharding

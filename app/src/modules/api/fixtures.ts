@@ -398,7 +398,7 @@ export const fixtureInbox: readonly Decision[] = [
         ],
         raisedAt: at("12:32"),
         askedBy: "[Supervisor] starci-next",
-        command: "starci supervisor submit --project starci-next --answer d-6979996fe691",
+        command: "starci supervisor submit \"D:/.claude/.runtime/projects/starci-next/owner-commands/d-6979996fe691.json\" --cwd \"D:/Repositories/starci-next\"",
     },
     {
         project: "nivo-lite",
@@ -415,7 +415,7 @@ export const fixtureInbox: readonly Decision[] = [
         ],
         raisedAt: "2026-10-27T10:44:00+07:00",
         askedBy: "[Supervisor] nivo-lite",
-        command: "starci supervisor submit --project nivo-lite --answer d-c1106437",
+        command: "starci supervisor submit \"D:/.claude/.runtime/projects/nivo-lite/owner-commands/d-c1106437.json\" --cwd \"D:/Repositories/nivo-lite\"",
     },
 ]
 

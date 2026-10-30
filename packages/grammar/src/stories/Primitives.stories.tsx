@@ -17,6 +17,7 @@ import {
   noop,
   placeholderImage,
 } from './fixtures.js';
+import turtleUrl from './assets/turtle.png';
 
 /**
  * Primitives: the atoms every family restyles. Each story renders one Common renderer in its
@@ -636,6 +637,28 @@ export const Image: Story = {
       </State>
       <State label="Asset slot attributes">
         <div style={{ width: 200 }}><G.Image src={placeholderImage('Slot')} alt="" aspect="landscape" assetSlot="story.card-art" assetSha256="0000" /></div>
+      </State>
+    </Matrix>
+  ),
+};
+
+/** One size scale for generated character art: each step one step down below 48rem, the hero absent below 64rem unless kept. */
+export const Mascot: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Steps sm, md, lg (decorative)">
+        <G.Mascot src={turtleUrl} size="sm" assetSlot="story.mascot-sm" />
+        <G.Mascot src={turtleUrl} size="md" assetSlot="story.mascot-md" />
+        <G.Mascot src={turtleUrl} size="lg" assetSlot="story.mascot-lg" assetSha256="0000" assetPrompt="A friendly turtle mascot" />
+      </State>
+      <State label="Meaningful (named by alt)">
+        <G.Mascot src={turtleUrl} alt="Todo app turtle mascot" size="md" assetSlot="story.mascot-named" />
+      </State>
+      <State label="Hero fills its host's height (hidden below 64rem)">
+        <div style={{ height: 320, width: 360 }}><G.Mascot src={turtleUrl} size="hero" loading="eager" assetSlot="story.mascot-hero" /></div>
+      </State>
+      <State label="Hero kept at every width">
+        <div style={{ height: 320, width: 360 }}><G.Mascot src={turtleUrl} size="hero" visibility="always" assetSlot="story.mascot-hero-kept" /></div>
       </State>
     </Matrix>
   ),

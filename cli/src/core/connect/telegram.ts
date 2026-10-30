@@ -5,32 +5,39 @@ import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
+import { BRIDGE_MODES, telegramBridge } from "./bridge.js"
 
-const ACTIONS = ["discover-chat", "status", "notify"] as const
+const ACTIONS = ["discover-chat", "status", "notify", "bridge"] as const
 
 const CONNECTED = "StarCi is connected: only questions that need your decision arrive here. Reply to one to answer it; /status sums up the workflows, /tickets lists the open tickets, /ask <project> <request> sends a request."
 
 /**
- * `starci connect telegram <discover-chat|status|notify>`: the owner's Telegram channel. `discover-chat` reads the bot's updates
- * once and stores the chat that wrote to it (the owner sends the bot a message first; `--chat` picks one of several) in the host
- * store, never in a repository; facts older than that moment are never sent. `status` reports the channel without calling
- * Telegram; `notify` sends every fact due once (the bridge does it every cycle). The bot token (ops/telegram.yaml tokenVariable)
- * is read by the secret loader, from the environment or secret.env, and refused TELEGRAM_NOT_CONFIGURED when neither sets it.
+ * `starci connect telegram <discover-chat|status|notify|bridge>`: the owner's Telegram channel, its one home. `discover-chat`
+ * reads the bot's updates once and stores the chat that wrote to it (the owner sends the bot a message first; `--chat` picks one
+ * of several) in the host store, never in a repository; facts older than that moment are never sent. `status` reports the
+ * channel without calling Telegram; `notify` sends every fact due once (the bridge does it every cycle); `bridge <run|status>`
+ * runs the bridge as the host service or reports its liveness (core/connect/bridge.ts). The bot token (ops/telegram.yaml
+ * tokenVariable) is read by the secret loader, from the environment or secret.env, and refused TELEGRAM_NOT_CONFIGURED when
+ * neither sets it.
  */
 export const connectTelegramVerb = defineVerb({
     path: ["connect", "telegram"],
-    summary: "the owner's Telegram channel: discover-chat stores the owner's chat, status reports it, notify sends the notices due once",
+    summary: "the owner's Telegram channel: discover-chat stores the owner's chat, status reports it, notify sends the notices due once, bridge runs the bridge (run) or reports it (status)",
     editions: BOTH_EDITIONS,
     effect: "remote",
     roles: ["owner", "supervisor", "debug"],
     schema: "starci/telegram-channel@1",
     flags: {
-        action: { kind: "string", required: true, positional: true, summary: "discover-chat, status or notify" },
+        action: { kind: "string", required: true, positional: true, summary: "discover-chat, status, notify or bridge" },
+        mode: { kind: "string", positional: true, summary: `bridge: ${BRIDGE_MODES.join(" or ")}` },
         chat: { kind: "string", summary: "discover-chat: the chat id to store when several chats wrote to the bot" },
+        once: { kind: "boolean", summary: "bridge run: one cycle that does not wait for a message, then exit" },
     },
     run: async (context, flags): Promise<VerbResult<unknown>> => {
         const action = ACTIONS.find((known) => known === flags.action)
         if (action === undefined) throw new Refusal("CLI_USAGE", `connect telegram takes ${ACTIONS.join(", ")}, not ${flags.action}`, EXIT_USAGE)
+        if (action === "bridge") return telegramBridge(context, flags.mode, flags.once)
+        if (flags.mode !== undefined || flags.once) throw new Refusal("CLI_USAGE", `connect telegram ${action} takes no ${flags.mode ?? "--once"}; they are bridge's`, EXIT_USAGE)
         const config = loadTelegram()
         if (action === "status") {
             const { channel, counts } = withChannelStore((db) => ({ channel: readChannel(db), counts: channelCounts(db) }))

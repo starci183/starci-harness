@@ -1,6 +1,5 @@
 import { contextModelOf, connectionsComposedBy } from './context-map.mjs';
 import { machineKit } from './machine-ast.mjs';
-
 /**
  * R174 `context-owner` (BE_CONTEXT_OWNER). A connection of hfs.json IS a bounded context, and its `owner` is the one service app that composes it:
  *   - an api or worker app passes to the database module registration (or lists in its options) only the connections it owns (a monolith's one
@@ -14,77 +13,90 @@ import { machineKit } from './machine-ast.mjs';
  * name pattern. A runner app with a registration whose connection name cannot be resolved is not judged for missing connections.
  */
 export const CONTEXT_OWNER_RULE_IDS = ['BE_CONTEXT_OWNER'];
-
 const RULE = 'BE_CONTEXT_OWNER';
 const SERVICE_KINDS = new Set(['api', 'worker']);
 const RUNNER_KINDS = new Set(['migrate', 'cli']);
-
 // What each app composes: [{connection, file, node}] from the database module registration and from the registration literals under its files.
 const compositionsOf = (kit, resolver, model, appOf) => {
-  const composed = new Map(resolver.repo.apps.map(app => [app.name, { items: [], unresolved: false }]));
-  for (const app of resolver.repo.apps) {
-    for (const item of connectionsComposedBy(kit, app.name).items) composed.get(app.name).items.push(item);
-  }
-  for (const site of model.registrations) {
-    const app = appOf(site.file.rel);
-    if (!app || !composed.has(app)) continue;
-    if (site.connection === null) composed.get(app).unresolved = true;
-    else composed.get(app).items.push({ connection: site.connection, file: site.file, node: site.node });
-  }
-  return composed;
+    const apps = resolver.repo.apps;
+    const composed = new Map(apps.map((app) => [app.name, { items: [], unresolved: false }]));
+    for (const app of apps) {
+        const entry = composed.get(app.name);
+        if (!entry)
+            continue;
+        for (const item of connectionsComposedBy(kit, app.name).items)
+            entry.items.push(item);
+    }
+    for (const site of model.registrations) {
+        const app = appOf(site.file.rel);
+        const entry = app ? composed.get(app) : undefined;
+        if (!app || !entry)
+            continue;
+        if (site.connection === null)
+            entry.unresolved = true;
+        else
+            entry.items.push({ connection: site.connection, file: site.file, node: site.node });
+    }
+    return composed;
 };
-
 // A service app composes only the connections it owns; a runner app composes every declared connection with tables.
 const judgeComposition = (app, { items, unresolved }, { owners, model, kit, once }) => {
-  if (SERVICE_KINDS.has(app.kind)) {
-    for (const { connection, file, node } of items) {
-      const owner = owners.get(connection);
-      if (owner && owner !== app.name) {
-        once(`${app.name}|${connection}`, { ...kit.at(file.rel, file.sourceFile, node), message: `App ${app.name} composes connection ${connection}, the context owned by app ${owner}; an app composes only the contexts it owns. Reach that context through the API or the events of ${owner}.`, connection, app: app.name, owner });
-      }
+    if (SERVICE_KINDS.has(app.kind)) {
+        for (const { connection, file, node } of items) {
+            const owner = owners.get(connection);
+            if (owner && owner !== app.name) {
+                once(`${app.name}|${connection}`, { ...kit.at(file.rel, file.sourceFile, node), message: `App ${app.name} composes connection ${connection}, the context owned by app ${owner}; an app composes only the contexts it owns. Reach that context through the API or the events of ${owner}.`, connection, app: app.name, owner });
+            }
+        }
     }
-  } else if (RUNNER_KINDS.has(app.kind) && !unresolved) {
-    const root = kit.appRoot(app.name);
-    const present = new Set(items.map(item => item.connection));
-    const held = new Set([...model.registered.values()].flatMap(entry => [...entry.connections.keys()]));
-    for (const connection of owners.keys()) {
-      if (!root || present.has(connection) || !held.has(connection) || !items.length) continue;
-      once(`${app.name}|missing|${connection}`, { ...kit.at(root.rel, root.sourceFile, root.sourceFile), message: `The ${app.kind} app ${app.name} does not compose connection ${connection}; migrations run only through it, once per connection, so it registers every declared connection that holds tables.`, connection, app: app.name });
+    else if (RUNNER_KINDS.has(app.kind) && !unresolved) {
+        const root = kit.appRoot(app.name);
+        const present = new Set(items.map(item => item.connection));
+        const held = new Set([...model.registered.values()].flatMap(entry => [...entry.connections.keys()]));
+        for (const connection of owners.keys()) {
+            if (!root || present.has(connection) || !held.has(connection) || !items.length)
+                continue;
+            once(`${app.name}|missing|${connection}`, { ...kit.at(root.rel, root.sourceFile, root.sourceFile), message: `The ${app.kind} app ${app.name} does not compose connection ${connection}; migrations run only through it, once per connection, so it registers every declared connection that holds tables.`, connection, app: app.name });
+        }
     }
-  }
-  return items.length;
+    return items.length;
 };
-
 export function checkContextOwner(input) {
-  const { graph } = input;
-  const kit = machineKit(input);
-  const { resolver } = kit;
-  const model = contextModelOf(kit, graph);
-  const violations = [];
-  const owners = new Map(resolver.repo.connections.map(connection => [connection.name, connection.owner]));
-  let compositions = 0;
-  let imports = 0;
-  const seen = new Set();
-  const once = (key, violation) => { if (!seen.has(key)) { seen.add(key); violations.push({ ruleId: RULE, ...violation }); } };
-  const appOf = rel => { const classified = resolver.classifyPath(rel); return classified.slot?.startsWith('be.app.') ? classified.bindings?.app ?? null : null; };
-
-  const composed = compositionsOf(kit, resolver, model, appOf);
-
-  for (const app of resolver.repo.apps) {
-    compositions += judgeComposition(app, composed.get(app.name), { owners, model, kit, once });
-  }
-
-  const kinds = new Map(resolver.repo.apps.map(app => [app.name, app.kind]));
-  for (const edge of graph.edges) {
-    const app = appOf(edge.from);
-    if (!app || !SERVICE_KINDS.has(kinds.get(app))) continue;
-    const context = model.contextOfFile(edge.to);
-    if (!context) continue;
-    imports += 1;
-    const owner = owners.get(context);
-    if (owner && owner !== app) {
-      once(`${edge.from}|${edge.to}`, { path: edge.from, line: edge.line, column: edge.column, message: `App ${app} imports ${graph.files.get(edge.to).owner.root}, a capability of context ${context} owned by app ${owner}; an app composes only the contexts it owns, so use the API or the events of ${owner} instead.`, connection: context, app, owner });
+    const { graph } = input;
+    const kit = machineKit(input);
+    const { resolver } = kit;
+    const model = contextModelOf(kit, graph);
+    const violations = [];
+    const connections = resolver.repo.connections;
+    const apps = resolver.repo.apps;
+    const owners = new Map(connections.map((connection) => [connection.name, connection.owner]));
+    let compositions = 0;
+    let imports = 0;
+    const seen = new Set();
+    const once = (key, violation) => { if (!seen.has(key)) {
+        seen.add(key);
+        violations.push({ ruleId: RULE, ...violation });
+    } };
+    const appOf = (rel) => { const classified = resolver.classifyPath(rel); return classified.slot?.startsWith('be.app.') ? classified.bindings?.app ?? null : null; };
+    const composed = compositionsOf(kit, resolver, model, appOf);
+    for (const app of apps) {
+        const composition = composed.get(app.name);
+        if (composition)
+            compositions += judgeComposition(app, composition, { owners, model, kit, once });
     }
-  }
-  return { violations, coverage: { status: 'checked', apps: resolver.repo.apps.length, compositions, contextImports: imports } };
+    const kinds = new Map(apps.map((app) => [app.name, app.kind]));
+    for (const edge of graph.edges) {
+        const app = appOf(edge.from);
+        if (!app || !SERVICE_KINDS.has(kinds.get(app) ?? ''))
+            continue;
+        const context = model.contextOfFile(edge.to);
+        if (!context)
+            continue;
+        imports += 1;
+        const owner = owners.get(context);
+        if (owner && owner !== app) {
+            once(`${edge.from}|${edge.to}`, { path: edge.from, line: edge.line, column: edge.column, message: `App ${app} imports ${graph.files.get(edge.to)?.owner?.root}, a capability of context ${context} owned by app ${owner}; an app composes only the contexts it owns, so use the API or the events of ${owner} instead.`, connection: context, app, owner });
+        }
+    }
+    return { violations, coverage: { status: 'checked', apps: apps.length, compositions, contextImports: imports } };
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.0 - 2026-10-30
+
+- Changed: the build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots) are TypeScript, typechecked by tsconfig.scripts.json; no component change.
+- Added: Mascot, one size scale for generated character art: size sm (6rem), md (10rem, default), lg (15rem) or hero (the container's height up to 30rem), always contained on a transparent ground with no plate, decorative when alt is empty, one step down below 48rem, a hero hidden below 64rem unless visibility="always"; it carries the Image provenance props (assetSlot, assetSha256, assetPrompt). Tokens --grammar-mascot-sm, -md, -lg, -hero-max.
+- Added: SurfaceCard treatment soft, the brand's light tint (--accent-soft) with the default foreground, keeping the artwork slot (owner ruling surfacecard-soft-treatment).
+- Added: EmptyNotice artwork (src, alt, loading and the provenance props, assetSlot required), drawn as a Mascot at md; it replaces iconSource for a first-run notice (owner ruling empty-notice-artwork).
+- Fixed: a vertical Stepper inside a coloured SurfaceCard drew upcoming step numbers in their circle's colour (1.04:1 on ink): every coloured treatment re-colours --surface with its text tokens and the step marker reads matching pairs; a play story checks every step number at 4.5:1 for every treatment in light and dark.
+
 ## 0.15.34 - 2026-10-30
 
 - Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.34), which re-pin hfs 4.11.22.

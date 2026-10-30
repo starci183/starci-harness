@@ -314,15 +314,15 @@ export const dnaCheckVerb = defineVerb({
         stories: { kind: "string", summary: "only the Storybook stories whose id contains this text" },
         contract: { kind: "string", summary: "the grammar contract (default contexts/grammars/contract.yaml of the harness)" },
         browser: { kind: "string", summary: "the Chromium binary (default STARCI_BROWSER, else the installed Chrome, Edge or Chromium)" },
-        wait: { kind: "string", summary: "milliseconds a page may take to render its Grammar root (default 8000)" },
+        timeout: { kind: "string", summary: `seconds a page may take to render its Grammar root (default ${String(DEFAULT_WAIT_MS / 1000)})` },
     },
     run: async (context, flags) => {
         const contract = loadDnaContract(flags.contract === undefined ? defaultContractFile() : resolve(context.cwd, flags.contract))
         if (contract.entries.length === 0) {
             throw new Refusal("DNA_NO_LAWS", `${contract.file} declares no measured mustKeep entry (id, law, measure); the gate has nothing to hold the UI to`)
         }
-        const waitMs = flags.wait === undefined ? DEFAULT_WAIT_MS : Number(flags.wait)
-        if (!Number.isFinite(waitMs) || waitMs < 0) throw new UsageError(`--wait takes milliseconds, not ${flags.wait ?? ""}`)
+        const waitMs = flags.timeout === undefined ? DEFAULT_WAIT_MS : Math.round(Number(flags.timeout) * 1000)
+        if (flags.timeout?.trim() === "" || !Number.isFinite(waitMs) || waitMs < 0) throw new UsageError(`--timeout takes seconds, not ${flags.timeout ?? ""}`)
         const source = resolveSource(context.cwd, flags)
         const binary = findBrowser(flags.browser)
         let site: StaticSite | undefined

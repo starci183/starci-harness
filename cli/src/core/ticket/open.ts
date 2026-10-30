@@ -10,8 +10,13 @@ import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { mainCheckout } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import type { Role } from "../../shared/verb.js"
 import { projectFrom } from "../supervisor/driver.js"
+import { assertKindRole, FEEDBACK_KIND, openFeedbackItem } from "./feedback.js"
+
+/** Who files a defect or a question: the Supervisor, the owner and Debug (feedback is every writer's: `assertKindRole`). */
+const TICKET_OPENERS: readonly Role[] = ["supervisor", "owner", "debug"]
 
 const oneOf = <T extends string>(values: readonly T[], value: string, flag: string): T => {
     const found = values.find((known) => known === value)
@@ -53,18 +58,20 @@ const ledgerEvidence = (repo: string, task: string | undefined, decision: string
  * the owner answers on Telegram, with its proposed default. A repeat of the same defect or question (its fingerprint) bumps the
  * live ticket's occurrences, or reopens a fixed one, instead of opening a second. `--task` and `--decision` read their evidence
  * from the checkout's ledger and make that task and escalation wait on the ticket; `--evidence-file` keeps a red output's tail,
- * secrets redacted.
+ * secrets redacted. `--kind feedback` records one owner feedback instead, the title being the owner's words (core/ticket/feedback.ts).
  */
 export const ticketOpenVerb = defineVerb({
     path: ["ticket", "open"],
-    summary: "file what the Supervisor cannot resolve: a defect for Debug or a question for the owner, deduped (a repeat bumps occurrences); --task and --decision wait on it",
+    summary: "file what the Supervisor cannot resolve: a defect for Debug or a question for the owner, deduped (a repeat bumps occurrences); --task and --decision wait on it; --kind feedback records the owner's words",
     editions: BOTH_EDITIONS,
     effect: "host",
-    roles: ["supervisor", "owner", "debug"],
+    roles: EVERYONE,
     schema: "starci/ticket@1",
     flags: {
-        kind: { kind: "string", required: true, summary: `what it is: ${TICKET_KINDS.join(", ")}` },
-        title: { kind: "string", required: true, summary: "one line: the defect with its error code and module, or the question itself" },
+        kind: { kind: "string", required: true, summary: `what it is: ${TICKET_KINDS.join(", ")}, or ${FEEDBACK_KIND} (owner feedback, core/ticket/feedback.ts)` },
+        title: { kind: "string", required: true, summary: "one line: the defect with its error code and module, or the question itself (feedback: the owner's words, verbatim)" },
+        on: { kind: "string", summary: "feedback: the day the owner gave it, YYYY-MM-DD (default today)" },
+        id: { kind: "string", summary: "feedback: the id to record it under (default fb-<day>-<n>)" },
         severity: { kind: "string", summary: `${TICKET_SEVERITIES.join(" or ")} (default: blocking for a question, normal for a defect)` },
         default: { kind: "string", summary: "a question's proposed default, which the owner may simply accept" },
         option: { kind: "list", summary: "another answer the question allows, offered to the owner as a button (repeatable)" },
@@ -77,6 +84,10 @@ export const ticketOpenVerb = defineVerb({
         project: { kind: "string", summary: "any checkout of the project it happened in (default: the working directory)" },
     },
     run: async (context, flags) => {
+        const feedback = flags.kind === FEEDBACK_KIND
+        assertKindRole(feedback, TICKET_OPENERS, "ticket open")
+        if (feedback) return openFeedbackItem(flags.title, flags.on, flags.id)
+        if (flags.on !== undefined || flags.id !== undefined) throw new Refusal("CLI_USAGE", "--on and --id are a feedback's; a defect or question carries neither", EXIT_USAGE)
         const kind: TicketKind = oneOf(TICKET_KINDS, flags.kind, "kind")
         const severity: TicketSeverity = oneOf(TICKET_SEVERITIES, flags.severity ?? (isQuestion(kind) ? "blocking" : "normal"), "severity")
         const title = flags.title.replaceAll(/\s+/g, " ").trim()

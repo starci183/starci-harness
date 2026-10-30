@@ -10,6 +10,9 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- One canonical CLI (owner ruling cli-canonical-2026-10-30, contexts/harness/cli-canonical.md): every effect is dry until `--execute`; `--json`, `--timeout <s>`, `--sha`, `--cwd`, `--reason` and `--status` are the one spelling of their meaning; `check ci` absorbs `release ci-status`, `workflow step --loop` and `workflow amend --goal` absorb run and regoal, `supervisor tick --loop` absorbs watch, `connect telegram bridge` holds the bridge, `route show` replaces route explain, `ticket --kind feedback` absorbs feedback; `check stories` and `check typecheck` are dropped. An old spelling is an unknown verb or flag (CONTRIB-15).
+- `starci app <verb>` hands its arguments to @starci/hfs as typed, so hfs owns every app flag and its help; `app slot` and `app world` are new verbs, `app explain`, `app hygiene`, `app new` and `app sonar` are gone with their hfs verbs.
+- `explain <term>` takes the term positionally and prints each matching verb's flags.
 - policy/quality.yaml `gate.errorLimit` (default 20, owner ruling gate-threshold-20): the CLI hands it to @starci/hfs as STARCI_GATE_ERROR_LIMIT, the number of error findings under which `app check` and `app lint` stay green when none is a hard blocker (hfs 4.11.22).
 - The CLI keeps @starci/hfs 4.11.21 until npm serves 4.11.22; cli-follow then raises it.
 

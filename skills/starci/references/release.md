@@ -16,55 +16,56 @@ The runtime tier of the repository's policy profile ([policy/quality.yaml](../..
 secrets, loosening, canon, typecheck and lint, scoped to the diff against the branch base (`origin/main` on main, else the
 fork point from main: `branchBase` of `cli/src/shared/git.ts`), the files your branch changed, committed or not; `--all`
 judges every package in full. Run one step alone with `starci check lint` (lint my changed files), `starci check
-typecheck`, `starci check secrets` or `starci check loosening`.
+secrets` or `starci check loosening`.
 A red gate is fixed in the code. Never loosen a gate, add an inline disable or a policy exception to pass.
 
 ## 2. Push
 
 ```text
-starci release push --dry-run
 starci release push
+starci release push --execute
 ```
 
-The one way main moves: it refuses unless the branch is main, the tree is clean, the push is a fast-forward
+The one way main moves. Without `--execute` it is a dry run: every judgement, no push. It refuses unless the branch is main, the tree is clean, the push is a fast-forward
 and the pushed range holds no secret, then runs `git push` with the hooks. Never push by hand, force or skip
 hooks.
 
 ## 3. Read CI
 
 ```text
-starci release ci-status
-starci release ci-status --sha <commit>
+starci check ci
+starci check ci --sha <commit>
 starci check ci --ref origin/main
 ```
 
-`ci-status` prints the verdict (green, red, pending, none). `check ci` exits 0 only on green, for a script or
-a deliver contract (preset `ci-green`). A red CI becomes a scoped `code` task for the red checks; it never
+`check ci` prints the verdict (green, red, pending, none) with the runs (`--json` for machines) and exits 0 only on
+green, for a script or a deliver contract (preset `ci-green`). A red CI becomes a scoped `code` task for the red checks; it never
 blocks the next push.
 
 ## 4. Cut
 
 ```text
-starci release cut --dry-run
 starci release cut
+starci release cut --execute
 ```
 
-Tags `v<version>` of the package (`--package <p>` when there are several) on a commit already on the remote
+Without `--execute` it is a dry run. Tags `v<version>` of the package (`--package <p>` when there are several) on a commit already on the remote
 main, with its finished CHANGELOG section as the notes, and pushes the tag alone. It runs no suite.
 
 ## 5. Publish
 
 ```text
 starci release publish
+starci release publish --execute
 ```
 
 On the harness, CI publishes on every push to main (CONTRIBUTING.md CONTRIB-20); run it by hand only as Debug's fallback
-when CI cannot. Without `--publish` it only prints the plan: every package version not yet on npm (`--package <p>`
+when CI cannot. Without `--execute` it only prints the plan: every package version not yet on npm (`--package <p>`
 narrows it). The plan is judged before anything is published: a due package requiring a sibling at another version than
 the sibling's folder holds is `RELEASE_DEPENDENCY_SKEW` (the CLI, published last as committed, requires one npm serves, and each `@starci` package at
 its `contexts/stack/pins.yaml` pin, else `CLI_PIN_SKEW`), one requiring a private sibling `RELEASE_DEPENDENCY_UNPUBLISHED`,
 and with `--base <commit>` (CI passes its plan's base) a package changed since then whose version is already on npm is
-`RELEASE_VERSION_NOT_BUMPED`: raise its version and CHANGELOG. `--publish` publishes a dependency before its dependent.
+`RELEASE_VERSION_NOT_BUMPED`: raise its version and CHANGELOG. `--execute` publishes a dependency before its dependent.
 npm is public and permanent: show the plan and get the owner's OK for exactly those packages and versions every time,
 then publish. It publishes from a clean commit on the remote main and reads each version back; `PUBLISH_NOT_CONFIRMED`
 means the registry does not show it yet.
@@ -73,7 +74,7 @@ means the registry does not show it yet.
 
 `requireCi` in [policy/quality.yaml](../../../policy/quality.yaml) lists the actions that wait for a green CI
 of their commit (`release.cut`, `release.publish`, `deploy.prod`; the file names which apply). They refuse `CI_NOT_GREEN`
-until `release ci-status` of that commit is green. Wait for CI; never route around the gate.
+until `check ci` of that commit is green. Wait for CI; never route around the gate.
 
 Report the pushed commit, the tag, the published versions and the CI verdict, saying so when CI is still
 pending. A local green check is not a CI verdict.

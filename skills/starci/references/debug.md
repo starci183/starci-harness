@@ -21,14 +21,14 @@ the filed result, its Op worktree, check runs and preserved work. `seat list --l
 
 | Seen | Cause | Do |
 | --- | --- | --- |
-| `effect_unknown` | Orca could not confirm or deny a launch; the task keeps its worktree and seat | `starci seat start <task> --resume` replays the same request; never send a second task |
+| `effect_unknown` | Orca could not confirm or deny a launch; the task keeps its worktree and seat | `starci seat start <task> --resume --execute` replays the same request; never send a second task |
 | `verifying` that never ends, `VERIFY_LIVE` | a verifier is running, died or hung past `verifyDeadlineMinutes` | the next `workflow step` or `supervisor tick` recovers it once no live verifier holds its verifier lock (one past the deadline counts as gone); `starci task verify <task> --recover` does the same by hand |
 | `done` with no settle commit while its result names files, its work dirty in the workflow's worktree | a verify older than the `lands` check settled work the worker wrote outside its Op worktree | `starci task verify <task> --recover` preserves that work and returns the task `land-orphaned`; the next step retries it at the same try from that work |
 | `HEAD_MOVED`, `SETTLE_BUSY` | the branch moved or another settle runs | no try spent: step or verify again |
 | `LAND_CONFLICT`, attempt outcome `conflict` | the task's verified work does not rebase onto the branch's new head; its work is preserved | the Kernel retries the node by an amend, which starts from the preserved work on the new head; never resolve it by hand in the harness |
 | `running` with no result | the worker is working or lost | `starci seat ping <seat>`; `seat list` shows live, stale, quiet, unknown or lost. Unknown is never dead |
 | seat `worker-lost`, node `lost` | Orca reported the worker gone; the task is `effect_unknown` and keeps its worktree | `starci task cancel <task> --reason "<why>"`, then retry by an amend |
-| a dispatch refused (`ROUTE_NO_MEMBER`, `POOLS_FULL`, `PROVIDERS_UNAVAILABLE`, `TOKENS_OUT`) | no member can take it now | the task stays queued and the next step routes it again; read `route explain` and `provider status` |
+| a dispatch refused (`ROUTE_NO_MEMBER`, `POOLS_FULL`, `PROVIDERS_UNAVAILABLE`, `TOKENS_OUT`) | no member can take it now | the task stays queued and the next step routes it again; read `route show` and `provider status` |
 | a circuit open | a provider failed (rate, quota, capacity, auth) | wait for the cooldown; recover only after a passing probe and the owner's OK |
 | seat failure `blocked-prompt`, `BLOCKED PROMPT` in `supervisor tick` | the agent waits at a dialog in its worktree (trust, external import, login, a confirmation); the provider is not at fault | read the screen `seat list` prints, answer or remove the prompt in that worktree's agent config, then answer the harness escalation |
 | `BUDGET_EXHAUSTED`, `TRIES_EXHAUSTED` | a ceiling is reached | ask the owner |

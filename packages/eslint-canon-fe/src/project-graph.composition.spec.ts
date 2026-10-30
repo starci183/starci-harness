@@ -1,5 +1,5 @@
 import test, { type TestContext } from "node:test"
-import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
+import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
 import type { Rule } from "./lib/rule.ts"

@@ -20,7 +20,7 @@ TypeScript everywhere, NestJS in `be/`, Next.js with next-intl in `fe/`, Postgre
 
 ## Status badges
 
-Declare `ci.github.repository` and `ci.github.defaultBranch` in `.starcistacks/application-stacks.yaml` (or set the GitHub `repository` URL in `package.json`), then run `npx starci app sync --write`. Sync inserts a managed badge block after the title; `npx starci app sync --check` verifies it.
+Declare `ci.github.repository` and `ci.github.defaultBranch` in `.starcistacks/application-stacks.yaml` (or set the GitHub `repository` URL in `package.json`), then run `npx starci app sync --execute`. Sync inserts a managed badge block after the title; `npx starci app sync` (the dry run) verifies it.
 
 ## Development
 
@@ -36,7 +36,7 @@ npm run build:be
 npm run build:fe
 ```
 
-The API reads `PORT`, `HTTP_SECURITY_ALLOWED_ORIGINS`, `PRIMARY_DB_URL`, `PRIMARY_DB_SCHEMA`, the Google OAuth keys `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_CALLBACK_URL`, its own token keys `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, `AUTH_JWT_KEY_ID` and `AUTH_JWT_PRIVATE_KEY`, and the storage keys `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY`. The database tooling reads `DATABASE_URL`. The web app reads `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, and, once the first GraphQL operation exists, `NEXT_PUBLIC_GRAPHQL_URL`. Missing configuration stops the relevant process with a named error; no template supplies credential defaults.
+The API reads `PORT`, `HTTP_SECURITY_ALLOWED_ORIGINS`, `PRIMARY_DB_URL`, `PRIMARY_DB_SCHEMA`, the Google OAuth keys `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_CALLBACK_URL`, its own token keys `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, `AUTH_JWT_KEY_ID` and `AUTH_JWT_PRIVATE_KEY`, the optional `AUTH_COOKIE_DOMAIN` (a bare domain such as `example.com`; required when the web and the API are served on different hosts, so the refresh cookie reaches the web server), and the storage keys `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY`. The database tooling reads `DATABASE_URL`. The web app reads `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, and, once the first GraphQL operation exists, `NEXT_PUBLIC_GRAPHQL_URL`. Missing configuration stops the relevant process with a named error; no template supplies credential defaults.
 
 Production browser build values live in `.starcistacks/application-stacks.yaml` under `environments.production.deploy.images.web.buildArgs.values`. Before building deployment images, replace the placeholders with your site's and your API's public origins. These values reach every browser; every credential stays in sealed runtime custody.
 

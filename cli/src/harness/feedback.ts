@@ -42,7 +42,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS owner_feedback_once ON owner_feedback (given_o
 
 const feedbackRulesSchema = z.strictObject({ openMaxDays: z.number().int().positive() })
 
-/** The `feedback` block of ops/liveness.yaml: how many days an owner feedback may stay open before `feedback check` is red. */
+/** The `feedback` block of ops/liveness.yaml: how many days an owner feedback may stay open before `ticket list --kind feedback --status overdue` is red. */
 export type FeedbackRules = z.infer<typeof feedbackRulesSchema>
 
 /** Loads and validates the `feedback` block of ops/liveness.yaml (STARCI_OPS_DIR honoured). */
@@ -136,7 +136,7 @@ export const addFeedback = (words: string, givenOn: string | undefined, id: stri
 export const closeFeedback = (id: string, kind: FeedbackTargetKind, target: string, evidence: string): { readonly item: FeedbackItem; readonly changed: boolean } =>
     onFeedback((db) => {
         const item = find(db, id)
-        if (item === undefined) throw new Refusal("FEEDBACK_UNKNOWN", `no feedback ${id}; starci feedback list names them`)
+        if (item === undefined) throw new Refusal("FEEDBACK_UNKNOWN", `no feedback ${id}; starci ticket list --kind feedback --status all names them`)
         if (item.status === "closed") {
             if (item.targetKind === kind && item.target === target) return { item, changed: false }
             throw new Refusal("FEEDBACK_ALREADY_CLOSED", `${id} is closed on ${String(item.targetKind)} ${String(item.target)}`)
@@ -147,7 +147,7 @@ export const closeFeedback = (id: string, kind: FeedbackTargetKind, target: stri
         return { item: closed, changed: true }
     })
 
-/** The open items and, of them, those older than the liveness bound: what `feedback check` and `supervisor tick` report. */
+/** The open items and, of them, those older than the liveness bound: what `ticket list --kind feedback --status overdue` and `supervisor tick` report. */
 export const openFeedback = (rules: FeedbackRules, today: string = dayOf(now())): { readonly open: readonly FeedbackItem[]; readonly overdue: readonly FeedbackItem[] } => {
     const open = listFeedback().filter((item) => item.status === "open")
     return { open, overdue: open.filter((item) => daysBetween(item.givenOn, today) > rules.openMaxDays) }

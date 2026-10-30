@@ -92,18 +92,31 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   Its first start (`urgent-first-start`, owner 2026-10-29: "Thêm first-start"): a self-hosted database the release itself starts
   has nothing to back up and is reachable only inside the stack, so `stack deploy --urgent --first-start --db-service <service>`
   replaces the backup and test decrypt by a proof that the database is empty (no migration history, no table in public) and runs
-  migrate preview then execute (db/bootstrap.sql first) inside the database's own container, between the stack deploy and
-  converge; the record, the rollback target, the readiness verify and the automatic rollback hold, and a database that is not
+  migrate preview then execute (db/bootstrap.sql first) inside the database's own container. The app services never start
+  against the empty schema (their healthchecks fail and update_config rolls them back): the stack is first deployed with every
+  service but the database at 0 replicas (a global-mode service is held off every node by an unsatisfiable placement constraint),
+  then the database is waited for, proved empty and migrated, then the real stack is deployed and converged; the record, the rollback target, the readiness verify and the automatic rollback hold, and a database that is not
   empty is refused (`STACK_FIRST_START_NOT_EMPTY`) for the plain floor.
   Its checks are what can break production (`urgent-typecheck-build`, owner 2026-10-30, chosen over keeping the checks and over
   dropping them all; asked for in nivo-lite's words "build local bypass ci, thao tác thẳng với vps"): typecheck and the build
   (the release gates `typecheck`, `build`, `build-be`, `build-fe` the app declares); app check, lint and the tests wait for the
   back-fill, so `--lint-baseline` (`urgent-lint-baseline`, 2026-10-29) is retired and refused. And it is one command:
-  `starci app stack deploy --env <env> --urgent --reason "<text>" --execute` with no `--image` and no `--source-sha` releases HEAD
+  `starci app stack deploy --env <env> --urgent --reason "<text>" --execute` with no `--image` and no `--sha` releases HEAD
   (unless it already has a pushed urgent record), builds and pushes its images on the operator's machine before the deploy's
   transport reaches the server, and deploys their digests under the unchanged floor (`packages/hfs/stack/urgent-release.mjs`). A
   tag pushed by hand carries no record: the one command adopts a tag already on HEAD and writes the record only after the checks
   pass; a record is never written by hand.
+- **One canonical CLI (`cli-canonical-2026-10-30`).** Both layers move to one flag dictionary and one command tree,
+  [contexts/harness/cli-canonical.md](cli-canonical.md): `--execute` is the one "do it for real" flag and every effect, a
+  generator's write included (`app sync`, `contexts anatomy`, `app codemod`, `app upgrade`), is dry by default with drift
+  exiting 1; `--json`, `--timeout <s>`, `--sha`, `--env`, `--db-url-env`, `--cwd`, `--out`, `--reason` and `--status` are the
+  one spelling of their meaning; `app secret` takes `--env`; `feedback` folds into `ticket --kind feedback`; `ci secret set`,
+  `ci var set` and `secret recipients --add/--remove` are dry until `--execute`; the test world is `app world up|down|status`;
+  one parser refuses a flag an action does not take and help is generated from the parser tables. An old spelling is
+  removed outright and fails as any unknown verb or flag does: no alias, no notice, no refusal table (CONTRIB-15), and
+  every call site moves in the same change. Owner, 2026-10-30: "Duyệt cả 6" (the six decisions of the audit), then
+  "Làm theo lane"; the sixth decision (a refused minor for each old spelling) overruled the same day: "đọc contributing là
+  cấm tuyệt đối legacy r mờ".
 - **App check and lint pass under 20 findings (`gate-threshold-20`).** `starci app check` and `starci app lint` exit green while
   fewer than 20 error findings remain and none is a hard blocker: a plaintext secret, a failed boot proof or a migration finding
   blocks at any count (`packages/hfs/runtime/scripts/hfs/gate-threshold.mjs`). Every finding is still printed and kept in the
@@ -200,7 +213,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   --local`, `cli/src/core/deps/`), so finished code serves both apps before any release. Publishing to npm is separate and
   automatic: every push to main publishes, once its own CI jobs are green, each package and CLI version not on npm yet, and refuses a
   package changed under a version already there (`RELEASE_VERSION_NOT_BUMPED`, `cli/src/core/release/publish.ts`;
-  [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20). A workstation `release publish --publish` is Debug's fallback. Only the
+  [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20). A workstation `release publish --execute` is Debug's fallback. Only the
   edited package is bumped and re-pinned ([contexts/authority/packages.md](../authority/packages.md)).
 - **Open source under MIT.** The harness and every package it publishes are MIT, copyright starci183
   ([LICENSE](../../LICENSE)); the CLI ships on npm as `starci-harness`, published by CI.

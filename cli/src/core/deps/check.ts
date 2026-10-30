@@ -11,11 +11,11 @@ export const depsCheckVerb = defineVerb({
     roles: EVERYONE,
     schema: "starci/deps-check@1",
     flags: {
-        revision: { kind: "string", summary: "judge the package.json files committed at this revision (default HEAD)" },
+        sha: { kind: "string", summary: "judge the package.json files committed at this commit (default HEAD)" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
-        const judged = await judgePush(root, flags.revision ?? "HEAD")
+        const judged = await judgePush(root, flags.sha ?? "HEAD")
         const message = [
             ...judged.pins.map((pin) => `published ${pin.name}@${pin.spec} (${pin.file} ${pin.field})`),
             ...judged.local.map((copy) => `local     ${copy.name} ${copy.version} in ${copy.dir}: equal to the published tarball`),

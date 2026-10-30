@@ -42,7 +42,7 @@ export const providerReportVerb = defineVerb({
         quota: { kind: "string", summary: "instead of an outcome: the percent of the pool's quota window used" },
         pool: { kind: "string", summary: "the pool it concerns (default: every pool of the provider; a quota reading needs one when it has several)" },
         "resets-at": { kind: "string", summary: "when the quota window resets (ISO time), for a quota outcome or reading" },
-        detail: { kind: "string", summary: "the provider's own words (the typed error)" },
+        reason: { kind: "string", summary: "the provider's own words (the typed error)" },
     },
     run: (_context, flags): Promise<VerbResult<ReportData>> => {
         if ((flags.outcome === undefined) === (flags.quota === undefined)) throw new Refusal("CLI_USAGE", "give exactly one of --outcome or --quota", EXIT_USAGE)
@@ -59,7 +59,7 @@ export const providerReportVerb = defineVerb({
             const resetNote = reading.resetsAt === null ? "" : `, resets ${reading.resetsAt}`
             return Promise.resolve({ data, message: `pool ${pool}: quota ${String(reading.usedPercent)}%${resetNote}` })
         }
-        const recorded = recordOutcome(flags.provider, outcomeOf(flags.outcome ?? "", flags.pool, flags.detail, resetsAt))
+        const recorded = recordOutcome(flags.provider, outcomeOf(flags.outcome ?? "", flags.pool, flags.reason, resetsAt))
         const untilNote = recorded.after.open ? ` until ${recorded.after.openUntil ?? "?"}` : ""
         const lines = [
             `provider ${flags.provider}: ${recorded.before.status} -> ${recorded.after.status}${untilNote}`,

@@ -214,9 +214,34 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Primitives (27).** Avatar, Badge, Button, CloseButton, Divider, GrammarRoot, Heading, Icon,
-IconButton, IconTile, Image, IncludedMark, Kbd, Label, LeadingNumber, Link, Meter, PlainPressable,
+**Primitives (28).** Avatar, Badge, Button, CloseButton, Divider, GrammarRoot, Heading, Icon,
+IconButton, IconTile, Image, IncludedMark, Kbd, Label, LeadingNumber, Link, Mascot, Meter, PlainPressable,
 Progress, ProgressCircle, RankArtwork, RelativeTime, Skeleton, Spinner, StateMark, Text, TextAction.
+
+`Mascot` renders generated character art at one size scale: `size` `sm` (96px), `md` (160px, the default) or `lg`
+(240px) square, the Common tokens `--grammar-mascot-sm|md|lg`, or `hero`, which fills its host's height up to
+`--grammar-mascot-hero-max` (30rem) for a split screen such as a sign-in page. The art is always contained on a
+transparent ground with no plate. Below 48rem a square step drops one step (lg to md, md to sm); a hero is absent
+below 64rem unless `visibility="always"` keeps it, as the lg box. It is decorative by default (`alt=""` hides it from
+assistive technology; a non-empty `alt` names it) and takes the asset-slot props of `Image` and `MediaFrame`
+(`assetSlot`, `assetSha256`, `assetPrompt`); the grammar lint requires `assetSlot`
+(`starci-grammar/mascot-asset-slot-required`) and refuses generated art under `/images/` outside `Mascot` or
+`MediaFrame` (`starci-grammar/generated-art-in-mascot-or-media-frame`).
+
+```tsx
+<Mascot src="/images/mascot/welcome.webp" size="lg" assetSlot="onboarding.welcome" assetSha256={sha} />
+```
+
+A mascot also reaches the page through two slots. `SurfaceCard` `treatment="soft"` (the family's `accentSoft` tint
+under the default foreground) and `treatment="ink"` (the brand ink band) take decorative `artwork`; each painted
+treatment rebinds the surface pair on its ground, so a Stepper, Timeline or Badge inside keeps its contrast.
+`EmptyNotice` takes `artwork` (`src`, `alt`, a required `assetSlot`, `assetSha256`, `assetPrompt`) in place of its
+glyph and draws it as the `Mascot` at `md`, the mark of a first-run empty state.
+
+```tsx
+<SurfaceCard label="Welcome" treatment="soft" artwork={<Mascot src={src} assetSlot="onboarding.welcome" />}>…</SurfaceCard>
+<EmptyNotice message="Your workspace is ready." artwork={{ src, assetSlot: "onboarding.empty" }} actionLabel="Add a channel" onAction={add} />
+```
 
 **Forms (26).** ButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
 DateRangePicker, Field, Fieldset, FileDropzone, Form, FormGrid, Input, NumberField, OtpInput,
@@ -527,9 +552,9 @@ the `file:` apps link this directory, the brand check reads the exported CSS, an
 probe executes the built modules. A merge that changes `src/` does not change `dist/`, so a checkout
 can hold an old build that still looks valid.
 
-**Build stamp.** `npm run build` ends with `scripts/build-stamp.mjs`, which writes
+**Build stamp.** `npm run build` ends with `scripts/build-stamp.mts`, which writes
 `dist/.build-stamp.json`: the package version, a digest of the source (everything under `src/`
-except stories, test helpers, specs and tests, plus `tsconfig.build.json`, `scripts/copy-css.mjs`
+except stories, test helpers, specs and tests, plus `tsconfig.build.json`, `scripts/copy-css.mts`
 and the `exports` and `files` fields of `package.json`), a digest of the built files, and the build
 time. The stamp ships in the tarball.
 
@@ -597,7 +622,7 @@ A minor release. Common grows from 42 to 95 renderers, and Offset Pop reaches pa
   mechanisms and inherits the rest. The package boundary checks the per-family dist modules,
   checks that no family imports another, and checks that the component CSS is in `dist`.
 - **Core.** Subnav's menu toggle meets a 44px touch floor on coarse pointers and narrow viewports.
-- **Build.** `scripts/copy-css.mjs` copies every `*.css` file in each entry directory.
+- **Build.** `scripts/copy-css.mts` copies every `*.css` file in each entry directory.
   `@internationalized/date` is a dev dependency, used for date values in specs and stories.
 - **Storybook.** The toolbar switches the family (Common, Core, Heritage, Offset Pop) and the
   theme (light, dark, system). There are stories for all 95 renderers and three page recipes per

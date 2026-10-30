@@ -6,11 +6,12 @@ import { Refusal } from "../shared/errors.js"
 import { evidenceTail } from "../shared/output.js"
 import { VERIFY_INFRA } from "./clean-verify.js"
 import { inTransaction } from "./ledger.js"
-import { loadTypeScript } from "./shapes-parse.js"
 import { hostAgeIdentity } from "./secret-env.js"
 import { recordEvent, setStatus } from "./tasks.js"
 import type { TaskStatus } from "./tasks.js"
 import { openTicket } from "./tickets.js"
+import { loadTypeScript } from "./typescript.js"
+import type { TypeScript } from "./typescript.js"
 import { projectOf } from "./work.js"
 
 /**
@@ -47,9 +48,6 @@ const CUSTODY_MODULE = "cli/src/harness/custody.ts"
 
 /** The environment a test world boots from (`@starci/test-world`'s default stack, `.starcistacks/dev`), whose custody a live suite reads first. */
 export const TEST_ENVIRONMENT = "dev"
-
-/** The TypeScript compiler module, loaded at run time from the app or the CLI's own install. */
-type TypeScript = typeof ts
 
 /** The function a live spec's world is declared by; only its option objects' `keys` are custody names. */
 const SANDBOX_CALL = "useSandbox"
@@ -185,7 +183,7 @@ export interface DeclaredKeys {
 
 /**
  * The key names the live specs' worlds declare in their `useSandbox({ keys })` options, read with the TypeScript compiler (the
- * app's own, else the CLI's, harness/shapes-parse.ts `loadTypeScript`): a literal array, a `const` of the spec or of a relative
+ * app's own, else the CLI's, harness/typescript.ts `loadTypeScript`): a literal array, a `const` of the spec or of a relative
  * module it imports it from (with `as const`, a type annotation or `ReadonlyArray` alike), a spread of one. A call whose keys
  * reduce to anything but string literals is listed unresolved by `spec:line` (relative to `root`), never guessed at.
  */
@@ -408,6 +406,6 @@ export const blockOnCustody = (db: DatabaseSync, taskId: string, from: TaskStatu
     })
     const next = harness
         ? "once the harness reads the declaration (its harness-defect ticket), retry it"
-        : "seal the key (starci app secret set <env> <member> <KEY> --from-host <KEY>), then retry it"
+        : "seal the key (starci app secret set --env <env> <member> <KEY> --from-host <KEY>), then retry it"
     return new Refusal(error.code, `${error.message}\ntask ${taskId} is awaiting_owner, blocked on custody: no try is spent and its work stays where it is; ${next}`)
 }

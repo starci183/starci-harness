@@ -8,6 +8,7 @@
 #   absorbs   ids of earlier rulings this one replaced; a citation of an absorbed id resolves to this entry
 #   pins      digests a gate compares against; only a ruling records a pin
 #   covers    the gaps a ruling holds pending in hfs/rules.yaml's `pending` list (a slot rule code or a rule id); only a ruling lists them
+#   words     optional: the owner's own words as given, in their language, when the ruling quotes them
 # A new ruling replaces the entry it amends (replace, never append). Decisions taken by an agent and not yet
 # confirmed live in decisions/open-*.md; when the owner confirms one, it moves here and its row there is deleted.
 # Harness, release and process rulings (supervisor, release waves, push policy, loosening, draw loop) are not
@@ -286,6 +287,24 @@ rulings:
     status: live
     ruling: "A promotion lives only on the overview's or landing's signature moment, never as a strip on a working page."
     owner: "contexts/ui/composition.md DISCIPLINE-3"
+  - id: first-run-wizard-mascot
+    date: '2026-10-30'
+    status: live
+    words: "Ngoại lệ first-run wizard"
+    ruling: "The signature moment stays off errors, forms, tables and loading states, with one exception: the steps of an app's first-run wizard (onboarding) may carry the mascot, small and never covering the form's fields or actions. Ordinary forms keep the ban."
+    owner: "contexts/ui/composition.md DISCIPLINE-3; contexts/ui/components/mascot.md"
+  - id: surfacecard-soft-treatment
+    date: '2026-10-30'
+    status: live
+    words: "Thêm treatment `soft`"
+    ruling: "SurfaceCard has a `soft` treatment: the brand's light tint as ground (the family's accentSoft) with the default dark text, keeping the artwork slot; its tokens come from the brand layer, never app paint. Every SurfaceCard treatment rebinds the whole surface pair on its ground, so a child's text (a Stepper's step number included) contrasts with what it stands on."
+    owner: "@starci/grammar src/core/branch/SurfaceCard, src/common/styles.css; contexts/grammars/contract.yaml roles.card; contexts/ui/components/card.md card.choose.treatment"
+  - id: empty-notice-artwork
+    date: '2026-10-30'
+    status: live
+    words: "EmptyNotice có slot artwork"
+    ruling: "EmptyNotice has an artwork slot: generated character art drawn as the Mascot at md and tied to its asset slot, and a first-run empty state uses EmptyNotice with that artwork."
+    owner: "@starci/grammar src/core/composite/EmptyNotice; contexts/ui/components/empty-state.md empty-state.choose.cause"
   - id: STATE-8/loading-keeps-anatomy
     date: '2026-10-11'
     status: live
@@ -407,7 +426,7 @@ rulings:
   - id: lite-db-image-in-stacks
     date: '2026-10-29'
     status: live
-    ruling: "Owner, verbatim, on where the db image's Dockerfile lives: \"phải nằm trong starcistacks nhỉ?\" (it belongs in starcistacks). The managed Dockerfile of a lite app's db image is .starcistacks/images/db/Dockerfile, built with its folder as the context by the stack build, the images and stack-deploy workflows, npm run db:image, the drift scratch database and the squash replay; db/ keeps only schema and data (migrations, bootstrap, seed), and starci app sync --write removes a leftover db/Dockerfile."
+    ruling: "Owner, verbatim, on where the db image's Dockerfile lives: \"phải nằm trong starcistacks nhỉ?\" (it belongs in starcistacks). The managed Dockerfile of a lite app's db image is .starcistacks/images/db/Dockerfile, built with its folder as the context by the stack build, the images and stack-deploy workflows, npm run db:image, the drift scratch database and the squash replay; db/ keeps only schema and data (migrations, bootstrap, seed), and starci app sync --execute removes a leftover db/Dockerfile."
     owner: "contexts/hfs/slots.yaml (app.db.image, app.starcistacks lite allows); @starci/hfs db/image.mjs, sync (retiredFiles), templates/app/db-image, templates/app/gitignore-lite; contexts/project/lite.md"
   - id: lite-reactors-as-full
     date: '2026-10-30'
@@ -587,7 +606,7 @@ rulings:
   - id: app-secrets-one-standard
     date: '2026-10-29'
     status: live
-    ruling: "App secrets have one standard, committed to git encrypted. A member holds the keys of one provider or service, `.starcistacks/<env>/secrets/<provider>.enc.yaml`, a YAML document whose multi-line values round-trip byte for byte; `starci app secret set <env> <provider> <KEY>...` prompts masked for each key (or takes --from-file) and writes the member once. Each key is declared in that environment's stack `secrets:` with its member, and materialize or sync writes one file per key that the app reads as `<KEY>_FILE`; the decrypted document is never written inside a repository. The owner's one age identity is SOPS_AGE_KEY in the harness secret.env, found by every secret verb by itself; whoever holds it can decrypt all history, so it never leaves there and the repositories stay private. Each environment has its own .sops.yaml rule: dev encrypts to the owner key, production to the production server key and the owner key both (Debug's refinement of two recipients, so the owner can still set and rotate production from his machine); the server's own identity is made on the server by `starci app secret server-key <env>` at the key file a decrypt on the server reads, only its public recipient leaving it, recorded as `deploy.remote.serverRecipient` and rotated with --rotate. The owner key is the primary way back; the owner's chosen second path (owner 2026-10-29: \"GitHub secret anyway\") is a copy streamed from the server into the secret SOPS_AGE_KEY of the GitHub Environment <env>, refused unless that Environment is protected (required reviewers or main only), and written back by the managed stack-key-restore workflow only when its public key is the recorded server recipient. That copy is also the key CI deploys the environment with: every job that opens members of <env> is bound to that Environment, whose SOPS_AGE_KEY overrides a repository secret of the name, so the owner key never needs to be in GitHub and a repository-level SOPS_AGE_KEY, which server-key warns about, is deleted once every environment holds its server key. Legacy `*.enc` members stay readable until `migrate` moves them; `audit` names members that mix providers (unless the stack declares every key of the member in it, the owner's group), keys undeclared in the stack, legacy members and a rule without the recorded server recipient beside the owner key; `split` divides a member that mixes providers, by first word or the owner's --group, and `migrate` or `split` merge into an existing member only with --into-existing, refusing a key held with another value."
+    ruling: "App secrets have one standard, committed to git encrypted. A member holds the keys of one provider or service, `.starcistacks/<env>/secrets/<provider>.enc.yaml`, a YAML document whose multi-line values round-trip byte for byte; `starci app secret set --env <env> <provider> <KEY>...` prompts masked for each key (or takes --from-file) and writes the member once. Each key is declared in that environment's stack `secrets:` with its member, and materialize or sync writes one file per key that the app reads as `<KEY>_FILE`; the decrypted document is never written inside a repository. The owner's one age identity is SOPS_AGE_KEY in the harness secret.env, found by every secret verb by itself; whoever holds it can decrypt all history, so it never leaves there and the repositories stay private. Each environment has its own .sops.yaml rule: dev encrypts to the owner key, production to the production server key and the owner key both (Debug's refinement of two recipients, so the owner can still set and rotate production from his machine); the server's own identity is made on the server by `starci app secret server-key --env <env>` at the key file a decrypt on the server reads, only its public recipient leaving it, recorded as `deploy.remote.serverRecipient` and rotated with --rotate. The owner key is the primary way back; the owner's chosen second path (owner 2026-10-29: \"GitHub secret anyway\") is a copy streamed from the server into the secret SOPS_AGE_KEY of the GitHub Environment <env>, refused unless that Environment is protected (required reviewers or main only), and written back by the managed stack-key-restore workflow only when its public key is the recorded server recipient. That copy is also the key CI deploys the environment with: every job that opens members of <env> is bound to that Environment, whose SOPS_AGE_KEY overrides a repository secret of the name, so the owner key never needs to be in GitHub and a repository-level SOPS_AGE_KEY, which server-key warns about, is deleted once every environment holds its server key. Legacy `*.enc` members stay readable until `migrate` moves them; `audit` names members that mix providers (unless the stack declares every key of the member in it, the owner's group), keys undeclared in the stack, legacy members and a rule without the recorded server recipient beside the owner key; `split` divides a member that mixes providers, by first word or the owner's --group, and `migrate` or `split` merge into an existing member only with --into-existing, refusing a key held with another value."
     owner: "contexts/project/stacks.md PROJECT-STACKS-5"
   - id: rate-limit-redirect-outcome
     date: '2026-10-29'
@@ -604,6 +623,11 @@ rulings:
     status: live
     ruling: "A slot may declare which of its own files carry logic (`logic`, file names relative to the slot path, each one it requires or allows, on a coverage-required unit-beside slot). Those files are measured at 100 per file like any logic role, and the `<file>.spec.ts` beside each is a legitimate unit spec, held to the unit-spec form; no new role name is added to ruleParams.be.logicRoles. be.integrations.passport declares passport.tokens.ts, passport.password.ts and passport.cookie.ts."
     owner: "contexts/hfs/slots.yaml be.integrations.passport, contexts/hfs/README.md Slot fields, contexts/code/be/test.md BE-TEST-1 and BE-TEST-13 (R47, R204, R273)"
+  - id: entity-base
+    date: '2026-10-30'
+    status: live
+    ruling: "Entities do not repeat the columns every table shares (owner 2026-10-30: \"trò đọc source starci academy backend gốc có extend AbstractEntity thì cũng update hfs lun nhé tránh lặp code trên các entity\"). platform/database carries the entity bases in abstract.entity.ts: AbstractEntity maps created_at and updated_at (timestamptz, set by the database: insert and update false), UuidAbstractEntity extends it with the generated uuid id. A table whose migration has those columns, with those names and types and set by the database, maps them by extending the base, imported from @modules/platform/database; a table without them extends nothing. The bases carry no GraphQL, validator or transformer decorator and map no table themselves; they are written by the first table that extends them, never by the starter."
+    owner: "contexts/code/be/persistence.md BE-PERSISTENCE-3; @starci/hfs templates/be/skeleton platform/database abstract.entity.ts, templates/be/table/entity.ts.tpl"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.

@@ -27,7 +27,7 @@ starci workflow step <id>
 ```
 
 - **Inline**: call it after each `task result`; it settles that task and prints the next one. No timer.
-- **A terminal you watch**: `starci workflow run <id> --interval 60` repeats the step in the foreground, one line per
+- **A terminal you watch**: `starci workflow step <id> --loop --interval 60` repeats the step in the foreground, one line per
   change, and exits 0 when done, 1 when blocked; it honours pause and stop.
 - **Orca**: the Kernel's loop is `starci kernel next <id>` (it steps, fences and waits for you) and one
   `starci kernel submit <file>` per decision, as [its brief](../../../ops/coordinators/kernel.md) says; no timer, no

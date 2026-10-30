@@ -725,7 +725,7 @@ const exploreLine = (explore: ExploreDecision | null): string[] =>
         ? []
         : [`explore: roll ${fixed(explore.roll * 100)} vs share ${String(explore.sharePercent)}%, explore picks ${String(explore.recentExplore)} of the last ${String(explore.recent)} -> ${explore.exploring ? "explore" : "exploit"}`]
 
-/** The decision path as text lines, for route explain and dry runs. */
+/** The decision path as text lines, for route show and dry runs. */
 export const describeRoute = (answer: RoutePick | RouteRefusal): string[] => {
     const record = answer.record
     const escalated = record.escalated ? " (escalated from " + record.baseTier + " after " + String(record.reds) + " contract-red)" : ""

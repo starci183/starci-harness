@@ -9,26 +9,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { skillRoot } from '../../engine/runtime-root.mjs';
 import { parseYaml } from '../../engine/yaml.mjs';
-
 const SOURCE_PHRASES_FILE = 'modules/goal/source-phrases.yaml';
-
 const cache = new Map();
-
 /** The lexicon's `phrases` map ({<group>: {<list>: string[]}}), cached per root. */
 function sourcePhrases(root = skillRoot) {
-  if (!cache.has(root)) {
-    let doc = null;
-    try { doc = parseYaml(fs.readFileSync(path.join(root, ...SOURCE_PHRASES_FILE.split('/')), 'utf8')); } catch { doc = null; }
-    cache.set(root, doc?.phrases && typeof doc.phrases === 'object' ? doc.phrases : {});
-  }
-  return cache.get(root);
+    if (!cache.has(root)) {
+        let doc = null;
+        try {
+            doc = parseYaml(fs.readFileSync(path.join(root, ...SOURCE_PHRASES_FILE.split('/')), 'utf8'));
+        }
+        catch {
+            doc = null;
+        }
+        cache.set(root, doc?.phrases && typeof doc.phrases === 'object' ? doc.phrases : {});
+    }
+    return cache.get(root);
 }
-
 /** The phrase list `dotKey` (`<group>.<list>`) of `root`, [] when absent. */
 export function phrasesOf(dotKey, root = skillRoot) {
-  const value = dotKey.split('.').reduce((v, k) => (v && typeof v === 'object' ? v[k] : undefined), sourcePhrases(root));
-  return (Array.isArray(value) ? value : []).map(String);
+    const value = dotKey.split('.').reduce((v, k) => (v && typeof v === 'object' ? v[k] : undefined), sourcePhrases(root));
+    return (Array.isArray(value) ? value : []).map(String);
 }
-
 /** The regex alternation of `dotKey` ('a|b|c'); '(?!)' - a never-match - when the list is empty. */
 export const altOf = (dotKey, root = skillRoot) => phrasesOf(dotKey, root).join('|') || '(?!)';

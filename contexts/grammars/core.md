@@ -32,7 +32,7 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
 
 | Role | core |
 |---|---|
-| Card | White material; top depth shadow without border, nested depth border without shadow (ruling `surfacecard-always-painted`); surface radius; a card floating in content carries its label outside the material, above it; a docked panel carries its title inside as its header (ruling `card-label-placement-per-grammar`); a nested surface is unraised, border without shadow; dividers run full-bleed |
+| Card | White material; top depth shadow without border, nested depth border without shadow (ruling `surfacecard-always-painted`); surface radius; a card floating in content carries its label outside the material, above it; a docked panel carries its title inside as its header (ruling `card-label-placement-per-grammar`); a nested surface is unraised, border without shadow; dividers run full-bleed; `soft` is the `accentSoft` lavender under the default foreground, `ink` the violet accent with white or black text read from its lightness |
 | Button | Vendor variants through the tokens: commit is the violet fill with white text, alternative the neutral fill with accent text; pill corner; vendor press |
 | ButtonGroup | Vendor arrangement unchanged |
 | Tabs | Underline: accent indicator, current label in `accentText`. Pill: the vendor's soft track and white selected segment with the surface shadow |
@@ -45,8 +45,9 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
 | Menu | Selection mark at the start (submenu mark at the end), 20px leading glyphs, separators between sections (Common arrangement) |
 | List | Vendor rows; selection as a fill without a check where the list is navigation-like; unread rows at the Common unread weight |
 | Alert | The vendor Alert: white surface, tone only on the indicator and title (ruling `alert-white-surface`); toasts the same |
-| EmptyState | Common's notice on the region's surface |
+| EmptyState | Common's notice on the region's surface; the first-run artwork is Common's `Mascot` at `md` |
 | Avatar | Common initials coloured by seed; members ringed in the surface colour; the agent badge hidden below the `sm` step |
+| Mascot | Common's scale and transparent ground, inherited unchanged |
 | Shell | Common shell painted by `surface` and `separator`; the bar is a solid surface band with a full-width separator |
 | PageHeader | The same band as the bar: `surface` fill and a full-width 1px `separator` hairline at its bottom edge; page tabs stand on the hairline with the accent underline over it |
 | Page | Common's frame: the core band, the body in the measure and gutter a region step below it |

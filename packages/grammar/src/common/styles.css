@@ -14,6 +14,11 @@
         --grammar-section-gap: 1rem;
         --grammar-region-gap: 1.5rem;
         --grammar-page-inset: clamp(1rem, 3vw, 2rem);
+        /* The Mascot scale: square boxes sm 96px, md 160px, lg 240px; the hero fills its host's height up to the cap. */
+        --grammar-mascot-sm: 6rem;
+        --grammar-mascot-md: 10rem;
+        --grammar-mascot-lg: 15rem;
+        --grammar-mascot-hero-max: 30rem;
         min-width: 0;
     }
 
@@ -1032,12 +1037,40 @@
     }
 
     /*
-     * --- Ink band (0.6.0): `SurfaceCard treatment="ink"`, the page's one signature overview moment. ---
+     * --- Painted treatments: `SurfaceCard treatment="ink"` and `treatment="soft"`. ---
+     *
+     * A treatment repaints the card's ground from the family's brand tokens and rebinds the whole surface pair on it:
+     * `--surface` is the ground, and the foreground, muted, separator and border tokens read on it. A grammar child that
+     * paints with the pair (a Stepper or Timeline marker's circle, an avatar ring, a status dot's light stop) therefore
+     * follows the ground, and its text stays AA on it. Both carry the artwork slot; the zone's geometry is shared.
+     */
+    .starci-core-surface:is([data-grammar-surface-treatment="ink"], [data-grammar-surface-treatment="soft"]) {
+        container: starci-core-painted-band / inline-size;
+        isolation: isolate;
+        /* The vendor card content's own row gap would sit between the in-flow art zone and the content. */
+        gap: 0 !important;
+        background: var(--surface);
+        color: var(--surface-foreground);
+    }
+
+    /*
+     * Soft: the brand's light tint as ground (`--accent-soft`, the family's `accentSoft`, the tint both the accent as
+     * text and `muted` stay legible on) under the default foreground. It is not a slab: it may carry copy and controls,
+     * and every other token keeps its value, so a child's pair stays the one it has on the family's own surface.
+     */
+    .starci-core-surface[data-grammar-surface-treatment="soft"] {
+        --surface: var(--accent-soft, Canvas);
+        --surface-foreground: var(--foreground, CanvasText);
+        --starci-core-foreground: var(--foreground, CanvasText);
+    }
+
+    /*
+     * Ink (0.6.0): the page's one signature overview moment.
      *
      * The ground is the family's brand ink: `--accent` (Core; a product whose accent is its ink, e.g.
      * a deep navy #040d1c, gets that exact ink). Offset Pop re-binds the ground and its inks to its own ink and
      * canvas. Everything painted inside re-reads the band's own tokens, so grammar children (SectionHeader,
-     * Text, IconTile, Badge, DescriptionList, Divider) keep their anatomy and stay AA on any accent:
+     * Text, IconTile, Badge, DescriptionList, Divider, Stepper) keep their anatomy and stay AA on any accent:
      *   - foreground: white on a dark ink (lightness below 0.62), black on a light one - read from the ink
      *     itself, because a family's accent-foreground is only promised for button-size text;
      *   - muted: on a dark ink the ink lifted to at least 80% lightness at a quarter of its chroma (about
@@ -1057,6 +1090,7 @@
         --grammar-ink-band-plate: oklch(from var(--grammar-ink-band) calc(l + (clamp(0, calc((0.62 - l) * 1000), 1) * 2 - 1) * 0.08) c h);
         --grammar-ink-band-orbit: oklch(from var(--grammar-ink-band) calc(l + (clamp(0, calc((0.62 - l) * 1000), 1) * 2 - 1) * 0.16) calc(c * 0.5) h);
 
+        --surface: var(--grammar-ink-band);
         --foreground: var(--grammar-ink-band-foreground);
         --surface-foreground: var(--grammar-ink-band-foreground);
         --starci-core-foreground: var(--grammar-ink-band-foreground);
@@ -1073,13 +1107,6 @@
         --danger-soft-foreground: color-mix(in oklab, var(--danger, CanvasText) 8%, var(--grammar-ink-band-foreground));
         --accent-soft-foreground: var(--grammar-ink-band-foreground);
         --accent-soft: var(--grammar-ink-band-plate);
-
-        container: starci-core-ink-band / inline-size;
-        isolation: isolate;
-        /* The vendor card content's own row gap would sit between the in-flow art zone and the content. */
-        gap: 0 !important;
-        background: var(--grammar-ink-band);
-        color: var(--grammar-ink-band-foreground);
     }
 
     /* The eyebrow is accent text elsewhere; on the accent ground it takes the band's muted ink. */
@@ -1088,7 +1115,7 @@
     }
 
     /* Content paints above the decorative zone; the zone never takes a pointer or a focus. */
-    .starci-core-surface[data-grammar-surface-treatment="ink"] > .starci-core-surface-content {
+    .starci-core-surface:is([data-grammar-surface-treatment="ink"], [data-grammar-surface-treatment="soft"]) > .starci-core-surface-content {
         position: relative;
         z-index: 1;
     }
@@ -1118,7 +1145,7 @@
         height: 100%;
     }
 
-    /* The slot owns no ground: the art sits straight on the ink (no placeholder plate, no frame, no corner). */
+    /* The slot owns no ground: the art sits straight on the treatment's ground (no placeholder plate, no frame, no corner). */
     .starci-core-surface-artwork > :is(.starci-core-image, .starci-core-media-frame),
     .starci-core-surface-artwork .starci-core-media-viewport {
         border: 0;
@@ -1150,7 +1177,7 @@
         vector-effect: non-scaling-stroke;
     }
 
-    @container starci-core-ink-band (min-width: 48rem) {
+    @container starci-core-painted-band (min-width: 48rem) {
         .starci-core-surface-artwork {
             position: absolute;
             inset-block-start: -2.75rem;
@@ -1175,6 +1202,12 @@
             --grammar-ink-band-muted: CanvasText;
             --grammar-ink-band-separator: CanvasText;
             --grammar-ink-band-plate: Canvas;
+            border: 1px solid CanvasText;
+        }
+
+        .starci-core-surface[data-grammar-surface-treatment="soft"] {
+            --surface: Canvas;
+            --surface-foreground: CanvasText;
             border: 1px solid CanvasText;
         }
 

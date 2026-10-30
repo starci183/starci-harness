@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, fixtureHfs, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, fixtureHfs, typedTester } from "../fixtures/typed/tester.ts"
 import { httpNeedsTimeout, jsonParseNeedsGuard, noHandRolledRetry, rules } from "./resilience.ts"
 
 const tester = typedTester()

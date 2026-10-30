@@ -1,0 +1,192 @@
+// Translators of R280: which catalog namespace a `t(...)` call reads, followed through destructuring and props.
+import { nameText } from '../../lib/ts-ast.mjs';
+import { unwrapCatalogExpression as unwrap } from '../../lib/ts-analysis.mjs';
+import { callable, staticStrings } from './unused-symbol-values.mjs';
+import { receiverBinding, returnedExpressions, symbolAt, valuesOf, writesBinding } from './unused-symbol-flow.mjs';
+import type { Parsed, Ts } from './rule-types.mjs';
+
+const TRANSLATOR_NAME = /^(?:t|translate)$/u;
+
+function translationFactories(state: Parsed, source: Parsed) {
+  const { ts, checker } = state;
+  const factories = new Map(['useTranslations', 'getTranslations'].map(name => [name, {}]));
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !/^(?:next-intl(?:\/server)?|use-intl\/core)$/u.test(statement.moduleSpecifier.text)) continue;
+    const named = statement.importClause?.namedBindings;
+    if (named && ts.isNamedImports(named)) for (const element of named.elements) {
+      const name = (element.propertyName ?? element.name).text;
+      if (/^(?:useTranslations|getTranslations|createTranslator)$/u.test(name))
+        factories.set(element.name.text, { options: name === 'createTranslator', symbol: checker.getSymbolAtLocation(element.name) });
+    }
+  }
+  return factories;
+}
+
+function translatorNamespace(state: Parsed, initializer: Parsed, factories: Parsed) {
+  const { ts } = state;
+  let init = unwrap(ts, initializer);
+  if (init && ts.isAwaitExpression(init)) init = unwrap(ts, init.expression);
+  if (!init || !ts.isCallExpression(init) || !ts.isIdentifier(init.expression) || !factories.has(init.expression.text)) return null;
+  const factory = factories.get(init.expression.text);
+  if (factory.symbol && state.checker.getSymbolAtLocation(init.expression) !== factory.symbol) return null;
+  let first = init.arguments[0];
+  if (factory.options && (!first || !ts.isObjectLiteralExpression(first))) return [];
+  if (first && ts.isObjectLiteralExpression(first)) {
+    if (first.properties.some((property: Parsed) => ts.isSpreadAssignment(property) || nameText(ts, property.name, { numbers: true }) === null)) return [];
+    first = first.properties.findLast((property: Parsed) => nameText(ts, property.name, { numbers: true }) === 'namespace')?.initializer;
+  }
+  return first ? staticStrings(state, first) : [''];
+}
+
+/** `Promise.all([...])` and a plain array literal hand each element to the binding at the same index. */
+function translatorList(ts: Ts, initializer: Parsed) {
+  let list = unwrap(ts, initializer);
+  if (list && ts.isAwaitExpression(list)) list = unwrap(ts, list.expression);
+  if (list && ts.isCallExpression(list) && ts.isPropertyAccessExpression(list.expression) && list.expression.name.text === 'all') list = unwrap(ts, list.arguments[0]);
+  return list && ts.isArrayLiteralExpression(list) ? list.elements : [];
+}
+
+const isFunction = (ts: Ts, node: Parsed) => ts.isFunctionLike(node)
+  && (ts.isExpression(node) || ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node));
+
+/** A branch may forward the same key or return it unchanged; an unrelated result proves no translator. */
+function forwardedExpression(state: Parsed, expression: Parsed, parameter: Parsed): Parsed {
+  const { ts, checker } = state;
+  const node = unwrap(ts, expression);
+  if (node && ts.isIdentifier(node) && checker.getSymbolAtLocation(node) === parameter) return [];
+  if (node && ts.isConditionalExpression(node)) {
+    const choices: Parsed = [node.whenTrue, node.whenFalse].map(branch => forwardedExpression(state, branch, parameter));
+    return choices.every((choice: Parsed) => choice !== null) ? choices.flat() : null;
+  }
+  const first = node && ts.isCallExpression(node) ? unwrap(ts, node.arguments[0]) : null;
+  if (!first || !ts.isIdentifier(first) || checker.getSymbolAtLocation(first) !== parameter) return null;
+  const namespaces = receiverNamespaces(state, node.expression);
+  return namespaces.length ? namespaces : null;
+}
+
+/** A function whose result is a call on a bound translator with its own first parameter is that translator. */
+function forwardedNamespaces(state: Parsed, fn: Parsed) {
+  const { ts, checker } = state;
+  const parameter = fn.parameters[0];
+  if (!parameter || !ts.isIdentifier(parameter.name)) return [];
+  const own = checker.getSymbolAtLocation(parameter.name);
+  if (writesBinding(state, fn.body, own)) return [];
+  const choices = returnedExpressions(ts, fn).map(expression => forwardedExpression(state, expression, own));
+  return choices.every(choice => choice !== null) ? choices.flat() : [];
+}
+
+/** useCallback(fn, deps) and useMemo(() => fn, deps) are the function fn. */
+function transparentFunction(state: Parsed, expression: Parsed) {
+  const { ts } = state;
+  const node = unwrap(ts, expression);
+  if (!node || !ts.isCallExpression(node)) return node;
+  const name = leafName(ts, node.expression);
+  const inner = /^(?:useCallback|useMemo)$/u.test(name) ? unwrap(ts, node.arguments[0]) : null;
+  if (!inner) return node;
+  if (name === 'useCallback') return inner;
+  if (!isFunction(ts, inner)) return node;
+  return returnedExpressions(ts, inner).map(returned => unwrap(ts, returned)).find(candidate => isFunction(ts, candidate)) ?? node;
+}
+
+/** A hook returns such a forwarding function, bare or wrapped in useCallback or useMemo. */
+function hookNamespaces(state: Parsed, hook: Parsed) {
+  const { ts } = state;
+  return returnedExpressions(ts, hook).flatMap(expression => {
+    const inner = transparentFunction(state, expression);
+    return isFunction(ts, inner) ? forwardedNamespaces(state, inner) : [];
+  });
+}
+
+function wrapperNamespaces(state: Parsed, initializer: Parsed) {
+  const { ts } = state;
+  let init = transparentFunction(state, initializer);
+  if (init && ts.isAwaitExpression(init)) init = unwrap(ts, init.expression);
+  if (isFunction(ts, init)) return forwardedNamespaces(state, init);
+  const target = init && ts.isCallExpression(init) ? callable(state, init.expression) : null;
+  return isFunction(ts, target) ? hookNamespaces(state, target) : [];
+}
+
+function bindTranslator(state: Parsed, name: Parsed, initializer: Parsed, factories: Parsed) {
+  const { ts, checker } = state;
+  if (ts.isIdentifier(name)) {
+    const namespaces = translatorNamespace(state, initializer, factories) ?? wrapperNamespaces(state, initializer);
+    if (namespaces?.length) state.translators.set(checker.getSymbolAtLocation(name), namespaces);
+  } else if (ts.isArrayBindingPattern(name)) {
+    const elements = translatorList(ts, initializer);
+    name.elements.forEach((element: Parsed, index: number) => { if (ts.isBindingElement(element) && elements[index]) bindTranslator(state, element.name, elements[index], factories); });
+  }
+}
+
+/** Wrappers depend on translators bound in other modules, so bind until nothing new appears. */
+export function translationBindings(state: Parsed, sources: Parsed) {
+  const factories = new Map([...sources.values()].map(source => [source, translationFactories(state, source)]));
+  for (let pass = 0, size = -1; pass < 4 && size !== state.translators.size; pass++) {
+    size = state.translators.size;
+    for (const source of sources.values()) {
+      const visit = (node: Parsed) => {
+        if (state.ts.isVariableDeclaration(node) && node.initializer) bindTranslator(state, node.name, node.initializer, factories.get(source));
+        state.ts.forEachChild(node, visit);
+      };
+      visit(source);
+    }
+  }
+}
+
+/** Namespaces of the translators a receiver can be: declared here, or handed in through arguments and props. */
+function receiverNamespaces(state: Parsed, receiver: Parsed) {
+  const { ts, checker } = state;
+  if (explicitCatalogGet(ts, receiver)) return [''];
+  const resolving = state.resolvingReceivers ??= new Set();
+  if (resolving.has(receiver)) return [];
+  resolving.add(receiver);
+  try {
+    const direct = state.translators.get(checker.getSymbolAtLocation(receiver));
+    if (direct !== undefined) return direct;
+    return valuesOf(state, receiver).flatMap((leaf: Parsed) => {
+      // A translator factory called in place as an argument: f(useTranslations("admin")).
+      if (ts.isCallExpression(leaf)) return translatorNamespace(state, leaf, translationFactories(state, leaf.getSourceFile())) ?? [];
+      if (isFunction(ts, leaf)) return forwardedNamespaces(state, leaf);
+      return ts.isIdentifier(leaf) ? state.translators.get(symbolAt(state, leaf)) ?? [] : [];
+    });
+  } finally { resolving.delete(receiver); }
+}
+
+function leafName(ts: Ts, node: Parsed) {
+  if (ts.isPropertyAccessExpression(node)) return node.name.text;
+  return ts.isIdentifier(node) ? node.text : '';
+}
+
+function explicitCatalogGet(ts: Ts, callee: Parsed) {
+  if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== 'get') return false;
+  const owner = callee.expression;
+  const name = nameText(ts, ts.isPropertyAccessExpression(owner) ? owner.name : owner, { numbers: true }) ?? '';
+  return /message|catalog/iu.test(name);
+}
+
+/** A callback typed (string, ...) => string: the shape of a translator whatever its name. */
+function translatorShaped(state: Parsed, receiver: Parsed) {
+  const { checker } = state;
+  const [signature] = checker.getTypeAtLocation(receiver).getCallSignatures();
+  const first = signature?.getParameters()[0];
+  if (!first) return false;
+  const isString = (type: Parsed) => Boolean(type.flags & state.ts.TypeFlags.String);
+  return isString(checker.getTypeOfSymbolAtLocation(first, receiver)) && isString(signature.getReturnType());
+}
+
+/**
+ * Namespaces read by a call of `callee`; `null` stands for a translator handed in whose namespace cannot be followed
+ * (R106 reads such a key by its leaf), and no result means the call is no catalog read.
+ */
+export function catalogNamespace(state: Parsed, callee: Parsed) {
+  const { ts } = state;
+  let receiver = callee;
+  if (ts.isPropertyAccessExpression(callee) && /^(?:rich|raw|markup)$/u.test(callee.name.text)) receiver = callee.expression;
+  const resolved = receiverNamespaces(state, receiver);
+  if (resolved.length) return resolved;
+  const binding = receiverBinding(state, receiver);
+  // Observed unresolved producers cannot use the generic namespace fallback.
+  if (binding.handedIn && (TRANSLATOR_NAME.test(leafName(ts, receiver)) || translatorShaped(state, receiver)))
+    return binding.observed ? [] : [null];
+  if (ts.isIdentifier(callee) && TRANSLATOR_NAME.test(callee.text)) return binding.observed ? [] : [''];
+  return [];
+}

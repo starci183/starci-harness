@@ -1,5 +1,5 @@
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { noAmbientClock } from "./temporal.ts"
 
 const tester = typedTester()

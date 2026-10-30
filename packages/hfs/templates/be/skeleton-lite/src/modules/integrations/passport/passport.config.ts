@@ -19,5 +19,6 @@ export const parsePassportConfig = (env: EnvSource): PassportOptions => ({
         name: "refresh_token",
         path: "/auth/refresh",
         ttlSeconds: env.int("AUTH_REFRESH_TTL_SECONDS", 2_592_000),
+        cookieDomain: env.optionalDomain("AUTH_COOKIE_DOMAIN"),
     },
 })

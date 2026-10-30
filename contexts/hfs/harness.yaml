@@ -96,31 +96,17 @@ slots:
       - "packages/<name>/**/*.{js,mjs,cjs,jsx}"
       - "packages/<name>/*.{d.ts,d.cts}"
     except:
-      - "packages/*/{fixtures,templates,runtime}/**"
+      # spec fixtures: test data a spec reads or imports (an imported module has a hand-written .d.mts beside it)
+      - "packages/*/src/fixtures/**"
+      # app code a package renders into a product repository
+      - "packages/*/templates/**"
+      # the vendored yaml bundle
+      - "packages/*/runtime/engine/yaml.mjs"
+      # generated modules
       - "packages/**/*.generated.*"
+      # the lint bundles' runtime copies: runtime/bundle.json names each file, generated from hfs's build output or kept as its own
+      - "packages/{eslint-canon-be,eslint-canon-fe,eslint-grammar-core,eslint-grammar-offset-pop}/runtime/**"
     presence: forbidden
-    enforce: target
-    exceptions:
-      - path: packages/ai-router/
-        until: "2026-12-31"
-        owner: package TS plan
-        why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
-      - path: packages/grammar/
-        until: "2026-12-31"
-        owner: Grammar Storybook lane
-        why: five build and capture tools (capture-refs, shoot, svg-shot, scripts/) are still JavaScript
-      - path: packages/heroicons/
-        until: "2026-12-31"
-        owner: package TS plan
-        why: one spec is still .spec.mjs; it becomes a .spec.ts beside the source
-      - path: packages/hfs/
-        until: "2026-12-31"
-        owner: CLI unification lane
-        why: the starci app implementation is hand-written JavaScript moving into the one CLI
-      - path: packages/test-world/
-        until: "2026-12-31"
-        owner: package TS plan
-        why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
     holds: hand-written JavaScript or hand-written declarations in a package; a package is TypeScript in src/ built to dist/
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
 
@@ -182,9 +168,9 @@ slots:
     holds: the CI that plans the affected packages, runs the gates, those packages' specs, the harness and the app jobs, and on a push to main publishes every due version once its own jobs are green
     rule: CONTRIB-3; CONTRIB-20
   - id: github.scripts
-    path: ".github/scripts/*.mjs"
+    path: [".github/scripts/*.mts", ".github/scripts/tsconfig.json"]
     presence: optional
-    holds: scripts a CI job runs (the publish gate that picks the packages whose own jobs are green)
+    holds: scripts a CI job runs (the publish gate that picks the packages whose own jobs are green), typechecked by their own tsconfig
     rule: CONTRIB-20
   - id: github.actions
     path: ".github/actions/*/action.yml"
@@ -350,6 +336,22 @@ slots:
         why: the tsconfig package is JSON presets; it has nothing to build
     holds: a package's TypeScript source and its specs beside it, built to dist/ (ignored)
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
+  - id: packages.hfs-source
+    path:
+      - "packages/hfs/{ci,codemod,coverage,db,emit,lint,release,report,scaffold,scripts,stack,sync,upgrade}/**/*.{mts,cts}"
+      - packages/hfs/src/main.mts
+      - packages/hfs/vendor-types.d.mts
+    presence: optional
+    holds: the TypeScript source of @starci/hfs, one folder per app verb area beside runtime/, compiled in place to .mjs (.cjs from a .cts, a --require preload) at the paths it ships and is imported by (the emitted JavaScript and declarations are ignored); vendor-types.d.mts types the one dependency that ships none
+    rule: owner ruling, every package is TypeScript (alpha.21); hfs keeps its published paths, so its source is not under src/
+  - id: packages.grammar-tools
+    path:
+      - "packages/grammar/{capture-refs,svg-shot}.mts"
+      - packages/grammar/shoot.cts
+      - "packages/grammar/scripts/*.mts"
+    presence: optional
+    holds: the grammar's build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots), TypeScript typechecked by tsconfig.scripts.json
+    rule: owner ruling, every package is TypeScript (alpha.21)
   - id: packages.tests
     path: "packages/<name>/test/"
     presence: optional

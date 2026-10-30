@@ -6,9 +6,9 @@ import os from "node:os"
 import path from "node:path"
 import tsParser from "@typescript-eslint/parser"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
 import { healthSignals, readyReal, rules } from "./health-ready.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const fixtures: string[] = []
 test.after(() => { for (const root of fixtures) fs.rmSync(root, { recursive: true, force: true }) })

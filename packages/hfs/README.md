@@ -8,24 +8,24 @@ checkout. The machine loads `typescript` from the app it checks (never its own c
 Every command runs at the app root. A side is judged with its folder as the root it was when products were split in two repositories (the "side view" of `scripts/hfs/slots.mjs`): the root slots (`app.*`) are judged once, the `be.*` slots under `be/` and the `fe.*` slots under `fe/`, and nothing crosses sides except `sides.fe.reads` (the `be.contract.*` slots, the input of the front end's codegen). Every finding path is app-relative (`be/...`, `fe/...`).
 
 ```sh
-starci app scaffold <name> [--into <dir>] [--edition full|lite] [--cwd <dir>]
+starci app scaffold <name> [--edition full|lite] [--cwd <dir>]
 starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app> <name> [--fe] [--no-types] [options] [--cwd <dir>]
 starci app add <block|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
 starci app add <page|layout> <route> [--blocks a,b] [--tabs a,b] [--app <fe app>] [--cwd <dir>]
 starci app add overlay <name> --kind modal|drawer [--form] [--app <fe app>] [--cwd <dir>]
-starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--fix] [--format text|json] [--sonar <file>]
-starci app sync (--check | --write) [--cwd <dir>]
+starci app add service <dir> <name> [--inject <binding>...] [--cwd <dir>]
+starci app add spec <file>.service.ts [--cwd <dir>]
+starci app add image [--cwd <dir>]
+starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--fix] [--json] [--out <sonar file>]
+starci app sync [--execute] [--cwd <dir>]
 starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--db-types]
-starci app upgrade [--plan]
-starci app stack <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
-starci app explain <path> [--cwd <dir>] [--json]
+starci app check --staged [--cwd <dir>]
+starci app upgrade [--execute]
+starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
+starci app slot <path> [--cwd <dir>] [--json]
 starci app emit [--cwd <dir>]
-starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
-starci app new service <dir> <name> [--inject <binding>...] [--cwd <dir>]
-starci app new spec <file>.service.ts [--cwd <dir>]
-starci app new image [--cwd <dir>]
-starci app secret init|set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit|server-key ... [--cwd <dir>]
-starci app hygiene [--cwd <dir>]
+starci app db drift [--db-url-env <NAME>] [--json] [--cwd <dir>]
+starci app secret init | <set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit|server-key> --env <env> ... [--cwd <dir>]
 ```
 
 `starci app add` writes every front-end unit, in either edition, already in the shape of the harness's `contexts/code/fe`
@@ -57,7 +57,7 @@ out the test world and event machinery.
 
 `starci app scaffold <name> --edition lite` creates the minimum single-api, single-Next-app product on its own PostgreSQL (`db/`,
 the `db` service of its stack), its Passport identity and its S3 storage; a failed step removes the app it began instead of leaving a
-partial tree. `starci app db new|plan|migrate|dump|post-cutover --url-env <NAME>` drives that database (default `DATABASE_URL`).
+partial tree. `starci app db new|migrate|dump|post-cutover --db-url-env <NAME>` drives that database (default `DATABASE_URL`).
 
 The lite `app.starciwork` slot is optional when the app has no brand records. When present, it holds only `.gitignore`,
 optional `workspace.yaml` metadata and `brand/**` (R212): the existing brand record, drawing records, references and assets.
@@ -75,7 +75,7 @@ The lite additions are deliberately narrow:
   the requested group without full-edition specs.
 - `starci app add app <name>` adds another Next app in either edition: the edition's app skeleton plus the shared app core
   (modules/api, auth, toast, redux, the providers and the hooks), one fe structure for lite and full (owner ruling 2026-10-13).
-- An `add` or `new` whose target slot is unavailable in lite stops before writing with `<verb> <noun>: full edition only`.
+- An `add` whose target slot is unavailable in lite stops before writing with `<verb> <noun>: full edition only`.
 
 `starci app emit` emits the enabled back-end contract snapshots; a lite app generates no database types.
 
@@ -83,7 +83,7 @@ The lite additions are deliberately narrow:
 It loads the entity list `be/src/modules/platform/database/entities.ts` with the app's own `typescript`, `typeorm` and `pg` (its `be/tsconfig.json`
 path aliases resolved) and builds TypeORM's metadata through a postgres `DataSource` with `synchronize` false that never connects. It applies
 `db/bootstrap.sql`, when present, and every active `db/migrations/*.sql`, each file in one transaction, to a scratch database: a throwaway
-container of the image `.starcistacks/application-stacks.yaml` declares for `components.db`, or with `--url-env <NAME>` the database that
+container of the image `.starcistacks/application-stacks.yaml` declares for `components.db`, or with `--db-url-env <NAME>` the database that
 variable names, which must hold no relation in `public` yet (`DB_DRIFT_TARGET_NOT_EMPTY`). It reads the result from
 `information_schema.columns` and `pg_catalog` and reports each entity column whose table or column is missing, whose type differs once
 both are spelled as `format_type` names (an enum matches an enum of the name the entity gives), or whose nullability differs; a column no
@@ -92,8 +92,8 @@ and 2 is no verdict: a host without Docker or without the app's packages gets `D
 green. An app with an entity list runs it as the `db-drift` row of `starci app release gate` and in the database step of its managed CI's
 build job.
 
-`starci app db baseline --squash --url-env <NAME> --stamp <ts14> [--drop-extension a,b] [--drop-pgmq-queue q1,job_*] [--seed-tables t1,t2]
-[--image <ref>] [--apply]` retires the whole active chain into one baseline read from a database it is applied to, for a cutover whose
+`starci app db baseline --squash --db-url-env <NAME> --stamp <ts14> [--drop-extension a,b] [--drop-pgmq-queue q1,job_*] [--seed-tables t1,t2]
+[--image <ref>] [--execute]` retires the whole active chain into one baseline read from a database it is applied to, for a cutover whose
 production starts on an empty database (`runtime/scripts/hfs/db-squash.mjs`). The source must record exactly the active chain in its
 history, and it is only read. The verb dumps the source with its privileges (`pg_dump --schema-only --no-owner`, no `-x`) and keeps the
 app's schemas: it leaves out the extensions `--drop-extension` names (default `pg_net,pg_cron`; pgmq stays, the lite event bus), the
@@ -109,7 +109,7 @@ the rest of the file), `db/seed.sql` (the rows of `--seed-tables`, `insert ... o
 sequences set; a table without a primary key or unique constraint is refused) and moves the chain to `db/migrations/archive/`. Before
 writing, a scratch container of the app's db image (built from `.starcistacks/images/db/Dockerfile`, or `--image`) replays bootstrap, baseline and seed (the
 seed twice); the same projection read from the replay must equal the source's, or the verb refuses with the differences. Docker runs every
-PostgreSQL client, so the host needs none. Without `--apply` it writes nothing.
+PostgreSQL client, so the host needs none. Without `--execute` it writes nothing.
 
 Input bounds stay with the backend DTO: `MaxLength`, `ArrayMaxSize`, `Min` and `Max` become GraphQL `@inputBounds`
 input-field directives or JSON Schema constraints on the REST operation table's DTO properties. Codegen derives
@@ -127,15 +127,15 @@ A new full app ships its test world (`scaffold/test-world.mjs`): the `@starci/te
 (the dev stack's Postgres per connection, the api apps, the cli app's migration runner as the migrate step), an integration spec of
 readiness over the real database and one e2e spec per api app booted over the migrated database, beside the contract spec of the
 be skeleton, so `test:integration`, `test:e2e` and `test:contract` of the release gate run real specs. On a full app that has no
-`be/src/tests/world/global-setup.ts`, `starci app upgrade [--plan]` adds those files and the test devDependencies it lacks; a world
+`be/src/tests/world/global-setup.ts`, `starci app upgrade [--execute]` adds those files and the test devDependencies it lacks; a world
 file that exists and differs refuses (`HFS_UPGRADE_FILE_CONFLICT`) and nothing is overwritten.
 
 ## Creating a service
 
 Every file of a spec-required role of `ruleParams.be.unitRoles` — a `*.service.ts`, a `*.cli.ts` of the cli feature root — owes exactly one colocated `<name>.<role>.spec.ts` (unit test standard), and any other file of a `ruleParams.be.logicRoles` role inside a `coverage: required` slot may carry one beside it. `starci app new` is the one way a service and its spec come into being together:
 
-- `starci app new service src/modules/domain/commission commission --inject InjectPrimaryEntityManager=@modules/platform/database:EntityManager --inject InjectClock=@modules/platform/clock:Clock` writes `commission.service.ts` (the class, `@Injectable()`, the constructor with the given `@Inject*()` parameters) and `commission.service.spec.ts`. `--inject` is `<Decorator>=<module>:<Type>` for a custom `@Inject*()` decorator (its token is the UPPER_SNAKE of the name, `PRIMARY_ENTITY_MANAGER`, exported from the same module) or `<Class>=<module>` for a class-typed dependency. The directory must belong to a slot of the manifest that owns the file (a service lives in `src/modules/{domain,platform,integrations}/<capability>/`), and `starci app new` never overwrites.
-- `starci app new spec src/modules/domain/member/member-profile.service.ts` writes only the spec of a service you wrote by hand. It reads the constructor with the repository's own TypeScript compiler API, so `npm ci` comes first.
+- `starci app add service src/modules/domain/commission commission --inject InjectPrimaryEntityManager=@modules/platform/database:EntityManager --inject InjectClock=@modules/platform/clock:Clock` writes `commission.service.ts` (the class, `@Injectable()`, the constructor with the given `@Inject*()` parameters) and `commission.service.spec.ts`. `--inject` is `<Decorator>=<module>:<Type>` for a custom `@Inject*()` decorator (its token is the UPPER_SNAKE of the name, `PRIMARY_ENTITY_MANAGER`, exported from the same module) or `<Class>=<module>` for a class-typed dependency. The directory must belong to a slot of the manifest that owns the file (a service lives in `src/modules/{domain,platform,integrations}/<capability>/`), and `starci app new` never overwrites.
+- `starci app add spec src/modules/domain/member/member-profile.service.ts` writes only the spec of a service you wrote by hand. It reads the constructor with the repository's own TypeScript compiler API, so `npm ci` comes first.
 
 The spec skeleton is `Test.createTestingModule({ providers: [Service, { provide: TOKEN, useValue: double }, ...] }).compile()` and `moduleRef.get(Service)`, with one provider per constructor dependency and nothing else, every double imported from `@starci/jest-preset` (the root), and one placeholder `it` per public method. The double of a token comes from `ruleParams.be.specDoubles` of the slot manifest, the table the lint law `spec-infra-double-from-kit` holds a spec to (`*_ENTITY_MANAGER` -> `mockEntityManager()`, `CLOCK` -> `new FakeClock(...)`, `EVENT_BUS` -> `recordingEventBus()`, `QUEUE_OUTBOX` -> `recordingQueueOutbox()`, `CACHE` -> `fakeCache(clock)`, lock, lease, fence and hold -> `fakeLock(clock)`, ids -> `fakeIds()`, `*_OPTIONS` -> a literal to fill in, everything else and every class -> `mock<T>()`), so the skeleton satisfies the law by construction: no cast, no `new` of the service, no ambient clock. A back end only (a front end has no services); the files are written for prettier (print width 120).
 
@@ -165,7 +165,7 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_UNTRACKED_ROOT_ENTRY` | error | an entry git neither tracks nor ignores (`git ls-files -o --exclude-standard`), outside an `ignored` slot |
 | `HFS_PLAINTEXT_SECRET` | error | a tracked plaintext secret: an env, key or credentials file, a value the push scan refuses (never printed), or an `.enc` that is no sops envelope (R06) |
 | `HFS_STACKS_SHAPE` | error | a `.starcistacks` path outside the standard shape (a sealed file outside `<env>/secrets/`, `runtime/files/`, root `DESIGN.md` or `k8s/`), a local Sonar not owned by the host, a service still rooted at `.stacks` (R10) |
-| `HFS_CI_MISSING_CANON` | error | `ci.yml` without a `run:` step of `starci app lint` (`npm run lint`, or `npx starci app lint` at the pinned version) (R13) |
+| `HFS_CI_MISSING_CANON` | error | `ci.yml` without a `run:` step of `starci app lint` (`npm run lint`, or `npx --no-install starci app lint`, the app's pinned copy) (R13) |
 | `HFS_DEP_VERSION_SKEW` | error | a dependency at two specs across the root and workspace `package.json` files, a dependency declared at another version than the root `overrides` pin, or a nested copy of a declared dependency in `package-lock.json` (R14) |
 | `HFS_CONTRACT_SNAPSHOT_DRIFT` | error | a back-end api app serving GraphQL without `be/contracts/<app>/schema.graphql` (R23); the front end reads that snapshot in place, so there is no copy to drift |
 | `BE_TEST_TOPOLOGY` | error | a `*.test.*` file, a `testing/` folder, a second jest configuration or a `jest` key in `package.json` (R47; `int-spec`, `harness-spec`, the retired test folders and a per-lane test config are the machine's, under the same code) |
@@ -197,9 +197,9 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_FORMAT_TOOL_MISSING` | refusal (exit 2) | prettier is not installed in the repository; the format check is never skipped |
 
 The managed files are judged by `sync/managed.mjs` and `sync/ts-strict.mjs` (the package renders the templates; the runtime copy does not). The list of managed
-files is the `managedBy` slots of `slots.yaml`; `starci app sync --write` renders them and `starci app check` compares them, so a hand edit and a forgotten `sync` are the same finding.
+files is the `managedBy` slots of `slots.yaml`; `starci app sync --execute` renders them and `starci app check` compares them, so a hand edit and a forgotten `sync` are the same finding.
 Each finding is reported once: the managed ESLint and stylelint factory configs under R17, `tsconfig.json` under R22 when it names a flag, a workflow or hook that lost a canon step under R13 (or R19 for the format step), everything else under R05.
-The root and both sides are rendered by the one mechanism. The root: the `scripts` block of `app.package-manifest` (`dev:be`, `dev:fe`, `build:be`, `build:fe`, `start:<app>`, `lint`, `lint:fix`, `test`, `test:integration`, `test:e2e`, `test:contract`, `test:stack`, `codegen`, `contract:emit`, `migrate`, `typecheck`, ...; a be script runs from `be/`, where its tsconfig and jest configuration are), `app.format-config`, `app.hooks`, the CI slots (`app.ci`, `app.ci-e2e`, `app.ci-images`), `app.quality-config` and the managed block of `app.git-meta`. A side: its `be.tool-config` or `fe.tool-config` slot — the side's tsconfig (resolving `@starci/tsconfig` from the root `node_modules`) and its managed ESLint factory config, the back end's build tsconfig, tests tsconfig and jest configuration, the front end's stylelint configuration. `lint` is the one lint gate, `starci app lint`: ESLint over each side with its canon, the app check and stylelint over fe; `lint:fix` is the same with `--fix`. The front end has no test script, no test configuration and no e2e or coverage file: it has no tests, and `FE_NO_TESTS` (R97) refuses any spec, e2e file, test tool or test script under `fe/`. `turbo.json` stays the app's own
+The root and both sides are rendered by the one mechanism. The root: the `scripts` block of `app.package-manifest` (`dev:be`, `dev:fe`, `build:be`, `build:fe`, `start:<app>`, `lint`, `lint:fix`, `test`, `test:integration`, `test:e2e`, `test:contract`, `test:world`, `codegen`, `contract:emit`, `migrate`, `typecheck`, ...; a be script runs from `be/`, where its tsconfig and jest configuration are), `app.format-config`, `app.hooks`, the CI slots (`app.ci`, `app.ci-e2e`, `app.ci-images`), `app.quality-config` and the managed block of `app.git-meta`. A side: its `be.tool-config` or `fe.tool-config` slot — the side's tsconfig (resolving `@starci/tsconfig` from the root `node_modules`) and its managed ESLint factory config, the back end's build tsconfig, tests tsconfig and jest configuration, the front end's stylelint configuration. `lint` is the one lint gate, `starci app lint`: ESLint over each side with its canon, the app check and stylelint over fe; `lint:fix` is the same with `--fix`. The front end has no test script, no test configuration and no e2e or coverage file: it has no tests, and `FE_NO_TESTS` (R97) refuses any spec, e2e file, test tool or test script under `fe/`. `turbo.json` stays the app's own
 (slot `app.task-graph`): it carries the task graph, which no preset can render.
 
 The architecture machine (`scripts/hfs/architecture.mjs` of the runtime, the same code bundled here): tiers and import
@@ -221,20 +221,20 @@ Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (no
 
 `starci app secret` keeps an app's sealed members (the standard is the harness's PROJECT-STACKS-5): one per provider,
 `.starcistacks/<env>/secrets/<provider>.enc.yaml`, sops YAML whose values keep every byte, a legacy dotenv `<member>.enc`
-read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mjs` names both). `set <env> <provider> <KEY> [KEY ...]`
+read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mjs` names both). `set --env <env> <provider> <KEY> [KEY ...]`
 seals every named key in one sops write (`runtime/scripts/hfs/secret.mjs`): on a terminal it prompts `<KEY>: ` for each with
 masked input (one `*` per character; a paste, backspace, Enter, Ctrl+C to cancel with nothing written), redirected stdin gives
 one key its whole text or several one `KEY=value` line each, `--from-file KEY=path` reads a key byte for byte
 (`secret-prompt.mjs`), and `--generate <bytes>` makes a random value per key. It then declares the keys in the environment's
 `secrets:` of a compose environment (`declareKeys`, `secret-standard.mjs`) and names a swarm environment's to wire by hand.
-A member is sealed to its environment's rule of the managed `.sops.yaml`; `recipients <env> [--add|--remove <age1...|owner>]`
+A member is sealed to its environment's rule of the managed `.sops.yaml`; `recipients --env <env> [--add|--remove <age1...|owner>]`
 rewrites that rule (`environmentRecipients`, `secret-init.mjs`), and `init` takes the owner's identity as the app's recipient.
 Re-sealing a member whose every key the set replaces needs no age identity; adding a key to one does, and the identity is found
 by itself (`decryptionIdentity`, the one lookup every decrypt of a member uses: secret, stack, release, db): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the app's git-ignored
 `.claude/secret.env`, else of its main checkout's when the app is a git worktree, else the `hostIdentity` the harness CLI passes
 (its own secret.env), else the sops `keys.txt`; with none, the verb refuses before asking for a value, naming every place it
-looked and the one line that fixes it. `audit [<env>]` names every deviation and exits 1; `migrate <env> <member> [--to
-<provider>]` and `split <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). `server-key <env>` makes
+looked and the one line that fixes it. `audit [--env <env>]` names every deviation and exits 1; `migrate --env <env> <member> [--to
+<provider>]` and `split --env <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). `server-key --env <env>` makes
 the deploy server's own age identity on the server through the deploy's transport and seals the environment to it beside the
 owner key, `--rotate` replaces it, `--backup github` stores it as the SOPS_AGE_KEY of the GitHub Environment `<env>` that
 every CI job bound to `<env>` reads, and `--restore github` writes it back (`stack/server-key.mjs`). No output carries a value
@@ -245,9 +245,9 @@ except `get --reveal`.
 One mechanism for both sides: every finding of the canon is imported into Sonar, and the quality gate
 fails while any is open. Nothing is configured per app; the pieces are managed files (`starci app sync`) and this package.
 
-One entry, one report, one file: `npm run lint` is `starci app lint`; `npm run lint -- --sonar reports/lint.sonar.json` writes the ONE Sonar file, read through `sonar.externalIssuesReportPaths`. It carries three engines: `starci-hfs` (the repository findings, rule id = the finding code), `eslint` (the BE canon, universal FE canon and selected Grammar-family plugin, rule id = the ESLint rule) and `stylelint` over fe (rule id = the stylelint rule). App lint shares app check's ESLint runner and calls its HFS checks in process, so each side's ESLint config runs once. `starci app lint --format json` prints the same findings as the one report `starci/lint@1` (`{ schema, ok, changed, counts.error, engines, errors[], findings[{ engine, rule, code, severity, path, line, column, message }] }`); `--changed <files...>` restricts ESLint and stylelint to those files and keeps of the repository findings the ones on a listed file or on no file. The exit code is 0 clean, 1 findings, 2 a tool could not run (a missing ESLint install is never a pass).
+One entry, one report, one file: `npm run lint` is `starci app lint`; `npm run lint -- --out reports/lint.sonar.json` writes the ONE Sonar file, read through `sonar.externalIssuesReportPaths`. It carries three engines: `starci-hfs` (the repository findings, rule id = the finding code), `eslint` (the BE canon, universal FE canon and selected Grammar-family plugin, rule id = the ESLint rule) and `stylelint` over fe (rule id = the stylelint rule). App lint shares app check's ESLint runner and calls its HFS checks in process, so each side's ESLint config runs once. `starci app lint --format json` prints the same findings as the one report `starci/lint@1` (`{ schema, ok, changed, counts.error, engines, errors[], findings[{ engine, rule, code, severity, path, line, column, message }] }`); `--changed <files...>` restricts ESLint and stylelint to those files and keeps of the repository findings the ones on a listed file or on no file. The exit code is 0 clean, 1 findings, 2 a tool could not run (a missing ESLint install is never a pass).
 
-`--sonar` writes the findings as a Generic Issue Import document (SonarQube 10.3+ format: `{ rules, issues }`) before the verdict, so a
+`--out` writes the findings as a Generic Issue Import document (SonarQube 10.3+ format: `{ rules, issues }`) before the verdict, so a
 failing lint still leaves its report. A rule's name and description are the catalog's English title and Vietnamese title, meaning and next step;
 impacts are HIGH (maintainability). `info` findings (the soft-size backlog) are report-only and not imported. The output is sorted, so two runs
 over one tree are byte-identical. Sonar drops an issue on a file it does not index (a tracked source file or stylesheet under `sonar.sources`), so the ONE placement rule of the three engines files a finding on
@@ -256,7 +256,7 @@ Sonar's own ESLint import (`sonar.eslint.reportPaths`) is not used: it drops tho
 
 The managed `sonar-project.properties` carries `sonar.externalIssuesReportPaths` (`reports/lint.sonar.json` only) and no `sonar.host.url` (the host is
 `SONAR_HOST_URL`); the managed CI workflow produces the report and runs the scan and the gate action with `!cancelled()`, so a failed lint step still
-reaches Sonar while the job stays failed. There is no `continue-on-error`. CI runs `npm run lint -- --sonar reports/lint.sonar.json` once at the app root, before the scan. The duplicate-block threshold (`ruleParams.<side>.duplicateBlock`) has no Sonar property for TypeScript (SonarJS detects
+reaches Sonar while the job stays failed. There is no `continue-on-error`. CI runs `npm run lint -- --out reports/lint.sonar.json` once at the app root, before the scan. The duplicate-block threshold (`ruleParams.<side>.duplicateBlock`) has no Sonar property for TypeScript (SonarJS detects
 clones with its own token rule), so the machine enforces it (R21) and its findings are imported like every other.
 
 The gate is `knowledge/sonar-gate.yaml`, the one declaration: the new-code conditions (coverage 100, duplication, issues of every severity, hotspots) and an `overall` part (coverage 100, 0 open issues on the whole code,

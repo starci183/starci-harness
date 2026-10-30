@@ -7,16 +7,16 @@
  * whose rules then ship as a document; two laws publishing one rule name, where whichever imports
  * last silently wins; and a rule absent from the recommended set, which reaches a consuming
  * repository switched off while looking adopted. The shared contract lives in
- * ./fixtures/gathered-plugin.mjs; what follows is the back end's own.
+ * ./fixtures/gathered-plugin.ts; what follows is the back end's own.
  */
 import assert from "node:assert/strict"
 import { fileURLToPath } from "node:url"
 import { dirname } from "node:path"
 import test from "node:test"
 import plugin, { lawOwners, recommended, ruleDeclarations, rules } from "./index.ts"
-import { gatheredPluginSpec } from "../fixtures/gathered-plugin.mjs"
+import { gatheredPluginSpec } from "../fixtures/gathered-plugin.ts"
 import { pluginForEdition } from "./lib/edition.ts"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 import type { RuleEntry } from "./lib/rule.ts"
 
 const HERE = dirname(fileURLToPath(import.meta.url))

@@ -44,7 +44,7 @@ the red checks.
 
 Why: the runtime tier keeps a task fast; everything slower is judged once, on main, by the same workflow in every app.
 
-Enforced by: R05 (slot `app.ci`); `starci release ci-status` reads the result.
+Enforced by: R05 (slot `app.ci`); `starci check ci` reads the result.
 
 ## SHARED-SCRIPTS-4 An op never commits; the harness does
 

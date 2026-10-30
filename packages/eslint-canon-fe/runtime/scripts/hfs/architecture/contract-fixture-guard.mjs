@@ -4,7 +4,6 @@ import { checkerScope } from './required-files.mjs';
 import { allowsFile } from '../allows.mjs';
 import { unwrapEach } from './ast-walks.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
-
 /**
  * R47 `contract-fixture-guard` (BE_CONTRACT_UNGUARDED). A fake at the network edge serves payload fixtures; a fixture drifts
  * from the real provider silently unless a sandbox contract spec compares them. So every `fakes/<provider>/` of the test
@@ -22,147 +21,157 @@ import { byCodeUnit } from '../../lib/list.mjs';
  * `fakes/<provider>/` folders are judged.
  */
 export const CONTRACT_FIXTURE_GUARD_RULE_IDS = ['BE_CONTRACT_UNGUARDED'];
-
 const RULE = 'BE_CONTRACT_UNGUARDED';
 const WORLD_SLOT = 'be.tests.world';
 const CONTRACT_SLOT = 'be.tests.contract';
 const FAKES_DIRECTORY = 'fakes/';
 const PAYLOADS = /^([^/]+)\/payloads\/[^/]+\.json$/u;
 const SHAPE_MATCHERS = new Set(['toEqual', 'toStrictEqual']);
-
 const unwrap = (ts, node) => unwrapEach(ts, node, [ts.isParenthesizedExpression, ts.isAsExpression, ts.isNonNullExpression, ts.isAwaitExpression]);
-
 /** Every node under `root`, itself included. */
 function walk(ts, root, visit) {
-  const step = node => { visit(node); ts.forEachChild(node, step); };
-  step(root);
+    const step = (node) => { visit(node); ts.forEachChild(node, step); };
+    step(root);
 }
-
 const importsFakesOf = (from, provider) => from.includes(`${FAKES_DIRECTORY}${provider}/`) || from.endsWith(`${FAKES_DIRECTORY}${provider}`);
-
 const shapeNamesOf = (ts, statement, helper) => {
-  const named = statement.importClause?.namedBindings;
-  if (!named || !ts.isNamedImports(named)) return [];
-  return named.elements.filter(element => (element.propertyName ?? element.name).text === helper).map(element => element.name.text);
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named))
+        return [];
+    return named.elements.filter(element => (element.propertyName ?? element.name).text === helper).map(element => element.name.text);
 };
-
 const importsOfSpec = (ts, sourceFile, helper, providers) => {
-  const shapeNames = new Set();
-  const referenced = new Set();
-  for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement)) continue;
-    const from = statement.moduleSpecifier.text;
-    for (const provider of providers) if (importsFakesOf(from, provider)) referenced.add(provider);
-    for (const name of shapeNamesOf(ts, statement, helper)) shapeNames.add(name);
-  }
-  return { shapeNames, referenced };
+    const shapeNames = new Set();
+    const referenced = new Set();
+    for (const statement of sourceFile.statements) {
+        if (!ts.isImportDeclaration(statement))
+            continue;
+        // The module specifier of an import declaration is a string literal by the grammar.
+        const from = statement.moduleSpecifier.text;
+        for (const provider of providers)
+            if (importsFakesOf(from, provider))
+                referenced.add(provider);
+        for (const name of shapeNamesOf(ts, statement, helper))
+            shapeNames.add(name);
+    }
+    return { shapeNames, referenced };
 };
-
 const callsShape = (ts, node, shapeNames) => {
-  let found = false;
-  walk(ts, node, inner => { if (ts.isCallExpression(inner) && ts.isIdentifier(inner.expression) && shapeNames.has(inner.expression.text)) found = true; });
-  return found;
+    let found = false;
+    walk(ts, node, inner => { if (ts.isCallExpression(inner) && ts.isIdentifier(inner.expression) && shapeNames.has(inner.expression.text))
+        found = true; });
+    return found;
 };
-
 const TEST_BLOCKS = new Set(['describe', 'it', 'test']);
-
 const referenceProviders = (ts, node, providers, referenced) => {
-  if (ts.isStringLiteralLike(node)) for (const provider of providers) if (node.text.includes(`${FAKES_DIRECTORY}${provider}/`)) referenced.add(provider);
-  if (!ts.isCallExpression(node)) return;
-  const named = ts.isIdentifier(node.expression) ? node.expression.text : null;
-  for (const argument of node.arguments) {
-    const value = unwrap(ts, argument);
-    if (value && ts.isStringLiteralLike(value) && providers.has(value.text) && !TEST_BLOCKS.has(named)) referenced.add(value.text);
-  }
+    if (ts.isStringLiteralLike(node))
+        for (const provider of providers)
+            if (node.text.includes(`${FAKES_DIRECTORY}${provider}/`))
+                referenced.add(provider);
+    if (!ts.isCallExpression(node))
+        return;
+    const named = ts.isIdentifier(node.expression) ? node.expression.text : null;
+    for (const argument of node.arguments) {
+        const value = unwrap(ts, argument);
+        if (value && ts.isStringLiteralLike(value) && providers.has(value.text) && !TEST_BLOCKS.has(named))
+            referenced.add(value.text);
+    }
 };
-
 /** The `expect(...)` call a shape matcher call hangs off (through `.not` / `.resolves`), or null. */
 const expectReceiverOf = (ts, callee) => {
-  let receiver = unwrap(ts, callee.expression);
-  while (receiver && ts.isPropertyAccessExpression(receiver)) receiver = unwrap(ts, receiver.expression);
-  return receiver && ts.isCallExpression(receiver) && ts.isIdentifier(receiver.expression) && receiver.expression.text === 'expect' ? receiver : null;
+    let receiver = unwrap(ts, callee.expression);
+    while (receiver && ts.isPropertyAccessExpression(receiver))
+        receiver = unwrap(ts, receiver.expression);
+    return receiver && ts.isCallExpression(receiver) && ts.isIdentifier(receiver.expression) && receiver.expression.text === 'expect' ? receiver : null;
 };
-
 const comparesShapes = (ts, node, shapeNames) => {
-  if (!ts.isCallExpression(node)) return false;
-  const callee = node.expression;
-  if (!ts.isPropertyAccessExpression(callee) || !SHAPE_MATCHERS.has(callee.name.text)) return false;
-  const receiver = expectReceiverOf(ts, callee);
-  if (!receiver) return false;
-  const [actual] = receiver.arguments;
-  const [expected] = node.arguments;
-  return Boolean(actual && expected && callsShape(ts, actual, shapeNames) && callsShape(ts, expected, shapeNames));
+    if (!ts.isCallExpression(node))
+        return false;
+    const callee = node.expression;
+    if (!ts.isPropertyAccessExpression(callee) || !SHAPE_MATCHERS.has(callee.name.text))
+        return false;
+    const receiver = expectReceiverOf(ts, callee);
+    if (!receiver)
+        return false;
+    const [actual] = receiver.arguments;
+    const [expected] = node.arguments;
+    return Boolean(actual && expected && callsShape(ts, actual, shapeNames) && callsShape(ts, expected, shapeNames));
 };
-
 const referenceAndCompare = (ts, node, providers, referenced, shapeNames) => {
-  referenceProviders(ts, node, providers, referenced);
-  return comparesShapes(ts, node, shapeNames);
+    referenceProviders(ts, node, providers, referenced);
+    return comparesShapes(ts, node, shapeNames);
 };
-
 /** Facts one contract spec establishes: the providers whose fixtures it references and whether it compares shapes. */
 function readSpec(ts, sourceFile, helper, providers) {
-  const { shapeNames, referenced } = importsOfSpec(ts, sourceFile, helper, providers);
-  let compares = false;
-  walk(ts, sourceFile, node => { if (referenceAndCompare(ts, node, providers, referenced, shapeNames)) compares = true; });
-  return { referenced, compares };
+    const { shapeNames, referenced } = importsOfSpec(ts, sourceFile, helper, providers);
+    let compares = false;
+    walk(ts, sourceFile, node => { if (referenceAndCompare(ts, node, providers, referenced, shapeNames))
+        compares = true; });
+    return { referenced, compares };
 }
-
 /** The payload fixture a file of the world slot is, as `[provider, file]`, or null. */
 const payloadFixtureOf = (resolver, file) => {
-  const verdict = allowsFile(resolver, file);
-  if (verdict?.slot !== WORLD_SLOT || !verdict.relative.startsWith(FAKES_DIRECTORY)) return null;
-  const match = PAYLOADS.exec(verdict.relative.slice(FAKES_DIRECTORY.length));
-  return match ? [match[1], file] : null;
+    const verdict = allowsFile(resolver, file);
+    if (verdict?.slot !== WORLD_SLOT || !verdict.relative.startsWith(FAKES_DIRECTORY))
+        return null;
+    const match = PAYLOADS.exec(verdict.relative.slice(FAKES_DIRECTORY.length));
+    const provider = match?.[1];
+    return provider === undefined ? null : [provider, file];
 };
-
 const fixtureFilesOf = (tree, resolver) => {
-  const fixtures = new Map(); // provider -> first payload fixture file
-  const specs = new Map(); // provider -> [contract spec file]
-  for (const file of [...tree.files].sort(byCodeUnit)) {
-    const classified = resolver.classifyPath(file);
-    if (classified.status !== 'owned') continue;
-    if (classified.slot === CONTRACT_SLOT) {
-      const provider = classified.bindings?.provider;
-      if (provider && file.endsWith('.contract-spec.ts')) specs.set(provider, [...(specs.get(provider) ?? []), file]);
-      continue;
+    const fixtures = new Map(); // provider -> first payload fixture file
+    const specs = new Map(); // provider -> [contract spec file]
+    for (const file of [...tree.files].sort(byCodeUnit)) {
+        const classified = resolver.classifyPath(file);
+        if (classified.status !== 'owned')
+            continue;
+        if (classified.slot === CONTRACT_SLOT) {
+            const provider = classified.bindings?.provider;
+            if (provider && file.endsWith('.contract-spec.ts'))
+                specs.set(provider, [...(specs.get(provider) ?? []), file]);
+            continue;
+        }
+        const fixture = classified.slot === WORLD_SLOT ? payloadFixtureOf(resolver, file) : null;
+        if (fixture && !fixtures.has(fixture[0]))
+            fixtures.set(...fixture);
     }
-    const fixture = classified.slot === WORLD_SLOT ? payloadFixtureOf(resolver, file) : null;
-    if (fixture && !fixtures.has(fixture[0])) fixtures.set(...fixture);
-  }
-  return { fixtures, specs };
+    return { fixtures, specs };
 };
-
 const guardedProvidersOf = (config, ts, contractShape, providers, specs) => {
-  const guarded = new Set();
-  for (const [provider, files] of specs) {
-    for (const file of files) {
-      const absolute = path.join(config.root, ...file.split('/'));
-      if (!fs.existsSync(absolute)) continue;
-      const sourceFile = ts.createSourceFile(absolute, fs.readFileSync(absolute, 'utf8'), ts.ScriptTarget.Latest, true); // the contract tree is outside the root program
-      const facts = readSpec(ts, sourceFile, contractShape.helper, providers);
-      if (facts.compares && facts.referenced.has(provider)) guarded.add(provider);
+    const guarded = new Set();
+    for (const [provider, files] of specs) {
+        for (const file of files) {
+            const absolute = path.join(config.root, ...file.split('/'));
+            if (!fs.existsSync(absolute))
+                continue;
+            const sourceFile = ts.createSourceFile(absolute, fs.readFileSync(absolute, 'utf8'), ts.ScriptTarget.Latest, true); // the contract tree is outside the root program
+            const facts = readSpec(ts, sourceFile, contractShape.helper, providers);
+            if (facts.compares && facts.referenced.has(provider))
+                guarded.add(provider);
+        }
     }
-  }
-  return guarded;
+    return guarded;
 };
-
 export function checkContractFixtureGuard(input) {
-  const { config, ts, resolver, tree } = checkerScope(input);
-  const { contractShape } = resolver.ruleParams();
-  const violations = [];
-  const { fixtures, specs } = fixtureFilesOf(tree, resolver);
-  const providers = new Set(fixtures.keys());
-  const guarded = guardedProvidersOf(config, ts, contractShape, providers, specs);
-  for (const [provider, file] of [...fixtures].sort(([a], [b]) => a.localeCompare(b))) {
-    if (guarded.has(provider)) continue;
-    const has = specs.get(provider)?.length ?? 0;
-    const why = has === 0
-      ? `there is no src/tests/contract/${provider}/*.contract-spec.ts`
-      : `none of the ${has} contract spec(s) under src/tests/contract/${provider}/ both references the ${provider} fixtures and asserts expect(${contractShape.helper}(real)).toEqual(${contractShape.helper}(fixture))`;
-    violations.push({
-      ruleId: RULE, path: file, line: 1, column: 1, slot: WORLD_SLOT,
-      message: `fakes/${provider}/ serves payload fixtures but no contract spec guards them: ${why}. A fixture that is not compared with the real provider drifts silently; add the sandbox contract spec (the contract helper of the world skips it when the sandbox config is absent).`,
-    });
-  }
-  return { violations, coverage: { status: 'checked', fixtureFakes: fixtures.size, contractSpecs: [...specs.values()].flat().length } };
+    const { config, ts, tree } = checkerScope(input);
+    const { resolver } = input.graph;
+    // reason: the machine runs this check on a back-end tree, whose scope resolver always carries rule parameters
+    const { contractShape } = resolver.ruleParams();
+    const violations = [];
+    const { fixtures, specs } = fixtureFilesOf(tree, resolver);
+    const providers = new Set(fixtures.keys());
+    const guarded = guardedProvidersOf(config, ts, contractShape, providers, specs);
+    for (const [provider, file] of [...fixtures].sort(([a], [b]) => a.localeCompare(b))) {
+        if (guarded.has(provider))
+            continue;
+        const has = specs.get(provider)?.length ?? 0;
+        const why = has === 0
+            ? `there is no src/tests/contract/${provider}/*.contract-spec.ts`
+            : `none of the ${has} contract spec(s) under src/tests/contract/${provider}/ both references the ${provider} fixtures and asserts expect(${contractShape.helper}(real)).toEqual(${contractShape.helper}(fixture))`;
+        violations.push({
+            ruleId: RULE, path: file, line: 1, column: 1, slot: WORLD_SLOT,
+            message: `fakes/${provider}/ serves payload fixtures but no contract spec guards them: ${why}. A fixture that is not compared with the real provider drifts silently; add the sandbox contract spec (the contract helper of the world skips it when the sandbox config is absent).`,
+        });
+    }
+    return { violations, coverage: { status: 'checked', fixtureFakes: fixtures.size, contractSpecs: [...specs.values()].flat().length } };
 }

@@ -356,7 +356,7 @@ const settleUnknown = async (at: Launching, launched: LaunchOf<"unknown">): Prom
     // Unknown is not dead: the worker most often runs, so its worktree is listed under its Kernel's now, not after the adoption.
     if (ours) await nestOpWorktree(db, binary, task, cwd)
     const next = ours
-        ? `task ${task.id} is effect_unknown and keeps its worktree; seat ${seat.id} stays open. Replay the same launch (request ${record.start.retryRequest}) with: starci seat start ${task.id} --resume`
+        ? `task ${task.id} is effect_unknown and keeps its worktree; seat ${seat.id} stays open. Replay the same launch (request ${record.start.retryRequest}) with: starci seat start ${task.id} --resume --execute`
         : `task ${task.id} is ${getTask(db, task.id).status}; seat ${seat.id} is left ${getSeat(db, seat.id).status}`
     throw new Refusal("ORCA_OUTCOME_UNKNOWN", `${launched.error.message}\nthe launch of ${task.id} may or may not have started a worker; unknown is not dead. ${next}`)
 }
@@ -613,11 +613,11 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
     }
 }
 
-/** Parses a --timeout-ms value; refuses anything but a positive whole number of milliseconds. */
+/** Parses a --timeout value in seconds into milliseconds; refuses anything but a positive number of seconds (at least one millisecond). */
 export const parseTimeout = (value: string | undefined): number | undefined => {
     if (value === undefined) return undefined
-    const parsed = Number(value)
-    if (!Number.isInteger(parsed) || parsed <= 0) throw new Refusal("CLI_USAGE", `--timeout-ms must be a positive whole number of milliseconds, not "${value}"`, EXIT_USAGE)
+    const parsed = Math.round(Number(value) * 1000)
+    if (value.trim() === "" || !Number.isFinite(parsed) || parsed <= 0) throw new Refusal("CLI_USAGE", `--timeout is a positive number of seconds, not "${value}"`, EXIT_USAGE)
     return parsed
 }
 
@@ -648,7 +648,7 @@ export const routeLines = (choice: LaunchChoice): string[] => (choice.pick === u
 /** `starci seat start`: renders the worker brief of a queued task and launches one Orca worker on it; the task moves to running. */
 export const seatStartVerb = defineVerb({
     path: ["seat", "start"],
-    summary: "launch an Orca worker on a queued task with its rendered brief; --resume replays a launch whose outcome is unknown; --dry-run prints the orca argv",
+    summary: "launch an Orca worker on a queued task with its rendered brief (dry until --execute: it writes the brief and prints the orca argv); --resume --execute replays a launch whose outcome is unknown",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "kernel", "supervisor", "coordinator"],
@@ -660,22 +660,22 @@ export const seatStartVerb = defineVerb({
         effort: { kind: "string", summary: "the reasoning effort of the model" },
         worktree: { kind: "string", summary: "where the worker runs: a path or an Orca worktree selector (default: this repository)" },
         run: { kind: "string", summary: "an existing Orca Run id (default: create a Run for this task)" },
-        "timeout-ms": { kind: "string", summary: `how long Orca may wait for a ready worker (worker-start --timeout-ms; default ${String(LAUNCH_TIMEOUT_MS)})` },
-        resume: { kind: "boolean", summary: "replay the recorded launch of an effect_unknown task under the same Orca request id" },
-        "dry-run": { kind: "boolean", summary: "write the brief and print the orca argv; launch nothing and leave the ledger as it is" },
+        timeout: { kind: "string", summary: `seconds Orca may wait for a ready worker (default ${String(LAUNCH_TIMEOUT_MS / 1000)})` },
+        resume: { kind: "boolean", summary: "replay the recorded launch of an effect_unknown task under the same Orca request id (needs --execute: a replay has no dry run)" },
+        execute: { kind: "boolean", summary: "launch for real (default: a dry run that writes the brief, prints the orca argv, launches nothing and leaves the ledger as it is)" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
         if (flags.resume) {
-            const given = (["agent", "model", "effort", "worktree", "run", "timeout-ms"] as const).filter((name) => flags[name] !== undefined)
-            const dropped = [...given.map((name) => "--" + name), ...(flags["dry-run"] ? ["--dry-run"] : [])]
-            if (given.length > 0 || flags["dry-run"]) throw new Refusal("CLI_USAGE", `--resume replays the recorded launch as it was; drop ${dropped.join(", ")}`, EXIT_USAGE)
+            const given = (["agent", "model", "effort", "worktree", "run", "timeout"] as const).filter((name) => flags[name] !== undefined)
+            if (given.length > 0) throw new Refusal("CLI_USAGE", `--resume replays the recorded launch as it was; drop ${given.map((name) => "--" + name).join(", ")}`, EXIT_USAGE)
+            if (!flags.execute) throw new Refusal("CLI_USAGE", "--resume replays a launch and has no dry run; add --execute", EXIT_USAGE)
             const resumed = await resumeSeat({ root, cwd: context.cwd, task: flags.task })
             return { ...resumed, data: { ...resumed.data, route: null } }
         }
-        const timeoutMs = parseTimeout(flags["timeout-ms"])
-        const choice = chooseLaunch(root, flags.task, flags, !flags["dry-run"])
-        const started = await startSeat({ root, cwd: context.cwd, task: flags.task, agent: choice.agent, model: choice.model, effort: choice.effort, pick: choice.pick, worktree: flags.worktree, run: flags.run, timeoutMs, dryRun: flags["dry-run"] })
+        const timeoutMs = parseTimeout(flags.timeout)
+        const choice = chooseLaunch(root, flags.task, flags, flags.execute)
+        const started = await startSeat({ root, cwd: context.cwd, task: flags.task, agent: choice.agent, model: choice.model, effort: choice.effort, pick: choice.pick, worktree: flags.worktree, run: flags.run, timeoutMs, dryRun: !flags.execute })
         return { ...started, data: { ...started.data, route: choice.pick ?? null }, message: [...routeLines(choice), started.message].join("\n") }
     },
 })

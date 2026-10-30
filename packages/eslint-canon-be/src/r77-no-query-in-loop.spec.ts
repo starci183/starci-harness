@@ -2,8 +2,8 @@
 // proves: BE_QUERY_IN_LOOP@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { noQueryInLoop } from "./query-safety.ts"
 

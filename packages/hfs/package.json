@@ -1,6 +1,6 @@
 {
   "name": "@starci/hfs",
-  "version": "4.11.22",
+  "version": "4.12.0",
   "description": "The StarCi app command implementation for scaffolding, linting, checking and synchronizing one product repository.",
   "type": "module",
   "license": "MIT",
@@ -16,8 +16,14 @@
   },
   "private": false,
   "exports": {
-    ".": "./src/main.mjs",
-    "./form-bounds": "./emit/form-bounds.mjs",
+    ".": {
+      "types": "./src/main.d.mts",
+      "default": "./src/main.mjs"
+    },
+    "./form-bounds": {
+      "types": "./emit/form-bounds.d.mts",
+      "default": "./emit/form-bounds.mjs"
+    },
     "./package.json": "./package.json",
     "./runtime/*": "./runtime/*"
   },
@@ -32,6 +38,8 @@
     "@nestjs/core": "11.2.5",
     "@nestjs/graphql": "13.4.5",
     "@nestjs/testing": "11.2.5",
+    "@starci/tsconfig": "file:../tsconfig",
+    "@types/node": "24.19.2",
     "@typescript-eslint/eslint-plugin": "8.71.0",
     "@typescript-eslint/parser": "8.71.0",
     "class-validator": "0.15.1",
@@ -49,6 +57,7 @@
   "files": [
     "LICENSE",
     "src/main.mjs",
+    "src/main.d.mts",
     "emit/**",
     "stack/**",
     "release/**",
@@ -63,6 +72,9 @@
     "sync/**",
     "upgrade/**",
     "templates/**",
+    "!**/*.mts",
+    "!**/*.cts",
+    "**/*.d.mts",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -73,6 +85,11 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --test \"src/*.spec.mjs\""
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "bundles": "npm run build && node scripts/sync-bundles.mjs",
+    "bundles:check": "npm run build && node scripts/sync-bundles.mjs --check",
+    "test": "npm run typecheck && npm run build && node --test \"src/*.spec.mts\""
   }
 }

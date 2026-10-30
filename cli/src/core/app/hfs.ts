@@ -1,13 +1,11 @@
-import { z } from "zod"
 import { hfsLimitsEnv } from "../../harness/heavy.js"
 import { loadPolicy } from "../../harness/policy.js"
 import { hostAgeIdentity } from "../../harness/secret-env.js"
-import { UsageError } from "../../shared/errors.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { packageVersion } from "../version.js"
 
 /** The `starci app` verbs @starci/hfs implements; each is one verb file of this folder. */
-export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "explain" | "hygiene" | "lint" | "new" | "release" | "scaffold" | "secret" | "stack" | "sync" | "upgrade"
+export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "lint" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
 
 /**
  * What the CLI hands @starci/hfs besides its version, for the verbs that use it: the caller's role an urgent release record names, and the
@@ -31,57 +29,48 @@ export interface HfsRunData {
     readonly stderr: string
 }
 
-/** `--quiet`, which every `starci app` verb takes: @starci/hfs prints no human chatter. */
-export const QUIET_FLAG = {
-    quiet: { kind: "boolean", summary: "suppress human-readable chatter" },
+/**
+ * The one flag of a `starci app` verb: every argument after its path, handed to @starci/hfs as typed. @starci/hfs owns the
+ * verb's flags, their parsing and its help (`starci app <verb> --help`); the CLI declares none of them.
+ */
+export const FORWARDED = {
+    args: { kind: "rest", summary: "the verb's arguments and flags, as @starci/hfs takes them (starci app <verb> --help prints them)" },
 } as const satisfies Readonly<Record<string, FlagSpec>>
 
-/** `--edition`, taken where an app is created or judged (scaffold, check, upgrade). */
-export const EDITION_FLAG = {
-    edition: { kind: "string", summary: "app edition, full or lite" },
-} as const satisfies Readonly<Record<string, FlagSpec>>
-
-/** The values of `--edition`. */
-export const EDITION = z.enum(["full", "lite"])
-
-/** A flag value that is a finite number, kept as its text for @starci/hfs. */
-export const NUMBER = z.string().refine((value) => value.trim() !== "" && Number.isFinite(Number(value)), "a number")
-
-type FlagValue = string | boolean | readonly string[] | undefined
-
-const spellingOf = (name: string, spec: FlagSpec): string => (spec.positional === true || spec.kind === "rest" ? name : `--${name}`)
-
-/** The text values of a flag: one for a string, each for a list or rest, none for a boolean or an absent flag. */
-const textsOf = (value: FlagValue): readonly string[] => {
-    if (typeof value === "string") return [value]
-    return typeof value === "object" ? value : []
-}
-
-/** Refuses a value outside its flag's schema as usage, naming the flag and never echoing the value. */
-const checkChoice = (name: string, spec: FlagSpec, schema: z.ZodType<string>, value: FlagValue): void => {
-    for (const entry of textsOf(value)) {
-        if (schema.safeParse(entry).success) continue
-        const allowed = schema instanceof z.ZodEnum ? `one of: ${schema.options.join(", ")}` : "a number"
-        throw new UsageError(`${spellingOf(name, spec)} expects ${allowed}`)
-    }
+/** Where `--name` stands in an argv (`--name value` or `--name=value`), before any `--`. */
+const indexesOf = (args: readonly string[], name: string): number[] => {
+    const end = args.includes("--") ? args.indexOf("--") : args.length
+    return args.slice(0, end).flatMap((token, at) => (token === `--${name}` || token.startsWith(`--${name}=`) ? [at] : []))
 }
 
 /**
- * The @starci/hfs arguments of a verb's typed flags: its positionals in declared order, then each given option (a list flag
- * once per value), every value first checked against its schema in `choices`.
+ * The value of the last `--name` of a forwarded argv, for the few flags the CLI reads before it forwards (the CI gate of a
+ * production deploy, an executed release); @starci/hfs still parses and judges them.
  */
-export const hfsArgv = (specs: Readonly<Record<string, FlagSpec>>, values: Readonly<Record<string, FlagValue>>, choices: Readonly<Record<string, z.ZodType<string>>> = {}): string[] => {
-    const operands: string[] = []
-    const options: string[] = []
-    for (const [name, spec] of Object.entries(specs)) {
-        const value = values[name]
-        const schema = choices[name]
-        if (schema !== undefined) checkChoice(name, spec, schema, value)
-        if (spec.positional === true || spec.kind === "rest") operands.push(...textsOf(value))
-        else if (value === true) options.push(`--${name}`)
-        else options.push(...textsOf(value).flatMap((entry) => [`--${name}`, entry]))
-    }
-    return [...operands, ...options]
+export const argValue = (args: readonly string[], name: string): string | undefined => {
+    const at = indexesOf(args, name).at(-1)
+    if (at === undefined) return undefined
+    const token = args[at] ?? ""
+    return token.includes("=") ? token.slice(token.indexOf("=") + 1) : args[at + 1]
+}
+
+/** Whether a forwarded argv sets the boolean `--name` (given bare, or `=true`). */
+export const argSet = (args: readonly string[], name: string): boolean =>
+    indexesOf(args, name).some((at) => {
+        const token = args[at] ?? ""
+        return !token.includes("=") || token.slice(token.indexOf("=") + 1) === "true"
+    })
+
+/** A forwarded argv without `--name` and its value: a flag the CLI resolves itself and @starci/hfs never sees. */
+export const withoutArg = (args: readonly string[], name: string): string[] => {
+    const drop = new Set(indexesOf(args, name).flatMap((at) => ((args[at] ?? "").includes("=") ? [at] : [at, at + 1])))
+    return args.filter((_token, at) => !drop.has(at))
+}
+
+/** The operands of a forwarded argv that come before its first option: the action and what it names (`secret set <slug> <KEY>`, its `--env` aside). */
+export const leadingOperands = (args: readonly string[]): string[] => {
+    const first = args.findIndex((token) => token.startsWith("-"))
+    return first < 0 ? [...args] : args.slice(0, first)
 }
 
 const parsed = (text: string): unknown => {

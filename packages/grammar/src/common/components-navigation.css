@@ -255,14 +255,20 @@
         color: var(--accent-foreground, HighlightText);
     }
 
+    /*
+     * Every marker is a pair that holds on any ground: the outlined states draw their circle in `--surface` and their
+     * number in a text token paired with it (muted, the accent as text, the danger as text), the complete state fills
+     * the accent under its own foreground. A SurfaceCard treatment rebinds the surface pair and those text tokens
+     * together, so the number keeps its contrast in every treatment (COLOR-5).
+     */
     .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker {
-        border-color: var(--accent, Highlight);
-        color: var(--accent, Highlight);
+        border-color: currentColor;
+        color: var(--accent-soft-foreground, var(--accent, Highlight));
     }
 
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger, Mark);
-        color: var(--danger, CanvasText);
+        color: var(--danger-soft-foreground, var(--danger, CanvasText));
     }
 
     /* Loading stepper (knowledge STATE-8): a static Skeleton circle for the mark, labels stay real. */
@@ -1344,6 +1350,64 @@
         align-items: center;
         justify-content: center;
         color: var(--muted, GrayText);
+    }
+
+    /* ---------- Mascot ---------- */
+    /*
+     * One size scale for generated character art. A square step is a box of its token, the art contained in it on a
+     * transparent ground (no plate, no corner, no crop). The hero fills its host's height up to the hero cap. Below
+     * 48rem a square step drops one step; a hero is absent below 64rem unless kept, then it is the lg box (md below 48rem).
+     */
+    .starci-core-mascot {
+        --starci-core-mascot-box: var(--grammar-mascot-md, 10rem);
+        display: block;
+        flex: none;
+        min-width: 0;
+        max-inline-size: 100%;
+        aspect-ratio: 1 / 1;
+        inline-size: var(--starci-core-mascot-box);
+    }
+
+    .starci-core-mascot[data-grammar-mascot-size="sm"] { --starci-core-mascot-box: var(--grammar-mascot-sm, 6rem); }
+    .starci-core-mascot[data-grammar-mascot-size="lg"] { --starci-core-mascot-box: var(--grammar-mascot-lg, 15rem); }
+
+    .starci-core-mascot[data-grammar-mascot-size="hero"] {
+        aspect-ratio: auto;
+        inline-size: 100%;
+        block-size: 100%;
+        max-block-size: var(--grammar-mascot-hero-max, 30rem);
+    }
+
+    .starci-core-mascot > .starci-core-image {
+        inline-size: 100%;
+        block-size: 100%;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .starci-core-mascot .starci-core-image-element {
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: contain;
+    }
+
+    @media (max-width: 63.999rem) {
+        .starci-core-mascot[data-grammar-mascot-size="hero"][data-grammar-mascot-visibility="wide"] { display: none; }
+
+        .starci-core-mascot[data-grammar-mascot-size="hero"][data-grammar-mascot-visibility="always"] {
+            aspect-ratio: 1 / 1;
+            inline-size: var(--grammar-mascot-lg, 15rem);
+            block-size: auto;
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        .starci-core-mascot[data-grammar-mascot-size="md"] { --starci-core-mascot-box: var(--grammar-mascot-sm, 6rem); }
+        .starci-core-mascot[data-grammar-mascot-size="lg"] { --starci-core-mascot-box: var(--grammar-mascot-md, 10rem); }
+
+        .starci-core-mascot[data-grammar-mascot-size="hero"][data-grammar-mascot-visibility="always"] {
+            inline-size: var(--grammar-mascot-md, 10rem);
+        }
     }
 
     /* ---------- Rating ---------- */

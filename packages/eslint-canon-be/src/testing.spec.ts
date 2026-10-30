@@ -11,7 +11,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { BE_DECLARATION, at, fixtureHfs, typedTester } from "../fixtures/typed/tester.mjs"
+import { BE_DECLARATION, at, fixtureHfs, typedTester } from "../fixtures/typed/tester.ts"
 import {
   e2eAssertsPersistedState,
   noApiShapedE2eFilename,
@@ -21,7 +21,7 @@ import {
   rules,
   unitTestColocated,
 } from "./testing.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 /** Rules that need only slots: the parser is untyped, so any number of virtual files may be linted. */
 const tester = canonRuleTester({

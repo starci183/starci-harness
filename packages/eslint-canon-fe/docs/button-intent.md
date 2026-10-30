@@ -19,4 +19,4 @@ App `Button` and `IconButton` commands declare `intent`. Grammar derives their v
 </AlertDialog>
 ```
 
-`starci app codemod button-intent` defaults to a dry run. Use `--write` to apply deterministic mappings, then resolve every case in its JSON and Markdown report from the command's actual consequence. A destructive-looking label is a review signal rather than authority to choose an intent.
+`starci app codemod button-intent` defaults to a dry run. Use `--execute` to apply deterministic mappings, then resolve every case in its JSON and Markdown report from the command's actual consequence. A destructive-looking label is a review signal rather than authority to choose an intent.

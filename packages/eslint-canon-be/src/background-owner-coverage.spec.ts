@@ -1,9 +1,9 @@
 // proves: BE_BACKGROUND_UNOWNED@lite BE_BACKGROUND_UNOWNED@full
 import fs from "node:fs"
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const owned = "src/features/api/owned/transport/message/owned.consumer.ts"
 const orphan = "src/features/api/orphan/transport/message/orphan.consumer.ts"

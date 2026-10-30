@@ -7,6 +7,7 @@ import { rules as chipLabelRules } from "./chip-label.ts"
 import { rules as drawingRules } from "./drawing.ts"
 import { rules as grammarBoundaryRules } from "./grammar-boundary.ts"
 import { rules as iconRules } from "./icon.ts"
+import { rules as mascotRules } from "./mascot.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as pageRules } from "./page.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
@@ -34,6 +35,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "drawing", rules: drawingRules },
   { law: "grammar-boundary", rules: grammarBoundaryRules },
   { law: "icon", rules: iconRules },
+  { law: "mascot", rules: mascotRules },
   { law: "menu-entries", rules: menuEntriesRules },
   { law: "page", rules: pageRules },
   { law: "page-header", rules: pageHeaderRules },

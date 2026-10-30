@@ -5,16 +5,16 @@
 // The lint enforcers of R89; its repository enforcer (`source-suffix` of `starci app check`) is proved in packages/hfs/src/be-r89-source-suffix.spec.mjs.
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
-import { appDeclaration } from '../fixtures/app.mjs';
-import { projectFixture } from '../fixtures/project/tester.mjs';
-import { at, BE_DECLARATION, TYPED_ROOT } from '../fixtures/typed/tester.mjs';
+import { appDeclaration } from '../fixtures/app.ts';
+import { projectFixture } from '../fixtures/project/tester.ts';
+import { at, BE_DECLARATION, TYPED_ROOT } from '../fixtures/typed/tester.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { noNonAsciiSource, noRestatedNameJsdoc, requireEnumMemberJsdoc, requireExportJsdoc } from './comments.ts';
 import { noBareVerbExport, noDefaultExport, noVendorModuleFactoryName, noVersionInName } from './naming.ts';
 import { noTestDoubleInSource } from './service-deps.ts';
 import { noConstEnum, noInlineObjectType, noInlineParamType } from './type-safety.ts';
 import { rules as graphRules } from './project-graph.ts';
-import { canonRuleTester, ruleNamed } from "../fixtures/rule-tester.mjs";
+import { canonRuleTester, ruleNamed } from "../fixtures/rule-tester.ts";
 
 const domain = at('src/modules/domain/order/order.service.ts');
 const suffixGood = 'src/features/api/orders/application/cancel-order.command.ts';

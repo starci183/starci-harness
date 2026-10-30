@@ -17,6 +17,16 @@ export const why: Record<string, WhyEntry> = {
     en: "A StatusDot or Badge label in `<file>` starts with a lowercase letter.",
     fix: "Start the label with an uppercase letter (`Running`, not `running`); the rule fixes a literal label in place.",
   },
+  "generated-art-in-mascot-or-media-frame": {
+    code: "FE_GENERATED_ART_OUTSIDE_FRAME",
+    en: "Generated art (a `.webp` or `.png` under `/images/`) in `<file>` is drawn outside Grammar's `Mascot` and `MediaFrame`, so it takes whatever box the page gives it.",
+    fix: "Render a character with `<Mascot src size assetSlot />` (sm, md, lg or hero), or frame a scene or illustration in `<MediaFrame assetSlot>`.",
+  },
+  "mascot-asset-slot-required": {
+    code: "FE_MASCOT_ASSET_SLOT_MISSING",
+    en: "A `Mascot` in `<file>` names no `assetSlot`, so nothing ties the art it draws to the asset workflow's request.",
+    fix: "Pass `assetSlot` (the slot id of the request) and `assetSha256` once the file is delivered.",
+  },
   "navbar-cluster": {
     code: "FE_NAVBAR_CLUSTER",
     en: "Navbar action component kinds or order differ from the app-shell canon.",

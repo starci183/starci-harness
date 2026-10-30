@@ -13,7 +13,7 @@ import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { canonTester, fixtureHfs } from "../fixtures/typed/tester.ts"
 import { fileSizeGrowth, rules } from "./size-growth.ts"
-import { lines, sizeGrowthSharedSpec } from "../../eslint-canon-be/fixtures/size-growth.mjs"
+import { lines, sizeGrowthSharedSpec } from "../../eslint-canon-be/fixtures/size-growth.ts"
 
 const eslintTester = new RuleTester({
   languageOptions: {

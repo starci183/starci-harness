@@ -22,9 +22,10 @@ services:
         order: start-first
         failure_action: rollback
         monitor: 30s
+      # Stateless and served behind the ingress: roll back start-first so the serving task stays up until the old release is healthy.
       rollback_config:
         parallelism: 1
-        order: stop-first
+        order: start-first
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -51,9 +52,10 @@ services:
         order: start-first
         failure_action: rollback
         monitor: 30s
+      # Stateless and served behind the ingress: roll back start-first so the serving task stays up until the old release is healthy.
       rollback_config:
         parallelism: 1
-        order: stop-first
+        order: start-first
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -80,9 +82,10 @@ services:
         order: start-first
         failure_action: rollback
         monitor: 30s
+      # Stateless and served behind the ingress: roll back start-first so the serving task stays up until the old release is healthy.
       rollback_config:
         parallelism: 1
-        order: stop-first
+        order: start-first
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -111,6 +114,7 @@ services:
         order: stop-first
         failure_action: rollback
         monitor: 30s
+      # The database owns a data volume and is single-writer: never run two at once, so rollback stays stop-first.
       rollback_config:
         parallelism: 1
         order: stop-first
@@ -143,6 +147,7 @@ services:
         order: stop-first
         failure_action: rollback
         monitor: 30s
+      # The ingress owns published ports and a certificate volume: never run two at once, so rollback stays stop-first.
       rollback_config:
         parallelism: 1
         order: stop-first

@@ -50,6 +50,7 @@ tokens:
     spacing: [--grammar-inline-gap, --grammar-row-gap, --grammar-section-gap, --grammar-region-gap, --grammar-page-inset]
     controlHeight: [--grammar-control-height-sm, --grammar-control-height-md, --grammar-control-height-lg]
     target: [--grammar-target-coarse, --grammar-target-fine]
+    mascot: [--grammar-mascot-sm, --grammar-mascot-md, --grammar-mascot-lg, --grammar-mascot-hero-max]
 
 dna:
   required:
@@ -109,16 +110,21 @@ roles:
     ui: ui/components/card.md
     renderers: [SurfaceCard, SurfaceListCard, SurfaceAccordionCard]
     vendorParity: [card, accordion]
-    slots: [label, fact, labelEnd, content, footer, wholeAction]
+    slots: [label, fact, labelEnd, content, footer, wholeAction, "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
     variants:
       composition: { values: [single, joined], chosenBy: app }
       measure: { values: [content, form, formCompact], chosenBy: app }
       depth: { values: [top, nested], chosenBy: context }
       highlight: { values: [false, true], chosenBy: app, limit: one per view }
+      treatment:
+        values: [surface, soft, ink]
+        meaning: { surface: "the family's surface face", soft: "the brand's light tint (accentSoft) under the default foreground; may carry copy and controls", ink: "the family's brand ink, a full-strength slab with no control (SURFACE-6)" }
+        chosenBy: app by card.choose.treatment
+        rebinds: "a painted treatment rebinds the whole surface pair (surface, foreground, muted, separator, border, the text accents) on its ground, so every child paints a pair that holds"
     sizes: none
     states: [neutral, pending, PresentationState]
-    grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, label placement inside or outside the material]
-    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-LISTCARD-LABEL-OUTSIDE, DNA-COMMON-LISTCARD-LABEL-UNPAINTED, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-EDGE-NESTED, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-POCKET, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE]
+    grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, label placement inside or outside the material, the ink ground and its inks]
+    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-LISTCARD-LABEL-OUTSIDE, DNA-COMMON-LISTCARD-LABEL-UNPAINTED, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-EDGE-NESTED, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-POCKET, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE]
 
   - id: button
     ui: ui/components/button.md
@@ -287,13 +293,15 @@ roles:
     ui: ui/components/empty-state.md
     renderers: [EmptyNotice]
     vendorParity: [button]
-    slots: [message, description, iconSource, "action: label, pending"]
+    slots: [message, description, "mark: iconSource or artwork (src, alt, assetSlot required, assetSha256, assetPrompt; drawn as Mascot md)", "action: label, pending"]
     variants:
       action: { values: [none, one], chosenBy: app when a real next step exists }
+      mark: { values: [none, glyph, artwork], chosenBy: "app by empty-state.choose.cause; artwork on the first-run row only" }
     sizes: none
     states: [action-pending]
     grammarMayChange: [glyph and text paint]
     dna: [DNA-COMMON-EMPTY-ONE-ACTION]
+    provenance: "the artwork's assetSlot is a required field of EmptyNoticeArtwork (the compiler holds it; lint R338 holds it on a written Mascot)"
 
   - id: avatar
     ui: ui/components/identity-mark.md
@@ -307,6 +315,20 @@ roles:
     states: [image, initials fallback, skeleton]
     grammarMayChange: [ring, fallback paint]
     dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AGENT-NAMED]
+
+  - id: mascot
+    ui: ui/components/mascot.md
+    renderers: [Mascot]
+    vendorParity: []                              # no HeroUI part: Common's Image under a sized box
+    slots: [src, alt, "provenance: assetSlot, assetSha256, assetPrompt (Image and MediaFrame's AssetSlotProps)"]
+    variants:
+      meaning: { values: ["decorative (alt empty, aria-hidden)", "meaningful (a non-empty alt names it)"], chosenBy: app, default: decorative }
+      visibility: { values: [wide, always], meaning: { wide: "a hero is absent below 64rem", always: "a hero is kept, as the lg box" }, chosenBy: app, default: wide }
+    sizes: { steps: [sm, md, lg, hero], default: md, values: { sm: --grammar-mascot-sm 96px, md: --grammar-mascot-md 160px, lg: --grammar-mascot-lg 240px, hero: "fills its host's height up to --grammar-mascot-hero-max 30rem" }, compact: "below 48rem lg draws md and md draws sm" }
+    states: ["loading (transparent, no plate)", loaded, "error (the Image's fallback)"]
+    grammarMayChange: ["nothing: fit contain, the transparent ground with no plate, and the scale are Common's"]
+    dna: []
+    lint: [starci-grammar/generated-art-in-mascot-or-media-frame, starci-grammar/mascot-asset-slot-required]
 
   - id: shell
     ui: ui/composition.md
@@ -403,6 +425,7 @@ mustKeep:
       focus-rings: "elements in the match's subtree, the match included, that draw a visible outline or a focus box-shadow"
       tabs-look: "pill when the selected tab's .tabs__indicator is at least 80% of the tab's height, else underline"
       painted-box: "the nearest element at or above the match, inside the same component, whose background-color is not transparent"
+      contrast: "the WCAG ratio of the match's text colour against its composed ground: its own background composited over every ancestor's up to an opaque one, read as rendered sRGB"
       navigation: "client (history changed, no document load), reload or none"
       scroll-owners-x: "how many elements at or above the match scroll on the inline axis (overflow auto or scroll and content larger than the box)"
       scroll-owners-y: "the same on the block axis"
@@ -603,6 +626,23 @@ mustKeep:
       law: A horizontal divider runs the full inner width of its surface, inline inset 0px on both sides.
       measure: { kind: relation, select: '[data-component="Divider"][data-grammar-divider="bare"][data-grammar-divider-orientation="horizontal"]', metric: [left, right], op: "=", ref: { within: '[data-grammar-frame="bounded"]', select: self, metric: [inner-left, inner-right] } }
       owner: divider-full-bleed
+    - id: DNA-COMMON-SOFT-GROUND
+      role: card
+      law: A soft card's ground is the family's accent-soft tint.
+      measure: { kind: style, select: '[data-component="SurfaceCard"] > [data-grammar-surface-treatment="soft"]', metric: background-color, op: "=", value: { token: --accent-soft } }
+      owner: surfacecard-soft-treatment
+    - id: DNA-COMMON-TREATMENT-TEXT-CONTRAST
+      role: card
+      law: In every SurfaceCard treatment and theme, a step number reads against its own circle and text reads against the card's ground.
+      measure:
+        kind: style
+        metric: contrast
+        op: ">="
+        value: { threshold: contrast.text }
+        cases:
+          - { select: '[data-grammar-surface-treatment] [data-component="Stepper"] [data-grammar-step-marker]' }
+          - { select: '[data-grammar-surface-treatment] :is([data-component="Text"], [data-grammar-section-header] :is(h2, h3, p))' }
+      owner: surfacecard-soft-treatment; COLOR-5; story Navigation & Data / Stepper on every treatment, Surfaces / Soft surface card
     # --- lists
     - id: DNA-COMMON-LIST-SEAMS
       role: list

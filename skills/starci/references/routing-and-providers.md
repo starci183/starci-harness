@@ -5,10 +5,10 @@ Every tunable lives once in [ops/routing.yaml](../../../ops/routing.yaml); read 
 ## Who will run a task
 
 ```text
-starci route explain --label <label> --difficulty <easy|medium|hard|insane> [--risk <tag,...>]
+starci route show --label <label> --difficulty <easy|medium|hard|insane> [--risk <tag,...>]
 ```
 
-The router alone picks; no file or person steers it. `route explain` dry-runs it and records nothing:
+The router alone picks; no file or person steers it. `route show` dry-runs it and records nothing:
 the tier and why, each step (hard filter with qualification, quota, lineage, probe, score, balance) with every
 dropped member and its reason, every member's score, the exploration roll, the probe decision and the chosen
 member ([ops/README.md](../../../ops/README.md) "The router" owns the steps). Add `--attempt <n>` and
@@ -28,7 +28,7 @@ means unknown, never blocked. `sync` reads Orca's account usage now and the ledg
 pick does both on its own, so run it only to look.
 
 ```text
-starci provider report <provider> --outcome <success|unknown|rate|quota|capacity|auth|launch> --detail "<typed error>"
+starci provider report <provider> --outcome <success|unknown|rate|quota|capacity|auth|launch> --reason "<typed error>"
 starci provider report <provider> --quota <percent> --pool <pool> --resets-at <iso-time>
 ```
 
@@ -44,14 +44,14 @@ Supervisor's record of a probe it ran itself; it is never needed in normal opera
 ```text
 starci budget show
 starci budget show <workflow>
-starci budget raise <workflow> --minutes <n> --by owner --reason "<why>"
-starci budget raise <workflow> --tries <n> --by owner --reason "<why>"
-starci budget raise <workflow> --task <key> --tries <n> --by <kernel|supervisor|owner> --reason "<why>"
+starci budget raise <workflow> --minutes <n> --reason "<why>"
+starci budget raise <workflow> --tries <n> --reason "<why>"
+starci budget raise <workflow> --task <key> --tries <n> --reason "<why>"
 ```
 
 A workflow spends minutes and tries against its ceiling; a launch that never ran spends no try. Near the ceiling with
 tasks left, `budget show` says `near` and `supervisor tick` asks the owner one question ticket proposing a raise sized to
 those tasks; at the ceiling, dispatch holds with `BUDGET_EXHAUSTED`. Raise only on the owner's explicit OK with their
-reason; the raise answers the question.
+reason; the raise answers the question. Who raises is the caller's role (`STARCI_ROLE`, the owner when unset).
 A task's own tries are its contract's `budget.tries` plus what `--task` raised for it; a retry refused `TRIES_EXHAUSTED` is
 freed by `--task`: by its Kernel when the harness spent the tries (a red not the task's own), by the Supervisor ruling it.

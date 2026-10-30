@@ -11,12 +11,12 @@ export const hostUninstallVerb = defineVerb({
     schema: "starci/host-uninstall@1",
     flags: {
         ids: { kind: "rest", summary: "the services to uninstall (default every service with a schedule)" },
-        dry: { kind: "boolean", summary: "print the exact scheduler argv; run nothing" },
-        platform: { kind: "string", summary: "plan for another platform (win32, linux, darwin); only with --dry" },
+        execute: { kind: "boolean", summary: "remove the schedules (default: a dry run that prints the exact scheduler argv)" },
+        platform: { kind: "string", summary: "plan for another platform (win32, linux, darwin); only as a dry run (without --execute)" },
     },
     run: async (context, flags) => {
-        const platform = targetPlatform(flags.platform, flags.dry)
-        const outcomes = await hostUninstall(selectServices(loadHost(), flags.ids), context.cwd, flags.dry, platform)
-        return { data: { dry: flags.dry, platform, outcomes }, message: describeOutcomes(outcomes) }
+        const platform = targetPlatform(flags.platform, !flags.execute)
+        const outcomes = await hostUninstall(selectServices(loadHost(), flags.ids), context.cwd, !flags.execute, platform)
+        return { data: { dry: !flags.execute, platform, outcomes }, message: describeOutcomes(outcomes) }
     },
 })

@@ -17,6 +17,11 @@ file of another: shared code lives in `be/src`, and services meet through the wi
 Why: one repository, one install and one image per service keep each deployable on its own while every rule still sees all the
 code; an import between apps welds two deployables back into one.
 
+A service image runs as `USER node`. Every directory it writes at run time (a mounted volume such as an SQLite key store, e.g. the
+ai-router's `keys.sqlite`) is created and handed to that user in the image before `USER node`
+(`RUN mkdir -p <dir> && chown node:node <dir>`): a named volume first mounted on a missing path is created by Docker as root, and
+the service then cannot open its file. A volume that already exists keeps its owner, so it is chowned once on the server.
+
 Enforced by: R163 HFS_SERVICE_PLACEMENT, R168 BE_SERVICE_ISOLATION, R165 HFS_SERVICE_STACK_DECLARATION, R188 HFS_DOCKER_STAGES.
 
 ## BE-SERVICES-2 Every image of a multi-service stack is pinned

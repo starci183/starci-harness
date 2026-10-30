@@ -25,11 +25,11 @@ export const pkgBranchVerb = defineVerb({
     schema: "starci/pkg-branch@1",
     flags: {
         topic: { kind: "string", summary: "what the edit is about, e.g. button-loading", required: true, positional: true },
-        harness: { kind: "string", summary: "the harness repository to branch (default the one this CLI runs from)" },
+        cwd: { kind: "string", summary: "the harness repository to branch (default the one this CLI runs from)" },
     },
     run: async (context, flags) => {
         const app = await appName(context.cwd)
-        const harness = await harnessRepository(flags.harness)
+        const harness = await harnessRepository(flags.cwd)
         const branch = `${BRANCH_PREFIX}${app}-${topicSlug(flags.topic)}`
         const worktree = editWorktree(harness, branch)
         let created = false
@@ -44,7 +44,7 @@ export const pkgBranchVerb = defineVerb({
         await git(harness, ["config", `branch.${branch}.${APP_KEY}`, app])
         const guard = await installPushGuard(harness)
         const base = (await git(worktree, ["merge-base", "HEAD", "main"])).trim()
-        const link = `starci deps source --local --from ${join(worktree, "packages").replaceAll("\\", "/")}`
+        const link = `starci deps source --local --cwd ${join(worktree, "packages").replaceAll("\\", "/")}`
         const data: BranchData = { branch, worktree: worktree.replaceAll("\\", "/"), harness: harness.replaceAll("\\", "/"), base, created, guard: guard.replaceAll("\\", "/"), link }
         const message = [
             `${created ? "created" : "reusing"} ${branch} in ${data.worktree} (from main ${base.slice(0, 9)})`,

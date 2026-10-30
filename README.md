@@ -55,7 +55,7 @@ Every package is published to [npm](https://www.npmjs.com/org/starci) by CI when
 
 ## Install
 
-Node 24 and git. Orca is needed only for the `orca` runner; `gh` only for `release ci-status` and `check ci`; a
+Node 24 and git. Orca is needed only for the `orca` runner; `gh` only for `check ci`; a
 Docker engine only for `uat run`.
 
 ```sh
@@ -71,7 +71,7 @@ Harness state goes to the package's own `.runtime/` unless `STARCI_LOCAL_ROOT` n
 
 ```sh
 npx starci-harness doctor                               # Node, git, npm, gh and Orca on this host; the tree and its state base
-npx starci-harness explain --term task                  # the verbs about one task, with their flags and json schema
+npx starci-harness explain task                  # the verbs about one task, with their flags and json schema
 npx starci-harness contexts search "how is a back-end exception mapped"
 ```
 
@@ -125,23 +125,23 @@ state goes to `<checkout>/.runtime/` (git-ignored).
 ## Verbs
 
 `starci explain` lists the verbs of the working directory with their flags, effect and json schema (`--json` for
-machines); `starci explain --term <word>` filters them. An app shows the core verbs plus its edition's; the runtime and
+machines), generated from each verb's one definition as its `--help` is; `starci explain <word>` filters them and prints each one's flags. Every effect is dry until `--execute`. An app shows the core verbs plus its edition's; the runtime and
 a folder outside any StarCi tree show every verb. The groups:
 
 | group | for |
 |---|---|
-| (top), `check`, `release` | the host and the tree, the local API the desktop app reads (`ui`), the scoped gates, push, tag, publish and CI status |
+| (top), `check`, `release` | the host and the tree, the local API the desktop app reads (`ui`), the scoped gates and the CI verdict (`check ci`), push, tag and publish |
 | `contract`, `task` | one task: write and judge its contract, send, file the result, verify, cancel |
-| `workflow`, `plan` | a graph of tasks: define, run, step, pause, amend, stop; show and diff its versions |
+| `workflow`, `plan` | a graph of tasks: define, start, step (once or in a loop), pause, amend (its graph or its goal), stop; show and diff its versions |
 | `needs` | the shared needs Ops reported (`task result --needs`): list and show them with their owner and waiters, merge two spellings of one |
 | `worktree` | the harness's own worktrees: `gc` removes those whose owner ended, preserving their uncommitted work first |
 | `seat`, `route`, `provider`, `budget` | the `orca` runner: worker seats, the router, provider circuits, workflow budgets |
 | `project` | a project's ledger in the host registry: retire an abandoned one so no sweep, tick or pool count reads it |
 | `config` | the harness settings: list, get and set a key of the ops/ yaml that owns it, validated before it is written |
 | `host` | the services of [ops/host.yaml](ops/host.yaml) this machine runs for the harness: status, up, install, uninstall |
-| `connect` | the owner's outside channel, Telegram ([ops/telegram.yaml](ops/telegram.yaml)): store the owner's chat, report it, send the notices due; `supervisor telegram-bridge` runs it as a host service |
+| `connect` | the owner's outside channel, Telegram ([ops/telegram.yaml](ops/telegram.yaml)): store the owner's chat, report it, send the notices due; `connect telegram bridge` runs it as a host service |
 | `uat`, `test` | a Playwright script in the pinned image of [ops/uat.yaml](ops/uat.yaml); a worker's run of a live-provider suite, its custody keys handed to that run unseen (`test live`) |
-| `app` | one product repository: what a lite app declares, its Sonar scope, and the app commands of `@starci/hfs` (scaffold, sync, check, lint, add, new, emit, explain, hygiene, coverage, codemod, ci, db, secret, stack, release, upgrade), run in-process; a product pins `starci-harness` as its devDependency and its hooks and CI run `npx starci app ...` |
+| `app` | one product repository: what a lite app declares, its Sonar scope, and the app commands of `@starci/hfs` (scaffold, sync, check, lint, add, new, emit, explain, hygiene, coverage, codemod, ci, db, secret, stack, release, upgrade), run in-process with their arguments forwarded as typed (`starci app <verb> --help` prints @starci/hfs's help); a product pins `starci-harness` as its devDependency and its hooks and CI run `npx --no-install starci app ...` |
 
 Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wait`,
 `check unit`, `git`, `release notes`, and shell completion.

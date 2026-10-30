@@ -8,7 +8,7 @@ builds nothing, as it would run after the copies and index them), which then cop
 `contexts/`, `skills/starci/`, the harness documents and `LICENSE` into the package (`files` of
 [package.json](package.json)), with the repository's README as the package's own and this file as `cli/README.md`; `postpack` puts this README back and removes the copies. A published CLI therefore carries its data,
 resolves every `harness:` context file of the op files from itself, and holds the very corpus its search index was
-built from, so `contexts search --check` is green in an installed package too. The checks a change must pass are in
+built from, so `contexts search` (its dry run, the index check) is green in an installed package too. The checks a change must pass are in
 [CONTRIBUTING.md](../CONTRIBUTING.md); publishing is CI's, on every push to main (CONTRIB-20). The CLI runs the
 `@starci` packages its lockfile installs, so `check pins` (`core/check/cli-pins.ts`, a CI gate) and `release publish`
 refuse a CLI whose requirement or locked copy of one differs from its pin in `contexts/stack/pins.yaml` (`CLI_PIN_SKEW`).
@@ -29,15 +29,25 @@ src/
 
 - **One definition.** A verb is one `defineVerb({...})` in its own file, listed in `registry.ts`: path, summary,
   editions, effect (`read`, `local-write`, `host`, `remote`, `publish`), roles, json schema, typed flags and the
-  handler. Help and `starci explain` are generated from it; no YAML or table restates it.
+  handler. Help (`starci <verb> --help`) and `starci explain` are generated from it, every flag with its help line; no
+  YAML or table restates it.
+- **One flag dictionary** ([contexts/harness/cli-canonical.md](../contexts/harness/cli-canonical.md)). Every effect is
+  dry by default and `--execute` is the one "do it" flag; a generator's dry run exits 1 on drift. `--json`, `--timeout
+  <s>` (seconds), `--sha`, `--cwd`, `--reason` and `--status` are the one spelling of their meaning. `--json` and `--cwd`
+  are the CLI's own: a verb that declares a `cwd` flag receives the folder as typed and runs in the caller's directory,
+  every other verb runs as if started there.
 - **Which verbs a tree sees.** `locateTree` reads the nearest `hfs.json`. A lite or full app sees the verbs of its
   edition (core verbs serve both); the runtime and a folder outside any StarCi tree see every verb.
 - **Output.** With `--json` every verb prints one envelope, `{schema, ok, data}`, or
   `{schema: "starci/refusal@1", ok: false, code, message}`. Exit 0 is done, 1 is refused or red (nothing moved),
   2 is bad usage. A refusal is thrown as `Refusal(code, message)`.
 - **The app commands.** `core/app/hfs.ts` runs the `starci app` verbs that `@starci/hfs` implements in-process in the
-  app's directory: each verb file maps its typed flags to the hfs arguments (`hfsArgv`, values checked by zod first) and
-  `runHfs` streams hfs's output in human mode (the verb's message is empty) or, under `--json`, passes `--json` to a verb
+  app's directory. Such a verb is `forward: true` with one `rest` flag: `main.ts` hands it every argument after its path
+  as typed, `--help` included, once the CLI's own `--json` and `--cwd` are taken out, and @starci/hfs owns its flags, their
+  parsing and its help. The CLI still does what is its own before it forwards: the role and the harness (its version,
+  the caller's role, the ticket queue of a back-fill, the age identity), `STARCI_GATE_ERROR_LIMIT` from policy/quality.yaml,
+  the green-CI or urgent-record gate of an executed production `app stack deploy`, the install judgement of an executed
+  `app release`, and `app secret set --from-host`, which it takes out and resolves. `runHfs` streams hfs's output in human mode (the verb's message is empty) or, under `--json`, passes `--json` to a verb
   that prints a report and carries it in the envelope; the exit code is hfs's, 3 included (a database mutation not
   armed). `core/app/input-bounds.ts` is the package export `starci-harness/input-bounds` an app's codegen loads.
 - **Roles.** A verb lists the roles that may run it. They are enforced when `STARCI_ROLE` names the caller's role: a
@@ -48,7 +58,7 @@ src/
   writes `dist/contexts-search.json`, embedding it on CPU with the pinned model of `core/contexts/search-embed.ts`
   (optional dependency `@huggingface/transformers`, weights downloaded once into `.runtime/models` and hash-checked;
   `STARCI_SEARCH_MODEL=off` builds BM25 only) for `contexts search`, which fuses BM25 and cosine, falls back to BM25
-  when the model is absent, fails `--check` on a stale index and measures `--eval` on `core/contexts/search-eval.json`.
+  when the model is absent, with no question judges the index (stale exits 1; `--execute` rebuilds it) and measures `--eval` on `core/contexts/search-eval.json`.
 - **Host processes** run without a shell (`shared/exec.ts`; npm through the running Node), so no quoting breaks on
   Windows; git goes through `shared/git.ts`.
 
@@ -369,7 +379,7 @@ wave, in Debug's scoped round and before a push alike.
 
 A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`) built for
 a goal version (`harness/goal.ts`): goal text, acceptance ids and a scope ceiling (path prefixes, max tasks). Goal 1 is
-the file's; `workflow regoal` (owner, Supervisor) records goal n+1 from a `starci/goal-change@1` file, based on goal n
+the file's; `workflow amend --goal` (owner, Supervisor) records goal n+1 from a `starci/goal-change@1` file, based on goal n
 (`STALE` otherwise) and idempotent by its cmdId. A node's hash is its contract hash and retry round; its dependencies
 enter through early cutoff instead (`harness/reconcile.ts`): each dispatched task records the dependency tasks it ran
 on, and a done task's settled result hash is the git tree of its allowPaths at its settle commit plus its output hash,
@@ -493,7 +503,7 @@ naming who reopened it. `needs list` and `needs show <key>` read the store.
 
 A slot of the hfs manifest that names a `pattern` is enabled only by `sides.<side>.patterns` of the app's
 `hfs.json`, an app-root file every workflow shares and no task writes, so the harness owns those lists (`harness/hfs-patterns.ts`).
-It reads which slots a task's paths lie in through @starci/hfs's own classifier (`starci app explain`) and declares each pattern
+It reads which slots a task's paths lie in through @starci/hfs's own classifier (`starci app slot`) and declares each pattern
 the branch lacks: before the task's Op worktree is cut (its `allowPaths`), before its verify (those and the files its result
 names), and when a red of its verify or of its wave names an `HFS_SLOT_NOT_ENABLED` slot. The declaration adds the names to that
 one list and keeps every other byte of `hfs.json` (`addToStringArray` in `shared/json-edit.ts`, proved by parsing the result), and
@@ -519,7 +529,7 @@ requeues the task. A certain failure is explained before the worker is released 
 its receipt names is read once, a screen at one of `blockedPrompts` ([ops/routing.yaml](../ops/routing.yaml)) is a
 `blocked-prompt`, anything else takes its `failureSignals` kind; the seat keeps the explanation (`seats.failure_json`,
 shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with its worktree and seat open, and
-`seat start <task> --resume` replays the same requests.
+`seat start <task> --resume --execute` replays the same requests.
 
 ### Package sources
 
@@ -531,7 +541,7 @@ before its launch (`seat start`), a clean verify's or a wave's and a walk's over
 tree's after its own `npm ci` (`deps source --sync`). Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
 the harness's own `packages/` folder of that name, or dropped to npm when the harness has none, with a `deps-local-healed`
 event, so a vanished folder never fails a launch, a sync or a verify; `worktree gc` heals every project's record once it
-removed a package edit worktree. `--local` takes `packages/` of the harness's main checkout unless `--from` names another
+removed a package edit worktree. `--local` takes `packages/` of the harness's main checkout unless `--cwd` names another
 folder. The push gate is `judgePush` (`core/deps/push-gate.ts`), run by `deps check` (the app pre-push hook of
 `@starci/hfs`), `release push`, `release cut` and an executed `app release`. A package is fixed on a package edit branch
 (`core/pkg/edit.ts`): `pkg branch` cuts it into a worktree of the harness with a push guard, `pkg test <package>`
@@ -557,7 +567,7 @@ whose lease expired is `stalled (lease expired at ...)`, never alive),
 `supervisor stop` closes its tab (the agent in it goes with it) and retires its row, and `supervisor ensure` starts one only
 when Orca says it is gone (or replays a launch whose answer was lost), closing the old tab first; the host driver below does
 the same for every project on every tick.
-`project park [--project] [--dry-run]` frees a project of every agent and keeps everything resumable (`core/project/park-engine.ts`):
+`project park [--project] [--execute]` (a dry run without `--execute`) frees a project of every agent and keeps everything resumable (`core/project/park-engine.ts`):
 it records a `project-parked` host event first, pauses each running, blocked or paused workflow with the reason `parked: was
 <status>[: <reason>]`, stops each live worker seat (an Op's or a `[Worker]`'s), a working task cancelled with `task-parked` in
 the cancel's own transaction so its work settles KEEP as the key's one patch and its node comes back at the same try (revive.ts
@@ -676,14 +686,14 @@ picked, so the cap never sends work to another provider.
 
 ### The host driver
 
-The host driver keeps the tree alive with no LLM awake. `supervisor tick` is one idempotent pass for a scheduler to run
-every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`, and once a new build of the
+The host driver keeps the tree alive with no LLM awake. `supervisor tick --execute` is one idempotent pass for a scheduler to run
+every minute (without `--execute` it is a dry run; `--loop` repeats it in a foreground terminal, every `stall.watchSeconds`, and once a new build of the
 CLI's dist stands it starts its replacement from that build, detached onto its own stdout and stderr, records a
-`supervisor-watch-reloaded` host event and exits, so it never ticks with modules a build replaced and one watch process runs): first the terminal sweep
+`supervisor-watch-reloaded` host event and exits, so it never ticks with modules a build replaced and one loop process runs): first the terminal sweep
 (`harness/terminal-sweep.ts`) closes the tab of every Orca terminal the harness made — its handle recorded by a seat of a
 registered ledger or a Supervisor row, or its title `[Op] `, `[Kernel] `, `[Supervisor] `, `[Worker] ` (or Orca's `worker-task_` inside a
 workflow worktree) — that Orca lists orphaned or that no open seat, open Kernel record or live Supervisor holds (an unrecorded
-one only once quiet past `effectUnknownDeadlineMinutes`), and never touches any other terminal (`--dry-run` reports what it
+one only once quiet past `effectUnknownDeadlineMinutes`), and never touches any other terminal (the dry run reports what it
 would close and does nothing else); then it records Orca's full terminal list, by which a pool count (`runningWorkers` in
 `harness/machine.ts`) leaves out a seat whose terminal Orca no longer lists, and closes `launch-failed` every Kernel launch of
 any registered ledger still unreconciled past `effectUnknownDeadlineMinutes` with nothing of it alive
@@ -718,11 +728,11 @@ client listens and sends each change as a `data:` line, with a heartbeat comment
 
 [ops/host.yaml](../ops/host.yaml) lists what a host runs for the harness (Orca, Docker, the Supervisors, the
 scheduled tick, the Telegram bridge), each with its check, its start and how it is installed; `harness/host.ts` reads it and runs every argv
-without a shell. The owner runs `host install` once: on Windows each schedule is a `StarCi <name>` scheduled task whose
+without a shell. The owner runs `host install --execute` once: on Windows each schedule is a `StarCi <name>` scheduled task whose
 action is `wscript //B <state base>/host/<service>.vbs`, which runs the `.cmd` beside it with its window hidden (changing
 to the runtime root, setting the service's environment, appending its output to its log, every token quoted), so the
-scheduler's command line carries one quoted path; `--dry` prints that argv and both files and writes nothing, and other
-platforms are refused (`supervisor watch` in a terminal serves there). `host status` reports each service up, down or not
+scheduler's command line carries one quoted path; without `--execute` it prints that argv and both files and writes nothing (and so does
+`host uninstall`), and other platforms are refused (`supervisor tick --loop --execute` in a terminal serves there). `host status` reports each service up, down or not
 installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
 `host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
 
@@ -734,10 +744,10 @@ keeping no other key. It reads only the keys [policy/security.yaml](../policy/se
 other `SECRET_KEY_UNLISTED` before it opens the file; no message, envelope or evidence carries a value. A host service
 (`telegram-bridge`, `supervisor tick`) reads the file itself, so a key `host up` strips from its environment still arrives.
 [secret.env.example](../secret.env.example) names every key the host's secret.env holds. A provider key the owner sets once
-for several apps (`OPENROUTER_API_KEY`) reaches each app's sealed custody through `app secret set <env> <member> <KEY>
+for several apps (`OPENROUTER_API_KEY`) reaches each app's sealed custody through `app secret set --env <env> <member> <KEY>
 --from-host <HOST_KEY>` (`core/app/secret.ts`): the CLI reads HOST_KEY through the loader and hands the value to @starci/hfs as
 the stdin `set` reads, so no shell, argument, output, error or evidence carries it; an unlisted key is `SECRET_KEY_UNLISTED`,
-a listed one the host lacks `HOST_SECRET_MISSING`, and `--from-host` names exactly one key. Without it, `app secret set <env>
+a listed one the host lacks `HOST_SECRET_MISSING`, and `--from-host` names exactly one key. Without it, `app secret set --env <env>
 <member> <KEY>...` prompts on a terminal for each key with masked input and reads redirected stdin otherwise (the whole of it
 for one key, one `KEY=value` line per key for several), sealing every key in one write. `SOPS_AGE_KEY` is one of
 `secretKeys`: every `app` verb (`runHfs`) and `harness/custody.ts` hand @starci/hfs the loader's reader of it
@@ -772,7 +782,7 @@ default; an end's commit, reason or answer), and an inline keyboard whose callba
 a defect's "Xem chi tiết", "Giao Debug" (`ticket take` for Debug), "Danh sách ticket" and "Tắt tiếng 1h" (defect notices wait
 `muteMinutes`, `telegram_mutes`); a question's "Đồng ý mặc định", one button per `--option` its asker listed, and "Trả lời
 khác…" (the owner's next text answers it, `telegram_pending`); a fix's "Xem commit" (`commitUrl`) and "Mở lại". Each fact is claimed in `telegram_notices` by its key before it is
-sent, so it is sent once; a failed send is tried `sendTries` times. `supervisor telegram-bridge run` holds the host's one
+sent, so it is sent once; a failed send is tried `sendTries` times. `connect telegram bridge run` holds the host's one
 bridge seat (pid and beat; a second bridge exits while the first is alive) and loops a sweep and a `getUpdates` long poll;
 each update is claimed once in `telegram_inbound`. A message of any chat but the owner's is ignored and logged by its chat
 id, never its text; the owner's reply to a live question ticket's notice, or `/answer <ticket> <text>` (`default` accepts the
@@ -784,7 +794,7 @@ reason and each running or paused one, then the questions awaiting the owner and
 ticket and "Đã đóng hôm nay"; `/ticket <id>` shows one in full, its evidence, waiters and red tail redacted. A button press
 (`callback_query`) is acted on only from the owner's chat, through the ticket functions the verbs use, then answered
 (`answerCallbackQuery`) and its card's keyboard edited to the new state (`editMessageReplyMarkup`); a press from any other
-chat is ignored and logged by its chat id. `supervisor telegram-bridge status` (alive, stale or absent) is the host service's check.
+chat is ignored and logged by its chat id. `connect telegram bridge status` (alive, stale or absent) is the host service's check.
 
 ### Tickets
 
@@ -802,10 +812,14 @@ naming its verify's last reason (one a custody block left as the owner's `questi
 `harness-defect` of the harness module it names), the task
 waiting on it (`ticketEscalations`); `supervisor next` sends the owner's Telegram
 notices in the same round when it filed one (`tickNotices`), as the tick does; the Supervisor files anything else with `ticket open` (roles supervisor, owner, debug:
-the monitor), whose `--task` and `--decision` wait on it and whose `--default` and `--option` are a question's answers. `ticket list [--state] [--project]` is Debug's queue, blocking first,
+the monitor), whose `--task` and `--decision` wait on it and whose `--default` and `--option` are a question's answers. `ticket list [--status] [--kind] [--project]` is Debug's queue, blocking first,
 then by occurrences; `ticket show` reads one; `ticket take` (debug, owner) marks a defect in-progress; `ticket close --fixed-by
 <sha> | --wontfix --reason | --duplicate <id>` (debug, owner) ends it, a duplicate of a live ticket handing over its waiters;
-`ticket answer --answer | --accept-default [--why]` (owner, and the bridge for a Telegram reply) answers a question. An end is
+`ticket answer --answer | --accept-default [--reason]` (owner, and the bridge for a Telegram reply) answers a question. Owner
+feedback is the kind `feedback` (`core/ticket/feedback.ts`, every writing role): `ticket open --kind feedback --title "<words>"`
+records the owner's words verbatim with the day given, `ticket close <id> --kind feedback --target-kind <kind> --target <t>`
+closes it only on a target that resolves, and `ticket list --kind feedback --status overdue` exits 1 on an item open past
+`feedback.openMaxDays` of ops/liveness.yaml or a closed one whose target no longer resolves. An end is
 recorded with who gave it and why, releases every waiter and wakes the Supervisor of each waiter's project (and of the
 ticket's, when the Supervisor opened it) with an owner request by the closer naming the ticket, the fix or answer and what it
 released (`wakeOnClose`); every later brief of the workflow lists it under "Answers" (`harness/brief.ts`).
@@ -880,5 +894,5 @@ Op; the router's steps are [ops/README.md](../ops/README.md)'s) and
 [ops/liveness.yaml](../ops/liveness.yaml) (thresholds, the Orca answers that prove a worker gone — anything else is
 unknown, never dead — the `coordinators` block: seat lease, Kernel and Supervisor TTLs, relaunch limit,
 effect-unknown deadline, conflict wait, poisoned-command refusals, and how long `next` waits — and the `stall` block of the
-stall ladder and the host driver). `starci route explain --label <label>` prints a pick step by step; a
+stall ladder and the host driver). `starci route show --label <label>` prints a pick step by step; a
 label naming a coordinator (`supervisor`, `kernel`) explains that seat's pick through `pickCoordinator`.

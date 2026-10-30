@@ -1,0 +1,36 @@
+// Owner ruling 2026-10-22: a message catalog holds one block per language with the same keys, which Sonar's copy-paste detection
+// read as duplicated code (NIVO v0.3.1: new_duplicated_lines_density 35% once prettier formatted the catalogs). The rendered
+// properties leave the catalogs out of CPD only; they stay sources, so lint, analysis and every other rule still hold them.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import type { Presets } from '../sync/index.mjs';
+import { SONAR_CPD_EXCLUSIONS, renderTargets } from '../sync/index.mjs';
+
+function propertiesOf(text: string): Map<string, string> {
+  return new Map(text.split(/\r?\n/u).map(line => line.trim()).filter(line => line && !line.startsWith('#')).map((line): [string, string] => {
+    const separator = line.indexOf('=');
+    return [line.slice(0, separator), line.slice(separator + 1)];
+  }));
+}
+
+for (const edition of ['full', 'lite']) {
+  test(`${edition} rendered Sonar properties leave only the message catalogs out of copy-paste detection`, () => {
+    const hfs = { hfs: 3, kind: 'app', edition, project: 'sonar-cpd-proof', sides: {
+      be: { apps: [{ name: 'api', kind: 'api' }] },
+      fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
+    } };
+    // reason: the spec renders with no jest-preset exclusions at all, so the presets are the empty object, not a full Presets.
+    const target = renderTargets(hfs, {} as unknown as Presets).find(item => item.path === 'sonar-project.properties');
+    assert.ok(target, 'the managed Sonar properties are rendered');
+    const properties = propertiesOf(target.content);
+    assert.equal(properties.get('sonar.cpd.exclusions'), '**/messages/*.messages.ts,**/messages/*.json');
+    const lines = target.content.split('\n');
+    const cpd = lines.indexOf(`sonar.cpd.exclusions=${SONAR_CPD_EXCLUSIONS.join(',')}`);
+    const begin = lines.findIndex(line => line.startsWith('# starci:sonar-scope begin '));
+    assert.ok(begin !== -1 && begin < cpd && cpd < lines.indexOf('# starci:sonar-scope end'), 'the rendered line sits inside the generated block');
+    assert.deepEqual([...SONAR_CPD_EXCLUSIONS], ['**/messages/*.messages.ts', '**/messages/*.json']);
+    for (const glob of SONAR_CPD_EXCLUSIONS) {
+      assert.ok(!(properties.get('sonar.exclusions') as string).split(',').includes(glob), `${glob} stays a source`);
+    }
+  });
+}

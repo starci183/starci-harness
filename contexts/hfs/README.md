@@ -6,7 +6,7 @@ import which, and which rules judge it. It is data a machine reads; the reasons 
 
 | File | Holds | Read by |
 |---|---|---|
-| [slots.yaml](slots.yaml) | the slot manifest: editions, sides, app and trigger kinds, the tier matrix, rule parameters and every slot | the app CLI checks, the canon lint factories, the architecture machine, templates; an agent through `starci app explain` |
+| [slots.yaml](slots.yaml) | the slot manifest: editions, sides, app and trigger kinds, the tier matrix, rule parameters and every slot | the app CLI checks, the canon lint factories, the architecture machine, templates; an agent through `starci app slot` |
 | [rules.yaml](rules.yaml) | the rule catalog: id, finding code, the law in one sentence, failure codes, enforcers | gates and lint (by code), an agent resolving a cited `R<n>` |
 
 An app declares itself in `hfs.json` (kind app, its `edition` fixed at scaffold, its sides, apps, patterns,

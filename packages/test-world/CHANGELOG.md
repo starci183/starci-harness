@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3 - 2026-10-30
+
+- Changed: the stack contracts and the README name the test world's command, `starci app world up|down|status`.
+
 ## 1.3.2 - 2026-10-30
 
 - Added: a `useSandbox` handle answers `request({ method, url, headers?, form? })`, a browser-style call for a contract spec that walks a provider sign-in (`method` `GET` or `POST`): one request with `redirect: "manual"`, so a redirect is returned (its `location` among the headers) and never followed, answering `{ status, headers, body }` with the text body and every `set-cookie` kept as a separate entry. Each handle keeps its own cookie jar (domain, host-only, path, `Secure`, expiry by `Max-Age` or `Expires`) and sends the matching cookies on its later calls; `form` sends `application/x-www-form-urlencoded` fields and is refused on a `GET`. The index exports the types `SandboxBrowserRequest` and `SandboxBrowserAnswer`. Spec: `src/nest/sandbox.spec.ts` (cookies per handle, the redirect returned, the encoded form); README.

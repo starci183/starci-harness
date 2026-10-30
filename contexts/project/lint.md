@@ -31,7 +31,8 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
   composer answers for them itself (`cli/src/core/check/composition.ts`). The tail of every red step's output, secrets redacted, is kept as the task's
   evidence and `starci task status <task>` prints it.
 - **CI tier**: after the push, on main. Nobody waits for it unless `requireCi` lists the action.
-- **The app's own scripts**: hooks and CI steps the app wires (format check, stylelint, `hfs check`). The harness
+- **The app's own scripts**: hooks and CI steps the app wires (format check, stylelint, `starci app check`, green at < 20
+  error findings (`gate.errorLimit` of [policy/quality.yaml](../../policy/quality.yaml)) and no hard blocker). The harness
   does not call them; they run in the app's CI.
 
 A profile picks the tiers' gates and its canon stacks. `be` and `fe` are a side repository's, `app` a one-repository
@@ -53,7 +54,7 @@ app's (both sides), `lib` and `runtime` carry no canon. A workspace root is neve
 | `@starci/stylelint-canon` (enforcer `stylelint`) | fe CSS | `fe`, `app` | `canon` checks the wiring; stylelint itself runs in the app's scripts | grammar tokens only; brand values only in the brand file |
 | `@starci/prettier-config` | both | `be`, `fe`, `app` | `canon` checks the wiring; the format check runs in the app's scripts | layout of the source text |
 | `@starci/jest-preset` | be | `be`, `app` | `canon` checks the wiring; the specs run in CI (`unit`, `e2e`) | the unit test kit and its doubles |
-| app CLI `@starci/hfs` (enforcers `hfs`, `machine`) | the app root and both sides | apps | the app's scripts and CI (`hfs check`) | the tree against the slot manifest, `hfs.json`, generated contracts, catalogs, the import graph |
+| app CLI `@starci/hfs` (enforcers `hfs`, `machine`) | the app root and both sides | apps | the app's scripts and CI (`starci app check`) | the tree against the slot manifest, `hfs.json`, generated contracts, catalogs, the import graph |
 | gate `sonar-new-code` (enforcer `sonar`) | each repository | `be`, `fe`, `app` | CI | coverage, duplication and issues of new code |
 | gates `unit`, `e2e`, `build` | each repository | per profile | CI | the suites and the build; what a lite app cannot run is [lite.md](lite.md) "What CI runs" |
 

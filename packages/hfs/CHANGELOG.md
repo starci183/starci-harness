@@ -1,5 +1,28 @@
 # Changelog
 
+## 4.12.0 - 2026-10-30
+
+- Changed: the package is strict TypeScript. Every source is a .mts compiled in place to .mjs and .d.mts at the path it always shipped at, so every import specifier and the exports map answer as before (src/package-exports.spec.mjs proves each one from the packed tarball). The specs, their fixtures and helpers stay .mjs and ran unchanged against the TypeScript build.
+- Added: the platform database entity bases of the skeleton, AbstractEntity (created_at, updated_at, set by the database) and UuidAbstractEntity (the uuid id), written by the first `app add table`, whose entity extends UuidAbstractEntity (owner ruling entity-base); R86 sql-owner reads inherited columns.
+- Fixed: a first start (`stack deploy --urgent --first-start`) deploys the stack with every service but the database at 0 replicas, waits for the database, proves it empty and migrates, then deploys the real stack: the app services no longer start against an empty schema and roll back.
+- Fixed: the skeleton's database connection retries 10 times 3 s apart, so an app outlives its database's own start.
+- Added: R337 HFS_AUTH_COOKIE_DOMAIN_MISSING: when a lite app's web and api are served on different hosts, the api's environment names AUTH_COOKIE_DOMAIN, a parent of both; the skeleton passport sets that Domain on its cookies when it is configured.
+- Changed: the skeleton CLI apps log info to stderr (LoggingModule `info: "stderr"`), so a command's stdout carries only its output; the skeleton's stateless services roll back start-first.
+- Fixed: the CLI audit's behaviour bugs: flags of another action are refused, a value flag cannot swallow the next flag, `--env` is required for stack effects, the generated USAGE lists every parser flag, `npm ci` is the scaffold hint, failure-code hints name live verbs.
+
+- Upgrade note: right after upgrading, run `npx --no-install starci app sync --execute` in the app. The app's managed hooks and scripts still call `starci app hygiene` and `starci app sync --check`, which no longer exist, so the pre-commit hook fails until sync renders the new ones (and every managed file header now names `sync --execute`, so each managed file drifts once).
+- Changed: the app verbs take the canonical spellings of owner ruling cli-canonical-2026-10-30 (contexts/harness/cli-canonical.md); the old spellings are unknown verbs and flags:
+  - `app sync` is a dry run by default (exit 1 on drift) and writes with `--execute`; the Sonar scope block of `sonar-project.properties` is one of its managed files.
+  - `app check --staged` is the pre-commit guard (staged `.starciwork`/`.starcistacks` paths, the secrets guard over the index, a new back-end logic file without its spec).
+  - `app add service <dir> <name> [--inject ...]`, `app add spec <file>.service.ts` and `app add image` generate what the former `new` did; a flag a noun does not take is refused.
+  - `app slot <path>` names the slot that owns a path; `app world up|down|status` runs the full edition's test world (`npm run test:world`); `app stack` is the Swarm deploy tooling alone.
+  - `app scaffold <name>` creates `<--cwd>/<name>`; `app upgrade` is a dry run unless `--execute`.
+  - `app lint --json` and `--out <sonar file>`; `app codemod --execute`, `--json` and `--out <file>`.
+  - `app stack prepare` without `--execute` is the read-only host check; `--sha` names the commit on every stack action and on `release gate`, which adds the Sonar step whenever `services.sonar` is declared.
+  - `app secret <action> --env <env>` on every action but `init`; `secret recipients --add/--remove`, `ci secret set` and `ci var set` are dry runs until `--execute`; `ci local` is a dry run unless `--execute`.
+  - `app db migrate` without `--execute` prints the read-only plan with exit 0 (in step), 1 (drift) or 2 (unreadable); `--db-url-env <NAME>` on every db action; `db baseline` and `db restamp` act with `--execute`.
+- Fixed: the first start of the urgent floor (`stack deploy --urgent --first-start --db-service <service>`) no longer starts the app services against an empty schema (their healthchecks failed and `failure_action: rollback` rolled every first start back at converge). The stack is first deployed with every service but the database at 0 replicas (a compose override merged by `docker stack deploy -c`, `stack.first-start-hold.yaml` beside the stack; a global-mode service is held off every node by an unsatisfiable placement constraint), then the `first-start` step waits for the database, proves it empty and migrates, then the real stack deploys and converges, verifies and rolls back as before. New step `deploy-hold`; a `--db-service` that is not a service of the stack is refused with `STACK_FIRST_START_USAGE`. A deploy without `--first-start` is unchanged.
+
 ## 4.11.22 - 2026-10-30
 
 - Changed: `starci app check` and `starci app lint` are green while fewer than 20 error findings remain and none is a hard blocker (owner ruling gate-threshold-20, contexts/harness/decisions.md; `runtime/scripts/hfs/gate-threshold.mjs` `gateVerdict`): a plaintext secret (HFS_PLAINTEXT_SECRET and its family), the boot proof (BE_APP_BOOT_PROOF_MISSING) or a migration finding (DB_MIGRATION_SHAPE, DB_MIGRATION_DESTRUCTIVE, LITE_DB_MIGRATION, BE_MIGRATION_REVERSIBLE) blocks at any count. Every finding is still printed and kept in the report (`gate` carries the verdict); typecheck, build and the tests are not judged by it. Specs: `src/gate-threshold.spec.mjs`; `src/check-eslint.spec.mjs` now expects green for one or two ordinary findings.

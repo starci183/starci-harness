@@ -173,11 +173,12 @@
     }
 
     /*
-     * Every other Common rule that paints the accent as TEXT (link, current tab, bottom-nav and
-     * step, eyebrow) reads the text-safe accent too: the family re-declares the accent on those
+     * Every other Common rule that paints the accent as TEXT (link, current tab, bottom-nav,
+     * eyebrow) reads the text-safe accent too: the family re-declares the accent on those
      * elements, so a rule the family does not restyle still never paints pink body-size text.
+     * The Stepper's markers are the family's own pairs (components-navigation.css).
      */
-    .grammar-common-root[data-grammar-family="offset-pop"] :is(.starci-core-link, .starci-core-section-eyebrow, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item, .starci-core-step-marker) {
+    .grammar-common-root[data-grammar-family="offset-pop"] :is(.starci-core-link, .starci-core-section-eyebrow, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item) {
         --accent: var(--offset-pop-accent-text);
     }
 

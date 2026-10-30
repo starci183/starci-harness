@@ -41,7 +41,7 @@ this file says why.
 
 | Role | offset-pop |
 |---|---|
-| Card | Sticker at top depth, pocket when nested (O-1); surface radius larger than core's, smaller on narrow viewports; highlight is the one sticker holding the next step |
+| Card | Sticker at top depth, pocket when nested (O-1); surface radius larger than core's, smaller on narrow viewports; highlight is the one sticker holding the next step; `soft` is the blush sticker (`accentSoft`) with ink text, `ink` the ink sticker with canvas text |
 | Button | Every variant outlined with a small offset and heavy label; press travel; commit is the view's one pink fill with ink text |
 | ButtonGroup | Vendor arrangement; the outline replaces the collapsed borders |
 | Tabs | Underline in pink with the current label in `accentText`; pill is a raised pink-outlined segment |
@@ -54,8 +54,9 @@ this file says why.
 | Menu | Outlined popover at the control radius; item states as List rows |
 | List | Hover is a yellow wash, keyboard focus a pink ring on the row edge, selected a soft pink pocket with a pink leading edge and `accentText` label (O-9); static rows have no hover and a 2px ink seam |
 | Alert | Alert `surface` is a sticker with the tone on indicator and title; `soft` is the tone's palette fill with ink text (O-10); stacked toasts are spaced so each shadow clears the next |
-| EmptyState | Common's notice on the sticker |
+| EmptyState | Common's notice on the sticker; the first-run artwork is the Mascot below |
 | Avatar | Common initials and agent badge, inherited unchanged |
+| Mascot | Common's scale and transparent ground, inherited unchanged: no sticker, no ink outline (the family's framed Image skips an Image a Mascot draws or a SurfaceCard artwork zone holds) |
 | Shell | The contract shell: bar, sidebar and left drawer as stickers; no bottom dock (O-4) |
 | PageHeader | A surface band closed by the TopBar's ink rule at the outline width, a heavy heading; page tabs stand on the rule with the pink underline over it |
 | Page | Common's frame around the offset-pop band; the body's rhythm and gutter are Common's |

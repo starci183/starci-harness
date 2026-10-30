@@ -53,7 +53,7 @@ versioning:
 # 3.10.0 is a minor (2026-10-29): it ADDS the lite be.platform.database.entities slot, the entity registry (slot fields role and importedBy), so the
 # tier matrix and the public-entry rules admit exactly its <c>Entities imports and its deep importers (persistence.md BE-PERSISTENCE-3).
 # 3.11.0 (ruling:lite-official-postgres-image, 2026-10-29) is, like 3.9.0, a change for lite only: it ADDS the managed app.db.image slot
-# (db/Dockerfile, written by `starci app sync --write`), narrows ruleParams.db.extensions to the extensions that image carries, and gives
+# (db/Dockerfile, written by `starci app sync --execute`), narrows ruleParams.db.extensions to the extensions that image carries, and gives
 # @nestjs/schedule and cron one owner, platform/jobs (R335).
 # 3.13.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
 # admits pgmq, the event bus, ruleParams.db.queueOutbox is retired with the pg_cron half of R258, the lite event-bus functions replace
@@ -686,7 +686,7 @@ slots:
     since: 3.14.0
     profiles: [app]
     editionWhy: "ruling:app-secrets-one-standard: both editions deploy to a Docker Swarm server whose own age identity the owner backs up as a protected GitHub Environment secret; this workflow writes it back."
-    # The server identity restore workflow: workflow_dispatch only (like app.ci-stack-deploy); `starci app secret server-key <env> --restore github` dispatches it, rendered by starci app sync.
+    # The server identity restore workflow: workflow_dispatch only (like app.ci-stack-deploy); `starci app secret server-key --env <env> --restore github` dispatches it, rendered by starci app sync.
     path: ".github/workflows/stack-key-restore.yml"
     presence: optional
     tracked: tracked
@@ -959,7 +959,7 @@ slots:
 
   # ----- app root: the database of a lite app (ruling:lite-self-hosted-postgres-passport-minio): a self-hosted PostgreSQL in the app's
   # stack (the `db` service, built from the managed .starcistacks/images/db/Dockerfile: the official postgres image plus pgvector and pgmq, ruling:lite-db-image-in-stacks), migrated by
-  # `starci app db migrate --url-env <NAME>`. A full app keeps its TypeORM migrations under be/ and has no such folder.
+  # `starci app db migrate --db-url-env <NAME>`. A full app keeps its TypeORM migrations under be/ and has no such folder.
   - id: app.db
     profiles: [app]
     editions: [lite]

@@ -1,0 +1,283 @@
+// stack-ingress-config.mjs - the reader of `environments.<env>.deploy.ingress`: the SHARED host ingress (80/443) of the VPS. The ingress is
+// its own swarm stack (`name`) owning the attachable overlay and the host-mode ports; the app stack consumes it. External (non-swarm, plain
+// docker compose) tenants are reached over the overlay by a UNIQUE alias, or by a host address (`hostAddress`).
+// Pure given the block and a probe of the app tree. `normalizeDeploy` (stack-deploy-config.mjs) hooks it in as `config.ingress`;
+// `starci app stack ingress plan|attach|takeover` (packages/hfs/stack/ingress.mjs) consumes the normalised result.
+import { closedFields, collector, patternField, treeFile, type Collector, type StackProblem, type TreeProbe } from './stack-config-kit.mjs';
+import { isPlainObject as plain } from '../../engine/plain-object.mjs';
+import { NAME } from './stack-deploy-config.mjs';
+
+// reason: a parsed YAML block; closedFields checks its key set and every value is validated field by field.
+type Block = any;
+
+/** An upstream of the shared ingress: a container on the overlay or a host address, with its hosts and middlewares. */
+export interface IngressUpstream {
+  name: string; hosts: string[]; container: string | null; hostAddress: string | null; port: number; aliases: string[]; middlewares: string[];
+}
+export interface IngressVerify { host: string; path: string; status: number | null }
+export interface IngressRedirect { host: string; to: string; status: number }
+export interface IngressLegacy { dir: string; dynamicDir: string; container: string }
+export interface IngressPublish { file: string; supersedes: string[] }
+export interface RehearsalPorts { http: number; https: number }
+export interface IngressTakeover { gateSeconds: number; rehearsalPorts: RehearsalPorts }
+
+/** The normalised `deploy.ingress` block. */
+export interface IngressConfig {
+  name: string;
+  image: string | null;
+  args: string[] | null;
+  service: string;
+  network: string;
+  acmeVolume: string;
+  legacy: IngressLegacy;
+  upstreams: IngressUpstream[];
+  routes: string | null;
+  middlewares: Record<string, Block>;
+  verify: IngressVerify[];
+  drop: string[];
+  redirects: IngressRedirect[];
+  backup: { dir: string } | null;
+  publish: IngressPublish | null;
+  takeover: IngressTakeover;
+}
+
+/** What `normalizeIngress` returns: the config (null when a problem was found) and every problem. */
+export interface IngressResult { ingress: IngressConfig | null; problems: StackProblem[] }
+
+const DOCKER_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/u;
+const REMOTE_PATH = /^\/[A-Za-z0-9._/-]+$/u;
+const DNS_LABEL = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
+const DNS_HOST = new RegExp(String.raw`^${DNS_LABEL}(?:\.${DNS_LABEL})+$`, 'u');
+const PINNED_IMAGE = /^[a-z0-9./_-]+(?::[A-Za-z0-9._-]+)?@sha256:(?!0{64}$)[0-9a-f]{64}$/u;
+const TRAEFIK_ARG = /^--[A-Za-z0-9][A-Za-z0-9.-]*(?:=[^\s]*)?$/u;
+const OCTET = String.raw`(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)`;
+const IPV4 = new RegExp(String.raw`^${OCTET}(?:\.${OCTET}){3}$`, 'u');
+const URL_PATH = /^\/[A-Za-z0-9._~%/-]*$/u;
+const REDIRECT_STATUS = [301, 302, 303, 307, 308];
+
+const FIELDS = {
+  ingress: ['name', 'image', 'args', 'network', 'acmeVolume', 'service', 'legacy', 'upstreams', 'routes', 'middlewares', 'verify', 'drop', 'redirects', 'backup', 'publish', 'takeover'],
+  legacy: ['dir', 'dynamicDir', 'container'],
+  upstream: ['name', 'hosts', 'container', 'hostAddress', 'port', 'aliases', 'middlewares'],
+  verify: ['host', 'path', 'status'],
+  redirect: ['host', 'to', 'status'],
+  backup: ['dir'],
+  publish: ['file', 'supersedes'],
+  takeover: ['gateSeconds', 'rehearsalPorts'],
+  ports: ['http', 'https'],
+};
+
+const closed = (c: Collector, at: string, value: unknown, allowed: readonly string[]): boolean => closedFields(c, at, value, allowed, 'ingress');
+const matching = patternField;
+
+function remotePath(c: Collector, at: string, value: unknown): void {
+  if (typeof value !== 'string' || !REMOTE_PATH.test(value) || value.split('/').includes('..')) c.problem(at, 'must be an absolute path without ..');
+}
+
+function port(c: Collector, at: string, value: unknown): void {
+  if (!(Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 65535)) c.problem(at, 'must be a port from 1 to 65535');
+}
+
+function httpStatus(c: Collector, at: string, value: unknown): void {
+  if (!(Number.isInteger(value) && (value as number) >= 100 && (value as number) <= 599)) c.problem(at, 'must be an HTTP status code');
+}
+
+function list(c: Collector, at: string, value: unknown, check: (at: string, item: Block) => void): Block[] {
+  if (!Array.isArray(value) || value.length === 0) { c.problem(at, 'must be a non-empty list'); return []; }
+  value.forEach((item: Block, index: number) => check(`${at}[${index}]`, item));
+  return value;
+}
+
+const names = (c: Collector, pattern: RegExp) => (where: string, item: Block): void => { matching(c, where, item, pattern); };
+
+function legacy(c: Collector, block: Block): IngressLegacy | null {
+  if (!closed(c, 'deploy.ingress.legacy', block, FIELDS.legacy)) return null;
+  remotePath(c, 'deploy.ingress.legacy.dir', block.dir);
+  remotePath(c, 'deploy.ingress.legacy.dynamicDir', block.dynamicDir);
+  matching(c, 'deploy.ingress.legacy.container', block.container, DOCKER_NAME);
+  return { dir: block.dir, dynamicDir: block.dynamicDir, container: block.container };
+}
+
+/** An upstream is a container on the overlay (alias = the route target) or a host address (`hostAddress`), never both. */
+function target(c: Collector, at: string, entry: Block): string[] {
+  if ((entry.container === undefined) === (entry.hostAddress === undefined)) c.problem(at, 'declare exactly one of container and hostAddress');
+  if (entry.container !== undefined) matching(c, `${at}.container`, entry.container, DOCKER_NAME);
+  if (entry.hostAddress !== undefined) matching(c, `${at}.hostAddress`, entry.hostAddress, IPV4);
+  if (entry.hostAddress !== undefined && entry.aliases !== undefined) c.problem(`${at}.aliases`, 'a hostAddress upstream has no alias');
+  if (entry.container === undefined) return [];
+  return entry.aliases === undefined ? [entry.name] : list(c, `${at}.aliases`, entry.aliases, names(c, DOCKER_NAME));
+}
+
+function upstream(c: Collector, at: string, entry: Block): IngressUpstream | null {
+  if (!closed(c, at, entry, FIELDS.upstream)) return null;
+  matching(c, `${at}.name`, entry.name, NAME);
+  port(c, `${at}.port`, entry.port);
+  const aliases = target(c, at, entry);
+  // an attach-only upstream (a container the tenants' own route files reach, with no host of its own) declares no hosts
+  const hosts = entry.hosts === undefined ? [] : list(c, `${at}.hosts`, entry.hosts, names(c, DNS_HOST));
+  const middlewareNames = entry.middlewares === undefined ? [] : list(c, `${at}.middlewares`, entry.middlewares, names(c, NAME));
+  return {
+    name: entry.name, hosts, container: entry.container ?? null, hostAddress: entry.hostAddress ?? null, port: entry.port, aliases, middlewares: middlewareNames,
+  };
+}
+
+function duplicates(c: Collector, label: string, values: string[], at: string): void {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value)) c.problem(at, `${label} ${value} is declared more than once`);
+    seen.add(value);
+  }
+}
+
+function upstreams(c: Collector, block: Block): IngressUpstream[] {
+  if (block === undefined) return [];
+  const out = list(c, 'deploy.ingress.upstreams', block, () => {}).map((entry, index) => upstream(c, `deploy.ingress.upstreams[${index}]`, entry)).filter((entry): entry is IngressUpstream => Boolean(entry));
+  duplicates(c, 'upstream name', out.map((entry) => entry.name), 'deploy.ingress.upstreams');
+  duplicates(c, 'host', out.flatMap((entry) => entry.hosts), 'deploy.ingress.upstreams');
+  duplicates(c, 'alias (aliases must be unique on the shared overlay)', out.flatMap((entry) => entry.aliases), 'deploy.ingress.upstreams');
+  return out;
+}
+
+function middlewareMap(c: Collector, block: Block): Record<string, Block> {
+  if (block === undefined) return {};
+  if (!plain(block)) { c.problem('deploy.ingress.middlewares', 'must be a mapping of name to middleware'); return {}; }
+  const out: Record<string, Block> = {};
+  for (const [name, value] of Object.entries(block)) {
+    const at = `deploy.ingress.middlewares.${name}`;
+    if (!matching(c, at, name, NAME)) continue;
+    if (plain(value)) out[name] = value;
+    else c.problem(at, 'must be a mapping');
+  }
+  return out;
+}
+
+function referencedMiddlewares(c: Collector, ups: IngressUpstream[], declared: Record<string, Block>, routes: string | null): void {
+  if (routes !== null) return;
+  ups.forEach((entry, index) => {
+    for (const name of entry.middlewares) {
+      if (!Object.hasOwn(declared, name)) c.problem(`deploy.ingress.upstreams[${index}].middlewares`, `middleware ${name} is not declared in deploy.ingress.middlewares`);
+    }
+  });
+}
+
+function verifyList(c: Collector, block: Block): IngressVerify[] {
+  if (block === undefined) return [];
+  return list(c, 'deploy.ingress.verify', block, () => {}).flatMap((entry, index) => {
+    const at = `deploy.ingress.verify[${index}]`;
+    if (!closed(c, at, entry, FIELDS.verify)) return [];
+    matching(c, `${at}.host`, entry.host, DNS_HOST);
+    if (entry.path !== undefined) matching(c, `${at}.path`, entry.path, URL_PATH);
+    if (entry.status !== undefined) httpStatus(c, `${at}.status`, entry.status);
+    return [{ host: entry.host, path: entry.path ?? '/', status: entry.status ?? null }];
+  });
+}
+
+function dropList(c: Collector, block: Block): string[] {
+  return block === undefined ? [] : list(c, 'deploy.ingress.drop', block, names(c, DNS_HOST));
+}
+
+function redirects(c: Collector, block: Block): IngressRedirect[] {
+  if (block === undefined) return [];
+  return list(c, 'deploy.ingress.redirects', block, () => {}).flatMap((entry, index) => {
+    const at = `deploy.ingress.redirects[${index}]`;
+    if (!closed(c, at, entry, FIELDS.redirect)) return [];
+    matching(c, `${at}.host`, entry.host, DNS_HOST);
+    matching(c, `${at}.to`, entry.to, DNS_HOST);
+    if (entry.status !== undefined && !REDIRECT_STATUS.includes(entry.status)) c.problem(`${at}.status`, `must be one of ${REDIRECT_STATUS.join(', ')}`);
+    return [{ host: entry.host, to: entry.to, status: entry.status ?? 301 }];
+  });
+}
+
+function backup(c: Collector, block: Block): { dir: string } | null {
+  if (block === undefined) return null;
+  if (!closed(c, 'deploy.ingress.backup', block, FIELDS.backup)) return null;
+  remotePath(c, 'deploy.ingress.backup.dir', block.dir);
+  return { dir: block.dir };
+}
+
+const ROUTE_FILE = /^[a-z][a-z0-9-]*.ya?ml$/u;
+
+/** Where the app's own routes file lands in the shared directory, and the generic old file names it replaces (both required when declared). */
+function publish(c: Collector, block: Block): IngressPublish | null {
+  if (block === undefined) return null;
+  const at = 'deploy.ingress.publish';
+  if (!closed(c, at, block, FIELDS.publish)) return null;
+  matching(c, `${at}.file`, block.file, ROUTE_FILE);
+  const supersedes = list(c, `${at}.supersedes`, block.supersedes, (where: string, name: Block): void => {
+    if (matching(c, where, name, ROUTE_FILE) && name === block.file) c.problem(where, 'must differ from publish.file');
+  });
+  duplicates(c, 'superseded file', supersedes, `${at}.supersedes`);
+  return { file: block.file, supersedes };
+}
+
+const DEFAULT_REHEARSAL_PORTS = { http: 18080, https: 18443 };
+
+/** Alternate host ports of the rehearsal: valid ports, never the production 80 and 443, and different from each other. */
+function rehearsalPorts(c: Collector, block: Block): RehearsalPorts {
+  const at = 'deploy.ingress.takeover.rehearsalPorts';
+  if (block === undefined) return { ...DEFAULT_REHEARSAL_PORTS };
+  if (!closed(c, at, block, FIELDS.ports)) return { ...DEFAULT_REHEARSAL_PORTS };
+  for (const key of FIELDS.ports) {
+    port(c, `${at}.${key}`, block[key]);
+    if ([80, 443].includes(block[key])) c.problem(`${at}.${key}`, 'must not be the production port 80 or 443');
+  }
+  if (block.http === block.https) c.problem(at, 'http and https must differ');
+  return { http: block.http, https: block.https };
+}
+
+function takeover(c: Collector, block: Block): IngressTakeover | null {
+  if (block === undefined) return { gateSeconds: 30, rehearsalPorts: { ...DEFAULT_REHEARSAL_PORTS } };
+  if (!closed(c, 'deploy.ingress.takeover', block, FIELDS.takeover)) return null;
+  const gate = block.gateSeconds ?? 30;
+  if (!(Number.isInteger(gate) && gate >= 1 && gate <= 300)) c.problem('deploy.ingress.takeover.gateSeconds', 'must be a whole number of seconds from 1 to 300');
+  return { gateSeconds: gate, rehearsalPorts: rehearsalPorts(c, block.rehearsalPorts) };
+}
+
+/**
+ * Validates and normalises one `deploy.ingress` block (undefined -> { ingress: null, problems: [] }).
+ *   probe.exists(rel)  does a file exist below .starcistacks/<env>/ ?
+ * Returns { ingress, problems }; ingress is null when a problem was found.
+ */
+export function normalizeIngress(block: Block, { probe }: { probe: TreeProbe }): IngressResult {
+  const c = collector();
+  if (block === undefined) return { ingress: null, problems: [] };
+  if (!closed(c, 'deploy.ingress', block, FIELDS.ingress)) return { ingress: null, problems: c.problems };
+  for (const key of ['name', 'service']) if (block[key] !== undefined) matching(c, `deploy.ingress.${key}`, block[key], NAME);
+  if (block.image !== undefined) matching(c, 'deploy.ingress.image', block.image, PINNED_IMAGE);
+  const args = block.args === undefined ? null : list(c, 'deploy.ingress.args', block.args, names(c, TRAEFIK_ARG));
+  matching(c, 'deploy.ingress.network', block.network, DOCKER_NAME);
+  matching(c, 'deploy.ingress.acmeVolume', block.acmeVolume, DOCKER_NAME);
+  if (block.routes !== undefined) treeFile(c, 'deploy.ingress.routes', block.routes, probe);
+  const ups = upstreams(c, block.upstreams);
+  const declared = middlewareMap(c, block.middlewares);
+  const routes = block.routes ?? null;
+  referencedMiddlewares(c, ups, declared, routes);
+  const legacyEdge = legacy(c, block.legacy);
+  const verify = verifyList(c, block.verify);
+  const drop = dropList(c, block.drop);
+  const redirectList = redirects(c, block.redirects);
+  const backupDir = backup(c, block.backup);
+  const publishPlan = publish(c, block.publish);
+  const takeoverPlan = takeover(c, block.takeover);
+  // legacy and takeover are null only when they recorded a problem, which refuses the whole block.
+  if (c.problems.length > 0 || legacyEdge === null || takeoverPlan === null) return { ingress: null, problems: c.problems };
+  const ingress: IngressConfig = {
+    name: block.name ?? 'ingress',
+    image: block.image ?? null,
+    args,
+    service: block.service ?? 'ingress',
+    network: block.network,
+    acmeVolume: block.acmeVolume,
+    legacy: legacyEdge,
+    upstreams: ups,
+    routes,
+    middlewares: declared,
+    verify,
+    drop,
+    redirects: redirectList,
+    backup: backupDir,
+    publish: publishPlan,
+    takeover: takeoverPlan,
+  };
+  return { ingress, problems: c.problems };
+}

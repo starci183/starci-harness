@@ -9,14 +9,14 @@
 // proves: ARCH_PACKAGE_EXPORT_BYPASS@lite
 // proves: ARCH_PACKAGE_EXPORT_BYPASS@full
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { importOwnerEntry, noFolderReexport, noRelativeCapabilityEscape, noSelfModuleAlias } from "./module-layering.ts"
 import { rules as beGraphRules } from "./project-graph.ts"
-import { fePlugin } from "../fixtures/sibling-canon.mjs"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { fePlugin } from "../fixtures/sibling-canon.ts"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const plan = at("src/modules/domain/plan/plan.service.ts")
 const planIndex = at("src/modules/domain/plan/index.ts")

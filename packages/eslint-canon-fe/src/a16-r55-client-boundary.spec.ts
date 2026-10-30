@@ -12,7 +12,7 @@
 // proves: FE_DANGEROUS_HTML@full
 import test from 'node:test';
 import { canonTester } from '../fixtures/typed/tester.ts';
-import { projectFixture } from '../../eslint-canon-be/fixtures/project/tester.mjs';
+import { projectFixture } from '../../eslint-canon-be/fixtures/project/tester.ts';
 import {
   clientNoServerImport,
   noDangerousHtml,

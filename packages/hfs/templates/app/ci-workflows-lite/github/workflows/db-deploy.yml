@@ -56,8 +56,8 @@ jobs:
           test -s "$BACKUP_RECEIPT"
           secret_dir="$XDG_DATA_HOME/StarCi/secrets/{{project}}/$STACK_ENVIRONMENT"
           trap 'rm -rf -- "$secret_dir"' EXIT
-          npx --no-install starci app secret materialize "$STACK_ENVIRONMENT"
+          npx --no-install starci app secret materialize --env "$STACK_ENVIRONMENT"
           DATABASE_URL="$(cat "$secret_dir/DATABASE_URL")"
           export DATABASE_URL
-          npx --no-install starci app db migrate --url-env DATABASE_URL
-          STARCI_DB_ARMED=1 npx --no-install starci app db migrate --url-env DATABASE_URL --execute
+          npx --no-install starci app db migrate --db-url-env DATABASE_URL || test "$?" -eq 1
+          STARCI_DB_ARMED=1 npx --no-install starci app db migrate --db-url-env DATABASE_URL --execute

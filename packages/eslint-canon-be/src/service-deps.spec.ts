@@ -10,7 +10,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { doubleWordOf, noRepositoryClass, noTestDoubleInSource, providerParamToken, rules } from "./service-deps.ts"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 
 const tester = typedTester()
 

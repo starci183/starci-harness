@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { BE_DECLARATION, at, typedTester } from "../fixtures/typed/tester.mjs"
+import { BE_DECLARATION, at, typedTester } from "../fixtures/typed/tester.ts"
 import { rules, webhookShape, webhookVerifyFirst } from "./webhooks.ts"
 
 const tester = typedTester({ declaration: { ...BE_DECLARATION, patterns: ["webhooks", "realtime"] } })

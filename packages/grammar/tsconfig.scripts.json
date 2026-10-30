@@ -1,0 +1,24 @@
+{
+  "extends": "@starci/tsconfig/base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": [
+      "node"
+    ],
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true
+  },
+  "include": [
+    "scripts/*.mts",
+    "capture-refs.mts",
+    "svg-shot.mts",
+    "shoot.cts"
+  ]
+}
