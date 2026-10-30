@@ -1,6 +1,6 @@
 {
   "name": "@starci/heroicons",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Custom-only Heroicons-compatible cuts missing from upstream.",
   "type": "module",
   "license": "MIT",

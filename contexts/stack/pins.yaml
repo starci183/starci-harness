@@ -6,7 +6,7 @@
 # outside every committed file. `why` is one line; history lives in the package CHANGELOG.
 schema: starci/stack-pins@1
 pins:
-  '@starci/heroicons': {version: 0.3.4, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
+  '@starci/heroicons': {version: 0.3.5, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
   '@starci/grammar': {version: 0.16.0, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/eslint-canon-be': {version: 3.9.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
@@ -18,7 +18,7 @@ pins:
   '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}
   '@starci/jest-preset': {version: 2.5.3, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 1.3.3, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
-  '@starci/ai-router': {version: 0.4.0, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
+  '@starci/ai-router': {version: 0.4.1, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
   '@starci/hfs': {version: 4.12.0, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.1, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.0, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}

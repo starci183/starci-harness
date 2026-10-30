@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 - 2026-10-30
+
+- Changed: the lint configuration is TypeScript (eslint.config.ts, loaded through jiti 2.7.0, an exact devDependency) and typechecked with the package; no runtime change.
+
 ## 0.4.0 - 2026-10-30
 
 - Added: mounted keys, `GatewayOptions.mountedKeys` (and so `AiRouterGatewayModule`'s options): virtual keys from secrets the app already holds (`{ label, secret: string | (() => string), owner?, profiles?, models?, allowFallback?, quota?, enabled? }`, the `MountedKeySpec` type), so a deploy needs no `keys create`. Each secret is read once at startup, must start with `sk-starci-<label>-` followed by at least 32 letters, digits, `_` or `-`, and is kept only as its SHA-256 with its bindings in memory; a mounted key is never written to the key store. A bearer token is matched against the mounted keys before the store. Each mounted key has the stable id `key_` + 16 hex of `sha256("mounted:<label>")`, so its quota counters and usage rows survive a new secret and every deploy.
