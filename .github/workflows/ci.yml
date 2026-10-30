@@ -35,10 +35,10 @@ jobs:
       app: ${{ steps.plan.outputs.app }}
       app-build: ${{ steps.plan.outputs.app-build }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -125,8 +125,8 @@ jobs:
     # publish-packages reads the `repo` gates by this name's prefix.
     name: gate (${{ matrix.scope }}) ${{ matrix.gate }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -155,8 +155,8 @@ jobs:
     # publish-packages reads each leg by this name.
     name: package (${{ matrix.name }})
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install and build ${{ matrix.package }} after the siblings it needs
@@ -186,8 +186,8 @@ jobs:
     if: needs.plan.outputs.harness == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -213,8 +213,8 @@ jobs:
     if: needs.plan.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install and build the packages the app needs
@@ -231,12 +231,12 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Sonar reads the history to find new code.
           fetch-depth: 0
       - name: Sonar (new-code gate, policy/quality.yaml ci.sonar-new-code)
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
@@ -288,10 +288,10 @@ jobs:
     steps:
       # Full history: the plan diffs each affected package from the commit npm recorded for its published version, and the
       # publish reads that this commit is on origin/main.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -358,10 +358,10 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -437,11 +437,11 @@ jobs:
       # Without the secret the job only reports what it would move: the owner adds HARNESS_BOT_TOKEN once.
       HAS_BOT_TOKEN: ${{ secrets.HARNESS_BOT_TOKEN != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           token: ${{ secrets.HARNESS_BOT_TOKEN || github.token }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
