@@ -1,5 +1,6 @@
 // proves: BE_LITE_PROOF_LANE_MISSING@lite, BE_PATTERN_SPEC_MISSING@lite, BE_PATTERN_SPEC_MISSING@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,7 +10,7 @@ import { liteProofLaneFindings } from '../runtime/scripts/hfs/rules/lite-proof-l
 import { integrationSpecFindings } from '../runtime/scripts/hfs/rules/integration-specs.mjs';
 import { loadRuleCatalog, loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
-const SCENARIOS = {
+const SCENARIOS: Record<string, string[]> = {
   'event-bus': ['atomic-with-transaction', 'relay-only-after-commit', 'redelivery-then-dead-letter', 'duplicate-delivery-is-a-noop'],
   queue: ['enqueue-atomic-with-transaction', 'relay-job-id-is-outbox-id', 'scheduler-fires-once'],
   webhooks: ['bad-signature-is-refused', 'replay-is-refused', 'accepted-delivery-publishes-once'],
@@ -20,14 +21,17 @@ const SCENARIOS = {
   idempotency: ['repeat-returns-same-outcome', 'reused-key-other-body-is-refused'],
 };
 const SPEC = 'be/src/tests/integration/patterns/proofs.integration-spec.ts';
-const declaration = (edition, patterns) => ({
+// reason: liteProofLaneFindings types its `manifest` input as required, but it falls back to the bundled manifest when none is given; the specs that give none go through this.
+const liteLane = (input: Omit<Parameters<typeof liteProofLaneFindings>[0], 'manifest'>) => liteProofLaneFindings(input as Parameters<typeof liteProofLaneFindings>[0]);
+interface Fixture { repoRoot: string; files: string[]; all?: string[] }
+const declaration = (edition: string | undefined, patterns: string[]) => ({
   hfs: 3, kind: 'app', project: 'demo', edition,
   sides: {
     be: { apps: [{ name: 'core', kind: 'api' }], patterns },
     fe: { apps: [{ name: 'web', kind: 'next' }] },
   },
 });
-const tree = (t, files) => {
+const tree = (t: TestContext, files: Record<string, string>) => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-lite-proof-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(files)) {
@@ -36,13 +40,13 @@ const tree = (t, files) => {
   }
   return { repoRoot, files: Object.keys(files) };
 };
-const ids = (patterns) => patterns.flatMap((pattern) => SCENARIOS[pattern].map((scenario) => `${pattern}/${scenario}`));
-const spec = (scenarios) => scenarios.map((id, index) => {
+const ids = (patterns: string[]) => patterns.flatMap((pattern) => (SCENARIOS[pattern] as string[]).map((scenario) => `${pattern}/${scenario}`));
+const spec = (scenarios: string[]) => scenarios.map((id, index) => {
   const title = JSON.stringify(`${id}: proves the outcome`);
   return `${index % 2 ? 'test' : 'it'}(${title}, () => { expect(true).toBe(true); });`;
 }).join('\n');
-const find = (fixture, edition, patterns) => liteProofLaneFindings({ ...fixture, repo: declaration(edition, patterns) });
-const proofFindings = (result) => result.findings.filter((finding) => ['BE_LITE_PROOF_LANE_MISSING', 'BE_PATTERN_SPEC_MISSING'].includes(finding.code));
+const find = (fixture: Fixture, edition: string | undefined, patterns: string[]) => liteLane({ ...fixture, repo: declaration(edition, patterns) });
+const proofFindings = (result: ReturnType<typeof checkRepo>) => result.findings.filter((finding) => ['BE_LITE_PROOF_LANE_MISSING', 'BE_PATTERN_SPEC_MISSING'].includes(finding.code));
 
 test('BE_LITE_PROOF_LANE_MISSING: every declared lite pattern without integration specs is refused; full is unchanged', (t) => {
   const fixture = tree(t, {});
@@ -84,7 +88,7 @@ test('BE_LITE_PROOF_LANE_MISSING: e2e, contract, unit and front-end specs cannot
   const fixture = tree(t, Object.fromEntries(files.map((file) => [file, spec(ids(['queue']))])));
   const findings = find(fixture, 'lite', ['queue']);
   assert.equal(findings.filter((finding) => finding.code === 'BE_LITE_PROOF_LANE_MISSING').length, 1);
-  assert.equal(findings.filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING').length, SCENARIOS.queue.length);
+  assert.equal(findings.filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING').length, (SCENARIOS.queue as string[]).length);
 });
 
 test('BE_PATTERN_SPEC_MISSING: comments, strings, skipped/todo calls, dynamic titles and missing callbacks do not prove a scenario', (t) => {
@@ -116,7 +120,7 @@ test('BE_PATTERN_SPEC_MISSING: titles may use literal templates and proofs may b
   const rootPass = { ...fixture, files: ['hfs.json'], all: fixture.files };
   assert.deepEqual(find(rootPass, 'lite', ['projection']), [], 'the app-root pass reads the full tracked tree');
   const untracked = { ...fixture, files: [] };
-  assert.equal(find(untracked, 'lite', ['projection'])[0].code, 'BE_LITE_PROOF_LANE_MISSING', 'files on disk alone are not tracked proof');
+  assert.equal(find(untracked, 'lite', ['projection'])[0]?.code, 'BE_LITE_PROOF_LANE_MISSING', 'files on disk alone are not tracked proof');
 });
 
 test('BE_PATTERN_SPEC_MISSING: the edition manifest supplies scenario ids, including saga when configured', (t) => {
@@ -141,7 +145,7 @@ test('BE_LITE_PROOF_LANE_MISSING: no patterns, non-pattern capabilities, side pa
     assert.deepEqual(find(fixture, edition, []), []);
     assert.deepEqual(find(fixture, edition, ['cqrs']), []);
   }
-  assert.deepEqual(liteProofLaneFindings({ ...fixture, repo: { edition: 'lite', profile: 'be', patterns: ['queue'] } }), []);
+  assert.deepEqual(liteLane({ ...fixture, repo: { edition: 'lite', profile: 'be', patterns: ['queue'] } }), []);
   assert.deepEqual(find(fixture, undefined, ['queue']), []);
 });
 
@@ -150,7 +154,7 @@ test('BE_PATTERN_SPEC_MISSING: starci app check wires the lite lane and preserve
     const repo = declaration(edition, ['projection']);
     const empty = tree(t, { 'hfs.json': JSON.stringify(repo) });
     const missing = proofFindings(checkRepo({ ...empty, declaration: repo, tree: false }));
-    assert.deepEqual(missing.filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING').map((finding) => finding.scenario).sort((a, b) => a.localeCompare(b)), ids(['projection']).sort((a, b) => a.localeCompare(b)));
+    assert.deepEqual(missing.filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING').map((finding) => finding.scenario as string).sort((a, b) => a.localeCompare(b)), ids(['projection']).sort((a, b) => a.localeCompare(b)));
     assert.equal(missing.filter((finding) => finding.code === 'BE_LITE_PROOF_LANE_MISSING').length, edition === 'lite' ? 1 : 0);
     const passing = tree(t, { 'hfs.json': JSON.stringify(repo), [SPEC]: spec(ids(['projection'])) });
     assert.deepEqual(proofFindings(checkRepo({ ...passing, declaration: repo, tree: false })), []);
@@ -162,11 +166,11 @@ test('BE_PATTERN_SPEC_MISSING: starci app check wires the lite lane and preserve
 test('R284 owns BE_LITE_PROOF_LANE_MISSING once and R155 retains BE_PATTERN_SPEC_MISSING in both editions', () => {
   const catalog = loadRuleCatalog();
   const lane = catalog.rules.find((rule) => rule.id === 'R284');
-  assert.equal(lane.code, 'BE_LITE_PROOF_LANE_MISSING');
-  assert.deepEqual(lane.failureCodes, ['BE_LITE_PROOF_LANE_MISSING']);
+  assert.equal(lane?.code, 'BE_LITE_PROOF_LANE_MISSING');
+  assert.deepEqual(lane?.failureCodes, ['BE_LITE_PROOF_LANE_MISSING']);
   assert.deepEqual(catalog.rules.filter((rule) => rule.failureCodes.includes('BE_PATTERN_SPEC_MISSING')).map((rule) => rule.id), ['R155']);
-  assert.equal(catalog.rules.find((rule) => rule.id === 'R155').editions, undefined);
-  assert.deepEqual(catalog.rules.find((rule) => rule.id === 'R155').enforcers, [
+  assert.equal(catalog.rules.find((rule) => rule.id === 'R155')?.editions, undefined);
+  assert.deepEqual(catalog.rules.find((rule) => rule.id === 'R155')?.enforcers, [
     { kind: 'hfs', id: 'pattern-spec-missing', at: 'scripts/hfs/rules/event-bus.mjs', editions: ['full'], planned: false },
     { kind: 'hfs', id: 'lite-proof-lane', at: 'scripts/hfs/rules/lite-proof-lane.mjs', editions: ['lite'], planned: false },
   ]);

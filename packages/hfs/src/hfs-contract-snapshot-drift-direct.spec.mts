@@ -1,6 +1,7 @@
 // proves: HFS_CONTRACT_SNAPSHOT_DRIFT@lite
 // proves: HFS_CONTRACT_SNAPSHOT_DRIFT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,7 +12,7 @@ import { contractFindings } from '../runtime/scripts/hfs/rules/contract.mjs';
 const SNAPSHOT = 'contracts/api/schema.graphql';
 const TRANSPORT = 'src/features/api/orders/transport/graphql/orders-graphql.module.ts';
 
-function contractInput(t, edition, withSnapshot) {
+function contractInput(t: TestContext, edition: string, withSnapshot: boolean) {
   const appRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-direct-contract-'));
   t.after(() => fs.rmSync(appRoot, { recursive: true, force: true }));
   const repoRoot = path.join(appRoot, 'be');
@@ -22,7 +23,7 @@ function contractInput(t, edition, withSnapshot) {
       fe: { apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
     },
   }));
-  const contents = [
+  const contents: Array<[string, string]> = [
     ['apps/api/src/app.module.ts', "import { GraphqlModule } from '@modules/platform/graphql';\nexport const modules = [GraphqlModule];\n"],
     [TRANSPORT, 'export class OrdersGraphqlModule {}\n'],
   ];

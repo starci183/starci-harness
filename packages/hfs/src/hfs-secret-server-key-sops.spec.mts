@@ -19,10 +19,10 @@ const keygen = resolveRealTool("age-keygen", { env: process.env });
 const VALUE = "fake-value-sealed-in-a-scratch-app";
 
 /** A test identity made with age-keygen in `dir`: its file and public recipient. */
-function testKey(dir, name) {
+function testKey(dir: string, name: string) {
   const file = path.join(dir, `${name}.txt`);
-  assert.equal(spawnSync(keygen, ["-o", file], { stdio: "ignore" }).status, 0);
-  const recipient = spawnSync(keygen, ["-y", file], { encoding: "utf8" }).stdout.trim();
+  assert.equal(spawnSync(keygen as string, ["-o", file], { stdio: "ignore" }).status, 0);
+  const recipient = spawnSync(keygen as string, ["-y", file], { encoding: "utf8" }).stdout.trim();
   return { file, recipient, secret: fs.readFileSync(file, "utf8").split(/\r?\n/u).find((line) => line.startsWith("AGE-SECRET-KEY-")) };
 }
 
@@ -41,20 +41,20 @@ test("server-key wraps a real member to the server recipient with sops updatekey
   const file = path.join(fixture.dir, "app.enc.yaml");
   assert.deepEqual(envelopeOf(fs.readFileSync(file, "utf8")).recipients, [owner.recipient]);
 
-  const ssh = Object.assign((command, { input } = {}) => {
+  const ssh = Object.assign((_command: string, { input }: { input?: string } = {}) => {
     if (input === ageKeygenScript()) return { status: 0, stdout: "/usr/local/bin/age-keygen\n", stderr: "" };
     if (input === ensureIdentityScript(SERVER_AGE_IDENTITY)) return { status: 0, stdout: `${server.recipient}\n`, stderr: "identity created\n" };
     return { status: 127, stdout: "", stderr: "" };
   }, { cleanup: () => {}, notes: [] });
-  const out = [];
-  const err = [];
-  const code = await secretMain(["server-key", "--env", "production", "--execute"], { ...quiet, stdout: (text) => out.push(text), stderr: (text) => err.push(text), serverKeyIo: { deps: { ssh } } });
+  const out: string[] = [];
+  const err: string[] = [];
+  const code = await secretMain(["server-key", "--env", "production", "--execute"], { ...quiet, stdout: (text: string) => out.push(text), stderr: (text: string) => err.push(text), serverKeyIo: { deps: { ssh } } });
   assert.equal(code, 0, err.join(""));
   assert.doesNotMatch(out.join("") + err.join(""), new RegExp(`${VALUE}|AGE-SECRET-KEY`, "u"));
   assert.deepEqual(envelopeOf(fs.readFileSync(file, "utf8")).recipients.sort(), [owner.recipient, server.recipient].sort());
 
   const isolated = { ...fixture.env, SOPS_AGE_KEY_FILE: server.file };
-  const opened = spawnSync(sops, ["decrypt", "--input-type", "yaml", "--output-type", "json", file], { env: isolated, encoding: "utf8" });
+  const opened = spawnSync(sops as string, ["decrypt", "--input-type", "yaml", "--output-type", "json", file], { env: isolated, encoding: "utf8" });
   assert.equal(opened.status, 0, "the server key opens the member");
   assert.equal(JSON.parse(opened.stdout).API_KEY, VALUE);
 });

@@ -1,6 +1,7 @@
 // DB_MIGRATION_DESTRUCTIVE: a contract migration that drops a column is blocked only by a be/src source that still names that
 // column together with its own table in one SQL statement; a same-named column in another query is not a reference.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,7 +11,7 @@ import { destructiveMigrationFindings } from '../runtime/scripts/hfs/rules/datab
 const MIGRATION = 'db/migrations/20261101000906_origin-columns_contract_drop.sql';
 
 /** The findings of `migration` (SQL text) against be/src sources `{ path: text }` in a fresh app root. */
-function judge(t, migration, sources, additionalMigrations = {}) {
+function judge(t: TestContext, migration: string, sources: Record<string, string>, additionalMigrations: Record<string, string> = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-destructive-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const files = { [MIGRATION]: migration, ...additionalMigrations, ...sources };
@@ -22,7 +23,7 @@ function judge(t, migration, sources, additionalMigrations = {}) {
   return destructiveMigrationFindings({ repoRoot: root, migrations, files: Object.keys(files) });
 }
 
-const sql = (text) => `export const QUERY = ${JSON.stringify(text)};\n`;
+const sql = (text: string) => `export const QUERY = ${JSON.stringify(text)};\n`;
 const dropOrigin = 'alter table public.transactions drop column origin;\n';
 
 test('a same-named column of another table is not a reference of the dropped column', (t) => {

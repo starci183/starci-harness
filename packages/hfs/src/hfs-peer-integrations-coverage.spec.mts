@@ -1,6 +1,7 @@
 // proves: HFS_PEER_INTEGRATION_MISSING@lite
 // proves: HFS_PEER_INTEGRATION_MISSING@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,11 +14,13 @@ const APOLLO_EXPRESS5 = {
 };
 const PEER = '@as-integrations/express5';
 
-function check(t, edition, dependencies, devDependencies = {}) {
+function check(t: TestContext, edition: string, dependencies: Record<string, string>, devDependencies: Record<string, string> = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-peer-coverage-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ dependencies, devDependencies }));
-  return peerIntegrationFindings({ repoRoot, files: ['package.json'], repo: { edition } });
+  // The rule's declared input has no `repo` member (the rule ignores it); a variable keeps the spec's input as it was.
+  const input = { repoRoot, files: ['package.json'], repo: { edition } };
+  return peerIntegrationFindings(input);
 }
 
 for (const edition of ['lite', 'full']) {
@@ -31,7 +34,7 @@ for (const edition of ['lite', 'full']) {
   test(`HFS_PEER_INTEGRATION_MISSING (${edition}): a devDependency peer is refused for production`, (t) => {
     const findings = check(t, edition, APOLLO_EXPRESS5, { [PEER]: '^1.1.2' });
     assert.deepEqual(findings.map(({ code }) => code), ['HFS_PEER_INTEGRATION_MISSING']);
-    assert.match(findings[0].message, /only a devDependency/);
+    assert.match(findings[0]?.message as string, /only a devDependency/);
   });
 
   test(`HFS_PEER_INTEGRATION_MISSING (${edition}): the required runtime peer passes`, (t) => {

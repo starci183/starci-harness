@@ -1,5 +1,6 @@
 /** Backend bounds reach the emitted contracts and contract drift judgment without executing app bootstrap code. */
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,17 +8,31 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
 import { buildSchema, parse, print } from 'graphql';
+import type { DocumentNode, GraphQLInputField, GraphQLInputObjectType, GraphQLSchema } from 'graphql';
 import { emitContracts } from '../emit/contracts.mjs';
 import { boundsOf, INPUT_BOUNDS_DIRECTIVE, INPUT_BOUNDS_OPENAPI_EXTENSION, INPUT_BOUNDS_VERSION, INPUT_BOUNDS_VERSION_ARGUMENT } from '../emit/input-bounds.mjs';
 import { graphqlInputBounds, withInputBounds } from '../emit/graphql-input-bounds.mjs';
+import type { DocumentLike, InputBoundsMap } from '../emit/graphql-input-bounds.mjs';
 import { readOperations, openApiText } from '../emit/operations.mjs';
 import { inputBoundsPlugin } from '../emit/form-bounds.mjs';
 import { contractEmitFindings } from '../runtime/scripts/hfs/rules/contract.mjs';
 
+// reason: schemas read back from the emitted OpenAPI contract and the operation reader are JSON trees whose members the assertions judge.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Json = any;
+type Put = (relative: string, text: string) => void;
+interface Read { operations: Json[]; components: Json }
+interface BoundValidator { name: string; constraints?: unknown[]; each?: boolean; propertyName: string }
+type BoundValidators = BoundValidator[];
+
+// reason: graphql's DocumentNode and the emitter's structural DocumentLike describe the same parsed document; neither is assignable to the other.
+const withBounds = (document: DocumentNode, bounds: InputBoundsMap): DocumentNode => withInputBounds(document as unknown as DocumentLike, bounds) as unknown as DocumentNode;
+const inputFields = (schema: GraphQLSchema, name: string) => (schema.getType(name) as GraphQLInputObjectType).getFields();
+
 const require = createRequire(import.meta.url);
 const BOUNDS = new Map([['CreateInput', new Map([['name', { maxLength: 60 }]])]]);
 
-function fixture(t, files) {
+function fixture(t: TestContext, files: Record<string, string>) {
   const parent = fs.realpathSync(os.tmpdir());
   const root = fs.mkdtempSync(path.join(parent, 'starci-input-bounds-'));
   t.after(() => {
@@ -25,7 +40,7 @@ function fixture(t, files) {
     assert.ok(path.basename(root).startsWith('starci-input-bounds-'));
     fs.rmSync(root, { recursive: true, force: true });
   });
-  const put = (relative, text) => {
+  const put: Put = (relative, text) => {
     const file = path.join(root, relative);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, text);
@@ -34,8 +49,8 @@ function fixture(t, files) {
   return { root, put };
 }
 
-function dependency(put, name, typed = false) {
-  const manifest = typed ? require(`${name}/package.json`) : {};
+function dependency(put: Put, name: string, typed = false) {
+  const manifest: { types?: string } = typed ? require(`${name}/package.json`) : {};
   put(`node_modules/${name}/package.json`, JSON.stringify({
     name, main: require.resolve(name),
     ...(manifest.types ? { types: path.resolve(path.dirname(require.resolve(`${name}/package.json`)), manifest.types) } : {}),
@@ -53,7 +68,7 @@ throw new Error('the operation table must not execute during emit');
 `;
 const OUTPUT = 'export const OutputSchema = z.strictObject({ id:z.string().max(36) });';
 
-function operationFiles(put, source, extra = {}) {
+function operationFiles(put: Put, source: string, extra: Record<string, string> = {}) {
   put(`${SCHEMA_HOME}/input.schema.ts`, source);
   put(`${SCHEMA_HOME}/inputs-operations.contracts.ts`, TABLE);
   put('apps/api/src/operations.ts', `export { OPERATIONS } from '../../../${SCHEMA_HOME}/inputs-operations.contracts';`);
@@ -61,7 +76,7 @@ function operationFiles(put, source, extra = {}) {
   dependency(put, 'zod', true);
 }
 
-function operations(t, source, extra = {}) {
+function operations(t: TestContext, source: string, extra: Record<string, string> = {}): Read {
   const { root, put } = fixture(t, { 'package.json': '{}' });
   operationFiles(put, source, extra);
   const file = path.join(root, 'apps/api/src/operations.ts');
@@ -69,7 +84,7 @@ function operations(t, source, extra = {}) {
     strict: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS,
     moduleResolution: ts.ModuleResolutionKind.Node10, experimentalDecorators: true,
   });
-  return readOperations({ ts, program, file, repoRoot: root });
+  return readOperations({ ts, program, file, repoRoot: root }) as unknown as Read;
 }
 
 test('OpenAPI emits imported schema constants, extended fields, nullable numbers and item constraints', t => {
@@ -89,8 +104,8 @@ ${OUTPUT}`, { 'limits.schema.ts': 'export const NAME_LIMIT = 30 * 2;' });
   assert.deepEqual(input.properties.tags, { type: 'array', maxItems: 3, items: { type: 'string', maxLength: 12 } });
   assert.deepEqual(input.properties.title, { type: 'string', maxLength: 5 });
   const count = input.properties.count.anyOf;
-  assert.ok(count.some(part => part.type === 'null'));
-  assert.ok(count.some(part => part.type === 'number' && part.minimum === -2.5 && part.maximum === 8));
+  assert.ok(count.some((part: Json) => part.type === 'null'));
+  assert.ok(count.some((part: Json) => part.type === 'number' && part.minimum === -2.5 && part.maximum === 8));
   assert.equal(input.required.includes('count'), false);
   const openapi = JSON.parse(openApiText({ app: 'api', ...result }));
   assert.deepEqual(openapi.components.schemas['Operation.create.v1.Request'].properties.input, input);
@@ -136,8 +151,8 @@ test('OpenAPI refuses unresolved schema bounds and bounds missing from the wire 
     ['z.string().refine(value => value.length <= 20)', /input\.name:.*maxLength/],
     ['z.array(z.string().max(20)).refine(value => value.length <= 3)', /input\.name:.*maxItems/],
     ['z.array(z.string()).max(3)', /input\.name\[\]:.*maxLength/],
-  ]) {
-    assert.throws(() => operations(t, `import {z} from 'zod'; export const InputSchema = z.strictObject({name:${schema}}); ${OUTPUT}`), error => error.message.startsWith('operation create@1: input schema: ') && reason.test(error.message));
+  ] as Array<[string, RegExp]>) {
+    assert.throws(() => operations(t, `import {z} from 'zod'; export const InputSchema = z.strictObject({name:${schema}}); ${OUTPUT}`), (error: Error) => error.message.startsWith('operation create@1: input schema: ') && reason.test(error.message));
   }
 });
 
@@ -158,19 +173,19 @@ test('bounds intersect repeated validators and reject invalid numbers and invert
 
 test('GraphQL directive carries its format version and query-only documents keep their identity', () => {
   const queryOnly = parse('type Query { ping:String }');
-  assert.equal(withInputBounds(queryOnly, new Map()), queryOnly);
+  assert.equal(withBounds(queryOnly, new Map()), queryOnly);
   const document = parse('input CreateInput { name:String! } type Query { ping:String }');
-  const output = print(withInputBounds(document, BOUNDS));
+  const output = print(withBounds(document, BOUNDS));
   const schema = buildSchema(output);
-  assert.equal(schema.getDirective(INPUT_BOUNDS_DIRECTIVE).args.find(argument => argument.name === INPUT_BOUNDS_VERSION_ARGUMENT).defaultValue, INPUT_BOUNDS_VERSION);
-  const directive = schema.getType('CreateInput').getFields().name.astNode.directives[0];
-  assert.equal(directive.name.value, 'inputBounds');
-  assert.equal(directive.arguments[0].value.value, '60');
-  assert.throws(() => withInputBounds(parse('directive @inputBounds on INPUT_FIELD_DEFINITION input CreateInput { name:String }'), BOUNDS), /reserved/);
-  assert.throws(() => withInputBounds(document, new Map([['CreateInput', new Map([['name', { maxLength: 2147483648 }]])]])), /exceeds GraphQL Int/);
-  const unbounded = buildSchema(print(withInputBounds(parse('input NumericInput { count:Float } type Query { ping:String }'), new Map())));
-  assert.equal(unbounded.getDirective(INPUT_BOUNDS_DIRECTIVE).args.find(argument => argument.name === INPUT_BOUNDS_VERSION_ARGUMENT).defaultValue, INPUT_BOUNDS_VERSION);
-  assert.deepEqual(unbounded.getType('NumericInput').getFields().count.astNode.directives, []);
+  assert.equal(schema.getDirective(INPUT_BOUNDS_DIRECTIVE)?.args.find((argument) => argument.name === INPUT_BOUNDS_VERSION_ARGUMENT)?.defaultValue, INPUT_BOUNDS_VERSION);
+  const directive = inputFields(schema, 'CreateInput').name?.astNode?.directives?.[0];
+  assert.equal(directive?.name.value, 'inputBounds');
+  assert.equal((directive?.arguments?.[0]?.value as { value?: string } | undefined)?.value, '60');
+  assert.throws(() => withBounds(parse('directive @inputBounds on INPUT_FIELD_DEFINITION input CreateInput { name:String }'), BOUNDS), /reserved/);
+  assert.throws(() => withBounds(document, new Map([['CreateInput', new Map([['name', { maxLength: 2147483648 }]])]])), /exceeds GraphQL Int/);
+  const unbounded = buildSchema(print(withBounds(parse('input NumericInput { count:Float } type Query { ping:String }'), new Map())));
+  assert.equal(unbounded.getDirective(INPUT_BOUNDS_DIRECTIVE)?.args.find((argument) => argument.name === INPUT_BOUNDS_VERSION_ARGUMENT)?.defaultValue, INPUT_BOUNDS_VERSION);
+  assert.deepEqual(inputFields(unbounded, 'NumericInput').count?.astNode?.directives, []);
 });
 
 test('GraphQL refuses ambiguous input names and scalar/list validator mismatches', () => {
@@ -180,7 +195,7 @@ test('GraphQL refuses ambiguous input names and scalar/list validator mismatches
   const properties = ['name', 'tags', 'count'].map(name => ({ name, schemaName: name }));
   const metadata = [{ name: 'CreateInput', target: Input, properties }];
   const typeStorage = { getInputTypesMetadata: () => metadata };
-  const run = validators => graphqlInputBounds({ schema, typeStorage, validationStorage: { getTargetValidationMetadatas: () => validators } });
+  const run = (validators: BoundValidators) => graphqlInputBounds({ schema, typeStorage, validationStorage: { getTargetValidationMetadatas: () => validators } });
   for (const validator of [
     { name: 'maxLength', constraints: [10], each: true, propertyName: 'name' },
     { name: 'maxLength', constraints: [10], propertyName: 'tags' },
@@ -192,7 +207,7 @@ test('GraphQL refuses ambiguous input names and scalar/list validator mismatches
   assert.throws(() => run([]), /duplicate backend input type name/);
 });
 
-function workerFixture(t, { validator = true, resolver } = {}) {
+function workerFixture(t: TestContext, { validator = true, resolver }: { validator?: boolean; resolver?: string } = {}) {
   const files = {
     'package.json': '{}',
     'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true, target: 'ES2022', module: 'commonjs', experimentalDecorators: true, emitDecoratorMetadata: true } }),
@@ -218,9 +233,9 @@ import { LIMIT } from '../../../src/modules/domain/inputs/limits.schema';
   return fixtureRoot;
 }
 
-const argumentsOf = field => Object.fromEntries(field.astNode.directives[0].arguments.map(argument => [argument.name.value, Number(argument.value.value)]));
-const emittedInputFields = root => buildSchema(fs.readFileSync(path.join(root, 'out/contracts/api/schema.graphql'), 'utf8')).getType('CreateInput').getFields();
-const emittedOpenApiInput = root => JSON.parse(fs.readFileSync(path.join(root, 'out/contracts/api/openapi.json'), 'utf8')).components.schemas['Operation.create.v1.Request'].properties.input;
+const argumentsOf = (field: GraphQLInputField | undefined) => Object.fromEntries((field?.astNode?.directives?.[0]?.arguments ?? []).map((argument) => [argument.name.value, Number((argument.value as { value: string }).value)]));
+const emittedInputFields = (root: string) => inputFields(buildSchema(fs.readFileSync(path.join(root, 'out/contracts/api/schema.graphql'), 'utf8')), 'CreateInput');
+const emittedOpenApiInput = (root: string): Json => JSON.parse(fs.readFileSync(path.join(root, 'out/contracts/api/openapi.json'), 'utf8')).components.schemas['Operation.create.v1.Request'].properties.input;
 
 test('starci app emit keeps inherited fields, nullable numbers and item bounds equal across GraphQL and OpenAPI and detects stale bounds', t => {
   const { root, put } = workerFixture(t);
@@ -236,7 +251,7 @@ ${OUTPUT}`);
   assert.deepEqual(emitted.written, ['contracts/api/schema.graphql', 'contracts/api/openapi.json']);
   assert.deepEqual(emitted.standIns, {});
   const output = fs.readFileSync(path.join(root, 'out/contracts/api/schema.graphql'), 'utf8');
-  const fields = buildSchema(output).getType('CreateInput').getFields();
+  const fields = inputFields(buildSchema(output), 'CreateInput');
   assert.deepEqual(argumentsOf(fields.displayName), { maxLength: 60 });
   assert.deepEqual(argumentsOf(fields.tags), { maxItems: 3, itemMaxLength: 12 });
   assert.deepEqual(argumentsOf(fields.count), { min: -2.5, max: 8 });
@@ -244,14 +259,14 @@ ${OUTPUT}`);
   const rest = emittedOpenApiInput(root).properties;
   assert.deepEqual(argumentsOf(fields.displayName), {maxLength:rest.displayName.maxLength});
   assert.deepEqual(argumentsOf(fields.tags), {maxItems:rest.tags.maxItems,itemMaxLength:rest.tags.items.maxLength});
-  const numeric = rest.count.anyOf.find(part => part.type === 'number');
-  assert.ok(rest.count.anyOf.some(part => part.type === 'null'));
+  const numeric = rest.count.anyOf.find((part: Json) => part.type === 'number');
+  assert.ok(rest.count.anyOf.some((part: Json) => part.type === 'null'));
   assert.deepEqual(argumentsOf(fields.count), {min:numeric.minimum,max:numeric.maximum});
   assert.equal(rest.coords.prefixItems.length, 2);
   for (const item of rest.coords.prefixItems) {
     assert.deepEqual(argumentsOf(fields.coords), {maxItems:rest.coords.maxItems,itemMin:item.minimum,itemMax:item.maximum});
   }
-  const generated = inputBoundsPlugin(buildSchema(output));
+  const generated = inputBoundsPlugin(buildSchema(output) as unknown as Parameters<typeof inputBoundsPlugin>[0]);
   assert.match(generated, /"maxLength": 60/);
   assert.match(generated, /"itemMaxLength": 12/);
   assert.match(generated, /"min": -2.5/);
@@ -275,7 +290,7 @@ function MaxLength(value:number):PropertyDecorator { return () => {}; }
   assert.deepEqual(emitted.standIns, {});
   const fields = emittedInputFields(root);
   assert.deepEqual(argumentsOf(fields.name), {maxLength:20});
-  assert.deepEqual(fields.local.astNode.directives, []);
+  assert.deepEqual(fields.local?.astNode?.directives, []);
 });
 
 test('GraphQL follows barrel validator aliases on a redeclared inherited property', t => {
@@ -302,8 +317,8 @@ import { Args, Field, Float, InputType, Query, Resolver } from '@nestjs/graphql'
   const declaration = { apps: [{ name: 'api', kind: 'api' }] };
   emitContracts({ repoRoot: root, declaration, outDir: path.join(root, 'out') });
   const schema = buildSchema(fs.readFileSync(path.join(root, 'out/contracts/api/schema.graphql'), 'utf8'));
-  assert.equal(schema.getDirective(INPUT_BOUNDS_DIRECTIVE).args.find(argument => argument.name === INPUT_BOUNDS_VERSION_ARGUMENT).defaultValue, INPUT_BOUNDS_VERSION);
-  assert.deepEqual(schema.getType('NumericInput').getFields().count.astNode.directives, []);
+  assert.equal(schema.getDirective(INPUT_BOUNDS_DIRECTIVE)?.args.find((argument) => argument.name === INPUT_BOUNDS_VERSION_ARGUMENT)?.defaultValue, INPUT_BOUNDS_VERSION);
+  assert.deepEqual(inputFields(schema, 'NumericInput').count?.astNode?.directives, []);
 });
 
 test('starci app emit still emits a GraphQL app whose repository has no class-validator, with the versioned directive and no field bounds', t => {
@@ -315,8 +330,8 @@ import { Args, Field, InputType, Query, Resolver } from '@nestjs/graphql';
 `);
   emitContracts({ repoRoot: root, declaration: { apps: [{ name: 'api', kind: 'api' }] }, outDir: path.join(root, 'out') });
   const schema = buildSchema(fs.readFileSync(path.join(root, 'out/contracts/api/schema.graphql'), 'utf8'));
-  assert.equal(schema.getDirective(INPUT_BOUNDS_DIRECTIVE).args.find(argument => argument.name === INPUT_BOUNDS_VERSION_ARGUMENT).defaultValue, INPUT_BOUNDS_VERSION);
-  assert.deepEqual(schema.getType('PlainInput').getFields().label.astNode.directives, []);
+  assert.equal(schema.getDirective(INPUT_BOUNDS_DIRECTIVE)?.args.find((argument) => argument.name === INPUT_BOUNDS_VERSION_ARGUMENT)?.defaultValue, INPUT_BOUNDS_VERSION);
+  assert.deepEqual(inputFields(schema, 'PlainInput').label?.astNode?.directives, []);
 });
 
 const CLASS_VALIDATOR_DTOS = `

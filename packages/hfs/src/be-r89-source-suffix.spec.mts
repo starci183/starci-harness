@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { allowsFile } from '../runtime/scripts/hfs/allows.mjs';
@@ -27,7 +28,7 @@ const topicBuilder = [
 const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
 
 /** A back-end app tracked in git with command roles and the same typed topic builder under two suffixes. */
-function appTree(t, edition) {
+function appTree(t: TestContext, edition: string): string {
   const repoRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-r89-')));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const files = {
@@ -53,12 +54,12 @@ function appTree(t, edition) {
   return repoRoot;
 }
 
-const sourceForm = (repoRoot, file) => checkRepo({ repoRoot, files: [file], tree: false, phase: 'source' }).findings.filter((finding) => finding.code === CODE);
+const sourceForm = (repoRoot: string, file: string) => checkRepo({ repoRoot, files: [file], tree: false, phase: 'source' }).findings.filter((finding) => finding.code === CODE);
 
 for (const edition of ['lite', 'full']) {
   test(`${CODE} ${edition}: the app check rejects a role suffix outside the closed vocabulary`, (t) => {
     const repoRoot = appTree(t, edition);
-    assert.equal(sourceForm(repoRoot, suffixBad)[0].code, CODE);
+    assert.equal(sourceForm(repoRoot, suffixBad)[0]?.code, CODE);
   });
   test(`${CODE} ${edition}: the app check accepts a declared role suffix`, (t) => {
     const repoRoot = appTree(t, edition);
@@ -70,7 +71,7 @@ for (const edition of ['lite', 'full']) {
     for (const file of [topicPolicy, topicPolicy.replace('.ts', '.spec.ts')]) {
       assert.equal(hfs.classifyPath(file).status, 'owned');
       assert.equal(hfs.classifyPath(file).slot, 'be.domain');
-      assert.equal(allowsFile(hfs, file).allowed, true);
+      assert.equal(allowsFile(hfs, file)?.allowed, true);
       assert.deepEqual(sourceForm(repoRoot, file), []);
     }
     assert.equal(isMeasured(hfs.manifest, topicPolicy.slice('be/'.length)), true);
@@ -78,7 +79,7 @@ for (const edition of ['lite', 'full']) {
   });
   test(`${CODE} ${edition}: a topic builder does not introduce a topic role`, (t) => {
     const repoRoot = appTree(t, edition);
-    assert.equal(sourceForm(repoRoot, topicSuffix)[0].code, CODE);
-    assert.equal(allowsFile(openHfs({ repoRoot }), topicSuffix).allowed, false);
+    assert.equal(sourceForm(repoRoot, topicSuffix)[0]?.code, CODE);
+    assert.equal(allowsFile(openHfs({ repoRoot }), topicSuffix)?.allowed, false);
   });
 }

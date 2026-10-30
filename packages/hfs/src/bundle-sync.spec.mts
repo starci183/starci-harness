@@ -16,8 +16,8 @@ function tempPackages() {
   cpSync(join(packagesDir, pkg, 'runtime'), join(dir, pkg, 'runtime'), { recursive: true });
   return dir;
 }
-const run = (dir, check) => syncBundles({ packagesDir: dir, hfsRuntimeDir, check, packages: [pkg] });
-const bytes = (dir, path) => readFileSync(join(dir, pkg, 'runtime', path));
+const run = (dir: string, check: boolean) => syncBundles({ packagesDir: dir, hfsRuntimeDir, check, packages: [pkg] });
+const bytes = (dir: string, path: string) => readFileSync(join(dir, pkg, 'runtime', path));
 
 test('the committed manifests are exactly what the packages hold today', () => {
   for (const name of bundlePackages) {
@@ -48,9 +48,9 @@ test('the generator recreates a deleted generated file', () => {
   const dir = tempPackages();
   try {
     const { generated } = readManifest(join(dir, pkg, 'runtime', 'bundle.json'));
-    rmSync(join(dir, pkg, 'runtime', generated[0]));
+    rmSync(join(dir, pkg, 'runtime', generated[0] as string));
     assert.deepEqual(run(dir, false).written, [`${pkg}/runtime/${generated[0]}`]);
-    assert.ok(existsSync(join(dir, pkg, 'runtime', generated[0])));
+    assert.ok(existsSync(join(dir, pkg, 'runtime', generated[0] as string)));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -62,7 +62,7 @@ test('own files are left alone', () => {
     const { own, generated } = readManifest(join(dir, pkg, 'runtime', 'bundle.json'));
     assert.ok(own.length > 0);
     for (const path of own) writeFileSync(join(dir, pkg, 'runtime', path), `own edit of ${path}\n`);
-    writeFileSync(join(dir, pkg, 'runtime', generated[0]), 'stale\n');
+    writeFileSync(join(dir, pkg, 'runtime', generated[0] as string), 'stale\n');
     const result = run(dir, false);
     assert.deepEqual(result.written, [`${pkg}/runtime/${generated[0]}`]);
     for (const path of own) assert.equal(bytes(dir, path).toString('utf8'), `own edit of ${path}\n`);
@@ -85,8 +85,8 @@ test('--check reports a drifted, a missing and an unlisted file without writing'
   const dir = tempPackages();
   try {
     const { generated } = readManifest(join(dir, pkg, 'runtime', 'bundle.json'));
-    writeFileSync(join(dir, pkg, 'runtime', generated[0]), 'stale\n');
-    rmSync(join(dir, pkg, 'runtime', generated[1]));
+    writeFileSync(join(dir, pkg, 'runtime', generated[0] as string), 'stale\n');
+    rmSync(join(dir, pkg, 'runtime', generated[1] as string));
     writeFileSync(join(dir, pkg, 'runtime', 'engine', 'extra.mjs'), 'export {}\n');
     const result = run(dir, true);
     assert.deepEqual(result.written, []);
@@ -94,7 +94,7 @@ test('--check reports a drifted, a missing and an unlisted file without writing'
       result.drift.map((item) => `${item.reason}:${item.path}`).sort(),
       [`differs:${generated[0]}`, `missing:${generated[1]}`, 'unlisted:engine/extra.mjs'].sort(),
     );
-    assert.equal(readFileSync(join(dir, pkg, 'runtime', generated[0]), 'utf8'), 'stale\n');
+    assert.equal(readFileSync(join(dir, pkg, 'runtime', generated[0] as string), 'utf8'), 'stale\n');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
