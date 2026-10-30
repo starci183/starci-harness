@@ -1,8 +1,8 @@
 // proves: BE_JWT_ALG_PINNED@lite BE_JWT_ALG_PINNED@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { jwtAlgPinned, recommended, rules } from "./jwt-alg.ts"
 

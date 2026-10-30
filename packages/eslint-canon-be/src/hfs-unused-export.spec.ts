@@ -3,11 +3,11 @@
 // proves: HFS_UNUSED_FILE@lite
 // proves: HFS_UNUSED_FILE@full
 import test from 'node:test';
-import { projectFixture } from '../fixtures/project/tester.mjs';
+import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules as beRules } from './project-graph.ts';
-import { fePlugin } from '../fixtures/sibling-canon.mjs';
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { fePlugin } from '../fixtures/sibling-canon.ts';
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 /** The text of a fixture file the spec wrote (a spec naming a file it did not write fails here, as the tester would). */
 const textAt = (files: Readonly<Record<string, string>>, file: string) => {

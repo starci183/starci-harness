@@ -1,6 +1,6 @@
 /** The complete provider door must satisfy the webhook and thin-feature laws together. */
 import test from "node:test"
-import { BE_DECLARATION, at, typedTester } from "../fixtures/typed/tester.mjs"
+import { BE_DECLARATION, at, typedTester } from "../fixtures/typed/tester.ts"
 import { featureThin } from "./feature-thin.ts"
 import { webhookShape, webhookVerifyFirst } from "./webhooks.ts"
 import type { Context, Node, Report, RuleModule } from "./lib/rule.ts"

@@ -3,13 +3,13 @@
 // proves: BE_READONLY_BOUNDARY@lite
 // proves: BE_READONLY_BOUNDARY@full
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { projectFixture } from "../fixtures/project/tester.mjs"
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { projectFixture } from "../fixtures/project/tester.ts"
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { executeParamsShape, handlerIsThin, handlerOverridesProcess, messageCarriesParamsOnly, messageTypedResult, noEventBus, noUseCase } from "./cqrs.ts"
 import { rules as graphRules } from "./project-graph.ts"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const APPLICATION = "src/features/api/plan/application"
 const COMMAND = at(`${APPLICATION}/place-order.command.ts`)

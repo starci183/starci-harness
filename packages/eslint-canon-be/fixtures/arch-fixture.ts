@@ -6,13 +6,23 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import type { TestContext } from 'node:test';
+import type tsModule from 'typescript';
+import type { AppDeclaration, SideDeclaration } from './app.ts';
 
 const require = createRequire(import.meta.url);
-export const ts = require('typescript');
 
-export const DEFAULT_APPS = { be: [{ name: 'core', kind: 'api' }], fe: [{ name: 'web', kind: 'next' }] };
+/** The TypeScript compiler the fixture's apps are typed with. */
+export const ts: typeof tsModule = require('typescript') as typeof tsModule;
 
-export function writeFiles(root, files) {
+/** One app of a side: its name and kind. */
+type AppEntry = { readonly name: string; readonly kind: string };
+
+/** The default apps of each side. */
+export const DEFAULT_APPS: Readonly<Record<'be' | 'fe', readonly AppEntry[]>> = { be: [{ name: 'core', kind: 'api' }], fe: [{ name: 'web', kind: 'next' }] };
+
+/** Write `files` (relative path to content; null skips) under `root`. */
+export function writeFiles(root: string, files: Readonly<Record<string, string | null>>): void {
   for (const [relative, content] of Object.entries(files)) {
     if (content === null) continue;
     const target = path.join(root, ...relative.split('/'));
@@ -22,7 +32,7 @@ export function writeFiles(root, files) {
 }
 
 /** The app hfs.json of a fixture about one side: `fields` (apps, optionalSlots, connections, reads) for `side`, the smallest other side. */
-export function appDeclaration(side, fields, project = 'fixture') {
+export function appDeclaration(side: 'be' | 'fe', fields: SideDeclaration, project = 'fixture'): AppDeclaration {
   const other = { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } };
   return { hfs: 3, kind: 'app', project, sides: { ...other, [side]: fields } };
 }
@@ -34,12 +44,21 @@ export function appDeclaration(side, fields, project = 'fixture') {
  * at the app root (`../package.json` replaces the app's manifest). `declaration` overrides parts of the side's declaration. The
  * app is a git repo with the files staged (not committed).
  */
-export function archFixture(t, { profile = 'be', files = {}, declaration = {}, apps = DEFAULT_APPS[profile] } = {}) {
+export function archFixture(
+  t: TestContext,
+  { profile = 'be', files = {}, declaration = {}, apps = DEFAULT_APPS[profile] }: {
+    profile?: 'be' | 'fe';
+    files?: Readonly<Record<string, string | null>>;
+    declaration?: SideDeclaration;
+    apps?: readonly AppEntry[];
+  } = {},
+): string {
   const appRoot = fs.mkdtempSync(path.join(os.tmpdir(), `starci-hfs-arch-${profile}-`));
-  t.after(() => fs.rmSync(appRoot, { recursive: true, force: true }));
+  t.after(() => { fs.rmSync(appRoot, { recursive: true, force: true }); });
   const root = path.join(appRoot, profile);
-  const app = apps[0].name;
-  const baseline = {
+  const app = apps[0]?.name;
+  if (app === undefined) throw new Error('an arch fixture needs at least one app');
+  const baseline: Record<string, string> = {
     '../hfs.json': `${JSON.stringify(appDeclaration(profile, { apps, ...declaration }), null, 2)}\n`,
     '../package.json': JSON.stringify({ name: 'fixture', private: true }),
     'tsconfig.json': `${JSON.stringify({

@@ -105,10 +105,6 @@ slots:
         until: "2026-12-31"
         owner: package TS plan
         why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
-      - path: packages/heroicons/
-        until: "2026-12-31"
-        owner: package TS plan
-        why: one spec is still .spec.mjs; it becomes a .spec.ts beside the source
       - path: packages/hfs/
         until: "2026-12-31"
         owner: package TS plan

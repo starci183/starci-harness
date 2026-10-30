@@ -1,11 +1,11 @@
 import fs from "node:fs"
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
-import type { SideDeclaration } from "../fixtures/app.mjs"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
+import type { SideDeclaration } from "../fixtures/app.ts"
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 // Bounded contexts (R174 BE_CONTEXT_OWNER, R175 BE_CONTEXT_COUPLING, R176 BE_CONTEXT_TRANSACTION, R178 BE_CONTEXT_PLATFORM_TABLES, and the
 // per-connection carve-out of BE_SCHEMA_OWNER). One repository of three contexts: identity, order (with the cart capability) and billing.

@@ -8,10 +8,10 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import tsParser from "@typescript-eslint/parser"
 import { executeParamsShape, handlerIsThin, handlerOverridesProcess, messageCarriesParamsOnly, messageTypedResult, noEventBus, noUseCase, rules } from "./cqrs.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const tester = typedTester()
 const APP = "src/features/api/plan/application"

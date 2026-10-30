@@ -11,7 +11,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { at, fixtureHfs } from "../fixtures/typed/tester.mjs"
+import { at, fixtureHfs } from "../fixtures/typed/tester.ts"
 import {
   noNonAsciiSource,
   noRestatedNameJsdoc,
@@ -20,7 +20,7 @@ import {
   requirePublicMemberJsdoc,
   rules,
 } from "./comments.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const tester = canonRuleTester({
   languageOptions: {

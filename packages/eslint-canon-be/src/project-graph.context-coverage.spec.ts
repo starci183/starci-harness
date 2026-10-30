@@ -7,11 +7,11 @@
 // proves: BE_CONTEXT_PLATFORM_TABLES@lite
 // proves: BE_CONTEXT_PLATFORM_TABLES@full
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import type { SideDeclaration } from "../fixtures/app.mjs"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import type { SideDeclaration } from "../fixtures/app.ts"
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 // R174, R175, R176 and R178 share three contexts: identity, order (with cart), and billing.
 // A connection is a context; a capability belongs to the connection its persistence arrays are registered on.

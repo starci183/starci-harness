@@ -1,8 +1,8 @@
 // proves: BE_TEST_BUILDER_ARRANGES@lite BE_TEST_BUILDER_ARRANGES@full
 // proves: BE_SERVICE_ISOLATION@lite BE_SERVICE_ISOLATION@full
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, TYPED_ROOT, ruleTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, TYPED_ROOT, ruleTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { builderArrangesOnly } from "./builders.ts"
 import { serviceIsolation } from "./service-isolation.ts"

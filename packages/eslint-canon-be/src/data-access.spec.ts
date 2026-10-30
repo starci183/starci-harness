@@ -19,7 +19,7 @@ import {
     requireEntityTableName,
     rules,
 } from "./data-access.ts"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 
 const tester = typedTester()
 

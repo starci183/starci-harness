@@ -6,14 +6,14 @@
  * The failures worth catching here are the ones a build never reports: two laws publishing one
  * rule name, where whichever imports last silently wins; and a rule that exists but is absent from
  * the recommended set, which reaches a consuming repository switched off and looks adopted.
- * The shared contract lives in ../eslint-canon-be/fixtures/gathered-plugin.mjs; what follows is the front end's own.
+ * The shared contract lives in ../eslint-canon-be/fixtures/gathered-plugin.ts; what follows is the front end's own.
  */
 import assert from "node:assert/strict"
 import { dirname } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import plugin, { lawOwners, linterOptions, recommended, ruleDeclarations, rules } from "./index.ts"
-import { gatheredPluginSpec } from "../../eslint-canon-be/fixtures/gathered-plugin.mjs"
+import { gatheredPluginSpec } from "../../eslint-canon-be/fixtures/gathered-plugin.ts"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 

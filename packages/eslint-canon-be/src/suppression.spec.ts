@@ -1,7 +1,7 @@
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { noInlineSuppression } from "./suppression.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const tester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },

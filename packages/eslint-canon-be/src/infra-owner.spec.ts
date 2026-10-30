@@ -9,13 +9,13 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { projectFixture } from "../fixtures/project/tester.mjs"
-import { at, BE_DECLARATION, fixtureHfs, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { projectFixture } from "../fixtures/project/tester.ts"
+import { at, BE_DECLARATION, fixtureHfs, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.ts"
 import { httpClientOnlyInIntegrations, infraImportOwner, rules } from "./infra-owner.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { thirdPartyImportOwner } from "./third-party-owner.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const tester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },

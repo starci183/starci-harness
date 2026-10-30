@@ -6,11 +6,11 @@
 // proves: BE_MODULE_PROVIDER_REREGISTRATION@full
 import fs from "node:fs"
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const NEST_TYPES = {
     "node_modules/@nestjs/common/package.json": '{"name":"@nestjs/common","types":"index.d.ts"}',

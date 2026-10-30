@@ -1,9 +1,9 @@
 // proves: BE_ERROR_MASKED@lite
 // proves: BE_ERROR_MASKED@full
 import test from 'node:test';
-import { projectFixture } from '../fixtures/project/tester.mjs';
+import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 /** platform/errors with an ExceptionFilter and a GraphQL formatError (the package carries its own copy: its tests run without the repository around it). */
 const errorsFiles = {

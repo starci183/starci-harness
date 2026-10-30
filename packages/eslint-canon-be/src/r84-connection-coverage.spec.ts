@@ -3,13 +3,13 @@
 // proves: BE_CONNECTION_DUPLICATE@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { oneConnectionPerDatabase } from "./connections.ts"
 import { rules } from "./project-graph.ts"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const DATABASE = "src/modules/platform/database"
 const PRIMARY = `${DATABASE}/primary.connection.ts`

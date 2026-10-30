@@ -9,7 +9,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, BE_DECLARATION, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, BE_DECLARATION, typedTester } from "../fixtures/typed/tester.ts"
 import { jobFenceRequired, jobRunKey, jobShape, jobWriteOwner, rules } from "./jobs.ts"
 
 const tester = typedTester({ declaration: { ...BE_DECLARATION, patterns: ["fenced-job"] } })

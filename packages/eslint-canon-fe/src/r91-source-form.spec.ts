@@ -7,7 +7,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
+import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
 import { at, FE_DECLARATION, fixtureHfs, canonTester } from "../fixtures/typed/tester.ts"
 import { noEmojiInSource, noVietnameseInSource, requireExportJsdoc } from "./comments.ts"
 import {

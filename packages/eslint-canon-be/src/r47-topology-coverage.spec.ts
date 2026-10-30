@@ -1,10 +1,10 @@
 // proves: BE_TEST_TOPOLOGY@lite BE_TEST_TOPOLOGY@full
 import test from 'node:test';
-import { projectFixture } from '../fixtures/project/tester.mjs';
+import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';
 import { unitTestColocated } from './testing.ts';
 import { testsInfraOnlyInWorld, testsNoOverride, testWorldShape } from './test-world.ts';
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const goodWorld = 'src/tests/world/identity.client.ts';
 const badWorld = 'src/tests/world/helpers.ts';

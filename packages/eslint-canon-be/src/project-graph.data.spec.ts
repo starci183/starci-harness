@@ -1,10 +1,10 @@
 import fs from "node:fs"
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 /** One repository per rule: the case list is the files of the repository, the code of a case is the text of its file. */
 const source = (f: ProjectFixture, files: Readonly<Record<string, string>>, rel: string) => ({ filename: f.at(rel), code: files[rel] ?? fs.readFileSync(f.at(rel), "utf8") })

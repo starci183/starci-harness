@@ -15,8 +15,8 @@ import { starciBeConfig } from "./index.ts"
 import { SOURCE_FILES } from "./lib/config.ts"
 import { OUTSIDE_THE_SCAN_FILES, SONAR_SYNTAX_RULES } from "../runtime/scripts/lib/sonar-syntax-rules.mjs"
 import { SONAR_WAY_EXTRA, SONAR_WAY_NOT_APPLICABLE, sonarWayRules } from "../runtime/scripts/lib/sonar-way.mjs"
-import { fixtureHfs } from "../fixtures/typed/tester.mjs"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { fixtureHfs } from "../fixtures/typed/tester.ts"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const levelOf = (setting: unknown): unknown => (Array.isArray(setting) ? setting[0] : setting)
 

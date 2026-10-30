@@ -12,8 +12,8 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { noBareVerbExport, noDefaultExport, noVendorModuleFactoryName, noVersionInName, rules } from "./naming.ts"
-import { at, fixtureHfs } from "../fixtures/typed/tester.mjs"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { at, fixtureHfs } from "../fixtures/typed/tester.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const tester = canonRuleTester({
   languageOptions: {

@@ -4,8 +4,8 @@
 // proves: BE_CONFIG_OWNER@lite BE_CONFIG_OWNER@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { catchMustAccount } from "./error-handling.ts"
 import { noUntypedBody, publicNeedsReason } from "./default-deny.ts"

@@ -16,7 +16,7 @@
 // proves: FE_ROUTE_DEFAULT_EXPORT@full
 import test from "node:test"
 import { canonTester } from "../fixtures/typed/tester.ts"
-import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
+import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
 import { noMiddlewareFile, pageExportsMetadata } from "./next-conventions.ts"
 import { rules } from "./project-graph.ts"
 import type { Rule, Rules } from "./lib/rule.ts"

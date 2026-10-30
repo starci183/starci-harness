@@ -9,7 +9,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { emInjectionSlots, oneConnectionPerDatabase, rules } from "./connections.ts"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 
 const tester = typedTester()
 

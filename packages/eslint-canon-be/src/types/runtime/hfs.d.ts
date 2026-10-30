@@ -95,3 +95,8 @@ declare module "*/runtime/scripts/api/git/lib.mjs" {
         options?: { cwd?: string | null; dir?: string | null; git?: string; config?: Readonly<Record<string, string>> | null },
     ): SpawnSyncReturns<string>
 }
+
+declare module "*/runtime/scripts/hfs/project-graph.mjs" {
+    /** Forget every cached project graph, so the next rule run reads the disk again. */
+    export function resetProjectGraphs(): void
+}

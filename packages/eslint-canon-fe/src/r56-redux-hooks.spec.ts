@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import test from "node:test"
-import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
+import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
 import { hooksFolderHoldsHooksOnly } from "./hooks-folder.ts"
 

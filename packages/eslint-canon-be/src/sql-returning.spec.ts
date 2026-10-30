@@ -1,9 +1,9 @@
 // proves: BE_SQL_RETURNING_SHAPE@lite
 // proves: BE_SQL_RETURNING_SHAPE@full
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const GOOD = "src/modules/domain/stock/persistence/stock.sql.ts"
 const BAD = "src/modules/domain/stock/persistence/stock-bad.sql.ts"

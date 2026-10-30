@@ -2,15 +2,15 @@
 // proves: BE_KIND_ISOLATION@full
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { appDeclaration, archFixture, ts } from '../fixtures/arch-fixture.mjs';
+import { appDeclaration, archFixture, ts } from '../fixtures/arch-fixture.ts';
 import { loadArchitectureConfig } from '../runtime/scripts/hfs/architecture/config.mjs';
 import { buildTypeScriptContext } from '../runtime/scripts/hfs/architecture/typescript.mjs';
 import { buildHfsGraph } from '../runtime/scripts/hfs/architecture/hfs-graph.mjs';
 import { checkTiers } from '../runtime/scripts/hfs/architecture/tiers.mjs';
-import { projectFixture } from '../fixtures/project/tester.mjs';
+import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';
 import type { TestContext } from "node:test"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const declaration = { apps: [{ name: 'core', kind: 'api' }], patterns: ['event-bus', 'fenced-job'] };
 const passingFiles = {

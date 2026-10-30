@@ -1,8 +1,8 @@
 // proves: BE_PUBLIC_REASON_CLOSED@lite BE_PUBLIC_REASON_CLOSED@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { noUntypedBody, publicNeedsReason, publicReasonClosed, recommended, rules } from "./default-deny.ts"
 

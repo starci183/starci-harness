@@ -2,11 +2,11 @@
 // proves: BE_INFRA_OWNER@full
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
-import { appDeclaration } from '../fixtures/app.mjs';
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.mjs';
+import { appDeclaration } from '../fixtures/app.ts';
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { httpClientOnlyInIntegrations, infraImportOwner } from './infra-owner.ts';
-import { canonRuleTester } from "../fixtures/rule-tester.mjs";
+import { canonRuleTester } from "../fixtures/rule-tester.ts";
 
 const domain = at('src/modules/domain/order/order.service.ts');
 const httpOwner = at('src/modules/platform/http/http.client.ts');

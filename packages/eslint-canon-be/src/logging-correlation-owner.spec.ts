@@ -3,11 +3,11 @@
 /** Logger correlation owns async context exclusively, including from the test composition root. */
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, BE_DECLARATION, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, BE_DECLARATION, TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { infraImportOwner } from "./infra-owner.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const logging = at("src/modules/platform/logging/correlation.service.ts")
 const domain = at("src/modules/domain/order/order.service.ts")

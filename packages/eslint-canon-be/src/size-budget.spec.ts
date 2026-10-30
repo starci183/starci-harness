@@ -4,12 +4,12 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { runGit } from "../runtime/scripts/api/git/lib.mjs"
 import tsParser from "@typescript-eslint/parser"
-import { BE_DECLARATION } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { BE_DECLARATION } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { fileSizeGrowth } from "./size-budget.ts"
-import { lines, sizeGrowthSharedSpec } from "../fixtures/size-growth.mjs"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { lines, sizeGrowthSharedSpec } from "../fixtures/size-growth.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 // Probe paths of a throwaway git repository with one empty commit: no file of it has a recorded size, so a file over the budget is born over it.
 // (The rule reads the recorded size from git; a package tested from a copy without git history would answer "unavailable".)

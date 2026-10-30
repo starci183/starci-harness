@@ -17,8 +17,8 @@ import { TSESLint } from "@typescript-eslint/utils"
 import type { RuleEntry } from "./lib/rule.ts"
 import plugin, { linterOptions, loadHfs, recommended, starciBeConfig } from "./index.ts"
 import { BORROWED, IGNORED, SOURCE_FILES, buildBeConfig } from "./lib/config.ts"
-import { BE_DECLARATION, fixtureHfs } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { BE_DECLARATION, fixtureHfs } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
 
 const levelOf = (setting: RuleEntry | undefined): RuleEntry | undefined => (Array.isArray(setting) ? setting[0] : setting)
 

@@ -1,9 +1,9 @@
 // proves: BE_SPEC_PLACEMENT@lite
 // proves: BE_SPEC_PLACEMENT@full
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./index.ts"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const SOURCE = "export const value = 1;\n"
 

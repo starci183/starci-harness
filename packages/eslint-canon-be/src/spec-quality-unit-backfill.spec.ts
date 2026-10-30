@@ -2,14 +2,14 @@
 // proves: BE_SPEC_QUALITY@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { BE_DECLARATION, TYPED_ROOT, at, typedTester } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { BE_DECLARATION, TYPED_ROOT, at, typedTester } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { rules as graphRules } from "./project-graph.ts"
 import { specTypedEntityManager } from "./spec-quality.ts"
 import { specNoSkip } from "./spec-no-skip.ts"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 import {
     noReturnOnlyGeneric,
     specBuildsWithTestingModule,

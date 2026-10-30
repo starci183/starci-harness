@@ -1,9 +1,9 @@
 // proves: BE_FEATURE_NOT_COMPOSED@lite
 // proves: BE_FEATURE_NOT_COMPOSED@full
 import test from 'node:test';
-import { projectFixture } from '../fixtures/project/tester.mjs';
+import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 for (const edition of ['lite', 'full'] as const) {
   test(`${edition} passing composed transport and violating orphan transport in a reached feature`, () => {

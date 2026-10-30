@@ -17,7 +17,7 @@ import {
   noInlineParamType,
   rules,
 } from "./type-safety.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const tester = canonRuleTester({
   languageOptions: {

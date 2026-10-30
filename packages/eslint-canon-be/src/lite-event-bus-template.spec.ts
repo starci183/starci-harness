@@ -8,8 +8,8 @@
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
-import { at, fixtureHfs } from "../fixtures/typed/tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
+import { at, fixtureHfs } from "../fixtures/typed/tester.ts"
 import { noRawSql } from "./no-raw-sql.ts"
 
 const TEMPLATES = new URL("../../hfs/templates/be/inbox/platform/event-bus/", import.meta.url)

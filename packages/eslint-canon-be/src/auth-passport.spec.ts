@@ -7,8 +7,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
-import { at, fixtureHfs } from "../fixtures/typed/tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
+import { at, fixtureHfs } from "../fixtures/typed/tester.ts"
 import { ownJwksOnly, refreshTokenCookieOnly, rules } from "./auth-passport.ts"
 import { infraImportOwner } from "./infra-owner.ts"
 

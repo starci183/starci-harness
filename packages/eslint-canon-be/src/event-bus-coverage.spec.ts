@@ -6,8 +6,8 @@
 // proves: BE_QUEUE_PRODUCER_SHAPE@full
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.mjs';
-import { appDeclaration } from '../fixtures/app.mjs';
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.ts';
+import { appDeclaration } from '../fixtures/app.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { eventConsumerShape, outboxWriteTx, queueProducerShape } from './event-bus.ts';
 

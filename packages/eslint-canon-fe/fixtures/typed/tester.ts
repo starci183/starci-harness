@@ -3,7 +3,7 @@
  * directory's tsconfig.json (JSX on), and `settings.starci.hfs` built from an in-memory hfs.json - the same inputs
  * starciFeConfig gives a repository. A case's `filename` is `at("apps/web/src/hooks/lesson/useLesson.ts")`: the file need not
  * exist; its slot comes from its path and its types from the library stubs in ./node_modules.
- * The RuleTester itself is the shared factory of ../../../eslint-canon-be/fixtures/typed/tester.mjs - one implementation, one side's
+ * The RuleTester itself is the shared factory of ../../../eslint-canon-be/fixtures/typed/tester.ts - one implementation, one side's
  * dialect and cap per caller.
  *
  * Every tester here is a `CanonRuleTester`: ESLint's RuleTester, taking the canon's typescript-eslint rule modules
@@ -16,8 +16,8 @@ import { RuleTester, type Rule as EslintRule } from "eslint"
 import { eslintRule, sharedRule } from "../../src/lib/eslint-boundary.ts"
 import { hfsFromDeclaration, type HfsView } from "../../src/lib/hfs.ts"
 import { defineRule, type AnyContext, type Rule } from "../../src/lib/rule.ts"
-import { appDeclaration } from "../../../eslint-canon-be/fixtures/app.mjs"
-import { ruleTester, type CanonRuleTester as SharedRuleTester } from "../../../eslint-canon-be/fixtures/typed/tester.mjs"
+import { appDeclaration } from "../../../eslint-canon-be/fixtures/app.ts"
+import { ruleTester, type CanonRuleTester as SharedRuleTester } from "../../../eslint-canon-be/fixtures/typed/tester.ts"
 
 /** The cases RuleTester runs: ESLint's own test-case shape. */
 export type RuleTests = Parameters<RuleTester["run"]>[2]

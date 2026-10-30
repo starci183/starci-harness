@@ -4,11 +4,11 @@
 // proves: BE_SCHEMA_OWNER@lite BE_SCHEMA_OWNER@full
 import fs from "node:fs"
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const repo = (t: TestContext, options: Parameters<typeof projectFixture>[0]) => {
     const fixture = projectFixture(options)
