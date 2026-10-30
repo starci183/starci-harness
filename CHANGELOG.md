@@ -6,6 +6,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.21] - 2026-10-30
+
+### Changed
+
+- policy/quality.yaml `gate.errorLimit` (default 20, owner ruling gate-threshold-20): the CLI hands it to @starci/hfs as STARCI_GATE_ERROR_LIMIT, the number of error findings under which `app check` and `app lint` stay green when none is a hard blocker (hfs 4.11.22).
+- The CLI keeps @starci/hfs 4.11.21 until npm serves 4.11.22; cli-follow then raises it.
+
 ## [1.1.0-alpha.20] - 2026-10-30
 
 ### Changed

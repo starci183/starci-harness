@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.34 - 2026-10-30
+
+- Changed: the peer moves to eslint-canon-fe 9.5.23; the bundled canon pins name hfs 4.11.22 (app check and lint pass under 20 findings), eslint-canon-be 3.8.21, eslint-canon-fe 9.5.23 and the Grammar family 0.15.34. No rule of this package changed.
+
 ## 0.15.33 - 2026-10-30
 
 - Changed: the peer moves to eslint-canon-fe 9.5.22; the bundled canon pins name hfs 4.11.21 (the one-command urgent release), eslint-canon-be 3.8.20, eslint-canon-fe 9.5.22 and the Grammar family 0.15.33. No rule of this package changed.

@@ -104,6 +104,13 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   transport reaches the server, and deploys their digests under the unchanged floor (`packages/hfs/stack/urgent-release.mjs`). A
   tag pushed by hand carries no record: the one command adopts a tag already on HEAD and writes the record only after the checks
   pass; a record is never written by hand.
+- **App check and lint pass under 20 findings (`gate-threshold-20`).** `starci app check` and `starci app lint` exit green while
+  fewer than 20 error findings remain and none is a hard blocker: a plaintext secret, a failed boot proof or a migration finding
+  blocks at any count (`packages/hfs/runtime/scripts/hfs/gate-threshold.mjs`). Every finding is still printed and kept in the
+  report; only the verdict changes, so a release is not held back finding by finding (5, 4, 3, ...) by the last structural
+  nits, and they are fixed later. Typecheck, build and the tests are not judged by it. Owner, 2026-10-30: "xanh khi lỗi <20",
+  "tránh kiểu check vô hạn", "dưới <20 còn tí sạn thôi"; scope (app check and lint only) and the hard blockers (plaintext
+  secret, boot wiring, migration) chosen by the owner directly.
 - **One authority for both runners (`authority-both-modes`).** The tiers and the role table of
   [contexts/authority/](../authority/README.md) hold identically under `inline` and `orca`, for Debug's lanes, the
   Supervisor's workers and an app session. Owner, 2026-10-28: "bộ author phải áp dụng dc cho cả inline mode lẫn orca mode".

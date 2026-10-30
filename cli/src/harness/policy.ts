@@ -64,6 +64,8 @@ const qualitySchema = z.object({
     /** Where a workflow task's heavy checks run: `task` in its own verify, `wave` in the workflow's wave verify (harness/wave.ts). */
     verify: z.object({ tier: z.enum(["task", "wave"]) }),
     requireCi: z.array(z.enum(CI_GATED_ACTIONS)),
+    /** `starci app check` and `app lint` pass under `errorLimit` error findings with no hard blocker (owner ruling gate-threshold-20). */
+    gate: z.object({ errorLimit: z.number().int().positive().max(1000) }).default({ errorLimit: 20 }),
     defaults: z.object({ none: z.string().min(1), app: z.string().min(1), runtime: z.string().min(1) }),
     profiles: z.record(z.string().min(1), profileSchema),
     ci: z.partialRecord(ciGates, z.record(z.string(), z.unknown())).optional(),

@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.11.22 - 2026-10-30
+
+- Changed: `starci app check` and `starci app lint` are green while fewer than 20 error findings remain and none is a hard blocker (owner ruling gate-threshold-20, contexts/harness/decisions.md; `runtime/scripts/hfs/gate-threshold.mjs` `gateVerdict`): a plaintext secret (HFS_PLAINTEXT_SECRET and its family), the boot proof (BE_APP_BOOT_PROOF_MISSING) or a migration finding (DB_MIGRATION_SHAPE, DB_MIGRATION_DESTRUCTIVE, LITE_DB_MIGRATION, BE_MIGRATION_REVERSIBLE) blocks at any count. Every finding is still printed and kept in the report (`gate` carries the verdict); typecheck, build and the tests are not judged by it. Specs: `src/gate-threshold.spec.mjs`; `src/check-eslint.spec.mjs` now expects green for one or two ordinary findings.
+- Changed: the bundled canon pins name eslint-canon-be 3.8.21, eslint-canon-fe 9.5.23 and the Grammar family 0.15.34.
+
 ## 4.11.21 - 2026-10-30
 
 - Changed: an urgent release runs typecheck and the build only (owner ruling urgent-typecheck-build, contexts/harness/decisions.md): `URGENT_CHECKS` are the release gates `typecheck`, `build`, `build-be` and `build-fe` the app declares (`release/urgent.mjs`); app check, lint and the tests wait for the back-fill. `--lint-baseline` is retired with lint itself and refused (`RELEASE_URGENT_LINT_BASELINE_RETIRED`); `release/lint-baseline.mjs` is gone.

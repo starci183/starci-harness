@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { hfsLimitsEnv } from "../../harness/heavy.js"
+import { loadPolicy } from "../../harness/policy.js"
 import { hostAgeIdentity } from "../../harness/secret-env.js"
 import { UsageError } from "../../shared/errors.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
@@ -104,7 +105,7 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     const full = context.json && printsJson ? [...argv, "--json"] : [...argv]
     let stdout = ""
     let stderr = ""
-    Object.assign(process.env, hfsLimitsEnv())
+    Object.assign(process.env, hfsLimitsEnv(), { STARCI_GATE_ERROR_LIMIT: String(loadPolicy().quality.gate.errorLimit) })
     const { hostIdentity = hostAgeIdentity(), ...more } = extra
     const harness = { version: packageVersion(), ...more }
     const io = context.json

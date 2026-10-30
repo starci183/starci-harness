@@ -92,8 +92,10 @@ test('CLI app check executes both FE packages in one ESLint invocation, retains 
   }, transport(app, runs));
   assert.equal(checks, 1);
   assert.deepEqual(runs.map(run => run.side), ['be', 'fe']);
-  assert.equal(checked.exit, 1);
-  assert.equal(checked.report.ok, false);
+  // Two ordinary error findings are under the threshold (owner ruling gate-threshold-20): green, and both stay reported.
+  assert.equal(checked.exit, 0);
+  assert.equal(checked.report.ok, true);
+  assert.equal(checked.report.gate.pass, true);
   assert.equal(checked.report.counts.error, 2);
   assert.deepEqual(checked.report.findings.map(finding => finding.code), ['HFS_MANAGED_FILE_DRIFT', familyCode]);
   assert.equal(checked.report.findings[1].rule, 'starci-grammar/app-shell-frame');
@@ -106,7 +108,7 @@ test('app lint uses the shared ESLint execution once and calls the in-process HF
   const checked = await invoke(['lint', '--changed', 'fe/src/family.tsx'], app, ({ repoRoot }) => { checks++; return cleanCheck(repoRoot); }, transport(app, runs));
   assert.equal(checks, 1);
   assert.deepEqual(runs.map(run => run.side), ['fe']);
-  assert.equal(checked.exit, 1);
+  assert.equal(checked.exit, 0, 'one ordinary finding is under the threshold');
   assert.equal(checked.report.schema, 'starci/lint@1');
   assert.deepEqual(checked.report.findings.map(finding => finding.code), [familyCode]);
 });
@@ -134,6 +136,6 @@ test('CLI app check --fast runs the combined FE config only over changed source 
     return cleanCheck(repoRoot);
   }, transport(app, runs));
   assert.deepEqual(runs.map(run => [run.side, run.args]), [['fe', ['--format', 'json', 'src/family.tsx']]]);
-  assert.equal(checked.exit, 1);
+  assert.equal(checked.exit, 0, 'one ordinary finding is under the threshold');
   assert.deepEqual(checked.report.findings.map(finding => finding.code), [familyCode]);
 });

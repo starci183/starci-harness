@@ -27,6 +27,7 @@ import { STYLE_GLOB } from '../sync/index.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
+import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
 
 // --side judges only that side; root HFS findings belong to be, its Sonar report stays on that side.
 export const LINT_SCHEMA = 'starci/lint@1';
@@ -436,8 +437,10 @@ export async function lintRepository({ repoRoot, opts, hfsCheck, trackedFiles = 
     linterReport('eslint', raw.eslint, { root: repoRoot, sourceRoots, tracked }),
     linterReport('stylelint', raw.stylelint, { root: repoRoot, sourceRoots, tracked }),
   ]);
-  const report = { schema: LINT_SCHEMA, ok: findings.length === 0 && errors.length === 0, repoRoot, changed: changed ? [...changed].sort(byCodeUnit) : null, workspace, ...(opts.side === undefined ? {} : { side: opts.side }), counts: { error: findings.length }, engines, errors, findings };
-  return { report, sonar, exit: errors.length ? 2 : findings.length ? 1 : 0 };
+  // Green under the threshold (gate-threshold.mjs): every finding is still reported, only the verdict changes.
+  const gate = gateVerdict(findings);
+  const report = { schema: LINT_SCHEMA, ok: gate.pass && errors.length === 0, repoRoot, changed: changed ? [...changed].sort(byCodeUnit) : null, workspace, ...(opts.side === undefined ? {} : { side: opts.side }), counts: { error: findings.length }, engines, errors, findings, gate };
+  return { report, sonar, exit: errors.length ? 2 : gate.pass ? 0 : 1 };
 }
 
 export function printLintText(report, out) {
@@ -445,4 +448,5 @@ export function printLintText(report, out) {
   for (const e of report.errors) out(`ERROR ${e}\n`);
   const per = Object.keys(report.engines).map((engine) => `${engine} ${report.findings.filter((f) => f.engine === engine).length}`).join(', ');
   out(`\nstarci app lint: ${report.counts.error} finding${report.counts.error === 1 ? '' : 's'} (${per})${report.errors.length ? `, ${report.errors.length} tool error${report.errors.length === 1 ? '' : 's'}` : ''}\n`);
+  if (report.gate?.line) out(`${report.gate.line}\n`);
 }

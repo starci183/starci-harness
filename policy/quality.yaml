@@ -26,6 +26,12 @@ verify:
 # the deploy's safety floor is never skipped). release.publish is not listed: on the harness CI's own publish jobs run it once each
 # package's own jobs are green, and Debug's workstation fallback runs when CI cannot (CONTRIBUTING.md CONTRIB-20).
 requireCi: [release.cut, deploy.prod]
+# `starci app check` and `starci app lint` are green while fewer than errorLimit error findings remain and none is a hard blocker
+# (a plaintext secret, the boot proof, a migration finding), so a release is not held back finding by finding by the last
+# structural nits; every finding is still printed (owner ruling gate-threshold-20, contexts/harness/decisions.md). The CLI hands
+# it to @starci/hfs as STARCI_GATE_ERROR_LIMIT; without it hfs uses 20.
+gate:
+  errorLimit: 20
 # The profile of a project whose hfs.json names none: no hfs.json, an app (lite or full), the runtime itself.
 defaults:
   none: lib

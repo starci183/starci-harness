@@ -73,6 +73,7 @@ import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
 import { dbPlanMain } from '../runtime/scripts/hfs/db-plan-verb.mjs';
 import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
+import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
 import { HFS_DECLARATION_FILE, HfsSlotsError, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { formatFindings } from '../sync/format.mjs';
 import { main as syncMain } from '../sync/cli.mjs';
@@ -363,9 +364,11 @@ async function checkMain(opts, { cwd: repoRoot, harness, edition, stdout: out, p
   const existing = changed ? changed.filter(file => fs.existsSync(path.join(repoRoot, file))) : [];
   const eslint = await eslintRepository({ repoRoot, changed, existing, run: runLinter });
   const findings = [...proof.findings, ...eslint.findings.map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: 'error' }))];
-  const result = { ...proof, findings, counts: { ...proof.counts, error: proof.counts.error + eslint.findings.length }, eslint: { ...eslint.engine, errors: eslint.errors }, ok: proof.ok && eslint.findings.length === 0 && eslint.errors.length === 0 };
+  // Green under the threshold (gate-threshold.mjs): every finding is still listed, only the verdict changes.
+  const verdict = gateVerdict(findings.filter(finding => finding.level === 'error'));
+  const result = { ...proof, findings, counts: { ...proof.counts, error: proof.counts.error + eslint.findings.length }, eslint: { ...eslint.engine, errors: eslint.errors }, ok: verdict.pass && eslint.errors.length === 0, gate: verdict };
   if (opts.json) out(`${JSON.stringify(result, null, 2)}\n`);
-  else { printCheck(result, out); printCheckProofs(result, out); }
+  else { printCheck(result, out); printCheckProofs(result, out); if (verdict.line) out(`${verdict.line}\n`); }
   return eslint.errors.length ? 2 : result.ok ? 0 : 1;
 }
 
