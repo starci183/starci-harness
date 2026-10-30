@@ -4,11 +4,11 @@
 // bytes do not change between those asks, so the parse (the dominant cost of a load) is keyed by the text itself; each caller gets its own copy of the
 // parsed document, so nothing a caller does to it reaches the next one. A changed file is a different text and parses again.
 import { parseYaml } from '../../engine/yaml.mjs';
-
 const parsed = new Map();
-
 /** The parsed document of `text`: parsed on the first ask for this text, a structured copy afterwards. Throws what parseYaml throws, every time. */
+// reason: the parsed YAML document is an unvalidated input boundary; each caller narrows what it reads.
 export function parseYamlCached(text) {
-  if (!parsed.has(text)) parsed.set(text, parseYaml(text));
-  return structuredClone(parsed.get(text));
+    if (!parsed.has(text))
+        parsed.set(text, parseYaml(text));
+    return structuredClone(parsed.get(text));
 }

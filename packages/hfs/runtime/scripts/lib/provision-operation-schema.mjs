@@ -5,13 +5,12 @@
 // bundled in @starci/hfs carries them beside this module (a skillRoot join left provision-operation.schema.yaml out of it).
 import fs from 'node:fs';
 import { parseYaml } from '../../engine/yaml.mjs';
-
 /** The `$ref` application-stacks.schema.yaml uses for its `operations` block. */
 export const PROVISION_OPERATION_SCHEMA_REF = 'provision-operation.schema.yaml';
-
 /** The composed `operations` schema, read from this runtime's modules/schemas. */
+// reason: the composed schema is parsed from YAML and consumed by the self-contained schema walker, which takes any document.
 export function provisionOperationSchema() {
-  const schema = parseYaml(fs.readFileSync(new URL('../../modules/schemas/provision-operation.schema.yaml', import.meta.url), 'utf8'));
-  const stacks = parseYaml(fs.readFileSync(new URL('../../modules/schemas/application-stacks.schema.yaml', import.meta.url), 'utf8'));
-  return { ...schema, $defs: { ...schema.$defs, serviceCredential: stacks.$defs.serviceCredential } };
+    const schema = parseYaml(fs.readFileSync(new URL('../../modules/schemas/provision-operation.schema.yaml', import.meta.url), 'utf8'));
+    const stacks = parseYaml(fs.readFileSync(new URL('../../modules/schemas/application-stacks.schema.yaml', import.meta.url), 'utf8'));
+    return { ...schema, $defs: { ...schema.$defs, serviceCredential: stacks.$defs.serviceCredential } };
 }
