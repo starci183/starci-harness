@@ -89,8 +89,13 @@ Each heading is one role of [contract.yaml](contract.yaml) `roles`.
 Card is one subject on its own surface. Its edge comes from depth, not from a choice: the top layer is raised, a
 layer inside another surface is subordinate, and never both raised. `joined` stacks full-bleed bands divided by
 separators instead of nesting cards; `measure` caps a form card's width so the page does not. Highlight is a claim
-that this card is the next step, so one per view. A grammar decides the material (fill, edge, radius) and whether
-the label sits inside the material; the slots and the depth logic are the same everywhere.
+that this card is the next step, so one per view. `treatment` is the face: `surface`, `soft` (the brand's light
+tint, `accentSoft`, under the default foreground) or `ink` (the brand ink, the signature band); `soft` and `ink`
+carry the decorative artwork slot, `ink` also the motif. A painted treatment rebinds the whole surface pair on its
+ground (surface, foreground, muted, separator, border and the accent and tone text tokens), because a child that
+paints its own circle or ring from the surface token and its text from a foreground token stays legible only while
+both move together. A grammar decides the material (fill, edge, radius, the ink and its inks) and whether the label
+sits inside the material; the slots, the treatments' grounds and the depth logic are the same everywhere.
 
 ### Button
 
@@ -200,7 +205,10 @@ negative one, stays until dismissed.
 ### EmptyState
 
 An empty state is a region with nothing to show, or whose read failed: one message in the region's place inside
-the unchanged surface, and one action only when a real next step exists.
+the unchanged surface, and one action only when a real next step exists. Its one mark is a glyph or, for a page
+that has never held content, the artwork: generated character art the grammar draws as the `Mascot` at `md`, with
+the asset slot it was requested under as a required field, so a first-run notice is the same size and as traceable
+as every other mascot.
 
 ### Avatar
 

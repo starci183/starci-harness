@@ -145,6 +145,52 @@ export const showRowStates = async (hovered: Element | undefined, focused: HTMLE
   focused?.focus();
 };
 
+/** A colour as sRGB 0-255 and alpha 0-1, read through a canvas so any CSS colour syntax (oklch, color-mix) resolves. */
+export const rgbaOf = (color: string): readonly [number, number, number, number] => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (context === null) throw new Error('no 2d canvas to resolve a colour');
+  context.clearRect(0, 0, 1, 1);
+  context.fillStyle = color;
+  context.fillRect(0, 0, 1, 1);
+  const [r = 0, g = 0, b = 0, a = 0] = context.getImageData(0, 0, 1, 1).data;
+  return [r, g, b, a / 255];
+};
+
+/** `top` composited over an opaque `bottom`. */
+const over = (top: readonly [number, number, number, number], bottom: readonly [number, number, number, number]): readonly [number, number, number, number] => {
+  const mix = (index: 0 | 1 | 2) => top[index] * top[3] + bottom[index] * (1 - top[3]);
+  return [mix(0), mix(1), mix(2), 1];
+};
+
+const luminance = ([r, g, b]: readonly [number, number, number, number]) => {
+  const channel = (value: number) => {
+    const c = value / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+};
+
+/**
+ * The WCAG contrast ratio of an element's text colour against the ground it is drawn on: its own background
+ * composited over every ancestor's until an opaque one (white past the document). Measured on the computed paint,
+ * so a token rebound by a surface treatment is judged where it lands (COLOR-5).
+ */
+export const textContrast = (element: Element): number => {
+  const layers: Array<readonly [number, number, number, number]> = [];
+  for (let at: Element | null = element; at !== null; at = at.parentElement) {
+    const layer = rgbaOf(getComputedStyle(at).backgroundColor);
+    if (layer[3] > 0) layers.push(layer);
+    if (layer[3] >= 1) break;
+  }
+  const ground = layers.reduceRight<readonly [number, number, number, number]>((below, layer) => over(layer, below), [255, 255, 255, 1]);
+  const ink = over(rgbaOf(getComputedStyle(element).color), ground);
+  const [light, dark] = [luminance(ink), luminance(ground)].sort((a, b) => b - a) as [number, number];
+  return Math.round(((light + 0.05) / (dark + 0.05)) * 100) / 100;
+};
+
 /** A no-op for story callbacks that must exist but have nothing to do. */
 export const noop = () => undefined;
 

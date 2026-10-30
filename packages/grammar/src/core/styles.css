@@ -120,11 +120,12 @@
     /*
      * The violet is a FILL (white on it is 5.1:1) but not a text colour: 3.95:1 on the dark canvas
      * and 4.44:1 on the light secondary surface. Where Common paints the accent as TEXT - a link,
-     * the current tab and bottom-nav destination, the current step number, the section eyebrow -
-     * the family re-declares the accent on that element as the themed, text-safe accent, so each
-     * Common rule reads it unchanged and its other states (current link, disabled) keep their own.
+     * the current tab and bottom-nav destination, the section eyebrow - the family re-declares the
+     * accent on that element as the themed, text-safe accent, so each Common rule reads it unchanged
+     * and its other states (current link, disabled) keep their own. The current step number reads
+     * `--accent-soft-foreground`, which the root binds to the same text-safe accent.
      */
-    .grammar-common-root[data-grammar-family="core"] :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item[data-grammar-current="true"], .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker) {
+    .grammar-common-root[data-grammar-family="core"] :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item[data-grammar-current="true"]) {
         --accent: var(--starci-core-accent-text);
     }
 

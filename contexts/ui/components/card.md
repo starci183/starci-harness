@@ -26,6 +26,17 @@ Choice `card.choose.highlight`: whether a card claims the next step.
 | highlight | peers share the view and this card is the task's next step | `isHighlight` on this card only | `DNA-COMMON-ONE-HIGHLIGHT` |
 | plain | every other card | no highlight | judgement |
 
+Choice `card.choose.treatment`: which face the card wears. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| ink | the page's signature moment on an overview or an entry page (ACCENT-6) | `treatment="ink"`, with `artwork` or `motif` | judgement; candidate: one per page (`budgets.signatureMoments`) |
+| soft | a card the product deliberately raises and says why in words: a first-run welcome, the brand art band on a page whose moment holds copy or a control (SURFACE-4) | `treatment="soft"`, with `artwork` when the brand record allows the mascot here (DISCIPLINE-3) | `DNA-COMMON-SOFT-GROUND` |
+| surface | every other card | no treatment (`surface`) | judgement |
+
+A painted treatment rebinds the surface pair on its ground, so the grammar children inside keep their contrast
+(`DNA-COMMON-TREATMENT-TEXT-CONTRAST`); the app never paints a card's ground itself (`starci-fe/no-app-surface-paint`).
+
 ## Variants
 The face is the grammar's. Depth is resolved from context: a top-level card is raised, a nested card subordinate
 (`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`). A decorative slab belongs to the joined card's first face, edge to

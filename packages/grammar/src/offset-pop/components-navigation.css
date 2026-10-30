@@ -53,17 +53,21 @@
         box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink);
     }
 
-    /* Stepper: ink-ringed markers, pink current, mint complete, critical error. */
+    /*
+     * Stepper: markers ringed in the border ink (the family ink, or the separator a painted SurfaceCard rebinds it to),
+     * pink current, mint complete, critical error. Every filled marker reads its fill's own foreground, which is ink in
+     * both themes, so the number holds on the fill wherever the stepper stands; an outlined one is the surface pair.
+     */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-marker] {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border: var(--offset-pop-outline-width) solid var(--border);
         background: var(--surface);
         color: var(--foreground);
         font-weight: 900;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-state="complete"] [data-grammar-step-marker] {
-        background: var(--offset-pop-mint);
-        color: var(--offset-pop-ink);
+        background: var(--offset-pop-success);
+        color: var(--offset-pop-success-foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-state="current"] [data-grammar-step-marker] {
@@ -349,8 +353,11 @@
         box-shadow: inset 0.25rem 0 0 var(--offset-pop-pink);
     }
 
-    /* Image: ink frame at the family surface radius. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Image"] {
+    /*
+     * Image: ink frame at the family surface radius. Character art is not a framed image: an Image drawn by a Mascot,
+     * or standing in a painted SurfaceCard's artwork zone, keeps Common's transparent ground with no outline.
+     */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Image"]:not([data-component="Mascot"] > *, .starci-core-surface-artwork *) {
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         border-radius: var(--offset-pop-surface-radius);
         background: var(--offset-pop-blush);
