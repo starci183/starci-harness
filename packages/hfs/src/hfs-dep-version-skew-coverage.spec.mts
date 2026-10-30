@@ -29,8 +29,9 @@ for (const edition of ['lite', 'full']) {
     assert.equal(repo.edition, edition);
     fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ private: true, workspaces: ['fe/packages/*'], dependencies: { 'left-pad': '1.3.0' } }));
     fs.writeFileSync(path.join(repoRoot, WORKSPACE), JSON.stringify({ name: '@proof/ui', dependencies: { 'left-pad': '1.0.0' } }));
-    assert.equal(depFindings({ repoRoot, files, repo })[0].code, CODE);
+    const args = { repoRoot, files, repo }; // not an object literal: depFindings reads only repoRoot and files
+    assert.equal(depFindings(args)[0]!.code, CODE);
     fs.writeFileSync(path.join(repoRoot, WORKSPACE), JSON.stringify({ name: '@proof/ui', dependencies: { 'left-pad': '1.3.0' } }));
-    assert.deepEqual(depFindings({ repoRoot, files, repo }), []);
+    assert.deepEqual(depFindings(args), []);
   });
 }

@@ -5,6 +5,7 @@
 //   - the product rule HFS_BYPASS_MARKER (scripts/hfs/rules/bypass-markers.mjs) and `starci app check --staged` (the pre-commit hook), which judge a tree and the index.
 // The forbidden spellings live in fixtures/loosening/, the declared fixture folder of knowledge/hfs/design-truths.yaml.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,8 +14,12 @@ import { spawnSync } from 'node:child_process';
 import { bypassesIn } from '../runtime/scripts/lib/bypass-markers.mjs';
 import { bypassMarkerFindings } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
 import { judge as hygieneJudge, runWorkHygiene } from '../sync/hygiene.mjs';
-import { FORBIDDEN, LOOKALIKES } from './fixtures/loosening/forms.mjs';
-import { FORBIDDEN_INDEX, LOOKALIKES_INDEX } from './fixtures/bypass-index.mjs';
+// reason: src/fixtures holds untyped .mjs fixtures (excluded from tsconfig, no declarations), so they are imported by a variable specifier and typed here.
+interface Form { id: string; file: string; text: string; kind?: string; detail?: string }
+const FORMS = './fixtures/loosening/forms.mjs';
+const BYPASS_INDEX = './fixtures/bypass-index.mjs';
+const { FORBIDDEN, LOOKALIKES }: { FORBIDDEN: Form[]; LOOKALIKES: Form[] } = await import(FORMS);
+const { FORBIDDEN_INDEX, LOOKALIKES_INDEX }: { FORBIDDEN_INDEX: Form[]; LOOKALIKES_INDEX: Form[] } = await import(BYPASS_INDEX);
 
 const markers = [...FORBIDDEN, ...FORBIDDEN_INDEX].filter((form) => form.kind === 'bypass');
 
@@ -32,24 +37,25 @@ for (const lookalike of [...LOOKALIKES, ...LOOKALIKES_INDEX]) {
 
 test('the table reports the line and the label of a marker, and a file of no kind has none', () => {
   const [hit] = bypassesIn('fe/src/a.tsx', 'const a = 1;\n// eslint-disable-next-line x\n');
+  assert.ok(hit);
   assert.deepEqual([hit.line, hit.label], [2, 'eslint-disable']);
   assert.deepEqual(bypassesIn('README.md', '// eslint-disable\n'), []);
   assert.equal(bypassesIn('node_modules/x/index.js', '// eslint-disable\n').length, 1, 'a file is read wherever it is tracked');
 });
 
 const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
-const git = (cwd, ...args) => {
+const git = (cwd: string, ...args: string[]) => {
   const run = spawnSync('git', args, { cwd, encoding: 'utf8', env: gitEnv, windowsHide: true });
   assert.equal(run.status, 0, `git ${args.join(' ')}: ${run.stderr}`);
 };
-const write = (root, file, text) => {
+const write = (root: string, file: string, text: string) => {
   fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
   fs.writeFileSync(path.join(root, file), text);
 };
-const form = (id) => FORBIDDEN.find((entry) => entry.id === id).text;
+const form = (id: string) => FORBIDDEN.find((entry) => entry.id === id)!.text;
 
 /** A git repository holding `files` in its index (the staged guard reads the index); removed after the test. */
-const stagedRepo = (t, files) => {
+const stagedRepo = (t: TestContext, files: Record<string, string>) => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-bypass-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   git(root, 'init', '-q', '-b', 'main');
@@ -69,10 +75,10 @@ test('HFS_BYPASS_MARKER: the tree rule and the staged pre-commit guard refuse a 
   const found = bypassMarkerFindings({ repoRoot: root, files });
   assert.deepEqual(found.map((finding) => finding.path), ['fe/src/bad.ts', 'be/src/bad.service.spec.ts', '.husky/pre-commit']);
   assert.ok(found.every((finding) => finding.code === 'HFS_BYPASS_MARKER' && finding.level === 'error'));
-  const lines = [];
+  const lines: string[] = [];
   assert.equal(await runWorkHygiene({ cwd: root, out: (line) => lines.push(line) }), 1);
   assert.equal(lines.filter((line) => line.startsWith('HFS_BYPASS_MARKER ')).length, 3, lines.join('\n'));
-  assert.match(lines.find((line) => line.includes('fe/src/bad.ts')), /fe\/src\/bad\.ts:2 spells/);
+  assert.match(lines.find((line) => line.includes('fe/src/bad.ts')) ?? '', /fe\/src\/bad\.ts:2 spells/);
 });
 
 test('HFS_BYPASS_MARKER: a relaxed gate configuration of an app is the same code, and its managed lists stay with the drift check', (t) => {
@@ -90,8 +96,8 @@ test('HFS_BYPASS_MARKER: a relaxed gate configuration of an app is the same code
 for (const edition of ['lite', 'full']) {
   test(`HFS_BYPASS_MARKER ${edition}: the tree rule and the staged guard refuse an inline disable in a front end`, (t) => {
     const root = stagedRepo(t, { 'fe/src/bad.ts': `export const bad = 1;\n${form('eslint-disable line')}` });
-    assert.equal(bypassMarkerFindings({ repoRoot: root, files: ['fe/src/bad.ts'] })[0].code, 'HFS_BYPASS_MARKER');
-    assert.equal(hygieneJudge(root, ['fe/src/bad.ts']).findings[0].code, 'HFS_BYPASS_MARKER');
+    assert.equal(bypassMarkerFindings({ repoRoot: root, files: ['fe/src/bad.ts'] })[0]!.code, 'HFS_BYPASS_MARKER');
+    assert.equal(hygieneJudge(root, ['fe/src/bad.ts']).findings[0]!.code, 'HFS_BYPASS_MARKER');
   });
   test(`HFS_BYPASS_MARKER ${edition}: the tree rule and the staged guard accept a clean front end`, (t) => {
     const root = stagedRepo(t, { 'fe/src/ok.ts': 'export const ok = 1;\n' });

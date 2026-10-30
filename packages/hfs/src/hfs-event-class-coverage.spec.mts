@@ -1,6 +1,7 @@
 // proves: BE_EVENT_CLASS_CONTRACT@lite
 // proves: BE_EVENT_CLASS_CONTRACT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,7 +12,7 @@ const eventPath = 'be/src/modules/events/order/order-placed.event.ts';
 const contractPath = 'be/contracts/order/events.json';
 const eventClass = 'export class OrderPlacedEvent { static readonly eventName = "order.placed"; static readonly version = 1; }';
 
-function eventFixture(t, edition, events) {
+function eventFixture(t: TestContext, edition: string, events: Record<string, unknown>) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-event-class-coverage-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const sources = {
@@ -36,15 +37,15 @@ for (const edition of ['lite', 'full']) {
     const fixture = eventFixture(t, edition, {});
     const findings = eventClassContractFindings(fixture);
     assert.deepEqual(findings.map((finding) => finding.code), ['BE_EVENT_CLASS_CONTRACT']);
-    assert.equal(findings[0].path, eventPath);
-    assert.match(findings[0].message, /does not list/);
+    assert.equal(findings[0]!.path, eventPath);
+    assert.match(findings[0]!.message, /does not list/);
   });
 
   test(`${edition} rejects a contract version that differs from its typed event class`, (t) => {
     const fixture = eventFixture(t, edition, { 'order.placed': { version: 2 } });
     const findings = eventClassContractFindings(fixture);
     assert.deepEqual(findings.map((finding) => finding.code), ['BE_EVENT_CLASS_CONTRACT']);
-    assert.match(findings[0].message, /version 1 but .* version 2/);
+    assert.match(findings[0]!.message, /version 1 but .* version 2/);
   });
 }
 

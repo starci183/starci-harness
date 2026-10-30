@@ -1,6 +1,7 @@
 // proves: DB_DEFINER_SAFE@lite
 // proves: DB_DEFINER_SAFE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,7 +11,7 @@ import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/sl
 
 const FILE = 'db/migrations/20260101120000_lookup.sql';
 
-async function judge(t, edition, sql) {
+async function judge(t: TestContext, edition: string, sql: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-definer-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({
@@ -34,9 +35,9 @@ for (const edition of ['lite', 'full']) {
     const sql = 'create function private.lookup(subject uuid) returns boolean language sql security definer as $$ select subject is not null $$;';
     const findings = await judge(t, edition, sql);
     assert.deepEqual(findings.map(({ code }) => code), ['DB_DEFINER_SAFE']);
-    assert.equal(findings[0].path, FILE);
-    assert.equal(findings[0].function, 'private.lookup');
-    assert.match(findings[0].message, /sets no search_path/);
+    assert.equal(findings[0]!.path, FILE);
+    assert.equal(findings[0]!.function, 'private.lookup');
+    assert.match(findings[0]!.message, /sets no search_path/);
   });
 
   test(`DB_DEFINER_SAFE@${edition} accepts an exposed definer with a pinned path and explicit revokes`, async (t) => {

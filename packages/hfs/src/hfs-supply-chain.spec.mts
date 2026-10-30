@@ -2,26 +2,29 @@
 // proves: HFS_AUDIT_STEP_MISSING@lite HFS_AUDIT_STEP_MISSING@full
 // proves: HFS_SBOM_MISSING@lite HFS_SBOM_MISSING@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.mjs';
 import { ALL_CHECK_CODES, checkRepo } from '../runtime/scripts/hfs/check.mjs';
-import { OR_ECHO, OR_TRUE, OR_COLON } from './fixtures/loosening/swallows.mjs';
+// reason: src/fixtures holds untyped .mjs fixtures (excluded from tsconfig, no declarations), so they are imported by a variable specifier and typed here.
+const SWALLOWS = './fixtures/loosening/swallows.mjs';
+const { OR_ECHO, OR_TRUE, OR_COLON }: Record<'OR_ECHO' | 'OR_TRUE' | 'OR_COLON', string> = await import(SWALLOWS);
 
 const sha = 'a'.repeat(40);
 const NPM_POLICY = '\n    groups:\n      minor-and-patch:\n        applies-to: version-updates\n        update-types: [minor, patch]\n      security:\n        applies-to: security-updates\n        update-types: [minor, patch]\n    ignore:\n      - dependency-name: "@starci/*"';
 const ecosystemUpdates = ['npm', 'github-actions', 'docker'].map((ecosystem) => `  - package-ecosystem: ${ecosystem}\n    directory: /\n    schedule:\n      interval: weekly${ecosystem === 'npm' ? NPM_POLICY : ''}`).join('\n');
 const dependabot = `version: 2\nupdates:\n${ecosystemUpdates}\n`;
-const workflow = (steps) => `on:\n  push:\n    tags: [v*]\n  workflow_dispatch:\npermissions:\n  contents: read\nconcurrency: images-${'${{ github.ref }}'}\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n${steps}\n`;
-const clean = {
+const workflow = (steps: string) => `on:\n  push:\n    tags: [v*]\n  workflow_dispatch:\npermissions:\n  contents: read\nconcurrency: images-${'${{ github.ref }}'}\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n${steps}\n`;
+const clean: Record<string, string> = {
   '.github/dependabot.yml': dependabot,
   '.github/workflows/ci.yml': workflow('      - run: npm audit --omit=dev --audit-level=high'),
   '.github/workflows/images.yml': workflow(`      - uses: docker/build-push-action@${sha}\n        with:\n          sbom: true\n          provenance: mode=max`),
 };
 
-function fixture(t, content, edition, extra = {}) {
+function fixture(t: TestContext, content: Record<string, string>, edition: string, extra: Record<string, unknown> = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-supply-chain-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, text] of Object.entries(content)) {
@@ -30,7 +33,7 @@ function fixture(t, content, edition, extra = {}) {
   }
   return { repoRoot: root, files: Object.keys(content), repo: { kind: 'app', edition }, isRoot: true, ...extra };
 }
-const codes = (ctx) => supplyChainFindings(ctx).map((finding) => finding.code);
+const codes = (ctx: ReturnType<typeof fixture>) => supplyChainFindings(ctx).map((finding) => finding.code);
 
 for (const edition of ['lite', 'full']) {
   test(`HFS_DEPENDABOT_MISSING rejects absent or incomplete updates (${edition})`, (t) => {
@@ -116,13 +119,13 @@ for (const edition of ['lite', 'full']) {
     const report = checkRepo({ repoRoot: ctx.repoRoot, declaration, files: [], tree: false });
     const hits = report.findings.filter((finding) => /HFS_(?:DEPENDABOT|AUDIT_STEP|SBOM)_MISSING/.test(finding.code));
     assert.deepEqual(hits.map((finding) => finding.code).sort((left, right) => left.localeCompare(right)), ['HFS_AUDIT_STEP_MISSING', 'HFS_DEPENDABOT_MISSING', 'HFS_SBOM_MISSING']);
-    assert.ok(hits.every((finding) => finding.level === 'error' && finding.titleVi.length > 0));
+    assert.ok(hits.every((finding) => finding.level === 'error' && typeof finding.titleVi === 'string' && finding.titleVi.length > 0));
     assert.ok(hits.every((finding) => ALL_CHECK_CODES.includes(finding.code)), 'supply-chain findings retain bundled catalog explanations');
   });
 }
 
 test('R269 honors path scope and skips runtime/side/unknown editions', (t) => {
-  assert.deepEqual(codes(fixture(t, {}, 'lite', { inScope: (file) => file === '.github/workflows/ci.yml' })), ['HFS_AUDIT_STEP_MISSING']);
+  assert.deepEqual(codes(fixture(t, {}, 'lite', { inScope: (file: string) => file === '.github/workflows/ci.yml' })), ['HFS_AUDIT_STEP_MISSING']);
   for (const extra of [{ repo: { kind: 'runtime', edition: 'lite' } }, { isRoot: false }, { repo: { kind: 'app', edition: 'unknown' } }]) assert.deepEqual(codes(fixture(t, {}, 'full', extra)), []);
 });
 
