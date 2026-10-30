@@ -66,7 +66,7 @@ for (const edition of ['lite', 'full']) {
     const doc = compliant(edition);
     delete doc.jobs.test.strategy;
     doc.jobs.lint.strategy.matrix.side = ['be'];
-    doc.jobs.lint.steps.push({ run: 'starci app lint --sonar', env: HEAP });
+    doc.jobs.lint.steps.push({ run: 'starci app lint --out reports/lint.sonar.json', env: HEAP });
     doc.jobs.fast.steps.push({ uses: `actions/cache@${SHA}`, with: { key: 'k-${{ github.sha }}' } });
     doc.jobs.coverage.steps[3]['continue-on-error'] = true;
     const found = items(judge(doc, edition));

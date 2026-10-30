@@ -3,7 +3,7 @@
 //   job-shape              the managed ci.yml holds exactly the edition's jobs; the unit run is in `test`, the proof and the Codecov upload in `coverage` (the one OIDC job)
 //   full-history-base-ref  every actions/checkout fetches the full history; a job that lints writes STARCI_BASE_REF before it lints
 //   heap-per-step          every heavy step (heap.steps) declares NODE_OPTIONS --max-old-space-size >= heap.minMiB on the step
-//   sonar-lint-per-side    a lint with --sonar names --side
+//   sonar-lint-per-side    a lint with --out names --side
 //   required-providers      no continue-on-error; Codecov fail_ci_if_error true; no availability probe, no secret-gated Codecov or Sonar step
 //   test-sharding          the test job is a shard matrix; each shard runs --shard=i/N with STARCI_COVERAGE_SHARD and no threshold or pass-empty flag; the coverage job merges, then proves
 //   lint-parallel          the lint job is a matrix over side [be, fe]
@@ -139,7 +139,7 @@ function sonarLintPerSide(doc: Parsed, say: Parsed) {
   for (const [id, job] of jobsOf(doc)) {
     for (const step of stepsOf(job)) {
       const run = runOf(step);
-      if (/\b(?:npm run lint|starci(?:\.mjs)?["']?\s+app lint|app lint)\b/.test(run) && /\s--sonar\b/.test(run) && !/\s--side\s+(?:be\b|fe\b|\$\{\{\s*matrix\.side\s*\}\})/.test(run)) {
+      if (/\b(?:npm run lint|starci(?:\.mjs)?["']?\s+app lint|app lint)\b/.test(run) && /\s--out\b/.test(run) && !/\s--side\s+(?:be\b|fe\b|\$\{\{\s*matrix\.side\s*\}\})/.test(run)) {
         out.push(say('sonar-lint-per-side', `job ${id}, step ${step.name ?? 'lint'}: a lint with a Sonar import must name its side (--side be|fe) and the reports are merged afterwards; a combined lint with Sonar breaks the standard`));
       }
     }

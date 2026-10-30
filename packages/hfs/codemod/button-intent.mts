@@ -345,37 +345,37 @@ export function buttonIntentMarkdown(report: ButtonReport): string {
   return lines.join('\n');
 }
 
-/** The arguments of `starci app codemod button-intent`: --write, --json, --format and --report; any other is refused. */
-export function codemodArguments(argv: readonly string[]): { write: boolean; format: string; report?: string } {
+/** The arguments of `starci app codemod button-intent`: --execute, --json, --format and --out; any other is refused. */
+export function codemodArguments(argv: readonly string[]): { write: boolean; format: string; out?: string } {
   const [name, ...rest] = argv;
   if (name !== 'button-intent') throw new Error('starci app codemod takes button-intent');
-  const options: { write: boolean; format: string; report?: string } = { write: false, format: 'markdown' };
+  const options: { write: boolean; format: string; out?: string } = { write: false, format: 'markdown' };
   const args = rest.values();
   for (const arg of args) {
     const [flag, inline] = arg.split(/=(.*)/s);
-    if (flag === '--write' || flag === '--json') {
+    if (flag === '--execute' || flag === '--json') {
       if (inline !== undefined && !['true', 'false'].includes(inline)) throw new Error(`${flag} expects true or false`);
       const value = inline === undefined || inline === 'true';
-      if (flag === '--write') options.write = value;
+      if (flag === '--execute') options.write = value;
       else if (value) options.format = 'json';
-    } else if (flag === '--format' || flag === '--report') {
+    } else if (flag === '--format' || flag === '--out') {
       const value = inline ?? args.next().value;
       if (!value || value.startsWith('--')) throw new Error(`${flag} needs a value`);
-      options[flag.slice(2) as 'format' | 'report'] = value;
+      options[flag.slice(2) as 'format' | 'out'] = value;
     } else throw new Error(`unknown codemod option ${arg}`);
   }
   if (!['json', 'markdown'].includes(options.format)) throw new Error('--format accepts json or markdown');
   return options;
 }
 
-/** CLI boundary: dry-run by default, --write mutates only safe FE source; findings return exit 1 with a complete report. */
+/** CLI boundary: dry-run by default, --execute mutates only safe FE source; findings return exit 1 with a complete report. */
 export function codemodMain(argv: string[], { cwd, stdout }: { cwd: string; stdout: (text: string) => unknown }): number {
   const options = codemodArguments(argv);
-  if (options.report && !/\.(?:json|md)$/i.test(options.report)) throw new Error('--report needs a .json or .md report file');
+  if (options.out && !/\.(?:json|md)$/i.test(options.out)) throw new Error('--out needs a .json or .md report file');
   const report = migrateButtonIntent({ root: path.resolve(cwd), write: options.write });
   const output = options.format === 'json' ? `${JSON.stringify(report, null, 2)}\n` : buttonIntentMarkdown(report);
-  if (options.report) {
-    const target = path.resolve(cwd, options.report);
+  if (options.out) {
+    const target = path.resolve(cwd, options.out);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, output);
   }

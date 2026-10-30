@@ -16,7 +16,7 @@ test('the app implementation loads with no installed dependency and refuses a mi
   assert.match(err, /^starci app scaffold <name>/m);
   assert.match(err, /^starci app secret list/m);
   assert.match(err, /^starci app coverage merge --out <lcov>/m);
-  assert.deepEqual(VERBS, ['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'release', 'explain', 'emit', 'new', 'secret', 'ci', 'db', 'hygiene', 'coverage', 'codemod']);
+  assert.deepEqual(VERBS, ['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
 });
 
 test('global options use cwd, upgrade refuses a lite app because editions are fixed at scaffold, and a full app it cannot give a world', async (t) => {
@@ -26,20 +26,20 @@ test('global options use cwd, upgrade refuses a lite app because editions are fi
   fs.mkdirSync(wanted);
   let call;
   const stackMain = async (argv, io) => { call = { argv, cwd: io.cwd }; return 0; };
-  assert.equal(await main(['stack', 'status', '--cwd', 'app', '--edition', 'full'], { cwd: base, stackMain }), 0);
+  assert.equal(await main(['world', 'status', '--cwd', 'app', '--edition', 'full'], { cwd: base, stackMain }), 0);
   assert.deepEqual(call, { argv: ['status'], cwd: wanted });
   let err = '';
   const lite = path.join(base, 'lite');
   fs.mkdirSync(lite);
   const liteDeclaration = { hfs: 3, kind: 'app', project: 'lite', edition: 'lite', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'landing', kind: 'next' }], reads: ['be/contracts/'] } } };
   fs.writeFileSync(path.join(lite, 'hfs.json'), JSON.stringify(liteDeclaration));
-  for (const argv of [['upgrade', '--cwd', lite], ['upgrade', '--plan', '--cwd', lite]]) {
+  for (const argv of [['upgrade', '--cwd', lite], ['upgrade', '--execute', '--cwd', lite]]) {
     err = '';
     assert.equal(await main(argv, { stderr: (text) => { err += text; } }), 2, argv.join(' '));
     assert.match(err, /^HFS_UPGRADE_EDITION_FIXED: editions are fixed at scaffold: a lite app stays lite/, argv.join(' '));
   }
   // upgrade reads no --edition: the shared parser leaves it to upgrade, which refuses it by its own code (an edition is chosen at scaffold).
-  for (const argv of [['upgrade', '--edition', 'lite', '--cwd', lite], ['upgrade', '--edition', 'full', '--cwd', lite], ['upgrade', '--edition=full', '--plan', '--cwd', lite]]) {
+  for (const argv of [['upgrade', '--edition', 'lite', '--cwd', lite], ['upgrade', '--edition', 'full', '--cwd', lite], ['upgrade', '--edition=full', '--execute', '--cwd', lite]]) {
     err = '';
     assert.equal(await main(argv, { stderr: (text) => { err += text; } }), 2, argv.join(' '));
     assert.equal(err, 'HFS_UPGRADE_USAGE: upgrade takes no --edition: editions are fixed at scaffold\n', argv.join(' '));
@@ -49,7 +49,7 @@ test('global options use cwd, upgrade refuses a lite app because editions are fi
   const declared = JSON.stringify(declaration);
   fs.writeFileSync(path.join(wanted, 'hfs.json'), declared);
   err = '';
-  assert.equal(await main(['upgrade', '--plan', '--cwd', wanted], { stderr: (text) => { err += text; } }), 2);
+  assert.equal(await main(['upgrade', '--cwd', wanted], { stderr: (text) => { err += text; } }), 2);
   assert.match(err, /^HFS_SCAFFOLD_TEST_WORLD: the test world migrates the connections of hfs\.json, and it declares none\n$/);
   assert.equal(fs.readFileSync(path.join(wanted, 'hfs.json'), 'utf8'), declared);
 });
@@ -80,15 +80,15 @@ test('upgrade adds the test world a full app lacks, never overwrites one, and th
     return { code, stdout, stderr };
   };
 
-  const planned = await run(['upgrade', '--plan']);
+  const planned = await run(['upgrade']);
   assert.equal(planned.code, 0, planned.stderr);
   assert.deepEqual(planned.stdout.trim().split('\n').slice(0, -1).map((line) => line.slice(0, line.indexOf(':'))), world.map((file) => `add ${file}`));
-  assert.match(planned.stdout, /starci app upgrade --plan: 8 steps planned; no file written\n$/);
-  assert.equal(fs.existsSync(path.join(root, 'be')), false);
+  assert.match(planned.stdout, /starci app upgrade: 8 steps planned; no file written\n$/);
+  assert.equal(fs.existsSync(path.join(root, 'be')), false, 'upgrade is a dry run until --execute');
 
-  const applied = await run(['upgrade']);
+  const applied = await run(['upgrade', '--execute']);
   assert.equal(applied.code, 0, applied.stderr);
-  assert.match(applied.stdout, /starci app upgrade: 8 steps applied\n$/);
+  assert.match(applied.stdout, /starci app upgrade --execute: 8 steps applied\n$/);
   const config = fs.readFileSync(path.join(root, 'be/src/tests/world/test-world.config.ts'), 'utf8');
   assert.ok(config.includes('import { AppModule as CoreApp } from "../../../apps/core/src/app.module"'));
   assert.ok(config.includes('postgresql: { connections: [{ name: "primary" }] },'));
@@ -100,24 +100,24 @@ test('upgrade adds the test world a full app lacks, never overwrites one, and th
   assert.ok(fs.readFileSync(path.join(root, 'be/src/tests/fixtures/persistence/migrations.sql.ts'), 'utf8').includes('SELECT name FROM primary_migrations ORDER BY id LIMIT 500'));
   assert.equal(fs.readFileSync(path.join(root, 'package.json'), 'utf8'), manifest);
 
-  const again = await run(['upgrade']);
+  const again = await run(['upgrade', '--execute']);
   assert.equal(again.code, 0, again.stderr);
-  assert.equal(again.stdout, 'starci app upgrade: 0 steps applied (the full app is complete)\n');
+  assert.equal(again.stdout, 'starci app upgrade --execute: 0 steps applied (the full app is complete)\n');
 
   fs.rmSync(path.join(root, 'be/src/tests/world/global-setup.ts'));
   fs.writeFileSync(path.join(root, 'be/src/tests/world/test-world.config.ts'), 'export const owned = true\n');
-  const conflict = await run(['upgrade']);
+  const conflict = await run(['upgrade', '--execute']);
   assert.equal(conflict.code, 2);
   assert.match(conflict.stderr, /^HFS_UPGRADE_FILE_CONFLICT: be\/src\/tests\/world\/test-world\.config\.ts already exists/);
   assert.equal(fs.readFileSync(path.join(root, 'be/src/tests/world/test-world.config.ts'), 'utf8'), 'export const owned = true\n');
   assert.equal(fs.existsSync(path.join(root, 'be/src/tests/world/global-setup.ts')), false);
 });
 
-test('stack refuses with exit 2 and an install hint when the app has no test-world package', async (t) => {
+test('world refuses with exit 2 and an install hint when the app has no test-world package', async (t) => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-app-stack-'));
   t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
   let err = '';
-  const code = await main(['stack', 'status'], { cwd, stdout: () => {}, stderr: (text) => { err += text; } });
+  const code = await main(['world', 'status'], { cwd, stdout: () => {}, stderr: (text) => { err += text; } });
   assert.equal(code, 2);
   assert.match(err, /needs @starci\/test-world installed in the app/);
 });
@@ -134,11 +134,17 @@ async function app(t, argv) {
 
 test('the shared parser refuses a flag of another verb and a value flag that would swallow the next flag', async (t) => {
   for (const [argv, message] of [
-    [['check', '--into', 'x'], 'starci app check takes no --into'],
+    [['check', '--event', 'x'], 'starci app check takes no --event'],
     [['emit', '--json'], 'starci app emit takes no --json'],
-    [['explain', 'be/x.ts', '--fast'], 'starci app explain takes no --fast'],
+    [['slot', 'be/x.ts', '--fast'], 'starci app slot takes no --fast'],
     [['scaffold', 'shop', '--inject', 'A=b'], 'starci app scaffold takes no --inject'],
-    [['emit', '--edition', 'full'], 'starci app emit takes no --edition'],
+    [['add', 'job', 'x', '--inject', 'A=b'], 'starci app add job takes no --inject; only add service does'],
+    [['add', 'image', '--event', 'x'], 'starci app add image takes no --event'],
+    [['add', 'spec', 'be/x.service.ts', '--inject', 'A=b'], 'starci app add spec takes no --inject; only add service does'],
+    [['add', 'service', 'be/x', 'y', '--form'], 'starci app add service takes no --form'],
+    [['check', '--staged', '--json'], 'starci app check --staged is the pre-commit guard alone and takes no --json'],
+    [['check', '--staged', '--fast', '--base', 'main'], 'starci app check --staged is the pre-commit guard alone and takes no --fast, --base'],
+    [['check', '--staged', '--edition', 'full'], 'starci app check --staged is the pre-commit guard alone and takes no --edition'],    [['emit', '--edition', 'full'], 'starci app emit takes no --edition'],
     [['check', '--bogus'], 'unknown flag --bogus'],
     [['check', '--fast', '--base', '--json'], '--base needs a value'],
     [['add', 'job', 'x', '--event', '--from', 'y'], '--event needs a value'],
@@ -150,10 +156,12 @@ test('the shared parser refuses a flag of another verb and a value flag that wou
   }
 });
 
-test('hygiene takes no argument: an extra one prints the usage and refuses', async (t) => {
-  const run = await app(t, ['hygiene', '--staged']);
-  assert.equal(run.code, 2);
-  assert.equal(run.out, 'usage: starci app sync (--check | --write) [--cwd <dir>] | starci app hygiene [--cwd <dir>]\n');
+test('sync takes only --execute: any other argument prints the usage and refuses', async (t) => {
+  for (const argv of [['sync', '--bogus'], ['sync', '--execute', '--execute'], ['sync', 'extra']]) {
+    const run = await app(t, argv);
+    assert.equal(run.code, 2, argv.join(' '));
+    assert.equal(run.out, 'usage: starci app sync [--execute] [--cwd <dir>]\n', argv.join(' '));
+  }
 });
 
 test('the usage is generated from the parser tables: every flag every verb parses appears on that verb\'s lines', async (t) => {
@@ -165,7 +173,6 @@ test('the usage is generated from the parser tables: every flag every verb parse
   const { LOCAL_FLAGS } = await import('../ci/local.mjs');
   const { BASELINE_OPTIONS } = await import('../runtime/scripts/hfs/db-baseline-verb.mjs');
   const { RESTAMP_OPTIONS } = await import('../runtime/scripts/hfs/db-restamp-verb.mjs');
-  const { PLAN_OPTIONS } = await import('../runtime/scripts/hfs/db-plan-verb.mjs');
   const db = Object.fromEntries(await Promise.all(['migrate', 'post-cutover', 'dump', 'new', 'drift'].map(async (verb) => [verb, (await import(`../db/${verb}.mjs`)).SPEC])));
   const { parseLintArgs } = await import('../lint/run.mjs');
   const { codemodArguments } = await import('../codemod/button-intent.mjs');
@@ -186,12 +193,18 @@ test('the usage is generated from the parser tables: every flag every verb parse
   for (const flag of flagsOfSpec(SECRET_FLAGS).filter((name) => name !== '--cwd')) assert.ok(lines('secret').some((text) => text.includes(`${flag} `) || text.includes(`${flag}]`)), `secret usage lacks ${flag}`);
   for (const [command, options] of Object.entries(CI_COMMANDS)) expect(`ci ${command}`, options.map((name) => `--${name}`));
   expect('ci local', flagsOfSpec(LOCAL_FLAGS));
-  for (const [verb, names] of [['baseline', BASELINE_OPTIONS], ['restamp', RESTAMP_OPTIONS], ['plan', PLAN_OPTIONS]]) expect(`db ${verb}`, names.map((name) => `--${name}`));
+  for (const [verb, names] of [['baseline', BASELINE_OPTIONS], ['restamp', RESTAMP_OPTIONS]]) expect(`db ${verb}`, names.map((name) => `--${name}`));
   for (const [verb, spec] of Object.entries(db)) expect(`db ${verb}`, flagsOfSpec(spec));
   expect('lint', flagsOfParser(parseLintArgs));
   expect('codemod', flagsOfParser(codemodArguments));
   expect('upgrade', flagsOfParser(upgradeArguments).filter((flag) => !['--repo', '--edition'].includes(flag)));
   for (const verb of ['check', 'scaffold']) expect(verb, ['--edition']);
+  // The canonical spellings are on the usage lines.
+  for (const line of ['starci app slot <path> [--json]', 'starci app world <up|down|status>', 'starci app add service <dir> <name> [--inject <binding>]...', 'starci app add spec <file>.service.ts', 'starci app add image',
+    'starci app check [--staged]', 'starci app sync [--execute]', 'starci app upgrade [--execute]', 'starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out ']) assert.ok(out.includes(line), line);
+  assert.match(out, /^starci app lint .*\[--json\] \[--out <file>\]$/m);
+  assert.match(out, /^starci app scaffold <name> \[--registry-visibility public\|private\] \[--edition full\|lite\]$/m);
+  assert.doesNotMatch(out, /app (hygiene|explain|new|sonar)\b|--sonar|--plan|--write|--check\b|--into\b(?!-)|--report|app stack <up/, 'the usage lists no old spelling');
 });
 
 test('the scaffold hint and the managed scripts name commands that exist', async () => {
@@ -204,6 +217,7 @@ test('the scaffold hint and the managed scripts name commands that exist', async
   assert.ok(calls.length > 0);
   for (const [, verb, rest] of calls) {
     assert.ok(VERBS.includes(verb), `starci app ${verb}`);
-    if (verb === 'stack') assert.ok(['up', 'down', 'status', ...STACK_ACTIONS].includes(rest.trim().split(' ')[0]), `starci app stack${rest} names no action`);
+    if (verb === 'stack') assert.ok(STACK_ACTIONS.includes(rest.trim().split(' ')[0]), `starci app stack${rest} names no action`);
+    if (verb === 'world') assert.ok(['up', 'down', 'status'].includes(rest.trim().split(' ')[0]), `starci app world${rest} names no action`);
   }
 });

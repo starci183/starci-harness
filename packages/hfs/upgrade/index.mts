@@ -178,9 +178,9 @@ async function upgradeEdition({
   return result;
 }
 
-/** The arguments of `starci app upgrade`: --plan, and --repo from the CLI entry; --edition is refused (editions are fixed at scaffold). */
+/** The arguments of `starci app upgrade`: --execute (without it the run is a dry one: `plan`), and --repo from the CLI entry; --edition is refused (editions are fixed at scaffold). */
 export function upgradeArguments(argv: readonly string[]): { root: string; plan: boolean } {
-  let plan = false;
+  let plan = true;
   let root = process.cwd();
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] as string;
@@ -189,7 +189,7 @@ export function upgradeArguments(argv: readonly string[]): { root: string; plan:
         throw new UpgradeError("HFS_UPGRADE_USAGE", `${arg} needs a value`);
       root = path.resolve(argv[index + 1] as string);
       index += 1;
-    } else if (arg === "--plan") plan = true;
+    } else if (arg === "--execute") plan = false;
     else if (arg === "--edition" || arg.startsWith("--edition="))
       throw new UpgradeError("HFS_UPGRADE_USAGE", "upgrade takes no --edition: editions are fixed at scaffold");
     else throw new UpgradeError("HFS_UPGRADE_USAGE", `unknown argument ${arg}`);
@@ -204,7 +204,7 @@ export async function upgradeMain(argv: string[], { stdout = (value: string): un
   for (const step of steps) stdout(`${step.op} ${step.path}: ${step.why}
 `);
   stdout(
-    `starci app upgrade${plan ? " --plan" : ""}: ${steps.length} step${steps.length === 1 ? "" : "s"} ${plan ? "planned; no file written" : "applied"}${steps.length === 0 ? " (the full app is complete)" : ""}
+    `starci app upgrade${plan ? "" : " --execute"}: ${steps.length} step${steps.length === 1 ? "" : "s"} ${plan ? "planned; no file written" : "applied"}${steps.length === 0 ? " (the full app is complete)" : ""}
 `,
   );
   return 0;

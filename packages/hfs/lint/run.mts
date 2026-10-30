@@ -1,6 +1,6 @@
 // starci app lint - the ONE lint entry and the ONE report of a StarCi app.
 //
-//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--format text|json] [--sonar <file>]
+//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--json] [--out <file>]
 //
 // It runs at the app root (the folder of hfs.json), over the app (or over the app-relative files named by --changed):
 //   1. ESLint once per side, from the side folder, through the app's own install and that side's eslint.config.mjs (be/ the be canon,
@@ -8,8 +8,8 @@
 //      offending TypeScript file); each side lints only its own files, so the be rules never see fe/ and the fe rules never see be/;
 //   2. `starci app check` for what has no TypeScript file to sit on (the tree, managed files, pins, CI, contracts, docs, .starciwork), root and sides;
 //   3. stylelint over the fe side's stylesheets (sync STYLE_GLOB), from fe/ with its stylelint.config.mjs.
-// Their findings become one list of one shape (`starci/lint@1`), every path app-relative. `--format json` prints that report on stdout;
-// `--sonar <file>` writes the same findings as THE Sonar Generic Issue Import file (engine ids starci-hfs, eslint, stylelint in one
+// Their findings become one list of one shape (`starci/lint@1`), every path app-relative. `--json` prints that report on stdout;
+// `--out <file>` writes the same findings as THE Sonar Generic Issue Import file (engine ids starci-hfs, eslint, stylelint in one
 // document); the exit code is the land-gate input: 0 no finding, 1 at least one, 2 a tool could not run (never a pass).
 // --changed restricts ESLint and stylelint to the listed files and keeps of the app findings only those on a listed file or on no file.
 // --workspace scopes the same lint to one npm workspace of the fe side (fe/apps/<app> or fe/packages/<pkg>, app-relative): ESLint and
@@ -34,7 +34,7 @@ import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
 type Dynamic = any;
 
 /** The parsed arguments of the lint verb. */
-export interface LintOptions { changed: string[] | null; fix: boolean; format: string; sonar: string | undefined; workspace: string | undefined; side?: string }
+export interface LintOptions { changed: string[] | null; fix: boolean; format: string; out: string | undefined; workspace: string | undefined; side?: string }
 /** What a linter run answers: its json results, or why it could not complete (both when the run was partial). */
 export interface LinterRun { results?: Dynamic[]; error?: string }
 /** The seam that runs a linter through the app's own install from cwd. */
@@ -82,7 +82,7 @@ function findingOnSide(finding: { path?: string | null | undefined }, side: stri
 /** The flags of `starci app lint`; `--changed` takes every argument up to the next flag, and a repeated `--changed` adds to the list (the
  *  catalog's list flag, `--changed a --changed b`, as the CLI dispatcher passes it through). */
 export function parseLintArgs(argv: readonly string[]): LintOptions {
-  const opts: LintOptions = { changed: null, fix: false, format: 'text', sonar: undefined, workspace: undefined };
+  const opts: LintOptions = { changed: null, fix: false, format: 'text', out: undefined, workspace: undefined };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] as string;
     if (arg === '--changed') {
@@ -90,13 +90,12 @@ export function parseLintArgs(argv: readonly string[]): LintOptions {
       while (i + 1 < argv.length && !(argv[i + 1] as string).startsWith('--')) opts.changed.push(posix(argv[++i]));
     } else if (arg === '--fix') opts.fix = true;
     else if (arg === '--json') opts.format = 'json';
-    else if (['--format', '--sonar', '--workspace', '--side'].includes(arg)) {
+    else if (['--out', '--workspace', '--side'].includes(arg)) {
       if (arg === '--side' && (argv[i + 1] === undefined || (argv[i + 1] as string).startsWith('--'))) throw new Error('LINT_SIDE_INVALID: --side needs be or fe');
       if (argv[i + 1] === undefined) throw new Error(`${arg} needs a value`);
       (opts as unknown as Record<string, unknown>)[arg.slice(2)] = argv[++i];
     } else throw new Error(`unknown argument ${arg}`);
   }
-  if (!['text', 'json'].includes(opts.format)) throw new Error('--format is text or json');
   if (opts.workspace !== undefined && opts.changed !== null) throw new Error('--workspace and --changed do not combine: a workspace lint judges the whole workspace');
   validateSide(opts);
   return opts;

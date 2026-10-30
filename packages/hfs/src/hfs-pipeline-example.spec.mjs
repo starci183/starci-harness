@@ -21,7 +21,7 @@ for (const edition of ['lite', 'full']) {
       fs.writeFileSync(path.join(root, '.github/workflows/ci.yml'), 'steps:\n  - run: ' + command + '\n');
       return pipelineFindings({ repoRoot: root, files: ['.github/workflows/ci.yml'], pins: { 'starci-harness': { version: '4.4.0' } } });
     };
-    for (const command of ['npm run lint', PREFIX + 'npm run lint', PREFIX + 'npm run lint -- --sonar reports/lint.sonar.json'])
+    for (const command of ['npm run lint', PREFIX + 'npm run lint', PREFIX + 'npm run lint -- --out reports/lint.sonar.json'])
       assert.deepEqual(findings(command), [], command);
     for (const command of [
       PREFIX + 'npm run unit',

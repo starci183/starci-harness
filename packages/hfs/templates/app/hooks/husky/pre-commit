@@ -3,8 +3,8 @@
 # swallowed failure: HFS_BYPASS_MARKER) of the staged files, managed files equal to their render, eslint of the staged files of each
 # side (the fe packages are built first: the apps import their emitted types, the way the managed lint script does), stylelint over the staged CSS of fe, a prettier check of the staged files. Every step ends the hook when it fails: none can be
 # skipped. Types and the targeted specs belong to the op gate.
-npx --no-install starci app hygiene || exit $?
-npx --no-install starci app sync --check || exit $?
+npx --no-install starci app check --staged || exit $?
+npx --no-install starci app sync || exit $?
 # NUL-delimited paths keep filenames intact; bounded batches fit the Windows command line.
 git diff --cached --name-only --diff-filter=ACMR -z --relative=be -- '*.ts' '*.mts' '*.cts' '*.js' '*.mjs' '*.cjs' |
   xargs -0 -n 50 sh -c 'if [ "$#" -gt 0 ]; then cd be && npx eslint -- "$@"; fi' sh || exit $?

@@ -1,4 +1,4 @@
-// starci app new image - the Dockerfile of every declared app that has none, written from the image canon
+// starci app add image - the Dockerfile of every declared app that has none, written from the image canon
 // (templates/<side>/image/<kind>, the same render starci app scaffold uses). It never overwrites a file.
 import fs from 'node:fs';
 import path from 'node:path';

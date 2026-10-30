@@ -1,6 +1,6 @@
 // bypass-markers.mjs - what a BYPASS of a check looks like in text (owner ruling loosening-always-red: any bypass is red, always).
 // One table serves both sides of the no-bypass law, and both read a whole file as it stands (no history):
-//   product   scripts/hfs/rules/bypass-markers.mjs (HFS_BYPASS_MARKER, `starci app check`) and `starci app hygiene` (the pre-commit hook);
+//   product   scripts/hfs/rules/bypass-markers.mjs (HFS_BYPASS_MARKER, `starci app check`) and `starci app check --staged` (the pre-commit hook);
 //   runtime   scripts/lib/loosening-state.mjs (RT_LOOSENING_STATE, `starci runtime check`).
 // A marker is a way to make a check pass without satisfying it: an inline disable of any tool, a type-check escape, a Sonar or coverage
 // exclusion comment, a skipped or focused test, a failure swallowed in a hook, a script or a workflow step, a hook skipped.

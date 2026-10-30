@@ -199,7 +199,7 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     ciBuildEnv: build.env,
     ciBuildSteps: build.steps,
     ciLint: exampleCommand(source, 'npm run lint'),
-    ciLintSonar: exampleCommand(source, 'npm run lint -- --sonar reports/lint.sonar.json'),
+    ciLintSonar: exampleCommand(source, 'npm run lint -- --out reports/lint.sonar.json'),
     // The coverage judgement alone over the merged report: the fast and lint jobs already ran every other rule of the app check.
     ciCoverageProof: exampleCommand(source, 'npx starci app coverage verify ' + lcovReport),
     // An app with an entity list also checks its entities against the schema its migrations build, in the build job (a runner with Docker).
@@ -210,7 +210,7 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     // One lint job per side (the lint matrix): with Sonar each side writes its own report, uploaded as sonar-lint-<side> and merged by the sonar job.
     ciLintSteps: (sonar ? [
       '      - name: lint with Sonar import',
-      `        run: ${exampleCommand(source, 'npm run lint -- --side ' + side + ' --sonar reports/lint.' + side + '.sonar.json')}`,
+      `        run: ${exampleCommand(source, 'npm run lint -- --side ' + side + ' --out reports/lint.' + side + '.sonar.json')}`,
       '        env:',
       `          NODE_OPTIONS: ${settings.nodeOptions}`,
       `      - uses: ${UPLOAD_ARTIFACT}`,

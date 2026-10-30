@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--wiring] [--coverage-from <lcov>]
+//   starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--wiring] [--coverage-from <lcov>] | check --staged
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -12,45 +12,50 @@
 //                                            front-end and back-end source rules), each violation a finding with its why.
 //                                            ESLint executes once per side through the installed managed config; the FE config composes
 //                                            the universal canon and the explicitly selected Grammar-family canon.
+//                                            --staged: the pre-commit guard alone (sync/hygiene.mjs: staged .starciwork and .starcistacks paths, the secrets
+//                                            guard and the bypass guard over every staged file read from the index, a new back-end logic file staged
+//                                            without its unit spec); it takes no other flag.
 //                                            --fast: only what changed since the merge-base with origin/main (else main; --base
 //                                            overrides it); the machine
 //                                            runs on those owners without clones and dead exports. No merge-base is a refusal
 //                                            (exit 2), never a silent full pass. Exit 1 at 20 error findings or a hard blocker (gate-threshold.mjs). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
-//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--format text|json] [--sonar <file>]
+//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--json] [--out <file>]
 //                                            the ONE lint entry (npm run lint): ESLint per side with that side's canon config (per-file rules and
 //                                            the project-graph rules), this check's findings, and stylelint over the fe side, as one starci/lint@1
-//                                            report; --sonar writes the one Sonar import file. Exit 0 under 20 error findings and no hard blocker, 1 otherwise, 2 a tool could not run (lint/run.mjs).
+//                                            report; --out writes the one Sonar import file. Exit 0 under 20 error findings and no hard blocker, 1 otherwise, 2 a tool could not run (lint/run.mjs).
 //                                            --workspace <dir> (from the current directory) scopes the same lint to one fe workspace: the
 //                                            `lint` script of fe/apps/<app> and fe/packages/<pkg>, run by the turbo lint task.
-//   starci app scaffold <name> [--into <dir>]  a new app <dir>/<name>/: the root (hfs.json, package.json, managed files, .starciwork) and the
+//   starci app scaffold <name> [--cwd <dir>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root (hfs.json, package.json, managed files, .starciwork) and the
 //                                            be/ and fe/ skeletons (scaffold/app.mjs). Accepts an empty unborn main Git root.
-//   starci app explain <path> [--cwd <dir>] [--json]   which slot owns the path, its tier, allowed imports, required tests.
+//   starci app slot <path> [--cwd <dir>] [--json]   which slot owns the path, its tier, allowed imports, required tests.
 //   starci app emit [--cwd <dir>]      write be/contracts/<app>/schema.graphql of every api app that serves GraphQL (emit/contracts.mjs):
 //                                            printSchema(lexicographicSortSchema) of the resolvers the app root composes; no env, no database, no network.
-//   starci app sync (--check | --write) [--cwd <dir>]  the managed files of the root (scripts, husky, CI, .gitignore block, sonar, prettier) and
-//                                            of each side (tsconfig, eslint, jest, stylelint); sync/cli.mjs
-//   starci app hygiene                             the pre-commit guard: staged .starciwork and .starcistacks paths, the secrets guard over every staged file (read from the index) and a new back-end logic file staged without its unit spec; sync/cli.mjs
+//   starci app sync [--execute] [--cwd <dir>]  the managed files of the root (scripts, husky, CI, .gitignore block, sonar, prettier) and
+//                                            of each side (tsconfig, eslint, jest, stylelint); sync/cli.mjs. Dry run unless --execute: it reports drift and exits 1 on it.
 //   starci app coverage merge --out <lcov> <lcov-or-dir>...  the lcov reports of the sharded unit run merged into one (coverage/cli.mjs; the managed CI coverage job)
-//   starci app new service <dir> <name> [--inject <Decorator>=<module>:<Type> | <Class>=<module>]... [--cwd <dir>]
+//   starci app add service <dir> <name> [--inject <Decorator>=<module>:<Type> | <Class>=<module>]... [--cwd <dir>]
 //                                            a back-end `<name>.service.ts` and its `<name>.service.spec.ts` skeleton (scaffold/service.mjs; <dir> is
 //                                            relative to be/): the spec is built
 //                                            with Test.createTestingModule, one provider per constructor dependency (kit doubles from @starci/jest-preset),
 //                                            one placeholder it per public method. Never overwrites a file. Both editions: a lite back end keeps full's unit specs (ruling:R212/case-1 (owner:lite-production-swarm), amended by ruling:R212/case-4).
-//   starci app new image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mjs); never overwrites
-//   starci app new spec <file>.service.ts [--cwd <dir>]  the spec skeleton of an existing service, read from its constructor with the repository's TypeScript
+//   starci app add image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mjs); never overwrites
+//   starci app add spec <file>.service.ts [--cwd <dir>]  the spec skeleton of an existing service, read from its constructor with the repository's TypeScript
+//                                            (service, spec and image take only what is written here: an option another noun takes is refused, as --inject is on every other noun)
+//   starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json]   the full edition's local test world (the installed @starci/test-world cli)
 //   starci app stack <action> --env <env> [--execute]
 //                                            the Swarm deploy tooling of stack/ (dry run unless --execute; never prints a secret value; see docs/application-stacks.md).
-//   starci app secret init | set <env> <slug> <KEY> [--generate <bytes>] | get <env> <slug> [KEY] --to-file [--reveal]
-//   starci app secret unset <env> <slug> <KEY> [--execute] | rename <env> <slug> <OLD> <NEW> [--execute] | remove <env> <slug> [--execute] [--force-nonempty]
-//   starci app secret materialize <env> | list <env> | verify <env>
+//   starci app secret init | set --env <env> <slug> <KEY> [--generate <bytes>] | get --env <env> <slug> [KEY] --to-file [--reveal]
+//   starci app secret unset --env <env> <slug> <KEY> [--execute] | rename --env <env> <slug> <OLD> <NEW> [--execute] | remove --env <env> <slug> [--execute] [--force-nonempty]
+//   starci app secret materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove <age1...|owner>] [--execute]
 //                                            dotenv custody in .starcistacks, public age rule initialization, private KEY files outside Git;
 //                                            values reach stdout only when get explicitly receives --reveal.
-//   starci app ci secret set <NAME> [--env E | --dependabot] [--repo owner/name]  reads the value from stdin only.
-//   starci app ci var set <NAME> [--env E] [--value v] | var sync [--execute] | verify [--json]
-//                                            declared GitHub CI custody; verify compares names, scopes and public values.
-//   starci app db new <name> | baseline | restamp --map <restamp.yaml> | plan | migrate | post-cutover | dump
-//                                            preview the database cutover or compare its state with the repo; baseline and restamp mutate only with --apply.
+//   starci app ci secret set <NAME> [--env E | --dependabot] [--repo owner/name] [--execute]  reads the value from stdin only; dry until --execute.
+//   starci app ci var set <NAME> [--env E] [--value v] [--execute] | var sync [--execute] | verify [--json] | local [--execute]
+//                                            declared GitHub CI custody; verify compares names, scopes and public values; local prints the CI plan, --execute runs it.
+//   starci app db new <name> | baseline | restamp --map <restamp.yaml> | migrate | post-cutover | dump | drift   [--db-url-env <NAME>]
+//                                            baseline and restamp preview and mutate only with --execute; migrate without --execute prints the plan and compares
+//                                            the database with the repo (exit 0 agree, 1 drift, 2 refused).
 //   starci app add <api|webhook|realtime|saga|job|reactor|queue|projection> <name> [--event <event> --from <service> --service <Class>=<module>] [--owner <service> --failed <event> --done <event>] [--connection <name>] [--cwd <dir>]
 //                                            exactly that kind's file tree, generated FROM the files: tree of its pattern topic (knowledge/patterns/be) with the
 //                                            one template body of each entry (templates/be/patterns), plus the platform capabilities it needs when they are missing;
@@ -61,7 +66,7 @@
 //                                            one front-end unit in the shape-slot pattern from templates/fe/units (scaffold/add-fe-unit.mjs); the
 //                                            first block writes the app's one copy of the status owners. Never overwrites a unit.
 // The flags of every verb are those of USAGE below, generated from the parser tables that refuse every other flag.
-// Every finding names a why code and carries its Vietnamese text. check, lint and explain read the app, never write to it. Exit codes:
+// Every finding names a why code and carries its Vietnamese text. check, lint and slot read the app, never write to it. Exit codes:
 // 0 clean, 1 error findings, 2 a refusal or bad usage.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -72,12 +77,12 @@ import { changedSince, checkDatabase, checkRepository, explainPath, trackedFiles
 import { secretMain } from '../runtime/scripts/hfs/secret.mjs';
 import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
-import { dbPlanMain } from '../runtime/scripts/hfs/db-plan-verb.mjs';
 import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
 import { HFS_DECLARATION_FILE, HfsSlotsError, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { formatFindings } from '../sync/format.mjs';
 import { main as syncMain } from '../sync/cli.mjs';
+import { runWorkHygiene } from '../sync/hygiene.mjs';
 import { SyncError, bundledPresets } from '../sync/index.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import { emitContracts } from '../emit/contracts.mjs';
@@ -91,7 +96,7 @@ import { eslintRepository, lintRepository, parseLintArgs, printLintText } from '
 import { writeReport } from '../report/sonar.mjs';
 import { checkEdition } from '../upgrade/check.mjs';
 import { UpgradeError, upgradeMain } from '../upgrade/index.mjs';
-import { ACTIONS as STACK_ACTIONS, isAction as isStackAction, FLAGS as STACK_FLAGS, OPERANDS as STACK_OPERANDS, READ_ONLY as STACK_READ_ONLY, REPEAT as STACK_REPEAT, VALUE as STACK_VALUE, stackMain as deployStackMain } from '../stack/cli.mjs';
+import { ACTIONS as STACK_ACTIONS, FLAGS as STACK_FLAGS, OPERANDS as STACK_OPERANDS, READ_ONLY as STACK_READ_ONLY, REPEAT as STACK_REPEAT, VALUE as STACK_VALUE, stackMain as deployStackMain } from '../stack/cli.mjs';
 import { RELEASE_FLAGS, releaseMain } from '../release/index.mjs';
 import { SPEC as DB_MIGRATE_FLAGS, dbMigrateMain } from '../db/migrate.mjs';
 import { SPEC as DB_POST_CUTOVER_FLAGS, dbPostCutoverMain } from '../db/post-cutover.mjs';
@@ -100,14 +105,12 @@ import { SPEC as DB_NEW_FLAGS, dbNewMain } from '../db/new.mjs';
 import { SPEC as DB_DRIFT_FLAGS, dbDriftMain } from '../db/drift.mjs';
 import { BASELINE_OPTIONS, DB_BOOLEAN_OPTIONS } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { RESTAMP_OPTIONS } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
-import { PLAN_OPTIONS } from '../runtime/scripts/hfs/db-plan-verb.mjs';
 import { SECRET_VERBS, secretUsage } from '../runtime/scripts/hfs/secret.mjs';
 import { BOOLEAN as CI_BOOLEAN, COMMANDS as CI_COMMANDS } from '../ci/cli.mjs';
 import { LOCAL_FLAGS as CI_LOCAL_FLAGS } from '../ci/local.mjs';
 import { USAGE as COVERAGE_USAGE } from '../coverage/cli.mjs';
 import { SYNC_USAGE } from '../sync/cli.mjs';
 import { codemodMain } from '../codemod/button-intent.mjs';
-import { REFUSE_RETIRED_SPELLINGS, RetiredSpelling, retiredUsage, rewriteRetired } from './retired.mjs';
 import type { VerbIo } from '../release/index.mjs';
 import type { GhSpawn } from '../ci/github.mjs';
 import type { Prompt } from '../runtime/scripts/hfs/secret-prompt.mjs';
@@ -143,42 +146,49 @@ interface AppIo {
 type MainOptions = { [K in keyof AppIo]?: AppIo[K] | undefined };
 /** A verb parsed here: its runner, the only flags it takes and the usage forms. */
 interface ParsedVerb extends FlagTable {
-  run: (opts: Opts, io: AppIo) => number | Promise<number>; edition?: boolean; forms: { operands?: string; flags?: string[] }[];
+  run: (opts: Opts, io: AppIo) => number | Promise<number>; edition?: boolean; forms: { operands?: string; flags?: string[]; only?: FlagTable; edition?: boolean }[];
 }
 type UsageForm = ParsedVerb['forms'][number];
 
-export const VERBS = Object.freeze(['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'release', 'explain', 'emit', 'new', 'secret', 'ci', 'db', 'hygiene', 'coverage', 'codemod']);
-const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain], ['plan', dbPlanMain], ['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
+export const VERBS = Object.freeze(['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
+const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
 
 /**
  * The verbs parsed here, each with the only flags it takes ({ boolean, value, list }); a flag of another verb is refused, never ignored.
  * `forms` are its usage lines: the operands and, where a form takes fewer flags than the verb, its own. `edition` marks a verb that reads the
  * global --edition (editionOption).
  */
+/** The flags of the add nouns that generate a file tree from a pattern (service, spec and image take none of them, and --inject is only theirs). */
+const ADD_FLAGS: FlagTable = { value: ['--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs'], boolean: ['--fe', '--form'] };
 const PARSED: Record<string, ParsedVerb> = {
-  scaffold: { run: scaffoldMain, value: ['--into', '--registry-visibility'], edition: true, forms: [{ operands: '<name>' }] },
+  scaffold: { run: scaffoldMain, value: ['--registry-visibility'], edition: true, forms: [{ operands: '<name>' }] },
   add: {
-    run: addMain, value: ['--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs'], boolean: ['--fe', '--form'],
-    forms: [{ operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|composite|branch|leaf|page|overlay|layout> <name>' }],
+    run: addMain, ...ADD_FLAGS, list: ['--inject'],
+    forms: [
+      { operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|composite|branch|leaf|page|overlay|layout> <name>', only: ADD_FLAGS },
+      { operands: 'service <dir> <name>', only: { list: ['--inject'] } },
+      { operands: 'spec <file>.service.ts', flags: [] },
+      { operands: 'image', flags: [] },
+    ],
   },
-  check: { run: checkMain, value: ['--base', '--coverage-from'], boolean: ['--json', '--fast', '--wiring'], edition: true, forms: [{}] },
-  explain: { run: explainMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
+  check: { run: checkMain, value: ['--base', '--coverage-from'], boolean: ['--json', '--fast', '--wiring', '--staged'], edition: true, forms: [{ only: { boolean: ['--json', '--fast', '--wiring'], value: ['--base', '--coverage-from'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
+  slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
-  new: { run: newMain, list: ['--inject'], forms: [{ operands: 'service <dir> <name>' }, { operands: 'spec <file>.service.ts', flags: [] }, { operands: 'image', flags: [] }] },
 };
 const flagsOf = (spec: FlagTable): readonly string[] => [...(spec.boolean ?? []), ...(spec.value ?? []), ...(spec.list ?? [])];
+const ADD_FLAGS_ALL = flagsOf(ADD_FLAGS);
 /** Every flag some parsed verb takes, and the global --edition: naming one on a verb that does not take it says so. */
 const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edition']);
 
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
-  '--into': '<dir>', '--registry-visibility': 'public|private', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
-  '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>', '--source-sha': '<sha>',
+  '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
   '--keep': '<release.json>', '--ssh-cmd': '<command>', '--extra-compose': '<file>', '--target-binding': '<json>', '--db-url-env': '<NAME>',
-  '--backup-out': '<dir>', '--db-service': '<service>', '--reason': '<text>', '--remote': '<name>', '--source': '<ref>', '--tag-prefix': '<prefix>',
-  '--backfill': '<tag>', '--url-env': '<NAME>', '--green-at': '<ISO>', '--stamp': '<version>', '--map': '<restamp.yaml>', '--drop-extension': '<a,b>',
+  '--backup-out': '<dir>', '--db-service': '<service>', '--reason': '<text>', '--remote': '<name>', '--tag-prefix': '<prefix>',
+  '--backfill': '<tag>', '--green-at': '<ISO>', '--stamp': '<version>', '--map': '<restamp.yaml>', '--drop-extension': '<a,b>',
   '--drop-pgmq-queue': '<q,job_*>', '--seed-tables': '<t1,t2>', '--repo': '<owner/name>', '--jobs': '<id,...>', '--parallel': '<n>', '--logs': '<dir>',
 };
 const flagUsage = (flag: string, { value = false, repeat = false, placeholders = PLACEHOLDERS }: { value?: boolean; repeat?: boolean; placeholders?: Record<string, string> } = {}): string => `[${flag}${value ? ` ${placeholders[flag] ?? `<${flag.slice(2)}>`}` : ''}]${repeat ? '...' : ''}`;
@@ -191,19 +201,18 @@ const specUsage = ({ boolean = [], value = [], list = [], retired = [] }: FlagTa
 ];
 /** A dbOptions list (bare names) as a spec; --cwd is the global flag. */
 const dbSpec = (names: readonly string[]): FlagTable => ({ boolean: names.filter((name) => DB_BOOLEAN_OPTIONS.includes(name)).map((name) => `--${name}`), value: names.filter((name) => name !== 'cwd' && !DB_BOOLEAN_OPTIONS.includes(name)).map((name) => `--${name}`) });
-const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', DB_NEW_FLAGS], ['baseline', '', dbSpec(BASELINE_OPTIONS)], ['restamp', '', dbSpec(RESTAMP_OPTIONS)], ['plan', '', dbSpec(PLAN_OPTIONS)], ['migrate', '', DB_MIGRATE_FLAGS], ['post-cutover', '', DB_POST_CUTOVER_FLAGS], ['dump', '', DB_DUMP_FLAGS], ['drift', '', DB_DRIFT_FLAGS]];
+const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', DB_NEW_FLAGS], ['baseline', '', dbSpec(BASELINE_OPTIONS)], ['restamp', '', dbSpec(RESTAMP_OPTIONS)],['migrate', '', DB_MIGRATE_FLAGS], ['post-cutover', '', DB_POST_CUTOVER_FLAGS], ['dump', '', DB_DUMP_FLAGS], ['drift', '', DB_DRIFT_FLAGS]];
 
 /** The usage of each verb, from the tables its parser refuses every other flag with (lint, codemod and upgrade keep hand-parsed arguments, held by main.spec.mjs). */
 const VERB_USAGE: Record<string, string[]> = {
   ...Object.fromEntries(Object.entries(PARSED).map(([verb, spec]) => [verb, spec.forms.map((form: UsageForm) => line(`starci app ${verb}`, form.operands,
-    specUsage(form.flags === undefined ? spec : { value: form.flags }), spec.edition ? flagUsage('--edition', { value: true }) : ''))])),
-  lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--json] [--format text|json] [--sonar <file>]'],
-  codemod: ['starci app codemod button-intent [--write] [--json] [--format json|markdown] [--report <file.json|file.md>]'],
-  upgrade: ['starci app upgrade [--plan]'],
+    specUsage(form.only ?? (form.flags === undefined ? spec : { value: form.flags })), spec.edition && form.edition !== false ? flagUsage('--edition', { value: true }) : ''))])),
+  lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--json] [--out <file>]'],
+  codemod: ['starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]'],
+  upgrade: ['starci app upgrade [--execute]'],
   sync: [SYNC_USAGE.sync],
-  hygiene: [SYNC_USAGE.hygiene],
+  world: ['starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--edition full|lite]'],
   stack: [
-    'starci app stack <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--edition full|lite]',
     ...STACK_ACTIONS.map((action) => line(`starci app stack ${action}`, STACK_OPERANDS[action], STACK_READ_ONLY.includes(action) ? flagUsage('--env', { value: true }) : '--env <env>',
       STACK_FLAGS[action].map((flag: string) => flagUsage(flag, { value: STACK_VALUE.has(flag), repeat: STACK_REPEAT.has(flag) })), '[--json]')),
   ],
@@ -219,8 +228,6 @@ const VERB_USAGE: Record<string, string[]> = {
 };
 export const USAGE = `${VERBS.flatMap((verb) => VERB_USAGE[verb]).join('\n')}
 every verb: [--cwd <dir>] [--quiet] [--help]
-retired spellings (src/retired.mts; ${REFUSE_RETIRED_SPELLINGS ? 'refused' : 'still run, with a notice naming the new one'}):
-${retiredUsage().join('\n')}
 `;
 const PER_CODE_LIMIT = 25;
 
@@ -362,7 +369,7 @@ async function lintMain(argv: string[], { cwd, harness, stdout, presets, prettie
     repoRoot, opts, trackedFiles, runLinter,
     hfsCheck: (root: string) => checkApp({ repoRoot: root, harness, only: opts.changed ?? undefined, presets, prettier }),
   });
-  if (opts.sonar !== undefined) writeReport(path.resolve(cwd, opts.sonar), sonar);
+  if (opts.out !== undefined) writeReport(path.resolve(cwd, opts.out), sonar);
   if (opts.format === 'json') stdout(`${JSON.stringify(report, null, 2)}
 `); else printLintText(report, stdout);
   return exit;
@@ -395,12 +402,12 @@ function globalOptions(argv: readonly string[], baseCwd: string): { argv: string
 }
 
 /**
- * Takes --edition out of the arguments of a verb that reads it: scaffold chooses the edition, check judges only the declared one and the
- * test-world actions of stack refuse a lite app. Any other verb receives --edition as its own argument and refuses it (upgrade with
+ * Takes --edition out of the arguments of a verb that reads it: scaffold chooses the edition, check judges only the declared one and
+ * world refuses a lite app. Any other verb receives --edition as its own argument and refuses it (upgrade with
  * HFS_UPGRADE_USAGE: editions are fixed at scaffold).
  */
 function editionOption(verb: string, argv: string[]): { edition: string | undefined; argv: string[] } {
-  if (PARSED[verb]?.edition !== true && (verb !== 'stack' || isStackAction(argv[0]))) return { edition: undefined, argv };
+  if (PARSED[verb]?.edition !== true && verb !== 'world') return { edition: undefined, argv };
   let edition: string | undefined;
   const rest: string[] = [];
   const args = argv.values();
@@ -419,7 +426,7 @@ async function installedStackMain(cwd: string): Promise<(argv: string[], io: { c
   const require = createRequire(path.join(cwd, 'package.json'));
   let entry: string;
   try { entry = require.resolve('@starci/test-world/cli'); } catch {
-    throw new Error('starci app stack needs @starci/test-world installed in the app; run npm install --save-dev @starci/test-world');
+    throw new Error('starci app world needs @starci/test-world installed in the app; run npm install --save-dev @starci/test-world');
   }
   const loaded: Dynamic = await import(pathToFileURL(entry).href); // reason: the app's own @starci/test-world/cli, imported at run time
   const candidate = loaded.main ?? loaded.default?.main;
@@ -430,7 +437,7 @@ async function installedStackMain(cwd: string): Promise<(argv: string[], io: { c
 function databaseMain(argv: string[], io: VerbIo): Promise<number> | number {
   const [verb, ...rest] = argv;
   const dispatch = DATABASE_VERBS.get(verb);
-  if (!dispatch) throw new Error('starci app db takes new, baseline, restamp, plan, migrate, post-cutover, dump or drift');
+  if (!dispatch) throw new Error('starci app db takes new, baseline, restamp, migrate, post-cutover, dump or drift');
   return dispatch(rest, io);
 }
 
@@ -439,8 +446,16 @@ function printCheckProofs(result: Dynamic, out: (text: string) => unknown): void
   if (result.coverage) out(formatCoverageReport(result.coverage));
 }
 
+/** The flags `check --staged` refuses: it is the pre-commit guard alone, so none of the whole-app pass's options means anything with it. */
+const STAGED_REFUSES = ['--json', '--fast', '--base', '--wiring', '--coverage-from'] as const;
+
 async function checkMain(opts: Opts, { cwd: repoRoot, harness, edition, stdout: out, presets, prettier, checkApp = runCheck, runLinter }: AppIo): Promise<number> {
   if (opts.positional.length) throw new Error('starci app check takes no path');
+  if (opts.staged === true) {
+    const given = [...STAGED_REFUSES.filter((flag) => opts[flag.slice(2)] !== undefined), ...(edition === undefined ? [] : ['--edition'])];
+    if (given.length) throw new Error(`starci app check --staged is the pre-commit guard alone and takes no ${given.join(', ')}`);
+    return runWorkHygiene({ cwd: repoRoot, out: (text) => out(`${text}\n`) });
+  }
   if (opts.base !== undefined && opts.fast !== true) throw new Error('--base names the ref --fast compares with; it needs --fast');
   const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, fast: opts.fast === true, base: opts.base as string | undefined, presets, prettier }), presets, prettier });
   const proof = withCheckProofs(checked, { repoRoot, edition, wiring: opts.wiring === true, coverageFrom: valueFlag(opts, 'coverage-from') });
@@ -471,20 +486,29 @@ function emitMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   return 0;
 }
 
-function newMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
-  const [kind, ...args] = opts.positional;
+/** The nouns of `add` that write into an existing app's files by their own generators (scaffold/service.mjs, scaffold/image.mjs) and take no pattern option. */
+const ADD_FILE_NOUNS = ['service', 'spec', 'image'];
+
+/** `add service <dir> <name> [--inject ...]`, `add spec <file>.service.ts` and `add image`: never overwrites; an option another noun takes is refused. */
+function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: string) => unknown): number {
+  const [, ...args] = opts.positional;
   const [first = '', second = ''] = args;
+  const foreign = ADD_FLAGS_ALL.filter((flag) => opts[flag.slice(2)] !== undefined);
+  if (foreign.length) throw new Error(`starci app add ${noun} takes no ${foreign.join(', ')}`);
+  if (noun !== 'service' && opts.inject !== undefined) throw new Error(`starci app add ${noun} takes no --inject; only add service does`);
   let written: string[];
-  if (kind === 'service' && args.length === 2) written = newService({ repoRoot, dir: first, name: second, inject: listFlag(opts, 'inject') ?? [] });
-  else if (kind === 'spec' && args.length === 1 && opts.inject === undefined) written = newSpec({ repoRoot, file: first });
-  else if (kind === 'image' && args.length === 0 && opts.inject === undefined) written = newImages({ repoRoot });
-  else throw new Error('starci app new takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`');
+  if (noun === 'service' && args.length === 2) written = newService({ repoRoot, dir: first, name: second, inject: listFlag(opts, 'inject') ?? [] });
+  else if (noun === 'spec' && args.length === 1) written = newSpec({ repoRoot, file: first });
+  else if (noun === 'image' && args.length === 0) written = newImages({ repoRoot });
+  else throw new Error('starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`');
   for (const file of written) out(`created ${file}\n`);
   return 0;
 }
 
 function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   const [noun, name, ...extra] = opts.positional;
+  if (noun !== undefined && ADD_FILE_NOUNS.includes(noun)) return addFileNoun(noun, opts, repoRoot, out);
+  if (opts.inject !== undefined) throw new Error(`starci app add ${noun ?? '<noun>'} takes no --inject; only add service does`);
   if (!noun || !name || extra.length) throw new Error('starci app add takes `<noun> <name>` and the options of the noun');
   const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: booleanFlag(opts, 'fe'), shapes: valueFlag(opts, 'shapes'), read: valueFlag(opts, 'read'), app: valueFlag(opts, 'app'), kind: valueFlag(opts, 'kind'), form: booleanFlag(opts, 'form'), blocks: valueFlag(opts, 'blocks'), tabs: valueFlag(opts, 'tabs') } });
   for (const file of created) out(`created ${file}\n`);
@@ -498,13 +522,13 @@ async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', preset
   const [name, ...extra] = opts.positional;
   const registryVisibility = valueFlag(opts, 'registry-visibility');
   if (!name || extra.length) throw new Error(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
-  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd, (opts.into as string | undefined) ?? '.'), harness, edition, presets: presets ?? scaffoldPresets(), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
+  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
   out(`starci app scaffold: created ${created} (${files.length} files); next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then starci app lint\n`);
   return 0;
 }
 
-function explainMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
-  if (opts.positional.length !== 1) throw new Error('starci app explain takes exactly one path');
+function slotMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
+  if (opts.positional.length !== 1) throw new Error('starci app slot takes exactly one path');
   const [input = ''] = opts.positional;
   const explained = explainPath({ repoRoot, input });
   if (opts.json) out(`${JSON.stringify(explained, null, 2)}\n`); else printExplain(explained, out);
@@ -520,21 +544,26 @@ function declaredEdition(cwd: string): string | undefined {
   try { return JSON.parse(fs.readFileSync(path.join(cwd, HFS_DECLARATION_FILE), 'utf8')).edition; } catch { return undefined; }
 }
 
-/**
- * `starci app stack`: the deploy actions (prepare, doctor, render, deploy, converge, verify, rollback, prune, backup, jobs, ...) are the Swarm
- * tooling of stack/cli.mjs; up, down and status are the full edition's test-world infrastructure.
- */
-async function stackAppMain(argv: string[], { cwd, edition, stackMain, stdout: out, stderr: err, env, sops, hostIdentity, stackIo, harness }: AppIo): Promise<number> {
-  if (isStackAction(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, harness, ...(sops ? { sops } : {}) });
-  if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app stack up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
+/** `starci app stack`: the deploy actions (prepare, render, deploy, converge, verify, rollback, prune, backup, jobs, ...) are the Swarm tooling of stack/cli.mjs. */
+async function stackAppMain(argv: string[], { cwd, stdout: out, stderr: err, env, sops, hostIdentity, stackIo, harness }: AppIo): Promise<number> {
+  return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, harness, ...(sops ? { sops } : {}) });
+}
+
+/** The actions of `starci app world`: the full edition's test-world infrastructure, run by the app's installed @starci/test-world cli. */
+const WORLD_ACTIONS = ['up', 'down', 'status'];
+
+/** `starci app world <up|down|status>`: the local test world (it was `stack up|down|status` before `stack` meant only the Swarm deploy tooling). */
+async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: out, stderr: err }: AppIo): Promise<number> {
+  if (!WORLD_ACTIONS.includes(argv[0] as string)) throw new Error(`starci app world takes ${WORLD_ACTIONS.join(', ')}`);
+  if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app world up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err }) as Promise<number>;
 }
 
-const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['lint', lintMain], ['secret', secretMain], ['db', databaseMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
+const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['lint', lintMain], ['secret', secretMain], ['db', databaseMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
 
 function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> | number {
-  if (verb === 'sync' || verb === 'hygiene') return syncMain([verb, ...argv], io);
+  if (verb === 'sync') return syncMain([verb, ...argv], io);
   const direct = DIRECT_VERBS.get(verb);
   if (direct) return direct(argv, io);
   return (PARSED[verb] as ParsedVerb).run(parse(verb, argv), io);
@@ -542,7 +571,7 @@ function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> 
 
 function errorMessage(error: unknown): string {
   if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
-  if (error instanceof ScaffoldError || error instanceof RetiredSpelling) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
+  if (error instanceof ScaffoldError) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
   return `starci app: ${(error as Error).message}\n${USAGE}`;
 }
 
@@ -551,18 +580,14 @@ function errorMessage(error: unknown): string {
  * scaffolded at (runtime/scripts/hfs/canon-pins.mjs). `run` injects the database runner, `runLinter` the linter transport, `checkApp`
  * the HFS check and `stackIo` Swarm tools; production defaults execute every check. `hostIdentity` ({ label, read }) is the
  * harness CLI's own secret.env SOPS_AGE_KEY, which every verb that opens a sealed member (secret, stack, release, db) reads last for the age identity (decryptionIdentity); `prompt` replaces its masked prompt.
- * `refuseRetired` replaces REFUSE_RETIRED_SPELLINGS (retired.mts) for one call: a spec proves both the notice and the refusal.
  */
 export async function main(argv: string[], {
   cwd: baseCwd = process.cwd(), harness, stdout = (s: string): unknown => process.stdout.write(s), stderr = (s: string): unknown => process.stderr.write(s), presets, prettier, lock, run, stackMain,
-  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp, refuseRetired = REFUSE_RETIRED_SPELLINGS,
-}: MainOptions & { refuseRetired?: boolean } = {}): Promise<number> {
+  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp,
+}: MainOptions = {}): Promise<number> {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
-    // Every retired spelling becomes its canonical one before a verb is picked (retired.mts), so no parser sees an old spelling.
-    const rewritten = rewriteRetired(global.argv, refuseRetired);
-    for (const notice of rewritten.notices) stderr(`${notice}\n`);
-    const [verb, ...given] = rewritten.argv;
+    const [verb, ...given] = global.argv;
     const out = global.quiet ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb as string)) { stderr(USAGE); return 2; }

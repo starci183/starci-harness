@@ -1,4 +1,4 @@
-// hfs-check.mjs - the HFS app check, behind `starci app check | explain` (packages/hfs) and reusable by any
+// hfs-check.mjs - the HFS app check, behind `starci app check | slot` (packages/hfs) and reusable by any
 // runtime check. It reads three things and nothing else: the app's hfs.json, the slot manifest
 // (knowledge/hfs/slots.yaml through scripts/hfs/slots.mjs) and the pins (canon-pins.mjs: the bundled knowledge/hfs/canon-pins.yaml
 // and the version of the starci-harness that runs the check). It never

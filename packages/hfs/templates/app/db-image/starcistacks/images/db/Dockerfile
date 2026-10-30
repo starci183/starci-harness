@@ -1,4 +1,4 @@
-# Managed by starci app sync (slot app.db.image); do not edit: run "npx starci app sync --write".
+# Managed by starci app sync (slot app.db.image); do not edit: run "npx starci app sync --execute".
 # The image of the db service of a lite app, kept with the stacks (rulings lite-official-postgres-image, lite-pgmq-bus-bullmq-jobs and
 # lite-db-image-in-stacks): the Docker Official postgres image, pinned by digest, plus pgvector from the PGDG repository the image
 # already configures and pgmq, the event bus, from its pinned release source verified by sha256 (pgmq is SQL objects only, so its

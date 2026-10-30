@@ -1,5 +1,5 @@
 // The commit gate of an app: the hooks folder core.hooksPath names is installed in the checkout (HFS_HOOKS_NOT_INSTALLED, the
-// app check), and the staged run of `starci app hygiene` refuses a new measured back-end logic file without its unit spec
+// app check), and the staged run of `starci app check --staged` refuses a new measured back-end logic file without its unit spec
 // (BE_UNIT_SPEC_NOT_STAGED), naming the file.
 import test from 'node:test';
 import assert from 'node:assert/strict';

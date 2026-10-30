@@ -170,7 +170,7 @@ test('the app verb dispatch previews by default and writes safe edits plus a JSO
   assert.equal(fs.readFileSync(file, 'utf8'), text);
   assert.equal(JSON.parse(output.pop()).write, false);
   assert.deepEqual(errors, []);
-  assert.equal(await appMain(['codemod', 'button-intent', '--write', '--format', 'json', '--report', 'migration.json'], io), 1);
+  assert.equal(await appMain(['codemod', 'button-intent', '--execute', '--json', '--out', 'migration.json'], io), 1);
   const report = JSON.parse(fs.readFileSync(path.join(root, 'migration.json'), 'utf8'));
   assert.equal(report.write, true);
   assert.equal(report.changes.length, 1);
@@ -181,6 +181,6 @@ test('the app verb dispatch previews by default and writes safe edits plus a JSO
 test('CLI refuses unsupported migration names and unsafe report extensions', t => {
   const { root, file, text } = fixture(t);
   assert.throws(() => codemodMain(['other'], { cwd: root, stdout() {} }), /takes button-intent/);
-  assert.throws(() => codemodMain(['button-intent', '--write', '--report', file], { cwd: root, stdout() {} }), /report file/);
+  assert.throws(() => codemodMain(['button-intent', '--execute', '--out', file], { cwd: root, stdout() {} }), /report file/);
   assert.equal(fs.readFileSync(file, 'utf8'), text);
 });

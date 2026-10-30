@@ -8,7 +8,7 @@
 //   - a gate configuration relaxed: a coverage target or threshold below the canon, a relaxing switch, a disabled ESLint rule, a strictness option
 //     turned off, an exception file the design-truths manifest does not list.
 // The tree is read as it stands, by the library of the runtime's own loosening check (scripts/lib/loosening-state.mjs, knowledge/hfs/design-truths.yaml);
-// `starci app hygiene` (the pre-commit hook) reads the staged bypass markers with the same table (scripts/lib/bypass-markers.mjs). The ignore and
+// `starci app check --staged` (the pre-commit hook) reads the staged bypass markers with the same table (scripts/lib/bypass-markers.mjs). The ignore and
 // exclude lists of a managed config are the managed-file drift's (HFS_MANAGED_FILE_DRIFT).
 import fs from 'node:fs';
 import { parseYaml } from '../../../engine/yaml.mjs';

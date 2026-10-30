@@ -1,4 +1,4 @@
-// The edition gate of `starci app add` and `starci app new` (design 8.6 R8): a verb whose file tree lands in a slot the app's
+// The edition gate of `starci app add` (design 8.6 R8): a verb whose file tree lands in a slot the app's
 // edition does not have - the slot's `editions` exclude it, or its `litePresence` is forbidden - is a full-edition
 // capability and refuses before anything is planned or written. The slot resolver of the app answers, the same
 // view `starci app check` reads; the noun's name is never the test, so a slot the lite manifest forbids refuses every

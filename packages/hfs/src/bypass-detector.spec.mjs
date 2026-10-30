@@ -2,7 +2,7 @@
 // proves: HFS_BYPASS_MARKER@full
 // No bypass lands unnoticed (owner ruling loosening-always-red). One marker table (scripts/lib/bypass-markers.mjs) serves both readers of a tree as it stands:
 //   - the runtime's loosening-state self-check (scripts/lib/loosening-state.mjs, specified by src/loosening-state.spec.mjs);
-//   - the product rule HFS_BYPASS_MARKER (scripts/hfs/rules/bypass-markers.mjs) and `starci app hygiene` (the pre-commit hook), which judge a tree and the index.
+//   - the product rule HFS_BYPASS_MARKER (scripts/hfs/rules/bypass-markers.mjs) and `starci app check --staged` (the pre-commit hook), which judge a tree and the index.
 // The forbidden spellings live in fixtures/loosening/, the declared fixture folder of knowledge/hfs/design-truths.yaml.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -106,7 +106,8 @@ test('the pre-commit hook ends on every failing step: the stylelint step cannot 
   const pipelines = commands.join('\n').split(/\n(?=\S)/);
   assert.ok(pipelines.length >= 6, 'hygiene, sync check, eslint per side, stylelint, prettier');
   for (const pipeline of pipelines) assert.match(pipeline, /\|\| exit \$\?\s*$/, `${pipeline.split('\n')[0]} ends the hook when it fails`);
-  assert.match(hook, /starci app hygiene \|\| exit/);
+  assert.match(hook, /starci app check --staged \|\| exit/);
+  assert.match(hook, /starci app sync \|\| exit/);
   assert.match(hook, /npx stylelint "\$@"/);
   assert.doesNotMatch(hook, /if \[ -n "\$styles" \]/);
   assert.deepEqual(bypassesIn('.husky/pre-commit', hook), [], 'the hook the canon renders holds no bypass of its own');

@@ -35,7 +35,7 @@ export const CATALOG = {
     "explain": {
       "verbs": {},
       "self": {
-        "summary": "list the verbs available here with their flags, effect and json schema; a search term narrows the list and prints each verb's flags and retired spellings",
+        "summary": "list the verbs available here with their flags, effect and json schema; a search term narrows the list and prints each verb's flags",
         "flags": [],
         "positional": [
           {

@@ -4,7 +4,7 @@
 // ports, optional contract specs, and no e2e world (owner:lite-contract-specs). The slot layer already answers the paths lite
 // removed (slots lite excludes, or whose litePresence is forbidden, come back HFS_FORBIDDEN_PRESENT with their goesTo);
 // this rule reports what no path can state:
-//   - inside a package.json: an e2e, stack or browser script (`test:e2e`, `test:stack`, `test:browser`,
+//   - inside a package.json: an e2e, test-world or browser script (`test:e2e`, `test:world`, `test:browser`,
 //     with a pre/post prefix too) or a dependency of the infrastructure lite does not run - a test-world container or proxy
 //     (testcontainers, toxiproxy) or a browser runner (playwright, cypress), and every library the lite infraOwners own nowhere
 //     while full owns them (Kafka: the lite event bus runs pgmq);
@@ -26,8 +26,8 @@ export const HFS_BACKING_UNDECLARED = 'HFS_BACKING_UNDECLARED';
 export const HFS_BACKING_UNUSED = 'HFS_BACKING_UNUSED';
 
 const PACKAGE_JSON = /(?:^|\/)package\.json$/;
-/** The scripts of a world lite does not have: the e2e layer, the self-hosted stack and the browser journey. */
-const LITE_FORBIDDEN_SCRIPT = /^(?:pre|post)?test:(?:e2e|stack|browser)$/;
+/** The scripts of a world lite does not have: the e2e layer, the test world and the browser journey. */
+const LITE_FORBIDDEN_SCRIPT = /^(?:pre|post)?test:(?:e2e|world|browser)$/;
 /** The dependencies of a test infrastructure lite does not run: containers, fault proxies and browser runners. */
 const LITE_FORBIDDEN_TEST_INFRA = /^(?:testcontainers|@testcontainers\/.+|toxiproxy-node-client|playwright|playwright-core|@playwright\/.+|cypress)$/;
 
@@ -76,7 +76,7 @@ function scriptFindings(rel: string, pkg: Parsed) {
   const scripts = isPlainObject(pkg.scripts) ? pkg.scripts : {};
   return Object.keys(scripts)
     .filter((name) => LITE_FORBIDDEN_SCRIPT.test(name))
-    .map((name) => found(HFS_EDITION_FORBIDDEN_PRESENT, rel, `${rel} has script ${JSON.stringify(name)}: a lite app has unit specs, optional integration specs on the local db service and optional contract specs, never an e2e, stack or browser run`, { name }));
+    .map((name) => found(HFS_EDITION_FORBIDDEN_PRESENT, rel, `${rel} has script ${JSON.stringify(name)}: a lite app has unit specs, optional integration specs on the local db service and optional contract specs, never an e2e, test-world or browser run`, { name }));
 }
 
 /** The backing services of the manifest (ruleParams.be.backing): name -> {clients, patterns, images, editions?}. */

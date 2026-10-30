@@ -1,4 +1,4 @@
-// starci app hygiene: the guard for the two trees an app tracks besides source. A file under the app root's .starciwork must be
+// starci app check --staged: the guard for the two trees an app tracks besides source. A file under the app root's .starciwork must be
 // product content (the .starciwork/.gitignore allowlist admits it, so agent output is refused), and a file under the app root's
 // .starcistacks must not be a plaintext secret (only *.enc is sealed). It is also the secrets guard of the commit: every staged file, in
 // any tree, is read from the index and judged with the one secret judgement of `starci app check` (scripts/hfs/rules/secrets.mjs: a secret by
@@ -37,7 +37,7 @@ const git = (cwd: string, args: string[], options: Record<string, unknown> = {})
 export interface HygieneFinding { file: string; code: string; message: string }
 
 const PLAINTEXT_NAME = /(^|\/)(\.env(\..*)?|[^/]*\.(pem|key|identity|age))$/;
-/** The app root's work tree and stack tree, app-relative (`starci app hygiene` runs at the app root). */
+/** The app root's work tree and stack tree, app-relative (`starci app check --staged` runs at the app root). */
 const WORK = '.starciwork/';
 const STACKS = '.starcistacks/';
 const GUARDED = (file: string): boolean => file.startsWith(WORK) || file.startsWith(STACKS);
@@ -143,7 +143,7 @@ const ledgerHygieneScript = (cwd: string): string | null => {
 /**
  * The state-root ledger findings (LEDGER_ORPHAN_STATE_ROOT) of the checkout containing
  * `cwd`, as {code, file, message} entries; [] when that checkout carries no ledger-hygiene script. Never throws: a
- * report failure is one HFS_LEDGER_HYGIENE_UNAVAILABLE finding, not a crash of `starci app hygiene`.
+ * report failure is one HFS_LEDGER_HYGIENE_UNAVAILABLE finding, not a crash of `starci app check --staged`.
  */
 async function ledgerHygieneFindings(cwd = process.cwd()): Promise<HygieneFinding[]> {
   const script = ledgerHygieneScript(cwd);
@@ -159,7 +159,7 @@ async function ledgerHygieneFindings(cwd = process.cwd()): Promise<HygieneFindin
   }
 }
 
-/** `starci app hygiene`: checks staged files (for the staged run also the new logic files without a spec) plus state-root ledger findings when reachable; returns the exit code. */
+/** `starci app check --staged`: checks staged files (for the staged run also the new logic files without a spec) plus state-root ledger findings when reachable; returns the exit code. */
 export async function runWorkHygiene({ cwd = process.cwd(), out = (line: string): unknown => process.stdout.write(`${line}\n`), files }: { cwd?: string; out?: (line: string) => unknown; files?: string[] } = {}): Promise<number> {
   const judged = judge(cwd, files ?? stagedFiles(cwd));
   const { checked } = judged;
@@ -167,6 +167,6 @@ export async function runWorkHygiene({ cwd = process.cwd(), out = (line: string)
   const ledgerFindings = await ledgerHygieneFindings(cwd);
   const all = [...findings, ...ledgerFindings];
   for (const finding of all) out(`${finding.code} ${finding.file} ${finding.message}`);
-  out(`starci app hygiene: ${checked} staged file(s) checked, ${findings.length} finding(s), ${ledgerFindings.length} ledger finding(s)`);
+  out(`starci app check --staged: ${checked} staged file(s) checked, ${findings.length} finding(s), ${ledgerFindings.length} ledger finding(s)`);
   return all.length ? 1 : 0;
 }

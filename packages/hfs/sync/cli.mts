@@ -1,15 +1,13 @@
-// Entry for the sync-side commands behind `starci app sync` and `starci app hygiene`.
+// Entry for the sync-side command behind `starci app sync` (the pre-commit guard behind `starci app check --staged` is sync/hygiene.mjs).
 import { runSync } from './index.mjs';
-import { runWorkHygiene } from './hygiene.mjs';
 
-/** The usage of each command; `starci app` prints these lines (--cwd is its global flag). Hygiene takes no argument. */
-export const SYNC_USAGE = Object.freeze({ sync: 'starci app sync (--check | --write)', hygiene: 'starci app hygiene' });
+/** The usage of the command; `starci app` prints it (--cwd is its global flag). */
+export const SYNC_USAGE = Object.freeze({ sync: 'starci app sync [--execute]' });
 
 export async function main(argv: string[], { cwd = process.cwd(), stdout = (text: string): unknown => process.stdout.write(text) }: { cwd?: string; stdout?: (text: string) => unknown } = {}): Promise<number> {
   const out = (line: string): unknown => stdout(`${line}\n`);
   const [command, ...rest] = argv;
   if (command === 'sync') return runSync(rest, { cwd, out });
-  if (command === 'hygiene' && rest.length === 0) return runWorkHygiene({ cwd, out });
-  out(`usage: ${SYNC_USAGE.sync} [--cwd <dir>] | ${SYNC_USAGE.hygiene} [--cwd <dir>]`);
+  out(`usage: ${SYNC_USAGE.sync} [--cwd <dir>]`);
   return 2;
 }
