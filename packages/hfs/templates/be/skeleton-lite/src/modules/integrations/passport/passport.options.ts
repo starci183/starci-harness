@@ -50,6 +50,11 @@ export interface RefreshCookieOptions {
     readonly path: string
     /** The refresh-token lifetime in seconds. */
     readonly ttlSeconds: number
+    /**
+     * The bare registrable domain every cookie passport sets and clears carries as `Domain` (`example.com`, no scheme,
+     * no port), so a web app on another subdomain can forward the cookie to this API. Unset keeps the cookies host-only.
+     */
+    readonly cookieDomain?: string | undefined
 }
 
 /** The passport integration configuration parsed once at API boot. */

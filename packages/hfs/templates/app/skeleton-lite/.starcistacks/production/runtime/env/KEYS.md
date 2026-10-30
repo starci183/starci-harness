@@ -15,6 +15,7 @@ This inventory declares names, consumers and mounted file paths. Scaffolding gen
 | `AUTH_JWT_ISSUER` | API access-token issuer |
 | `AUTH_JWT_AUDIENCE` | API access-token audience |
 | `AUTH_JWT_KEY_ID` | API signing key id, published in the JWKS |
+| `AUTH_COOKIE_DOMAIN` | API cookie `Domain` (a bare domain such as `example.com`, no scheme or port); optional while the web and the API share one host, required when they are served on different hosts, because a host-only refresh cookie never reaches the web server's forwarded `Cookie` header |
 | `AUTH_JWT_PRIVATE_KEY` | API ES256 signing key; reads `AUTH_JWT_PRIVATE_KEY_FILE` at `/run/secrets/auth-jwt-private-key` |
 | `STORAGE_ENDPOINT` | API S3-compatible storage endpoint |
 | `STORAGE_REGION` | API storage signing region |

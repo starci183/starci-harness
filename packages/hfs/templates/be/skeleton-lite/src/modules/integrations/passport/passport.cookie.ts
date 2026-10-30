@@ -11,11 +11,16 @@ export const newRefreshToken = (): { readonly token: string; readonly hash: stri
 /** The sha256 a refresh token is stored and looked up by; the token itself is never stored. */
 export const refreshTokenHash = (token: string): string => createHash("sha256").update(token).digest("hex")
 
+/** `Domain=<cookieDomain>` when the app configured one; absent (host-only) otherwise. Setting and clearing must agree on it. */
+export const domainAttribute = (cookieDomain: string | undefined): Pick<CookieOptions, "domain"> =>
+    cookieDomain === undefined ? {} : { domain: cookieDomain }
+
 const attributes = (options: RefreshCookieOptions): CookieOptions => ({
     httpOnly: true,
     secure: true,
     sameSite: "strict",
     path: options.path,
+    ...domainAttribute(options.cookieDomain),
 })
 
 /** Sets the rotated refresh token: httpOnly, Secure, SameSite=Strict and sent to the refresh door only. */

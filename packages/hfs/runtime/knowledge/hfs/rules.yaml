@@ -5890,3 +5890,22 @@ rules:
       - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}
     witness:
       - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}
+  - id: R337
+    code: "HFS_AUTH_COOKIE_DOMAIN_MISSING"
+    law: "In a lite app whose api uses the skeleton's passport (a tracked src/modules/integrations/passport/passport.config.ts), a docker-swarm environment whose rendered stack serves the web and the api on different hosts gives the api an AUTH_COOKIE_DOMAIN: a declared value in services.api.environment, a row of the environment's runtime/env/KEYS.md or a key sealed under its secrets/. Otherwise the refresh cookie is host-only on the api host, is absent from the Cookie header the web server forwards to the api, the api refuses the session and the user loops back to sign-in. The hosts are read from the rendered stack (web: NEXT_PUBLIC_SITE_URL, AUTH_WEB_ORIGIN, deploy.verify.http, HTTP_SECURITY_ALLOWED_ORIGINS; api: AUTH_JWT_ISSUER, GOOGLE_CALLBACK_URL, NEXT_PUBLIC_API_URL, deploy.verify.http), ports ignored, an unknown host is not judged. The finding names both hosts and their common parent domain as the value to set. A declared AUTH_COOKIE_DOMAIN that is not a bare domain (no scheme, port, path, leading dot or IP) or is not a parent of the web and the api hosts is a finding too. Same host: no key is required."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_AUTH_COOKIE_DOMAIN_MISSING"]
+    enforcers:
+      - {kind: hfs, id: stacks-auth-cookie-domain, at: scripts/hfs/rules/stacks-auth-cookie-domain.mjs}
+    editions: [lite]
+    docs:
+      - contexts/project/stacks.md
+    proves:
+      - {path: packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs, edition: lite}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.config.ts, edition: lite}
+      - {path: packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs, edition: lite}
+    witness:
+      - {path: packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs, edition: lite}
