@@ -194,7 +194,7 @@ test('an old spelling is an unknown verb or flag: exit 2, nothing written or mis
   const drifted = fs.readFileSync(properties, 'utf8').replace(/^sonar\.cpd\.exclusions=.*$/m, 'sonar.cpd.exclusions=hand/**');
   fs.writeFileSync(properties, drifted);
   const before = files(root);
-  for (const argv of [['explain', 'hfs.json'], ['hygiene'], ['new', 'image'], ['sonar'], ['sonar', '--write'], ['stack', 'up'], ['stack', 'status'],
+  for (const argv of [['explain', 'hfs.json'], ['hygiene'], ['new', 'image'], ['sonar'], ['sonar', '--write'], ['stack', 'up'],
     ['sync', '--write'], ['sync', '--check'], ['lint', '--format', 'json'], ['lint', '--sonar', 'r.json'], ['upgrade', '--plan'],
     ['codemod', 'button-intent', '--write'], ['codemod', 'button-intent', '--report', 'r.json'], ['scaffold', 'again', '--into', 'x']]) {
     const result = await run(argv, { cwd: root, stackMain: async () => { throw new Error('the test world must not run'); } });

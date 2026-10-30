@@ -24,7 +24,7 @@ const TASK_FORMAT = `{{.DesiredState}}|{{.Status.State}}|{{.Status.Timestamp}}|{
 const docker = (ctx: Pick<StackContext, 'spawn'>, args: string[]): string => toolOutput(ctx, 'docker', args);
 
 /** The JSON text with object keys sorted at every depth, so two equal specs compare equal whatever the key order. */
-function canonical(value: unknown): string {
+export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   if (value !== null && typeof value === 'object') return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(',')}}`;
   return JSON.stringify(value);

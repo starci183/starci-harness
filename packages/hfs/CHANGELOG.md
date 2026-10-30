@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added: `starci app stack status --env <env>` (read-only) compares the live services of the stack with the accepted release and reports drift per service (`rolled back by swarm`, `updated outside a release`, `missing`, `not in the release`); `stack verify` fails on the same drift when the stack file pins its images by digest.
+- Added: every executing `stack deploy`, `rollback` and `accept` is one recorded attempt: it takes `/srv/<stack>/deploy.lock` on the manager (shared with the urgent deploy, a bounded wait, then `STACK_DEPLOY_LOCKED`), writes `deploys/<attempt>.json` at every phase boundary plus the append-only `deploys.jsonl`, and snapshots the live services after converge, after a rollback and on accept (`release.json` gains `observed`).
+- Added: `stack deploy --ci-run <id>` marks the attempt as a CI one and `--redeploy` deploys although the accepted release already runs the commit; without it a deploy of the commit the accepted release already runs, with matching services, ends green as `already-current`.
+- Changed: preflight pulls the images of the rollback target too and refuses (`STACK_DEPLOY_ROLLBACK_PULL`) before the services are touched when one no longer pulls.
+
 ## 4.12.2 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context). R340 FE_RAISED_SURFACE_IN_SURFACE joins the bundled rule catalog.

@@ -10,6 +10,7 @@ import path from 'node:path';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
 import { deployRelease } from '../stack/deploy.mjs';
 import { urgentDeploy } from '../stack/urgent-floor.mjs';
+import { recordsDouble } from './stack-records-double.mjs';
 import type { FirstStartStepResult } from '../stack/urgent-floor.mjs';
 import type { DbTarget } from '../db/postgres.mjs';
 import type { DeployConfig } from '../stack/config.mjs';
@@ -268,7 +269,7 @@ async function firstDeploy(t: TestContext, { stepOk = true, plain = false, db = 
   const store = { current: async () => 'a'.repeat(16), store: ok('store'), accept: ok('accept'), fetch: async (_release: unknown, dir: string) => { order.push('fetch'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'stack.yaml'), STACK); } };
   const deps = {
     renderRelease: async (_ctx: unknown, _config: unknown, options: { out: string }) => { fs.writeFileSync(path.join(options.out, 'stack.yaml'), STACK); return { ok: true, lines: [] }; },
-    provisionRelease: ok('provision'), releaseStore: () => store, ssh: async () => ({ cleanup() {} }),
+    provisionRelease: ok('provision'), releaseStore: () => ({ ...store, ...recordsDouble() }), ssh: async () => ({ cleanup() {} }),
     reconcileEdge: ok('edge'), convergeStack: ok('converge'), verifyStack: ok('verify'), pruneStack: ok('prune'),
   };
   const spawn = (_command: string, args: string[]) => {

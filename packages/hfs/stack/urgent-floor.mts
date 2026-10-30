@@ -85,6 +85,8 @@ export interface UrgentRun {
   deployExecute(hooks?: { firstStartStep?: () => Promise<FirstStartStepResult>; firstStartDb?: string }): Promise<DeployOutcome>;
   dryRun(): Promise<ActionResult>;
   sha256(file: string): string;
+  /** Hands the urgent record (tag, role, reason) to the deploy journal once the floor has read it. */
+  note?(record: { tag: string; role: string; reason: string }): void;
 }
 
 /** The outcome of the `first-start` step. */
@@ -289,6 +291,7 @@ async function firstStartDeploy(ctx: StackContext, config: DeployConfig, options
 export async function urgentDeploy(ctx: StackContext, config: DeployConfig, options: FloorOptions, run: UrgentRun, deps: Partial<FloorDeps> = {}): Promise<ActionResult> {
   const f: FloorDeps = { ...FLOOR_DEPS, ...deps };
   const { record, identity } = preconditions(ctx, config, options);
+  run.note?.(record);
   const lines = [`urgent         ${record.tag} (${options.sourceSha.slice(0, 10)}) by ${record.role}: ${record.reason}`];
   let deployed: DeployOutcome;
   if (options.firstStart === true) {

@@ -11,6 +11,7 @@ import type { DeployDeps } from '../stack/deploy.mjs';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
 import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import { deployRelease } from '../stack/deploy.mjs';
+import { recordsDouble } from './stack-records-double.mjs';
 import { postDeployStack } from '../stack/post-deploy.mjs';
 
 // reason: the stack seams are partial fakes: a context carries only the members the step under test reads.
@@ -98,7 +99,7 @@ const release = async (t: TestContext, { postDeploy, failPost = false }: { postD
   const deps = {
     renderRelease: async (_ctx: unknown, _config: unknown, options: { out: string }) => { fs.writeFileSync(path.join(options.out, 'stack.yaml'), 'services:\n  api:\n    image: registry.example/shop-api@sha256:' + 'e'.repeat(64) + '\n'); return { ok: true, lines: [] }; },
     provisionRelease: ok('provision'),
-    releaseStore: () => store,
+    releaseStore: () => ({ ...store, ...recordsDouble() }),
     ssh: async () => ({ cleanup() {} }),
     reconcileEdge: ok('edge'),
     convergeStack: ok('converge'),
