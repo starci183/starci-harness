@@ -5,7 +5,6 @@
 *.d.mts
 !*.spec.mjs
 !src/fixtures/**
-!src/helpers/**
 !templates/**
 !vendor-types.d.mts
 # The vendored yaml bundle and the catalog gen-catalog writes, each with its hand-written types, are tracked as they are.

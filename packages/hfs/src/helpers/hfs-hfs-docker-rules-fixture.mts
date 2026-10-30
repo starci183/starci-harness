@@ -4,10 +4,12 @@ import { byCodeUnit } from '../../runtime/scripts/lib/list.mjs';
 import { loadSlotManifest } from '../../runtime/scripts/hfs/slots.mjs';
 import { cleanup, gitAdd, installTypeScript, writeCleanRepo } from './hfs-cli-fixture.mjs';
 
-const fixtures = new Map();
+interface DockerRuleFixture { dir: string; snapshot: Map<string, Buffer> }
 
-const walk = (root, relative = '') => {
-  const files = [];
+const fixtures = new Map<string, DockerRuleFixture>();
+
+const walk = (root: string, relative = ''): string[] => {
+  const files: string[] = [];
   const dir = path.join(root, ...relative.split('/').filter(Boolean));
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (!relative && (entry.name === '.git' || entry.name === 'node_modules')) continue;
@@ -18,15 +20,15 @@ const walk = (root, relative = '') => {
   return files.sort(byCodeUnit);
 };
 
-const snapshotOf = (dir) => new Map(dockerRuleFixtureFiles(dir).map((relative) => [relative, fs.readFileSync(path.join(dir, ...relative.split('/')))]));
+const snapshotOf = (dir: string): Map<string, Buffer> => new Map(dockerRuleFixtureFiles(dir).map((relative): [string, Buffer] => [relative, fs.readFileSync(path.join(dir, ...relative.split('/')))]));
 
-const restore = ({ dir, snapshot }) => {
+const restore = ({ dir, snapshot }: DockerRuleFixture): string => {
   for (const relative of dockerRuleFixtureFiles(dir)) {
     if (!snapshot.has(relative)) fs.rmSync(path.join(dir, ...relative.split('/')), { force: true });
   }
   for (const [relative, expected] of snapshot) {
     const target = path.join(dir, ...relative.split('/'));
-    let actual = null;
+    let actual: Buffer | null = null;
     try { actual = fs.readFileSync(target); } catch {}
     if (actual?.equals(expected)) continue;
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -37,11 +39,11 @@ const restore = ({ dir, snapshot }) => {
 
 export const DOCKER_RULES_MANIFEST = loadSlotManifest();
 
-export function dockerRuleFixtureFiles(dir) {
+export function dockerRuleFixtureFiles(dir: string): string[] {
   return walk(dir);
 }
 
-export function dockerRulesRepoOf(declaration, mutate) {
+export function dockerRulesRepoOf(declaration: Parameters<typeof writeCleanRepo>[0], mutate?: (dir: string) => void): string {
   const key = JSON.stringify(declaration);
   let fixture = fixtures.get(key);
   if (!fixture) {
@@ -54,7 +56,7 @@ export function dockerRulesRepoOf(declaration, mutate) {
   return dir;
 }
 
-export function cleanupDockerRuleFixtures() {
+export function cleanupDockerRuleFixtures(): void {
   cleanup([...fixtures.values()].map(({ dir }) => dir));
   fixtures.clear();
 }

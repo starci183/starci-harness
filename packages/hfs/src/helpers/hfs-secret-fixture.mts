@@ -6,9 +6,15 @@ import { mkdtemp } from "./tmpdir.mjs";
 import { secretMain } from "../../runtime/scripts/hfs/secret.mjs";
 import { readEnv } from "../../runtime/scripts/lib/env.mjs";
 
-const machineRootRestorations = new WeakSet();
+import type { TestContext } from "node:test";
 
-export function app(t, files = {}, environment = "dev") {
+import type { SecretMainPorts } from "../../runtime/scripts/hfs/secret.mjs";
+
+type SecretRunOptions = Omit<SecretMainPorts, "stdout" | "stderr">;
+
+const machineRootRestorations = new WeakSet<object>();
+
+export function app(t: Pick<TestContext, "after">, files: Record<string, string> = {}, environment = "dev") {
   const machine = mkdtemp(t, "hfs-secret-");
   const root = path.join(machine, "app");
   fs.mkdirSync(root);
@@ -29,21 +35,23 @@ export function app(t, files = {}, environment = "dev") {
   fs.mkdirSync(dir, { recursive: true });
   for (const [name, text] of Object.entries(files))
     fs.writeFileSync(path.join(dir, name), text);
-  const env = {
+  const home = path.join(machine, "home");
+  const localAppData = path.join(machine, "local");
+  const env: NodeJS.ProcessEnv = {
     ...process.env,
-    HOME: path.join(machine, "home"),
-    USERPROFILE: path.join(machine, "home"),
+    HOME: home,
+    USERPROFILE: home,
     APPDATA: path.join(machine, "config"),
-    LOCALAPPDATA: path.join(machine, "local"),
+    LOCALAPPDATA: localAppData,
     XDG_CONFIG_HOME: path.join(machine, "config"),
-    XDG_DATA_HOME: path.join(machine, "local"),
+    XDG_DATA_HOME: localAppData,
   };
   for (const key of Object.keys(env))
     if (key.startsWith("SOPS_")) delete env[key];
   const local =
     process.platform === "darwin"
-      ? path.join(env.HOME, "Library", "Application Support")
-      : env.LOCALAPPDATA;
+      ? path.join(home, "Library", "Application Support")
+      : localAppData;
   return {
     root,
     dir,
@@ -58,9 +66,9 @@ export function app(t, files = {}, environment = "dev") {
   };
 }
 
-export async function run(argv, options = {}) {
-  const out = [];
-  const err = [];
+export async function run(argv: string[], options: SecretRunOptions = {}) {
+  const out: string[] = [];
+  const err: string[] = [];
   const code = await secretMain(argv, {
     stdout: (s) => out.push(s),
     stderr: (s) => err.push(s),
@@ -69,7 +77,7 @@ export async function run(argv, options = {}) {
   return { code, out: out.join(""), err: err.join("") };
 }
 
-export function privateAbsent(result, values) {
+export function privateAbsent(result: { out: string; err: string }, values: readonly string[]): void {
   for (const value of values) {
     const forms = new Set([
       value,

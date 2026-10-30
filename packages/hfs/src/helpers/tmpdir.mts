@@ -12,8 +12,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import type { TestContext } from 'node:test';
 
-export function mkdtemp(t, prefix = 'starci-', before = null) {
+export function mkdtemp(t: Pick<TestContext, 'after'>, prefix = 'starci-', before: (() => unknown) | null = null): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   t.after(async () => {
     try { await before?.(); } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 25 }); }

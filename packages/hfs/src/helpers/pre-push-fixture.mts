@@ -3,10 +3,15 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import type { SpawnSyncReturns } from 'node:child_process';
+import type { TestContext } from 'node:test';
 import { mkdtemp } from './tmpdir.mjs';
 
+export type RefLine = readonly [name: string, sha: string, name2: string, remote: string];
+export interface PrePushRepository { root: string; hook: string; head: string; older: string }
+
 export const ZERO = '0'.repeat(40);
-export const git = (cwd, ...args) => {
+export const git = (cwd: string, ...args: string[]): string => {
   const run = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t.t', '-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false', ...args], { cwd, encoding: 'utf8', windowsHide: true });
   assert.equal(run.status, 0, `git ${args.join(' ')}: ${run.stderr}`);
   return run.stdout.trim();
@@ -16,7 +21,7 @@ export const git = (cwd, ...args) => {
  * Install a package-resolution wrapper so the rendered hook runs the actual bundled gate in a disposable Git repository, beside a
  * stand-in for the harness's `starci deps check` that exits with `depsExit`.
  */
-export function repository(t, hookText, { depsExit = 0 } = {}) {
+export function repository(t: Pick<TestContext, 'after'>, hookText: string, { depsExit = 0 }: { depsExit?: number } = {}): PrePushRepository {
   const root = mkdtemp(t, 'hfs-pre-push-');
   git(root, 'init', '-q', '-b', 'main');
   fs.writeFileSync(path.join(root, 'a.txt'), 'first');
@@ -40,10 +45,10 @@ export function repository(t, hookText, { depsExit = 0 } = {}) {
 }
 
 /** Execute the generated shell with Git's ref-list input and a bounded child lifetime. */
-export function push({ root, hook }, lines) {
+export function push({ root, hook }: Pick<PrePushRepository, 'root' | 'hook'>, lines: readonly (readonly string[])[]): SpawnSyncReturns<string> {
   const result = spawnSync('sh', [hook], { cwd: root, input: lines.map(line => line.join(' ')).join('\n') + '\n', encoding: 'utf8', windowsHide: true, timeout: 15000 });
   assert.equal(result.error, undefined, result.error?.message);
   return result;
 }
 
-export const ref = (name, sha, remote = ZERO) => [name, sha, name, remote];
+export const ref = (name: string, sha: string, remote: string = ZERO): RefLine => [name, sha, name, remote];

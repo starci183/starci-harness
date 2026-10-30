@@ -4,48 +4,68 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createSlotResolver, loadSlotManifest, resolveRepoDeclaration } from '../../runtime/scripts/hfs/slots.mjs';
+import type { ResolvedApp } from '../../sync/index.mjs';
 import { appSource, imageFiles, renderTargets, writeTargets } from '../../sync/index.mjs';
 import { FE_APP_SCRIPTS, PACKAGE_MANAGER, WORKSPACES, feAppPackageName } from '../../runtime/scripts/hfs/rules/monorepo.mjs';
 import { loadSonarGate } from '../../runtime/scripts/gates/sonar-gate.mjs';
 import { parseYaml } from '../../runtime/engine/yaml.mjs';
 
-const jestPreset = createRequire(import.meta.url)('../../../jest-preset/dist/index.js');
+interface FeConcern { tier: string; packages: string[] }
+const jestPreset: { sonarExclusions(): string } = createRequire(import.meta.url)('../../../jest-preset/dist/index.js');
+interface AppEntry { name: string; kind: string }
+interface SideDeclaration { apps: AppEntry[]; [field: string]: unknown }
+/** An hfs.json app declaration; a spec may add fields (edition, kinds) beside the sides. */
+export interface AppDeclaration {
+  hfs: number;
+  kind: string;
+  project: string;
+  sides: { be: SideDeclaration; fe: SideDeclaration };
+  [field: string]: unknown;
+}
+interface Writers {
+  put: (relative: string, text?: string) => void;
+  write: (relative: string, text: string) => void;
+}
+type Put = Writers['put'];
+type Write = Writers['write'];
+
+// reason: PINS and FE_STACK are parsed YAML knowledge files (parseYaml returns any); only the fields read below are relied on.
 const PINS = parseYaml(fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'runtime', 'knowledge', 'hfs', 'canon-pins.yaml'), 'utf8')).pins;
 const FE_STACK = parseYaml(fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'runtime', 'knowledge', 'hfs', 'fe-stack.yaml'), 'utf8'));
-const FE_CORE_DEPENDENCIES = Object.fromEntries(FE_STACK.concerns.filter((concern) => concern.tier === 'core')
-  .flatMap((concern) => concern.packages).map((name) => [name, PINS[name].version]));
+const FE_CORE_DEPENDENCIES = Object.fromEntries((FE_STACK.concerns as FeConcern[]).filter((concern) => concern.tier === 'core')
+  .flatMap((concern) => concern.packages).map((name): [string, string] => [name, PINS[name].version]));
 /** What `starci app sync` would load from the jest preset an app installs for its be side: the Sonar exclusions and the coverage sources. */
 export const PRESETS = { sonarExclusions: jestPreset.sonarExclusions() };
 
 /** An app declaration: the be side of `be` and the fe side of `fe` (hfs.json sides.<side>). */
-export const appOf = ({ be = { apps: [{ name: 'core', kind: 'api' }] }, fe = { apps: [{ name: 'web', kind: 'next' }] }, project = 'demo' } = {}) => ({ hfs: 3, kind: 'app', project, sides: { be: { kinds: ['api'], ...be }, fe: { grammar: 'core', ...fe } } });
+export const appOf = ({ be = { apps: [{ name: 'core', kind: 'api' }] }, fe = { apps: [{ name: 'web', kind: 'next' }] }, project = 'demo' }: { be?: SideDeclaration; fe?: SideDeclaration; project?: string } = {}): AppDeclaration => ({ hfs: 3, kind: 'app', project, sides: { be: { kinds: ['api'], ...be }, fe: { grammar: 'core', ...fe } } });
 /** The clean app of most specs: one api app, one Next app. */
 export const APP = appOf();
 /** An app whose fe side holds two Next apps. */
 export const TWO_FE_APPS = appOf({ fe: { apps: [{ name: 'web', kind: 'next' }, { name: 'admin', kind: 'next' }] } });
 
 /** The repository's `prettier` for a spec that is not about formatting: it judges every file formatted. */
-const FORMATTED = Object.freeze({ getFileInfo: async () => ({ ignored: false, inferredParser: 'babel' }), resolveConfig: async () => null, check: async () => true });
+export const FORMATTED =Object.freeze({ getFileInfo: async () => ({ ignored: false, inferredParser: 'babel' }), resolveConfig: async () => null, check: async () => true });
 /** application-stacks.yaml as the standard shape wants it: a Sonar owned by the host. */
 export const STACKS_DECLARATION = ['schema: starci/application-stacks@1', 'services:', '  sonar:', '    provider: sonarqube', '    mode: local', `    qualityGate: ${loadSonarGate().gate.name}`, '    stack:', '      owner: host', '      root: .claude/ext/sonar', '      environment: dev', ''].join('\n');
 
-const readmeOf = (name) => [`# ${name}`, '', 'A demo app for the starci app check specs.', '', '## Overview', '', 'Demo.', '', '## Stack', '', 'TypeScript.', '', '## Repository layout', '', 'be/ and fe/.', '',
+const readmeOf = (name: string): string => [`# ${name}`, '', 'A demo app for the starci app check specs.', '', '## Overview', '', 'Demo.', '', '## Stack', '', 'TypeScript.', '', '## Repository layout', '', 'be/ and fe/.', '',
   '## Development', '', '```sh', 'npm ci', 'npm run typecheck', 'npm run lint', 'npm test', '```', '', '## Work', '', 'Records live in `.starciwork`.', ''].join('\n');
 
-function fixtureWriters(dir) {
-  const write = (relative, text) => {
+function fixtureWriters(dir: string): Writers {
+  const write: Write = (relative, text) => {
     const target = path.join(dir, ...relative.split('/'));
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, text);
   };
-  const put = (relative, text = '') => {
+  const put: Put = (relative, text = '') => {
     const target = path.join(dir, ...relative.split('/'));
     if (!fs.existsSync(target)) write(relative, text);
   };
   return { put, write };
 }
 
-function writeManifests(dir, declaration, put) {
+function writeManifests(dir: string, declaration: AppDeclaration, put: Put): void {
   // The one package.json of the app, the monorepo root (R143): the fe workspaces, npm as the package manager, turbo pinned.
   put('package.json', `${JSON.stringify({ name: path.basename(dir), private: true, packageManager: PACKAGE_MANAGER, workspaces: [...WORKSPACES], devDependencies: { turbo: PINS.turbo.version } })}\n`);
   // Each product FE workspace declares the core stack from the catalog at the canonical pins (R288).
@@ -55,7 +75,7 @@ function writeManifests(dir, declaration, put) {
   }
   // The Nest monorepo of the declared be apps (R145), the default project the first api app.
   const beApps = declaration.sides.be.apps;
-  const defaultApp = beApps.find((app) => app.kind === 'api') ?? beApps[0];
+  const defaultApp = (beApps.find((app) => app.kind === 'api') ?? beApps[0]) as AppEntry;
   const nest = {
     $schema: 'https://json.schemastore.org/nest-cli', collection: '@nestjs/schematics', monorepo: true,
     root: `apps/${defaultApp.name}`, sourceRoot: `apps/${defaultApp.name}/src`,
@@ -64,22 +84,22 @@ function writeManifests(dir, declaration, put) {
   put('be/nest-cli.json', `${JSON.stringify(nest, null, 2)}\n`);
 }
 
-function requiredContent(file) {
+function requiredContent(file: string): string {
   if (file === 'hfs.json') return '';
   if (file.endsWith('.json')) return '{}\n';
   if (/^be\/apps\/[^/]+\/src\/app\.module\.ts$/.test(file)) return 'export class AppModule {}\n';
   return 'export {};\n';
 }
 
-function importSibling(file) {
+function importSibling(file: string): string {
   return `import './${path.posix.basename(file).replace(/\.tsx?$/, '')}';`;
 }
 
-function importFeModule(file) {
+function importFeModule(file: string): string {
   return `import '../../../modules/${path.posix.basename(path.posix.dirname(file))}';`;
 }
 
-function writeFrontend(declaration, required, { put, write }) {
+function writeFrontend(declaration: AppDeclaration, required: readonly string[], { put, write }: Writers): void {
   for (const app of declaration.sides.fe.apps) {
     const base = `fe/apps/${app.name}`;
     write(`${base}/next.config.ts`, 'export default { output: "standalone" };\n');
@@ -96,7 +116,7 @@ function writeFrontend(declaration, required, { put, write }) {
   }
 }
 
-function writeFeature(put, write) {
+function writeFeature(put: Put, write: Write): void {
   put('be/src/features/api/orders/orders.module.ts', 'export {};\n');
   put('be/src/features/api/orders/application/place-order.handler.ts', 'export {};\n');
   write('be/src/features/api/orders/transport/http/live.controller.ts', [
@@ -110,7 +130,7 @@ function writeFeature(put, write) {
     "export { OrdersHttpModule } from './transport/http/orders-http.module';", ''].join('\n'));
 }
 
-function writePlatform(write) {
+function writePlatform(write: Write): void {
   // An api app is denied by default (throttler, CSRF origin guard, CredentialGuard, AuthGuard) and masks its errors through the one filter of platform/errors.
   write('be/src/modules/platform/errors/index.ts', "export { AllExceptionsFilter } from './all-exceptions.filter';\n");
   write('be/src/modules/platform/errors/all-exceptions.filter.ts', 'export class AllExceptionsFilter { catch(): void {} }\n');
@@ -124,11 +144,11 @@ function writePlatform(write) {
     '  int(_key: string, fallback: number): number { return fallback; }', '}', ''].join('\n'));
 }
 
-function envName(app) {
-  return app.replace(/(?:^|[-_])([a-z\d])/g, (_, letter) => letter.toUpperCase());
+function envName(app: string): string {
+  return app.replace(/(?:^|[-_])([a-z\d])/g, (_: string, letter: string) => letter.toUpperCase());
 }
 
-function writeAppEnv(app, owners, write) {
+function writeAppEnv(app: AppEntry, owners: readonly string[], write: Write): void {
   const type = `${envName(app.name)}Env`;
   const reader = `read${type}`;
   write(`be/apps/${app.name}/src/${app.name}.env.ts`, [
@@ -140,7 +160,7 @@ function writeAppEnv(app, owners, write) {
     'const env = EnvSource.fromProcess();', `export const options = ${reader}(env);`, ''].join('\n'));
 }
 
-function writeApiApp(app, write) {
+function writeApiApp(app: AppEntry, write: Write): void {
   write(`be/apps/${app.name}/src/compose/health.ts`, [
     "import type { Type } from '@nestjs/common';", "import { OrdersHttpModule } from '../../../../src/features/api/orders';",
     'export const healthModules: Type<unknown>[] = [OrdersHttpModule];', ''].join('\n'));
@@ -153,7 +173,7 @@ function writeApiApp(app, write) {
       'export class AppModule {', '  static register(_options: object) { return { module: AppModule, imports: [], providers: [] }; }', '}', ''].join('\n'));
 }
 
-function writeBackend(declaration, required, { put, write }) {
+function writeBackend(declaration: AppDeclaration, required: readonly string[], { put, write }: Writers): void {
   writeFeature(put, write);
   writePlatform(write);
   // The machine judges reachability: the app composes the feature and every required module.
@@ -170,7 +190,7 @@ function writeBackend(declaration, required, { put, write }) {
  * Not yet a Git repository. `into` places it as <into>/<name> instead of a fresh temporary directory (its README and package.json
  * name the directory).
  */
-export function writeCleanRepo(declaration = APP, { declare = true, into, name = 'demo' } = {}) {
+export function writeCleanRepo(declaration: AppDeclaration = APP, { declare = true, into, name = 'demo' }: { declare?: boolean; into?: string; name?: string } = {}): string {
   const dir = into ? path.join(into, name) : fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-cli-'));
   fs.mkdirSync(dir, { recursive: true });
   const manifest = loadSlotManifest();
@@ -182,7 +202,8 @@ export function writeCleanRepo(declaration = APP, { declare = true, into, name =
   writeTargets(dir, renderTargets(declaration, PRESETS));
   put('.starcistacks/application-stacks.yaml', STACKS_DECLARATION);
   // Dockerfiles are app-owned scaffold output; managed workflows stay identical to sync output.
-  for (const file of imageFiles(resolved)) put(file.path, file.content);
+  // reason: resolveRepoDeclaration returns the RepoView of a declaration that validateHfs would resolve to this ResolvedApp; the optional edition is read as declared.
+  for (const file of imageFiles(resolved as ResolvedApp)) put(file.path, file.content);
   const required = resolver.requiredPaths().paths.map((entry) => entry.path);
   for (const file of required) if (!file.endsWith('/')) put(file, requiredContent(file));
   // A lite app's schema authority holds at least one migration (app.db.migrations, minInstances 1).
@@ -202,7 +223,7 @@ export function writeCleanRepo(declaration = APP, { declare = true, into, name =
  * Makes the app's own `typescript` and the `@starci/tsconfig` preset the side tsconfigs extend resolvable from the app root's
  * node_modules (the machine loads both through the app's one install) without tracking them.
  */
-export function installTypeScript(dir) {
+export function installTypeScript(dir: string): string {
   const target = path.join(dir, 'node_modules', 'typescript');
   fs.mkdirSync(target, { recursive: true });
   fs.writeFileSync(path.join(target, 'package.json'), '{"name":"typescript","main":"index.js"}\n');
@@ -211,18 +232,18 @@ export function installTypeScript(dir) {
   return dir;
 }
 
-export function gitAdd(dir) {
+export function gitAdd(dir: string): string {
   execFileSync('git', ['-C', dir, 'init', '-q'], { stdio: 'ignore' });
   execFileSync('git', ['-C', dir, 'add', '-A', '-f', '--', '.', ':!node_modules'], { stdio: 'ignore' });
   return dir;
 }
 
-export function cleanup(dirs) {
+export function cleanup(dirs: Iterable<string>): void {
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 }
 
 /** Installs the coverage preset `starci app sync` and `starci app check` load from a checked app (a fresh process has no injected presets), without tracking it. */
-function installPresets(dir) {
+export function installPresets(dir: string): string {
   fs.cpSync(path.resolve(import.meta.dirname, '..', '..', 'runtime', 'packages', 'jest-preset'), path.join(dir, 'node_modules', '@starci', 'jest-preset'), { recursive: true });
   return dir;
 }

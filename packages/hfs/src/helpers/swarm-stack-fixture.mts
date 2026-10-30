@@ -1,11 +1,29 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import type { TestContext } from 'node:test';
 import { stringifyYaml } from '../../runtime/engine/yaml.mjs';
 import { openHfs } from '../../runtime/scripts/hfs/slots.mjs';
 import { stacksFindings } from '../../runtime/scripts/hfs/rules/stacks.mjs';
 
-export const swarmService = (image = `registry.example.org/app@sha256:${'a'.repeat(64)}`) => ({
+// reason: manifest and compose model are YAML-shaped documents that specs mutate at arbitrary depth (the same shape parseYaml hands back), so they stay loosely typed.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Doc = Record<string, any>;
+
+export interface SwarmFixture {
+  root: string;
+  files: Set<string>;
+  stackFile: string;
+  declaration: Doc;
+  manifest: Doc;
+  model: Doc;
+  put: (relative: string, content: string) => void;
+  write: () => void;
+  check: () => ReturnType<typeof stacksFindings>;
+  modelFile: string;
+}
+
+export const swarmService = (image = `registry.example.org/app@sha256:${'a'.repeat(64)}`): Doc => ({
   image,
   healthcheck: { test: ['CMD-SHELL', 'test -r /proc/1/status'], interval: '30s' },
   deploy: {
@@ -19,13 +37,13 @@ export const swarmService = (image = `registry.example.org/app@sha256:${'a'.repe
 const RUNBOOK = ['# Swarm runbook', '', '| command | purpose |', '|---|---|',
   ...['prepare', 'doctor', 'up', 'status', 'logs', 'down', 'verification'].map(command => `| ${command} | Release operation |`), ''].join('\n');
 
-export function swarmFixture(t, edition = 'lite') {
+export function swarmFixture(t: Pick<TestContext, 'after'>, edition = 'lite'): SwarmFixture {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-lite-swarm-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const files = new Set(), stackFile = '.starcistacks/production/infra/swarm/stack.yaml';
-  const declaration = { hfs: 3, kind: 'app', edition, project: 'swarm-app',
+  const files = new Set<string>(), stackFile = '.starcistacks/production/infra/swarm/stack.yaml';
+  const declaration: Doc = { hfs: 3, kind: 'app', edition, project: 'swarm-app',
     sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
-  const manifest = { schema: 'starci/application-stacks@1',
+  const manifest: Doc = { schema: 'starci/application-stacks@1',
     components: { api: { role: 'service', image: swarmService().image, compose: 'infra/swarm/stack.yaml' },
       ingress: { role: 'ingress', image: `caddy:2@sha256:${'b'.repeat(64)}`, compose: 'infra/swarm/stack.yaml' } },
     backing: { db: { provider: 'postgres', component: 'db' } },
@@ -42,19 +60,19 @@ export function swarmFixture(t, edition = 'lite') {
         restoreProof: 'evidence/db-restore.md' }] } },
     k8s: { status: 'deferred', reason: 'Swarm is the delivery runtime' },
     services: { sonar: { provider: 'sonarcloud', mode: 'disabled', reason: 'isolated checker fixture', ci: { wiring: 'not-used' }, ownerAction: 'none' } } };
-  const model = { services: { api: swarmService(), ingress: { ...swarmService(manifest.components.ingress.image), ports: ['443:443'],
+  const model: Doc = { services: { api: swarmService(), ingress: { ...swarmService(manifest.components.ingress.image), ports: ['443:443'],
     configs: [{ source: 'ingress-config', target: '/etc/caddy/Caddyfile' }] } },
     secrets: { 'database-url': { external: true, name: 'swarm-app-database-url-v1' } },
     configs: { 'ingress-config': { file: './Caddyfile' } } };
   model.services.api.secrets = ['database-url'];
   model.services.api.environment = { DATABASE_URL_FILE: '/run/secrets/database-url' };
-  const put = (relative, content) => {
+  const put = (relative: string, content: string): void => {
     const target = path.join(root, relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, content);
     files.add(relative);
   };
-  const write = () => {
+  const write = (): void => {
     put('hfs.json', JSON.stringify(declaration));
     put('.starcistacks/application-stacks.yaml', stringifyYaml(manifest));
     put(stackFile, stringifyYaml(model));
@@ -74,7 +92,7 @@ export function swarmFixture(t, edition = 'lite') {
   return { root, files, stackFile, declaration, manifest, model, put, write, check, modelFile: path.join(root, 'rendered.json') };
 }
 
-function addScheduledJob(fixture) {
+export function addScheduledJob(fixture: Pick<SwarmFixture, 'manifest' | 'model' | 'write'>): void {
   const { manifest, model } = fixture;
   manifest.components.cron = { role: 'scheduler', image: `crazymax/swarm-cronjob@sha256:${'c'.repeat(64)}`, compose: 'infra/swarm/stack.yaml' };
   manifest.components.report = { role: 'job', mode: 'replicated-job', scheduler: 'cron', schedule: '0 3 * * *',

@@ -6,14 +6,21 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import type { TestContext } from 'node:test';
 import { checkArchitecture } from '../../runtime/scripts/hfs/architecture.mjs';
+import type { ArchitectureCheckOptions, ArchitectureCheckResult } from '../../runtime/scripts/hfs/architecture/index.mjs';
 
 const require = createRequire(import.meta.url);
-export const ts = require('typescript');
+export const ts: typeof import('typescript') = require('typescript');
 
-export const DEFAULT_APPS = { be: [{ name: 'core', kind: 'api' }], fe: [{ name: 'web', kind: 'next' }] };
+export type Side = 'be' | 'fe';
+export interface AppEntry { name: string; kind: string }
+/** Side-relative path to content; null removes a default file. */
+export type FileMap = Record<string, string | null>;
 
-export function writeFiles(root, files) {
+export const DEFAULT_APPS: Record<Side, AppEntry[]> = { be: [{ name: 'core', kind: 'api' }], fe: [{ name: 'web', kind: 'next' }] };
+
+export function writeFiles(root: string, files: FileMap): void {
   for (const [relative, content] of Object.entries(files)) {
     if (content === null) continue;
     const target = path.join(root, ...relative.split('/'));
@@ -22,16 +29,16 @@ export function writeFiles(root, files) {
   }
 }
 
-export function gitCommit(root, message = 'fixture', env = {}) {
-  const git = (...args) => execFileSync('git', ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.test', ...args], { cwd: root, stdio: 'pipe', env: { ...process.env, ...env } });
+export function gitCommit(root: string, message = 'fixture', env: NodeJS.ProcessEnv = {}): string {
+  const git = (...args: string[]) => execFileSync('git', ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.test', ...args], { cwd: root, stdio: 'pipe', env: { ...process.env, ...env } });
   git('add', '-A', ':/');
   git('commit', '-q', '--allow-empty', '-m', message);
   return git('rev-parse', 'HEAD').toString().trim();
 }
 
 /** The app hfs.json of a fixture about one side: `fields` (apps, optionalSlots, connections, reads) for `side`, the smallest other side. */
-export function appDeclaration(side, fields, project = 'fixture') {
-  const other = { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } };
+export function appDeclaration(side: Side, fields: object, project = 'fixture') {
+  const other: Record<Side, object> = { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } };
   return { hfs: 3, kind: 'app', project, sides: { ...other, [side]: fields } };
 }
 
@@ -39,7 +46,7 @@ export function appDeclaration(side, fields, project = 'fixture') {
  * The `side` folder of a fresh temp app (removed after the test): the root a spec writes a side's files under and runs the
  * machine on. The app root (its parent) holds nothing yet; write `../hfs.json` (appDeclarationText) and `../package.json`.
  */
-export function tempSide(t, prefix, side = 'be') {
+export function tempSide(t: Pick<TestContext, 'after'>, prefix: string, side: Side = 'be'): string {
   const app = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   t.after(() => fs.rmSync(app, { recursive: true, force: true }));
   const root = path.join(app, side);
@@ -48,7 +55,7 @@ export function tempSide(t, prefix, side = 'be') {
 }
 
 /** appDeclaration as the text of an hfs.json file. */
-const appDeclarationText = (side, fields, project = 'fixture') => `${JSON.stringify(appDeclaration(side, fields, project), null, 2)}\n`;
+export const appDeclarationText = (side: Side, fields: object, project = 'fixture'): string => `${JSON.stringify(appDeclaration(side, fields, project), null, 2)}\n`;
 
 /**
  * A hermetic app whose `profile` side the machine judges: the app root holds hfs.json and the one package.json, the side folder
@@ -57,11 +64,13 @@ const appDeclarationText = (side, fields, project = 'fixture') => `${JSON.string
  * at the app root (`../package.json` replaces the app's manifest). `declaration` overrides parts of the side's declaration. The
  * app is a git repo with the files staged (not committed): call gitCommit(root) for a base.
  */
-export function archFixture(t, { profile = 'be', files = {}, declaration = {}, apps = DEFAULT_APPS[profile] } = {}) {
+export interface ArchFixtureOptions { profile?: Side; files?: FileMap; declaration?: object; apps?: AppEntry[] }
+
+export function archFixture(t: Pick<TestContext, 'after'>, { profile = 'be', files = {}, declaration = {}, apps = DEFAULT_APPS[profile] }: ArchFixtureOptions = {}): string {
   const appRoot = fs.mkdtempSync(path.join(os.tmpdir(), `starci-hfs-arch-${profile}-`));
   t.after(() => fs.rmSync(appRoot, { recursive: true, force: true }));
   const root = path.join(appRoot, profile);
-  const app = apps[0].name;
+  const app = (apps[0] as AppEntry).name;
   const baseline = {
     '../hfs.json': `${JSON.stringify(appDeclaration(profile, { apps, ...declaration }), null, 2)}\n`,
     '../package.json': JSON.stringify({ name: 'fixture', private: true }),
@@ -86,8 +95,8 @@ export function archFixture(t, { profile = 'be', files = {}, declaration = {}, a
 }
 
 /** Run the whole machine over a fixture; extra options (base, paths) pass through. */
-export function runArch(root, options = {}) {
+export function runArch(root: string, options: Omit<ArchitectureCheckOptions, 'repositoryRoot' | 'injectedTypeScript'> = {}): ArchitectureCheckResult {
   return checkArchitecture({ repositoryRoot: root, injectedTypeScript: ts, ...options });
 }
 
-export const findings = (report, ruleId) => report.violations.filter(item => item.ruleId === ruleId);
+export const findings = (report: Pick<ArchitectureCheckResult, 'violations'>, ruleId: string) => report.violations.filter(item => item.ruleId === ruleId);
