@@ -10,6 +10,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- The CLI requires @starci/hfs@4.12.0, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 - One canonical CLI (owner ruling cli-canonical-2026-10-30, contexts/harness/cli-canonical.md): every effect is dry until `--execute`; `--json`, `--timeout <s>`, `--sha`, `--cwd`, `--reason` and `--status` are the one spelling of their meaning; `check ci` absorbs `release ci-status`, `workflow step --loop` and `workflow amend --goal` absorb run and regoal, `supervisor tick --loop` absorbs watch, `connect telegram bridge` holds the bridge, `route show` replaces route explain, `ticket --kind feedback` absorbs feedback; `check stories` and `check typecheck` are dropped. An old spelling is an unknown verb or flag (CONTRIB-15).
 - `starci app <verb>` hands its arguments to @starci/hfs as typed, so hfs owns every app flag and its help; `app slot` and `app world` are new verbs, `app explain`, `app hygiene`, `app new` and `app sonar` are gone with their hfs verbs.
 - `explain <term>` takes the term positionally and prints each matching verb's flags.
