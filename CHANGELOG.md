@@ -10,6 +10,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- The CLI requires @starci/hfs@4.11.21, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 - `app stack deploy --urgent` takes `--reason` and `--remote`: without `--image` and `--source-sha` it is the one-command urgent release (hfs 4.11.21, owner ruling urgent-typecheck-build): release HEAD, build and push its images on this machine, deploy their digests under the floor. The stack verb hands @starci/hfs the caller role the urgent record names.
 - `app release push --urgent` runs typecheck and the build only; `--lint-baseline` is retired and refused.
 - The CLI keeps @starci/hfs 4.11.20 until npm serves 4.11.21; cli-follow then raises it.
