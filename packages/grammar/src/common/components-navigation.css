@@ -255,14 +255,20 @@
         color: var(--accent-foreground, HighlightText);
     }
 
+    /*
+     * Every marker is a pair that holds on any ground: the outlined states draw their circle in `--surface` and their
+     * number in a text token paired with it (muted, the accent as text, the danger as text), the complete state fills
+     * the accent under its own foreground. A SurfaceCard treatment rebinds the surface pair and those text tokens
+     * together, so the number keeps its contrast in every treatment (COLOR-5).
+     */
     .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker {
-        border-color: var(--accent, Highlight);
-        color: var(--accent, Highlight);
+        border-color: currentColor;
+        color: var(--accent-soft-foreground, var(--accent, Highlight));
     }
 
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger, Mark);
-        color: var(--danger, CanvasText);
+        color: var(--danger-soft-foreground, var(--danger, CanvasText));
     }
 
     /* Loading stepper (knowledge STATE-8): a static Skeleton circle for the mark, labels stay real. */

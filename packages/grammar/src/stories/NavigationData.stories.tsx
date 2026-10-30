@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { parseDate, type DateValue } from '@internationalized/date';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, MenuGlyph, State, noop, pageLabel, placeholderImage, showRowStates } from './fixtures.js';
+import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, MenuGlyph, State, familyScope, noop, pageLabel, placeholderImage, showRowStates, textContrast } from './fixtures.js';
 
 /**
  * Navigation and data display: wayfinding (tabs, breadcrumbs, pagination, stepper), collections
@@ -827,6 +827,64 @@ export const Stepper: Story = {
       </State>
     </Matrix>
   ),
+};
+
+const TREATMENTS: ReadonlyArray<G.SurfaceCardTreatment> = ['surface', 'soft', 'ink'];
+const THEMES = ['light', 'dark'] as const;
+const wizardSteps: ReadonlyArray<G.StepperStep> = [
+  { id: 'workspace', label: 'Workspace' },
+  { id: 'channels', label: 'Channels' },
+  { id: 'team', label: 'Invite the team' },
+  { id: 'import', label: 'Import', state: 'error' },
+];
+
+/** A SurfaceCard in the given treatment (each treatment is its own branch of the props union). */
+const TreatedCard = ({ treatment, ariaLabel, children }: { readonly treatment: G.SurfaceCardTreatment; readonly ariaLabel: string; readonly children: ReactNode }) =>
+  treatment === 'ink' ? (
+    <G.SurfaceCard ariaLabel={ariaLabel} treatment="ink">{children}</G.SurfaceCard>
+  ) : treatment === 'soft' ? (
+    <G.SurfaceCard ariaLabel={ariaLabel} treatment="soft">{children}</G.SurfaceCard>
+  ) : (
+    <G.SurfaceCard ariaLabel={ariaLabel}>{children}</G.SurfaceCard>
+  );
+
+/**
+ * Every step number reads against its own circle (COLOR-5, `contrast.text`) in every SurfaceCard treatment and theme:
+ * a treatment rebinds the ground its content stands on, and the marker's circle and numeral must follow it as a pair.
+ */
+export const StepperOnEveryTreatment: Story = {
+  render: (_args, { globals }) => (
+    <Matrix maxWidth={720}>
+      {THEMES.map((theme) => (
+        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
+          {TREATMENTS.map((treatment) => (
+            <State key={treatment} label={`${theme}, treatment ${treatment}`} direction="column">
+              <div data-story-treatment={treatment} data-story-theme={theme}>
+                <TreatedCard ariaLabel={`Onboarding on ${treatment}`} treatment={treatment}>
+                  <G.Stepper label={`Onboarding progress (${theme}, ${treatment})`} orientation="vertical" steps={wizardSteps} currentStepId="channels" />
+                </TreatedCard>
+              </div>
+            </State>
+          ))}
+        </G.GrammarRoot>
+      ))}
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const markers = Array.from(canvasElement.querySelectorAll('[data-story-treatment] [data-grammar-step-marker]'));
+      expect(markers).toHaveLength(THEMES.length * TREATMENTS.length * wizardSteps.length);
+      const unreadable = markers
+        .map((marker) => {
+          const where = marker.closest('[data-story-treatment]');
+          const state = marker.closest('[data-grammar-step-state]')?.getAttribute('data-grammar-step-state');
+          return { at: `${where?.getAttribute('data-story-theme')} ${where?.getAttribute('data-story-treatment')} ${state}`, ratio: textContrast(marker) };
+        })
+        .filter(({ ratio }) => ratio < 4.5)
+        .map(({ at, ratio }) => `${at} ${ratio}:1`);
+      if (unreadable.length > 0) throw new Error(`step numbers below 4.5:1 on their circle: ${unreadable.join('; ')}`);
+    });
+  },
 };
 
 const tags: ReadonlyArray<G.TagGroupItem> = [

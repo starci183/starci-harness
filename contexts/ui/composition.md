@@ -312,8 +312,12 @@ Type counts: `type.region`, `type.view`. Proof: TASTE-6.
 ### DISCIPLINE-3 One signature moment per page
 The spec names the page's one signature moment: the brand art band where the brand record allows its mascot on
 this surface, otherwise one declared motif, otherwise none. It is never the focal point unless the page's job is
-the image, it counts in the accent budget, and it never appears on errors, forms, tables or loading states. A
-promotional strip never sits on a working page. Proof: TASTE-8, BRAND-2.
+the image, it counts in the accent budget, and it never appears on errors, tables, loading states or forms other
+than the steps of the app's first-run wizard. A first-run wizard is the onboarding flow the spec declares as such
+(the one flow a new account walks before its first real page, its steps a `Stepper`); on its steps the mascot may
+stand small (`mascot.choose.size`: `sm` or `md`, never `hero`), in its own place beside or above the form and never
+over a field, a description, an error or an action. Every other form, including a later setup or settings flow,
+carries no signature moment. A promotional strip never sits on a working page. Proof: TASTE-8, BRAND-2.
 
 ## 9. Coverage
 

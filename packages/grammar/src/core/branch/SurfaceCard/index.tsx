@@ -54,24 +54,37 @@ type PlainSurfaceCard = {
 }
 
 /**
+ * Decorative art (a `Mascot`, or an `Image` / `MediaFrame`, carrying its `assetSlot`). The slot is `aria-hidden`,
+ * inert to the pointer, sits behind the content and may bleed off the card's top and inline-end edges; below a
+ * 48rem card it drops into the head zone in flow, so it never covers text.
+ */
+type SurfaceCardArtwork = ReactNode
+
+/**
+ * The soft card: the brand's light tint as ground (the family's `accentSoft`) under the default foreground, for a
+ * card the product deliberately raises (SURFACE-4), such as a first-run welcome. It rebinds the surface pair onto
+ * the tint and may carry copy and controls; it keeps the artwork slot and has no motif.
+ */
+type SoftSurfaceCard = {
+    readonly treatment: "soft"
+    readonly artwork?: SurfaceCardArtwork
+    readonly motif?: undefined
+}
+
+/**
  * The ink band: the page's one signature overview moment (DISCIPLINE-3), painted on the family's brand
  * ink (Core: the accent fill and its foreground; Offset Pop: its ink and canvas). Its content re-binds
- * foreground, muted, separator and the soft tone pairs onto the ink, so grammar children keep their
- * own anatomy and stay AA.
+ * the surface pair (surface, foreground, muted, separator) and the soft tone pairs onto the ink, so grammar
+ * children keep their own anatomy and stay AA.
  */
 type InkSurfaceCard = {
     readonly treatment: "ink"
-    /**
-     * Decorative art (an `Image` / `MediaFrame` carrying its `assetSlot`). The slot is `aria-hidden`,
-     * inert to the pointer, sits behind the content and may bleed off the band's top and inline-end
-     * edges; below a 48rem band it drops into the head zone in flow, so it never covers text.
-     */
-    readonly artwork?: ReactNode
+    readonly artwork?: SurfaceCardArtwork
     /** Decorative motif in the artwork zone: `orbit` draws thin rings with nodes (static SVG, low contrast). */
     readonly motif?: SurfaceCardMotif
 }
 
-export type SurfaceCardProps = (LabelledSurfaceCard | SelfNamedSurfaceCard) & (PlainSurfaceCard | InkSurfaceCard) & {
+export type SurfaceCardProps = (LabelledSurfaceCard | SelfNamedSurfaceCard) & (PlainSurfaceCard | SoftSurfaceCard | InkSurfaceCard) & {
     readonly children: ReactNode
     readonly fact?: string
     /** Optional content at the end of the external label row. It takes the fact's single place. */
@@ -153,7 +166,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const depth = useSurfaceNesting() ? "nested" : "top"
     const treatment: SurfaceCardTreatment = props.treatment ?? "surface"
     const motif: SurfaceCardMotif = props.treatment === "ink" ? props.motif ?? "none" : "none"
-    const artwork = props.treatment === "ink" ? props.artwork : undefined
+    const artwork = props.treatment === "ink" || props.treatment === "soft" ? props.artwork : undefined
     assertPresentationState(state)
     const headingId = useId()
     const stateTreatment = treatmentFor(state)
@@ -204,7 +217,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-surface-treatment={treatment}
             data-grammar-surface-artwork={artwork !== undefined ? "art" : motif !== "none" ? "motif" : "none"}
         >
-            {treatment === "ink" && (artwork !== undefined || motif !== "none") ? (
+            {artwork !== undefined || motif !== "none" ? (
                 <div
                     aria-hidden="true"
                     className={surfaceArtworkClassName}

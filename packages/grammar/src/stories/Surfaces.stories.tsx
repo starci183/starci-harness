@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, Matrix, PlusGlyph, State, familyScope, noop, placeholderImage } from './fixtures.js';
+import { BookGlyph, Matrix, PlusGlyph, State, familyScope, noop, placeholderImage, rgbaOf, textContrast } from './fixtures.js';
+import turtleUrl from './assets/turtle.png';
 
 /**
  * Surfaces: cards, collections, reading frames and scroll regions — the containers every family
@@ -233,6 +234,57 @@ export const SurfaceCard: Story = {
   ),
 };
 
+/**
+ * The soft treatment: the brand's light tint (`--accent-soft`) as the card's ground under the default foreground,
+ * with its artwork slot (here the mascot of a first-run welcome) and real copy and controls. Every text the card
+ * draws, muted and accent text included, clears `contrast.text` on the tint in light and dark.
+ */
+export const SoftSurfaceCard: Story = {
+  render: (_, { globals }) => (
+    <Matrix maxWidth={720}>
+      {(['light', 'dark'] as const).map((theme) => (
+        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-soft-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
+          <State label={`${theme}: soft with artwork (first-run welcome)`} direction="column">
+            <G.SurfaceCard
+              label="Welcome"
+              treatment="soft"
+              artwork={<G.Mascot src={turtleUrl} size="md" loading="eager" assetSlot="story.welcome-mascot" />}
+            >
+              <G.SectionHeader eyebrow="Getting started" title="Set up your workspace" description="Three short steps, about two minutes." />
+              <G.Text tone="muted">You can change everything later in settings.</G.Text>
+              <G.Text tone="accent">Step 1 of 3</G.Text>
+              <G.Button intent="commit">Start setup</G.Button>
+            </G.SurfaceCard>
+          </State>
+        </G.GrammarRoot>
+      ))}
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const cards = [...canvasElement.querySelectorAll('[data-story-soft-theme] [data-component="SurfaceCard"] > [data-grammar-surface-treatment="soft"]')];
+      expect(cards).toHaveLength(2);
+      for (const card of cards) {
+        expect(card.querySelector(':scope > [data-grammar-surface-artwork="art"] [data-component="Mascot"]')).toHaveAttribute('data-asset-slot', 'story.welcome-mascot');
+        // Read without touching the DOM: waitFor re-runs on every mutation, so a probe element would loop.
+        const tint = getComputedStyle(card.parentElement ?? card).getPropertyValue('--accent-soft');
+        expect(rgbaOf(getComputedStyle(card).backgroundColor)).toEqual(rgbaOf(tint));
+      }
+      // Every element that draws a text node of its own (eyebrow, title, description, muted and accent lines); the
+      // commit Button is the accent fill's own pair and is judged by the button laws.
+      const texts = [...canvasElement.querySelectorAll('[data-story-soft-theme] [data-grammar-surface-treatment="soft"] [data-grammar-surface-content] *')]
+        .filter((element) => [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() !== ''))
+        .filter((element) => element.closest('[data-component="Button"]') === null);
+      expect(texts.length).toBeGreaterThanOrEqual(2 * 5);
+      const unreadable = texts
+        .map((text) => ({ text: text.textContent, ratio: textContrast(text) }))
+        .filter(({ ratio }) => ratio < 4.5)
+        .map(({ text, ratio }) => `"${text}" ${ratio}:1`);
+      if (unreadable.length > 0) throw new Error(`text below 4.5:1 on the soft ground: ${unreadable.join('; ')}`);
+    });
+  },
+};
+
 export const SurfaceListCard: Story = {
   render: () => (
     <Matrix maxWidth={640}>
@@ -435,8 +487,30 @@ export const EmptyNotice: Story = {
       <State label="Action pending" direction="column">
         <G.EmptyNotice message="Nothing to import." actionLabel="Refresh" actionVariant="secondary" isActionPending onAction={noop} />
       </State>
+      <State label="First run (artwork: the mascot at md, tied to its asset slot)" direction="column">
+        <div data-story-empty="first-run">
+          <G.EmptyNotice
+            message="Your workspace is ready."
+            description="Add your first channel to start receiving conversations."
+            artwork={{ src: turtleUrl, loading: 'eager', assetSlot: 'story.first-run-mascot' }}
+            actionLabel="Add a channel"
+            onAction={noop}
+          />
+        </div>
+      </State>
     </Matrix>
   ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const notice = canvasElement.querySelector('[data-story-empty="first-run"] [data-component="EmptyNotice"]');
+      expect(notice).toHaveAttribute('data-grammar-empty-mark', 'artwork');
+      const mascot = notice?.querySelector(':scope > [data-component="Mascot"]');
+      expect(mascot).toHaveAttribute('data-grammar-mascot-size', 'md');
+      expect(mascot).toHaveAttribute('data-asset-slot', 'story.first-run-mascot');
+      expect(mascot).toHaveAttribute('aria-hidden', 'true');
+      expect(notice?.querySelectorAll('[data-component="Button"]')).toHaveLength(1);
+    });
+  },
 };
 
 export const SectionHeader: Story = {

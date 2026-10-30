@@ -124,7 +124,7 @@ A surface and its foreground always travel as a pair. Prefer the earliest that w
 | SURFACE-1 | none: inherit the parent face | a layout container whose children own their faces; a chat or log scroll region on the background tone |
 | SURFACE-2 | surface face + surface foreground | one bounded object (the card face); grammar-painted |
 | SURFACE-3 | secondary surface + foreground | a neutral recessed band inside a joined card |
-| SURFACE-4 | accent-soft + its foreground | a band the product deliberately raises; it still says in words why |
+| SURFACE-4 | accent-soft + a foreground paired with it (its soft accent text on a band; the default foreground and muted on a whole card, `SurfaceCard treatment="soft"`) | a band or a card the product deliberately raises; it still says in words why |
 | SURFACE-5 | success-soft under the neutral foreground | a band whose outcome authority settled; before settlement it stays SURFACE-3 |
 | SURFACE-6 | full accent, no foreground | a decorative slab carrying no copy and no control; inside a card it is the joined card's first face, edge to edge |
 

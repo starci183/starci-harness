@@ -8,6 +8,7 @@
 #   absorbs   ids of earlier rulings this one replaced; a citation of an absorbed id resolves to this entry
 #   pins      digests a gate compares against; only a ruling records a pin
 #   covers    the gaps a ruling holds pending in hfs/rules.yaml's `pending` list (a slot rule code or a rule id); only a ruling lists them
+#   words     optional: the owner's own words as given, in their language, when the ruling quotes them
 # A new ruling replaces the entry it amends (replace, never append). Decisions taken by an agent and not yet
 # confirmed live in decisions/open-*.md; when the owner confirms one, it moves here and its row there is deleted.
 # Harness, release and process rulings (supervisor, release waves, push policy, loosening, draw loop) are not
@@ -286,6 +287,24 @@ rulings:
     status: live
     ruling: "A promotion lives only on the overview's or landing's signature moment, never as a strip on a working page."
     owner: "contexts/ui/composition.md DISCIPLINE-3"
+  - id: first-run-wizard-mascot
+    date: '2026-10-30'
+    status: live
+    words: "Ngoại lệ first-run wizard"
+    ruling: "The signature moment stays off errors, forms, tables and loading states, with one exception: the steps of an app's first-run wizard (onboarding) may carry the mascot, small and never covering the form's fields or actions. Ordinary forms keep the ban."
+    owner: "contexts/ui/composition.md DISCIPLINE-3; contexts/ui/components/mascot.md"
+  - id: surfacecard-soft-treatment
+    date: '2026-10-30'
+    status: live
+    words: "Thêm treatment `soft`"
+    ruling: "SurfaceCard has a `soft` treatment: the brand's light tint as ground (the family's accentSoft) with the default dark text, keeping the artwork slot; its tokens come from the brand layer, never app paint. Every SurfaceCard treatment rebinds the whole surface pair on its ground, so a child's text (a Stepper's step number included) contrasts with what it stands on."
+    owner: "@starci/grammar src/core/branch/SurfaceCard, src/common/styles.css; contexts/grammars/contract.yaml roles.card; contexts/ui/components/card.md card.choose.treatment"
+  - id: empty-notice-artwork
+    date: '2026-10-30'
+    status: live
+    words: "EmptyNotice có slot artwork"
+    ruling: "EmptyNotice has an artwork slot: generated character art drawn as the Mascot at md and tied to its asset slot, and a first-run empty state uses EmptyNotice with that artwork."
+    owner: "@starci/grammar src/core/composite/EmptyNotice; contexts/ui/components/empty-state.md empty-state.choose.cause"
   - id: STATE-8/loading-keeps-anatomy
     date: '2026-10-11'
     status: live

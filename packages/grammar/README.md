@@ -232,6 +232,17 @@ assistive technology; a non-empty `alt` names it) and takes the asset-slot props
 <Mascot src="/images/mascot/welcome.webp" size="lg" assetSlot="onboarding.welcome" assetSha256={sha} />
 ```
 
+A mascot also reaches the page through two slots. `SurfaceCard` `treatment="soft"` (the family's `accentSoft` tint
+under the default foreground) and `treatment="ink"` (the brand ink band) take decorative `artwork`; each painted
+treatment rebinds the surface pair on its ground, so a Stepper, Timeline or Badge inside keeps its contrast.
+`EmptyNotice` takes `artwork` (`src`, `alt`, a required `assetSlot`, `assetSha256`, `assetPrompt`) in place of its
+glyph and draws it as the `Mascot` at `md`, the mark of a first-run empty state.
+
+```tsx
+<SurfaceCard label="Welcome" treatment="soft" artwork={<Mascot src={src} assetSlot="onboarding.welcome" />}>…</SurfaceCard>
+<EmptyNotice message="Your workspace is ready." artwork={{ src, assetSlot: "onboarding.empty" }} actionLabel="Add a channel" onAction={add} />
+```
+
 **Forms (26).** ButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
 DateRangePicker, Field, Fieldset, FileDropzone, Form, FormGrid, Input, NumberField, OtpInput,
 PressableField, RadioGroup, Rating, SearchField, SegmentedControl, Select, Slider, Switch,

@@ -151,17 +151,17 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [decisions/open-grammar.md](../decisions/open-grammar.md) · 16 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
   - sections: Decisions · offset-pop, designed on the contract · Code follow-ups named by the grammar files · Gaps: choices an app can make two ways · What the contract cannot express yet · Wrappers pin
 - [decisions/open-ui.md](../decisions/open-ui.md) · 7 KB — Choices made while writing `contexts/ui`, each awaiting the owner's feedback.
-- [decisions/rulings.yaml](../decisions/rulings.yaml) · 54 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
-  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, agent-avatar-initials-bot-badge, alert-white-surface, app-owned-schedules, app-secrets-one-standard, auth-callback-shape, avatar-default-dicebear-initials and 93 more
+- [decisions/rulings.yaml](../decisions/rulings.yaml) · 55 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
+  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, agent-avatar-initials-bot-badge, alert-white-surface, app-owned-schedules, app-secrets-one-standard, auth-callback-shape, avatar-default-dicebear-initials and 96 more
 - [grammars/README.md](../grammars/README.md) · 10 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Reading order for an author · Where feedback lands
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, four relationships · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 17 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 18 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 75 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-COPYFIELD-MASKED, DNA-COMMON-COPYFIELD-TAIL, DNA-COMMON-DIAGRAM-ERROR-SOURCE and 113 more
-- [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
+- [grammars/contract.yaml](../grammars/contract.yaml) · 77 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-COPYFIELD-MASKED, DNA-COMMON-COPYFIELD-TAIL, DNA-COMMON-DIAGRAM-ERROR-SOURCE and 115 more
+- [grammars/core.md](../grammars/core.md) · 6 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 7 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
   - sections: Material and why · How offset-pop fills the contract · Departures · What an app must not add · Lint
@@ -209,7 +209,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/button.md](../ui/components/button.md) · 5 KB — Contract: Button.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/card.md](../ui/components/card.md) · 3 KB — Contract: Card.
+- [ui/components/card.md](../ui/components/card.md) · 4 KB — Contract: Card.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/chip.md](../ui/components/chip.md) · 4 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -217,13 +217,13 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 2 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/empty-state.md](../ui/components/empty-state.md) · 2 KB — Contract: EmptyState.
+- [ui/components/empty-state.md](../ui/components/empty-state.md) · 3 KB — Contract: EmptyState.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 2 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/list-table.md](../ui/components/list-table.md) · 3 KB — Contract: List and Table.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/mascot.md](../ui/components/mascot.md) · 2 KB — Contract: Mascot.
+- [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 2 KB — Contract: Menu.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
