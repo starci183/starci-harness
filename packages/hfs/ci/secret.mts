@@ -11,12 +11,17 @@ export function declaredEntry(entries: readonly CiEntry[], name: string, options
   return entry;
 }
 
-/** Secret input is read once, stripped of one trailing newline, and passed only to the child stdin. */
+/** Secret input is read once, stripped of one trailing newline, and passed only to the child stdin; without options.execute nothing is read or written. */
 export async function setSecret({ declaration, sealed, gh, options, name, stdin, stdout }: {
   declaration: CiDeclaration; sealed: readonly { key: string }[]; gh: Gh; options: CiOptions; name: string; stdin: StdinSource; stdout: (text: string) => unknown;
 }): Promise<number> {
   if (sealed.some((item) => item.key === name)) throw refuse('CI_SECRET_SEALED', 'the name belongs to a sealed app secret');
   declaredEntry(options.dependabot ? declaration.dependabotSecrets : declaration.secrets, name, options);
+  // Dry until --execute: the name is judged, but no value is read and GitHub is not reached; the line never carries a value.
+  if (options.execute !== true) {
+    stdout(`dry run: would set secret ${name} (${scopeName(options)}) from the value on stdin; add --execute\n`);
+    return 0;
+  }
   let value: unknown;
   if (stdin === undefined) {
     if (process.stdin.isTTY) throw refuse('CI_VALUE_EMPTY', 'a secret value is required on stdin');

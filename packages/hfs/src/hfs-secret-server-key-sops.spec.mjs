@@ -36,8 +36,8 @@ test("server-key wraps a real member to the server recipient with sops updatekey
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "production", "stack.yml"), "services:\n  api:\n    image: x\n");
   const env = { ...fixture.env, SOPS_AGE_KEY: owner.secret };
   const quiet = { cwd: fixture.root, env, stdout: () => {}, stderr: () => {}, tools: { secretEnv: () => ({}) } };
-  assert.equal(await secretMain(["recipients", "production", "--add", owner.recipient], quiet), 0);
-  assert.equal(await secretMain(["set", "production", "app", "API_KEY"], { ...quiet, stdin: () => VALUE }), 0);
+  assert.equal(await secretMain(["recipients", "--env", "production", "--add", owner.recipient, "--execute"], quiet), 0);
+  assert.equal(await secretMain(["set", "--env", "production", "app", "API_KEY"], { ...quiet, stdin: () => VALUE }), 0);
   const file = path.join(fixture.dir, "app.enc.yaml");
   assert.deepEqual(envelopeOf(fs.readFileSync(file, "utf8")).recipients, [owner.recipient]);
 
@@ -48,7 +48,7 @@ test("server-key wraps a real member to the server recipient with sops updatekey
   }, { cleanup: () => {}, notes: [] });
   const out = [];
   const err = [];
-  const code = await secretMain(["server-key", "production", "--execute"], { ...quiet, stdout: (text) => out.push(text), stderr: (text) => err.push(text), serverKeyIo: { deps: { ssh } } });
+  const code = await secretMain(["server-key", "--env", "production", "--execute"], { ...quiet, stdout: (text) => out.push(text), stderr: (text) => err.push(text), serverKeyIo: { deps: { ssh } } });
   assert.equal(code, 0, err.join(""));
   assert.doesNotMatch(out.join("") + err.join(""), new RegExp(`${VALUE}|AGE-SECRET-KEY`, "u"));
   assert.deepEqual(envelopeOf(fs.readFileSync(file, "utf8")).recipients.sort(), [owner.recipient, server.recipient].sort());

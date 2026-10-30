@@ -85,19 +85,19 @@ function restampPlan(root: string, mapFile: string | undefined, { urlEnv = 'DATA
 
 /** The complete map is validated before any repair or file mutation. */
 /** The options of `starci app db restamp` (dbOptions refuses every other). */
-export const RESTAMP_OPTIONS = Object.freeze(['cwd', 'map', 'apply', 'url-env']);
+export const RESTAMP_OPTIONS = Object.freeze(['cwd', 'map', 'execute', 'db-url-env']);
 
 export function dbRestampMain(argv: string[], { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), ...ports }: DbMainIo = {}): number {
   try {
     const opts = dbOptions(argv, RESTAMP_OPTIONS);
-    const urlEnv = opts['url-env'] ?? 'DATABASE_URL';
+    const urlEnv = opts['db-url-env'] ?? 'DATABASE_URL';
     const root = dbAppRoot(cwd, opts);
     const steps = restampPlan(root, opts.map, { urlEnv, ports });
     const repairs = steps.filter((step) => step.applied).flatMap((step) => [repairOp(step.old, 'reverted'), repairOp(step.next, 'applied', (step.target.split('/').at(-1) as string).slice(15).replace(/\.sql$/, ''))]);
-    stdout(`${opts.apply ? 'apply' : 'preview'} restamp ${steps.length} migrations\n`);
+    stdout(`${opts.execute ? 'apply' : 'preview'} restamp ${steps.length} migrations\n`);
     for (const step of steps) stdout(`${step.source} -> ${step.target}\n`);
     for (const op of repairs) stdout(`${repairLine(op)}\n`);
-    if (!opts.apply) return 0;
+    if (!opts.execute) return 0;
     // CLI failures never echo credentials and leave the local files intact for an explicit retry.
     for (const op of repairs) runDbPostgres(root, op, ports, urlEnv);
     for (const step of steps) {

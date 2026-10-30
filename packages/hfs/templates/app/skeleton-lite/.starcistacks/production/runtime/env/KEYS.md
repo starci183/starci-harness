@@ -1,6 +1,6 @@
 # Production environment key roster
 
-This inventory declares names, consumers and mounted file paths. Scaffolding generates the six declared encrypted members with placeholder values encrypted to this app's own age recipient. Replace their values through `starci app secret set production` after owner provisioning and before creating external secrets. The runtime template tracks no ciphertext; its specs generate members with ephemeral identities in disposable copies. Scaffolding supplies no deployment credential or successful deployment.
+This inventory declares names, consumers and mounted file paths. Scaffolding generates the six declared encrypted members with placeholder values encrypted to this app's own age recipient. Replace their values through `starci app secret set --env production` after owner provisioning and before creating external secrets. The runtime template tracks no ciphertext; its specs generate members with ephemeral identities in disposable copies. Scaffolding supplies no deployment credential or successful deployment.
 
 | Key | Consumer |
 | --- | --- |
@@ -22,7 +22,7 @@ This inventory declares names, consumers and mounted file paths. Scaffolding gen
 | `STORAGE_BUCKET` | API storage bucket |
 | `STORAGE_ACCESS_KEY_ID` | API storage credential; reads `STORAGE_ACCESS_KEY_ID_FILE` at `/run/secrets/storage-access-key-id` |
 | `STORAGE_SECRET_ACCESS_KEY` | API storage credential; reads `STORAGE_SECRET_ACCESS_KEY_FILE` at `/run/secrets/storage-secret-access-key` |
-| `DATABASE_URL` | `starci app db` verbs (migrate, dump, plan) and `contract:emit`, from the operator's environment |
+| `DATABASE_URL` | `starci app db` verbs (migrate, dump) and `contract:emit`, from the operator's environment |
 | `NEXT_PUBLIC_SITE_URL` | Front-end site URL |
 | `NEXT_PUBLIC_API_URL` | Front-end auth doors of the API |
 | `NEXT_PUBLIC_GRAPHQL_URL` | Front-end GraphQL transport |

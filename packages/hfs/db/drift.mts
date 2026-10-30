@@ -3,7 +3,7 @@
 // maps tables that already exist and can drift from them. The verb builds TypeORM's metadata from the app's entity list
 // (be/src/modules/platform/database/entities.ts, compiled in-process with the app's own typescript and loaded with the app's own typeorm) through a
 // DataSource that never connects, applies the migrations to a scratch database (a throwaway container of the image the app's managed
-// .starcistacks/images/db/Dockerfile builds, or the empty database named by --url-env), reads that schema from
+// .starcistacks/images/db/Dockerfile builds, or the empty database named by --db-url-env), reads that schema from
 // information_schema.columns and pg_catalog, and reports every entity column whose table or column is missing, whose type differs (both
 // normalised to PostgreSQL's format_type names) or whose nullability differs, under BE_ENTITY_SCHEMA_DRIFT. Database columns no entity maps
 // are fine. Exit 0 is green, 1 is drift (or a migration that does not apply to an empty database), 2 is a refusal: no verdict, which is
@@ -164,10 +164,10 @@ export function migrationFiles(root: string): string[] {
  * returns { connection, stop }. Docker missing or failing is no verdict; an app without that Dockerfile is refused (sync writes it).
  */
 function startScratch(ctx: VerbContext, root: string): Scratch {
-  if (!fs.existsSync(path.join(root, DB_DOCKERFILE))) throw refusal('DB_DRIFT_NO_IMAGE', `${DB_DOCKERFILE} is missing: run "npx starci app sync --write" (the scratch database runs the app's own db image) or pass --url-env`);
+  if (!fs.existsSync(path.join(root, DB_DOCKERFILE))) throw refusal('DB_DRIFT_NO_IMAGE', `${DB_DOCKERFILE} is missing: run "npx starci app sync --execute" (the scratch database runs the app's own db image) or pass --db-url-env`);
   const docker = (args: string[], env?: Record<string, string>): SpawnResult => tool(ctx, 'docker', args, { env: { ...ctx.env, ...env } });
   const probe = docker(['version', '--format', '{{.Server.Version}}']);
-  if (probe.error || probe.status !== 0) throw needsDatabase('Docker is not available on this host; start it, or pass --url-env naming an empty database');
+  if (probe.error || probe.status !== 0) throw needsDatabase('Docker is not available on this host; start it, or pass --db-url-env naming an empty database');
   const build = docker(['build', '--quiet', '--file', path.join(root, DB_DOCKERFILE), path.join(root, DB_IMAGE_CONTEXT)]);
   const image = /sha256:[a-f0-9]{64}/u.exec(String(build.stdout ?? ''))?.[0];
   if (build.status !== 0 || !image) throw needsDatabase(`docker could not build ${DB_DOCKERFILE}: ${firstLine(build.stderr)}`);
@@ -213,7 +213,7 @@ export async function migratedSchema(ctx: VerbContext, appRoot: string, { urlEnv
   let scratch: Scratch;
   let secrets: string[] = [];
   if (urlEnv !== undefined) {
-    if (!KEY.test(urlEnv)) throw refusal('DB_USAGE', '--url-env must name an UPPER_CASE environment variable');
+    if (!KEY.test(urlEnv)) throw refusal('DB_USAGE', '--db-url-env must name an UPPER_CASE environment variable');
     const value = ctx.env[urlEnv];
     if (typeof value !== 'string' || !/^postgres(?:ql)?:\/\//u.test(value)) throw needsDatabase(`${urlEnv} holds no postgres connection URL`);
     secrets = [value];
@@ -299,15 +299,15 @@ export async function driftCheck(ctx: VerbContext, options: {
   return { ok: findings.length === 0, lines, data: { entities, columns: entityColumns.length, files: schema.files ?? [], findings } };
 }
 
-/** Entry of the verb: `starci app db drift [--url-env NAME] [--json] [--cwd <dir>]`. */
+/** Entry of the verb: `starci app db drift [--db-url-env NAME] [--json] [--cwd <dir>]`. */
 /** The flags of `starci app db drift`; the parser refuses every other. */
-export const SPEC: FlagSpec = { boolean: ['--json'], value: ['--url-env'] };
+export const SPEC: FlagSpec = { boolean: ['--json'], value: ['--db-url-env'] };
 
 export function dbDriftMain(argv: string[], io: VerbIo = {}): Promise<number> {
   return runVerb({ label: 'starci app db drift', name: 'db drift', code: 'DB_USAGE', io, argv,
     spec: SPEC,
     run: (ctx, flags, positional) => {
       if (positional.length) throw refusal('DB_USAGE', 'drift takes flags only');
-      return driftCheck(ctx, { urlEnv: flags['url-env'] as string | undefined });
+      return driftCheck(ctx, { urlEnv: flags['db-url-env'] as string | undefined });
     } });
 }

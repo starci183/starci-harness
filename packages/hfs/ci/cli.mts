@@ -10,8 +10,8 @@ import { badgeVisibilityNotices, verifyCi } from './verify.mjs';
 
 /** The commands of `starci app ci` (besides `local`) with the options each takes; the parser refuses every other. */
 export const COMMANDS: Record<string, string[]> = {
-  'secret set': ['env', 'dependabot', 'repo'],
-  'var set': ['env', 'value', 'repo'],
+  'secret set': ['env', 'dependabot', 'repo', 'execute'],
+  'var set': ['env', 'value', 'repo', 'execute'],
   'var sync': ['execute', 'repo'],
   verify: ['json', 'repo'],
 };

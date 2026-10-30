@@ -1,9 +1,10 @@
 // secret.mjs - app secret init|set|get|unset|rename|remove|materialize|list|verify: sealed custody and private KEY files.
+// Every action but init names its environment with --env <env> (audit: optional); a positional environment is an operand error.
 // SOPS plaintext travels on stdin and stays in memory; normal CLI output contains names and local file paths only.
 // set seals one or more keys in one sops write: typed at a masked prompt on a terminal, KEY=value lines on redirected stdin
 // (the whole stdin for one key), or --generate (scripts/hfs/secret-prompt.mjs).
 // Every verb runs at the app root or --cwd. Exit 0 done, 2 refusal; --reveal is the only plaintext stdout path.
-// unset, rename and remove edit one sealed member and are dry runs until --execute (scripts/hfs/secret-edit.mjs).
+// unset, rename and remove edit one sealed member and are dry runs until --execute (scripts/hfs/secret-edit.mjs); so is recipients --add/--remove.
 // verify decrypts each member in memory and names only keys and violated shapes, never a value (R249).
 // server-key makes the deploy server's own age identity on the server and seals the environment to it (stack/server-key.mjs).
 import fs from "node:fs";
@@ -40,7 +41,7 @@ const MOVE_VERBS = new Set(["migrate", "split"]);
 /** The flags the parser reads: repeatable lists, single values and booleans (optionsFor refuses each outside the actions that take it). */
 export const SECRET_FLAGS = Object.freeze({
   list: ["--add", "--remove", "--from-file", "--group"],
-  value: ["--cwd", "--generate", "--to", "--group-file", "--backup", "--restore"],
+  value: ["--cwd", "--env", "--generate", "--to", "--group-file", "--backup", "--restore"],
   boolean: ["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing", "--rotate"],
 });
 const LIST_FLAGS = SECRET_FLAGS.list;
@@ -54,6 +55,7 @@ interface SecretOptions {
   "from-file"?: string[];
   group?: string[];
   cwd?: string;
+  env?: string;
   generate?: string;
   to?: string;
   "group-file"?: string;
@@ -124,22 +126,24 @@ function parse(argv: string[]): SecretOptions {
 /** The operands and flags of one secret action, as the usage of `starci app secret` prints them. */
 export function secretUsage(verb: string): string {
   if (verb === "init") return "";
-  if (verb === "set") return "<env> <slug> <KEY> [KEY ...] [--generate <bytes>] [--from-file KEY=path ...]";
-  if (verb === "get") return "<env> <slug> [KEY] --to-file [--reveal]";
-  if (verb === "unset") return "<env> <slug> <KEY> [--execute]";
-  if (verb === "rename") return "<env> <slug> <OLD> <NEW> [--execute]";
-  if (verb === "remove") return "<env> <slug> [--execute] [--force-nonempty]";
-  if (verb === "recipients") return "<env> [--add <age1...|owner>] [--remove <age1...|owner>]";
-  if (verb === "migrate") return "<env> <slug> [--to <slug>] [--into-existing] [--execute]";
-  if (verb === "split") return "<env> <slug> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]";
-  if (verb === "audit") return "[<env>]";
-  if (verb === "server-key") return "<env> [--rotate | --backup github | --restore github] [--execute]";
-  return "<env>";
+  if (verb === "set") return "--env <env> <slug> <KEY> [KEY ...] [--generate <bytes>] [--from-file KEY=path ...]";
+  if (verb === "get") return "--env <env> <slug> [KEY] --to-file [--reveal]";
+  if (verb === "unset") return "--env <env> <slug> <KEY> [--execute]";
+  if (verb === "rename") return "--env <env> <slug> <OLD> <NEW> [--execute]";
+  if (verb === "remove") return "--env <env> <slug> [--execute] [--force-nonempty]";
+  if (verb === "recipients") return "--env <env> [--add <age1...|owner>] [--remove <age1...|owner>] [--execute]";
+  if (verb === "migrate") return "--env <env> <slug> [--to <slug>] [--into-existing] [--execute]";
+  if (verb === "split") return "--env <env> <slug> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]";
+  if (verb === "audit") return "[--env <env>]";
+  if (verb === "server-key") return "--env <env> [--rotate | --backup github | --restore github] [--execute]";
+  return "--env <env>";
 }
 
 function editOptionsFor(verb: string, opts: SecretOptions): void {
-  if (opts.execute !== undefined && !EDIT_VERBS.has(verb) && !MOVE_VERBS.has(verb) && verb !== "server-key")
-    throw new SecretError("--execute is only valid for unset, rename, remove, migrate, split and server-key");
+  if (opts.execute !== undefined && !EDIT_VERBS.has(verb) && !MOVE_VERBS.has(verb) && verb !== "server-key" && verb !== "recipients")
+    throw new SecretError("--execute is only valid for unset, rename, remove, recipients, migrate, split and server-key");
+  if (opts.execute !== undefined && verb === "recipients" && !opts.add && !opts.remove)
+    throw new SecretError("--execute is only valid for recipients with --add or --remove");
   if ((opts.rotate !== undefined || opts.backup !== undefined || opts.restore !== undefined) && verb !== "server-key")
     throw new SecretError("--rotate, --backup and --restore are only valid for server-key");
   if (opts.to !== undefined && verb !== "migrate") throw new SecretError("--to is only valid for migrate");
@@ -161,7 +165,18 @@ function outputOptionsFor(verb: string, opts: SecretOptions): void {
     throw new SecretError("get requires --to-file or explicit --reveal");
 }
 
+/** The environment leads the operands (`--env <env> <slug> ...` is checked and read as `<env> <slug> ...`); init takes none, audit may name one. */
+function environmentOf(verb: string, opts: SecretOptions): void {
+  if (verb === "init" && opts.env !== undefined) throw new SecretError("--env is not valid for init");
+  if (verb !== "init" && verb !== "audit" && opts.env === undefined)
+    throw new SecretError(`usage: starci app secret ${verb} ${secretUsage(verb)}`);
+  if (verb === "audit" && opts.positional.length)
+    throw new SecretError(`usage: starci app secret audit ${secretUsage("audit")}`);
+  if (opts.env !== undefined) opts.positional.unshift(opts.env);
+}
+
 function optionsFor(verb: string, opts: SecretOptions): void {
+  environmentOf(verb, opts);
   const count = opts.positional.length;
   const bounds = ({
     init: [0, 0],
@@ -301,7 +316,7 @@ export async function secretMain(
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init | set <env> <slug> <KEY> [KEY ...] | get <env> <slug> [KEY] --to-file | unset <env> <slug> <KEY> | rename <env> <slug> <OLD> <NEW> | remove <env> <slug> | materialize <env> | list <env> | verify <env> | recipients <env> | migrate <env> <slug> [--to <slug>] [--into-existing] | split <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [<env>] | server-key <env> [--rotate | --backup github | --restore github] [--execute]",
+        "usage: starci app secret init | set --env <env> <slug> <KEY> [KEY ...] | get --env <env> <slug> [KEY] --to-file | unset --env <env> <slug> <KEY> | rename --env <env> <slug> <OLD> <NEW> | remove --env <env> <slug> | materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove ...] [--execute] | migrate --env <env> <slug> [--to <slug>] [--into-existing] | split --env <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [--env <env>] | server-key --env <env> [--rotate | --backup github | --restore github] [--execute]",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);
@@ -314,7 +329,7 @@ export async function secretMain(
     if (verb === "recipients")
       return publicStorage(() =>
         environmentRecipients(repoRoot, opts.positional[0] as string, {
-          add: opts.add ?? [], remove: opts.remove ?? [], stdout,
+          add: opts.add ?? [], remove: opts.remove ?? [], execute: opts.execute === true, stdout,
           owner: () => ownerRecipient(repoRoot, env, { platform, tools, host: hostIdentity }),
         }),
       );

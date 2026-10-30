@@ -6,7 +6,7 @@
 //   2. a time gate: --green-at <ISO> at least minAgeHours (48) ago, or else --owner-confirms-old-app-gone (never both);
 //   3. STARCI_DB_ARMED=1.
 // Idempotent: when every held-back version is already on the remote it prints `nothing to do`. The pg_proc query goes through `options.query(sql)`
-// (specs inject one) or, by default, psql against the database --url-env names (default DATABASE_URL).
+// (specs inject one) or, by default, psql against the database --db-url-env names (default DATABASE_URL).
 import fs from 'node:fs';
 import path from 'node:path';
 import { failure, refusal } from '../stack/errors.mjs';
@@ -105,7 +105,7 @@ function timeGate(ctx: VerbContext, post: PostCutover, options: PostCutoverOptio
 function applyHeld(session: MigrationSession, remote: ReadonlySet<string>): string[] {
   const { model } = session;
   const lacking = [...model.pushVersions].filter((version) => !remote.has(version));
-  if (lacking.length > 0) throw refusal('DB_BASELINE_NOT_APPLIED', `the history lacks ${lacking.join(', ')}: run starci app db migrate first`);
+  if (lacking.length > 0) throw refusal('DB_BASELINE_NOT_APPLIED', `the history lacks ${lacking.join(', ')}: run starci app db migrate --execute first`);
   return applyVersions(session, model.heldVersions.filter((version) => !remote.has(version)));
 }
 
@@ -133,9 +133,9 @@ async function postCutoverDatabase(ctx: VerbContext, decl: DatabaseDecl, options
 }
 
 /** The flags of `starci app db post-cutover`; the parser refuses every other. */
-export const SPEC: FlagSpec = { boolean: ['--execute', '--json', '--owner-confirms-old-app-gone'], value: ['--url-env', '--green-at'] };
+export const SPEC: FlagSpec = { boolean: ['--execute', '--json', '--owner-confirms-old-app-gone'], value: ['--db-url-env', '--green-at'] };
 
-/** Entry of the verb: `starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--url-env NAME] [--json]`. */
+/** Entry of the verb: `starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--db-url-env NAME] [--json]`. */
 export function dbPostCutoverMain(argv: string[], io: VerbIo = {}): Promise<number> {
   return runVerb({
     label: 'starci app db post-cutover', name: 'db post-cutover', code: 'DB_USAGE', io, argv, spec: SPEC,
@@ -143,7 +143,7 @@ export function dbPostCutoverMain(argv: string[], io: VerbIo = {}): Promise<numb
       // The two openings of the time gate are alternatives: the owner's word skips the age check, so a --green-at beside it would be ignored.
       if (flags['green-at'] !== undefined && flags['owner-confirms-old-app-gone'] === true) throw refusal('DB_USAGE', '--green-at and --owner-confirms-old-app-gone are alternative openings of the time gate: give one');
       return postCutoverDatabase(ctx, loadDatabase(ctx.cwd), {
-        execute: flags.execute === true, urlEnv: flags['url-env'] as string | undefined, greenAt: flags['green-at'] as string | undefined, ownerConfirms: flags['owner-confirms-old-app-gone'] === true,
+        execute: flags.execute === true, urlEnv: flags['db-url-env'] as string | undefined, greenAt: flags['green-at'] as string | undefined, ownerConfirms: flags['owner-confirms-old-app-gone'] === true,
       });
     },
   });

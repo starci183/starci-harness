@@ -9,5 +9,5 @@ export const DB_IMAGE_APP = 'db';
 export const DB_IMAGE_CONTEXT = '.starcistacks/images/db';
 /** The managed Dockerfile of the db image, app-relative. */
 export const DB_DOCKERFILE = `${DB_IMAGE_CONTEXT}/Dockerfile`;
-/** Where the db image's Dockerfile lived before it moved into the stacks; `starci app sync --write` removes it. */
+/** Where the db image's Dockerfile lived before it moved into the stacks; `starci app sync --execute` removes it. */
 export const RETIRED_DB_DOCKERFILE = 'db/Dockerfile';

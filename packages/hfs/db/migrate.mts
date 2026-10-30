@@ -1,5 +1,5 @@
 // migrate.mjs - `starci app db migrate`: puts a self-hosted database's migration history in the state the app's repository declares,
-// idempotently. The database is the connection URL in the environment variable `--url-env` names (default DATABASE_URL); psql
+// idempotently. The database is the connection URL in the environment variable `--db-url-env` names (default DATABASE_URL); psql
 // applies each migration and records it in the history table in ONE transaction (db/postgres.mjs).
 // The optional `database:` block of .starcistacks/application-stacks.yaml names the baseline migration, the optional second baseline (standard),
 // the held-back migrations (applied later by `db post-cutover`), the restamp pairs and the archive directory. The plan, from the history:
@@ -15,9 +15,12 @@ import { byCodeUnit } from '../runtime/engine/by-code-unit.mjs';
 import { BOOTSTRAP_FILE, MIGRATIONS_DIR } from '../runtime/scripts/hfs/rules/database-constants.mjs';
 
 export { BOOTSTRAP_FILE };
-import { approvalMissing, failure, refusal } from '../stack/errors.mjs';
+import { StackError, approvalMissing, failure, refusal } from '../stack/errors.mjs';
 import { readDeclaration, runVerb } from '../release/index.mjs';
-import { DEFAULT_DB_URL_ENV, HISTORY_DDL, dbTarget, historyVersions, markApplied, markReverted, psqlTransaction } from './postgres.mjs';
+import { DbVerbError } from '../runtime/scripts/hfs/db-errors.mjs';
+import { planInventory, summaryDrifts, summaryLine } from '../runtime/scripts/hfs/db-plan-verb.mjs';
+import type { Kind, PlanInventory, Summary } from '../runtime/scripts/hfs/db-plan-verb.mjs';
+import { DEFAULT_DB_URL_ENV, HISTORY_DDL, dbTarget, historyVersions, markApplied, markReverted, psqlTransaction, queryRows } from './postgres.mjs';
 import type { DbTarget } from './postgres.mjs';
 import type { FlagSpec, VerbContext, VerbIo, VerbResult } from '../release/index.mjs';
 
@@ -162,7 +165,7 @@ export function buildModel(root: string, decl: DatabaseDecl): MigrationModel {
 
 /* ---- the target */
 
-/** The database of `--url-env` (default DATABASE_URL). */
+/** The database of `--db-url-env` (default DATABASE_URL). */
 export const resolveTarget = (ctx: VerbContext, options: { target?: DbTarget; urlEnv?: string | undefined } = {}): DbTarget => options.target ?? dbTarget(ctx, options.urlEnv ?? DEFAULT_DB_URL_ENV);
 
 /** True for a database on this machine's loopback (the local db service): applying to it needs no arming. */
@@ -248,7 +251,8 @@ function applyPlan(session: MigrationSession, plan: MigrationPlan): string[] {
 }
 
 /**
- * `starci app db migrate`. options: { execute, urlEnv }. Dry run reads the history once and prints the plan; --execute applies it,
+ * `starci app db migrate`. options: { execute, urlEnv, target }. Dry run reads the history once and prints the plan (the entry adds the
+ * read-only inventory of cron jobs and queues, see withInventory; this function stays ok while work is pending, for the urgent floor); --execute applies it,
  * armed with STARCI_DB_ARMED=1 unless the database is on the loopback (the local db service of `npm run db:push`). Already baseline + forward: `nothing to do`, no mutating call, ok.
  */
 export async function migrateDatabase(ctx: VerbContext, decl: DatabaseDecl, options: { execute?: boolean; urlEnv?: string | undefined; target?: DbTarget } = {}): Promise<VerbResult> {
@@ -271,16 +275,45 @@ export async function migrateDatabase(ctx: VerbContext, decl: DatabaseDecl, opti
   return { ok: true, lines: [...lines, `applied: ${pushed.length} forward migration(s); the history now holds ${final.size} version(s). Held back: ${model.held.join(', ') || 'nothing'}.`], data: dataOf(model, plan, remote, { executed: true, pushed, remoteCountAfter: final.size }) };
 }
 
-/** The flags of `starci app db migrate`; the parser refuses every other. */
-export const SPEC: FlagSpec = { boolean: ['--execute', '--json'], value: ['--url-env'] };
+/**
+ * The dry run of the verb, after its own plan: the read-only inventory of the active migrations
+ * against the database (migrations, pg_cron jobs, pgmq queues), counts only. The verdict keeps plan's exit codes: ok (exit 0) when the
+ * repository and the database agree, not ok (exit 1) when a migration is still to apply or a cron job or queue differs, a refusal
+ * (exit 2) when the migrations or the inventory cannot be read. A result that is already red stays as it is. The held-back migrations
+ * are not drift for the history (migrate's `done` judges it), so only the cron and queue counts add to a finished history.
+ */
+function withInventory(ctx: VerbContext, target: DbTarget, result: VerbResult): VerbResult {
+  if (!result.ok) return result;
+  let inventory: PlanInventory;
+  try { inventory = planInventory(ctx.cwd, (sql) => queryRows(ctx, target, sql, { withhold: true })); }
+  catch (error) {
+    // Plan's exit 2 covers every refusal and failure of the read: unreadable migrations, a psql failure, an inventory that cannot be read.
+    if (error instanceof DbVerbError) throw refusal('DB_PLAN_REFUSED', error.message);
+    if (error instanceof StackError) throw refusal(error.code, error.message.slice(error.code.length + 2));
+    throw error;
+  }
+  const pending = result.data?.done !== true;
+  const drift = pending || summaryDrifts(inventory.summaries.cron) || summaryDrifts(inventory.summaries.queues);
+  const lines = [`read-only database plan: ${drift ? 'drift detected' : 'repo and database agree'}`, ...(Object.entries(inventory.summaries) as Array<[Kind, Summary]>).map(([kind, item]) => summaryLine(kind, item))];
+  return { ok: !drift, lines: [...(result.lines ?? []), ...lines], data: { ...result.data, readOnly: true, drift, ...inventory.summaries } };
+}
 
-/** Entry of the verb: `starci app db migrate [--execute] [--url-env <NAME>] [--json]`. Execute requires database arming. */
+/** The flags of `starci app db migrate`; the parser refuses every other. */
+export const SPEC: FlagSpec = { boolean: ['--execute', '--json'], value: ['--db-url-env'] };
+
+/**
+ * Entry of the verb: `starci app db migrate [--execute] [--db-url-env <NAME>] [--json]`. Execute requires database arming. Without
+ * --execute it is the read-only plan: exit 0 when the repository and the database agree, 1 on drift, 2 when refused.
+ */
 export function dbMigrateMain(argv: string[], io: VerbIo = {}): Promise<number> {
   return runVerb({
     label: 'starci app db migrate', name: 'db migrate', code: 'DB_USAGE', io, argv, spec: SPEC,
-    run: (ctx, flags, positional) => {
+    run: async (ctx, flags, positional) => {
       if (positional.length) throw refusal('DB_USAGE', 'migrate takes flags only');
-      return migrateDatabase(ctx, loadDatabase(ctx.cwd), { execute: flags.execute === true, urlEnv: flags['url-env'] as string | undefined });
+      const execute = flags.execute === true;
+      const target = resolveTarget(ctx, { urlEnv: flags['db-url-env'] as string | undefined });
+      const result = await migrateDatabase(ctx, loadDatabase(ctx.cwd), { execute, target });
+      return execute ? result : withInventory(ctx, target, result);
     },
   });
 }

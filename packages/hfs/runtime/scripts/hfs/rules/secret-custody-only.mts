@@ -48,7 +48,7 @@ export function secretCustodyOnlyFindings({ repoRoot, files, repo, inScope }: { 
     if (SEALED_DIR.test(posix)) continue;
     if (SECRET_ENV.test(posix)) {
       findings.push(found(PLAINTEXT_FILE, file,
-        `${file} is a tracked plaintext secrets dotenv; seal secrets with starci app secret set into .starcistacks/<env>/secrets/<slug>.enc - never commit the plaintext`));
+        `${file} is a tracked plaintext secrets dotenv; seal secrets with starci app secret set --env <env> into .starcistacks/<env>/secrets/<slug>.enc - never commit the plaintext`));
       continue;
     }
     if (SECRETS_DIR.test(posix)) {

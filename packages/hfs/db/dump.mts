@@ -1,4 +1,4 @@
-// dump.mjs - `starci app db dump`: a full backup of the database --url-env names (pg_dumpall roles, pg_dump schema and data),
+// dump.mjs - `starci app db dump`: a full backup of the database --db-url-env names (pg_dumpall roles, pg_dump schema and data),
 // encrypted outside Git; every plaintext part is removed even when a tool fails.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -72,13 +72,13 @@ export function dumpDatabase(ctx: VerbContext, options: { urlEnv?: string | unde
 }
 
 /** The flags of `starci app db dump`; the parser refuses every other. */
-export const SPEC: FlagSpec = { boolean: ['--schema-only', '--json'], value: ['--url-env', '--out'] };
+export const SPEC: FlagSpec = { boolean: ['--schema-only', '--json'], value: ['--db-url-env', '--out'] };
 
 export function dbDumpMain(argv: string[], io: VerbIo = {}): Promise<number> {
   return runVerb({ label: 'starci app db dump', name: 'db dump', code: 'DB_USAGE', io, argv,
     spec: SPEC,
     run: (ctx, flags, positional) => {
       if (positional.length) throw refusal('DB_USAGE', 'dump takes flags only');
-      return dumpDatabase(ctx, { urlEnv: flags['url-env'] as string | undefined, out: flags.out as string | undefined, schemaOnly: flags['schema-only'] as boolean | undefined });
+      return dumpDatabase(ctx, { urlEnv: flags['db-url-env'] as string | undefined, out: flags.out as string | undefined, schemaOnly: flags['schema-only'] as boolean | undefined });
     } });
 }

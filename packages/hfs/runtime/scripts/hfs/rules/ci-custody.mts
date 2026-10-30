@@ -16,7 +16,7 @@ function sealedFindings(ci: Parsed, sealed: Parsed) {
   const names = new Set([...ci.secrets, ...ci.dependabotSecrets].filter(named).map((entry) => entry.name));
   return sealed.filter(({ key }: { key: string }) => names.has(key)).map(({ key, file }: { key: string; file: string }) => found(
     'CI_SECRET_SEALED', file,
-    `${key} is a CI secret (GitHub reads it) but it is sealed in ${file} for app containers; one key, one class: remove it from the member (starci app secret unset ...) and set it with starci app ci secret set ${key}`,
+    `${key} is a CI secret (GitHub reads it) but it is sealed in ${file} for app containers; one key, one class: remove it from the member (starci app secret unset --env <env> ...) and set it with starci app ci secret set ${key} --execute`,
   ));
 }
 

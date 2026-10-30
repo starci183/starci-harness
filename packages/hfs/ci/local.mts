@@ -1,4 +1,4 @@
-// local.mjs - `starci app ci local [--jobs <id,...>] [--parallel <n>] [--dry-run] [--json]`: predict the CI result while GitHub runs it. It reads the app's
+// local.mjs - `starci app ci local [--jobs <id,...>] [--parallel <n>] [--execute] [--json]`: predict the CI result while GitHub runs it. Without --execute it prints the plan (each job instance, its steps run or skipped) and runs nothing. It reads the app's
 // managed .github/workflows/ci.yml (the CI standard's jobs: fast, lint per side, test per shard, coverage, build) and runs the `run:` steps of every job
 // instance on this machine, matrix values substituted, independent instances in parallel and a job after the jobs it `needs`:
 //   - steps GitHub alone can run are skipped and listed: `uses:` actions (checkout, caches, artifacts, Codecov, Sonar), the install (`npm ci`: the local
@@ -19,15 +19,15 @@ const GITHUB_ONLY_IF = /SONAR_TOKEN\s*!=\s*''|refs\/tags|startsWith\(github\.ref
 const LOCAL_IF = /^(?:\$\{\{\s*)?(?:always\(\)|!cancelled\(\)|env\.SONAR_TOKEN\s*==\s*'')(?:\s*\}\})?$/;
 
 /** The flags of `starci app ci local`; any other argument is refused. */
-export const LOCAL_FLAGS = Object.freeze({ boolean: ['--dry-run', '--json'], value: ['--jobs', '--parallel', '--logs'] });
+export const LOCAL_FLAGS = Object.freeze({ boolean: ['--execute', '--json'], value: ['--jobs', '--parallel', '--logs'] });
 
-interface LocalOptions { logs: string | null; jobs: string[] | null; parallel: number; dryRun: boolean; json: boolean }
+interface LocalOptions { logs: string | null; jobs: string[] | null; parallel: number; execute: boolean; json: boolean }
 
 function parseArgs(argv: readonly string[]): LocalOptions {
-  const opts: LocalOptions = { logs: null, jobs: null, parallel: Math.max(1, Math.min(4, Math.floor(os.cpus().length / 2))), dryRun: false, json: false };
+  const opts: LocalOptions = { logs: null, jobs: null, parallel: Math.max(1, Math.min(4, Math.floor(os.cpus().length / 2))), execute: false, json: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] as string;
-    if (arg === '--dry-run') opts.dryRun = true;
+    if (arg === '--execute') opts.execute = true;
     else if (arg === '--json') opts.json = true;
     else if ((LOCAL_FLAGS.value as readonly string[]).includes(arg)) {
       const value = argv[index + 1];
@@ -139,12 +139,12 @@ async function runPlan(plan: Instance[], { parallel, root, env, logs, report }: 
 /** `starci app ci local`. */
 export async function ciLocalMain(argv: string[], { cwd = process.cwd(), stdout = (s: string): unknown => process.stdout.write(s), stderr = (s: string): unknown => process.stderr.write(s), env = process.env }: { cwd?: string; stdout?: (text: string) => unknown; stderr?: (text: string) => unknown; env?: NodeJS.ProcessEnv } = {}): Promise<number> {
   let opts: LocalOptions;
-  try { opts = parseArgs(argv); } catch (error) { stderr(`starci app ci local: ${(error as Error).message}; usage: starci app ci local [--jobs <id,...>] [--parallel <n>] [--logs <dir>] [--dry-run] [--json]\n`); return 2; }
+  try { opts = parseArgs(argv); } catch (error) { stderr(`starci app ci local: ${(error as Error).message}; usage: starci app ci local [--jobs <id,...>] [--parallel <n>] [--logs <dir>] [--execute] [--json]\n`); return 2; }
   const file = path.join(cwd, '.github', 'workflows', 'ci.yml');
-  if (!fs.existsSync(file)) { stderr('starci app ci local: no .github/workflows/ci.yml (run starci app sync --write)\n'); return 2; }
+  if (!fs.existsSync(file)) { stderr('starci app ci local: no .github/workflows/ci.yml (run starci app sync --execute)\n'); return 2; }
   const plan = localPlan(parseYaml(fs.readFileSync(file, 'utf8')), opts.jobs);
   if (!plan.length) { stderr('starci app ci local: no job of the workflow is selected\n'); return 2; }
-  if (opts.dryRun) {
+  if (!opts.execute) {
     if (opts.json) stdout(`${JSON.stringify(plan)}\n`);
     else for (const instance of plan) stdout(`${instance.label}${instance.needs.length ? ` (after ${instance.needs.join(', ')})` : ''}\n${instance.steps.map((step) => `  ${step.run !== undefined ? 'run ' : 'skip'} ${step.name}${step.skip ? ` - ${step.skip}` : ''}`).join('\n')}\n`);
     return 0;

@@ -145,12 +145,12 @@ export function auditSecrets(repoRoot: string, environment: string | null = null
       const envelope = envelopeOf(fs.readFileSync(file, "utf8"));
       const add = (code: string, detail: string): number => findings.push({ code, env, member: name, detail });
       const providers = [...new Set(envelope.keys.map(providerOf))];
-      if (isLegacyName(name)) add("LEGACY_MEMBER", `is a dotenv .enc member; move it: starci app secret migrate ${env} ${member} [--to <provider>] --execute`);
+      if (isLegacyName(name)) add("LEGACY_MEMBER", `is a dotenv .enc member; move it: starci app secret migrate --env ${env} ${member} [--to <provider>] --execute`);
       if (providers.length > 1 && !declaredGroup(spec, member, envelope.keys))
-        add("MIXED_PROVIDERS", `holds keys of ${providers.length} providers by their first word (${providers.join(", ")}) that the stack does not group in it; split it (starci app secret split ${env} ${member} [--group KEY=member] --execute) or declare its keys in environments.${env}.secrets (an entry naming ${member} with keys: [...])`);
+        add("MIXED_PROVIDERS", `holds keys of ${providers.length} providers by their first word (${providers.join(", ")}) that the stack does not group in it; split it (starci app secret split --env ${env} ${member} [--group KEY=member] --execute) or declare its keys in environments.${env}.secrets (an entry naming ${member} with keys: [...])`);
       const wanted = recipientsFor(repoRoot, path.join(directory, `${member}${MEMBER_SUFFIX}`));
       if (!isLegacyName(name) && wanted.length && !sameSet(wanted, envelope.recipients))
-        add("RECIPIENT_DRIFT", `is sealed to ${keyList(envelope.recipients)}, its environment's rule names ${keyList(wanted)}; seal it again: starci app secret migrate ${env} ${member} --execute`);
+        add("RECIPIENT_DRIFT", `is sealed to ${keyList(envelope.recipients)}, its environment's rule names ${keyList(wanted)}; seal it again: starci app secret migrate --env ${env} ${member} --execute`);
       if (spec) {
         const declared = declaredKeys(spec, member, envelope.keys);
         const missing = envelope.keys.filter((key) => !declared.includes(key));
@@ -291,11 +291,11 @@ function serverRecipientDrift(repoRoot: string, env: string, spec: EnvironmentSp
   const server = remote.serverRecipient;
   if (server === undefined)
     return env === "production" && spec.runtime === "docker-swarm"
-      ? `records no deploy server recipient; production is sealed to the server key and the owner key: starci app secret server-key ${env} --execute`
+      ? `records no deploy server recipient; production is sealed to the server key and the owner key: starci app secret server-key --env ${env} --execute`
       : null;
   const rule = recipientsFor(repoRoot, path.join(repoRoot, ".starcistacks", env, "secrets", `member${MEMBER_SUFFIX}`));
-  if (!rule.includes(server)) return `its rule names ${keyList(rule) || "no recipient"}, not the deploy server recipient ${server}; run starci app secret server-key ${env} --execute`;
-  if (rule.length < 2) return `its rule names only the deploy server recipient ${server}; add the owner key: starci app secret recipients ${env} --add owner, then starci app secret server-key ${env} --execute`;
+  if (!rule.includes(server)) return `its rule names ${keyList(rule) || "no recipient"}, not the deploy server recipient ${server}; run starci app secret server-key --env ${env} --execute`;
+  if (rule.length < 2) return `its rule names only the deploy server recipient ${server}; add the owner key: starci app secret recipients --env ${env} --add owner --execute, then starci app secret server-key --env ${env} --execute`;
   return null;
 }
 

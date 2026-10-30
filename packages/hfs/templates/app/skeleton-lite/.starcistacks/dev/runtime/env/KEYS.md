@@ -1,6 +1,6 @@
 # Environment key roster
 
-This roster declares names only. Scaffolding generates the six declared encrypted members with placeholder values encrypted to this app's own age recipient. Replace their values through `starci app secret set dev` before creating external secrets. The runtime template tracks no ciphertext; its specs generate members with ephemeral identities in disposable copies. Store product credential values in sealed custody and materialize private KEY files outside the repository.
+This roster declares names only. Scaffolding generates the six declared encrypted members with placeholder values encrypted to this app's own age recipient. Replace their values through `starci app secret set --env dev` before creating external secrets. The runtime template tracks no ciphertext; its specs generate members with ephemeral identities in disposable copies. Store product credential values in sealed custody and materialize private KEY files outside the repository.
 
 | Key | Consumer |
 | --- | --- |
@@ -22,7 +22,7 @@ This roster declares names only. Scaffolding generates the six declared encrypte
 | `STORAGE_BUCKET` | API storage bucket |
 | `STORAGE_ACCESS_KEY_ID` | API storage credential; `.starcistacks/dev/secrets/storage-access-key-id.enc` maps to external `{{project}}-dev-storage-access-key-id-v1` and mounted `/run/secrets/storage-access-key-id` |
 | `STORAGE_SECRET_ACCESS_KEY` | API storage credential; `.starcistacks/dev/secrets/storage-secret-access-key.enc` maps to external `{{project}}-dev-storage-secret-access-key-v1` and mounted `/run/secrets/storage-secret-access-key` |
-| `DATABASE_URL` | `starci app db` verbs (migrate, dump, plan) and `contract:emit`, from the operator's environment |
+| `DATABASE_URL` | `starci app db` verbs (migrate, dump) and `contract:emit`, from the operator's environment |
 | `NEXT_PUBLIC_SITE_URL` | Front-end site URL |
 | `NEXT_PUBLIC_API_URL` | Front-end auth doors of the API |
 | `NEXT_PUBLIC_GRAPHQL_URL` | Front-end GraphQL transport |

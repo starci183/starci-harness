@@ -292,7 +292,7 @@ test('starci app secret verify names key and violated shape and never prints a v
     fs.writeFileSync(target, text);
   }
   const sops = fakeSops({ 'app.enc': { OPENCLAW_MANAGE_AGENTS: 'private-bad-bool-1', API_PORT: 'private-bad-port-x', PRIMARY_DB_URL: 'private-db-location' } });
-  const result = await run(['verify', 'dev'], { cwd: root, env, sops });
+  const result = await run(['verify', '--env', 'dev'], { cwd: root, env, sops });
   assert.equal(result.code, 2);
   assert.match(result.out, /ENV_VALUE_SHAPE dev\/app\.enc: OPENCLAW_MANAGE_AGENTS is not true or false/);
   assert.match(result.out, /ENV_VALUE_SHAPE dev\/app\.enc: API_PORT is not an integer/);
@@ -307,7 +307,7 @@ test('starci app secret verify exits clean when every sealed value parses', asyn
     fs.writeFileSync(target, text);
   }
   const sops = fakeSops({ 'app.enc': { OPENCLAW_MANAGE_AGENTS: 'true', API_PORT: '3000', PRIMARY_DB_URL: 'private-db-location' } });
-  const result = await run(['verify', 'dev'], { cwd: root, env, sops });
+  const result = await run(['verify', '--env', 'dev'], { cwd: root, env, sops });
   assert.equal(result.code, 0);
   assert.match(result.out, /verified dev: 3 keys sealed/);
   privateAbsent(result, ['private-db-location']);
@@ -348,14 +348,14 @@ test('verify checks every reader shape across members without changing sealed st
     'api.enc': { API_PORT: values.API_PORT, FEATURE_ENABLED: values.FEATURE_ENABLED, REQUEST_TIMEOUT: values.REQUEST_TIMEOUT },
     'provider.enc': { PROVIDER_URL: values.PROVIDER_URL, RUN_MODE: values.RUN_MODE, PROVIDER_TOKEN: values.PROVIDER_TOKEN },
   };
-  const passing = await run(['verify', 'dev'], { cwd: root, env, sops: fakeSops(plain) });
+  const passing = await run(['verify', '--env', 'dev'], { cwd: root, env, sops: fakeSops(plain) });
   assert.equal(passing.code, 0);
   assert.match(passing.out, /verified dev: 6 keys sealed/);
   privateAbsent(passing, Object.values(values));
 
   const invalid = Object.fromEntries(Object.keys(values).map((key) => [key, `fixture-invalid-${key}`]));
   invalid.PROVIDER_TOKEN = '';
-  const failing = await run(['verify', 'dev'], {
+  const failing = await run(['verify', '--env', 'dev'], {
     cwd: root,
     env,
     sops: fakeSops({
@@ -378,7 +378,7 @@ test('verify sanitizes an unexpected decrypt failure without printing its messag
     decrypt: () => { throw new Error(privateMessage); },
     seal: () => assert.fail('verify must not seal'),
   };
-  const result = await run(['verify', 'dev'], { cwd: root, env, sops });
+  const result = await run(['verify', '--env', 'dev'], { cwd: root, env, sops });
   assert.equal(result.code, 2);
   assert.match(result.err, /operation failed/);
   privateAbsent(result, [privateMessage]);

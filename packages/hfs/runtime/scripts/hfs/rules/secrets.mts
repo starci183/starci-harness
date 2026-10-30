@@ -27,13 +27,13 @@ export function untrackedSecretFindings({ repoRoot, files, repo }: { repoRoot: s
   } catch {
     return [];
   }
-  return [found(PLAINTEXT_SECRET, 'secrets.env', 'secrets.env is an untracked plaintext secret at the lite app root; seal it with starci app secret set into .starcistacks/<env>/secrets/<slug>.enc and remove the plaintext file; read materialized values by *_FILE', { level: 'warning', pattern: 'untracked-secrets-env' })];
+  return [found(PLAINTEXT_SECRET, 'secrets.env', 'secrets.env is an untracked plaintext secret at the lite app root; seal it with starci app secret set --env <env> into .starcistacks/<env>/secrets/<slug>.enc and remove the plaintext file; read materialized values by *_FILE', { level: 'warning', pattern: 'untracked-secrets-env' })];
 }
 
 /**
  * The findings of R06 for one tracked file that no forbidden slot claims: a secret by being (an env file, a key file), an `.enc` that is
  * no sops envelope, or a line that matches a secret pattern. `text` is the file's text, or null when it cannot be read (binary, too
- * large, absent). The whole-tree check reads the work tree and the commit hook (`starci app hygiene`) reads the staged blob: one judgement.
+ * large, absent). The whole-tree check reads the work tree and the commit hook (`starci app check --staged`) reads the staged blob: one judgement.
  */
 export function secretFileFindings({ file, text, manifestText }: { file: string; text: string | null; manifestText?: string | null | undefined }) {
   const being = FORBIDDEN_FILES.find((rule: Parsed) => rule.test(file));

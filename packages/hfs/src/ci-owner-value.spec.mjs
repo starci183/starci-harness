@@ -22,7 +22,7 @@ test('sync skips owner values and executes the remaining public plan', () => {
   const context = harness(declarationOf(owner, literal), { execute: true });
   assert.equal(syncVariables(context), 0);
   assert.deepEqual(context.calls, [[['variable', 'set', 'PUBLIC_HOST', '--body', literal.value, '--repo', 'example/app']]]);
-  assert.match(context.output[0], /^skip variable VPS_USER \(environment:production\): owner-supplied value; the owner runs starci app ci var set VPS_USER \[--env ENV\] with the value on stdin\n$/);
+  assert.match(context.output[0], /^skip variable VPS_USER \(environment:production\): owner-supplied value; the owner runs starci app ci var set VPS_USER \[--env ENV\] --execute with the value on stdin\n$/);
   assert.equal(context.output[1], 'set variable PUBLIC_HOST (repository)\n');
 });
 
@@ -39,7 +39,7 @@ test('dry sync stays offline and owner-only execution does not look up GitHub', 
 });
 
 test('owner set reads async stdin once and passes the body without echoing it', async () => {
-  const context = harness(declarationOf(owner), { env: 'production' });
+  const context = harness(declarationOf(owner), { env: 'production', execute: true });
   let reads = 0;
   const body = 'synthetic-owner-input';
   assert.equal(await setVariable({ ...context, name: owner.name, stdin: async () => { reads += 1; return `${body}\r\n`; } }), 0);
@@ -50,12 +50,12 @@ test('owner set reads async stdin once and passes the body without echoing it', 
 });
 
 test('owner set refuses argv and empty input before GitHub access', async () => {
-  const context = harness(declarationOf(owner), { env: 'production', value: 'synthetic-argv' });
+  const context = harness(declarationOf(owner), { env: 'production', value: 'synthetic-argv', execute: true });
   let reads = 0;
   await assert.rejects(setVariable({ ...context, name: owner.name, stdin: () => { reads += 1; return 'unused'; } }), { code: 'CI_VALUE_ARGV', message: 'CI_VALUE_ARGV: an owner-supplied variable takes its value on stdin' });
   assert.equal(reads, 0);
   for (const stdin of ['', '\n', '\r\n', null]) {
-    await assert.rejects(setVariable({ ...context, options: { env: 'production' }, name: owner.name, stdin }), { code: 'CI_VALUE_EMPTY' });
+    await assert.rejects(setVariable({ ...context, options: { env: 'production', execute: true }, name: owner.name, stdin }), { code: 'CI_VALUE_EMPTY' });
   }
   assert.deepEqual(context.calls, []);
   assert.deepEqual(context.lookups, []);
@@ -63,12 +63,12 @@ test('owner set refuses argv and empty input before GitHub access', async () => 
 });
 
 test('owner input strips only one newline and literal vars retain argv agreement', async () => {
-  const context = harness(declarationOf(owner), { env: 'production' });
+  const context = harness(declarationOf(owner), { env: 'production', execute: true });
   await setVariable({ ...context, name: owner.name, stdin: 'synthetic\n\n' });
   assert.equal(context.calls[0][0][4], 'synthetic\n');
-  const publicContext = harness(declarationOf(literal), { value: literal.value });
+  const publicContext = harness(declarationOf(literal), { value: literal.value, execute: true });
   assert.equal(await setVariable({ ...publicContext, name: literal.name }), 0);
-  await assert.rejects(setVariable({ ...publicContext, name: literal.name, options: { value: 'different' } }), { code: 'CI_VAR_DRIFT' });
+  await assert.rejects(setVariable({ ...publicContext, name: literal.name, options: { value: 'different', execute: true } }), { code: 'CI_VAR_DRIFT' });
 });
 
 test('declarations normalize ownerValue and refuse both or neither source', () => {

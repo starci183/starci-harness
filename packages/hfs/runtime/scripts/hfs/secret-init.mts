@@ -420,10 +420,12 @@ export function ownerRecipient(
 }
 
 /**
- * `starci app secret recipients <env> [--add <age1...|owner>] [--remove <age1...|owner>]`: prints the public recipients a
- * member of the environment is sealed to, or rewrites the environment's own rule of the app's managed .sops.yaml (one rule per
- * environment, written before the app-wide rule, public keys only). `owner` is the owner identity's recipient (ownerRecipient).
- * A member sealed before keeps its recipients until it is sealed again.
+ * `starci app secret recipients --env <env> [--add <age1...|owner>] [--remove <age1...|owner>] [--execute]`: prints the public
+ * recipients a member of the environment is sealed to, or (with --add/--remove) says what the environment's own rule of the
+ * app's managed .sops.yaml would become and, only with --execute, rewrites it (one rule per environment, written before the
+ * app-wide rule, public keys only). `owner` is the owner identity's recipient (ownerRecipient). A member sealed before keeps
+ * its recipients until it is sealed again. `execute` defaults to true for the library callers (stack/server-key.mjs); the verb
+ * passes the flag, so a dry run is the default there.
  */
 export function environmentRecipients(
   repoRoot: string,
@@ -431,11 +433,13 @@ export function environmentRecipients(
   {
     add = [],
     remove = [],
+    execute = true,
     owner,
     stdout,
   }: {
     add?: string[] | undefined;
     remove?: string[] | undefined;
+    execute?: boolean | undefined;
     owner: () => string;
     stdout: (text: string) => void;
   },
@@ -474,13 +478,17 @@ export function environmentRecipients(
     const appWide = rules.findIndex((rule) => !rule?.path_regex || INITIALIZATION_PATH_RULES.includes(rule.path_regex));
     rules.splice(appWide < 0 ? rules.length : appWide, 0, { path_regex: regex, age: next.join(",") });
   }
+  if (!execute) {
+    stdout(`dry run: would set the ${environment} recipients of .sops.yaml to ${next.join(", ")} (now ${current.join(", ") || "none"}); add --execute\n`);
+    return 0;
+  }
   config.creation_rules = rules;
   fs.writeFileSync(
     configFile,
     `# Managed by starci app secret init and recipients: one rule per environment, public age recipients only.\n${stringifyYaml(config)}`,
   );
   stdout(
-    `${environment}: ${next.join(", ")}; a member sealed before keeps its recipients until it is sealed again (starci app secret migrate ${environment} <member> --execute)\n`,
+    `${environment}: ${next.join(", ")}; a member sealed before keeps its recipients until it is sealed again (starci app secret migrate --env ${environment} <member> --execute)\n`,
   );
   return 0;
 }

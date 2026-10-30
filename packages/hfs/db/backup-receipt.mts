@@ -42,7 +42,7 @@ export function outsideRepository(root: string, output: string): string {
   return resolved;
 }
 
-/** The database of `--url-env` (default DATABASE_URL) and the project name the archive carries. */
+/** The database of `--db-url-env` (default DATABASE_URL) and the project name the archive carries. */
 export function backupSession(ctx: VerbContext, options: { urlEnv?: string | undefined }): BackupSession {
   const target = dbTarget(ctx, options.urlEnv ?? DEFAULT_DB_URL_ENV);
   const project = path.basename(ctx.cwd).replace(/[^A-Za-z0-9_-]/gu, '-') || 'database';

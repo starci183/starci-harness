@@ -93,9 +93,9 @@ test('without Docker the verb reaches no verdict: exit 2, needs a database, neve
   assert.match(stderr, /DB_DRIFT_NEEDS_DATABASE: needs a database: Docker is not available/u);
 });
 
-test('--url-env names an UPPER_CASE variable holding a postgres URL, else no verdict', async () => {
+test('--db-url-env names an UPPER_CASE variable holding a postgres URL, else no verdict', async () => {
   let stderr = '';
-  const code = await main(['db', 'drift', '--url-env', 'DRIFT_SCRATCH_URL'], { cwd: APP, env: {}, stdout: () => {}, stderr: (text) => { stderr += text; } });
+  const code = await main(['db', 'drift', '--db-url-env', 'DRIFT_SCRATCH_URL'], { cwd: APP, env: {}, stdout: () => {}, stderr: (text) => { stderr += text; } });
   assert.equal(code, 2);
   assert.match(stderr, /needs a database: DRIFT_SCRATCH_URL holds no postgres connection URL/u);
 });

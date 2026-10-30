@@ -1,4 +1,4 @@
-// app db baseline --squash: the whole active chain becomes ONE baseline read from a database the chain is applied to (--url-env), for a
+// app db baseline --squash: the whole active chain becomes ONE baseline read from a database the chain is applied to (--db-url-env), for a
 // cutover whose production starts on an empty database. Nothing is rebuilt from migration SQL: the source's schema is dumped with its
 // privileges, the objects of the extensions the target image lacks (--drop-extension) and every function or view whose body reaches their
 // schemas are left out by name, the role facts a per-database dump loses go to a marked section of db/bootstrap.sql, and the reference rows
@@ -26,7 +26,7 @@ interface Client { head: string[]; ref: string }
 /** A database the squash reads or replays on: its URL, password and the container that reaches it. */
 export interface Target { url: string; password: string; label: string; client: Client }
 
-/** The source connection of `--url-env`: the URL without its password and the environment carrying it. */
+/** The source connection of `--db-url-env`: the URL without its password and the environment carrying it. */
 export interface SquashConnection { url: string; env: NodeJS.ProcessEnv }
 
 /** The runPostgres port of the db verbs. */
@@ -78,7 +78,7 @@ export interface SquashConfig {
 }
 /** The options of `starci app db baseline --squash`. */
 export interface SquashOpts {
-  image?: string | undefined; apply?: boolean | undefined;
+  image?: string | undefined; execute?: boolean | undefined;
   'seed-tables'?: string | undefined; 'drop-extension'?: string | undefined; 'drop-pgmq-queue'?: string | undefined;
 }
 /** The baseline plan the squash replaces. */
@@ -558,14 +558,14 @@ function printReport(stdout: (text: string) => unknown, projection: Projection, 
 }
 
 /**
- * `starci app db baseline --squash`: plan is db-baseline-verb.mjs's baselinePlan, connection the source of --url-env, precondition the
+ * `starci app db baseline --squash`: plan is db-baseline-verb.mjs's baselinePlan, connection the source of --db-url-env, precondition the
  * history check (the source holds exactly the active chain) run through the given runPostgres port, throwing its refusal, and archive
- * the move of the active chain. Dry run by default; `apply` writes the baseline, the bootstrap section and the seed, then archives.
+ * the move of the active chain. Dry run by default; `execute` writes the baseline, the bootstrap section and the seed, then archives.
  */
 export function squashBaseline({ root, opts, plan, urlEnv, connection, commandOf, precondition, managedSchema, archive, stdout }: SquashInput): number {
   if (!opts.image && !fs.existsSync(path.join(root, DB_DOCKERFILE))) throw new DbVerbError(`baseline --squash replays on the app's db image: ${DB_DOCKERFILE} is missing (run "npx starci app sync --write") and no --image names one`);
   const bootstrapPath = path.join(root, BOOTSTRAP_FILE);
-  if (!fs.existsSync(bootstrapPath)) throw new DbVerbError(`baseline --squash needs ${BOOTSTRAP_FILE}; run "npx starci app sync --write" first`);
+  if (!fs.existsSync(bootstrapPath)) throw new DbVerbError(`baseline --squash needs ${BOOTSTRAP_FILE}; run "npx starci app sync --execute" first`);
   const head = bootstrapSection(fs.readFileSync(bootstrapPath, 'utf8').replace(/\r\n/g, '\n')).head;
   const seedPath = path.join(root, SEED_FILE);
   const seedTables = flagList(opts['seed-tables'], []);
@@ -582,11 +582,11 @@ export function squashBaseline({ root, opts, plan, urlEnv, connection, commandOf
     const replayTarget = replay(scratch, [...files, ...(projected.seed ? [[`${SEED_FILE} (second run)`, projected.seed.text] as [string, string]] : [])]);
     const replayed = project(replayTarget, config);
     const diff = projectionDiff(projected, replayed);
-    stdout(`${opts.apply ? 'apply' : 'preview'} squash baseline ${plan.file}; archive ${plan.active.length} migrations; the source is read only\n`);
+    stdout(`${opts.execute ? 'apply' : 'preview'} squash baseline ${plan.file}; archive ${plan.active.length} migrations; the source is read only\n`);
     printReport(stdout, projected, config, files);
     if (diff.length) throw new DbVerbError(`the replay on ${image} differs from the source minus the dropped extensions:\n${diff.slice(0, DIFF_LIMIT).map((line) => `  ${line}`).join('\n')}${diff.length > DIFF_LIMIT ? `\n  ... ${diff.length - DIFF_LIMIT} more` : ''}`);
     stdout(`proof: bootstrap + baseline + seed (twice) replayed on ${image}; schema, grants, roles and seed rows equal the source minus ${config.dropped.join(', ')}\n`);
-    if (!opts.apply) return 0;
+    if (!opts.execute) return 0;
     for (const [file, text] of files) fs.writeFileSync(path.join(root, file), text, { flag: file === plan.file ? 'wx' : 'w' });
     archive();
     return 0;

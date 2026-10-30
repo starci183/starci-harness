@@ -1,6 +1,6 @@
 // proves: LITE_DB_MIGRATION@lite
 // A lite app synced by @starci/hfs 4.10 holds no Supabase reference in its managed files (ruling lite-self-hosted-postgres-passport-minio):
-// the db scripts, codegen and CI name the self-hosted database through `starci app db ... --url-env DATABASE_URL`, and sync deletes a
+// the db scripts, codegen and CI name the self-hosted database through `starci app db ... --db-url-env DATABASE_URL`, and sync deletes a
 // leftover supabase/types/. The one sanctioned mention is db/bootstrap.sql, which recreates the objects migrations written for a
 // hosted Supabase reference. The db image is the official postgres image of the managed .starcistacks/images/db/Dockerfile (rulings
 // lite-official-postgres-image and lite-db-image-in-stacks), and sync retires a leftover db/Dockerfile.
@@ -42,11 +42,11 @@ test('the managed .starcistacks/images/db/Dockerfile builds the digest-pinned of
 
 test('the managed db scripts, codegen and CI drive the self-hosted database', () => {
   const scripts = String(byPath.get('package.json').content);
-  for (const script of ['db:push: starci app db migrate --url-env DATABASE_URL --execute', 'db:new: starci app db new', 'db:plan: starci app db plan --url-env DATABASE_URL', 'db:dump: starci app db dump --url-env DATABASE_URL', 'db:start: docker start demo-dev-db']) {
+  for (const script of ['db:push: starci app db migrate --db-url-env DATABASE_URL --execute', 'db:new: starci app db new', 'db:plan: starci app db migrate --db-url-env DATABASE_URL', 'db:dump: starci app db dump --db-url-env DATABASE_URL', 'db:start: docker start demo-dev-db']) {
     assert.ok(scripts.includes(script), script);
   }
   assert.equal(scripts.includes('db:types'), false);
-  assert.ok(String(byPath.get('.github/workflows/db-deploy.yml').content).includes('starci app db migrate --url-env DATABASE_URL'));
+  assert.ok(String(byPath.get('.github/workflows/db-deploy.yml').content).includes('starci app db migrate --db-url-env DATABASE_URL'));
   assert.equal(String(byPath.get('.github/workflows/ci.yml').content).includes('db-types'), false);
   assert.equal(String(byPath.get('scripts/codegen.mjs').content).includes('database.types'), false);
   assert.deepEqual(lite.sides.fe.reads, ['be/contracts/']);

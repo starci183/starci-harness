@@ -38,7 +38,7 @@ async function productionApp(t, { remote = true } = {}) {
   const fixture = app(t, { "app.enc.yaml": member }, "production");
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "application-stacks.yaml"), stacks(remote));
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "production", "stack.yml"), "services:\n  api:\n    image: x\n");
-  assert.equal(await secretMain(["recipients", "production", "--add", OWNER], { cwd: fixture.root, env: fixture.env, stdout: () => {}, stderr: () => {} }), 0);
+  assert.equal(await secretMain(["recipients", "--env", "production", "--add", OWNER, "--execute"], { cwd: fixture.root, env: fixture.env, stdout: () => {}, stderr: () => {} }), 0);
   return fixture;
 }
 
@@ -82,7 +82,8 @@ const fakeSops = () => {
 async function serverKey(fixture, argv, { server, sops = fakeSops(), deps = {}, io = {} }) {
   const out = [];
   const err = [];
-  const code = await secretMain(["server-key", ...argv], {
+  const [environment, ...flags] = argv;
+  const code = await secretMain(["server-key", "--env", environment, ...flags], {
     cwd: fixture.root, env: fixture.env, stdout: (text) => out.push(text), stderr: (text) => err.push(text),
     tools: { secretEnv: () => ({}) },
     hostIdentity: { label: "spec", read: () => undefined },
@@ -236,7 +237,7 @@ test("audit holds production to the server key plus the owner key (RECIPIENT_DRI
   assert.match(missing[0].detail, /records no deploy server recipient/u);
   assert.equal((await serverKey(fixture, ["production", "--execute"], { server: fakeServer() })).code, 0);
   assert.deepEqual(auditSecrets(fixture.root, "production").filter((finding) => finding.member === ".sops.yaml"), []);
-  assert.equal(await secretMain(["recipients", "production", "--remove", OWNER], { cwd: fixture.root, env: fixture.env, stdout: () => {}, stderr: () => {} }), 0);
+  assert.equal(await secretMain(["recipients", "--env", "production", "--remove", OWNER, "--execute"], { cwd: fixture.root, env: fixture.env, stdout: () => {}, stderr: () => {} }), 0);
   const ownerless = auditSecrets(fixture.root, "production").filter((finding) => finding.member === ".sops.yaml");
   assert.match(ownerless[0].detail, /names only the deploy server recipient/u);
 });

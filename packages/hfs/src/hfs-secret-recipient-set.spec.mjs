@@ -45,7 +45,7 @@ async function productionApp(t, recipients) {
   fs.mkdirSync(keys);
   const made = Object.fromEntries(["owner", "server", "stranger"].map((name) => [name, testKey(keys, name)]));
   const quiet = { cwd: fixture.root, env: fixture.env, stdout: () => {}, stderr: () => {} };
-  for (const name of recipients) assert.equal(await secretMain(["recipients", "production", "--add", made[name].recipient], quiet), 0);
+  for (const name of recipients) assert.equal(await secretMain(["recipients", "--env", "production", "--add", made[name].recipient, "--execute"], quiet), 0);
   return { ...fixture, keys: made, quiet };
 }
 
@@ -55,7 +55,7 @@ test("a member sealed to the owner and server keys opens with either alone, and 
   const fixture = await productionApp(t, ["owner", "server"]);
   const { owner, server } = fixture.keys;
   const file = path.join(fixture.dir, "app.enc.yaml");
-  assert.equal(await secretMain(["set", "production", "app", "API_KEY"], { ...fixture.quiet, stdin: () => VALUE }), 0);
+  assert.equal(await secretMain(["set", "--env", "production", "app", "API_KEY"], { ...fixture.quiet, stdin: () => VALUE }), 0);
   assert.deepEqual(recipientsOf(file), [owner.recipient, server.recipient].sort());
 
   for (const key of [owner, server]) {
@@ -65,7 +65,7 @@ test("a member sealed to the owner and server keys opens with either alone, and 
   }
 
   const err = [];
-  const added = await secretMain(["set", "production", "app", "ADDED_KEY"], { ...fixture.quiet, stderr: (text) => err.push(text), stdin: () => ADDED, hostIdentity: owner.host });
+  const added = await secretMain(["set", "--env", "production", "app", "ADDED_KEY"], { ...fixture.quiet, stderr: (text) => err.push(text), stdin: () => ADDED, hostIdentity: owner.host });
   assert.equal(added, 0, err.join(""));
   assert.deepEqual(recipientsOf(file), [owner.recipient, server.recipient].sort(), "set kept the server recipient");
   const map = defaultSops(fixture.env, fixture.root, process.platform, undefined, server.host).decrypt(file, "yaml");
@@ -77,10 +77,10 @@ test("a rewrite with no rule for the member keeps the member's own recipient set
   const fixture = await productionApp(t, ["owner", "server"]);
   const { owner, server } = fixture.keys;
   const file = path.join(fixture.dir, "app.enc.yaml");
-  assert.equal(await secretMain(["set", "production", "app", "API_KEY"], { ...fixture.quiet, stdin: () => VALUE }), 0);
+  assert.equal(await secretMain(["set", "--env", "production", "app", "API_KEY"], { ...fixture.quiet, stdin: () => VALUE }), 0);
   fs.writeFileSync(path.join(fixture.root, ".sops.yaml"), `creation_rules:\n  - path_regex: \\.starcistacks[/\\\\]dev[/\\\\]secrets[/\\\\][^/\\\\]+\\.enc(?:\\.yaml)?$\n    age: ${owner.recipient}\n`);
   const err = [];
-  const code = await secretMain(["set", "production", "app", "ADDED_KEY"], { ...fixture.quiet, stderr: (text) => err.push(text), stdin: () => ADDED, hostIdentity: owner.host });
+  const code = await secretMain(["set", "--env", "production", "app", "ADDED_KEY"], { ...fixture.quiet, stderr: (text) => err.push(text), stdin: () => ADDED, hostIdentity: owner.host });
   assert.equal(code, 0, err.join(""));
   assert.deepEqual(recipientsOf(file), [owner.recipient, server.recipient].sort());
 });
@@ -88,7 +88,7 @@ test("a rewrite with no rule for the member keeps the member's own recipient set
 test("an identity outside the member's set is refused naming the member, its format, its recipients and the identity", { skip }, async (t) => {
   const fixture = await productionApp(t, ["owner", "server"]);
   const { owner, server, stranger } = fixture.keys;
-  assert.equal(await secretMain(["set", "production", "app", "API_KEY"], { ...fixture.quiet, stdin: () => VALUE }), 0);
+  assert.equal(await secretMain(["set", "--env", "production", "app", "API_KEY"], { ...fixture.quiet, stdin: () => VALUE }), 0);
   const seam = defaultSops(fixture.env, fixture.root, process.platform, undefined, stranger.host);
   assert.throws(() => seam.decrypt(path.join(fixture.dir, "app.enc.yaml"), "yaml"), (error) => {
     for (const fact of ["app.enc.yaml", owner.recipient, server.recipient, stranger.recipient, stranger.host.label]) assert.ok(error.message.includes(fact), `${fact} in: ${error.message}`);
@@ -106,7 +106,7 @@ async function sealedRemoteApp(t) {
   ].join("\n"));
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "production", "stack.yml"), "services:\n  api:\n    image: x\n");
   // Adding a key to the existing member opens it, so the later writes carry the owner's identity.
-  const set = async (member, keys, value, more = {}) => { const err = []; assert.equal(await secretMain(["set", "production", member, ...keys], { ...fixture.quiet, ...more, stderr: (text) => err.push(text), stdin: () => value }), 0, err.join("")); };
+  const set = async (member, keys, value, more = {}) => { const err = []; assert.equal(await secretMain(["set", "--env", "production", member, ...keys], { ...fixture.quiet, ...more, stderr: (text) => err.push(text), stdin: () => value }), 0, err.join("")); };
   await set("vps", ["VPS_HOST", "VPS_USER"], "VPS_HOST=203.0.113.7\nVPS_USER=deploy\n");
   await set("vps", [SEALED_SSH_KEYS.sshKey], PEM, { hostIdentity: fixture.keys.owner.host });
   await set("vps", [SEALED_SSH_KEYS.knownHosts], KNOWN, { hostIdentity: fixture.keys.owner.host });

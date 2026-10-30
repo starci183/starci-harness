@@ -1,4 +1,5 @@
-// app db plan: compare migration-owned state (history, pg_cron jobs, pgmq queues) without fetching commands.
+// The read-only database plan: compare migration-owned state (history, pg_cron jobs, pgmq queues) without fetching commands.
+// planInventory is what the dry run of `db migrate` prints after its own plan; dbPlanMain is the clean-plan precondition of `db baseline`.
 import fs from 'node:fs';
 import path from 'node:path';
 import { sha256 } from '../../engine/digest.mjs';
@@ -16,16 +17,16 @@ type SqlNode = any;
 interface CronJob { schedule: string; commandHash: string; active: boolean }
 
 /** The inventories a plan compares. */
-type Kind = 'migrations' | 'cron' | 'queues';
+export type Kind = 'migrations' | 'cron' | 'queues';
 
 /** What the active migrations declare: history versions, cron jobs (by name) and queues (by name). */
 interface RepositoryState { migrations: Map<string, null>; cron: Map<string, CronJob>; queues: Map<string, null> }
 
 /** One row of a database inventory, read back as JSON. */
-type Row = Record<string, unknown>;
+export type Row = Record<string, unknown>;
 
 /** How one inventory differs between the repository and the database. */
-interface Summary { expected: number; remote: number; missing: number; unexpected: number; changed: number }
+export interface Summary { expected: number; remote: number; missing: number; unexpected: number; changed: number }
 
 // Each inventory is one read-only psql query whose rows come back as JSON (db-baseline-verb.mjs runDbPostgres).
 const PRESENCE_SQL = `select
@@ -141,20 +142,27 @@ function repositoryState(root: string): RepositoryState {
   return state;
 }
 
+/** Reads one read-only inventory query as rows (db plan: psql through the ports; db migrate's dry run: the verb context's psql). */
+export type InventoryQuery = (sql: string) => Row[];
+
 function queryRows(root: string, sql: string, urlEnv: string, ports: DbPorts): Row[] {
   const output = runDbPostgres(root, { kind: 'query', sql }, ports, urlEnv);
   let rows: unknown;
   try { rows = JSON.parse(output); } catch { throw new DbVerbError('the database returned unreadable inventory; database output was withheld'); }
-  if (!Array.isArray(rows) || rows.some((row) => !row || typeof row !== 'object' || Array.isArray(row))) throw new DbVerbError('the database returned an invalid inventory; database output was withheld');
   return rows as Row[];
 }
 
-function remoteState(root: string, urlEnv: string, ports: DbPorts): Record<Kind, Row[]> {
-  const rows = queryRows(root, PRESENCE_SQL, urlEnv, ports);
+function remoteState(query: InventoryQuery): Record<Kind, Row[]> {
+  const asRows = (sql: string): Row[] => {
+    const rows: unknown = query(sql);
+    if (!Array.isArray(rows) || rows.some((row) => !row || typeof row !== 'object' || Array.isArray(row))) throw new DbVerbError('the database returned an invalid inventory; database output was withheld');
+    return rows as Row[];
+  };
+  const rows = asRows(PRESENCE_SQL);
   if (rows.length !== 1 || Object.keys(INVENTORIES).some((key) => typeof (rows[0] as Row)[key] !== 'boolean')) throw new DbVerbError('the database returned invalid inventory availability');
   // reason: every key of INVENTORIES is assigned by the loop below before the state is returned.
   const state = {} as Record<Kind, Row[]>;
-  for (const [key, sql] of Object.entries(INVENTORIES) as Array<[Kind, string]>) state[key] = (rows[0] as Row)[key] ? queryRows(root, sql, urlEnv, ports) : [];
+  for (const [key, sql] of Object.entries(INVENTORIES) as Array<[Kind, string]>) state[key] = (rows[0] as Row)[key] ? asRows(sql) : [];
   return state;
 }
 
@@ -175,22 +183,40 @@ function compare(expected: Map<string, CronJob | null>, actual: Row[], kind: Kin
   return { expected: expected.size, remote: actual.length, missing: unmatched.size, unexpected, changed };
 }
 
-/** The options of `starci app db plan` (dbOptions refuses every other, --apply too). */
-export const PLAN_OPTIONS = Object.freeze(['cwd', 'url-env', 'json']);
+/** The inventories of the active migrations against those of the database: the counts of each kind and whether any differs. */
+export interface PlanInventory { summaries: Record<Kind, Summary>; drift: boolean }
 
-/** Numeric exit codes: 0 equal, 1 drift, 2 invalid/failed (an --apply too: a plan never mutates history, queues or jobs); all IO and CLI calls are injectable. */
+/** The one line of a summary, as `db plan` and the dry run of `db migrate` print it. */
+export const summaryLine = (kind: Kind, item: Summary): string => `${kind}: repo ${item.expected}, remote ${item.remote}, missing ${item.missing}, unexpected ${item.unexpected}, changed ${item.changed}`;
+
+/** True when a summary names a missing, unexpected or changed entry. */
+export const summaryDrifts = (item: Summary): boolean => item.missing > 0 || item.unexpected > 0 || item.changed > 0;
+
+/** Compares what the active migrations of `root` declare (history, cron jobs, queues) with what `query` reads from the database; read-only. A DbVerbError is a refusal. */
+export function planInventory(root: string, query: InventoryQuery): PlanInventory {
+  const expected = repositoryState(root);
+  const actual = remoteState(query);
+  const summaries = Object.fromEntries((Object.keys(INVENTORIES) as Kind[]).map((kind): [Kind, Summary] => [kind, compare(expected[kind], actual[kind], kind)])) as Record<Kind, Summary>;
+  return { summaries, drift: Object.values(summaries).some(summaryDrifts) };
+}
+
+/**
+ * The options of the read-only plan that `db baseline` demands to be clean before it dumps (the dry run of `db migrate` prints the
+ * same inventory through planInventory).
+ */
+export const PLAN_OPTIONS = Object.freeze(['cwd', 'db-url-env', 'json']);
+
+/** Numeric exit codes: 0 equal, 1 drift, 2 invalid/failed (an --execute too: a plan never mutates history, queues or jobs); all IO and CLI calls are injectable. */
 export function dbPlanMain(argv: string[], { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), ...ports }: DbMainIo = {}): number {
   try {
     const opts = dbOptions(argv, PLAN_OPTIONS);
     const root = dbAppRoot(cwd, opts);
-    const expected = repositoryState(root);
-    const actual = remoteState(root, opts['url-env'] ?? 'DATABASE_URL', ports);
-    const summaries = Object.fromEntries((Object.keys(INVENTORIES) as Kind[]).map((kind): [Kind, Summary] => [kind, compare(expected[kind], actual[kind], kind)]));
-    const drift = Object.values(summaries).some((item) => item.missing || item.unexpected || item.changed);
+    const urlEnv = opts['db-url-env'] ?? 'DATABASE_URL';
+    const { summaries, drift } = planInventory(root, (sql) => queryRows(root, sql, urlEnv, ports));
     if (opts.json) stdout(`${JSON.stringify({ readOnly: true, drift, ...summaries })}\n`);
     else {
       stdout(`read-only database plan: ${drift ? 'drift detected' : 'repo and database agree'}\n`);
-      for (const [kind, item] of Object.entries(summaries)) stdout(`${kind}: repo ${item.expected}, remote ${item.remote}, missing ${item.missing}, unexpected ${item.unexpected}, changed ${item.changed}\n`);
+      for (const [kind, item] of Object.entries(summaries) as Array<[Kind, Summary]>) stdout(`${summaryLine(kind, item)}\n`);
     }
     return drift ? 1 : 0;
   } catch (error) { return dbFailure('plan', error, stderr); }

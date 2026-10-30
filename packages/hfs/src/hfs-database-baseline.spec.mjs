@@ -175,7 +175,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(judge(fixture(edition, normalized), edition, normalized, history(prior)), []);
   });
 
-  test(`app db baseline ${edition}: preview only dumps schema; --apply performs the explicit cutover`, () => {
+  test(`app db baseline ${edition}: preview only dumps schema; --execute performs the explicit cutover`, () => {
     const root = fixture(edition, { [old]: 'select 1;\n' });
     const preview = io(root);
     assert.equal(dbBaselineMain(['--stamp', replacement], preview.ports), 0);
@@ -185,7 +185,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(fs.existsSync(path.join(root, baseline)), false);
     assert.ok(preview.out.join('').includes(`history reverted ${first}`));
     const apply = io(root);
-    assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], apply.ports), 0);
+    assert.equal(dbBaselineMain(['--stamp', replacement, '--execute'], apply.ports), 0);
     assert.equal(fs.existsSync(path.join(root, old)), false);
     assert.equal(fs.readFileSync(path.join(root, retired), 'utf8'), 'select 1;\n');
     assert.deepEqual(baselineMarkers(fs.readFileSync(path.join(root, baseline), 'utf8')), [first]);
@@ -239,7 +239,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`app db baseline ${edition}: invalid cutovers and private CLI failures never mutate files`, () => {
-    for (const argv of [['--stamp', first], ['--stamp', '20260230000000'], ['--apply', '--unknown'], ['--apply', '--apply']]) {
+    for (const argv of [['--stamp', first], ['--stamp', '20260230000000'], ['--execute', '--unknown'], ['--execute', '--execute']]) {
       const root = fixture(edition, { [old]: 'select 1;' });
       const ports = io(root);
       assert.equal(dbBaselineMain(argv, ports.ports), 2);
@@ -248,7 +248,7 @@ for (const edition of ['lite', 'full']) {
     }
     const root = fixture(edition, { [old]: 'select 1;' });
     const failed = io(root, { status: 1, stderr: 'PRIVATE_CLI_DIAGNOSTIC' });
-    assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], failed.ports), 2);
+    assert.equal(dbBaselineMain(['--stamp', replacement, '--execute'], failed.ports), 2);
     assert.equal(failed.out.join('').includes('PRIVATE_CLI_DIAGNOSTIC'), false);
     assert.equal(failed.err.join('').includes('PRIVATE_CLI_DIAGNOSTIC'), false);
     assert.ok(fs.existsSync(path.join(root, old)));
@@ -261,7 +261,7 @@ for (const edition of ['lite', 'full']) {
     assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], git: history({ [old]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
     assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], git: history({ [old]: 'select 1;', [`${migrations}/${second}_removed.sql`]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
     const ports = io(root);
-    assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], { ...ports.ports, git: history({}) }), 2);
+    assert.equal(dbBaselineMain(['--stamp', replacement, '--execute'], { ...ports.ports, git: history({}) }), 2);
     assert.deepEqual(ports.calls, []);
     assert.ok(fs.existsSync(path.join(root, old)));
   });
@@ -269,7 +269,7 @@ for (const edition of ['lite', 'full']) {
   test(`app db baseline ${edition}: remote version drift cannot discard an unapplied local migration`, () => {
     const root = fixture(edition, { [old]: 'create table public.pending(id integer);' });
     const ports = remoteInventory(root, { migrations: [], cron: [], queues: [], vault: [] });
-    assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], ports.ports), 2);
+    assert.equal(dbBaselineMain(['--stamp', replacement, '--execute'], ports.ports), 2);
     assert.ok(ports.calls.every((args) => args[1] === 'query'));
     assert.ok(fs.existsSync(path.join(root, old)));
     assert.equal(fs.existsSync(path.join(root, baseline)), false);
@@ -289,7 +289,7 @@ for (const edition of ['lite', 'full']) {
     const inventories = remoteInventory(root, { queues: deadQueues, cron: [{ name: 'events-tick', schedule: '* * * * *', commandHash: createHash('sha256').update(tickCommand).digest('hex'), active: true }], vault: [] });
     const query = inventories.ports.runPostgres;
     inventories.ports.runPostgres = (cwd, op) => op.kind === 'query' ? query(cwd, op) : { status: 0, stdout: op.kind === 'dump' ? tickSql : '' };
-    assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], inventories.ports), 0, inventories.err.join(''));
+    assert.equal(dbBaselineMain(['--stamp', replacement, '--execute'], inventories.ports), 0, inventories.err.join(''));
     const sql = fs.readFileSync(path.join(root, baseline), 'utf8');
     const roleDeclaration = /create role "?app_be"?/i.exec(sql);
     assert.ok(roleDeclaration && roleDeclaration.index < sql.indexOf('create function public.events_tick'));
@@ -307,7 +307,7 @@ for (const edition of ['lite', 'full']) {
     for (const initialSql of ['create policy objects_app_be_select on storage.objects for select to app_be using (bucket_id = \'demo\');', "insert into public.settings(name) values ('initial');"]) {
       const root = fixture(edition, { [old]: initialSql });
       const ports = io(root);
-      assert.equal(dbBaselineMain(['--stamp', replacement, '--apply'], ports.ports), 2);
+      assert.equal(dbBaselineMain(['--stamp', replacement, '--execute'], ports.ports), 2);
       assert.ok(ports.calls.every((args) => args[1] === 'query' || args[1] === 'dump'));
       assert.ok(ports.err.join('').includes(`baseline cannot rebuild the active chain from a schema-only dump:\n  ${old}: baseline cannot reconstruct`));
       assert.ok(fs.existsSync(path.join(root, old)));
@@ -315,14 +315,14 @@ for (const edition of ['lite', 'full']) {
     }
   });
 
-  test(`app db restamp ${edition}: explicit map previews repairs and --apply preserves SQL with a version header`, () => {
+  test(`app db restamp ${edition}: explicit map previews repairs and --execute preserves SQL with a version header`, () => {
     const root = fixture(edition, { [old]: 'select 1;\n', 'restamp.yaml': `"${first}": "${second}"\n` });
     const preview = io(root);
     assert.equal(dbRestampMain(['--map', 'restamp.yaml'], preview.ports), 0);
     assert.deepEqual(preview.calls, []);
     assert.equal(fs.readFileSync(path.join(root, old), 'utf8'), 'select 1;\n');
     const apply = io(root);
-    assert.equal(dbRestampMain(['--map=restamp.yaml', '--apply'], apply.ports), 0);
+    assert.equal(dbRestampMain(['--map=restamp.yaml', '--execute'], apply.ports), 0);
     const renamed = `${migrations}/${second}_start.sql`;
     assert.equal(fs.existsSync(path.join(root, old)), false);
     assert.equal(fs.readFileSync(path.join(root, renamed), 'utf8'), `-- starci:restamp ${first} ${second}\nselect 1;\n`);
@@ -334,13 +334,13 @@ for (const edition of ['lite', 'full']) {
     for (const map of [`"${first}": "${replacement}"`, `"${first}": "${second}"`, `"${first}": "20260230000000"`, `"${first}": "${replacement}"\n"${first}": "20260104000000"`, '"20200101000000": "20210101000000"', '[]']) {
       const root = fixture(edition, { [old]: 'select 1;', [next]: 'select 2;', 'restamp.yaml': map });
       const ports = io(root);
-      assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], ports.ports), 2, map);
+      assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], ports.ports), 2, map);
       assert.deepEqual(ports.calls, []);
       assert.ok(fs.existsSync(path.join(root, old)));
     }
     const root = fixture(edition, { [retired]: 'select 1;', [baseline]: marked, 'restamp.yaml': `"${first}": "${second}"` });
     const ports = io(root);
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], ports.ports), 2);
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], ports.ports), 2);
     assert.deepEqual(ports.calls, []);
     assert.equal(dbRestampMain([], ports.ports), 2);
   });
@@ -352,7 +352,7 @@ for (const edition of ['lite', 'full']) {
     const files = { [keep]: 'select 1;\n', [move]: 'select 2;\n', [later]: 'select 3;\n' };
     const bare = fixture(edition, { ...files, 'restamp.yaml': `"${first}": "${second}"\n` });
     const refused = io(bare);
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], refused.ports), 2);
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], refused.ports), 2);
     assert.match(refused.err.join(''), /alpha\.sql, .*beta\.sql/);
     assert.ok(fs.existsSync(path.join(bare, move)));
     const root = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: beta\n` });
@@ -364,7 +364,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(queryOnly(preview.calls), true, 'the preview reads the history with one SELECT');
     assert.ok(fs.existsSync(path.join(root, move)));
     const apply = io(root, recorded('alpha'));
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], apply.ports), 0);
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], apply.ports), 0);
     const renamed = `${migrations}/20260101000001_beta.sql`;
     assert.equal(fs.readFileSync(path.join(root, renamed), 'utf8'), `-- starci:restamp ${first} 20260101000001\nselect 2;\n`);
     assert.equal(fs.readFileSync(path.join(root, keep), 'utf8'), 'select 1;\n');
@@ -373,17 +373,17 @@ for (const edition of ['lite', 'full']) {
     // no history row: nothing ran, no repair either
     const empty = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: beta\n` });
     const none = io(empty, recorded(null));
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], none.ports), 0);
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], none.ports), 0);
     assert.equal(queryOnly(none.calls), true);
     // the history names the file that moves: it is the applied one, so the old version is reverted and the new one marked applied
     const ran = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: beta\n` });
     const repaired = io(ran, (args) => (args[1] === 'query' ? recorded('beta')(args) : { status: 0, stdout: '' }));
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], repaired.ports), 0);
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], repaired.ports), 0);
     assert.deepEqual(repaired.calls.slice(1), [['migration', 'repair', first, '--status', 'reverted'], ['migration', 'repair', '20260101000001', '--status', 'applied']]);
     // an unreadable history is never guessed
     const blind = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: beta\n` });
     const unreadable = io(blind, { status: 1, stdout: '' });
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], unreadable.ports), 2);
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], unreadable.ports), 2);
     assert.match(unreadable.err.join(''), /say which one ran/);
     assert.ok(fs.existsSync(path.join(blind, move)));
   });
@@ -394,17 +394,17 @@ for (const edition of ['lite', 'full']) {
     const files = { [keep]: 'select 1;\n', [move]: 'select 2;\n' };
     const root = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: ${first}_beta.sql\n  to: "${second}"\n  applied: true\n` });
     const apply = io(root);
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], apply.ports), 0);
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], apply.ports), 0);
     assert.deepEqual(apply.calls, [['migration', 'repair', first, '--status', 'reverted'], ['migration', 'repair', second, '--status', 'applied']]);
     for (const entry of [`file: gamma`, `file: beta\n  to: "${first}"`, `file: beta\n  applied: yes-please`, `file: beta\n  extra: 1`]) {
       const refusedRoot = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  ${entry}\n` });
       const refused = io(refusedRoot);
-      assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], refused.ports), 2, entry);
+      assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], refused.ports), 2, entry);
       assert.deepEqual(refused.calls, []);
       assert.ok(fs.existsSync(path.join(refusedRoot, move)));
     }
     const crowded = fixture(edition, { ...files, [`${migrations}/20260101000001_gamma.sql`]: 'select 3;\n', 'restamp.yaml': `"${first}":\n  file: beta\n  to: "20260101000001"\n` });
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], io(crowded).ports), 2);
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], io(crowded).ports), 2);
   });
 
   test(`app db plan ${edition}: compares all four inventories using SELECT-only queries and emits counts`, () => {

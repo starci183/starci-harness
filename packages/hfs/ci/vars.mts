@@ -35,6 +35,13 @@ export async function setVariable({ declaration, gh, options, name, stdin, stdou
   declaration: CiDeclaration; gh: Gh; options: CiOptions; name: string; stdin: StdinSource; stdout: (text: string) => unknown;
 }): Promise<number> {
   const entry = declaredEntry(declaration.vars, name, options);
+  // Dry until --execute: the declaration and the supplied value are judged, but nothing is read from stdin and GitHub is not reached.
+  if (options.execute !== true) {
+    if (entry.ownerValue && Object.hasOwn(options, 'value')) throw refuse('CI_VALUE_ARGV', 'an owner-supplied variable takes its value on stdin');
+    if (!entry.ownerValue) valueOf(entry, options.value);
+    stdout(`dry run: would set variable ${entry.name} (${scopeName(options)})${entry.ownerValue ? ' from the value on stdin' : ''}; add --execute\n`);
+    return 0;
+  }
   const value = entry.ownerValue ? await ownerValueOf(options, stdin) : valueOf(entry, options.value);
   writeVariable(gh, gh.repository(options.repo), entry, value, options, stdout);
   return 0;
@@ -45,7 +52,7 @@ export function syncVariables({ declaration, gh, options, stdout }: { declaratio
   const plan = declaration.vars.map((entry) => ({ entry, value: entry.ownerValue ? undefined : valueOf(entry), options: { env: entry.scope === 'environment' ? entry.environment : undefined } }));
   const repo = options.execute && plan.some((item) => !item.entry.ownerValue) ? gh.repository(options.repo) : undefined;
   for (const item of plan) {
-    if (item.entry.ownerValue) stdout(`skip variable ${item.entry.name} (${scopeName(item.options)}): owner-supplied value; the owner runs starci app ci var set ${item.entry.name} [--env ENV] with the value on stdin\n`);
+    if (item.entry.ownerValue) stdout(`skip variable ${item.entry.name} (${scopeName(item.options)}): owner-supplied value; the owner runs starci app ci var set ${item.entry.name} [--env ENV] --execute with the value on stdin\n`);
     else if (options.execute) writeVariable(gh, repo as string, item.entry, item.value as string, item.options, stdout);
     else stdout(`would set variable ${item.entry.name} (${scopeName(item.options)})\n`);
   }

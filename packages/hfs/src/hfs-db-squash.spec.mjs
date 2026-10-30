@@ -84,7 +84,7 @@ function squash(root, chain, port, database, extra = []) {
   let stdout = '';
   let stderr = '';
   const env = { ...process.env, SOURCE_DB_URL: `postgres://postgres:source@127.0.0.1:${port}/${database}` };
-  const argv = ['--squash', '--url-env', 'SOURCE_DB_URL', '--stamp', NEXT, '--drop-extension', 'hstore', '--seed-tables', 'plan_tiers,plans', '--image', IMAGE, ...extra];
+  const argv = ['--squash', '--db-url-env', 'SOURCE_DB_URL', '--stamp', NEXT, '--drop-extension', 'hstore', '--seed-tables', 'plan_tiers,plans', '--image', IMAGE, ...extra];
   const code = dbBaselineMain(argv, { cwd: root, env, git: committed(chain), stdout: (text) => { stdout += text; }, stderr: (text) => { stderr += text; } });
   return { code, stdout, stderr };
 }
@@ -108,11 +108,11 @@ ${CHAIN}`);
   return { name, port };
 }
 
-test('--squash without --url-env, and squash flags without --squash, are refused before any database is touched', (t) => {
+test('--squash without --db-url-env, and squash flags without --squash, are refused before any database is touched', (t) => {
   const root = app(t, CHAIN);
   let stderr = '';
   assert.equal(dbBaselineMain(['--squash'], { cwd: root, stderr: (text) => { stderr += text; } }), 2);
-  assert.match(stderr, /pass --url-env NAME/);
+  assert.match(stderr, /pass --db-url-env NAME/);
   stderr = '';
   assert.equal(dbBaselineMain(['--seed-tables', 'plans'], { cwd: root, stderr: (text) => { stderr += text; } }), 2);
   assert.match(stderr, /belong to --squash/);
@@ -150,7 +150,7 @@ test('squash previews, proves, writes four outputs that replay green, and refuse
   assert.equal(fs.existsSync(path.join(root, 'db/seed.sql')), false);
   assert.equal(fs.readFileSync(path.join(root, 'db/bootstrap.sql'), 'utf8'), BOOTSTRAP);
 
-  const applied = squash(root, CHAIN, source.port, 'source', ['--apply']);
+  const applied = squash(root, CHAIN, source.port, 'source', ['--execute']);
   assert.equal(applied.code, 0, applied.stderr);
   const baseline = fs.readFileSync(path.join(root, `db/migrations/${NEXT}_baseline.sql`), 'utf8');
   const bootstrap = fs.readFileSync(path.join(root, 'db/bootstrap.sql'), 'utf8');

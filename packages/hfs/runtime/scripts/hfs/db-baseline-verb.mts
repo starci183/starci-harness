@@ -38,7 +38,7 @@ export interface DbPorts {
 
 /** The parsed options of a db verb (dbOptions refuses every flag outside the verb's list). */
 export interface DbOptions {
-  cwd?: string; stamp?: string; apply?: boolean; 'url-env'?: string; squash?: boolean; 'drop-extension'?: string;
+  cwd?: string; stamp?: string; execute?: boolean; 'db-url-env'?: string; squash?: boolean; 'drop-extension'?: string;
   'drop-pgmq-queue'?: string; 'seed-tables'?: string; image?: string; map?: string; json?: boolean;
 }
 
@@ -70,9 +70,9 @@ interface BaselineState { roles: Map<string, string[]>; extensions: Map<string, 
 
 /** Strict shared options; unknown flags never reach the database CLI. */
 /** The options of `starci app db baseline` (dbOptions refuses every other). */
-export const BASELINE_OPTIONS = Object.freeze(['cwd', 'stamp', 'apply', 'url-env', 'squash', 'drop-extension', 'drop-pgmq-queue', 'seed-tables', 'image']);
+export const BASELINE_OPTIONS = Object.freeze(['cwd', 'stamp', 'execute', 'db-url-env', 'squash', 'drop-extension', 'drop-pgmq-queue', 'seed-tables', 'image']);
 /** The boolean options of the dbOptions verbs; every other option takes a value. */
-export const DB_BOOLEAN_OPTIONS = Object.freeze(['apply', 'json', 'squash']);
+export const DB_BOOLEAN_OPTIONS = Object.freeze(['execute', 'json', 'squash']);
 
 export function dbOptions(argv: string[], allowed: readonly string[]): DbOptions {
   const opts: Record<string, string | boolean> = {};
@@ -131,9 +131,9 @@ export function dbSqlFiles(root: string, directory: string = MIGRATIONS_DIR): Sq
     .sort((left, right) => left.name < right.name ? -1 : Number(left.name > right.name));
 }
 
-/** The database of `--url-env` (default DATABASE_URL): the URL without its password and the password for PGPASSWORD. */
+/** The database of `--db-url-env` (default DATABASE_URL): the URL without its password and the password for PGPASSWORD. */
 export function connectionOf(env: NodeJS.ProcessEnv, urlEnv: string): { url: string; env: NodeJS.ProcessEnv } {
-  if (!/^[A-Z][A-Z0-9_]*$/.test(urlEnv)) throw new DbVerbError('--url-env must name an UPPER_CASE environment variable');
+  if (!/^[A-Z][A-Z0-9_]*$/.test(urlEnv)) throw new DbVerbError('--db-url-env must name an UPPER_CASE environment variable');
   let url: URL;
   try { url = new URL(String(env[urlEnv] ?? '')); } catch { throw new DbVerbError(`${urlEnv} must hold a postgres connection URL`); }
   if (!/^postgres(?:ql)?:$/.test(url.protocol)) throw new DbVerbError(`${urlEnv} must hold a postgres connection URL`);
@@ -367,7 +367,7 @@ function metadataSql(metadata: QueueDeclarations): string {
  */
 function sourceHistory(root: string, plan: BaselinePlan, ports: DbPorts, urlEnv: string): void {
   const rows = (sql: string): Array<{ present?: boolean; version?: unknown }> => JSON.parse(runDbPostgres(root, { kind: 'query', sql }, ports, urlEnv));
-  if (!rows("select pg_catalog.to_regclass('supabase_migrations.schema_migrations') is not null as present")[0]?.present) throw new DbVerbError(`the source records no migration history (${HISTORY}); apply its chain with starci app db migrate`);
+  if (!rows("select pg_catalog.to_regclass('supabase_migrations.schema_migrations') is not null as present")[0]?.present) throw new DbVerbError(`the source records no migration history (${HISTORY}); apply its chain with starci app db migrate --execute`);
   const recorded = new Set(rows(`select version from ${HISTORY}`).map((row) => String(row.version)));
   const active = new Set(plan.active.map((entry) => entry.stamp));
   const offenders = [...[...active].filter((stamp) => !recorded.has(stamp)).map((stamp) => `${stamp}: active, not applied to the source`), ...[...recorded].filter((stamp) => !active.has(stamp)).map((stamp) => `${stamp}: applied to the source, not in the active chain`)];
@@ -381,7 +381,7 @@ function sourceHistory(root: string, plan: BaselinePlan, ports: DbPorts, urlEnv:
 function cleanPlan(root: string, urlEnv: string, ports: DbPorts): void {
   let out = '';
   let err = '';
-  const code = dbPlanMain(['--json', '--url-env', urlEnv], { ...ports, cwd: root, stdout: (text) => { out += text; }, stderr: (text) => { err += text; } });
+  const code = dbPlanMain(['--json', '--db-url-env', urlEnv], { ...ports, cwd: root, stdout: (text) => { out += text; }, stderr: (text) => { err += text; } });
   if (code === 0) return;
   const heading = 'baseline requires a clean database plan with every migration already applied';
   if (code !== 1) throw new DbVerbError(`${heading}; the plan refused: ${err.trim().replace(/^starci app db plan: /, '')}`);
@@ -390,13 +390,13 @@ function cleanPlan(root: string, urlEnv: string, ports: DbPorts): void {
   throw offendersError(`${heading}; the plan found drift`, drift);
 }
 
-/** Numeric CLI exit code, injectable IO/clock/CLI; neither files nor history change without --apply. */
+/** Numeric CLI exit code, injectable IO/clock/CLI; neither files nor history change without --execute. */
 export function dbBaselineMain(argv: string[], { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), now = () => new Date(), ...ports }: DbMainIo = {}): number {
   try {
     const opts = dbOptions(argv, BASELINE_OPTIONS);
     if (!opts.squash && ['drop-extension', 'drop-pgmq-queue', 'seed-tables', 'image'].some((name) => Object.hasOwn(opts, name))) throw new DbVerbError('--drop-extension, --drop-pgmq-queue, --seed-tables and --image belong to --squash');
-    if (opts.squash && !opts['url-env']) throw new DbVerbError('baseline --squash reads a database the whole active chain is applied to: pass --url-env NAME');
-    const urlEnv = opts['url-env'] ?? 'DATABASE_URL';
+    if (opts.squash && !opts['db-url-env']) throw new DbVerbError('baseline --squash reads a database the whole active chain is applied to: pass --db-url-env NAME');
+    const urlEnv = opts['db-url-env'] ?? 'DATABASE_URL';
     const root = dbAppRoot(cwd, opts);
     const plan = baselinePlan(root, opts, now);
     const files = baselineFiles(root);
@@ -415,9 +415,9 @@ export function dbBaselineMain(argv: string[], { cwd = invocationDir(), stdout =
     const schema = runDbPostgres(root, { kind: 'dump' }, ports, urlEnv);
     if (!schema.trim() || baselineMarkers(schema).length || /\bvault\.(?:create_secret|update_secret)\s*\(|\bpassword\s+'[^']+'/i.test(schema)) throw new DbVerbError('schema dump is empty or contains unsupported secret/baseline statements');
     const repairs = [...plan.active.map((entry) => repairOp(entry.stamp, 'reverted')), repairOp(plan.stamp, 'applied', 'baseline')];
-    stdout(`${opts.apply ? 'apply' : 'preview'} baseline ${plan.file}; archive ${plan.active.length} migrations\n`);
+    stdout(`${opts.execute ? 'apply' : 'preview'} baseline ${plan.file}; archive ${plan.active.length} migrations\n`);
     for (const op of repairs) stdout(`${repairLine(op)}\n`);
-    if (!opts.apply) return 0;
+    if (!opts.execute) return 0;
     for (const op of repairs) runDbPostgres(root, op, ports, urlEnv);
     fs.writeFileSync(path.join(root, plan.file), `-- starci:baseline ${plan.last}\n${metadata.extensions}${metadata.roles}${schema.replace(/^\s+/, '')}\n${metadataSql(metadata)}`, { flag: 'wx' });
     archive();

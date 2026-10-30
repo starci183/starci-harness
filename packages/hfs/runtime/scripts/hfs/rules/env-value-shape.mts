@@ -2,7 +2,7 @@
 // read): a stored environment value parses as the type its `EnvSource` reader declares. The reader shapes come from
 // the same static TypeScript walk as the env-key parity (collectEnvReads).
 //   - the finder judges the concrete values of `*.env.example` files: a value that is not a placeholder must parse;
-//   - `starci app secret verify <env>` (verifySecrets) decrypts every member of the environment in memory through the
+//   - `starci app secret verify --env <env>` (verifySecrets) decrypts every member of the environment in memory through the
 //     sops seam and checks each stored value against its reader's shape; output names the environment, the member,
 //     the key and the violated shape - never a value.
 import fs from 'node:fs';
@@ -90,7 +90,7 @@ export function envValueShapeFindings({ repoRoot, all = [], isRoot }: { repoRoot
 }
 
 /**
- * `starci app secret verify <env>`: decrypt every member of `directory` in memory through the `sops` seam and check
+ * `starci app secret verify --env <env>`: decrypt every member of `directory` in memory through the `sops` seam and check
  * each value against the shape its EnvSource reader declares. Output names the environment, the member, the key and
  * the violated shape, never a value. Returns the CLI exit code: 0 verified, 2 violations.
  */

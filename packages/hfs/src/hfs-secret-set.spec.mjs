@@ -106,7 +106,7 @@ test("set on a terminal prompts each key in turn, masked, and seals them all in 
   const { root, env } = app(t);
   const seals = [];
   const labels = [];
-  const result = await run(["set", "dev", "sepay", "K1", "K2", "K3"], {
+  const result = await run(["set", "--env", "dev", "sepay", "K1", "K2", "K3"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([...FAKE], labels), sops: fakeSops(seals),
   });
   assert.equal(result.code, 0, result.err);
@@ -115,14 +115,14 @@ test("set on a terminal prompts each key in turn, masked, and seals them all in 
   assert.deepEqual(seals[0], { K1: FAKE[0], K2: FAKE[1], K3: FAKE[2] });
   assert.match(result.out, /^sealed dev\/sepay \(K1, K2, K3\)/u);
   privateAbsent(result, FAKE);
-  const listed = await run(["list", "dev"], { cwd: root, env });
+  const listed = await run(["list", "--env", "dev"], { cwd: root, env });
   for (const key of ["K1", "K2", "K3"]) assert.match(listed.out, new RegExp(key, "u"));
 });
 
 test("an empty typed value seals nothing", async (t) => {
   const { root, env, dir } = app(t);
   const seals = [];
-  const result = await run(["set", "dev", "sepay", "K1", "K2"], {
+  const result = await run(["set", "--env", "dev", "sepay", "K1", "K2"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([FAKE[0], ""], []), sops: fakeSops(seals),
   });
   assert.equal(result.code, 2);
@@ -134,10 +134,10 @@ test("an empty typed value seals nothing", async (t) => {
 test("redirected stdin gives one key its whole text, or one KEY=value line per key, sealed in one write", async (t) => {
   const { root, env } = app(t);
   const seals = [];
-  const one = await run(["set", "dev", "solo", "K1"], { cwd: root, env, stdin: () => `${FAKE[0]}\nsecond line\n`, sops: fakeSops(seals) });
+  const one = await run(["set", "--env", "dev", "solo", "K1"], { cwd: root, env, stdin: () => `${FAKE[0]}\nsecond line\n`, sops: fakeSops(seals) });
   assert.equal(one.code, 0, one.err);
   assert.deepEqual(seals[0], { K1: `${FAKE[0]}\nsecond line` }, "a multi-line value survives byte for byte in the YAML member");
-  const many = await run(["set", "dev", "sepay", "K1", "K2"], {
+  const many = await run(["set", "--env", "dev", "sepay", "K1", "K2"], {
     cwd: root, env, stdin: () => `# comment\r\nK2=${FAKE[1]}\r\nK1=${FAKE[0]}=tail\r\n`, sops: fakeSops(seals),
   });
   assert.equal(many.code, 0, many.err);
@@ -156,7 +156,7 @@ test("stdin lines must name every key once and no other", () => {
 
 test("set refuses a key named twice", async (t) => {
   const { root, env } = app(t);
-  const result = await run(["set", "dev", "sepay", "K1", "K1"], { cwd: root, env, stdin: () => "x", sops: fakeSops([]) });
+  const result = await run(["set", "--env", "dev", "sepay", "K1", "K1"], { cwd: root, env, stdin: () => "x", sops: fakeSops([]) });
   assert.equal(result.code, 2);
   assert.match(result.err, /set names K1 twice/u);
 });
@@ -167,7 +167,7 @@ test("adding to an existing member with no identity anywhere refuses before any 
   const calls = [];
   const labels = [];
   const host = { label: path.join(root, "..", "harness", "secret.env"), read: () => undefined };
-  const result = await run(["set", "dev", "sepay", "SEPAY_SIGNING_SECRET_KEY"], {
+  const result = await run(["set", "--env", "dev", "sepay", "SEPAY_SIGNING_SECRET_KEY"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([FAKE[0]], labels), tools: selectedTools(calls), hostIdentity: host,
   });
   assert.equal(result.code, 2);
@@ -186,7 +186,7 @@ test("the harness secret.env's SOPS_AGE_KEY opens an existing member when the en
   const seals = [];
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };
   const seam = defaultSops(env, root, process.platform, selectedTools(calls), host);
-  const result = await run(["set", "dev", "sepay", "K1", "K2"], {
+  const result = await run(["set", "--env", "dev", "sepay", "K1", "K2"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([FAKE[0], FAKE[1]], []),
     sops: { ...seam, seal: fakeSeal(seals) },
   });
@@ -196,7 +196,7 @@ test("the harness secret.env's SOPS_AGE_KEY opens an existing member when the en
   assert.deepEqual(Object.keys(seals[0]).sort(), ["K1", "K2", "TOKEN"], "the existing key is kept, both new ones added, one write");
   assert.equal(result.out, "sealed dev/sepay (K1, K2)\n");
   privateAbsent(result, [HOST_KEY, ...FAKE]);
-  const got = await run(["get", "dev", "sepay", "TOKEN", "--to-file"], { cwd: root, env, tools: selectedTools(calls), hostIdentity: host });
+  const got = await run(["get", "--env", "dev", "sepay", "TOKEN", "--to-file"], { cwd: root, env, tools: selectedTools(calls), hostIdentity: host });
   assert.equal(got.code, 0, got.err);
   privateAbsent(got, [HOST_KEY]);
 });
@@ -206,7 +206,7 @@ test("an identity that is not the member's recipient is refused naming where it 
   const other = `age1${"p".repeat(58)}`;
   fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["SEPAY_MERCHANT_ID"], other));
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };
-  const result = await run(["get", "dev", "sepay", "SEPAY_MERCHANT_ID", "--to-file"], { cwd: root, env, tools: selectedTools([]), hostIdentity: host });
+  const result = await run(["get", "--env", "dev", "sepay", "SEPAY_MERCHANT_ID", "--to-file"], { cwd: root, env, tools: selectedTools([]), hostIdentity: host });
   assert.equal(result.code, 2);
   assert.ok(result.err.includes(`the age identity of /harness/secret.env (SOPS_AGE_KEY) (recipient ${RECIPIENT}) does not open sepay.enc, sealed to ${other}`), result.err);
   privateAbsent(result, [HOST_KEY]);
@@ -224,7 +224,7 @@ test("the app's own .claude/secret.env wins over the harness's, and a worktree r
   const tools = selectedTools(calls);
   delete tools.secretEnv;
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };
-  const result = await run(["get", "dev", "sepay", "TOKEN", "--to-file"], { cwd: root, env, tools, hostIdentity: host });
+  const result = await run(["get", "--env", "dev", "sepay", "TOKEN", "--to-file"], { cwd: root, env, tools, hostIdentity: host });
   assert.equal(result.code, 0, result.err);
   assert.equal(calls.find((call) => call.args[0] === "decrypt")?.ageKey, MAIN_KEY);
   privateAbsent(result, [MAIN_KEY, HOST_KEY]);
@@ -233,14 +233,14 @@ test("the app's own .claude/secret.env wins over the harness's, and a worktree r
 test("the first set names the identity a later set needs, or the fix when this machine holds none", async (t) => {
   const { root, env } = app(t);
   const held = defaultSops(env, root, process.platform, selectedTools([]), { label: "/harness/secret.env", read: () => HOST_KEY });
-  const first = await run(["set", "dev", "sepay", "K1"], { cwd: root, env, stdin: () => FAKE[0], sops: { ...held, seal: fakeSeal([]) } });
+  const first = await run(["set", "--env", "dev", "sepay", "K1"], { cwd: root, env, stdin: () => FAKE[0], sops: { ...held, seal: fakeSeal([]) } });
   assert.equal(first.code, 0, first.err);
   assert.equal(
     first.out,
     `sealed dev/sepay (K1); a new member: adding keys to it later needs the age identity of ${RECIPIENT}; this machine holds it in /harness/secret.env (SOPS_AGE_KEY)\n`,
   );
   const none = defaultSops(env, root, process.platform, selectedTools([]), { label: "/harness/secret.env", read: () => undefined });
-  const other = await run(["set", "dev", "ops", "K1"], { cwd: root, env, stdin: () => FAKE[0], sops: { ...none, seal: fakeSeal([]) } });
+  const other = await run(["set", "--env", "dev", "ops", "K1"], { cwd: root, env, stdin: () => FAKE[0], sops: { ...none, seal: fakeSeal([]) } });
   assert.equal(other.code, 0, other.err);
   assert.ok(other.out.includes(`this machine holds none: add SOPS_AGE_KEY to ${path.join(root, ".claude", "secret.env")} before the next set`));
   privateAbsent(other, [HOST_KEY, FAKE[0]]);
@@ -259,7 +259,7 @@ test("with no stdin port, a terminal stdin gets the masked prompt instead of a r
     import { secretMain } from ${JSON.stringify(secretModule)};
     Object.defineProperty(process.stdin, "isTTY", { value: true });
     const seals = [];
-    const code = await secretMain(["set", "dev", "sepay", "SEPAY_SIGNING_SECRET_KEY"], {
+    const code = await secretMain(["set", "--env", "dev", "sepay", "SEPAY_SIGNING_SECRET_KEY"], {
       cwd: ${JSON.stringify(root)},
       sops: { decrypt: () => ({}), seal: (request) => { seals.push(request.plaintext); return ${JSON.stringify(sealedDotenv(["SEPAY_SIGNING_SECRET_KEY"]))}; } },
     });

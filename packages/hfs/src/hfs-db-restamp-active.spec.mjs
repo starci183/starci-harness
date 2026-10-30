@@ -81,7 +81,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(snapshot(root), before);
 
     const apply = io(root);
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], apply.ports), 0, apply.err.join(''));
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], apply.ports), 0, apply.err.join(''));
     assert.deepEqual(apply.calls, [
       ['migration', 'repair', first, '--status', 'reverted'],
       ['migration', 'repair', next, '--status', 'applied'],
@@ -107,7 +107,7 @@ for (const edition of ['lite', 'full']) {
     }, `"${first}":\n  file: beta\n  applied: false\n`);
     const archived = snapshot(path.join(root, MIGRATIONS_ARCHIVE_DIR));
     const apply = io(root);
-    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--apply'], apply.ports), 0, apply.err.join(''));
+    assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], apply.ports), 0, apply.err.join(''));
     assert.deepEqual(apply.calls, []);
     assert.deepEqual(apply.out, ['apply restamp 1 migrations\n', `${move} -> ${MIGRATIONS_DIR}/${free}_beta.sql\n`]);
     assert.equal(fs.existsSync(path.join(root, move)), false);
@@ -120,7 +120,7 @@ for (const edition of ['lite', 'full']) {
     for (const name of ['legacy-name.sql', '20260230000000_invalid.sql', `${second}_bad_name.sql`]) {
       const root = fixture(edition, { [start]: 'select 10;\n', [`${MIGRATIONS_DIR}/${name}`]: 'select 20;\n' }, `"${first}": "${next}"\n`);
       const before = snapshot(root);
-      for (const flags of [[], ['--apply']]) {
+      for (const flags of [[], ['--execute']]) {
         const refused = io(root);
         assert.equal(dbRestampMain(['--map', 'restamp.yaml', ...flags], refused.ports), 2, name);
         assert.ok(refused.err.join('').includes(`migration filenames break their chain rules:\n  ${MIGRATIONS_DIR}/${name}: `), name);
