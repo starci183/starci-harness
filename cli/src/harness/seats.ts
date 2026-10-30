@@ -19,7 +19,7 @@ export const SEAT_LAUNCH_UNSETTLED = "launch-unsettled"
 
 /**
  * The status of a seat whose launch Orca could not confirm or deny (outcome_unknown, a lost or unreadable receipt, a timeout).
- * Unknown is never dead: the seat stays open, its task stays effect_unknown with its leases, and `seat start <task> --resume`
+ * Unknown is never dead: the seat stays open, its task stays effect_unknown with its leases, and `seat start <task> --resume --execute`
  * replays the launch under the same request id.
  */
 export const SEAT_LAUNCH_UNKNOWN = "launch-unknown"

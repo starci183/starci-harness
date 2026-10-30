@@ -716,6 +716,7 @@ const applyCommand = async (context: VerbContext, root: string, command: Command
             workflow: command.workflow,
             desired: undefined,
             change,
+            goal: undefined,
             "based-on": command.basedOn.graph === undefined ? undefined : String(command.basedOn.graph),
             "cmd-id": command.cmdId,
             "keep-effect": list(command.keepEffect),

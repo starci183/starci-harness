@@ -30,7 +30,7 @@ export interface Gap {
     readonly pending?: { readonly since: string; readonly ruling: string }
 }
 
-/** The gate's answer: the gaps that make `--check` red, and the gaps a live owner ruling holds pending. */
+/** The gate's answer: the gaps that make its dry run red, and the gaps a live owner ruling holds pending. */
 export interface GateVerdict {
     readonly red: readonly Gap[]
     readonly pending: readonly Gap[]
@@ -141,7 +141,7 @@ const openGaps = (knowledge: string, catalog: z.infer<typeof catalogSchema>): { 
 }
 
 /**
- * The completeness gate of `contexts anatomy --check`: every slot rule code resolves to a rule, every rule names an enforcer,
+ * The completeness gate of `contexts anatomy` (its dry run): every slot rule code resolves to a rule, every rule names an enforcer,
  * and not only planned ones, of a declared kind, and every path its law cites resolves (never pendable). A gap stays pending (not red) only while a dated entry of rules.yaml's `pending` list holds it
  * and the live owner ruling that entry cites (contexts/decisions/rulings.yaml) lists it in `covers`; an entry with no such
  * ruling is ANATOMY_PENDING_UNRULED and one that holds no gap is ANATOMY_PENDING_STALE, so the list only shrinks.

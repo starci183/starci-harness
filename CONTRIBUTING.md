@@ -181,12 +181,12 @@ Commit with hooks, in small commits whose message says what the change does.
 ### CONTRIB-18 Push after a green scoped check
 
 Main is pushed right after a green wave round ([contexts/authority/wave.md](contexts/authority/wave.md)) with
-`starci release push` (it refuses a dirty tree, a non fast-forward and a secret in the pushed range). CI judges
+`starci release push --execute` (dry without it; it refuses a dirty tree, a non fast-forward and a secret in the pushed range). CI judges
 everything else.
 
 ### CONTRIB-19 A red CI is the next commit
 
-A red CI is fixed by the next commit, scoped to the red checks (`starci release ci-status` names them). It does not
+A red CI is fixed by the next commit, scoped to the red checks (`starci check ci` names them). It does not
 block the next push.
 
 ### CONTRIB-20 Publishing is CI's
@@ -194,7 +194,7 @@ block the next push.
 Apps consume the harness packages from this checkout (`starci deps source --local`), so a change is usable the moment it
 is coded; reaching npm is a separate step CI takes alone. Every push to main whose plan affects a package or the CLI
 runs the two publish jobs of [.github/workflows/ci.yml](.github/workflows/ci.yml), which never wait for the `ci` job:
-`starci release publish --base <the plan's base>` judges the plan, then publishes in two phases every package under
+`starci release publish --base <the plan's base>` judges the plan (its dry run), then with `--execute` publishes in two phases every package under
 `packages/` and then the CLI (`starci-harness`, from `cli/`) whose version is not on npm yet, a dependency before its
 dependent, skipping a private one and a version already on npm, with npm provenance, under the dist-tag a prerelease version names
 (`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). Each phase waits only for its own jobs. A package
@@ -224,7 +224,7 @@ prerelease when that version is on npm, records it in [CHANGELOG.md](CHANGELOG.m
 `HARNESS_BOT_TOKEN` (a fine-grained token, contents: write on this repository; a push with `GITHUB_TOKEN` starts no run), and the
 run of that commit publishes the CLI. Every CI job installs the CLI with the siblings of the commit packed over the registry copies
 ([.github/actions/cli-install](.github/actions/cli-install/action.yml)), and `publish-cli` publishes it as committed,
-refusing while a sibling it requires is held. `starci release publish --publish` from a
+refusing while a sibling it requires is held. `starci release publish --execute` from a
 workstation is Debug's fallback when CI cannot publish, with the owner's approval.
 
 The job reads one repository secret, `NPM_TOKEN`, handed to npm alone in the publish step: an npm granular access token

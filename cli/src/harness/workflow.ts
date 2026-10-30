@@ -455,7 +455,7 @@ export const retryOfNode = (db: DatabaseSync, workflowId: string, node: PlanNode
     if (tryAfter(db, previous) > budget) {
         throw new Refusal(
             "TRIES_EXHAUSTED",
-            `${node.key} was try ${String(previous.tryNo)} of ${String(budget)} (task ${previous.id}); the try budget is spent: raise this task's tries (starci budget raise ${workflowId} --task ${node.key} --tries <n> --by <kernel|supervisor|owner> --reason <why>), then retry it`,
+            `${node.key} was try ${String(previous.tryNo)} of ${String(budget)} (task ${previous.id}); the try budget is spent: raise this task's tries (starci budget raise ${workflowId} --task ${node.key} --tries <n> --reason <why>, as its Kernel, the Supervisor or the owner), then retry it`,
         )
     }
     return previous

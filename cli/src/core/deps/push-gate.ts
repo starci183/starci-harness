@@ -152,7 +152,7 @@ export const judgePush = async (root: string, revision = "HEAD"): Promise<PushJu
     const unpublished = verdicts.filter((pin) => !pin.published)
     if (unpublished.length > 0) {
         const listed = unpublished.map((pin) => `${pin.file} ${pin.field} ${pin.name}@${pin.spec}`).join("; ")
-        throw new Refusal("DEPS_PIN_UNPUBLISHED", `CI cannot install these committed @starci pins: ${listed}. Publish the package (starci release publish) or pin a published version, then commit`)
+        throw new Refusal("DEPS_PIN_UNPUBLISHED", `CI cannot install these committed @starci pins: ${listed}. Publish the package (starci release publish --execute) or pin a published version, then commit`)
     }
     const names = [...new Set(pins.map((pin) => pin.name))]
     const copies = installsOf(root, await manifestFiles(root), names).filter((install) => install.local !== undefined)

@@ -41,7 +41,7 @@ interface UatSent {
 }
 
 /** The flags only a launch uses; each one without --launch is a usage error, not silently ignored. */
-const LAUNCH_FLAGS = ["agent", "model", "effort", "worktree", "run", "timeout-ms"] as const
+const LAUNCH_FLAGS = ["agent", "model", "effort", "worktree", "run", "timeout"] as const
 
 const pathSet = (contract: Contract): string => [...new Set(contract.context.allowPaths.map(normaliseRepoPath))].sort((left, right) => left.localeCompare(right)).join("\n")
 
@@ -138,12 +138,12 @@ export const taskSendVerb = defineVerb({
         effort: { kind: "string", summary: "with --launch: the reasoning effort of the model" },
         worktree: { kind: "string", summary: "with --launch: where the worker runs, a path or an Orca worktree selector" },
         run: { kind: "string", summary: "with --launch: an existing Orca Run id (default: create one)" },
-        "timeout-ms": { kind: "string", summary: "with --launch: how long Orca may wait for a ready worker" },
+        timeout: { kind: "string", summary: "with --launch: seconds Orca may wait for a ready worker" },
     },
     run: async (context, flags): Promise<VerbResult<SendData>> => {
         if (flags.launch) assertLaunchAllowed(flags.agent, flags.model)
         else assertNoLaunchFlags(LAUNCH_FLAGS.filter((name) => flags[name] !== undefined))
-        const timeoutMs = parseTimeout(flags["timeout-ms"])
+        const timeoutMs = parseTimeout(flags.timeout)
         if ((flags.contract === undefined) === (flags.uat === undefined)) throw new Refusal("CLI_USAGE", "task send takes a contract file or --uat <flow>, exactly one of the two", EXIT_USAGE)
         const fromWork = flags.uat === undefined ? undefined : await uatSend(context.cwd, flags.uat, flags["retry-of"])
         const file = fromWork?.file ?? resolve(context.cwd, flags.contract ?? "")

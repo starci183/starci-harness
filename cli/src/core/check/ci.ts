@@ -3,28 +3,73 @@ import { join } from "node:path"
 import { loadPolicy } from "../../harness/policy.js"
 import type { CiGatedAction } from "../../harness/policy.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
+import { runTool } from "../../shared/exec.js"
 import { gitCommonDir, resolveSha } from "../../shared/git.js"
+import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 import type { VerbContext } from "../../shared/verb.js"
-import { ciStatusVerb } from "../release/ci-status.js"
 
-/** What `release ci-status` answered for one commit, or why it could not answer. */
+/** One GitHub Actions run of a commit, as `gh run list` reports it. */
+interface WorkflowRun {
+    readonly name: string
+    readonly status: string
+    readonly conclusion: string
+    readonly url: string
+    readonly databaseId: number
+}
+
+/** The CI verdict of one commit (green, red, pending, none, or unreadable when GitHub could not be asked), its runs and its text. */
 export interface CiReading {
     readonly sha: string
     readonly verdict: string
     readonly detail: string
+    readonly runs: readonly WorkflowRun[]
 }
 
-const verdictOf = (data: unknown): string => (typeof data === "object" && data !== null && "verdict" in data && typeof data.verdict === "string" ? data.verdict : "unreadable")
+const isRun = (value: unknown): value is WorkflowRun =>
+    typeof value === "object" &&
+    value !== null &&
+    "name" in value &&
+    typeof value.name === "string" &&
+    "status" in value &&
+    typeof value.status === "string" &&
+    "conclusion" in value &&
+    typeof value.conclusion === "string" &&
+    "url" in value &&
+    typeof value.url === "string" &&
+    "databaseId" in value &&
+    typeof value.databaseId === "number"
 
-/** Reads the CI verdict of `sha` through `release ci-status` itself; a verdict that cannot be read is `unreadable`, never green. */
-export const readCi = async (context: VerbContext, cwd: string, sha: string): Promise<CiReading> => {
+// Inside Actions the run asking the question is itself a run of the commit; it would keep the verdict pending forever.
+const ownRunId = (): number | undefined => {
+    const id = Number(process.env.GITHUB_RUN_ID)
+    return Number.isInteger(id) && id > 0 ? id : undefined
+}
+
+const parseRuns = (stdout: string): WorkflowRun[] => {
+    const parsed: unknown = JSON.parse(stdout === "" ? "[]" : stdout)
+    if (!Array.isArray(parsed)) throw new Refusal("CI_STATUS_UNREADABLE", "gh run list did not return a json array")
+    const own = ownRunId()
+    return parsed.filter(isRun).filter((run) => run.databaseId !== own)
+}
+
+const verdictOf = (runs: readonly WorkflowRun[]): string => {
+    if (runs.length === 0) return "none"
+    if (runs.some((run) => run.status !== "completed")) return "pending"
+    return runs.every((run) => run.conclusion === "success" || run.conclusion === "skipped") ? "green" : "red"
+}
+
+/** Reads the GitHub Actions verdict of `sha` (`gh run list`); a verdict that cannot be read is `unreadable`, never green. */
+const readCi = async (cwd: string, sha: string): Promise<CiReading> => {
     try {
-        const result = await ciStatusVerb.run({ ...context, cwd }, { sha })
-        return { sha, verdict: verdictOf(result.data), detail: result.message }
+        const listed = await runTool("gh", ["run", "list", "--commit", sha, "--json", "name,status,conclusion,url,databaseId", "--limit", "50"], cwd)
+        const runs = parseRuns(listed.stdout)
+        const verdict = verdictOf(runs)
+        const table = formatTable(runs.map((run) => [run.name, run.status, run.conclusion === "" ? "-" : run.conclusion]))
+        return { sha, verdict, runs, detail: `${sha.slice(0, 9)}: ${verdict}${runs.length === 0 ? "" : `\n${table}`}` }
     } catch (error: unknown) {
         const refusal = asRefusal(error)
-        return { sha, verdict: "unreadable", detail: `${refusal.code}: ${refusal.message}` }
+        return { sha, verdict: "unreadable", runs: [], detail: `${refusal.code}: ${refusal.message}` }
     }
 }
 
@@ -63,32 +108,35 @@ const urgentRecordOf = async (root: string, sha: string): Promise<UrgentRecord |
  */
 export const requireCiGreen = async (context: VerbContext, root: string, action: CiGatedAction, sha: string, options: { readonly urgent?: boolean } = {}): Promise<CiReading | undefined> => {
     if (!loadPolicy(root).quality.requireCi.includes(action)) return undefined
-    const reading = await readCi(context, root, sha)
+    const reading = await readCi(root, sha)
     if (reading.verdict === "green") return reading
     if (options.urgent === true) {
         const record = await urgentRecordOf(root, sha)
         if (record === undefined) throw new Refusal("URGENT_RECORD_MISSING", `${action} --urgent stands on the urgent record of ${sha.slice(0, 9)}, and it has none: starci app release push --urgent --reason "<text>" --execute first (CI is ${reading.verdict})`)
         if (!record.pushed) throw new Refusal("URGENT_RECORD_MISSING", `the urgent release ${record.tag} of ${sha.slice(0, 9)} was never pushed`)
-        return { sha, verdict: "urgent", detail: `accepted: urgent record ${record.tag} of ${sha.slice(0, 9)} by ${record.role} (${record.reason}) stands in for CI (${reading.verdict}); the back-fill runs the full gate later` }
+        return { sha, verdict: "urgent", runs: reading.runs, detail: `accepted: urgent record ${record.tag} of ${sha.slice(0, 9)} by ${record.role} (${record.reason}) stands in for CI (${reading.verdict}); the back-fill runs the full gate later` }
     }
     throw new Refusal("CI_NOT_GREEN", `${action} waits for a green CI (policy/quality.yaml requireCi); CI of ${sha.slice(0, 9)} is ${reading.verdict}: ${reading.detail.split("\n")[0] ?? ""}`)
 }
 
-/** `starci check ci`: exits 0 only when CI of the commit is green; the check a contract uses to wait for CI (preset ci-green). */
+/**
+ * `starci check ci`: the GitHub Actions verdict of one pushed commit (green, red, pending, none or unreadable) with its runs, the
+ * critic after a light push; it exits 0 only when that verdict is green, so a contract waits on it for CI (preset ci-green).
+ */
 export const checkCiVerb = defineVerb({
     path: ["check", "ci"],
-    summary: "exit 0 only when the GitHub Actions verdict of a commit is green (red, pending, none or unreadable exit 1)",
+    summary: "read the GitHub Actions verdict of a commit (green, red, pending, none or unreadable) and its runs; exit 0 only on green",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/check-ci@1",
     flags: {
-        sha: { kind: "string", summary: "the commit to judge" },
+        sha: { kind: "string", summary: "the commit to judge (default: the commit of --ref)" },
         ref: { kind: "string", summary: "the ref whose commit is judged when no --sha is given (default HEAD)" },
     },
     run: async (context, flags) => {
         const sha = flags.sha ?? (await resolveSha(context.cwd, flags.ref ?? "HEAD"))
-        const reading = await readCi(context, context.cwd, sha)
+        const reading = await readCi(context.cwd, sha)
         const message = reading.verdict === "unreadable" ? `${sha.slice(0, 9)}: unreadable\n${reading.detail}` : reading.detail
         return { data: reading, message, exitCode: reading.verdict === "green" ? 0 : 1 }
     },

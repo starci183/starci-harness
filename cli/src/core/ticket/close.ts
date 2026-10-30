@@ -2,7 +2,13 @@ import { closeLine, closeTicket, wakeOnClose } from "../../harness/tickets.js"
 import type { Resolution } from "../../harness/tickets.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { FEEDBACK_TARGET_KINDS } from "../../harness/feedback.js"
+import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import type { Role } from "../../shared/verb.js"
+import { assertKindRole, closeFeedbackItem, FEEDBACK_KIND } from "./feedback.js"
+
+/** Who closes a ticket: Debug and the owner (feedback is every writer's: `assertKindRole`). */
+const TICKET_CLOSERS: readonly Role[] = ["debug", "owner"]
 
 const SHA = /^[0-9a-f]{7,40}$/
 
@@ -28,19 +34,27 @@ const resolutionOf = (flags: { readonly "fixed-by"?: string | undefined; readonl
  */
 export const ticketCloseVerb = defineVerb({
     path: ["ticket", "close"],
-    summary: "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor",
+    summary: "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor; --kind feedback closes an owner feedback on a target that resolves",
     editions: BOTH_EDITIONS,
     effect: "host",
-    roles: ["debug", "owner"],
+    roles: EVERYONE,
     schema: "starci/ticket-close@1",
     flags: {
-        id: { kind: "string", required: true, positional: true, summary: "the ticket id (tk-...)" },
+        id: { kind: "string", required: true, positional: true, summary: "the ticket id (tk-...), or with --kind feedback the feedback id" },
+        kind: { kind: "string", summary: `${FEEDBACK_KIND}: the id is an owner feedback's (default: a ticket's)` },
         "fixed-by": { kind: "string", summary: "the harness commit that fixed it" },
         wontfix: { kind: "boolean", summary: "it is not fixed; --reason says why" },
         reason: { kind: "string", summary: "why it is not fixed (with --wontfix)" },
         duplicate: { kind: "string", summary: "the ticket it duplicates" },
+        "target-kind": { kind: "string", summary: `feedback: the kind of target that closes it: ${FEEDBACK_TARGET_KINDS.join(", ")}` },
+        target: { kind: "string", summary: "feedback: a commit sha (grammar, cli, app), a rule id R<n> (rule) or an anchor id (context)" },
     },
     run: async (context, flags) => {
+        const feedback = flags.kind === FEEDBACK_KIND
+        if (flags.kind !== undefined && !feedback) throw new Refusal("CLI_USAGE", `--kind takes ${FEEDBACK_KIND} or nothing (a ticket), not ${flags.kind}`, EXIT_USAGE)
+        assertKindRole(feedback, TICKET_CLOSERS, "ticket close")
+        if (feedback) return closeFeedbackItem(flags.id, flags["target-kind"], flags.target)
+        if (flags["target-kind"] !== undefined || flags.target !== undefined) throw new Refusal("CLI_USAGE", "--target-kind and --target close a feedback: add --kind feedback", EXIT_USAGE)
         const resolution = resolutionOf(flags)
         const by = callerRole() ?? "debug"
         const closed = closeTicket(flags.id, resolution, by)

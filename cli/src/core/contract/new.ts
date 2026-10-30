@@ -73,16 +73,16 @@ export const contractNewVerb = defineVerb({
     flags: {
         label: { kind: "string", summary: "the worker label, an op file of ops/ops/ (code, test, draw, image, audit, review, verify, uat, docs, deliver)", required: true },
         summary: { kind: "string", summary: "what the task must do, in one sentence", required: true },
-        allow: { kind: "string", summary: "comma-separated repository paths the task may write (literal folders or files, no globs)", required: true },
+        allow: { kind: "list", summary: "a repository path the task may write, literal folder or file, no globs (repeat or comma-separate; at least one)" },
         read: { kind: "string", summary: "comma-separated files the task reads beyond its op's base: repository paths, or harness:<path> for a file of the harness" },
         input: { kind: "string", summary: "named inputs, \"name=value;name=value\": the op's base inputs (ops/ops/<label>.md) and any the task adds" },
         output: { kind: "string", summary: "output keys the result must carry beyond the op's base, \"key=type;key=type\" (string, number, boolean, object, array, string[])" },
-        "cwd-path": { kind: "string", summary: "the repository folder the checks run in (default: the repository root)" },
+        cwd: { kind: "string", summary: "the repository folder the checks run in (default: the repository root)" },
         check: {
-            kind: "string",
-            summary: 'checks to add, separated by ";": preset or preset:arg=value,arg=value (a|b is a list), or {"preset":"tests-pass","args":{"command":"npm test"}}',
+            kind: "list",
+            summary: 'a check to add (repeat, or separate by ";" since an entry holds commas): preset or preset:arg=value,arg=value (a|b is a list), or {"preset":"tests-pass","args":{"command":"npm test"}}',
         },
-        details: { kind: "string", summary: "more words on the input, beyond the summary" },
+        note: { kind: "string", summary: "more words on the input, beyond the summary" },
         base: { kind: "string", summary: "the revision the task starts from (default: HEAD)" },
         out: { kind: "string", summary: "the file to write (default: contracts/<summary>.json in the project's state folder under the state base)" },
         force: { kind: "boolean", summary: "overwrite an existing file" },
@@ -92,7 +92,9 @@ export const contractNewVerb = defineVerb({
         const op = ops.labels[flags.label]
         if (op === undefined) throw new Refusal("CONTRACT_UNKNOWN_LABEL", `unknown label ${flags.label}; labels: ${Object.keys(ops.labels).join(", ")}`)
         const root = await repositoryRoot(context.cwd)
-        const given = (flags.check ?? "").split(";").map((entry) => entry.trim()).filter((entry) => entry !== "").map(parseCheck)
+        const allowPaths = flags.allow.flatMap((value) => list(value))
+        if (allowPaths.length === 0) throw new Refusal("CLI_USAGE", "contract new needs --allow <path>: the paths the task may write", EXIT_USAGE)
+        const given = flags.check.flatMap((value) => value.split(";")).map((entry) => entry.trim()).filter((entry) => entry !== "").map(parseCheck)
         const read = list(flags.read)
         const inputs = pairs("input", flags.input)
         const inputBase = Object.fromEntries(inputs.filter(([name]) => name in op.input.base))
@@ -103,13 +105,13 @@ export const contractNewVerb = defineVerb({
             label: flags.label,
             context: {
                 revision: await resolveSha(root, flags.base ?? "HEAD"),
-                allowPaths: list(flags.allow),
-                ...(flags["cwd-path"] === undefined ? {} : { cwd: flags["cwd-path"] }),
+                allowPaths,
+                ...(flags.cwd === undefined ? {} : { cwd: flags.cwd }),
                 ...(read.length === 0 ? {} : { extend: read }),
             },
             input: {
                 summary: flags.summary,
-                ...(flags.details === undefined ? {} : { details: flags.details }),
+                ...(flags.note === undefined ? {} : { details: flags.note }),
                 ...(Object.keys(inputBase).length === 0 ? {} : { base: inputBase }),
                 ...(Object.keys(inputExtend).length === 0 ? {} : { extend: inputExtend }),
             },

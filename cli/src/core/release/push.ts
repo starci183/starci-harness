@@ -29,7 +29,7 @@ const describeFindings = (findings: readonly SecretFinding[]): string =>
 /** `starci release push`: the light gate of ruling push-main-after-scoped-check: on the branch, clean, fast-forward, no secret; then git push with hooks. */
 export const releasePushVerb = defineVerb({
     path: ["release", "push"],
-    summary: "push main right after a green scoped check: refuses a dirty tree, a non fast-forward or a secret in the pushed range",
+    summary: "push main right after a green scoped check (dry until --execute): refuses a dirty tree, a non fast-forward or a secret in the pushed range",
     editions: ["lite", "full"],
     effect: "remote",
     roles: ["owner", "release", "coordinator", "lead", "debug"],
@@ -37,13 +37,13 @@ export const releasePushVerb = defineVerb({
     flags: {
         remote: { kind: "string", summary: "the remote to push to (default origin)" },
         branch: { kind: "string", summary: "the branch to push (default main)" },
-        "dry-run": { kind: "boolean", summary: "run every judgement but do not push" },
+        execute: { kind: "boolean", summary: "push for real (default: a dry run that runs every judgement and pushes nothing)" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
         const remote = flags.remote ?? "origin"
         const branch = flags.branch ?? "main"
-        const dryRun = flags["dry-run"]
+        const dryRun = !flags.execute
         assertMayPushBranch(branch)
         assertMayPushBranch(await currentBranch(root))
         if ((await currentBranch(root)) !== branch) throw new Refusal("PUSH_NOT_ON_BRANCH", `check out ${branch} first; only ${branch} is pushed`)
@@ -75,6 +75,6 @@ export const releasePushVerb = defineVerb({
         const commits = previous === null ? Number(await git(root, ["rev-list", "--count", head])) : Number(await git(root, ["rev-list", "--count", `${base}..${head}`]))
         if (!dryRun) await git(root, ["push", remote, `HEAD:refs/heads/${branch}`])
         const data: PushData = { remote, branch, head, previous, commits, pushed: !dryRun, dryRun }
-        return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)}); CI is the critic: starci release ci-status --sha ${head}` }
+        return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)})${dryRun ? " (dry run; add --execute)" : ""}; CI is the critic: starci check ci --sha ${head}` }
     },
 })

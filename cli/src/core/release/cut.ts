@@ -33,7 +33,7 @@ const changelogSection = (text: string, version: string): string | undefined => 
 /** `starci release cut`: tags a commit that is already on the remote main with the package version and its CHANGELOG notes; it runs no suite. */
 export const releaseCutVerb = defineVerb({
     path: ["release", "cut"],
-    summary: "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone; it runs no suite and waits for a green CI (or, with --urgent, the commit's urgent record) when policy requires it",
+    summary: "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone (dry until --execute); it runs no suite and waits for a green CI (or, with --urgent, the commit's urgent record) when policy requires it",
     editions: ["lite", "full"],
     effect: "remote",
     roles: ["owner", "release", "debug"],
@@ -41,13 +41,13 @@ export const releaseCutVerb = defineVerb({
     flags: {
         package: { kind: "string", summary: "the package whose version is released (default: the root package, or the only package)" },
         remote: { kind: "string", summary: "the remote (default origin)" },
-        "dry-run": { kind: "boolean", summary: "run every judgement but do not tag or push" },
+        execute: { kind: "boolean", summary: "tag and push for real (default: a dry run that runs every judgement and tags nothing)" },
         urgent: { kind: "boolean", summary: "accept the commit's pushed urgent record (starci app release push --urgent) in place of a green CI, by the owner's ruling of 2026-10-29" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
         const remote = flags.remote ?? "origin"
-        const dryRun = flags["dry-run"]
+        const dryRun = !flags.execute
         const pkg = choosePackage(root, flags.package)
         const tag = `v${pkg.version}`
         const dirty = await trackedChanges(root)
@@ -56,7 +56,7 @@ export const releaseCutVerb = defineVerb({
         await captureGit(["fetch", "--quiet", "--tags", remote, "main"], root)
         const commit = await resolveSha(root, "HEAD")
         if (!(await refExists(root, `${remote}/main`)) || !(await isAncestor(root, commit, `${remote}/main`))) {
-            throw new Refusal("CUT_NOT_ON_REMOTE_MAIN", `push ${commit.slice(0, 9)} to ${remote}/main first (starci release push); a release tags a commit CI already sees`)
+            throw new Refusal("CUT_NOT_ON_REMOTE_MAIN", `push ${commit.slice(0, 9)} to ${remote}/main first (starci release push --execute); a release tags a commit CI already sees`)
         }
         if (await refExists(root, `refs/tags/${tag}`)) throw new Refusal("CUT_TAG_EXISTS", `${tag} already exists; bump the version of ${pkg.name} first`)
         const changelogPath = [join(pkg.dir, "CHANGELOG.md"), join(root, "CHANGELOG.md")].find((path) => existsSync(path))
@@ -69,6 +69,6 @@ export const releaseCutVerb = defineVerb({
             await git(root, ["push", remote, `refs/tags/${tag}`])
         }
         const data: CutData = { package: pkg.name, version: pkg.version, tag, commit, changelog: changelogPath, pushed: !dryRun, dryRun, ci: ci?.verdict ?? "not required" }
-        return { data, message: `${dryRun ? "would tag" : "tagged"} ${tag} on ${commit.slice(0, 9)} and ${dryRun ? "push" : "pushed"} the tag; CI judges it: starci release ci-status --sha ${commit}` }
+        return { data, message: `${dryRun ? "would tag" : "tagged"} ${tag} on ${commit.slice(0, 9)} and ${dryRun ? "push" : "pushed"} the tag${dryRun ? " (dry run; add --execute)" : ""}; CI judges it: starci check ci --sha ${commit}` }
     },
 })

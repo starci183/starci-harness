@@ -61,7 +61,7 @@ export interface ParkedTerminal {
     readonly outcome: string
 }
 
-/** What `project park` did, or would do under --dry-run. */
+/** What `project park` did, or would do as a dry run (without --execute). */
 export interface ProjectParkData {
     readonly project: string
     readonly name: string

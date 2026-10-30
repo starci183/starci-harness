@@ -16,7 +16,7 @@ live in the canon packages ([packages/](../packages/README.md)). The CLI validat
 - **Runtime tier**: `starci check run` before a push and `task verify` on the clean checkout run it, scoped to what
   changed, each process bounded by `stepTimeoutSeconds`.
 - **CI tier**: CI runs it on main after the push. Nobody waits for it, except the actions `requireCi` lists, which
-  refuse `CI_NOT_GREEN` unless `starci release ci-status` of their commit is green. A deliver contract that ships main
+  refuse `CI_NOT_GREEN` unless `starci check ci` of their commit is green. A deliver contract that ships main
   waits for CI with the `ci-green` check preset ([ops/checks.yaml](../ops/checks.yaml)).
 
 A gate name the CLI does not implement is refused when the file is read.

@@ -4,8 +4,8 @@ import { coordinatorRoleOf, loadRouting, parseDifficulty } from "../../harness/r
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 
-/** What route explain decided: the pick or the refusal with the whole record, or a simulation's tally. */
-interface RouteExplainData {
+/** What route show decided: the pick or the refusal with the whole record, or a simulation's tally. */
+interface RouteShowData {
     readonly chosen: Omit<RoutePick, "record"> | null
     readonly refusal: { readonly code: string; readonly message: string; readonly resetAt: string | null } | null
     readonly record: RouteRecord | null
@@ -40,14 +40,14 @@ const simulationLines = (simulation: RouteSimulation): string[] => [
     ...Object.entries(simulation.refused).map(([code, count]) => `  refused ${code}: ${String(count)}`),
 ]
 
-/** `starci route explain`: dry-runs the router for a worker or coordinator and prints the whole decision path, or a run of simulated picks. */
-export const routeExplainVerb = defineVerb({
-    path: ["route", "explain"],
+/** `starci route show`: dry-runs the router for a worker or coordinator and prints the whole decision path, or a run of simulated picks. */
+export const routeShowVerb = defineVerb({
+    path: ["route", "show"],
     summary: "dry-run worker or coordinator routing: tier, filters, qualification, quota, probe, scores, exploration and the chosen member; --simulate tallies n picks",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
-    schema: "starci/route-explain@2",
+    schema: "starci/route-show@2",
     flags: {
         label: { kind: "string", summary: "the label: a worker label (one op file ops/ops/<label>.md) or a coordinator seat named in routing.yaml coordinators (supervisor, kernel)", required: true },
         difficulty: { kind: "string", summary: "the measured difficulty: easy, medium, hard, insane or 1..4 (the label's floor raises it)" },
@@ -66,17 +66,17 @@ export const routeExplainVerb = defineVerb({
         const input: RouteInput = coordinator !== undefined ? coordinatorInput(coordinator) : { label, difficulty, attempt: wholeNumber("attempt", flags.attempt, 1), previousRed: members(flags.red), risk: list(flags.risk) }
         if (flags.simulate !== undefined) {
             const simulation = simulateRoute(input, wholeNumber("simulate", flags.simulate, 1))
-            const data: RouteExplainData = { chosen: null, refusal: null, record: null, simulation }
+            const data: RouteShowData = { chosen: null, refusal: null, record: null, simulation }
             return Promise.resolve({ data, message: simulationLines(simulation).join("\n") })
         }
         const answer = coordinator === undefined ? pickRoute(input, { record: false }) : pickCoordinator(coordinator, { record: false })
         const lines = describeRoute(answer)
         if (answer instanceof RouteRefusal) {
-            const data: RouteExplainData = { chosen: null, refusal: { code: answer.code, message: answer.message, resetAt: answer.resetAt }, record: answer.record, simulation: null }
+            const data: RouteShowData = { chosen: null, refusal: { code: answer.code, message: answer.message, resetAt: answer.resetAt }, record: answer.record, simulation: null }
             return Promise.resolve({ data, message: lines.join("\n"), exitCode: 1 })
         }
         const { record, ...chosen } = answer
-        const data: RouteExplainData = { chosen, refusal: null, record, simulation: null }
+        const data: RouteShowData = { chosen, refusal: null, record, simulation: null }
         return Promise.resolve({ data, message: lines.join("\n") })
     },
 })

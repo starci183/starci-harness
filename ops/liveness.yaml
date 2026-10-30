@@ -1,7 +1,7 @@
 # Seat liveness (orca runner only): how long a seat may be quiet before the harness says so, and which Orca answers are its
 # explicit word that a worker is gone; settle liveness and the revival of a task the harness ended; the host's heavy-command
 # slots; the coordinators' mechanics; the budget ladder; owner feedback; and the stall ladder with its idle-ready wake. Read by `seat ping`, `workflow step`, `task verify`, `check run`, the
-# coordinator drivers, `feedback check` and `supervisor tick`; nothing here is restated in code.
+# coordinator drivers, `ticket list --kind feedback --status overdue` and `supervisor tick`; nothing here is restated in code.
 # Unknown is never dead: an Orca that does not answer, or answers anything not listed below, proves nothing about the worker.
 schema: starci/liveness@1
 
@@ -136,7 +136,7 @@ budget:
   graceMinutes: 15
   prompt: "Task {task} has used its budget of {minutes} min. Wrap up now: stop new work, file your result with starci task result {task} (done if the contract is met, else failed or blocked naming what is left) within {grace} min, or the task is fenced and its work set aside."
 
-# Owner feedback (`starci feedback`): an item the owner gave stays open at most this many days; `feedback check` is red past
+# Owner feedback (`starci ticket open --kind feedback`): an item the owner gave stays open at most this many days; `ticket list --kind feedback --status overdue` is red past
 # it, and `supervisor tick` lists every open item.
 feedback:
   openMaxDays: 3
@@ -171,7 +171,7 @@ stall:
   nudgeGraceMinutes: 3
   coordinatorStallMax: 2
   coordinatorStallWindowMinutes: 60
-  # How long `supervisor watch` sleeps between ticks.
+  # How long `supervisor tick --loop` sleeps between ticks.
   watchSeconds: 60
   # A launch Orca completed whose dispatch's worker shows one of these states (worker or observation) never started its turn;
   # still so this long after the launch, or gone, it was dead on arrival: fenced, its attempt closed launch-failed (no try

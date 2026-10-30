@@ -5,7 +5,7 @@ schema: starci/uat@1
 
 # The official Playwright image; its browsers match the package version of its tag.
 image: mcr.microsoft.com/playwright:v1.64.1-noble
-# A run's deadline when --timeout-ms is not given; the container is killed and removed at the deadline.
+# A run's deadline when --timeout is not given; the container is killed and removed at the deadline.
 timeoutMs: 300000
 # The one-time preparation (base pull plus the playwright package install) is bounded on its own.
 prepareTimeoutMs: 1200000

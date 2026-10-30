@@ -1,4 +1,4 @@
-# The owner's Telegram channel, read by cli/src/harness/telegram.ts (`starci connect telegram`, `starci supervisor telegram-bridge`).
+# The owner's Telegram channel, read by cli/src/harness/telegram.ts (`starci connect telegram`, `starci connect telegram bridge`).
 # The bot token is read by name through the CLI's secret loader (`tokenVariable`, listed in policy/security.yaml secretKeys).
 schema: starci/telegram@1
 # The key that holds the bot token, in the environment or secret.env.

@@ -100,7 +100,7 @@ jobs:
         include:
           - gate: anatomy drift (contexts/project/anatomy.md)
             scope: harness
-            run: contexts anatomy --check
+            run: contexts anatomy
           - gate: loosening (policy/loosening.yaml)
             scope: repo
             run: check loosening
@@ -118,10 +118,10 @@ jobs:
             run: check heavy-sites
           - gate: contexts anchors (one place per anchor, no dangling link)
             scope: harness
-            run: contexts anchor --check
+            run: contexts anchor
           - gate: contexts search index (cli/dist/contexts-search.json matches the tree)
             scope: harness
-            run: contexts search --check
+            run: contexts search
     # publish-packages reads the `repo` gates by this name's prefix.
     name: gate (${{ matrix.scope }}) ${{ matrix.gate }}
     steps:
@@ -334,7 +334,7 @@ jobs:
           set -euo pipefail
           export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          for dir in $PUBLISH; do node cli/dist/main.js release publish --publish --base "$BASE" --package "$dir"; done
+          for dir in $PUBLISH; do node cli/dist/main.js release publish --execute --base "$BASE" --package "$dir"; done
 
   # Phase 2: the CLI (starci-harness), after publish-packages, once the harness job and every gate are green (Sonar and the app
   # job never gate a publish). It publishes as committed, its @starci requirements and lockfile at their stack pins
@@ -410,7 +410,7 @@ jobs:
           set -euo pipefail
           export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          node cli/dist/main.js release publish --publish --base "$BASE" --package cli
+          node cli/dist/main.js release publish --execute --base "$BASE" --package cli
 
   # The CLI follows its siblings by itself (.github/scripts/cli-follow.mts): once publish-packages put the pinned versions on npm,
   # this job raises the CLI's requirement and lockfile to the stack pins, bumps its prerelease when that version is on npm, records

@@ -5,6 +5,7 @@ import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { raiseNodeTries } from "../../harness/workflow.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
+import { callerRole } from "../../shared/role.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 
 const amount = (name: string, value: string | undefined): number => {
@@ -45,17 +46,18 @@ export const budgetRaiseVerb = defineVerb({
         minutes: { kind: "string", summary: "add this many minutes to the ceiling" },
         tries: { kind: "string", summary: "add this many tries to the ceiling, or with --task to that task's try budget" },
         task: { kind: "string", summary: "raise the tries of this one task (its plan key or a ledger task id) instead of the workflow's ceiling" },
-        by: { kind: "string", summary: `who raises it: ${RAISERS.join(" or ")}, or kernel with --task`, required: true },
         reason: { kind: "string", summary: "why the workflow or task needs more", required: true },
     },
     run: async (context, flags): Promise<{ readonly data: RaiseData; readonly message: string }> => {
         const minutes = amount("minutes", flags.minutes)
         const tries = amount("tries", flags.tries)
         if (flags.reason.trim() === "") throw new Refusal("CLI_USAGE", "--reason must say why", EXIT_USAGE)
+        // Who raises is the caller's role (STARCI_ROLE), the owner when none is set.
+        const caller = callerRole() ?? "owner"
         const root = await repositoryRoot(context.cwd)
         if (flags.task !== undefined) {
-            const by = TASK_RAISERS.find((role) => role === flags.by)
-            if (by === undefined) throw new Refusal("ROLE_REFUSED", `only ${TASK_RAISERS.join(", ")} raise a task's tries, not "${flags.by}"`)
+            const by = TASK_RAISERS.find((role) => role === caller)
+            if (by === undefined) throw new Refusal("ROLE_REFUSED", `only ${TASK_RAISERS.join(", ")} raise a task's tries, not "${caller}"`)
             if (tries === 0 || minutes !== 0) throw new Refusal("CLI_USAGE", "--task raises tries only: give --tries", EXIT_USAGE)
             const named = flags.task
             const db = openLedger(root)
@@ -73,8 +75,8 @@ export const budgetRaiseVerb = defineVerb({
                 db.close()
             }
         }
-        const by = RAISERS.find((role) => role === flags.by)
-        if (by === undefined) throw new Refusal("ROLE_REFUSED", `only ${RAISERS.join(" or ")} raise a workflow's budget, not "${flags.by}"; a Kernel raises one task's tries with --task`)
+        const by = RAISERS.find((role) => role === caller)
+        if (by === undefined) throw new Refusal("ROLE_REFUSED", `only ${RAISERS.join(" or ")} raise a workflow's budget, not "${caller}"; a Kernel raises one task's tries with --task`)
         if (minutes === 0 && tries === 0) throw new Refusal("CLI_USAGE", "give --minutes, --tries or both", EXIT_USAGE)
         const raised = raiseWorkflowBudget(root, flags.workflow, { minutes, tries, by, reason: flags.reason.trim() })
         const { before, after } = raised

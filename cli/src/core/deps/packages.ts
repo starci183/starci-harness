@@ -91,7 +91,7 @@ export const committedPins = async (root: string, revision: string): Promise<Pin
     return shown.flat()
 }
 
-/** A package folder of the harness (or of `--from`): its npm name, folder, version and whether it builds. */
+/** A package folder of the harness (or of `--cwd`): its npm name, folder, version and whether it builds. */
 export interface LocalPackage {
     readonly name: string
     readonly folder: string
@@ -101,13 +101,13 @@ export interface LocalPackage {
 
 /**
  * Where the `@starci` package sources live by default: `packages/` of the main checkout of the harness this CLI runs from, never
- * of one of its worktrees (a package edit worktree ends when Debug lands it; `--from` names one on purpose).
+ * of one of its worktrees (a package edit worktree ends when Debug lands it; `--cwd` names one on purpose).
  */
 export const defaultPackagesRoot = (): string => join(mainCheckoutOf(runtimeRoot()), "packages")
 
 /** The `@starci` packages under `from`, by npm name; DEPS_FROM_MISSING when the folder does not exist. */
 export const localPackages = (from: string): Map<string, LocalPackage> => {
-    if (!existsSync(from)) throw new Refusal("DEPS_FROM_MISSING", `${from} does not exist; pass --from <folder holding the @starci package folders>`)
+    if (!existsSync(from)) throw new Refusal("DEPS_FROM_MISSING", `${from} does not exist; pass --cwd <folder holding the @starci package folders>`)
     const found = new Map<string, LocalPackage>()
     for (const entry of readdirSync(from, { withFileTypes: true })) {
         const file = join(from, entry.name, "package.json")
