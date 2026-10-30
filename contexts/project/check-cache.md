@@ -152,7 +152,7 @@ addition, and deleted paths drop every record they own.
 |---|---|---|---|
 | tracked files, content index, fingerprint, trust | always | never | every run; they decide the rest |
 | managed files against their render | always | never | every run: cheap, and its inputs are the templates and the managed files |
-| slot, tree, pin, secret and content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold, and are cheap |
+| slot, tree, pin, secret and content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold; the boot proof, the costly part, is lifted out as its own scoped step below, and any rule measured above a few seconds follows it |
 | Prettier (`HFS_FORMAT`) | per file | the path's hash is unchanged | changed and added paths |
 | database rules (`DB_*`) | scoped | every `db/` hash and the merge-base the baseline rules compare with are unchanged | any `db/` change or a new merge-base |
 | contract emit | scoped | the be side key is unchanged | any be change |

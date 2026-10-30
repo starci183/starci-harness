@@ -186,7 +186,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-1 A project is one app root that holds the Work of every side · PROJECT-2 Work travels from a record to a settled commit · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 76 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/check-cache.md](../project/check-cache.md) · 21 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`, `starci app lint` and the unit specs judge only what differs ...
+- [project/check-cache.md](../project/check-cache.md) · 22 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`, `starci app lint` and the unit specs judge only what differs ...
   - sections: The command surface · Progress and the run log · When a run is full · Layout and format · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · The slot, the templates and adoption · The law · Edge cases · Read with
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with
