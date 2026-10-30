@@ -5,6 +5,7 @@ import { InjectIds } from "@modules/platform/ids"
 import type { Ids } from "@modules/platform/ids"
 import { stampLogFields } from "./correlation.policy"
 import { InjectLogErr, InjectLogOut } from "./logging.decorators"
+import type { LoggingOptions } from "./logging.options"
 import type { LogFields, Logger } from "./logging.port"
 
 type Level = "info" | "warn" | "error"
@@ -50,6 +51,6 @@ export class JsonLoggerService implements Logger {
     }
 }
 
-/** Builds the JSON logger stamping lines with `clock` on stdout and stderr; main.ts uses it before the DI container exists. */
-export const createJsonLogger = (clock: Clock, ids: Ids): Logger =>
-    new JsonLoggerService(clock, process.stdout, process.stderr, ids)
+/** Builds the JSON logger stamping lines with `clock`: info on stdout (or stderr when `options.info` says so), warn and error on stderr; main.ts uses it before the DI container exists. */
+export const createJsonLogger = (clock: Clock, ids: Ids, options: LoggingOptions = {}): Logger =>
+    new JsonLoggerService(clock, options.info === "stderr" ? process.stderr : process.stdout, process.stderr, ids)
