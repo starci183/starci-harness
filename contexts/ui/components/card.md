@@ -55,4 +55,4 @@ Loading renders the same card in skeleton mode; a failed card fails in place (ST
 
 ## Rules
 COLLECTION-1, COLLECTION-2, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..6, SURFACE-2..6. Lint:
-`starci-fe/no-app-surface-paint`, `divider-full-bleed`. Proof: TASTE-7 (`budgets.cardDepth`).
+`starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340). Proof: TASTE-7 (`budgets.cardDepth`).

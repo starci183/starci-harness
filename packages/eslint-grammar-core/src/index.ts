@@ -12,6 +12,7 @@ import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as pageRules } from "./page.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
+import { rules as surfaceDepthRules } from "./surface-depth.ts"
 import { rules as tokensRules } from "./tokens.ts"
 import { rules as typographyRules } from "./typography.ts"
 import { rules as vendorRules } from "./vendor-boundary.ts"
@@ -40,6 +41,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "page", rules: pageRules },
   { law: "page-header", rules: pageHeaderRules },
   { law: "status-colors", rules: statusColorsRules },
+  { law: "surface-depth", rules: surfaceDepthRules },
   { law: "tokens", rules: tokensRules },
   { law: "typography", rules: typographyRules },
   { law: "vendor-boundary", rules: vendorRules },

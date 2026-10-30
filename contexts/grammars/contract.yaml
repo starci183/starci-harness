@@ -125,6 +125,7 @@ roles:
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, label placement inside or outside the material, the ink ground and its inks]
     dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-LISTCARD-LABEL-OUTSIDE, DNA-COMMON-LISTCARD-LABEL-UNPAINTED, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-EDGE-NESTED, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-POCKET, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE]
+    lint: [starci-grammar/no-raised-surface-in-surface]
 
   - id: button
     ui: ui/components/button.md

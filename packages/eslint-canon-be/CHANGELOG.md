@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.2 - 2026-10-31
+
+- Changed: the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).
+
 ## 3.9.1 - 2026-10-30
 
 - Changed: the bundled canon pins name @starci/grammar 0.16.1 (accentCorner, Backdrop, the shell filling the viewport).

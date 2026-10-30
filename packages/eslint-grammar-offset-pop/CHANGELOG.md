@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.2 - 2026-10-31
+
+- Changed: the peer moves to eslint-grammar-core 0.16.2; the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).
+- Changed: inherits starci-grammar/no-raised-surface-in-surface of eslint-grammar-core 0.16.2 (R340).
+
 ## 0.16.1 - 2026-10-30
 
 - Changed: the peer moves to eslint-grammar-core 0.16.1; the bundled canon pins name @starci/grammar 0.16.1 (accentCorner, Backdrop, the shell filling the viewport).

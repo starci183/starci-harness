@@ -5956,3 +5956,26 @@ rules:
         source: owner
         quote: "A Mascot reuses the provenance props of Image and MediaFrame; a Mascot without an assetSlot is a finding (relayed by the nivo-lite app)."
         ruling: "Mascot takes AssetSlotProps (assetSlot, assetSha256, assetPrompt) and emits them as data-asset-* on its root; the lint requires assetSlot on every Mascot."
+  - id: R340
+    code: "FE_RAISED_SURFACE_IN_SURFACE"
+    law: "A Grammar surface that accepts a depth prop (SurfaceListCard) does not pass depth=\"top\" when a SurfaceCard, SurfaceListCard or SurfaceAccordionCard of the same file encloses it: a nested surface is subordinate (outlined, BOUNDARY-5), never raised again (BOUNDARY-6, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); the Grammar resolves the depth from the surface context. A depth computed at run time is not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_RAISED_SURFACE_IN_SURFACE"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-raised-surface-in-surface}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template forces no surface depth; the app composes its surfaces."
+    proves:
+      - packages/eslint-grammar-core/src/surface-depth.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/surface-depth.spec.ts, editions: [lite, full], codes: [FE_RAISED_SURFACE_IN_SURFACE]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/surface-depth.spec.ts, editions: [lite, full], codes: [FE_RAISED_SURFACE_IN_SURFACE]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); SurfaceListCard takes its depth from the surface context (grammar 0.16.2)."
+        ruling: "SurfaceListCard resolves its depth from the surface context like SurfaceCard and SurfaceAccordionCard; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."

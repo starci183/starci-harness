@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.2 - 2026-10-31
+
+- Changed: the peer moves to eslint-canon-fe 9.6.2; the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).
+- Added: starci-grammar/no-raised-surface-in-surface (R340, FE_RAISED_SURFACE_IN_SURFACE): a depth="top" forced on a SurfaceListCard that a SurfaceCard, SurfaceListCard or SurfaceAccordionCard of the same file encloses is a finding (BOUNDARY-6, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); the Grammar resolves a nested surface's depth from the surface context. Specs: src/surface-depth.spec.ts.
+
 ## 0.16.1 - 2026-10-30
 
 - Changed: the peer moves to eslint-canon-fe 9.6.1; the bundled canon pins name @starci/grammar 0.16.1 (accentCorner, Backdrop, the shell filling the viewport).
