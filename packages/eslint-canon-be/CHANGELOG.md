@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.9.3 - 2026-10-31
+
+- Added: `entity-extends-base` (R342 `BE_ENTITY_EXTENDS_BASE`, `src/entity-base.ts`, BE-PERSISTENCE-3, ruling entity-base), both editions: an `@Entity` class that declares a database-set `created_at` or `updated_at` itself (`@CreateDateColumn`, `@UpdateDateColumn`, or a `@Column` on those names, or on `createdAt` / `updatedAt`, with `insert: false`, `update: false` or a `default`) and, beside both, the generated uuid `id` is refused; the finding names `UuidAbstractEntity` or `AbstractEntity` of `@modules/platform/database` as the base to extend. A timestamp the application sets (a plain `@Column`) and the base file `platform/database/abstract.entity.ts` are not judged. Spec: `src/entity-base.spec.ts`.
+- Changed: the bundled rule catalog adds R342 and the failure codes add `BE_ENTITY_EXTENDS_BASE`; the bundled canon pins name eslint-canon-be 3.9.3 and hfs 4.12.3.
+
 ## 3.9.2 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).

@@ -63,7 +63,8 @@ the registry's imports and importers by `tier-direction` (R26), `owner-export-by
 which admit exactly the registry's `<c>Entities` imports and its `importedBy` importers; `owner-cycle` (R27)
 counts the registry as a unit of its own, so it never closes a cycle among capabilities through `platform/database`.
 Inherited columns count as the entity's own: `starci app db drift` reads them from TypeORM's metadata and `sql-owner` (R86)
-reads an inherited primary key; extending a base where the table has its columns is held by review.
+reads an inherited primary key; `entity-extends-base` (R342) refuses an entity that declares a database-set `created_at` or
+`updated_at` (and the generated uuid `id` beside both) itself, and names the base to extend.
 
 ## BE-PERSISTENCE-4 Lite reads and writes through entities; full SQL is a `sql`-tagged constant
 

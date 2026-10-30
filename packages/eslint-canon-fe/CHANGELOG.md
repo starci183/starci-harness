@@ -2,6 +2,7 @@
 
 ## 9.6.2 - 2026-10-31
 
+- Changed: the bundled canon pins name eslint-canon-be 3.9.3 and hfs 4.12.3 (R342 `BE_ENTITY_EXTENDS_BASE` is a back-end rule). No rule of this package changed.
 - Changed: the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).
 
 ## 9.6.1 - 2026-10-30

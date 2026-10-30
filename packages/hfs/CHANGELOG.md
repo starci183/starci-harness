@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.12.3 - 2026-10-31
+
+- Changed: the bundled canon pins name eslint-canon-be 3.9.3 and hfs 4.12.3. R342 `BE_ENTITY_EXTENDS_BASE` (eslint-canon-be `entity-extends-base`) joins the bundled rule catalog and the failure codes.
+
 ## 4.12.2 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context). R340 FE_RAISED_SURFACE_IN_SURFACE joins the bundled rule catalog.

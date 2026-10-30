@@ -5979,3 +5979,26 @@ rules:
         source: owner
         quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); SurfaceListCard takes its depth from the surface context (grammar 0.16.2)."
         ruling: "SurfaceListCard resolves its depth from the surface context like SurfaceCard and SurfaceAccordionCard; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
+  - id: R342
+    code: "BE_ENTITY_EXTENDS_BASE"
+    law: "An @Entity class does not repeat the columns every table shares: a database-set created_at or updated_at (CreateDateColumn, UpdateDateColumn, or a Column on those names, or on createdAt / updatedAt, with insert false, update false or a default) and, beside both, the generated uuid id are inherited from AbstractEntity or UuidAbstractEntity of @modules/platform/database (BE-PERSISTENCE-3, ruling entity-base). The finding names the base to extend: UuidAbstractEntity with the uuid key, AbstractEntity without it. A table whose timestamps the application sets (a plain Column), or that lacks one of them, extends nothing and maps its own; the base file platform/database/abstract.entity.ts is exempt."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_ENTITY_EXTENDS_BASE"]
+    enforcers:
+      - {kind: eslint-be, id: entity-extends-base}
+    editions: [lite, full]
+    docs: [contexts/code/be/persistence.md]
+    proves:
+      - packages/eslint-canon-be/src/entity-base.spec.ts
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/table/entity.ts.tpl, editions: [lite, full]}
+      - {path: packages/eslint-canon-be/src/entity-base.spec.ts, editions: [lite, full], codes: [BE_ENTITY_EXTENDS_BASE]}
+    witness:
+      - {path: packages/eslint-canon-be/src/entity-base.spec.ts, editions: [lite, full], codes: [BE_ENTITY_EXTENDS_BASE]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "Entities do not repeat the columns every table shares; the owner approved a lint so they never repeat them again (ruling entity-base, 2026-10-31)."
+        ruling: "A table whose migration has created_at, updated_at (set by the database) and the generated uuid id maps them by extending AbstractEntity or UuidAbstractEntity from @modules/platform/database; an entity that declares them itself is a finding. A table without them extends nothing."
