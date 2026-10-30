@@ -207,8 +207,11 @@ export function crossDigestFactory(options: {
     const known = cache.get(key);
     if (known !== undefined) return known;
     const base = declaration.relativeTo === 'file' ? path.posix.join(side, directory) : side;
-    const patterns = declaration.globs.flatMap((glob) => expressions(path.posix.normalize(path.posix.join(base, glob))));
-    const lines = paths.filter((candidate) => matchesAny(patterns, candidate)).sort()
+    const resolved = declaration.globs.map((glob) => path.posix.normalize(path.posix.join(base, glob)));
+    const patterns = resolved.flatMap(expressions);
+    // a glob can only match below the folder in front of its first wildcard; testing the other paths would cost a regular expression each
+    const roots = resolved.flatMap((glob) => braceVariants(glob)).map((glob) => (glob.search(/[*?]/) < 0 ? glob : glob.slice(0, glob.search(/[*?]/))).replace(/[^/]*$/, ''));
+    const lines = paths.filter((candidate) => roots.some((root) => candidate.startsWith(root)) && matchesAny(patterns, candidate)).sort()
       .map((candidate) => (declaration.kind === 'content' ? `${candidate}\0${hashOf(candidate) ?? 'absent'}` : candidate));
     const digest = hashText(lines.join('\n'));
     cache.set(key, digest);

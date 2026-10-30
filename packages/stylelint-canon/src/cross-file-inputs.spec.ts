@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url"
 import test from "node:test"
 import type { TestContext } from "node:test"
 import { recordFsReads, recordFsReadsAsync, uncoveredReads } from "../../eslint-canon-be/fixtures/fs-audit.ts"
-import { crossFileInputs } from "./cross-file-inputs.ts"
+import { crossFileInputs } from "./lib/cross-file-inputs.ts"
 import { loadAppTokens, ruleNames } from "./index.ts"
 import { lintRule } from "./testing.ts"
 

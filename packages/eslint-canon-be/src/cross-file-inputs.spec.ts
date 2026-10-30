@@ -11,7 +11,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 import test from "node:test"
-import { HISTORY_MIN_LINES, crossFileInputs, type CrossFileInput } from "./cross-file-inputs.ts"
+import { HISTORY_MIN_LINES, crossFileInputs, type CrossFileInput } from "./lib/cross-file-inputs.ts"
 import { rules } from "./index.ts"
 import { canonRuleTester, ruleNamed } from "../fixtures/rule-tester.ts"
 import { fixtureHfs } from "../fixtures/typed/tester.ts"

@@ -7,7 +7,7 @@ import { createRequire } from "node:module"
 import { RuleTester } from "eslint"
 import ts from "typescript"
 import { installFsAudit, packageRootOf, type RuleTesterClass } from "../../eslint-canon-be/fixtures/fs-audit.ts"
-import { crossFileInputs } from "../src/cross-file-inputs.ts"
+import { crossFileInputs } from "../src/lib/cross-file-inputs.ts"
 import { rules } from "../src/index.ts"
 
 const fe = createRequire(new URL("../../eslint-canon-fe/fixtures/typed/tester.ts", import.meta.url))

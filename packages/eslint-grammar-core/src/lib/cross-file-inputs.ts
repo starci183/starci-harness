@@ -39,6 +39,8 @@ export const crossFileInputs: readonly CrossFileInput[] = [
   { rule: "navbar-cluster", kind: "content", relativeTo: "side", globs: ["packages/*/package.json", "packages/*/src/**/*.{ts,tsx}"], appliesTo: ["**/*.{ts,tsx}"], reader: "lib/app-shell-owner-source.ts" },
   // a page owner is judged by the route files of its app that mount it and the layouts above them
   { rule: "page-tabs-in-header", kind: "content", relativeTo: "side", globs: ["**/src/app/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
+  { rule: "page-tabs-in-header", kind: "exists", relativeTo: "side", globs: ["**/src/app", "**/src/app/**"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
+  { rule: "route-page-is-one-page", kind: "exists", relativeTo: "side", globs: ["**/src/app", "**/src/app/**"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
   { rule: "route-page-is-one-page", kind: "content", relativeTo: "side", globs: ["**/src/app/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
   // the theme an app defines its tokens in: the route slot's globals.css and the brand slot's brand.css
   { rule: "no-unresolved-token-class", kind: "content", relativeTo: "side", globs: ["**/globals.css", "**/brand.css"], appliesTo: ["**/*.{ts,tsx}"], reader: "tokens.ts" },

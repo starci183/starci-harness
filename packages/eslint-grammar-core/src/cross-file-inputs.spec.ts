@@ -12,7 +12,7 @@ import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 import test from "node:test"
 import { RuleTester, type Rule as EslintRule } from "eslint"
-import { crossFileInputs, type CrossFileInput } from "./cross-file-inputs.ts"
+import { crossFileInputs, type CrossFileInput } from "./lib/cross-file-inputs.ts"
 import { rules } from "./index.ts"
 
 const SRC = import.meta.dirname

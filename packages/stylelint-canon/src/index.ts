@@ -131,5 +131,5 @@ export function starciStylelintConfig(options: StarciStylelintOptions = {}): Sta
 export default plugins
 
 // The result cache of `starci app lint` (contexts/project/check-cache.md) reads the disk inputs the rules declare.
-export { crossFileInputs } from "./cross-file-inputs.ts"
-export type { CrossFileInput } from "./cross-file-inputs.ts"
+export { crossFileInputs } from "./lib/cross-file-inputs.ts"
+export type { CrossFileInput } from "./lib/cross-file-inputs.ts"

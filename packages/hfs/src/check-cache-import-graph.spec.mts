@@ -10,10 +10,10 @@ test('references: static, type-only, dynamic imports, re-exports, require and tr
   const text = [
     '/// <reference path="./ambient.d.ts" />',
     "import a from './a';", "import type { B } from './b';", "export * from './c';", "export { d } from './d';",
-    "const e = await import('./e');", "const f = require('./f');", "type G = typeof import('./g');", "import h = require('./h');",
+    "const e = await import('./e');", 'const i = await import(`./i`);', "const f = require('./f');", "type G = typeof import('./g');", "import h = require('./h');",
   ].join('\n');
   const found = referencesOf(ts, text);
-  assert.deepEqual([...found.specifiers].sort(), ['./a', './b', './c', './d', './e', './f', './g', './h']);
+  assert.deepEqual([...found.specifiers].sort(), ['./a', './b', './c', './d', './e', './f', './g', './h', './i']);
   assert.deepEqual(found.paths, ['./ambient.d.ts']);
 });
 

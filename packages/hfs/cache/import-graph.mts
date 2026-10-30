@@ -67,12 +67,28 @@ export function declaresGlobals(ts: Ts, fileName: string, text: string): boolean
   return declaring || source.statements.length > 0;
 }
 
-/** The module specifiers and path references a file's text names: static, type-only and dynamic imports, re-exports, `require`, triple-slash paths. */
+/**
+ * The module specifiers and path references a file's text names: static, type-only and dynamic imports, re-exports, `require`, import types and
+ * triple-slash paths. TypeScript's preprocessor finds most of them without a full parse; the syntax tree adds the forms it misses (a dynamic
+ * import of a plain template literal, an `import('x').T` type), so the graph holds every edge the compiler's program would.
+ */
 export function referencesOf(ts: Ts, text: string): { specifiers: string[]; paths: string[] } {
   const info = ts.preProcessFile(text, true, true);
-  const specifiers = info.importedFiles.map((imported) => imported.fileName);
-  const types = info.typeReferenceDirectives.map((directive) => directive.fileName);
-  return { specifiers: [...new Set([...specifiers, ...types])], paths: info.referencedFiles.map((reference) => reference.fileName) };
+  const found = new Set<string>([...info.importedFiles.map((imported) => imported.fileName), ...info.typeReferenceDirectives.map((directive) => directive.fileName)]);
+  const source = ts.createSourceFile('references.ts', text, ts.ScriptTarget.Latest, false);
+  const literal = (node: TypeScript.Node | undefined): string | null => (node !== undefined && ts.isStringLiteralLike(node) ? node.text : null);
+  const visit = (node: TypeScript.Node): void => {
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+      const name = literal(node.arguments[0]);
+      if (name !== null) found.add(name);
+    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+      const name = literal(node.argument.literal);
+      if (name !== null) found.add(name);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return { specifiers: [...found], paths: info.referencedFiles.map((reference) => reference.fileName) };
 }
 
 /** The side-relative posix path of an absolute file below the side, or null when it lies outside it or in an installed package. */
@@ -189,7 +205,7 @@ export function dirtySetOf(previous: ImportGraph | null, next: ImportGraph): Dir
   // a file whose imports resolve elsewhere now (a new file shadows a module, a missing one appeared) reads other types than before
   const rewired = [...next].filter(([file, node]) => {
     const before = previous.get(file);
-    return before !== undefined && before.hash === node.hash && before.imports.join(' ') !== node.imports.join(' ');
+    return before !== undefined && before.hash === node.hash && JSON.stringify(before.imports) !== JSON.stringify(node.imports);
   }).map(([file]) => file);
   const dirty = new Set<string>([...changed, ...rewired, ...dependentsOf(next, [...changed, ...rewired]), ...dependentsOf(previous, changed)]);
   return { dirty, wholeSide: null, changed };

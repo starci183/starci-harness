@@ -35,6 +35,8 @@ export interface AuditedCanon {
     readonly inputs: readonly AuditInput[]
     /** Rules whose reads the cache covers another way: the project-graph rules, whose whole-side inputs are compared as graph findings. */
     readonly exempt?: readonly string[]
+    /** The import alias of an app (`@/x` is `<app>/src/x`): its tsconfig maps it in a real app, a fixture's does not. Answers the base path of a specifier, or null. */
+    readonly alias?: (specifier: string, file: string) => string | null
     readonly packageRoot: string
     readonly RuleTester: RuleTesterClass | readonly RuleTesterClass[]
     readonly ts: typeof TypeScript | readonly (typeof TypeScript)[]
@@ -94,8 +96,12 @@ const onTheWayTo = (base: string, globs: readonly string[], directory: string): 
 /** Paths no declaration is needed for: the fingerprint's files, installed packages, the compiler's libraries, this canon's own shipped files. */
 const exempt = (target: string, packageRoot: string): boolean => {
     const name = path.basename(target)
+    // a path with a quote in it names no file (a rule that built it from source text could never find one)
+    if (target.includes('"')) return true
     if (/[\\/]node_modules[\\/]/.test(target) || /^lib\..*\.d\.ts$/.test(name)) return true
     if (name === "package.json" || name === "hfs.json" || /^tsconfig.*\.json$/.test(name)) return true
+    // the catalogs a canon ships in its runtime/ (its own version fixes them; a sibling canon's too)
+    if (/[\\/]runtime[\\/](?:knowledge|modules)[\\/]/.test(target)) return true
     const inside = (folder: string): boolean => fold(target).startsWith(`${fold(path.join(packageRoot, folder))}/`)
     return inside("runtime") || inside("dist") || (inside("src") && !/\.spec\.ts$/.test(name))
 }
@@ -105,25 +111,56 @@ const exempt = (target: string, packageRoot: string): boolean => {
  * tsconfig the way the cache's import graph resolves them. An independent implementation on purpose: the audit must not share a bug with the
  * graph it checks.
  */
-const closureOf = (ts: typeof TypeScript, file: string, text: string): Set<string> => {
+const closureOf = (ts: typeof TypeScript, file: string, text: string, alias?: AuditedCanon["alias"]): Set<string> => {
     const configPath = ts.findConfigFile(path.dirname(file), ts.sys.fileExists)
     const options: TypeScript.CompilerOptions = configPath
         ? ts.parseJsonConfigFileContent(ts.readConfigFile(configPath, ts.sys.readFile).config ?? {}, ts.sys, path.dirname(configPath)).options
-        : {}
+        : { module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, allowJs: true }
     const reached = new Set<string>()
+    // every path the resolver probes for an import is part of the import graph: adding the file it looks for re-resolves the importer
+    const probing: TypeScript.ModuleResolutionHost = {
+        ...ts.sys,
+        trace: (message) => {
+            const probed = /^(?:File|Directory) '(.+?)' (?:does not exist|exist)|candidate module location '(.+?)'/.exec(message)
+            const named = probed?.[1] ?? probed?.[2]
+            if (named === undefined) return
+            // the module path itself and its directory are probed by rules that follow an import by hand, as they are by the resolver
+            const stem = fold(named).replace(/\.d\.[cm]?ts$|\.[cm]?[jt]sx?$|\.json$/, "")
+            const module = stem.replace(/\/index$/, "")
+            for (const key of [fold(named), stem, module, `${module}.ts`, `${module}.tsx`, `${module}/index.ts`, `${module}/index.tsx`]) reached.add(key)
+        },
+    }
     const queue: [string, string | null][] = [[file, text]]
+    const queued = new Set<string>([fold(file)])
     while (queue.length > 0) {
         const [current, known] = queue.pop() as [string, string | null]
         const body = known ?? ts.sys.readFile(current)
         if (body === undefined) continue
         const info = ts.preProcessFile(body, true, true)
         const names = [...info.importedFiles.map((entry) => entry.fileName), ...info.typeReferenceDirectives.map((entry) => entry.fileName)]
-        const targets = names.map((name) => ts.resolveModuleName(name, current, options, ts.sys).resolvedModule?.resolvedFileName)
+        // what the preprocessor misses and the compiler's program does not: a dynamic import of a plain template literal, an import type
+        const visit = (node: TypeScript.Node): void => {
+            const isImportCall = ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+            const argument = ts.isCallExpression(node) ? node.arguments[0] : ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) ? node.argument.literal : undefined
+            if ((isImportCall || ts.isImportTypeNode(node)) && argument !== undefined && ts.isStringLiteralLike(argument)) names.push(argument.text)
+            ts.forEachChild(node, visit)
+        }
+        visit(ts.createSourceFile(current, body, ts.ScriptTarget.Latest, false))
+        const targets = names.map((name) => ts.resolveModuleName(name, current, { ...options, traceResolution: true }, probing).resolvedModule?.resolvedFileName)
             .concat(info.referencedFiles.map((entry) => path.resolve(path.dirname(current), entry.fileName)))
+        for (const name of names) {
+            const base = alias?.(name, current)
+            if (base === null || base === undefined) continue
+            for (const candidate of [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`]) {
+                reached.add(fold(candidate))
+                if (ts.sys.fileExists(candidate)) targets.push(candidate)
+            }
+        }
         for (const target of targets) {
             if (target === undefined) continue
             const key = fold(target)
-            if (reached.has(key)) continue
+            if (queued.has(key)) continue
+            queued.add(key)
             reached.add(key)
             queue.push([path.normalize(target), null])
         }
@@ -151,17 +188,20 @@ const declared = (inputs: readonly AuditInput[], scope: Scope, read: Read): bool
 }
 
 /** A readable list of the reads nothing covers, or an empty list. */
-const violations = (canon: Pick<AuditedCanon, "inputs" | "packageRoot"> & { readonly ts?: AuditedCanon["ts"] }, scope: Scope): string[] => {
+const violations = (canon: Pick<AuditedCanon, "inputs" | "packageRoot"> & { readonly ts?: AuditedCanon["ts"]; readonly alias?: AuditedCanon["alias"] }, scope: Scope): string[] => {
     const seen = new Set<string>()
     let closure: Set<string> | null = null
     const out: string[] = []
+    // a file outside the side root belongs to no cached lint (the cache lints the files of the side's scope)
+    const outside = path.relative(scope.root, scope.file)
+    if (outside.startsWith("..") || path.isAbsolute(outside)) return out
     for (const read of scope.reads) {
         const key = `${read.op}\0${fold(read.target)}`
         if (seen.has(key) || exempt(read.target, canon.packageRoot) || fold(read.target) === fold(scope.file)) continue
         seen.add(key)
         if (declared(canon.inputs, scope, read)) continue
         const compiler = canon.ts === undefined ? undefined : listed(canon.ts)[0]
-        closure ??= compiler === undefined ? new Set<string>() : closureOf(compiler, scope.file, scope.text)
+        closure ??= compiler === undefined ? new Set<string>() : closureOf(compiler, scope.file, scope.text, canon.alias)
         if (closure.has(fold(read.target))) continue
         out.push(`${scope.rule} linting ${posix(path.relative(scope.root, scope.file))} did a ${read.op} of ${posix(path.relative(scope.root, read.target))}`)
     }
@@ -276,6 +316,6 @@ export async function recordFsReadsAsync<T>(body: () => Promise<T>): Promise<{ v
 }
 
 /** The reads of `reads` that no declaration of `canon.inputs` for `rule` covers when it lints `file` below `root`, and the import graph of `text` does not carry. */
-export function uncoveredReads(canon: Pick<AuditedCanon, "inputs" | "packageRoot"> & { readonly ts?: AuditedCanon["ts"] }, scope: { rule: string; file: string; root: string; text: string }, reads: readonly { op: Op; target: string }[]): string[] {
+export function uncoveredReads(canon: Pick<AuditedCanon, "inputs" | "packageRoot"> & { readonly ts?: AuditedCanon["ts"]; readonly alias?: AuditedCanon["alias"] }, scope: { rule: string; file: string; root: string; text: string }, reads: readonly { op: Op; target: string }[]): string[] {
     return unrecorded(() => violations(canon, { ...scope, reads: [...reads] }))
 }
