@@ -338,7 +338,7 @@ slots:
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
   - id: packages.hfs-source
     path:
-      - "packages/hfs/{ci,codemod,coverage,db,emit,lint,release,report,scaffold,scripts,stack,sync,upgrade}/**/*.{mts,cts}"
+      - "packages/hfs/{cache,ci,codemod,coverage,db,emit,lint,release,report,scaffold,scripts,stack,sync,upgrade}/**/*.{mts,cts}"
       - packages/hfs/src/main.mts
       - packages/hfs/vendor-types.d.mts
     presence: optional

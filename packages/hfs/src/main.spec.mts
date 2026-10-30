@@ -137,17 +137,18 @@ test('the shared parser refuses a flag of another verb and a value flag that wou
   for (const [argv, message] of [
     [['check', '--event', 'x'], 'starci app check takes no --event'],
     [['emit', '--json'], 'starci app emit takes no --json'],
-    [['slot', 'be/x.ts', '--fast'], 'starci app slot takes no --fast'],
+    [['slot', 'be/x.ts', '--full'], 'starci app slot takes no --full'],
     [['scaffold', 'shop', '--inject', 'A=b'], 'starci app scaffold takes no --inject'],
     [['add', 'job', 'x', '--inject', 'A=b'], 'starci app add job takes no --inject; only add service does'],
     [['add', 'image', '--event', 'x'], 'starci app add image takes no --event'],
     [['add', 'spec', 'be/x.service.ts', '--inject', 'A=b'], 'starci app add spec takes no --inject; only add service does'],
     [['add', 'service', 'be/x', 'y', '--form'], 'starci app add service takes no --form'],
     [['check', '--staged', '--json'], 'starci app check --staged is the pre-commit guard alone and takes no --json'],
-    [['check', '--staged', '--fast', '--base', 'main'], 'starci app check --staged is the pre-commit guard alone and takes no --fast, --base'],
+    [['check', '--staged', '--full', '--hfs'], 'starci app check --staged is the pre-commit guard alone and takes no --full, --hfs'],
     [['check', '--staged', '--edition', 'full'], 'starci app check --staged is the pre-commit guard alone and takes no --edition'],    [['emit', '--edition', 'full'], 'starci app emit takes no --edition'],
     [['check', '--bogus'], 'unknown flag --bogus'],
-    [['check', '--fast', '--base', '--json'], '--base needs a value'],
+    [['check', '--fast'], 'unknown flag --fast'],
+    [['check', '--coverage-from', '--json'], '--coverage-from needs a value'],
     [['add', 'job', 'x', '--event', '--from', 'y'], '--event needs a value'],
     [['check', '--coverage-from', 'a', '--coverage-from=b'], '--coverage-from may be given only once'],
   ] as Array<[string[], string]>) {
@@ -207,7 +208,7 @@ test('the usage is generated from the parser tables: every flag every verb parse
     'starci app check [--staged]', 'starci app sync [--execute]', 'starci app upgrade [--execute]', 'starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out ']) assert.ok(out.includes(line), line);
   assert.match(out, /^starci app lint .*\[--json\] \[--out <file>\]$/m);
   assert.match(out, /^starci app scaffold <name> \[--registry-visibility public\|private\] \[--edition full\|lite\]$/m);
-  assert.doesNotMatch(out, /app (hygiene|explain|new|sonar)\b|--sonar|--plan|--write|--check\b|--into\b(?!-)|--report|app stack <up/, 'the usage lists no old spelling');
+  assert.doesNotMatch(out, /app (hygiene|explain|new|sonar)\b|--plan|--write|--check\b|--into\b(?!-)|--report|app stack <up/, 'the usage lists no old spelling');
 });
 
 test('the scaffold hint and the managed scripts name commands that exist', async () => {

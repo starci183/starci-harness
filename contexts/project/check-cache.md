@@ -2,8 +2,10 @@
 
 Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`,
 `starci app lint` and the unit specs judge only what differs from the cache, on a developer host and in CI
-alike. This is a design awaiting the owner's approval (ruling `app-check-cache`, status proposed): no code reads or
-writes the cache yet, and the slot, law and templates named below are added by the change that builds it. Its one rule
+alike. Ruling `app-check-cache` (live, owner-approved 2026-10-31) decided: `app lint` stays its own verb and shares the cache;
+`HFS_CHECK_CACHE_FORGED` is a hard blocker at any count and `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn; the release is
+always full; branch protection requiring the check is a later follow-up. The code is `packages/hfs/cache/`; the slot is
+`app.starcistacks.cache` (slots 3.15.0). Its one rule
 is that a reused result is always the one a full run would produce now; whenever the cache cannot prove that, the step
 runs in full.
 
@@ -242,11 +244,11 @@ The servers stay the judges; a prediction never passes or fails a run.
 
 ## The law
 
-Proposed `R341`, enforcer `hfs`: an app's committed check cache is trusted in CI only as it stands at the trusted base;
+`R342`, enforcer `hfs` (R340 and R341 are taken by the grammar lint rules): an app's committed check cache is trusted in CI only as it stands at the trusted base;
 a record whose key matches the tree and whose findings differ from the inherited or computed result is
 `HFS_CHECK_CACHE_FORGED` (a hard blocker), a touched key without a current record is `HFS_CHECK_CACHE_STALE`, and a
 missing cache is `HFS_CHECK_CACHE_MISSING`. Why: CI trusts a committed artifact only where review and CI already
-judged it, so a hand edit can cost time but never pass a file. Recommended enforcement, for the owner to decide:
+judged it, so a hand edit can cost time but never pass a file. Enforcement (owner decision):
 forged fails at any count; stale and missing warn (report-only, the run is full or wider and still correct), so a first
 adoption and a forgotten refresh never block a change.
 
@@ -259,6 +261,16 @@ adoption and a forgotten refresh never block a change.
   write.
 - **A cache from another hfs or CLI** differs in the fingerprint, so it is replaced, never read.
 - **A disk error writing the cache** is a warning in the cache line and never changes the exit code.
+
+## As built
+
+- The quality profile of the policy is not a fingerprint part: the gate threshold only judges the verdict, which is never cached.
+- `app lint` runs the lint family with the `hfs`, `secrets`, `db` and `format` families, the findings `app lint` carried before the cache; `--changed` and
+  `--fix` bypass the cache, `--workspace` reads it and writes none.
+- `--quiet` mutes progress and keeps the diagnosis on stdout for `check` and `lint`; other verbs still mute stdout.
+- The managed CI keeps its triggers (push to main, release candidates, tags); a push to main is trusted against its first parent, a candidate or tag
+  run sets `STARCI_APP_CHECK_CACHE=full` and never reads the cache. The `format` step runs `app check --format`.
+- Side keys take the untracked program inputs from the side's tsconfig `include` (generated code), not from import resolution of files outside it.
 
 ## Read with
 

@@ -5979,3 +5979,24 @@ rules:
         source: owner
         quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); SurfaceListCard takes its depth from the surface context (grammar 0.16.2)."
         ruling: "SurfaceListCard resolves its depth from the surface context like SurfaceCard and SurfaceAccordionCard; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
+  - id: R342
+    code: "HFS_CHECK_CACHE_FORGED"
+    editions: ["lite", "full"]
+    law: "An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (a hard blocker at any count), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings)."
+    kinds: [codemod]
+    gates: [ci]
+    failureCodes: ["HFS_CHECK_CACHE_FORGED", "HFS_CHECK_CACHE_STALE", "HFS_CHECK_CACHE_MISSING"]
+    enforcers:
+      - {kind: hfs, id: check-cache, at: packages/hfs/cache/trust.mjs}
+    proves:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full], codes: [HFS_CHECK_CACHE_FORGED, HFS_CHECK_CACHE_STALE, HFS_CHECK_CACHE_MISSING]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "app check cache lại vào file dc không? sau chỉ check diff; chốt starcistacks lưu hết nhé và check diff và triển cho ci và local lun."
+        ruling: "The app commits its check results in .starcistacks/cache/; CI trusts only the cache at the trusted base, a forged record blocks at any count, stale and missing only warn (ruling app-check-cache)."
