@@ -18,13 +18,15 @@
     "noEmit": true
   },
   "include": [
-    "**/*.mts"
+    "**/*.mts",
+    "**/*.cts"
   ],
   "exclude": [
     "node_modules",
     "templates",
     "src/fixtures",
-    "**/*.d.mts"
+    "**/*.d.mts",
+    "**/*.d.cts"
   ],
   "files": [
     "vendor-types.d.mts"

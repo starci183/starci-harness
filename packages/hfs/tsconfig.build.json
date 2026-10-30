@@ -12,7 +12,8 @@
     "templates",
     "src/fixtures",
     "**/*.spec.mts",
-    "**/*.d.mts"
+    "**/*.d.mts",
+    "**/*.d.cts"
   ],
   "files": [
     "vendor-types.d.mts"

@@ -1,12 +1,14 @@
-# tsc emits .mjs and .d.mts beside their .mts source (packages/README.md build convention: generated output at
-# the same relative path). Specs, fixtures, templates and generated data keep hand-checked .mjs: the un-ignores
-# below name where a new tracked .mjs may still appear.
+# tsc emits .mjs/.cjs and .d.mts/.d.cts beside their .mts/.cts source (packages/README.md build convention: generated output at
+# the same relative path). Spec fixtures, templates and generated data keep hand-checked JavaScript: the un-ignores below name
+# where a tracked .mjs may still appear.
 *.mjs
+*.cjs
 *.d.mts
-!*.spec.mjs
+*.d.cts
+!vendor-types.d.mts
+# Spec fixtures are test data; each module a spec imports has a hand-written .d.mts beside it.
 !src/fixtures/**
 !templates/**
-!vendor-types.d.mts
 # The vendored yaml bundle and the catalog gen-catalog writes, each with its hand-written types, are tracked as they are.
 !runtime/engine/yaml.mjs
 !runtime/engine/yaml.d.mts

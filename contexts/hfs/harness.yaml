@@ -96,23 +96,17 @@ slots:
       - "packages/<name>/**/*.{js,mjs,cjs,jsx}"
       - "packages/<name>/*.{d.ts,d.cts}"
     except:
-      - "packages/*/{fixtures,templates,runtime}/**"
+      # spec fixtures: test data a spec reads or imports (an imported module has a hand-written .d.mts beside it)
+      - "packages/*/src/fixtures/**"
+      # app code a package renders into a product repository
+      - "packages/*/templates/**"
+      # the vendored yaml bundle
+      - "packages/*/runtime/engine/yaml.mjs"
+      # generated modules
       - "packages/**/*.generated.*"
+      # the lint bundles' runtime copies: runtime/bundle.json names each file, generated from hfs's build output or kept as its own
+      - "packages/{eslint-canon-be,eslint-canon-fe,eslint-grammar-core,eslint-grammar-offset-pop}/runtime/**"
     presence: forbidden
-    enforce: target
-    exceptions:
-      - path: packages/ai-router/
-        until: "2026-12-31"
-        owner: package TS plan
-        why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
-      - path: packages/hfs/
-        until: "2026-12-31"
-        owner: package TS plan
-        why: hfs source is TypeScript (alpha.21); its specs, spec fixtures and helpers stay .mjs until the test phase converts them
-      - path: packages/test-world/
-        until: "2026-12-31"
-        owner: package TS plan
-        why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
     holds: hand-written JavaScript or hand-written declarations in a package; a package is TypeScript in src/ built to dist/
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
 
@@ -344,11 +338,11 @@ slots:
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
   - id: packages.hfs-source
     path:
-      - "packages/hfs/{ci,codemod,coverage,db,emit,lint,release,report,scaffold,scripts,stack,sync,upgrade}/**/*.mts"
+      - "packages/hfs/{ci,codemod,coverage,db,emit,lint,release,report,scaffold,scripts,stack,sync,upgrade}/**/*.{mts,cts}"
       - packages/hfs/src/main.mts
       - packages/hfs/vendor-types.d.mts
     presence: optional
-    holds: the TypeScript source of @starci/hfs, one folder per app verb area beside runtime/, compiled in place to .mjs at the paths it ships and is imported by (the emitted .mjs and .d.mts are ignored); vendor-types.d.mts types the one dependency that ships none
+    holds: the TypeScript source of @starci/hfs, one folder per app verb area beside runtime/, compiled in place to .mjs (.cjs from a .cts, a --require preload) at the paths it ships and is imported by (the emitted JavaScript and declarations are ignored); vendor-types.d.mts types the one dependency that ships none
     rule: owner ruling, every package is TypeScript (alpha.21); hfs keeps its published paths, so its source is not under src/
   - id: packages.grammar-tools
     path:

@@ -73,6 +73,7 @@
     "upgrade/**",
     "templates/**",
     "!**/*.mts",
+    "!**/*.cts",
     "**/*.d.mts",
     "README.md",
     "CHANGELOG.md"
@@ -89,6 +90,6 @@
     "prepack": "npm run build",
     "bundles": "npm run build && node scripts/sync-bundles.mjs",
     "bundles:check": "npm run build && node scripts/sync-bundles.mjs --check",
-    "test": "npm run typecheck && npm run build && node --test \"src/*.spec.mjs\" \"src/*.spec.mts\""
+    "test": "npm run typecheck && npm run build && node --test \"src/*.spec.mts\""
   }
 }
