@@ -80,8 +80,8 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   ([contexts/authority/ci.md](../authority/ci.md), [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-18, CONTRIB-19). Owner,
   2026-10-28: "tối ưu hóa thời gian làm việc tránh thủ tục rườm rà".
 - **An urgent release needs no CI; its safety floor is never skipped (`urgent-release`).** `starci app release push --urgent
-  --reason "<text>"` ships an app after its fast local checks alone (app check, typecheck, lint of the files changed since the
-  previous release tag, unit; a green row already recorded for the commit is reused), tags and pushes, and writes an URGENT
+  --reason "<text>"` ships an app after its fast local checks alone (typecheck and the build since `urgent-typecheck-build` below;
+  a green row already recorded for the commit is reused), tags and pushes, and writes an URGENT
   record naming the role, the reason, each check's verdict and the commit (`packages/hfs/release/urgent.mjs`). That record
   satisfies `requireCi` for `deploy.prod` and `release.cut` when the caller passes `--urgent` (`cli/src/core/check/ci.ts`); the
   deploy's safety floor still runs and refuses with its own code when a step fails: a fresh encrypted database backup whose
@@ -95,11 +95,15 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   migrate preview then execute (db/bootstrap.sql first) inside the database's own container, between the stack deploy and
   converge; the record, the rollback target, the readiness verify and the automatic rollback hold, and a database that is not
   empty is refused (`STACK_FIRST_START_NOT_EMPTY`) for the plain floor.
-  Its lint baseline (`urgent-lint-baseline`, owner 2026-10-29: "Thêm lint baseline"): `release push --urgent --lint-baseline <tag>`
-  lints the whole app at HEAD and at that release tag (a throwaway worktree borrowing HEAD's installs) and is red only on a finding
-  the tag did not have (engine, rule, file and message; a left-over on engine, rule and message for a moved file); the record keeps
-  both counts and both reports, and the back-fill's full gate is unchanged, so the backlog stays red there
-  (`packages/hfs/release/lint-baseline.mjs`).
+  Its checks are what can break production (`urgent-typecheck-build`, owner 2026-10-30, chosen over keeping the checks and over
+  dropping them all; asked for in nivo-lite's words "build local bypass ci, thao tác thẳng với vps"): typecheck and the build
+  (the release gates `typecheck`, `build`, `build-be`, `build-fe` the app declares); app check, lint and the tests wait for the
+  back-fill, so `--lint-baseline` (`urgent-lint-baseline`, 2026-10-29) is retired and refused. And it is one command:
+  `starci app stack deploy --env <env> --urgent --reason "<text>" --execute` with no `--image` and no `--source-sha` releases HEAD
+  (unless it already has a pushed urgent record), builds and pushes its images on the operator's machine before the deploy's
+  transport reaches the server, and deploys their digests under the unchanged floor (`packages/hfs/stack/urgent-release.mjs`). A
+  tag pushed by hand carries no record: the one command adopts a tag already on HEAD and writes the record only after the checks
+  pass; a record is never written by hand.
 - **One authority for both runners (`authority-both-modes`).** The tiers and the role table of
   [contexts/authority/](../authority/README.md) hold identically under `inline` and `orca`, for Debug's lanes, the
   Supervisor's workers and an app session. Owner, 2026-10-28: "bộ author phải áp dụng dc cho cả inline mode lẫn orca mode".

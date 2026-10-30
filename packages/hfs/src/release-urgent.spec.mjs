@@ -1,5 +1,5 @@
 // The urgent release path (owner ruling urgent-release 2026-10-29), on a real git repository and a bare remote: `release push --urgent` runs the
-// fast local checks, tags and pushes atomically and writes the URGENT record; `release gate --backfill <tag>` runs the full gate on that commit,
+// fast local checks (typecheck and the build, owner ruling urgent-typecheck-build 2026-10-30), tags and pushes atomically and writes the URGENT record; `release gate --backfill <tag>` runs the full gate on that commit,
 // promoting the record to L4 when green and opening a fix ticket when red; a file a declared dev server rewrites never makes the tree dirty.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,7 +18,7 @@ const git = (cwd, ...args) => {
   return run.stdout.trim();
 };
 
-const GATES = (red = []) => ['app-check', 'typecheck', 'lint', 'test', 'build'].map((name) => ({ name, command: ['node', red.includes(name) ? 'fail.mjs' : 'ok.mjs'] }));
+const GATES = (red = []) => ['typecheck', 'build-be', 'app-check', 'lint', 'test'].map((name) => ({ name, command: ['node', red.includes(name) ? 'fail.mjs' : 'ok.mjs'] }));
 
 /** An app repository at version 1.0.0 with a bare origin; `red` names the gates that fail. Returns { root, remote, head, config, ctx }. */
 function app(t, red = []) {
@@ -49,7 +49,7 @@ test('an urgent release without a reason is refused before anything runs', async
 });
 
 test('urgent push runs the fast checks, tags and pushes atomically, and writes the URGENT record', async (t) => {
-  const { ctx, config, root, remote, head } = app(t, ['build']);
+  const { ctx, config, root, remote, head } = app(t, ['app-check', 'lint', 'test']);
   const result = await releaseUrgentPush(ctx, config, { execute: true, reason: 'CI budget exhausted', role: 'owner' });
   assert.equal(result.ok, true, result.lines.join('\n'));
   assert.equal(git(remote, 'rev-parse', 'refs/heads/main'), head);
@@ -58,8 +58,13 @@ test('urgent push runs the fast checks, tags and pushes atomically, and writes t
   assert.equal(record.reason, 'CI budget exhausted');
   assert.equal(record.role, 'owner');
   assert.equal(record.pushed, true);
-  assert.deepEqual(record.checks.map((row) => [row.name, row.pass]), [['app-check', true], ['typecheck', true], ['lint', true], ['test', true]]);
-  assert.equal(record.checks.some((row) => row.name === 'build'), false, 'the full gate rows wait for the back-fill');
+  assert.deepEqual(record.checks.map((row) => [row.name, row.pass]), [['typecheck', true], ['build-be', true]]);
+  assert.equal(record.checks.some((row) => ['app-check', 'lint', 'test'].includes(row.name)), false, 'app check, lint and the tests wait for the back-fill, red or not');
+});
+
+test('--lint-baseline is retired with lint itself: refused before anything runs', async (t) => {
+  const { ctx, config } = app(t);
+  await assert.rejects(releaseUrgentPush(ctx, config, { execute: true, reason: 'hotfix', lintBaseline: 'v0.9.0' }), (error) => error.code === 'RELEASE_URGENT_LINT_BASELINE_RETIRED');
 });
 
 test('a red fast check refuses the urgent release: nothing tagged, nothing pushed', async (t) => {
@@ -70,9 +75,9 @@ test('a red fast check refuses the urgent release: nothing tagged, nothing pushe
 });
 
 test('a green row the gate recorded for HEAD is reused, not run again', async (t) => {
-  const { ctx, config, root } = app(t, ['build']);
+  const { ctx, config, root } = app(t, ['test']);
   await releaseGate(ctx, config, { execute: true, platform: process.platform });
-  const result = await releaseUrgentPush(ctx, config, { execute: true, reason: 'gate red on build only' });
+  const result = await releaseUrgentPush(ctx, config, { execute: true, reason: 'gate red on test only' });
   assert.equal(result.ok, true, result.lines.join('\n'));
   assert.ok(readUrgent(common(root), git(root, 'rev-parse', 'HEAD')).checks.every((row) => row.reused === true));
 });
@@ -94,16 +99,16 @@ test('back-fill green promotes the urgent record to L4 with no new tag and no pu
 });
 
 test('back-fill red opens one fix ticket and changes nothing else', async (t) => {
-  const { ctx, config, root, head } = app(t, ['build']);
+  const { ctx, config, root, head } = app(t, ['lint']);
   await releaseUrgentPush(ctx, config, { execute: true, reason: 'tonight' });
   const tickets = [];
   const result = await releaseGate(ctx, config, { execute: true, backfill: 'v1.0.0', platform: process.platform, openTicket: (input) => { tickets.push(input); return 'tk-000000000001'; } });
   assert.equal(result.ok, false);
   assert.equal(tickets.length, 1);
   assert.equal(tickets[0].code, 'RELEASE_BACKFILL_RED');
-  assert.match(tickets[0].title, /build/u);
+  assert.match(tickets[0].title, /lint/u);
   assert.equal(fs.existsSync(path.join(common(root), `${head}.l4.json`)), false);
-  assert.deepEqual(readUrgent(common(root), head).backfill, { ...readUrgent(common(root), head).backfill, state: 'red', ticket: 'tk-000000000001', failed: ['build'] });
+  assert.deepEqual(readUrgent(common(root), head).backfill, { ...readUrgent(common(root), head).backfill, state: 'red', ticket: 'tk-000000000001', failed: ['lint'] });
 });
 
 test('back-fill refuses a tag that is not HEAD or not an urgent release', async (t) => {

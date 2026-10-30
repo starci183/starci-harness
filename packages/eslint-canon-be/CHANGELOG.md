@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.20 - 2026-10-30
+
+- Changed: the bundled canon pins name hfs 4.11.21 (the one-command urgent release), eslint-canon-be 3.8.20, eslint-canon-fe 9.5.22 and the Grammar family 0.15.33. No rule changed.
+
 ## 3.8.19 - 2026-10-30
 
 - Changed: `unit-test-colocated` (R47) accepts the spec beside a file its slot declares as logic (`HfsSlot.logic`, `src/lib/unit-spec.ts`) as an optional logic-role spec, so the lite passport specs are unit specs and the spec-form rules (R48, R281) apply to them; a spec beside an undeclared file that plays no role is still refused. Spec: `src/unit-spec-declared-logic.spec.ts`.

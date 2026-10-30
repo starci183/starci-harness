@@ -65,7 +65,11 @@ function remote(c, block) {
   if (block.releasesBase !== undefined && (!REMOTE_BASE.test(String(block.releasesBase)) || String(block.releasesBase).includes('..')))
     c.problem('deploy.remote.releasesBase', 'must be an absolute path without ..');
   let sealed = null;
-  if (block.sealed !== undefined && closedFields(c, 'deploy.remote.sealed', block.sealed, FIELDS.sealed)) {
+  // One member holding VPS_HOST, VPS_USER, privateKey and knownHosts is the standard (`sealed: vps`); the three-role object stays accepted.
+  if (typeof block.sealed === 'string') {
+    nameField(c, 'deploy.remote.sealed', block.sealed);
+    sealed = Object.fromEntries(FIELDS.sealed.map((key) => [key, block.sealed]));
+  } else if (block.sealed !== undefined && closedFields(c, 'deploy.remote.sealed', block.sealed, FIELDS.sealed)) {
     for (const key of FIELDS.sealed) nameField(c, `deploy.remote.sealed.${key}`, block.sealed[key]);
     sealed = { ...block.sealed };
   }

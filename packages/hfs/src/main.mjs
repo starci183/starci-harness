@@ -116,11 +116,11 @@ starci app db migrate [--execute] [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
 starci app release gate [--execute] [--source <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json] [--cwd <dir>]
-starci app release push [--execute] [--remote <name>] [--urgent --reason <text> [--lint-baseline <tag>]] [--json] [--cwd <dir>]
+starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json] [--cwd <dir>]
 starci app upgrade [--plan] [--cwd <dir>]
 starci app stack <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
 starci app stack <prepare|doctor|connect|disconnect|build-args|render|deploy|converge|verify|rollback|prune|backup|jobs> --env <env> [--execute] [--json] [--cwd <dir>]
-starci app stack deploy --env <env> --source-sha <sha> --urgent [--db-url-env <NAME>] [--backup-out <dir>] [--first-start --db-service <service>] [--execute] [--json] [--cwd <dir>]
+starci app stack deploy --env <env> --urgent (--reason <text> [--remote <name>] | --source-sha <sha> --image <service>=<ref>) [--db-url-env <NAME>] [--backup-out <dir>] [--first-start --db-service <service>] [--execute] [--json] [--cwd <dir>]
 starci app explain <path> [--cwd <dir>] [--json]
 starci app emit [--cwd <dir>]
 starci app new service <dir> <name> [--inject <binding>...] [--cwd <dir>]
@@ -435,8 +435,8 @@ function declaredEdition(cwd) {
  * `starci app stack`: the deploy actions (prepare, doctor, render, deploy, converge, verify, rollback, prune, backup, jobs, ...) are the Swarm
  * tooling of stack/cli.mjs; up, down and status are the full edition's test-world infrastructure.
  */
-async function stackAppMain(argv, { cwd, edition, stackMain, stdout: out, stderr: err, env, sops, hostIdentity, stackIo }) {
-  if (STACK_ACTIONS.includes(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, ...(sops ? { sops } : {}) });
+async function stackAppMain(argv, { cwd, edition, stackMain, stdout: out, stderr: err, env, sops, hostIdentity, stackIo, harness }) {
+  if (STACK_ACTIONS.includes(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, harness, ...(sops ? { sops } : {}) });
   if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app stack up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err });

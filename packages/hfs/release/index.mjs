@@ -1,7 +1,7 @@
 // index.mjs - `starci app release <gate|push>` and the plumbing the release and database verbs share: the context built from the app's IO, strict flag
 // parsing, the optional `release:` / `database:` blocks of .starcistacks/application-stacks.yaml, text and --json output and the exit-code mapping.
 //   starci app release gate [--execute] [--sonar] [--source <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]
-//   starci app release push [--execute] [--remote <name>] [--urgent --reason <text> [--lint-baseline <tag>]] [--json]
+//   starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json]
 // `harness` of the app IO ({ version, role, openTicket }) is what the starci CLI hands in: the caller's role an urgent record names and the ticket
 // queue a red back-fill files into.
 // Every action is a dry run unless --execute is given. A refusal is a StackError (exit 2); a failed step returns ok false (exit 1).
@@ -58,7 +58,7 @@ function readPackage(root) {
 }
 
 /** The normalised `release:` block (tolerant of absence) with the package version: { root, version, gates, tagPrefix, defaultBranch, requireCi }. */
-function loadReleaseConfig(root) {
+export function loadReleaseConfig(root) {
   const pkg = readPackage(root);
   if (typeof pkg.version !== 'string' || !VERSION.test(pkg.version)) throw refusal(RELEASE_CODE, 'package.json needs a version like 1.2.3 (the release tag derives from it)');
   const declaration = readDeclaration(root);

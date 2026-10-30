@@ -2,6 +2,7 @@ import { z } from "zod"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
+import { callerRole } from "../../shared/role.js"
 import type { FlagSpec } from "../../shared/verb.js"
 import { hfsArgv, NUMBER, QUIET_FLAG, runHfs } from "./hfs.js"
 
@@ -36,7 +37,9 @@ const FLAGS = {
     "swarm-state": { kind: "boolean", summary: "backup: also archive /var/lib/docker/swarm, encrypted" },
     "skip-public": { kind: "boolean", summary: "deploy, verify: skip the public HTTP checks (deploy then leaves the release pending until accept)" },
     "skip-internal": { kind: "boolean", summary: "verify: skip the checks run inside a service task" },
-    urgent: { kind: "boolean", summary: "deploy: an urgent release (owner ruling 2026-10-29): its pushed urgent record stands in for CI, and the safety floor runs first and is never skipped (fresh verified encrypted backup with a test decrypt, migrate preview then execute, readiness verify, automatic rollback)" },
+    urgent: { kind: "boolean", summary: "deploy: an urgent release (owner rulings urgent-release 2026-10-29, urgent-typecheck-build 2026-10-30): its pushed urgent record stands in for CI, and the safety floor runs first and is never skipped (fresh verified encrypted backup with a test decrypt, migrate preview then execute, readiness verify, automatic rollback). Without --image and --source-sha it is one command: release HEAD (typecheck and build, tag, push, the urgent record; needs --reason), build and push its images on this machine, then deploy their digests" },
+    reason: { kind: "string", summary: "deploy --urgent without --image and --source-sha: why HEAD cannot wait for CI and the full gate, one line its urgent record keeps" },
+    remote: { kind: "string", summary: "deploy --urgent without --image and --source-sha: the remote HEAD and its tag are pushed to (default origin)" },
     "db-url-env": { kind: "string", summary: "deploy --urgent: the environment variable holding the database URL the floor backs up and migrates (default the linked project of the database block)" },
     "backup-out": { kind: "string", summary: "deploy --urgent: the folder outside every repository that receives the floor's encrypted backup (default ~/.starci-backups/<project>)" },
     "first-start": { kind: "boolean", summary: "deploy --urgent: the first start of a self-hosted database the release itself starts: no backup (the floor proves the database empty), migrate preview then execute inside its container before converge; needs --db-service" },
@@ -65,6 +68,6 @@ export const appStackVerb = defineVerb({
             const accepted = await requireCiGreen(context, await repositoryRoot(context.cwd), "deploy.prod", flags["source-sha"], { urgent: flags.urgent })
             if (accepted !== undefined) context.progress(`deploy.prod: ${accepted.verdict === "urgent" ? accepted.detail : `CI of ${accepted.sha.slice(0, 9)} is green`}`)
         }
-        return runHfs(context, "stack", hfsArgv(FLAGS, flags, CHOICES), true)
+        return runHfs(context, "stack", hfsArgv(FLAGS, flags, CHOICES), true, undefined, { role: callerRole() ?? "owner" })
     },
 })

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { validateAgainstSchema } from '../runtime/scripts/lib/json-schema.mjs';
+import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 
 const schema = parseYaml(fs.readFileSync(new URL('../runtime/modules/schemas/application-stacks.schema.yaml', import.meta.url), 'utf8'));
 const judge = (def, value) => validateAgainstSchema(value, { $ref: `#/$defs/${def}`, $defs: schema.$defs });
@@ -23,4 +24,20 @@ test('deploy.secrets.settings accepts one member entry or a list of them', () =>
   assert.deepEqual(judge('deploySecrets', { settings: [entry, { member: 'mail', keys: ['MAIL_FROM'] }] }), []);
   assert.notDeepEqual(judge('deploySecrets', { settings: [] }), [], 'an empty list names no setting');
   assert.notDeepEqual(judge('deploySecrets', { settings: [{ member: 'ai' }] }), [], 'an entry without keys is refused');
+});
+
+test('deploy.remote.sealed is one member (the standard) or the legacy three-role form', () => {
+  assert.deepEqual(judge('deployRemote', { sealed: 'vps' }), []);
+  assert.deepEqual(judge('deployRemote', { sealed: { ops: 'vps', sshKey: 'vps-ssh-key', knownHosts: 'vps-known-hosts' } }), []);
+  assert.notDeepEqual(judge('deployRemote', { sealed: 'VPS' }), [], 'a member name is lower-case');
+  assert.notDeepEqual(judge('deployRemote', { sealed: { ops: 'vps' } }), [], 'the legacy form names all three roles');
+});
+
+test('the deploy config reads one sealed member as the member of all three SSH roles', () => {
+  const read = (sealed) => normalizeDeploy({ remote: { sealed } }, { project: 'shop', probe: { services: new Set(), members: new Set(['vps']) } });
+  const one = read('vps');
+  assert.deepEqual(one.problems ?? [], []);
+  assert.deepEqual(one.config.remote.sealed, { ops: 'vps', sshKey: 'vps', knownHosts: 'vps' });
+  assert.deepEqual(read({ ops: 'vps', sshKey: 'vps', knownHosts: 'vps' }).config.remote.sealed, { ops: 'vps', sshKey: 'vps', knownHosts: 'vps' });
+  assert.ok(read('Not A Name').problems.some((problem) => /deploy\.remote\.sealed/.test(problem.at ?? problem)));
 });

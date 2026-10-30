@@ -650,14 +650,16 @@ $defs:
         pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$'
       releasesBase: {$ref: '#/$defs/deployAbsolutePath'}
       sealed:
-        description: 'Owner-machine session for prepare and doctor: members of .starcistacks/<environment>/secrets.'
-        type: object
-        additionalProperties: false
-        required: [ops, sshKey, knownHosts]
-        properties:
-          ops: {$ref: '#/$defs/deployName'}
-          sshKey: {$ref: '#/$defs/deployName'}
-          knownHosts: {$ref: '#/$defs/deployName'}
+        description: 'Owner-machine session for prepare, doctor and deploy: one member of .starcistacks/<environment>/secrets holding VPS_HOST, VPS_USER, privateKey and knownHosts (the standard), or the legacy three-role form naming a member per role.'
+        oneOf:
+          - {$ref: '#/$defs/deployName'}
+          - type: object
+            additionalProperties: false
+            required: [ops, sshKey, knownHosts]
+            properties:
+              ops: {$ref: '#/$defs/deployName'}
+              sshKey: {$ref: '#/$defs/deployName'}
+              knownHosts: {$ref: '#/$defs/deployName'}
       serverRecipient:
         description: The deploy server's public age recipient, recorded by starci app secret server-key <env> --execute.
         type: string

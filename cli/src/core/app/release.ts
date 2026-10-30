@@ -18,9 +18,9 @@ const FLAGS = {
     sonar: { kind: "boolean", summary: "gate: append a local Sonar scan using services.sonar host and the token environment variable named by ci.token (default SONAR_TOKEN)" },
     backfill: { kind: "string", summary: "gate: the tag of an urgent release, checked out at HEAD: the full gate judges it; green promotes its urgent record to L4, red opens a verify ticket" },
     remote: { kind: "string", summary: "push: remote name (default origin)" },
-    urgent: { kind: "boolean", summary: "push: the urgent path (owner ruling 2026-10-29): the fast local checks only, then tag, push and the URGENT record; needs --reason" },
+    urgent: { kind: "boolean", summary: "push: the urgent path (owner rulings urgent-release 2026-10-29, urgent-typecheck-build 2026-10-30): typecheck and the build only, then tag, push and the URGENT record; app check, lint and the tests wait for the back-fill; needs --reason" },
     reason: { kind: "string", summary: "push --urgent: why the release cannot wait for CI and the full gate, one line the urgent record keeps" },
-    "lint-baseline": { kind: "string", summary: "push --urgent: a release tag whose lint findings are the accepted backlog (owner ruling urgent-lint-baseline): the whole app is linted at HEAD and at the tag, and only a finding new since the tag is red" },
+    "lint-baseline": { kind: "string", summary: "push --urgent: retired with lint itself (owner ruling urgent-typecheck-build): an urgent release no longer lints, so this is refused" },
     ...QUIET_FLAG,
 } as const satisfies Readonly<Record<string, FlagSpec>>
 

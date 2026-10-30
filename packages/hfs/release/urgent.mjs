@@ -1,5 +1,5 @@
 // urgent.mjs - `starci app release push --urgent --reason "<text>"`, the sanctioned urgent path (owner ruling urgent-release, 2026-10-29: an urgent
-// deploy needs no CI). It runs only the fast local checks (app check, typecheck, lint of the files changed since the previous release tag, unit), or
+// deploy needs no CI). It runs only the fast local checks (typecheck and the build: owner ruling urgent-typecheck-build, 2026-10-30), or
 // reuses a green row the gate already recorded for HEAD with the same command and an unchanged log; tags HEAD (annotated) and pushes the default
 // branch and the tag in ONE atomic push through the repository's hook (never --no-verify, `git push --dry-run --atomic` first); then writes the
 // URGENT record <git common dir>/starci-release/<HEAD>.urgent.json naming who (the caller's role), why (the reason), each check with its verdict and the
@@ -11,15 +11,14 @@ import { firstLine } from '../stack/context.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
 import { assertUnmoved, git, inspect, releaseDir, runGate, summaryOf } from './gate.mjs';
 import { assertNames, branchRefs, probe, tagRefs } from './push.mjs';
-import { baselineLint } from './lint-baseline.mjs';
 import { URGENT_RULING, URGENT_SCHEMA, greenRow, recordRow, writeUrgent } from './records.mjs';
 
-/** The fast local checks of an urgent release, by gate name, in the order they run. */
-export const URGENT_CHECKS = Object.freeze(['app-check', 'typecheck', 'lint', 'test']);
+/**
+ * The fast local checks of an urgent release, by gate name, in the order they run: what can break production, the types and the build
+ * (owner ruling urgent-typecheck-build, 2026-10-30). App check, lint and the tests wait for the back-fill (`release gate --backfill`).
+ */
+export const URGENT_CHECKS = Object.freeze(['typecheck', 'build', 'build-be', 'build-fe']);
 const REASON_MAX = 500;
-const CHANGED_MAX = 200;
-const PATH_WORD = /^[A-Za-z0-9_@%+=:,./\\-]+$/u;
-const MANAGED_LINT = 'npm run lint';
 
 /** The reason, one line of plain text; an urgent release without one is refused. */
 function reasonOf(value) {
@@ -29,37 +28,11 @@ function reasonOf(value) {
   return reason;
 }
 
-/** The newest release tag reachable from HEAD's parent, or null on a first release. */
-function previousTag(ctx, prefix) {
-  const found = git(ctx, ['describe', '--tags', '--abbrev=0', '--match', `${prefix}[0-9]*`, 'HEAD^'], { allowFail: true });
-  return found.code === 0 && found.stdout !== '' ? found.stdout : null;
-}
-
-/** The lint row of an urgent release: the managed whole-app lint narrowed to the source files changed since the previous release tag. */
-function changedLint(ctx, gate, prefix) {
-  if (gate.command.join(' ') !== MANAGED_LINT) return { gate, note: null };
-  const since = previousTag(ctx, prefix);
-  if (!since) return { gate, note: 'no previous release tag: the whole app is linted' };
-  const files = git(ctx, ['diff', '--name-only', '--diff-filter=d', `${since}..HEAD`]).stdout.split('\n').map((file) => file.trim())
-    .filter((file) => /\.(?:[cm]?[jt]sx?|css)$/u.test(file));
-  if (files.length === 0) return { gate: null, note: `no source file changed since ${since}` };
-  if (files.length > CHANGED_MAX || !files.every((file) => PATH_WORD.test(file))) return { gate, note: `${files.length} changed file(s) since ${since}: the whole app is linted` };
-  return { gate: { ...gate, command: ['npx', 'starci', 'app', 'lint', '--changed', ...files] }, note: `${files.length} file(s) changed since ${since}` };
-}
-
-/**
- * The urgent checks this app declares, from its release gates; a lint row is narrowed to the changed files, or, with `lintBaseline` (a release
- * tag), judged whole against that tag's findings (lint-baseline.mjs), which only the managed lint can be.
- */
-function urgentGates(ctx, config, prefix, lintBaseline) {
+/** The urgent checks this app declares, from its release gates, in URGENT_CHECKS order. */
+function urgentGates(config) {
   const declared = URGENT_CHECKS.map((name) => config.gates.find((gate) => gate.name === name)).filter(Boolean);
   if (declared.length === 0) throw refusal('RELEASE_URGENT_NO_CHECKS', `the release gates declare none of ${URGENT_CHECKS.join(', ')}: an urgent release still runs its fast local checks`);
-  return declared.map((gate) => {
-    if (gate.name !== 'lint') return { name: gate.name, gate, note: null };
-    if (lintBaseline === undefined) return { name: gate.name, ...changedLint(ctx, gate, prefix) };
-    if (gate.command.join(' ') !== MANAGED_LINT) throw refusal('RELEASE_URGENT_LINT_BASELINE_UNMANAGED', `--lint-baseline judges the managed lint (${MANAGED_LINT}), and this app's lint gate runs ${gate.command.join(' ')}`);
-    return { name: gate.name, gate, baseline: lintBaseline, note: `the whole app, judged against ${lintBaseline}: only a finding new since it is red (owner ruling urgent-lint-baseline)` };
-  });
+  return declared.map((gate) => ({ name: gate.name, gate, note: null }));
 }
 
 /** Runs (or reuses) each check in order and stops at the first red one. Returns the rows of the record. */
@@ -69,12 +42,6 @@ function runChecks(ctx, checks, { common, head, dir, platform }) {
   for (const check of checks) {
     if (!check.gate) {
       rows.push({ name: check.name, command: null, pass: true, reused: false, detail: check.note, log: null, logSha256: null });
-      continue;
-    }
-    if (check.baseline !== undefined) {
-      const row = baselineLint(ctx, check.gate, { tag: check.baseline, dir, platform });
-      rows.push({ ...row, reused: false, note: check.note });
-      if (!row.pass) break;
       continue;
     }
     const command = check.gate.command.join(' ');
@@ -104,6 +71,7 @@ function planOf(checks) {
  */
 export async function releaseUrgentPush(ctx, config, options = {}) {
   const reason = reasonOf(options.reason);
+  if (options.lintBaseline !== undefined) throw refusal('RELEASE_URGENT_LINT_BASELINE_RETIRED', 'an urgent release no longer lints (owner ruling urgent-typecheck-build): lint runs in the back-fill, so --lint-baseline has nothing to judge');
   const role = options.role ?? 'unset';
   const remote = options.remote ?? 'origin';
   const branch = config.defaultBranch;
@@ -112,7 +80,7 @@ export async function releaseUrgentPush(ctx, config, options = {}) {
   const { head, chosen } = facts;
   const common = releaseDir(ctx);
   const dir = path.join(common, head.slice(0, 12));
-  const checks = urgentGates(ctx, config, config.tagPrefix, options.lintBaseline);
+  const checks = urgentGates(config);
   const out = [...facts.out, `urgent         ${URGENT_RULING}`, `reason         ${reason}`, `role           ${role}`, ...planOf(checks)];
   const data = { head, tag: chosen.tag, remote, branch, urgent: true, reason, role, checks: [], pushed: false };
   if (facts.red.length > 0) return { ok: false, lines: [...out, ...facts.red.map((item) => `RED: ${item}`), 'nothing run, nothing pushed.'], data: { ...data, red: facts.red } };

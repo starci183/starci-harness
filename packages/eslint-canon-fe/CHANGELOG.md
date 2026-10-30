@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.5.22 - 2026-10-30
+
+- Changed: the bundled canon pins name hfs 4.11.21 (the one-command urgent release), eslint-canon-be 3.8.20, eslint-canon-fe 9.5.22 and the Grammar family 0.15.33. No rule changed.
+
 ## 9.5.21 - 2026-10-30
 
 - Changed: the bundled slot manifest carries the `logic` field (passport declares its tokens, password and cookie files) and the object-storage slot's `object-storage.*` names; the bundled `allows.mjs` and manifest shape admit them; the bundled architecture machine takes a typed-configuration JWT audience; the bundled canon pins name hfs 4.11.20, jest-preset 2.5.2, eslint-canon-be 3.8.19, eslint-canon-fe 9.5.21 and the Grammar family 0.15.32. No rule of this package changed.
