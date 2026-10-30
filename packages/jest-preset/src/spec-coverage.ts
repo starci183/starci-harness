@@ -94,10 +94,11 @@ export function mergeSourceCoverage(records: Iterable<Readonly<Record<string, So
 
 /**
  * The union of the per-spec records written as `<outDir>/lcov.info` and `<outDir>/coverage-final.json`; `projectRoot` is the folder the record paths are
- * relative to (the report carries them absolute, like an unsharded run). Returns the number of sources.
+ * relative to (the lcov lists each source relative to it, like an unsharded run's) and `recordRoot` the folder the record paths are relative to when that is
+ * another (the app root, for records that carry app-relative paths). Returns the number of sources.
  */
-export function mergeSpecCoverage({ records, outDir, projectRoot }: { records: Iterable<Readonly<Record<string, SourceCoverage>>>; outDir: string; projectRoot: string }): { files: number } {
-  const absolute = [...records].map((record) => Object.fromEntries(Object.entries(record).map(([source, coverage]) => [path.resolve(projectRoot, source), coverage])))
+export function mergeSpecCoverage({ records, outDir, projectRoot, recordRoot = projectRoot }: { records: Iterable<Readonly<Record<string, SourceCoverage>>>; outDir: string; projectRoot: string; recordRoot?: string }): { files: number } {
+  const absolute = [...records].map((record) => Object.fromEntries(Object.entries(record).map(([source, coverage]) => [path.resolve(recordRoot, source), coverage])))
   const map = mergeSourceCoverage(absolute)
   fs.mkdirSync(outDir, { recursive: true })
   fs.writeFileSync(path.join(outDir, "coverage-final.json"), JSON.stringify(map.toJSON()))
