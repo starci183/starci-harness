@@ -173,6 +173,12 @@ jobs:
       - name: Test ${{ matrix.package }}
         working-directory: ${{ matrix.package }}
         run: npm test
+      # hfs's build (run by its test above) is the source of the runtime copies the canon packages bundle; a copy that
+      # drifted from it, or a file in one that its runtime/bundle.json does not list, fails here.
+      - name: Bundle copies match the hfs build
+        if: matrix.package == 'packages/hfs'
+        working-directory: ${{ matrix.package }}
+        run: npm run bundles:check
 
   # The CLI and the trees it reads (cli/, contexts/, ops/, policy/, or a package the CLI requires changed).
   harness:
