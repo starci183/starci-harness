@@ -92,8 +92,10 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   Its first start (`urgent-first-start`, owner 2026-10-29: "Thêm first-start"): a self-hosted database the release itself starts
   has nothing to back up and is reachable only inside the stack, so `stack deploy --urgent --first-start --db-service <service>`
   replaces the backup and test decrypt by a proof that the database is empty (no migration history, no table in public) and runs
-  migrate preview then execute (db/bootstrap.sql first) inside the database's own container, between the stack deploy and
-  converge; the record, the rollback target, the readiness verify and the automatic rollback hold, and a database that is not
+  migrate preview then execute (db/bootstrap.sql first) inside the database's own container. The app services never start
+  against the empty schema (their healthchecks fail and update_config rolls them back): the stack is first deployed with every
+  service but the database at 0 replicas (a global-mode service is held off every node by an unsatisfiable placement constraint),
+  then the database is waited for, proved empty and migrated, then the real stack is deployed and converged; the record, the rollback target, the readiness verify and the automatic rollback hold, and a database that is not
   empty is refused (`STACK_FIRST_START_NOT_EMPTY`) for the plain floor.
   Its checks are what can break production (`urgent-typecheck-build`, owner 2026-10-30, chosen over keeping the checks and over
   dropping them all; asked for in nivo-lite's words "build local bypass ci, thao tác thẳng với vps"): typecheck and the build

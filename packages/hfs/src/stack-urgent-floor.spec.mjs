@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
+import { deployRelease } from '../stack/deploy.mjs';
 import { urgentDeploy } from '../stack/urgent-floor.mjs';
 
 const SHA = 'a'.repeat(40);
@@ -58,8 +59,9 @@ function world(root, fail = {}) {
     render: async () => { calls.push('render'); return { releaseId: 'c'.repeat(16) }; },
     dryRun: async () => { calls.push('dry-run'); return { ok: true, lines: ['dry run: release would deploy'], data: { executed: false } }; },
     openStore: async () => ({ current: async () => { calls.push('current'); return fail.noPrevious ? '' : 'b'.repeat(16); } }),
-    deployExecute: async () => {
+    deployExecute: async (...args) => {
       calls.push('deploy');
+      assert.deepEqual(args, [], 'a plain urgent deploy hands the deploy no first-start hooks: its stack is deployed whole, as before');
       if (fail.deploy === 'rolled-back') return { ok: false, lines: ['deploy failed at verify', 'rolled back'], data: { previous: 'b'.repeat(16), rolledBack: true, steps: [{ step: 'deploy', ok: true }, { step: 'verify', ok: false }] } };
       if (fail.deploy === 'stuck') return { ok: false, lines: ['ROLLBACK DID NOT CONVERGE'], data: { previous: 'b'.repeat(16), rolledBack: false, steps: [{ step: 'deploy', ok: true }, { step: 'verify', ok: false }] } };
       if (fail.deploy === 'early') return { ok: false, lines: ['deploy not started'], data: { rolledBack: false, steps: [{ step: 'render', ok: true }, { step: 'provision', ok: false }] } };
@@ -169,6 +171,7 @@ function firstWorld(fail = {}) {
     deployExecute: async (extra = {}) => {
       calls.push('deploy');
       assert.equal(typeof extra.firstStartStep, 'function', 'a first start hands the deploy its first-start step');
+      assert.equal(extra.firstStartDb, 'postgres', 'and the database service the hold deploy leaves running');
       const step = await extra.firstStartStep();
       if (!step.ok) return { ok: false, lines: [...step.lines, 'rolled back'], data: { previous: 'b'.repeat(16), rolledBack: true, steps: [{ step: 'deploy', ok: true }, { step: 'first-start', ok: false }] } };
       calls.push('converge+verify');
@@ -198,6 +201,7 @@ test('a first start dry run plans it and touches nothing', async (t) => {
   const result = await urgentDeploy(ctx, config, { ...FIRST, execute: false }, run, deps);
   assert.equal(result.ok, true);
   assert.ok(result.lines.some((line) => line.includes('first start of floor_postgres')));
+  assert.ok(result.lines.some((line) => /hold deploy.*0 replicas.*migrate preview then execute.*then the real deploy/u.test(line)), 'the plan names the new order');
   assert.deepEqual(calls, ['dry-run']);
 });
 
@@ -225,4 +229,86 @@ test('STACK_FIRST_START_USAGE: a first start without --db-service is refused bef
   const { calls, deps, run } = firstWorld();
   await assert.rejects(urgentDeploy(ctx, config, { ...FIRST, dbService: undefined }, run, deps), (error) => error.code === 'STACK_FIRST_START_USAGE');
   assert.deepEqual(calls, []);
+});
+
+// The order of a first start inside the deploy (stack/deploy.mjs): the stack is first deployed with only the database running, so no app service
+// starts against an empty schema (its healthcheck fails and update_config rolls it back); the first-start step migrates; then the real stack deploys.
+const DIGEST = 'e'.repeat(64);
+const STACK = [
+  'services:',
+  '  postgres:', `    image: registry.example/pg@sha256:${DIGEST}`, '    deploy:', '      replicas: 1',
+  '  api:', `    image: registry.example/api@sha256:${DIGEST}`, '    deploy:', '      replicas: 3',
+  '  worker:', `    image: registry.example/worker@sha256:${DIGEST}`,
+  '  agent:', `    image: registry.example/agent@sha256:${DIGEST}`, '    deploy:', '      mode: global',
+  '',
+].join('\n');
+const DEPLOY_CONFIG = { stack: 'shop', ingress: null, tasks: {}, postDeploy: [] };
+
+/** deployRelease over stubbed collaborators and a recording docker; `order` holds the phases, `deploys` the files each `docker stack deploy` read. */
+async function firstDeploy(t, { stepOk = true, plain = false, db = 'postgres' } = {}) {
+  const out = fs.mkdtempSync(path.join(tempRoot(), 'hfs-first-start-'));
+  t.after(() => fs.rmSync(out, { recursive: true, force: true }));
+  const order = [];
+  const deploys = [];
+  const ok = (name) => async () => { order.push(name); return { ok: true, lines: [] }; };
+  const store = { current: async () => 'a'.repeat(16), store: ok('store'), accept: ok('accept'), fetch: async (_release, dir) => { order.push('fetch'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'stack.yaml'), STACK); } };
+  const deps = {
+    renderRelease: async (_ctx, _config, options) => { fs.writeFileSync(path.join(options.out, 'stack.yaml'), STACK); return { ok: true, lines: [] }; },
+    provisionRelease: ok('provision'), releaseStore: () => store, ssh: async () => ({ cleanup() {} }),
+    reconcileEdge: ok('edge'), convergeStack: ok('converge'), verifyStack: ok('verify'), pruneStack: ok('prune'),
+  };
+  const spawn = (_command, args) => {
+    if (args[0] === 'stack' && args[1] === 'deploy') {
+      const files = args.filter((arg, index) => args[index - 1] === '-c');
+      order.push(files.length > 1 ? 'deploy-hold' : 'deploy');
+      deploys.push(files.map((file) => ({ name: path.basename(file), text: fs.readFileSync(file, 'utf8') })));
+    }
+    return { status: 0, stdout: '', stderr: '' };
+  };
+  const hooks = plain ? {} : { firstStartDb: db, firstStartStep: async () => { order.push('migrate'); return { ok: stepOk, lines: [] }; } };
+  const result = await deployRelease({ spawn, env: {}, now: () => 1000 }, DEPLOY_CONFIG, { sourceSha: 'f'.repeat(40), execute: true, out, ...hooks }, deps);
+  return { result, order, deploys };
+}
+
+test('a first start deploys every service but the database at 0 replicas, migrates, and only then deploys the real stack', async (t) => {
+  const { result, order, deploys } = await firstDeploy(t);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.steps.map((entry) => entry.step), ['render', 'provision', 'store', 'pre-pull', 'deploy-hold', 'first-start', 'deploy', 'edge', 'converge', 'verify', 'accept']);
+  assert.ok(order.indexOf('deploy-hold') < order.indexOf('migrate') && order.indexOf('migrate') < order.indexOf('deploy'), order.join(' '));
+  assert.ok(order.indexOf('deploy') < order.indexOf('converge'), 'converge waits for the real deploy');
+  const [hold, real] = deploys;
+  assert.deepEqual(hold.map((file) => file.name), ['stack.yaml', 'stack.first-start-hold.yaml']);
+  const { services } = JSON.parse(hold[1].text);
+  assert.deepEqual(Object.keys(services).sort(), ['agent', 'api', 'worker'], 'the database is not overridden');
+  assert.deepEqual(services.api, { deploy: { replicas: 0 } });
+  assert.deepEqual(services.worker, { deploy: { replicas: 0 } }, 'a service without a replica count is held too');
+  assert.deepEqual(services.agent.deploy.placement.constraints, ['node.labels.starci-first-start-hold == 1'], 'a global service has no replicas: no node may run it');
+  assert.equal(hold[0].text, STACK);
+  assert.deepEqual(real.map((file) => file.name), ['stack.yaml'], 'the real deploy is the stored stack, with no override');
+  assert.equal(real[0].text, STACK);
+});
+
+test('a first start whose migration is red leaves no app service started and rolls back', async (t) => {
+  const { result, order, deploys } = await firstDeploy(t, { stepOk: false });
+  assert.equal(result.ok, false);
+  assert.equal(result.data.rolledBack, true);
+  assert.deepEqual(result.data.steps.map((entry) => entry.step).slice(4, 6), ['deploy-hold', 'first-start']);
+  assert.equal(deploys.length, 2, 'the hold deploy and the rollback deploy; the real stack was never deployed');
+  assert.equal(deploys[0].length, 2);
+  assert.ok(order.indexOf('migrate') < order.indexOf('fetch'));
+  assert.ok(!order.includes('verify') && !order.includes('accept'));
+  assert.ok(order.indexOf('edge') > order.indexOf('fetch') && order.indexOf('converge') > order.indexOf('fetch'), 'edge and converge run only for the rollback');
+});
+
+test('a first start naming a database that is not a service of the stack is refused before anything is deployed', async (t) => {
+  await assert.rejects(firstDeploy(t, { db: 'nope' }), (error) => error.code === 'STACK_FIRST_START_USAGE');
+});
+
+test('a deploy without the first-start hooks deploys the whole stack once, as before', async (t) => {
+  const { result, order, deploys } = await firstDeploy(t, { plain: true });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.steps.map((entry) => entry.step), ['render', 'provision', 'store', 'pre-pull', 'deploy', 'edge', 'converge', 'verify', 'accept']);
+  assert.equal(deploys.length, 1);
+  assert.deepEqual(deploys[0].map((file) => file.name), ['stack.yaml']);
+  assert.ok(!order.includes('deploy-hold'));
 });

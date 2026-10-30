@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: the first start of the urgent floor (`stack deploy --urgent --first-start --db-service <service>`) no longer starts the app services against an empty schema (their healthchecks failed and `failure_action: rollback` rolled every first start back at converge). The stack is first deployed with every service but the database at 0 replicas (a compose override merged by `docker stack deploy -c`, `stack.first-start-hold.yaml` beside the stack; a global-mode service is held off every node by an unsatisfiable placement constraint), then the `first-start` step waits for the database, proves it empty and migrates, then the real stack deploys and converges, verifies and rolls back as before. New step `deploy-hold`; a `--db-service` that is not a service of the stack is refused with `STACK_FIRST_START_USAGE`. A deploy without `--first-start` is unchanged.
+
 ## 4.11.22 - 2026-10-30
 
 - Changed: `starci app check` and `starci app lint` are green while fewer than 20 error findings remain and none is a hard blocker (owner ruling gate-threshold-20, contexts/harness/decisions.md; `runtime/scripts/hfs/gate-threshold.mjs` `gateVerdict`): a plaintext secret (HFS_PLAINTEXT_SECRET and its family), the boot proof (BE_APP_BOOT_PROOF_MISSING) or a migration finding (DB_MIGRATION_SHAPE, DB_MIGRATION_DESTRUCTIVE, LITE_DB_MIGRATION, BE_MIGRATION_REVERSIBLE) blocks at any count. Every finding is still printed and kept in the report (`gate` carries the verdict); typecheck, build and the tests are not judged by it. Specs: `src/gate-threshold.spec.mjs`; `src/check-eslint.spec.mjs` now expects green for one or two ordinary findings.
