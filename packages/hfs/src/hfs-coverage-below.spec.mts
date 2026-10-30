@@ -1,16 +1,21 @@
 // proves: HFS_COVERAGE_BELOW@lite
 // proves: HFS_COVERAGE_BELOW@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
+import type { CoverageFromOptions } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { coverageFrom, coverageFromMain, formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { HFS_COVERAGE_BELOW, coverageBelowFindings, coverageBelowReport } from '../runtime/scripts/hfs/rules/coverage-below.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+
+interface Finding { code: string; level: string; path: string; message: string }
+interface Context { repoRoot: string; repo: ReturnType<typeof resolveRepoDeclaration>; manifest: ReturnType<typeof loadSlotManifest>; files: string[]; coverageFrom?: string }
 
 const manifest = loadSlotManifest();
 const LOGIC = 'be/src/modules/domain/orders/orders.service.ts';
@@ -22,7 +27,7 @@ const OUTSIDE = [
   'be/src/modules/domain/orders/persistence/orders.mapper.ts',
   'be/src/modules/domain/orders/orders.module.ts',
 ];
-const declaration = (edition) => ({
+const declaration = (edition: string) => ({
   hfs: 3, kind: 'app', project: 'coverage-demo', edition,
   sides: {
     be: { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }], connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'database', provider: 'postgres' }] },
@@ -30,13 +35,13 @@ const declaration = (edition) => ({
   },
 });
 
-const record = (file, { line = 1, fn = 1, branch = 1 } = {}) => [
+const record = (file: string, { line = 1, fn = 1, branch = 1 }: { line?: number; fn?: number; branch?: number | '-' } = {}) => [
   `SF:${file}`, 'FN:1,run', `FNDA:${fn},run`, 'FNF:1', `FNH:${fn > 0 ? 1 : 0}`,
   `DA:1,${line}`, 'LF:1', `LH:${line > 0 ? 1 : 0}`,
   `BRDA:1,0,0,${branch}`, 'BRF:1', `BRH:${branch !== '-' && branch > 0 ? 1 : 0}`, 'end_of_record', '',
 ].join('\n');
 
-function fixture(t, edition, report, files = [LOGIC, ...OUTSIDE]) {
+function fixture(t: TestContext, edition: string, report: string | undefined, files = [LOGIC, ...OUTSIDE]): Context {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-coverage-below-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify(declaration(edition)));
@@ -52,10 +57,10 @@ function fixture(t, edition, report, files = [LOGIC, ...OUTSIDE]) {
 
 for (const edition of ['lite', 'full']) {
   test(`HFS_COVERAGE_BELOW ${edition}: refuses each metric below 100% per measured file`, (t) => {
-    for (const partial of [{ line: 0 }, { fn: 0 }, { branch: '-' }]) {
+    for (const partial of [{ line: 0 }, { fn: 0 }, { branch: '-' }] as const) {
       const report = coverageBelowReport(fixture(t, edition, record(LOGIC, partial)));
       assert.equal(report.ok, false);
-      assert.deepEqual(report.findings.map((finding) => [finding.code, finding.level, finding.path]), [[HFS_COVERAGE_BELOW, 'error', LOGIC]]);
+      assert.deepEqual(report.findings.map((finding: Finding) => [finding.code, finding.level, finding.path]), [[HFS_COVERAGE_BELOW, 'error', LOGIC]]);
       assert.match(report.findings[0].message, /0\/1 \(0\.00%\) is below 100%/);
     }
   });
@@ -80,7 +85,7 @@ for (const edition of ['lite', 'full']) {
     const report = coverageBelowReport(context);
     assert.equal(report.ok, false);
     assert.deepEqual(report.measured, [LOGIC, POLICY]);
-    assert.deepEqual(report.findings.map((finding) => finding.path), [POLICY]);
+    assert.deepEqual(report.findings.map((finding: Finding) => finding.path), [POLICY]);
     assert.match(report.findings[0].message, /no lcov source record/);
   });
 
@@ -92,7 +97,7 @@ for (const edition of ['lite', 'full']) {
     const empty = coverageBelowReport(fixture(t, edition, ''));
     assert.equal(empty.ok, false);
     assert.match(empty.findings[0].message, /no source records/);
-    assert.ok(empty.findings.some((finding) => finding.path === LOGIC));
+    assert.ok(empty.findings.some((finding: Finding) => finding.path === LOGIC));
   });
 
   test(`HFS_COVERAGE_BELOW ${edition}: ordinary app check has no coverage opt-in and no changed behavior`, (t) => {
@@ -100,16 +105,16 @@ for (const edition of ['lite', 'full']) {
     delete context.coverageFrom;
     assert.deepEqual(coverageBelowFindings(context), []);
     assert.equal(coverageBelowReport(context).enabled, false);
-    assert.deepEqual(coverageBelowFindings({ ...context, repo: context.repo.sides.fe, coverageFrom: 'coverage/lcov.info' }), []);
+    assert.deepEqual(coverageBelowFindings({ ...context, repo: context.repo.sides!.fe, coverageFrom: 'coverage/lcov.info' }), []);
   });
 }
 
 test('HFS_COVERAGE_BELOW: the alpha.15 registry judges an explicit report and accepts its 100% replacement', (t) => {
   const context = fixture(t, 'full', record(LOGIC, { line: 0 }));
-  const own = (list) => list.filter((finding) => finding.code === HFS_COVERAGE_BELOW);
+  const own = (list: Finding[]) => list.filter((finding: Finding) => finding.code === HFS_COVERAGE_BELOW);
   const findings = own(a15Findings(context));
-  assert.deepEqual(findings.map((finding) => [finding.code, finding.level, finding.path]), [[HFS_COVERAGE_BELOW, 'error', LOGIC]]);
-  fs.writeFileSync(path.join(context.repoRoot, context.coverageFrom), record(LOGIC));
+  assert.deepEqual(findings.map((finding: Finding) => [finding.code, finding.level, finding.path]), [[HFS_COVERAGE_BELOW, 'error', LOGIC]]);
+  fs.writeFileSync(path.join(context.repoRoot, context.coverageFrom!), record(LOGIC));
   assert.deepEqual(own(a15Findings(context)), []);
 });
 
@@ -130,7 +135,7 @@ test('HFS_COVERAGE_BELOW: app and be-relative SF paths, absolute POSIX/Windows p
 
 test('HFS_COVERAGE_BELOW: checking the be side reports side-relative paths and shares the app boundary', (t) => {
   const app = fixture(t, 'full', record(LOGIC));
-  const context = { ...app, repoRoot: path.join(app.repoRoot, 'be'), repo: app.repo.sides.be, files: app.files.map((file) => file.slice(3)), coverageFrom: '../coverage/lcov.info' };
+  const context = { ...app, repoRoot: path.join(app.repoRoot, 'be'), repo: app.repo.sides!.be, files: app.files.map((file) => file.slice(3)), coverageFrom: '../coverage/lcov.info' };
   const report = coverageFrom(context);
   assert.equal(report.ok, true);
   assert.deepEqual(report.measured, [LOGIC.slice(3)]);
@@ -139,7 +144,7 @@ test('HFS_COVERAGE_BELOW: checking the be side reports side-relative paths and s
 
 test('HFS_COVERAGE_BELOW: duplicate test-name records merge covered identities, not totals or percentages', (t) => {
   const base = fixture(t, 'lite', record(LOGIC));
-  const part = (name, first, second) => [
+  const part = (name: string, first: number, second: number) => [
     `TN:${name}`, `SF:${LOGIC}`, 'FN:1,run', 'FNDA:1,run', 'FNF:1', 'FNH:1',
     `DA:1,${first}`, `DA:2,${second}`, 'LF:2', 'LH:1',
     `BRDA:1,0,0,${first}`, `BRDA:1,0,1,${second}`, 'BRF:2', 'BRH:1', 'end_of_record', '',
@@ -157,7 +162,7 @@ test('HFS_COVERAGE_BELOW: invalid counts and contradictory summary metadata refu
   for (const lcov of [record(LOGIC).replace('DA:1,1', 'DA:1,-1'), record(LOGIC).replace('LF:1', 'LF:2'), record(LOGIC).replace('LH:1', 'LH:2')]) {
     const report = coverageBelowReport({ ...context, lcov });
     assert.equal(report.ok, false);
-    assert.ok(report.findings.some((finding) => finding.path === LOGIC));
+    assert.ok(report.findings.some((finding: Finding) => finding.path === LOGIC));
     assert.match(report.findings.at(-1).message, /invalid DA|disagrees/);
   }
 });
@@ -174,7 +179,7 @@ test('HFS_COVERAGE_BELOW: metrics missing from lcov are unavailable while explic
 
 test('HFS_COVERAGE_BELOW: summary-only reports require each record to prove 100%, with no percentage rounding escape', (t) => {
   const context = fixture(t, 'lite', record(LOGIC));
-  const summary = (found, hit) => `SF:${LOGIC}\nLF:${found}\nLH:${hit}\nFNF:0\nFNH:0\nBRF:0\nBRH:0\nend_of_record\n`;
+  const summary = (found: number, hit: number) => `SF:${LOGIC}\nLF:${found}\nLH:${hit}\nFNF:0\nFNH:0\nBRF:0\nBRH:0\nend_of_record\n`;
   assert.equal(coverageBelowReport({ ...context, lcov: summary(2, 2) + summary(1, 1) }).ok, true);
   const below = coverageBelowReport({ ...context, lcov: summary(100000, 99999) });
   assert.equal(below.ok, false);
@@ -190,15 +195,15 @@ test('HFS_COVERAGE_BELOW: edition and manifest coverage changes alter the denomi
   assert.ok(lite.unmeasured.includes(LOGIC));
   const full = coverageBelowReport({ ...context, manifest: changed, lcov: record(POLICY) });
   assert.equal(full.ok, false);
-  assert.ok(full.findings.some((finding) => finding.path === LOGIC));
+  assert.ok(full.findings.some((finding: Finding) => finding.path === LOGIC));
 });
 
 test('HFS_COVERAGE_BELOW: CLI accepts cwd, inline report and JSON and returns refusal status for an uncovered file', (t) => {
   const context = fixture(t, 'lite', record(LOGIC));
   let output = '';
   let errors = '';
-  const run = (opts) => coverageFrom({ ...context, ...opts });
-  const io = { cwd: context.repoRoot, stdout: (text) => { output += text; }, stderr: (text) => { errors += text; }, run };
+  const run = (opts: CoverageFromOptions) => coverageFrom({ ...context, ...opts });
+  const io = { cwd: context.repoRoot, stdout: (text: string) => { output += text; }, stderr: (text: string) => { errors += text; }, run };
   assert.equal(coverageFromMain(['--cwd', '.', '--coverage-from=coverage/lcov.info', '--json'], io), 0);
   assert.equal(errors, '');
   assert.deepEqual(JSON.parse(output).measured, [LOGIC]);
@@ -211,7 +216,7 @@ test('HFS_COVERAGE_BELOW: CLI accepts cwd, inline report and JSON and returns re
 
 test('HFS_COVERAGE_BELOW: CLI refuses missing and duplicate flags without running the proof', () => {
   let errors = '';
-  const io = { stderr: (text) => { errors += text; }, run: () => assert.fail('invalid CLI must not run') };
+  const io = { stderr: (text: string) => { errors += text; }, run: () => assert.fail('invalid CLI must not run') };
   for (const argv of [[], ['--coverage-from'], ['--coverage-from=x', '--coverage-from=y'], ['--coverage-from=x', '--unknown']]) {
     assert.equal(coverageFromMain(argv, io), 2);
   }
@@ -222,13 +227,13 @@ test('HFS_COVERAGE_BELOW: CLI refuses missing and duplicate flags without runnin
 
 test('HFS_COVERAGE_BELOW: an explicit coverage proof refuses an fe side instead of reporting an empty pass', (t) => {
   const app = fixture(t, 'lite', record(LOGIC));
-  const context = { ...app, repo: app.repo.sides.fe, files: [] };
+  const context = { ...app, repo: app.repo.sides!.fe, files: [] };
   assert.throws(() => coverageFrom(context), /requires an app root or its be side/);
   let output = '';
   let errors = '';
   const io = {
-    stdout: (text) => { output += text; }, stderr: (text) => { errors += text; },
-    run: (options) => coverageFrom({ ...context, ...options }),
+    stdout: (text: string) => { output += text; }, stderr: (text: string) => { errors += text; },
+    run: (options: CoverageFromOptions) => coverageFrom({ ...context, ...options }),
   };
   assert.equal(coverageFromMain(['--coverage-from', 'missing-lcov.info'], io), 2);
   assert.equal(output, '');

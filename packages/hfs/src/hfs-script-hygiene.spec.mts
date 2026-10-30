@@ -1,4 +1,5 @@
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,14 +11,16 @@ import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 // proves: HFS_SCRIPT_PLAINTEXT_LOAD@lite HFS_SCRIPT_PLAINTEXT_LOAD@full
 // proves: HFS_SCRIPT_XTRACE@lite HFS_SCRIPT_XTRACE@full
 
-function fixture(t, entries, edition, extra = {}) {
+type HygieneInput = Parameters<typeof scriptHygieneFindings>[0];
+
+function fixture(t: TestContext, entries: Record<string, unknown>, edition: string, extra: Record<string, unknown> = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-script-hygiene-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(entries)) {
     fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true });
     fs.writeFileSync(path.join(repoRoot, file), typeof content === 'string' ? content : JSON.stringify(content));
   }
-  return { repoRoot, files: Object.keys(entries), repo: { kind: 'app', profile: 'app', edition }, isRoot: true, ...extra };
+  return { repoRoot, files: Object.keys(entries), repo: { kind: 'app', profile: 'app', edition }, isRoot: true, ...extra } as unknown as HygieneInput & { files: string[] }; // reason: the finder never reads the resolver its type lists, and these fixtures name none
 }
 
 for (const edition of ['lite', 'full']) {
@@ -57,11 +60,11 @@ for (const edition of ['lite', 'full']) {
       '.starcistacks/production/secrets/api.enc': 'content must never be read by this finder',
     }, edition);
     const original = fs.readFileSync;
-    const reads = [];
-    fs.readFileSync = function (file, ...args) {
-      reads.push(String(file).replaceAll('\\', '/'));
-      return original.call(this, file, ...args);
-    };
+    const reads: string[] = [];
+    fs.readFileSync = function (this: unknown, ...args: Parameters<typeof original>) {
+      reads.push(String(args[0]).replaceAll('\\', '/'));
+      return (original as (...rest: unknown[]) => unknown).apply(this, args);
+    } as typeof fs.readFileSync; // reason: the recording wrapper forwards every overload unchanged
     let findings;
     try { findings = scriptHygieneFindings(context); } finally { fs.readFileSync = original; }
     assert.deepEqual(findings, []);
@@ -109,7 +112,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(result.findings.filter((item) => codes.has(item.code)).map((item) => [item.code, item.path]).sort(byCodeUnit), [
       ['HFS_SCRIPT_PLAINTEXT_LOAD', 'fe/scripts/task.sh'], ['HFS_SCRIPT_XTRACE', 'be/scripts/task.sh'],
     ]);
-    assert.deepEqual(scriptHygieneFindings({ ...context, inScope: (file) => file.startsWith('fe/') }).map((item) => item.path), ['fe/scripts/task.sh']);
+    assert.deepEqual(scriptHygieneFindings({ ...context, inScope: (file: string) => file.startsWith('fe/') }).map((item) => item.path), ['fe/scripts/task.sh']);
     assert.deepEqual(scriptHygieneFindings({ ...context, isRoot: false }), []);
     assert.deepEqual(scriptHygieneFindings({ ...context, repo: { kind: 'runtime', edition } }), []);
   });

@@ -3,6 +3,7 @@
 // proves: HFS_DB_DEPLOY_UNGUARDED@lite
 // proves: HFS_DB_DEPLOY_UNGUARDED@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,7 +12,11 @@ import { execFileSync } from 'node:child_process';
 import { stringifyYaml as stringify } from '../runtime/engine/yaml.mjs';
 import { withoutGitLocalEnv } from '../runtime/scripts/lib/git.mjs';
 import { releaseProvenanceFindings } from '../runtime/scripts/hfs/rules/release-provenance.mjs';
-import { OR_EXIT_ZERO, OR_TRUE } from './fixtures/loosening/swallows.mjs';
+
+// The swallowed-failure spellings live in an untyped fixture (src/fixtures is outside the typechecked program and ships no declaration): a computed
+// specifier loads it unchanged and the two spellings read here are typed.
+const SWALLOWS = './fixtures/loosening/swallows.mjs';
+const { OR_EXIT_ZERO, OR_TRUE } = await import(SWALLOWS) as { OR_EXIT_ZERO: string; OR_TRUE: string };
 
 const IMAGE = '.github/workflows/images.yml';
 const DB = '.github/workflows/db-deploy.yml';
@@ -21,7 +26,7 @@ const CHECKOUT = { uses: 'actions/checkout@0123456789012345678901234567890123456
 const MIGRATE = { run: 'npm run db:push' };
 const TRIGGER = { push: { tags: ['v*'] }, workflow_dispatch: {} };
 
-function tree(t, content = {}) {
+function tree(t: TestContext, content: Record<string, string> = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-release-provenance-'));
   const entries = { 'package.json': JSON.stringify({ name: 'demo', version: VERSION }), ...content };
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -32,11 +37,11 @@ function tree(t, content = {}) {
   return { repoRoot: dir, files: Object.keys(entries) };
 }
 
-function git(root, ...args) {
+function git(root: string, ...args: string[]) {
   return execFileSync('git', args, { cwd: root, env: withoutGitLocalEnv(process.env), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
 }
 
-function tagged(t, tag, content) {
+function tagged(t: TestContext, tag: string, content?: Record<string, string>) {
   const fixture = tree(t, content);
   git(fixture.repoRoot, 'init', '--quiet');
   git(fixture.repoRoot, 'add', '.');
@@ -48,15 +53,15 @@ function tagged(t, tag, content) {
 // The fixture is the only release under test: the CI run that executes this spec may itself be a tag build.
 const LOCAL_ENV = Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'GITHUB_ACTIONS' && key !== 'GITHUB_REF'));
 
-function check(fixture, edition, extra = {}) {
+function check(fixture: { repoRoot: string; files: string[] }, edition: string, extra: Record<string, unknown> = {}) {
   return releaseProvenanceFindings({ ...fixture, repo: { kind: 'app', profile: 'app', edition }, isRoot: true, env: LOCAL_ENV, ...extra });
 }
 
-const dbWorkflow = (job = {}, on = TRIGGER) => stringify({ name: 'database deploy', on, jobs: { deploy: { 'runs-on': 'ubuntu-latest', steps: [CHECKOUT, MIGRATE], ...job } } });
-const imageWorkflow = (tags = 'ghcr.io/demo/api:${{ github.ref_name }}', job = {}, on = TRIGGER) => stringify({
+const dbWorkflow = (job: Record<string, unknown> = {}, on: object = TRIGGER) => stringify({ name: 'database deploy', on, jobs: { deploy: { 'runs-on': 'ubuntu-latest', steps: [CHECKOUT, MIGRATE], ...job } } });
+const imageWorkflow = (tags = 'ghcr.io/demo/api:${{ github.ref_name }}', job: Record<string, unknown> = {}, on: object = TRIGGER) => stringify({
   name: 'images', on, jobs: { image: { 'runs-on': 'ubuntu-latest', if: TAG_GUARD, steps: [CHECKOUT, { uses: 'docker/build-push-action@0123456789012345678901234567890123456789', with: { context: '.', tags, push: true } }], ...job } },
 });
-const codes = (findings) => findings.map((finding) => finding.code);
+const codes = (findings: { code: string }[]) => findings.map((finding) => finding.code);
 
 for (const edition of ['lite', 'full']) {
   test(`HFS_RELEASE_TAG_MISMATCH@${edition}: tagged package and image refs agree, including prerelease/build semver`, (t) => {
@@ -83,9 +88,9 @@ for (const edition of ['lite', 'full']) {
     git(fixture.repoRoot, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'tag', '-a', `v${VERSION}`, '-m', 'release');
     const findings = check(fixture, edition);
     assert.deepEqual(codes(findings), ['HFS_RELEASE_TAG_MISMATCH']);
-    assert.equal(findings[0].path, 'package.json');
-    assert.equal(findings[0].tag, 'v1.2.2');
-    assert.equal(findings[0].level, 'error');
+    assert.equal(findings[0]?.path, 'package.json');
+    assert.equal(findings[0]?.tag, 'v1.2.2');
+    assert.equal(findings[0]?.level, 'error');
     git(fixture.repoRoot, 'tag', 'vproduction');
     assert.equal(check(fixture, edition).length, 2, 'a non-semver v-tag cannot be a release');
     git(fixture.repoRoot, 'tag', 'v1.2.3-01');
@@ -131,7 +136,7 @@ for (const edition of ['lite', 'full']) {
       "github.ref_type == 'tag'", "github.ref == 'refs/tags/vproduction'", "inputs.ref_type == 'tag'"]) {
       const findings = check(tree(t, { [DB]: dbWorkflow({ if: condition }) }), edition);
       assert.deepEqual(codes(findings), ['HFS_DB_DEPLOY_UNGUARDED'], String(condition));
-      assert.equal(findings[0].path, DB);
+      assert.equal(findings[0]?.path, DB);
     }
     const commented = `# if: ${TAG_GUARD}\n${dbWorkflow()}`;
     assert.deepEqual(codes(check(tree(t, { [DB]: commented }), edition)), ['HFS_DB_DEPLOY_UNGUARDED']);
@@ -160,9 +165,9 @@ for (const edition of ['lite', 'full']) {
     const doc = { on: TRIGGER, jobs: { safe: { if: TAG_GUARD, steps: [MIGRATE] }, unsafe: { steps: [MIGRATE] }, reusable: { uses: 'demo/workflows/.github/workflows/db.yml@main' } } };
     const findings = check(tree(t, { [DB]: stringify(doc) }), edition);
     assert.deepEqual(findings.map((finding) => finding.job), ['unsafe', 'reusable']);
-    const steps = [{ ...CHECKOUT, with: { ref: 'main' } }, MIGRATE];
+    const steps: { uses?: string; run?: string; with?: { ref: string } }[] = [{ ...CHECKOUT, with: { ref: 'main' } }, MIGRATE];
     assert.deepEqual(codes(check(tree(t, { [DB]: dbWorkflow({ if: TAG_GUARD, steps }) }), edition)), ['HFS_DB_DEPLOY_UNGUARDED']);
-    steps[0].with.ref = '${{ github.ref }}';
+    steps[0]!.with!.ref = '${{ github.ref }}';
     assert.deepEqual(check(tree(t, { [DB]: dbWorkflow({ if: TAG_GUARD, steps }) }), edition), []);
   });
 
@@ -171,8 +176,8 @@ for (const edition of ['lite', 'full']) {
       assert.deepEqual(codes(check(tree(t, { [IMAGE]: text, [DB]: text }), edition)), ['HFS_RELEASE_TAG_MISMATCH', 'HFS_DB_DEPLOY_UNGUARDED']);
     }
     const fixture = tree(t, { [IMAGE]: imageWorkflow('demo/api:v1.2.2'), 'README.md': 'demo' });
-    assert.deepEqual(check(fixture, edition, { inScope: (file) => file === 'README.md' }), []);
-    assert.deepEqual(codes(check(fixture, edition, { inScope: (file) => file === 'package.json' })), ['HFS_RELEASE_TAG_MISMATCH']);
+    assert.deepEqual(check(fixture, edition, { inScope: (file: string) => file === 'README.md' }), []);
+    assert.deepEqual(codes(check(fixture, edition, { inScope: (file: string) => file === 'package.json' })), ['HFS_RELEASE_TAG_MISMATCH']);
   });
 }
 

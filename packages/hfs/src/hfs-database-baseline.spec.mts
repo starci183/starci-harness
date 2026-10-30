@@ -7,12 +7,15 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { baselineMarkers, baselineSourceFindings, databaseBaselineFindings } from '../runtime/scripts/hfs/rules/database-baseline.mjs';
 import { dbBaselineMain, dbSqlFiles } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
+import type { DbOperation, DbResult } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
 import { dbPlanMain } from '../runtime/scripts/hfs/db-plan-verb.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { databaseQueuesFindings } from '../runtime/scripts/hfs/rules/database-queues.mjs';
 
-const made = [];
+const made: string[] = [];
+type Git = (args: string[]) => { ok: boolean; stdout: string };
+type Answer = DbResult | Record<string, unknown> | ((args: string[]) => DbResult);
 const migrations = 'db/migrations';
 const archive = `${migrations}/archive`;
 const first = '20260101000000';
@@ -22,7 +25,9 @@ const old = `${migrations}/${first}_start.sql`;
 const retired = `${archive}/${first}_start.sql`;
 const baseline = `${migrations}/${replacement}_baseline.sql`;
 const marked = `-- starci:baseline ${first}\nselect 1;\n`;
-const noHistory = () => ({ ok: false, stdout: '' });
+/** A database port that only records its calls and answers nothing. */
+const recordInto = (list: unknown[]) => (...args: [string, DbOperation]): undefined => { list.push(args); };
+const noHistory: Git = () => ({ ok: false, stdout: '' });
 
 test.after(() => {
   for (const dir of made) {
@@ -31,7 +36,7 @@ test.after(() => {
   }
 });
 
-function fixture(edition, contents) {
+function fixture(edition: string, contents: Record<string, string>) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-baseline-'));
   made.push(root);
   write(root, { 'hfs.json': JSON.stringify({ kind: 'app', edition }), ...contents });
@@ -39,9 +44,9 @@ function fixture(edition, contents) {
 }
 
 /** The legacy argument shape the assertions read, from one runDbPostgres operation (query, dump or a history repair). */
-const legacyArgs = (op) => (op.kind === 'query' ? ['db', 'query', op.sql] : op.kind === 'dump' ? ['db', 'dump'] : ['migration', 'repair', op.stamp, '--status', op.status]);
+const legacyArgs = (op: DbOperation): string[] => (op.kind === 'query' ? ['db', 'query', op.sql] : op.kind === 'dump' ? ['db', 'dump'] : ['migration', 'repair', op.stamp, '--status', op.status]);
 
-function write(root, contents) {
+function write(root: string, contents: Record<string, string>) {
   for (const [file, text] of Object.entries(contents)) {
     const target = path.join(root, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -49,42 +54,42 @@ function write(root, contents) {
   }
 }
 
-function history(contents) {
-  return (args) => {
+function history(contents: Record<string, string>): Git {
+  return (args: string[]) => {
     if (args[0] === 'merge-base') return { ok: true, stdout: 'base' };
     if (args[0] === 'ls-tree') return { ok: true, stdout: `${Object.keys(contents).join('\0')}\0` };
-    const file = args[1]?.split(':./')[1];
-    return Object.hasOwn(contents, file) ? { ok: true, stdout: contents[file] } : { ok: false, stdout: '' };
+    const file = args[1]?.split(':./')[1] ?? '';
+    return Object.hasOwn(contents, file) ? { ok: true, stdout: contents[file] as string } : { ok: false, stdout: '' };
   };
 }
 
-function judge(root, edition, contents, git = noHistory, extra = {}) {
-  return databaseBaselineFindings({ repoRoot: root, files: Object.keys(contents), all: Object.keys(contents), repo: { kind: 'app', edition }, isRoot: true, inScope: () => true, git, ...extra });
+function judge(root: string, edition: string, contents: Record<string, string>, git: Git = noHistory, extra: Record<string, unknown> = {}) {
+  return databaseBaselineFindings({ repoRoot: root, files: Object.keys(contents), all: Object.keys(contents), repo: { kind: 'app', edition }, isRoot: true, inScope: () => true, base: undefined, git, ...extra }); // reason: base is read as optional (absent means origin/main, then main) though the finder types it as required
 }
 
-function io(root, result) {
-  const calls = [];
-  const out = [];
-  const err = [];
+function io(root: string, result?: Answer) {
+  const calls: string[][] = [];
+  const out: string[] = [];
+  const err: string[] = [];
   const committed = Object.fromEntries([...dbSqlFiles(root), ...dbSqlFiles(root, archive)].map((entry) => [entry.file, fs.readFileSync(path.join(root, entry.file), 'utf8')]));
-  return { calls, out, err, ports: { cwd: root, git: history(committed), stdout: (text) => out.push(text), stderr: (text) => err.push(text), runPostgres: (cwd, op) => {
+  return { calls, out, err, ports: { cwd: root, git: history(committed), stdout: (text: string) => out.push(text), stderr: (text: string) => err.push(text), runPostgres: (cwd: string, op: DbOperation): DbResult => {
     const args = legacyArgs(op);
     assert.equal(cwd, root);
     calls.push(args);
-    if (result !== undefined) return typeof result === 'function' ? result(args) : result;
+    if (result !== undefined) return typeof result === 'function' ? result(args) : result as DbResult;
     if (args[1] !== 'query') return { status: 0, stdout: 'create table public.demo(id integer);\n' };
-    const sql = args[2];
-    let rows = [];
+    const sql = args[2] as string;
+    let rows: unknown[] = [];
     if (sql.includes('to_regclass')) rows = [{ migrations: true, cron: true, queues: true, vault: true }];
-    else if (sql.includes('schema_migrations')) rows = Object.keys(committed).filter((file) => !file.includes('/archive/')).map((file) => ({ version: /\/(\d{14})_/.exec(file)[1] }));
+    else if (sql.includes('schema_migrations')) rows = Object.keys(committed).filter((file) => !file.includes('/archive/')).map((file) => ({ version: /\/(\d{14})_/.exec(file)![1] }));
     return { status: 0, stdout: JSON.stringify(rows) };
   } } };
 }
 
 const command = "select pgmq.send('events', '{}');";
 const ownedStateSql = `select pgmq.create('events');\nselect cron.schedule('events-tick', '* * * * *', $job$${command}$job$);\n`;
-function remoteInventory(root, overrides = {}) {
-  const state = {
+function remoteInventory(root: string, overrides: Record<string, unknown> = {}) {
+  const state: Record<string, unknown> = {
     presence: [{ migrations: true, cron: true, queues: true, vault: true }],
     migrations: [{ version: first }],
     cron: [{ name: 'events-tick', schedule: '* * * * *', commandHash: createHash('sha256').update(command).digest('hex'), active: true }],
@@ -92,14 +97,14 @@ function remoteInventory(root, overrides = {}) {
     vault: [{ name: 'webhook' }],
     ...overrides,
   };
-  return io(root, (args) => {
+  return io(root, (args: string[]) => {
     assert.equal(args[0], 'db');
     assert.equal(args[1], 'query');
-    const sql = args[2];
+    const sql = args[2] as string;
     assert.ok(/^select\s/i.test(sql));
     assert.equal(/(?:decrypted_secret|\bsecret\s+from|select\s+\*)/i.test(sql), false);
-    const kind = sql.includes('to_regclass') ? 'presence' : Object.keys(state).find((key) => sql.includes({ migrations: 'schema_migrations', cron: 'cron.job', queues: 'pgmq.meta', vault: 'vault.secrets' }[key] ?? 'unmatched-inventory'));
-    return { status: 0, stdout: JSON.stringify(state[kind]) };
+    const kind = sql.includes('to_regclass') ? 'presence' : Object.keys(state).find((key) => sql.includes(({ migrations: 'schema_migrations', cron: 'cron.job', queues: 'pgmq.meta', vault: 'vault.secrets' } as Record<string, string>)[key] ?? 'unmatched-inventory'));
+    return { status: 0, stdout: JSON.stringify(state[kind as string]) };
   });
 }
 
@@ -180,7 +185,7 @@ for (const edition of ['lite', 'full']) {
     const preview = io(root);
     assert.equal(dbBaselineMain(['--stamp', replacement], preview.ports), 0);
     assert.deepEqual(preview.calls.filter((args) => args[1] === 'dump'), [['db', 'dump']]);
-    assert.ok(preview.calls.every((args) => ['query', 'dump'].includes(args[1])));
+    assert.ok(preview.calls.every((args) => ['query', 'dump'].includes(args[1] as string)));
     assert.ok(fs.existsSync(path.join(root, old)));
     assert.equal(fs.existsSync(path.join(root, baseline)), false);
     assert.ok(preview.out.join('').includes(`history reverted ${first}`));
@@ -220,9 +225,9 @@ for (const edition of ['lite', 'full']) {
       [`${migrations}/20260230000000_bad-time.sql`]: 'select 1;',
       [`${migrations}/20260301000000_fine.sql`]: 'select 1;',
     });
-    const err = [];
-    const calls = [];
-    assert.equal(dbBaselineMain(['--stamp', replacement], { cwd: root, stdout: () => {}, stderr: (text) => err.push(text), runPostgres: (...args) => calls.push(args) }), 2);
+    const err: string[] = [];
+    const calls: unknown[] = [];
+    assert.equal(dbBaselineMain(['--stamp', replacement], { cwd: root, stdout: () => {}, stderr: (text: string) => err.push(text), runPostgres: recordInto(calls) }), 2);
     assert.equal(err.join(''), [
       'starci app db baseline: migration filenames break their chain rules:',
       `  ${migrations}/20260101000000_Bad_Name.sql: name is not <ts14>_<kebab>.sql (R213)`,
@@ -232,8 +237,8 @@ for (const edition of ['lite', 'full']) {
     const unstamped = fixture(edition, { [old]: 'select 1;', [`${archive}/prototype.sql`]: 'select 1;' });
     assert.throws(() => dbSqlFiles(unstamped, archive), /db\/migrations\/archive\/prototype\.sql: an archived name starts with its 14-digit stamp/);
     const twice = fixture(edition, { [old]: 'select 1;', [retired]: 'select 1;' });
-    const twiceErr = [];
-    assert.equal(dbBaselineMain(['--stamp', replacement], { cwd: twice, stdout: () => {}, stderr: (text) => twiceErr.push(text), runPostgres: (...args) => calls.push(args) }), 2);
+    const twiceErr: string[] = [];
+    assert.equal(dbBaselineMain(['--stamp', replacement], { cwd: twice, stdout: () => {}, stderr: (text: string) => twiceErr.push(text), runPostgres: recordInto(calls) }), 2);
     assert.ok(twiceErr.join('').includes(`${old}: also archived as ${retired}; a migration is active or archived, never both (R257)`));
     assert.deepEqual(calls, []);
   });
@@ -257,9 +262,9 @@ for (const edition of ['lite', 'full']) {
 
   test(`DB_ARCHIVE_MUTATED ${edition}: a baseline cutover refuses uncommitted, changed or missing source history`, () => {
     const root = fixture(edition, { [old]: 'select 1;' });
-    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], git: history({}) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
-    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], git: history({ [old]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
-    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], git: history({ [old]: 'select 1;', [`${migrations}/${second}_removed.sql`]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
+    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], base: undefined, git: history({}) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
+    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], base: undefined, git: history({ [old]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
+    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], base: undefined, git: history({ [old]: 'select 1;', [`${migrations}/${second}_removed.sql`]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
     const ports = io(root);
     assert.equal(dbBaselineMain(['--stamp', replacement, '--execute'], { ...ports.ports, git: history({}) }), 2);
     assert.deepEqual(ports.calls, []);
@@ -357,8 +362,8 @@ for (const edition of ['lite', 'full']) {
     assert.ok(fs.existsSync(path.join(bare, move)));
     const root = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: beta\n` });
     // the history names the file that stays (alpha) under the shared version: the file that moves never ran, so no repair
-    const recorded = (name) => (args) => ({ status: 0, stdout: JSON.stringify(name === null ? [] : [{ name }]) });
-    const queryOnly = (calls) => calls.every((args) => args[0] === 'db' && args[1] === 'query' && /^select name from supabase_migrations\.schema_migrations where version = '\d{14}'$/.test(args[2]));
+    const recorded = (name: string | null) => (_args: string[]) => ({ status: 0, stdout: JSON.stringify(name === null ? [] : [{ name }]) });
+    const queryOnly = (calls: string[][]) => calls.every((args: string[]) => args[0] === 'db' && args[1] === 'query' && /^select name from supabase_migrations\.schema_migrations where version = '\d{14}'$/.test(args[2] as string));
     const preview = io(root, recorded('alpha'));
     assert.equal(dbRestampMain(['--map', 'restamp.yaml'], preview.ports), 0);
     assert.equal(queryOnly(preview.calls), true, 'the preview reads the history with one SELECT');
@@ -377,7 +382,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(queryOnly(none.calls), true);
     // the history names the file that moves: it is the applied one, so the old version is reverted and the new one marked applied
     const ran = fixture(edition, { ...files, 'restamp.yaml': `"${first}":\n  file: beta\n` });
-    const repaired = io(ran, (args) => (args[1] === 'query' ? recorded('beta')(args) : { status: 0, stdout: '' }));
+    const repaired = io(ran, (args: string[]) => (args[1] === 'query' ? recorded('beta')(args) : { status: 0, stdout: '' }));
     assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], repaired.ports), 0);
     assert.deepEqual(repaired.calls.slice(1), [['migration', 'repair', first, '--status', 'reverted'], ['migration', 'repair', '20260101000001', '--status', 'applied']]);
     // an unreadable history is never guessed
@@ -515,8 +520,8 @@ test('DB_BASELINE_SHAPE markers cannot be impersonated by SQL literals or commen
 test('R257 participates in the synchronous alpha.15 finder and fast cross-file inventory', () => {
   const contents = { [retired]: 'select 1;', [baseline]: 'select 1;' };
   const root = fixture('lite', contents);
-  const findings = a15Findings({ repoRoot: root, files: [baseline], all: Object.keys(contents), repo: { kind: 'app', edition: 'lite' }, isRoot: true, inScope: (file) => file === baseline, git: noHistory });
-  assert.equal(typeof findings.then, 'undefined');
+  const findings = a15Findings({ repoRoot: root, files: [baseline], all: Object.keys(contents), repo: { kind: 'app', edition: 'lite' }, isRoot: true, inScope: (file: string) => file === baseline, git: noHistory });
+  assert.equal(typeof (findings as unknown as Promise<unknown>).then, 'undefined');
   assert.ok(findings.some((item) => item.code === 'DB_BASELINE_SHAPE'));
 });
 

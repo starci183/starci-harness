@@ -12,26 +12,12 @@ import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 const CONFIG = 'supabase/config.toml';
 const MIGRATION = 'db/migrations/20261014120000_expand.sql';
 const CONTRACT = 'db/migrations/20261014120000_contract_remove-old.sql';
-const CONFIG_TEXT = `[api]
-enabled = false
-schemas = ["public", "graphql_public"]
-[db]
-major_version = 17
-[db.seed]
-enabled = false
-sql_paths = ["./seed.sql"]
-[auth]
-enable_anonymous_sign_ins = false
-[edge_runtime]
-enabled = false
-[storage]
-enabled = true
-file_size_limit = "10MiB"
-`;
-const roots = [];
+const roots: string[] = [];
+interface FixtureOptions { db?: object; manifest?: unknown; [option: string]: unknown }
+interface Finding { code: string }
 test.after(() => { for (const root of roots) fs.rmSync(root, { recursive: true, force: true }); });
 
-function fixture(contents = {}, edition = 'lite', options = {}) {
+function fixture(contents: Record<string, string> = {}, edition = 'lite', options: FixtureOptions = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-config-'));
   roots.push(repoRoot);
   const files = {
@@ -44,20 +30,19 @@ function fixture(contents = {}, edition = 'lite', options = {}) {
     fs.writeFileSync(target, text);
   }
   const all = Object.keys(files);
-  return { repoRoot, files: all, all, repo: { edition }, isRoot: true, ...options };
+  return { repoRoot, files: all, all, repo: { edition }, isRoot: true, manifest: undefined, base: undefined, ...options }; // reason: both finders read manifest and base as optional (absent means the shipped defaults) though their types require them
 }
 
-function findings(contents, edition, options) {
+function findings(contents: Record<string, string>, edition?: string, options?: FixtureOptions) {
   return databaseConfigFindings(fixture(contents, edition, options));
 }
-const only = (list, code) => list.filter((finding) => finding.code === code);
-const has = (list, code) => assert.ok(only(list, code).length > 0, `${code} expected: ${JSON.stringify(list)}`);
-const configured = (before, after) => CONFIG_TEXT.replace(before, after);
+const only = (list: Finding[], code: string) => list.filter((finding: Finding) => finding.code === code);
+const has = (list: Finding[], code: string) => assert.ok(only(list, code).length > 0, `${code} expected: ${JSON.stringify(list)}`);
 
 for (const edition of ['lite', 'full']) {
   test(`${edition}: the shipped extension policy preserves booking exclusion support and refuses unlisted extensions`, () => {
     const manifest = loadSlotManifest();
-    assert.ok(manifest.ruleParams.db.extensions.includes('btree_gist'));
+    assert.ok(manifest.ruleParams.db!.extensions.includes('btree_gist'));
     assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists btree_gist;' }, edition, { manifest }), []);
     has(findings({ [MIGRATION]: 'create extension if not exists hstore;' }, edition, { manifest }), 'DB_EXTENSION_ALLOWED');
     has(findings({ [MIGRATION]: 'create extension if not exists btree_gist;' }, edition, { manifest: { ruleParams: { db: { extensions: [] } } } }), 'DB_EXTENSION_ALLOWED');
@@ -144,7 +129,7 @@ for (const edition of ['lite', 'full']) {
     for (const [file, source, sql] of [
       ['be/src/features/items/items.sql.ts', "export const query = 'select id from public.obsolete';", 'drop table public.obsolete;'],
       ['be/src/features/items/items.entity.ts', "export const columns = ['items', 'old_column'];", 'alter table public.items drop column old_column;'],
-    ]) {
+    ] as const) {
       has(findings({ [CONTRACT]: sql, [file]: source }, edition), 'DB_MIGRATION_DESTRUCTIVE');
       assert.deepEqual(only(findings({ [CONTRACT]: sql, [file]: source.replace(/obsolete|old_column/g, 'replacement') }, edition), 'DB_MIGRATION_DESTRUCTIVE'), []);
     }
@@ -175,7 +160,7 @@ test('config finder is synchronous and respects root, profile and finding scope'
   assert.ok(Array.isArray(databaseConfigFindings(input)));
   assert.deepEqual(databaseConfigFindings({ ...input, isRoot: false }), []);
   for (const profile of ['be', 'fe']) assert.deepEqual(databaseConfigFindings({ ...input, repo: { edition: 'lite', profile } }), []);
-  assert.deepEqual(databaseConfigFindings({ ...input, inScope: (file) => file === CONFIG }), []);
+  assert.deepEqual(databaseConfigFindings({ ...input, inScope: (file: string) => file === CONFIG }), []);
 });
 
 test('SQL token helpers preserve identifiers, body/data boundaries and line locations', () => {
@@ -190,11 +175,11 @@ test('migration names retain legacy kebab form and allow explicit contract names
   for (const name of ['bad.sql', '20261014120000_Add-items.sql', '20261014120000_under_score.sql']) assert.equal(isMigrationName(name), false);
 });
 
-function historyGit(contents, headFiles = Object.keys(contents)) {
-  return (args) => {
+function historyGit(contents: Record<string, string>, headFiles = Object.keys(contents)) {
+  return (args: string[]) => {
     if (args[0] === 'merge-base') return { ok: true, stdout: 'base-sha' };
     if (args[0] === 'ls-tree') return { ok: true, stdout: (args.includes('HEAD') ? headFiles : Object.keys(contents)).join('\0') };
-    if (args[0] === 'show') return { ok: Object.hasOwn(contents, args[1].replace('base-sha:./', '')), stdout: contents[args[1].replace('base-sha:./', '')] ?? '' };
+    if (args[0] === 'show') return { ok: Object.hasOwn(contents, args[1]!.replace('base-sha:./', '')), stdout: contents[args[1]!.replace('base-sha:./', '')] ?? '' };
     return { ok: false, stdout: '' };
   };
 }

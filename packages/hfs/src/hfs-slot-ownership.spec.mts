@@ -22,6 +22,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { APP } from './helpers/hfs-cli-fixture.mjs';
+import type { AppDeclaration } from './helpers/hfs-cli-fixture.mjs';
 
 const RUNTIME = path.resolve(import.meta.dirname, '..', 'runtime');
 const APP_MANIFEST = loadSlotManifest({ root: RUNTIME });
@@ -29,7 +30,7 @@ const APP_MANIFEST = loadSlotManifest({ root: RUNTIME });
 /** The shipped manifest plus two slots, copies of `app.build-output`, whose patterns `twin/<left>/` and `twin/<right>/` own the same paths at the same specificity. */
 function manifestWithGap() {
   const doc = parseYaml(fs.readFileSync(path.join(RUNTIME, 'knowledge', 'hfs', 'slots.yaml'), 'utf8'));
-  const template = doc.slots.find((slot) => slot.id === 'app.build-output');
+  const template = doc.slots.find((slot: { id: string }) => slot.id === 'app.build-output');
   doc.slots.push({ ...template, id: 'app.build-output.left', path: 'twin/<left>/' }, { ...template, id: 'app.build-output.right', path: 'twin/<right>/' });
   return loadSlotManifest({ text: JSON.stringify(doc) });
 }
@@ -39,8 +40,8 @@ const REPO_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-slot-ownership-'));
 test.after(() => fs.rmSync(REPO_ROOT, { recursive: true, force: true }));
 
 /** The findings of the app check over the tracked `files` (no disk tree), for an app of `edition` declared as `declaration`. */
-const appFindings = (edition, files, manifest = APP_MANIFEST, declaration = APP) => checkRepo({ repoRoot: REPO_ROOT, root: RUNTIME, manifest, declaration: { ...structuredClone(declaration), edition }, files, tree: false }).findings;
-const withCode = (findings, code) => findings.filter((finding) => finding.code === code).map((finding) => finding.path);
+const appFindings = (edition: string, files: string[], manifest = APP_MANIFEST, declaration: AppDeclaration = APP) => checkRepo({ repoRoot: REPO_ROOT, root: RUNTIME, manifest, declaration: { ...structuredClone(declaration), edition }, files, tree: false }).findings;
+const withCode = (findings: { code: string; path?: unknown }[], code: string) => findings.filter((finding) => finding.code === code).map((finding) => finding.path);
 
 const WEBHOOK = 'be/src/features/webhooks/sepay/transport/http/sepay.webhook.ts';
 const WITH_WEBHOOKS = { ...APP, sides: { ...APP.sides, be: { ...APP.sides.be, patterns: ['webhooks'] } } };

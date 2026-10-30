@@ -6,10 +6,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { ownCanonEntry } from '../lint/run.mjs';
 
-const install = (files) => {
+const install = (files: Record<string, unknown>): string => {
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'starci-canon-entry-'));
   for (const [file, content] of Object.entries(files)) {
     const target = path.join(root, file);
@@ -19,7 +18,7 @@ const install = (files) => {
   return root;
 };
 
-const entryOf = (root, packageName) => ownCanonEntry({ repoRoot: root, cwd: path.join(root, 'fe') }, packageName);
+const entryOf = (root: string, packageName: string) => ownCanonEntry({ repoRoot: root, cwd: path.join(root, 'fe') }, packageName);
 
 test('a canon that publishes only an import target resolves its entry', () => {
   const root = install({

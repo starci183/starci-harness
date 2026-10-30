@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { declaredHfsView } from '../runtime/scripts/hfs/view.mjs';
 
-const declaration = (edition, side, pattern) => ({
+const declaration = (edition: string, side: string, pattern: string) => ({
   hfs: 3, kind: 'app', project: 'demo', edition,
   sides: {
     be: { apps: [{ name: 'api', kind: 'api' }], patterns: side === 'be' ? [pattern] : [] },
@@ -20,7 +20,7 @@ for (const edition of ['lite', 'full']) {
       repoRoot: process.cwd(), side: 'be',
     });
     assert.deepEqual(view.patterns, ['idempotency']);
-    assert.throws(() => view.patterns.push('projection'), TypeError);
+    assert.throws(() => (view.patterns as string[]).push('projection'), TypeError); // reason: the readonly type is what the test proves is also frozen at run time
   });
 
   test(`${edition} admits a cross-cutting pattern owned by the backend proof catalog`, () => {
@@ -28,7 +28,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition} still refuses unknown patterns and a backend proof pattern on the frontend`, () => {
-    for (const [side, pattern] of [['be', 'no-such-pattern'], ['fe', 'idempotency']]) {
+    for (const [side, pattern] of [['be', 'no-such-pattern'], ['fe', 'idempotency']] as const) {
       assert.throws(() => resolveRepoDeclaration(loadSlotManifest(), declaration(edition, side, pattern)), /HFS_DECLARATION_INVALID/);
     }
   });

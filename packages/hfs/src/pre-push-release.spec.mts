@@ -19,6 +19,7 @@ for (const edition of ['lite', 'full']) {
 
   test(`${edition}: an annotated tag can leave with main; a lightweight tag or deleted main refuses the whole push`, t => {
     const target = renderTargets({ ...structuredClone(APP), edition }, PRESETS).find(item => item.path === '.husky/pre-push');
+    assert.ok(target);
     const repo = repository(t, target.content);
     git(repo.root, 'tag', '-a', 'v1.2.3', '-m', 'notes');
     const tag = git(repo.root, 'rev-parse', 'refs/tags/v1.2.3');
