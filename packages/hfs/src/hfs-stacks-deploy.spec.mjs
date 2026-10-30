@@ -23,7 +23,7 @@ test.after(() => {
 
 const validDeploy = () => ({
   stack: 'shop',
-  remote: { host: 'vps', releasesBase: '/srv/shop', sealed: { ops: 'ops', sshKey: 'vps-ssh-key', knownHosts: 'vps-known-hosts' } },
+  remote: { host: 'vps', releasesBase: '/srv/shop', sealed: 'vps' },
   images: {
     api: { app: 'api' },
     web: { app: 'web', buildArgs: { values: { NEXT_PUBLIC_SITE_URL: 'https://example.com' }, sealed: { member: 'web', keys: ['NEXT_PUBLIC_KEY'] } } },

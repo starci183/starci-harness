@@ -97,18 +97,19 @@ test("an identity outside the member's set is refused naming the member, its for
   });
 });
 
-/** A production deploy whose owner-machine transport opens sealed SSH members (vps, vps-ssh-key, vps-known-hosts). */
+/** A production deploy whose owner-machine transport opens its one sealed SSH member `vps` (VPS_HOST, VPS_USER, privateKey, knownHosts). */
 async function sealedRemoteApp(t) {
   const fixture = await productionApp(t, ["owner", "server"]);
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "application-stacks.yaml"), [
     "environments:", "  production:", "    runtime: docker-swarm", "    composeFiles: [stack.yml]", "    deploy:", "      remote:",
-    "        sealed: {ops: vps, sshKey: vps-ssh-key, knownHosts: vps-known-hosts}", "",
+    "        sealed: vps", "",
   ].join("\n"));
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "production", "stack.yml"), "services:\n  api:\n    image: x\n");
-  const set = async (member, keys, value) => assert.equal(await secretMain(["set", "production", member, ...keys], { ...fixture.quiet, stdin: () => value }), 0);
+  // Adding a key to the existing member opens it, so the later writes carry the owner's identity.
+  const set = async (member, keys, value, more = {}) => { const err = []; assert.equal(await secretMain(["set", "production", member, ...keys], { ...fixture.quiet, ...more, stderr: (text) => err.push(text), stdin: () => value }), 0, err.join("")); };
   await set("vps", ["VPS_HOST", "VPS_USER"], "VPS_HOST=203.0.113.7\nVPS_USER=deploy\n");
-  await set("vps-ssh-key", [SEALED_SSH_KEYS.sshKey], PEM);
-  await set("vps-known-hosts", [SEALED_SSH_KEYS.knownHosts], KNOWN);
+  await set("vps", [SEALED_SSH_KEYS.sshKey], PEM, { hostIdentity: fixture.keys.owner.host });
+  await set("vps", [SEALED_SSH_KEYS.knownHosts], KNOWN, { hostIdentity: fixture.keys.owner.host });
   return fixture;
 }
 

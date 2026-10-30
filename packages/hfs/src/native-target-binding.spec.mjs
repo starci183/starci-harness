@@ -59,14 +59,15 @@ test('only a bound stack tool boundary removes AGE aliases while preserving lazy
   f.write('.starcistacks/staging/stack.yml', 'services: {}\n');
   f.write('.starcistacks/application-stacks.yaml', JSON.stringify({ environments: { staging: {
     runtime: 'docker-swarm', composeFiles: ['stack.yml'], deploy: { stack: 'fixture',
-      remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } } },
+      remote: { sealed: 'vps' } },
   } } }));
-  for (const name of ['ops', 'key', 'known']) f.write(`.starcistacks/staging/secrets/${name}.enc`, 'synthetic envelope');
+  f.write('.starcistacks/staging/secrets/vps.enc.yaml', 'synthetic envelope');
   const inherited = { sops_age_key: 'synthetic-age', SOPS_AGE_KEY_FILE: 'synthetic-key-file', HOME: f.root, PATH: '' };
   const calls = [];
   let custodyReads = 0;
-  const sops = { decrypt: () => { custodyReads += 1; assert.equal(inherited.sops_age_key, 'synthetic-age'); return { VPS_HOST: STACK.host, VPS_USER: STACK.user }; },
-    decryptBinary: file => file.endsWith('key.enc') ? 'synthetic PRIVATE KEY' : 'host.example ssh-ed25519 synthetic' };
+  // The one member holds the host, the user, the private key and the pinned known_hosts.
+  const sops = { decrypt: () => { custodyReads += 1; assert.equal(inherited.sops_age_key, 'synthetic-age');
+    return { VPS_HOST: STACK.host, VPS_USER: STACK.user, privateKey: 'synthetic PRIVATE KEY', knownHosts: 'host.example ssh-ed25519 synthetic' }; } };
   const spawn = (file, args, options) => { calls.push({ file, args, options }); return { status: 0, stdout: '', stderr: '' }; };
   const io = { cwd: f.root, env: inherited, platform: 'linux', sshPath: 'ssh', stdout: () => {}, stderr: () => {}, spawn, sops,
     importer: async () => ({ verifyStack: async ctx => {

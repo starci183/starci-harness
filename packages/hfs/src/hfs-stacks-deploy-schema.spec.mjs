@@ -26,11 +26,10 @@ test('deploy.secrets.settings accepts one member entry or a list of them', () =>
   assert.notDeepEqual(judge('deploySecrets', { settings: [{ member: 'ai' }] }), [], 'an entry without keys is refused');
 });
 
-test('deploy.remote.sealed is one member (the standard) or the legacy three-role form', () => {
+test('deploy.remote.sealed is one member name, nothing else', () => {
   assert.deepEqual(judge('deployRemote', { sealed: 'vps' }), []);
-  assert.deepEqual(judge('deployRemote', { sealed: { ops: 'vps', sshKey: 'vps-ssh-key', knownHosts: 'vps-known-hosts' } }), []);
+  assert.notDeepEqual(judge('deployRemote', { sealed: { ops: 'vps', sshKey: 'vps', knownHosts: 'vps' } }), [], 'the three-role object is gone');
   assert.notDeepEqual(judge('deployRemote', { sealed: 'VPS' }), [], 'a member name is lower-case');
-  assert.notDeepEqual(judge('deployRemote', { sealed: { ops: 'vps' } }), [], 'the legacy form names all three roles');
 });
 
 test('the deploy config reads one sealed member as the member of all three SSH roles', () => {
@@ -38,6 +37,6 @@ test('the deploy config reads one sealed member as the member of all three SSH r
   const one = read('vps');
   assert.deepEqual(one.problems ?? [], []);
   assert.deepEqual(one.config.remote.sealed, { ops: 'vps', sshKey: 'vps', knownHosts: 'vps' });
-  assert.deepEqual(read({ ops: 'vps', sshKey: 'vps', knownHosts: 'vps' }).config.remote.sealed, { ops: 'vps', sshKey: 'vps', knownHosts: 'vps' });
+  assert.ok(read({ ops: 'vps', sshKey: 'vps', knownHosts: 'vps' }).problems.some((problem) => /secret migrate/.test(problem.message ?? problem)), 'the three-role object is refused, pointing to the fold');
   assert.ok(read('Not A Name').problems.some((problem) => /deploy\.remote\.sealed/.test(problem.at ?? problem)));
 });
