@@ -89,6 +89,6 @@
     "prepack": "npm run build",
     "bundles": "npm run build && node scripts/sync-bundles.mjs",
     "bundles:check": "npm run build && node scripts/sync-bundles.mjs --check",
-    "test": "npm run typecheck && npm run build && node --test \"src/*.spec.mjs\""
+    "test": "npm run typecheck && npm run build && node --test \"src/*.spec.mjs\" \"src/*.spec.mts\""
   }
 }
