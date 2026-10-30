@@ -1,0 +1,300 @@
+import fs from "node:fs";
+import path from "node:path";
+import { resolveRepoDeclaration } from "../runtime/scripts/hfs/slots.mjs";
+import { bundledPins } from "../runtime/scripts/hfs/canon-pins.mjs";
+import { appScripts, appSource, imageFiles, TEMPLATES_DIR } from "../sync/index.mjs";
+import { ScaffoldError } from "./service.mjs";
+import { jsonText, packageJsonText } from "./app.mjs";
+import { registerLiteExports } from "./lite-exports.mjs";
+import { byCodeUnit } from "../report/order.mjs";
+
+const read = (relative: string) =>
+  fs
+    .readFileSync(path.join(TEMPLATES_DIR, ...relative.split("/")), "utf8")
+    .replace(/\r\n/g, "\n");
+
+
+const managedScripts = (repo: unknown, source: unknown): Record<string, string> => {
+  const fragment = appScripts(repo, source).replace(/,\s*$/, "");
+  return fragment === "" ? {} : JSON.parse(`{${fragment}}`);
+};
+
+const CLI_OPTIONS = `import type { DatabaseConnectionOptions } from "@modules/platform/database"
+
+/** Everything the lite cli needs: the least-privilege PostgreSQL connection. */
+export interface CliAppOptions {
+    /** The connections the built-in migrate and seed groups operate on. */
+    readonly connections: ReadonlyArray<DatabaseConnectionOptions>
+}
+
+/** Uses the parsed connection without adding entities or TypeORM migrations. */
+export const createCliAppOptions = (primary: DatabaseConnectionOptions): CliAppOptions => ({
+    connections: [primary],
+})
+`;
+
+const MIGRATE_RUN = `import { CommandRunner, SubCommand } from "nest-commander"
+import { MigrationRunnerService } from "@modules/platform/database"
+
+@SubCommand({ name: "run", description: "Apply the pending db migrations" })
+/** \`cli migrate run\`: delegates schema authority to the managed db:push script (starci app db migrate). */
+export class RunCli extends CommandRunner {
+    constructor(private readonly migrations: MigrationRunnerService) {
+        super()
+    }
+
+    /** Runs the one managed migration wrapper and propagates its failure. */
+    async run(): Promise<void> {
+        await this.migrations.run()
+    }
+}
+`;
+
+const SEED_RUN = `import { CommandRunner, SubCommand } from "nest-commander"
+import { SeedRunnerService } from "@modules/platform/database"
+
+@SubCommand({ name: "run", description: "Run the tracked seed through the application role" })
+/** \`cli seed run\`: executes the one tracked seed through the shared least-privilege EntityManager. */
+export class RunSeedsCli extends CommandRunner {
+    constructor(private readonly seeds: SeedRunnerService) {
+        super()
+    }
+
+    /** Executes the tracked seed when it contains at least one statement. */
+    async run(): Promise<void> {
+        await this.seeds.run()
+    }
+}
+`;
+
+const SEED_RUN_SPEC = `import { mock } from "@starci/jest-preset"
+import { Test } from "@nestjs/testing"
+import { SeedRunnerService } from "@modules/platform/database"
+import { RunSeedsCli } from "./run.cli"
+
+describe("RunSeedsCli", () => {
+    it("delegates the tracked seed run to the seed runner once", async () => {
+        const seeds = mock<SeedRunnerService>()
+        const moduleRef = await Test.createTestingModule({
+            providers: [RunSeedsCli, { provide: SeedRunnerService, useValue: seeds }],
+        }).compile()
+
+        await expect(moduleRef.get(RunSeedsCli).run()).resolves.toBeUndefined()
+
+        expect(seeds.run).toHaveBeenCalledTimes(1)
+    })
+})
+`;
+
+const SEED_MODULE = `import { Module } from "@nestjs/common"
+import { SeedCli } from "./seed.cli"
+import { RunSeedsCli } from "./subs/run.cli"
+
+@Module({ providers: [SeedCli, RunSeedsCli] })
+/** The lite seed group: the command and its one tracked seed runner. */
+export class SeedModule {}
+`;
+
+function enableLiteCliDatabase(root: string): void {
+  const relative = "be/src/modules/platform/database/database.module.ts";
+  const file = path.join(root, ...relative.split("/"));
+  if (!fs.existsSync(file)) {
+    throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `add cli needs the scaffolded ${relative}`);
+  }
+  let text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+  if (!text.includes('import { MigrationRunnerService } from "./migration-runner.service"')) {
+    const anchor = 'import { ConfigurableModuleClass, OPTIONS_TYPE } from "./database.module-definition"';
+    if (!text.includes(anchor)) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown import shape`);
+    text = text.replace(anchor, `${anchor}\nimport { MigrationRunnerService } from "./migration-runner.service"`);
+  }
+  if (!text.includes('import { SeedRunnerService } from "./seed-runner.service"')) {
+    // The import of the entity-manager token, with or without the probe token beside it.
+    const anchor = /^import \{[^}]*\bPRIMARY_ENTITY_MANAGER\b[^}]*\} from "\.\/primary\.decorators"$/m.exec(text)?.[0];
+    if (!anchor) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown import shape`);
+    text = text.replace(anchor, `${anchor}\nimport { SeedRunnerService } from "./seed-runner.service"`);
+  }
+  const probeProviders = "providers: [...(base.providers ?? []), ...managers, ...probes]";
+  if (text.includes(probeProviders)) {
+    text = text.replace(probeProviders, "providers: [...(base.providers ?? []), ...managers, ...probes, MigrationRunnerService, SeedRunnerService]");
+  }
+  const providers = "providers: [...(base.providers ?? []), ...managers]";
+  if (text.includes(providers)) {
+    text = text.replace(providers, "providers: [...(base.providers ?? []), ...managers, MigrationRunnerService, SeedRunnerService]");
+  }
+  const bareExports = "exports: [DATABASE_OPTIONS, ...managers.map((manager) => manager.provide)],";
+  if (text.includes(bareExports)) {
+    text = text.replace(
+      bareExports,
+      [
+        "exports: [",
+        "                DATABASE_OPTIONS,",
+        "                ...managers.map((manager) => manager.provide),",
+        "                MigrationRunnerService,",
+        "                SeedRunnerService,",
+        "            ],",
+      ].join("\n"),
+    );
+  } else if (!text.includes("                MigrationRunnerService,")) {
+    const anchor = "                ...managers.map((manager) => manager.provide),";
+    if (!text.includes(anchor)) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown exports shape`);
+    text = text.replace(anchor, `${anchor}\n                MigrationRunnerService,\n                SeedRunnerService,`);
+  }
+  fs.writeFileSync(file, text);
+  registerLiteExports({ root, generator: "cli" });
+}
+
+/**
+ * Creates the optional lite cli app, its typed CliEnv/readCliEnv boundary and its migrate/seed groups on first `add cli`.
+ * Existing cli trees are never repaired or overwritten: drift remains a check finding.
+ */
+/** An app entry of the be side of hfs.json. */
+interface BeAppEntry {
+  readonly name: string;
+  readonly kind: string;
+}
+
+export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest: unknown, repo: { edition?: string } }): string[] {
+  if (repo.edition !== "lite") return [];
+  const declarationFile = path.join(root, "hfs.json");
+  const declaration = JSON.parse(fs.readFileSync(declarationFile, "utf8"));
+  const cliApps = declaration.sides.be.apps.filter((app: BeAppEntry) => app.kind === "cli");
+  if (cliApps.length > 1 || cliApps.some((app: BeAppEntry) => app.name !== "cli")) {
+    throw new ScaffoldError(
+      "HFS_ADD_CLI_DRIFT",
+      `hfs.json declares the cli app${cliApps.length === 1 ? "" : "s"} named ${cliApps.map((app: BeAppEntry) => app.name).join(", ")}; lite has one cli app named cli`,
+    );
+  }
+  const declared = cliApps.length === 1;
+  const cliRoot = path.join(root, "be", "apps", "cli");
+  if (declared) {
+    if (!fs.existsSync(cliRoot))
+      throw new ScaffoldError(
+        "HFS_ADD_CLI_DRIFT",
+        "hfs.json declares the cli app but be/apps/cli is missing; restore the declared tree before adding a group",
+      );
+    return [];
+  }
+  if (
+    fs.existsSync(cliRoot) ||
+    fs.existsSync(path.join(root, "be", "src", "features", "cli"))
+  ) {
+    throw new ScaffoldError(
+      "HFS_ADD_EXISTS",
+      "a cli tree exists but hfs.json does not declare it; starci app add never adopts an unowned tree",
+    );
+  }
+
+  const files: Array<[string, string]> = [
+    ["be/apps/cli/src/main.ts", read("be/skeleton/apps/cli/src/main.ts")],
+    [
+      "be/apps/cli/src/app.module.ts",
+      read("be/skeleton/apps/cli/src/app.module.ts"),
+    ],
+    ["be/apps/cli/src/compose/platform.ts", read("be/skeleton-lite/apps/cli/src/compose/platform.ts")],
+    ["be/apps/cli/src/compose/cli.ts", read("be/skeleton/apps/cli/src/compose/cli.ts")],
+    ["be/src/tests/fixtures/builders/cli.builder.ts", read("be/skeleton-lite/src/tests/fixtures/builders/cli.builder.ts")],
+    ["be/apps/cli/src/cli.env.ts", read("be/skeleton-lite/apps/cli/src/cli.env.ts")],
+    ["be/apps/cli/src/cli.options.ts", CLI_OPTIONS],
+    [
+      "be/src/features/cli/index.ts",
+      read("be/skeleton/src/features/cli/index.ts"),
+    ],
+    [
+      "be/src/features/cli/cli.module.ts",
+      read("be/skeleton/src/features/cli/cli.module.ts"),
+    ],
+    [
+      "be/src/features/cli/migrate/migrate.cli.ts",
+      read("be/skeleton/src/features/cli/migrate/migrate.cli.ts"),
+    ],
+    [
+      "be/src/features/cli/migrate/migrate.module.ts",
+      read("be/skeleton/src/features/cli/migrate/migrate.module.ts"),
+    ],
+    [
+      "be/src/modules/platform/database/migration-runner.service.ts",
+      read("be/skeleton-lite/src/modules/platform/database/migration-runner.service.ts"),
+    ],
+    ["be/src/features/cli/migrate/subs/run.cli.ts", MIGRATE_RUN],
+    // ruling:R212/case-1, amended by ruling:R212/case-4: each cli command of a lite back end owes its unit spec, as in full (ruleParams.be.unitRoles).
+    [
+      "be/src/features/cli/migrate/migrate.cli.spec.ts",
+      read("be/skeleton/src/features/cli/migrate/migrate.cli.spec.ts"),
+    ],
+    [
+      "be/src/features/cli/migrate/subs/run.cli.spec.ts",
+      read("be/skeleton/src/features/cli/migrate/subs/run.cli.spec.ts"),
+    ],
+    [
+      "be/src/features/cli/seed/seed.cli.ts",
+      read("be/skeleton/src/features/cli/seed/seed.cli.ts"),
+    ],
+    [
+      "be/src/features/cli/seed/seed.module.ts",
+      SEED_MODULE,
+    ],
+    [
+      "be/src/modules/platform/database/seed-runner.service.ts",
+      read("be/skeleton-lite/src/modules/platform/database/seed-runner.service.ts"),
+    ],
+    ["be/src/features/cli/seed/subs/run.cli.ts", SEED_RUN],
+    [
+      "be/src/features/cli/seed/seed.cli.spec.ts",
+      read("be/skeleton/src/features/cli/seed/seed.cli.spec.ts"),
+    ],
+    ["be/src/features/cli/seed/subs/run.cli.spec.ts", SEED_RUN_SPEC],
+  ];
+  declaration.sides.be.apps.push({ name: "cli", kind: "cli" });
+  declaration.sides.be.kinds = [
+    ...new Set([...(declaration.sides.be.kinds ?? []), "cli"]),
+  ].sort(byCodeUnit);
+  const resolved = resolveRepoDeclaration(manifest, declaration);
+  const image = imageFiles(resolved).find(
+    (file: { path: string }) => file.path === "be/apps/cli/Dockerfile",
+  );
+  if (!image)
+    throw new ScaffoldError(
+      "HFS_ADD_TEMPLATE_MISSING",
+      "the cli Dockerfile template did not render",
+    );
+  files.push([image.path, image.content]);
+
+  const nestFile = path.join(root, "be", "nest-cli.json");
+  const packageFile = path.join(root, "package.json");
+  if (!fs.existsSync(nestFile))
+    throw new ScaffoldError(
+      "HFS_ADD_CLI_NEST_CONFIG",
+      "add cli needs be/nest-cli.json",
+    );
+  const nest = JSON.parse(fs.readFileSync(nestFile, "utf8"));
+  nest.projects = {
+    ...nest.projects,
+    cli: {
+      type: "application",
+      root: "apps/cli",
+      entryFile: "main",
+      sourceRoot: "apps/cli/src",
+    },
+  };
+  if (!fs.existsSync(packageFile))
+    throw new ScaffoldError("HFS_ADD_NOT_AN_APP", "add cli needs the app root package.json");
+  const packageManifest = JSON.parse(fs.readFileSync(packageFile, "utf8"));
+  const pin = bundledPins()["nest-commander"]?.version;
+  if (typeof pin !== "string" || pin === "")
+    throw new ScaffoldError("HFS_ADD_CANON_PIN_MISSING", "add cli needs the nest-commander canon pin");
+  packageManifest.dependencies = { ...packageManifest.dependencies, "nest-commander": pin };
+  packageManifest.scripts = {
+    ...packageManifest.scripts,
+    ...managedScripts(resolved, appSource(root)),
+  };
+  for (const [relative, body] of files) {
+    const target = path.join(root, ...relative.split("/"));
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, body);
+  }
+  enableLiteCliDatabase(root);
+  fs.writeFileSync(nestFile, jsonText(nest));
+  fs.writeFileSync(declarationFile, jsonText(declaration));
+  fs.writeFileSync(packageFile, packageJsonText(packageManifest));
+  return files.map(([relative]) => relative);
+}
