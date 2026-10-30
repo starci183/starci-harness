@@ -2,10 +2,12 @@
 // caller attaches). `refuse` builds it, `fail` throws it, `need` throws it when a required condition is false.
 
 /** An Error carrying `code` and `extra` fields; callers `throw` it or hand it to a result row. */
-export const refuse = (message, code, extra = {}) => Object.assign(new Error(message), { code, ...extra });
+export type Refusal<E extends object = object> = Error & { code: string | undefined } & E;
+
+export const refuse = <E extends object = object>(message: string, code?: string, extra: E = {} as E): Refusal<E> => Object.assign(new Error(message), { code, ...extra });
 
 /** Throws the refusal `refuse` builds — the spelling used where refusing is the whole statement. */
-export const fail = (message, code, extra = {}) => { throw refuse(message, code, extra); };
+export function fail(message: string, code?: string, extra: object = {}): never { throw refuse(message, code, extra); }
 
 /** Throws `refuse(message, code)` when `ok` is falsy — the assertion spelling of a refusal. */
-export const need = (ok, message, code) => { if (!ok) throw refuse(message, code); };
+export function need(ok: unknown, message: string, code?: string): asserts ok { if (!ok) throw refuse(message, code); }

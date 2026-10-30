@@ -5,6 +5,10 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { artifactRoot } from './blob.mjs';
 import { hasTable } from '../../scripts/lib/sqlite.mjs';
+import type { SqlDb, SqlRow } from './sqlite-types.mjs';
+
+/** One object of the machine schema (table, index, trigger, view) with its name-and-spelling-insensitive identity. */
+export interface SchemaObject { type: string; name: string; tbl_name: string; sql: string | null; identity: string }
 
 const require = createRequire(import.meta.url);
 // SQLite ALTER RENAME quotes identifiers. Preserve literals/constraints while ignoring that spelling and formatting.
@@ -15,9 +19,9 @@ const SQL_IDENTITY_TOKEN_PARTS = [
 ];
 const SQL_IDENTITY_TOKENS = new RegExp(SQL_IDENTITY_TOKEN_PARTS.join('|'), 'gi');
 
-function sqlIdentity(sql) {
-  const tokens = Array.from(String(sql).matchAll(SQL_IDENTITY_TOKENS), (found) => found[0]);
-  const normalized = tokens.filter(token => !token.startsWith('--') && !token.startsWith('/*')).map(token => {
+function sqlIdentity(sql: unknown): string {
+  const tokens = Array.from(String(sql).matchAll(SQL_IDENTITY_TOKENS), (found) => found[0] as string);
+  const normalized: string[] = tokens.filter(token => !token.startsWith('--') && !token.startsWith('/*')).map(token => {
     if (token.startsWith("'")) return token;
     if (token.startsWith('"')) return token.slice(1, -1).replaceAll('""', '"').toLowerCase();
     if (token.startsWith('`')) return token.slice(1, -1).replaceAll('``', '`').toLowerCase();
@@ -28,11 +32,11 @@ function sqlIdentity(sql) {
   return JSON.stringify(normalized);
 }
 /** Canonical object identities include attached indexes and triggers, regardless of their names. */
-export const readSchemaObjects = db => db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT GLOB 'sqlite_*' ORDER BY type,name")
-  .all().map(row => ({ ...row, identity: sqlIdentity(row.sql) }));
+export const readSchemaObjects = (db: SqlDb): SchemaObject[] => db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT GLOB 'sqlite_*' ORDER BY type,name")
+  .all().map((row): SchemaObject => ({ type: row.type, name: row.name, tbl_name: row.tbl_name, sql: row.sql, identity: sqlIdentity(row.sql) }));
 
 /** Describe canonical DDL in an isolated reference; no project or host store is opened. */
-export function describeSchema(sql) {
+export function describeSchema(sql: string): { objects: SchemaObject[]; blobRefs: SqlRow[] } {
   const { DatabaseSync } = require('node:sqlite'), reference = new DatabaseSync(':memory:');
   try {
     reference.exec(sql);
@@ -40,33 +44,42 @@ export function describeSchema(sql) {
       blobRefs: reference.prepare('SELECT table_name,column_name FROM blob_ref_columns ORDER BY table_name,column_name').all() };
   } finally { reference.close(); }
 }
-function rollbackSchema(db, error) {
+function rollbackSchema(db: SqlDb, error: unknown): never {
   try { db.exec('ROLLBACK'); }
   catch (rollbackError) { throw new AggregateError([error, rollbackError], 'machine schema failed and rollback failed', { cause: error }); }
   throw error;
 }
 
 /** Create the one host schema on an empty file, or validate that an existing store is exactly that schema; there is no upgrade path. */
-export function machineSchemaMethods({ schema: MACHINE_SCHEMA, version: MACHINE_VERSION, initSqlFile: INIT_SQL_FILE, controllers: CONTROLLERS, runtimeRev, pragma }) {
-  let requiredObjects;
-  function expectedObjects() {
+/** What the schema lifecycle is built from: the schema name and version, its DDL file, the controllers, the runtime rev and the pragma reader. */
+export interface MachineSchemaDeps {
+  schema: string;
+  version: number;
+  initSqlFile: string;
+  controllers: readonly string[];
+  runtimeRev(): string;
+  pragma(db: SqlDb, name: string): unknown;
+}
+export function machineSchemaMethods({ schema: MACHINE_SCHEMA, version: MACHINE_VERSION, initSqlFile: INIT_SQL_FILE, controllers: CONTROLLERS, runtimeRev, pragma }: MachineSchemaDeps) {
+  let requiredObjects: SchemaObject[] | undefined;
+  function expectedObjects(): SchemaObject[] {
     if (requiredObjects) return requiredObjects;
     requiredObjects = describeSchema(fs.readFileSync(INIT_SQL_FILE, 'utf8')).objects;
     return requiredObjects;
   }
   /** Refuse any store that is not exactly the current schema, leaving it unchanged; the operator replaces it with a fresh store. */
-  function refuseOld(file, why) {
+  function refuseOld(file: string, why: string): never {
     throw Object.assign(new Error(`machine-schema-old: ${path.resolve(file)} ${why}; expected '${MACHINE_SCHEMA}' (user_version ${MACHINE_VERSION}) with its current physical schema; the store is not the current schema and has been left unchanged: replace it with a fresh store`),
       { code: 'STARCI_MACHINE_SCHEMA_OLD' });
   }
-  function checkIdentity(db, file) {
+  function checkIdentity(db: SqlDb, file: string): void {
     const version = Number(pragma(db, 'user_version'));
     if (!hasTable(db, 'machine_meta')) refuseOld(file, 'has no machine_meta (user_version '+version+')');
     const schema = db.prepare("SELECT value FROM machine_meta WHERE key='schema'").get()?.value;
     if (schema !== MACHINE_SCHEMA) refuseOld(file, "is schema '"+(schema ?? 'none')+"'");
     if (version !== MACHINE_VERSION) refuseOld(file, 'is user_version '+version);
   }
-  function checkObjects(db, file, expected) {
+  function checkObjects(db: SqlDb, file: string, expected: SchemaObject[]): void {
     const rows = readSchemaObjects(db), actual = new Map(rows.map(row => [row.type+':'+row.name, row.identity]));
     for (const row of expected) if (actual.get(row.type+':'+row.name) !== row.identity)
       refuseOld(file, 'has a missing or changed '+row.type+" '"+row.name+"'");
@@ -74,11 +87,11 @@ export function machineSchemaMethods({ schema: MACHINE_SCHEMA, version: MACHINE_
     for (const row of rows) if (!names.has(row.type+':'+row.name))
       refuseOld(file, 'has an unexpected '+row.type+" '"+row.name+"'");
   }
-  function checkSchema(db, file) {
+  function checkSchema(db: SqlDb, file: string): void {
     checkIdentity(db, file);
     checkObjects(db, file, expectedObjects());
   }
-  function createSchema(db, { file, env, now }) {
+  function createSchema(db: SqlDb, { file, env, now }: { file: string; env: NodeJS.ProcessEnv; now: () => number }): void {
     const sql = fs.readFileSync(INIT_SQL_FILE, 'utf8'), at = now();
     db.exec('BEGIN IMMEDIATE');
     try {
@@ -89,7 +102,7 @@ export function machineSchemaMethods({ schema: MACHINE_SCHEMA, version: MACHINE_
       db.exec(sql);
       const meta = db.prepare('INSERT INTO machine_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
       for (const [key, value] of Object.entries({ host_id: os.hostname(), schema: MACHINE_SCHEMA, created_at: String(at), blob_root: artifactRoot(env),
-        runtime_rev: runtimeRev(), sqlite_version: db.prepare('select sqlite_version() v').get().v,
+        runtime_rev: runtimeRev(), sqlite_version: db.prepare('select sqlite_version() v').get()?.v,
         node_version: process.version, journal_mode: 'wal' })) meta.run(key, String(value));
       // Every controller starts in shadow until the owner switches it.
       for (const controller of CONTROLLERS) {

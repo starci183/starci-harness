@@ -20,7 +20,7 @@ export const skillRoot = moduleRoot;
  * The StarCi Source root (the host containing .claude and .workspaces): STARCI_SOURCE_ROOT overrides it, else the directory
  * holding this runtime checkout. Parameterized over `env`, so a spec can inject a fixture Source.
  */
-export const starciSourceRoot = (env = process.env) => (env.STARCI_SOURCE_ROOT ? path.resolve(env.STARCI_SOURCE_ROOT) : path.dirname(skillRoot));
+export const starciSourceRoot = (env: NodeJS.ProcessEnv = process.env): string => (env.STARCI_SOURCE_ROOT ? path.resolve(env.STARCI_SOURCE_ROOT) : path.dirname(skillRoot));
 
 /** Overrides the per-host state base wholesale (debug probes, spec trees); the one seam starciLocalRoot reads. */
 export const LOCAL_ROOT_ENV = 'STARCI_LOCAL_ROOT';
@@ -31,19 +31,20 @@ export const RUNTIME_STATE_DIR = '.runtime';
  * <app>/.claude. ~/.starci/runtime/node_modules/starci is only the CLI's download cache (it supplies the installer and hosts no
  * state), and `starci runtime link` merely points the launcher at a root, so the state follows the code's own location.
  */
-export const runtimeStateDir = (root = skillRoot) => path.join(root, RUNTIME_STATE_DIR);
+export const runtimeStateDir = (root: string = skillRoot): string => path.join(root, RUNTIME_STATE_DIR);
 /**
  * The per-host state base, the one owner of every host-state location: machine.sqlite, projects/<ledger_id>/runtime.sqlite, archive/,
  * artifacts/ (the blob store), guards/, host-lock/ and the other process state sit under it. Default <runtime root>/.runtime;
  * LOCAL_ROOT_ENV replaces it wholesale. Nothing is read from or moved out of the earlier %LOCALAPPDATA%/StarCi and ~/.starci locations.
  */
-export const starciLocalRoot = (env = process.env, root = skillRoot) => (env[LOCAL_ROOT_ENV] ? path.resolve(env[LOCAL_ROOT_ENV]) : runtimeStateDir(root));
+export const starciLocalRoot = (env: NodeJS.ProcessEnv = process.env, root: string = skillRoot): string => (env[LOCAL_ROOT_ENV] ? path.resolve(env[LOCAL_ROOT_ENV]) : runtimeStateDir(root));
 
 /**
  * Read a runtime contract document. `parts` are path segments under `skillRoot`
  * (e.g. readModuleJson('modules', 'models', 'kinds.yaml')).
  */
-export function readModuleJson(...parts) {
+// reason: a parsed YAML/JSON contract document read from disk (parsed-input boundary); callers index into it by contract shape.
+export function readModuleJson(...parts: string[]): any {
   const rel = parts.join('/');
   const file = path.join(skillRoot, rel);
   if (!(file.startsWith(skillRoot) && fs.existsSync(file) && fs.statSync(file).isFile()))

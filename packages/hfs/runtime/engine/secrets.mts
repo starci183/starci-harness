@@ -6,32 +6,32 @@ export const SECRET_ENV_FILE='secret.env';
 /** The configured credential variable grammar shared by validation and secret resolution. */
 export const ENV_NAME=/^[A-Z_][A-Z0-9_]{0,63}$/;
 export const CREDENTIAL_FILE_MAX_BYTES=1024*1024;
-const resolvedValues = new Set();
-const remember = value => {
+const resolvedValues = new Set<string>();
+const remember = <T,>(value: T): T => {
   if (typeof value === 'string' && value.length >= 6) resolvedValues.add(value);
   return value;
 };
 
 /** Filter credentials resolved by this process; the values never leave their resolution owner. */
-export function redactResolvedSecrets(text) {
+export function redactResolvedSecrets(text: string): string {
   let clean = text;
   for (const value of resolvedValues) if (clean.includes(value)) clean = clean.split(value).join('[redacted:resolved-secret]');
   return clean;
 }
 
 /** Check lexical availability only; blank and conventional template markers never prove provider validity. */
-export function credentialPresent(value){
+export function credentialPresent(value: unknown): value is string{
   if(typeof value!=='string'||!value.trim())return false;
   return !/^(?:CHANGE_ME|REPLACE_ME|PLACEHOLDER|TODO|<[^>]*>|YOUR_[A-Z0-9_]+)$/i.test(value.trim());
 }
 
 /** Read one configured credential file with a finite byte budget; no effects beyond the read. */
-export function readSecretBytes(file){
+export function readSecretBytes(file: string): Buffer{
   const before=fs.lstatSync(file);
   if(!before.isFile()||before.isSymbolicLink())throw new Error('credential file must be a regular file');
   if(before.size>CREDENTIAL_FILE_MAX_BYTES)throw new Error('credential file exceeds the byte budget');
   const fd=fs.openSync(file,fs.constants.O_RDONLY|(fs.constants.O_NOFOLLOW??0));
-  let bytes;
+  let bytes: Buffer | undefined;
   try{
     const stat=fs.fstatSync(fd);
     if(!stat.isFile()||stat.dev!==before.dev||stat.ino!==before.ino)throw new Error('credential file changed during resolution');
@@ -43,21 +43,22 @@ export function readSecretBytes(file){
   }catch(error){bytes?.fill(0);throw error;}finally{fs.closeSync(fd);}
 }
 
-const readCredentialFile = file => { const bytes=readSecretBytes(file); try{return bytes.toString('utf8');}finally{bytes.fill(0);} };
+const readCredentialFile = (file: string): string => { const bytes=readSecretBytes(file); try{return bytes.toString('utf8');}finally{bytes.fill(0);} };
 
 const DOTENV_LINE_PARTS = [String.raw`^\s*`, String.raw`(?:export\s+)?`, String.raw`([A-Za-z_]\w*)`, String.raw`\s*=\s*`, String.raw`([^\r\n\u2028\u2029]*)`, String.raw`\s*$`];
 const DOTENV_LINE = new RegExp(DOTENV_LINE_PARTS.join(''));
 
 /** Parse a dotenv file (KEY=VALUE lines, # comments, optional export/quotes). An absent file is {}. */
-export function readDotenv(file){
-  let text='';try{text=readCredentialFile(file);}catch(error){if(error?.code==='ENOENT'){return {};}throw error;}
-  const out={};
+export function readDotenv(file: string): Record<string, string>{
+  let text='';try{text=readCredentialFile(file);}catch(error){if((error as NodeJS.ErrnoException|null)?.code==='ENOENT'){return {};}throw error;}
+  const out: Record<string, string>={};
   for(const line of text.split(/\r?\n/)){
     const m=DOTENV_LINE.exec(line);
     if(!m)continue;
-    let value=m[2].trimEnd();
+    const name=m[1] as string;
+    let value=(m[2] as string).trimEnd();
     if(value.length>=2&&(value.startsWith('"')||value.startsWith("'"))&&value.at(-1)===value[0])value=value.slice(1,-1);
-    out[m[1]]=value;
+    out[name]=value;
   }
   return out;
 }
@@ -66,10 +67,12 @@ export function readDotenv(file){
  * Resolve a configured variable or its supported NAME_FILE custody pointer. An explicitly supplied
  * blank variable disables the value; it must not resurrect a file value. Never print the result.
  */
-export function connectorSecret(name,env=process.env){
+export function connectorSecret(name: unknown,env: NodeJS.ProcessEnv=process.env): string | null{
   if(typeof name!=='string'||!ENV_NAME.test(name))return null;
-  if(Object.hasOwn(env,name))return typeof env[name]==='string'?remember(env[name].trim()||null):null;
-  const pointer=typeof env[`${name}_FILE`]==='string'?env[`${name}_FILE`].trim():'';
+  const direct=env[name];
+  if(Object.hasOwn(env,name))return typeof direct==='string'?remember(direct.trim()||null):null;
+  const filePointer=env[`${name}_FILE`];
+  const pointer=typeof filePointer==='string'?filePointer.trim():'';
   if(!pointer)return null;
   try{const value=readCredentialFile(pointer).trim();return remember(value||null);}catch{return null;}
 }
@@ -79,7 +82,7 @@ export function connectorSecret(name,env=process.env){
  * either input. The caller owns repository identity; this base-tier reader never infers a root from cwd.
  * Absence is allowed so the action-specific gate can name only the credentials that action requires.
  */
-export function secretEnv(verifiedRuntimeRoot,env=process.env){
+export function secretEnv(verifiedRuntimeRoot: unknown,env: NodeJS.ProcessEnv=process.env): NodeJS.ProcessEnv{
   if(typeof verifiedRuntimeRoot!=='string'||!path.isAbsolute(verifiedRuntimeRoot))
     throw new TypeError('secretEnv requires an absolute verified runtime root');
   if(env===null||typeof env!=='object'||Array.isArray(env))throw new TypeError('secretEnv requires an environment mapping');
@@ -87,7 +90,7 @@ export function secretEnv(verifiedRuntimeRoot,env=process.env){
   if(!root.isDirectory()||root.isSymbolicLink())throw new Error('secretEnv runtime root must be a regular directory');
   const file=path.join(verifiedRuntimeRoot,SECRET_ENV_FILE);
   let stat;
-  try{stat=fs.lstatSync(file);}catch(error){if(error?.code==='ENOENT'){return {...env};}throw error;}
+  try{stat=fs.lstatSync(file);}catch(error){if((error as NodeJS.ErrnoException|null)?.code==='ENOENT'){return {...env};}throw error;}
   if(!stat.isFile()||stat.isSymbolicLink())throw new Error('secret.env must be a regular file');
   const local = readDotenv(file);
   const resolved = {...local,...env};
@@ -95,17 +98,26 @@ export function secretEnv(verifiedRuntimeRoot,env=process.env){
   return resolved;
 }
 
-const sopsRefuse=(reason,message)=>{
-  const error=new Error(`SOPS identity [${reason}]: ${message}`);
+/** The outcome of selecting a SOPS age identity: refused, an identity file, or the public recipient only. */
+export interface SopsIdentity {
+  mode: 'refused' | 'file' | 'public-recipient';
+  env: NodeJS.ProcessEnv | null;
+  error: (Error & { identityRefusal?: string }) | null;
+  inlineName?: string;
+}
+type Env = Record<string, string | undefined>;
+const sopsRefuse=(reason: string,message: string): SopsIdentity=>{
+  const error: Error & { identityRefusal?: string }=new Error(`SOPS identity [${reason}]: ${message}`);
   error.name='SopsIdentityRefusal';error.identityRefusal=reason;
   return {mode:'refused',env:null,error};
 };
-const sopsInlineIdentity=(env,name)=>{
-  if(!credentialPresent(env[name]))return sopsRefuse('disabled-inline','SOPS_AGE_KEY is explicitly empty or invalid');
-  remember(env[name].trim());
+const sopsInlineIdentity=(env: Env,name: string): SopsIdentity=>{
+  const inline=env[name];
+  if(!credentialPresent(inline))return sopsRefuse('disabled-inline','SOPS_AGE_KEY is explicitly empty or invalid');
+  remember(inline.trim());
   return {...sopsRefuse('inline-context-unqualified','the supplied SOPS_AGE_KEY awaits an owned selected-identity isolation capability; no SOPS process was launched'),inlineName:name};
 };
-const sopsFileIdentity=(env,file)=>{
+const sopsFileIdentity=(env: Env,file: unknown): SopsIdentity=>{
   if(!credentialPresent(file))return sopsRefuse('invalid-file','the original identity file selection is empty or invalid');
   if(!path.isAbsolute(file))return sopsRefuse('identity-file-location-unqualified','select the original identity by its absolute path; caller and SOPS working directories may differ');
   try{
@@ -115,15 +127,15 @@ const sopsFileIdentity=(env,file)=>{
   return {mode:'file',env:{...env,SOPS_AGE_KEY_FILE:file},error:null};
 };
 /** Select a supplied age identity without inventing custody or running a key tool. Inline execution awaits its owned isolation capability. */
-export function sopsIdentityEnv(env,{identity=null,required=false,platform=process.platform}={}){
+export function sopsIdentityEnv(env: Env | null | undefined,{identity=null,required=false,platform=process.platform}: {identity?: string | null; required?: boolean; platform?: NodeJS.Platform | string}={}): SopsIdentity{
   if(!env||typeof env!=='object'||Array.isArray(env))return sopsRefuse('invalid-environment','an environment mapping is required');
-  const names=name=>Object.keys(env).filter(key=>platform==='win32'?key.toUpperCase()===name:key===name);
+  const names=(name: string): string[]=>Object.keys(env).filter(key=>platform==='win32'?key.toUpperCase()===name:key===name);
   const inline=names('SOPS_AGE_KEY'),files=names('SOPS_AGE_KEY_FILE');
   if(inline.length>1||files.length>1)return sopsRefuse('ambiguous-environment','multiple Windows aliases select an age identity');
-  if(inline.length)return sopsInlineIdentity(env,inline[0]);
-  let file=identity;
+  if(inline.length)return sopsInlineIdentity(env,inline[0] as string);
+  let file: string | null | undefined=identity;
   if(files.length){
-    const value=env[files[0]];
+    const value=env[files[0] as string];
     if(!credentialPresent(value))return sopsRefuse('disabled-file','SOPS_AGE_KEY_FILE is explicitly empty or invalid');
     if(identity!==null&&identity!==undefined&&identity!==value)return sopsRefuse('conflicting-files','two different original identity files were explicitly selected');
     file=value;

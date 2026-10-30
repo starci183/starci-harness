@@ -1,6 +1,8 @@
 import {isPlainObject as plain} from './plain-object.mjs';
 import {invalid} from './invalid-config.mjs';
 
+/** The validated config.yaml `release` block. */
+export interface ReleaseBlock { suite?: string | null }
 /** The keys of the release block. */
 export const RELEASE_KEYS=Object.freeze(['suite']);
 /** Where the full test suite of a release is judged: `local` (the release cut also runs the L4 rows before it tags, the shipped default) or `ci` (the GitHub workflows judge EVERY row on each push to main; the cut runs none). */
@@ -13,16 +15,16 @@ const RELEASE_DEFAULTS=Object.freeze({suite:'local'});
  * to main; the cut runs no row and the verdict is read with `starci release ci-status`. The push of main needs neither mode: it needs a green scoped check.
  * `none` is refused: the suite does not vanish, it moves to CI, and the value says so.
  */
-export function validateRelease(release){
+export function validateRelease(release: unknown): void{
   if(release===null)return;
   const bad=invalid('release');
-  if(!plain(release))bad(` must be {suite?: ${SUITE_MODES.join(' | ')}} or null.`);
+  if(!plain(release))return bad(` must be {suite?: ${SUITE_MODES.join(' | ')}} or null.`);
   for(const key of Object.keys(release))if(!RELEASE_KEYS.includes(key))bad(` has unknown key ${key} (allowed: ${RELEASE_KEYS.join(', ')}).`);
   const value=release.suite;
   if(value===undefined||value===null)return;
   if(value==='none')bad('.suite: "none" is not a mode: write "ci" (no local full suite, CI judges) or "local".');
-  if(!SUITE_MODES.includes(value))bad(`.suite must be ${SUITE_MODES.join(' or ')}, or null.`);
+  if(typeof value!=='string'||!SUITE_MODES.includes(value))bad(`.suite must be ${SUITE_MODES.join(' or ')}, or null.`);
 }
 
 /** The suite mode a validated owner config names; an absent block or key is the shipped default. */
-export const releaseSuiteMode=config=>config?.release?.suite??RELEASE_DEFAULTS.suite;
+export const releaseSuiteMode=(config?: {release?: ReleaseBlock | null} | null): string=>config?.release?.suite??RELEASE_DEFAULTS.suite;

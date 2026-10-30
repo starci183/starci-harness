@@ -10,20 +10,22 @@ import {invalid} from './invalid-config.mjs';
  * a measured probe (scripts/agent/depth-probe.mjs).
  */
 export const ORCA_DEFAULTS=Object.freeze({maxWorkerDepth:4});
+/** The validated config.yaml `orca` block. */
+export interface OrcaBlock { maxWorkerDepth?: number | null }
 /** The keys of the orca block. */
 export const ORCA_KEYS=Object.freeze(Object.keys(ORCA_DEFAULTS));
 export const MAX_WORKER_DEPTH_CEILING=16;
-export function validateOrca(orca){
+export function validateOrca(orca: unknown): void{
   if(orca===null)return;
   const bad=invalid('orca');
-  if(!plain(orca))bad(' must be {maxWorkerDepth?} or null.');
+  if(!plain(orca))return bad(' must be {maxWorkerDepth?} or null.');
   for(const key of Object.keys(orca))if(!ORCA_KEYS.includes(key))bad(` has unknown key ${key} (allowed: ${ORCA_KEYS.join(', ')}).`);
   const v=orca.maxWorkerDepth;
-  if(v!==undefined&&v!==null&&!(Number.isInteger(v)&&v>=1&&v<=MAX_WORKER_DEPTH_CEILING))bad(`.maxWorkerDepth must be an integer from 1 to ${MAX_WORKER_DEPTH_CEILING} equal to the Orca app's worker depth setting (default ${ORCA_DEFAULTS.maxWorkerDepth}), or null.`);
+  if(v!==undefined&&v!==null&&!(typeof v==='number'&&Number.isInteger(v)&&v>=1&&v<=MAX_WORKER_DEPTH_CEILING))bad(`.maxWorkerDepth must be an integer from 1 to ${MAX_WORKER_DEPTH_CEILING} equal to the Orca app's worker depth setting (default ${ORCA_DEFAULTS.maxWorkerDepth}), or null.`);
 }
 /** The owner's Orca settings: {maxWorkerDepth, source: 'orca'|'default'}. An absent or null block or key is the default. */
-export function orcaSettings(config){
+export function orcaSettings(config?: {orca?: OrcaBlock | null} | null): {maxWorkerDepth: number; source: 'orca' | 'default'}{
   if(config?.orca!==undefined)validateOrca(config.orca);
   const value=plain(config?.orca)?config.orca.maxWorkerDepth:null;
-  return Number.isInteger(value)?{maxWorkerDepth:value,source:'orca'}:{maxWorkerDepth:ORCA_DEFAULTS.maxWorkerDepth,source:'default'};
+  return typeof value==='number'&&Number.isInteger(value)?{maxWorkerDepth:value,source:'orca'}:{maxWorkerDepth:ORCA_DEFAULTS.maxWorkerDepth,source:'default'};
 }
