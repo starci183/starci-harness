@@ -6,6 +6,7 @@ import path from 'node:path';
 import { checkRepo, checkRepository, trackedFiles, type CheckFinding, type MachineFn, type MachineReport, type RepositoryResult } from '../runtime/scripts/hfs/check.mjs';
 import { checkArchitecture } from '../runtime/scripts/hfs/architecture/index.mjs';
 import { withoutBootProof } from '../runtime/scripts/hfs/rules/boot-proof.mjs';
+import { withUnusedSymbolMemo, type UnusedSymbolMemo } from '../runtime/scripts/hfs/rules/unused-symbol.mjs';
 import { contractEmitFindings } from '../runtime/scripts/hfs/rules/contract.mjs';
 import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { emitContracts } from '../emit/contracts.mjs';
@@ -111,11 +112,28 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     }
     return report;
   };
+  // The whole-program unused-symbol analysis is the costliest rule of the pass (92 of 141 seconds on a 13.7k-file app): a scoped step keyed on the side.
+  const unusedMemo: UnusedSymbolMemo = {
+    run: (root, compute) => {
+      const side = path.basename(root);
+      const key = keys.get(side);
+      if (key === undefined) return compute();
+      const held = reuse ? records.matching(side, 'unused-symbol', key.key) : undefined;
+      if (held?.data !== undefined) { reused += 1; return held.data as unknown as ReturnType<typeof compute>; }
+      const found = compute();
+      checked += 1;
+      if (session.unchanged(key.inputs)) {
+        const list = found as unknown as CheckFinding[];
+        records.put({ path: side, step: 'unused-symbol', hash: key.key, findings: list.map(compact), data: JSON.parse(JSON.stringify(found)) as JsonValue });
+      }
+      return found;
+    },
+  };
   const step = session.progress.step('hfs', 'structure', tracked.length);
   const result = input.hfs
-    ? withoutBootProof(() => checkRepository({ repoRoot, harness, extraFindings: extra, machine: cachedMachine }))
+    ? withUnusedSymbolMemo(unusedMemo, () => withoutBootProof(() => checkRepository({ repoRoot, harness, extraFindings: extra, machine: cachedMachine })))
     : (() => {
-      const slot = withoutBootProof(() => checkRepo({ repoRoot, harness, extraFindings: [], surface: 'check' }));
+      const slot = withUnusedSymbolMemo(unusedMemo, () => withoutBootProof(() => checkRepo({ repoRoot, harness, extraFindings: [], surface: 'check' })));
       return { ...slot, machine: { status: 'skipped', reason: '--secrets alone runs the rules, not the machine' } } as RepositoryResult;
     })();
   step.tick(tracked.length, reused, checked);
@@ -129,6 +147,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
   if (input.hfs) {
     const live = new Set(['be', 'fe']);
     records.retain('machine', live);
+    records.retain('unused-symbol', live);
     records.retain('contract-emit', new Set(['be']));
     // The always-run rules still record their findings, so the next run can say what is new and what is known.
     for (const record of findingRecords(result.findings.filter((finding) => !SECRET_CODES.has(finding.code)), session.index.hashOf.bind(session.index), 'hfs')) records.put(record);

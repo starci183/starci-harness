@@ -101,3 +101,18 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(verdicts.map((verdict) => [verdict.code, verdict.level]), [[MISSING, 'warning']]);
   });
 }
+
+test('the check cache folder is a slot of its own: no stacks shape finding, no environment, no tree finding', async (t) => {
+  const { openHfs } = await import('../runtime/scripts/hfs/slots.mjs');
+  const { stacksFindings } = await import('../runtime/scripts/hfs/rules/stacks.mjs');
+  for (const edition of ['lite', 'full']) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-cache-slot-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const declaration = { hfs: 3, kind: 'app', edition, project: 'cache-slot', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
+    fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify(declaration));
+    const opened = openHfs({ repoRoot: root });
+    const cached = ['.starcistacks/cache/fingerprint.jsonl', '.starcistacks/cache/check/format/root.jsonl', '.starcistacks/cache/lint/be/modules/billing.jsonl', '.starcistacks/cache/test-coverage/be/src.jsonl'];
+    for (const file of cached) assert.equal(opened.classifyPath(file).status, 'owned', `${edition} ${file}`);
+    assert.deepEqual(stacksFindings({ repoRoot: root, files: cached, resolver: opened }), []);
+  }
+});

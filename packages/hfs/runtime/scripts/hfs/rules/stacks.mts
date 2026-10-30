@@ -25,7 +25,8 @@ const shapeFinding = (file: string, message: string, extra?: Parsed) => found(ST
 
 function treeFindings(files: string[], allowed: Parsed, prefix: string) {
   const findings = [];
-  for (const file of files.filter((f: Parsed) => f.startsWith(prefix))) {
+  // `cache` is reserved: .starcistacks/cache/ is the committed check cache (slot app.starcistacks.cache), written by the CLI, not an environment.
+  for (const file of files.filter((f: Parsed) => f.startsWith(prefix) && !f.startsWith(`${prefix}cache/`))) {
     const rel = file.slice(prefix.length);
     if (/\.enc(?:\.yaml)?$/.test(rel) && !INSIDE_SECRETS.test(rel)) findings.push(shapeFinding(file, `${file} is a sealed secret outside <env>/secrets/<slug>.enc.yaml; move it to .starcistacks/<env>/secrets/`));
     else if (!allowed.some((expression: Parsed) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml, images/db/Dockerfile in lite and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc.yaml, seeds}); move or delete it`));
@@ -37,6 +38,8 @@ function declarationFindings(files: string[], prefix: string, declaration: Parse
   const declared = `${prefix}application-stacks.yaml`;
   if (!files.includes(declared)) return [];
   const findings = [];
+  const environments = declaration.doc?.environments;
+  if (environments !== null && typeof environments === 'object' && Object.hasOwn(environments, 'cache')) findings.push(shapeFinding(declared, `${declared} declares an environment named cache; the name is reserved for the committed check cache (.starcistacks/cache/)`));
   if (declaration.error) return [shapeFinding(declared, `${declared} cannot be read: ${declaration.error}`)];
   const services = declaration.doc?.services;
   if (services === undefined || typeof services.sonar !== 'object' || services.sonar === null) {
