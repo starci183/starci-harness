@@ -11,7 +11,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
   - PROJECT-STACKS-1 One root per app · `PROJECT-STACKS-1` · 1 KB — `.starcistacks/` lives only at the app root, the repository that owns `.starciwork`, and covers every side the app has (be and fe).
   - PROJECT-STACKS-2 The manifest declares everything the app runs and reads · `PROJECT-STACKS-2` · 1 KB — `application-stacks.yaml` (schema `starci/application-stacks@1`) is the declaration everything else is checked against:
   - PROJECT-STACKS-3 Two kinds of environment, each with its runbook · `PROJECT-STACKS-3` · 2 KB — Two kinds, named by the project:
-  - PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · `PROJECT-STACKS-4` · 1 KB — One declared ingress component per environment is the only thing that publishes a port (R266, R275); every other service sits on internal networks.
+  - PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · `PROJECT-STACKS-4` · 2 KB — One declared ingress component per environment is the only thing that publishes a port (R266, R275); every other service sits on internal networks.
   - PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · `PROJECT-STACKS-5` · 10 KB
   - PROJECT-STACKS-6 Every runbook declares the same operations · `PROJECT-STACKS-6` · 4 KB — Every environment's runbook declares the same seven operations, one row each, with the project's command and its acceptance gate.
   - PROJECT-STACKS-7 CI holds names; every value stays with its consumer · `PROJECT-STACKS-7` · 2 KB — One key belongs to one class, and the manifest's `ci` block declares names and public values only:

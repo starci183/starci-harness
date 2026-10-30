@@ -35,7 +35,7 @@ export const CATALOG = {
     "explain": {
       "verbs": {},
       "self": {
-        "summary": "list the verbs available here with their flags, effect and json schema; filter by a search term",
+        "summary": "list the verbs available here with their flags, effect and json schema; a search term narrows the list and prints each verb's flags and retired spellings",
         "flags": [],
         "positional": [
           {
@@ -145,38 +145,6 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
-        "typecheck": {
-          "summary": "typecheck the packages that own a changed file (every package with --all)",
-          "flags": [
-            {
-              "name": "base",
-              "type": "string",
-              "summary": "compare against this ref (default the branch base: origin/main on main, else the fork point from main or origin/main)"
-            },
-            {
-              "name": "all",
-              "type": "boolean",
-              "summary": "check every package, not only the changed ones"
-            },
-            {
-              "name": "within",
-              "type": "boolean",
-              "summary": "judge only the changed files under the given paths, never the rest of the diff (a wave hands the files its tasks landed)"
-            }
-          ],
-          "positional": [
-            {
-              "name": "paths",
-              "required": false,
-              "variadic": true
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
         "loosening": {
           "summary": "scan the tree as it stands for banned loosening markers (policy/loosening.yaml); red with file:line for each",
           "flags": [],
@@ -239,33 +207,17 @@ export const CATALOG = {
           "json": "flag"
         },
         "ci": {
-          "summary": "exit 0 only when the GitHub Actions verdict of a commit is green (red, pending, none or unreadable exit 1)",
+          "summary": "read the GitHub Actions verdict of a commit (green, red, pending, none or unreadable) and its runs; exit 0 only on green",
           "flags": [
             {
               "name": "sha",
               "type": "string",
-              "summary": "the commit to judge"
+              "summary": "the commit to judge (default: the commit of --ref)"
             },
             {
               "name": "ref",
               "type": "string",
               "summary": "the ref whose commit is judged when no --sha is given (default HEAD)"
-            }
-          ],
-          "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "stories": {
-          "summary": "red when an XShape member has no story, a pure half's DataSlot has no skeleton (loading) story, a story names a shape its union lacks, or the retired state/XState names remain",
-          "flags": [
-            {
-              "name": "path",
-              "type": "string",
-              "summary": "the front-end app folder to check (default: every fe/apps/<name> hfs.json sides.fe.apps declares)"
             }
           ],
           "positional": [],
@@ -280,7 +232,7 @@ export const CATALOG = {
     "release": {
       "verbs": {
         "push": {
-          "summary": "push main right after a green scoped check: refuses a dirty tree, a non fast-forward or a secret in the pushed range",
+          "summary": "push main right after a green scoped check (dry until --execute): refuses a dirty tree, a non fast-forward or a secret in the pushed range",
           "flags": [
             {
               "name": "remote",
@@ -293,9 +245,9 @@ export const CATALOG = {
               "summary": "the branch to push (default main)"
             },
             {
-              "name": "dry-run",
+              "name": "execute",
               "type": "boolean",
-              "summary": "run every judgement but do not push"
+              "summary": "push for real (default: a dry run that runs every judgement and pushes nothing)"
             }
           ],
           "positional": [],
@@ -306,7 +258,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "cut": {
-          "summary": "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone; it runs no suite and waits for a green CI (or, with --urgent, the commit's urgent record) when policy requires it",
+          "summary": "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone (dry until --execute); it runs no suite and waits for a green CI (or, with --urgent, the commit's urgent record) when policy requires it",
           "flags": [
             {
               "name": "package",
@@ -319,9 +271,9 @@ export const CATALOG = {
               "summary": "the remote (default origin)"
             },
             {
-              "name": "dry-run",
+              "name": "execute",
               "type": "boolean",
-              "summary": "run every judgement but do not tag or push"
+              "summary": "tag and push for real (default: a dry run that runs every judgement and tags nothing)"
             },
             {
               "name": "urgent",
@@ -337,12 +289,12 @@ export const CATALOG = {
           "json": "flag"
         },
         "publish": {
-          "summary": "plan the npm publication of every package version not yet on the registry; --publish performs it and reads each back",
+          "summary": "plan the npm publication of every package version not yet on the registry; --execute performs it and reads each back",
           "flags": [
             {
-              "name": "publish",
+              "name": "execute",
               "type": "boolean",
-              "summary": "perform the plan (default: print it only)"
+              "summary": "perform the plan (default: a dry run that prints it only)"
             },
             {
               "name": "package",
@@ -371,25 +323,9 @@ export const CATALOG = {
               "summary": "the commit the change is measured from (empty or unknown: every node is affected)"
             },
             {
-              "name": "head",
-              "type": "string",
-              "summary": "the commit measured (default HEAD)"
-            }
-          ],
-          "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "ci-status": {
-          "summary": "read the GitHub Actions verdict of a pushed commit (green, red, pending or none)",
-          "flags": [
-            {
               "name": "sha",
               "type": "string",
-              "summary": "the commit to judge (default: HEAD of the working directory)"
+              "summary": "the commit measured (default HEAD)"
             }
           ],
           "positional": [],
@@ -420,9 +356,8 @@ export const CATALOG = {
             },
             {
               "name": "allow",
-              "type": "string",
-              "summary": "comma-separated repository paths the task may write (literal folders or files, no globs)",
-              "required": true
+              "type": "list",
+              "summary": "a repository path the task may write, literal folder or file, no globs (repeat or comma-separate; at least one)"
             },
             {
               "name": "read",
@@ -440,17 +375,17 @@ export const CATALOG = {
               "summary": "output keys the result must carry beyond the op's base, \"key=type;key=type\" (string, number, boolean, object, array, string[])"
             },
             {
-              "name": "cwd-path",
+              "name": "cwd",
               "type": "string",
               "summary": "the repository folder the checks run in (default: the repository root)"
             },
             {
               "name": "check",
-              "type": "string",
-              "summary": "checks to add, separated by \";\": preset or preset:arg=value,arg=value (a|b is a list), or {\"preset\":\"tests-pass\",\"args\":{\"command\":\"npm test\"}}"
+              "type": "list",
+              "summary": "a check to add (repeat, or separate by \";\" since an entry holds commas): preset or preset:arg=value,arg=value (a|b is a list), or {\"preset\":\"tests-pass\",\"args\":{\"command\":\"npm test\"}}"
             },
             {
-              "name": "details",
+              "name": "note",
               "type": "string",
               "summary": "more words on the input, beyond the summary"
             },
@@ -583,9 +518,9 @@ export const CATALOG = {
               "summary": "with --launch: an existing Orca Run id (default: create one)"
             },
             {
-              "name": "timeout-ms",
+              "name": "timeout",
               "type": "string",
-              "summary": "with --launch: how long Orca may wait for a ready worker"
+              "summary": "with --launch: seconds Orca may wait for a ready worker"
             }
           ],
           "positional": [
@@ -730,98 +665,12 @@ export const CATALOG = {
         },
         "add": {
           "summary": "add one canonical back-end capability or front-end unit and register its patterns",
-          "flags": [
-            {
-              "name": "event",
-              "type": "string",
-              "summary": "event consumed by a reactor"
-            },
-            {
-              "name": "from",
-              "type": "string",
-              "summary": "source service of an event"
-            },
-            {
-              "name": "service",
-              "type": "string",
-              "summary": "service binding as Class=module"
-            },
-            {
-              "name": "connection",
-              "type": "string",
-              "summary": "declared connection used by a projection"
-            },
-            {
-              "name": "owner",
-              "type": "string",
-              "summary": "service that owns a saga"
-            },
-            {
-              "name": "failed",
-              "type": "string",
-              "summary": "failure event consumed by a saga"
-            },
-            {
-              "name": "done",
-              "type": "string",
-              "summary": "completion event consumed by a saga"
-            },
-            {
-              "name": "fe",
-              "type": "boolean",
-              "summary": "add the typed front-end database modules of a lite table"
-            },
-            {
-              "name": "shapes",
-              "type": "string",
-              "summary": "a front-end unit: its drawn shapes, two or more as a,b,c (none when it has one)"
-            },
-            {
-              "name": "read",
-              "type": "string",
-              "summary": "a front-end unit: the API read its data slot takes"
-            },
-            {
-              "name": "app",
-              "type": "string",
-              "summary": "a front-end unit: the fe app it is added to"
-            },
-            {
-              "name": "kind",
-              "type": "string",
-              "summary": "an overlay: its shell, modal or drawer"
-            },
-            {
-              "name": "form",
-              "type": "boolean",
-              "summary": "an overlay: it holds a one-column form"
-            },
-            {
-              "name": "blocks",
-              "type": "string",
-              "summary": "a page or layout: the existing blocks it composes, as a,b"
-            },
-            {
-              "name": "tabs",
-              "type": "string",
-              "summary": "a page: its page tabs as link tabs, two or more ids as a,b (the first is the route, the rest its sub-routes)"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "noun",
-              "required": true,
-              "variadic": false
-            },
-            {
-              "name": "name",
-              "required": true,
-              "variadic": false
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
           "editions": [
@@ -832,39 +681,14 @@ export const CATALOG = {
         },
         "check": {
           "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture",
-          "flags": [
+          "flags": [],
+          "positional": [
             {
-              "name": "fast",
-              "type": "boolean",
-              "summary": "judge only paths changed since the merge base"
-            },
-            {
-              "name": "base",
-              "type": "string",
-              "summary": "merge-base ref used by --fast (refused without it)"
-            },
-            {
-              "name": "wiring",
-              "type": "boolean",
-              "summary": "compile the lite back-end module graph with test doubles"
-            },
-            {
-              "name": "coverage-from",
-              "type": "string",
-              "summary": "judge measured logic-file coverage from an LCOV report"
-            },
-            {
-              "name": "edition",
-              "type": "string",
-              "summary": "app edition, full or lite"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
-          "positional": [],
           "editions": [
             "lite",
             "full"
@@ -873,73 +697,12 @@ export const CATALOG = {
         },
         "ci": {
           "summary": "set declared GitHub CI secrets and variables, verify their custody, or run the managed CI locally",
-          "flags": [
-            {
-              "name": "env",
-              "type": "string",
-              "summary": "select the declared GitHub environment"
-            },
-            {
-              "name": "dependabot",
-              "type": "boolean",
-              "summary": "select the Dependabot secret store"
-            },
-            {
-              "name": "repo",
-              "type": "string",
-              "summary": "override the app repository with owner/name"
-            },
-            {
-              "name": "value",
-              "type": "string",
-              "summary": "public variable value that must agree with the manifest; var set ownerValue requires stdin instead"
-            },
-            {
-              "name": "execute",
-              "type": "boolean",
-              "summary": "apply the variable sync plan; var sync skips ownerValue variables"
-            },
-            {
-              "name": "jobs",
-              "type": "string",
-              "summary": "local: the jobs to run, comma separated (default fast,lint,test,coverage,build; sonar only when named)"
-            },
-            {
-              "name": "parallel",
-              "type": "string",
-              "summary": "local: job instances run at once (default half the CPUs, at most 4)"
-            },
-            {
-              "name": "logs",
-              "type": "string",
-              "summary": "local: the directory the job logs go to (default a new temp directory)"
-            },
-            {
-              "name": "dry-run",
-              "type": "boolean",
-              "summary": "local: print which steps would run and which only GitHub can run"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "action",
-              "required": true,
-              "variadic": false
-            },
-            {
-              "name": "operation",
+              "name": "args",
               "required": false,
-              "variadic": false
-            },
-            {
-              "name": "name",
-              "required": false,
-              "variadic": false
+              "variadic": true
             }
           ],
           "editions": [
@@ -950,33 +713,12 @@ export const CATALOG = {
         },
         "codemod": {
           "summary": "migrate front-end button variants to declared intent and report cases requiring a human decision",
-          "flags": [
-            {
-              "name": "write",
-              "type": "boolean",
-              "summary": "apply safe source edits; otherwise preview without changing source"
-            },
-            {
-              "name": "format",
-              "type": "string",
-              "summary": "migration report format: json or markdown (default markdown)"
-            },
-            {
-              "name": "report",
-              "type": "string",
-              "summary": "also save the complete report to a .json or .md file"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "migration",
-              "required": true,
-              "variadic": false
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
           "editions": [
@@ -987,27 +729,11 @@ export const CATALOG = {
         },
         "coverage": {
           "summary": "merge the sharded unit coverage into one lcov report, or prove that report at 100 per file",
-          "flags": [
-            {
-              "name": "out",
-              "type": "string",
-              "summary": "the merged lcov.info to write (the managed CI writes be/coverage/lcov.info)"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "action",
-              "required": true,
-              "variadic": false
-            },
-            {
-              "name": "paths",
-              "required": true,
+              "name": "args",
+              "required": false,
               "variadic": true
             }
           ],
@@ -1019,93 +745,12 @@ export const CATALOG = {
         },
         "db": {
           "summary": "create, preview or apply database migrations and take encrypted backups; drift checks the TypeORM entities against the migrated schema (BE_ENTITY_SCHEMA_DRIFT)",
-          "flags": [
-            {
-              "name": "out",
-              "type": "string",
-              "summary": "dump: destination outside the app and every Git worktree"
-            },
-            {
-              "name": "schema-only",
-              "type": "boolean",
-              "summary": "dump: omit data parts"
-            },
-            {
-              "name": "stamp",
-              "type": "string",
-              "summary": "fourteen-digit timestamp of the new baseline migration"
-            },
-            {
-              "name": "map",
-              "type": "string",
-              "summary": "explicit old-to-new migration stamp map for restamp"
-            },
-            {
-              "name": "apply",
-              "type": "boolean",
-              "summary": "apply baseline or restamp mutations after validation"
-            },
-            {
-              "name": "squash",
-              "type": "boolean",
-              "summary": "baseline: rebuild the active chain from a database it is applied to (--url-env), proven by replay in a scratch container"
-            },
-            {
-              "name": "drop-extension",
-              "type": "string",
-              "summary": "baseline --squash: comma-separated extensions the target db image lacks, dropped with what reaches them (default: the lite defaults; pgmq stays)"
-            },
-            {
-              "name": "drop-pgmq-queue",
-              "type": "string",
-              "summary": "baseline --squash: comma-separated named pgmq queues to drop"
-            },
-            {
-              "name": "seed-tables",
-              "type": "string",
-              "summary": "baseline --squash: comma-separated tables whose reference rows go to db/seed.sql"
-            },
-            {
-              "name": "image",
-              "type": "string",
-              "summary": "baseline --squash: the db image the replay proves against (default: the app's db image)"
-            },
-            {
-              "name": "execute",
-              "type": "boolean",
-              "summary": "migrate, post-cutover: apply the plan (also needs STARCI_DB_ARMED=1 unless the database is on the loopback); otherwise read-only"
-            },
-            {
-              "name": "url-env",
-              "type": "string",
-              "summary": "the environment variable holding the postgres connection URL of the database (default DATABASE_URL); drift: an empty database to migrate instead of a scratch container of the app db image"
-            },
-            {
-              "name": "green-at",
-              "type": "string",
-              "summary": "post-cutover: ISO time of the last green smoke; must be at least database.postCutover.minAgeHours (48) old"
-            },
-            {
-              "name": "owner-confirms-old-app-gone",
-              "type": "boolean",
-              "summary": "post-cutover: the owner confirms the old app is gone (opens the time gate)"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "action",
-              "required": true,
-              "variadic": false
-            },
-            {
-              "name": "name",
+              "name": "args",
               "required": false,
-              "variadic": false
+              "variadic": true
             }
           ],
           "editions": [
@@ -1116,14 +761,14 @@ export const CATALOG = {
         },
         "emit": {
           "summary": "emit back-end GraphQL, operation and event contract snapshots",
-          "flags": [
+          "flags": [],
+          "positional": [
             {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
-          "positional": [],
           "editions": [
             "lite",
             "full"
@@ -1132,18 +777,12 @@ export const CATALOG = {
         },
         "explain": {
           "summary": "explain which HFS slot owns one app-relative path",
-          "flags": [
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "path",
-              "required": true,
-              "variadic": false
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
           "editions": [
@@ -1154,14 +793,14 @@ export const CATALOG = {
         },
         "hygiene": {
           "summary": "judge staged worktree metadata, stack files, plaintext secrets and new logic files without a spec",
-          "flags": [
+          "flags": [],
+          "positional": [
             {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
-          "positional": [],
           "editions": [
             "lite",
             "full"
@@ -1170,44 +809,14 @@ export const CATALOG = {
         },
         "lint": {
           "summary": "lint both app sides and report repository, ESLint and stylelint findings together (--fix writes)",
-          "flags": [
+          "flags": [],
+          "positional": [
             {
-              "name": "changed",
-              "type": "list",
-              "summary": "an app-relative file to judge, once per file (not with --workspace)"
-            },
-            {
-              "name": "workspace",
-              "type": "string",
-              "summary": "one front-end workspace to judge"
-            },
-            {
-              "name": "side",
-              "type": "string",
-              "summary": "judge one side, be or fe (root findings belong to be; not with --sonar)"
-            },
-            {
-              "name": "fix",
-              "type": "boolean",
-              "summary": "let ESLint and stylelint apply safe fixes"
-            },
-            {
-              "name": "format",
-              "type": "string",
-              "summary": "report format: text or json (default text)"
-            },
-            {
-              "name": "sonar",
-              "type": "string",
-              "summary": "write the Sonar Generic Issue Import report"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
-          "positional": [],
           "editions": [
             "lite",
             "full"
@@ -1216,26 +825,10 @@ export const CATALOG = {
         },
         "new": {
           "summary": "create a canonical service, unit spec or app image definition",
-          "flags": [
-            {
-              "name": "inject",
-              "type": "list",
-              "summary": "a constructor binding as Decorator=module:Type or Class=module, once per binding"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "kind",
-              "required": true,
-              "variadic": false
-            },
-            {
-              "name": "arguments",
+              "name": "args",
               "required": false,
               "variadic": true
             }
@@ -1248,63 +841,12 @@ export const CATALOG = {
         },
         "release": {
           "summary": "run the app's release gates and write the L4 record and tag (or back-fill an urgent release), or push branch and tag atomically (or the urgent path)",
-          "flags": [
-            {
-              "name": "execute",
-              "type": "boolean",
-              "summary": "run the gates and write the record and tag (gate) or push for real (push); without it both are dry runs"
-            },
-            {
-              "name": "source",
-              "type": "string",
-              "summary": "gate: ref that must equal HEAD (default HEAD)"
-            },
-            {
-              "name": "tag-prefix",
-              "type": "string",
-              "summary": "gate: release tag prefix (default from release.tagPrefix, v)"
-            },
-            {
-              "name": "sonar",
-              "type": "boolean",
-              "summary": "gate: append a local Sonar scan using services.sonar host and the token environment variable named by ci.token (default SONAR_TOKEN)"
-            },
-            {
-              "name": "backfill",
-              "type": "string",
-              "summary": "gate: the tag of an urgent release, checked out at HEAD: the full gate judges it; green promotes its urgent record to L4, red opens a verify ticket"
-            },
-            {
-              "name": "remote",
-              "type": "string",
-              "summary": "push: remote name (default origin)"
-            },
-            {
-              "name": "urgent",
-              "type": "boolean",
-              "summary": "push: the urgent path (owner rulings urgent-release 2026-10-29, urgent-typecheck-build 2026-10-30): typecheck and the build only, then tag, push and the URGENT record; app check, lint and the tests wait for the back-fill; needs --reason"
-            },
-            {
-              "name": "reason",
-              "type": "string",
-              "summary": "push --urgent: why the release cannot wait for CI and the full gate, one line the urgent record keeps"
-            },
-            {
-              "name": "lint-baseline",
-              "type": "string",
-              "summary": "push --urgent: retired with lint itself (owner ruling urgent-typecheck-build): an urgent release no longer lints, so this is refused"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "action",
-              "required": true,
-              "variadic": false
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
           "editions": [
@@ -1315,33 +857,12 @@ export const CATALOG = {
         },
         "scaffold": {
           "summary": "create a full or lite StarCi app in its own Git repository (unborn main)",
-          "flags": [
-            {
-              "name": "into",
-              "type": "string",
-              "summary": "parent directory in which the named app is created"
-            },
-            {
-              "name": "registry-visibility",
-              "type": "string",
-              "summary": "public or private: visibility of the app's container images written once into deploy.registry (default public; the app owns it afterwards)"
-            },
-            {
-              "name": "edition",
-              "type": "string",
-              "summary": "app edition, full or lite"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "name",
-              "required": true,
-              "variadic": false
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
           "editions": [
@@ -1352,111 +873,10 @@ export const CATALOG = {
         },
         "secret": {
           "summary": "initialize, seal, edit, materialize, verify, migrate, split and audit app secrets: one <member>.enc.yaml per provider or owner group, set prompts masked and seals several keys in one write, recipients manages .sops.yaml, server-key makes the deploy server's identity on the server and seals the environment to it",
-          "flags": [
-            {
-              "name": "generate",
-              "type": "string",
-              "summary": "generate this many random bytes per key for set instead of prompting or reading stdin"
-            },
-            {
-              "name": "to-file",
-              "type": "boolean",
-              "summary": "write one private file per KEY outside the repository"
-            },
-            {
-              "name": "reveal",
-              "type": "boolean",
-              "summary": "explicitly print decrypted values for get"
-            },
-            {
-              "name": "execute",
-              "type": "boolean",
-              "summary": "apply the edit instead of only reporting what unset, rename, remove, migrate, split or server-key would do"
-            },
-            {
-              "name": "from-file",
-              "type": "list",
-              "summary": "set: KEY=path, the key's value read byte for byte from the file (a multi-line key, its trailing newline kept), once per key"
-            },
-            {
-              "name": "to",
-              "type": "string",
-              "summary": "migrate: the member's new name (a legacy member named otherwise than its provider, or an existing member with --into-existing)"
-            },
-            {
-              "name": "group",
-              "type": "list",
-              "summary": "split: KEY=member, the member this key goes to instead of its first word's, once per key"
-            },
-            {
-              "name": "group-file",
-              "type": "string",
-              "summary": "split: a YAML map of KEY: member, read as one --group per entry"
-            },
-            {
-              "name": "into-existing",
-              "type": "boolean",
-              "summary": "migrate and split: merge into a member that already exists; a key it holds with another value refuses the move, naming the key"
-            },
-            {
-              "name": "add",
-              "type": "list",
-              "summary": "recipients: a public age recipient (age1...) or owner, added to the environment's rule, once per recipient"
-            },
-            {
-              "name": "remove",
-              "type": "list",
-              "summary": "recipients: a public age recipient or owner, removed from the environment's rule, once per recipient"
-            },
-            {
-              "name": "force-nonempty",
-              "type": "boolean",
-              "summary": "let remove delete a member that still holds keys"
-            },
-            {
-              "name": "rotate",
-              "type": "boolean",
-              "summary": "server-key: make a new server identity, seal the environment to it, keep the old file dated on the server and drop its recipient"
-            },
-            {
-              "name": "backup",
-              "type": "string",
-              "summary": "server-key: github, stream the server identity into the secret SOPS_AGE_KEY of the protected GitHub Environment <env>, the key its CI jobs read"
-            },
-            {
-              "name": "restore",
-              "type": "string",
-              "summary": "server-key: github, dispatch the managed stack-key-restore.yml that writes that secret back to the server when its public key is the recorded serverRecipient"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            },
-            {
-              "name": "from-host",
-              "type": "string",
-              "summary": "set: seal the value of this host key (policy/security.yaml secretKeys, read from secret.env) instead of prompting or reading stdin"
-            }
-          ],
+          "flags": [],
           "positional": [
             {
-              "name": "action",
-              "required": true,
-              "variadic": false
-            },
-            {
-              "name": "env",
-              "required": false,
-              "variadic": false
-            },
-            {
-              "name": "slug",
-              "required": false,
-              "variadic": false
-            },
-            {
-              "name": "keys",
+              "name": "args",
               "required": false,
               "variadic": true
             }
@@ -1469,194 +889,8 @@ export const CATALOG = {
         },
         "stack": {
           "summary": "Swarm deploy tooling of an app (prepare to rollback, dry runs without --execute) and the full edition's local test-world infrastructure",
-          "flags": [
-            {
-              "name": "stack",
-              "type": "string",
-              "summary": "up, down, status: stack definition directory"
-            },
-            {
-              "name": "services",
-              "type": "list",
-              "summary": "up, down, status: infrastructure services to keep warm, comma separated or once each"
-            },
-            {
-              "name": "k3d",
-              "type": "boolean",
-              "summary": "up, down, status: also warm the k3d cluster and registry"
-            },
-            {
-              "name": "force",
-              "type": "boolean",
-              "summary": "up, down, status: stop the stack even while leases exist"
-            },
-            {
-              "name": "env",
-              "type": "string",
-              "summary": "environment of .starcistacks whose deploy block drives the action; required by every action with an effect (doctor, build-args, render and verify default to production)"
-            },
-            {
-              "name": "execute",
-              "type": "boolean",
-              "summary": "perform the effects; without it every effectful action is a dry run"
-            },
-            {
-              "name": "image",
-              "type": "list",
-              "summary": "render, deploy: service=registry/name@sha256:digest, repeatable or comma separated"
-            },
-            {
-              "name": "source-sha",
-              "type": "string",
-              "summary": "render, deploy: the git commit the images were built from"
-            },
-            {
-              "name": "target-binding",
-              "type": "string",
-              "summary": "deploy, verify: public native endpoint assertion; constrains the target and grants no authority"
-            },
-            {
-              "name": "previous",
-              "type": "string",
-              "summary": "render: the previous accepted release id (16 hex)"
-            },
-            {
-              "name": "out",
-              "type": "string",
-              "summary": "render, deploy: directory that receives stack.yaml, stack.generated.yaml and release.json"
-            },
-            {
-              "name": "release",
-              "type": "string",
-              "summary": "rollback, accept: release id (16 lowercase hex); rollback deploys it again (default the previous accepted release), accept accepts it"
-            },
-            {
-              "name": "since",
-              "type": "string",
-              "summary": "converge: ISO instant the deploy began"
-            },
-            {
-              "name": "timeout",
-              "type": "string",
-              "summary": "deploy, converge, rollback: seconds to wait for convergence"
-            },
-            {
-              "name": "retry",
-              "type": "string",
-              "summary": "deploy, verify, accept: seconds public checks keep retrying"
-            },
-            {
-              "name": "keep",
-              "type": "list",
-              "summary": "prune: release.json of a release whose secrets and configs stay"
-            },
-            {
-              "name": "app",
-              "type": "string",
-              "summary": "build-args: the app whose image receives the public build values"
-            },
-            {
-              "name": "ssh-cmd",
-              "type": "string",
-              "summary": "prepare, doctor, deploy, accept, converge, verify, rollback, prune, backup, jobs, task, ingress, retire: ssh command to reach the manager instead of the configured alias"
-            },
-            {
-              "name": "extra-compose",
-              "type": "list",
-              "summary": "render: an additional compose file for a local throwaway swarm"
-            },
-            {
-              "name": "allow-unpinned",
-              "type": "boolean",
-              "summary": "render: accept stand-in images without a digest (a local throwaway swarm; never the placeholder digest)"
-            },
-            {
-              "name": "init-swarm",
-              "type": "boolean",
-              "summary": "prepare: run the one-time docker swarm init (needs --execute and --owner-approved)"
-            },
-            {
-              "name": "owner-approved",
-              "type": "boolean",
-              "summary": "prepare: the owner approved the one-time docker swarm init (with --init-swarm --execute)"
-            },
-            {
-              "name": "fix-live-restore",
-              "type": "boolean",
-              "summary": "prepare: disable docker live-restore (incompatible with swarm), restart dockerd and report the containers that came back; needs --owner-approved --execute"
-            },
-            {
-              "name": "project",
-              "type": "list",
-              "summary": "retire: an old docker compose project whose containers are stopped (restart policy off, nothing removed)"
-            },
-            {
-              "name": "push",
-              "type": "boolean",
-              "summary": "build: push the images to the registry with the operator's own docker login and print their digests (needs --execute)"
-            },
-            {
-              "name": "swarm-state",
-              "type": "boolean",
-              "summary": "backup: also archive /var/lib/docker/swarm, encrypted"
-            },
-            {
-              "name": "skip-public",
-              "type": "boolean",
-              "summary": "deploy, verify: skip the public HTTP checks (deploy then leaves the release pending until accept)"
-            },
-            {
-              "name": "skip-internal",
-              "type": "boolean",
-              "summary": "verify: skip the checks run inside a service task"
-            },
-            {
-              "name": "urgent",
-              "type": "boolean",
-              "summary": "deploy: an urgent release (owner rulings urgent-release 2026-10-29, urgent-typecheck-build 2026-10-30): its pushed urgent record stands in for CI, and the safety floor runs first and is never skipped (fresh verified encrypted backup with a test decrypt, migrate preview then execute, readiness verify, automatic rollback). Without --image and --source-sha it is one command: release HEAD (typecheck and build, tag, push, the urgent record; needs --reason), build and push its images on this machine, then deploy their digests"
-            },
-            {
-              "name": "reason",
-              "type": "string",
-              "summary": "deploy --urgent without --image and --source-sha: why HEAD cannot wait for CI and the full gate, one line its urgent record keeps"
-            },
-            {
-              "name": "remote",
-              "type": "string",
-              "summary": "deploy --urgent without --image and --source-sha: the remote HEAD and its tag are pushed to (default origin)"
-            },
-            {
-              "name": "db-url-env",
-              "type": "string",
-              "summary": "deploy --urgent: the environment variable holding the database URL the floor backs up and migrates (default the linked project of the database block)"
-            },
-            {
-              "name": "backup-out",
-              "type": "string",
-              "summary": "deploy --urgent: the folder outside every repository that receives the floor's encrypted backup (default ~/.starci-backups/<project>)"
-            },
-            {
-              "name": "first-start",
-              "type": "boolean",
-              "summary": "deploy --urgent: the first start of a self-hosted database the release itself starts: no backup (the floor proves the database empty), migrate preview then execute inside its container before converge; needs --db-service"
-            },
-            {
-              "name": "db-service",
-              "type": "string",
-              "summary": "deploy --urgent --first-start: the stack service the database runs as"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
-            }
-          ],
+          "flags": [],
           "positional": [
-            {
-              "name": "action",
-              "required": true,
-              "variadic": false
-            },
             {
               "name": "args",
               "required": false,
@@ -1671,24 +905,14 @@ export const CATALOG = {
         },
         "sync": {
           "summary": "compare (--check) or write (--write) every managed app file from its canonical template",
-          "flags": [
+          "flags": [],
+          "positional": [
             {
-              "name": "check",
-              "type": "boolean",
-              "summary": "compare managed output without writing"
-            },
-            {
-              "name": "write",
-              "type": "boolean",
-              "summary": "rewrite managed output that drifted"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
-          "positional": [],
           "editions": [
             "lite",
             "full"
@@ -1697,24 +921,14 @@ export const CATALOG = {
         },
         "upgrade": {
           "summary": "add the test world a full app lacks; a lite app is refused because editions are fixed at scaffold",
-          "flags": [
+          "flags": [],
+          "positional": [
             {
-              "name": "plan",
-              "type": "boolean",
-              "summary": "preview the upgrade without writing"
-            },
-            {
-              "name": "edition",
-              "type": "string",
-              "summary": "refused (HFS_UPGRADE_USAGE): editions are fixed at scaffold, so upgrade takes none"
-            },
-            {
-              "name": "quiet",
-              "type": "boolean",
-              "summary": "suppress human-readable chatter"
+              "name": "args",
+              "required": false,
+              "variadic": true
             }
           ],
-          "positional": [],
           "editions": [
             "lite",
             "full"
@@ -1726,7 +940,7 @@ export const CATALOG = {
     "seat": {
       "verbs": {
         "start": {
-          "summary": "launch an Orca worker on a queued task with its rendered brief; --resume replays a launch whose outcome is unknown; --dry-run prints the orca argv",
+          "summary": "launch an Orca worker on a queued task with its rendered brief (dry until --execute: it writes the brief and prints the orca argv); --resume --execute replays a launch whose outcome is unknown",
           "flags": [
             {
               "name": "agent",
@@ -1754,19 +968,19 @@ export const CATALOG = {
               "summary": "an existing Orca Run id (default: create a Run for this task)"
             },
             {
-              "name": "timeout-ms",
+              "name": "timeout",
               "type": "string",
-              "summary": "how long Orca may wait for a ready worker (worker-start --timeout-ms; default 120000)"
+              "summary": "seconds Orca may wait for a ready worker (default 120)"
             },
             {
               "name": "resume",
               "type": "boolean",
-              "summary": "replay the recorded launch of an effect_unknown task under the same Orca request id"
+              "summary": "replay the recorded launch of an effect_unknown task under the same Orca request id (needs --execute: a replay has no dry run)"
             },
             {
-              "name": "dry-run",
+              "name": "execute",
               "type": "boolean",
-              "summary": "write the brief and print the orca argv; launch nothing and leave the ledger as it is"
+              "summary": "launch for real (default: a dry run that writes the brief, prints the orca argv, launches nothing and leaves the ledger as it is)"
             }
           ],
           "positional": [
@@ -1857,7 +1071,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "park": {
-          "summary": "pause every workflow of a project, stop its live seats keeping their work, close its Kernels, Supervisor and every Orca terminal of it; resumable with project unpark",
+          "summary": "pause every workflow of a project, stop its live seats keeping their work, close its Kernels, Supervisor and every Orca terminal of it; resumable with project unpark (dry until --execute)",
           "flags": [
             {
               "name": "project",
@@ -1865,9 +1079,9 @@ export const CATALOG = {
               "summary": "any checkout or worktree of the project's repositories (default: the working directory)"
             },
             {
-              "name": "dry-run",
+              "name": "execute",
               "type": "boolean",
-              "summary": "say what would be paused, stopped and closed, and change nothing"
+              "summary": "park for real (default: a dry run that says what would be paused, stopped and closed, and changes nothing)"
             }
           ],
           "positional": [],
@@ -1967,8 +1181,29 @@ export const CATALOG = {
           "json": "flag"
         },
         "step": {
-          "summary": "one dispatch tick: ping running seats, verify reported tasks, dispatch newly ready ones within maxParallel, update the status (exit 1 when blocked)",
-          "flags": [],
+          "summary": "one dispatch tick: ping running seats, verify reported tasks, dispatch newly ready ones within maxParallel, update the status (exit 1 when blocked); --loop repeats it in the foreground until done, blocked or idle",
+          "flags": [
+            {
+              "name": "loop",
+              "type": "boolean",
+              "summary": "repeat the step in a foreground loop, one line per change, until done, blocked, idle or --max-ticks"
+            },
+            {
+              "name": "interval",
+              "type": "string",
+              "summary": "with --loop: seconds between ticks (default 30, at least 1)"
+            },
+            {
+              "name": "until",
+              "type": "string",
+              "summary": "with --loop: done (default for orca), blocked, or idle (default for inline): when the loop returns"
+            },
+            {
+              "name": "max-ticks",
+              "type": "string",
+              "summary": "with --loop: return after this many ticks at most"
+            }
+          ],
           "positional": [
             {
               "name": "workflow",
@@ -2010,7 +1245,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "amend": {
-          "summary": "replan a workflow from a desired graph (--desired, --based-on) or a change file: reconcile by task key, record graph n+1, cancel what is dropped or redone live, resume",
+          "summary": "replan a workflow from a desired graph (--desired, --based-on) or a change file: reconcile by task key, record graph n+1, cancel what is dropped or redone live, resume; --goal records goal n+1 instead",
           "flags": [
             {
               "name": "desired",
@@ -2023,9 +1258,14 @@ export const CATALOG = {
               "summary": "a starci/workflow-change@1 file (add, edit, remove, retry, accept), or a whole workflow file"
             },
             {
+              "name": "goal",
+              "type": "string",
+              "summary": "a starci/goal-change@1 file, yaml or json: record goal n+1 (goal text, acceptance, scope ceiling) based on goal n (--based-on); owner and Supervisor only"
+            },
+            {
               "name": "based-on",
               "type": "string",
-              "summary": "the graph version the replan was built on; STALE when the workflow moved past it"
+              "summary": "the graph version the replan was built on (with --goal: the goal version); STALE when the workflow moved past it"
             },
             {
               "name": "cmd-id",
@@ -2041,35 +1281,6 @@ export const CATALOG = {
               "name": "accept",
               "type": "string",
               "summary": "comma list of stale keys kept on their dependencies' current results"
-            }
-          ],
-          "positional": [
-            {
-              "name": "workflow",
-              "required": true,
-              "variadic": false
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "regoal": {
-          "summary": "record goal n+1 of a workflow from a goal-change file (goal, acceptance, scope ceiling), based on goal n; idempotent by cmdId",
-          "flags": [
-            {
-              "name": "goal",
-              "type": "string",
-              "summary": "a starci/goal-change@1 file, yaml or json",
-              "required": true
-            },
-            {
-              "name": "based-on",
-              "type": "string",
-              "summary": "the goal version this change was built on",
-              "required": true
             }
           ],
           "positional": [
@@ -2149,38 +1360,6 @@ export const CATALOG = {
             "full"
           ],
           "json": "flag"
-        },
-        "run": {
-          "summary": "step a workflow in a foreground loop, one line per change, until done, blocked, idle or --max-ticks (exit 0 done, 1 blocked)",
-          "flags": [
-            {
-              "name": "interval",
-              "type": "string",
-              "summary": "seconds between ticks (default 30, at least 1)"
-            },
-            {
-              "name": "until",
-              "type": "string",
-              "summary": "done (default for orca), blocked, or idle (default for inline): when the loop returns"
-            },
-            {
-              "name": "max-ticks",
-              "type": "string",
-              "summary": "return after this many ticks at most"
-            }
-          ],
-          "positional": [
-            {
-              "name": "workflow",
-              "required": true,
-              "variadic": false
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
         }
       }
     },
@@ -2235,7 +1414,7 @@ export const CATALOG = {
     },
     "route": {
       "verbs": {
-        "explain": {
+        "show": {
           "summary": "dry-run worker or coordinator routing: tier, filters, qualification, quota, probe, scores, exploration and the chosen member; --simulate tallies n picks",
           "flags": [
             {
@@ -2344,7 +1523,7 @@ export const CATALOG = {
               "summary": "when the quota window resets (ISO time), for a quota outcome or reading"
             },
             {
-              "name": "detail",
+              "name": "reason",
               "type": "string",
               "summary": "the provider's own words (the typed error)"
             }
@@ -2417,12 +1596,6 @@ export const CATALOG = {
               "summary": "raise the tries of this one task (its plan key or a ledger task id) instead of the workflow's ceiling"
             },
             {
-              "name": "by",
-              "type": "string",
-              "summary": "who raises it: owner or supervisor, or kernel with --task",
-              "required": true
-            },
-            {
               "name": "reason",
               "type": "string",
               "summary": "why the workflow or task needs more",
@@ -2447,12 +1620,12 @@ export const CATALOG = {
     "worktree": {
       "verbs": {
         "gc": {
-          "summary": "remove the harness's worktrees whose owner ended (Op, workflow, worker, landed package edit) and orphans, preserving their uncommitted work first; --dry-run only lists",
+          "summary": "remove the harness's worktrees whose owner ended (Op, workflow, worker, landed package edit) and orphans, preserving their uncommitted work first (dry until --execute: it only lists)",
           "flags": [
             {
-              "name": "dry-run",
+              "name": "execute",
               "type": "boolean",
-              "summary": "judge every harness worktree and change nothing"
+              "summary": "remove what is due (default: a dry run that judges every harness worktree and changes nothing)"
             },
             {
               "name": "now",
@@ -2485,9 +1658,9 @@ export const CATALOG = {
               "summary": "the evidence folder, relative to the repository root, created (default uat-evidence/<container>)"
             },
             {
-              "name": "timeout-ms",
+              "name": "timeout",
               "type": "string",
-              "summary": "the deadline of the run; the container is killed and removed at it (default ops/uat.yaml timeoutMs)"
+              "summary": "seconds to the deadline of the run; the container is killed and removed at it (default ops/uat.yaml timeoutMs)"
             },
             {
               "name": "image",
@@ -2549,17 +1722,12 @@ export const CATALOG = {
     "contexts": {
       "verbs": {
         "anatomy": {
-          "summary": "render the project anatomy (slot tree per edition and side) from hfs/slots.yaml, its per-side slices, the contexts index and the section indexes; --check fails on drift, --write regenerates, --slice prints one slice",
+          "summary": "judge the project anatomy (slot tree per edition and side) rendered from hfs/slots.yaml, its per-side slices, the contexts index and the section indexes against the files (drift exits 1); --execute regenerates them, --slice prints one slice",
           "flags": [
             {
-              "name": "check",
+              "name": "execute",
               "type": "boolean",
-              "summary": "exit 1 when anatomy.md, a slice, the contexts index or a section index differs from what the generator writes, or a slot rule code, a rule or its enforcers leave a gap no owner ruling holds pending"
-            },
-            {
-              "name": "write",
-              "type": "boolean",
-              "summary": "rewrite anatomy.md's generated block, the slices, the contexts index and the section indexes"
+              "summary": "rewrite anatomy.md's generated block, the slices, the contexts index and the section indexes (default: a dry run that exits 1 when one differs from the generator, or a slot rule code, a rule or its enforcers leave a gap no owner ruling holds pending)"
             },
             {
               "name": "slice",
@@ -2582,15 +1750,10 @@ export const CATALOG = {
           "json": "flag"
         },
         "anchor": {
-          "summary": "resolve an anchor id (tabs.choose, R12, DNA-..., <file>#<heading slug>) to its text and file; --check fails on a duplicate or dangling anchor",
+          "summary": "resolve an anchor id (tabs.choose, R12, DNA-..., <file>#<heading slug>) to its text and file; with no id, judge the anchors (exit 1 on a duplicate or dangling one)",
           "flags": [
             {
-              "name": "check",
-              "type": "boolean",
-              "summary": "exit 1 when an id names two places, or a link fragment or an eval expectation names none"
-            },
-            {
-              "name": "root",
+              "name": "cwd",
               "type": "string",
               "summary": "the tree to read instead of the harness's own (contexts/, ops/, policy/, skills/starci, docs)"
             }
@@ -2609,7 +1772,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "search": {
-          "summary": "look up contexts, op files, policy and harness docs for a question, anchor first (BM25 fused with local embeddings); --check fails on a stale index, --eval fails under the recall floor",
+          "summary": "look up contexts, op files, policy and harness docs for a question, anchor first (BM25 fused with local embeddings); with no question, judge the index (stale exits 1; --execute rebuilds it); --eval fails under the recall floor",
           "flags": [
             {
               "name": "scope",
@@ -2627,14 +1790,14 @@ export const CATALOG = {
               "summary": "rank by BM25 only, even when the index carries vectors"
             },
             {
-              "name": "check",
+              "name": "execute",
               "type": "boolean",
-              "summary": "exit 1 when the built index does not match the files of the tree"
+              "summary": "with no question: rebuild the index from the harness's own tree, as the build does"
             },
             {
-              "name": "root",
+              "name": "cwd",
               "type": "string",
-              "summary": "with --check: the tree to compare the built index with instead of the harness's own"
+              "summary": "with no question: the tree to compare the built index with instead of the harness's own"
             },
             {
               "name": "eval",
@@ -2948,53 +2111,25 @@ export const CATALOG = {
           "json": "flag"
         },
         "tick": {
-          "summary": "one host-driver pass: close finished and orphaned harness terminals, ensure every project's Supervisor, sweep each one's Kernels and their Ops, nudge or relaunch stalled agents (for a scheduled task)",
+          "summary": "one host-driver pass (dry until --execute): close finished and orphaned harness terminals, ensure every project's Supervisor, sweep each one's Kernels and their Ops, nudge or relaunch stalled agents (for a scheduled task); --loop repeats it in a foreground terminal",
           "flags": [
             {
-              "name": "dry-run",
+              "name": "execute",
               "type": "boolean",
-              "summary": "report the terminals the sweep would close; close, launch and relaunch nothing"
-            }
-          ],
-          "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "watch": {
-          "summary": "run supervisor tick in a loop (every stall.watchSeconds of ops/liveness.yaml) in a foreground terminal; it reloads itself on a new build of the CLI",
-          "flags": [
+              "summary": "act: close, launch and relaunch (default: a dry run that reports the terminals the sweep would close)"
+            },
+            {
+              "name": "loop",
+              "type": "boolean",
+              "summary": "repeat the pass every stall.watchSeconds of ops/liveness.yaml in a foreground terminal; it reloads itself on a new build of the CLI"
+            },
             {
               "name": "ticks",
               "type": "string",
-              "summary": "stop after this many passes (default: run until killed)"
+              "summary": "with --loop: stop after this many passes (default: run until killed)"
             }
           ],
           "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "telegram-bridge": {
-          "summary": "run the owner's Telegram bridge (notices out, owner replies in as owner requests that wake the Supervisor) or report its liveness",
-          "flags": [
-            {
-              "name": "once",
-              "type": "boolean",
-              "summary": "run: one cycle that does not wait for a message, then exit"
-            }
-          ],
-          "positional": [
-            {
-              "name": "action",
-              "required": true,
-              "variadic": false
-            }
-          ],
           "editions": [
             "lite",
             "full"
@@ -3195,18 +2330,28 @@ export const CATALOG = {
     "connect": {
       "verbs": {
         "telegram": {
-          "summary": "the owner's Telegram channel: discover-chat stores the owner's chat, status reports it, notify sends the notices due once",
+          "summary": "the owner's Telegram channel: discover-chat stores the owner's chat, status reports it, notify sends the notices due once, bridge runs the bridge (run) or reports it (status)",
           "flags": [
             {
               "name": "chat",
               "type": "string",
               "summary": "discover-chat: the chat id to store when several chats wrote to the bot"
+            },
+            {
+              "name": "once",
+              "type": "boolean",
+              "summary": "bridge run: one cycle that does not wait for a message, then exit"
             }
           ],
           "positional": [
             {
               "name": "action",
               "required": true,
+              "variadic": false
+            },
+            {
+              "name": "mode",
+              "required": false,
               "variadic": false
             }
           ],
@@ -3266,14 +2411,14 @@ export const CATALOG = {
           "summary": "register the schedules of the host services (Windows: a hidden StarCi scheduled task running a launcher under the state base)",
           "flags": [
             {
-              "name": "dry",
+              "name": "execute",
               "type": "boolean",
-              "summary": "print the launcher and the exact scheduler argv; write and run nothing"
+              "summary": "write the launcher and register the schedule (default: a dry run that prints the launcher and the exact scheduler argv)"
             },
             {
               "name": "platform",
               "type": "string",
-              "summary": "plan for another platform (win32, linux, darwin); only with --dry"
+              "summary": "plan for another platform (win32, linux, darwin); only as a dry run (without --execute)"
             }
           ],
           "positional": [
@@ -3293,14 +2438,14 @@ export const CATALOG = {
           "summary": "remove the schedules and launchers of the host services; StarCi tasks ops/host.yaml does not declare are never touched",
           "flags": [
             {
-              "name": "dry",
+              "name": "execute",
               "type": "boolean",
-              "summary": "print the exact scheduler argv; run nothing"
+              "summary": "remove the schedules (default: a dry run that prints the exact scheduler argv)"
             },
             {
               "name": "platform",
               "type": "string",
-              "summary": "plan for another platform (win32, linux, darwin); only with --dry"
+              "summary": "plan for another platform (win32, linux, darwin); only as a dry run (without --execute)"
             }
           ],
           "positional": [
@@ -3399,92 +2544,6 @@ export const CATALOG = {
         "json": "flag"
       }
     },
-    "feedback": {
-      "verbs": {
-        "add": {
-          "summary": "record one owner feedback, open, with the owner's verbatim words and the day given, in the host ledger",
-          "flags": [
-            {
-              "name": "on",
-              "type": "string",
-              "summary": "the day the owner gave it, YYYY-MM-DD (default today)"
-            },
-            {
-              "name": "id",
-              "type": "string",
-              "summary": "the id to record it under (default fb-<day>-<n>)"
-            }
-          ],
-          "positional": [
-            {
-              "name": "words",
-              "required": true,
-              "variadic": false
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "close": {
-          "summary": "close one owner feedback on a target that resolves (grammar|cli|app|rule|context): a commit touching that folder, an enforced rule or a contexts anchor",
-          "flags": [
-            {
-              "name": "kind",
-              "type": "string",
-              "summary": "the target kind: grammar, cli, app, rule, context",
-              "required": true
-            },
-            {
-              "name": "target",
-              "type": "string",
-              "summary": "a commit sha (grammar, cli, app), a rule id R<n> (rule) or an anchor id (context)",
-              "required": true
-            }
-          ],
-          "positional": [
-            {
-              "name": "id",
-              "required": true,
-              "variadic": false
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "list": {
-          "summary": "list the owner feedback of the host ledger with its words, day, status and closing target",
-          "flags": [
-            {
-              "name": "status",
-              "type": "string",
-              "summary": "open (default), closed or all"
-            }
-          ],
-          "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "check": {
-          "summary": "fail when an owner feedback stays open past feedback.openMaxDays of ops/liveness.yaml, or a closed one's target no longer resolves",
-          "flags": [],
-          "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        }
-      }
-    },
     "dna": {
       "verbs": {
         "check": {
@@ -3526,9 +2585,9 @@ export const CATALOG = {
               "summary": "the Chromium binary (default STARCI_BROWSER, else the installed Chrome, Edge or Chromium)"
             },
             {
-              "name": "wait",
+              "name": "timeout",
               "type": "string",
-              "summary": "milliseconds a page may take to render its Grammar root (default 8000)"
+              "summary": "seconds a page may take to render its Grammar root (default 8)"
             }
           ],
           "positional": [
@@ -3567,7 +2626,7 @@ export const CATALOG = {
               "summary": "with --local, the package to take locally (grammar or @starci/grammar), repeatable; default every pinned @starci package the folder holds"
             },
             {
-              "name": "from",
+              "name": "cwd",
               "type": "string",
               "summary": "with --local, the folder holding the @starci package folders (default packages/ of this harness)"
             },
@@ -3593,9 +2652,9 @@ export const CATALOG = {
           "summary": "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED) or whose local package copies hold code no published version does (DEPS_LOCAL_AHEAD)",
           "flags": [
             {
-              "name": "revision",
+              "name": "sha",
               "type": "string",
-              "summary": "judge the package.json files committed at this revision (default HEAD)"
+              "summary": "judge the package.json files committed at this commit (default HEAD)"
             }
           ],
           "positional": [],
@@ -3613,7 +2672,7 @@ export const CATALOG = {
           "summary": "cut a package edit branch pkg/<app>-<topic> from harness main into its own harness worktree, where this app's session edits @starci packages; Debug alone merges, pushes and publishes it",
           "flags": [
             {
-              "name": "harness",
+              "name": "cwd",
               "type": "string",
               "summary": "the harness repository to branch (default the one this CLI runs from)"
             }
@@ -3666,7 +2725,7 @@ export const CATALOG = {
               "summary": "the package edit worktree to test (default: the newest pkg/<app>-* worktree of the harness that changes the package)"
             },
             {
-              "name": "harness",
+              "name": "cwd",
               "type": "string",
               "summary": "the harness repository the edit branched from (default the one this CLI runs from)"
             }
@@ -3689,19 +2748,29 @@ export const CATALOG = {
     "ticket": {
       "verbs": {
         "open": {
-          "summary": "file what the Supervisor cannot resolve: a defect for Debug or a question for the owner, deduped (a repeat bumps occurrences); --task and --decision wait on it",
+          "summary": "file what the Supervisor cannot resolve: a defect for Debug or a question for the owner, deduped (a repeat bumps occurrences); --task and --decision wait on it; --kind feedback records the owner's words",
           "flags": [
             {
               "name": "kind",
               "type": "string",
-              "summary": "what it is: harness-defect, package, launch, verify, routing, other, question:business, question:code, question:spec",
+              "summary": "what it is: harness-defect, package, launch, verify, routing, other, question:business, question:code, question:spec, or feedback (owner feedback, core/ticket/feedback.ts)",
               "required": true
             },
             {
               "name": "title",
               "type": "string",
-              "summary": "one line: the defect with its error code and module, or the question itself",
+              "summary": "one line: the defect with its error code and module, or the question itself (feedback: the owner's words, verbatim)",
               "required": true
+            },
+            {
+              "name": "on",
+              "type": "string",
+              "summary": "feedback: the day the owner gave it, YYYY-MM-DD (default today)"
+            },
+            {
+              "name": "id",
+              "type": "string",
+              "summary": "feedback: the id to record it under (default fb-<day>-<n>)"
             },
             {
               "name": "severity",
@@ -3762,12 +2831,17 @@ export const CATALOG = {
           "json": "flag"
         },
         "list": {
-          "summary": "list the harness tickets, blocking first and then by occurrences (Debug's queue: --state open)",
+          "summary": "list the harness tickets, blocking first and then by occurrences (Debug's queue: --status open); --kind feedback lists the owner feedback, --status overdue judges it",
           "flags": [
             {
-              "name": "state",
+              "name": "status",
               "type": "string",
-              "summary": "only tickets in this state: open, in-progress, fixed, wontfix, duplicate, answered"
+              "summary": "only tickets in this state: open, in-progress, fixed, wontfix, duplicate, answered (feedback: open, closed, all or overdue)"
+            },
+            {
+              "name": "kind",
+              "type": "string",
+              "summary": "only tickets of this kind: harness-defect, package, launch, verify, routing, other, question:business, question:code, question:spec, or feedback"
             },
             {
               "name": "project",
@@ -3784,7 +2858,13 @@ export const CATALOG = {
         },
         "show": {
           "summary": "show one ticket: evidence, what was tried, its proposed default, its state, fix or answer, and the tasks and decisions waiting on it",
-          "flags": [],
+          "flags": [
+            {
+              "name": "kind",
+              "type": "string",
+              "summary": "feedback: the id is an owner feedback's (default: a ticket's)"
+            }
+          ],
           "positional": [
             {
               "name": "id",
@@ -3815,8 +2895,13 @@ export const CATALOG = {
           "json": "flag"
         },
         "close": {
-          "summary": "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor",
+          "summary": "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor; --kind feedback closes an owner feedback on a target that resolves",
           "flags": [
+            {
+              "name": "kind",
+              "type": "string",
+              "summary": "feedback: the id is an owner feedback's (default: a ticket's)"
+            },
             {
               "name": "fixed-by",
               "type": "string",
@@ -3836,6 +2921,16 @@ export const CATALOG = {
               "name": "duplicate",
               "type": "string",
               "summary": "the ticket it duplicates"
+            },
+            {
+              "name": "target-kind",
+              "type": "string",
+              "summary": "feedback: the kind of target that closes it: grammar, cli, app, rule, context"
+            },
+            {
+              "name": "target",
+              "type": "string",
+              "summary": "feedback: a commit sha (grammar, cli, app), a rule id R<n> (rule) or an anchor id (context)"
             }
           ],
           "positional": [
@@ -3865,7 +2960,7 @@ export const CATALOG = {
               "summary": "the proposed default is the answer"
             },
             {
-              "name": "why",
+              "name": "reason",
               "type": "string",
               "summary": "why the answer holds"
             }
