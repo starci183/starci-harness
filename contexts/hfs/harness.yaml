@@ -105,10 +105,6 @@ slots:
         until: "2026-12-31"
         owner: package TS plan
         why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
-      - path: packages/grammar/
-        until: "2026-12-31"
-        owner: Grammar Storybook lane
-        why: five build and capture tools (capture-refs, shoot, svg-shot, scripts/) are still JavaScript
       - path: packages/heroicons/
         until: "2026-12-31"
         owner: package TS plan

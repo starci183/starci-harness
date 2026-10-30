@@ -51,8 +51,8 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json && node scripts/copy-css.mjs && node scripts/build-stamp.mjs",
-    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json",
+    "build": "node scripts/clean.mts && tsc -p tsconfig.build.json && node scripts/copy-css.mts && node scripts/build-stamp.mts",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json",
     "test": "npm run typecheck && npm run build",
     "pack:check": "npm run build && npm pack --dry-run",
     "prepack": "npm run typecheck && npm run build",

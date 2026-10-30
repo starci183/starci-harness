@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, writeFileSync, type Dirent } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
  *
  * The source digest covers everything that decides what `dist/` contains: every file under `src/`
  * except stories, test helpers, specs and tests (they never ship), `tsconfig.build.json`,
- * `packages/grammar/scripts/copy-css.mjs`, and the `exports` and `files` fields of `package.json`. Line endings are
+ * `packages/grammar/scripts/copy-css.mts`, and the `exports` and `files` fields of `package.json`. Line endings are
  * normalised so a CRLF checkout of the same commit has the same digest.
  */
 
@@ -24,10 +24,17 @@ export const DIGEST_ALGORITHM = "starci/grammar-source-digest@1"
 const DEV_ONLY_DIRS = new Set(["stories", "__test__"])
 const DEV_ONLY_FILE = /\.(?:stories|spec|test)\./
 
-const slash = (value) => value.replaceAll("\\", "/")
-const normalised = (buffer) => Buffer.from(buffer.toString("latin1").replaceAll("\r\n", "\n"), "latin1")
+interface PackageManifest {
+    name: string
+    version: string
+    exports?: unknown
+    files?: unknown
+}
 
-function filesUnder(dir, keep = () => true) {
+const slash = (value: string) => value.replaceAll("\\", "/")
+const normalised = (buffer: Buffer) => Buffer.from(buffer.toString("latin1").replaceAll("\r\n", "\n"), "latin1")
+
+function filesUnder(dir: string, keep: (entry: Dirent, isDir: boolean) => boolean = () => true): string[] {
     if (!existsSync(dir)) return []
     return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
         const full = join(dir, entry.name)
@@ -37,9 +44,9 @@ function filesUnder(dir, keep = () => true) {
 }
 
 /** The order `.sort()` gives without a compare function (UTF-16 code units): the stamp digest depends on it. */
-const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
-function hashEntries(entries) {
+function hashEntries(entries: [string, Buffer | null][]) {
     const hash = createHash("sha256")
     for (const [name, bytes] of entries.sort(([a], [b]) => byCodeUnit(a, b))) {
         hash.update(name)
@@ -51,32 +58,32 @@ function hashEntries(entries) {
 }
 
 /** The files the source digest reads, relative to the package root, in digest order. */
-export function sourceInputs(packageRoot) {
+export function sourceInputs(packageRoot: string) {
     const src = filesUnder(join(packageRoot, "src"), (entry, isDir) =>
         isDir ? !DEV_ONLY_DIRS.has(entry.name) : !DEV_ONLY_FILE.test(entry.name))
-    return [...src.map((file) => slash(relative(packageRoot, file))), "tsconfig.build.json", "scripts/copy-css.mjs"].sort(byCodeUnit)
+    return [...src.map((file) => slash(relative(packageRoot, file))), "tsconfig.build.json", "scripts/copy-css.mts"].sort(byCodeUnit)
 }
 
 /** The digest of everything that decides the content of `dist/`. */
-export function sourceDigest(packageRoot) {
-    const entries = sourceInputs(packageRoot).map((name) => {
+export function sourceDigest(packageRoot: string) {
+    const entries = sourceInputs(packageRoot).map((name): [string, Buffer | null] => {
         const file = join(packageRoot, name)
         return [name, existsSync(file) ? normalised(readFileSync(file)) : null]
     })
-    const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"))
+    const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as PackageManifest
     entries.push(["package.json#exports+files", Buffer.from(JSON.stringify({ exports: manifest.exports ?? null, files: manifest.files ?? null }))])
     return hashEntries(entries)
 }
 
 /** The digest of the built files themselves (everything in `dist/` except the stamp). */
-export function distDigest(packageRoot) {
+export function distDigest(packageRoot: string) {
     const dist = join(packageRoot, "dist")
     const files = filesUnder(dist).map((file) => slash(relative(dist, file))).filter((name) => name !== STAMP_FILE)
-    return hashEntries(files.map((name) => [name, normalised(readFileSync(join(dist, name)))]))
+    return hashEntries(files.map((name): [string, Buffer] => [name, normalised(readFileSync(join(dist, name)))]))
 }
 
-export function writeStamp(packageRoot, { now = new Date() } = {}) {
-    const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"))
+export function writeStamp(packageRoot: string, { now = new Date() }: { now?: Date } = {}) {
+    const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as PackageManifest
     if (!existsSync(join(packageRoot, "dist"))) throw new Error("Cannot stamp a build that has no dist/ directory.")
     const stamp = {
         schema: STAMP_SCHEMA,

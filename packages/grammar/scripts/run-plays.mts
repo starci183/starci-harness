@@ -2,7 +2,7 @@
 /**
  * Runs every story's play function headless, once per family, against a running Storybook.
  *
- *   node scripts/run-plays.mjs [--url http://localhost:6006] [--family core,offset-pop] [--filter <substring>]
+ *   node scripts/run-plays.mts [--url http://localhost:6006] [--family core,offset-pop] [--filter <substring>]
  *
  * Each story loads in the preview iframe with the family set through `globals`. A story whose
  * parameters name a viewport (`viewport.defaultViewport`, or a story-level `globals.viewport`) is
@@ -10,25 +10,49 @@
  * emits `storyFinished` with no exception before it: in Storybook 10 a failed play still renders
  * the story and is reported only on the channel. Exit code 1 lists the failures.
  */
-import { chromium } from 'playwright';
+import { chromium, type Page } from 'playwright';
+
+declare global {
+  interface Window {
+    __grammarPlay: { errors: string[]; finished: boolean };
+    __STORYBOOK_ADDONS_CHANNEL__: { emit: (name: string, ...payload: unknown[]) => unknown } | undefined;
+    __STORYBOOK_PREVIEW__:
+      | {
+          storyStoreValue?: {
+            loadStory: (arg: { storyId: string }) => Promise<{
+              parameters?: {
+                viewport?: {
+                  defaultViewport?: string;
+                  options?: Record<string, { styles?: { width: string; height: string } }>;
+                };
+              };
+              storyGlobals?: { viewport?: { value?: string } };
+              globals?: { viewport?: { value?: string } };
+            }>;
+          };
+        }
+      | undefined;
+  }
+}
 
 const args = process.argv.slice(2);
-const option = (name, fallback) => {
+const option = (name: string, fallback: string) => {
   const index = args.indexOf(`--${name}`);
-  return index === -1 ? fallback : args[index + 1];
+  return index === -1 ? fallback : args[index + 1]!;
 };
 const base = option('url', 'http://localhost:6006').replace(/\/$/, '');
 const families = option('family', 'core,offset-pop').split(',');
 const filter = option('filter', '');
 
-const VIEWPORTS = {
+const VIEWPORTS: Record<string, { width: number; height: number }> = {
   mobile1: { width: 320, height: 568 },
   mobile2: { width: 414, height: 896 },
   tablet: { width: 834, height: 1112 },
 };
 const DESKTOP = { width: 1440, height: 900 };
 
-const index = await (await fetch(`${base}/index.json`)).json();
+// Parsed input boundary: index.json is Storybook output; the cast names the fields the filter below reads.
+const index = (await (await fetch(`${base}/index.json`)).json()) as { entries: Record<string, { id: string; type: string }> };
 const ids = Object.values(index.entries)
   .filter((entry) => entry.type === 'story' && entry.id.includes(filter))
   .map((entry) => entry.id);
@@ -45,7 +69,7 @@ const recordVerdicts = () => {
     const emit = channel.emit.bind(channel);
     channel.emit = (name, ...payload) => {
       if (['playFunctionThrewException', 'storyThrewException', 'storyErrored', 'storyMissing'].includes(name)) {
-        const [error] = payload;
+        const [error] = payload as [{ message?: string; title?: string; description?: string }?];
         window.__grammarPlay.errors.push(`${name}: ${error?.message ?? error?.title ?? error?.description ?? JSON.stringify(error)}`);
       }
       if (name === 'storyFinished') window.__grammarPlay.finished = true;
@@ -55,7 +79,7 @@ const recordVerdicts = () => {
   hook();
 };
 
-const settle = async (page) => {
+const settle = async (page: Page) => {
   await page.waitForFunction(
     () => window.__grammarPlay?.finished === true || (window.__grammarPlay?.errors.length ?? 0) > 0,
     undefined,
@@ -67,7 +91,7 @@ const settle = async (page) => {
   return errors.length === 0 ? 'completed' : `errored: ${errors.join(' | ')}`;
 };
 
-const viewportOf = async (page, id) =>
+const viewportOf = async (page: Page, id: string) =>
   page.evaluate(async (storyId) => {
     const store = window.__STORYBOOK_PREVIEW__?.storyStoreValue;
     if (store === undefined) return undefined;
@@ -81,7 +105,7 @@ const viewportOf = async (page, id) =>
   }, id);
 
 const browser = await chromium.launch();
-const failures = [];
+const failures: string[] = [];
 let passed = 0;
 
 for (const family of families) {
@@ -102,7 +126,7 @@ for (const family of families) {
         outcome = await settle(page);
       }
     } catch (error) {
-      outcome = `timeout (${error.message.split('\n')[0]})`;
+      outcome = `timeout (${(error as Error).message.split('\n')[0]})`;
     }
     if (outcome === 'completed') {
       passed += 1;

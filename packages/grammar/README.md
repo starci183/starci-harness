@@ -527,9 +527,9 @@ the `file:` apps link this directory, the brand check reads the exported CSS, an
 probe executes the built modules. A merge that changes `src/` does not change `dist/`, so a checkout
 can hold an old build that still looks valid.
 
-**Build stamp.** `npm run build` ends with `scripts/build-stamp.mjs`, which writes
+**Build stamp.** `npm run build` ends with `scripts/build-stamp.mts`, which writes
 `dist/.build-stamp.json`: the package version, a digest of the source (everything under `src/`
-except stories, test helpers, specs and tests, plus `tsconfig.build.json`, `scripts/copy-css.mjs`
+except stories, test helpers, specs and tests, plus `tsconfig.build.json`, `scripts/copy-css.mts`
 and the `exports` and `files` fields of `package.json`), a digest of the built files, and the build
 time. The stamp ships in the tarball.
 
@@ -597,7 +597,7 @@ A minor release. Common grows from 42 to 95 renderers, and Offset Pop reaches pa
   mechanisms and inherits the rest. The package boundary checks the per-family dist modules,
   checks that no family imports another, and checks that the component CSS is in `dist`.
 - **Core.** Subnav's menu toggle meets a 44px touch floor on coarse pointers and narrow viewports.
-- **Build.** `scripts/copy-css.mjs` copies every `*.css` file in each entry directory.
+- **Build.** `scripts/copy-css.mts` copies every `*.css` file in each entry directory.
   `@internationalized/date` is a dev dependency, used for date values in specs and stories.
 - **Storybook.** The toolbar switches the family (Common, Core, Heritage, Offset Pop) and the
   theme (light, dark, system). There are stories for all 95 renderers and three page recipes per

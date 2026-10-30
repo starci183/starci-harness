@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+const { chromium } = require('playwright') as typeof import('playwright');
 const stories = ['sign-in-screen','tasks-screen','primitives','empty-state'];
 (async () => {
   const browser = await chromium.launch();
