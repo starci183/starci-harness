@@ -1,6 +1,7 @@
 // proves: DB_POLICY_SHAPE@lite
 // proves: DB_POLICY_SHAPE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,7 +12,7 @@ import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/sl
 const FILE = 'db/migrations/20260101120000_items.sql';
 const TABLE = 'create table public.items (id uuid primary key, owner_id uuid not null);\nalter table public.items enable row level security;\n';
 
-async function judge(t, edition, policy) {
+async function judge(t: TestContext, edition: string, policy: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-policy-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({
@@ -34,9 +35,9 @@ for (const edition of ['lite', 'full']) {
   test(`DB_POLICY_SHAPE@${edition} rejects a write policy with WITH CHECK true`, async (t) => {
     const findings = await judge(t, edition, 'create policy items_app_be_insert on public.items for insert to app_be with check (true);');
     assert.deepEqual(findings.map(({ code }) => code), ['DB_POLICY_SHAPE']);
-    assert.equal(findings[0].path, FILE);
-    assert.equal(findings[0].policy, 'items_app_be_insert');
-    assert.match(findings[0].message, /WITH CHECK \(true\)/);
+    assert.equal(findings[0]!.path, FILE);
+    assert.equal(findings[0]!.policy, 'items_app_be_insert');
+    assert.match(findings[0]!.message, /WITH CHECK \(true\)/);
   });
 
   test(`DB_POLICY_SHAPE@${edition} accepts a named write policy with an ownership predicate`, async (t) => {

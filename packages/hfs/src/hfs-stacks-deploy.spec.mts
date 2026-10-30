@@ -9,10 +9,12 @@ import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { stacksDeployFindings } from '../runtime/scripts/hfs/rules/stacks-deploy.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 
+type DeployInput = Parameters<typeof stacksDeployFindings>[0];
+
 const CODE = 'STACKS_DEPLOY_CONFIG_INVALID';
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const base = path.resolve(os.tmpdir());
-const roots = [];
+const roots: string[] = [];
 
 test.after(() => {
   for (const root of roots) {
@@ -51,8 +53,12 @@ const validDeploy = () => ({
 });
 
 /** Builds a small app tree; `change(app)` may edit the declaration, the stack source and the extra files before they are written. */
-function app(edition, change = () => {}) {
-  const model = {
+/** The app tree a spec builds and mutates into invalid shapes. */
+// reason: hfs, declaration and stack are the JSON/YAML documents a spec deliberately breaks (null, strings, wrong types), so they stay loosely typed.
+interface Model { hfs: any; declaration: any; stack: any; extra: Record<string, string>; members: string[] }
+
+function app(edition: string, change: (model: Model) => void = () => {}) {
+  const model: Model = {
     hfs: { hfs: 3, kind: 'app', project: 'shop', edition },
     declaration: { environments: { production: { runtime: 'docker-swarm', composeFiles: ['infra/swarm/stack.yaml'], deploy: validDeploy() } } },
     stack: { services: { api: { image: 'app/api' }, web: { image: 'app/web' }, worker: { image: 'app/worker' } } },
@@ -62,7 +68,7 @@ function app(edition, change = () => {}) {
   change(model);
   const repoRoot = fs.mkdtempSync(path.join(base, 'stacks-deploy-'));
   roots.push(repoRoot);
-  const write = (relative, content) => {
+  const write = (relative: string, content: unknown) => {
     const target = path.join(repoRoot, relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, typeof content === 'string' ? content : JSON.stringify(content));
@@ -76,12 +82,12 @@ function app(edition, change = () => {}) {
   return { repoRoot, files, all: files, repo: { kind: 'app', edition }, isRoot: true };
 }
 
-const production = (model) => model.declaration.environments.production;
-const deployOf = (model) => production(model).deploy;
-const byText = (a, b) => a.localeCompare(b);
-const messages = (findings) => findings.map((finding) => finding.message);
+const production = (model: Model) => model.declaration.environments.production;
+const deployOf = (model: Model) => production(model).deploy;
+const byText = (a: string, b: string) => a.localeCompare(b);
+const messages = (findings: { message: string }[]) => findings.map((finding) => finding.message);
 
-const PROBLEMS = [
+const PROBLEMS: [string, (m: Model) => void, string][] = [
   ['a postDeploy entry that names no declared task', (m) => { deployOf(m).tasks = { sync: { service: 'api', command: ['node', 'dist/cli.js', 'sync'] } }; deployOf(m).postDeploy = ['sync', 'nope']; }, 'environments.production.deploy.postDeploy[1]: must name a task declared under deploy.tasks'],
   ['a task timeout that is not whole seconds from 1 to 3600', (m) => { deployOf(m).tasks = { sync: { service: 'api', command: ['node', 'dist/cli.js', 'sync'], timeoutSeconds: 7200 } }; }, 'environments.production.deploy.tasks.sync.timeoutSeconds: must be a whole number of seconds'],
   ['an unknown field', (m) => { deployOf(m).extra = 1; }, 'environments.production.deploy.extra: is not a field of the deploy block'],
@@ -119,9 +125,9 @@ for (const edition of ['lite', 'full']) {
     test(`${CODE}: ${edition} rejects ${title}`, () => {
       const findings = stacksDeployFindings(app(edition, change));
       assert.ok(findings.length >= 1);
-      assert.equal(findings[0].code, CODE);
-      assert.equal(findings[0].level, 'error');
-      assert.equal(findings[0].path, DECLARATION);
+      assert.equal(findings[0]!.code, CODE);
+      assert.equal(findings[0]!.level, 'error');
+      assert.equal(findings[0]!.path, DECLARATION);
       assert.ok(messages(findings).some((message) => message.includes(expected)), messages(findings).join(' | '));
     });
   }
@@ -132,7 +138,7 @@ for (const edition of ['lite', 'full']) {
       deployOf(m).volumes = ['-bad'];
       deployOf(m).backup.image = 'alpine:3.21';
     }));
-    assert.deepEqual(messages(findings).map((message) => message.split(':')[0]).sort(byText), [
+    assert.deepEqual(messages(findings).map((message) => message.split(':')[0]!).sort(byText), [
       'environments.production.deploy.backup.image', 'environments.production.deploy.extra', 'environments.production.deploy.volumes[0]',
     ]);
     assert.ok(findings.every((finding) => finding.code === CODE));
@@ -147,9 +153,9 @@ for (const edition of ['lite', 'full']) {
       m.extra['infra/swarm/notes.txt'] = `text${crlf}`;
     }));
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].code, CODE);
-    assert.equal(findings[0].path, '.starcistacks/production/infra/swarm/openclaw/entrypoint.sh');
-    assert.match(findings[0].message, /CRLF line endings.*\*\.sh text eol=lf/u);
+    assert.equal(findings[0]!.code, CODE);
+    assert.equal(findings[0]!.path, '.starcistacks/production/infra/swarm/openclaw/entrypoint.sh');
+    assert.match(findings[0]!.message, /CRLF line endings.*\*\.sh text eol=lf/u);
   });
 
   test(`${CODE}: ${edition} a deploy block whose environment directory is absent has no line-ending finding`, () => {
@@ -174,14 +180,14 @@ for (const edition of ['lite', 'full']) {
       m.declaration.environments.staging = { runtime: 'docker-swarm', composeFiles: ['infra/swarm/stack.yaml'], deploy: { stack: 'shop', bogus: true } };
       deployOf(m).extra = 1;
     }));
-    assert.deepEqual(messages(findings).map((message) => message.split(':')[0]).sort(byText), [
+    assert.deepEqual(messages(findings).map((message) => message.split(':')[0]!).sort(byText), [
       'environments.production.deploy.extra', 'environments.staging.deploy.bogus',
     ]);
   });
 }
 
 test(`${CODE}: an unreadable stack source or secrets directory means unknown services and members`, () => {
-  const unknown = (change) => app('full', (m) => {
+  const unknown = (change: (model: Model) => void) => app('full', (m) => {
     change(m);
     deployOf(m).images.ghost = { app: 'ghost' };
     deployOf(m).secrets.grants[0].from[0].member = 'missing';
@@ -213,13 +219,15 @@ test(`${CODE}: a missing declaration, a missing hfs.json and a non-mapping decla
 });
 
 test(`${CODE}: only an app root of the lite or full edition is judged`, () => {
-  const change = (m) => { deployOf(m).extra = 1; };
+  const change = (m: Model) => { deployOf(m).extra = 1; };
   assert.equal(stacksDeployFindings(app('full', change)).length, 1);
   for (const repo of [{ kind: 'be', edition: 'full' }, { kind: 'app', edition: 'other' }, { kind: 'app' }, undefined]) {
-    assert.deepEqual(stacksDeployFindings({ ...app('full', change), repo }), []);
+    // reason: the repo is deliberately not a Repo (wrong kind, unknown edition, none) to prove the finder ignores it.
+    assert.deepEqual(stacksDeployFindings({ ...app('full', change), repo } as unknown as DeployInput), []);
   }
   assert.deepEqual(stacksDeployFindings({ ...app('lite', change), isRoot: false }), []);
-  assert.equal(stacksDeployFindings({ ...app('lite', change), isRoot: undefined }).length, 1);
+  // reason: an undefined isRoot is deliberately not a boolean; only an explicit false skips the judgement.
+  assert.equal(stacksDeployFindings({ ...app('lite', change), isRoot: undefined } as unknown as DeployInput).length, 1);
 });
 
 test(`${CODE}: the app check wires the finder, reports the declaration path and ships the catalog explanation`, () => {

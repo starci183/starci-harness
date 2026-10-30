@@ -1,5 +1,6 @@
 // proves: HFS_UNUSED_SYMBOL@lite HFS_UNUSED_SYMBOL@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,7 +8,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { unusedSymbolFindings } from '../runtime/scripts/hfs/rules/unused-symbol.mjs';
 
-function fixture(t, contents) {
+function fixture(t: TestContext, contents: Record<string, string>) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-unused-ledger-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   for (const [file, text] of Object.entries(contents)) {
@@ -19,7 +20,7 @@ function fixture(t, contents) {
 }
 
 const LEDGER = 'i18n-dynamic-keys.yaml';
-const ledger = namespaces => `schema: starci/i18n-dynamic-keys@1\nnamespaces:\n${namespaces}`;
+const ledger = (namespaces: string) => `schema: starci/i18n-dynamic-keys@1\nnamespaces:\n${namespaces}`;
 const FE = {
   'apps/web/src/modules/i18n/messages/en.json': JSON.stringify({ hiring: { title: 'T', applyWebsite: 'A', weekday_1: 'M', weekday_2: 'T', salaryHint: 'S', orphan: 'O' }, plain: 'P' }),
   'apps/web/src/features/hiring.tsx': 'const t = useTranslations("hiring"); export const title = t("title");',
@@ -39,10 +40,10 @@ const SIDES = {
     entries: '  orders:\n    - {key: dynamicOne, reason: "wrapper"}\n    - {prefix: day_, reason: "built"}\n    - {suffix: Hint, reason: "composed"}\n',
     open: ['orders.orphan'] },
 };
-const run = (t, side, extra, edition) => unusedSymbolFindings({ ...fixture(t, { ...SIDES[side].files, ...extra }), repo: { profile: side, edition } });
-const names = findings => [...new Set(findings.map(finding => finding.name))].sort();
+const run = (t: TestContext, side: 'fe' | 'be', extra: Record<string, string>, edition: string) => unusedSymbolFindings({ ...fixture(t, { ...SIDES[side].files, ...extra }), repo: { profile: side, edition } });
+const names = (findings: ReturnType<typeof run>) => [...new Set(findings.map(finding => finding.name as string))].sort();
 
-for (const side of ['fe', 'be']) for (const edition of ['lite', 'full']) {
+for (const side of ['fe', 'be'] as const) for (const edition of ['lite', 'full']) {
   const { entries, covered, open } = SIDES[side];
   test(`HFS_UNUSED_SYMBOL ${side} ${edition}: without a ledger every unread key is a violation (no file, no finding of its own)`, t => {
     const found = names(run(t, side, {}, edition));
@@ -56,12 +57,12 @@ for (const side of ['fe', 'be']) for (const edition of ['lite', 'full']) {
   });
 
   test(`HFS_UNUSED_SYMBOL ${side} ${edition}: a stale entry is a violation of the same code and names file, namespace and entry`, t => {
-    const ns = entries.split('\n')[0].trim().replace(':', '');
+    const ns = entries.split('\n')[0]!.trim().replace(':', '');
     const findings = run(t, side, { [LEDGER]: ledger(`${entries}    - {key: gone, reason: "old"}\n`) }, edition);
     const stale = findings.filter(finding => finding.path === LEDGER);
     assert.equal(stale.length, 1);
-    assert.equal(stale[0].code, 'HFS_UNUSED_SYMBOL');
-    assert.match(stale[0].message, new RegExp(`${LEDGER}.*key "gone" in namespace "${ns}" matches no catalog key; delete it`, 'u'));
+    assert.equal(stale[0]!.code, 'HFS_UNUSED_SYMBOL');
+    assert.match(stale[0]!.message, new RegExp(`${LEDGER}.*key "gone" in namespace "${ns}" matches no catalog key; delete it`, 'u'));
   });
 
   test(`HFS_UNUSED_SYMBOL ${side} ${edition}: a malformed ledger is a violation, reported precisely`, t => {

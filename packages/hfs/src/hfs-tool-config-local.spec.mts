@@ -1,6 +1,7 @@
 // proves: HFS_TOOL_CONFIG_LOCAL@lite
 // proves: HFS_TOOL_CONFIG_LOCAL@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,7 +10,7 @@ import { renderTargets, writeTargets } from '../sync/index.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
-const synced = (context, edition) => {
+const synced = (context: TestContext, edition: string) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-'));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const declaration = structuredClone(APP);
@@ -38,7 +39,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(found.map(finding => [finding.code, finding.path, finding.level]), [
       ['HFS_TOOL_CONFIG_LOCAL', relative, 'error'],
     ]);
-    assert.match(found[0].message, /--config/);
+    assert.match(found[0]!.message, /--config/);
     fs.writeFileSync(file, 'export const lint = "eslint src";\n');
     assert.deepEqual(await findings(), []);
   });

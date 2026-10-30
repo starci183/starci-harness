@@ -2,6 +2,7 @@
 // A migration is applied in one transaction with its history row (`psql -1`), so top-level transaction control and a COMMIT or ROLLBACK
 // inside a DO block are DB_MIGRATION_SHAPE findings named by file:line; function bodies, dollar-quoted or not, are never judged.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,7 +11,7 @@ import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
 
 const FILE = 'db/migrations/20260228235959_create-items.sql';
 
-async function judge(t, sql) {
+async function judge(t: TestContext, sql: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-transaction-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app', edition: 'lite' }));
@@ -26,7 +27,7 @@ test('top-level BEGIN, SAVEPOINT, COMMIT, ROLLBACK and END are findings named by
   assert.deepEqual(findings.map(({ code, line }) => [code, line]), [
     ['DB_MIGRATION_SHAPE', 2], ['DB_MIGRATION_SHAPE', 5], ['DB_MIGRATION_SHAPE', 7], ['DB_MIGRATION_SHAPE', 8], ['DB_MIGRATION_SHAPE', 9], ['DB_MIGRATION_SHAPE', 10],
   ]);
-  assert.match(findings[0].message, new RegExp(`^${FILE}:2 carries transaction control \\(begin\\)`));
+  assert.match(findings[0]!.message, new RegExp(`^${FILE}:2 carries transaction control \\(begin\\)`));
 });
 
 test('a COMMIT inside a DO block is a finding; begin/end of a PL/pgSQL block and function bodies are not', async (t) => {
@@ -43,7 +44,7 @@ test('a COMMIT inside a DO block is a finding; begin/end of a PL/pgSQL block and
   ].join('\n');
   const findings = await judge(t, sql);
   assert.deepEqual(findings.map(({ line }) => line), [7]);
-  assert.match(findings[0].message, /commit inside a DO block/);
+  assert.match(findings[0]!.message, /commit inside a DO block/);
 });
 
 test('a migration with no transaction control has no such finding', async (t) => {

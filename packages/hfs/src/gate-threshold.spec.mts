@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GATE_ERROR_LIMIT, HARD_BLOCKERS, gateErrorLimit, gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
 
-const errors = (count, code = 'BE_TRANSPORT_SHAPE') => Array.from({ length: count }, () => ({ code }));
+const errors = (count: number, code = 'BE_TRANSPORT_SHAPE') => Array.from({ length: count }, () => ({ code }));
 
 test('no finding is green with nothing to say', () => {
   assert.deepEqual(gateVerdict([]), { pass: true, count: 0, hard: [], line: null });
@@ -14,10 +14,10 @@ test('fewer than the limit of ordinary findings is green and says so; the limit 
   assert.equal(GATE_ERROR_LIMIT, 20);
   const under = gateVerdict(errors(19));
   assert.equal(under.pass, true);
-  assert.match(under.line, /green under the threshold, 19 error finding\(s\) < 20/u);
+  assert.match(under.line!,/green under the threshold, 19 error finding\(s\) < 20/u);
   const at = gateVerdict(errors(20));
   assert.equal(at.pass, false);
-  assert.match(at.line, /red, 20 error finding\(s\)/u);
+  assert.match(at.line!,/red, 20 error finding\(s\)/u);
 });
 
 test('a plaintext secret, the boot proof or a migration finding is red at any count, named in the line', () => {
@@ -26,7 +26,7 @@ test('a plaintext secret, the boot proof or a migration finding is red at any co
     const verdict = gateVerdict([{ code }]);
     assert.equal(verdict.pass, false, code);
     assert.deepEqual(verdict.hard, [code]);
-    assert.match(verdict.line, new RegExp(`${code} blocks at any count`, 'u'));
+    assert.match(verdict.line!,new RegExp(`${code} blocks at any count`, 'u'));
   }
   assert.equal(gateVerdict([...errors(3), { code: 'RT_SECRET_TRACKED' }]).pass, false);
 });

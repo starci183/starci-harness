@@ -3,6 +3,7 @@
 // recorded size: a baseline commit whose tree is the source app's subtree at the source repository's lint base,
 // not the "unavailable" verdict a historyless tree forced on every over-budget file in every sealed lint.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,26 +12,26 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT = fileURLToPath(new URL('../runtime/scripts/hfs/example-secrets.mjs', import.meta.url));
-const { withMaterializedExample } = await import(new URL('../runtime/scripts/hfs/example-secrets.mjs', import.meta.url));
+const { withMaterializedExample }: typeof import('../runtime/scripts/hfs/example-secrets.mjs') = await import(new URL('../runtime/scripts/hfs/example-secrets.mjs', import.meta.url).href);
 
-const git = (cwd, args, options = {}) => {
+const git = (cwd: string, args: string[], options: object = {}) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', ...options });
   return { ok: r.status === 0, out: String(r.stdout ?? '').trim(), err: String(r.stderr ?? r.error?.message ?? '').trim() };
 };
 
-const write = (root, file, text) => {
+const write = (root: string, file: string, text: string) => {
   fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
   fs.writeFileSync(path.join(root, file), text);
 };
 
-const commit = (cwd, message) => {
+const commit = (cwd: string, message: string) => {
   assert.equal(git(cwd, ['add', '-A']).ok, true);
   const r = git(cwd, ['-c', 'user.name=spec', '-c', 'user.email=spec@starci.invalid', 'commit', '-q', '-m', message]);
   assert.equal(r.ok, true, r.err);
 };
 
 /** A source repository at `root` holding an example app under `examples/app`, `files` committed at the base commit. */
-function sourceRepo(t, root, files) {
+function sourceRepo(t: TestContext, root: string, files: Record<string, string>) {
   fs.mkdirSync(root, { recursive: true });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, text] of Object.entries(files)) write(root, file, text);
@@ -46,12 +47,12 @@ test('the sealed copy bases its snapshot on the app subtree at the recorded lint
   });
   write(app, 'be/src/big.ts', 'a\nb\nc\nd\ne\n'); // the working file grew vs the recorded 3 lines
   write(app, 'be/src/new.ts', 'x\n');
-  await withMaterializedExample(app, '.', async (copy, lintBaseRef) => {
-    assert.match(lintBaseRef, /^[0-9a-f]{40}$/);
+  await withMaterializedExample(app, '.', async (copy: string, lintBaseRef: string | null) => {
+    assert.match(lintBaseRef!, /^[0-9a-f]{40}$/);
     assert.equal(git(copy, ['rev-parse', 'HEAD']).ok, true, 'the copy commits its snapshot');
-    assert.equal(git(copy, ['merge-base', 'HEAD', lintBaseRef]).out, lintBaseRef, 'the lint base is the snapshot parent');
+    assert.equal(git(copy, ['merge-base', 'HEAD', lintBaseRef!]).out, lintBaseRef, 'the lint base is the snapshot parent');
     assert.equal(git(copy, ['show', `${lintBaseRef}:./be/src/big.ts`]).out, 'a\nb\nc', 'the base reads the recorded file');
-    assert.equal(git(copy, ['ls-tree', '--name-only', lintBaseRef, '--', './be/src/new.ts']).out, '', 'a file new since the base records null');
+    assert.equal(git(copy, ['ls-tree', '--name-only', lintBaseRef!, '--', './be/src/new.ts']).out, '', 'a file new since the base records null');
   });
 });
 
@@ -59,9 +60,9 @@ test('an app absent at the lint base still records: every file is new', async (t
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-sealed-new-app-'));
   const app = sourceRepo(t, root, { 'hfs.json': JSON.stringify({ kind: 'runtime' }) });
   write(app, 'be/src/big.ts', 'a\nb\n');
-  await withMaterializedExample(app, '.', async (copy, lintBaseRef) => {
-    assert.match(lintBaseRef, /^[0-9a-f]{40}$/);
-    assert.equal(git(copy, ['ls-tree', '--name-only', '-r', lintBaseRef]).out, '', 'the empty tree means recorded null, never unavailable');
+  await withMaterializedExample(app, '.', async (copy: string, lintBaseRef: string | null) => {
+    assert.match(lintBaseRef!, /^[0-9a-f]{40}$/);
+    assert.equal(git(copy, ['ls-tree', '--name-only', '-r', lintBaseRef!]).out, '', 'the empty tree means recorded null, never unavailable');
   });
 });
 
@@ -93,7 +94,7 @@ test('a source outside any repository still commits its snapshot', async (t) => 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-sealed-norepo-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   write(root, 'be/src/big.ts', 'a\n');
-  await withMaterializedExample(root, '.', async (copy, lintBaseRef) => {
+  await withMaterializedExample(root, '.', async (copy: string, lintBaseRef: string | null) => {
     assert.equal(lintBaseRef, null);
     assert.equal(git(copy, ['rev-parse', 'HEAD']).ok, true, 'HEAD resolves on the snapshot commit');
   });
@@ -108,6 +109,6 @@ test('the --run command sees STARCI_BASE_REF as the copy lint base', async (t) =
   const r = spawnSync(process.execPath, [SCRIPT, '--run', app, '--', process.execPath, '-e', probe], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const [base, mergeBase] = r.stdout.trim().split('|');
-  assert.match(base, /^[0-9a-f]{40}$/);
+  assert.match(base!, /^[0-9a-f]{40}$/);
   assert.equal(mergeBase, base, 'the env names the base commit the copy can resolve');
 });

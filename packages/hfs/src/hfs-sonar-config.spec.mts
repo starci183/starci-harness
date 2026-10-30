@@ -1,6 +1,7 @@
 // proves: HFS_SONAR_CONFIG@lite
 // proves: HFS_SONAR_CONFIG@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,7 +10,7 @@ import { renderTargets, sonarScope, writeTargets } from '../sync/index.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
-const propertiesOf = text => new Map(text.split('\n').filter(line => /^sonar\.[\w.]+=/.test(line)).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1).split(',')]));
+const propertiesOf = (text: string) => new Map<string, string[]>(text.split('\n').filter((line: string) => /^sonar\.[\w.]+=/.test(line)).map((line: string): [string, string[]] => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1).split(',')]));
 
 // The harness gate (cli/src/core/check/sonar-properties.ts) reads a `sonar.exclusions` entry as no widening only when it names a
 // build or dependency folder, or when it moves a test pattern `sonar.test.inclusions` also names out of the sources while
@@ -22,24 +23,24 @@ for (const edition of ['lite', 'full']) {
       { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' },
     ];
     const target = renderTargets(declaration, PRESETS).find(item => item.path === 'sonar-project.properties');
-    const properties = propertiesOf(target.content);
-    const tests = properties.get('sonar.test.inclusions');
+    const properties = propertiesOf(target!.content);
+    const tests = properties.get('sonar.test.inclusions')!;
     assert.deepEqual(properties.get('sonar.tests'), properties.get('sonar.sources'));
     assert.deepEqual(tests, sonarScope(PRESETS).tests);
     assert.ok(tests.length > 0 && tests.every(glob => !glob.endsWith('/**')));
-    for (const glob of properties.get('sonar.exclusions')) {
+    for (const glob of properties.get('sonar.exclusions')!) {
       assert.ok(tests.includes(glob) || /^\*\*\/(?:node_modules|\.next|dist|coverage)\/\*\*$/.test(glob), `${glob} is a test or a build or dependency folder`);
     }
-    assert.ok(!properties.get('sonar.exclusions').includes('supabase/types/**'), 'generated row types are analysed');
-    const lines = target.content.split('\n');
+    assert.ok(!properties.get('sonar.exclusions')!.includes('supabase/types/**'), 'generated row types are analysed');
+    const lines = target!.content.split('\n');
     const coverage = lines.findIndex(line => line.startsWith('sonar.coverage.exclusions='));
-    assert.match(lines[coverage - 1], /^# starci:sonar-scope begin /);
-    assert.match(lines[coverage + 1], /^sonar\.cpd\.exclusions=/);
+    assert.match(lines[coverage - 1]!, /^# starci:sonar-scope begin /);
+    assert.match(lines[coverage + 1]!,/^sonar\.cpd\.exclusions=/);
     assert.equal(lines[coverage + 2], '# starci:sonar-scope end');
   });
 }
 
-const synced = (context, edition) => {
+const synced = (context: TestContext, edition: string) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-'));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const declaration = structuredClone(APP);
