@@ -11,7 +11,7 @@ import type { CliAppOptions } from "../cli.options"
 export const platformModules = (options: CliAppOptions): Array<DynamicModule> => [
     ClockModule.register({ isGlobal: true }),
     IdsModule.register({ isGlobal: true }),
-    LoggingModule.register({ isGlobal: true }),
+    LoggingModule.register({ isGlobal: true, info: "stderr" }),
     HttpModule.register({ isGlobal: true }),
     DatabaseModule.register({ isGlobal: true, connections: options.connections, entities: PRIMARY_ENTITIES }),
 ]

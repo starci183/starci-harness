@@ -20,7 +20,7 @@ const primaryConnectionOf = (primary: DatabaseConnectionConfig): DatabaseConnect
 export const platformModules = (options: CliAppOptions): Array<DynamicModule> => [
     ClockModule.register({ isGlobal: true }),
     IdsModule.register({ isGlobal: true }),
-    LoggingModule.register({ isGlobal: true }),
+    LoggingModule.register({ isGlobal: true, info: "stderr" }),
     HttpModule.register({ isGlobal: true }),
     DatabaseModule.register({
         isGlobal: true,

@@ -144,6 +144,25 @@ describe("createJsonLogger", () => {
             `err:${JSON.stringify({ correlationId: "00000000-0000-4000-8000-000000000001", level: "warn", event: LoggingLogEvent.StartupFailed, time: "2026-05-06T07:08:09.000Z" })}\n`,
         ])
     })
+
+    it("sends info to stderr, leaving stdout untouched, when the info option is stderr", () => {
+        const lines: Array<string> = []
+        jest.spyOn(process.stdout, "write").mockImplementation((chunk) => lines.push(`out:${String(chunk)}`) > 0)
+        jest.spyOn(process.stderr, "write").mockImplementation((chunk) => lines.push(`err:${String(chunk)}`) > 0)
+        const logger = createJsonLogger(new FakeClock("2026-05-06T07:08:09.000Z"), fakeIds(), { info: "stderr" })
+        logger.info(LoggingLogEvent.ServerStarted)
+        logger.warn(LoggingLogEvent.StartupFailed)
+        expect(lines.map((line) => line.slice(0, 4))).toEqual(["err:", "err:"])
+    })
+
+    it("keeps info on stdout when the info option is stdout", () => {
+        const lines: Array<string> = []
+        jest.spyOn(process.stdout, "write").mockImplementation((chunk) => lines.push(`out:${String(chunk)}`) > 0)
+        createJsonLogger(new FakeClock("2026-05-06T07:08:09.000Z"), fakeIds(), { info: "stdout" }).info(
+            LoggingLogEvent.ServerStarted,
+        )
+        expect(lines.map((line) => line.slice(0, 4))).toEqual(["out:"])
+    })
 })
 
 describe("JsonLoggerService correlation", () => {

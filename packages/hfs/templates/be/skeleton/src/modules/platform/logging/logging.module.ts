@@ -25,7 +25,7 @@ export class LoggingModule extends ConfigurableModuleClass {
                 {
                     provide: LOGGER,
                     inject: [CLOCK, IDS],
-                    useFactory: (clock: Clock, ids: Ids) => createJsonLogger(clock, ids),
+                    useFactory: (clock: Clock, ids: Ids) => createJsonLogger(clock, ids, options),
                 },
             ],
             exports: [LOGGER, CORRELATION_IDS, CORRELATION_RUNNER],
