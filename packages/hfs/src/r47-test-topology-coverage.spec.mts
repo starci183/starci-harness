@@ -2,8 +2,10 @@
 // proves: BE_UNIT_SPEC_NOT_STAGED@lite BE_UNIT_SPEC_NOT_STAGED@full
 // proves: BE_CONTRACT_UNGUARDED@lite BE_CONTRACT_UNGUARDED@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { appDeclaration, archFixture, ts } from './helpers/hfs-arch-fixture.mjs';
+import type { FileMap, Side } from './helpers/hfs-arch-fixture.mjs';
 import { checkHfs } from '../runtime/scripts/hfs/architecture/hfs.mjs';
 import { testTopologyFindings } from '../runtime/scripts/hfs/rules/test-topology.mjs';
 import { checkContractFixtureGuard } from '../runtime/scripts/hfs/architecture/contract-fixture-guard.mjs';
@@ -14,14 +16,14 @@ import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 import { stagedSpecFindings } from '../runtime/scripts/hfs/rules/staged-specs.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
-function fixture(t, edition, profile, files) {
+function fixture(t: TestContext, edition: string, profile: Side, files: FileMap) {
   return archFixture(t, { profile, files: {
     ...files,
     '../hfs.json': JSON.stringify({ ...appDeclaration(profile, { apps: [{ name: profile === 'be' ? 'core' : 'web', kind: profile === 'be' ? 'api' : 'next' }] }), edition }),
   } });
 }
 
-function contractFindings(root) {
+function contractFindings(root: string) {
   const config = loadArchitectureConfig(root);
   const context = buildTypeScriptContext(config, ts, []);
   const graph = buildHfsGraph(config, context);
@@ -96,8 +98,8 @@ const policyText = 'export const allowed = (amount) => amount > 0;';
 for (const edition of ['lite', 'full']) {
   test(`${edition} staged specs reject a new measured logic file staged without its sibling spec`, () => {
     const found = stagedSpecFindings(loadSlotManifest(), [policy], new Set([policy]), { ts, staged: () => policyText });
-    assert.deepEqual(found.map(hit => hit.code), ['BE_UNIT_SPEC_NOT_STAGED']);
-    assert.deepEqual(found.map(hit => hit.file), [policy]);
+    assert.deepEqual(found.map((hit: { code: string }) => hit.code), ['BE_UNIT_SPEC_NOT_STAGED']);
+    assert.deepEqual(found.map((hit: { file: string }) => hit.file), [policy]);
   });
 
   test(`${edition} staged specs pass a logic file staged with its spec and a constants-only file`, () => {

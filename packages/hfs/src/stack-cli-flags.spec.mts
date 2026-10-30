@@ -1,13 +1,15 @@
 // `starci app stack <action>` takes only its own flags (stack/cli.mjs FLAGS), names its environment for every action with an effect, and
 // refuses the deploy flag combinations whose flags would otherwise be dropped. Every refusal here comes before the app is read: the folder is empty.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ACTIONS, FLAGS, READ_ONLY, stackMain } from '../stack/cli.mjs';
+import type { Action } from '../stack/cli.mjs';
 
-async function stack(t, argv) {
+async function stack(t: TestContext, argv: string[]) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-stack-flags-'));
   t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
   let err = '';
@@ -65,5 +67,5 @@ test('--reason and --remote belong to the one-command urgent deploy, never besid
 
 test('the flag table covers every action', () => {
   assert.deepEqual(new Set(Object.keys(FLAGS)), new Set(ACTIONS));
-  for (const action of READ_ONLY) assert.ok(!FLAGS[action].includes('--execute'), `${action} is read-only and takes no --execute`);
+  for (const action of READ_ONLY) assert.ok(!FLAGS[action as Action].includes('--execute'), `${action} is read-only and takes no --execute`);
 });

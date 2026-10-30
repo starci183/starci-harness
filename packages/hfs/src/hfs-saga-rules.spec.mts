@@ -7,15 +7,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
+import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { sagaFindings } from '../runtime/scripts/hfs/rules/saga.mjs';
 import { appOf, cleanup, gitAdd, writeCleanRepo } from './helpers/hfs-cli-fixture.mjs';
+import type { AppDeclaration } from './helpers/hfs-cli-fixture.mjs';
 
 const OPTIONAL = ['be.contract.events', 'be.transport.message'];
 const WITH_SAGA = appOf({ be: { apps: [{ name: 'core', kind: 'api' }], optionalSlots: OPTIONAL, patterns: ['saga'] } });
 const WITHOUT_PATTERN = appOf({ be: { apps: [{ name: 'core', kind: 'api' }], optionalSlots: OPTIONAL } });
-const made = [];
-const repoOf = (declaration, mutate) => {
+const made: string[] = [];
+const repoOf = (declaration: AppDeclaration, mutate?: (dir: string) => void) => {
   const dir = writeCleanRepo(declaration);
   made.push(dir);
   if (mutate) mutate(dir);
@@ -23,13 +25,13 @@ const repoOf = (declaration, mutate) => {
 };
 test.after(() => cleanup(made));
 
-const put = (dir, relative, text = 'export {};\n') => {
+const put = (dir: string, relative: string, text = 'export {};\n') => {
   const target = path.join(dir, ...relative.split('/'));
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, text);
 };
-const run = (declaration, mutate) => checkRepo({ repoRoot: repoOf(declaration, mutate) }).findings;
-const only = (findings, code) => findings.filter((f) => f.code === code);
+const run = (declaration: AppDeclaration, mutate?: (dir: string) => void) => checkRepo({ repoRoot: repoOf(declaration, mutate) }).findings;
+const only = (findings: CheckFinding[], code: string) => findings.filter((f) => f.code === code);
 
 const SAGA = 'be/src/features/saga/place/';
 const STEP = `${SAGA}steps/reserve.saga-step.ts`;
@@ -50,17 +52,17 @@ const CONTRACTS = {
 };
 const SPEC_TS = "import { useTestWorld } from '../../world/use-test-world';\nconst world = useTestWorld({ apps: ['core'] });\nit('compensates billing.invoice-rejected', async () => { await world.infra.postgresql.connection('order').during(async () => undefined); });\n";
 /** A complete saga: orchestrator, state, one step with its compensation, the consumer, the contracts and the e2e spec; `override` replaces or (null) removes a file. */
-const sagaRepo = (override = {}) => (dir) => {
+const sagaRepo = (override: Record<string, string | null> = {}) => (dir: string) => {
   const files = { [STEP]: STEP_TS, [COMPENSATION]: COMPENSATION_TS, [ORCHESTRATOR]: ORCHESTRATOR_TS, [STATE]: STATE_TS, [CONSUMER]: CONSUMER_TS, [SPEC]: SPEC_TS, ...CONTRACTS, ...override };
   for (const [file, text] of Object.entries(files)) if (text !== null) put(dir, file, text);
 };
-const saga = (code, override) => only(run(WITH_SAGA, sagaRepo(override)), code);
+const saga = (code: string, override?: Record<string, string | null>) => only(run(WITH_SAGA, sagaRepo(override)), code);
 
 // ------------------------------------------------------------------------------------------------ the declared pattern
 
 test('the saga slots are enabled only by the declared pattern: an undeclared saga folder is HFS_SLOT_NOT_ENABLED', () => {
-  const comparePaths = (left, right) => left.localeCompare(right);
-  const undeclared = only(run(WITHOUT_PATTERN, sagaRepo()), 'HFS_SLOT_NOT_ENABLED').map((f) => f.path).filter((file) => file.includes('/saga/')).sort(comparePaths);
+  const comparePaths = (left: string, right: string) => left.localeCompare(right);
+  const undeclared = only(run(WITHOUT_PATTERN, sagaRepo()), 'HFS_SLOT_NOT_ENABLED').map((f) => f.path!).filter((file) => file.includes('/saga/')).sort(comparePaths);
   assert.deepEqual(undeclared, [COMPENSATION, ORCHESTRATOR, STATE, STEP].sort(comparePaths));
   assert.deepEqual(only(run(WITH_SAGA, sagaRepo()), 'HFS_SLOT_NOT_ENABLED'), []);
 });
@@ -76,27 +78,27 @@ test('a pattern absent from both slots and proof scenarios is refused in hfs.jso
 test('BE_SAGA_STEP_COMPENSATION: a step without a compensation, a compensation without a step and an orchestrator that omits one are refused', () => {
   const missing = saga('BE_SAGA_STEP_COMPENSATION', { [COMPENSATION]: null });
   assert.deepEqual(missing.map((f) => f.path), [STEP]);
-  assert.match(missing.find((f) => f.path === STEP).message, /saga step with no compensation/);
+  assert.match(missing.find((f) => f.path === STEP)!.message!, /saga step with no compensation/);
   const orphan = saga('BE_SAGA_STEP_COMPENSATION', { [STEP]: null });
-  assert.match(orphan.find((f) => f.path === COMPENSATION).message, /compensation of no step/);
+  assert.match(orphan.find((f) => f.path === COMPENSATION)!.message!, /compensation of no step/);
   const unlisted = saga('BE_SAGA_STEP_COMPENSATION', { [ORCHESTRATOR]: "import { SagaService } from '../../../modules/platform/saga';\nexport class PlaceSaga {}\n" });
   assert.equal(unlisted.length, 2);
 });
 
 test('BE_SAGA_STEP_COMPENSATION: a folder of steps with no orchestrator is refused; a complete saga passes', () => {
   const findings = saga('BE_SAGA_STEP_COMPENSATION', { [ORCHESTRATOR]: null, [STATE]: null });
-  assert.ok(findings.some((f) => /no orchestrator/.test(f.message)));
+  assert.ok(findings.some((f) => /no orchestrator/.test(f.message!)));
   assert.deepEqual(saga('BE_SAGA_STEP_COMPENSATION'), []);
 });
 
 // ------------------------------------------------------------------------------------------------ R170 BE_SAGA_STATE_VERSIONED
 
 test('BE_SAGA_STATE_VERSIONED: an orchestrator with no state file, a state with no numeric version and an orchestrator that bypasses the store are refused', () => {
-  assert.match(saga('BE_SAGA_STATE_VERSIONED', { [STATE]: null })[0].message, /has no .*place.saga-state.ts/);
+  assert.match(saga('BE_SAGA_STATE_VERSIONED', { [STATE]: null })[0]!.message!, /has no .*place.saga-state.ts/);
   const unversioned = saga('BE_SAGA_STATE_VERSIONED', { [STATE]: "export interface PlaceSagaState {\n  readonly status: string\n  readonly version: string\n}\n" });
   assert.deepEqual(unversioned.map((f) => f.path), [STATE]);
   const bypass = saga('BE_SAGA_STATE_VERSIONED', { [ORCHESTRATOR]: ORCHESTRATOR_TS.replace("import { SagaService } from '../../../modules/platform/saga';\n", "import { SagaService } from '../../../modules/platform/other';\n") });
-  assert.match(bypass[0].message, /does not use the fenced store of platform\/saga/);
+  assert.match(bypass[0]!.message!, /does not use the fenced store of platform\/saga/);
 });
 
 test('BE_SAGA_STATE_VERSIONED: a typed, versioned state and an orchestrator on the fenced store pass', () => {
@@ -107,10 +109,10 @@ test('BE_SAGA_STATE_VERSIONED: a typed, versioned state and an orchestrator on t
 // ------------------------------------------------------------------------------------------------ R171 BE_SAGA_EVENT_CONTRACT
 
 test('BE_SAGA_EVENT_CONTRACT: a step with no event, an event no contract declares and a compensation the contract does not say compensates are refused', () => {
-  assert.match(saga('BE_SAGA_EVENT_CONTRACT', { [STEP]: 'export class ReserveStep {}\n' })[0].message, /names no event/);
-  assert.match(saga('BE_SAGA_EVENT_CONTRACT', { [STEP]: STEP_TS.replace('order.placed', 'order.unknown') })[0].message, /"order.unknown", which no be\/contracts/);
+  assert.match(saga('BE_SAGA_EVENT_CONTRACT', { [STEP]: 'export class ReserveStep {}\n' })[0]!.message!, /names no event/);
+  assert.match(saga('BE_SAGA_EVENT_CONTRACT', { [STEP]: STEP_TS.replace('order.placed', 'order.unknown') })[0]!.message!, /"order.unknown", which no be\/contracts/);
   const wrong = saga('BE_SAGA_EVENT_CONTRACT', { 'be/contracts/billing/events.json': CONTRACTS['be/contracts/billing/events.json'].replace('"compensates": "order.placed",', '') });
-  assert.match(wrong[0].message, /does not declare `compensates: "order.placed"`/);
+  assert.match(wrong[0]!.message!, /does not declare `compensates: "order.placed"`/);
 });
 
 test('BE_SAGA_EVENT_CONTRACT: events named in the contracts, the compensation declaring what it undoes, pass', () => {
@@ -128,9 +130,9 @@ test('BE_SAGA_CONSUMER_DEDUPE: a consumer of a saga feature that never reads the
 // ------------------------------------------------------------------------------------------------ R173 BE_SAGA_E2E_MISSING
 
 test('BE_SAGA_E2E_MISSING (full): a compensation path with no e2e spec, one through the world that injects no failure, are refused', () => {
-  assert.match(saga('BE_SAGA_E2E_MISSING', { [SPEC]: null })[0].message, /has no e2e spec/);
+  assert.match(saga('BE_SAGA_E2E_MISSING', { [SPEC]: null })[0]!.message!, /has no e2e spec/);
   const noFault = saga('BE_SAGA_E2E_MISSING', { [SPEC]: SPEC_TS.replace(/it\(.*\n/, "it('compensates billing.invoice-rejected', () => undefined);\n") });
-  assert.match(noFault[0].message, /injects no failure/);
+  assert.match(noFault[0]!.message!, /injects no failure/);
 });
 
 test('BE_SAGA_E2E_MISSING (full): an e2e spec through the world that names the compensation event and injects a failure passes', () => {

@@ -1,12 +1,13 @@
 // The managed hook executes the bundled policy against real commits and outgoing ranges.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { git, push, ref, repository, ZERO } from './helpers/pre-push-fixture.mjs';
 
 const HOOK = fs.readFileSync(new URL('../templates/app/hooks/husky/pre-push', import.meta.url), 'utf8').split('\n').slice(1).join('\n');
-const fixture = t => repository(t, HOOK);
+const fixture = (t: TestContext) => repository(t, HOOK);
 
 test('fast-forward main needs no annotated tag or release record, including a first push', t => {
   const repo = fixture(t);
@@ -28,7 +29,7 @@ test('main deletion, rewind, divergent history and an unavailable remote tip ref
   fs.writeFileSync(path.join(repo.root, 'a.txt'), 'divergent');
   git(repo.root, 'commit', '-qam', 'divergent');
   const divergent = git(repo.root, 'rev-parse', 'HEAD');
-  for (const [local, remote] of [[ZERO, repo.head], [repo.older, repo.head], [divergent, repo.head], [repo.head, 'a'.repeat(40)]]) {
+  for (const [local, remote] of [[ZERO, repo.head], [repo.older, repo.head], [divergent, repo.head], [repo.head, 'a'.repeat(40)]] as [string, string][]) {
     const result = push(repo, [ref('refs/heads/main', local, remote)]);
     assert.equal(result.status, 1, result.stderr);
     assert.match(result.stderr, /RIGHTS_PUSH_NOT_RELEASE/);
@@ -56,7 +57,7 @@ test('annotated v tags can name any commit; lightweight tags and tag deletions r
   const tag = git(repo.root, 'rev-parse', 'refs/tags/v0.3.4');
   assert.equal(push(repo, [ref('refs/tags/v0.3.4', tag)]).status, 0);
   git(repo.root, 'tag', 'v0.3.5');
-  for (const [name, sha] of [['v0.3.5', repo.head], ['v0.3.4', ZERO]]) {
+  for (const [name, sha] of [['v0.3.5', repo.head], ['v0.3.4', ZERO]] as [string, string][]) {
     const result = push(repo, [ref(`refs/tags/${name}`, sha)]);
     assert.equal(result.status, 1);
     assert.match(result.stderr, /RIGHTS_PUSH_NOT_RELEASE/);

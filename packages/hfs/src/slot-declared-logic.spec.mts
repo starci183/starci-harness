@@ -20,12 +20,12 @@ const PASSPORT = 'src/modules/integrations/passport/';
 const DECLARED = ['passport.cookie.ts', 'passport.password.ts', 'passport.tokens.ts'].map((file) => `${PASSPORT}${file}`);
 const STORAGE = 'src/modules/integrations/object-storage/';
 const SKELETON_STORAGE = path.resolve(import.meta.dirname, '..', 'templates', 'be', 'skeleton-lite', STORAGE);
-const resolverOf = (edition) => createSlotResolver(manifest, resolveRepoDeclaration(manifest, { ...APP, edition }));
+const resolverOf = (edition: string) => createSlotResolver(manifest, resolveRepoDeclaration(manifest, { ...APP, edition }));
 const passportSlot = () => manifest.slots.find((slot) => slot.id === 'be.integrations.passport');
 
 test('be.integrations.passport declares its tokens, password and cookie files as logic, and no role name is added for them', () => {
-  assert.deepEqual(passportSlot().logic, ['passport.tokens.ts', 'passport.password.ts', 'passport.cookie.ts']);
-  assert.equal(passportSlot().coverage, 'required');
+  assert.deepEqual(passportSlot()!.logic, ['passport.tokens.ts', 'passport.password.ts', 'passport.cookie.ts']);
+  assert.equal(passportSlot()!.coverage, 'required');
   for (const part of ['tokens', 'password', 'cookie']) assert.equal(manifest.ruleParams.be.logicRoles.includes(part), false, part);
 });
 
@@ -38,7 +38,7 @@ test('the coverage scope measures every declared logic file at 100 per file: jes
   assert.equal(isMeasured(manifest, `${PASSPORT}passport.config.ts`), false, 'an undeclared file of no logic role stays unmeasured');
   assert.equal(isMeasured(manifest, `${PASSPORT}passport.tokens.spec.ts`), false);
   const sonar = sonarCoverageExclusions(manifest);
-  const excluded = (file) => !withoutCovered([...sonar, file]).includes(file);
+  const excluded = (file: string) => !withoutCovered([...sonar, file]).includes(file);
   for (const file of DECLARED) assert.equal(excluded(`be/${file}`), false, `${file} is measured, so no Sonar coverage exclusion covers it`);
   assert.equal(excluded(`be/${PASSPORT}passport.config.ts`), true, 'an undeclared file of no logic role stays excluded');
 });
@@ -80,7 +80,7 @@ const STORAGE_FILES = ['index.ts', 'object-storage.client.ts', 'object-storage.c
 const OLD_STORAGE_FILES = ['index.ts', 'storage.client.ts', 'storage.config.ts', 'storage.decorators.ts', 'storage.options.ts'];
 
 /** A clean lite app whose object-storage folder holds exactly `names` (with the skeleton's own content where it has the file). */
-function storageApp(made, names) {
+function storageApp(made: string[], names: string[]) {
   const dir = writeCleanRepo({ ...APP, edition: 'lite' });
   made.push(dir);
   const folder = path.join(dir, 'be', ...STORAGE.split('/'));
@@ -91,10 +91,10 @@ function storageApp(made, names) {
 }
 
 const SLOT_CODES = /^(?:HFS_SLOT_|HFS_REQUIRED_FILE_MISSING|BE_SOURCE_FORM|BE_SPEC_PLACEMENT)/;
-const storageFindings = (result) => result.findings.filter((finding) => SLOT_CODES.test(finding.code) && String(finding.path).includes('integrations/object-storage'));
+const storageFindings = (result: ReturnType<typeof checkRepo>) => result.findings.filter((finding) => SLOT_CODES.test(finding.code) && String(finding.path).includes('integrations/object-storage'));
 
 test('a scaffold-shaped object-storage tree with the skeleton names is complete and every file is one the slot admits', (t) => {
-  const made = [];
+  const made: string[] = [];
   t.after(() => cleanup(made));
   assert.deepEqual(fs.readdirSync(SKELETON_STORAGE).sort(), [...STORAGE_FILES].sort(), 'the lite skeleton ships these names');
   const repoRoot = storageApp(made, STORAGE_FILES);
@@ -106,7 +106,7 @@ test('a scaffold-shaped object-storage tree with the skeleton names is complete 
 });
 
 test('the old storage.* names leave the object-storage slot incomplete and are not names it admits', (t) => {
-  const made = [];
+  const made: string[] = [];
   t.after(() => cleanup(made));
   const repoRoot = storageApp(made, OLD_STORAGE_FILES);
   const missing = storageFindings(checkRepo({ repoRoot, manifest })).filter((finding) => finding.code === 'HFS_SLOT_REQUIRED_MISSING').map((finding) => finding.path).sort();

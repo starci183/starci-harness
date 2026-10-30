@@ -1,6 +1,7 @@
 // proves: BE_APP_BOOT_PROOF_MISSING@lite
 // proves: BOOT_PROOF_TIMEOUT@lite
 import test, { after } from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,7 +32,7 @@ const missingModule = `import { Module, Injectable } from '@nestjs/common';
 @Injectable() class Subject { constructor(readonly dependency: Dependency) {} }
 @Module({ providers: [Subject] }) export class AppModule {}`;
 
-function fixture(t, entries, edition = 'lite', rootScope = false) {
+function fixture(t: TestContext, entries: Record<string, unknown>, edition = 'lite', rootScope = false) {
   fs.mkdirSync(FIXTURES, { recursive: true });
   const dir = fs.mkdtempSync(path.join(FIXTURES, 'a13-wiring-'));
   assert.ok(path.resolve(dir).startsWith(`${path.resolve(FIXTURES)}${path.sep}`));
@@ -51,9 +52,9 @@ test('BE_APP_BOOT_PROOF_MISSING lite: real constructor metadata refuses an unres
   const context = fixture(t, { [APP_MODULE]: missingModule });
   const findings = bootProofFindings(context);
   assert.equal(findings.length, 1);
-  assert.equal(findings[0].code, CODE);
-  assert.equal(findings[0].path, APP_MODULE);
-  assert.equal(findings[0].reason, 'unresolved DI provider');
+  assert.equal(findings[0]!.code, CODE);
+  assert.equal(findings[0]!.path, APP_MODULE);
+  assert.equal(findings[0]!.reason, 'unresolved DI provider');
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: a complete actual Nest graph passes', t => {
@@ -67,7 +68,7 @@ for (const scope of ['REQUEST', 'TRANSIENT']) {
 @Module({ providers: [Subject] }) export class AppModule {}`;
     const report = appWiring(fixture(t, { [APP_MODULE]: source }));
     assert.equal(report.ok, false);
-    assert.equal(report.findings[0].reason, 'unresolved DI provider');
+    assert.equal(report.findings[0]!.reason, 'unresolved DI provider');
   });
 }
 
@@ -97,8 +98,8 @@ test('BE_APP_BOOT_PROOF_MISSING lite: circular factory dependencies are refused'
 ] }) export class AppModule {}`;
   const report = appWiring({ ...fixture(t, { [APP_MODULE]: source }), timeout: 2500 });
   assert.equal(report.ok, false);
-  assert.equal(report.findings[0].code, CODE);
-  assert.match(report.findings[0].reason, /circular|timed out/);
+  assert.equal(report.findings[0]!.code, CODE);
+  assert.match(report.findings[0]!.reason, /circular|timed out/);
 });
 
 test('BE_APP_BOOT_PROOF_MISSING full: the unresolved lite fixture leaves existing e2e enforcement unchanged', t => {
@@ -121,7 +122,7 @@ test('BE_APP_BOOT_PROOF_MISSING lite: dynamic root cannot pass as its empty stat
 }`;
   const report = appWiring(fixture(t, { [APP_MODULE]: source }));
   assert.equal(report.ok, false);
-  assert.equal(report.findings[0].code, CODE);
+  assert.equal(report.findings[0]!.code, CODE);
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: dynamic fixture options compile the real root with an explicit resource double', t => {
@@ -146,7 +147,7 @@ test('BE_APP_BOOT_PROOF_MISSING lite: an override cannot invent a missing regist
   const builder = `export const buildWiringProof = () => ({ overrides: [{ token: 'absent', value: {} }] });`;
   const report = appWiring(fixture(t, { [APP_MODULE]: source, [wiringFixturePath('api')]: builder }));
   assert.equal(report.ok, false);
-  assert.equal(report.findings[0].reason, 'unresolved DI provider');
+  assert.equal(report.findings[0]!.reason, 'unresolved DI provider');
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: missing exported provider remains a Nest scope failure', t => {
@@ -156,7 +157,7 @@ test('BE_APP_BOOT_PROOF_MISSING lite: missing exported provider remains a Nest s
 @Injectable() class Subject { constructor(readonly dependency: Dependency) {} }
 @Module({ imports: [PrivateModule], providers: [Subject] }) export class AppModule {}`;
   const report = appWiring(fixture(t, { [APP_MODULE]: source }));
-  assert.equal(report.findings[0].reason, 'unresolved DI provider');
+  assert.equal(report.findings[0]!.reason, 'unresolved DI provider');
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: inherited TypeScript aliases resolve the actual imported module', t => {
@@ -183,11 +184,11 @@ test('BE_APP_BOOT_PROOF_MISSING lite: proof does not execute main or lifecycle i
 
 test('BE_APP_BOOT_PROOF_MISSING lite: findings redact exception text and child output, and children inherit no secrets', t => {
   const context = fixture(t, { [APP_MODULE]: passingModule });
-  const report = appWiring({ ...context, run(_command, _args, options) {
-    assert.deepEqual(options.env, {});
+  const report = appWiring({ ...context, run(_command: string, _args: string[], options: object) {
+    assert.deepEqual((options as { env?: unknown }).env, {});
     return { status: 1, stdout: 'private output', stderr: 'private exception' };
   } });
-  assert.equal(report.findings[0].code, CODE);
+  assert.equal(report.findings[0]!.code, CODE);
   assert.doesNotMatch(JSON.stringify(report), /private output|private exception/);
   const forged = appWiring({ ...context, run() {
     return { status: 0, stdout: JSON.stringify({ ok: false, reason: 'private exception' }) };
@@ -196,9 +197,9 @@ test('BE_APP_BOOT_PROOF_MISSING lite: findings redact exception text and child o
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: absent declared app and untracked source are refused', t => {
-  assert.equal(appWiring(fixture(t, {})).findings[0].reason, 'app module is missing');
+  assert.equal(appWiring(fixture(t, {})).findings[0]!.reason, 'app module is missing');
   const context = fixture(t, { [APP_MODULE]: passingModule });
-  assert.equal(appWiring({ ...context, files: [] }).findings[0].reason, 'app module is missing');
+  assert.equal(appWiring({ ...context, files: [] }).findings[0]!.reason, 'app module is missing');
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: root, FE and changed scope avoid duplicate findings', t => {
@@ -224,14 +225,14 @@ test('BE_APP_BOOT_PROOF_MISSING lite: an async registration cannot replace the a
   const builder = `export const buildWiringProof = () => ({ options: {} });`;
   const report = appWiring(fixture(t, { [APP_MODULE]: source, [wiringFixturePath('api')]: builder }));
   assert.equal(report.ok, false);
-  assert.equal(report.findings[0].code, CODE);
+  assert.equal(report.findings[0]!.code, CODE);
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: CLI reports app-relative paths and returns the finding status', t => {
   const context = fixture(t, { [`be/${APP_MODULE}`]: missingModule }, 'lite', true);
-  const output = [];
+  const output: string[] = [];
   assert.equal(appWiringMain(['--wiring', '--json'], { cwd: context.repoRoot, stdout: text => output.push(text) }), 1);
-  assert.equal(JSON.parse(output.join('')).findings[0].path, `be/${APP_MODULE}`);
+  assert.equal(JSON.parse(output.join('')).findings[0]!.path, `be/${APP_MODULE}`);
   assert.equal(appWiringMain(['--unknown'], { cwd: context.repoRoot, stderr: () => {} }), 2);
 });
 
@@ -243,16 +244,16 @@ test('BE_APP_BOOT_PROOF_MISSING lite: the append-only a15 registry invokes this 
 const TIMED_OUT = Object.freeze({ status: null, signal: 'SIGTERM', stdout: '', stderr: '', error: Object.assign(new Error('spawnSync node ETIMEDOUT'), { code: 'ETIMEDOUT' }) });
 
 test('BOOT_PROOF_TIMEOUT lite: a worker that runs out of its budget twice is a timeout warning, never a failed proof', t => {
-  const budgets = [];
-  const run = (_command, _args, options) => { budgets.push(options.timeout); return TIMED_OUT; };
+  const budgets: (number | undefined)[] = [];
+  const run = (_command: string, _args: string[], options: object) => { budgets.push((options as { timeout?: number }).timeout); return TIMED_OUT; };
   const previous = process.env[BOOT_PROOF_TIMEOUT_ENV];
   process.env[BOOT_PROOF_TIMEOUT_ENV] = '4000';
   t.after(() => { if (previous === undefined) delete process.env[BOOT_PROOF_TIMEOUT_ENV]; else process.env[BOOT_PROOF_TIMEOUT_ENV] = previous; });
   const report = appWiring({ ...fixture(t, { [APP_MODULE]: passingModule }), run });
   assert.deepEqual(budgets, [4000, 4000], 'its own budget from the environment, retried once');
   assert.equal(report.findings.length, 1);
-  assert.equal(report.findings[0].code, BOOT_PROOF_TIMEOUT);
-  assert.equal(report.findings[0].level, 'warning');
+  assert.equal(report.findings[0]!.code, BOOT_PROOF_TIMEOUT);
+  assert.equal(report.findings[0]!.level, 'warning');
   assert.equal(report.findings.some((finding) => finding.code === CODE), false);
 });
 

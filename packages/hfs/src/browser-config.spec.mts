@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { renderTargets } from '../sync/index.mjs';
+import type { AppSourceFacts, Presets } from '../sync/index.mjs';
 import { createSlotResolver, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 
 const templateText = fs.readFileSync(new URL('../templates/app/browser-config/browser/tsconfig.json', import.meta.url), 'utf8');
@@ -15,7 +16,8 @@ const appOf = (extra = {}) => ({
   },
 });
 
-const browserTarget = (hfs) => renderTargets(hfs, {}, { source: { files: [], read: () => '' } }).find((target) => target.path === 'browser/tsconfig.json');
+// reason: the presets and the source facts are deliberately empty; the browser tsconfig reads neither
+const browserTarget = (hfs: unknown) => renderTargets(hfs, {} as Presets, { source: { files: [], read: () => '' } as unknown as AppSourceFacts }).find((target) => target.path === 'browser/tsconfig.json');
 
 test('an app that declares its browser journey renders browser/tsconfig.json from the browser-config template', () => {
   const target = browserTarget(appOf({ browser: true }));

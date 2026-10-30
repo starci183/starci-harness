@@ -9,15 +9,16 @@ import { fileURLToPath } from 'node:url';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { cssRules, propertyFamily, ruleFamilies, utilityFamilies } from '../runtime/scripts/lib/css-rules.mjs';
 import { WRAPPERS_SCHEMA, classifyRoleContracts, heroTags, importAliases, manifestDigest, parityFindings, pinFindings } from '../runtime/scripts/lib/grammar-vendor-parity.mjs';
+import type { ParityFinding, StyleFinding } from '../runtime/scripts/lib/grammar-vendor-parity.mjs';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'grammar-vendor');
-const fixture = (name) => fs.readFileSync(path.join(FIXTURES, name), 'utf8');
+const fixture = (name: string) => fs.readFileSync(path.join(FIXTURES, name), 'utf8');
 
 /** The generated vendor references of the six HeroUI components DropdownMenu wraps, as `starci work grammar-knowledge --write` measured them. */
 const references = Object.fromEntries(['dropdown', 'description', 'header', 'kbd', 'label', 'roles', 'separator', 'tooltip'].map((dir) => [dir, parseYaml(fixture(`reference-${dir}.yaml`))]));
 
 const DROPDOWN_FILE = 'core/branch/DropdownMenu/index.tsx';
-const row = (extra = {}) => ({
+const row = (extra: Record<string, unknown> = {}) => ({
   file: DROPDOWN_FILE,
   wraps: ['Description', 'Dropdown', 'Header', 'Kbd', 'Label', 'Separator'],
   delegates: { Dropdown: ['Trigger'] },
@@ -30,9 +31,9 @@ const GRAMMARS = [
   { id: 'starci', paths: ['common/', 'core/'], vendor: { name: 'heroui', parity: 'strict' }, arrangement },
   { id: 'skin', paths: ['skin/'], vendor: { name: 'heroui', parity: 'custom' }, arrangement },
 ];
-const manifest = (...rows) => ({ schema: WRAPPERS_SCHEMA, wrappers: rows });
-const judge = ({ text, styles = [], wrapper = row(), file = DROPDOWN_FILE }) => parityFindings({ grammars: GRAMMARS, references, manifest: manifest(wrapper), sources: [{ file, text }], styles });
-const rules = (findings) => findings.map((finding) => finding.rule);
+const manifest = (...rows: unknown[]) => ({ schema: WRAPPERS_SCHEMA, wrappers: rows });
+const judge = ({ text, styles = [], wrapper = row(), file = DROPDOWN_FILE }: { text: string; styles?: { file: string; text: string }[]; wrapper?: unknown; file?: string }) => parityFindings({ grammars: GRAMMARS, references, manifest: manifest(wrapper), sources: [{ file, text }], styles });
+const rules = (findings: ParityFinding[]) => findings.map((finding) => finding.rule);
 
 test('the DropdownMenu before b0a5d1f77 is red: the dot indicator replaces the vendor default and no separator divides the sections', () => {
   const findings = judge({ text: fixture('dropdown-menu.before-fix.tsx.txt'), wrapper: row({ wraps: ['Description', 'Dropdown', 'Header', 'Kbd', 'Label'] }) });
@@ -91,7 +92,7 @@ test('every vendor slot claimed by a wrapper row needs the compound part that su
   const claimed = tabsReference.css.classes.map((cls) => ({ kind: 'slot', target: `.${cls}`, reason: 'declared geometry' }));
   const without = 'import { Tabs as HeroTabs } from "@heroui/react"\nconst X = () => <HeroTabs><HeroTabs.List><HeroTabs.Tab><HeroTabs.Indicator /></HeroTabs.Tab></HeroTabs.List></HeroTabs>';
   const withContainer = without.replace('<HeroTabs.List>', '<HeroTabs.ListContainer><HeroTabs.List>').replace('</HeroTabs.List>', '</HeroTabs.List></HeroTabs.ListContainer>');
-  const measure = (text, custom = false) => parityFindings({
+  const measure = (text: string, custom = false) => parityFindings({
     references: { ...references, tabs: tabsReference }, grammars: GRAMMARS,
     manifest: manifest({ file: custom ? 'skin/Tabs.tsx' : 'core/branch/Tabs/index.tsx', wraps: ['Tabs'], overrides: claimed }),
     sources: [{ file: custom ? 'skin/Tabs.tsx' : 'core/branch/Tabs/index.tsx', text }],
@@ -134,7 +135,7 @@ test('Grammar CSS that targets a vendor class or data-slot is red unless an over
 
 test('Grammar CSS keyed on a stamp of a vendor part may not repaint what the vendor decides, except accessibility media', () => {
   const text = fixture('dropdown-menu.at-b0a5d1f77.tsx.txt');
-  const sheet = (css) => [{ file: 'common/x.css', text: css }];
+  const sheet = (css: string) => [{ file: 'common/x.css', text: css }];
   const red = judge({ text, styles: sheet('[data-grammar-menu-item] { padding: 0; min-block-size: 3rem; }') });
   assert.deepEqual(rules(red), ['style', 'style']);
   assert.ok(red.every((finding) => /HeroUI Dropdown\.Item/.test(finding.message)));
@@ -159,31 +160,31 @@ test('the manifest is pinned: a missing pin or a different digest is red', () =>
   const text = 'schema: x\n';
   assert.deepEqual(pinFindings({ file: 'm.yaml', text, pinned: manifestDigest(text) }), []);
   assert.deepEqual(pinFindings({ file: 'm.yaml', text: 'schema: x\r\n', pinned: manifestDigest(text) }), [], 'line endings do not change the digest');
-  assert.equal(pinFindings({ file: 'm.yaml', text, pinned: undefined })[0].rule, 'pin');
-  assert.match(pinFindings({ file: 'm.yaml', text: `${text}overrides: [a]\n`, pinned: manifestDigest(text) })[0].message, /only an owner ruling may add an override/);
+  assert.equal(pinFindings({ file: 'm.yaml', text, pinned: undefined })[0]!.rule, 'pin');
+  assert.match(pinFindings({ file: 'm.yaml', text: `${text}overrides: [a]\n`, pinned: manifestDigest(text) })[0]!.message, /only an owner ruling may add an override/);
 });
 
 test('the JSX reader finds the tags of the imported aliases with their attributes, nested braces and strings included', () => {
   const text = `import { Dropdown as HeroDropdown, type Key, Label } from "@heroui/react"\nconst a = <HeroDropdown.Item id="x" data-grammar-menu-item="true" className={cn("a b", { c: "}" })} {...rest}><Label>t</Label></HeroDropdown.Item>`;
   assert.deepEqual([...importAliases(text)], [['HeroDropdown', 'Dropdown'], ['Label', 'Label']]);
   const [item, label] = heroTags(text, ['HeroDropdown', 'Label']);
-  assert.equal(item.part, 'Item');
-  assert.deepEqual(item.attrs.map((attr) => attr.name), ['id', 'data-grammar-menu-item', 'className', '...']);
-  assert.equal(label.part, 'Root');
+  assert.equal(item!.part, 'Item');
+  assert.deepEqual(item!.attrs.map((attr) => attr.name), ['id', 'data-grammar-menu-item', 'className', '...']);
+  assert.equal(label!.part, 'Root');
 });
 
 test('the CSS reader flattens nesting and at-rule wrappers and names the paint families a rule sets', () => {
   const css = `.menu-item { @apply flex min-h-9 rounded-2xl px-2; &:has(.menu-item__indicator) { @apply ps-7; }\n  @media (hover: hover) { &:hover { @apply bg-default; } } }\n@layer x { .a, .b { color: red; padding-inline: 1px } }`;
   const flat = cssRules(css);
   assert.deepEqual(flat.map((rule) => rule.selectors), [['.menu-item'], ['.menu-item:has(.menu-item__indicator)'], ['.menu-item:hover'], ['.a', '.b']]);
-  assert.deepEqual(flat[2].wraps, ['@media (hover: hover)']);
-  assert.deepEqual(ruleFamilies(flat[0]), ['block-size', 'padding', 'radius']);
-  assert.deepEqual(ruleFamilies(flat[3]), ['color', 'padding']);
+  assert.deepEqual(flat[2]!.wraps, ['@media (hover: hover)']);
+  assert.deepEqual(ruleFamilies(flat[0]!), ['block-size', 'padding', 'radius']);
+  assert.deepEqual(ruleFamilies(flat[3]!), ['color', 'padding']);
   assert.deepEqual([utilityFamilies('ps-7'), utilityFamilies('text-sm'), utilityFamilies('text-muted'), utilityFamilies('md:text-wrap'), propertyFamily('padding-inline')], [['padding'], ['font'], ['color'], [], 'padding']);
 });
 
 const SKIN_FILE = 'skin/DropdownMenu.tsx';
-const skinRow = (extra = {}) => row({ file: SKIN_FILE, ...extra });
+const skinRow = (extra: Record<string, unknown> = {}) => row({ file: SKIN_FILE, ...extra });
 
 test('a strict Grammar that drifts is red, a custom Grammar that re-skins and re-arranges is green', () => {
   const drifting = fixture('dropdown-menu.before-fix.tsx.txt');
@@ -194,7 +195,7 @@ test('a strict Grammar that drifts is red, a custom Grammar that re-skins and re
   assert.deepEqual(judge({ text: drifting, file: SKIN_FILE, wrapper: skinRow({ wraps }), styles: css }).filter((finding) => finding.rule !== 'anatomy'), []);
   const strictCss = [{ file: 'core/x.css', text: '[data-grammar-menu-item] { padding: 0; }' }];
   assert.deepEqual(rules(judge({ text: fixture('dropdown-menu.at-b0a5d1f77.tsx.txt'), styles: strictCss })), ['style']);
-  assert.deepEqual(judge({ text: fixture('dropdown-menu.at-b0a5d1f77.tsx.txt'), file: SKIN_FILE, wrapper: skinRow(), styles: [{ file: 'skin/x.css', text: strictCss[0].text }] }), []);
+  assert.deepEqual(judge({ text: fixture('dropdown-menu.at-b0a5d1f77.tsx.txt'), file: SKIN_FILE, wrapper: skinRow(), styles: [{ file: 'skin/x.css', text: strictCss[0]!.text }] }), []);
 });
 
 test('a custom Grammar is still held to HeroUI anatomy, behaviour and roles', () => {
@@ -205,7 +206,7 @@ test('a custom Grammar is still held to HeroUI anatomy, behaviour and roles', ()
   assert.ok(judge({ text: text.replace(/<HeroSeparator[^>]*\/>/g, ''), file: SKIN_FILE, wrapper: skinRow() }).some((finding) => /without HeroUI's Separator/.test(finding.message)));
   // a hand-rolled role instead of the HeroUI component, in a strict and in a custom Grammar
   const handRolled = `export const M = () => <ul role="menu"><li role="menuitem">x</li></ul>`;
-  for (const [file, wrapper] of [[DROPDOWN_FILE, row({ wraps: [] })], [SKIN_FILE, skinRow({ wraps: [] })]]) {
+  for (const [file, wrapper] of [[DROPDOWN_FILE, row({ wraps: [] })], [SKIN_FILE, skinRow({ wraps: [] })]] as [string, Record<string, unknown>][]) {
     const roles = judge({ text: handRolled, file, wrapper }).filter((finding) => finding.rule === 'role');
     assert.equal(roles.length, 2, file);
   }
@@ -254,7 +255,7 @@ test('vendor role props and a compatible forwarded render root remain under vend
   const meter = { component: 'Meter', anatomy: { parts: [], required: [], embeds: [] }, parts: { Root: {} }, css: { classes: [], dataSlots: [] } };
   const refs = { ...references, meter };
   const wrapper = row({ wraps: ['Meter'] });
-  const judgeMeter = (text) => parityFindings({ grammars: GRAMMARS, references: refs, manifest: manifest(wrapper), sources: [{ file: DROPDOWN_FILE, text }], styles: [] });
+  const judgeMeter = (text: string) => parityFindings({ grammars: GRAMMARS, references: refs, manifest: manifest(wrapper), sources: [{ file: DROPDOWN_FILE, text }], styles: [] });
   const prefix = 'import { Meter as HeroMeter } from "@heroui/react";\n';
   assert.deepEqual(judgeMeter(prefix + 'const Root = (domProps) => <div {...domProps} role="meter" />;\nexport const M = () => <HeroMeter render={Root} />'), []);
   assert.deepEqual(judgeMeter(prefix + 'export const M = () => <HeroMeter role="meter" />'), []);
@@ -270,12 +271,12 @@ test('component-role ownership uses ARIA taxonomy and public APIs without equati
   const structure = { superClass: [['roletype', 'structure', 'section']] };
   const ariaRoles = new Map([['group', structure], ['status', structure], ['textbox', { superClass: [['roletype', 'widget', 'input']] }], ['tooltip', structure], ['separator', structure], ['table', structure]]);
   const classified = classifyRoleContracts({ carriers, publicApis: ['ButtonGroup', 'Spinner', 'TextField', 'Tooltip', 'Separator', 'Table'], ariaRoles });
-  assert.equal(classified.group.componentRole, false);
-  assert.equal(classified.status.componentRole, false);
-  assert.equal(classified.textbox.componentRole, true);
-  assert.equal(classified.tooltip.componentRole, true);
-  assert.equal(classified.separator.componentRole, true);
-  assert.equal(classified.table.componentRole, true, 'a public structural API is known even when its default rendering uses a more specific role');
+  assert.equal(classified.group!.componentRole, false);
+  assert.equal(classified.status!.componentRole, false);
+  assert.equal(classified.textbox!.componentRole, true);
+  assert.equal(classified.tooltip!.componentRole, true);
+  assert.equal(classified.separator!.componentRole, true);
+  assert.equal(classified.table!.componentRole, true, 'a public structural API is known even when its default rendering uses a more specific role');
   assert.deepEqual(judge({ text: '<div role="group"><span role="status">Working</span></div>', wrapper: row({ wraps: [] }) }), []);
 });
 
@@ -304,12 +305,12 @@ test('DNA owns family paths and mode; missing or malformed declarations are gram
 
 test('strict repaint findings retain the Grammar value, wrapper, DNA family and measured vendor defaults', () => {
   const text = fixture('dropdown-menu.at-b0a5d1f77.tsx.txt');
-  const [entry] = judge({ text, styles: [{ file: 'common/x.css', text: '@media (min-width: 40rem) { [data-grammar-menu-item] { padding-inline: 0; } }' }] });
+  const [entry] = judge({ text, styles: [{ file: 'common/x.css', text: '@media (min-width: 40rem) { [data-grammar-menu-item] { padding-inline: 0; } }' }] }) as [StyleFinding];
   assert.equal(entry.selector, '[data-grammar-menu-item]');
   assert.equal(entry.part, 'Dropdown.Item');
   assert.equal(entry.property, 'padding');
   assert.equal(entry.family, 'starci');
   assert.equal(entry.wrapperRow, DROPDOWN_FILE);
   assert.deepEqual(entry.grammarValue, { apply: [], declarations: [{ property: 'padding-inline', value: '0' }], wraps: ['@media (min-width: 40rem)'] });
-  assert.ok(entry.vendorDefault.some((rule) => rule.apply.some((utility) => utility.startsWith('px-'))));
+  assert.ok((entry.vendorDefault as { apply: string[] }[]).some((rule) => rule.apply.some((utility) => utility.startsWith('px-'))));
 });

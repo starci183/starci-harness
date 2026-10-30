@@ -1,5 +1,6 @@
 // proves: HFS_APP_LEXICON@lite HFS_APP_LEXICON@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,13 +9,13 @@ import { lexiconFindings } from '../runtime/scripts/hfs/rules/lexicon.mjs';
 import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-shape.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 
-const declaration = (edition, extra = {}) => ({
+const declaration = (edition: string, extra: Record<string, unknown> = {}) => ({
   hfs: 3, kind: 'app', project: 'demo', edition,
   sides: { be: { apps: [{ name: 'api', kind: 'api' }, { name: 'cli', kind: 'cli' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
   ...extra,
 });
 
-function tree(t, files) {
+function tree(t: TestContext, files: Record<string, string | Buffer | object>) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-lexicon-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, value] of Object.entries(files)) {

@@ -14,7 +14,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Every specifier another package or a shipped script uses, exactly as written, and the file inside the tarball
 // the specifier must land on.
-const SPECIFIERS = [
+const SPECIFIERS: [string, string][] = [
   ['@starci/hfs', 'src/main.mjs'],
   ['@starci/hfs/form-bounds', 'emit/form-bounds.mjs'],
   ['@starci/hfs/runtime/scripts/hfs/slots.mjs', 'runtime/scripts/hfs/slots.mjs'],
@@ -37,18 +37,19 @@ test('every public specifier resolves through the exports map', () => {
 
 // `npm pack` walks the package folder; hfs-boot-proof.spec.mjs creates and removes its fixtures in .tmp-docs/ while the specs run
 // side by side, so a walk can meet a folder that is gone a moment later (ENOENT). That race, and only it, is tried again.
-function packDryRun(attempts = 3) {
+function packDryRun(attempts = 3): string {
   try {
     return execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (error) {
-    if (attempts > 1 && /ENOENT[\s\S]*\.tmp-docs/u.test(String(error.stderr ?? error.message))) return packDryRun(attempts - 1);
+    const failure = error as { stderr?: unknown; message?: unknown };
+    if (attempts > 1 && /ENOENT[\s\S]*\.tmp-docs/u.test(String(failure.stderr ?? failure.message))) return packDryRun(attempts - 1);
     throw error;
   }
 }
 
 test('the packed tarball ships every specifier\'s file and no .mts source', () => {
   const packed = JSON.parse(packDryRun());
-  const files = new Set(packed.flatMap((entry) => entry.files.map((file) => file.path)));
+  const files = new Set<string>(packed.flatMap((entry: { files: { path: string }[] }) => entry.files.map((file) => file.path)));
   for (const [specifier, target] of SPECIFIERS) {
     assert.ok(files.has(target), `${specifier} -> ${target} missing from the tarball`);
   }
