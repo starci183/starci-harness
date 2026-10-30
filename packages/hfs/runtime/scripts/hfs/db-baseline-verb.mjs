@@ -18,13 +18,18 @@ await pg.loadModule();
 export { DbVerbError };
 
 /** Strict shared options; unknown flags never reach the database CLI. */
+/** The options of `starci app db baseline` (dbOptions refuses every other). */
+export const BASELINE_OPTIONS = Object.freeze(['cwd', 'stamp', 'apply', 'url-env', 'squash', 'drop-extension', 'drop-pgmq-queue', 'seed-tables', 'image']);
+/** The boolean options of the dbOptions verbs; every other option takes a value. */
+export const DB_BOOLEAN_OPTIONS = Object.freeze(['apply', 'json', 'squash']);
+
 export function dbOptions(argv, allowed) {
   const opts = {};
   for (let index = 0; index < argv.length; index += 1) {
     const [flag, inline] = argv[index].split(/=(.*)/s);
     const name = flag.slice(2);
-    if (!flag.startsWith('--') || !allowed.includes(name) || Object.hasOwn(opts, name)) throw new DbVerbError('unknown or duplicate database option');
-    if (['apply', 'json', 'squash'].includes(name)) {
+    if (!flag.startsWith('--') || !allowed.includes(name) || Object.hasOwn(opts, name)) throw new DbVerbError(`unknown or duplicate database option ${flag}`);
+    if (DB_BOOLEAN_OPTIONS.includes(name)) {
       if (inline !== undefined && !['true', 'false'].includes(inline)) throw new DbVerbError(`${flag} expects true or false`);
       opts[name] = inline !== 'false';
     } else {
@@ -336,7 +341,7 @@ function cleanPlan(root, urlEnv, ports) {
 /** Numeric CLI exit code, injectable IO/clock/CLI; neither files nor history change without --apply. */
 export function dbBaselineMain(argv, { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), now = () => new Date(), ...ports } = {}) {
   try {
-    const opts = dbOptions(argv, ['cwd', 'stamp', 'apply', 'url-env', 'squash', 'drop-extension', 'drop-pgmq-queue', 'seed-tables', 'image']);
+    const opts = dbOptions(argv, BASELINE_OPTIONS);
     if (!opts.squash && ['drop-extension', 'drop-pgmq-queue', 'seed-tables', 'image'].some((name) => Object.hasOwn(opts, name))) throw new DbVerbError('--drop-extension, --drop-pgmq-queue, --seed-tables and --image belong to --squash');
     if (opts.squash && !opts['url-env']) throw new DbVerbError('baseline --squash reads a database the whole active chain is applied to: pass --url-env NAME');
     const urlEnv = opts['url-env'] ?? 'DATABASE_URL';

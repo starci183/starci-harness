@@ -354,11 +354,16 @@ const declaresCliApp = app => app.sides.be.apps.some(entry => entry.kind === 'cl
 
 const LITE_APP_REUSED = new Set(['.editorconfig', '.gitattributes', '.nvmrc']);
 /**
- * The lite be files a generator writes when it first needs them, never the starter: the cli's runners, the in-order relay, and the
- * raw SQL helpers of platform/database (the sql tag, and the database-function call statement with its spec), which only the table,
- * queue, jobs and webhook capabilities call; a fresh app reads and writes through entities alone (R334).
+ * The be files a generator writes when it first needs them, never the starter, so a fresh app carries no file and no export that
+ * nothing reads (R25). In both editions: the entity bases of platform/database (abstract.entity.ts, BE-PERSISTENCE-3), written by
+ * the first table whose entity extends them, since no starter table has both timestamps. In lite also: the cli's runners, the in-order
+ * relay, and the raw SQL helpers of platform/database (the sql tag, and the database-function call statement with its spec), which only
+ * the table, queue, jobs and webhook capabilities call; a fresh app reads and writes through entities alone (R334).
  */
+export const ENTITY_BASE_FILE = 'src/modules/platform/database/abstract.entity.ts';
+const DEFERRED_GENERATOR_FILES = new Set([ENTITY_BASE_FILE]);
 const LITE_DEFERRED_GENERATOR_FILES = new Set([
+  ...DEFERRED_GENERATOR_FILES,
   'src/modules/platform/database/database.client.ts',
   'src/modules/platform/database/database.client.spec.ts',
   'src/modules/platform/database/database.sql.ts',
@@ -462,7 +467,7 @@ function scaffoldWorkSeeds(project) {
 export function skeletonOf(scope, app, vars) {
   const files = app.edition === 'lite'
     ? [...skeletonDirectory(scope, 'skeleton', app, vars, rel => liteBaseFile(scope, rel)), ...skeletonDirectory(scope, 'skeleton-lite', app, vars, rel => liteOverlayFile(scope, rel))]
-    : skeletonDirectory(scope, 'skeleton', app, vars);
+    : skeletonDirectory(scope, 'skeleton', app, vars, rel => scope !== 'be' || !DEFERRED_GENERATOR_FILES.has(rel));
   const unique = [...new Map(files.map(file => [file.path, file])).values()];
   // Every declared fe app has a skeleton: its own apps/<name>/ folder or the shared __app__ one.
   for (const entry of scope === 'fe' ? app.sides.fe.apps : []) {
@@ -599,7 +604,7 @@ function initializeScaffoldSecrets(root, writes) {
 
 /**
  * A new app path becomes the one accepted existing root first: an empty repository with unborn main (git init), so the app is always
- * created inside its own Git repository and `starci npm ci` can install the hooks. A failed init is a refusal before any file is written.
+ * created inside its own Git repository and `npm ci` can install the hooks. A failed init is a refusal before any file is written.
  */
 function bornRepository(root, initGit) {
   fs.mkdirSync(root, { recursive: true });

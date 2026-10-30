@@ -27,9 +27,17 @@ import { serverKey } from "../../../stack/server-key.mjs";
 export { envelopeOf, formatOf, plaintextOf } from "./secret-document.mjs";
 export { setSecretValues } from "./secret-store.mjs";
 
-const VERBS = new Set(["init", "list", "get", "set", "unset", "rename", "remove", "materialize", "verify", "recipients", "migrate", "split", "audit", "server-key"]);
+/** The actions of `starci app secret`, in usage order. */
+export const SECRET_VERBS = Object.freeze(["init", "set", "get", "unset", "rename", "remove", "materialize", "list", "verify", "recipients", "migrate", "split", "audit", "server-key"]);
+const VERBS = new Set(SECRET_VERBS);
 const MOVE_VERBS = new Set(["migrate", "split"]);
-const LIST_FLAGS = ["--add", "--remove", "--from-file", "--group"];
+/** The flags the parser reads: repeatable lists, single values and booleans (optionsFor refuses each outside the actions that take it). */
+export const SECRET_FLAGS = Object.freeze({
+  list: ["--add", "--remove", "--from-file", "--group"],
+  value: ["--cwd", "--generate", "--to", "--group-file", "--backup", "--restore"],
+  boolean: ["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing", "--rotate"],
+});
+const LIST_FLAGS = SECRET_FLAGS.list;
 const EDIT_VERBS = new Set(["unset", "rename", "remove"]);
 
 function valueOption(opts, flag, value) {
@@ -49,9 +57,9 @@ function parse(argv) {
       const value = inline ?? argv[++i];
       if (value === undefined || value.startsWith("--")) throw new SecretError(`${flag} needs a value`);
       (opts[flag.slice(2)] ??= []).push(value);
-    } else if (["--cwd", "--generate", "--to", "--group-file", "--backup", "--restore"].includes(flag)) {
+    } else if (SECRET_FLAGS.value.includes(flag)) {
       valueOption(opts, flag, inline ?? argv[++i]);
-    } else if (["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing", "--rotate"].includes(flag)) {
+    } else if (SECRET_FLAGS.boolean.includes(flag)) {
       if (inline !== undefined && !["true", "false"].includes(inline))
         throw new SecretError(`${flag} expects true or false`);
       opts[flag.slice(2)] = inline !== "false";
@@ -62,9 +70,10 @@ function parse(argv) {
   return opts;
 }
 
-function usageArguments(verb) {
+/** The operands and flags of one secret action, as the usage of `starci app secret` prints them. */
+export function secretUsage(verb) {
   if (verb === "init") return "";
-  if (verb === "set") return "<env> <slug> <KEY> [KEY ...] [--generate <bytes>]";
+  if (verb === "set") return "<env> <slug> <KEY> [KEY ...] [--generate <bytes>] [--from-file KEY=path ...]";
   if (verb === "get") return "<env> <slug> [KEY] --to-file [--reveal]";
   if (verb === "unset") return "<env> <slug> <KEY> [--execute]";
   if (verb === "rename") return "<env> <slug> <OLD> <NEW> [--execute]";
@@ -121,7 +130,7 @@ function optionsFor(verb, opts) {
   }[verb];
   if (count < bounds[0] || count > bounds[1])
     throw new SecretError(
-      `usage: starci app secret ${verb} ${usageArguments(verb)}`,
+      `usage: starci app secret ${verb} ${secretUsage(verb)}`,
     );
   if (opts.generate !== undefined && verb !== "set")
     throw new SecretError("--generate is only valid for set");

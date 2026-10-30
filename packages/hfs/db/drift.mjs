@@ -282,9 +282,12 @@ export async function driftCheck(ctx, options = {}) {
 }
 
 /** Entry of the verb: `starci app db drift [--url-env NAME] [--json] [--cwd <dir>]`. */
+/** The flags of `starci app db drift`; the parser refuses every other. */
+export const SPEC = { boolean: ['--json'], value: ['--url-env'] };
+
 export function dbDriftMain(argv, io = {}) {
   return runVerb({ label: 'starci app db drift', name: 'db drift', code: 'DB_USAGE', io, argv,
-    spec: { boolean: ['--json'], value: ['--url-env'] },
+    spec: SPEC,
     run: (ctx, flags, positional) => {
       if (positional.length) throw refusal('DB_USAGE', 'drift takes flags only');
       return driftCheck(ctx, { urlEnv: flags['url-env'] });

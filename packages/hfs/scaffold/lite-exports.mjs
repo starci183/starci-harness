@@ -4,6 +4,15 @@ import { ScaffoldError } from "./service.mjs"
 import { byCodeUnit } from "../report/order.mjs"
 
 const REGISTRATIONS = Object.freeze({
+  // The entity base a generated table entity extends (BE-PERSISTENCE-3), in either edition; AbstractEntity stays file-local until an
+  // app's own composite-key entity imports it.
+  "entity-base": [
+    {
+      file: "be/src/modules/platform/database/index.ts",
+      source: "./abstract.entity",
+      names: ["UuidAbstractEntity"],
+    },
+  ],
   api: [
     {
       file: "be/src/modules/domain/identity/index.ts",

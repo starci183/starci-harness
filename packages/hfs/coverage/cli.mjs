@@ -10,7 +10,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { coverageFrom, formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
 
-const USAGE = 'usage: starci app coverage merge --out <lcov> <coverage-final.json-or-dir>... [--cwd <dir>] | starci app coverage verify <lcov> [--cwd <dir>]';
+export const USAGE = 'usage: starci app coverage merge --out <lcov> <coverage-final.json-or-dir>... [--cwd <dir>] | starci app coverage verify <lcov> [--cwd <dir>]';
 
 function parse(argv) {
   const [action, ...rest] = argv;

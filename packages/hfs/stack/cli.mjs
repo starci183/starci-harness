@@ -1,5 +1,6 @@
 // cli.mjs - `starci app stack <action>` for the Swarm deploy tooling: flags, dry run versus --execute, dispatch, text and --json output.
-//   starci app stack prepare|doctor|connect|disconnect|build-args|render|deploy|converge|verify|rollback|prune|backup|jobs|task --env <env> [flags]
+//   starci app stack <action> --env <env> [the action's FLAGS]     (only the READ_ONLY actions default --env to production)
+// Each action takes only its own flags: a flag of another action is a refusal, never ignored.
 // (up, down and status are the test-world verbs and are dispatched by packages/hfs/src/main.mjs.)
 // Every action module exports one async function (ctx, config, options) -> { ok, lines, data }; a refusal throws StackError.
 import path from 'node:path';
@@ -15,16 +16,52 @@ const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollb
 
 export const ACTIONS = Object.freeze(['prepare', 'doctor', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept']);
 
-const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start']);
-const VALUE = new Set(['--env', '--image', '--source-sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote']);
-const REPEAT = new Set(['--image', '--keep', '--extra-compose', '--project']);
+export const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start']);
+export const VALUE = new Set(['--env', '--image', '--source-sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote']);
+export const REPEAT = new Set(['--image', '--keep', '--extra-compose', '--project']);
+/** `--ssh-cmd` replaces the configured alias for an action whose module (or the Docker transport) reaches the manager over SSH. */
+const SSH = ['--ssh-cmd'];
 
-/** Splits argv into { flags, positional }; an unknown flag or a flag without its value is a refusal. */
-function parseFlags(argv) {
+/**
+ * The flags each action takes besides `--env` and `--json`: exactly the flags its OPTIONS entry below reads, plus `--ssh-cmd` where the
+ * action reaches the manager. Any other flag is refused with the action named, so `doctor --execute` never reads as an effect.
+ */
+export const FLAGS = Object.freeze({
+  prepare: ['--execute', '--init-swarm', '--owner-approved', '--fix-live-restore', ...SSH],
+  doctor: [...SSH],
+  connect: ['--execute'],
+  disconnect: ['--execute'],
+  'build-args': ['--app'],
+  render: ['--image', '--source-sha', '--previous', '--out', '--allow-unpinned', '--extra-compose'],
+  deploy: ['--image', '--source-sha', '--execute', '--out', '--timeout', '--retry', '--skip-public', '--target-binding', '--urgent', '--reason', '--remote', '--db-url-env', '--backup-out', '--first-start', '--db-service', ...SSH],
+  converge: ['--since', '--timeout', ...SSH],
+  verify: ['--retry', '--skip-public', '--skip-internal', '--target-binding', ...SSH],
+  rollback: ['--release', '--execute', '--timeout', ...SSH],
+  prune: ['--keep', '--execute', ...SSH],
+  backup: ['--swarm-state', '--execute', ...SSH],
+  jobs: ['--execute', ...SSH],
+  task: ['--execute', ...SSH],
+  ingress: ['--execute', ...SSH],
+  retire: ['--project', '--execute', ...SSH],
+  build: ['--push', '--execute'],
+  accept: ['--release', '--execute', '--retry', ...SSH],
+});
+
+/** The operands of the actions that take any, as the usage prints them. */
+export const OPERANDS = Object.freeze({ jobs: '<action> [<arg>...]', task: '<name> [<arg>...]', ingress: '<action> [<arg>...]' });
+
+/** The read-only actions, whose `--env` defaults to production. Every action with an effect names its environment, so none reaches production by omission. */
+export const READ_ONLY = Object.freeze(['doctor', 'build-args', 'render', 'verify']);
+
+/** Splits argv into { flags, positional }; an unknown flag, a flag of another action or a flag without its value is a refusal. */
+function parseFlags(action, argv) {
+  const own = new Set(['--env', '--json', ...FLAGS[action]]);
   const flags = {};
   const positional = [];
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg.startsWith('--') && !BOOLEAN.has(arg) && !VALUE.has(arg)) throw refusal('STACK_USAGE', `unknown flag ${arg}`);
+    if (arg.startsWith('--') && !own.has(arg)) throw refusal('STACK_USAGE', `stack ${action} takes no ${arg}: its flags are ${[...own].join(', ')}`);
     if (BOOLEAN.has(arg)) flags[arg.slice(2)] = true;
     else if (VALUE.has(arg)) {
       const value = argv[index + 1];
@@ -32,10 +69,19 @@ function parseFlags(argv) {
       index += 1;
       const key = arg.slice(2);
       flags[key] = REPEAT.has(arg) ? [...(flags[key] ?? []), value] : value;
-    } else if (arg.startsWith('--')) throw refusal('STACK_USAGE', `unknown flag ${arg}`);
-    else positional.push(arg);
+    } else positional.push(arg);
   }
   return { flags, positional };
+}
+
+/** The flag combinations of deploy's two forms: the one-command urgent release (no --image, no --source-sha) and the image form, and the urgent floor's own flags. */
+function checkDeployForm(flags) {
+  if (!flags.urgent && (flags.reason || flags.remote)) throw refusal('STACK_USAGE', '--reason and --remote release HEAD in the one-command urgent deploy: add --urgent');
+  if (flags.reason || flags.remote) {
+    if (flags['source-sha'] || flags.image) throw refusal('STACK_USAGE', '--reason and --remote belong to the one-command urgent deploy without --image and --source-sha; the image form deploys a commit whose urgent record was already pushed');
+  }
+  if (!flags.urgent && (flags['first-start'] || flags['db-service'])) throw refusal('STACK_USAGE', '--first-start and --db-service are the first start of an empty database under the urgent floor: add --urgent');
+  if (!flags.urgent && (flags['db-url-env'] || flags['backup-out'])) throw refusal('STACK_USAGE', '--db-url-env and --backup-out choose the urgent floor\'s database and backup folder: add --urgent');
 }
 
 /** `--image api=ghcr.io/o/x@sha256:...` (repeatable or comma separated) -> { api: 'ghcr.io/o/x@sha256:...' }. */
@@ -121,17 +167,15 @@ function nativeToolContext(ctx, binding) {
 export async function stackMain(argv, io = {}) {
   const ctx = stackContext(io);
   try {
-    const { flags, positional } = parseFlags(argv.slice(1));
     const action = argv[0];
     if (!ACTIONS.includes(action)) throw refusal('STACK_USAGE', `starci app stack takes ${[...ACTIONS, 'up', 'down', 'status'].join(', ')}`);
+    const { flags, positional } = parseFlags(action, argv.slice(1));
+    if (flags.env === undefined && !READ_ONLY.includes(action)) throw refusal('STACK_USAGE', `stack ${action} has an effect: name its environment with --env <env> (only ${READ_ONLY.join(', ')} default to production)`);
+    if (action === 'deploy') checkDeployForm(flags);
     const binding = parseTargetBinding(flags['target-binding'], 'docker-swarm');
-    if (binding && (!['deploy', 'verify'].includes(action) || flags['ssh-cmd'] || flags['skip-public'] || flags['skip-internal']))
+    if (binding && (flags['ssh-cmd'] || flags['skip-public'] || flags['skip-internal']))
       throw refusal('STACK_USAGE', 'the bound native consumer supports only complete deploy or verify');
     const config = bindStackTarget(ctx, loadDeployConfig({ repoRoot: ctx.cwd, env: flags.env ?? 'production' }), binding);
-    if (action !== 'deploy' && (flags.urgent || flags['db-url-env'] || flags['backup-out'] || flags['first-start'] || flags['db-service'] || flags.reason || flags.remote)) throw refusal('STACK_USAGE', '--urgent, --db-url-env, --backup-out, --first-start, --db-service, --reason and --remote belong to deploy');
-    if (!flags.urgent && (flags.reason || flags.remote)) throw refusal('STACK_USAGE', '--reason and --remote release HEAD in the one-command urgent deploy: add --urgent');
-    if (!flags.urgent && (flags['first-start'] || flags['db-service'])) throw refusal('STACK_USAGE', '--first-start and --db-service are the first start of an empty database under the urgent floor: add --urgent');
-    if (action === 'deploy' && !flags.urgent && (flags['db-url-env'] || flags['backup-out'])) throw refusal('STACK_USAGE', '--db-url-env and --backup-out choose the urgent floor\'s database and backup folder: add --urgent');
     let options = OPTIONS[action]({ flags, positional, cwd: ctx.cwd });
     // The one-command urgent deploy releases HEAD and builds its images here, before the Docker transport reaches the server.
     let prepared = null;

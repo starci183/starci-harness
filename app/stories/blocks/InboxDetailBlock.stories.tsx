@@ -18,7 +18,7 @@ const meta = {
                     { value: "1", label: "BE + FE một workflow, FE chờ code BE", description: "Kernel thêm lane FE." },
                     { value: "2", label: "Gửi Debug sửa harness" },
                 ],
-                command: "starci supervisor submit --project starci-next --answer d-6979996fe691",
+                command: "starci supervisor submit \"D:/.claude/.runtime/projects/starci-next/owner-commands/d-6979996fe691.json\" --cwd \"D:/Repositories/starci-next\"",
             }),
             option: "1",
             note: "",

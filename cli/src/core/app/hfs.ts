@@ -36,7 +36,7 @@ export const QUIET_FLAG = {
     quiet: { kind: "boolean", summary: "suppress human-readable chatter" },
 } as const satisfies Readonly<Record<string, FlagSpec>>
 
-/** `--edition`, taken where an app is created or judged (scaffold, check, upgrade). */
+/** `--edition`, taken where an app is created or judged (scaffold, check). */
 export const EDITION_FLAG = {
     edition: { kind: "string", summary: "app edition, full or lite" },
 } as const satisfies Readonly<Record<string, FlagSpec>>

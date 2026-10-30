@@ -15,12 +15,12 @@
 //                                            --fast: only what changed since the merge-base with origin/main (else main; --base
 //                                            overrides it); the machine
 //                                            runs on those owners without clones and dead exports. No merge-base is a refusal
-//                                            (exit 2), never a silent full pass. Exit 1 on any error-level finding. The root checks run once and
+//                                            (exit 2), never a silent full pass. Exit 1 at 20 error findings or a hard blocker (gate-threshold.mjs). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
 //   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--format text|json] [--sonar <file>]
 //                                            the ONE lint entry (npm run lint): ESLint per side with that side's canon config (per-file rules and
 //                                            the project-graph rules), this check's findings, and stylelint over the fe side, as one starci/lint@1
-//                                            report; --sonar writes the one Sonar import file. Exit 0 clean, 1 findings, 2 a tool could not run (lint/run.mjs).
+//                                            report; --sonar writes the one Sonar import file. Exit 0 under 20 error findings and no hard blocker, 1 otherwise, 2 a tool could not run (lint/run.mjs).
 //                                            --workspace <dir> (from the current directory) scopes the same lint to one fe workspace: the
 //                                            `lint` script of fe/apps/<app> and fe/packages/<pkg>, run by the turbo lint task.
 //   starci app scaffold <name> [--into <dir>]  a new app <dir>/<name>/: the root (hfs.json, package.json, managed files, .starciwork) and the
@@ -39,7 +39,7 @@
 //                                            one placeholder it per public method. Never overwrites a file. Both editions: a lite back end keeps full's unit specs (ruling:R212/case-1 (owner:lite-production-swarm), amended by ruling:R212/case-4).
 //   starci app new image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mjs); never overwrites
 //   starci app new spec <file>.service.ts [--cwd <dir>]  the spec skeleton of an existing service, read from its constructor with the repository's TypeScript
-//   starci app stack prepare|doctor|connect|disconnect|build-args|render|deploy|converge|verify|rollback|prune|backup|jobs --env <env> [--execute]
+//   starci app stack <action> --env <env> [--execute]
 //                                            the Swarm deploy tooling of stack/ (dry run unless --execute; never prints a secret value; see docs/application-stacks.md).
 //   starci app secret init | set <env> <slug> <KEY> [--generate <bytes>] | get <env> <slug> [KEY] --to-file [--reveal]
 //   starci app secret unset <env> <slug> <KEY> [--execute] | rename <env> <slug> <OLD> <NEW> [--execute] | remove <env> <slug> [--execute] [--force-nonempty]
@@ -60,6 +60,7 @@
 //                                            or overlay owner (scaffold/add-fe-page.mjs, add-fe-layout.mjs, add-fe-overlay.mjs).
 //                                            one front-end unit in the shape-slot pattern from templates/fe/units (scaffold/add-fe-unit.mjs); the
 //                                            first block writes the app's one copy of the status owners. Never overwrites a unit.
+// The flags of every verb are those of USAGE below, generated from the parser tables that refuse every other flag.
 // Every finding names a why code and carries its Vietnamese text. check, lint and explain read the app, never write to it. Exit codes:
 // 0 clean, 1 error findings, 2 a refusal or bad usage.
 import fs from 'node:fs';
@@ -90,95 +91,119 @@ import { eslintRepository, lintRepository, parseLintArgs, printLintText } from '
 import { writeReport } from '../report/sonar.mjs';
 import { checkEdition } from '../upgrade/check.mjs';
 import { UpgradeError, upgradeMain } from '../upgrade/index.mjs';
-import { ACTIONS as STACK_ACTIONS, stackMain as deployStackMain } from '../stack/cli.mjs';
-import { releaseMain } from '../release/index.mjs';
-import { dbMigrateMain } from '../db/migrate.mjs';
-import { dbPostCutoverMain } from '../db/post-cutover.mjs';
-import { dbDumpMain } from '../db/dump.mjs';
-import { dbNewMain } from '../db/new.mjs';
-import { dbDriftMain } from '../db/drift.mjs';
+import { ACTIONS as STACK_ACTIONS, FLAGS as STACK_FLAGS, OPERANDS as STACK_OPERANDS, READ_ONLY as STACK_READ_ONLY, REPEAT as STACK_REPEAT, VALUE as STACK_VALUE, stackMain as deployStackMain } from '../stack/cli.mjs';
+import { RELEASE_FLAGS, releaseMain } from '../release/index.mjs';
+import { SPEC as DB_MIGRATE_FLAGS, dbMigrateMain } from '../db/migrate.mjs';
+import { SPEC as DB_POST_CUTOVER_FLAGS, dbPostCutoverMain } from '../db/post-cutover.mjs';
+import { SPEC as DB_DUMP_FLAGS, dbDumpMain } from '../db/dump.mjs';
+import { SPEC as DB_NEW_FLAGS, dbNewMain } from '../db/new.mjs';
+import { SPEC as DB_DRIFT_FLAGS, dbDriftMain } from '../db/drift.mjs';
+import { BASELINE_OPTIONS, DB_BOOLEAN_OPTIONS } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
+import { RESTAMP_OPTIONS } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
+import { PLAN_OPTIONS } from '../runtime/scripts/hfs/db-plan-verb.mjs';
+import { SECRET_VERBS, secretUsage } from '../runtime/scripts/hfs/secret.mjs';
+import { BOOLEAN as CI_BOOLEAN, COMMANDS as CI_COMMANDS } from '../ci/cli.mjs';
+import { LOCAL_FLAGS as CI_LOCAL_FLAGS } from '../ci/local.mjs';
+import { USAGE as COVERAGE_USAGE } from '../coverage/cli.mjs';
+import { SYNC_USAGE } from '../sync/cli.mjs';
 import { codemodMain } from '../codemod/button-intent.mjs';
 
 export const VERBS = Object.freeze(['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'release', 'explain', 'emit', 'new', 'secret', 'ci', 'db', 'hygiene', 'coverage', 'codemod']);
 const DATABASE_VERBS = new Map([['baseline', dbBaselineMain], ['restamp', dbRestampMain], ['plan', dbPlanMain], ['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
 
-const USAGE = `starci app scaffold <name> [--into <dir>] [--edition full|lite] [--registry-visibility public|private] [--cwd <dir>]
-starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|composite|branch|leaf|page|overlay|layout> <name> [options] [--cwd <dir>]
-starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--format text|json] [--sonar <file>]
-starci app codemod button-intent [--write] [--format json|markdown] [--report <file.json|file.md>] [--cwd <dir>]
-starci app sync (--check | --write) [--cwd <dir>]
-starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--wiring] [--coverage-from <lcov>]
-starci app db new <kebab-name> [--json] [--cwd <dir>]
-starci app db baseline [--stamp <version>] [--url-env <NAME>] [--squash [--drop-extension <a,b>] [--drop-pgmq-queue <q,job_*>] [--seed-tables <t1,t2>] [--image <ref>]] [--apply] [--cwd <dir>]
-starci app db restamp --map <restamp.yaml> [--url-env <NAME>] [--apply] [--cwd <dir>]
-starci app db plan [--url-env <NAME>] [--json] [--cwd <dir>]
-starci app db dump [--url-env <NAME>] --out <dir> [--schema-only] [--json] [--cwd <dir>]
-starci app db migrate [--execute] [--url-env <NAME>] [--json] [--cwd <dir>]
-starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--url-env <NAME>] [--json] [--cwd <dir>]
-starci app db drift [--url-env <NAME>] [--json] [--cwd <dir>]
-starci app release gate [--execute] [--source <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json] [--cwd <dir>]
-starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json] [--cwd <dir>]
-starci app upgrade [--plan] [--cwd <dir>]
-starci app stack <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
-starci app stack <prepare|doctor|connect|disconnect|build-args|render|deploy|converge|verify|rollback|prune|backup|jobs> --env <env> [--execute] [--json] [--cwd <dir>]
-starci app stack deploy --env <env> --urgent (--reason <text> [--remote <name>] | --source-sha <sha> --image <service>=<ref>) [--db-url-env <NAME>] [--backup-out <dir>] [--first-start --db-service <service>] [--execute] [--json] [--cwd <dir>]
-starci app explain <path> [--cwd <dir>] [--json]
-starci app emit [--cwd <dir>]
-starci app new service <dir> <name> [--inject <binding>...] [--cwd <dir>]
-starci app new spec <file>.service.ts [--cwd <dir>]
-starci app new image [--cwd <dir>]
-starci app secret init [--cwd <dir>]
-starci app secret set <env> <slug> <KEY> [--generate <bytes>] [--cwd <dir>]
-starci app secret get <env> <slug> [KEY] --to-file [--reveal] [--cwd <dir>]
-starci app secret unset <env> <slug> <KEY> [--execute] [--cwd <dir>]
-starci app secret rename <env> <slug> <OLD> <NEW> [--execute] [--cwd <dir>]
-starci app secret remove <env> <slug> [--execute] [--force-nonempty] [--cwd <dir>]
-starci app secret materialize <env> [--cwd <dir>]
-starci app secret list <env> [--cwd <dir>]
-starci app secret verify <env> [--cwd <dir>]
-starci app secret server-key <env> [--rotate | --backup github | --restore github] [--execute] [--cwd <dir>]
-starci app ci secret set <NAME> [--env E | --dependabot] [--repo owner/name] [--cwd <dir>]
-starci app ci var set <NAME> [--env E] [--value v] [--repo owner/name] [--cwd <dir>]
-starci app ci var sync [--execute] [--repo owner/name] [--cwd <dir>]
-starci app ci verify [--json] [--repo owner/name] [--cwd <dir>]
-starci app hygiene [--cwd <dir>]
-starci app coverage merge --out <lcov> <lcov-or-dir>... [--cwd <dir>]
+/**
+ * The verbs parsed here, each with the only flags it takes ({ boolean, value, list }); a flag of another verb is refused, never ignored.
+ * `forms` are its usage lines: the operands and, where a form takes fewer flags than the verb, its own. `edition` marks a verb that reads the
+ * global --edition (editionOption).
+ */
+const PARSED = {
+  scaffold: { run: scaffoldMain, value: ['--into', '--registry-visibility'], edition: true, forms: [{ operands: '<name>' }] },
+  add: {
+    run: addMain, value: ['--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs'], boolean: ['--fe', '--form'],
+    forms: [{ operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|composite|branch|leaf|page|overlay|layout> <name>' }],
+  },
+  check: { run: checkMain, value: ['--base', '--coverage-from'], boolean: ['--json', '--fast', '--wiring'], edition: true, forms: [{}] },
+  explain: { run: explainMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
+  emit: { run: emitMain, forms: [{}] },
+  new: { run: newMain, list: ['--inject'], forms: [{ operands: 'service <dir> <name>' }, { operands: 'spec <file>.service.ts', flags: [] }, { operands: 'image', flags: [] }] },
+};
+const flagsOf = (spec) => [...(spec.boolean ?? []), ...(spec.value ?? []), ...(spec.list ?? [])];
+/** Every flag some parsed verb takes, and the global --edition: naming one on a verb that does not take it says so. */
+const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edition']);
+
+/** The placeholder of a value flag in the usage; any other prints as <name>. */
+const PLACEHOLDERS = {
+  '--into': '<dir>', '--registry-visibility': 'public|private', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--inject': '<binding>',
+  '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
+  '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--source-sha': '<sha>',
+  '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
+  '--keep': '<release.json>', '--ssh-cmd': '<command>', '--extra-compose': '<file>', '--target-binding': '<json>', '--db-url-env': '<NAME>',
+  '--backup-out': '<dir>', '--db-service': '<service>', '--reason': '<text>', '--remote': '<name>', '--source': '<ref>', '--tag-prefix': '<prefix>',
+  '--backfill': '<tag>', '--url-env': '<NAME>', '--green-at': '<ISO>', '--stamp': '<version>', '--map': '<restamp.yaml>', '--drop-extension': '<a,b>',
+  '--drop-pgmq-queue': '<q,job_*>', '--seed-tables': '<t1,t2>', '--repo': '<owner/name>', '--jobs': '<id,...>', '--parallel': '<n>', '--logs': '<dir>',
+};
+const flagUsage = (flag, { value = false, repeat = false, placeholders = PLACEHOLDERS } = {}) => `[${flag}${value ? ` ${placeholders[flag] ?? `<${flag.slice(2)}>`}` : ''}]${repeat ? '...' : ''}`;
+const line = (...parts) => parts.flat().filter(Boolean).join(' ');
+/** The flags of a { boolean, value, list, retired } spec as usage text; a retired flag is parsed only to be refused, so it is not offered. */
+const specUsage = ({ boolean = [], value = [], list = [], retired = [] }, placeholders = PLACEHOLDERS) => [
+  ...boolean.filter((flag) => !retired.includes(flag)).map((flag) => flagUsage(flag)),
+  ...value.filter((flag) => !retired.includes(flag)).map((flag) => flagUsage(flag, { value: true, placeholders })),
+  ...list.map((flag) => flagUsage(flag, { value: true, repeat: true, placeholders })),
+];
+/** A dbOptions list (bare names) as a spec; --cwd is the global flag. */
+const dbSpec = (names) => ({ boolean: names.filter((name) => DB_BOOLEAN_OPTIONS.includes(name)).map((name) => `--${name}`), value: names.filter((name) => name !== 'cwd' && !DB_BOOLEAN_OPTIONS.includes(name)).map((name) => `--${name}`) });
+const DATABASE_USAGE = [['new', '<kebab-name>', DB_NEW_FLAGS], ['baseline', '', dbSpec(BASELINE_OPTIONS)], ['restamp', '', dbSpec(RESTAMP_OPTIONS)], ['plan', '', dbSpec(PLAN_OPTIONS)], ['migrate', '', DB_MIGRATE_FLAGS], ['post-cutover', '', DB_POST_CUTOVER_FLAGS], ['dump', '', DB_DUMP_FLAGS], ['drift', '', DB_DRIFT_FLAGS]];
+
+/** The usage of each verb, from the tables its parser refuses every other flag with (lint, codemod and upgrade keep hand-parsed arguments, held by main.spec.mjs). */
+const VERB_USAGE = {
+  ...Object.fromEntries(Object.entries(PARSED).map(([verb, spec]) => [verb, spec.forms.map((form) => line(`starci app ${verb}`, form.operands,
+    specUsage(form.flags === undefined ? spec : { value: form.flags }), spec.edition ? flagUsage('--edition', { value: true }) : ''))])),
+  lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--json] [--format text|json] [--sonar <file>]'],
+  codemod: ['starci app codemod button-intent [--write] [--json] [--format json|markdown] [--report <file.json|file.md>]'],
+  upgrade: ['starci app upgrade [--plan]'],
+  sync: [SYNC_USAGE.sync],
+  hygiene: [SYNC_USAGE.hygiene],
+  stack: [
+    'starci app stack <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--edition full|lite]',
+    ...STACK_ACTIONS.map((action) => line(`starci app stack ${action}`, STACK_OPERANDS[action], STACK_READ_ONLY.includes(action) ? flagUsage('--env', { value: true }) : '--env <env>',
+      STACK_FLAGS[action].map((flag) => flagUsage(flag, { value: STACK_VALUE.has(flag), repeat: STACK_REPEAT.has(flag) })), '[--json]')),
+  ],
+  release: Object.entries(RELEASE_FLAGS).map(([action, spec]) => line(`starci app release ${action}`, specUsage(spec))),
+  secret: SECRET_VERBS.map((verb) => line(`starci app secret ${verb}`, secretUsage(verb))),
+  ci: [
+    ...Object.entries(CI_COMMANDS).map(([command, options]) => line(`starci app ci ${command}`, command.endsWith(' set') ? '<NAME>' : '',
+      options.map((name) => flagUsage(`--${name}`, { value: !CI_BOOLEAN.has(name) })))),
+    line('starci app ci local', specUsage(CI_LOCAL_FLAGS)),
+  ],
+  db: DATABASE_USAGE.map(([verb, operands, spec]) => line(`starci app db ${verb}`, operands, specUsage(spec, { ...PLACEHOLDERS, '--image': '<ref>', '--out': '<dir>' }))),
+  coverage: COVERAGE_USAGE.replace(/^usage: /, '').split(' | ').map((text) => text.replace(' [--cwd <dir>]', '')),
+};
+export const USAGE = `${VERBS.flatMap((verb) => VERB_USAGE[verb]).join('\n')}
+every verb: [--cwd <dir>] [--quiet] [--help]
 `;
 const PER_CODE_LIMIT = 25;
-const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs']);
-/** Flags that may repeat: their values are collected in order. */
-const LIST_FLAGS = new Set(['--inject']);
-const BOOL_FLAGS = new Set(['--json', '--fast', '--fe', '--wiring', '--form']);
 
-function coverageArgument(arg, args, opts) {
-  const inline = arg.startsWith('--coverage-from=');
-  const value = inline ? arg.slice('--coverage-from='.length) : args.next().value;
-  if (!value || value.startsWith('--')) throw new Error('--coverage-from needs a value');
-  if (opts['coverage-from'] !== undefined) throw new Error('--coverage-from may be given only once');
-  opts['coverage-from'] = value;
-}
-
-function valueArgument(arg, args, opts) {
-  const value = args.next().value;
-  if (value === undefined) throw new Error(`${arg} needs a value`);
-  const key = arg.slice(2);
-  opts[key] = LIST_FLAGS.has(arg) ? [...(opts[key] ?? []), value] : value;
-}
-
-function parse(argv) {
+/** Splits the arguments of a parsed verb into { positional, <flag>: value }; a flag the verb does not take, a repeated single value or a missing value is refused. */
+function parse(verb, argv) {
+  const { boolean = [], value = [], list = [] } = PARSED[verb];
   const opts = { positional: [] };
   const args = argv.values();
   for (const arg of args) {
-    if (arg === '--coverage-from' || arg.startsWith('--coverage-from=')) {
-      coverageArgument(arg, args, opts);
+    if (!arg.startsWith('--')) {
+      opts.positional.push(arg);
       continue;
     }
-    if (VALUE_FLAGS.has(arg)) {
-      valueArgument(arg, args, opts);
-    }
-    else if (BOOL_FLAGS.has(arg)) opts[arg.slice(2)] = true;
-    else if (arg.startsWith('--')) throw new Error(`unknown flag ${arg}`);
-    else opts.positional.push(arg);
+    const [flag, inline] = arg.split(/=(.*)/s);
+    const key = flag.slice(2);
+    if (boolean.includes(flag) && inline === undefined) opts[key] = true;
+    else if (value.includes(flag) || list.includes(flag)) {
+      const given = inline ?? args.next().value;
+      if (!given || given.startsWith('--')) throw new Error(`${flag} needs a value`);
+      if (list.includes(flag)) opts[key] = [...(opts[key] ?? []), given];
+      else if (opts[key] !== undefined) throw new Error(`${flag} may be given only once`);
+      else opts[key] = given;
+    } else if (boolean.includes(flag)) throw new Error(`${flag} takes no value`);
+    else throw new Error(PARSED_FLAGS.has(flag) ? `starci app ${verb} takes no ${flag}` : `unknown flag ${flag}`);
   }
   return opts;
 }
@@ -306,29 +331,45 @@ async function lintMain(argv, { cwd, harness, stdout, presets, prettier, runLint
  */
 const scaffoldPresets = () => bundledPresets();
 
-function globalValueArgument(arg, args) {
-  const inline = arg.startsWith('--cwd=') || arg.startsWith('--edition=');
-  const flag = inline ? arg.slice(0, arg.indexOf('=')) : arg;
-  if (flag !== '--cwd' && flag !== '--edition') return null;
-  const value = inline ? arg.slice(arg.indexOf('=') + 1) : args.next().value;
+/** The value of `--flag <value>` or `--flag=<value>`; a missing value, or one that is a flag, is refused. */
+function flagValue(flag, arg, args) {
+  const value = arg.startsWith(`${flag}=`) ? arg.slice(flag.length + 1) : args.next().value;
   if (!value || value.startsWith('--')) throw new Error(`${flag} needs a value`);
-  if (flag === '--edition' && !['full', 'lite'].includes(value)) throw new Error('--edition accepts full or lite');
-  return { flag, value };
+  return value;
 }
 
+/** The flags every verb takes (--cwd, --quiet, --help), taken out of argv before the verb parses the rest. */
 function globalOptions(argv, baseCwd) {
-  const options = { argv: [], cwd: baseCwd, quiet: false, help: false, edition: undefined };
+  const options = { argv: [], cwd: baseCwd, quiet: false, help: false };
   const args = argv.values();
   for (const arg of args) {
-    const valued = globalValueArgument(arg, args);
-    if (valued) {
-      if (valued.flag === '--cwd') options.cwd = path.resolve(baseCwd, valued.value);
-      else options.edition = valued.value;
-    } else if (arg === '--quiet') options.quiet = true;
+    if (arg === '--cwd' || arg.startsWith('--cwd=')) options.cwd = path.resolve(baseCwd, flagValue('--cwd', arg, args));
+    else if (arg === '--quiet') options.quiet = true;
     else if (arg === '--help') options.help = true;
     else options.argv.push(arg);
   }
   return options;
+}
+
+/**
+ * Takes --edition out of the arguments of a verb that reads it: scaffold chooses the edition, check judges only the declared one and the
+ * test-world actions of stack refuse a lite app. Any other verb receives --edition as its own argument and refuses it (upgrade with
+ * HFS_UPGRADE_USAGE: editions are fixed at scaffold).
+ */
+function editionOption(verb, argv) {
+  if (PARSED[verb]?.edition !== true && (verb !== 'stack' || STACK_ACTIONS.includes(argv[0]))) return { edition: undefined, argv };
+  let edition;
+  const rest = [];
+  const args = argv.values();
+  for (const arg of args) {
+    if (arg !== '--edition' && !arg.startsWith('--edition=')) {
+      rest.push(arg);
+      continue;
+    }
+    edition = flagValue('--edition', arg, args);
+    if (!['full', 'lite'].includes(edition)) throw new Error('--edition accepts full or lite');
+  }
+  return { edition, argv: rest };
 }
 
 async function installedStackMain(cwd) {
@@ -411,9 +452,9 @@ function addMain(opts, { cwd: repoRoot, stdout: out }) {
 
 async function scaffoldMain(opts, { cwd, harness, edition = 'full', presets, lock, stdout: out }) {
   const [name, ...extra] = opts.positional;
-  if (!name || extra.length) throw new Error('starci app scaffold takes `<name> [--into <dir>] [--edition full|lite] [--registry-visibility public|private]`');
+  if (!name || extra.length) throw new Error(`starci app scaffold takes \`${VERB_USAGE.scaffold[0].slice('starci app scaffold '.length)}\``);
   const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd, opts.into ?? '.'), harness, edition, presets: presets ?? scaffoldPresets(), ...(opts['registry-visibility'] === undefined ? {} : { registryVisibility: opts['registry-visibility'] }), ...(lock ? { lock } : {}) });
-  out(`starci app scaffold: created ${created} (${files.length} files); next: starci npm ci (the lockfile, then the git hooks through npm run prepare; after a raw npm ci --ignore-scripts run npm run prepare), then starci app lint\n`);
+  out(`starci app scaffold: created ${created} (${files.length} files); next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then starci app lint\n`);
   return 0;
 }
 
@@ -424,8 +465,7 @@ function explainMain(opts, { cwd: repoRoot, stdout: out }) {
   return explained.status === 'no-slot' || explained.status === 'ambiguous' ? 1 : 0;
 }
 
-async function upgradeAppMain(argv, { cwd, edition, stdout }) {
-  await checkEdition({ repoRoot: cwd, edition, normal: () => null });
+function upgradeAppMain(argv, { cwd, stdout }) {
   return upgradeMain(['--repo', cwd, ...argv], { stdout });
 }
 
@@ -446,13 +486,12 @@ async function stackAppMain(argv, { cwd, edition, stackMain, stdout: out, stderr
 }
 
 const DIRECT_VERBS = new Map([['ci', async (argv, io) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['lint', lintMain], ['secret', secretMain], ['db', databaseMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['release', releaseMain], ['coverage', async (argv, io) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
-const PARSED_VERBS = new Map([['check', checkMain], ['emit', emitMain], ['new', newMain], ['add', addMain], ['scaffold', scaffoldMain], ['explain', explainMain]]);
 
 function dispatchMain(verb, argv, io) {
   if (verb === 'sync' || verb === 'hygiene') return syncMain([verb, ...argv], io);
   const direct = DIRECT_VERBS.get(verb);
   if (direct) return direct(argv, io);
-  return PARSED_VERBS.get(verb)(parse(argv), io);
+  return PARSED[verb].run(parse(verb, argv), io);
 }
 
 function errorMessage(error) {
@@ -473,11 +512,12 @@ export async function main(argv, {
 } = {}) {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
-    const [verb, ...rest] = global.argv;
+    const [verb, ...given] = global.argv;
     const out = global.quiet ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb)) { stderr(USAGE); return 2; }
-    return await dispatchMain(verb, rest, { cwd: global.cwd, harness, edition: global.edition, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp });
+    const { edition, argv: rest } = editionOption(verb, given);
+    return await dispatchMain(verb, rest, { cwd: global.cwd, harness, edition, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp });
   } catch (error) {
     stderr(errorMessage(error));
     return 2;

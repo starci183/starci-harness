@@ -17,7 +17,7 @@ checks it runs, under either runner.
 
 | task | read |
 |---|---|
-| operate the harness: send a task, run a workflow, verify, push | `skills/starci/SKILL.md` (a `[Supervisor]` seat reads its rendered brief instead, `ops/coordinators/supervisor.md`), then `starci explain --term <group>` for the verbs you call |
+| operate the harness: send a task, run a workflow, verify, push | `skills/starci/SKILL.md` (a `[Supervisor]` seat reads its rendered brief instead, `ops/coordinators/supervisor.md`), then `starci explain <group>` for the verbs you call |
 | work as a worker on one task | the brief the harness rendered for the task (the worker procedure of [ops/ops/README.md](../ops/ops/README.md), then the label's op file `ops/ops/<label>.md`), then the contract it names |
 | plan as a Kernel | [harness/roles.md](harness/roles.md) and [project/README.md](project/README.md); the rest of [harness/](#harness) and [project/index.md](project/index.md) (generated: every file of this tree with its size, first sentence, sections and ids) on demand, by `starci contexts search` or the file a table below names; open only the files the tasks need, through the rows of "Reading order by task", and name them in each contract's `context.extend` |
 | edit the harness itself (`cli/`, `ops/`, `policy/`, these documents) | [CONTRIBUTING.md](../CONTRIBUTING.md), then the owner of your surface: [cli/README.md](../cli/README.md) through [harness/cli-sections.md](harness/cli-sections.md) (generated: its sections with anchor, size and first sentence; open a section with `starci contexts anchor <anchor>`, never the whole file), [policy/README.md](../policy/README.md), the header of the `ops/` file you change, and [harness/decisions.md](harness/decisions.md) |

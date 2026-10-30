@@ -42,7 +42,8 @@ test('HFS_HOOKS_NOT_INSTALLED: a set core.hooksPath naming a missing or dispatch
   const missing = hooks();
   assert.deepEqual(missing.map((v) => v.ruleId), ['HFS_HOOKS_NOT_INSTALLED']);
   assert.match(missing[0].message, /does not exist/);
-  assert.match(missing[0].message, /starci npm ci/);
+  assert.match(missing[0].message, /run `npm ci` at the app root/);
+  assert.doesNotMatch(missing[0].message, /starci npm/, 'the hint names a command that exists');
   write(root, '.husky/_/.gitignore', '*\n');
   write(root, '.husky/_/pre-commit', '#!/bin/sh\n');
   assert.match(hooks()[0]?.message ?? '', /holds no installed hook/, 'a folder without husky\'s dispatcher h runs no tracked hook');

@@ -3,7 +3,7 @@
 //   1. a READ-ONLY pg_proc preflight (also in the dry run): every function of the declared families (database.postCutover.functionPrefixes and
 //      functionNames in database.postCutover.schema) that exists on the database must be covered by the DROP FUNCTION statements of the held-back
 //      migration (or database.postCutover.functions); a function nobody drops is a function something may still need, so nothing is applied;
-//   2. a time gate: --green-at <ISO> at least minAgeHours (48) ago, or --owner-confirms-old-app-gone;
+//   2. a time gate: --green-at <ISO> at least minAgeHours (48) ago, or else --owner-confirms-old-app-gone (never both);
 //   3. STARCI_DB_ARMED=1.
 // Idempotent: when every held-back version is already on the remote it prints `nothing to do`. The pg_proc query goes through `options.query(sql)`
 // (specs inject one) or, by default, psql against the database --url-env names (default DATABASE_URL).
@@ -119,14 +119,19 @@ async function postCutoverDatabase(ctx, decl, options = {}) {
   return { ok: true, lines: [...lines, pending.length > 0 ? `applied: ${pending.join(', ')}` : 'nothing pending: already applied.'], data: { ...data, done: true, executed: true, pushed: pending, signatures: preflight.count } };
 }
 
-const SPEC = { boolean: ['--execute', '--json', '--owner-confirms-old-app-gone'], value: ['--url-env', '--green-at'] };
+/** The flags of `starci app db post-cutover`; the parser refuses every other. */
+export const SPEC = { boolean: ['--execute', '--json', '--owner-confirms-old-app-gone'], value: ['--url-env', '--green-at'] };
 
 /** Entry of the verb: `starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--url-env NAME] [--json]`. */
 export function dbPostCutoverMain(argv, io = {}) {
   return runVerb({
     label: 'starci app db post-cutover', name: 'db post-cutover', code: 'DB_USAGE', io, argv, spec: SPEC,
-    run: (ctx, flags) => postCutoverDatabase(ctx, loadDatabase(ctx.cwd), {
-      execute: flags.execute === true, urlEnv: flags['url-env'], greenAt: flags['green-at'], ownerConfirms: flags['owner-confirms-old-app-gone'] === true,
-    }),
+    run: (ctx, flags) => {
+      // The two openings of the time gate are alternatives: the owner's word skips the age check, so a --green-at beside it would be ignored.
+      if (flags['green-at'] !== undefined && flags['owner-confirms-old-app-gone'] === true) throw refusal('DB_USAGE', '--green-at and --owner-confirms-old-app-gone are alternative openings of the time gate: give one');
+      return postCutoverDatabase(ctx, loadDatabase(ctx.cwd), {
+        execute: flags.execute === true, urlEnv: flags['url-env'], greenAt: flags['green-at'], ownerConfirms: flags['owner-confirms-old-app-gone'] === true,
+      });
+    },
   });
 }

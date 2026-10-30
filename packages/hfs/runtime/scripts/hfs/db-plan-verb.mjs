@@ -156,16 +156,18 @@ function compare(expected, actual, kind) {
   return { expected: expected.size, remote: actual.length, missing: unmatched.size, unexpected, changed };
 }
 
-/** Numeric exit codes: 0 equal, 1 drift, 2 invalid/failed; all IO and CLI calls are injectable. */
+/** The options of `starci app db plan` (dbOptions refuses every other, --apply too). */
+export const PLAN_OPTIONS = Object.freeze(['cwd', 'url-env', 'json']);
+
+/** Numeric exit codes: 0 equal, 1 drift, 2 invalid/failed (an --apply too: a plan never mutates history, queues or jobs); all IO and CLI calls are injectable. */
 export function dbPlanMain(argv, { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), ...ports } = {}) {
   try {
-    const opts = dbOptions(argv, ['cwd', 'url-env', 'json', 'apply']);
+    const opts = dbOptions(argv, PLAN_OPTIONS);
     const root = dbAppRoot(cwd, opts);
     const expected = repositoryState(root);
     const actual = remoteState(root, opts['url-env'] ?? 'DATABASE_URL', ports);
     const summaries = Object.fromEntries(Object.keys(INVENTORIES).map((kind) => [kind, compare(expected[kind], actual[kind], kind)]));
     const drift = Object.values(summaries).some((item) => item.missing || item.unexpected || item.changed);
-    // --apply is accepted for shared verb ergonomics; a plan never mutates history, queues or jobs.
     if (opts.json) stdout(`${JSON.stringify({ readOnly: true, drift, ...summaries })}\n`);
     else {
       stdout(`read-only database plan: ${drift ? 'drift detected' : 'repo and database agree'}\n`);

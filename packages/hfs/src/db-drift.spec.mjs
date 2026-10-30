@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -112,4 +113,42 @@ test('the managed CI database step runs the drift check for an app with an entit
   const step = (files) => ciWorkflowCommands({ files, read: () => '' }).ciDatabaseLint;
   assert.equal(step(['src/modules/platform/database/entities.ts']), 'npm run db:lint && npx starci app db drift');
   assert.equal(step(['src/main.ts']), 'npm run db:lint');
+});
+
+/** Installs `name` into `be/node_modules` as a shim of this package's own install, the way an app's `npm ci` provides it. */
+const shimPackage = (be, name) => {
+  const target = path.join(be, 'node_modules', name);
+  fs.mkdirSync(target, { recursive: true });
+  fs.writeFileSync(path.join(target, 'package.json'), `${JSON.stringify({ name, main: 'index.js' })}\n`);
+  fs.writeFileSync(path.join(target, 'index.js'), `module.exports = require(${JSON.stringify(createRequire(import.meta.url).resolve(name))});\n`);
+};
+
+test('the columns a table entity inherits from the entity base of platform/database are compared like its own', async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-drift-base-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const be = path.join(root, 'be');
+  const templates = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates', 'be');
+  const files = {
+    'tsconfig.json': `${JSON.stringify({ compilerOptions: { paths: { '@modules/*': ['./src/modules/*'] } } })}\n`,
+    'src/modules/platform/database/abstract.entity.ts': fs.readFileSync(path.join(templates, 'skeleton', 'src', 'modules', 'platform', 'database', 'abstract.entity.ts'), 'utf8'),
+    'src/modules/platform/database/index.ts': 'export { UuidAbstractEntity } from "./abstract.entity"\n',
+    'src/modules/platform/database/entities.ts': 'import { widgetsEntities } from "@modules/domain/widgets/persistence/entities"\n\nexport const PRIMARY_ENTITIES = [...widgetsEntities]\n',
+    'src/modules/domain/widgets/persistence/entities/index.ts': 'import { WidgetEntity } from "./widgets.entity"\n\nexport const widgetsEntities = [WidgetEntity]\n',
+    'src/modules/domain/widgets/persistence/entities/widgets.entity.ts': fs.readFileSync(path.join(templates, 'table', 'entity.ts.tpl'), 'utf8')
+      .replaceAll('{{table}}', 'widgets').replaceAll('{{Singular}}', 'Widget'),
+  };
+  for (const [relative, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(be, relative)), { recursive: true });
+    fs.writeFileSync(path.join(be, relative), text);
+  }
+  fs.writeFileSync(path.join(be, 'package.json'), '{"name":"be","private":true}\n');
+  for (const name of ['typescript', 'typeorm', 'reflect-metadata', 'pg']) shimPackage(be, name);
+  const columns = await loadEntityColumns(root);
+  assert.deepEqual(columns.map(({ column, type, nullable }) => [column, type, nullable]).sort(([a], [b]) => a.localeCompare(b)), [
+    ['created_at', 'timestamp with time zone', false], ['id', 'uuid', false], ['owner_id', 'uuid', false], ['updated_at', 'timestamp with time zone', false],
+  ]);
+  assert.ok(columns.every((column) => column.entity === 'WidgetEntity' && column.table === 'widgets'), 'the base maps no table of its own');
+  const schema = columns.map(({ column, type, nullable }) => ({ schema: 'public', table: 'widgets', column, type, nullable, enumName: null, view: false }));
+  const missing = await driftCheck({ cwd: root }, { entityColumns: async () => columns, schema: stubbed(schema.filter((row) => row.column !== 'updated_at')) });
+  assert.deepEqual(kinds(missing), ['missing-column updated_at']);
 });

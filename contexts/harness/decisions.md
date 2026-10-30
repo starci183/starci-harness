@@ -104,6 +104,15 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   transport reaches the server, and deploys their digests under the unchanged floor (`packages/hfs/stack/urgent-release.mjs`). A
   tag pushed by hand carries no record: the one command adopts a tag already on HEAD and writes the record only after the checks
   pass; a record is never written by hand.
+- **One canonical CLI (`cli-canonical-2026-10-30`).** Both layers move to one flag dictionary and one command tree,
+  [contexts/harness/cli-canonical.md](cli-canonical.md): `--execute` is the one "do it for real" flag and every effect, a
+  generator's write included (`app sync`, `contexts anatomy`, `app codemod`, `app upgrade`), is dry by default with drift
+  exiting 1; `--json`, `--timeout <s>`, `--sha`, `--env`, `--db-url-env`, `--cwd`, `--out`, `--reason` and `--status` are the
+  one spelling of their meaning; `app secret` takes `--env`; `feedback` folds into `ticket --kind feedback`; `ci secret set`,
+  `ci var set` and `secret recipients --add/--remove` are dry until `--execute`; the test world is `app world up|down|status`;
+  one parser refuses a flag an action does not take and help is generated from the parser tables. A retired spelling is
+  refused for one minor with a message naming the new one, then removed. It ships in lanes; until a line ships the code is the
+  truth. Owner, 2026-10-30: "Duyệt cả 6" (the six decisions of the audit), then "Làm theo lane".
 - **App check and lint pass under 20 findings (`gate-threshold-20`).** `starci app check` and `starci app lint` exit green while
   fewer than 20 error findings remain and none is a hard blocker: a plaintext secret, a failed boot proof or a migration finding
   blocks at any count (`packages/hfs/runtime/scripts/hfs/gate-threshold.mjs`). Every finding is still printed and kept in the

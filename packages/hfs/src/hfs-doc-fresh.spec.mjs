@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { CATALOG } from '../runtime/packages/cli/src/catalog.generated.mjs';
 import { docFreshFindings } from '../runtime/scripts/hfs/rules/doc-fresh.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
@@ -96,6 +97,14 @@ for (const edition of ['lite', 'full']) {
       'be/docs/setup.md': 'Run `npm run contract:emit` or starci app lint.',
     });
     assert.deepEqual(docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN'), []);
+  });
+
+  test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: the app verbs are the live CLI registry's (gen-catalog.mjs), not a retired runtime's`, (t) => {
+    const context = fixture(t, edition, { ...manifests, 'README.md': 'Run `starci app sonar --check`.\n```sh\nstarci app missing-verb\n```' });
+    const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN');
+    assert.deepEqual(hits.map((finding) => finding.message.replace(/^.*: unknown verb /, '').replace(/;.*$/, '')), ['"app missing-verb"']);
+    for (const retired of ['git', 'worker', 'gate', 'docker', 'npm', 'runtime', 'machine', 'work']) assert.equal(CATALOG.groups[retired], undefined, `starci ${retired} is no verb group of the CLI`);
+    assert.ok(CATALOG.groups.explain.self, 'a one-word verb is its group\'s self');
   });
 
   test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: workspace commands resolve the workspace manifests`, (t) => {

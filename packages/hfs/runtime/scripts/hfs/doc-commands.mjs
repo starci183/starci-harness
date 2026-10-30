@@ -208,6 +208,8 @@ function resolveCall(occurrence, catalog, strictProse) {
   const stopped = groupStop(occurrence, groupAlts, groupAlts.filter((g) => !catalog.groups[g]), lenient);
   if (stopped) return { stop: stopped };
   const group = catalog.groups[groupAlts[0]];
+  // a one-word verb (`starci explain [term]`): the group word is the whole command and the rest are its arguments
+  if (group.self && groupAlts.length === 1) return { groupAlts, verbAlts: groupAlts, group: { verbs: { [groupAlts[0]]: group.self } }, rest: tokens.slice(i + 1), globals, bounded };
   const verbToken = tokens[i + 1];
   if (!verbToken || verbToken.text.startsWith('-') || isOpaque(verbToken.text)) return { stop: [] };
   const verbAlts = alternatives(verbToken.text);
@@ -361,7 +363,7 @@ export function checkCommand(occurrence, catalog, { strictProse = false } = {}) 
   return checkSingle(call, catalog);
 }
 
-/** The command table of a catalog loaded from modules/cli/commands (scripts/cli/catalog.mjs loadCatalog) in the shape checkCommand reads. */
+/** A catalog of the { global: { flags }, groups: [{ group, verbs: [{ verb }] }] } form in the shape checkCommand reads (packages/cli/src/catalog.generated.mjs already is). */
 export const commandCatalogOf = (loaded) => ({
   global: loaded.global.flags,
   groups: Object.fromEntries(loaded.groups.map((group) => [group.group, { verbs: Object.fromEntries(group.verbs.map((verb) => [verb.verb, verb])) }])),

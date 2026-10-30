@@ -29,7 +29,7 @@ export const explainVerb = defineVerb({
     roles: EVERYONE,
     schema: "starci/explain@1",
     flags: {
-        term: { kind: "string", summary: "only verbs whose command or summary contains this text" },
+        term: { kind: "string", positional: true, summary: "only verbs whose command or summary contains this text" },
     },
     run: (context, flags) => {
         const term = flags.term?.toLowerCase()

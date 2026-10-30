@@ -96,7 +96,7 @@ ARCH_KNOWLEDGE_UNAVAILABLE:
   meaning_vi: "Bộ kiểm kiến trúc cần một tệp tri thức đi kèm (danh sách tệp gốc do framework ghim) nhưng không đọc được hoặc sai khuôn, nên không phán xét bằng hợp đồng khác."
   causes_vi:
     - "Bản đóng gói của `hfs` thiếu hoặc hỏng tệp tri thức, hoặc tệp tri thức trong runtime bị sửa sai khuôn."
-  nextStep_vi: "Cài lại `@starci/hfs` đúng phiên bản đã ghim; nếu là runtime thì sửa tệp tri thức rồi chạy `starci release sync-runtime`."
+  nextStep_vi: "Cài lại `@starci/hfs` đúng phiên bản đã ghim; tri thức đi kèm gói, nên `npm ci` ở gốc app cài lại đúng bản."
   owner: runtime-core
   kind: check-finding
 
@@ -217,8 +217,8 @@ ARCH_TYPESCRIPT_MISSING:
   title_vi: "Kho được kiểm chưa cài TypeScript"
   meaning_vi: "Bộ kiểm kiến trúc chỉ dùng TypeScript cài trong chính kho được kiểm, không thay bằng bộ phân tích khác, nên không kiểm được."
   causes_vi:
-    - "Kho thiếu `package.json` hoặc chưa chạy `starci npm ci` nên `node_modules/typescript` không có."
-  nextStep_vi: "Chạy `starci npm ci` trong kho rồi chạy lại `starci app check`."
+    - "Kho thiếu `package.json` hoặc chưa chạy `npm ci` nên `node_modules/typescript` không có."
+  nextStep_vi: "Chạy `npm ci` trong kho rồi chạy lại `starci app check`."
   owner: op-retry
   kind: check-finding
 
@@ -1550,7 +1550,7 @@ BE_TEST_TOPOLOGY:
   title_vi: "Cấu hình test lệch chuẩn"
   meaning_vi: "Cấu hình test lệch chuẩn: `<detail>`."
   causes_vi:
-    - "Vi phạm luật R47: một `jest.config.js` (preset `@starci/jest-preset`) với bốn project `unit`, `integration`, `e2e`, `contract`; thư mục và hậu tố spec luôn khớp nhau; `diagnostics: false` + `isolatedModules: true`; `test:integration`, `test:e2e`, `test:contract` chạy qua `starci gate run --root <app> --tests <tên>`; `src/tests/world/` là nơi duy nhất dựng hạ tầng test và chỉ chứa `global-setup.ts`, `global-teardown.ts`, `use-test-world.ts`, `fakes/` và file gốc có hậu tố vai trò (kể cả `test-world.config.ts`)."
+    - "Vi phạm luật R47: một `jest.config.js` (preset `@starci/jest-preset`) với bốn project `unit`, `integration`, `e2e`, `contract`; thư mục và hậu tố spec luôn khớp nhau; `diagnostics: false` + `isolatedModules: true`; `test:integration`, `test:e2e`, `test:contract` là script npm của app (`npm run test:integration`); `src/tests/world/` là nơi duy nhất dựng hạ tầng test và chỉ chứa `global-setup.ts`, `global-teardown.ts`, `use-test-world.ts`, `fakes/` và file gốc có hậu tố vai trò (kể cả `test-world.config.ts`)."
     - "Vi phạm luật R47 về stack thật: mọi dịch vụ khai trong `.starcistacks/<env>` (Postgres, Redis, Keycloak, mail host, k3s...) chạy THẬT trong world qua toxiproxy, world đọc dịch vụ và phiên bản image từ stack lúc chạy; `fakes/<provider>/` chỉ giả SaaS bên ngoài mà đội không vận hành. Ngoại lệ duy nhất: dịch vụ stateless cần phần cứng đặc biệt hoặc model bên ngoài (GPU inference, embedding tự host) được giả khi mục `stacks` của dịch vụ đó trong `test-world.config.ts` khai `{ fakedBy, reason }` với `reason` không rỗng; dịch vụ có trạng thái (database, cache, identity, storage, mail, queue, search hoặc có volume bền) không bao giờ được giả, và mục `fakedBy` trỏ tới dịch vụ hoặc fake (mục `fakes` hay thư mục `fakes/`) không tồn tại bị coi là cũ. `test-world.config.ts` khai world theo đúng một dạng export có tên `export const { useTestWorld, useSandbox } = defineTestWorld({...})` (`stack`, `stacks` theo từng dịch vụ, `fakes`); export default không được đọc và bị báo lỗi."
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra (nợ hàng loạt có codemod của HFS); không cần ai can thiệp thêm."
   owner: op-retry
@@ -1628,9 +1628,9 @@ BE_UNIT_SPEC_NOT_STAGED:
   title_vi: "Tệp logic back-end mới được commit mà không có unit spec"
   meaning_vi: "Commit thêm `<file>`, một tệp `<name>.<role>.ts` có vai trò logic mà unit coverage đo ở mức 100 mỗi tệp, nhưng index không có `<name>.<role>.spec.ts` bên cạnh nó: mã được viết trước, spec để sau. Tệp chỉ có hằng số và kiểu (không có hàm, phương thức nào để chạy) không cần spec riêng."
   causes_vi:
-    - "Agent viết mã trước rồi định sửa lint và spec sau, thay vì chạy vòng op `starci gate read` → mã + spec → `starci gate run`"
+    - "Agent viết mã trước rồi định sửa lint và spec sau, thay vì viết mã cùng spec rồi chạy `npm test -- <pattern>` và `starci app check --fast`"
     - "Spec đã viết nhưng chưa được stage cùng tệp"
-  nextStep_vi: "Viết `<name>.<role>.spec.ts` bên cạnh tệp trong cùng thay đổi, chạy `starci gate run --root <app> --changed <files> --tests <pattern>`, rồi stage cả hai tệp và commit lại qua hook. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra; không thêm ngoại lệ."
+  nextStep_vi: "Viết `<name>.<role>.spec.ts` bên cạnh tệp trong cùng thay đổi, chạy `npm test -- <pattern>` và `starci app check --fast`, rồi stage cả hai tệp và commit lại qua hook. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra; không thêm ngoại lệ."
   owner: op-retry
   kind: check-finding
 
@@ -3431,10 +3431,10 @@ HFS_DOCKER_BASE_PIN:
 HFS_DOCKER_BUILD_CONTEXT:
   title: "The Dockerfile does not build from the app root"
   title_vi: "Dockerfile không build từ gốc app"
-  meaning_vi: "Dockerfile của app phải ghi trong comment đầu tệp lệnh `starci docker build <app>` đúng app của chính nó (context là gốc app, nơi có `package.json` và lockfile duy nhất), và mọi nguồn của COPY/ADD nằm trong context (không có `..`, không có đường dẫn tuyệt đối)."
+  meaning_vi: "Dockerfile của app phải ghi trong comment đầu tệp lệnh `docker build -f <side>/apps/<app>/Dockerfile -t <image> .` đúng app của chính nó (context là gốc app, nơi có `package.json` và lockfile duy nhất), và mọi nguồn của COPY/ADD nằm trong context (không có `..`, không có đường dẫn tuyệt đối)."
   causes_vi:
     - "Vi phạm luật R187: context build là gốc app; lệnh build sai hoặc nguồn COPY vượt ra ngoài context khiến image build được trên máy này nhưng hỏng trên CI hoặc trộn lẫn dữ liệu của app khác."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: đặt lệnh `starci docker build <app>` vào comment đầu Dockerfile và sửa các nguồn COPY/ADD về đường dẫn tương đối trong gốc app."
+  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: đặt lệnh `docker build -f <side>/apps/<app>/Dockerfile -t <image> .` vào comment đầu Dockerfile và sửa các nguồn COPY/ADD về đường dẫn tương đối trong gốc app."
   owner: op-retry
   kind: check-finding
 
@@ -3471,10 +3471,10 @@ HFS_DOCKER_SECRETS:
 HFS_DOCKER_STAGES:
   title: "The Dockerfile stages, user or install break the canon"
   title_vi: "Các stage, user hoặc lệnh cài của Dockerfile sai chuẩn"
-  meaning_vi: "Dockerfile phải nhiều stage: một stage tên `build` (cài và build) và stage cuối tên `runtime` (thứ được chạy); runtime kết thúc bằng `USER node` và không chạy build; mọi lệnh cài đi qua `starci npm ci` (không dùng `starci npm install`); runtime của be chỉ cài dependency production và bỏ lifecycle scripts, runtime của fe không cài gì."
+  meaning_vi: "Dockerfile phải nhiều stage: một stage tên `build` (cài và build) và stage cuối tên `runtime` (thứ được chạy); runtime kết thúc bằng `USER node` và không chạy build; mọi lệnh cài là `npm ci` (không dùng `npm install`); runtime của be chỉ cài dependency production và bỏ lifecycle scripts, runtime của fe không cài gì."
   causes_vi:
     - "Vi phạm luật R188: image chạy bằng root, mang theo công cụ build hoặc cài không theo lockfile thì vừa lớn vừa kém an toàn, và không tái lập được."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: tách Dockerfile thành stage `build` và stage cuối `runtime`, thêm `USER node`, đổi `starci npm install` thành `starci npm ci`, và chuyển mọi lệnh build ra khỏi runtime."
+  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: tách Dockerfile thành stage `build` và stage cuối `runtime`, thêm `USER node`, đổi `npm install` thành `npm ci`, và chuyển mọi lệnh build ra khỏi runtime."
   owner: op-retry
   kind: check-finding
 
@@ -3581,7 +3581,7 @@ HFS_EDITION_INVALID:
   meaning_vi: "Trường edition của hfs.json chỉ nhận một giá trị thuộc danh sách editions của bảng kê ô (full, lite); vắng mặt nghĩa là full. Một giá trị khác là lỗi khai báo, kiểm tra bị từ chối."
   causes_vi:
     - "hfs.json ghi edition với giá trị ngoài full/lite (gõ sai, hoặc một ấn bản bảng kê không biết)"
-    - "`starci app check --edition <ấn bản>` hoặc `starci app upgrade --edition <ấn bản>` chọn ấn bản khác với ấn bản hfs.json khai: ấn bản cố định từ lúc scaffold"
+    - "`starci app check --edition <ấn bản>` chọn ấn bản khác với ấn bản hfs.json khai: ấn bản cố định từ lúc scaffold (`starci app upgrade` không nhận `--edition`: HFS_UPGRADE_USAGE)"
   nextStep_vi: "Sửa edition thành một giá trị trong danh sách editions của bảng kê, hoặc bỏ trường để về full. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra; không cần ai can thiệp thêm."
   owner: op-retry
   kind: check-finding
@@ -3657,9 +3657,9 @@ HFS_FORMAT_TOOL_MISSING:
   title_vi: "Kho chưa cài prettier của chính nó"
   meaning_vi: "Kiểm tra định dạng (R19) chạy prettier của chính kho. Kho chưa cài prettier nên không thể xác nhận định dạng, và trạng thái đó không bao giờ được tính là đạt."
   causes_vi:
-    - "Chưa chạy `starci npm ci` trong kho"
+    - "Chưa chạy `npm ci` trong kho"
     - "prettier không nằm trong devDependencies của kho"
-  nextStep_vi: "Cài đúng phiên bản prettier ghi trong canon-pins.yaml bằng `starci npm ci` rồi chạy lại `starci app check`."
+  nextStep_vi: "Cài đúng phiên bản prettier ghi trong canon-pins.yaml bằng `npm ci` rồi chạy lại `starci app check`."
   owner: op-retry
   kind: input-invalid
 
@@ -3701,7 +3701,7 @@ HFS_HOOKS_NOT_INSTALLED:
   causes_vi:
     - "Cài phụ thuộc với `--ignore-scripts` nên script `prepare` (husky) không chạy"
     - "Worktree mới tạo chưa từng chạy husky; runtime chỉ ghi hook riêng của nó vào `.husky/_`"
-  nextStep_vi: "Chạy `starci npm ci` ở gốc app (lệnh này chạy trình cài hook husky `prepare` của app kể cả khi lifecycle script bị bỏ qua), rồi commit lại qua hook; không dùng `--no-verify`. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra."
+  nextStep_vi: "Chạy `npm ci` ở gốc app (script `prepare` của app là trình cài hook husky; sau một lần cài `--ignore-scripts` thì chạy `npm run prepare`), rồi commit lại qua hook; không dùng `--no-verify`. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra."
   owner: op-retry
   kind: check-finding
 
@@ -3878,7 +3878,7 @@ HFS_MONO_WORKSPACE_DEP:
   title_vi: "Một workspace fe import gói mà nó không khai báo"
   meaning_vi: "Mọi gói mà các tệp của một workspace fe import phải được khai báo trong `package.json` của chính workspace đó (gói workspace anh em ghi `\"*\"`); `package.json` ở gốc không bao giờ khai báo một gói workspace."
   causes_vi:
-    - "Vi phạm luật R146: một app chỉ chạy được nhờ gói được hoist từ gốc sẽ hỏng khi build riêng bằng `starci docker build <app>` hoặc khi turbo không biết thứ tự phụ thuộc."
+    - "Vi phạm luật R146: một app chỉ chạy được nhờ gói được hoist từ gốc sẽ hỏng khi build riêng image của app (`starci app stack build`) hoặc khi turbo không biết thứ tự phụ thuộc."
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: thêm gói vào dependencies của workspace đó (cùng một phiên bản trong cả workspace), hoặc bỏ gói workspace khỏi `package.json` ở gốc."
   owner: op-retry
   kind: check-finding
@@ -4552,7 +4552,7 @@ RIGHTS_PUSH_NOT_RELEASE:
     - "Đẩy main không phải fast-forward của main trên remote (force push, rewind hoặc nhánh rẽ)"
     - "Vùng đẩy chứa ứng viên bí mật (tên tệp, dòng và mẫu, không bao giờ giá trị)"
     - "Đẩy thẻ v* không phải thẻ annotated"
-  nextStep_vi: "Gỡ hoặc mã hóa ứng viên bí mật, fetch main rồi đẩy lại bằng starci release push; thẻ thì tạo bằng starci release cut --tag v<version> (thêm --plan để xem trước)."
+  nextStep_vi: "Gỡ hoặc mã hóa ứng viên bí mật, fetch main rồi đẩy lại bằng starci release push; thẻ thì tạo bằng starci release cut (thêm --dry-run để xem trước)."
   owner: supervisor
   kind: verb-refusal
 

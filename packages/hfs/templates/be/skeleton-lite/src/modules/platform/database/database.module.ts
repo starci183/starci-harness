@@ -20,6 +20,12 @@ const ENTITY_MANAGER_TOKENS: ReadonlyMap<string, EntityManagerToken> = new Map<s
     [PRIMARY_CONNECTION, PRIMARY_ENTITY_MANAGER],
 ])
 
+/**
+ * How long a connection waits for its database at boot: 10 attempts 3 s apart (about 30 s), so an app that starts beside the db
+ * service of its stack outlives the database's own start instead of exiting and rolling the release back.
+ */
+const CONNECT_RETRY = { retryAttempts: 10, retryDelay: 3000 } as const
+
 @Module({})
 /** Opens each named PostgreSQL connection with the entities the composition root hands it, and exposes its shared EntityManager; no migrations. */
 export class DatabaseModule extends ConfigurableModuleClass {
@@ -55,7 +61,7 @@ export class DatabaseModule extends ConfigurableModuleClass {
                         ...schemaOption(connection.schema),
                         entities: [...options.entities],
                         synchronize: false,
-                        retryAttempts: 2,
+                        ...CONNECT_RETRY,
                     }),
                 ),
             ],

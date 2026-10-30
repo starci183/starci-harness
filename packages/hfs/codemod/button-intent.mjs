@@ -318,7 +318,8 @@ export function buttonIntentMarkdown(report) {
   return lines.join('\n');
 }
 
-function parse(argv) {
+/** The arguments of `starci app codemod button-intent`: --write, --json, --format and --report; any other is refused. */
+export function codemodArguments(argv) {
   const [name, ...rest] = argv;
   if (name !== 'button-intent') throw new Error('starci app codemod takes button-intent');
   const options = { write: false, format: 'markdown' };
@@ -342,7 +343,7 @@ function parse(argv) {
 
 /** CLI boundary: dry-run by default, --write mutates only safe FE source; findings return exit 1 with a complete report. */
 export function codemodMain(argv, { cwd, stdout }) {
-  const options = parse(argv);
+  const options = codemodArguments(argv);
   if (options.report && !/\.(?:json|md)$/i.test(options.report)) throw new Error('--report needs a .json or .md report file');
   const report = migrateButtonIntent({ root: path.resolve(cwd), write: options.write });
   const output = options.format === 'json' ? `${JSON.stringify(report, null, 2)}\n` : buttonIntentMarkdown(report);

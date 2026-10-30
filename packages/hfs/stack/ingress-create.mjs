@@ -85,7 +85,7 @@ function checks(run, ingress, legacy, service) {
     ['no ACME email configured', emailProblem(legacy.args) === null, emailProblem(legacy.args)],
     ['dynamic directory and certificates mounts found on the live edge', typeof legacy.dynamicTarget === 'string' && typeof legacy.acmeTarget === 'string', 'the live edge container does not mount the dynamic directory and the certificates volume'],
     ['swarm active (manager)', swarmActive(run), 'this host is not an active swarm manager'],
-    [`network ${ingress.network} is an attachable overlay`, overlayAttachable(run, ingress.network), 'run "starci app stack ingress attach --execute" first'],
+    [`network ${ingress.network} is an attachable overlay`, overlayAttachable(run, ingress.network), 'run "starci app stack ingress attach --env <env> --execute" first'],
     [`certificates volume ${ingress.acmeVolume} present`, volumePresent(run, ingress.acmeVolume), 'the persisted certificates volume is missing'],
     [`dynamic directory ${ingress.legacy.dynamicDir} present`, directory, 'the dynamic directory is missing'],
     [`service ${ingress.name}_${ingress.service} is not running a task`, service.desired === 0, `it already runs ${service.desired} replica(s): use takeover or scale it by hand`],

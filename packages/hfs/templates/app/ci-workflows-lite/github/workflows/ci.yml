@@ -83,7 +83,7 @@ jobs:
           pattern: coverage-shard-*
           path: {{lcovShardsDir}}
       - name: merge coverage
-        run: npx starci app coverage merge --out {{lcovReport}} {{lcovShardsDir}}
+        run: npx --no-install starci app coverage merge --out {{lcovReport}} {{lcovShardsDir}}
       - name: coverage proof
         run: {{ciCoverageProof}}
         env:

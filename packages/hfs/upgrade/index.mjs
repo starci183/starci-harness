@@ -169,18 +169,19 @@ async function upgradeEdition({
   return result;
 }
 
-function upgradeArguments(argv) {
+/** The arguments of `starci app upgrade`: --plan, and --repo from the CLI entry; --edition is refused (editions are fixed at scaffold). */
+export function upgradeArguments(argv) {
   let plan = false;
   let root = process.cwd();
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--repo") {
-      if (argv[index + 1] === undefined)
+      if (argv[index + 1] === undefined || argv[index + 1].startsWith("--"))
         throw new UpgradeError("HFS_UPGRADE_USAGE", `${arg} needs a value`);
       root = path.resolve(argv[index + 1]);
       index += 1;
     } else if (arg === "--plan") plan = true;
-    else if (arg === "--edition")
+    else if (arg === "--edition" || arg.startsWith("--edition="))
       throw new UpgradeError("HFS_UPGRADE_USAGE", "upgrade takes no --edition: editions are fixed at scaffold");
     else throw new UpgradeError("HFS_UPGRADE_USAGE", `unknown argument ${arg}`);
   }

@@ -69,9 +69,12 @@ export function dumpDatabase(ctx, options = {}) {
   }
 }
 
+/** The flags of `starci app db dump`; the parser refuses every other. */
+export const SPEC = { boolean: ['--schema-only', '--json'], value: ['--url-env', '--out'] };
+
 export function dbDumpMain(argv, io = {}) {
   return runVerb({ label: 'starci app db dump', name: 'db dump', code: 'DB_USAGE', io, argv,
-    spec: { boolean: ['--schema-only', '--json'], value: ['--url-env', '--out'] },
+    spec: SPEC,
     run: (ctx, flags, positional) => {
       if (positional.length) throw refusal('DB_USAGE', 'dump takes flags only');
       return dumpDatabase(ctx, { urlEnv: flags['url-env'], out: flags.out, schemaOnly: flags['schema-only'] });

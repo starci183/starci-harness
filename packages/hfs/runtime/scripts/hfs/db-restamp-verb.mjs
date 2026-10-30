@@ -77,9 +77,12 @@ function restampPlan(root, mapFile, { urlEnv = 'DATABASE_URL', ports = {} } = {}
 }
 
 /** The complete map is validated before any repair or file mutation. */
+/** The options of `starci app db restamp` (dbOptions refuses every other). */
+export const RESTAMP_OPTIONS = Object.freeze(['cwd', 'map', 'apply', 'url-env']);
+
 export function dbRestampMain(argv, { cwd = invocationDir(), stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text), ...ports } = {}) {
   try {
-    const opts = dbOptions(argv, ['cwd', 'map', 'apply', 'url-env']);
+    const opts = dbOptions(argv, RESTAMP_OPTIONS);
     const urlEnv = opts['url-env'] ?? 'DATABASE_URL';
     const root = dbAppRoot(cwd, opts);
     const steps = restampPlan(root, opts.map, { urlEnv, ports });

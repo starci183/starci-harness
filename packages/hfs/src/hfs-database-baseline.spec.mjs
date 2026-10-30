@@ -421,8 +421,9 @@ for (const edition of ['lite', 'full']) {
     assert.equal(ports.out.join('').includes('events-tick'), false);
     for (const [file, text] of Object.entries(contents)) assert.equal(fs.readFileSync(path.join(root, file), 'utf8'), text);
     const applied = remoteInventory(root);
-    assert.equal(dbPlanMain(['--apply'], applied.ports), 0);
-    assert.ok(applied.calls.every((args) => args[1] === 'query'));
+    assert.equal(dbPlanMain(['--apply'], applied.ports), 2);
+    assert.equal(applied.err.join(''), 'starci app db plan: unknown or duplicate database option --apply\n');
+    assert.equal(applied.calls.length, 0);
   });
 
   test(`app db plan ${edition}: remote extra jobs, missing queues, cron changes and migration drift fail without exposing data`, () => {

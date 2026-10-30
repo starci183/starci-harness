@@ -108,7 +108,7 @@ function copySourceFindings(file, item) {
 function contextFindings(file, parsed, side, app) {
   const findings = [];
   const wanted = dockerfilePath(side, app);
-  if (!statesBuildCommand(parsed, wanted, app)) findings.push(found(DOCKER_BUILD_CONTEXT, file, `${file} does not state its build command in a header comment: \`starci docker build ${app}\` or \`docker build -f ${wanted} -t <image> .\` (the context is the app root, the folder with the one package.json and lockfile).`, { expected: wanted }));
+  if (!statesBuildCommand(parsed, wanted, app)) findings.push(found(DOCKER_BUILD_CONTEXT, file, `${file} does not state its build command in a header comment: \`docker build -f ${wanted} -t <image> .\` (the context is the app root, the folder with the one package.json and lockfile).`, { expected: wanted }));
   for (const item of parsed.instructions.filter((entry) => entry.keyword === 'COPY' || entry.keyword === 'ADD')) findings.push(...copySourceFindings(file, item));
   return findings;
 }

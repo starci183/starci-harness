@@ -95,7 +95,7 @@ const ACTIONS = {
     }),
   },
   push: {
-    spec: { boolean: ['--execute', '--json', '--urgent'], value: ['--remote', '--reason', '--lint-baseline'] },
+    spec: { boolean: ['--execute', '--json', '--urgent'], value: ['--remote', '--reason', '--lint-baseline'], retired: ['--lint-baseline'] },
     run: (ctx, flags, harness) => {
       if (flags.reason !== undefined && flags.urgent !== true) throw refusal('RELEASE_USAGE', '--reason belongs to an urgent release (--urgent)');
       if (flags['lint-baseline'] !== undefined && flags.urgent !== true) throw refusal('RELEASE_USAGE', '--lint-baseline belongs to an urgent release (--urgent)');
@@ -105,6 +105,9 @@ const ACTIONS = {
     },
   },
 };
+
+/** The flags of each release action ({ boolean, value, retired }): the parser refuses every other flag, and the usage of `starci app` is generated from them (a retired flag is parsed only to refuse it with its own code). */
+export const RELEASE_FLAGS = Object.freeze(Object.fromEntries(Object.entries(ACTIONS).map(([name, action]) => [name, action.spec])));
 
 /** Runs `starci app release <gate|push>`; `io` is the app IO (cwd, stdout, stderr, env, sops, stackIo). Returns the exit code. */
 export async function releaseMain(argv, io = {}) {

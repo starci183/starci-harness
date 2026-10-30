@@ -18,13 +18,16 @@ const DEFAULT_JOBS = ['fast', 'lint', 'test', 'coverage', 'build'];
 const GITHUB_ONLY_IF = /SONAR_TOKEN\s*!=\s*''|refs\/tags|startsWith\(github\.ref|steps\.|hashFiles|github\.event/;
 const LOCAL_IF = /^(?:\$\{\{\s*)?(?:always\(\)|!cancelled\(\)|env\.SONAR_TOKEN\s*==\s*'')(?:\s*\}\})?$/;
 
+/** The flags of `starci app ci local`; any other argument is refused. */
+export const LOCAL_FLAGS = Object.freeze({ boolean: ['--dry-run', '--json'], value: ['--jobs', '--parallel', '--logs'] });
+
 function parseArgs(argv) {
   const opts = { logs: null, jobs: null, parallel: Math.max(1, Math.min(4, Math.floor(os.cpus().length / 2))), dryRun: false, json: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--dry-run') opts.dryRun = true;
     else if (arg === '--json') opts.json = true;
-    else if (arg === '--jobs' || arg === '--parallel' || arg === '--logs') {
+    else if (LOCAL_FLAGS.value.includes(arg)) {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) throw new Error(`${arg} needs a value`);
       if (arg === '--logs') opts.logs = value;

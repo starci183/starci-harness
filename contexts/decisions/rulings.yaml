@@ -604,6 +604,11 @@ rulings:
     status: live
     ruling: "A slot may declare which of its own files carry logic (`logic`, file names relative to the slot path, each one it requires or allows, on a coverage-required unit-beside slot). Those files are measured at 100 per file like any logic role, and the `<file>.spec.ts` beside each is a legitimate unit spec, held to the unit-spec form; no new role name is added to ruleParams.be.logicRoles. be.integrations.passport declares passport.tokens.ts, passport.password.ts and passport.cookie.ts."
     owner: "contexts/hfs/slots.yaml be.integrations.passport, contexts/hfs/README.md Slot fields, contexts/code/be/test.md BE-TEST-1 and BE-TEST-13 (R47, R204, R273)"
+  - id: entity-base
+    date: '2026-10-30'
+    status: live
+    ruling: "Entities do not repeat the columns every table shares (owner 2026-10-30: \"trò đọc source starci academy backend gốc có extend AbstractEntity thì cũng update hfs lun nhé tránh lặp code trên các entity\"). platform/database carries the entity bases in abstract.entity.ts: AbstractEntity maps created_at and updated_at (timestamptz, set by the database: insert and update false), UuidAbstractEntity extends it with the generated uuid id. A table whose migration has those columns, with those names and types and set by the database, maps them by extending the base, imported from @modules/platform/database; a table without them extends nothing. The bases carry no GraphQL, validator or transformer decorator and map no table themselves; they are written by the first table that extends them, never by the starter."
+    owner: "contexts/code/be/persistence.md BE-PERSISTENCE-3; @starci/hfs templates/be/skeleton platform/database abstract.entity.ts, templates/be/table/entity.ts.tpl"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.

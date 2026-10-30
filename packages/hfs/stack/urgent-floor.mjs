@@ -170,7 +170,11 @@ async function firstStartStep(ctx, config, options, f) {
   const state = await f.emptiness(ctx, target);
   if (!state.empty) {
     const found = state.history ? 'a migration history' : `${state.publicTables < 0 ? 'an unreadable count of' : state.publicTables} table(s) in public`;
-    return { ok: false, code: 'STACK_FIRST_START_NOT_EMPTY', lines: [`first start refused: the database of ${service} holds ${found}; a database with data takes the plain urgent floor (backup first)`] };
+    return { ok: false, code: 'STACK_FIRST_START_NOT_EMPTY', lines: [
+      `first start refused: the database of ${service} holds ${found}; a database with data takes the plain urgent floor (backup first)`,
+      // A first start that migrated and then rolled back leaves exactly this: a migrated volume and no serving release.
+      `if an earlier first start migrated this volume and then rolled back, and the owner confirms it holds no data, remove that volume (docker volume rm on the server) and run the first start again`,
+    ] };
   }
   const lines = [`first start: the database of ${service} is empty (no migration history, no table in public): nothing to back up`];
   for (const execute of [false, true]) {

@@ -72,17 +72,32 @@ function addUniqueColumnSet(kit, checker, decorator, column, primary, sets) {
   else if (isTypeormDecorator(kit, checker, decorator, 'Column', 'Index') && uniqueOption) sets.push([column.toLowerCase()]);
 }
 
+/**
+ * The members of an entity class with the checker of the file declaring each: those of every class it extends first (a column base
+ * such as UuidAbstractEntity of platform/database maps no table of its own but gives its columns and its primary key to the entity),
+ * then its own.
+ */
+function entityMembers(kit, checker, statement, seen = new Set()) {
+  const { ts } = kit;
+  if (seen.has(statement)) return [];
+  seen.add(statement);
+  const bases = (statement.heritageClauses ?? []).filter(clause => clause.token === ts.SyntaxKind.ExtendsKeyword)
+    .flatMap(clause => clause.types).flatMap(type => kit.declarationsOf(checker, type.expression)).filter(node => ts.isClassDeclaration(node));
+  const inherited = bases.flatMap(base => entityMembers(kit, kit.checkerOf(base.getSourceFile()) ?? checker, base, seen));
+  return [...inherited, ...statement.members.map(member => ({ member, checker }))];
+}
+
 function entityColumnSets(kit, checker, statement) {
   const { ts } = kit;
   const dbName = new Map();
   const primary = [];
   const sets = [];
-  for (const member of statement.members) {
+  for (const { member, checker: memberChecker } of entityMembers(kit, checker, statement)) {
     if (!ts.isPropertyDeclaration(member) || !member.name || !ts.isIdentifier(member.name)) continue;
     const property = member.name.text;
     const column = mappedColumnName(kit, member, property);
     dbName.set(property, column.toLowerCase());
-    for (const decorator of kit.decorators(member)) addUniqueColumnSet(kit, checker, decorator, column, primary, sets);
+    for (const decorator of kit.decorators(member)) addUniqueColumnSet(kit, memberChecker, decorator, column, primary, sets);
   }
   if (primary.length) sets.push(primary);
   return { dbName, sets };

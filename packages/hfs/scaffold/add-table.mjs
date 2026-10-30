@@ -8,7 +8,7 @@ import { render, TEMPLATES_DIR } from "../sync/index.mjs";
 import { ScaffoldError, pascalOf } from "./service.mjs";
 import { filesBelow, registerLiteDomainService, registerLiteExports, registrationFiles } from "./lite-exports.mjs";
 import { byCodeUnit } from "../report/order.mjs";
-import { coreFeApps } from "./app.mjs";
+import { coreFeApps, ENTITY_BASE_FILE } from "./app.mjs";
 import { addModuleImport, planComposeGroup } from "./add-compose.mjs";
 import { withSqlIdentifierError } from "./add-database-lite.mjs";
 
@@ -475,12 +475,19 @@ function writeTableFiles({ root, planned, edit }, created) {
 /** The lite sql helpers of platform/database (requireOwnedEntity, the bounds and the sql tag). */
 const DATABASE_SQL_FILE = "be/src/modules/platform/database/database.sql.ts";
 
+/** A skeleton file of platform/database a generator writes on first need: the app's copy, or else the template's. */
+const deferredDatabaseFile = (skeleton, relative) => (text) =>
+  text || render(fs.readFileSync(path.join(TEMPLATES_DIR, "be", skeleton, ...relative.split("/")), "utf8"), {});
+
 function tableRegistrations({ root, repo, fe, edit }) {
   const errorFile = "be/src/modules/platform/database/errors/database.error.ts";
   if (repo.edition === "lite" && fs.existsSync(at(root, errorFile))) edit(errorFile, withSqlIdentifierError);
   // requireOwnedEntity lives in the sql helpers the lite starter leaves out; the first table writes them.
-  if (repo.edition === "lite") edit(DATABASE_SQL_FILE, (text) => text || render(fs.readFileSync(path.join(TEMPLATES_DIR, "be", "skeleton-lite", "src", "modules", "platform", "database", "database.sql.ts"), "utf8"), {}));
+  if (repo.edition === "lite") edit(DATABASE_SQL_FILE, deferredDatabaseFile("skeleton-lite", "src/modules/platform/database/database.sql.ts"));
+  // The table's entity extends UuidAbstractEntity, which no starter carries in either edition; the first table writes it.
+  edit(`be/${ENTITY_BASE_FILE}`, deferredDatabaseFile("skeleton", ENTITY_BASE_FILE));
     const registrations = [
+      "entity-base",
       ...(repo.edition === "lite" ? ["table"] : []),
       ...(fe ? ["api", "graphql"] : []),
     ];

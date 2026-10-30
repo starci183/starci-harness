@@ -7,13 +7,14 @@ import { setSecret } from './secret.mjs';
 import { setVariable, syncVariables } from './vars.mjs';
 import { badgeVisibilityNotices, verifyCi } from './verify.mjs';
 
-const COMMANDS = {
+/** The commands of `starci app ci` (besides `local`) with the options each takes; the parser refuses every other. */
+export const COMMANDS = {
   'secret set': ['env', 'dependabot', 'repo'],
   'var set': ['env', 'value', 'repo'],
   'var sync': ['execute', 'repo'],
   verify: ['json', 'repo'],
 };
-const BOOLEAN = new Set(['dependabot', 'execute', 'json']);
+export const BOOLEAN = new Set(['dependabot', 'execute', 'json']);
 
 /** Invalid options never echo argv, because an extra argument may itself contain a secret. */
 function parse(argv) {

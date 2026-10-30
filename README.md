@@ -71,7 +71,7 @@ Harness state goes to the package's own `.runtime/` unless `STARCI_LOCAL_ROOT` n
 
 ```sh
 npx starci-harness doctor                               # Node, git, npm, gh and Orca on this host; the tree and its state base
-npx starci-harness explain --term task                  # the verbs about one task, with their flags and json schema
+npx starci-harness explain task                  # the verbs about one task, with their flags and json schema
 npx starci-harness contexts search "how is a back-end exception mapped"
 ```
 
@@ -125,7 +125,7 @@ state goes to `<checkout>/.runtime/` (git-ignored).
 ## Verbs
 
 `starci explain` lists the verbs of the working directory with their flags, effect and json schema (`--json` for
-machines); `starci explain --term <word>` filters them. An app shows the core verbs plus its edition's; the runtime and
+machines); `starci explain <word>` filters them. An app shows the core verbs plus its edition's; the runtime and
 a folder outside any StarCi tree show every verb. The groups:
 
 | group | for |
@@ -141,7 +141,7 @@ a folder outside any StarCi tree show every verb. The groups:
 | `host` | the services of [ops/host.yaml](ops/host.yaml) this machine runs for the harness: status, up, install, uninstall |
 | `connect` | the owner's outside channel, Telegram ([ops/telegram.yaml](ops/telegram.yaml)): store the owner's chat, report it, send the notices due; `supervisor telegram-bridge` runs it as a host service |
 | `uat`, `test` | a Playwright script in the pinned image of [ops/uat.yaml](ops/uat.yaml); a worker's run of a live-provider suite, its custody keys handed to that run unseen (`test live`) |
-| `app` | one product repository: what a lite app declares, its Sonar scope, and the app commands of `@starci/hfs` (scaffold, sync, check, lint, add, new, emit, explain, hygiene, coverage, codemod, ci, db, secret, stack, release, upgrade), run in-process; a product pins `starci-harness` as its devDependency and its hooks and CI run `npx starci app ...` |
+| `app` | one product repository: what a lite app declares, its Sonar scope, and the app commands of `@starci/hfs` (scaffold, sync, check, lint, add, new, emit, explain, hygiene, coverage, codemod, ci, db, secret, stack, release, upgrade), run in-process; a product pins `starci-harness` as its devDependency and its hooks and CI run `npx --no-install starci app ...` |
 
 Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wait`,
 `check unit`, `git`, `release notes`, and shell completion.

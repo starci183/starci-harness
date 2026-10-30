@@ -23,8 +23,8 @@ workflow, task or debug does not enroll into StarCi.
   `briefs/`, `outputs/`, `preserved/`.
 - **CLI**: `starci` in these files means `node <runtime root>/cli/dist/main.js`. If `cli/dist` is missing,
   build it in `<runtime root>/cli` with `npm ci` then `npm run build`. This CLI is the npm package `starci-harness`
-  and carries `starci app`; a product pins it as its devDependency, so `npx starci app ...` there runs the product's
-  pinned copy. `@starci/cli` is retired (a machine may still hold its 1.7.x, which has no `starci-harness` bin), and a
+  and carries `starci app`; a product pins it as its devDependency, so inside that product `npx --no-install starci app ...` runs its
+  pinned copy (outside one, `npx starci-harness <verb>`). `@starci/cli` is retired (a machine may still hold its 1.7.x, which has no `starci-harness` bin), and a
   PATH copy serves only when it resolves to this root. The state base follows
   the CLI's location, so a CLI built in another worktree reads another ledger: always run the runtime root's.
 - **Product repository**: the git repository the work lands in. Its ledger is found from its git common dir,
@@ -36,7 +36,7 @@ workflow, task or debug does not enroll into StarCi.
 - When you delegate or change directory, pass the absolute runtime root, the absolute product repository,
   the workflow id and the task id. A task opened elsewhere gets them explicitly.
 
-Run `starci explain` (or `starci explain --term <word>`) for the exact flags of a verb. Add `--json` to any
+Run `starci explain` (or `starci explain <word>`) for the exact flags of a verb. Add `--json` to any
 verb for one `{schema, ok, data}` envelope. Exit 0 is done, 1 is refused or red (nothing moved), 2 is bad
 usage. Read every refusal code; never retry blindly.
 

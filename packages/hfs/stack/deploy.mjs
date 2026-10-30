@@ -208,7 +208,7 @@ async function deployExecute(ctx, config, options, d, out, cleanups) {
   ], lines, steps);
   if (!failed && skipPublic) {
     data.pendingAccept = true;
-    return { ok: true, lines: [...lines, `deployed release ${releaseId}: converged and verified inside the stack; the public hosts were NOT checked and the release is NOT accepted yet`, `next: starci app stack ingress publish, then starci app stack accept --release ${releaseId} --execute`], data };
+    return { ok: true, lines: [...lines, `deployed release ${releaseId}: converged and verified inside the stack; the public hosts were NOT checked and the release is NOT accepted yet`, `next: starci app stack ingress publish --env ${config.env} --execute, then starci app stack accept --env ${config.env} --release ${releaseId} --execute`], data };
   }
   if (!failed) {
     await housekeeping(ctx, config, d, store, { previous, out }, lines);

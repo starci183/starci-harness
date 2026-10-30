@@ -135,7 +135,7 @@ function hooksPathNotRedirected({ root, finding }) {
   const hooks = hooksDirState(root, value);
   if (hooks.state !== 'installed') {
     const what = { missing: 'does not exist', empty: 'holds no installed hook (husky never ran here)', unreadable: `cannot be read (${hooks.error})` }[hooks.state];
-    finding('HFS_HOOKS_NOT_INSTALLED', value, `core.hooksPath is ${value}, but that folder ${what} in this checkout, so git runs no pre-commit or pre-push gate and a commit skips lint and specs. Install the hooks before committing: run \`starci npm ci\` at the app root (it runs the app's hook installer \`npm run prepare\` even when lifecycle scripts are ignored), or \`npm run prepare\`; an install with --ignore-scripts alone never installs them.`);
+    finding('HFS_HOOKS_NOT_INSTALLED', value, `core.hooksPath is ${value}, but that folder ${what} in this checkout, so git runs no pre-commit or pre-push gate and a commit skips lint and specs. Install the hooks before committing: run \`npm ci\` at the app root (its \`prepare\` script is the app's hook installer), or \`npm run prepare\` after an install with --ignore-scripts, which alone never installs them.`);
   }
   return { status: 'checked', hooks: hooks.state };
 }

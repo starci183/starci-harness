@@ -41,7 +41,7 @@ body:
     id: expected
     attributes:
       label: What you expected
-      description: What the verb's summary (`starci explain --term <verb>`) or the documentation says should happen, and where it says so.
+      description: What the verb's summary (`starci explain <verb>`) or the documentation says should happen, and where it says so.
     validations:
       required: true
   - type: textarea

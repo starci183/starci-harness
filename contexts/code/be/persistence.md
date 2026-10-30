@@ -37,7 +37,12 @@ Enforced by: `no-runtime-schema` (R34), R147.
 In both editions `persistence/entities/<table>.entity.ts` sits in the owning capability (domain, projection, or platform for
 technical tables). An entity is `@Entity({ schema, name: "<plural_snake>" })`, every `@Column` has an explicit `name` and
 `type`, timestamps are `timestamptz`, enums `varchar` with a `CHECK`, and there is no eager, lazy or cascade relation and
-no GraphQL or validator decorator. No `*.repository.ts`. Full keeps `persistence/migrations/` beside them and
+no GraphQL or validator decorator. Columns every table shares are inherited, never repeated: `platform/database/abstract.entity.ts`
+holds `AbstractEntity` (`created_at` and `updated_at`, which the database sets, so `insert: false, update: false`) and
+`UuidAbstractEntity` (that plus the generated uuid `id`), and an entity whose table has exactly those columns extends one of
+them, imported from `@modules/platform/database`; a table without them (an app-set timestamp, a bigint key, no `updated_at`)
+declares its own columns and extends nothing. A base maps no table, so it carries no `@Entity`, and the first table that
+extends it writes the file and its barrel export (`starci app add table`), never the starter. No `*.repository.ts`. Full keeps `persistence/migrations/` beside them and
 `persistence/connection.ts` exports the `<c>Entities` and `<c>Migrations` arrays the apps register per connection. Lite
 has no be migration: each capability's `persistence/entities/index.ts` exports its `<c>Entities` array (a sanctioned
 re-export), and the entity registry `platform/database/entities.ts` (slot `be.platform.database.entities`, role
@@ -57,6 +62,8 @@ Enforced by: `schema-owner`, `require-entity-table-name`, `no-eager-relation`, `
 the registry's imports and importers by `tier-direction` (R26), `owner-export-bypass` and `import-owner-entry` (R30),
 which admit exactly the registry's `<c>Entities` imports and its `importedBy` importers; `owner-cycle` (R27)
 counts the registry as a unit of its own, so it never closes a cycle among capabilities through `platform/database`.
+Inherited columns count as the entity's own: `starci app db drift` reads them from TypeORM's metadata and `sql-owner` (R86)
+reads an inherited primary key; extending a base where the table has its columns is held by review.
 
 ## BE-PERSISTENCE-4 Lite reads and writes through entities; full SQL is a `sql`-tagged constant
 

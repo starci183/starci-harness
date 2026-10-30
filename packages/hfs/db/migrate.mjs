@@ -239,7 +239,8 @@ export async function migrateDatabase(ctx, decl, options = {}) {
   return { ok: true, lines: [...lines, `applied: ${pushed.length} forward migration(s); the history now holds ${final.size} version(s). Held back: ${model.held.join(', ') || 'nothing'}.`], data: dataOf(model, plan, remote, { executed: true, pushed, remoteCountAfter: final.size }) };
 }
 
-const SPEC = { boolean: ['--execute', '--json'], value: ['--url-env'] };
+/** The flags of `starci app db migrate`; the parser refuses every other. */
+export const SPEC = { boolean: ['--execute', '--json'], value: ['--url-env'] };
 
 /** Entry of the verb: `starci app db migrate [--execute] [--url-env <NAME>] [--json]`. Execute requires database arming. */
 export function dbMigrateMain(argv, io = {}) {

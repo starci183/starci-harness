@@ -9,7 +9,7 @@ operating guide, so the operate row's `skills/starci/SKILL.md` is read only when
 else on demand: `starci contexts search "<question>" [--scope <scope>]` (in English) when a decision needs a rule, a record
 family or a harness mechanism you have not read, opening each hit before you rely on it, and `starci contexts anchor
 <anchor>` for a section a `*-sections.md` index or a hit names (`cli/README.md` through `contexts/harness/cli-sections.md`,
-never whole); `starci explain --term <group>` for a verb's flags.
+never whole); `starci explain <group>` for a verb's flags.
 
 Code keeps the Kernels and your workers alive and the ledgers straight; you coordinate and take the decisions only you may
 take. You never work hands-on: a code or package fix, or an investigation that reads or touches files, is a job you hand to a

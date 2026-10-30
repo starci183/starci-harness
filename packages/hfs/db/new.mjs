@@ -35,9 +35,12 @@ export function newMigration(ctx, name) {
 }
 
 /** Entry of the verb: `starci app db new <kebab-name> [--json]`. */
+/** The flags of `starci app db new <kebab-name>`; the parser refuses every other. */
+export const SPEC = { boolean: ['--json'], value: [] };
+
 export function dbNewMain(argv, io = {}) {
   return runVerb({
-    label: 'starci app db new', name: 'db new', code: 'DB_USAGE', io, argv, spec: { boolean: ['--json'], value: [] },
+    label: 'starci app db new', name: 'db new', code: 'DB_USAGE', io, argv, spec: SPEC,
     run: (ctx, _flags, positional) => {
       if (positional.length !== 1) throw refusal('DB_USAGE', 'db new takes exactly one migration name');
       return newMigration(ctx, positional[0]);
