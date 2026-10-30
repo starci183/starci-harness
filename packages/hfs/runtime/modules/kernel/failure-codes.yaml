@@ -3653,6 +3653,37 @@ HFS_FORBIDDEN_PRESENT:
   owner: op-retry
   kind: check-finding
 
+HFS_CHECK_CACHE_FORGED:
+  title: "A committed check cache record disagrees with what the check computes"
+  title_vi: "Bản ghi cache kiểm tra đã commit không khớp kết quả kiểm tra thật"
+  meaning_vi: "`<file>`: bản ghi trong `.starcistacks/cache/` có khóa khớp cây hiện tại nhưng phát hiện (findings) của nó khác với kết quả mà bộ kiểm tra tính ra từ cache tại base tin cậy. CI chỉ tin cache như nó đang có ở base, nên bản ghi này bị sửa tay hoặc một bước kiểm tra không xác định (khác nhau giữa các máy)."
+  causes_vi:
+    - "Sửa tay một tệp trong `.starcistacks/cache/` (xóa phát hiện để qua mặt kiểm tra)"
+    - "Một bước kiểm tra cho kết quả khác nhau trên các máy khác nhau"
+  nextStep_vi: "Chạy lại `starci app check` trên cây sạch để sinh lại cache rồi commit; không sửa tay thư mục cache. Lỗi này chặn ở mọi số lượng."
+  owner: op-retry
+  kind: check-finding
+
+HFS_CHECK_CACHE_STALE:
+  title: "A changed file has no current record in the committed check cache"
+  title_vi: "Tệp đã đổi nhưng cache kiểm tra đã commit chưa có bản ghi hiện hành"
+  meaning_vi: "`<file>` đổi so với base tin cậy mà `.starcistacks/cache/` đã commit không có bản ghi khớp nội dung hiện tại. CI vẫn kiểm tra đầy đủ tệp này nên kết quả đúng, chỉ tốn thời gian (cảnh báo)."
+  causes_vi:
+    - "Quên chạy `starci app check` và commit cache sau khi sửa"
+  nextStep_vi: "Chạy `starci app check` rồi commit `.starcistacks/cache/` cùng thay đổi."
+  owner: op-retry
+  kind: check-finding
+
+HFS_CHECK_CACHE_MISSING:
+  title: "The app commits no check cache"
+  title_vi: "Ứng dụng chưa commit cache kiểm tra"
+  meaning_vi: "`.starcistacks/cache/` không có bản ghi nào nên mọi lần chạy đều kiểm tra đầy đủ (cảnh báo, kết quả vẫn đúng)."
+  causes_vi:
+    - "Ứng dụng mới hoặc vừa nâng cấp, chưa chạy `starci app check` lần đầu"
+  nextStep_vi: "Chạy `starci app check` một lần rồi commit `.starcistacks/cache/` để các lần sau chỉ kiểm tra phần thay đổi."
+  owner: op-retry
+  kind: check-finding
+
 HFS_FORMAT:
   title: "Prettier is the only formatter"
   title_vi: "Chưa format bằng Prettier"

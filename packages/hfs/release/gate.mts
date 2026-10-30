@@ -62,6 +62,8 @@ const THRESHOLD_MISS = /coverage threshold .* not met/gu;
 const WRAPPED = new Set(['npm', 'npx']);
 // Every row the managed CI runs, so a release that does not wait for its candidate CI (release.requireCi false) still ran them all locally:
 // fast (audit, format, typecheck), lint, test + coverage (the managed `test` script is the per-file 100 threshold), build, the lite database lint, and Sonar.
+/** A release judges in full and never reads the committed check cache (contexts/project/check-cache.md): every gate row, the urgent back-fill included, runs with this set. */
+export const RELEASE_CACHE_ENV: Readonly<Record<string, string>> = Object.freeze({ STARCI_APP_CHECK_CACHE: 'full' });
 const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test'];
 // A full app has a test world (integration, e2e and contract projects, always present: the managed `test:e2e` script marks it), so those layers are rows of its gate;
 // a lite app's integration project exists only where it has integration specs, so it has no world rows.
@@ -287,7 +289,7 @@ export async function runAvailableGate(ctx: VerbContext, gate: Gate, options: Ru
     if (!gate.provider) return runGate(ctx, gate, options);
     // The scanner imports the app's declared external issues report: produce it first with the app's own lint, as the managed CI does.
     const started = ctx.now();
-    const lint = produceLintReports(ctx, { launch, platform: options.platform, env: withoutCredentials(ctx.env, options.credentialNames) });
+    const lint = produceLintReports(ctx, { launch, platform: options.platform, env: { ...withoutCredentials(ctx.env, options.credentialNames), ...RELEASE_CACHE_ENV } });
     if (lint.pass) return judgeQualityGate(ctx, gate, runGate(ctx, gate, { ...options, preface: lint.text }));
     fs.writeFileSync(log, lint.text);
     return { name: gate.name, command: gate.command.join(' '), pass: false, detail: 'lint report failed (see log)', seconds: Math.round((ctx.now() - started) / 1000),
@@ -321,7 +323,7 @@ export function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentia
   const started = ctx.now();
   const [command, args] = launch(gate.command, platform);
   // The native scanner alone consumes Sonar credentials; ordinary gates cannot inherit or reintroduce them.
-  const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)) };
+  const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)), ...RELEASE_CACHE_ENV };
   const run = tool(ctx, command, args, { cwd: ctx.cwd, env });
   const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
   const text = gate.name === 'sonar' && gate.env.SONAR_TOKEN ? output.replaceAll(gate.env.SONAR_TOKEN, '[REDACTED]') : output;

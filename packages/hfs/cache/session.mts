@@ -81,6 +81,24 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
   const replaced = new Map<string, { records: readonly CacheRecord[]; depth: number }>();
   const parsed = new Map<string, readonly CacheRecord[]>();
   const trustedCache = (): ReadonlyMap<string, string> => trust.files();
+  const trustedRecords = (folder: string): readonly CacheRecord[] => {
+    const hit = parsed.get(folder);
+    if (hit !== undefined) return hit;
+    const prefix = `${folder}/`;
+    const seen = new Set<string>();
+    const records: CacheRecord[] = [];
+    for (const [file, text] of [...trustedCache()].sort(([a], [b]) => (a < b ? -1 : 1))) {
+      if (!file.startsWith(prefix) || !file.endsWith('.jsonl')) continue;
+      for (const record of parseRecords(text).records) {
+        const line = JSON.stringify(record);
+        if (seen.has(line)) continue;
+        seen.add(line);
+        records.push(record);
+      }
+    }
+    parsed.set(folder, records);
+    return records;
+  };
   const cachedFingerprint = parseFingerprint(trustedCache().get(FINGERPRINT_FILE) ?? '');
   const differences = cachedFingerprint.length === 0 ? [] : fingerprintDifferences(cachedFingerprint, fingerprint.parts);
   let verdictList: CacheVerdict[] = [];
@@ -111,24 +129,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
       return global() ?? { mode: 'diff', reason: `against ${trust.reason}` };
     },
     records(folder: string): readonly CacheRecord[] {
-      const own = replaced.get(folder);
-      if (own !== undefined) return own.records;
-      const hit = parsed.get(folder);
-      if (hit !== undefined) return hit;
-      const prefix = `${folder}/`;
-      const seen = new Set<string>();
-      const records: CacheRecord[] = [];
-      for (const [file, text] of [...trustedCache()].sort(([a], [b]) => (a < b ? -1 : 1))) {
-        if (!file.startsWith(prefix) || !file.endsWith('.jsonl')) continue;
-        for (const record of parseRecords(text).records) {
-          const line = JSON.stringify(record);
-          if (seen.has(line)) continue;
-          seen.add(line);
-          records.push(record);
-        }
-      }
-      parsed.set(folder, records);
-      return records;
+      return replaced.get(folder)?.records ?? trustedRecords(folder);
     },
     replace(folder, records, replaceOptions): void {
       replaced.set(folder, { records, depth: replaceOptions?.depth ?? 2 });
@@ -153,7 +154,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
             if (file.startsWith(`${folderName}/`)) committed.set(folderName, [...(committed.get(folderName) ?? []), ...parseRecords(text).records]);
           }
         }
-        const trusted = new Map([...settled.keys()].map((folder) => [folder, session.records(folder)] as const));
+        const trusted = new Map([...settled.keys()].map((folder) => [folder, trustedRecords(folder)] as const));
         const computed = new Map(settled);
         verdictList = verifyCommitted({ trusted, computed, committed });
         return { written, removed, warnings };

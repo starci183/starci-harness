@@ -13,6 +13,7 @@ next-env.d.ts
 !.starcistacks/**/KEYS.md
 !.starcistacks/**/.gitkeep
 !.starcistacks/application-stacks.yaml
+!.starcistacks/cache/**
 !.starcistacks/*/README.md
 !.starcistacks/*/environment.json
 !.starcistacks/*/seeds/**

@@ -1,6 +1,6 @@
 // gate-threshold.mjs - the verdict of `starci app check` and `starci app lint` (owner ruling gate-threshold-20, 2026-10-30): green
 // while fewer than GATE_ERROR_LIMIT error findings remain and none of them is a hard blocker, so a release is not held back finding
-// by finding (5, 4, 3, ...) by the last few structural nits. A plaintext secret, a failed boot proof and a broken migration block at
+// by finding (5, 4, 3, ...) by the last few structural nits. A plaintext secret, a failed boot proof, a forged check cache record and a broken migration block at
 // any count. Every finding is still printed; only the exit code changes. Typecheck, build and the tests are not judged here.
 
 export const GATE_ERROR_LIMIT = 20;
@@ -17,6 +17,7 @@ export const HARD_BLOCKERS: ReadonlySet<string> = Object.freeze(new Set<string>(
   'HFS_PLAINTEXT_SECRET', 'HFS_SECRET_PLAINTEXT_FILE', 'HFS_SECRET_OUTSIDE_ENC', 'HFS_SCRIPT_PLAINTEXT_LOAD', 'RT_SECRET_TRACKED',
   'STACKS_SECRET_ENV_LITERAL', 'APP_SECRET_IN_CI', 'BE_LOG_SECRET',
   'BE_APP_BOOT_PROOF_MISSING',
+  'HFS_CHECK_CACHE_FORGED',
   'DB_MIGRATION_SHAPE', 'DB_MIGRATION_DESTRUCTIVE', 'LITE_DB_MIGRATION', 'BE_MIGRATION_REVERSIBLE',
 ]));
 

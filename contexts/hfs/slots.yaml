@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.14.0
+version: 3.15.0
 presenceValues:
   - required
   - optional
@@ -1419,6 +1419,21 @@ slots:
     tests: none
     rules:
       - HFS_MANAGED_FILE_DRIFT
+  - id: app.starcistacks.cache
+    profiles:
+      - app
+    path: .starcistacks/cache/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    allows:
+      - fingerprint.jsonl
+      - check/**
+      - lint/**
+      - test-coverage/**
+      - sonar-baseline/**
+      - codecov-baseline/**
   - id: app.db.bootstrap
     profiles:
       - app
