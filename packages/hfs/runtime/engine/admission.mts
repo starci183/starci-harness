@@ -1,6 +1,43 @@
 import { createHash } from 'node:crypto';
 import { refuse } from './refuse.mjs';
 import { byCodeUnit } from './by-code-unit.mjs';
+import type { SqlDb, SqlRow } from './db/sqlite-types.mjs';
+
+/** A durable job-shaped row as the ledger and machine stores return it (columns read by name). */
+export type JobRow = SqlRow;
+// reason: the decoded payload/result JSON of a job row, parsed from the ledger; its keys are the op's own contract.
+export type JsonObject = Record<string, any>;
+/** An owned path as callers spell it: the path itself, or a record carrying it as `path`. */
+export type OwnedPathSpec = string | { path?: unknown } | null | undefined;
+/** A request for capacity on one durable resource key. */
+export interface LeaseRequest { resourceKey: string; units: number }
+/** Resolves a lease path to its app-relative form (scripts/kernel/lease-canon.mjs). */
+export type CanonicalOf = (path: string, row: SqlRow | null) => string | null | undefined;
+/** The retry accounting of one settled attempt. */
+export interface RetryDisposition {
+  retryClass: 'infrastructure' | 'owner-answer' | 'peer-blocked' | 'environment' | 'business';
+  effectState: unknown;
+  resumable: boolean;
+  consumesBusinessRetry: boolean;
+}
+/** The ceiling one workflow's concurrent operations are admitted at. */
+export interface OpSlotCeiling { ceiling: number | null; source: 'maxParallelOps' | 'budgets.maxOps' | null }
+/** The admission of one more operation slot. */
+export interface OpSlotAdmission {
+  ok: boolean;
+  running: number;
+  ceiling: number | null;
+  ceilingSource: OpSlotCeiling['source'];
+  reason: 'max-ops' | null;
+}
+/** The decision of admitting one more try of a work unit. */
+export interface UnitTryAdmission {
+  tryNo: number;
+  retryOf: string | null;
+  resumeOf: string | null;
+  retryClass: 'business' | 'infra' | 'resume' | 'follow-up' | null;
+  reopen: { reason: string; by: string } | null;
+}
 
 const PATH_LEASE_PREFIX='path:';
 const GLOB_META=/[*?[\]{}]/;
@@ -12,19 +49,19 @@ const GLOB_META=/[*?[\]{}]/;
 const APP_ROUTER_SEGMENT=/^(?:\(\.{1,3}\))*(?:\[\[\.\.\.[A-Za-z0-9_$-]+\]\]|\[(?:\.\.\.)?[A-Za-z0-9_$-]+\])$/;
 
 /** A Next.js App Router bracket segment (`[id]`, `[...slug]`, `[[...opt]]`, `(.)[id]`) — a literal directory name. */
-export const isAppRouterSegment=part=>APP_ROUTER_SEGMENT.test(String(part??''));
+export const isAppRouterSegment=(part: unknown): boolean=>APP_ROUTER_SEGMENT.test(String(part??''));
 
 /** A path segment that is a real glob (`*`, `?`, `{a,b}`, a bare character class), not an App Router name. */
-export const isGlobSegment=part=>GLOB_META.test(String(part??''))&&!isAppRouterSegment(part);
+export const isGlobSegment=(part: unknown): boolean=>GLOB_META.test(String(part??''))&&!isAppRouterSegment(part);
 
 /**
  * The git pathspec for one concrete owned path. Git reads a plain pathspec as a glob, so `src/app/[id]`
  * would also match a sibling `src/app/i`; `:(literal)` pins it to the named directory. Admission
  * refuses a glob, so every owned path is literal.
  */
-export const ownedPathspec=spec=>`:(literal)${String(spec??'').replaceAll('\\','/')||'.'}`;
+export const ownedPathspec=(spec: unknown): string=>`:(literal)${String(spec??'').replaceAll('\\','/')||'.'}`;
 
-const plainPath=value=>typeof value==='string'?value:value?.path;
+const plainPath=(value: OwnedPathSpec): unknown=>typeof value==='string'?value:value?.path;
 
 /**
  * Canonical workspace-relative path prefix used by planning, leases and report boundaries. In a
@@ -34,11 +71,11 @@ const plainPath=value=>typeof value==='string'?value:value?.path;
  * a concrete ownership boundary. A Next.js App Router segment (`[lang]`, `[...slug]`, `[[...opt]]`,
  * `(group)`, `@slot`, `(.)photo`) is a literal directory name and is admitted as one.
  */
-export function normalizeOwnedPath(value){
+export function normalizeOwnedPath(value: OwnedPathSpec): string{
   let input=String(plainPath(value)??'').trim().replaceAll('\\','/');
   input=input.replace(/\/\*\*\/$/,'').replace(/\/\*\*$/,'');
   if(!input||input.startsWith('/')||/^[A-Za-z]:\//.test(input))throw new Error(`owned path must be repository-relative: ${JSON.stringify(plainPath(value)??value)}`);
-  const parts=[];
+  const parts: string[]=[];
   for(const part of input.split('/')){
     if(!part||part==='.')continue;
     if(part==='..')throw new Error(`owned path must not traverse its repository: ${JSON.stringify(plainPath(value)??value)}`);
@@ -50,24 +87,24 @@ export function normalizeOwnedPath(value){
 }
 
 /** Normalize, de-duplicate and collapse descendants already covered by an owned ancestor. */
-export function normalizeOwnedPaths(values=[]){
-  const paths=[...new Set(values.map(normalizeOwnedPath))].sort((a,b)=>a.length-b.length||a.localeCompare(b));
+export function normalizeOwnedPaths(values: readonly OwnedPathSpec[]=[]): string[]{
+  const paths=[...new Set(values.map(value=>normalizeOwnedPath(value)))].sort((a,b)=>a.length-b.length||a.localeCompare(b));
   return paths.filter((candidate,index)=>!paths.slice(0,index).some(parent=>ownedPathsIntersect(parent,candidate)));
 }
 
 /** Path-prefix overlap: equality or either concrete path being below the other. */
-export function ownedPathsIntersect(left,right){
+export function ownedPathsIntersect(left: OwnedPathSpec,right: OwnedPathSpec): boolean{
   const a=normalizeOwnedPath(left),b=normalizeOwnedPath(right);
   return a===b||a.startsWith(`${b}/`)||b.startsWith(`${a}/`);
 }
 
 /** The durable resource identity for one normalized concrete owned path. */
-const ownedPathLeaseKey=value=>`${PATH_LEASE_PREFIX}${normalizeOwnedPath(value)}`;
+const ownedPathLeaseKey=(value: OwnedPathSpec): string=>`${PATH_LEASE_PREFIX}${normalizeOwnedPath(value)}`;
 
 /** One capacity-one request per minimal owned prefix. */
-export const ownedPathLeaseRequests=values=>normalizeOwnedPaths(values).map(path=>({resourceKey:ownedPathLeaseKey(path),units:1}));
+export const ownedPathLeaseRequests=(values: readonly OwnedPathSpec[]): LeaseRequest[]=>normalizeOwnedPaths(values).map(path=>({resourceKey:ownedPathLeaseKey(path),units:1}));
 
-const leasePath=resourceKey=>String(resourceKey??'').startsWith(PATH_LEASE_PREFIX)
+const leasePath=(resourceKey: unknown): string | null=>String(resourceKey??'').startsWith(PATH_LEASE_PREFIX)
   ?String(resourceKey).slice(PATH_LEASE_PREFIX.length):null;
 
 /**
@@ -79,7 +116,7 @@ const leasePath=resourceKey=>String(resourceKey??'').startsWith(PATH_LEASE_PREFI
  * compares as one key; paths on Windows compare case-insensitively, as its file
  * systems do.
  */
-export const leaseCompareForm=(leasePathValue,{canonicalOf=null,row=null,platform=process.platform}={})=>{
+export const leaseCompareForm=(leasePathValue: OwnedPathSpec,{canonicalOf=null,row=null,platform=process.platform}: {canonicalOf?: CanonicalOf | null; row?: SqlRow | null; platform?: string}={}): string=>{
   let value=normalizeOwnedPath(leasePathValue);
   if(canonicalOf){try{value=normalizeOwnedPath(canonicalOf(value,row)??value);}catch{/* an unresolvable spelling compares as written */}}
   return platform==='win32'?value.toLowerCase():value;
@@ -91,17 +128,18 @@ export const leaseCompareForm=(leasePathValue,{canonicalOf=null,row=null,platfor
  * Both sides are compared in leaseCompareForm, so a bare and a repository-prefixed spelling of one
  * file overlap and the same relative path in two repositories does not.
  */
-export function findOwnedPathLeaseConflicts(db,requests,{excludeJobId=null,canonicalOf=null,platform=process.platform}={}){
-  const requested=[...new Set(requests.map(item=>item?.resourceKey??item).filter(key=>leasePath(key)!==null))];
+export function findOwnedPathLeaseConflicts(db: SqlDb,requests: ReadonlyArray<string | { resourceKey?: string }>,{excludeJobId=null,canonicalOf=null,platform=process.platform}: {excludeJobId?: string | null; canonicalOf?: CanonicalOf | null; platform?: string}={}): SqlRow[]{
+  const requested=[...new Set(requests.map(item=>(typeof item==='string'?item:item?.resourceKey)).filter((key): key is string=>leasePath(key)!==null))];
   if(!requested.length)return [];
   const held=db.prepare("SELECT resource_key,job_id,workflow_id,op_id,try_no AS attempt,generation,expires_at FROM leases WHERE resource_key LIKE 'path:%' ORDER BY resource_key,job_id").all();
-  const formOf=new Map();
-  const compare=(key,row)=>{
+  const formOf=new Map<string, string>();
+  const compare=(key: string,row: SqlRow | null): string=>{
     const id=`${row?.job_id??''}\0${key}`;
-    if(!formOf.has(id))formOf.set(id,leaseCompareForm(leasePath(key),{canonicalOf,row,platform}));
-    return formOf.get(id);
+    let form=formOf.get(id);
+    if(form===undefined){form=leaseCompareForm(leasePath(key),{canonicalOf,row,platform});formOf.set(id,form);}
+    return form;
   };
-  const conflicts=[];
+  const conflicts: SqlRow[]=[];
   for(const requestKey of requested){
     const requestPath=compare(requestKey,null);
     for(const row of held){
@@ -113,14 +151,14 @@ export function findOwnedPathLeaseConflicts(db,requests,{excludeJobId=null,canon
 }
 
 /** Existing durable path and resource checks, read inside the caller's reservation transaction. */
-export function resourceAdmission(db,repoNeeds,{at,canonicalOf=null}={}){
-  const reasons=[];
+export function resourceAdmission(db: SqlDb,repoNeeds: readonly LeaseRequest[],{at,canonicalOf=null}: {at?: number; canonicalOf?: CanonicalOf | null}={}): {ok: boolean; reason?: string; reasons?: string[]; pathConflicts?: SqlRow[]}{
+  const reasons: string[]=[];
   const pathConflicts=findOwnedPathLeaseConflicts(db,repoNeeds,{canonicalOf});
   for(const conflict of pathConflicts)reasons.push(`resource ${conflict.requested} overlaps durable lease ${conflict.held} held by ${conflict.job_id}`);
   for(const item of repoNeeds){
     const row=db.prepare('SELECT capacity FROM resources WHERE resource_key=?').get(item.resourceKey);
     const capacity=row?.capacity??1;
-    const used=db.prepare('SELECT COALESCE(SUM(units),0) u FROM leases WHERE resource_key=? AND expires_at>?').get(item.resourceKey,at).u;
+    const used=db.prepare('SELECT COALESCE(SUM(units),0) u FROM leases WHERE resource_key=? AND expires_at>?').get(item.resourceKey,at)?.u;
     if(used+item.units>capacity)reasons.push(`resource ${item.resourceKey} capacity ${capacity} has ${used} used and needs ${item.units}`);
   }
   if(reasons.length)return {ok:false,reason:reasons.join('; '),reasons,pathConflicts:pathConflicts.map(({requested,held,job_id,workflow_id,op_id,expires_at})=>({requested,held,jobId:job_id,workflowId:workflow_id,opId:op_id,expiresAt:expires_at}))};
@@ -134,8 +172,8 @@ export function resourceAdmission(db,repoNeeds,{at,canonicalOf=null}={}){
  * a workflow with no owner budget still meets the worker ceiling. A parallelism gear raises what
  * `starci kernel estimate` requests and never raises either of these.
  */
-export function opSlotCeiling({maxOps=null,maxParallelOps=null}={}){
-  const positive=value=>{const n=Number(value);return Number.isInteger(n)&&n>0?n:null;};
+export function opSlotCeiling({maxOps=null,maxParallelOps=null}: {maxOps?: unknown; maxParallelOps?: unknown}={}): OpSlotCeiling{
+  const positive=(value: unknown): number | null=>{const n=Number(value);return Number.isInteger(n)&&n>0?n:null;};
   const owner=positive(maxOps),workers=positive(maxParallelOps);
   if(owner===null&&workers===null)return {ceiling:null,source:null};
   if(owner===null)return {ceiling:workers,source:'maxParallelOps'};
@@ -148,7 +186,7 @@ export function opSlotCeiling({maxOps=null,maxParallelOps=null}={}){
  * a slot; a job at or above the ceiling is refused `max-ops` rather than launched and left to
  * discover the cap from a provider.
  */
-export function admitOpSlot({running=0,maxOps=null,maxParallelOps=null}={}){
+export function admitOpSlot({running=0,maxOps=null,maxParallelOps=null}: {running?: unknown; maxOps?: unknown; maxParallelOps?: unknown}={}): OpSlotAdmission{
   const {ceiling,source}=opSlotCeiling({maxOps,maxParallelOps});
   const held=Math.max(0,Number(running)||0);
   if(ceiling===null)return {ok:true,running:held,ceiling:null,ceilingSource:null,reason:null};
@@ -158,14 +196,14 @@ export function admitOpSlot({running=0,maxOps=null,maxParallelOps=null}={}){
 }
 
 /** Count this workflow's durable held slots and judge the same declared ceiling at preflight and reservation. */
-export function workflowOpSlots(db,workflowId,{excludeJobId=null,holdingStatuses,maxOps=null,maxParallelOps=null}={}){
+export function workflowOpSlots(db: SqlDb,workflowId: string,{excludeJobId=null,holdingStatuses,maxOps=null,maxParallelOps=null}: {excludeJobId?: string | null; holdingStatuses?: readonly string[]; maxOps?: unknown; maxParallelOps?: unknown}={}): OpSlotAdmission{
   if(!Array.isArray(holdingStatuses)||!holdingStatuses.length)throw new Error('workflowOpSlots requires canonical held statuses');
   const running=db.prepare(`SELECT count(*) n FROM jobs WHERE workflow_id=? AND kind<>'kernel' AND job_id<>?
-    AND status IN (${holdingStatuses.map(()=>'?').join(',')})`).get(workflowId,excludeJobId??'',...holdingStatuses).n;
+    AND status IN (${holdingStatuses.map(()=>'?').join(',')})`).get(workflowId,excludeJobId??'',...holdingStatuses)?.n;
   return admitOpSlot({running,maxOps,maxParallelOps});
 }
 
-const rowObject=value=>{
+const rowObject=(value: unknown): JsonObject=>{
   if(value&&typeof value==='object')return value;
   if(typeof value!=='string'||!value.trim())return {};
   try{const parsed=JSON.parse(value);return parsed&&typeof parsed==='object'?parsed:{};}catch{return {};}
@@ -176,8 +214,8 @@ const rowObject=value=>{
  * field (a mapped ledger row), else the tolerant parse of its `*_json` text — a missing, blank or
  * unparsable field reads as {}. Several scripts spell this by hand; these are the one pair to cite.
  */
-export const payloadOf=job=>rowObject(job?.payload??job?.payload_json);
-export const resultOf=job=>rowObject(job?.result??job?.result_json);
+export const payloadOf=(job?: JobRow | null): JsonObject=>rowObject(job?.payload??job?.payload_json);
+export const resultOf=(job?: JobRow | null): JsonObject=>rowObject(job?.result??job?.result_json);
 
 /** The settled verdict of an attempt that asked the owner and waits for the answer. */
 export const AWAITING_OWNER='awaiting-owner';
@@ -190,13 +228,13 @@ export const RETRYABLE_JOB_STATUSES=Object.freeze(['failed',AWAITING_OWNER_STATU
 /** Every jobs.status that holds nothing the runtime still needs. */
 export const SETTLED_JOB_LIST=Object.freeze(['succeeded','failed',AWAITING_OWNER_STATUS,'cancelled']);
 /** The tries of a unit that spent budget: every try but the ones that only waited on the owner. */
-export const spentTries=tries=>tries.filter(job=>job.status!==AWAITING_OWNER_STATUS).length;
+export const spentTries=(tries: readonly JobRow[]): number=>tries.filter(job=>job.status!==AWAITING_OWNER_STATUS).length;
 // An attempt the environment killed with effects on the tree (a host terminal wipe: every Orca terminal
 // gone at once, scripts/kernel/cli.mjs hostTerminalWipeOf) settles failed with this retryClass: its retry
 // is a new durable attempt that continues the partial tree and spends no business retry.
 export const RETRY_CLASS_ENVIRONMENT='environment';
 
-const classifyRetry=({noEffect,ownerAnswer,peerBlocked,environment})=>{
+const classifyRetry=({noEffect,ownerAnswer,peerBlocked,environment}: {noEffect: boolean; ownerAnswer: boolean; peerBlocked: boolean; environment: boolean}): RetryDisposition['retryClass']=>{
   if(noEffect)return 'infrastructure';
   if(ownerAnswer)return 'owner-answer';
   if(peerBlocked)return 'peer-blocked';
@@ -211,7 +249,7 @@ const classifyRetry=({noEffect,ownerAnswer,peerBlocked,environment})=>{
  * (starci kernel settle: every red check was a peer's change, scripts/kernel/gate-attribution.mjs), nor one settled
  * with retryClass environment (RETRY_CLASS_ENVIRONMENT).
  */
-export function retryDisposition(job){
+export function retryDisposition(job?: JobRow | null): RetryDisposition{
   const result=resultOf(job),reason=String(result.reason??'');
   const infrastructure=result.retryClass==='infrastructure'||reason==='dispatch-rejected'||reason==='provider-unavailable';
   const explicitlyReusable=(result.retryable===true&&result.attemptConsumed===false)||result.retryClass==='infrastructure';
@@ -234,7 +272,7 @@ export function retryDisposition(job){
  * of its ordinal (inc-5005d003825a: a retry chained to a dropped ordinal-1 row as business attempt 2 and
  * lost the owner-answer lineage; inc-b428eb47fde3: ordinal 2 read a dropped seam as dependency-failed).
  */
-export function retiredBeforeDispatch(job){
+export function retiredBeforeDispatch(job?: JobRow | null): boolean{
   if(job?.status!=='cancelled')return false;
   const result=resultOf(job),payload=payloadOf(job);
   if(result.verdict!=='dropped'&&result.reason!=='goal-revision-superseded')return false;
@@ -246,7 +284,7 @@ export function retiredBeforeDispatch(job){
 
 
 /** The cut slice a job row carries, or null: {id, ordinal} identify one bounded SAME-op slice. */
-export function cutOf(job){
+export function cutOf(job?: JobRow | null): {id: string; ordinal: number; total: number} | null{
   const cut=payloadOf(job).cut;
   return cut?.id!=null&&cut?.ordinal!=null?{id:String(cut.id),ordinal:Number(cut.ordinal),total:Number(cut.total)}:null;
 }
@@ -256,14 +294,14 @@ export function cutOf(job){
 
 /** The default try budget of a unit (Q13; DBTREE work_units.try_budget). Only the owner or the Supervisor raises one. */
 export const UNIT_TRY_BUDGET=5;
-const shortDigest=value=>createHash('sha256').update(value).digest('hex').slice(0,16);
-const lineagePaths=list=>(Array.isArray(list)?list:[]).map(item=>typeof item==='string'?item:item?.path).filter(p=>typeof p==='string'&&p.trim());
-const normPath=p=>{
+const shortDigest=(value: string): string=>createHash('sha256').update(value).digest('hex').slice(0,16);
+const lineagePaths=(list: unknown): string[]=>(Array.isArray(list)?list as Array<string | {path?: unknown} | null | undefined>:[]).map(item=>typeof item==='string'?item:item?.path).filter((p): p is string=>typeof p==='string'&&Boolean(p.trim()));
+const normPath=(p: string): string=>{
   let s=p.replaceAll('\\','/').replace(/\/\*\*$/,'');
   while(s.endsWith('/'))s=s.slice(0,-1);
   return s;
 };
-const normList=list=>[...new Set(lineagePaths(list).map(normPath))].sort(byCodeUnit);
+const normList=(list: unknown): string[]=>[...new Set(lineagePaths(list).map(normPath))].sort(byCodeUnit);
 
 /**
  * The work identity of a job (DBTREE work_units.subject_key): a cut slice is `cut:<id>#<ordinal>`, an op about one
@@ -271,7 +309,7 @@ const normList=list=>[...new Set(lineagePaths(list).map(normPath))].sort(byCodeU
  * one goal revision are ONE unit (UNIQUE(workflow_id, op_id, subject_key, goal_revision)): a try of the same work can
  * never start a fresh budget.
  */
-export function unitSubjectKey({cut=null,params=null,records=[],ownedPaths=[]}={}){
+export function unitSubjectKey({cut=null,params=null,records=[],ownedPaths=[]}: {cut?: {id?: unknown; ordinal?: unknown} | null; params?: {subject?: unknown} | null; records?: unknown; ownedPaths?: unknown}={}): string{
   if(cut?.id!=null&&cut?.ordinal!=null)return `cut:${cut.id}#${Number(cut.ordinal)}`;
   const subject=typeof params?.subject==='string'&&params.subject.trim()?params.subject.trim():null;
   if(subject)return `subject:${subject}`;
@@ -281,12 +319,12 @@ export function unitSubjectKey({cut=null,params=null,records=[],ownedPaths=[]}={
 }
 
 /** Two jobs are tries of one work unit (jobs.unit_id). */
-export const sameUnit=(a,b)=>Boolean(a?.unit_id&&a.unit_id===b?.unit_id);
+export const sameUnit=(a?: JobRow | null,b?: JobRow | null): boolean=>Boolean(a?.unit_id&&a.unit_id===b?.unit_id);
 
 const OPEN_TRY=new Set(['queued','ready','leased','running','answering','reported','deciding','effect_unknown']);
 
 /** The jobs.retry_class of a successor of `last` (DBTREE: business | infra | resume | follow-up). */
-const retryClassOf=(last,disposition)=>{
+const retryClassOf=(last: JobRow,disposition: RetryDisposition | null): 'business' | 'infra' | 'resume' | 'follow-up'=>{
   if(last.status==='cancelled')return 'resume';
   if(disposition?.retryClass==='business')return 'business';
   if(disposition?.retryClass==='infrastructure'||disposition?.retryClass===RETRY_CLASS_ENVIRONMENT)return 'infra';
@@ -302,11 +340,11 @@ const retryClassOf=(last,disposition)=>{
  *   retry-lineage-invalid      retryOf is not the unit's latest try, or that try did not fail (H4)
  *   unit-try-budget-exhausted  try_no would pass work_units.try_budget; only the owner or the Supervisor raises it (H3)
  */
-const refuseDoneUnit=(unit,last,reopen)=>{
+const refuseDoneUnit=(unit: SqlRow,last: SqlRow,reopen: {reason?: string; by?: string} | null): {reason: string; by: string}=>{
   if(reopen?.reason&&reopen?.by)return {reason:reopen.reason,by:reopen.by};
   throw refuse(`unit ${unit.unit_id} already passed (${last.job_id}); running it again needs an explicit reopen with a reason (--reopen <reason>)`,'unit-already-passed',{passed:last.job_id});
 };
-export function admitUnitTry({unit=null,tries=[],retryOf=null,reopen=null}={}){
+export function admitUnitTry({unit=null,tries=[],retryOf=null,reopen=null}: {unit?: SqlRow | null; tries?: readonly JobRow[]; retryOf?: string | null; reopen?: {reason?: string; by?: string} | null}={}): UnitTryAdmission{
   const ordered=[...tries].sort((a,b)=>Number(a.try_no)-Number(b.try_no));
   const last=ordered.at(-1)??null;
   if(!unit||!last){
