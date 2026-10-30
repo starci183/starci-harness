@@ -300,7 +300,9 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
 
   const sideUnchanged = whole === null && meta !== undefined && meta.hash === sideKey && metaData['extra'] === input.extraKey
     && scope.every((file) => validEslint.has(file)) && stylesheets.every((file) => validStyle.has(file))
-    && ofStep(LINT_STEPS.eslint).every((record) => scopeSet.has(record.path)) && ofStep(LINT_STEPS.stylelint).every((record) => styleSet.has(record.path));
+    && ofStep(LINT_STEPS.eslint).every((record) => scopeSet.has(record.path)) && ofStep(LINT_STEPS.stylelint).every((record) => styleSet.has(record.path))
+    // a file the program reads that is no lint source (a JSON module, untracked generated code) is part of the side too
+    && ofStep(LINT_STEPS.imports).filter((record) => !scopeSet.has(record.path)).every((record) => hashOf(record.path) === record.hash);
 
   const crossFor = (canons: readonly CanonDeclarations[]): ((file: string) => string | undefined) =>
     crossDigestFactory({ side, declarations: canons.flatMap((canon) => canon.crossFileInputs ?? []), paths: appPaths, hashOf: appHash });

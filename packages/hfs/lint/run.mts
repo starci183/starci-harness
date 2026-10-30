@@ -1,6 +1,6 @@
 // starci app lint - the ONE lint entry and the ONE report of a StarCi app.
 //
-//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--json] [--out <file>]
+//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--json] [--out <file>]
 //
 // It runs at the app root (the folder of hfs.json), over the app (or over the app-relative files named by --changed):
 //   1. ESLint once per side, from the side folder, through the app's own install and that side's eslint.config.mjs (be/ the be canon,
@@ -15,6 +15,10 @@
 // --workspace scopes the same lint to one npm workspace of the fe side (fe/apps/<app> or fe/packages/<pkg>, app-relative): ESLint and
 // stylelint over that folder only, and of the app findings only those inside it. It is the `lint` script of every fe workspace (the
 // turbo `lint` task); the root `npm run lint` stays the whole app. There is no second linter: a workspace lint is this lint, scoped.
+// The result cache (contexts/project/check-cache.md): when the caller hands lintRepository a cache session, ESLint and stylelint judge only what
+// the records of `.starcistacks/cache/lint/<side>/` cannot vouch for (cache/lint-family.mjs) - the same records and fingerprint `app check --lint`
+// uses, so the two verbs never hold two answers. `--side` reads and writes its side's records, `--workspace` reads and writes none, `--changed`
+// and `--fix` bypass the cache, and `--full` judges everything again and rewrites the records.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -29,12 +33,16 @@ import { byCodeUnit } from '../report/order.mjs';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
 import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
+import { lintFamilyReport, lintSide, loadAppTypeScript, type CanonDeclarations, type EslintResult, type LintSideStats, type LinterOutcome, type StylelintResult } from '../cache/lint-family.mjs';
+import type { CheckSession } from '../cache/types.mjs';
 
 // reason: linter json output (eslint, stylelint), package.json and the installed canon config are parsed or imported from the app's own install; each reader checks the fields it uses
 type Dynamic = any;
 
 /** The parsed arguments of the lint verb. */
-export interface LintOptions { changed: string[] | null; fix: boolean; format: string; out: string | undefined; workspace: string | undefined; side?: string }
+export interface LintOptions { changed: string[] | null; fix: boolean; format: string; out: string | undefined; workspace: string | undefined; side?: string; full?: boolean }
+/** The cache a lint run may use: the session of the check cache. The caller flushes it after the run. */
+export interface LintCache { session: CheckSession }
 /** What a linter run answers: its json results, or why it could not complete (both when the run was partial). */
 export interface LinterRun { results?: Dynamic[]; error?: string }
 /** The seam that runs a linter through the app's own install from cwd. */
@@ -89,6 +97,7 @@ export function parseLintArgs(argv: readonly string[]): LintOptions {
       opts.changed ??= [];
       while (i + 1 < argv.length && !(argv[i + 1] as string).startsWith('--')) opts.changed.push(posix(argv[++i]));
     } else if (arg === '--fix') opts.fix = true;
+    else if (arg === '--full') opts.full = true;
     else if (arg === '--json') opts.format = 'json';
     else if (['--out', '--workspace', '--side'].includes(arg)) {
       if (arg === '--side' && (argv[i + 1] === undefined || (argv[i + 1] as string).startsWith('--'))) throw new Error('LINT_SIDE_INVALID: --side needs be or fe');
@@ -369,6 +378,110 @@ export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loa
   return { findings, errors, raw, engine };
 }
 
+// ------------------------------------------------------------------------------------------------ the cached lint
+
+/** A `crossFileInputs` export that has the shape the cache reads, or null (an installed canon without it, or with a broken one, is linted whole). */
+function declaredInputs(value: unknown): CanonDeclarations['crossFileInputs'] {
+  if (!Array.isArray(value)) return null;
+  const sound = value.every((entry: Dynamic) => entry && typeof entry.rule === 'string' && (entry.kind === 'content' || entry.kind === 'exists') && (entry.relativeTo === 'file' || entry.relativeTo === 'side')
+    && Array.isArray(entry.globs) && entry.globs.every((glob: unknown) => typeof glob === 'string') && Array.isArray(entry.appliesTo) && entry.appliesTo.every((glob: unknown) => typeof glob === 'string'));
+  return sound ? value : null;
+}
+
+const declarationOf = (name: string, installed: Dynamic, graphRules: boolean): CanonDeclarations => ({
+  name, crossFileInputs: declaredInputs(installed?.crossFileInputs), graphRules, projectGraph: graphRules && typeof installed?.projectGraph === 'function' ? installed.projectGraph : null,
+});
+
+/** What the cache reads of the canons a side lints with: the ESLint canon (which publishes the project-graph rules) and the grammar family of the fe side. */
+export async function canonDeclarations({ repoRoot, cwd, side }: { repoRoot: string; cwd: string; side: string }): Promise<CanonDeclarations[]> {
+  const name = `@starci/eslint-canon-${side}`;
+  const canon = await import(pathToFileURL(ownCanonEntry({ repoRoot, cwd }, name)).href);
+  const declarations = [declarationOf(name, canon, true)];
+  if (side !== 'fe') return declarations;
+  const family = grammarLintFor(canon.loadHfs(pathToFileURL(path.join(cwd, 'eslint.config.mjs')).href).grammar);
+  if (family.package !== null) declarations.push(declarationOf(family.package, await import(pathToFileURL(ownCanonEntry({ repoRoot, cwd }, family.package)).href), false));
+  return declarations;
+}
+
+/** The stylelint canon's declaration; one that cannot be imported has none, so every stylesheet is judged. */
+async function styleDeclaration({ repoRoot, cwd }: { repoRoot: string; cwd: string }): Promise<CanonDeclarations> {
+  const name = '@starci/stylelint-canon';
+  try { return declarationOf(name, await import(pathToFileURL(ownCanonEntry({ repoRoot, cwd }, name)).href), false); }
+  catch { return declarationOf(name, null, false); }
+}
+
+/** The stylesheets of the fe side (sync STYLE_GLOB), side-relative, from the disk. */
+function stylesheetsOf(cwd: string): string[] {
+  const patterns = (braceVariants(STYLE_GLOB) as string[]).map(globExpression);
+  const found: string[] = [];
+  const visit = (folder: string): void => {
+    let children: fs.Dirent[];
+    try { children = fs.readdirSync(path.join(cwd, folder), { withFileTypes: true }); } catch { return; }
+    for (const child of children) {
+      if (child.name === 'node_modules' || child.name.startsWith('.git')) continue;
+      const file = posix(path.join(folder, child.name));
+      if (child.isDirectory()) visit(file);
+      else if (child.isFile() && patterns.some((pattern) => pattern.test(file))) found.push(file);
+    }
+  };
+  for (const container of ['apps', 'packages']) visit(container);
+  return found.sort(byCodeUnit);
+}
+
+/** What the cached linters answer: the ESLint answer in the shape of eslintRepository's, the stylelint results, and each side's counts. */
+export interface CachedLinters {
+  eslint: Awaited<ReturnType<typeof eslintRepository>>;
+  stylelint: { results: Dynamic[]; errors: string[]; ran: boolean };
+  sides: { side: string; stats: LintSideStats }[];
+}
+
+/**
+ * ESLint and stylelint through the result cache: per side, the files the records cannot vouch for go to the very launcher, chunking and result
+ * validation of a full run (eslintRepository), the rest take their records. The answer has the shape of eslintRepository's, plus the stylelint
+ * results, so the lint report is built the same way from either.
+ */
+export async function cachedLinters({ repoRoot, app, opts, workspace, onFe, run, cache }: {
+  repoRoot: string; app: RepoDeclaration; opts: LintOptions; workspace: string | null; onFe: string | null; run?: LinterRunner | undefined; cache: LintCache;
+}): Promise<CachedLinters> {
+  const eslint: CachedLinters['eslint'] = { findings: [], errors: [], raw: [], engine: { sides: {} } };
+  const style: CachedLinters['stylelint'] = { results: [], errors: [], ran: false };
+  const sides: CachedLinters['sides'] = [];
+  const decision = cache.session.decide('lint');
+  const full = opts.full === true ? '--full' : decision.mode === 'full' ? decision.reason : null;
+  for (const side of SIDES.filter((candidate: string) => opts.side === undefined || opts.side === candidate)) {
+    if (workspace !== null && side !== STYLE_SIDE) { eslint.engine.sides[side] = { files: 0, skipped: `outside --workspace ${workspace}` }; continue; }
+    const cwd = path.join(repoRoot, side);
+    let scope: string[], canons: CanonDeclarations[];
+    try { scope = await sourceFiles({ repoRoot, cwd, side, scope: null }); canons = await canonDeclarations({ repoRoot, cwd, side }); }
+    catch (error) { eslint.errors.push(`eslint source scope is unavailable in ${side}/: ${String((error as Error | undefined)?.message ?? error)}`); eslint.engine.sides[side] = { files: 0 }; continue; }
+    const styled = side === STYLE_SIDE;
+    const outcome = await lintSide({
+      session: cache.session, side, sideRoot: cwd, scope, stylesheets: styled ? stylesheetsOf(cwd) : [],
+      report: onFe === null ? null : (file: string): boolean => file.startsWith(`${onFe}/`),
+      canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', full, write: workspace === null,
+      eslint: async (files): Promise<LinterOutcome<EslintResult>> => {
+        const listed = files === null ? null : files.map((file) => `${side}/${file}`);
+        const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], workspace: listed === null ? workspace : null, onFe: listed === null ? onFe : null, run });
+        return { results: sub.raw as EslintResult[], errors: sub.errors };
+      },
+      stylelint: styled ? async (files): Promise<LinterOutcome<StylelintResult>> => {
+        const linted = await runLinter({ cwd, pkg: 'stylelint', bin: 'stylelint', args: [...(files ?? [onFe ? `${onFe}/src/**/*.css` : STYLE_GLOB]), '--formatter', 'json'] });
+        const appRelative = appRelativeMessages(STYLE_SIDE, cwd);
+        for (const result of linted.results ?? []) for (const warning of result.warnings ?? []) warning.text = appRelative(warning.text);
+        return { results: (linted.results ?? []) as StylelintResult[], errors: linted.error ? [linted.error] : [] };
+      } : null,
+    });
+    sides.push({ side, stats: outcome.stats });
+    for (const message of outcome.errors) (message.startsWith('stylelint ') ? style.errors : eslint.errors).push(message);
+    eslint.raw.push(...outcome.eslint);
+    eslint.findings.push(...eslintFindings(outcome.eslint, repoRoot));
+    eslint.engine.sides[side] = { files: outcome.eslint.length };
+    if (styled) { style.results.push(...outcome.stylelint); style.ran = true; }
+  }
+  cache.session.report(lintFamilyReport(sides));
+  return { eslint, stylelint: style, sides };
+}
+
 /** Starts stylelint over the fe stylesheets (the running child), or returns null when no stylesheet is in scope. */
 function launchStylelint({ repoRoot, opts, changed, existing, onFe }: { repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; onFe: string | null }): Promise<LinterRun> | null {
   if (opts.side === 'be') return null;
@@ -381,8 +494,8 @@ function launchStylelint({ repoRoot, opts, changed, existing, onFe }: { repoRoot
  * Run the whole lint of the app at `repoRoot`. `hfsCheck(repoRoot)` returns the `starci app check` result (`{ findings, tracked }`); the CLI
  * injects it. Returns `{ report, sonar, exit }`; `sonar` is the merged Generic Issue Import document.
  */
-export async function lintRepository({ repoRoot, opts, hfsCheck, trackedFiles = () => [], runLinter: linter }: {
-  repoRoot: string; opts: LintOptions; hfsCheck: (repoRoot: string) => Dynamic; trackedFiles?: (repoRoot: string) => string[]; runLinter?: LinterRunner | undefined;
+export async function lintRepository({ repoRoot, opts, hfsCheck, trackedFiles = () => [], runLinter: linter, cache }: {
+  repoRoot: string; opts: LintOptions; hfsCheck: (repoRoot: string) => Dynamic; trackedFiles?: (repoRoot: string) => string[]; runLinter?: LinterRunner | undefined; cache?: LintCache | undefined;
 }): Promise<{ report: Dynamic; sonar: Dynamic; exit: number }> {
   const changed = opts.changed === null ? null : new Set(opts.changed);
   const errors: string[] = [];
@@ -408,8 +521,11 @@ export async function lintRepository({ repoRoot, opts, hfsCheck, trackedFiles = 
   const onFe = workspace === null ? null : workspace.slice(STYLE_SIDE.length + 1);
 
   // The linters and the app check are independent: every child starts first, the app check runs while they work, and the results are read in a fixed order.
-  const eslintRun = app ? eslintRepository({ app, repoRoot, opts, changed: changed ? [...changed] : null, existing, workspace, onFe, run: linter }) : null;
-  const styleLaunch = app ? launchStylelint({ repoRoot, opts, changed, existing, onFe }) : null;
+  // The cache serves a whole-side lint only: --changed judges named files and --fix rewrites them, so neither reads nor writes a record.
+  const cached = cache !== undefined && changed === null && !opts.fix ? cache : null;
+  const cachedRun = app && cached ? cachedLinters({ app, repoRoot, opts, workspace, onFe, run: linter, cache: cached }) : null;
+  const eslintRun = app ? (cachedRun ? cachedRun.then((answer) => answer.eslint) : eslintRepository({ app, repoRoot, opts, changed: changed ? [...changed] : null, existing, workspace, onFe, run: linter })) : null;
+  const styleLaunch = app && !cachedRun ? launchStylelint({ repoRoot, opts, changed, existing, onFe }) : null;
   const checkRun = app ? Promise.resolve().then(() => hfsCheck(repoRoot)).then((value) => ({ value, error: undefined }), (error: unknown) => ({ value: undefined, error })) : null;
 
   // 1. ESLint, once per side, from the side folder with that side's config.
@@ -421,7 +537,12 @@ export async function lintRepository({ repoRoot, opts, hfsCheck, trackedFiles = 
 
   // 3. stylelint over the fe side's stylesheets.
   if (app) {
-    if (styleLaunch) {
+    if (cachedRun) {
+      const answer = (await cachedRun).stylelint;
+      errors.push(...answer.errors);
+      if (answer.ran) raw.stylelint = answer.results;
+      findings.push(...stylelintFindings(answer.results, repoRoot));
+    } else if (styleLaunch) {
       const linted = await styleLaunch;
       if (linted.error) errors.push(linted.error);
       if (linted.results) {

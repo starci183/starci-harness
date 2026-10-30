@@ -20,7 +20,7 @@
 //                                            runs on those owners without clones and dead exports. No merge-base is a refusal
 //                                            (exit 2), never a silent full pass. Exit 1 at 20 error findings or a hard blocker (gate-threshold.mjs). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
-//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--json] [--out <file>]
+//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--json] [--out <file>]
 //                                            the ONE lint entry (npm run lint): ESLint per side with that side's canon config (per-file rules and
 //                                            the project-graph rules), this check's findings, and stylelint over the fe side, as one starci/lint@1
 //                                            report; --out writes the one Sonar import file. Exit 0 under 20 error findings and no hard blocker, 1 otherwise, 2 a tool could not run (lint/run.mjs).
@@ -207,7 +207,7 @@ const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', D
 const VERB_USAGE: Record<string, string[]> = {
   ...Object.fromEntries(Object.entries(PARSED).map(([verb, spec]) => [verb, spec.forms.map((form: UsageForm) => line(`starci app ${verb}`, form.operands,
     specUsage(form.only ?? (form.flags === undefined ? spec : { value: form.flags })), spec.edition && form.edition !== false ? flagUsage('--edition', { value: true }) : ''))])),
-  lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--json] [--out <file>]'],
+  lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--json] [--out <file>]'],
   codemod: ['starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]'],
   upgrade: ['starci app upgrade [--execute]'],
   sync: [SYNC_USAGE.sync],
