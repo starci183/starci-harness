@@ -189,7 +189,39 @@
     .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-stepper-list {
         flex-direction: row;
         align-items: flex-start;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: 0;
+    }
+
+    /*
+     * Horizontal track (owner ruling stepper-connector): each step is an equal column with its marker centred over its
+     * label, and a connector line runs from one marker to the next through the markers' centres, leaving a small gap at
+     * each circle. The line before a completed step is the accent, the rest the border colour.
+     */
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step-body {
+        inline-size: 100%;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step-copy {
+        align-items: center;
+        padding-block-start: 0;
+    }
+
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step:not(:last-child)::after {
+        position: absolute;
+        inset-block-start: calc(1.25rem - 1px);
+        inset-inline-start: calc(50% + 1.5rem);
+        inset-inline-end: calc(-50% + 1.5rem);
+        block-size: 2px;
+        border-radius: 999px;
+        background: var(--border, var(--starci-core-border, CanvasText));
+        content: "";
+    }
+
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step[data-grammar-step-state="complete"]:not(:last-child)::after {
+        background: var(--accent, Highlight);
     }
 
     .starci-core-stepper[data-grammar-stepper-orientation="vertical"] .starci-core-stepper-list {
@@ -309,10 +341,6 @@
             overflow: hidden;
             clip: rect(0, 0, 0, 0);
             white-space: nowrap;
-        }
-
-        .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step:not([data-grammar-current="true"]) {
-            flex: 0 0 auto;
         }
     }
 

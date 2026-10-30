@@ -32,7 +32,7 @@ export type StepperProps = {
     /**
      * The flow is loading (knowledge STATE-8): step labels stay real text when given (an empty label draws a Skeleton text line), each
      * marker becomes a static Skeleton circle, descriptions are not drawn, no step is current or a button, and the landmark is `aria-busy`.
-     * (A stepper draws no connector line, so there is none to tint.)
+     * The horizontal connector lines keep the border colour, since no step is complete.
      */
     readonly isLoading?: boolean
 }
@@ -49,7 +49,8 @@ export const stepStateFor = (steps: ReadonlyArray<StepperStep>, currentStepId: s
 /**
  * A multi-step flow's progress. The current step carries `aria-current="step"`; each step exposes
  * `data-grammar-step-state`. With `onStepSelect` the steps are buttons and the arrow keys move
- * between them. Below 30rem a horizontal stepper keeps only the current step's label in the paint.
+ * between them. A horizontal stepper centres each marker over its label and joins the markers with a connector line
+ * (accent after a completed step); below 30rem it keeps only the current step's label in the paint.
  * Contract: list HIERARCHY-3 (+FOCUS-2 when interactive), step STATE-1, marker A11Y-2, control FOCUS-1.
  */
 export const Stepper = ({

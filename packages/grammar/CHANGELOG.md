@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.2 - 2026-10-31
+
+- Changed: a horizontal Stepper is a track: each step is an equal column with its marker centred over its label, and a connector line joins the markers through their centres (the accent after a completed step, the border colour otherwise); below 30rem every step keeps its equal column so the line stays straight (owner ruling stepper-connector).
+
 ## 0.16.1 - 2026-10-30
 
 - Added: `accentCorner` on SurfaceCard and MediaFrame (start-start, start-end, end-start or end-end): that one logical corner is drawn at the Common accent radius `--grammar-accent-corner` (2.5rem) while the others keep the family's surface radius (owner ruling accent-corner); the type is exported as `AccentCorner`. Story Surfaces / Accent corner checks both families.
