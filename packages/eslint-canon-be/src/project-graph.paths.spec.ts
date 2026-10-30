@@ -7,10 +7,10 @@
  *   node --test src/project-graph.paths.spec.ts
  */
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const EXPORT = "export const value = 1;\n"
 

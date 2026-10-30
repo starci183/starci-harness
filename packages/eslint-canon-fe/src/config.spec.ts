@@ -28,7 +28,7 @@ import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { PACKAGE_ROOT, RUNTIME_ROOT } from "./lib/package-root.ts"
 import { declaredHfsView } from "#runtime/scripts/hfs/view.mjs"
 import { hasSecondLanguage } from "#runtime/scripts/lib/language.mjs"
-import { appDeclaration } from "../../eslint-canon-be/fixtures/app.mjs"
+import { appDeclaration } from "../../eslint-canon-be/fixtures/app.ts"
 
 const ROOT = join(PACKAGE_ROOT, "fixtures", "typed")
 

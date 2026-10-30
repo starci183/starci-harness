@@ -4,7 +4,7 @@
  *   node --test src/authorization.spec.ts
  */
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { noAuthUseGuards, noGuardInjectsGuard, rules } from "./authorization.ts"
 
 const tester = typedTester()

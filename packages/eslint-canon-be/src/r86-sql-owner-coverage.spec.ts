@@ -2,10 +2,10 @@
 // proves: BE_SQL_TABLE_OWNER@lite
 // proves: BE_SQL_TABLE_OWNER@full
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const OWN_SQL = "src/modules/domain/purchase/persistence/purchase.sql.ts"
 const FOREIGN_SQL = "src/modules/domain/purchase/persistence/foreign.sql.ts"

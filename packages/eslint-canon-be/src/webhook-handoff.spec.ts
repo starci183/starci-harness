@@ -1,6 +1,6 @@
 /** Typed edge cases shared by the webhook-shape and feature-thin handoff checks. */
 import test from "node:test"
-import { BE_DECLARATION, at, typedTester } from "../fixtures/typed/tester.mjs"
+import { BE_DECLARATION, at, typedTester } from "../fixtures/typed/tester.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { isWebhookDomainServiceType } from "./lib/webhook-verifiers.ts"
 import { webhookForbiddenReferences, webhookIntakeDispatchesCommand } from "./lib/webhook-handoff.ts"

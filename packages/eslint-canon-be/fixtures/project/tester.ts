@@ -10,27 +10,43 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { createRequire } from "node:module"
-import { runGit } from "../../runtime/scripts/api/git/lib.mjs"
+import { runGit } from "#runtime/scripts/api/git/lib.mjs"
+import type tsModule from "typescript"
 import tsParser from "@typescript-eslint/parser"
 import { RuleTester } from "eslint"
 import { resetProjectGraphs } from "../../runtime/scripts/hfs/project-graph.mjs"
-import { declaredHfsView } from "../../runtime/scripts/hfs/view.mjs"
-import { appDeclaration } from "../app.mjs"
+import { declaredHfsView } from "#runtime/scripts/hfs/view.mjs"
+import { appDeclaration, type SideDeclaration } from "../app.ts"
+import type { CanonRuleTester } from "../typed/tester.ts"
 
-const ts = createRequire(import.meta.url)("typescript")
+const ts = createRequire(import.meta.url)("typescript") as typeof tsModule
 const RUNTIME = path.join(import.meta.dirname, "..", "..", "runtime")
-const DEFAULT_APPS = { be: [{ name: "core", kind: "api" }], fe: [{ name: "web", kind: "next" }] }
+const DEFAULT_APPS: Readonly<Record<"be" | "fe", readonly { readonly name: string; readonly kind: string }[]>> = { be: [{ name: "core", kind: "api" }], fe: [{ name: "web", kind: "next" }] }
 
-/**
- * @param {{ profile?: "be" | "fe", edition?: "full" | "lite", files?: Record<string, string | null>, rootFiles?: Record<string, string>, declaration?: object, apps?: object[], manifestText?: string }} input
- * @returns {{ root: string, at: (rel: string) => string, tester: RuleTester, cleanup: () => void }}
- */
-export const projectFixture = ({ profile = "be", edition, files = {}, rootFiles = {}, declaration = {}, apps = DEFAULT_APPS[profile], manifestText } = {}) => {
+/** A fixture app: its side root, a side-relative path resolver, the tester and the cleanup. */
+export interface ProjectFixture {
+    readonly root: string
+    readonly at: (rel: string) => string
+    readonly tester: CanonRuleTester
+    readonly cleanup: () => void
+}
+
+/** Write a hermetic app (a git work tree with every file added) and the RuleTester over it. */
+export const projectFixture = ({ profile = "be", edition, files = {}, rootFiles = {}, declaration = {}, apps = DEFAULT_APPS[profile], manifestText }: {
+    profile?: "be" | "fe"
+    edition?: "full" | "lite"
+    files?: Readonly<Record<string, string | null>>
+    rootFiles?: Readonly<Record<string, string>>
+    declaration?: SideDeclaration
+    apps?: readonly { readonly name: string; readonly kind: string }[]
+    manifestText?: string
+} = {}): ProjectFixture => {
     const appRoot = fs.mkdtempSync(path.join(os.tmpdir(), `starci-project-${profile}-`))
     const root = path.join(appRoot, profile)
-    const app = apps[0].name
+    const app = apps[0]?.name
+    if (app === undefined) throw new Error("a project fixture needs at least one app")
     const hfsJson = { ...appDeclaration(profile, { apps, ...declaration }), ...(edition ? { edition } : {}) }
-    const baseline = {
+    const baseline: Record<string, string> = {
         "tsconfig.json": `${JSON.stringify({
             compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", jsx: "preserve", allowJs: true, skipLibCheck: true, noEmit: true, experimentalDecorators: true },
             include: ["src/**/*", "apps/**/*"],
@@ -39,7 +55,7 @@ export const projectFixture = ({ profile = "be", edition, files = {}, rootFiles 
             ? { [`apps/${app}/src/main.ts`]: "void 0;\n", [`apps/${app}/src/app.module.ts`]: "export const AppModule = 1;\n" }
             : { [`apps/${app}/src/app/.keep`]: "" }),
     }
-    const write = (base, rel, content) => {
+    const write = (base: string, rel: string, content: string): void => {
         const target = path.join(base, ...rel.split("/"))
         fs.mkdirSync(path.dirname(target), { recursive: true })
         fs.writeFileSync(target, content)
@@ -56,12 +72,13 @@ export const projectFixture = ({ profile = "be", edition, files = {}, rootFiles 
     resetProjectGraphs()
     const hfs = declaredHfsView({ runtimeRoot: RUNTIME, declaration: hfsJson, repoRoot: fs.realpathSync(root), side: profile })
     const runtimeRoot = manifestText === undefined ? undefined : fs.mkdtempSync(path.join(os.tmpdir(), `starci-manifest-${profile}-`))
-    if (runtimeRoot) write(runtimeRoot, "knowledge/hfs/slots.yaml", manifestText)
+    if (runtimeRoot !== undefined && manifestText !== undefined) write(runtimeRoot, "knowledge/hfs/slots.yaml", manifestText)
+    // ESLint's RuleTester declares ESLint's rule type; the canon's rules are typescript-eslint's, and at run time they are one object.
     const tester = new RuleTester({
         languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
         settings: { starci: { hfs, injectedTypeScript: () => ts, ...(runtimeRoot ? { injectedRuntimeRoot: runtimeRoot } : {}) } },
-    })
-    const cleanup = () => {
+    }) as unknown as CanonRuleTester
+    const cleanup = (): void => {
         fs.rmSync(appRoot, { recursive: true, force: true })
         if (runtimeRoot) fs.rmSync(runtimeRoot, { recursive: true, force: true })
     }

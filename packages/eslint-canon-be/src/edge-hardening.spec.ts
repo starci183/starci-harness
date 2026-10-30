@@ -3,11 +3,11 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { corsAllowlist, securityHeaders, trustProxy, recommended, rules } from "./edge-hardening.ts"
 import plugin, { lawOwners, ruleDeclarations, ruleOwners, recommended as pluginRecommended } from "./index.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const MAIN = at("apps/api/src/main.ts")
 const HEAD = 'import { NestFactory } from "@nestjs/core"; const app = await NestFactory.create(AppModule);\n'

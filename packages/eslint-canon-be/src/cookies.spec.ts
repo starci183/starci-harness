@@ -4,7 +4,7 @@
  *   node --test src/cookies.spec.ts
  */
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { responseCookieAttributes } from "./cookies.ts"
 
 const FILE = at("src/features/session/transport/http/session.controller.ts")

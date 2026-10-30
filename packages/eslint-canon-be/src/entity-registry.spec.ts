@@ -2,15 +2,15 @@
 // file that imports a capability's `<c>Entities` from its index.ts, and the one file reached by deep path, only from app composition
 // and the test world. Every other import of the same shapes stays refused, and full has no registry.
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
-import { projectFixture } from "../fixtures/project/tester.mjs"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"
+import { projectFixture } from "../fixtures/project/tester.ts"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { importOwnerEntry } from "./module-layering.ts"
 import { rules } from "./project-graph.ts"
 import type { TestContext } from "node:test"
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
 
 const REGISTRY = "src/modules/platform/database/entities.ts"
 const OWNER = "src/modules/domain/billing"

@@ -7,8 +7,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
-import { at, fixtureHfs, typedTester } from "../fixtures/typed/tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
+import { at, fixtureHfs, typedTester } from "../fixtures/typed/tester.ts"
 import { aiClientThroughGateway, PROVIDER_KEY_VARIABLES, providerKeyCustody, rules } from "./ai-gateway.ts"
 import { infraImportOwner } from "./infra-owner.ts"
 

@@ -5,7 +5,7 @@ import plugin from "./index.ts"
 import { pluginForEdition } from "./lib/edition.ts"
 import { enforcerJudgedInEdition } from "../runtime/scripts/hfs/edition-slots.mjs"
 import { loadRuleCatalog } from "../runtime/scripts/hfs/slots.mjs"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 import type { RuleModule } from "./lib/rule.ts"
 
 const RUNTIME = fileURLToPath(new URL("../runtime/", import.meta.url))

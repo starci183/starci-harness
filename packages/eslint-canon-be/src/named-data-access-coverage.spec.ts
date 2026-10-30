@@ -12,8 +12,8 @@ import {
     requireEntityTableName,
 } from "./data-access.ts"
 import { noRepositoryClass } from "./service-deps.ts"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 
 const HANDLER = at("src/features/api/checkout/application/place.handler.ts")

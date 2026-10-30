@@ -5,7 +5,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { TSESLint } from "@typescript-eslint/utils"
 import tsParser from "@typescript-eslint/parser"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { infraImportOwner } from "./infra-owner.ts"
 import { recommended, rules, thirdPartyImportOwner } from "./third-party-owner.ts"
 

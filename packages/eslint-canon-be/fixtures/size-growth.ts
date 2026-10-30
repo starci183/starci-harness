@@ -5,18 +5,25 @@
  * the law to the rule catalog.
  */
 import assert from "node:assert/strict"
-import { runGit } from "../runtime/scripts/api/git/lib.mjs"
+import { runGit } from "#runtime/scripts/api/git/lib.mjs"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { recordedLines } from "../runtime/scripts/api/git/recorded-lines.mjs"
+import type { CanonRule, CanonRuleTester } from "./typed/tester.ts"
+import { recordedLines } from "#runtime/scripts/api/git/recorded-lines.mjs"
 
 /** `count` lines of inert exports. */
-export const lines = (count) => Array.from({ length: count }, (_, index) => `export const v${index} = ${index}`).join("\n") + "\n"
+export const lines = (count: number): string => Array.from({ length: count }, (_, index) => `export const v${index} = ${index}`).join("\n") + "\n"
 
 /** Register the shared size-growth assertions against one side's rule and tester. */
-export function sizeGrowthSharedSpec({ side, tester, fileSizeGrowth, budget, fileName = "big.ts" }) {
+export function sizeGrowthSharedSpec({ side, tester, fileSizeGrowth, budget, fileName = "big.ts" }: {
+  side: string
+  tester: CanonRuleTester
+  fileSizeGrowth: CanonRule
+  budget: number
+  fileName?: string
+}): void {
   test(`${side}: the rule takes no option - a budget or a recorded size cannot be passed`, () => {
     assert.deepEqual(fileSizeGrowth.meta.schema, [])
   })
@@ -24,7 +31,7 @@ export function sizeGrowthSharedSpec({ side, tester, fileSizeGrowth, budget, fil
   test(`${side}: the recorded size is the file's line count at the parent commit`, (t) => {
     const dir = mkdtempSync(join(tmpdir(), `starci-${side}-size-`))
     t.after(() => rmSync(dir, { recursive: true, force: true }))
-    const git = (...args) => {
+    const git = (...args: string[]): void => {
       const run = runGit(args, { dir, config: { "user.email": "t@example.com", "user.name": "t" } })
       if (run.error || run.status !== 0) throw run.error ?? new Error(`git ${args[0]} exited ${run.status}: ${run.stderr}`)
     }

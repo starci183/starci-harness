@@ -22,9 +22,9 @@ import test from "node:test"
 import fs from "node:fs"
 import path from "node:path"
 import { parseYaml } from "../runtime/engine/yaml.mjs"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const EXPORT = "export const value = 1;\n"
 /** Whether a parsed YAML value is a mapping. */

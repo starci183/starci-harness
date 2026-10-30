@@ -9,8 +9,8 @@ import assert from 'node:assert/strict';
 import { cliBootstrap, cliCommandShape, cliOwner } from './cli.ts';
 import { unitTestColocated } from './testing.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
-import { appDeclaration } from '../fixtures/app.mjs';
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.mjs';
+import { appDeclaration } from '../fixtures/app.ts';
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.ts';
 
 const BOOT = 'import { CommandFactory } from "nest-commander"; import { AppModule } from "./app.module"; void CommandFactory.run(AppModule);';
 const GROUP = 'import { Command, CommandRunner } from "nest-commander"; @Command({ name: "migrate", subCommands: [] }) export class MigrateCli extends CommandRunner { async run(): Promise<void> {} }';

@@ -9,7 +9,7 @@
 // proves: BE_MODULE_DEFINITION_MISSING@lite BE_MODULE_DEFINITION_MISSING@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import {
     capabilityModuleShape,
     isGlobalOnlyInApp,

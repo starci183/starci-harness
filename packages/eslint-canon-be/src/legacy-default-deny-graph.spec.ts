@@ -1,8 +1,8 @@
 // proves: BE_DEFAULT_DENY@lite BE_DEFAULT_DENY@full
 import test from "node:test"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
 
 const appModule = (guards: readonly string[]) => [
     'import { Module } from "@nestjs/common"',

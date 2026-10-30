@@ -1,5 +1,5 @@
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { migrationDownReversible, noEntityInContract, noRuntimeSchema } from "./schema-authority.ts"
 
 const tester = typedTester()

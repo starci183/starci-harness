@@ -6,8 +6,8 @@
 // proves: BE_MEMBER_DOC_MISSING@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { testsKeepConstraints } from "./builders.ts"
 import { replacementThrowCarriesCause } from "./error-handling.ts"

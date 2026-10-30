@@ -7,7 +7,7 @@
  * `src/modules/platform/errors`, `Logger` by `platform/logging`, so the owner of a type is judged by the slot view.
  */
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { catchMustAccount, errorFamilyShape, errorHome, replacementThrowCarriesCause, throwDomainError } from "./error-handling.ts"
 
 const tester = typedTester()

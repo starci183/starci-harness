@@ -5,7 +5,7 @@
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
+import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
 import { clientFetchHasSignal, fetchOnlyInApiClient, noSharedTransportState } from "./transport.ts"
 import { noDataFetchInEffect } from "./hygiene.ts"
 import { rules as localeRules } from "./served-locale.ts"

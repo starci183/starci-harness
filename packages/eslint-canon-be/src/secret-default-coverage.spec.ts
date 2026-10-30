@@ -1,8 +1,8 @@
 // proves: BE_SECRET_DEFAULT@lite BE_SECRET_DEFAULT@full
 import test from "node:test"
 import { noSecretDefault } from "./config-owner.ts"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, BE_DECLARATION, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, BE_DECLARATION, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 
 const tester = typedTester()

@@ -2,8 +2,8 @@
 // proves: BE_SPEC_QUALITY@full
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { BE_DECLARATION, TYPED_ROOT, at, typedTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { BE_DECLARATION, TYPED_ROOT, at, typedTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { specNoSourceRead } from "./spec-quality.ts"
 import {
@@ -19,7 +19,7 @@ import {
     noMarkerModelStub,
     noModelCallInE2e,
 } from "./testing.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const tester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },

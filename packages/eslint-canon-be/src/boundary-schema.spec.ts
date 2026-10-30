@@ -12,8 +12,8 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { recommended, rules, schemaBounded, schemaFileValuesOnly, schemaPlace } from "./boundary-schema.ts"
 

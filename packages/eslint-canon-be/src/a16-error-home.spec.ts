@@ -2,13 +2,13 @@
 // proves: BE_ERROR_HOME@full
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from '../fixtures/typed/tester.mjs';
-import { projectFixture } from '../fixtures/project/tester.mjs';
-import { appDeclaration } from '../fixtures/app.mjs';
+import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from '../fixtures/typed/tester.ts';
+import { projectFixture } from '../fixtures/project/tester.ts';
+import { appDeclaration } from '../fixtures/app.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { errorFamilyShape, errorHome, throwDomainError } from './error-handling.ts';
 import { rules } from './project-graph.ts';
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const service = at('src/modules/domain/plan/plan.service.ts');
 const home = at('src/modules/domain/plan/errors/plan.error.ts');

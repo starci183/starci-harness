@@ -3,10 +3,10 @@
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { appOptionsCompositionFree, appFileBudget } from "./app-composition.ts"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { at, BE_DECLARATION, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { at, BE_DECLARATION, TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 const env = at("apps/api/src/api.env.ts")
 const options = at("apps/api/src/api.options.ts")

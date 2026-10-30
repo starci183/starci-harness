@@ -9,7 +9,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { noFrameworkLogger, noInterpolatedLogMessage, noErrorWordingAsLogIdentity, recommended, rules } from "./observability.ts"
 
 const tester = typedTester()

@@ -6,8 +6,8 @@
  *   node --test src/ambient-id.spec.ts
  */
 import test from "node:test"
-import { at, ruleTester, TYPED_ROOT, BE_DECLARATION } from "../fixtures/typed/tester.mjs"
-import { appDeclaration } from "../fixtures/app.mjs"
+import { at, ruleTester, TYPED_ROOT, BE_DECLARATION } from "../fixtures/typed/tester.ts"
+import { appDeclaration } from "../fixtures/app.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { noAmbientId } from "./ambient-id.ts"
 

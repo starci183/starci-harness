@@ -6,10 +6,10 @@
 import test from "node:test"
 import type { RuleTester } from "eslint"
 import bePlugin from "./index.ts"
-import { fePlugin } from "../fixtures/sibling-canon.mjs"
-import { ruleNamed } from "../fixtures/rule-tester.mjs"
-import { projectFixture } from "../fixtures/project/tester.mjs"
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
+import { fePlugin } from "../fixtures/sibling-canon.ts"
+import { ruleNamed } from "../fixtures/rule-tester.ts"
+import { projectFixture } from "../fixtures/project/tester.ts"
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
 
 const good = (fixture: ProjectFixture, files: Readonly<Record<string, string>>, rel: string): RuleTester.ValidTestCase => {
     const code = files[rel]

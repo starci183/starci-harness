@@ -3,12 +3,12 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { TSESLint } from "@typescript-eslint/utils"
 import tsParser from "@typescript-eslint/parser"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { TYPED_ROOT } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import plugin, { lawOwners, recommended, ruleDeclarations, ruleOwners, rules as publishedRules } from "./index.ts"
 import { functionLineBudget, rules } from "./function-budget.ts"
-import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
 /** A real declared HFS edition; the common parameter is supplied until C08 updates the manifest. */
 const fixtureHfs = (edition: "full" | "lite", max = 80) => {

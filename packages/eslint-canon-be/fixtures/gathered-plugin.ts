@@ -13,14 +13,22 @@ import { readdirSync } from "node:fs"
 import test from "node:test"
 
 /** The order `.sort()` gives without a compare function (UTF-16 code units), spelt out. */
-const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
-/** Register the gathered-plugin contract against one side's index.mjs. */
-export function gatheredPluginSpec({ side, dir, plugin, lawOwners, recommended, ruleDeclarations, rules }) {
+/** Register the gathered-plugin contract against one side's index. */
+export function gatheredPluginSpec({ side, dir, plugin, lawOwners, recommended, ruleDeclarations, rules }: {
+  side: string
+  dir: string
+  plugin: { readonly rules: Readonly<Record<string, unknown>> }
+  lawOwners: readonly string[]
+  recommended: Readonly<Record<string, unknown>>
+  ruleDeclarations: readonly { readonly name: string; readonly law: string }[]
+  rules: Readonly<Record<string, unknown>>
+}): void {
   const namespace = `starci-${side}`
 
   /** Every rule module in this axis, by law name: a side's source is `.mjs` or `.ts`, its specs `.spec.*`. */
-  const lawModules = () =>
+  const lawModules = (): string[] =>
     readdirSync(dir)
       .filter((name) => /\.(mjs|ts)$/.test(name) && !/\.spec\.(mjs|ts)$/.test(name) && !/\.d\.ts$/.test(name) && !/^index\.(mjs|ts)$/.test(name))
       .map((name) => name.replace(/\.(mjs|ts)$/, ""))
@@ -41,7 +49,7 @@ export function gatheredPluginSpec({ side, dir, plugin, lawOwners, recommended, 
    * back-end twin passed for its whole life while three collided rules shipped underneath it.
    */
   test(`${side}: no two laws publish the same rule name`, () => {
-    const counted = new Map()
+    const counted = new Map<string, string[]>()
     for (const { name, law } of ruleDeclarations) {
       counted.set(name, [...(counted.get(name) ?? []), law])
     }
@@ -74,7 +82,9 @@ export function gatheredPluginSpec({ side, dir, plugin, lawOwners, recommended, 
 
   test(`${side}: every rule is a rule, and the plugin exposes them all`, () => {
     for (const [name, rule] of Object.entries(rules)) {
-      assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
+      // a published rule is untyped here by design (the sides publish different rule types); only its two members are asserted
+      const candidate = rule as { readonly meta?: unknown; readonly create?: unknown } | null | undefined
+      assert.ok(candidate?.meta && candidate.create, `${name} is not a rule`)
       assert.equal(plugin.rules[name], rule, `${name} is missing from the plugin object`)
     }
   })

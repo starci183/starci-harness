@@ -8,7 +8,7 @@ import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { SONAR_SYNTAX_RULES } from "../runtime/scripts/lib/sonar-syntax-rules.mjs"
 import { recommended, rules } from "./sonar-parity.ts"
-import { canonRuleTester, ruleNamed } from "../fixtures/rule-tester.mjs"
+import { canonRuleTester, ruleNamed } from "../fixtures/rule-tester.ts"
 
 const tester = canonRuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },

@@ -2,8 +2,8 @@
 // proves: BE_OPERATION_CONTRACT@full
 /** A generic request is usable only with the schemas and runtime pipe of the same table. */
 import test from "node:test"
-import { appDeclaration } from "../fixtures/app.mjs"
-import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.ts"
+import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { operationContractDecidable, operationRouteDrivenByTable, operationTableSchemas } from "./operations.ts"
 

@@ -4,7 +4,7 @@
  *   node --test src/builders.spec.ts
  */
 import test from "node:test"
-import { at, typedTester } from "../fixtures/typed/tester.mjs"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { builderArrangesOnly, persistingBuilderInBuildersSlot, specNoRawInsert, specNoRepeatedRowLiteral, testsKeepConstraints } from "./builders.ts"
 
 const UNIT = at("src/modules/domain/order/order.service.spec.ts")

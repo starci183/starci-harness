@@ -1,9 +1,9 @@
 import test from "node:test"
 import { readFileSync } from "node:fs"
-import { projectFixture } from "../fixtures/project/tester.mjs"
+import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
-import type { ProjectFixture } from "../fixtures/project/tester.mjs"
-import { ruleNamed } from '../fixtures/rule-tester.mjs';
+import type { ProjectFixture } from "../fixtures/project/tester.ts"
+import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 /** The text of a fixture file the spec wrote (a spec naming a file it did not write fails here, as the tester would). */
 const textAt = (files: Readonly<Record<string, string>>, rel: string) => {
