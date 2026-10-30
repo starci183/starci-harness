@@ -1,12 +1,26 @@
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CATALOG } from '../runtime/packages/cli/src/catalog.generated.mjs';
-import { docFreshFindings } from '../runtime/scripts/hfs/rules/doc-fresh.mjs';
+import { docFreshFindings as strictDocFreshFindings } from '../runtime/scripts/hfs/rules/doc-fresh.mjs';
+import type { Repo } from '../runtime/scripts/hfs/rules/rule-types.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
+
+/** The context the finder reads; the rule resolves its own slot resolver when a spec gives none. */
+interface DocContext {
+  repoRoot: string;
+  files: string[];
+  all?: string[] | undefined;
+  repo: Repo;
+  appSide?: boolean | undefined;
+  inScope?: ((file: string) => boolean) | undefined;
+}
+// reason: the rule's declared parameter requires a resolver, which the finder builds itself when the specs leave it out.
+const docFreshFindings = (context: DocContext) => strictDocFreshFindings(context as unknown as Parameters<typeof strictDocFreshFindings>[0]);
 
 /** A rule id no catalog has, built from parts: the fixture text is data of the test, not a citation of the catalog. */
 const UNKNOWN = ['R', '9', '9', '9'].join('');
@@ -16,7 +30,7 @@ const UNKNOWN = ['R', '9', '9', '9'].join('');
 // proves: HFS_DOC_ENV_UNKNOWN@lite HFS_DOC_ENV_UNKNOWN@full
 // proves: HFS_DOC_RULE_UNKNOWN@lite HFS_DOC_RULE_UNKNOWN@full
 
-function fixture(t, edition, files, options = {}) {
+function fixture(t: TestContext, edition: string, files: Record<string, unknown>, options: Partial<DocContext> = {}): DocContext {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-doc-fresh-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(files)) {
@@ -36,9 +50,9 @@ const manifests = {
   '.starcistacks/production/infra/swarm/stack.yaml': 'services: {}',
 };
 
-const appDeclaration = (edition) => ({ hfs: 3, kind: 'app', project: 'demo', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } });
+const appDeclaration = (edition: string) => ({ hfs: 3, kind: 'app', project: 'demo', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } });
 
-const appDocFindings = (context, edition) => checkRepo({ repoRoot: context.repoRoot, declaration: appDeclaration(edition), files: context.files, tree: false }).findings.filter((finding) => finding.code.startsWith('HFS_DOC_'));
+const appDocFindings = (context: DocContext, edition: string) => checkRepo({ repoRoot: context.repoRoot, declaration: appDeclaration(edition), files: context.files, tree: false }).findings.filter((finding) => finding.code.startsWith('HFS_DOC_'));
 
 for (const edition of ['lite', 'full']) {
   test(`HFS_DOC_PATH_MISSING@${edition}: broken code, prose, links and stack README paths fail`, (t) => {
@@ -50,7 +64,7 @@ for (const edition of ['lite', 'full']) {
     const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_PATH_MISSING');
     assert.equal(hits.length, 5, JSON.stringify(hits));
     assert.deepEqual(new Set(hits.map((finding) => finding.path)), new Set(['README.md', 'docs/deploy.md', '.starcistacks/production/README.md']));
-    assert.ok(hits.every((finding) => finding.level === 'error' && finding.line > 0));
+    assert.ok(hits.every((finding) => finding.level === 'error' && (finding.line as number) > 0));
   });
 
   test(`HFS_DOC_PATH_MISSING@${edition}: current paths, relative links, directories, URLs and placeholders pass`, (t) => {
@@ -104,7 +118,7 @@ for (const edition of ['lite', 'full']) {
     const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN');
     assert.deepEqual(hits.map((finding) => finding.message.replace(/^.*: unknown verb /, '').replace(/;.*$/, '')), ['"app missing-verb"']);
     for (const retired of ['git', 'worker', 'gate', 'docker', 'npm', 'runtime', 'machine', 'work']) assert.equal(CATALOG.groups[retired], undefined, `starci ${retired} is no verb group of the CLI`);
-    assert.ok(CATALOG.groups.explain.self, 'a one-word verb is its group\'s self');
+    assert.ok(CATALOG.groups['explain']!.self, 'a one-word verb is its group\'s self');
   });
 
   test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: workspace commands resolve the workspace manifests`, (t) => {
@@ -116,12 +130,12 @@ for (const edition of ['lite', 'full']) {
     });
     const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN');
     assert.deepEqual(hits.map((finding) => finding.reference), ['npm run removed', 'npm run build']);
-    assert.ok(hits[0].message.includes('fe/packages/ui/package.json'));
-    assert.ok(hits[1].message.includes('package.json'));
+    assert.ok(hits[0]!.message.includes('fe/packages/ui/package.json'));
+    assert.ok(hits[1]!.message.includes('package.json'));
     fs.writeFileSync(path.join(context.repoRoot, 'fe/packages/core/package.json'), JSON.stringify({ scripts: {} }));
     const missingWorkspace = docFreshFindings(context).filter((finding) => finding.reference === 'npm run build' && finding.line === 1);
     assert.equal(missingWorkspace.length, 1);
-    assert.ok(missingWorkspace[0].message.includes('fe/packages/core/package.json'));
+    assert.ok(missingWorkspace[0]!.message.includes('fe/packages/core/package.json'));
   });
 
   test(`HFS_DOC_ENV_UNKNOWN@${edition}: undeclared key names fail without exposing assigned values`, (t) => {
@@ -201,7 +215,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`R270@${edition}: app-root judging resolves side docs once against the whole app`, (t) => {
-    const files = { ...manifests,
+    const files: Record<string, unknown> = { ...manifests,
       'be/jest.config.js': 'module.exports = {};',
       'be/src/tests/world/test-world.config.ts': 'export const world = {};',
       'be/docs/guides/testing.md': '[manifest](../../../package.json), [stack](../../../.starcistacks/production/infra/swarm/stack.yaml). Source `jest.config.js`, `src/tests/`, `src/tests/world/test-world.config.ts`.\nRun `npm run build`.\nMissing `be/src/retired.ts`, `src/retired` and [invalid relative](jest.config.js).',

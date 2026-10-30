@@ -9,11 +9,13 @@
 // proves: HFS_DOCKER_SECRETS@lite
 // proves: HFS_DOCKER_SECRETS@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { imageFiles } from '../sync/index.mjs';
+import type { ResolvedApp } from '../sync/index.mjs';
 import { dockerFindings, NODE_IMAGE } from '../runtime/scripts/hfs/rules/docker.mjs';
 
 const API = 'be/apps/api/Dockerfile';
@@ -23,7 +25,7 @@ const NEXT = 'fe/apps/web/Dockerfile';
 const CONFIG = 'fe/apps/web/next.config.ts';
 
 /** The app declaration (the hfs.json of an app) the image fixtures render their Dockerfiles for. */
-const declarationOf = (edition, project = 'proof') => ({
+const declarationOf = (edition: string, project = 'proof') => ({
   hfs: 3, kind: 'app', project, edition,
   sides: {
     be: { kinds: ['api', 'worker', 'cli'], apps: [
@@ -38,7 +40,10 @@ const shippedLite = () => ({
   sides: { be: { kinds: ['api'], apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
 });
 
-function fixture(t, repo, mutation) {
+/** One textual change of a rendered file: `from` is replaced by `to` in the file at `path`. */
+interface Mutation { path: string; from: string; to: string }
+
+function fixture(t: TestContext, repo: object, mutation?: Mutation) {
   const temporaryRoot = path.resolve(os.tmpdir());
   const repoRoot = fs.mkdtempSync(path.join(temporaryRoot, 'hfs-docker-legacy-'));
   t.after(() => {
@@ -48,7 +53,7 @@ function fixture(t, repo, mutation) {
     fs.rmSync(resolved, { recursive: true, force: true });
   });
   // Lite may opt into its Next image; both editions use the actual scaffold renderer.
-  const files = imageFiles(repo, { hasImage: () => true });
+  const files = imageFiles(repo as unknown as ResolvedApp, { hasImage: () => true }); // reason: the renderer reads only the edition, project and sides of the declaration
   files.push({ path: CONFIG, content: 'export default { output: "standalone" };\n' });
   for (const file of files) {
     let content = file.content;
@@ -63,9 +68,9 @@ function fixture(t, repo, mutation) {
   return { repoRoot, repo, files: files.map((file) => file.path) };
 }
 
-const judged = (t, edition, code, mutation) => dockerFindings(fixture(t, declarationOf(edition), mutation))
+const judged = (t: TestContext, edition: string, code: string, mutation?: Mutation) => dockerFindings(fixture(t, declarationOf(edition), mutation))
   .filter((finding) => finding.code === code).map((finding) => finding.code);
-const change = (file, from, to) => ({ path: file, from, to });
+const change = (file: string, from: string, to: string): Mutation => ({ path: file, from, to });
 
 for (const edition of ['lite', 'full']) {
   test(`${edition} HFS_DOCKER_BUILD_CONTEXT accepts valid build headers and sources`, (t) => {

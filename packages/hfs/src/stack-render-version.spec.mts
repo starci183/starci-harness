@@ -1,14 +1,22 @@
-// stack-render-version.spec.mjs - managed overrides match the source's Compose version, incompatible extras refuse before custody opens, and the rendered stack keeps literal dollars escaped for docker stack deploy.
+// stack-render-version.spec.mts - managed overrides match the source's Compose version, incompatible extras refuse before custody opens, and the rendered stack keeps literal dollars escaped for docker stack deploy.
 import { test } from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
+import type { SourceEntry } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
+import type { DeployConfig } from '../stack/config.mjs';
 import { renderRelease } from '../stack/render.mjs';
+import type { RenderOptions } from '../stack/render.mjs';
+import type { Spawn, StackContext } from '../stack/context.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 import { stackConfigModels } from './helpers/stack-compose.mjs';
 
-function renderFixture(t, versionLine = '') {
+/** The context the render reads: the seams of StackContext, writable so a test can swap one. */
+type FakeContext = { -readonly [K in keyof StackContext]: StackContext[K] };
+
+function renderFixture(t: TestContext, versionLine = '') {
   const root = mkdtemp(t, 'hfs-stack-render-version-');
   const stackFile = path.join(root, 'stack.yaml');
   fs.writeFileSync(stackFile, `${versionLine}services:\n  api:\n    image: registry.example/api:old\n`);
@@ -16,7 +24,7 @@ function renderFixture(t, versionLine = '') {
     exists: () => true, services: new Set(['api']), members: new Set(),
   } });
   assert.deepEqual(normalized.problems, []);
-  const config = { ...normalized.config, repoRoot: root, envDir: root, secretsDir: path.join(root, 'secrets'), stackFile };
+  const config = { ...normalized.config!, repoRoot: root, envDir: root, secretsDir: path.join(root, 'secrets'), stackFile } as DeployConfig; // reason: the render reads the paths and the deploy block, not the resolved env, project, members and services
   const calls = { spawn: 0, sops: 0, decrypt: 0 };
   const ctx = {
     env: { STARCI_SECRET_VERSION_KEY: 'fixture-version-value' }, now: () => 0,
@@ -24,17 +32,17 @@ function renderFixture(t, versionLine = '') {
       calls.sops += 1;
       return { decrypt: () => { calls.decrypt += 1; assert.fail('this fixture opens no sealed members'); } };
     },
-    spawn: (command, args) => {
+    spawn: ((command: string, args: readonly string[]) => {
       calls.spawn += 1;
       assert.equal(command, 'docker');
       assert.deepEqual(args.slice(0, 2), ['stack', 'config']);
       const models = stackConfigModels(args);
       return { status: 0, stdout: JSON.stringify(models[1]), stderr: '' };
-    },
-  };
-  const options = { sourceSha: 'b'.repeat(40), out: path.join(root, 'out'),
+    }) as unknown as Spawn, // reason: a fake of the foreground overload only
+  } as unknown as FakeContext; // reason: the render reads only env, now, sops and spawn of the context
+  const options: RenderOptions & { out: string } = { sourceSha: 'b'.repeat(40), out: path.join(root, 'out'),
     images: { api: `registry.example/api@sha256:${'a'.repeat(64)}` } };
-  const extra = (name, line) => {
+  const extra = (name: string, line: string) => {
     const file = path.join(root, name);
     fs.writeFileSync(file, `${line}services: {}\n`);
     return file;
@@ -49,7 +57,7 @@ for (const [label, line, version] of [
   ['the default major string', 'version: "3"\n', '3'],
   ['the default major number', 'version: 3\n', 3],
   ['an empty version string', 'version: ""\n', ''],
-]) {
+] as [string, string, string | number | undefined][]) {
   test(`render mirrors ${label} without changing its type`, async (t) => {
     const { ctx, config, options, calls } = renderFixture(t, line);
     const result = await renderRelease(ctx, config, options);
@@ -66,13 +74,13 @@ for (const [source, extra] of [
   ['version: "3.8"\n', ''],
   ['', 'version: "3.8"\n'],
   ['version: "3.10"\n', 'version: 3.10\n'],
-]) {
+] as [string, string][]) {
   test(`incompatible extra ${extra.trim() || '(none)'} refuses source ${source.trim() || '(none)'} before effects`, async (t) => {
     const fixture = renderFixture(t, source);
     const { ctx, config, options, calls } = fixture;
-    config.secrets.grants = [{ service: 'api', filePointers: true, from: [{ member: 'database', keys: null }] }];
+    config.secrets.grants = [{ service: 'api', filePointers: true, from: [{ member: 'database', keys: null } as SourceEntry] }]; // reason: the fixture names only the fields the refusal reads
     options.extraCompose = [fixture.extra('matching.yaml', source), fixture.extra('mismatch.yaml', extra)];
-    await assert.rejects(renderRelease(ctx, config, options), (error) => {
+    await assert.rejects(renderRelease(ctx, config, options), (error: Error & { code?: string; exit?: number }) => {
       assert.equal(error.code, 'STACK_COMPOSE_VERSION_MISMATCH');
       assert.equal(error.exit, 2);
       assert.match(error.message, /mismatch\.yaml.*docker stack config refuses files whose versions differ/u);
@@ -106,7 +114,7 @@ test('the Docker seam rejects the original pinned-source and unversioned-overrid
 
 test('a literal dollar in the rendered stack survives the second interpolation of docker stack deploy', async (t) => {
   const { ctx, config, options } = renderFixture(t);
-  ctx.spawn = () => ({ status: 0, stdout: 'services:\n  redis:\n    healthcheck:\n      test: ["CMD-SHELL", "REDISCLI_AUTH=$(cat /run/secrets/PW) redis-cli ping"]\n', stderr: '' });
+  ctx.spawn = (() => ({ status: 0, stdout: 'services:\n  redis:\n    healthcheck:\n      test: ["CMD-SHELL", "REDISCLI_AUTH=$(cat /run/secrets/PW) redis-cli ping"]\n', stderr: '' })) as unknown as Spawn; // reason: a fake of the foreground overload only
   assert.equal((await renderRelease(ctx, config, options)).ok, true);
   const written = fs.readFileSync(path.join(options.out, 'stack.yaml'), 'utf8');
   assert.match(written, /REDISCLI_AUTH=\$\$\(cat \/run\/secrets\/PW\)/u);

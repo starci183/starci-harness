@@ -9,18 +9,21 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import type { TestContext } from 'node:test';
 import { appDeclaration, archFixture, DEFAULT_APPS, runArch } from './helpers/hfs-arch-fixture.mjs';
+import type { Side } from './helpers/hfs-arch-fixture.mjs';
 import { feNoTestsFindings } from '../runtime/scripts/hfs/rules/fe-no-tests.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 import { loadArchitectureConfig } from '../runtime/scripts/hfs/architecture/config.mjs';
 import { checkDocLanguage } from '../runtime/scripts/hfs/architecture/doc-language.mjs';
+import type { HfsGraph } from '../runtime/scripts/hfs/architecture/hfs-graph.mjs';
 
-function architectureFixture(t, edition, files, profile = 'fe') {
+function architectureFixture(t: TestContext, edition: string, files: Record<string, string>, profile: Side = 'fe') {
   const declaration = { ...appDeclaration(profile, { apps: DEFAULT_APPS[profile] }), edition };
   return archFixture(t, { profile, files: { '../hfs.json': JSON.stringify(declaration), 'apps/web/src/app/.keep': null, 'apps/web/src/modules/config/index.ts': 'export const config = 1;\n', ...files } });
 }
 
-function manifestFixture(t, manifest) {
+function manifestFixture(t: TestContext, manifest: object) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-r97-coverage-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
@@ -52,7 +55,7 @@ for (const edition of ['lite', 'full']) {
     ]);
   });
 
-  for (const profile of ['be', 'fe']) {
+  for (const profile of ['be', 'fe'] as const) {
     test(`${edition} ${profile} R96 accepts English prose and applicable localized YAML data`, t => {
       const root = architectureFixture(t, edition, {
         'docs/guide.md': '# Guide\n\nEnglish prose and examples.\n',
@@ -60,7 +63,7 @@ for (const edition of ['lite', 'full']) {
         'apps/web/src/modules/i18n/messages/vi.yaml': profile === 'fe' ? `greeting: ${otherLanguage}\n` : 'greeting: Hello\n',
       }, profile);
       const config = loadArchitectureConfig(root);
-      const report = checkDocLanguage({ config, graph: { resolver: config.hfs } });
+      const report = checkDocLanguage({ config, graph: { resolver: config.hfs } as unknown as HfsGraph }); // reason: the doc-language check reads only the graph's resolver
       assert.deepEqual(report.violations, []);
     });
 
@@ -72,7 +75,7 @@ for (const edition of ['lite', 'full']) {
         'apps/web/src/modules/i18n/README.md': `${otherLanguage}\n`,
       }, profile);
       const config = loadArchitectureConfig(root);
-      const report = checkDocLanguage({ config, graph: { resolver: config.hfs } });
+      const report = checkDocLanguage({ config, graph: { resolver: config.hfs } as unknown as HfsGraph }); // reason: the doc-language check reads only the graph's resolver
       assert.ok(report.violations.every(item => item.ruleId === 'HFS_DOC_NOT_ENGLISH'));
       assert.deepEqual(report.violations.map(item => item.path).sort(byCodeUnit), [
         'apps/web/src/modules/i18n/README.md',

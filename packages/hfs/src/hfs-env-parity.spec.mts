@@ -1,4 +1,4 @@
-// hfs-env-parity.spec.mjs - R248 HFS_ENV_PARITY and R249 HFS_ENV_VALUE_SHAPE: the keys the typed EnvSource readers
+// hfs-env-parity.spec.mts - R248 HFS_ENV_PARITY and R249 HFS_ENV_VALUE_SHAPE: the keys the typed EnvSource readers
 // consume, the keys sealed under .starcistacks/<env>/secrets/*.enc and the keys the stack declares are one set, and a
 // stored value parses as its reader's type. Fixtures reproduce the nivo D2 shapes (D2-01/06/07/08 parity, D2-03 value
 // shape); sealed members are dotenv sops envelopes whose key names stay cleartext.
@@ -6,12 +6,14 @@
 // proves: ENV_DUPLICATE@lite ENV_DUPLICATE@full ENV_PUBLIC_SEALED@lite ENV_PUBLIC_SEALED@full
 // proves: ENV_EXAMPLE_DRIFT@lite ENV_EXAMPLE_DRIFT@full ENV_VALUE_SHAPE@lite ENV_VALUE_SHAPE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 import { app, run, privateAbsent } from './helpers/hfs-secret-fixture.mjs';
+import type { SecretSops } from '../runtime/scripts/hfs/secret-sops.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import {
@@ -28,12 +30,12 @@ import { ENV_VALUE_SHAPE, envValueShapeFindings } from '../runtime/scripts/hfs/r
 const manifest = loadSlotManifest();
 const ENC = 'ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]';
 const RECIPIENT = `age1${'q'.repeat(58)}`;
-const sealedDotenv = (keys) => {
+const sealedDotenv = (keys: string[]) => {
   const entries = keys.map((key) => `${key}=${ENC}`).join('\n');
   return `${entries}\nsops_age__list_0__map_recipient=${RECIPIENT}\nsops_mac=${ENC}\n`;
 };
 
-const declaration = (edition) => ({
+const declaration = (edition: string) => ({
   hfs: 3,
   kind: 'app',
   project: `parity-${edition}`,
@@ -41,7 +43,7 @@ const declaration = (edition) => ({
   sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
 });
 
-const tree = (t, files) => {
+const tree = (t: TestContext, files: Record<string, string>) => {
   const root = mkdtemp(t, 'hfs-env-parity-');
   for (const [file, text] of Object.entries(files)) {
     const target = path.join(root, ...file.split('/'));
@@ -51,12 +53,12 @@ const tree = (t, files) => {
   return root;
 };
 
-const parityOf = (root, files) => envParityFindings({ repoRoot: root, all: Object.keys(files), isRoot: true });
-const shapeOf = (root, files) => envValueShapeFindings({ repoRoot: root, all: Object.keys(files), isRoot: true });
-const codes = (findings, code) => findings.filter((finding) => finding.code === code);
+const parityOf = (root: string, files: Record<string, string>) => envParityFindings({ repoRoot: root, all: Object.keys(files), isRoot: true });
+const shapeOf = (root: string, files: Record<string, string>) => envValueShapeFindings({ repoRoot: root, all: Object.keys(files), isRoot: true });
+const codes = <T extends { code: string }>(findings: T[], code: string) => findings.filter((finding) => finding.code === code);
 const ENV_CODES = new Set([ENV_REQUIRED_UNSET, ENV_SEALED_UNREAD, ENV_DUPLICATE, ENV_PUBLIC_SEALED, ENV_EXAMPLE_DRIFT, ENV_VALUE_SHAPE]);
 
-const envFindingsOf = (root, files, edition) => checkRepo({
+const envFindingsOf = (root: string, files: Record<string, string>, edition: string) => checkRepo({
   repoRoot: root,
   declaration: declaration(edition),
   manifest,
@@ -163,11 +165,11 @@ test('env parity flags required reads neither sealed nor declared and sealed key
   const root = tree(t, files);
   const findings = parityOf(root, files);
   assert.deepEqual(
-    codes(findings, ENV_REQUIRED_UNSET).map((f) => f.message.match(/required (\w+)/)[1]).sort(byCodeUnit),
+    codes(findings, ENV_REQUIRED_UNSET).map((f) => f.message.match(/required (\w+)/)![1]!).sort(byCodeUnit),
     ['API_PORT', 'CALENDAR_WEBHOOK_SECRET', 'OPENCLAW_MANAGE_AGENTS', 'PRIMARY_DB_URL'],
   );
   assert.deepEqual(
-    codes(findings, ENV_SEALED_UNREAD).map((f) => f.message.match(/seals (\w+)/)[1]).sort(byCodeUnit),
+    codes(findings, ENV_SEALED_UNREAD).map((f) => f.message.match(/seals (\w+)/)![1]!).sort(byCodeUnit),
     ['LEGACY_SMTP_PASSWORD', 'OPENCLAW_TURN_TIMEOUT_MS', 'STALE_API_TOKEN'],
   );
   assert.deepEqual(codes(findings, ENV_DUPLICATE), []);
@@ -218,8 +220,8 @@ test('a key sealed in two members is ENV_DUPLICATE', (t) => {
   const root = tree(t, files);
   const duplicates = codes(parityOf(root, files), ENV_DUPLICATE);
   assert.equal(duplicates.length, 1);
-  assert.equal(duplicates[0].path, '.starcistacks/dev/secrets/engine.enc');
-  assert.match(duplicates[0].message, /ENGINE_SHARED_SECRET/);
+  assert.equal(duplicates[0]!.path, '.starcistacks/dev/secrets/engine.enc');
+  assert.match(duplicates[0]!.message, /ENGINE_SHARED_SECRET/);
 });
 
 test('a NEXT_PUBLIC_ key in custody is ENV_PUBLIC_SEALED', (t) => {
@@ -242,7 +244,7 @@ test('an env example key nothing reads is ENV_EXAMPLE_DRIFT', (t) => {
   };
   const root = tree(t, files);
   const drift = codes(parityOf(root, files), ENV_EXAMPLE_DRIFT);
-  assert.deepEqual(drift.map((f) => f.message.match(/names (\w+)/)[1]).sort(byCodeUnit), ['QUEUE_RELAY_BATCH', 'QUEUE_RELAY_INTERVAL']);
+  assert.deepEqual(drift.map((f) => f.message.match(/names (\w+)/)![1]!).sort(byCodeUnit), ['QUEUE_RELAY_BATCH', 'QUEUE_RELAY_INTERVAL']);
 });
 
 test('an env example value that cannot parse is ENV_VALUE_SHAPE (the nivo D2-03 bool shape)', (t) => {
@@ -252,7 +254,7 @@ test('an env example value that cannot parse is ENV_VALUE_SHAPE (the nivo D2-03 
   };
   const root = tree(t, files);
   const findings = shapeOf(root, files);
-  assert.deepEqual(codes(findings, ENV_VALUE_SHAPE).map((f) => f.message.match(/gives (\w+)/)[1]), ['OPENCLAW_MANAGE_AGENTS']);
+  assert.deepEqual(codes(findings, ENV_VALUE_SHAPE).map((f) => f.message.match(/gives (\w+)/)![1]), ['OPENCLAW_MANAGE_AGENTS']);
 });
 
 test('an env example of concrete parseable values raises no ENV_VALUE_SHAPE', (t) => {
@@ -268,20 +270,20 @@ test('the static walk resolves template keys through the reader call sites', (t)
   const files = { ...BASE };
   const root = tree(t, files);
   const reads = collectEnvReads(root, Object.keys(files));
-  assert.equal(reads.get('CALENDAR_WEBHOOK_SECRET')?.required, true);
-  assert.equal(reads.get('CALENDAR_WEBHOOK_TOLERANCE')?.required, false);
-  assert.equal(reads.get('OPENCLAW_TURN_TIMEOUT')?.required, false);
-  assert.equal(reads.get('OPENCLAW_MANAGE_AGENTS')?.shape?.kind, 'bool');
+  assert.equal(reads!.get('CALENDAR_WEBHOOK_SECRET')?.required, true);
+  assert.equal(reads!.get('CALENDAR_WEBHOOK_TOLERANCE')?.required, false);
+  assert.equal(reads!.get('OPENCLAW_TURN_TIMEOUT')?.required, false);
+  assert.equal(reads!.get('OPENCLAW_MANAGE_AGENTS')?.shape?.kind, 'bool');
   const files2 = { ...BASE, '.starcistacks/dev/secrets/hook.enc': sealedDotenv(['CALENDAR_WEBHOOK_SECRET']) };
   const root2 = tree(t, files2);
   assert.ok(codes(parityOf(root2, files2), ENV_REQUIRED_UNSET).every((f) => !/CALENDAR_WEBHOOK_SECRET/.test(f.message)));
 });
 
-function fakeSops(plain = {}) {
+function fakeSops(plain: Record<string, Record<string, string | undefined>> = {}): SecretSops {
   return {
-    decrypt: (file) => ({ ...plain[path.basename(file)] }),
+    decrypt: (file: string) => ({ ...plain[path.basename(file)] }),
     seal: () => assert.fail('verify must not seal'),
-  };
+  } as unknown as SecretSops; // reason: verify reads only decrypt, and must never seal
 }
 
 test('starci app secret verify names key and violated shape and never prints a value', async (t) => {
@@ -377,7 +379,7 @@ test('verify sanitizes an unexpected decrypt failure without printing its messag
   const sops = {
     decrypt: () => { throw new Error(privateMessage); },
     seal: () => assert.fail('verify must not seal'),
-  };
+  } as unknown as SecretSops; // reason: verify reads only decrypt, and must never seal
   const result = await run(['verify', '--env', 'dev'], { cwd: root, env, sops });
   assert.equal(result.code, 2);
   assert.match(result.err, /operation failed/);

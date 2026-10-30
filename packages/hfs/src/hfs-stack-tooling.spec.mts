@@ -6,16 +6,34 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
-import { stackToolingFindings } from '../runtime/scripts/hfs/rules/stack-tooling.mjs';
+import { stackToolingFindings as strictStackToolingFindings } from '../runtime/scripts/hfs/rules/stack-tooling.mjs';
+import type { Repo } from '../runtime/scripts/hfs/rules/rule-types.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 
+/** The context the finder reads; the rule defaults `all`, `repo`, `isRoot` and `inScope` when a spec leaves them out or undefined. */
+interface ToolingContext {
+  repoRoot: string;
+  files: string[];
+  all?: string[] | undefined;
+  repo?: Repo | undefined;
+  isRoot?: boolean | undefined;
+  inScope?: ((file: string) => boolean) | undefined;
+}
+// reason: the rule's declared parameter requires all, repo and isRoot, while the specs below also feed it the omitted or undefined forms it defaults.
+const stackToolingFindings = (context: ToolingContext) => strictStackToolingFindings(context as Parameters<typeof strictStackToolingFindings>[0]);
+
+/** A fixture app record: the file map it writes and, for the violating one, the findings expected of it. */
+interface StackToolingRecord { files: Record<string, unknown>; expect: { path: string; verb: string }[] }
+
 const CODE = 'STACK_TOOLING_REIMPLEMENTED';
-const RECORDS = {
-  passing: (await import('./fixtures/hfs-stack-tooling/passing.mjs')).default,
-  violating: (await import('./fixtures/hfs-stack-tooling/violating.mjs')).default,
+// The fixtures are untyped .mjs data files; the computed specifier keeps their module out of the typed graph.
+const loadRecord = async (name: string): Promise<StackToolingRecord> => (await import(`./fixtures/hfs-stack-tooling/${name}.mjs`)).default;
+const RECORDS: Record<string, StackToolingRecord> = {
+  passing: await loadRecord('passing'),
+  violating: await loadRecord('violating'),
 };
 const base = path.resolve(os.tmpdir());
-const roots = [];
+const roots: string[] = [];
 
 test.after(() => {
   for (const root of roots) {
@@ -24,10 +42,10 @@ test.after(() => {
   }
 });
 
-const asText = (content) => (typeof content === 'string' ? content : JSON.stringify(content));
+const asText = (content: unknown) => (typeof content === 'string' ? content : JSON.stringify(content));
 
 /** Writes a file map into a temp directory and returns the finder context of an app of `edition`. */
-function tree(edition, files, extra = {}) {
+function tree(edition: string, files: Record<string, unknown>, extra: object = {}) {
   const repoRoot = fs.mkdtempSync(path.join(base, 'stack-tooling-'));
   roots.push(repoRoot);
   for (const [relative, content] of Object.entries(files)) {
@@ -38,21 +56,21 @@ function tree(edition, files, extra = {}) {
   return { repoRoot, files: Object.keys(files), repo: { kind: 'app', edition }, isRoot: true, ...extra };
 }
 
-const fixture = (name) => structuredClone(RECORDS[name]);
-const byText = (a, b) => a.localeCompare(b);
-const byPath = (a, b) => a.path.localeCompare(b.path);
-const summary = (findings) => findings.map((finding) => ({ path: finding.path, verb: finding.verb })).sort(byPath);
-const sorted = (entries) => [...entries].sort(byPath);
-const workflow = (command) => `name: ship\non: workflow_dispatch\njobs:\n  ship:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ${command}\n`;
-const one = (edition, file, content) => stackToolingFindings(tree(edition, { [file]: content }));
-const sourcesOf = (command) => [
+const fixture = (name: string): StackToolingRecord => structuredClone(RECORDS[name]!);
+const byText = (a: string, b: string) => a.localeCompare(b);
+const byPath = (a: { path: string }, b: { path: string }) => a.path.localeCompare(b.path);
+const summary = (findings: { path?: unknown; verb?: unknown }[]) => findings.map((finding) => ({ path: finding.path as string, verb: finding.verb as string })).sort(byPath);
+const sorted = (entries: { path: string; verb: string }[]) => [...entries].sort(byPath);
+const workflow = (command: string) => `name: ship\non: workflow_dispatch\njobs:\n  ship:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ${command}\n`;
+const one = (edition: string, file: string, content: unknown) => stackToolingFindings(tree(edition, { [file]: content }));
+const sourcesOf = (command: string): [string, unknown][] => [
   ['deploy/swarm/ops.sh', `#!/usr/bin/env bash\n${command}\n`],
   ['.github/workflows/ci.yml', workflow(command)],
   ['package.json', { scripts: { ship: command } }],
   ['scripts/ship.sh', `echo ok\n  ${command}\n`],
 ];
 
-const OWNED = [
+const OWNED: [string, string][] = [
   ['docker stack deploy -c stack.yaml shop', 'deploy'],
   ['docker stack config -c stack.yaml', 'render'],
   ['docker secret create shop_token -', 'deploy'],

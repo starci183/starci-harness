@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderReadmeBadges, badgeTokenNotices } from '../sync/readme-badges.mjs';
 import { badgeVisibilityNotices, verifyCi } from '../ci/verify.mjs';
+import type { Gh } from '../ci/github.mjs';
 import { secretHits, secretHitsInFile } from '../runtime/scripts/lib/secret-patterns.mjs';
 import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 
@@ -10,12 +11,20 @@ const end = '<!-- <<< starci app sync <<< -->';
 const manifestFile = '.starcistacks/application-stacks.yaml';
 const value = ['badge', 'Public', '123456789'].join('');
 const provider = ['gh', 'p_', 'a'.repeat(36)].join('');
-const doc = () => ({ ci: { github: { repository: 'team/product', visibility: 'private' } }, services: {
+interface Doc {
+  ci: { github: { repository?: string; visibility?: string | undefined } };
+  services: {
+    codecov: { mode: string; badgeToken?: string; flag?: string };
+    sonar: { mode: string; provider: string; projects: { key: string }[]; badgeToken?: string };
+  };
+}
+const doc = (): Doc => ({ ci: { github: { repository: 'team/product', visibility: 'private' } }, services: {
   codecov: { mode: 'hosted' }, sonar: { mode: 'hosted', provider: 'sonarcloud', projects: [{ key: 'product' }] },
 } });
-const block = image => `${begin}\n\n${image}\n\n${end}\n`;
+const fakeGh = (json: Gh['json']): Gh => ({ run: () => assert.fail('the run seam is not used'), repository: () => 'team/product', json });
+const block = (image: string) => `${begin}\n\n${image}\n\n${end}\n`;
 const image = (host = 'codecov.io', token = value, parameter = 'token') => `![Codecov](https://${host}/gh/team/product/branch/main/graph/badge.svg?${parameter}=${token})`;
-const hits = (text, manifestText) => secretHitsInFile('README.md', text, { manifestText });
+const hits = (text: string, manifestText?: string) => secretHitsInFile('README.md', text, { manifestText });
 
 test('hygiene-style secret findings use the companion manifest for a custom Sonar host', () => {
   const text = block(`![Quality Gate](https://quality.internal/api/project_badges/measure?project=product&metric=alert_status&token=${value})`);
@@ -49,7 +58,7 @@ test('notices require private visibility, missing tokens and actually rendered b
   const notices = badgeTokenNotices(declaration, {});
   assert.equal(notices.length, 2);
   assert.equal(notices[0], 'README_BADGE_TOKEN_MISSING notice: the Codecov badge of a private repository renders "unknown" without services.codecov.badgeToken (a read-only badge token, not a CI secret)');
-  assert.match(notices[1], /the Sonar badge/);
+  assert.match(notices[1]!, /the Sonar badge/);
   assert.deepEqual(badgeTokenNotices(declaration, { example: true }), []);
   for (const visibility of ['public', undefined]) {
     declaration.ci.github.visibility = visibility;
@@ -68,20 +77,20 @@ test('notices require private visibility, missing tokens and actually rendered b
 
 test('visibility uses the injected gh seam only when undeclared and fails silently', () => {
   const declaration = doc();
-  const gh = { json: args => { assert.deepEqual(args, ['repo', 'view', '--json', 'visibility', '--repo', 'team/product']); return { visibility: 'INTERNAL' }; } };
-  assert.equal(badgeVisibilityNotices({ doc: declaration, repo: 'team/product', gh: { json: () => assert.fail('declared visibility must stay offline') } }).length, 2);
+  const gh = fakeGh((args: string[]) => { assert.deepEqual(args, ['repo', 'view', '--json', 'visibility', '--repo', 'team/product']); return { visibility: 'INTERNAL' }; });
+  assert.equal(badgeVisibilityNotices({ doc: declaration, repo: 'team/product', gh: fakeGh(() => assert.fail('declared visibility must stay offline')) }).length, 2);
   delete declaration.ci.github.visibility;
   assert.equal(badgeVisibilityNotices({ doc: declaration, repo: 'team/product', gh }).length, 2);
-  assert.deepEqual(badgeVisibilityNotices({ doc: declaration, repo: 'team/product', gh: { json: () => { throw new Error('offline'); } } }), []);
-  assert.deepEqual(badgeVisibilityNotices({ doc: declaration, repo: 'team/product', gh: { json: () => ({ visibility: 'PUBLIC' }) } }), []);
+  assert.deepEqual(badgeVisibilityNotices({ doc: declaration, repo: 'team/product', gh: fakeGh(() => { throw new Error('offline'); }) }), []);
+  assert.deepEqual(badgeVisibilityNotices({ doc: declaration, repo: 'team/product', gh: fakeGh(() => ({ visibility: 'PUBLIC' })) }), []);
 });
 
 test('verification notices preserve success and are included in text and JSON', () => {
   const notices = badgeTokenNotices(doc(), {});
   for (const json of [false, true]) {
     let output = '';
-    const result = verifyCi({ declaration: { secrets: [], vars: [], dependabotSecrets: [] }, sealed: [],
-      gh: { repository: () => 'team/product', json: () => [] }, options: { json }, notices, stdout: text => { output += text; } });
+    const result = verifyCi({ declaration: { problems: [], secrets: [], vars: [], dependabotSecrets: [] }, sealed: [],
+      gh: fakeGh(() => []), options: { json }, notices, stdout: (text: string) => { output += text; } });
     assert.equal(result, 0);
     if (json) { assert.equal(JSON.parse(output).ok, true); assert.deepEqual(JSON.parse(output).notices, notices); }
     else for (const notice of notices) assert.ok(output.includes(notice));

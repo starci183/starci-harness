@@ -7,12 +7,13 @@ import tsParser from "@typescript-eslint/parser"
 import { render } from "../sync/index.mjs"
 
 const linter = new Linter({ configType: "flat" })
+// reason: the typescript-eslint plugin and parser declare their own flat-config types, which ESLint's Linter.Config does not accept.
 const config = [{
     files: ["**/*.ts"],
     languageOptions: { parser: tsParser },
     plugins: { "@typescript-eslint": tsPlugin },
     rules: { "@typescript-eslint/prefer-function-type": "error" },
-}]
+}] as unknown as Linter.Config[]
 
 for (const template of [
     "be/inbox/platform/inbox/inbox.port.ts.tpl",
