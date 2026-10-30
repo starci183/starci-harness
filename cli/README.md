@@ -36,11 +36,6 @@ src/
   <s>` (seconds), `--sha`, `--cwd`, `--reason` and `--status` are the one spelling of their meaning. `--json` and `--cwd`
   are the CLI's own: a verb that declares a `cwd` flag receives the folder as typed and runs in the caller's directory,
   every other verb runs as if started there.
-- **Retired spellings.** `shared/retired.ts` is the one table of retired verb paths and flags, each with its new
-  spelling, a refusal code and the recovery line; the parser (`rewriteRetired`, before commander) rewrites an old
-  spelling to its new one with a one-line notice on stderr while `REFUSE_RETIRED_SPELLINGS` is off, and refuses it with
-  the row's code once it is on; a removed verb is refused either way. Each verb's help and `starci explain <term>` list
-  the retired spellings that map to it.
 - **Which verbs a tree sees.** `locateTree` reads the nearest `hfs.json`. A lite or full app sees the verbs of its
   edition (core verbs serve both); the runtime and a folder outside any StarCi tree see every verb.
 - **Output.** With `--json` every verb prints one envelope, `{schema, ok, data}`, or

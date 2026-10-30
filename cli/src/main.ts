@@ -7,7 +7,6 @@ import { observeSpawns } from "./shared/exec.js"
 import { asRefusal, EXIT_USAGE, UsageError } from "./shared/errors.js"
 import { printRefusal, printResult } from "./shared/output.js"
 import type { OutputMode } from "./shared/output.js"
-import { retiredOf, rewriteRetired } from "./shared/retired.js"
 import { assertRole } from "./shared/role.js"
 import { locateTree } from "./shared/tree.js"
 import { spellingOf } from "./shared/verb.js"
@@ -99,10 +98,7 @@ const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): v
     }
     const command = parent.command(name).description(verb.summary)
     for (const [flag, spec] of Object.entries(verb.flags)) addFlag(command, flag, spec)
-    const retired = retiredOf(spellingOf(verb))
-    const forwarded = verb.forward === true ? ["", `Every argument is @starci/hfs's: starci ${spellingOf(verb)} --help prints its flags.`] : []
-    const after = [...forwarded, ...(retired.length === 0 ? [] : ["", "Retired spellings (mapped with a notice for now):", ...retired.map((line) => `  ${line}`)])]
-    if (after.length > 0) command.addHelpText("after", after.join("\n"))
+    if (verb.forward === true) command.addHelpText("after", ["", `Every argument is @starci/hfs's: starci ${spellingOf(verb)} --help prints its flags.`].join("\n"))
     command.action(async (...received: unknown[]) => {
         const self = received.at(-1)
         if (self instanceof Command) await execute(verb, self, verbs)
@@ -160,18 +156,7 @@ const buildProgram = (argv: readonly string[]): { readonly program: Command; rea
 
 const main = async (): Promise<void> => {
     const json = process.argv.includes("--json")
-    let argv: readonly string[]
-    try {
-        // A retired spelling is rewritten to its new one with a notice, or refused once refusal is on (shared/retired.ts).
-        const rewritten = rewriteRetired(process.argv.slice(2))
-        for (const notice of rewritten.notices) process.stderr.write(`${notice}\n`)
-        argv = rewritten.argv
-    } catch (error: unknown) {
-        const refusal = asRefusal(error)
-        printRefusal(json ? "json" : "human", refusal)
-        process.exitCode = refusal.exitCode
-        return
-    }
+    const argv: readonly string[] = process.argv.slice(2)
     const { program, verbs } = buildProgram(argv)
     const forwarded = forwardedOf(argv, verbs)
     if (forwarded !== undefined) {

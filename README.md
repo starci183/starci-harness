@@ -125,7 +125,7 @@ state goes to `<checkout>/.runtime/` (git-ignored).
 ## Verbs
 
 `starci explain` lists the verbs of the working directory with their flags, effect and json schema (`--json` for
-machines), generated from each verb's one definition as its `--help` is; `starci explain <word>` filters them and prints each one's flags. Every effect is dry until `--execute`; a retired spelling runs as its new one with a notice on stderr (`cli/src/shared/retired.ts`). An app shows the core verbs plus its edition's; the runtime and
+machines), generated from each verb's one definition as its `--help` is; `starci explain <word>` filters them and prints each one's flags. Every effect is dry until `--execute`. An app shows the core verbs plus its edition's; the runtime and
 a folder outside any StarCi tree show every verb. The groups:
 
 | group | for |

@@ -5,17 +5,17 @@ the target surface of both layers, the harness verbs (`starci <group> <verb>`) a
 run by @starci/hfs). Written by the read-only CLI audit of 2026-10-30 (127 harness verbs, 17 app verbs with 74 actions,
 343 call sites) and approved by the owner as written ("Duyệt cả 6", the six decisions folded into the table: generators
 dry by default, `app secret --env`, `feedback` folded into `ticket`, remote writes dry until `--execute`, the test world
-as `app world`, one refused minor for every retired spelling). The table is rolled out in lanes; until a line ships, the
-code is the truth and `starci explain` lists what runs today. The harness layer's lines have shipped: their retired
-spellings are the rows of `cli/src/shared/retired.ts`, accepted with a notice naming the new spelling until
-`REFUSE_RETIRED_SPELLINGS` turns refusal on.
+as `app world`). The sixth decision, a refused minor for every old spelling, was overruled by the owner the same day
+(CONTRIBUTING CONTRIB-15, "cấm tuyệt đối legacy"): an old spelling is removed outright and fails as any unknown verb or
+flag does; no table maps it. `starci explain` lists what runs today; the old spellings below record what each change
+replaced, for the call sites that still had to move.
 
-Status of each line: KEEP, RENAME (the old spelling is refused for one minor with a message naming the new one, then
-removed), FOLD (merged into another verb), DROP (removed), FIX (a behaviour bug).
+Status of each line: KEEP, RENAME (the old spelling is removed), FOLD (merged into another verb), DROP (removed), FIX (a
+behaviour bug).
 
 ## One flag dictionary (every verb, both layers)
 
-| meaning | canonical | retired spellings | notes |
+| meaning | canonical | replaced spellings | notes |
 |---|---|---|---|
 | do it for real (effects are dry by default) | `--execute` | `--publish` (release publish), `--write` (app sync, app sonar, app codemod, contexts anatomy), `--apply` (app db baseline/restamp), `--plan` (app upgrade, inverted), `--dry-run` (release push/cut, seat start, project park, supervisor tick, worktree gc, app ci local), `--dry` (host install/uninstall) | a generator's dry run reports drift and exits 1 on it, so `--check` disappears as a mode flag |
 | machine output | `--json` | `--format json` (app lint, app codemod) | `--format` stays only where a non-JSON second format exists (codemod markdown report) |

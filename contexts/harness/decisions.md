@@ -112,11 +112,11 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   exiting 1; `--json`, `--timeout <s>`, `--sha`, `--env`, `--db-url-env`, `--cwd`, `--out`, `--reason` and `--status` are the
   one spelling of their meaning; `app secret` takes `--env`; `feedback` folds into `ticket --kind feedback`; `ci secret set`,
   `ci var set` and `secret recipients --add/--remove` are dry until `--execute`; the test world is `app world up|down|status`;
-  one parser refuses a flag an action does not take and help is generated from the parser tables. A retired spelling is
-  refused for one minor with a message naming the new one, then removed; until the app nivo-lite has deployed on the new
-  spellings it is accepted and rewritten with a one-line notice naming the new one (`REFUSE_RETIRED_SPELLINGS` of
-  `cli/src/shared/retired.ts`, the one table of retired spellings). It ships in lanes; until a line ships the code is the
-  truth. Owner, 2026-10-30: "Duyệt cả 6" (the six decisions of the audit), then "Làm theo lane".
+  one parser refuses a flag an action does not take and help is generated from the parser tables. An old spelling is
+  removed outright and fails as any unknown verb or flag does: no alias, no notice, no refusal table (CONTRIB-15), and
+  every call site moves in the same change. Owner, 2026-10-30: "Duyệt cả 6" (the six decisions of the audit), then
+  "Làm theo lane"; the sixth decision (a refused minor for each old spelling) overruled the same day: "đọc contributing là
+  cấm tuyệt đối legacy r mờ".
 - **App check and lint pass under 20 findings (`gate-threshold-20`).** `starci app check` and `starci app lint` exit green while
   fewer than 20 error findings remain and none is a hard blocker: a plaintext secret, a failed boot proof or a migration finding
   blocks at any count (`packages/hfs/runtime/scripts/hfs/gate-threshold.mjs`). Every finding is still printed and kept in the
