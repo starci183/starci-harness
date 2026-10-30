@@ -28,13 +28,13 @@ function admissionSummary(a: Fields) {
   const receipt = isPlainObject(a.receipt) ? { ...scalarFields(a.receipt), ...(isPlainObject(a.receipt.scope) ? { scope: scalars(a.receipt.scope) } : {}) } : null;
   return { schema: a.schema, ok: a.ok === true, reason: clip(a.reason ?? null), policyVersion: a.policyVersion ?? null, chosenBy: clip(a.chosenBy ?? null),
     overrideApplied: a.overrideApplied === true, resetAt: a.resetAt ?? null, request: scalars(a.request), selected: scalars(a.selected),
-    eligibleCount: list(a.eligible).length, eligible: list(a.eligible).slice(0, EVENT_LIMITS.ids).map((row: SqlRow | null | undefined) => row?.id ?? null),
-    rejectedCount: list(a.rejected).length, rejected: list(a.rejected).slice(0, EVENT_LIMITS.rows).map(rowOf),
+    eligibleCount: list(a.eligible).length, eligible: list<SqlRow | null | undefined>(a.eligible).slice(0, EVENT_LIMITS.ids).map((row: SqlRow | null | undefined) => row?.id ?? null),
+    rejectedCount: list(a.rejected).length, rejected: list<SqlRow | null | undefined>(a.rejected).slice(0, EVENT_LIMITS.rows).map(rowOf),
     ...(receipt ? { receipt } : {}), summarized: true };
 }
 
 function refusalSummary(r: Fields) {
-  const rows = list(r.rejected), alternatives = list(r.alternatives);
+  const rows = list<SqlRow | null | undefined>(r.rejected), alternatives = list(r.alternatives);
   return { schema: r.schema, class: r.class ?? null, queuedBecause: r.queuedBecause ?? null, line: clip(r.line ?? null, EVENT_LIMITS.lineChars),
     rejectedCount: rows.length, rejected: rows.slice(0, EVENT_LIMITS.rows).map(rowOf),
     alternativesCount: alternatives.length, alternatives: alternatives.slice(0, EVENT_LIMITS.ids).map((entry: unknown) => clip(String(entry))), summarized: true };

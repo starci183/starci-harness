@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { machineKit, pascal, upperSnake } from './machine-ast.mjs';
-import { locateDeclaration } from '../slots.mjs';
+import { locateDeclaration, type ConnectionView } from '../slots.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import type { CallExpression, Declaration, Expression, Node, PropertyAccessExpression, Statement, TypeChecker, VariableStatement } from 'typescript';
 import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
@@ -9,11 +9,7 @@ import type { ArchitectureViolation, CheckInput, GraphFile, HfsGraph } from './h
 import type { ImportBinding, MachineKit } from './machine-ast.mjs';
 
 /** One connection hfs.json declares. */
-interface DeclaredConnection {
-  name: string;
-  envPrefix: string;
-  isolation?: string;
-}
+type DeclaredConnection = ConnectionView;
 
 type Report = (rel: string, message: string, extra?: Record<string, unknown>) => void;
 type DecoratorsFile = (name: string) => string;
@@ -24,7 +20,7 @@ interface MapState {
   graph: HfsGraph;
   kit: MachineKit;
   ts: TypeScriptApi;
-  declared: DeclaredConnection[];
+  declared: readonly DeclaredConnection[];
   byName: Map<string, DeclaredConnection>;
   violations: ArchitectureViolation[];
   report: Report;
@@ -168,7 +164,7 @@ const configEnvKey = (ts: TypeScriptApi, node: Node): string | null => {
   return null;
 };
 
-const checkConfigFile = (connection: DeclaredConnection, declared: DeclaredConnection[], kit: MachineKit, ts: TypeScriptApi, report: Report, configRel: string, configFile: GraphFile): void => {
+const checkConfigFile = (connection: DeclaredConnection, declared: readonly DeclaredConnection[], kit: MachineKit, ts: TypeScriptApi, report: Report, configRel: string, configFile: GraphFile): void => {
   let readsSchema = false;
   kit.walk(configFile.sourceFile, node => {
     const key = configEnvKey(ts, node);
@@ -184,7 +180,7 @@ const checkConfigFile = (connection: DeclaredConnection, declared: DeclaredConne
   if (connection.isolation === 'schema' && !readsSchema) report(configRel, `Connection ${connection.name} is isolated as a schema of a shared database (hfs.json isolation), so ${configRel} must read ${connection.envPrefix}_SCHEMA and hand it to the data source; splitting the context out into its own database is then an env change only.`, { connection: connection.name });
 };
 
-const checkDeclaredConnections = (declared: DeclaredConnection[], kit: MachineKit, ts: TypeScriptApi, report: Report, decoratorsFile: DecoratorsFile): void => {
+const checkDeclaredConnections = (declared: readonly DeclaredConnection[], kit: MachineKit, ts: TypeScriptApi, report: Report, decoratorsFile: DecoratorsFile): void => {
   for (const connection of declared) {
     checkConnectionFile(connection, kit, ts, report);
     checkInjectorFile(connection, kit, ts, report, decoratorsFile);
@@ -323,7 +319,7 @@ const resolveStackConnection = (kit: MachineKit, connection: DeclaredConnection,
 };
 
 // True when the env resolves at least one connection; false when it is skipped.
-const checkStackEnv = (config: ArchitectureConfig, kit: MachineKit, declared: DeclaredConnection[], report: Report, stacksRoot: string, env: string): boolean => {
+const checkStackEnv = (config: ArchitectureConfig, kit: MachineKit, declared: readonly DeclaredConnection[], report: Report, stacksRoot: string, env: string): boolean => {
   // Relative to the side folder the machine judges (`../.starcistacks/...` for a side): the app-relative path once the side is prefixed.
   const rel = path.relative(config.root, path.join(stacksRoot, env, 'runtime', 'env')).split(path.sep).join('/');
   const values = readEnvFiles(path.join(stacksRoot, env, 'runtime', 'env'));
@@ -348,7 +344,7 @@ const checkStackEnv = (config: ArchitectureConfig, kit: MachineKit, declared: De
   return resolved > 0;
 };
 
-const checkStackConnections = (config: ArchitectureConfig, kit: MachineKit, declared: DeclaredConnection[], report: Report): { stacksChecked: number; stacksSkipped: number } => {
+const checkStackConnections = (config: ArchitectureConfig, kit: MachineKit, declared: readonly DeclaredConnection[], report: Report): { stacksChecked: number; stacksSkipped: number } => {
   let stacksChecked = 0;
   let stacksSkipped = 0;
   // .starcistacks sits at the app root: the side folder the machine judges reads its app's tree (locateDeclaration).
@@ -363,7 +359,7 @@ export function checkConnectionMap(input: CheckInput) {
   const { config, graph } = input;
   const kit = machineKit(input);
   const { ts } = kit;
-  const declared: DeclaredConnection[] = config.hfs.repo.connections ?? [];
+  const declared: readonly DeclaredConnection[] = config.hfs.repo.connections ?? [];
   const byName = new Map(declared.map((connection): [string, DeclaredConnection] => [connection.name, connection]));
   const violations: ArchitectureViolation[] = [];
   const report: Report = (rel, message, extra = {}) => { violations.push({ ruleId: RULE, path: rel, message, ...extra }); };

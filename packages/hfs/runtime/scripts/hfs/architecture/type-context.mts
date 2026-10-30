@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { CompilerOptions, CreateProgramOptions, Diagnostic, ModuleResolutionCache, ModuleResolutionHost, Node, ParsedCommandLine, Program, ProjectReference, SourceFile, TypeChecker } from 'typescript';
 import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
+import type { ProjectRead } from '../typescript-programs.mjs';
 import type { ArchitectureError, ImportEdge, LoadedTypeScript, ModuleReferences, ModuleReference, WorkspaceRecord } from './typescript.mjs';
 
 /** One parsed tsconfig with its compiler program. */
@@ -30,9 +31,7 @@ export interface TypeContext {
 export type ResolverHost = Omit<ModuleResolutionHost, 'realpath'> & { realpath?: ((path: string) => string) | undefined };
 
 /** What `readTypeScriptProject` returns: the parsed project, or null with the read error. */
-export type ProjectRead =
-  | { read: { error: Diagnostic }; parsed: null }
-  | { read: { error?: undefined }; parsed: ParsedCommandLine };
+export type { ProjectRead };
 
 /** The functions `typescript.mts` hands the context builder (it cannot import them back without a cycle). */
 export interface TypeContextHelpers {

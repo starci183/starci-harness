@@ -75,7 +75,7 @@ function envOf(stage: Parsed) {
   const env = new Map();
   for (const item of instructionsOf(stage, 'ENV')) {
     const parts = words(item.text);
-    if (parts.length >= 2 && !parts[0].includes('=')) { env.set(parts[0], parts.slice(1).join(' ')); continue; }
+    if (parts.length >= 2 && !(parts[0] as string).includes('=')) { env.set(parts[0], parts.slice(1).join(' ')); continue; }
     for (const part of parts) { const at = part.indexOf('='); if (at > 0) env.set(part.slice(0, at), part.slice(at + 1)); }
   }
   return env;
@@ -188,7 +188,7 @@ function entryHealthFindings(file: string, runtime: Parsed, side: string, kind: 
 }
 
 /** R262 strengthens only API images: a constant success or an absent/local-unreachable live route is refused. */
-function healthReachabilityFindings({ repoRoot, file, parsed, side, app, kind, ts }: { repoRoot: string; file: string; parsed: Parsed; side: string; app: Parsed; kind: string; ts: Ts }) {
+function healthReachabilityFindings({ repoRoot, file, parsed, side, app, kind, ts }: { repoRoot: string; file: string; parsed: Parsed; side: string; app: Parsed; kind: string; ts: Ts | null }) {
   if (side !== 'be' || kind !== 'api' || !ts) return [];
   const runtime = parsed.stages.at(-1);
   if (runtime?.name !== RUNTIME_STAGE) return [];
@@ -200,7 +200,7 @@ function healthReachabilityFindings({ repoRoot, file, parsed, side, app, kind, t
   return [found(DOCKER_HEALTHCHECK_FAKE, file, `${file}:${health.line} the API HEALTHCHECK must request its reachable /health/live route on the runtime's local port and fail when the probe fails; a constant-success command or a URL without a registered live route does not probe this app.`, { line: health.line })];
 }
 
-function nextEntryFindings({ repoRoot, file, parsed, app, project, ts }: { repoRoot: string; file: string; parsed: Parsed; app: Parsed; project: Parsed; ts: Ts }) {
+function nextEntryFindings({ repoRoot, file, parsed, app, project, ts }: { repoRoot: string; file: string; parsed: Parsed; app: Parsed; project: Parsed; ts: Ts | null }) {
   const findings = [];
   const build = parsed.stages.find((stage: Parsed) => stage.name === BUILD_STAGE);
   const filter = `--filter=@${project}/${app}`;
@@ -213,7 +213,7 @@ function nextEntryFindings({ repoRoot, file, parsed, app, project, ts }: { repoR
 }
 
 /** R189: the entry, the port and the health of the runtime. */
-function entryFindings({ repoRoot, file, parsed, side, app, kind, project, ts }: { repoRoot: string; file: string; parsed: Parsed; side: string; app: Parsed; kind: string; project: Parsed; ts: Ts }) {
+function entryFindings({ repoRoot, file, parsed, side, app, kind, project, ts }: { repoRoot: string; file: string; parsed: Parsed; side: string; app: Parsed; kind: string; project: Parsed; ts: Ts | null }) {
   const findings: Finding[] = [];
   const runtime = parsed.stages.at(-1);
   if (runtime?.name !== RUNTIME_STAGE) return findings;
@@ -280,7 +280,7 @@ function copySecretFindings(file: string, item: Parsed) {
 function variableSecretFindings(file: string, item: Parsed) {
   const findings = [];
   const parts = words(item.text);
-  const names = item.keyword === 'ENV' && parts.length >= 2 && !parts[0].includes('=') ? [parts[0]] : parts.map((part: Parsed) => part.split('=')[0]);
+  const names = item.keyword === 'ENV' && parts.length >= 2 && !(parts[0] as string).includes('=') ? [parts[0]] : parts.map((part: Parsed) => part.split('=')[0]);
   for (const name of names) if (isCredentialName(name)) findings.push(found(DOCKER_SECRETS, file, `${file}:${item.line} ${item.keyword} ${name} names a credential; an image carries none (an ARG or ENV stays in the image history). Mount it at run time; only NEXT_PUBLIC_* values, which are published by design, are build arguments.`, { line: item.line, name }));
   return findings;
 }

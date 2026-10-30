@@ -254,13 +254,13 @@ const WORLD_SLOTS = new Set(['be.tests.world', 'be.tests.world.kit']);
 
 /** Whether `rel` is a test file that counts as a consumer of any owner: a unit role spec, a fixture builder, a world file. */
 function testConsumer(graph: HfsGraph, rel: string): boolean {
-  const params = graph.resolver.ruleParams();
+  const params = graph.resolver.ruleParams() ?? {};
   const specs = [...(params.unitRoles ?? []).map((role: { spec: string }) => role.spec), ...(params.logicRoles ?? []).map((role: string) => `${role}.spec`)];
   if (/^(?:src|apps)\//u.test(rel) && specs.some(spec => rel.endsWith(`.${spec}.ts`))) return true;
   if (DOOR_SPEC.test(rel)) return true;
   if (BUILDER_CONSUMER.test(rel)) return true;
   const classified = graph.resolver.classifyPath(rel);
-  return WORLD_SLOTS.has(classified.slot) && classified.status !== 'forbidden' && /\.tsx?$/u.test(rel);
+  return classified.slot !== undefined && WORLD_SLOTS.has(classified.slot) && classified.status !== 'forbidden' && /\.tsx?$/u.test(rel);
 }
 /** The slot of integration specs and the slot of the integrations they pair with by folder (knowledge/hfs/slots.yaml). */
 const INTEGRATION_SPEC_SLOT = 'be.tests.integration';

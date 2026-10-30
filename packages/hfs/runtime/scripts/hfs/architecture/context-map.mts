@@ -385,7 +385,7 @@ export function contextModelOf(kit: MachineKit, graph: HfsGraph): ContextModel {
   if (cached) return cached;
   const { ts, resolver } = kit;
   const persistenceOf = persistenceOfFactory(resolver);
-  const connections: DeclaredConnection[] = resolver.repo.connections;
+  const connections: readonly DeclaredConnection[] = resolver.repo.connections;
   const declared = new Map<string, DeclaredConnection>(connections.map((connection): [string, DeclaredConnection] => [connection.name, connection]));
   const { registered, all } = collectRegistrations({ kit, graph, persistenceOf });
   const perConnection = new Set<string>();
@@ -441,7 +441,7 @@ export function connectionsComposedBy(kit: MachineKit, app: string): { root: Gra
   const { ts } = kit;
   const files: GraphFile[] = kit.appCompositionFiles(app);
   if (!files.length) return { root: null, items: [] };
-  const connections: DeclaredConnection[] = kit.resolver.repo.connections;
+  const connections: readonly DeclaredConnection[] = kit.resolver.repo.connections;
   const declared = new Set<string>(connections.map(connection => connection.name));
   const items: ComposedConnection[] = [];
   for (const file of files) {

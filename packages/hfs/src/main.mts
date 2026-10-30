@@ -84,14 +84,14 @@ import { emitContracts } from '../emit/contracts.mjs';
 import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
-import { scaffoldApp } from '../scaffold/app.mjs';
+import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { contractEmitFindings } from '../runtime/scripts/hfs/rules/contract.mjs';
 import { eslintRepository, lintRepository, parseLintArgs, printLintText } from '../lint/run.mjs';
 import { writeReport } from '../report/sonar.mjs';
 import { checkEdition } from '../upgrade/check.mjs';
 import { UpgradeError, upgradeMain } from '../upgrade/index.mjs';
-import { ACTIONS as STACK_ACTIONS, FLAGS as STACK_FLAGS, OPERANDS as STACK_OPERANDS, READ_ONLY as STACK_READ_ONLY, REPEAT as STACK_REPEAT, VALUE as STACK_VALUE, stackMain as deployStackMain } from '../stack/cli.mjs';
+import { ACTIONS as STACK_ACTIONS, isAction as isStackAction, FLAGS as STACK_FLAGS, OPERANDS as STACK_OPERANDS, READ_ONLY as STACK_READ_ONLY, REPEAT as STACK_REPEAT, VALUE as STACK_VALUE, stackMain as deployStackMain } from '../stack/cli.mjs';
 import { RELEASE_FLAGS, releaseMain } from '../release/index.mjs';
 import { SPEC as DB_MIGRATE_FLAGS, dbMigrateMain } from '../db/migrate.mjs';
 import { SPEC as DB_POST_CUTOVER_FLAGS, dbPostCutoverMain } from '../db/post-cutover.mjs';
@@ -108,7 +108,10 @@ import { USAGE as COVERAGE_USAGE } from '../coverage/cli.mjs';
 import { SYNC_USAGE } from '../sync/cli.mjs';
 import { codemodMain } from '../codemod/button-intent.mjs';
 import type { VerbIo } from '../release/index.mjs';
-import type { GhSpawn, StdinSource } from '../ci/github.mjs';
+import type { GhSpawn } from '../ci/github.mjs';
+import type { Prompt } from '../runtime/scripts/hfs/secret-prompt.mjs';
+import type { AgeHost, SecretToolOverrides } from '../runtime/scripts/hfs/secret-init.mjs';
+import type { SecretSops } from '../runtime/scripts/hfs/secret-sops.mjs';
 import type { Prettier } from '../sync/format.mjs';
 import type { LinterRunner } from '../lint/run.mjs';
 import type { Presets } from '../sync/index.mjs';
@@ -120,12 +123,19 @@ type Dynamic = any;
 interface FlagTable { boolean?: readonly string[]; value?: readonly string[]; list?: readonly string[]; retired?: readonly string[] }
 /** The parsed arguments of a verb: the operands and each flag by name. */
 interface Opts { positional: string[]; [flag: string]: string | boolean | string[] | undefined }
+/** A value flag as parse stores it: the string given, else undefined. */
+const valueFlag = (opts: Opts, flag: string): string | undefined => { const given = opts[flag]; return typeof given === 'string' ? given : undefined; };
+/** A boolean flag as parse stores it: true when given, else undefined. */
+const booleanFlag = (opts: Opts, flag: string): boolean | undefined => { const given = opts[flag]; return typeof given === 'boolean' ? given : undefined; };
+/** A list flag as parse stores it: every value given, else undefined. */
+const listFlag = (opts: Opts, flag: string): string[] | undefined => { const given = opts[flag]; return Array.isArray(given) ? given : undefined; };
 /** The app IO every verb receives: the working directory, writers, environment and the injectable seams. */
 interface AppIo {
   cwd: string; harness?: { version?: string; role?: string; openTicket?: (ticket: unknown) => unknown } | undefined; edition?: string | undefined;
-  stdout: (text: string) => unknown; stderr: (text: string) => unknown; presets?: Presets | undefined; prettier?: Prettier | undefined; lock?: unknown;
-  run?: unknown; stackMain?: ((argv: string[], io: { cwd: string; out: unknown; err: unknown }) => unknown) | undefined; env: NodeJS.ProcessEnv; stdin?: StdinSource; prompt?: unknown;
-  hostIdentity?: unknown; sops?: unknown; tools?: { spawn?: GhSpawn | undefined } | undefined; platform?: unknown; stackIo?: Record<string, unknown> | undefined; runLinter?: LinterRunner | undefined;
+  stdout: (text: string) => unknown; stderr: (text: string) => unknown; presets?: Presets | undefined; prettier?: Prettier | undefined; lock?: ((root: string) => LockResult) | undefined;
+  // stdin reaches ci (text or a function) and secret (a function or a stream): main passes the shape both take.
+  run?: unknown; stackMain?: ((argv: string[], io: { cwd: string; out: unknown; err: unknown }) => unknown) | undefined; env: NodeJS.ProcessEnv; stdin?: (() => string) | undefined; prompt?: Prompt | undefined;
+  hostIdentity?: AgeHost | null | undefined; sops?: SecretSops | null | undefined; tools?: ({ spawn?: GhSpawn | undefined } & SecretToolOverrides) | undefined; platform?: NodeJS.Platform | undefined; stackIo?: Record<string, unknown> | undefined; runLinter?: LinterRunner | undefined;
   checkApp?: ((args: Dynamic) => Dynamic) | undefined;
 }
 /** The options of main: every seam of the app IO, each optional. */
@@ -193,7 +203,7 @@ const VERB_USAGE: Record<string, string[]> = {
   hygiene: [SYNC_USAGE.hygiene],
   stack: [
     'starci app stack <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--edition full|lite]',
-    ...STACK_ACTIONS.map((action: string) => line(`starci app stack ${action}`, STACK_OPERANDS[action], STACK_READ_ONLY.includes(action) ? flagUsage('--env', { value: true }) : '--env <env>',
+    ...STACK_ACTIONS.map((action) => line(`starci app stack ${action}`, STACK_OPERANDS[action], STACK_READ_ONLY.includes(action) ? flagUsage('--env', { value: true }) : '--env <env>',
       STACK_FLAGS[action].map((flag: string) => flagUsage(flag, { value: STACK_VALUE.has(flag), repeat: STACK_REPEAT.has(flag) })), '[--json]')),
   ],
   release: Object.entries(RELEASE_FLAGS).map(([action, spec]) => line(`starci app release ${action}`, specUsage(spec))),
@@ -387,7 +397,7 @@ function globalOptions(argv: readonly string[], baseCwd: string): { argv: string
  * HFS_UPGRADE_USAGE: editions are fixed at scaffold).
  */
 function editionOption(verb: string, argv: string[]): { edition: string | undefined; argv: string[] } {
-  if (PARSED[verb]?.edition !== true && (verb !== 'stack' || STACK_ACTIONS.includes(argv[0]))) return { edition: undefined, argv };
+  if (PARSED[verb]?.edition !== true && (verb !== 'stack' || isStackAction(argv[0]))) return { edition: undefined, argv };
   let edition: string | undefined;
   const rest: string[] = [];
   const args = argv.values();
@@ -430,8 +440,8 @@ async function checkMain(opts: Opts, { cwd: repoRoot, harness, edition, stdout: 
   if (opts.positional.length) throw new Error('starci app check takes no path');
   if (opts.base !== undefined && opts.fast !== true) throw new Error('--base names the ref --fast compares with; it needs --fast');
   const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, fast: opts.fast === true, base: opts.base as string | undefined, presets, prettier }), presets, prettier });
-  const proof = withCheckProofs(checked, { repoRoot, edition, wiring: opts.wiring === true, coverageFrom: opts['coverage-from'] });
-  const changed = opts.fast === true ? changedSince(repoRoot, proof.fast?.base ?? opts.base).files : null;
+  const proof = withCheckProofs(checked, { repoRoot, edition, wiring: opts.wiring === true, coverageFrom: valueFlag(opts, 'coverage-from') });
+  const changed = opts.fast === true ? changedSince(repoRoot, proof.fast?.base ?? valueFlag(opts, 'base')).files : null;
   const existing = changed ? changed.filter((file: string) => fs.existsSync(path.join(repoRoot, file))) : [];
   const eslint = await eslintRepository({ repoRoot, changed, existing, run: runLinter });
   const findings = [...proof.findings, ...eslint.findings.map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: 'error' }))];
@@ -443,11 +453,11 @@ async function checkMain(opts: Opts, { cwd: repoRoot, harness, edition, stdout: 
   return eslint.errors.length ? 2 : result.ok ? 0 : 1;
 }
 
-function emitMain(opts: Opts, { cwd: repoRoot, stdout: out, run }: AppIo): number {
+function emitMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   if (opts.positional.length) throw new Error('starci app emit takes no path');
   const be = readRepoDeclaration(loadSlotManifest(), repoRoot).sides?.be;
   if (!be) throw new Error('starci app emit runs at the app root (the folder of hfs.json)');
-  const { written, skipped, standIns } = emitContracts({ repoRoot: path.join(repoRoot, 'be'), declaration: be, run });
+  const { written, skipped, standIns } = emitContracts({ repoRoot: path.join(repoRoot, 'be'), declaration: be });
   for (const file of written) out(`wrote be/${file}\n`);
   const skipSummary = skipped.length ? `, ${skipped.join(', ')} serve no GraphQL` : '';
   out(`starci app emit: ${written.length} written${skipSummary}\n`);
@@ -460,9 +470,10 @@ function emitMain(opts: Opts, { cwd: repoRoot, stdout: out, run }: AppIo): numbe
 
 function newMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   const [kind, ...args] = opts.positional;
+  const [first = '', second = ''] = args;
   let written: string[];
-  if (kind === 'service' && args.length === 2) written = newService({ repoRoot, dir: args[0], name: args[1], inject: opts.inject ?? [] });
-  else if (kind === 'spec' && args.length === 1 && opts.inject === undefined) written = newSpec({ repoRoot, file: args[0] });
+  if (kind === 'service' && args.length === 2) written = newService({ repoRoot, dir: first, name: second, inject: listFlag(opts, 'inject') ?? [] });
+  else if (kind === 'spec' && args.length === 1 && opts.inject === undefined) written = newSpec({ repoRoot, file: first });
   else if (kind === 'image' && args.length === 0 && opts.inject === undefined) written = newImages({ repoRoot });
   else throw new Error('starci app new takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`');
   for (const file of written) out(`created ${file}\n`);
@@ -472,7 +483,7 @@ function newMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
 function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   const [noun, name, ...extra] = opts.positional;
   if (!noun || !name || extra.length) throw new Error('starci app add takes `<noun> <name>` and the options of the noun');
-  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, shapes: opts.shapes, read: opts.read, app: opts.app, kind: opts.kind, form: opts.form, blocks: opts.blocks, tabs: opts.tabs } });
+  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: booleanFlag(opts, 'fe'), shapes: valueFlag(opts, 'shapes'), read: valueFlag(opts, 'read'), app: valueFlag(opts, 'app'), kind: valueFlag(opts, 'kind'), form: booleanFlag(opts, 'form'), blocks: valueFlag(opts, 'blocks'), tabs: valueFlag(opts, 'tabs') } });
   for (const file of created) out(`created ${file}\n`);
   const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
   // A noun that registers nothing in hfs.json (a table, an app, a front-end unit) ends with what it wrote.
@@ -482,15 +493,17 @@ function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
 
 async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, stdout: out }: AppIo): Promise<number> {
   const [name, ...extra] = opts.positional;
+  const registryVisibility = valueFlag(opts, 'registry-visibility');
   if (!name || extra.length) throw new Error(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
-  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd, (opts.into as string | undefined) ?? '.'), harness, edition, presets: presets ?? scaffoldPresets(), ...(opts['registry-visibility'] === undefined ? {} : { registryVisibility: opts['registry-visibility'] }), ...(lock ? { lock } : {}) });
+  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd, (opts.into as string | undefined) ?? '.'), harness, edition, presets: presets ?? scaffoldPresets(), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
   out(`starci app scaffold: created ${created} (${files.length} files); next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then starci app lint\n`);
   return 0;
 }
 
 function explainMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   if (opts.positional.length !== 1) throw new Error('starci app explain takes exactly one path');
-  const explained = explainPath({ repoRoot, input: opts.positional[0] });
+  const [input = ''] = opts.positional;
+  const explained = explainPath({ repoRoot, input });
   if (opts.json) out(`${JSON.stringify(explained, null, 2)}\n`); else printExplain(explained, out);
   return explained.status === 'no-slot' || explained.status === 'ambiguous' ? 1 : 0;
 }
@@ -509,7 +522,7 @@ function declaredEdition(cwd: string): string | undefined {
  * tooling of stack/cli.mjs; up, down and status are the full edition's test-world infrastructure.
  */
 async function stackAppMain(argv: string[], { cwd, edition, stackMain, stdout: out, stderr: err, env, sops, hostIdentity, stackIo, harness }: AppIo): Promise<number> {
-  if (STACK_ACTIONS.includes(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, harness, ...(sops ? { sops } : {}) });
+  if (isStackAction(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, harness, ...(sops ? { sops } : {}) });
   if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app stack up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err }) as Promise<number>;

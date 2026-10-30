@@ -2,20 +2,13 @@ import path from 'node:path';
 import { treeOf } from './required-files.mjs';
 import { allowsFile } from '../allows.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
-import type { ArchitectureConfig, OwnerRecord } from './config.mjs';
+import type { ArchitectureConfig } from './config.mjs';
 import type { Violation } from './ast-walks.mjs';
-import type { SlotResolver } from './required-files.mjs';
+import type { OwnerUnit, Resolver } from '../slots.mjs';
+import type { AllowsResult } from '../allows.mjs';
 
 /** The slot answer `allowsFile` gives for one file. */
-interface AllowsVerdict {
-  slot: string;
-  allowed: boolean;
-  entry?: string;
-  relative: string;
-  allows: string[];
-  root: string;
-  forbiddenBy?: string;
-}
+type AllowsVerdict = AllowsResult;
 
 /** One feature file the slot answer refuses. */
 interface FeatureFinding {
@@ -41,7 +34,7 @@ export const FEATURE_SHAPE_RULE_IDS = ['BE_FEATURE_SHAPE'];
 const RULE = 'BE_FEATURE_SHAPE';
 
 // {message, extra} for one feature file the slot answer refuses, or null when it sits where a slot allows it.
-const featureFileFinding = (file: string, owner: OwnerRecord, verdict: AllowsVerdict): FeatureFinding | null => {
+const featureFileFinding = (file: string, owner: OwnerUnit, verdict: AllowsVerdict): FeatureFinding | null => {
   const feature = path.posix.basename(owner.root);
   if (verdict.slot === owner.slot) {
     // A file the feature root slot itself allows is in place (the cli feature root allows its <group>/ folders); any other file
@@ -62,7 +55,7 @@ const featureFileFinding = (file: string, owner: OwnerRecord, verdict: AllowsVer
   return { message: `${file} is not allowed in ${where};${forbidden} that folder holds only ${verdict.allows.join(', ')}. Rename it to an allowed role or move it to the folder its role belongs to.`, extra: { feature, slot: verdict.slot } };
 };
 
-export function checkFeatureShape({ config, graph }: { config: ArchitectureConfig; graph: { resolver: Pick<SlotResolver, 'ownerOf' | 'slot'> } }): FeatureShapeResult {
+export function checkFeatureShape({ config, graph }: { config: ArchitectureConfig; graph: { resolver: Resolver } }): FeatureShapeResult {
   const resolver = graph.resolver;
   const tree = treeOf(config.root);
   const violations: Violation[] = [];

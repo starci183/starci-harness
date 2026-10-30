@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { readEventClasses, snapshotText } from '../runtime/scripts/lib/event-contract.mjs';
+import { readEventClasses, snapshotText, type EventClassRecord } from '../runtime/scripts/lib/event-contract.mjs';
 
 const EVENTS_ROOT = 'src/modules/events';
 const EVENT_SUFFIX = '.event.ts';
@@ -29,7 +29,7 @@ export function emitEvents({ repoRoot, service }: { repoRoot: string, service: s
   const files = fs.existsSync(folder) ? fs.readdirSync(folder).filter((name) => name.endsWith(EVENT_SUFFIX)).sort() : [];
   if (files.length === 0) return null;
   const ts = createRequire(path.join(repoRoot, 'package.json'))('typescript');
-  const events: unknown[] = [];
+  const events: EventClassRecord[] = [];
   const problems: string[] = [];
   for (const name of files) {
     const read = readEventClasses(ts, fs.readFileSync(path.join(folder, name), 'utf8'), name);

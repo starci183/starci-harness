@@ -21,7 +21,7 @@ function strictlyInsideReal(p: string, root: string | null): boolean {
   const real = realpathOr(p);
   const rootReal = realpathOr(root);
   // Its real path must be the same relative place under the root's real path: no link between them.
-  return Boolean(real && rootReal) && samePath(real, path.join(rootReal, rel));
+  return !!real && !!rootReal && samePath(real, path.join(rootReal, rel));
 }
 
 /**

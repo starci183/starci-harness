@@ -180,21 +180,21 @@ function inspectTokenElement(ts: TypeScriptApi, checker: TypeChecker, element: E
 }
 
 function tokenEntries(ts: TypeScriptApi, checker: TypeChecker, initializer: Expression, localFiles: Set<string>, field: string): TokenEntries {
-  initializer = unwrapExpression(ts, initializer);
-  if (!ts.isArrayLiteralExpression(initializer)) return { tokens: new Map(), unknown: true };
+  const array = unwrapExpression(ts, initializer);
+  if (!ts.isArrayLiteralExpression(array)) return { tokens: new Map(), unknown: true };
   const tokens = new Map<string, Node[]>();
   let unknown = false;
-  for (const element of initializer.elements) {
+  for (const element of array.elements) {
     if (inspectTokenElement(ts, checker, element, localFiles, field, tokens)) unknown = true;
   }
   return { tokens, unknown };
 }
 
 function metadataTokens(ts: TypeScriptApi, checker: TypeChecker, metadata: Expression, field: string, localFiles: Set<string>): TokenEntries {
-  metadata = unwrapExpression(ts, metadata);
-  if (!ts.isObjectLiteralExpression(metadata)) return { tokens: new Map(), unknown: true };
-  if (metadata.properties.some(property => ts.isSpreadAssignment(property))) return { tokens: new Map(), unknown: true };
-  const matches = metadata.properties.filter(property => propertyName(ts, property) === field);
+  const object = unwrapExpression(ts, metadata);
+  if (!ts.isObjectLiteralExpression(object)) return { tokens: new Map(), unknown: true };
+  if (object.properties.some(property => ts.isSpreadAssignment(property))) return { tokens: new Map(), unknown: true };
+  const matches = object.properties.filter(property => propertyName(ts, property) === field);
   if (!matches.length) return { tokens: new Map(), unknown: false };
   const [match] = matches;
   if (matches.length !== 1 || !match || !ts.isPropertyAssignment(match)) return { tokens: new Map(), unknown: true };

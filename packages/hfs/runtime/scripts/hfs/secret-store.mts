@@ -55,7 +55,7 @@ export const fileOf = (directory: string, slug: string | undefined): string => {
     throw new SecretError(
       `${slug === undefined ? "a secret name" : slug} is not a secret slug: lowercase letters, digits and dashes`,
     );
-  try { return memberFile(directory, slug); }
+  try { return memberFile(directory, slug as string); } // SLUG matched above, so slug is a non-empty string
   catch (error) { throw new SecretError((error as Error).message); }
 };
 
@@ -213,7 +213,7 @@ export function sealedFiles(directory: string): string[] {
     : [];
 }
 
-export function readMap(file: string, sops: SecretSops): Record<string, string> {
+export function readMap(file: string, sops: Pick<SecretSops, "decrypt">): Record<string, string> {
   if (!fs.existsSync(file))
     throw new SecretError(
       "the requested secret is not sealed in this environment",

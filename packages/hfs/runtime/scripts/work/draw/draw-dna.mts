@@ -57,7 +57,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { PROPOSAL_FILE_NAMES, readProposals } from '../grammar-proposal.mjs'; import { isMain } from '../../lib/is-main.mjs';
-import { ancestorsOf as domAncestorsOf } from '../../lib/dom-tree.mjs';
 import { list } from '../../lib/list.mjs';
 import type { YamlDoc } from '../work-io.mjs';
 import { appendDnaFindings } from './draw-dna-findings.mjs';
@@ -231,7 +230,7 @@ const describe = (el: HtmlElement): string => {
 // ---------------------------------------------------------------------------------------------------------
 
 /** The ancestors of an element, nearest first. */
-const ancestorsOf = (el: HtmlElement): HtmlElement[] => domAncestorsOf(el);
+const ancestorsOf = (el: HtmlElement): HtmlElement[] => { const out: HtmlElement[] = []; for (let p = el.parent; p && p.tag !== '#root'; p = p.parent) out.push(p); return out; };
 
 const dnaCache = new Map<string, Dna | null>();
 /** The DNA file of a Grammar family: knowledge/grammars/<family>/DNA.yaml, else the starci family's. */
@@ -259,7 +258,7 @@ function partsOfRenderer(slug: string, classes: unknown[]): Set<string> {
 
 function closedValuesOfRenderer(closedValues: unknown): Map<string, ClosedValue> {
   const closed = new Map<string, ClosedValue>();
-  for (const c of list(closedValues)) {
+  for (const c of list<YamlDoc>(closedValues)) {
     if (!c?.prop) continue;
     closed.set(String(c.prop), { values: Array.isArray(c.values) ? c.values.map(String) : null, type: c.type ?? null });
   }
@@ -268,7 +267,7 @@ function closedValuesOfRenderer(closedValues: unknown): Map<string, ClosedValue>
 
 function componentFromRenderer(r: YamlDoc): DnaComponent {
   const slug = kebab(r.component);
-  const classes = list(r.classes);
+  const classes = list<string>(r.classes);
   return { name: r.component, kind: r.kind ?? null, slug, parts: partsOfRenderer(slug, classes), closed: closedValuesOfRenderer(r.closedValues), classes };
 }
 

@@ -11,10 +11,11 @@ import { parseSource, ts } from '../runtime-rules/source-ast.mjs';
 import { readText } from './read.mjs';
 import { externalIngressStack } from './stacks-ingress.mjs';
 import { stacksDeploymentFindings } from './stacks-runtime.mjs';
+import type { ModuleResolutionHost } from 'typescript';
 import type { Parsed } from './rule-types.mjs';
 
 const mapping = (value: Parsed) => plain(value) ? value : {};
-const present = (value: Parsed) => typeof value === 'string' && Boolean(value.trim());
+const present = (value: unknown): value is string => typeof value === 'string' && Boolean(value.trim());
 const VERSION = /^[1-9]\d*$/;
 const VERSIONED_SECRET = /-v[1-9]\d*$/;
 const SENSITIVE_KEY = /password|passwd|secret|token|credential|private[_-]?key|api[_-]?key|service[_-]?role|(?:(?:^|_)key$)/i;
@@ -45,7 +46,7 @@ function secretCustodyIssues(spec: Parsed, model: Parsed, add: Parsed) {
 
 function grantedSecretTargets(service: Parsed, secrets: Parsed) {
   const targets = new Set();
-  for (const entry of list(service.secrets)) {
+  for (const entry of list<Parsed>(service.secrets)) {
     const source = plain(entry) ? entry.source : entry;
     if (!Object.hasOwn(secrets, source)) continue;
     const target = plain(entry) ? entry.target ?? source : source;
@@ -78,7 +79,7 @@ function environmentSecretIssues(id: string, service: Parsed, spec: Parsed, mode
     if (sensitiveEnvironmentKey(key, list(spec.secrets)) || credentialUri(value))
       add('STACKS_SECRET_ENV_LITERAL', `services.${id}.environment.${key}`, 'Sensitive environment bindings must use a granted Swarm secret file; secret values must never be embedded');
   }
-  for (const entry of list(service.secrets)) {
+  for (const entry of list<Parsed>(service.secrets)) {
     const source = plain(entry) ? entry.source : entry;
     if (!Object.hasOwn(mapping(model.secrets), source))
       add('STACKS_SECRET_NOT_EXTERNAL', `services.${id}.secrets`, 'A service grant must reference a declared external engine secret');
@@ -100,7 +101,7 @@ function publishedPortIssues(id: string, service: Parsed, spec: Parsed, add: Par
 
 function hostOf(value: Parsed) {
   if (!present(value)) return null;
-  let candidate = value.trim().replace(/^https?:\/\//i, '').split('/')[0].split(':')[0];
+  let candidate = (value.trim().replace(/^https?:\/\//i, '').split('/')[0] as string).split(':')[0] as string; // split always yields one element
   candidate = candidate.toLowerCase().replace(/\.$/, '');
   return HOST.test(candidate) ? candidate : null;
 }
@@ -174,7 +175,7 @@ function trackedConfigText(input: Parsed, relative: string) {
 
 function caddyConfigSources(service: Parsed, model: Parsed) {
   const sources = [];
-  for (const entry of list(service.configs)) {
+  for (const entry of list<Parsed>(service.configs)) {
     const source = plain(entry) ? entry.source : entry;
     const config = mapping(model.configs)[source];
     if (present(config?.file)) sources.push(config.file);
@@ -189,7 +190,7 @@ function caddyConfigSources(service: Parsed, model: Parsed) {
   return sources;
 }
 
-function caddyfileHosts(text: string) {
+function caddyfileHosts(text: string | null) {
   const hosts = [];
   let depth = 0;
   for (const line of String(text ?? '').split(/\r?\n/)) {
@@ -205,7 +206,7 @@ function caddyfileHosts(text: string) {
 }
 
 function routedHosts(input: Parsed) {
-  const hosts = new Set();
+  const hosts = new Set<string | null>();
   const ingress = mapping(input.model.services)[input.spec.ingress?.component];
   const family = repositoryOf(String(ingress?.image ?? '')).toLowerCase();
   for (const service of Object.values<Parsed>(mapping(input.model.services))) {
@@ -213,7 +214,7 @@ function routedHosts(input: Parsed) {
   }
   if (!family.startsWith('caddy')) return hosts;
   for (const source of caddyConfigSources(mapping(ingress), input.model)) {
-    for (const host of caddyfileHosts(trackedConfigText(input, source)!)) hosts.add(host);
+    for (const host of caddyfileHosts(trackedConfigText(input, source))) hosts.add(host);
   }
   return hosts;
 }
@@ -236,7 +237,7 @@ function publicRoutingIssues(input: Parsed, add: Parsed) {
 }
 
 function usesPersistentVolume(service: Parsed) {
-  return list(service.volumes).some((entry: Parsed) => {
+  return list(service.volumes).some((entry: unknown) => {
     if (plain(entry)) return entry.type === 'volume' || (present(entry.source) && !entry.source.startsWith('/'));
     if (typeof entry !== 'string' || !entry.includes(':')) return false;
     const source = entry.split(':')[0];
@@ -263,7 +264,7 @@ function nontrivialHealthcheck(healthcheck: Parsed) {
   const command = healthCommand(healthcheck.test);
   if (healthcheck.disable === true || !command || command === 'NONE') return false;
   const unwrapped = command.replace(/^(?:\/bin\/)?(?:ba)?sh\s+-c\s+/, '').replace(/^["']|["']$/g, '').trim();
-  const executable = unwrapped.split(/\s/)[0].split('/').at(-1);
+  const executable = (unwrapped.split(/\s/)[0] as string).split('/').at(-1) as string; // split yields at least one element
   return !['true', ':', 'echo'].includes(executable) && !/^exit\s+0(?:\s|$)/.test(unwrapped)
     && !/\|\|\s*(?:true|exit\s+0)(?:\s|$)/.test(unwrapped)
     && !endsWithSuccessfulCommand(unwrapped)
@@ -353,7 +354,7 @@ function compilerOptions(repoRoot: string, app: Parsed, files: Parsed, host: Par
   return { baseUrl: path.join(repoRoot, 'be'), paths: { '@features/*': ['src/features/*'], '@modules/*': ['src/modules/*'] } };
 }
 
-function sourceTarget(repoRoot: string, file: string, specifier: Parsed, options: Parsed, files: Parsed, host: string) {
+function sourceTarget(repoRoot: string, file: string, specifier: Parsed, options: Parsed, files: Parsed, host: ModuleResolutionHost) {
   const absolute = resolveTypeScriptModule(ts(), specifier, path.join(repoRoot, file), options, host);
   if (!absolute) return null;
   const relative = path.relative(repoRoot, absolute).split(path.sep).join('/');

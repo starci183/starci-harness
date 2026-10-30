@@ -203,9 +203,9 @@ function configElementProperty(ts: TypeScriptApi, element: BindingElement): stri
 }
 
 function addConfigMutateSymbols(ts: TypeScriptApi, checker: TypeChecker, node: Node, targets: Map<TsSymbol, string>, symbols: Set<TsSymbol | null | undefined>): void {
-  if (!(ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && node.initializer
-    && ts.isCallExpression(unwrapExpression(ts, node.initializer))
-    && callKind(ts, checker, unwrapExpression(ts, node.initializer), targets) === 'config')) return;
+  if (!(ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && node.initializer)) return;
+  const call = unwrapExpression(ts, node.initializer);
+  if (!ts.isCallExpression(call) || callKind(ts, checker, call, targets) !== 'config') return;
   for (const element of node.name.elements) {
     if (configElementProperty(ts, element) === 'mutate' && ts.isIdentifier(element.name)) symbols.add(normalizedSymbol(ts, checker, element.name));
   }

@@ -12,7 +12,7 @@ export interface ModuleImport {
 /** Where a compose group lives and which verb reads it. */
 export interface ComposeGroupInput {
   readonly repoRoot: string;
-  readonly repo: { readonly edition?: string };
+  readonly repo: { readonly edition?: string | undefined };
   readonly app: string;
   readonly area: string;
   readonly noun: string;

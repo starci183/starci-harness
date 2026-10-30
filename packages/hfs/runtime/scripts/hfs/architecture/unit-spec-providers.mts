@@ -4,7 +4,7 @@ import type { ArrayLiteralExpression, CallExpression, ClassDeclaration, Identifi
 import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
 import type { ArchitectureViolation, GraphFile, HfsGraph } from './hfs-graph.mjs';
 import { machineKit } from './machine-ast.mjs';
-import type { MachineContext, MachineKit } from './machine-ast.mjs';
+import type { ImportBinding, MachineContext, MachineKit } from './machine-ast.mjs';
 import { constructorDependencies } from './constructor-deps.mjs';
 import { treeOf } from './required-files.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
@@ -38,10 +38,7 @@ const SPEC_ROOT = /^(?:src|apps)\//u;
 type Report = (node: Node, message: string) => void;
 
 /** An import binding of the spec: the imported name and its module specifier. */
-interface ImportRecord {
-  name: string;
-  module: string;
-}
+type ImportRecord = ImportBinding;
 
 /** One entry of the providers array: the token name, its node and whether it is a bare class. */
 interface ProvidedItem {
@@ -152,7 +149,8 @@ function checkServiceSpec({ config, graph, kit, ts, rel, violations }: { config:
   if (!fs.existsSync(abs)) return false;
   const sourceFile = ts.createSourceFile(abs, fs.readFileSync(abs, 'utf8'), ts.ScriptTarget.Latest, true);
   const report: Report = (node, message) => { violations.push({ ruleId: RULE, path: rel, ...kit.at(rel, sourceFile, node), message }); };
-  const imports = importsOf(ts, sourceFile);
+  // importsOf stores every binding's specifier under moduleKey, which defaults to 'module'
+  const imports = new Map(Array.from(importsOf(ts, sourceFile), ([local, record]): [string, ImportRecord] => [local, { name: record.name, module: record.module as string }]));
   const serviceRel = rel.replace(/\.spec\.ts$/u, '.ts');
   const serviceFile = graph.files.get(serviceRel);
   if (!serviceFile) { report(sourceFile, `${rel} has no ${path.posix.basename(serviceRel)} beside it; a service spec sits next to the service it tests.`); return true; }

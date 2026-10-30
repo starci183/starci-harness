@@ -6,6 +6,7 @@ import { runProgram } from "../api/process/run-program.mjs";
 import { resolveRealTool } from "../api/process/resolve-real-tool.mjs";
 import { decrypt as sopsDecrypt } from "../api/sops/decrypt.mjs";
 import { seal as sopsSeal } from "../api/sops/seal.mjs";
+import type { SopsResult } from "../api/sops/lib.mjs";
 import { updateKeys as sopsUpdateKeys } from "../api/sops/update-keys.mjs";
 import { isLegacyName } from "../lib/sealed-member.mjs";
 import { invocationDir } from "../lib/roots.mjs";
@@ -45,18 +46,6 @@ export interface SecretSops {
   decryptBinary: (file: string) => string;
   updateKeys: (file: string) => void;
   seal: (request: SealRequest) => string;
-}
-
-/** What the sops api seams return: an exit status, stdout, and a refusal that names no value. */
-interface SopsResult {
-  status: number | null;
-  stdout?: unknown;
-  error?: {
-    identityRefusal?: string;
-    publicRecipient?: string;
-    code?: string;
-    message: string;
-  };
 }
 
 /** The environment with no age identity selected: what a seal runs with. */
@@ -284,7 +273,7 @@ export function defaultSops(
         envelope.format === "json" &&
         envelope.keys.length === 1 &&
         envelope.keys[0] === "data";
-      const types = classic
+      const types: [string, string] = classic
         ? ["binary", "binary"]
         : [envelope.format, "json"];
       const result = sopsDecrypt(

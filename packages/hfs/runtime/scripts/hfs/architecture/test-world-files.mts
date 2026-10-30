@@ -5,19 +5,13 @@ import { DEFAULT_ENVIRONMENT, STACKS_DIRECTORY, STATEFUL_KINDS, namesOfService, 
 import { unwrapEach } from './ast-walks.mjs';
 import { hasAnyFlag, nameText, sourceLocation } from '../../lib/ts-ast.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
+import type { StackReport, StackService } from '../../lib/stack-services.mjs';
 import type { Expression, Node, ObjectLiteralElementLike, ObjectLiteralExpression, PropertyAssignment, SourceFile, VariableStatement } from 'typescript';
 import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
 import type { CheckInput, GraphFile, HfsGraph } from './hfs-graph.mjs';
 
-/** A service of the repository's own stack definition, as `readStack` reads it (a parsed `.starcistacks` document). */
-interface StackService {
-  name: string;
-  kind: string;
-  role: string;
-  image?: string;
-  persistent?: boolean;
-  environment?: string;
-}
+/** A service of the repository's own stack definition, as `readStack` reads it, with the name of the environment it was read from. */
+type WorldService = Omit<StackService, 'environment'> & { environment?: string };
 
 /** A key of the declaration's `fakes` object literal, with its position. */
 interface FakeEntry {
@@ -28,7 +22,7 @@ interface FakeEntry {
 
 /** A `stacks` entry that declares `fakedBy`. */
 interface FakedByEntry {
-  service: string;
+  service: string | null;
   fake: string;
   reason: string;
   line: number;
@@ -134,7 +128,7 @@ function fakeEntriesOf(ts: TypeScriptApi, sourceFile: SourceFile, literal: Objec
   if (!value || !ts.isObjectLiteralExpression(value)) return [];
   return value.properties
     .map(property => ({ name: nameText(ts, property.name), ...sourceLocation(sourceFile, property) }))
-    .filter(entry => entry.name);
+    .filter((entry): entry is FakeEntry => Boolean(entry.name));
 }
 
 /** The `fakedBy` entry of one `stacks` property, or null when the property does not declare one. */
@@ -206,10 +200,10 @@ function worldDeclaration(graph: HfsGraph, ts: TypeScriptApi, worldRoot: string 
   return { configPath, configFile, literal };
 }
 
-function stackServices(config: ArchitectureConfig, environments: string[]): StackService[] {
-  const services: StackService[] = [];
+function stackServices(config: ArchitectureConfig, environments: string[]): WorldService[] {
+  const services: WorldService[] = [];
   for (const environment of environments) {
-    let stack: { services?: StackService[] } | null = null;
+    let stack: StackReport | null = null;
     // The stack is the app root's .starcistacks: the side folder the machine judges reads its app's (locateDeclaration).
     try { stack = readStack({ root: locateDeclaration(config.root).appRoot, environment }); } catch { stack = null; }
     for (const service of stack?.services ?? []) if (service.role !== 'service' && !services.some(known => known.name === service.name)) services.push({ ...service, environment });
@@ -217,12 +211,12 @@ function stackServices(config: ArchitectureConfig, environments: string[]): Stac
   return services;
 }
 
-function statefulWhy(service: StackService): string | null {
+function statefulWhy(service: WorldService): string | null {
   if (STATEFUL_KINDS.has(service.kind)) return `a ${service.kind} holds data the app reads back`;
   return service.persistent ? 'the stack gives it a persistent volume' : null;
 }
 
-function reportDeclaredFakeProblems(declared: FakedByEntry[], services: StackService[], fakeProviders: FakeProviders, fakeEntries: FakeEntry[], configPath: string | null, stackHint: string, violations: WorldViolation[]): void {
+function reportDeclaredFakeProblems(declared: FakedByEntry[], services: WorldService[], fakeProviders: FakeProviders, fakeEntries: FakeEntry[], configPath: string | null, stackHint: string, violations: WorldViolation[]): void {
   for (const entry of declared) {
     const service = services.find(candidate => candidate.name === entry.service);
     const problems: string[] = [];
@@ -246,7 +240,7 @@ function worldFakes(fakeProviders: FakeProviders, fakeEntries: FakeEntry[], conf
   ].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function reportServiceFakes(fakes: WorldFake[], services: StackService[], declared: FakedByEntry[], configPath: string | null, stackHint: string, violations: WorldViolation[]): void {
+function reportServiceFakes(fakes: WorldFake[], services: WorldService[], declared: FakedByEntry[], configPath: string | null, stackHint: string, violations: WorldViolation[]): void {
   for (const fake of fakes) {
     const service = services.find(candidate => namesOfService(candidate).includes(fake.name));
     if (!service) continue;
@@ -266,7 +260,7 @@ function reportServiceFakes(fakes: WorldFake[], services: StackService[], declar
 
 export function checkTestWorldFiles(input: CheckInput) {
   const { config, graph, ts, resolver, tree } = checkerScope(input);
-  const { suffixes } = graph.resolver.ruleParams();
+  const suffixes = graph.resolver.ruleParams()?.suffixes ?? [];
   const violations: WorldViolation[] = [];
   const { fakeProviders, worldRoot, files } = collectWorldFiles(resolver, tree, suffixes, violations);
   const { configPath, configFile, literal } = worldDeclaration(graph, ts, worldRoot, violations);

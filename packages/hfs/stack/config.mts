@@ -4,12 +4,12 @@ import fs from 'node:fs';
 import { isSealedName, memberOfName } from '../runtime/scripts/lib/sealed-member.mjs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { DEPLOY_CONFIG_CODE, NAME, normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
+import { DEPLOY_CONFIG_CODE, NAME, normalizeDeploy, type SealedRoles } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import { refusal } from './errors.mjs';
 import type { TargetBinding } from './target-binding.mjs';
 
 /** The sealed SSH roles of `deploy.remote.sealed`: the member that holds each. */
-export interface SealedRemote { ops: string; sshKey: string; knownHosts: string }
+export type SealedRemote = SealedRoles;
 export interface DeployRemote { host: string; releasesBase: string | null; sealed: SealedRemote | null; serverRecipient: string | null }
 export interface BuildArgsSealed { member: string; keys: string[] }
 export interface BuildArgsBlock { values: Record<string, string>; sealed: BuildArgsSealed | null }
@@ -21,7 +21,7 @@ export interface EnvironmentSetting { key: string; default: string | null }
 export interface ServiceEnvironment { files: string[]; values: Record<string, string>; settings: Record<string, EnvironmentSetting> }
 export interface ConfigEntry { name: string; file: string; env: string }
 export interface HttpCheck {
-  name: string; url: string; method: string; body: unknown; status: number; json: Record<string, unknown> | null; contains: string | null; retry: boolean;
+  name: string; url: string; method: string; body: unknown; status: number; json: Record<string, unknown> | null; contains: unknown; retry: boolean;
 }
 export interface ExecCheck { name: string; service: string; command: string[]; stdout: string | null }
 export interface JobsBlock { service: string; command: string[] }

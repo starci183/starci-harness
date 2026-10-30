@@ -90,7 +90,7 @@ function resilientConnection(openRaw: () => RawConnection, { file, inTransaction
         if (!transientBusy(error)) { recoverCorrupt(error, retries, where); continue; }
         if (inTransaction() || raw.isTransaction) throw error;
         if (busyRetries >= BUSY_RETRY_DELAYS_MS.length) throw busyError(file, error, { retries: busyRetries, where });
-        scaledSleepSync(BUSY_RETRY_DELAYS_MS[busyRetries]);
+        scaledSleepSync(BUSY_RETRY_DELAYS_MS[busyRetries] as number); // busyRetries < the list length, by the check above
         busyRetries += 1;
         retries -= 1;
       }
@@ -139,7 +139,7 @@ export function machineConnectionMethods({ reportIncident }: { reportIncident: I
       if (kind === null) throw error;
       if (kind === 'busy') {
         if (busyOpens >= BUSY_RETRY_DELAYS_MS.length) throw busyError(path.resolve(file), error, { retries: busyOpens, where: 'open' });
-        scaledSleepSync(BUSY_RETRY_DELAYS_MS[busyOpens]);
+        scaledSleepSync(BUSY_RETRY_DELAYS_MS[busyOpens] as number); // busyOpens < the list length, by the check above
         busyOpens += 1;
         return true;
       }

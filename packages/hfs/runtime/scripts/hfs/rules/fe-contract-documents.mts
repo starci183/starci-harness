@@ -119,15 +119,18 @@ function documentFindings(file: string, text: string, contracts: Parsed) {
   return document.operations.flatMap((operation: Parsed) => operationFindings(file, document, operation, contracts));
 }
 
-function sourceDocuments(ts: Ts, file: string, text: string, findings: Finding[]) {
+/** A GraphQL document to judge: its file and text, plus the line and column of an embedded gql template. */
+interface SourceDocument { file: string; text: string; line?: number; column?: number }
+
+function sourceDocuments(ts: Ts | null, file: string, text: string, findings: Finding[]) {
   if (!ts) {
     findings.push(found(FE_GRAPHQL_CONTRACT, file, `${file} gql templates cannot be judged: no TypeScript resolves from the app; install the app's dependencies.`));
     return [];
   }
-  const documents = [];
+  const documents: SourceDocument[] = [];
   for (const template of gqlDocuments(ts, file, text)) {
     if (template.text === null) findings.push(found(FE_GRAPHQL_CONTRACT, file, `${file}:${template.line} gql template has a substitution that cannot be resolved to static GraphQL text.`, { line: template.line, column: template.column }));
-    else documents.push({ file, ...template });
+    else documents.push({ file, ...template, text: template.text });
   }
   return documents;
 }
@@ -135,7 +138,7 @@ function sourceDocuments(ts: Ts, file: string, text: string, findings: Finding[]
 function documentsOf(repoRoot: string, files: string[], findings: Finding[]) {
   const candidates = files.filter((file: string) => isDocument(file) || isSource(file)).sort(byCodeUnit);
   const ts = candidates.some(isSource) ? loadTypescript(repoRoot, HERE) : null;
-  const documents = [];
+  const documents: SourceDocument[] = [];
   for (const file of candidates) {
     const text = readText(repoRoot, file);
     if (text === null) continue;

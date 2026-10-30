@@ -52,7 +52,7 @@ interface CompositionJudgement {
 
 // What each app composes: [{connection, file, node}] from the database module registration and from the registration literals under its files.
 const compositionsOf = (kit: MachineKit, resolver: SlotResolver, model: ContextModel, appOf: (rel: string) => string | null): Map<string, Composition> => {
-  const apps: AppRecord[] = resolver.repo.apps;
+  const apps: readonly AppRecord[] = resolver.repo.apps;
   const composed = new Map<string, Composition>(apps.map((app): [string, Composition] => [app.name, { items: [], unresolved: false }]));
   for (const app of apps) {
     const entry = composed.get(app.name);
@@ -96,8 +96,8 @@ export function checkContextOwner(input: HfsCheckInput): CheckResult {
   const { resolver } = kit;
   const model = contextModelOf(kit, graph);
   const violations: ArchitectureViolation[] = [];
-  const connections: DeclaredConnection[] = resolver.repo.connections;
-  const apps: AppRecord[] = resolver.repo.apps;
+  const connections: readonly DeclaredConnection[] = resolver.repo.connections;
+  const apps: readonly AppRecord[] = resolver.repo.apps;
   const owners = new Map<string, string>(connections.map((connection): [string, string] => [connection.name, connection.owner]));
   let compositions = 0;
   let imports = 0;
@@ -121,7 +121,7 @@ export function checkContextOwner(input: HfsCheckInput): CheckResult {
     imports += 1;
     const owner = owners.get(context);
     if (owner && owner !== app) {
-      once(`${edge.from}|${edge.to}`, { path: edge.from, line: edge.line, column: edge.column, message: `App ${app} imports ${graph.files.get(edge.to)?.owner.root}, a capability of context ${context} owned by app ${owner}; an app composes only the contexts it owns, so use the API or the events of ${owner} instead.`, connection: context, app, owner });
+      once(`${edge.from}|${edge.to}`, { path: edge.from, line: edge.line, column: edge.column, message: `App ${app} imports ${graph.files.get(edge.to)?.owner?.root}, a capability of context ${context} owned by app ${owner}; an app composes only the contexts it owns, so use the API or the events of ${owner} instead.`, connection: context, app, owner });
     }
   }
   return { violations, coverage: { status: 'checked', apps: apps.length, compositions, contextImports: imports } };

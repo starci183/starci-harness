@@ -115,7 +115,7 @@ function selectedRequestAlias(ts: TypeScriptApi, checker: TypeChecker, expressio
   const symbol = inferredSymbol(ts, checker, expression);
   const initializer = symbol && !seen.has(symbol) ? constInitializer(ts, symbol) : null;
   if (!initializer || !symbol) return null;
-  const value: Expression = unwrapExpression(ts, initializer);
+  const value: Node = unwrapExpression(ts, initializer);
   if (ts.isObjectLiteralExpression(value) && (initializer.getSourceFile() !== expression.getSourceFile()
     || containerWritten(ts, checker, symbol, expression.getSourceFile()))) return null;
   if (ts.isObjectLiteralExpression(value) || ts.isIdentifier(value) || ts.isPropertyAccessExpression(value)

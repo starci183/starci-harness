@@ -1,6 +1,7 @@
 import type { ArchitectureConfig } from './config.mjs';
 import { treeOf } from './required-files.mjs';
 import { allowsFile } from '../allows.mjs';
+import type { Resolver } from '../slots.mjs';
 import { isFeTestPath } from '../rules/fe-no-tests.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 
@@ -22,14 +23,8 @@ const RULE = 'FE_SLOT_FILE_ROLE';
 /** One finding of this check. */
 interface SlotFileViolation { ruleId: string; path: string; line: number; column: number; message: string; slot?: string }
 
-/** The slot resolver surface this check reads. */
-interface SlotResolver {
-  classifyPath(file: string): { status: string; slot?: string; root: string; path: string };
-  slot(id: string | undefined): { id: string; path: string; owner?: boolean; allows?: string[] } | undefined;
-}
-
 /** The checker input this check reads: the layout contract and the resolver-bearing graph. */
-interface FeSlotAllowsInput { config: ArchitectureConfig; graph: { resolver: SlotResolver } }
+interface FeSlotAllowsInput { config: ArchitectureConfig; graph: { resolver: Resolver } }
 
 export function checkFeSlotAllows({ config, graph }: FeSlotAllowsInput) {
   const resolver = graph.resolver;

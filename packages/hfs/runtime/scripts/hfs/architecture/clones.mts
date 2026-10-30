@@ -27,6 +27,7 @@
  */
 import type { ExportDeclaration, JsxText, Node, SourceFile, Statement, SyntaxKind as Kind } from 'typescript';
 import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
+import type { RuleParams } from '../slots.mjs';
 import type { ArchitectureViolation, CheckContext, CheckInput, GraphFile } from './hfs-graph.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { canonCloneNodes } from './canon-clones.mjs';
@@ -168,6 +169,7 @@ function uniformByDesign(resolver: Resolver, rel: string): boolean {
   const classified = resolver.classifyPath(rel);
   if (classified.status !== 'owned' || !classified.slot) return false;
   const slot = resolver.slot(classified.slot);
+  if (!slot) return false;
   const base = rel.slice(rel.lastIndexOf('/') + 1);
   if (slot.appKind !== undefined) return base === APP_ENTRY && (slot.requires ?? []).includes(APP_ENTRY);
   const role = base.split('.').at(-2);
@@ -336,7 +338,8 @@ const cloneCoverage = (entries: CloneEntry[], blocks: CloneBlock[], N: number, T
 };
 
 export function checkClones({ context, graph }: CheckInput) {
-  const { lines: N, tokens: T } = graph.resolver.ruleParams().duplicateBlock;
+  // reason: the rule-params validators require duplicateBlock on every profile that runs this check
+  const { lines: N, tokens: T } = graph.resolver.ruleParams()?.duplicateBlock as NonNullable<RuleParams['duplicateBlock']>;
   const ts = context.ts ?? (context as CloneContext).loaded.ts;
   const entries: CloneEntry[] = [];
   for (const rel of [...graph.files.keys()].sort(byCodeUnit)) {

@@ -8,34 +8,34 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseYaml } from '../../../engine/yaml.mjs';
-
 export const FRAMEWORK_PINNED_KNOWLEDGE = fileURLToPath(new URL('../../../knowledge/patterns/fe/folder.yaml', import.meta.url));
-
 const cache = new Map(); // only the installed knowledge file is cached; an explicit file is re-read
 const EXACT_NAME = /^[^\\/*?[\]{}\s]+$/;
-
 function unavailable(file, detail) {
-  return new Error(`ARCH_KNOWLEDGE_UNAVAILABLE: ${file} ${detail}`);
+    return new Error(`ARCH_KNOWLEDGE_UNAVAILABLE: ${file} ${detail}`);
 }
-
 function load(file) {
-  if (cache.has(file)) return cache.get(file);
-  let rule;
-  try {
-    rule = parseYaml(fs.readFileSync(file, 'utf8'))?.rules?.find(item => item?.id === 'FE-FOLDER-1');
-  } catch (error) {
-    throw unavailable(file, `cannot be read (${error.message ?? error}).`);
-  }
-  const list = rule?.frameworkPinnedRootFiles;
-  if (!Array.isArray(list) || !list.length || list.some(name => typeof name !== 'string' || !EXACT_NAME.test(name))) {
-    throw unavailable(file, 'FE-FOLDER-1 frameworkPinnedRootFiles must be a nonempty list of exact file names.');
-  }
-  const loaded = { files: new Set(list) };
-  if (file === FRAMEWORK_PINNED_KNOWLEDGE) cache.set(file, loaded);
-  return loaded;
+    const cached = cache.get(file);
+    if (cached)
+        return cached;
+    // reason: parsed-YAML boundary; the rule row is validated field by field below.
+    let rule;
+    try {
+        rule = parseYaml(fs.readFileSync(file, 'utf8'))?.rules?.find((item) => item?.id === 'FE-FOLDER-1');
+    }
+    catch (error) {
+        throw unavailable(file, `cannot be read (${error.message ?? error}).`);
+    }
+    const list = rule?.frameworkPinnedRootFiles;
+    if (!Array.isArray(list) || !list.length || list.some((name) => typeof name !== 'string' || !EXACT_NAME.test(name))) {
+        throw unavailable(file, 'FE-FOLDER-1 frameworkPinnedRootFiles must be a nonempty list of exact file names.');
+    }
+    const loaded = { files: new Set(list) };
+    if (file === FRAMEWORK_PINNED_KNOWLEDGE)
+        cache.set(file, loaded);
+    return loaded;
 }
-
 /** Exact basenames Next.js loads only from the source root. */
 export function frameworkPinnedRootFiles(file = FRAMEWORK_PINNED_KNOWLEDGE) {
-  return load(file).files;
+    return load(file).files;
 }

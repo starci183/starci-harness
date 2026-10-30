@@ -89,6 +89,7 @@ import { liteSecretFindings } from './rules/lite-secrets.mjs';
 import { untrackedSecretFindings } from './rules/secrets.mjs';
 import { liteStarciworkFinding, pathFindings } from './path-findings.mjs';
 import { onLintSurface } from './architecture/surface.mjs';
+import type { Surface } from './architecture/index.mjs';
 import { checkAppRoot, trackedTreeView } from './architecture/hfs.mjs';
 import { testTopologyFindings } from './rules/test-topology.mjs';
 import { feNoTestsFindings } from './rules/fe-no-tests.mjs';
@@ -127,14 +128,14 @@ const SOURCE_EXT = /\.(?:[cm]?[jt]sx?)$/;
 const VAR = /<([a-z][a-z0-9-]*)>/g;
 
 /** A finding of `starci app check`: the code and level of every finding, with the path and message most carry. */
-export interface CheckFinding extends Finding { path?: string | undefined; message?: string; origin?: string; side?: string; line?: number; column?: number }
+export interface CheckFinding extends Finding { path?: string | undefined; message?: string; origin?: string; side?: string; line?: number | undefined; column?: number | undefined }
 /** The CLI that runs the check. */
 export interface Harness { version?: string }
 /** One violation or error of the architecture machine. */
-export interface MachineItem { ruleId: string; message: string; path?: string; line?: number; column?: number }
+export interface MachineItem { ruleId: string; message: string; path?: string | null | undefined; line?: number | undefined; column?: number | undefined }
 /** A report of the architecture machine. */
 export interface MachineReport { ok?: boolean; files: number; kinds: string[]; violations: MachineItem[]; errors: MachineItem[] }
-export type MachineFn = (input: { repositoryRoot: string; base?: string | undefined; surface?: string | undefined; paths?: string[] | undefined; fast?: boolean | undefined }) => MachineReport;
+export type MachineFn = (input: { repositoryRoot: string; base?: string | undefined; surface?: Surface | undefined; paths?: string[] | undefined; fast?: boolean | undefined }) => MachineReport;
 /** The result of checkRepo. */
 export interface CheckResult { ok: boolean; repoRoot: string; manifest: string; profile: string | null; apps: readonly unknown[]; tracked: number; findings: CheckFinding[]; counts: Summary }
 /** The result of checkRepository: checkRepo's plus the machine, the fast marker and the optional proof reports. */
@@ -248,7 +249,7 @@ function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pin
   if (isRoot) {
     findings.push(
       ...appRootFindings({ repoRoot, files, all, repo, resolver, pins, phase }),
-      ...checkAppRoot({ root: repoRoot, resolver, tree: trackedTreeView(all) }).violations.map((item: MachineItem) => ({ code: item.ruleId, level: 'error', path: item.path, line: item.line, column: item.column, source: 'machine', message: `${item.path}: ${item.message}` })),
+      ...checkAppRoot({ root: repoRoot, resolver, tree: trackedTreeView(all) }).violations.map((item) => ({ code: item.ruleId, level: 'error', path: item.path, line: item.line, column: item.column, source: 'machine', message: `${item.path}: ${item.message}` })),
     );
   } else if (repo.profile === 'be') {
     findings.push(...contractFindings({ repoRoot, files, repo, resolver }), ...mcpToolsSnapshotFindings({ repoRoot, files, repo }), ...testTopologyFindings({ repoRoot, files }));

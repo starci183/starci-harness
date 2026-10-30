@@ -24,13 +24,13 @@ import { skillRoot } from '../../engine/runtime-root.mjs';
 import { parseYamlCached } from '../lib/yaml-cached.mjs';
 import { braceVariants } from '../lib/glob.mjs';
 import { APP_KIND, RUNTIME_KIND, manifestKind } from './manifest-shape.mjs';
-import { APP_SCOPE, manifestShapeProblems, PROFILES } from './slot-manifest-shape.mjs';
+import { APP_SCOPE, isSide, manifestShapeProblems, PROFILES } from './slot-manifest-shape.mjs';
 import { manifestSemanticProblems } from './slot-semantic-problems.mjs';
 import { classifyIn, ownerIn, slotEnabled, tierIn } from './slot-classify.mjs';
 import { compileVariant, varsOf, variantsOf } from './slot-match.mjs';
 import { importAllowedIn } from './slot-imports.mjs';
 import { requiredFilesIn, requiredPathsIn } from './slot-required.mjs';
-import { appResolver } from './slot-app-view.mjs';
+import { appResolver, isAppRepo } from './slot-app-view.mjs';
 import { sideProblems } from './slot-side-problems.mjs';
 import { declarationShapeProblems } from './declaration-shape.mjs';
 import { declarationEdition, editionRuleParams, effectiveSlot, slotInEdition } from './edition-slots.mjs';
@@ -46,7 +46,6 @@ const HFS_MANIFEST_FILE = 'knowledge/hfs/slots.yaml';
 export const RUNTIME_MANIFEST_FILE = 'knowledge/hfs/runtime-slots.yaml';
 export const HFS_DECLARATION_FILE = 'hfs.json';
 export const SIDES = Object.freeze([...PROFILES]);
-
 /**
  * The rewriter of a side's finding messages: `(message) => message` with its paths made app-relative like the finding's own path.
  * Every check and rule of a side judges the side folder as its root, so the paths it names (`apps/web/src/...`, `src/modules/...`,
@@ -55,85 +54,88 @@ export const SIDES = Object.freeze([...PROFILES]);
  * `../x`) or a path already app-relative is left alone.
  */
 export function appRelativeMessages(side, sideRoot) {
-  let entries = [];
-  try { entries = fs.readdirSync(sideRoot).filter((name) => name !== 'node_modules' && !name.startsWith('.git')); } catch { /* no side folder: nothing to rewrite */ }
-  if (!entries.length) return (message) => message;
-  const escaped = entries.sort((a, b) => b.length - a.length).map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`));
-  const token = new RegExp(`(^|[\\s'"\`(\\[{,;=<>])((?:${escaped.join('|')})(?=/|[\\s'"\`)\\]},;:!?<>]|\\.(?:\\s|$)|$))`, 'g');
-  return (message) => (typeof message === 'string' && message
-    ? message.replace(token, (whole, before, entry, offset) => (message.startsWith('/', offset + whole.length) || entry.includes('.') ? `${before}${side}/${entry}` : whole))
-    : message);
+    let entries = [];
+    try {
+        entries = fs.readdirSync(sideRoot).filter((name) => name !== 'node_modules' && !name.startsWith('.git'));
+    }
+    catch { /* no side folder: nothing to rewrite */ }
+    if (!entries.length)
+        return (message) => message;
+    const escaped = entries.sort((a, b) => b.length - a.length).map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, String.raw `\$&`));
+    const token = new RegExp(`(^|[\\s'"\`(\\[{,;=<>])((?:${escaped.join('|')})(?=/|[\\s'"\`)\\]},;:!?<>]|\\.(?:\\s|$)|$))`, 'g');
+    return (message) => (typeof message === 'string' && message
+        ? message.replace(token, (whole, before, entry, offset) => (message.startsWith('/', offset + whole.length) || entry.includes('.') ? `${before}${side}/${entry}` : whole))
+        : message);
 }
-
 // ------------------------------------------------------------------------------------------- manifest
-
 /**
  * The parsed and validated manifest. `text` (or `file`, or `root`) selects the source; the default is the runtime's own
  * knowledge/hfs/slots.yaml. A manifest that fails its shape or a semantic rule is refused whole (HFS_MANIFEST_INVALID).
  */
 export function loadSlotManifest({ root = skillRoot, file = path.join(root, HFS_MANIFEST_FILE), text } = {}) {
-  let doc;
-  try { doc = parseYamlCached(text ?? fs.readFileSync(file, 'utf8')); } catch (error) { fail('HFS_MANIFEST_INVALID', `the slot manifest cannot be read (${String(error?.message ?? error).split('\n')[0]})`, { file }); }
-  const problems = manifestShapeProblems(doc);
-  if (!problems.length) problems.push(...manifestSemanticProblems(doc, { varsOf, braceVariants, compileVariant }));
-  if (problems.length) fail('HFS_MANIFEST_INVALID', `the slot manifest breaks its schema: ${problems.slice(0, 5).join('; ')}${problems.length > 5 ? '; and ' + (problems.length - 5) + ' more' : ''}`, { file, problems });
-  const [major, minor, patch] = doc.version.split('.').map(Number);
-  return Object.freeze({ ...doc, major, minor, patch });
+    let doc;
+    try {
+        doc = parseYamlCached(text ?? fs.readFileSync(file, 'utf8'));
+    }
+    catch (error) {
+        fail('HFS_MANIFEST_INVALID', `the slot manifest cannot be read (${String(error?.message ?? error).split('\n')[0]})`, { file });
+    }
+    const problems = manifestShapeProblems(doc);
+    if (!problems.length)
+        problems.push(...manifestSemanticProblems(doc, { varsOf, braceVariants, compileVariant }));
+    if (problems.length)
+        fail('HFS_MANIFEST_INVALID', `the slot manifest breaks its schema: ${problems.slice(0, 5).join('; ')}${problems.length > 5 ? '; and ' + (problems.length - 5) + ' more' : ''}`, { file, problems });
+    const [major, minor, patch] = doc.version.split('.').map(Number);
+    return Object.freeze({ ...doc, major, minor, patch });
 }
-
 // ------------------------------------------------------------------------------------- declaration
-
 const declarationInvalid = (problems, file) => fail('HFS_DECLARATION_INVALID', `hfs.json is refused: ${problems.slice(0, 5).join('; ')}${problems.length > 5 ? '; and ' + (problems.length - 5) + ' more' : ''}`, { file, problems });
-
 function runtimeDeclaration(manifest, declaration, file, side) {
-  if (side !== null) fail('HFS_DECLARATION_INVALID', 'a runtime repository has no sides', { file, side });
-  return Object.freeze({
-    hfs: declaration.hfs,
-    kind: RUNTIME_KIND,
-    project: declaration.project,
-    side: null,
-    profile: RUNTIME_KIND,
-    apps: Object.freeze([]),
-    optionalSlots: Object.freeze([]),
-    connections: Object.freeze([]),
-    reads: Object.freeze([]),
-    manifestVersion: manifest.version,
-  });
+    if (side !== null)
+        fail('HFS_DECLARATION_INVALID', 'a runtime repository has no sides', { file, side });
+    return Object.freeze({
+        hfs: declaration.hfs,
+        kind: RUNTIME_KIND,
+        project: declaration.project,
+        side: null,
+        profile: RUNTIME_KIND,
+        apps: Object.freeze([]),
+        optionalSlots: Object.freeze([]),
+        connections: Object.freeze([]),
+        reads: Object.freeze([]),
+        manifestVersion: manifest.version,
+    });
 }
-
 const connectionView = (c) => Object.freeze({ name: c.name, envPrefix: c.envPrefix, owner: c.owner, isolation: c.isolation, ...(c.provider !== undefined ? { provider: c.provider } : {}) });
-
 /** The declaration of one side of an app, frozen: the view a check of that side folder runs under. */
 function sideDeclaration(manifest, declaration, name, edition, providers) {
-  const s = declaration.sides[name];
-  return Object.freeze({
-    hfs: declaration.hfs,
-    kind: APP_KIND,
-    project: declaration.project,
-    edition,
-    side: name,
-    profile: name,
-    apps: Object.freeze(s.apps.map((a) => Object.freeze({ name: a.name, kind: a.kind }))),
-    optionalSlots: Object.freeze([...(s.optionalSlots ?? [])]),
-    patterns: Object.freeze([...(s.patterns ?? [])]), kinds: Object.freeze([...(s.kinds ?? [])]),
-    backing: Object.freeze([...(s.backing ?? [])]),
-    connections: Object.freeze((s.connections ?? []).map(connectionView)),
-    providers,
-    reads: Object.freeze([...(s.reads ?? [])]),
-    dbFunctions: Object.freeze((s.dbFunctions ?? []).map((entry) => Object.freeze({ ...entry }))),
-    ...(s.grammar === undefined ? {} : { grammar: s.grammar }),
-    ...(s.extraPackages === undefined ? {} : { extraPackages: Object.freeze(s.extraPackages.map(entry => Object.freeze({ ...entry }))) }),
-    manifestVersion: manifest.version,
-  });
+    const s = declaration.sides[name];
+    return Object.freeze({
+        hfs: declaration.hfs,
+        kind: APP_KIND,
+        project: declaration.project,
+        edition,
+        side: name,
+        profile: name,
+        apps: Object.freeze(s.apps.map((a) => Object.freeze({ name: a.name, kind: a.kind }))),
+        optionalSlots: Object.freeze([...(s.optionalSlots ?? [])]),
+        patterns: Object.freeze([...(s.patterns ?? [])]), kinds: Object.freeze([...(s.kinds ?? [])]),
+        backing: Object.freeze([...(s.backing ?? [])]),
+        connections: Object.freeze((s.connections ?? []).map(connectionView)),
+        providers,
+        reads: Object.freeze([...(s.reads ?? [])]),
+        dbFunctions: Object.freeze((s.dbFunctions ?? []).map((entry) => Object.freeze({ ...entry }))),
+        ...(s.grammar === undefined ? {} : { grammar: s.grammar }),
+        ...(s.extraPackages === undefined ? {} : { extraPackages: Object.freeze(s.extraPackages.map((entry) => Object.freeze({ ...entry }))) }),
+        manifestVersion: manifest.version,
+    });
 }
-
 /** R334: an app's bare database function name must be a pg built-in the canon lists bare (ruleParams.be.dbFunctions); any other is schema.name. */
 function bareDbFunctionProblems(manifest, be) {
-  const builtins = new Set((manifest.ruleParams?.be?.dbFunctions ?? []).map((entry) => entry.name).filter((name) => !name.includes('.')));
-  return (be?.dbFunctions ?? []).filter((entry) => !entry.name.includes('.') && !builtins.has(entry.name))
-    .map((entry) => `sides.be.dbFunctions names ${entry.name} bare, but a bare name is only a pg built-in of the canon's list (ruleParams.be.dbFunctions); name a function of a migration schema-qualified (public.${entry.name})`);
+    const builtins = new Set((manifest.ruleParams?.be?.dbFunctions ?? []).map((entry) => entry.name).filter((name) => !name.includes('.')));
+    return (be?.dbFunctions ?? []).filter((entry) => !entry.name.includes('.') && !builtins.has(entry.name))
+        .map((entry) => `sides.be.dbFunctions names ${entry.name} bare, but a bare name is only a pg built-in of the canon's list (ruleParams.be.dbFunctions); name a function of a migration schema-qualified (public.${entry.name})`);
 }
-
 /**
  * A declaration checked against the manifest: kind app, the pinned major the manifest's (HFS_MANIFEST_MAJOR_MISMATCH otherwise,
  * and there is no compatibility window), and per side: app kinds of that profile, optionalSlots naming only opt-in slots of the
@@ -141,100 +143,119 @@ function bareDbFunctionProblems(manifest, be) {
  * its two sides under `sides`), or with `side` that side's view: the declaration a check of the side folder runs under.
  */
 export function resolveRepoDeclaration(manifest, declaration, { file = HFS_DECLARATION_FILE, side = null } = {}) {
-  const problems = declarationShapeProblems(declaration, PROFILES);
-  if (problems.length) declarationInvalid(problems, file);
-  if (declaration.kind !== manifestKind(manifest)) declarationInvalid([`hfs.json is of kind ${declaration.kind}, but the manifest it is judged by is of kind ${manifestKind(manifest)}`], file);
-  if (declaration.hfs !== manifest.major)
-    fail('HFS_MANIFEST_MAJOR_MISMATCH', `hfs.json pins manifest major ${declaration.hfs} but the manifest is ${manifest.version}`, { pinned: declaration.hfs, manifest: manifest.version, manifestMajor: manifest.major, file });
-  if (declaration.kind === RUNTIME_KIND) return runtimeDeclaration(manifest, declaration, file, side);
-  const { edition, known, valid } = declarationEdition(manifest, declaration);
-  if (!valid) fail('HFS_EDITION_INVALID', `hfs.json edition is ${JSON.stringify(declaration.edition)}; the editions this manifest knows are ${known.join(', ')} (absent means full)`, { file, edition: declaration.edition });
-  const bad = [...PROFILES.flatMap((name) => sideProblems(manifest, name, declaration.sides[name], edition)), ...bareDbFunctionProblems(manifest, declaration.sides.be)];
-  if (bad.length) declarationInvalid(bad, file);
-  if (side !== null && !PROFILES.includes(side)) fail('HFS_DECLARATION_INVALID', `${side} is not a side of an app (be, fe)`, { file, side });
-  // A provider declared on any connection enables the provider slots of every profile (a fe side declares none): each view carries the union.
-  const providers = Object.freeze([...new Set(PROFILES.flatMap((name) => (declaration.sides[name].connections ?? []).map((c) => c.provider).filter((p) => p !== undefined)))]);
-  const sides = Object.fromEntries(PROFILES.map((name) => [name, sideDeclaration(manifest, declaration, name, edition, providers)]));
-  if (side !== null) return sides[side];
-  return Object.freeze({
-    hfs: declaration.hfs,
-    kind: APP_KIND,
-    project: declaration.project,
-    edition,
-    side: null,
-    profile: APP_SCOPE,
-    // The root declares no app or connection of its own (each side does); its opt-in slots are the browser journey and the managed
-    // tsconfig.json that type-checks it, both switched on by `browser: true`.
-    apps: Object.freeze([]),
-    optionalSlots: Object.freeze(declaration.browser === true ? ['app.browser', 'app.browser-config'] : []),
-    connections: Object.freeze([]),
-    providers,
-    reads: Object.freeze([]),
-    sides: Object.freeze(sides),
-    manifestVersion: manifest.version,
-  });
+    const problems = declarationShapeProblems(declaration, PROFILES);
+    if (problems.length)
+        declarationInvalid(problems, file);
+    if (declaration.kind !== manifestKind(manifest))
+        declarationInvalid([`hfs.json is of kind ${declaration.kind}, but the manifest it is judged by is of kind ${manifestKind(manifest)}`], file);
+    if (declaration.hfs !== manifest.major)
+        fail('HFS_MANIFEST_MAJOR_MISMATCH', `hfs.json pins manifest major ${declaration.hfs} but the manifest is ${manifest.version}`, { pinned: declaration.hfs, manifest: manifest.version, manifestMajor: manifest.major, file });
+    if (declaration.kind === RUNTIME_KIND)
+        return runtimeDeclaration(manifest, declaration, file, side);
+    const { edition, known, valid } = declarationEdition(manifest, declaration);
+    if (!valid)
+        fail('HFS_EDITION_INVALID', `hfs.json edition is ${JSON.stringify(declaration.edition)}; the editions this manifest knows are ${known.join(', ')} (absent means full)`, { file, edition: declaration.edition });
+    const bad = [...PROFILES.flatMap((name) => sideProblems(manifest, name, declaration.sides[name], edition)), ...bareDbFunctionProblems(manifest, declaration.sides.be)];
+    if (bad.length)
+        declarationInvalid(bad, file);
+    if (side !== null && !isSide(side))
+        fail('HFS_DECLARATION_INVALID', `${side} is not a side of an app (be, fe)`, { file, side });
+    // A provider declared on any connection enables the provider slots of every profile (a fe side declares none): each view carries the union.
+    const providers = Object.freeze([...new Set(PROFILES.flatMap((name) => (declaration.sides[name].connections ?? []).map((c) => c.provider).filter((p) => p !== undefined)))]);
+    const sides = Object.fromEntries(PROFILES.map((name) => [name, sideDeclaration(manifest, declaration, name, edition, providers)]));
+    if (side !== null)
+        return sides[side];
+    return Object.freeze({
+        hfs: declaration.hfs,
+        kind: APP_KIND,
+        project: declaration.project,
+        edition,
+        side: null,
+        profile: APP_SCOPE,
+        // The root declares no app or connection of its own (each side does); its opt-in slots are the browser journey and the managed
+        // tsconfig.json that type-checks it, both switched on by `browser: true`.
+        apps: Object.freeze([]),
+        optionalSlots: Object.freeze(declaration.browser === true ? ['app.browser', 'app.browser-config'] : []),
+        connections: Object.freeze([]),
+        providers,
+        reads: Object.freeze([]),
+        sides: Object.freeze(sides),
+        manifestVersion: manifest.version,
+    });
 }
-
+/**
+ * The view of a whole app (profile app, both sides) that resolveRepoDeclaration builds for an app declaration; a declaration that
+ * resolves to a view without sides (a runtime repository) is refused HFS_DECLARATION_INVALID.
+ */
+export function resolveAppDeclaration(manifest, declaration, { file = HFS_DECLARATION_FILE } = {}) {
+    const view = resolveRepoDeclaration(manifest, declaration, { file });
+    if (!isAppRepo(view))
+        declarationInvalid([`a ${view.kind} declaration has no sides`], file);
+    return view;
+}
 /**
  * Where the declaration of `dir` lives: `dir` itself when it holds hfs.json (the app root), else its parent when `dir` is a side
  * folder (be/ or fe/) of an app (the side view). `{ file, appRoot, side }`; side is null at the app root.
  */
 export function locateDeclaration(dir) {
-  const own = path.join(dir, HFS_DECLARATION_FILE);
-  if (fs.existsSync(own)) return { file: own, appRoot: dir, side: null };
-  const parent = path.dirname(dir);
-  const side = path.basename(dir);
-  const up = path.join(parent, HFS_DECLARATION_FILE);
-  if (PROFILES.includes(side) && fs.existsSync(up)) return { file: up, appRoot: parent, side };
-  return { file: own, appRoot: dir, side: null };
+    const own = path.join(dir, HFS_DECLARATION_FILE);
+    if (fs.existsSync(own))
+        return { file: own, appRoot: dir, side: null };
+    const parent = path.dirname(dir);
+    const side = path.basename(dir);
+    const up = path.join(parent, HFS_DECLARATION_FILE);
+    if (isSide(side) && fs.existsSync(up))
+        return { file: up, appRoot: parent, side };
+    return { file: own, appRoot: dir, side: null };
 }
-
 /**
  * hfs.json of the app at `repoRoot` (the app itself), or of the app whose side folder `repoRoot` is (that side's view), parsed and
  * resolved; a missing or unreadable file is a refusal, never "unavailable".
  */
 export function readRepoDeclaration(manifest, repoRoot) {
-  const { file, side } = locateDeclaration(repoRoot);
-  let declaration;
-  try { declaration = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (error) { declarationInvalid([`hfs.json cannot be read (${String(error?.code ?? error?.message ?? error).split('\n')[0]})`], file); }
-  return resolveRepoDeclaration(manifest, declaration, { file, side });
+    const { file, side } = locateDeclaration(repoRoot);
+    let declaration;
+    try {
+        declaration = JSON.parse(fs.readFileSync(file, 'utf8'));
+    }
+    catch (error) {
+        declarationInvalid([`hfs.json cannot be read (${String(error?.code ?? error?.message ?? error).split('\n')[0]})`], file);
+    }
+    return resolveRepoDeclaration(manifest, declaration, { file, side });
 }
-
 // ------------------------------------------------------------------------------------------- resolver
-
 /**
  * The four questions for one scope: the app root (profile app, root paths) or one side (profile be or fe, paths relative to the
  * side folder). createSlotResolver composes them; nothing else calls this.
  */
 function createScopeResolver(manifest, repo) {
-  const profile = repo.profile;
-  const edition = repo.edition ?? 'full';
-  const slots = manifest.slots.filter((s) => s.profiles.includes(profile) && slotInEdition(manifest, s, edition)).map((s) => effectiveSlot(s, profile, edition));
-  const scope = { manifest, repo, profile, slots, byId: new Map(slots.map((s) => [s.id, s])), variants: slots.flatMap(variantsOf), appKind: new Map(repo.apps.map((a) => [a.name, a.kind])) };
-  const classifyPath = (input) => classifyIn(scope, input);
-  /** tracked | ignored | external for the slot owning `p`, or null when no slot owns it. */
-  const trackingOf = (p) => classifyPath(p).tracking ?? null;
-  return Object.freeze({
-    repo,
-    slot: (id) => scope.byId.get(id) ?? null,
-    slots: () => slots,
-    slotEnabled: (slot) => slotEnabled(scope, slot),
-    classifyPath,
-    slotOf: (p) => { const c = classifyPath(p); return c.slot ? scope.byId.get(c.slot) : null; },
-    ownerOf: (input) => ownerIn(scope, input),
-    tierOf: (input) => tierIn(scope, input),
-    importAllowed: (fromPath, toPath) => importAllowedIn(scope, fromPath, toPath),
-    requiredFiles: (input) => requiredFilesIn(scope, input),
-    requiredPaths: () => requiredPathsIn(scope),
-    trackingOf,
-    /** True only for a path a slot owns and requires to be committed. */
-    isTracked: (p) => trackingOf(p) === 'tracked',
-    // The app's own database functions (hfs.json sides.be.dbFunctions) join the canon's list (R334).
-    ruleParams: () => withDeclaredDbFunctions(ruleParams(manifest, profile, edition), repo.dbFunctions),
-    allowedImports: (tier) => manifest.tiers[profile]?.[tier]?.mayImport ?? null,
-  });
+    const profile = repo.profile;
+    const edition = repo.edition ?? 'full';
+    const slots = manifest.slots.filter((s) => s.profiles.includes(profile) && slotInEdition(manifest, s, edition)).map((s) => effectiveSlot(s, profile, edition));
+    const scope = { manifest, repo, profile, slots, byId: new Map(slots.map((s) => [s.id, s])), variants: slots.flatMap(variantsOf), appKind: new Map(repo.apps.map((a) => [a.name, a.kind])) };
+    const classifyPath = (input) => classifyIn(scope, input);
+    /** tracked | ignored | external for the slot owning `p`, or null when no slot owns it. */
+    const trackingOf = (p) => classifyPath(p).tracking ?? null;
+    return Object.freeze({
+        repo,
+        slot: (id) => scope.byId.get(id) ?? null,
+        slots: () => slots,
+        slotEnabled: (slot) => slotEnabled(scope, slot),
+        classifyPath,
+        slotOf: (p) => { const c = classifyPath(p); return c.slot ? scope.byId.get(c.slot) : null; },
+        ownerOf: (input) => ownerIn(scope, input),
+        tierOf: (input) => tierIn(scope, input),
+        importAllowed: (fromPath, toPath) => importAllowedIn(scope, fromPath, toPath),
+        requiredFiles: (input) => requiredFilesIn(scope, input),
+        requiredPaths: () => requiredPathsIn(scope),
+        trackingOf,
+        /** True only for a path a slot owns and requires to be committed. */
+        isTracked: (p) => trackingOf(p) === 'tracked',
+        // The app's own database functions (hfs.json sides.be.dbFunctions) join the canon's list (R334).
+        ruleParams: () => withDeclaredDbFunctions(ruleParams(manifest, profile, edition), repo.dbFunctions),
+        allowedImports: (tier) => manifest.tiers[profile]?.[tier]?.mayImport ?? null,
+    });
 }
-
 /**
  * The four questions for one app, or for one side of it. `repo` comes from resolveRepoDeclaration / readRepoDeclaration.
  * Paths are relative to the root the declaration was resolved for (backslashes and a leading ./ are folded; a trailing / or a
@@ -243,30 +264,32 @@ function createScopeResolver(manifest, repo) {
  * the side prefixed back onto every path and root it returns (and `side` added). Only the declared `reads` cross sides.
  */
 export function createSlotResolver(manifest, repo) {
-  if (repo.profile !== APP_SCOPE) return createScopeResolver(manifest, repo);
-  // The root declares no connection of its own, yet a provider slot of the app profile is enabled by a
-  // side's connection with that provider: the root scope reads the union of the sides' connections.
-  const root = createScopeResolver(manifest, { ...repo, connections: SIDES.flatMap((side) => repo.sides[side].connections) });
-  const sides = Object.fromEntries(PROFILES.map((side) => [side, createScopeResolver(manifest, repo.sides[side])]));
-  return appResolver(repo, root, sides);
+    if (repo.profile !== APP_SCOPE)
+        return createScopeResolver(manifest, repo);
+    // The root declares no connection of its own, yet a provider slot of the app profile is enabled by a
+    // side's connection with that provider: the root scope reads the union of the sides' connections.
+    // reason: the profile is app, so the declaration resolveRepoDeclaration built carries both sides
+    const app = repo;
+    const root = createScopeResolver(manifest, { ...repo, connections: SIDES.flatMap((side) => app.sides[side].connections) });
+    const sides = Object.fromEntries(PROFILES.map((side) => [side, createScopeResolver(manifest, app.sides[side])]));
+    return appResolver(app, root, sides);
 }
-
 /** The rule parameters with the app's declared database functions appended to `dbFunctions` (be only), frozen. */
 const withDeclaredDbFunctions = (params, declared = []) => (params.dbFunctions === undefined && !declared.length ? params
-  : Object.freeze({ ...params, dbFunctions: Object.freeze([...(params.dbFunctions ?? []), ...declared]) }));
-
+    : Object.freeze({ ...params, dbFunctions: Object.freeze([...(params.dbFunctions ?? []), ...declared]) }));
 /** The rule parameters of one profile (be: infraOwners, suffixes, bannedSuffixes and the rest over the shared ruleParams.common fileLines and duplicateBlock; fe: common alone or with its overrides; runtime: ruleParams.runtime of a runtime manifest), as a frozen deep copy. Under `edition` lite the `lite` overrides of ruleParams.<profile> merge over the base (the `lite` key itself is never returned). */
 export function ruleParams(manifest, profile, edition = 'full') {
-  const profiles = manifestKind(manifest) === RUNTIME_KIND ? [RUNTIME_KIND] : PROFILES;
-  if (!profiles.includes(profile)) fail('HFS_MANIFEST_INVALID', `ruleParams has no profile ${profile}`, { profile });
-  return editionRuleParams({ ...manifest.ruleParams.common, ...manifest.ruleParams[profile] }, edition);
+    const profiles = manifestKind(manifest) === RUNTIME_KIND ? [RUNTIME_KIND] : PROFILES;
+    if (!profiles.includes(profile))
+        fail('HFS_MANIFEST_INVALID', `ruleParams has no profile ${profile}`, { profile });
+    return editionRuleParams({ ...manifest.ruleParams.common, ...manifest.ruleParams[profile] }, edition);
 }
-
 /**
  * The manifest of this runtime plus the resolver for the app or side folder at `repoRoot` (a side folder gets that side's view), or
  * for an already-parsed declaration (the app, or with `side` that side's view).
  */
 export function openHfs({ root = skillRoot, repoRoot, declaration, side = null, manifest = loadSlotManifest({ root }) } = {}) {
-  const repo = declaration !== undefined ? resolveRepoDeclaration(manifest, declaration, { side }) : readRepoDeclaration(manifest, repoRoot);
-  return { manifest, repo, ...createSlotResolver(manifest, repo), rules: () => loadRuleCatalog({ root, manifest }) };
+    const repo = declaration !== undefined ? resolveRepoDeclaration(manifest, declaration, { side }) : readRepoDeclaration(manifest, repoRoot);
+    const resolver = createSlotResolver(manifest, repo);
+    return { manifest, ...resolver, rules: () => loadRuleCatalog({ root, manifest }) };
 }

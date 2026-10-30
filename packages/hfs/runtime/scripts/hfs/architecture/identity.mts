@@ -125,8 +125,8 @@ function inspectJwtCall(kit: MachineKit, checker: TypeChecker, file: GraphFile, 
 
 function inspectRequestClaims(kit: MachineKit, file: GraphFile, node: Node, checker: TypeChecker, violations: ArchitectureViolation[]): void {
   const { ts } = kit;
-  if ((ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) && CLAIM_NAMES.has(accessName(ts, node))) {
-    const claim = accessName(ts, node);
+  const claim = accessName(ts, node);
+  if ((ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) && claim !== null && CLAIM_NAMES.has(claim)) {
     if (fromRequestBody(kit, checker, node.expression)) reportAt(violations, kit, BE_JWT_VERIFIED, file, node, `${claim} is read from the request body; authorization claims come only from the verified token or the database.`, { claim });
   }
   if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && node.initializer && fromRequestBody(kit, checker, node.initializer)) {

@@ -7,7 +7,7 @@ import { found } from './read.mjs';
 import type { Finding, Parsed, Repo } from './rule-types.mjs';
 
 const DECLARATION = `${STACK_ROOT}/application-stacks.yaml`;
-const named = (entry: Parsed) => typeof entry.name === 'string' && /^[A-Z][A-Z0-9_]*$/.test(entry.name);
+const named = <T extends { name: unknown }>(entry: T): entry is T & { name: string } => typeof entry.name === 'string' && /^[A-Z][A-Z0-9_]*$/.test(entry.name);
 const identity = (kind: string, name: string) => `${kind}:${name}`;
 const atCi = (section: Parsed) => `${DECLARATION}#ci.${section}`;
 
@@ -38,9 +38,9 @@ function runtimeFindings(doc: Parsed, ci: Parsed, sealed: Parsed) {
   const names = new Set([...ci.secrets, ...ci.vars].filter(named).map((entry) => entry.name));
   const findings: Finding[] = [], seen = new Set();
   for (const [environment, spec] of Object.entries<Parsed>(doc.environments ?? {})) {
-    for (const grant of list(spec?.deploy?.secrets?.grants)) {
+    for (const grant of list<Parsed>(spec?.deploy?.secrets?.grants)) {
       if (typeof grant?.service !== 'string') continue;
-      for (const source of list(grant.from)) sourceRuntimeFindings(source, grant, environment, { sealed, names, findings, seen });
+      for (const source of list<Parsed>(grant.from)) sourceRuntimeFindings(source, grant, environment, { sealed, names, findings, seen });
     }
   }
   return findings;

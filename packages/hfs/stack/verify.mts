@@ -23,7 +23,7 @@ function expect(condition: unknown, message: string): asserts condition {
 /** Runs one check, retrying every 6 s up to `retrySeconds` when `retry` is set; records { name, ok, detail }. */
 async function runCheck(ctx: Pick<StackContext, 'now' | 'sleep'>, results: CheckResult[], name: string, run: () => string | Promise<string>, { retry = false, retrySeconds = 0 }: { retry?: boolean; retrySeconds?: number } = {}): Promise<void> {
   const deadline = ctx.now() + (retry ? retrySeconds * 1000 : 0);
-  const outcome: { ok: boolean; detail: string } = await repeatInOrder(async (): Promise<{ ok: boolean; detail: string } | undefined> => {
+  const outcome = await repeatInOrder(async (): Promise<{ ok: boolean; detail: string } | undefined> => {
     try {
       return { ok: true, detail: await run() };
     } catch (error) {
@@ -32,7 +32,8 @@ async function runCheck(ctx: Pick<StackContext, 'now' | 'sleep'>, results: Check
       return undefined;
     }
   });
-  results.push({ name, ...outcome });
+  // repeatInOrder resolves undefined only when its attempts run out, and they never do.
+  if (outcome) results.push({ name, ...outcome });
 }
 
 function checkJson(text: string, expected: Record<string, unknown>): void {
@@ -49,7 +50,7 @@ async function probeHttp(ctx: StackContext, check: HttpCheck): Promise<string> {
   expect(response.status === check.status, `HTTP ${response.status}`);
   const text = check.json === null && check.contains === null ? '' : await response.text();
   if (check.json !== null) checkJson(text, check.json);
-  if (check.contains !== null) expect(text.includes(check.contains), `no ${check.contains} in the answer`);
+  if (check.contains !== null) expect(text.includes(String(check.contains)), `no ${String(check.contains)} in the answer`);
   return String(response.status);
 }
 

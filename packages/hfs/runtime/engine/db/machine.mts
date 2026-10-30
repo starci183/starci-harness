@@ -249,7 +249,7 @@ function rowCells(db: SqlDb, table: string, row: Fields): Array<[string, unknown
   for (const [k] of entries) need(cols.has(k), `machine-db: ${table} has no column ${k}`);
   return entries;
 }
-const insertRow: (db: SqlDb, table: string, row: Fields, options?: { orIgnore?: boolean }) => SqlRunResult = insertRowWith(rowCells);
+const insertRow: (db: SqlDb, table: string, row: Fields, options?: { orIgnore?: boolean }) => SqlRunResult = insertRowWith<SqlRunResult, SqlDb, Fields>(rowCells);
 function upsertRow(db: SqlDb, table: string, row: Fields, keys: readonly string[]): SqlRunResult {
   const entries = rowCells(db, table, row);
   const updates = entries.filter(([k]) => !keys.includes(k));
@@ -365,7 +365,7 @@ function makeHandle(openRaw: () => RawConnection, { file, env, now, live, readOn
 /** Store bytes (Buffer | string | file path via {file}) in the blob store and record the blobs row. Returns the sha. */
 function putMachineBlob(m: MachineCore, content: unknown, { mediaType = 'application/octet-stream', pinned = false }: { mediaType?: string; pinned?: boolean } = {}): string {
   // Every blob is redacted before it is stored (scripts/lib/redact.mjs): text media 'v1', anything else 'binary'.
-  let raw = content; if (!Buffer.isBuffer(raw)) raw = Buffer.from(typeof raw === 'string' ? raw : JSON.stringify(raw));
+  const raw = Buffer.isBuffer(content) ? content : Buffer.from(typeof content === 'string' ? content : JSON.stringify(content));
   const { bytes, redaction } = redactBytes(raw, mediaType);
   const { sha, size, mediaType: stored } = storeBlob(bytes, { mediaType });
   const file = blobPath(sha);

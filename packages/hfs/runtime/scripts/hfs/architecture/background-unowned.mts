@@ -121,7 +121,7 @@ const closureOf = (adjacency: Map<string, string[]>, starts: Iterable<string>): 
   return seen;
 };
 
-const appRootsOf = (apps: { name: string; kind: string }[], graph: HfsGraph) => {
+const appRootsOf = (apps: readonly { name: string; kind: string }[], graph: HfsGraph) => {
   const rootOf = (app: { name: string }): string => `apps/${app.name}/src/app.module.ts`;
   const workers = apps.filter(app => app.kind === 'worker').map(rootOf).filter(rel => graph.files.has(rel));
   const services = apps.filter(app => app.kind === 'api').map(rootOf).filter(rel => graph.files.has(rel));

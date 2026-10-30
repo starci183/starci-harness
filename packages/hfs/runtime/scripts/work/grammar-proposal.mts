@@ -27,6 +27,8 @@ import { isMain } from '../lib/is-main.mjs';
 import { parseYaml } from '../../engine/yaml.mjs';
 import { sha256File } from '../../engine/digest.mjs';
 import { openEventItems } from '../lib/event-items.mjs';
+import type { SqliteDb } from '../lib/sqlite.mjs';
+import type { EventPayload, EventRow } from '../lib/event-items.mjs';
 import { isDir, isFile, type YamlDoc } from './work-io.mjs';
 import { altOf } from '../lib/source-phrases.mjs';
 
@@ -262,10 +264,10 @@ export function recordGrammarProposals(ledger: ProposalLedger, { job, repo, file
 }
 
 /** The workflow's open grammar proposals (filed, not resolved): [{name, file, jobId, opId, filedAt, status, complete}]. */
-export function openGrammarProposals(db: unknown, workflowId: string) {
+export function openGrammarProposals(db: SqliteDb, workflowId: string) {
   return openEventItems(db, workflowId, {
-    owedKind: GRAMMAR_PROPOSAL_FILED, resolvedKind: GRAMMAR_PROPOSAL_RESOLVED, keyOf: (p: OpenProposalPayload) => p.name,
-    item: (p: OpenProposalPayload, row: { created_at: number }) => ({ name: p.name, file: p.file ?? null, jobId: p.jobId ?? null, opId: p.opId ?? null, filedAt: row.created_at, status: PROPOSED, complete: p.complete !== false }),
+    owedKind: GRAMMAR_PROPOSAL_FILED, resolvedKind: GRAMMAR_PROPOSAL_RESOLVED, keyOf: (payload: EventPayload) => (payload as unknown as OpenProposalPayload).name, // reason: the payload is the ledger's parsed JSON, written by recordGrammarProposals as a ProposalPayload
+    item: (payload: EventPayload, row: EventRow) => { const p = payload as unknown as OpenProposalPayload; return { name: p.name, file: p.file ?? null, jobId: p.jobId ?? null, opId: p.opId ?? null, filedAt: row.created_at, status: PROPOSED, complete: p.complete !== false }; },
   });
 }
 

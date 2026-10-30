@@ -53,7 +53,7 @@ const STREAM_OPERATION_FILE = /^stream-[^/]+\.ts$/u;
 const NO_CLIENT = "the repository has no transport client. Create the one Apollo client folder (packages/<family>-api/src/graphql/clients/, or the only app's modules/api/graphql/clients/) and call the back end through it.";
 
 /** A graph file of a slot, with the slot-instance root and bindings the resolver classified it under. */
-type TransportFile = GraphFile & { slot: string; root: string; bindings?: { app?: string } };
+type TransportFile = GraphFile & { slot: string; root: string; bindings?: { app?: string } | undefined };
 
 /** Records one finding at `node` of `file` (anything with a repository-relative path and a source file). */
 type Report = (file: { rel: string; sourceFile: SourceFile }, node: Node, message: string, extra?: Record<string, unknown>) => void;

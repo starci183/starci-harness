@@ -24,7 +24,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { readDeclaration } from '../release/index.mjs';
 import { releaseDir } from '../release/gate.mjs';
-import { DEFAULT_DB_URL_ENV, dbTarget, inContainer, queryRows } from '../db/postgres.mjs';
+import { DEFAULT_DB_URL_ENV, dbTarget, inContainer, queryRows, type DbTarget as PostgresTarget } from '../db/postgres.mjs';
 import { readUrgent } from '../release/records.mjs';
 import type { DeployConfig } from './config.mjs';
 import { lines as splitLines, tool } from './context.mjs';
@@ -60,7 +60,7 @@ export interface FloorDeps {
   decrypt: (ctx: StackContext, args: { archive: string; identity: string | null; parts: string[] }) => Promise<{ parts: string[] }>;
   migrate: (ctx: StackContext, args: { target: DbTarget; execute: boolean }) => Promise<MigrateResult>;
   dbContainer: (ctx: StackContext, config: DeployConfig, args: { service: string; seconds: number }) => Promise<string | undefined>;
-  emptiness: (ctx: StackContext, target: unknown) => Promise<Emptiness>;
+  emptiness: (ctx: StackContext, target: PostgresTarget) => Promise<Emptiness>;
 }
 
 /** The data a deploy result carries that the floor reads. */
@@ -144,7 +144,7 @@ async function defaultDbContainer(ctx: StackContext, config: DeployConfig, { ser
 }
 
 /** Whether the target database is empty: no migration history table and no table in public. */
-async function defaultEmptiness(ctx: StackContext, target: unknown): Promise<Emptiness> {
+async function defaultEmptiness(ctx: StackContext, target: PostgresTarget): Promise<Emptiness> {
   const [row] = queryRows(ctx, target, "select to_regclass('supabase_migrations.schema_migrations') is not null as history, (select count(*)::int from pg_tables where schemaname = 'public') as public_tables", { withhold: true });
   return { empty: row?.history === false && row?.public_tables === 0, history: row?.history === true, publicTables: Number(row?.public_tables ?? -1) };
 }

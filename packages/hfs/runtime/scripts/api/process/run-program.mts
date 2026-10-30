@@ -6,6 +6,7 @@ import { withTempEnv } from '../../../engine/temp-root.mjs';
 
 /** Runs `file args`; options (cwd, env, timeout, stdio, input) pass through. */
 export const runProgram = (file: string, args: readonly string[], options: SpawnSyncOptions = {}): SpawnSyncReturns<string> => {
-  const spawnOptions: SpawnSyncOptionsWithStringEncoding = withTempEnv({ encoding: 'utf8', windowsHide: true, ...options });
+  // reason: utf8 is the default; a caller option that overrides encoding is the caller's explicit request for another output type
+  const spawnOptions = withTempEnv({ encoding: 'utf8', windowsHide: true, ...options }) as SpawnSyncOptionsWithStringEncoding;
   return spawnSync(file, args, spawnOptions);
 };

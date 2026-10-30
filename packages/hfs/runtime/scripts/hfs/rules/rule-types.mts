@@ -21,8 +21,8 @@ export interface Finding {
 /** What a rule reads of the declaration (hfs.json) of the repository it judges. */
 export interface Repo {
   profile?: string;
-  edition?: string;
-  apps?: Parsed[];
+  edition?: string | undefined;
+  apps?: readonly Parsed[];
   sides?: Record<string, Parsed>;
   [field: string]: Parsed;
 }

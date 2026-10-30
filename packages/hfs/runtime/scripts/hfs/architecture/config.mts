@@ -52,7 +52,7 @@ interface WorkspaceWalk {
 /** The slice of the opened slot resolver that owner derivation reads. */
 interface OwnerResolver {
   ownerOf(directory: string): { root: string; slot: string } | null | undefined;
-  slot(id: string): { tier: string };
+  slot(id: string): { tier: string } | null;
 }
 
 type FrontendRole = 'routes' | 'features' | 'components' | 'hooks' | 'modules';
@@ -344,6 +344,7 @@ function derivedOwners(root: string, resolver: OwnerResolver): OwnerRecord[] {
     const owner = resolver.ownerOf(directory);
     if (!owner || owner.root !== directory || seen.has(owner.root)) continue;
     const slot = resolver.slot(owner.slot);
+    if (!slot) continue;
     const entry = ownerEntry(root, owner.root, slot.tier);
     if (entry) seen.set(owner.root, { id: `${owner.slot}:${owner.root}`, root: owner.root, entry, slot: owner.slot, tier: slot.tier });
   }
@@ -357,7 +358,7 @@ const DECLARED_HANDLER_DECORATORS = ['CommandHandler', 'QueryHandler'];
  * source, every app and every workspace package that depends on its package is a consumer. null when no app has
  * a globals.css to judge (the contract is then reported unavailable, never passed).
  */
-function derivedGrammar(root: string, packageRoot: string, workspaces: string[], apps: { name: string }[], family: string): GrammarContext | null {
+function derivedGrammar(root: string, packageRoot: string, workspaces: string[], apps: readonly { name: string }[], family: string | undefined): GrammarContext | null {
   const styleSources = apps.map(app => `apps/${app.name}/src/app/globals.css`).filter(relative => existingRegularFile(root, relative));
   if (!styleSources.length) return null;
   const contract = grammarContractFor(family);
@@ -380,11 +381,11 @@ function derivedGrammar(root: string, packageRoot: string, workspaces: string[],
  * Resolve the layout contract from hfs.json and the slot manifest (knowledge/hfs/slots.yaml). A repository carries only hfs.json. Owners, roots and the tier of every path come from slots; the contract
  * has no ignore, waiver or baseline field.
  */
-export function loadArchitectureConfig(repositoryRoot: string, { hfs }: { hfs?: ArchitectureConfig['hfs'] } = {}): ArchitectureConfig {
+export function loadArchitectureConfig(repositoryRoot: string, { hfs }: { hfs?: ArchitectureConfig['hfs'] | undefined } = {}): ArchitectureConfig {
   const root = fs.realpathSync(path.resolve(repositoryRoot));
   if (!fs.lstatSync(root).isDirectory()) throw new Error('Repository root must be a directory.');
   const opened = hfs ?? openHfs({ repoRoot: root });
-  const { profile, apps }: { profile: string; apps: ArchitectureConfig['apps'] } = opened.repo;
+  const { profile, apps } = opened.repo;
   // A side of an app (the side folder is the root the machine judges) keeps its dependencies in the app root's one package.json.
   const side = opened.repo.side ?? null;
   const packageRoot = side === null ? root : path.dirname(root);

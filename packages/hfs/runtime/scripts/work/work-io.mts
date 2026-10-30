@@ -45,7 +45,7 @@ export const flags = (args: string[], name: string): string[] => args.flatMap((a
 /** A record's assets, record.assets before ui.assets, one per path. */
 export function assetsOf(record: YamlDoc): YamlDoc[] {
   const byPath = new Map<string, YamlDoc>();
-  for (const a of [...list(record?.assets), ...list(record?.ui?.assets)]) if (typeof a?.path === 'string' && !byPath.has(a.path)) byPath.set(a.path, a);
+  for (const a of [...list<YamlDoc>(record?.assets), ...list<YamlDoc>(record?.ui?.assets)]) if (typeof a?.path === 'string' && !byPath.has(a.path)) byPath.set(a.path, a);
   return [...byPath.values()];
 }
 

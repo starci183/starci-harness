@@ -4,7 +4,9 @@ import type {
   CallExpression, ImportDeclaration, Node, PropertyAccessExpression, SourceFile, StringLiteral,
 } from 'typescript';
 import { checkerScope } from './required-files.mjs';
-import type { RepositoryTree, SlotResolver } from './required-files.mjs';
+import type { RepositoryTree } from './required-files.mjs';
+import type { Resolver } from '../slots.mjs';
+import type { RuleParams } from '../manifest-shape.mjs';
 import { allowsFile } from '../allows.mjs';
 import { unwrapEach } from './ast-walks.mjs';
 import type { Violation } from './ast-walks.mjs';
@@ -126,7 +128,7 @@ function readSpec(ts: TypeScriptApi, sourceFile: SourceFile, helper: string, pro
 }
 
 /** The payload fixture a file of the world slot is, as `[provider, file]`, or null. */
-const payloadFixtureOf = (resolver: SlotResolver, file: string): [string, string] | null => {
+const payloadFixtureOf = (resolver: Resolver, file: string): [string, string] | null => {
   const verdict: { slot: string; relative: string } | null = allowsFile(resolver, file);
   if (verdict?.slot !== WORLD_SLOT || !verdict.relative.startsWith(FAKES_DIRECTORY)) return null;
   const match = PAYLOADS.exec(verdict.relative.slice(FAKES_DIRECTORY.length));
@@ -134,7 +136,7 @@ const payloadFixtureOf = (resolver: SlotResolver, file: string): [string, string
   return provider === undefined ? null : [provider, file];
 };
 
-const fixtureFilesOf = (tree: RepositoryTree, resolver: SlotResolver): { fixtures: Map<string, string>; specs: Map<string, string[]> } => {
+const fixtureFilesOf = (tree: RepositoryTree, resolver: Resolver): { fixtures: Map<string, string>; specs: Map<string, string[]> } => {
   const fixtures = new Map<string, string>(); // provider -> first payload fixture file
   const specs = new Map<string, string[]>(); // provider -> [contract spec file]
   for (const file of [...tree.files].sort(byCodeUnit)) {
@@ -165,9 +167,11 @@ const guardedProvidersOf = (config: ArchitectureConfig, ts: TypeScriptApi, contr
   return guarded;
 };
 
-export function checkContractFixtureGuard(input: { config: ArchitectureConfig; graph: { resolver: SlotResolver }; context: { ts: TypeScriptApi } }): ContractFixtureGuardResult {
-  const { config, ts, resolver, tree } = checkerScope(input);
-  const { contractShape } = resolver.ruleParams();
+export function checkContractFixtureGuard(input: { config: ArchitectureConfig; graph: { resolver: Resolver }; context: { ts: TypeScriptApi } }): ContractFixtureGuardResult {
+  const { config, ts, tree } = checkerScope(input);
+  const { resolver } = input.graph;
+  // reason: the machine runs this check on a back-end tree, whose scope resolver always carries rule parameters
+  const { contractShape } = resolver.ruleParams() as RuleParams;
   const violations: Violation[] = [];
   const { fixtures, specs } = fixtureFilesOf(tree, resolver);
   const providers = new Set(fixtures.keys());

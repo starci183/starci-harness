@@ -17,6 +17,7 @@ import { createRequire } from 'node:module';
 import type TypeScript from 'typescript';
 import { explainPath } from '../runtime/scripts/hfs/check.mjs';
 import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import type { SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 
 export class ScaffoldError extends Error {
@@ -131,13 +132,8 @@ interface SpecDoubleTable {
   readonly fallback: { readonly token?: string; readonly double: string };
 }
 
-/** The part of the slot manifest this module reads. */
-interface SlotManifestLike {
-  readonly ruleParams?: { readonly be?: { readonly specDoubles?: SpecDoubleTable } };
-}
-
-const tableOf = (manifest: SlotManifestLike): SpecDoubleTable => {
-  const table = manifest.ruleParams?.be?.specDoubles;
+const tableOf = (manifest: SlotManifest): SpecDoubleTable => {
+  const table: SpecDoubleTable | undefined = manifest.ruleParams?.be?.specDoubles;
   if (!table) throw new ScaffoldError('HFS_NEW_NO_DOUBLE_TABLE', 'the slot manifest has no ruleParams.be.specDoubles: refresh @starci/hfs');
   return table;
 };
@@ -181,7 +177,7 @@ const compareModules = (a: string, b: string): number => {
 };
 
 /** The spec skeleton of a service shape: text of `<name>.service.spec.ts`. */
-function specSkeleton({ shape, serviceFile, manifest = loadSlotManifest() }: { shape: ServiceShape, serviceFile: string, manifest?: SlotManifestLike }): string {
+function specSkeleton({ shape, serviceFile, manifest = loadSlotManifest() }: { shape: ServiceShape, serviceFile: string, manifest?: SlotManifest }): string {
   const table = tableOf(manifest);
   const subject = `./${path.basename(serviceFile).replace(/\.ts$/, '')}`;
   const kit = new Set<string>();
@@ -365,7 +361,7 @@ const writeNew = (repoRoot: string, relative: string, text: string): string => {
 };
 
 /** `starci app new spec be/<file>.service.ts` at the app root: writes the spec skeleton of an existing service; returns the created app-relative paths. */
-export function newSpec({ repoRoot: appRoot, file, ts, manifest = loadSlotManifest() }: { repoRoot: string, file: string, ts?: typeof TypeScript | undefined, manifest?: SlotManifestLike }): string[] {
+export function newSpec({ repoRoot: appRoot, file, ts, manifest = loadSlotManifest() }: { repoRoot: string, file: string, ts?: typeof TypeScript | undefined, manifest?: SlotManifest }): string[] {
   // A unit spec belongs to both editions (ruling:R212/case-1, amended by ruling:R212/case-4): a lite back end keeps full's unit specs.
   const { beRoot: repoRoot } = backEndOf(appRoot, manifest);
   const relative = belowBackEnd(file);
@@ -379,7 +375,7 @@ export function newSpec({ repoRoot: appRoot, file, ts, manifest = loadSlotManife
 }
 
 /** `starci app new service be/<dir> <name> [--inject ...]` at the app root: writes the service and its spec skeleton; returns the created app-relative paths. */
-export function newService({ repoRoot: appRoot, dir, name, inject = [], ts, manifest = loadSlotManifest() }: { repoRoot: string, dir: string, name: string, inject?: readonly string[], ts?: typeof TypeScript | undefined, manifest?: SlotManifestLike }): string[] {
+export function newService({ repoRoot: appRoot, dir, name, inject = [], ts, manifest = loadSlotManifest() }: { repoRoot: string, dir: string, name: string, inject?: readonly string[], ts?: typeof TypeScript | undefined, manifest?: SlotManifest }): string[] {
   // The service and its unit spec belong to both editions (ruling:R212/case-1, amended by ruling:R212/case-4).
   const { beRoot: repoRoot } = backEndOf(appRoot, manifest);
   if (!SERVICE_NAME.test(name)) throw new ScaffoldError('HFS_NEW_NAME_INVALID', `the service name ${name} must be kebab-case (member-profile), without the .service suffix`);

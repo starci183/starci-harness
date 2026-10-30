@@ -25,7 +25,7 @@ export const bundledPins = (root: string = skillRoot): CanonPins => parseYaml(fs
  * The pin map an app answers to: the bundled pins plus the `starci-harness` row at `harness.version`, the version of the CLI that
  * runs this package; without `harness` the bundled pins alone.
  */
-export function canonPins({ root = skillRoot, harness }: { root?: string; harness?: { version?: string } } = {}): CanonPins {
+export function canonPins({ root = skillRoot, harness }: { root?: string; harness?: { version?: string | undefined } | undefined } = {}): CanonPins {
   const pins = bundledPins(root);
   if (harness?.version === undefined) return pins;
   return { ...pins, [HARNESS_PACKAGE]: { version: harness.version, group: 'starci', install: 'registry', side: 'both' } };

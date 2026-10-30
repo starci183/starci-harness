@@ -120,12 +120,13 @@ function composeTargets(command: string) {
   const parts = words(command);
   const targets = [];
   for (let i = 0; i < parts.length; i += 1) {
-    if (['-f', '--file', '--env-file', '--project-directory'].includes(parts[i])) {
+    const part = parts[i] as string; // i < parts.length
+    if (['-f', '--file', '--env-file', '--project-directory'].includes(part)) {
       i += 1;
       targets.push(parts[i] ?? '');
     }
-    else if (/^--(?:file|env-file|project-directory)=/.test(parts[i])) targets.push(parts[i].slice(parts[i].indexOf('=') + 1));
-    else if (/^-f.+/.test(parts[i])) targets.push(parts[i].slice(2));
+    else if (/^--(?:file|env-file|project-directory)=/.test(part)) targets.push(part.slice(part.indexOf('=') + 1));
+    else if (/^-f.+/.test(part)) targets.push(part.slice(2));
   }
   return targets;
 }
@@ -147,7 +148,7 @@ function composeMutation(command: string) {
   const composeAt = parts.findIndex((part: Parsed) => part === 'compose' || part === 'docker-compose');
   const arguments_ = parts.slice(composeAt + 1);
   for (let i = 0; i < arguments_.length; i += 1) {
-    const argument = arguments_[i];
+    const argument = arguments_[i] as string; // i < arguments_.length
     if (COMPOSE_OPTIONS.has(argument)) { i += 1; continue; }
     if (argument.startsWith('-')) continue;
     return ['up', 'down', 'pull'].includes(argument);

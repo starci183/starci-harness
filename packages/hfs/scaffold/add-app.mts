@@ -3,7 +3,7 @@ import path from "node:path";
 import {
   loadSlotManifest,
   readRepoDeclaration,
-  resolveRepoDeclaration,
+  resolveAppDeclaration,
 } from "../runtime/scripts/hfs/slots.mjs";
 import { imageFiles, render, TEMPLATES_DIR } from "../sync/index.mjs";
 import { ScaffoldError, pascalOf } from "./service.mjs";
@@ -29,9 +29,8 @@ interface FeApp {
 
 /** The part of the app's declaration the verb reads. */
 interface AppRepo {
-  readonly edition?: string;
+  readonly edition?: string | undefined;
   readonly project: string;
-  readonly sides: { readonly fe?: { readonly apps: readonly FeApp[] } };
 }
 
 const NAME = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
@@ -88,10 +87,10 @@ function planAppTemplates(repo: AppRepo, name: string): PlannedFile[] {
 }
 
 /** The package and TypeScript manifests of a new Next workspace. */
-function planWorkspaceManifests(root: string, repo: AppRepo, name: string): PlannedFile[] {
+function planWorkspaceManifests(root: string, repo: AppRepo, feApps: readonly FeApp[], name: string): PlannedFile[] {
   const targetBase = `fe/apps/${name}`;
   // The dependency source is a product app (it carries the core's fe-stack packages), else the first Next app.
-  const firstApp = coreFeApps(repo.sides.fe!.apps)[0] ?? repo.sides.fe!.apps.find((app) => app.kind === "next"); // addApp refuses an app with no front end first
+  const firstApp = coreFeApps(feApps)[0] ?? feApps.find((app) => app.kind === "next");
   const firstPackage = firstApp
     ? path.join(root, "fe", "apps", firstApp.name, "package.json")
     : null;
@@ -178,12 +177,10 @@ export function addApp({ root, name }: { root: string, name: string }): { create
       `front-end app ${name} is already declared`,
     );
   const targetBase = `fe/apps/${name}`;
-  const planned: PlannedFile[] = [...planAppTemplates(repo, name), ...planWorkspaceManifests(root, repo, name)];
+  const planned: PlannedFile[] = [...planAppTemplates(repo, name), ...planWorkspaceManifests(root, repo, repo.sides.fe.apps, name)];
   const declaration = JSON.parse(fs.readFileSync(declarationFile, "utf8"));
   declaration.sides.fe.apps.push({ name, kind: "next" });
-  const image = imageFiles(
-    resolveRepoDeclaration(manifest, declaration),
-  ).find((file: { path: string }) => file.path === `${targetBase}/Dockerfile`);
+  const image = imageFiles(resolveAppDeclaration(manifest, declaration)).find((file: { path: string }) => file.path === `${targetBase}/Dockerfile`);
   if (!image && repo.edition !== "lite")
     throw new ScaffoldError(
       "HFS_ADD_TEMPLATE_MISSING",

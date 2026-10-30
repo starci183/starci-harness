@@ -1,12 +1,15 @@
-import type { Node, SourceFile, TypeChecker } from 'typescript';
+import type { Expression, Node, SourceFile, TypeChecker } from 'typescript';
 import type { TypeScript } from './ts-ast.mjs';
 
 /** The wrappers of an expression a contract may look through. */
 export interface UnwrapOptions { awaitExpressions?: boolean; typeAssertions?: boolean; nonNullExpressions?: boolean; satisfiesExpressions?: boolean }
 
+/** What unwrapping `N` yields: every wrapper holds an Expression, so an Expression stays one; null and undefined pass through. */
+export type Unwrapped<N> = N extends Expression ? Expression : N extends Node ? Node : N;
+
 /** The expression under the wrappers selected by an AST check's contract. */
-export function unwrapExpression<N extends Node | undefined>(ts: TypeScript, expression: N, { awaitExpressions = false, typeAssertions = true, nonNullExpressions = true, satisfiesExpressions = true }: UnwrapOptions = {}): Node | N {
-  let current: Node | undefined = expression;
+export function unwrapExpression<N extends Node | null | undefined>(ts: TypeScript, expression: N, { awaitExpressions = false, typeAssertions = true, nonNullExpressions = true, satisfiesExpressions = true }: UnwrapOptions = {}): Unwrapped<N> {
+  let current: Node | null | undefined = expression;
   while (current) {
     const wrapper = ts.isParenthesizedExpression(current) || ts.isAsExpression(current)
       || (typeAssertions && ts.isTypeAssertionExpression(current)) || (nonNullExpressions && ts.isNonNullExpression(current))
@@ -15,7 +18,7 @@ export function unwrapExpression<N extends Node | undefined>(ts: TypeScript, exp
     if (!wrapper) break;
     current = (current as Node & { readonly expression: Node }).expression;
   }
-  return current as Node | N;
+  return current as Unwrapped<N>;
 }
 
 /** Local name -> imported name and module; callers select their existing module key and literal policy. */

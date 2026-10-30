@@ -1,5 +1,5 @@
 import { validateArgs } from '../../packages/cli/src/validate-args.mjs';
-import { isAlternation, isPlaceholder, tokenise } from '../lib/command-tokens.mjs';
+import { isAlternation, isPlaceholder, tokenise, type CommandToken } from '../lib/command-tokens.mjs';
 
 // The one owner of "a documented command exists": it finds every `starci <group> <verb> ...` a text shows to an agent or owner
 // (extractCommands) and judges it the way the dispatcher would (checkCommand): group and verb exist, every flag is declared, enum
@@ -10,7 +10,7 @@ import { isAlternation, isPlaceholder, tokenise } from '../lib/command-tokens.mj
 /** One starci command occurrence in a text: `bounded` runs to the end of its span, `prose` keeps only the flags that follow the verb. */
 export interface CommandOccurrence { line: number; mode: 'bounded' | 'prose'; preceded: string; text: string }
 /** A whitespace token of a command (the command tokenizer's output). */
-export interface CommandToken { text: string; [key: string]: unknown }
+export type { CommandToken };
 /** A declared flag of the command catalog. */
 export interface CatalogFlag { name: string; type: string; enum?: string[]; [key: string]: unknown }
 /** A declared positional of a verb. */

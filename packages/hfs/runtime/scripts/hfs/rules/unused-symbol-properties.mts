@@ -13,13 +13,13 @@ function mergeProperty(before: Parsed, after: Parsed) {
 }
 
 /** Every possible spread owner must be known before its property provenance is admitted. */
-function spreadProperty(state: Parsed, expression: Parsed, name: string, seen: Parsed, resolve: Parsed) {
+function spreadProperty(state: Parsed, expression: Parsed, name: string | null,seen: Parsed, resolve: Parsed) {
   const choices = resolve(state, expression, seen).map((owner: Parsed) => ownerProperty(state, owner, name, seen, resolve));
   if (!choices.length || choices.includes(null)) return null;
   return { values: choices.flatMap((choice: Parsed) => choice.values), missing: choices.some((choice: Parsed) => choice.missing) };
 }
 
-function entryProperty(state: Parsed, entry: Parsed, name: string, seen: Parsed, resolve: Parsed) {
+function entryProperty(state: Parsed, entry: Parsed, name: string | null,seen: Parsed, resolve: Parsed) {
   const { ts } = state;
   if (ts.isSpreadAssignment(entry) || ts.isJsxSpreadAttribute(entry)) return spreadProperty(state, entry.expression, name, seen, resolve);
   const key = nameText(ts, entry.name, { numbers: true });
@@ -36,20 +36,20 @@ function entryProperty(state: Parsed, entry: Parsed, name: string, seen: Parsed,
 }
 
 /** Fold writes in source order, with branch-local cycle detection and explicit absence. */
-export function ownerProperty(state: Parsed, owner: Parsed, name: string, visited: Parsed, resolve: Parsed) {
+export function ownerProperty(state: Parsed, owner: Parsed, name: string | null,visited: Parsed, resolve: Parsed) {
   if ((!state.ts.isObjectLiteralExpression(owner) && !state.ts.isJsxAttributes(owner)) || visited.has(owner)) return null;
   const seen = new Set([...visited, owner]);
   return owner.properties.reduce((before: Parsed, entry: Parsed) => mergeProperty(before, entryProperty(state, entry, name, seen, resolve)), ABSENT_PROPERTY);
 }
 
 /** The expression bound to name in a known object literal or a JSX attribute list. */
-export function propertyValues(state: Parsed, owner: Parsed, name: string, seen: Parsed, resolve: Parsed) {
+export function propertyValues(state: Parsed, owner: Parsed, name: string | null,seen: Parsed, resolve: Parsed) {
   const property = ownerProperty(state, owner, name, seen, resolve);
   return property && !property.missing ? property.values : [];
 }
 
 /** Unknown or missing owner branches cannot disappear beside a known property branch. */
-export function propertiesOf(state: Parsed, owners: Parsed, name: string, seen: Parsed, resolve: Parsed) {
+export function propertiesOf(state: Parsed, owners: Parsed, name: string | null,seen: Parsed, resolve: Parsed) {
   const groups = owners.map((owner: Parsed) => propertyValues(state, owner, name, seen, resolve));
   return groups.length && groups.every((group: Parsed) => group.length) ? groups.flat() : [];
 }

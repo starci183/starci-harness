@@ -64,7 +64,8 @@ export const ACTIONS = Object.freeze(['prepare', 'doctor', 'connect', 'disconnec
 
 /** One action of `starci app stack`. */
 export type Action = (typeof ACTIONS)[number];
-const isAction = (value: unknown): value is Action => (ACTIONS as readonly unknown[]).includes(value);
+/** True when `value` names one action of `starci app stack`. */
+export const isAction = (value: unknown): value is Action => (ACTIONS as readonly unknown[]).includes(value);
 
 export const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start']);
 export const VALUE = new Set(['--env', '--image', '--source-sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote']);
@@ -98,7 +99,7 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
 });
 
 /** The operands of the actions that take any, as the usage prints them. */
-export const OPERANDS = Object.freeze({ jobs: '<action> [<arg>...]', task: '<name> [<arg>...]', ingress: '<action> [<arg>...]' });
+export const OPERANDS: Readonly<Partial<Record<Action, string>>> = Object.freeze({ jobs: '<action> [<arg>...]', task: '<name> [<arg>...]', ingress: '<action> [<arg>...]' });
 
 /** The read-only actions, whose `--env` defaults to production. Every action with an effect names its environment, so none reaches production by omission. */
 export const READ_ONLY: readonly string[] = Object.freeze(['doctor', 'build-args', 'render', 'verify']);

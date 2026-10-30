@@ -5,6 +5,7 @@ import { parseYaml, stringifyYaml } from "../../engine/yaml.mjs";
 import { secretEnv } from "../../engine/secrets.mjs";
 import { resolveSops } from "../api/sops/resolve-sops.mjs";
 import { selectedAgeRecipient } from "../api/sops/selected-age-recipient.mjs";
+import type { Capture, SopsInvocation } from "../api/sops/lib.mjs";
 import { resolveRealTool } from "../api/process/resolve-real-tool.mjs";
 import { runProgram } from "../api/process/run-program.mjs";
 import { claimFile } from "../api/fs/claim-file.mjs";
@@ -41,24 +42,16 @@ export interface SopsConfig {
 }
 
 /** A subprocess result as the sops api seams hand it back; the stdout and the error carry no value of a secret. */
-export interface ProgramResult {
-  error?: unknown;
-  status: number | null;
-  stdout?: unknown;
-}
+export type ProgramResult = Capture;
 
 /** Runs one program without a shell. */
-export type RunProgram = (
-  command: string,
-  args: string[],
-  options: { env: NodeJS.ProcessEnv; cwd: string; stdio: string[] },
-) => ProgramResult;
+export type RunProgram = SopsInvocation["runProgram"];
 
 /** Seams a caller (a test, the harness CLI) may replace: the tool resolvers and the private secret.env loader. */
 export interface SecretToolOverrides {
   secretEnv?: ((directory: string, env: NodeJS.ProcessEnv) => NodeJS.ProcessEnv | undefined) | undefined;
   resolveSops?: ((env: NodeJS.ProcessEnv) => string | null | undefined) | undefined;
-  resolveRealTool?: ((name: string, options: { env: NodeJS.ProcessEnv }) => string | null | undefined) | undefined;
+  resolveRealTool?: SopsInvocation["resolveRealTool"] | undefined;
   runProgram?: RunProgram | undefined;
 }
 

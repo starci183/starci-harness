@@ -33,7 +33,7 @@ export function coverageFrom({ repoRoot = invocationDir(), coverageFrom: reportP
   const declaration = repo ?? readRepoDeclaration(manifest, repoRoot);
   if (!['app', 'be'].includes(declaration.profile)) throw new Error('coverage proof requires an app root or its be side');
   const tracked = files ?? gitOutputOf(lsFiles(['-z', '--cached', '--exclude-standard'], { dir: repoRoot, maxBuffer: 256 * 1024 * 1024 }), 'git ls-files').split('\0').filter(Boolean);
-  return coverageBelowReport({ repoRoot, files: tracked, repo: declaration, manifest, coverageFrom: reportPath, lcov });
+  return coverageBelowReport({ repoRoot, files: tracked, repo: declaration, manifest, ...(reportPath === undefined ? {} : { coverageFrom: reportPath }), lcov });
 }
 
 function setValueOption(opts: CoverageFromOpts, flag: string, value: string | undefined): void {

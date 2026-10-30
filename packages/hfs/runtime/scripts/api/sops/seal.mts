@@ -16,8 +16,9 @@ export function seal(bin: string | null, { inputType, plaintext, recipients = []
   const selected = sopsIdentityEnv(env);
   if (selected.error?.identityRefusal === 'inline-context-unqualified') return runSelectedSops(bin, { operation: 'seal', params: { inputType, plaintext, recipients, filenameOverride } }, { selection: selected, invocation, env, cwd, maxBuffer, timeout });
   if (selected.error) return { status: null, stdout: '', stderr: '', error: selected.error };
-  const exe = bin ?? resolveSops(selected.env);
+  const selectedEnv = selected.env as NodeJS.ProcessEnv; // every SopsIdentity without an error carries its env
+  const exe = bin ?? resolveSops(selectedEnv);
   if (!exe) return { status: null, stdout: '', stderr: '', error: Object.assign(new Error('sops is not installed (Windows: winget install Mozilla.SOPS)'), { code: 'SOPS_MISSING' }) };
-  const r = spawnSync(exe, args, { cwd, env: selected.env, input: plaintext, encoding: 'utf8', windowsHide: true, maxBuffer });
+  const r = spawnSync(exe, args, { cwd, env: selectedEnv, input: plaintext, encoding: 'utf8', windowsHide: true, maxBuffer });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr, error: r.error ?? null };
 }

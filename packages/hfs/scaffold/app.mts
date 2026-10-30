@@ -15,10 +15,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import { loadSlotManifest, resolveAppDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { HARNESS_PACKAGE, canonPins } from '../runtime/scripts/hfs/canon-pins.mjs';
-import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, writeTargets } from '../sync/index.mjs';
+import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, writeTargets, type Presets } from '../sync/index.mjs';
+import type { SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { ScaffoldError } from './service.mjs';
 import { testWorldFiles } from './test-world.mjs';
 import { FE_APP_SCRIPTS, PACKAGE_MANAGER, WORKSPACES, WORKSPACE_LINT, feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
@@ -103,7 +104,7 @@ interface SkeletonContext {
   readonly apps: readonly AppEntry[];
 }
 /** The outcome of npm resolving the lockfile. */
-type LockResult = { readonly ok: true } | { readonly ok: false; readonly detail: string };
+export type LockResult = { readonly ok: true } | { readonly ok: false; readonly detail: string };
 /** git init, as the scaffold calls it. */
 type InitGit = (root: string, options: { branch: string }) => { ok?: boolean; stderr?: unknown } | null | undefined;
 
@@ -671,7 +672,7 @@ function scaffoldWrites(root: string, original: fs.Stats) {
 /** Seal declared starter members to a fresh app recipient through the scaffold rollback owner. */
 function initializeScaffoldSecrets(root: string, writes: Pick<ReturnType<typeof scaffoldWrites>, 'write'>): string[] {
   if (!declaredSealedMembers(root).length) return [];
-  const write = (file: string, content: string) => writes.write(path.relative(root, file), content);
+  const write = (file: string, content: string | Buffer) => writes.write(path.relative(root, file), content);
   const initialized = initializeAppIdentity(root, { write });
   const materialized = materializeDeclaredPlaceholders(root, { recipient: initialized.recipient, write });
   return [...initialized.files, ...materialized.members];
@@ -688,7 +689,7 @@ function bornRepository(root: string, initGit: InitGit): fs.Stats {
   return fs.lstatSync(root);
 }
 
-export function scaffoldApp({ name, into, presets, harness, edition = 'full', registryVisibility = 'public', manifest = loadSlotManifest(), pins = canonPins({ harness }), lock = npmLock, initGit = gitInit, now = () => new Date() }: { name: string, into: string, presets: unknown, harness: unknown, edition?: string, registryVisibility?: string, manifest?: unknown, pins?: Pins, lock?: (root: string) => LockResult, initGit?: InitGit, now?: () => Date }): { root: string, files: string[] } {
+export function scaffoldApp({ name, into, presets, harness, edition = 'full', registryVisibility = 'public', manifest = loadSlotManifest(), pins = canonPins({ harness }), lock = npmLock, initGit = gitInit, now = () => new Date() }: { name: string, into: string, presets: Presets | null | undefined, harness: { version?: string | undefined } | undefined, edition?: string, registryVisibility?: string, manifest?: SlotManifest, pins?: Pins, lock?: (root: string) => LockResult, initGit?: InitGit, now?: () => Date }): { root: string, files: string[] } {
   if (!NAME.test(String(name))) throw new ScaffoldError('HFS_SCAFFOLD_NAME_INVALID', `the app name ${name} must be kebab-case (a project name: ${NAME})`);
   const root = path.resolve(into, name);
   const existing = fs.lstatSync(root, { throwIfNoEntry: false });
@@ -697,7 +698,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', re
   if (!pins[HARNESS_PACKAGE]) throw new ScaffoldError('HFS_SCAFFOLD_PIN_MISSING', `${HARNESS_PACKAGE} has no pin: an app pins the CLI that scaffolds it, so run the scaffold through it (starci app scaffold)`);
   const original = existing ?? bornRepository(root, initGit);
   const declaration = starterDeclaration(name, manifest, edition);
-  const app: ResolvedApp = resolveRepoDeclaration(manifest, declaration);
+  const app = resolveAppDeclaration(manifest, declaration);
   const pkg = packageManifest(name, pins, app.edition, app.sides.fe.grammar);
   const timestamp = now().toISOString().replace(/\D/g, '').slice(0, 14);
   const files: GeneratedFile[] = [
@@ -716,7 +717,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', re
       { path: `fe/packages/${name}-${pkg}/tsconfig.json`, content: jsonText(fePackageTsconfig()) },
       { path: `fe/packages/${name}-${pkg}/tsconfig.build.json`, content: jsonText(fePackageBuildTsconfig()) },
     ])),
-    ...(['app', 'be', 'fe'] as const).flatMap(scope => skeletonOf(scope, app, { sonarGate: sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition), timestamp, registryVisibility })),
+    ...(['app', 'be', 'fe'] as const).flatMap(scope => skeletonOf(scope, app, { sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility })),
     // A full app has a test world (integration, e2e and contract are rows of its release gate); lite has none (ruling:R212/case-3, hosting amended by owner:lite-production-swarm).
     ...(app.edition === 'lite' ? [] : testWorldFiles(app)),
   ];

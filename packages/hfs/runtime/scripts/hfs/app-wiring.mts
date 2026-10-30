@@ -200,14 +200,14 @@ function appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, time
   const fixtureExists = fs.existsSync(path.join(beRoot, fixture)) && (!files || files.includes(`${prefix}${fixture}`));
   const args = [WORKER, '--worker', JSON.stringify({ repoRoot: beRoot, app, fixture: fixtureExists ? fixture : null, timeout })];
   const budget = workerBudget(timeout);
-  const options = { cwd: beRoot, encoding: 'utf8', env: {}, windowsHide: true, timeout: budget, maxBuffer: 1024 * 1024 };
+  const options = { cwd: beRoot, encoding: 'utf8' as const, env: {}, windowsHide: true, timeout: budget, maxBuffer: 1024 * 1024 };
   const spawnWorker = () => (run ? run(process.execPath, args, options) : runNode(args, options));
   let result = spawnWorker();
   if (isTimeout(result)) result = spawnWorker();
   if (isTimeout(result)) return timedOut(file, budget);
   let proof: { ok?: boolean; reason?: string } | undefined;
-  try { proof = JSON.parse(result.stdout ?? ''); } catch { /* Output from app source cannot serve as a proof. */ }
-  if (result.status !== 0 || proof?.ok !== true) return refusal(file, SAFE_REASONS.has(proof?.reason as string) ? (proof?.reason as string) : WORKER_FAILURE);
+  try { proof = JSON.parse(result?.stdout ?? ''); } catch { /* Output from app source cannot serve as a proof. */ }
+  if (result?.status !== 0 || proof?.ok !== true) return refusal(file, SAFE_REASONS.has(proof?.reason as string) ? (proof?.reason as string) : WORKER_FAILURE);
   return null;
 }
 

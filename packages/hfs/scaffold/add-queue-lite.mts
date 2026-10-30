@@ -166,7 +166,7 @@ function declarationPatches(repoRoot: string, project: string, patterns: readonl
   const missing = clients.filter((name) => typeof pkg.dependencies?.[name] !== 'string');
   for (const name of missing) if (!pins[name]) throw new ScaffoldError('HFS_SCAFFOLD_PIN_MISSING', `${name} has no canon pin in knowledge/hfs/canon-pins.yaml`);
   if (missing.length)
-    pkg.dependencies = Object.fromEntries(Object.entries({ ...pkg.dependencies, ...Object.fromEntries(missing.map((name) => [name, pins[name].version])) }).sort(([a], [b]) => a.localeCompare(b)));
+    pkg.dependencies = Object.fromEntries(Object.entries({ ...pkg.dependencies, ...Object.fromEntries(missing.map((name) => [name, pins[name]?.version])) }).sort(([a], [b]) => a.localeCompare(b)));
   pkg.scripts = { ...pkg.scripts, ...redisDevScripts(project) };
   return [{ file, text: jsonText(declaration) }, { file: packageFile, text: packageJsonText(pkg) }]
     .filter((patch) => patch.text !== read(patch.file));

@@ -1,5 +1,5 @@
 // starcistacks-ci.mjs - service catalog, CI declarations and quality-service example policy.
-import { readCiDeclaration } from '../hfs/ci-declaration.mjs';
+import { readCiDeclaration, type CiEntry } from '../hfs/ci-declaration.mjs';
 import type { AddFinding, StackServiceEntry } from './starcistacks-form.mjs';
 
 /** A service's reporting hook: records an ambiguity of its declaration. */
@@ -45,7 +45,7 @@ export const checkServiceForm = (service: StackServiceEntry, id: string, entry: 
     add('refuse', 'STACKS_EXAMPLE_FORM', at, 'an example codecov service uses auth oidc without a token');
 };
 /** Examples may document optional workflow secret names, but never a Codecov token or a required extra secret. */
-function forbiddenExampleSecret(item: { name: string; optional?: boolean }): boolean {
+function forbiddenExampleSecret(item: Pick<CiEntry, 'name' | 'optional'>): boolean {
   return item.name === ('CODECOV' + '_TOKEN') || (item.name !== 'SONAR_TOKEN' && item.optional !== true);
 }
 /** Validate the additive CI declaration and the public example secret policy. */

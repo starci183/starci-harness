@@ -5,6 +5,7 @@ import type { ArchitectureViolation, GraphFile, HfsGraph } from './hfs-graph.mjs
 import { isComposeGroup, machineKit } from './machine-ast.mjs';
 import type { MachineContext, MachineKit } from './machine-ast.mjs';
 import { treeOf } from './required-files.mjs';
+import type { AppRef } from '../slots.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { trimTrailingSlashes } from '../trailing-slashes.mjs';
 
@@ -47,10 +48,7 @@ interface ModulePlace {
 }
 
 /** A declared app: its name and kind. */
-interface AppRecord {
-  name: string;
-  kind: string;
-}
+type AppRecord = AppRef;
 
 /** A Nest module class found in the program and the file that declares it. */
 interface ModuleInfo {
@@ -82,10 +80,10 @@ function featureOwnerOf(resolver: Resolver, rel: string) {
 function modulePlaceOf(resolver: Resolver, rel: string): ModulePlace | null {
   const owner = featureOwnerOf(resolver, rel);
   if (!owner) return null;
-  const slot = resolver.slot(owner.slot);
+  const composedBy = resolver.slot(owner.slot)?.composedBy;
   const below = rel.slice(owner.root.length + 1).split('/');
   const feature = path.posix.basename(owner.root);
-  if (slot.composedBy) return { root: owner.root, feature, protocol: null, below, composed: slot };
+  if (composedBy) return { root: owner.root, feature, protocol: null, below, composed: { composedBy } };
   return { root: owner.root, feature, protocol: below[0] === 'transport' && below.length > 2 ? below[1] ?? null : null, below, composed: null };
 }
 
@@ -246,7 +244,7 @@ function inspectAppRoot(app: AppRecord, scan: ModuleScan): number {
   return references;
 }
 
-function appModuleReferences(apps: AppRecord[], scan: ModuleScan): number {
+function appModuleReferences(apps: readonly AppRecord[], scan: ModuleScan): number {
   let references = 0;
   for (const app of apps) references += inspectAppRoot(app, scan);
   return references;

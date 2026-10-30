@@ -124,7 +124,7 @@ function serviceStackFindings({ repoRoot, repo }: { repoRoot: string; repo: Repo
   if (services.length < 2) return [];
   const declaration = findStackDeclaration(repoRoot);
   if (declaration.doc === undefined) return [];
-  const components = declaration.doc.components ?? {};
+  const components: Parsed = declaration.doc.components ?? {};
   const file = '.starcistacks/application-stacks.yaml';
   const findings = [];
   for (const app of services) {

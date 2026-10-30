@@ -31,8 +31,8 @@ export interface DbResult { ok?: boolean; status?: number | null; stdout?: unkno
 
 /** The injectable ports of the db verbs: the environment, the psql runner and the git seam. */
 export interface DbPorts {
-  env?: NodeJS.ProcessEnv;
-  runPostgres?: (root: string, op: DbOperation) => DbResult | null | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
+  runPostgres?: ((root: string, op: DbOperation) => DbResult | null | undefined) | undefined;
   git?: unknown;
 }
 
@@ -47,10 +47,10 @@ export interface SqlFile { file: string; name: string; stamp: string }
 
 /** The injectable IO of a db verb. */
 export interface DbMainIo extends DbPorts {
-  cwd?: string;
-  stdout?: (text: string) => unknown;
-  stderr?: (text: string) => unknown;
-  now?: () => Date;
+  cwd?: string | undefined;
+  stdout?: ((text: string) => unknown) | undefined;
+  stderr?: ((text: string) => unknown) | undefined;
+  now?: (() => Date) | undefined;
 }
 
 /** The baseline plan: the active chain, the last valid stamp, the new version and its file. */
@@ -116,7 +116,7 @@ function chainProblem(directory: string, name: string): string | null {
   const match = /^(\d{14})_/.exec(name);
   if (directory === MIGRATIONS_ARCHIVE_DIR) return match ? null : 'an archived name starts with its 14-digit stamp and an underscore (R257)';
   if (!isMigrationName(name)) return 'name is not <ts14>_<kebab>.sql (R213)';
-  if (migrationStamp((match as RegExpExecArray)[1]) === null) return `stamp ${(match as RegExpExecArray)[1]} is no valid UTC time (R213)`;
+  if (migrationStamp((match as RegExpExecArray)[1] as string) === null) return `stamp ${(match as RegExpExecArray)[1]} is no valid UTC time (R213)`;
   return null;
 }
 
@@ -319,7 +319,7 @@ function extensionDeclaration(stmt: SqlNode, sql: string, extensions: Map<string
     return true;
   }
   if (!/^OBJECT_EXTENSION$/.test(stmt.DropStmt?.removeType ?? '')) return false;
-  for (const object of stmt.DropStmt.objects ?? []) extensions.delete(names(object.List?.items)[0]);
+  for (const object of stmt.DropStmt.objects ?? []) extensions.delete(names(object.List?.items)[0] as string);
   return true;
 }
 
@@ -400,7 +400,7 @@ export function dbBaselineMain(argv: string[], { cwd = invocationDir(), stdout =
     const root = dbAppRoot(cwd, opts);
     const plan = baselinePlan(root, opts, now);
     const files = baselineFiles(root);
-    const sourceFindings = baselineSourceFindings({ repoRoot: root, files, all: files, git: ports.git });
+    const sourceFindings = baselineSourceFindings({ repoRoot: root, files, all: files, git: ports.git, base: undefined });
     if (sourceFindings.length) throw offendersError('baseline sources and archives must match committed migration history', sourceFindings.map(findingLine));
     const archive = () => {
       fs.mkdirSync(path.join(root, MIGRATIONS_ARCHIVE_DIR), { recursive: true });

@@ -8,6 +8,7 @@ import { parseYaml } from '../../../engine/yaml.mjs';
 import { isPlainObject } from '../../../engine/plain-object.mjs';
 import { revParseQuery } from '../../api/git/rev-parse-query.mjs';
 import { tag } from '../../api/git/tag.mjs';
+import type { GitOptions } from '../../api/git/lib.mjs';
 import { gitOutputOf, withoutGitLocalEnv } from '../../lib/git.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -24,7 +25,7 @@ const VERSION_PREFIX = 2;
 const RELEASE_REF = TAG | VERSION_PREFIX;
 
 function gitTags(repoRoot: string, env: Parsed): string[] {
-  const options = { cwd: repoRoot, env: withoutGitLocalEnv(env), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000, maxBuffer: 64 * 1024, windowsHide: true };
+  const options: GitOptions = { cwd: repoRoot, env: withoutGitLocalEnv(env), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000, maxBuffer: 64 * 1024, windowsHide: true };
   try {
     // A nested example belongs to its own product, never to an ancestor runtime's tags.
     const top = gitOutputOf(revParseQuery(['--show-toplevel'], options)).trim();

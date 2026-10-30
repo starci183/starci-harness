@@ -27,7 +27,7 @@ export type DeclarationRead = { doc: DeclarationDoc; error?: undefined } | { err
 /** The stack declaration a repository owns, or {missing:true} when it declares none. */
 export type StackDeclaration =
   | ({ repo: string; root: string; file: string; rooted: boolean } & DeclarationRead)
-  | { repo: string; missing: true; rooted: boolean };
+  | { repo: string; missing: true; rooted: boolean; root?: undefined; file?: undefined; doc?: undefined; error?: undefined };
 /** The stack block of one declared service. */
 export interface DeclaredStack { owner: string | null; root: string | null; repository: string | null; hostOwned: boolean }
 

@@ -31,7 +31,7 @@ import { classifyIn, ownerIn, slotEnabled, tierIn } from './slot-classify.mjs';
 import { compileVariant, varsOf, variantsOf } from './slot-match.mjs';
 import { importAllowedIn } from './slot-imports.mjs';
 import { requiredFilesIn, requiredPathsIn } from './slot-required.mjs';
-import { appResolver } from './slot-app-view.mjs';
+import { appResolver, isAppRepo } from './slot-app-view.mjs';
 import type { AppRepo } from './slot-app-view.mjs';
 import { sideProblems } from './slot-side-problems.mjs';
 import { declarationShapeProblems } from './declaration-shape.mjs';
@@ -299,6 +299,16 @@ export function resolveRepoDeclaration(manifest: SlotManifest, declaration: Pars
     sides: Object.freeze(sides),
     manifestVersion: manifest.version,
   });
+}
+
+/**
+ * The view of a whole app (profile app, both sides) that resolveRepoDeclaration builds for an app declaration; a declaration that
+ * resolves to a view without sides (a runtime repository) is refused HFS_DECLARATION_INVALID.
+ */
+export function resolveAppDeclaration(manifest: SlotManifest, declaration: Parsed, { file = HFS_DECLARATION_FILE }: { file?: string } = {}): AppRepo {
+  const view = resolveRepoDeclaration(manifest, declaration, { file });
+  if (!isAppRepo(view)) declarationInvalid([`a ${view.kind} declaration has no sides`], file);
+  return view;
 }
 
 /**

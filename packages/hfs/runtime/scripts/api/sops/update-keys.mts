@@ -13,8 +13,9 @@ export function updateKeys(bin: string | null, { file, config, inputType }: { fi
   const selected = sopsIdentityEnv(env, { required: true });
   if (selected.error?.identityRefusal === 'inline-context-unqualified') return runSelectedUpdateKeys(bin, { file, config, inputType }, { selection: selected, invocation, env, cwd, timeout });
   if (selected.error) return { status: null, stdout: '', stderr: '', error: selected.error };
-  const exe = bin ?? resolveSops(selected.env);
+  const selectedEnv = selected.env as NodeJS.ProcessEnv; // every SopsIdentity without an error carries its env
+  const exe = bin ?? resolveSops(selectedEnv);
   if (!exe) return { status: null, stdout: '', stderr: '', error: Object.assign(new Error('sops is not installed (Windows: winget install Mozilla.SOPS)'), { code: 'SOPS_MISSING' }) };
-  const r = spawnSync(exe, ['--disable-version-check', '--config', config, 'updatekeys', '-y', '--input-type', inputType, file], { cwd, env: selected.env, encoding: 'utf8', windowsHide: true, timeout, stdio: ['ignore', 'pipe', 'pipe'] });
+  const r = spawnSync(exe, ['--disable-version-check', '--config', config, 'updatekeys', '-y', '--input-type', inputType, file], { cwd, env: selectedEnv, encoding: 'utf8', windowsHide: true, timeout, stdio: ['ignore', 'pipe', 'pipe'] });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr, error: r.error ?? null };
 }

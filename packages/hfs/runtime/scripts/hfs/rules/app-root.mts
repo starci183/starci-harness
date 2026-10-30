@@ -22,7 +22,8 @@ import { sagaFindings } from './saga.mjs';
 import { serviceFindings } from './services.mjs';
 import { stacksFindings } from './stacks.mjs';
 import { testTopologyFindings } from './test-topology.mjs';
-import type { Parsed, Repo, Resolver } from './rule-types.mjs';
+import type { Parsed, Repo } from './rule-types.mjs';
+import type { Resolver } from '../slots.mjs';
 
 /**
  * The findings of the app-root rules: `files` are the root's own tracked paths, `all` every tracked path of the app, `repo` the

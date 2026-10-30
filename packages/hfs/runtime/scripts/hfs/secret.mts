@@ -339,7 +339,7 @@ export async function secretMain(
     }
     const seam = open();
     if (verb === "verify")
-      return verifySecrets({ repoRoot, directory, environment, sops: seam, stdout });
+      return verifySecrets({ repoRoot, directory, environment, sops: seam, stdout, typescript: undefined });
     const output = { repoRoot, environment, env, platform, stdout };
     if (verb === "materialize")
       return materializeSecrets(directory, seam, output);

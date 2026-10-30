@@ -15,7 +15,6 @@
     "**/*.d.mts"
   ],
   "files": [
-    "migration.d.mts",
     "vendor-types.d.mts"
   ]
 }

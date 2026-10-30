@@ -1,5 +1,6 @@
 import { byCodeUnit } from '../../lib/list.mjs';
 import type { ArchitectureConfig } from './config.mjs';
+import type { ImportVerdict } from '../slots.mjs';
 import type { ArchitectureViolation, GraphEdge, HfsGraph } from './hfs-graph.mjs';
 import { registryListImport, registrySlot } from './entity-registry.mjs';
 
@@ -23,9 +24,7 @@ export const TIER_RULE_IDS = ['BE_TIER_DIRECTION', 'BE_FEATURE_IMPORTS_FEATURE',
 type Resolver = ArchitectureConfig['hfs'];
 
 /** What `resolver.importAllowed` answers; the fields beyond `allowed` and `reason` are present for the reasons that name them. */
-interface TierVerdict {
-  allowed: boolean;
-  reason?: string;
+interface TierVerdict extends ImportVerdict {
   fromTier?: string | null;
   toTier?: string | null;
   mayImport: string[];
@@ -151,7 +150,9 @@ const triggerOf = (resolver: Resolver, file: string): string | null => {
   return owner ? (resolver.slot(owner.slot)?.trigger ?? null) : null;
 };
 
-function reportReasonedTierViolation(graph: HfsGraph, edge: GraphEdge, verdict: TierVerdict, tierRule: string, counts: TierCounts, violations: ArchitectureViolation[]) {
+function reportReasonedTierViolation(graph: HfsGraph, edge: GraphEdge, answer: ImportVerdict, tierRule: string, counts: TierCounts, violations: ArchitectureViolation[]) {
+  // reason: importAllowed carries the details of REASON_TEXT's reasons (tierDirection, layerOrder, crossApp) as the TierVerdict fields; any other reason returns below
+  const verdict = answer as TierVerdict;
   const reason = verdict.reason ?? '';
   const describe = REASON_TEXT[reason];
   if (verdict.allowed || !describe) return;

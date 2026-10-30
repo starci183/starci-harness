@@ -29,7 +29,7 @@ export interface IngressConfig {
   service: string;
   network: string;
   acmeVolume: string;
-  legacy: IngressLegacy | null;
+  legacy: IngressLegacy;
   upstreams: IngressUpstream[];
   routes: string | null;
   middlewares: Record<string, Block>;
@@ -38,7 +38,7 @@ export interface IngressConfig {
   redirects: IngressRedirect[];
   backup: { dir: string } | null;
   publish: IngressPublish | null;
-  takeover: IngressTakeover | null;
+  takeover: IngressTakeover;
 }
 
 /** What `normalizeIngress` returns: the config (null when a problem was found) and every problem. */
@@ -252,6 +252,15 @@ export function normalizeIngress(block: Block, { probe }: { probe: TreeProbe }):
   const declared = middlewareMap(c, block.middlewares);
   const routes = block.routes ?? null;
   referencedMiddlewares(c, ups, declared, routes);
+  const legacyEdge = legacy(c, block.legacy);
+  const verify = verifyList(c, block.verify);
+  const drop = dropList(c, block.drop);
+  const redirectList = redirects(c, block.redirects);
+  const backupDir = backup(c, block.backup);
+  const publishPlan = publish(c, block.publish);
+  const takeoverPlan = takeover(c, block.takeover);
+  // legacy and takeover are null only when they recorded a problem, which refuses the whole block.
+  if (c.problems.length > 0 || legacyEdge === null || takeoverPlan === null) return { ingress: null, problems: c.problems };
   const ingress: IngressConfig = {
     name: block.name ?? 'ingress',
     image: block.image ?? null,
@@ -259,16 +268,16 @@ export function normalizeIngress(block: Block, { probe }: { probe: TreeProbe }):
     service: block.service ?? 'ingress',
     network: block.network,
     acmeVolume: block.acmeVolume,
-    legacy: legacy(c, block.legacy),
+    legacy: legacyEdge,
     upstreams: ups,
     routes,
     middlewares: declared,
-    verify: verifyList(c, block.verify),
-    drop: dropList(c, block.drop),
-    redirects: redirects(c, block.redirects),
-    backup: backup(c, block.backup),
-    publish: publish(c, block.publish),
-    takeover: takeover(c, block.takeover),
+    verify,
+    drop,
+    redirects: redirectList,
+    backup: backupDir,
+    publish: publishPlan,
+    takeover: takeoverPlan,
   };
-  return { ingress: c.problems.length === 0 ? ingress : null, problems: c.problems };
+  return { ingress, problems: c.problems };
 }

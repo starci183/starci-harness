@@ -24,7 +24,7 @@ function mapEntry(old: string, raw: unknown): MapEntry {
 
 /** The first unoccupied version after `old`, one second at a time. */
 function nextFreeVersion(old: string, occupied: Set<string>): string {
-  let moment = migrationStamp(old);
+  let moment = migrationStamp(old) ?? 0; // null + 1000 === 0 + 1000
   for (;;) {
     moment += 1000;
     const candidate = new Date(moment).toISOString().replace(/\D/g, '').slice(0, 14);

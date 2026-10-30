@@ -128,7 +128,7 @@ function catalogProperties(state: Parsed, source: Parsed, object: Parsed, prefix
     const name = nameText(state.ts, property.name, { numbers: true });
     if (name === null) continue;
     const child = unwrap(state.ts, property.initializer);
-    if (state.ts.isObjectLiteralExpression(child) && !child.properties.some((item: Parsed) => ['vi', 'en'].includes(nameText(state.ts, item.name, { numbers: true })))) {
+    if (state.ts.isObjectLiteralExpression(child) && !child.properties.some((item: Parsed) => (['vi', 'en'] as Array<string | null>).includes(nameText(state.ts, item.name, { numbers: true })))) {
       catalogProperties(state, source, child, ['vi', 'en'].includes(name) ? prefix : `${prefix}${name}.`);
     } else {
       const key = `${prefix}${name}`;
@@ -179,8 +179,8 @@ function declarationName(ts: Ts, node: Parsed) {
     || ts.isPropertyDeclaration(parent) || ts.isMethodDeclaration(parent) || ts.isFunctionDeclaration(parent) || ts.isClassDeclaration(parent));
 }
 
-const matchesMember = (member: Parsed, key: string) => key === null || member.name.endsWith(`.${key}`) || typeof member.value === 'number' && String(member.value) === key;
-const markMembers = (members: Parsed, key: string) => { for (const member of members) if (matchesMember(member, key)) member.used = true; };
+const matchesMember = (member: Parsed, key: string | null) => key === null || member.name.endsWith(`.${key}`) || typeof member.value === 'number' && String(member.value) === key;
+const markMembers = (members: Parsed, key: string | null) => { for (const member of members) if (matchesMember(member, key)) member.used = true; };
 
 function markContainerRead(ts: Ts, members: Parsed, node: Parsed) {
   const receiver = ts.isPropertyAccessExpression(node.parent) && node.parent.name === node ? node.parent : node;

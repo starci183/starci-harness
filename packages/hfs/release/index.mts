@@ -12,7 +12,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { hasEntityList } from '../db/entity-list.mjs';
 import { STACKS_DIR, STACKS_FILE } from '../stack/config.mjs';
-import { stackContext } from '../stack/context.mjs';
+import { stackContext, type StackContext } from '../stack/context.mjs';
 import { EXIT, StackError, refusal } from '../stack/errors.mjs';
 import { RELEASE_CODE, VERSION, normalizeRelease, releaseGate } from './gate.mjs';
 import { releasePush } from './push.mjs';
@@ -23,31 +23,19 @@ const IO_KEYS = ['cwd', 'stdout', 'stderr', 'env', 'sops', 'hostIdentity'] as co
 /** What a spawned tool answers (ctx.spawn is never a shell). */
 export interface SpawnResult { status: number | null; stdout: string; stderr: string; error?: Error | undefined }
 
-/** The seams every release and database verb runs through (stack/context.mjs stackContext): spawn, clock, sleep, fetch, writers and the environment. */
-export interface VerbContext {
-  cwd: string;
-  env: NodeJS.ProcessEnv;
-  spawn: (command: string, args: readonly string[], options?: Record<string, unknown>) => SpawnResult;
-  platform: string;
-  sleep: (ms: number) => Promise<void>;
-  now: () => number;
-  stdout: (text: string) => unknown;
-  stderr: (text: string) => unknown;
-  fetch: typeof fetch;
-  [seam: string]: unknown; // the stack context also carries the pipe, sops and ssh seams other stack modules read
-}
+/** The seams every release and database verb runs through: the stack context contextOf builds (stack/context.mjs stackContext). */
+export type VerbContext = StackContext;
 
 /** The app IO a verb receives from the starci CLI (cwd, writers, environment, secret seams, the stack seams of `stackIo`, the CLI `harness`). */
 export interface VerbIo {
-  cwd?: string;
-  stdout?: (text: string) => unknown;
-  stderr?: (text: string) => unknown;
-  env?: NodeJS.ProcessEnv;
+  cwd?: string | undefined;
+  stdout?: ((text: string) => unknown) | undefined;
+  stderr?: ((text: string) => unknown) | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
   sops?: unknown;
   hostIdentity?: unknown;
-  stackIo?: Record<string, unknown>;
-  harness?: { version?: string; role?: string; openTicket?: (ticket: unknown) => unknown } | undefined;
-  [key: string]: unknown;
+  stackIo?: Record<string, unknown> | undefined;
+  harness?: { version?: string | undefined; role?: string | undefined; openTicket?: ((ticket: unknown) => unknown) | undefined } | undefined;
 }
 
 /** The flags of one verb ({ boolean, value, retired }); the parser refuses every other. */

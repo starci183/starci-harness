@@ -160,7 +160,7 @@ function addProvenScenarios(ts: Ts, source: Parsed, proven: Parsed) {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && TEST_CALLEES.has(node.expression.text)) {
       const title = literalText(ts, node.arguments[0]);
       const colon = title === null ? -1 : title.indexOf(':');
-      if (colon > 0) proven.add(title.slice(0, colon));
+      if (title !== null && colon > 0) proven.add(title.slice(0, colon));
     }
     ts.forEachChild(node, visit);
   };

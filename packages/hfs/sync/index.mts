@@ -22,7 +22,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
 import { codecovPaths, coverageComponents, jestCoverage, sonarCoverageExclusions } from '../runtime/scripts/hfs/coverage-scope.mjs';
-import { APP_SCOPE, SIDES, litePresenceOf, loadSlotManifest, resolveRepoDeclaration, slotInEdition } from '../runtime/scripts/hfs/slots.mjs';
+import { APP_SCOPE, SIDES, litePresenceOf, loadSlotManifest, resolveAppDeclaration, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
+import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
+import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
 import { declaredSlotEnabled } from '../runtime/scripts/hfs/declaration-slots.mjs';
 import { feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
@@ -64,17 +66,12 @@ export class SyncError extends Error {
 }
 
 /** A side of the app (be or fe) as the resolved hfs.json declares it. */
-export interface AppSide {
-  apps: { name: string; kind: string }[]; connections?: { provider: string }[]; reads?: string[]; backing?: string[]; optionalSlots?: string[]; grammar?: unknown;
-}
+export type AppSide = RepoView;
 /** The app declaration hfs.json resolves to (resolveRepoDeclaration): the project, the edition, the optional slots and both sides. */
-export interface ResolvedApp { project: string; edition?: string; optionalSlots: string[]; sides: { be: AppSide; fe: AppSide } }
-/** A slot of the slot manifest (knowledge/hfs/slots.yaml) as sync reads it. */
-export interface ManifestSlot {
-  id: string; path: string; profiles: string[]; presence?: string; managedBy?: string; liteManagedBy?: string; lite?: { path?: string };
-}
-/** The slot manifest sync renders from. */
-export interface SlotManifest { version: string; slots: ManifestSlot[]; [field: string]: unknown }
+export type ResolvedApp = AppRepo;
+/** A slot of the slot manifest (knowledge/hfs/slots.yaml). */
+type ManifestSlot = Slot;
+export type { SlotManifest };
 /** A file sync manages, before it is rendered: its path (relative to its scope), template and mode. */
 export interface Target { path: string; template: string; mode: string; slot?: string; markdown?: boolean }
 /** The markers around a managed block. */
@@ -169,7 +166,7 @@ export const hashOf = (text: string): string => createHash('sha256').update(lf(t
  */
 export function validateHfs(hfs: unknown, manifest: SlotManifest = loadSlotManifest()): ResolvedApp {
   try {
-    return resolveRepoDeclaration(manifest, hfs);
+    return resolveAppDeclaration(manifest, hfs);
   } catch (error) {
     throw new SyncError('HFS_SYNC_HFS_INVALID', `hfs.json is not a valid app declaration for manifest ${manifest.version}: ${(error as Error).message}`);
   }
@@ -407,7 +404,7 @@ const IMAGE_TEMPLATE: Readonly<Record<string, string>> = Object.freeze({ api: 'b
  * and then the app's own, judged by the docker rules (R187-R191). A Next image copies the fe packages only when the fe side opts into
  * them and the be contracts only when the fe side reads them, so each COPY names a folder the app has.
  */
-export function imageFiles(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined): { path: string; content: string }[] {
+export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFacts, 'hasImage'>>): { path: string; content: string }[] {
   const side = app.sides.fe;
   const inputs = [...(opensPackages(side) ? ['fe/packages'] : []), ...((side.reads ?? []).includes('be/contracts/') ? ['be/contracts'] : [])];
   const copyInputs = inputs.map(folder => `COPY ${folder} ${folder}\n`).join('');
@@ -423,7 +420,7 @@ export function imageFiles(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
 }
 
 /** Every value a template of `scope` can name, derived from hfs.json and the presets. */
-export function variables(app: ResolvedApp, scope: string, presets: Presets | null | undefined, sonarKey: string | null | undefined, manifest: SlotManifest = loadSlotManifest(), source: Partial<AppSourceFacts> = { files: [], read: () => '' }): Record<string, string> {
+export function variables(app: ResolvedApp, scope: string, presets: Presets | null | undefined, sonarKey: string | null | undefined, manifest: SlotManifest = loadSlotManifest(), source: Pick<AppSourceFacts, 'files' | 'read'> & Partial<AppSourceFacts> = { files: [], read: () => '' }): Record<string, string> {
   const stack = source.stack ?? { images: [], passEnv: [] };
   const fe = app.sides.fe;
   const packages = opensPackages(fe);

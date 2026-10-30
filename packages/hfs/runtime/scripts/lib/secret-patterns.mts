@@ -226,7 +226,7 @@ function readmeBadgeText(text: string, manifestText: string | undefined): string
 }
 
 /** Whole-file secret judgement exempts only declared public badge values and preserves original line numbers and every provider shape. */
-export function secretHitsInFile(file: string, fullText: string, { manifestText }: { manifestText?: string } = {}): { line: number; pattern: string }[] {
+export function secretHitsInFile(file: string, fullText: string, { manifestText }: { manifestText?: string | undefined } = {}): { line: number; pattern: string }[] {
   const normalized = file.replaceAll('\\', '/');
   let text = fullText;
   if (/(?:^|\/)\.starcistacks\/application-stacks\.yaml$/.test(normalized)) text = manifestBadgeText(text);

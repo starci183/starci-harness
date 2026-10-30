@@ -86,7 +86,7 @@ function missingSpecFindings(cwd: string, { added = addedFiles(cwd), indexed, ma
   const staged = (file: string): string | null => {
     try { return git(cwd, ['show', `:${file}`]); } catch { return null; }
   };
-  let ts: unknown = null;
+  let ts: ReturnType<typeof loadTypescript> = null;
   try { ts = loadTypescript(cwd, import.meta.dirname); } catch { ts = null; }
   return stagedSpecFindings(manifest ?? loadSlotManifest(), added, indexed ?? new Set(trackedFiles(cwd)), { ts, staged });
 }

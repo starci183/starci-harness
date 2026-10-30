@@ -52,7 +52,7 @@ export function checkErrorCodes(input: CheckInput) {
   const seen = new Map<string, string>();
   let enums = 0;
   let codes = 0;
-  const files = [...graph.files.values()].filter(file => file.slot === 'be.errors' && file.owner && path.posix.basename(file.rel).endsWith('.error.ts'))
+  const files = [...graph.files.values()].filter((file): file is GraphFile & { owner: NonNullable<GraphFile['owner']> } => file.slot === 'be.errors' && file.owner !== null && path.posix.basename(file.rel).endsWith('.error.ts'))
     .sort((a, b) => a.rel.localeCompare(b.rel));
   for (const file of files) {
     const capability = upperSnake(path.posix.basename(file.owner.root));

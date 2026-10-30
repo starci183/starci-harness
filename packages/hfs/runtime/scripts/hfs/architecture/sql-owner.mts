@@ -37,6 +37,11 @@ export interface TableDeclaration {
   uniqueSets: string[][];
 }
 
+/** A graph file that has an owner (the files this check inspects are all filtered on it). */
+type OwnedFile = GraphFile & { owner: NonNullable<GraphFile['owner']> };
+
+const hasOwner = (file: GraphFile): file is OwnedFile => Boolean(file.owner);
+
 /** Reports one finding of the template being inspected. */
 type SqlReport = (message: string, extra?: Record<string, unknown>) => void;
 
@@ -68,7 +73,7 @@ interface SqlState {
 interface SqlWriteInput {
   tables: Map<string, TableDeclaration>;
   sqlAuthority: boolean;
-  file: GraphFile;
+  file: OwnedFile;
   ownTable: string;
   report: SqlReport;
 }
@@ -175,7 +180,7 @@ function addEntityUniqueSets(kit: MachineKit, checker: TypeChecker, statement: C
 }
 
 /** Records the entities one `.entity.ts` file declares into `tables`; returns how many of its entities have no readable table name. */
-function addFileEntities(kit: MachineKit, file: GraphFile, tables: Map<string, TableDeclaration>): number {
+function addFileEntities(kit: MachineKit, file: OwnedFile, tables: Map<string, TableDeclaration>): number {
   const checker: TypeChecker = kit.checkerOf(file.sourceFile);
   let unreadable = 0;
   for (const statement of file.sourceFile.statements) {
@@ -195,7 +200,7 @@ export function entitiesOf(kit: MachineKit, graph: HfsGraph): { tables: Map<stri
   const tables = new Map<string, TableDeclaration>();
   let unreadable = 0;
   for (const file of graph.files.values()) {
-    if (file.slot !== 'be.persistence' || !path.posix.basename(file.rel).endsWith('.entity.ts') || !file.owner) continue;
+    if (file.slot !== 'be.persistence' || !path.posix.basename(file.rel).endsWith('.entity.ts') || !hasOwner(file)) continue;
     unreadable += addFileEntities(kit, file, tables);
   }
   return { tables, unreadable };
@@ -241,7 +246,7 @@ function reportSqlWrites(input: SqlWriteInput & { result: SqlAnalysis }): void {
   for (const write of input.result.writes) reportSqlWrite(input, write);
 }
 
-function reportSqlRead(tables: Map<string, TableDeclaration>, sqlAuthority: boolean, file: GraphFile, model: ContextModel, resolver: SlotResolver, report: SqlReport, read: SqlTableUse): void {
+function reportSqlRead(tables: Map<string, TableDeclaration>, sqlAuthority: boolean, file: OwnedFile, model: ContextModel, resolver: SlotResolver, report: SqlReport, read: SqlTableUse): void {
   const declaration = tables.get(read.table.toLowerCase());
   if (!declaration) {
     report(sqlAuthority
@@ -260,7 +265,7 @@ function reportSqlRead(tables: Map<string, TableDeclaration>, sqlAuthority: bool
   if (!verdict.allowed) report(`SQL in ${file.owner.root} reads table ${read.table}, owned by ${declaration.owner}, which ${file.owner.root} may not import (${verdict.reason}); read it through the owner's public API.`, { table: read.table, tableOwner: declaration.owner, reason: verdict.reason });
 }
 
-function reportSqlReads({ result, tables, sqlAuthority, file, model, resolver, report }: { result: SqlAnalysis; tables: Map<string, TableDeclaration>; sqlAuthority: boolean; file: GraphFile; model: ContextModel; resolver: SlotResolver; report: SqlReport }): void {
+function reportSqlReads({ result, tables, sqlAuthority, file, model, resolver, report }: { result: SqlAnalysis; tables: Map<string, TableDeclaration>; sqlAuthority: boolean; file: OwnedFile; model: ContextModel; resolver: SlotResolver; report: SqlReport }): void {
   for (const read of result.reads) reportSqlRead(tables, sqlAuthority, file, model, resolver, report, read);
 }
 
@@ -272,7 +277,7 @@ function reportSqlSelects({ result, tables, report }: { result: SqlAnalysis; tab
   }
 }
 
-function inspectSqlTag(input: SqlInspection, state: SqlState, file: GraphFile, checker: TypeChecker, node: Node): boolean {
+function inspectSqlTag(input: SqlInspection, state: SqlState, file: OwnedFile, checker: TypeChecker, node: Node): boolean {
   const { kit, ts, tables, sqlAuthority, model, resolver } = input;
   if (!ts.isTaggedTemplateExpression(node)) return true;
   const home = kit.declarationsOf(checker, node.tag).map(kit.ownerOfDeclaration).find(Boolean);
@@ -302,7 +307,7 @@ function inspectSqlTag(input: SqlInspection, state: SqlState, file: GraphFile, c
 
 function inspectSqlFile(input: SqlInspection, state: SqlState, file: GraphFile): void {
   const { kit } = input;
-  if (file.slot !== 'be.persistence' || !path.posix.basename(file.rel).endsWith('.sql.ts') || !file.owner) return;
+  if (file.slot !== 'be.persistence' || !path.posix.basename(file.rel).endsWith('.sql.ts') || !hasOwner(file)) return;
   const checker: TypeChecker = kit.checkerOf(file.sourceFile);
   kit.walk(file.sourceFile, (node: Node) => inspectSqlTag(input, state, file, checker, node));
 }
@@ -311,7 +316,7 @@ export function checkSqlOwner(input: HfsCheckInput): CheckResult {
   const { config, graph } = input;
   const kit = machineKit(input);
   const { ts, resolver } = kit;
-  const sqlAuthority = resolver.ruleParams().schemaAuthority === 'sql';
+  const sqlAuthority = resolver.ruleParams()?.schemaAuthority === 'sql';
   const entityDeclarations: { tables: Map<string, TableDeclaration>; unreadable: number } = sqlAuthority ? { tables: new Map(), unreadable: 0 } : entitiesOf(kit, graph);
   const tables = sqlAuthority ? sqlDeclarations(graph, config.packageRoot) : entityDeclarations.tables;
   const model = contextModelOf(kit, graph);

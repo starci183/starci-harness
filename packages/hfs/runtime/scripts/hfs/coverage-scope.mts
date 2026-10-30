@@ -38,6 +38,9 @@ export interface CoverageComponent { id: string; name: string; paths: string[] }
 /** A declared back-end app. */
 export interface BeApp { name: string; kind: string }
 
+/** The providers the app's connections declare; a connection that names none contributes undefined, which enables no slot. */
+type Providers = readonly (string | undefined)[];
+
 /** The component that holds the shared infrastructure: the platform tier and every capability more than one service app composes. */
 const PLATFORM_COMPONENT = 'platform';
 const SERVICE_APP_KINDS = new Set(['api', 'worker']);
@@ -77,7 +80,7 @@ const variantsOf = (slot: ScopeSlot): string[] => braceVariants(slot.path).map(s
  * The tracked slots of the be profile, in manifest order. A slot gated by a connection provider holds files only in an
  * app whose connection declares that provider (`providers`), so it takes no part in the scope of any other app.
  */
-const beSlots = (manifest: ScopeManifest, providers: string[]): ScopeSlot[] => manifest.slots.filter((slot) => slot.profiles.includes('be') && slot.tracked === 'tracked' && (slot.provider === undefined || providers.includes(slot.provider)));
+const beSlots = (manifest: ScopeManifest, providers: Providers): ScopeSlot[] => manifest.slots.filter((slot) => slot.profiles.includes('be') && slot.tracked === 'tracked' && (slot.provider === undefined || providers.includes(slot.provider)));
 
 function addRequiredPatterns(sonar: Set<string>, required: ScopeSlot[], suffixes: string[]): void {
   const escapedSuffixes = suffixes.map((suffix) => suffix.replaceAll('-', String.raw`\-`)).join('|');
@@ -143,7 +146,7 @@ const minimal = (patterns: string[]): string[] => {
  *   sonar     sonar.coverage.exclusions, repository-relative from the app root, sorted;
  *   codecovPaths  the measured roots as `be/<root>**`.
  */
-export function coverageScope(manifest: ScopeManifest, providers: string[] = []): CoverageScope {
+export function coverageScope(manifest: ScopeManifest, providers: Providers = []): CoverageScope {
   const roles = [...logicRolesOf(manifest)];
   const slots = beSlots(manifest, providers);
   const required = slots.filter((slot) => slot.coverage === 'required');
@@ -176,16 +179,16 @@ export const rootGlob = (root: string, roles: string[]): string => {
 };
 
 /** The jest coverage options of the rendered be/jest.config.js: { roots, roles, files, excludes }. */
-export function jestCoverage(manifest: ScopeManifest, providers: string[] = []): { roots: string[]; roles: string[]; files: string[]; excludes: string[] } {
+export function jestCoverage(manifest: ScopeManifest, providers: Providers = []): { roots: string[]; roles: string[]; files: string[]; excludes: string[] } {
   const { roots, roles, files, excludes } = coverageScope(manifest, providers);
   return { roots, roles, files, excludes: excludes.map((dir) => `${dir}**`) };
 }
 
 /** Sonar's sonar.coverage.exclusions of an app: the complement of the measured files, repository-relative from the app root. */
-export const sonarCoverageExclusions = (manifest: ScopeManifest, providers: string[] = []): string[] => coverageScope(manifest, providers).sonar;
+export const sonarCoverageExclusions = (manifest: ScopeManifest, providers: Providers = []): string[] => coverageScope(manifest, providers).sonar;
 
 /** The Codecov paths of an app: the measured roots, repository-relative from the app root. */
-export const codecovPaths = (manifest: ScopeManifest, providers: string[] = []): string[] => coverageScope(manifest, providers).codecovPaths;
+export const codecovPaths = (manifest: ScopeManifest, providers: Providers = []): string[] => coverageScope(manifest, providers).codecovPaths;
 
 /**
  * The capability a be-relative file belongs to inside a root, or null: the folder the root's last `*` stands for
@@ -213,7 +216,7 @@ function escapeImportPart(part: string): string {
  * @param manifest the slot manifest
  * @param source be-relative source files, a reader, the declared be apps
  */
-export function coverageComponents(manifest: ScopeManifest, { files, read, apps, providers = [] }: { files: string[]; read: (file: string) => string; apps: BeApp[]; providers?: string[] }): CoverageComponent[] {
+export function coverageComponents(manifest: ScopeManifest, { files, read, apps, providers = [] }: { files: string[]; read: (file: string) => string; apps: readonly BeApp[]; providers?: Providers }): CoverageComponent[] {
   const { roots } = coverageScope(manifest, providers);
   const services = apps.filter((app) => SERVICE_APP_KINDS.has(app.kind));
   const imports = new Map<string, string>(services.map((app): [string, string] => [app.name, files.filter((file) => file.startsWith(`apps/${app.name}/`) && /\.[cm]?ts$/.test(file)).map((file) => read(file)).join('\n')]));

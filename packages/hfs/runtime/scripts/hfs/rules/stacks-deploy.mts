@@ -18,15 +18,15 @@ const mapping = (value: Parsed) => (plain(value) ? value : {});
 /** Service names of the first composeFiles entry; an unreadable stack source means unknown services (empty set). */
 function stackServices(envDir: Parsed, spec: Parsed) {
   const relative = Array.isArray(spec.composeFiles) ? spec.composeFiles[0] : undefined;
-  if (typeof relative !== 'string' || path.isAbsolute(relative) || relative.split(/[\\/]/).includes('..')) return new Set();
+  if (typeof relative !== 'string' || path.isAbsolute(relative) || relative.split(/[\\/]/).includes('..')) return new Set<string>();
   const { doc } = readDeclaration(path.join(envDir, relative));
-  return new Set(Object.keys(mapping(doc?.services)));
+  return new Set<string>(Object.keys(mapping(doc?.services)));
 }
 
 function sealedMembers(envDir: Parsed) {
   try {
-    return new Set(fs.readdirSync(path.join(envDir, 'secrets')).filter(isSealedName).map(memberOfName));
-  } catch { return new Set(); }
+    return new Set<string>(fs.readdirSync(path.join(envDir, 'secrets')).filter(isSealedName).map(memberOfName));
+  } catch { return new Set<string>(); }
 }
 
 function probeOf(envDir: Parsed, spec: Parsed) {

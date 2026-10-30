@@ -5,7 +5,9 @@ import { revParseQuery } from '../../api/git/rev-parse-query.mjs';
 import { gitOutputOf } from '../../lib/git.mjs';
 import { trimTrailingSlashes } from '../trailing-slashes.mjs';
 import { requiredFileApplies } from '../slot-required.mjs';
-import type { ArchitectureConfig, OwnerRecord, TypeScriptApi } from './config.mjs';
+import type { OwnerUnit, RequiredMinimum, RequiredPaths, Resolver, ScopeResolver } from '../slots.mjs';
+import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
+import type { GitSpawnResult } from '../../lib/git.mjs';
 import type { Violation } from './ast-walks.mjs';
 
 /** The repository tree as file and directory sets over posix relatives. */
@@ -14,62 +16,8 @@ export interface RepositoryTree {
   directories: Set<string>;
 }
 
-/** One slot of the manifest, as far as the required-file checks read it. */
-export interface RequiredSlot {
-  tier: string;
-  requires?: string[];
-}
-
-/** What the slot resolver answers for one classified path. */
-export interface ClassifiedPath {
-  status: string;
-  slot?: string;
-  root: string;
-  bindings?: Record<string, string>;
-}
-
-/** The rule parameters the slot manifest declares (`ruleParams`), by rule family. */
-export interface RuleParams {
-  contractShape: { helper: string };
-  [family: string]: unknown;
-}
-
-/** An owner with the bindings its `<name>` placeholders fill from. */
-export interface BoundOwner extends OwnerRecord {
-  bindings: Record<string, string>;
-}
-
-/** One declared required path (`via` is 'requires' for an entry of a slot's `requires`). */
-export interface DeclaredPath {
-  slot: string;
-  via: string;
-  path: string;
-}
-
-/** A minimum instance count a slot (or an app kind) must reach. */
-export interface MinimumRequirement {
-  slot: string;
-  appKind?: string;
-  min: number;
-}
-
-/** What `requiredPaths()` of the slot resolver answers. */
-export interface DeclaredRequirements {
-  paths: DeclaredPath[];
-  minimums: MinimumRequirement[];
-}
-
-/** The slot resolver surface the required-file checks (and the feature-shape check) use. */
-export interface SlotResolver {
-  slot(slotId: string): RequiredSlot | null | undefined;
-  slotEnabled(slot: RequiredSlot | null | undefined): boolean;
-  requiredFiles(file: string): string[];
-  classifyPath(file: string): ClassifiedPath;
-  ownerOf(file: string): BoundOwner | null | undefined;
-  requiredPaths(): DeclaredRequirements;
-  ruleParams(): RuleParams;
-  repo: { apps: { kind: string }[] };
-}
+/** The slot resolver of one scope the architecture checkers read: the owner type from slots.mjs. */
+export type SlotResolver = ScopeResolver;
 
 /** One required target of one slot instance. */
 interface Requirement {
@@ -103,7 +51,8 @@ const ALSO_JUDGED_TIER_NONE = new Set(['fe.app.next']);
 
 function gitFiles(root: string): string[] | null {
   try {
-    const run = (call: (args: string[], options: { cwd: string; maxBuffer: number }) => unknown, args: string[]): string => gitOutputOf(call(args, { cwd: root, maxBuffer: 256 * 1024 * 1024 }));
+    // gitOutputOf threw unless git exited 0, whose stdout is text
+    const run = (call: (args: string[], options: { cwd: string; maxBuffer: number }) => GitSpawnResult, args: string[]): string => gitOutputOf(call(args, { cwd: root, maxBuffer: 256 * 1024 * 1024 })) as string;
     run(revParseQuery, ['--is-inside-work-tree']);
     const deleted = new Set(run(lsFiles, ['--deleted', '-z', '--', '.']).split('\0').filter(Boolean));
     return run(lsFiles, ['--cached', '-z', '--', '.']).split('\0').filter(file => file && !deleted.has(file));
@@ -164,8 +113,8 @@ export function treeOf(root: string): RepositoryTree {
  * The prelude every tree-walking architecture checker shares: the input's config/graph/context, the compiler,
  * the slot resolver and the tracked repository tree.
  */
-export function checkerScope<Graph extends { resolver: SlotResolver }, Context extends { ts: TypeScriptApi }>(
-  { config, graph, context }: { config: ArchitectureConfig; graph: Graph; context: Context }) {
+export function checkerScope<Graph extends { resolver: Resolver }, Context extends { ts: TypeScriptApi }>(
+  { config, graph, context }: { config: ArchitectureConfig; graph: Graph; context: Context }): { config: ArchitectureConfig; graph: Graph; context: Context; ts: TypeScriptApi; resolver: Graph['resolver']; tree: RepositoryTree } {
   return { config, graph, context, ts: context.ts, resolver: graph.resolver, tree: treeOf(config.root) };
 }
 
@@ -180,7 +129,7 @@ function ruleFor(slotId: string, target: string, rootExists: boolean): string {
   return 'HFS_REQUIRED_FILE_MISSING';
 }
 
-function slotIsJudged(resolver: SlotResolver, slotId: string): boolean {
+function slotIsJudged(resolver: Resolver, slotId: string): boolean {
   const slot = resolver.slot(slotId);
   return slot != null && (slot.tier !== 'none' || ALSO_JUDGED_TIER_NONE.has(slotId));
 }
@@ -189,7 +138,7 @@ function addRequirement(requirements: Map<string, Requirement>, slot: string, ta
   if (!requirements.has(target)) requirements.set(target, { slot, target, root });
 }
 
-function collectDeclaredRequirements(declared: DeclaredRequirements, requirements: Map<string, Requirement>, instances: Set<string>, judged: Judged): void {
+function collectDeclaredRequirements(declared: RequiredPaths, requirements: Map<string, Requirement>, instances: Set<string>, judged: Judged): void {
   const currentRoot = new Map<string, string>();
   for (const item of declared.paths) {
     if (!judged(item.slot)) continue;
@@ -204,7 +153,7 @@ function collectDeclaredRequirements(declared: DeclaredRequirements, requirement
   }
 }
 
-function addInstanceRequirements(resolver: SlotResolver, classified: { slot: string; root: string }, representative: string,
+function addInstanceRequirements(resolver: Resolver, classified: { slot: string; root: string }, representative: string,
   requirements: Map<string, Requirement>, instances: Set<string>, seenInstances: Set<string>, judged: Judged): void {
   const { slot: slotId, root } = classified;
   const key = `${slotId}|${root}`;
@@ -214,13 +163,15 @@ function addInstanceRequirements(resolver: SlotResolver, classified: { slot: str
   for (const target of resolver.requiredFiles(representative)) addRequirement(requirements, slotId, target, root);
 }
 
-function addOwnerRequirements(resolver: SlotResolver, owner: BoundOwner, requirements: Map<string, Requirement>, instances: Set<string>,
+function addOwnerRequirements(resolver: Resolver, owner: OwnerUnit, requirements: Map<string, Requirement>, instances: Set<string>,
   seenInstances: Set<string>, judged: Judged): void {
   const key = `${owner.slot}|${owner.root}`;
-  if (seenInstances.has(key) || !judged(owner.slot) || !resolver.slotEnabled(resolver.slot(owner.slot))) return;
+  const ownerSlot = resolver.slot(owner.slot);
+  // judged() already answered false for a slot the resolver does not know
+  if (seenInstances.has(key) || !judged(owner.slot) || !ownerSlot || !resolver.slotEnabled(ownerSlot)) return;
   seenInstances.add(key);
   instances.add(key);
-  for (const entry of resolver.slot(owner.slot)?.requires ?? []) {
+  for (const entry of ownerSlot.requires ?? []) {
     const rooted = entry.startsWith('/');
     const filled = (rooted ? entry.slice(1) : entry).replace(/<([A-Za-z][A-Za-z0-9-]*)>/g, (whole: string, name: string) => owner.bindings[name] ?? whole);
     addRequirement(requirements, owner.slot, rooted || !owner.root ? filled : `${owner.root}/${filled}`, owner.root);
@@ -236,7 +187,7 @@ function noteInstance(found: Map<string, Set<string>>, slotId: string, root: str
   roots.add(root);
 }
 
-function collectTreeRequirements(tree: RepositoryTree, resolver: SlotResolver, requirements: Map<string, Requirement>, instances: Set<string>,
+function collectTreeRequirements(tree: RepositoryTree, resolver: Resolver, requirements: Map<string, Requirement>, instances: Set<string>,
   judged: Judged): Map<string, Set<string>> {
   const seenInstances = new Set<string>();
   const found = new Map<string, Set<string>>(); // slot -> Set(root) of instances seen while walking
@@ -278,7 +229,7 @@ function reportMissingRequirements(requirements: Map<string, Requirement>, tree:
   for (const requirement of requirements.values()) reportMissingRequirement(requirement, tree, report);
 }
 
-function reportMinimumRequirements(minimums: MinimumRequirement[], resolver: SlotResolver, judged: Judged, found: Map<string, Set<string>>, report: Report): void {
+function reportMinimumRequirements(minimums: RequiredMinimum[], resolver: Resolver, judged: Judged, found: Map<string, Set<string>>, report: Report): void {
   for (const minimum of minimums) {
     if (!judged(minimum.slot)) continue;
     const count = minimum.appKind !== undefined
@@ -296,8 +247,8 @@ export interface RequiredFilesResult {
   coverage: { status: 'checked'; instances: number; requirements: number; missing: number };
 }
 
-export function checkRequiredFiles({ config, graph }: { config: ArchitectureConfig; graph?: { resolver?: SlotResolver } | null }): RequiredFilesResult {
-  const resolver: SlotResolver = graph?.resolver ?? config.hfs;
+export function checkRequiredFiles({ config, graph }: { config: ArchitectureConfig; graph?: { resolver?: Resolver } | null }): RequiredFilesResult {
+  const resolver: Resolver =graph?.resolver ?? config.hfs;
   const tree = treeOf(config.root);
   const judged: Judged = slotId => slotIsJudged(resolver, slotId);
 

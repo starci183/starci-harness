@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { escapeRegExp } from '../../lib/regex.mjs';
-
 /**
  * R106 `i18n-keys` (FE_I18N_KEYS). The catalogs of an app (`apps/<app>/src/modules/i18n/messages/<locale>.json`, slot fe.modules.i18n) and
  * the source that reads them agree, both ways. The key sets of the locales agree with each other (FE_I18N_CATALOG, `starci app check`); this
@@ -20,180 +19,195 @@ import { escapeRegExp } from '../../lib/regex.mjs';
  * Reads the source of the program and the JSON catalogs on disk; the wording of a translation is the product owner's.
  */
 export const I18N_KEYS_RULE_IDS = ['FE_I18N_KEYS'];
-
 const RULE = 'FE_I18N_KEYS';
 const MODULES = new Set(['next-intl', 'next-intl/server']);
 const FACTORIES = new Set(['useTranslations', 'getTranslations']);
 const READERS = new Set(['rich', 'raw', 'markup']);
 const APP_SOURCE = /^apps\/([^/]+)\/src\//u;
-
 const leavesOf = (value, prefix = '') => (value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length
-  ? Object.entries(value).flatMap(([key, child]) => leavesOf(child, prefix ? `${prefix}.${key}` : key))
-  : [prefix]);
-
+    ? Object.entries(value).flatMap(([key, child]) => leavesOf(child, prefix ? `${prefix}.${key}` : key))
+    : [prefix]);
 const readCatalog = (root, rel) => {
-  try { return new Set(leavesOf(JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'))).filter(Boolean)); } catch { return null; }
+    try {
+        return new Set(leavesOf(JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'))).filter(Boolean));
+    }
+    catch {
+        return null;
+    }
 };
-
 /** True when the key `full` is a leaf of `leaves` or a namespace above one (an object read by `rich`, `raw` or a nested `t`). */
 const held = (leaves, full) => leaves.has(full) || [...leaves].some(leaf => leaf.startsWith(`${full}.`));
-
 // A pattern that is only wildcards (`${a}`, `${a}.${b}`) names nothing: it would read every key, so it reads none.
 const tailMatches = (pattern, leafSegments) => pattern.some(segment => segment !== '*' && segment !== '') && pattern.length <= leafSegments.length
-  && pattern.every((segment, index) => {
-    const leaf = leafSegments[leafSegments.length - pattern.length + index];
-    return segment instanceof RegExp ? segment.test(leaf) : segment === '*' || segment === leaf;
-  });
-
+    && pattern.every((segment, index) => {
+        const leaf = leafSegments[leafSegments.length - pattern.length + index];
+        return segment instanceof RegExp ? segment.test(leaf) : segment === '*' || segment === leaf;
+    });
 function catalogsPerApp(config, graph) {
-  const catalogs = new Map();
-  const seen = new Set();
-  for (const file of graph.files.values()) {
-    const app = APP_SOURCE.exec(file.rel)?.[1];
-    if (!app || seen.has(app)) continue;
-    seen.add(app);
-    const dir = `apps/${app}/src/modules/i18n/messages/`;
-    let names = [];
-    try { names = fs.readdirSync(path.join(config.root, dir)).filter(name => name.endsWith('.json')).sort(byCodeUnit); } catch { /* the app has no catalog directory: FE_I18N_PLACEMENT's finding */ }
-    if (names.length) catalogs.set(dir, names.map(name => ({ rel: `${dir}${name}`, locale: name.slice(0, -5) })));
-  }
-  return catalogs;
+    const catalogs = new Map();
+    const seen = new Set();
+    for (const file of graph.files.values()) {
+        const app = APP_SOURCE.exec(file.rel)?.[1];
+        if (!app || seen.has(app))
+            continue;
+        seen.add(app);
+        const dir = `apps/${app}/src/modules/i18n/messages/`;
+        let names = [];
+        try {
+            names = fs.readdirSync(path.join(config.root, dir)).filter(name => name.endsWith('.json')).sort(byCodeUnit);
+        }
+        catch { /* the app has no catalog directory: FE_I18N_PLACEMENT's finding */ }
+        if (names.length)
+            catalogs.set(dir, names.map(name => ({ rel: `${dir}${name}`, locale: name.slice(0, -5) })));
+    }
+    return catalogs;
 }
-
 /** Each interpolation can fill part or all of a segment; the template's static fragments keep their literal spelling. */
 function templatePatternOf(node) {
-  const pattern = [];
-  for (const segment of [node.head.text, ...node.templateSpans.map(span => span.literal.text)].join('\u0000').split('.')) {
-    if (!segment.includes('\u0000')) { pattern.push(segment); continue; }
-    const parts = segment.split('\u0000');
-    pattern.push(parts.every(part => part === '') ? '*' : new RegExp(`^${parts.map((part) => escapeRegExp(part)).join('.*')}$`, 'su'));
-  }
-  return pattern;
+    const pattern = [];
+    for (const segment of [node.head.text, ...node.templateSpans.map(span => span.literal.text)].join('\u0000').split('.')) {
+        if (!segment.includes('\u0000')) {
+            pattern.push(segment);
+            continue;
+        }
+        const parts = segment.split('\u0000');
+        pattern.push(parts.every(part => part === '') ? '*' : new RegExp(`^${parts.map((part) => escapeRegExp(part)).join('.*')}$`, 'su'));
+    }
+    return pattern;
 }
-
 function patternsOf(ts, files) {
-  const patterns = [];
-  for (const file of files) {
-    const visit = node => {
-      if (ts.isStringLiteralLike(node)) patterns.push(node.text.split('.'));
-      else if (ts.isTemplateExpression(node)) patterns.push(templatePatternOf(node));
-      ts.forEachChild(node, visit);
-    };
-    visit(file.sourceFile);
-  }
-  return patterns;
+    const patterns = [];
+    for (const file of files) {
+        const visit = (node) => {
+            if (ts.isStringLiteralLike(node))
+                patterns.push(node.text.split('.'));
+            else if (ts.isTemplateExpression(node))
+                patterns.push(templatePatternOf(node));
+            ts.forEachChild(node, visit);
+        };
+        visit(file.sourceFile);
+    }
+    return patterns;
 }
-
 function translationFactories(ts, file) {
-  const factories = new Set();
-  for (const statement of file.sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !MODULES.has(statement.moduleSpecifier.text)) continue;
-    const named = statement.importClause?.namedBindings;
-    if (!named || !ts.isNamedImports(named)) continue;
-    for (const element of named.elements) {
-      if (!element.isTypeOnly && FACTORIES.has((element.propertyName ?? element.name).text)) factories.add(element.name.text);
+    const factories = new Set();
+    for (const statement of file.sourceFile.statements) {
+        if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !MODULES.has(statement.moduleSpecifier.text))
+            continue;
+        const named = statement.importClause?.namedBindings;
+        if (!named || !ts.isNamedImports(named))
+            continue;
+        for (const element of named.elements) {
+            if (!element.isTypeOnly && FACTORIES.has((element.propertyName ?? element.name).text))
+                factories.add(element.name.text);
+        }
     }
-  }
-  return factories;
+    return factories;
 }
-
 function namespaceForCall(ts, file, init, factories) {
-  let expression = init;
-  if (ts.isAwaitExpression(expression)) expression = expression.expression;
-  if (!ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression) || !factories.has(expression.expression.text)) return null;
-  const [first] = expression.arguments;
-  if (first === undefined) return '';
-  if (ts.isStringLiteralLike(first)) return first.text;
-  if (!ts.isObjectLiteralExpression(first)) return null;
-  const property = first.properties.find(candidate => ts.isPropertyAssignment(candidate) && candidate.name.getText(file.sourceFile) === 'namespace');
-  if (!property) return '';
-  return ts.isStringLiteralLike(property.initializer) ? property.initializer.text : null;
+    let expression = init;
+    if (ts.isAwaitExpression(expression))
+        expression = expression.expression;
+    if (!ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression) || !factories.has(expression.expression.text))
+        return null;
+    const [first] = expression.arguments;
+    if (first === undefined)
+        return '';
+    if (ts.isStringLiteralLike(first))
+        return first.text;
+    if (!ts.isObjectLiteralExpression(first))
+        return null;
+    const property = first.properties.find((candidate) => ts.isPropertyAssignment(candidate) && candidate.name.getText(file.sourceFile) === 'namespace');
+    if (!property)
+        return '';
+    return ts.isStringLiteralLike(property.initializer) ? property.initializer.text : null;
 }
-
 function translatorNamespaces(ts, file, factories) {
-  const namespaces = new Map();
-  const collect = node => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-      const namespace = namespaceForCall(ts, file, node.initializer, factories);
-      if (namespace !== null) namespaces.set(node, namespace);
-    }
-    ts.forEachChild(node, collect);
-  };
-  collect(file.sourceFile);
-  return namespaces;
+    const namespaces = new Map();
+    const collect = (node) => {
+        if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+            const namespace = namespaceForCall(ts, file, node.initializer, factories);
+            if (namespace !== null)
+                namespaces.set(node, namespace);
+        }
+        ts.forEachChild(node, collect);
+    };
+    collect(file.sourceFile);
+    return namespaces;
 }
-
 function keysOf(ts, argument) {
-  if (ts.isConditionalExpression(argument)) return [...keysOf(ts, argument.whenTrue), ...keysOf(ts, argument.whenFalse)];
-  if (ts.isParenthesizedExpression(argument) || ts.isAsExpression(argument) || ts.isSatisfiesExpression(argument)) return keysOf(ts, argument.expression);
-  return ts.isStringLiteralLike(argument) ? [argument] : [];
+    if (ts.isConditionalExpression(argument))
+        return [...keysOf(ts, argument.whenTrue), ...keysOf(ts, argument.whenFalse)];
+    if (ts.isParenthesizedExpression(argument) || ts.isAsExpression(argument) || ts.isSatisfiesExpression(argument))
+        return keysOf(ts, argument.expression);
+    return ts.isStringLiteralLike(argument) ? [argument] : [];
 }
-
 function reportCallKeys(reads, node) {
-  const { ts, file, checker, namespaces, loaded, app, report } = reads;
-  const callee = node.expression;
-  let owner = ts.isIdentifier(callee) ? callee : null;
-  if (ts.isPropertyAccessExpression(callee) && READERS.has(callee.name.text) && ts.isIdentifier(callee.expression)) owner = callee.expression;
-  const [first] = node.arguments;
-  const declaration = owner ? checker.getSymbolAtLocation(owner)?.valueDeclaration : null;
-  if (!owner || first === undefined || !namespaces.has(declaration)) return;
-  for (const literal of keysOf(ts, first)) {
-    const namespace = namespaces.get(declaration);
-    const full = namespace ? `${namespace}.${literal.text}` : literal.text;
-    const lacking = loaded.filter(catalog => !held(catalog.leaves, full)).map(catalog => catalog.locale);
-    if (lacking.length) report(file, literal, `${file.rel} reads "${full}" and ${lacking.join(', ')} ${lacking.length === 1 ? 'holds' : 'hold'} no such key; add it to every catalog of ${app} or read a key that exists`, { key: full, locales: lacking });
-  }
-}
-
-function reportTranslationReads(ts, file, checker, namespaces, loaded, app, report) {
-  const reads = { ts, file, checker, namespaces, loaded, app, report };
-  const read = node => {
-    if (ts.isCallExpression(node)) reportCallKeys(reads, node);
-    ts.forEachChild(node, read);
-  };
-  read(file.sourceFile);
-}
-
-function reportUnusedCatalogKeys(primary, loaded, patterns, app, violations) {
-  const every = new Set(loaded.flatMap(catalog => [...catalog.leaves]));
-  for (const leaf of [...every].sort(byCodeUnit)) {
-    const segments = leaf.split('.');
-    if (patterns.some(pattern => tailMatches(pattern, segments))) continue;
-    violations.push({ ruleId: RULE, path: primary.rel, line: 1, column: 1, message: `${primary.rel} holds the key "${leaf}" and no source of ${app} or the shared packages reads it; delete the key from every catalog`, key: leaf });
-  }
-}
-
-export function checkI18nKeys({ config, graph, context }) {
-  const ts = context.ts;
-  const violations = [];
-  const report = (file, node, message, extra = {}) => {
-    const at = file.sourceFile.getLineAndCharacterOfPosition(node.getStart(file.sourceFile));
-    violations.push({ ruleId: RULE, path: file.rel, line: at.line + 1, column: at.character + 1, message, ...extra });
-  };
-
-  const catalogsByApp = catalogsPerApp(config, graph);
-
-  let apps = 0;
-  for (const [dir, catalogs] of catalogsByApp) {
-    const app = /^apps\/([^/]+)\//u.exec(dir)?.[1];
-    const loaded = catalogs.map(catalog => ({ ...catalog, leaves: readCatalog(config.root, catalog.rel) })).filter(catalog => catalog.leaves);
-    if (!app || !loaded.length) continue;
-    apps += 1;
-    const own = [...graph.files.values()].filter(file => file.rel.startsWith(`apps/${app}/src/`));
-    const shared = [...graph.files.values()].filter(file => /^packages\/[^/]+\/src\//u.test(file.rel));
-    const patterns = patternsOf(ts, [...own, ...shared]);
-
-    for (const file of own) {
-      const factories = translationFactories(ts, file);
-      if (!factories.size) continue;
-      const checker = context.checkerFor(file.sourceFile.fileName);
-      const namespaces = translatorNamespaces(ts, file, factories);
-      if (!namespaces.size) continue;
-      reportTranslationReads(ts, file, checker, namespaces, loaded, app, report);
+    const { ts, file, checker, namespaces, loaded, app, report } = reads;
+    const callee = node.expression;
+    let owner = ts.isIdentifier(callee) ? callee : null;
+    if (ts.isPropertyAccessExpression(callee) && READERS.has(callee.name.text) && ts.isIdentifier(callee.expression))
+        owner = callee.expression;
+    const [first] = node.arguments;
+    const declaration = owner ? checker.getSymbolAtLocation(owner)?.valueDeclaration : null;
+    if (!owner || first === undefined || !declaration || !namespaces.has(declaration))
+        return;
+    for (const literal of keysOf(ts, first)) {
+        const namespace = namespaces.get(declaration);
+        const full = namespace ? `${namespace}.${literal.text}` : literal.text;
+        const lacking = loaded.filter(catalog => !held(catalog.leaves, full)).map(catalog => catalog.locale);
+        if (lacking.length)
+            report(file, literal, `${file.rel} reads "${full}" and ${lacking.join(', ')} ${lacking.length === 1 ? 'holds' : 'hold'} no such key; add it to every catalog of ${app} or read a key that exists`, { key: full, locales: lacking });
     }
-
-    const [primary] = [...loaded].sort((a, b) => a.locale.localeCompare(b.locale));
-    reportUnusedCatalogKeys(primary, loaded, patterns, app, violations);
-  }
-  return { violations, coverage: { status: 'checked', apps } };
+}
+function reportTranslationReads(ts, file, checker, namespaces, loaded, app, report) {
+    const reads = { ts, file, checker, namespaces, loaded, app, report };
+    const read = (node) => {
+        if (ts.isCallExpression(node))
+            reportCallKeys(reads, node);
+        ts.forEachChild(node, read);
+    };
+    read(file.sourceFile);
+}
+function reportUnusedCatalogKeys(primary, loaded, patterns, app, violations) {
+    const every = new Set(loaded.flatMap(catalog => [...catalog.leaves]));
+    for (const leaf of [...every].sort(byCodeUnit)) {
+        const segments = leaf.split('.');
+        if (patterns.some(pattern => tailMatches(pattern, segments)))
+            continue;
+        violations.push({ ruleId: RULE, path: primary.rel, line: 1, column: 1, message: `${primary.rel} holds the key "${leaf}" and no source of ${app} or the shared packages reads it; delete the key from every catalog`, key: leaf });
+    }
+}
+export function checkI18nKeys({ config, graph, context }) {
+    const ts = context.ts;
+    const violations = [];
+    const report = (file, node, message, extra = {}) => {
+        const at = file.sourceFile.getLineAndCharacterOfPosition(node.getStart(file.sourceFile));
+        violations.push({ ruleId: RULE, path: file.rel, line: at.line + 1, column: at.character + 1, message, ...extra });
+    };
+    const catalogsByApp = catalogsPerApp(config, graph);
+    let apps = 0;
+    for (const [dir, catalogs] of catalogsByApp) {
+        const app = /^apps\/([^/]+)\//u.exec(dir)?.[1];
+        const loaded = catalogs.map(catalog => ({ ...catalog, leaves: readCatalog(config.root, catalog.rel) })).filter((catalog) => Boolean(catalog.leaves));
+        if (!app || !loaded.length)
+            continue;
+        apps += 1;
+        const own = [...graph.files.values()].filter(file => file.rel.startsWith(`apps/${app}/src/`));
+        const shared = [...graph.files.values()].filter(file => /^packages\/[^/]+\/src\//u.test(file.rel));
+        const patterns = patternsOf(ts, [...own, ...shared]);
+        for (const file of own) {
+            const factories = translationFactories(ts, file);
+            if (!factories.size)
+                continue;
+            const checker = context.checkerFor(file.sourceFile.fileName);
+            const namespaces = translatorNamespaces(ts, file, factories);
+            if (!namespaces.size)
+                continue;
+            reportTranslationReads(ts, file, checker, namespaces, loaded, app, report);
+        }
+        const [primary] = [...loaded].sort((a, b) => a.locale.localeCompare(b.locale));
+        reportUnusedCatalogKeys(primary, loaded, patterns, app, violations);
+    }
+    return { violations, coverage: { status: 'checked', apps } };
 }

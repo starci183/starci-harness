@@ -10,8 +10,12 @@ import type { ImportVerdict, RepoView, RequiredPaths, Resolver, ScopeResolver } 
 
 /** The declaration of an app: its two sides are always resolved. */
 export interface AppRepo extends RepoView {
+  edition: string;
   sides: Record<Side, RepoView>;
 }
+
+/** True for the view of a whole app (profile app), the one resolveRepoDeclaration builds with both sides. */
+export const isAppRepo = (repo: RepoView): repo is AppRepo => repo.sides !== undefined;
 
 /** What the app resolver composes: the app declaration, the resolver of the root scope and the resolver of each side. */
 interface AppView {

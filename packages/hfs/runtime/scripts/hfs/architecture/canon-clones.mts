@@ -16,10 +16,7 @@ import type { TypeScriptApi } from './config.mjs';
 const READ_METHODS = new Set(['find', 'findBy', 'findAndCount', 'findOne', 'findOneBy', 'findOneOrFail', 'findOneByOrFail']);
 
 /** One import binding of the file: the imported name and the module specifier it comes from. */
-interface CanonImport {
-  name: string;
-  source: string;
-}
+type CanonImport = { name: string } & Record<string, string>;
 
 /** What the scaffold matchers share for one source file. */
 interface CanonEnv {
@@ -39,7 +36,7 @@ type AllowCall = (call: CallExpression) => boolean;
 function unwrap(ts: TypeScriptApi, node: Node): Node;
 function unwrap(ts: TypeScriptApi, node: Node | null | undefined): Node | null | undefined;
 function unwrap(ts: TypeScriptApi, node: Node | null | undefined): Node | null | undefined {
-  return unwrapExpression(ts, node, { awaitExpressions: true, typeAssertions: false });
+  return node === null ? null : unwrapExpression(ts, node, { awaitExpressions: true, typeAssertions: false });
 }
 
 const identifierText = (ts: TypeScriptApi, name: BindingName | undefined): string | undefined => (name && ts.isIdentifier(name) ? name.text : undefined);
@@ -116,7 +113,7 @@ function fenceStatement(env: CanonEnv, statement: Statement, claims: string, job
     || call.expression.name.text !== 'advance' || call.arguments.length !== 1) return false;
   const options = unwrap(env.ts, call.arguments[0]);
   if (!options || !env.ts.isObjectLiteralExpression(options) || options.properties.length !== 3) return false;
-  const properties = new Map(options.properties.filter(env.ts.isPropertyAssignment).map((property): [string, Expression] => [nameText(env.ts, property.name), property.initializer]));
+  const properties = new Map(options.properties.filter(env.ts.isPropertyAssignment).map((property): [string | null, Expression] => [nameText(env.ts, property.name), property.initializer]));
   const jobField = (node: Node | undefined, field: string): boolean => node !== undefined && env.ts.isPropertyAccessExpression(node) && env.ts.isIdentifier(node.expression) && node.expression.text === job && node.name.text === field;
   return jobField(properties.get('jobId'), 'jobId') && jobField(properties.get('expectedFencingToken'), 'fencingToken')
     && mapping(env, properties.get('step'));
@@ -165,7 +162,7 @@ function rowMapper(env: CanonEnv, call: Node | null | undefined, row: string | u
   const [argument] = call.arguments;
   if (!argument || !ts.isIdentifier(argument) || argument.text !== row || !ts.isIdentifier(call.expression)) return false;
   const binding = env.imports.get(call.expression.text);
-  return Boolean(binding && /\.rows(?:\.[cm]?ts)?$/.test(binding.source)) || env.mappers.has(call.expression.text);
+  return Boolean(binding && /\.rows(?:\.[cm]?ts)?$/.test(binding.source ?? '')) || env.mappers.has(call.expression.text);
 }
 
 function readResult(env: CanonEnv, expression: Node | null | undefined, row: string | undefined): boolean {

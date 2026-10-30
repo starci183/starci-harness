@@ -18,7 +18,7 @@ export interface SqlRunResult {
 export interface SqlStatement {
   run(...params: SqlParam[]): SqlRunResult;
   get(...params: SqlParam[]): SqlRow | undefined;
-  all(...params: SqlParam[]): SqlRow[];
+  all<Row = SqlRow>(...params: SqlParam[]): Row[];
   iterate(...params: SqlParam[]): IterableIterator<SqlRow>;
 }
 

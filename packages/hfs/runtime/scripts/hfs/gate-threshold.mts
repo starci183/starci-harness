@@ -27,8 +27,8 @@ export const HARD_BLOCKERS: ReadonlySet<string> = Object.freeze(new Set<string>(
 /** The gate's verdict over a run's error findings. */
 export interface GateVerdict { pass: boolean; count: number; hard: string[]; line: string | null }
 
-export function gateVerdict(errors: { code: string }[], limit: number = gateErrorLimit()): GateVerdict {
-  const hard = [...new Set(errors.map((finding) => finding.code).filter((code) => HARD_BLOCKERS.has(code)))].sort();
+export function gateVerdict(errors: readonly { code: string | null }[], limit: number = gateErrorLimit()): GateVerdict {
+  const hard = [...new Set(errors.map((finding) => finding.code).filter((code): code is string => code !== null && HARD_BLOCKERS.has(code)))].sort();
   const count = errors.length;
   const pass = hard.length === 0 && count < limit;
   const line = count === 0 ? null

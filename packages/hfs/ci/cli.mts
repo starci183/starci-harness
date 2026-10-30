@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { readCiDeclaration, sealedKeyNames } from '../runtime/scripts/hfs/ci-declaration.mjs';
+import { isValidCiDeclaration, readCiDeclaration, sealedKeyNames } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { github, refuse } from './github.mjs';
-import type { CiDeclaration, CiOptions, CodedError, Gh, GhSpawn, StdinSource } from './github.mjs';
+import type { CiOptions, CodedError, Gh, GhSpawn, StdinSource } from './github.mjs';
 import { setSecret } from './secret.mjs';
 import { setVariable, syncVariables } from './vars.mjs';
 import { badgeVisibilityNotices, verifyCi } from './verify.mjs';
@@ -52,13 +52,13 @@ export async function ciMain(argv: string[], { cwd = process.cwd(), stdout = (s:
   if (argv[0] === 'local') return (await import('./local.mjs')).ciLocalMain(argv.slice(1), { cwd, stdout, stderr, env });
   try {
     const parsed = parse(argv);
-    let doc: any, declaration: CiDeclaration, sealed: { key: string }[]; // reason: doc is the YAML-parsed stack declaration
+    let doc: any, declaration: ReturnType<typeof readCiDeclaration>, sealed: { key: string }[]; // reason: doc is the YAML-parsed stack declaration
     try {
       doc = parseYaml(fs.readFileSync(path.join(cwd, '.starcistacks/application-stacks.yaml'), 'utf8'));
       declaration = readCiDeclaration(doc);
       sealed = sealedKeyNames(cwd, { fs });
     } catch { throw refuse('CI_DECLARATION_INVALID', 'the manifest or sealed key names could not be read'); }
-    if (declaration.problems.length) throw refuse('CI_DECLARATION_INVALID', 'correct the CI declaration before using GitHub');
+    if (!isValidCiDeclaration(declaration)) throw refuse('CI_DECLARATION_INVALID', 'correct the CI declaration before using GitHub');
     const gh: Gh = github({ cwd, env, spawn: tools.spawn });
     const context = { ...parsed, declaration, sealed, gh, stdin, stdout };
     if (parsed.command === 'secret set') return await setSecret(context);

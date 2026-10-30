@@ -138,7 +138,7 @@ function renderedDeployment({ repoRoot, environment, spec, files, edition }: { r
   const target = safeStackFile(repoRoot, envDir, relative);
   const modelDirectory = edition === 'lite' ? 'infra/swarm/' : 'infra/';
   const allowed = typeof relative === 'string' && relative.startsWith(modelDirectory) && /\.(?:ya?ml|json)$/i.test(relative);
-  const parsed = allowed && target && files.includes(file) ? readDeclaration(target) : {};
+  const parsed: { doc?: Parsed } = allowed && target && files.includes(file) ? readDeclaration(target) : {};
   const model = mapping(parsed.doc);
   const rendered = plain(model.services) && Object.keys(model.services).length > 0 && model.include === undefined;
   const complete = spec.renderedModel !== undefined || spec.composeFiles?.length === 1;

@@ -13,7 +13,8 @@ import path from 'node:path';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { found, readText } from './read.mjs';
 import { liteStarciworkFinding } from '../path-findings.mjs';
-import type { Parsed, Resolver } from './rule-types.mjs';
+import type { Parsed } from './rule-types.mjs';
+import type { Resolver } from '../slots.mjs';
 
 const PROOF_COMMAND_FILE_MISSING = 'HFS_PROOF_COMMAND_FILE_MISSING';
 const RECORD = /^\.starciwork\/.+\.ya?ml$/;

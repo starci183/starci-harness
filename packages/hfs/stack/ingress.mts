@@ -140,7 +140,7 @@ function readLive(run: Runner, legacy: IngressLegacy): LiveFiles | { error: stri
     const name = parts[index] as string;
     live.files.push(name);
     try {
-      live.routes.push(...routesOfDocument(parseYaml(parts[index + 1])).routes);
+      live.routes.push(...routesOfDocument(parseYaml(parts[index + 1] as string)).routes);
     } catch {
       live.unparsable.push(name);
     }

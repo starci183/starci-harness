@@ -4,6 +4,8 @@ import { lsFiles } from '../../api/git/ls-files.mjs'; import { revParseQuery } f
 import { braceVariants } from '../../lib/glob.mjs';
 import { hooksDirState } from '../../lib/git-hooks-dir.mjs';
 import { createSlotResolver, loadSlotManifest, openHfs } from '../slots.mjs';
+import type { Resolver } from '../slots.mjs';
+import { APP_KIND } from '../manifest-shape.mjs';
 import { isFeTestPath } from '../rules/fe-no-tests.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import type { ArchitectureConfig } from './config.mjs';
@@ -45,15 +47,6 @@ export const HFS_RULE_IDS = [
   'HFS_WORK_IN_FE',
 ];
 
-/** The slot resolver of scripts/hfs/slots.mjs. */
-type Resolver = ArchitectureConfig['hfs'];
-
-/** The slot fields this check reads. */
-interface SlotRecord { path: string; profiles: string[]; presence?: string }
-
-/** One entry of `resolver.requiredPaths().paths`. */
-interface RequiredPath { path: string; side?: string }
-
 /** Records one finding at a repository-relative entry. */
 type Finding = (ruleId: string, entry: string, message: string) => void;
 
@@ -86,8 +79,8 @@ interface HfsState {
 const NON_NPM_ENTRIES =new Set(['pnpm-lock.yaml', 'pnpm-workspace.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb']);
 const HUSKY_HOOKS_PATH = /^\.husky(?:\/_)?\/?$/u;
 /** The folders of a back end's src/ the slot manifest knows (features, modules, tests, assets): read from the be slot paths, never listed here. */
-const backendSrcChildrenOf = (resolver: Resolver) => new Set<string>(resolver.slots().filter((slot: SlotRecord) => slot.profiles.includes('be')).flatMap((slot: SlotRecord) => braceVariants(slot.path)).map((variant: string) => /^src\/([a-z][a-z-]*)\//.exec(variant)?.[1]).filter(Boolean));
-const moduleTiersOf = (resolver: Resolver) => new Set<string>(resolver.slots().filter((slot: SlotRecord) => slot.profiles.includes('be')).flatMap((slot: SlotRecord) => braceVariants(slot.path)).map((variant: string) => /^src\/modules\/([a-z][a-z-]*)\//.exec(variant)?.[1]).filter(Boolean)); // the folders of src/modules/ the slot manifest knows (domain, platform, integrations, events, queues, projections)
+const backendSrcChildrenOf = (resolver: Resolver) => new Set<string>(resolver.slots().filter((slot) => slot.profiles.includes('be')).flatMap((slot) => braceVariants(slot.path)).map((variant) => /^src\/([a-z][a-z-]*)\//.exec(variant)?.[1]).filter((name): name is string => Boolean(name)));
+const moduleTiersOf = (resolver: Resolver) => new Set<string>(resolver.slots().filter((slot) => slot.profiles.includes('be')).flatMap((slot) => braceVariants(slot.path)).map((variant) => /^src\/modules\/([a-z][a-z-]*)\//.exec(variant)?.[1]).filter((name): name is string => Boolean(name))); // the folders of src/modules/ the slot manifest knows (domain, platform, integrations, events, queues, projections)
 // Owner test layout 2026-09-30: unit `<name>.spec.ts`, integration, e2e and contract by folder and suffix; int-spec and harness-spec stay banned.
 const UNSUPPORTED_TEST_SUFFIX = /\.(?:int|harness)-spec\.[cm]?[jt]sx?$/u;
 const UNSUPPORTED_TEST_FOLDER = /^src\/tests\/(?:harness|live|e2e\/live)(?:\/|$)/u;
@@ -105,7 +98,8 @@ const NODE_ENTRIES_SKIPPED = new Set(['node_modules', '.git']);
 function resolverOf(root: string, profile: string, given: Resolver | undefined): Resolver {
   if (given) return given;
   try { return openHfs({ repoRoot: root }); } catch { /* an invalid hfs.json is HFS_DECLARATION_INVALID's finding, judged elsewhere */ }
-  return createSlotResolver(loadSlotManifest(), { profile, side: profile, apps: [], optionalSlots: [], connections: [], reads: [] });
+  const manifest = loadSlotManifest();
+  return createSlotResolver(manifest, { hfs: manifest.major, kind: APP_KIND, project: '', profile, side: profile, apps: [], optionalSlots: [], connections: [], reads: [], manifestVersion: manifest.version });
 }
 
 /**
@@ -126,7 +120,7 @@ function slotRootEntries(resolver: Resolver, scope: string): Set<string> {
 
 /** The root entries the scope's required slots name (the first segment of every required path of the scope): hfs.json, be/, .starcistacks/ ... */
 function requiredRootEntries(resolver: Resolver): Set<string> {
-  return new Set<string>(resolver.requiredPaths().paths.filter((entry: RequiredPath) => !entry.side).map((entry: RequiredPath) => entry.path.split('/')[0]));
+  return new Set<string>(resolver.requiredPaths().paths.filter((entry) => !entry.side).map((entry) => entry.path.split('/')[0] as string));
 }
 
 /** The folders directly below src/tests/ that the be.tests.* slots declare (world, fixtures, integration, e2e, contract). */
@@ -174,7 +168,7 @@ function hooksPathNotRedirected({ root, finding }: { root: string; finding: Find
   }
   const hooks = hooksDirState(root, value);
   if (hooks.state !== 'installed') {
-    const what = ({ missing: 'does not exist', empty: 'holds no installed hook (husky never ran here)', unreadable: `cannot be read (${hooks.error})` } as Record<string, string>)[hooks.state];
+    const what = ({ missing: 'does not exist', empty: 'holds no installed hook (husky never ran here)', unreadable: `cannot be read (${hooks.state === 'unreadable' ? hooks.error : undefined})` } as Record<string, string>)[hooks.state];
     finding('HFS_HOOKS_NOT_INSTALLED', value, `core.hooksPath is ${value}, but that folder ${what} in this checkout, so git runs no pre-commit or pre-push gate and a commit skips lint and specs. Install the hooks before committing: run \`npm ci\` at the app root (its \`prepare\` script is the app's hook installer), or \`npm run prepare\` after an install with --ignore-scripts, which alone never installs them.`);
   }
   return { status: 'checked', hooks: hooks.state };
@@ -402,7 +396,7 @@ export function checkAppRoot({ root, resolver, tree = treeView(root) }: { root: 
     if (entry === 'README.md' || entry === '.gitattributes') continue;   // checkRepoPresentation reports these two
     if (!tree.top.includes(entry)) finding('HFS_ROOT_ENTRY_MISSING', entry, `The app root requires root entry ${entry}.`);
   }
-  const jestConfig = resolver.sides ? `be/${[...braceVariants(resolver.slot('be.tool-config').path)].find((file: string) => file.startsWith('jest.config.'))}` : null;
+  const jestConfig = resolver.sides ? `be/${[...braceVariants(resolver.slot('be.tool-config')?.path ?? '')].find((file: string) => file.startsWith('jest.config.'))}` : null;
   e2eInAutomaticGate({ root, tree, jestConfig, finding });
   const hooksPath = hooksPathNotRedirected({ root, finding });
   return { violations, coverage: { status: 'checked', source: tree.source, hooksPath, rootEntries: tree.top.length } };

@@ -220,7 +220,8 @@ function importersByModule(references: ModuleReference[]): Map<Declaration, Modu
 
 function reportSharedSubModule(target: ModuleInfo, list: ModuleReference[], report: Reporter): void {
   const distinct = [...new Set(list.map(item => item.importer))];
-  const featureCase = target.file.tier === 'feature' && target.file.owner && list.every(item => item.importerOwner === target.file.owner.root);
+  const targetOwner = target.file.owner;
+  const featureCase = target.file.tier === 'feature' && targetOwner && list.every(item => item.importerOwner === targetOwner.root);
   if (distinct.length <= 1 || featureCase) return;
   for (const item of list.filter(entry => entry.importer !== list[0]?.importer)) {
     report(item.file, item.node, `${target.name} is imported by ${distinct.length} modules; a sub-module has exactly one importer, its parent. Another capability's module is consumed through its Inject*() decorators, never imported.`, { module: target.name });

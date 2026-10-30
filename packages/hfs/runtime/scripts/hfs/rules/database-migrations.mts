@@ -482,7 +482,7 @@ export function destructiveMigrationFindings({ repoRoot, migrations, files }: { 
   const sources = files.filter((file: string) => /^be\/src\/.+\.(?:sql|entity)\.[cm]?tsx?$/.test(file));
   const ts = sources.length ? loadTypescript(repoRoot, HERE) : null;
   if (sources.length && !ts) return [found(DB_MIGRATION_DESTRUCTIVE, 'hfs.json', 'destructive migration checks require the TypeScript parser to read be/src references')];
-  const references = sources.map((file: string) => ({ file, scopes: sourceNameScopes(ts, readText(repoRoot, file) ?? '', file) }));
+  const references = ts ? sources.map((file: string) => ({ file, scopes: sourceNameScopes(ts, readText(repoRoot, file) ?? '', file) })) : [];
   return migrations.flatMap((file: string) => {
     const text = readText(repoRoot, file);
     return text === null ? [] : destructiveFileFindings(file, text, references);

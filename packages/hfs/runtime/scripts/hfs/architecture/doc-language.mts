@@ -30,7 +30,8 @@ export function checkDocLanguage({ config, graph }: { config: ArchitectureConfig
   for (const file of [...tree.files].sort(byCodeUnit)) {
     if (!DOCUMENT_ROOTS.includes(file.split('/')[0] ?? '') || !isDocument(file) || file.split('/').includes('node_modules')) continue;
     const classified = resolver.classifyPath(file);
-    if (isLocalizedDataFile(file, classified.status === 'owned' ? classified.slot : null)) continue;
+    const dataSlot = classified.status === 'owned' ? classified.slot : null;
+    if (dataSlot !== null && isLocalizedDataFile(file, dataSlot)) continue;
     let text: string;
     try { text = fs.readFileSync(path.join(config.root, ...file.split('/')), 'utf8'); } catch { continue; }
     files += 1;

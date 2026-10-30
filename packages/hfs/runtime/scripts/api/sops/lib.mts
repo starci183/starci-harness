@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
-import { readSecretBytes, CREDENTIAL_FILE_MAX_BYTES, sopsIdentityEnv } from '../../../engine/secrets.mjs';
+import { readSecretBytes, CREDENTIAL_FILE_MAX_BYTES, sopsIdentityEnv, type SopsIdentity } from '../../../engine/secrets.mjs';
 import { selectedAgeEnvelope } from '../../lib/sops-envelope.mjs';
 import { errorCode } from '../fs/lib.mjs';
 
@@ -25,9 +25,9 @@ export interface SopsInvocation {
   resolveRealTool: (program: string, options: { env: NodeJS.ProcessEnv }) => string | null;
 }
 /** What sopsIdentityEnv answers: the admitted env, or an error (an inline context carries identityRefusal and inlineName). */
-export interface IdentitySelection { env?: NodeJS.ProcessEnv; inlineName?: string; error?: (Error & { identityRefusal?: string }) | null | undefined }
+export type IdentitySelection = Pick<SopsIdentity, 'env' | 'inlineName' | 'error'>;
 type Env = NodeJS.ProcessEnv;
-export interface RunSopsFileOptions { identity?: unknown; invocation?: SopsInvocation | null; env?: Env; cwd?: string | undefined; maxBuffer?: number; timeout?: number | undefined }
+export interface RunSopsFileOptions { identity?: string | null; invocation?: SopsInvocation | null; env?: Env; cwd?: string | undefined; maxBuffer?: number; timeout?: number | undefined }
 /** The request runSelectedSops owns: a seal of in-memory plaintext, or a decrypt/encrypt over caller-supplied sops arguments. */
 export interface SelectedRequest { operation: 'seal' | 'encrypt' | 'decrypt'; params?: { inputType?: string; plaintext?: string | Buffer; recipients?: string[]; filenameOverride?: string } | undefined; args?: string[] | undefined }
 interface OwnedSpec { inputType: string | undefined; outputType: string | undefined; file: string; recipient: string | undefined; plaintext?: string | Buffer }
@@ -130,10 +130,11 @@ export function runSopsFile(bin: string | null, args: string[], operation: 'encr
   const selected = sopsIdentityEnv(env, operation === 'decrypt' ? { identity, required: true } : { identity });
   if (selected.error?.identityRefusal === 'inline-context-unqualified') return runSelectedSops(bin, { operation, args }, { selection: selected, invocation, env, cwd, maxBuffer, timeout });
   if (selected.error) return { status: null, stdout: '', stderr: '', error: selected.error };
-  const exe = bin ?? resolveSops(selected.env);
+  const selectedEnv = selected.env as NodeJS.ProcessEnv; // every SopsIdentity without an error carries its env
+  const exe = bin ?? resolveSops(selectedEnv);
   if (!exe) return { status: null, stdout: '', stderr: '', error: Object.assign(new Error('sops is not installed (Windows: winget install Mozilla.SOPS)'), { code: 'SOPS_MISSING' }) };
   const r = spawnSync(exe, args, {
-    encoding: 'utf8', windowsHide: true, maxBuffer, timeout, env: selected.env,
+    encoding: 'utf8', windowsHide: true, maxBuffer, timeout, env: selectedEnv,
     ...(operation === 'decrypt' ? { cwd } : { stdio: ['ignore', 'pipe', 'pipe'] }),
   });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr, error: r.error ?? null };

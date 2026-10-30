@@ -43,7 +43,7 @@ function addScenarios(ts: Ts, source: Parsed, proven: Parsed) {
       && ['it', 'test'].includes(node.expression.text) && hasCallback(ts, node)) {
       const title = literalText(ts, node.arguments[0]);
       const colon = title?.indexOf(':') ?? -1;
-      if (colon > 0) proven.add(title.slice(0, colon));
+      if (title && colon > 0) proven.add(title.slice(0, colon));
     }
     ts.forEachChild(node, visit);
   };
@@ -51,7 +51,7 @@ function addScenarios(ts: Ts, source: Parsed, proven: Parsed) {
 }
 
 /** Only tracked, readable integration specs belong to lite's proof lane. */
-function integrationProof(ts: Ts, repoRoot: string, files: string[]) {
+function integrationProof(ts: Ts | null,repoRoot: string, files: string[]) {
   const proven = new Set();
   const specs = [];
   for (const file of files) {

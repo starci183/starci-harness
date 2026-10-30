@@ -110,7 +110,7 @@ const declaredHelpersOf = (graph: HfsGraph, resolver: Pick<SlotResolver, 'classi
   const declared: DeclaredHelpers = new Map(); // domain root -> name -> [{file, node}]
   for (const file of graph.files.values()) {
     if (file.slot !== HOOKS_SLOT) continue;
-    const root = resolver.classifyPath(file.rel).root;
+    const root = resolver.classifyPath(file.rel).root ?? ''; // a file in the hooks slot was placed by that slot, so its root exists
     for (const statement of file.sourceFile.statements) {
       for (const [name, node] of helperDeclarationsOf(statement, ts)) recordDeclaredHelper(declared, root, name, file, node);
     }

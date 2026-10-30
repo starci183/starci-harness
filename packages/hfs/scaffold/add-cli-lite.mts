@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import { resolveRepoDeclaration } from "../runtime/scripts/hfs/slots.mjs";
+import { resolveAppDeclaration } from "../runtime/scripts/hfs/slots.mjs";
+import type { SlotManifest } from "../runtime/scripts/hfs/manifest-shape.mjs";
 import { bundledPins } from "../runtime/scripts/hfs/canon-pins.mjs";
-import { appScripts, appSource, imageFiles, TEMPLATES_DIR } from "../sync/index.mjs";
+import { appScripts, appSource, imageFiles, TEMPLATES_DIR, type AppSourceFacts, type ResolvedApp } from "../sync/index.mjs";
 import { ScaffoldError } from "./service.mjs";
 import { jsonText, packageJsonText } from "./app.mjs";
 import { registerLiteExports } from "./lite-exports.mjs";
@@ -14,7 +15,7 @@ const read = (relative: string) =>
     .replace(/\r\n/g, "\n");
 
 
-const managedScripts = (repo: unknown, source: unknown): Record<string, string> => {
+const managedScripts = (repo: ResolvedApp, source: AppSourceFacts): Record<string, string> => {
   const fragment = appScripts(repo, source).replace(/,\s*$/, "");
   return fragment === "" ? {} : JSON.parse(`{${fragment}}`);
 };
@@ -153,7 +154,7 @@ interface BeAppEntry {
   readonly kind: string;
 }
 
-export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest: unknown, repo: { edition?: string } }): string[] {
+export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest: SlotManifest, repo: { edition?: string | undefined } }): string[] {
   if (repo.edition !== "lite") return [];
   const declarationFile = path.join(root, "hfs.json");
   const declaration = JSON.parse(fs.readFileSync(declarationFile, "utf8"));
@@ -248,7 +249,7 @@ export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest
   declaration.sides.be.kinds = [
     ...new Set([...(declaration.sides.be.kinds ?? []), "cli"]),
   ].sort(byCodeUnit);
-  const resolved = resolveRepoDeclaration(manifest, declaration);
+  const resolved = resolveAppDeclaration(manifest, declaration);
   const image = imageFiles(resolved).find(
     (file: { path: string }) => file.path === "be/apps/cli/Dockerfile",
   );

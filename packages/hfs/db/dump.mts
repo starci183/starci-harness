@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { runVerb } from '../release/index.mjs';
-import type { FlagSpec, VerbContext, VerbIo, VerbResult } from '../release/index.mjs';
+import type { FlagSpec, VerbContext, VerbIo } from '../release/index.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
 import type { BackupSession } from './backup-receipt.mjs';
 import { RECEIPT_SCHEMA, outsideRepository, backupSession, backupRecipients, backupTool, encryptFile, queryRows, sha256, runPgTool } from './backup-receipt.mjs';
@@ -34,7 +34,7 @@ export function archiveParts(ctx: VerbContext, scratch: string, parts: readonly 
 }
 
 /** Writes only ciphertext and its receipt permanently; a receipt is published only after header, size and hash checks. */
-export function dumpDatabase(ctx: VerbContext, options: { urlEnv?: string | undefined; out?: string | undefined; schemaOnly?: boolean | undefined } = {}): VerbResult {
+export function dumpDatabase(ctx: VerbContext, options: { urlEnv?: string | undefined; out?: string | undefined; schemaOnly?: boolean | undefined } = {}) {
   if (!options.out) throw refusal('DB_USAGE', '--out is required');
   const out = outsideRepository(ctx.cwd, path.resolve(ctx.cwd, options.out));
   const session = backupSession(ctx, options);

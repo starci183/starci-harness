@@ -152,8 +152,9 @@ function gatesOf(list: unknown, problems: string[]): Gate[] {
 
 /** Judges the optional `release:` block. Absence is fine (defaults). Returns { config } or { problems }. */
 export function normalizeRelease(block: unknown, scripts: Record<string, unknown> | undefined = {}, services: Services = {}, options: { example?: boolean; entities?: boolean } = {}): { config: ReleaseConfig; problems?: undefined } | { config?: undefined; problems: string[] } {
-  const raw: Record<string, any> = (block ?? {}) as Record<string, any>; // reason: the release block is YAML parsed from disk; every field is judged below
-  if (!plain(raw)) return { problems: ['release: must be a mapping'] };
+  const given = block ?? {};
+  if (!plain(given)) return { problems: ['release: must be a mapping'] };
+  const raw: Record<string, any> = given; // reason: the release block is YAML parsed from disk; every field is judged below
   const problems: string[] = [];
   for (const key of Object.keys(raw)) {
     if (REMOVED_FIELDS.has(key)) problems.push(`release.${key}: is removed (${REMOVED_FIELDS.get(key)})`);

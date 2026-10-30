@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import type { SpawnSyncOptions, SpawnSyncReturns } from 'node:child_process';
+import type { ValidCiDeclaration, ValidCiEntry } from '../runtime/scripts/hfs/ci-declaration.mjs';
 
 /** The scope options of a `starci app ci` command: one environment, or the Dependabot store, or (neither) the repository. */
 export interface CiScope { env?: string | undefined; dependabot?: boolean | undefined }
@@ -7,11 +8,11 @@ export interface CiScope { env?: string | undefined; dependabot?: boolean | unde
 /** The parsed options of a `starci app ci` command: the scope plus `--repo`, `--value` and `--execute`/`--json`. */
 export interface CiOptions extends CiScope { repo?: string | undefined; value?: string | undefined; execute?: boolean | undefined; json?: boolean | undefined }
 
-/** One declared CI secret or variable (runtime/scripts/hfs/ci-declaration.mjs readCiDeclaration). */
-export interface CiEntry { name: string; scope?: string; environment?: string; optional?: boolean; value?: unknown; ownerValue?: boolean }
+/** One declared CI secret or variable of a declaration without problems (runtime/scripts/hfs/ci-declaration.mjs readCiDeclaration). */
+export type CiEntry = ValidCiEntry;
 
-/** The CI declaration of the stack manifest: the secrets, Dependabot secrets and variables it names, and its problems. */
-export interface CiDeclaration { secrets: CiEntry[]; dependabotSecrets: CiEntry[]; vars: CiEntry[]; problems: unknown[] }
+/** The CI declaration of the stack manifest, once its problems are refused: the secrets, Dependabot secrets and variables it names. */
+export type CiDeclaration = ValidCiDeclaration;
 
 /** The stdin seam of a value: text, or a function that answers it. */
 export type StdinSource = string | (() => string | Promise<string>) | undefined;

@@ -13,7 +13,8 @@ const forChild = <T extends { env?: NodeJS.ProcessEnv | undefined }>(args: reado
 /** `node <args>` with this process's node binary, waited for; options pass through last (cwd, stdio, env, timeout, maxBuffer, input). */
 export const nodeSpawn = (args: readonly string[], options: SpawnSyncOptions = {}): SpawnSyncReturns<string> => {
   assertMutationFence({ kind: 'node-effect', args });
-  const spawnOptions: SpawnSyncOptionsWithStringEncoding = withTempEnv({ encoding: 'utf8', windowsHide: true, ...forChild(args, options) });
+  // reason: utf8 is the default; a caller option that overrides encoding is the caller's explicit request for another output type
+  const spawnOptions = withTempEnv({ encoding: 'utf8', windowsHide: true, ...forChild(args, options) }) as SpawnSyncOptionsWithStringEncoding;
   return spawnSync(process.execPath, args, spawnOptions);
 };
 
@@ -27,6 +28,7 @@ export const nodeStart = (args: readonly string[], options: SpawnOptions = {}): 
 /** `node <args>` with this process's node binary, waited for without blocking the thread: callback(error, stdout, stderr). */
 export const nodeExecFile = (args: readonly string[], options: ExecFileOptions, callback: (error: ExecFileException | null, stdout: string, stderr: string) => void): ChildProcess => {
   assertMutationFence({ kind: 'node-effect', args });
-  const execOptions: ExecFileOptionsWithStringEncoding = withTempEnv({ encoding: 'utf8', windowsHide: true, ...forChild(args, options) });
+  // reason: utf8 is the default; a caller option that overrides encoding is the caller's explicit request for another output type
+  const execOptions = withTempEnv({ encoding: 'utf8', windowsHide: true, ...forChild(args, options) }) as ExecFileOptionsWithStringEncoding;
   return execFile(process.execPath, args, execOptions, callback);
 };

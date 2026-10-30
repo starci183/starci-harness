@@ -68,7 +68,7 @@ const INFRA_VALUE_PROBES = ['infra/compose/.env', 'infra/compose/.env.generated'
 export interface SchemaIssue { path: string; message: string }
 type SchemaRun = (node: unknown, s: ParsedDocument, where: string) => SchemaIssue[];
 /** A stack declaration as the stack-declaration library reads it. */
-export interface Declaration { doc?: ParsedDocument | null; file?: string; error?: string; missing?: boolean; rooted?: boolean; repo?: string; root?: string; governs?: string; sourceHost?: boolean }
+export interface Declaration { doc?: ParsedDocument | null | undefined; file?: string | undefined; error?: string | undefined; missing?: boolean | undefined; rooted?: boolean | undefined; repo?: string | undefined; root?: string | undefined; governs?: string | undefined; sourceHost?: boolean | undefined }
 interface Finding { level: string; code: string; file: string; message: string }
 type Git = (args: string[], options: { dir: string; timeout: number }) => { error?: unknown; status: number | null; stdout?: unknown };
 type Normalized = Record<string, StackServiceEntry>;
@@ -109,8 +109,10 @@ function schemaErrors(value: unknown, shape: ParsedDocument, at = '$', root: Par
     const byType: Record<string, (n: unknown) => boolean> = { object: plain, array: Array.isArray, integer: Number.isInteger };
     return (byType[s.type] ?? ((n: unknown) => (s.type ? typeof n === s.type : true)))(node);
   };
-  const run: SchemaRun = (node, s, where) => {
-    if (!plain(s)) return [];
+  const run: SchemaRun = (node, shape, where) => {
+    if (!plain(shape)) return [];
+    // A schema node stays the parsed-document view the walk reads by key; plain() only proved it a mapping.
+    const s: ParsedDocument = shape;
     if (s.$ref) return run(node, resolve(s.$ref), where);
     if (Array.isArray(s.anyOf) && !s.anyOf.some((option: ParsedDocument) => run(node, option, where).length === 0))
       return [{ path: where, message: 'matches none of the allowed shapes' }];
@@ -181,7 +183,7 @@ function normalizeStack(stack: ParsedDocument, entry: ParsedDocument, declaringR
 }
 /** One declared service with its custody resolved to presence (never a value). */
 export function normalizeService(id: string, entry: ParsedDocument, { declaringRepo }: { declaringRepo?: string | null | undefined } = {}): StackServiceEntry {
-  const s = plain(entry) ? entry : {};
+  const s: ParsedDocument = plain(entry) ? entry : {};
   const stack = plain(s.stack) ? s.stack : null;
   const normalizedStack = normalizeStack(stack, entry, declaringRepo);
   const credentials = list(s.credentials).filter(plain).map((credential: ParsedDocument) => normalizeCredential(credential, declaringRepo));
@@ -210,10 +212,11 @@ const custodyHeld = (service: ServiceLike): boolean => (service.credentials.leng
 export function resolveStackService(repoRoot: unknown, serviceId: string): ResolvedStackService | null {
   const repo = path.resolve(String(repoRoot ?? ''));
   const name = repositoryName(repo);
-  const own = findStackDeclaration(repo);
-  const candidates = [own.doc ? own : governingDeclaration(repo)].filter(Boolean);
+  const own: Declaration = findStackDeclaration(repo);
+  const first = own.doc ? own : governingDeclaration(repo);
+  const candidates: Declaration[] = first ? [first] : [];
   const host = runtimeHostRoot();
-  if (path.resolve(host) !== repo) { const source = findStackDeclaration(host); if (source.doc) candidates.push({ ...source, sourceHost: true }); }
+  if (path.resolve(host) !== repo) { const source: Declaration = findStackDeclaration(host); if (source.doc) candidates.push({ ...source, sourceHost: true }); }
   for (const declaration of candidates) {
     const entry = declaration.doc?.services?.[serviceId];
     if (!plain(entry)) continue;
@@ -351,7 +354,7 @@ const checkTrackedCustody = ({ repo, root, add }: RootCheck): void => {
   for (const file of tracked.stdout.split(/\r?\n/).filter(Boolean)) {
     const parts = slash(file).split('/');
     const custodyArea = parts.length > 3 && (parts[2] === 'runtime' || parts[2] === 'secrets');
-    const base = parts.at(-1);
+    const base = parts.at(-1) ?? '';
     // infra/** is tracked source, but a value file inside it (.env*, *.env, *.key, *.pem, *.tfvars)
     // is plaintext custody (inc-5360513a96b3: infra/compose/.env.generated was trackable).
     const infraValue = parts.length > 3 && parts[2] === 'infra' && isInfrastructureValueFile(base) && !base.endsWith('.enc') && !base.endsWith('.example');
@@ -447,7 +450,7 @@ export function checkStarciStacks(repoRoot: unknown, { newRepo = false, examples
   const name = repositoryName(repo);
   const findings: Finding[] = [];
   const add: AddFinding = (level, code, file, message) => findings.push({ level, code, file: slash(file), message });
-  const missingLevel = newRepo ? 'refuse' : 'suspect', own = findStackDeclaration(repo);
+  const missingLevel = newRepo ? 'refuse' : 'suspect', own: Declaration = findStackDeclaration(repo);
   const governing = own.missing ? governingDeclaration(repo) : null;
   const shown = (file: string): string => slash(path.relative(repo, file)) || '.';
   const { declaration, services, declFile } = declarationView(own, governing, missingLevel, shown, add);
@@ -509,8 +512,9 @@ async function checkStarciStacksMain(argv: string[] = []): Promise<{ exitCode: n
   const args = rest.filter((arg) => !['--json', '--new'].includes(arg));
   if (args.includes('--help') || args.includes('-h')) return { exitCode: 0, text: USAGE };
   if (args.length !== 1) return { exitCode: 2, text: USAGE };
-  if (!isDir(args[0])) return { exitCode: 2, text: `${args[0]}: not a directory\n` };
-  const result = checkStarciStacks(args[0], { newRepo: rest.includes('--new') });
+  const [dir = ''] = args;
+  if (!isDir(dir)) return { exitCode: 2, text: `${dir}: not a directory\n` };
+  const result = checkStarciStacks(dir,{ newRepo: rest.includes('--new') });
   if (rest.includes('--json')) return { exitCode: result.ok ? 0 : 1, text: `${JSON.stringify(result, null, 2)}\n` };
   const lines = [...result.refused.map((line) => `  REFUSED ${line}`), ...result.suspect.map((line) => `  SUSPECT ${line}`)];
   const fixtureNote = result.followUp?.fixture ? ` from ${result.followUp.fixture}` : '';

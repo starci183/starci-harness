@@ -153,7 +153,7 @@ export function buildHfsGraph(config: ArchitectureConfig, context: GraphContext)
   const ownerRoots = new Map<string, OwnerRoot>();
   for (const node of files.values()) if (node.owner) {
     const key = `${node.owner.slot}:${node.owner.root}`;
-    if (!ownerRoots.has(key)) ownerRoots.set(key, { slot: node.owner.slot, root: node.owner.root, tier: resolver.slot(node.owner.slot).tier });
+    if (!ownerRoots.has(key)) ownerRoots.set(key, { slot: node.owner.slot, root: node.owner.root, tier: resolver.slot(node.owner.slot)?.tier ?? '' }); // the owner slot came from resolver.ownerOf, so the manifest holds it
   }
   return { profile: resolver.repo.profile, resolver, files, edges, unit, ownerRoots, abs: (file: string) => absolute.get(file) ?? null };
 }

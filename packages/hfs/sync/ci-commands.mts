@@ -121,7 +121,7 @@ function imageBuildEnv(image: Declaration, gates: Declaration[]): string {
 }
 
 /** Multiple deployed front ends build separately through the installed turbo (a run step has no node_modules/.bin on PATH), so each fe/apps/<app> and its dependencies see its own public values. */
-function frontendBuild(source: CiSource | undefined, app: { sides: { fe: { apps: { name: string }[] } } } | undefined): { env: string; steps: string } {
+function frontendBuild(source: CiSource | undefined, app: { sides: { fe: { apps: readonly { name: string }[] } } } | undefined): { env: string; steps: string } {
   const declaration = buildDeclaration(source);
   const environments = Object.keys(source?.stack?.imageEnvironments ?? {});
   const environment = (environments.length > 1 ? 'production' : environments[0]) as string;
@@ -182,7 +182,7 @@ function ciJobSettings(declaration: Declaration, source: CiSource | undefined): 
 }
 
 /** An omitted quality declaration preserves hosted Sonar, required OIDC Codecov, and the high production dependency audit. */
-export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = undefined, { nodeMajor = '22', app }: { nodeMajor?: string; app?: { sides: { fe: { apps: { name: string }[] } } } } = {}): Record<string, string> {
+export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = undefined, { nodeMajor = '22', app }: { nodeMajor?: string; app?: { sides: { fe: { apps: readonly { name: string }[] } } } } = {}): Record<string, string> {
   const configuredSonar = quality === undefined ? { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } : quality.sonar;
   const sonar = configuredSonar?.wiring === 'not-used' || configuredSonar?.mode === 'disabled' ? null : configuredSonar;
   const codecov = quality?.codecov ?? { enabled: true, auth: 'oidc' };

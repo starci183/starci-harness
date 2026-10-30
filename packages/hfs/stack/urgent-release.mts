@@ -12,7 +12,7 @@ import type { DeployConfig } from './config.mjs';
 import type { StackContext } from './context.mjs';
 import { refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
-import { git, releaseDir } from '../release/gate.mjs';
+import { git, releaseDir, type ReleaseConfig } from '../release/gate.mjs';
 import { loadReleaseConfig } from '../release/index.mjs';
 import { readUrgent } from '../release/records.mjs';
 import { releaseUrgentPush } from '../release/urgent.mjs';
@@ -31,8 +31,8 @@ export interface UrgentReleaseOptions {
 /** The collaborators of the release (the specs inject stubs). */
 export interface UrgentReleaseDeps {
   buildImages?: typeof buildImages;
-  loadReleaseConfig?: (cwd: string) => unknown;
-  releaseUrgentPush?: (ctx: StackContext, releaseConfig: unknown, options: { execute: boolean | undefined; reason: string; role: string | undefined; remote: string | undefined }) => Promise<ActionResult>;
+  loadReleaseConfig?: (cwd: string) => ReleaseConfig;
+  releaseUrgentPush?: (ctx: StackContext, releaseConfig: ReleaseConfig, options: { execute: boolean | undefined; reason: string; role: string | undefined; remote: string | undefined }) => Promise<ActionResult>;
 }
 
 /** What the release hands back: a result to print, or the images and commit the deploy continues with. */

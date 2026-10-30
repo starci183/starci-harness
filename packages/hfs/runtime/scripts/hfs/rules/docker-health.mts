@@ -233,7 +233,7 @@ function masksProbeFailure(body: Parsed) {
   return false;
 }
 
-function healthCommandReachesLive(ts: Ts, body: Parsed, port: Parsed) {
+function healthCommandReachesLive(ts: Ts, body: Parsed, port: Parsed): boolean {
   const exec = execForm(body);
   if (!exec && masksProbeFailure(body)) return false;
   const commands = exec ? [exec] : shellCommands(body);

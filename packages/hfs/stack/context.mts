@@ -4,6 +4,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import type { ChildProcess, SpawnOptions as NodeSpawnOptions } from 'node:child_process';
 import type { SshConnection } from './ssh-session.mjs';
 import { defaultSops } from '../runtime/scripts/hfs/secret-sops.mjs';
+import type { AgeHost } from '../runtime/scripts/hfs/secret-init.mjs';
 
 const MAX_BUFFER = 1 << 24;
 
@@ -30,8 +31,8 @@ export type BackgroundChild = ChildProcess & { spawnError?: Error };
 
 /** The spawn seam: never a shell; `{ background: true }` returns the owned child. */
 export interface Spawn {
-  (command: string, args: string[], options: SpawnOptions & { background: true }): BackgroundChild;
-  (command: string, args: string[], options?: SpawnOptions): RunResult;
+  (command: string, args: readonly string[], options: SpawnOptions & { background: true }): BackgroundChild;
+  (command: string, args: readonly string[], options?: SpawnOptions): RunResult;
 }
 
 /** The progress sink of a verb that checks or changes the host: successes, failures and neutral notes. */
@@ -68,7 +69,7 @@ export interface Sops {
   identity?: { source: string | null; looked: string[] } | undefined;
 }
 
-const realSpawn: Spawn = ((command: string, args: string[], options: SpawnOptions = {}) => {
+const realSpawn: Spawn = ((command: string, args: readonly string[], options: SpawnOptions = {}) => {
   if (options.background) {
     const childOptions: SpawnOptions = { ...options };
     delete childOptions.background;
@@ -126,7 +127,7 @@ export interface StackIo {
   pipe?: ((source: PipeEnd, sink: PipeEnd) => Promise<PipeResult>) | undefined;
   sops?: Sops | undefined;
   openSops?: (() => Sops) | undefined;
-  hostIdentity?: string | null | undefined;
+  hostIdentity?: AgeHost | null | undefined;
   harness?: { role?: string | undefined } | undefined;
   importer?: ((file: string) => Promise<Record<string, unknown>>) | undefined;
 }
@@ -189,10 +190,10 @@ export function stackContext(io: StackIo = {}): StackContext {
 }
 
 /** Runs one tool; `env` replaces the child environment when given, `input` is written to its stdin. */
-export const tool = (ctx: Pick<StackContext, 'spawn'>, command: string, args: string[], options: SpawnOptions = {}): RunResult => ctx.spawn(command, args, options);
+export const tool = (ctx: Pick<StackContext, 'spawn'>, command: string, args: readonly string[], options: SpawnOptions = {}): RunResult => ctx.spawn(command, args, options);
 
 /** Runs a tool and returns stdout, or throws the first stderr line. Used where a failure has no recovery. */
-export function toolOutput(ctx: Pick<StackContext, 'spawn'>, command: string, args: string[], options: SpawnOptions = {}): string {
+export function toolOutput(ctx: Pick<StackContext, 'spawn'>, command: string, args: readonly string[], options: SpawnOptions = {}): string {
   const run = tool(ctx, command, args, options);
   if (run.error) throw new Error(`cannot run ${command} (${run.error.message})`);
   if (run.status !== 0) throw new Error(`${command} ${args.slice(0, 2).join(' ')}: ${firstLine(run.stderr)}`);

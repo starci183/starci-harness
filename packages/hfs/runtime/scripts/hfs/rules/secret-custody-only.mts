@@ -28,7 +28,7 @@ const KEY_LINE = /^\s*(?:export\s+)?([A-Za-z_$][\w$]*)\s*=/;
 const hasSecretKeys = (file: string, text: string) =>
   text.split(/\r?\n/).some((line: string) => {
     const key = KEY_LINE.exec(line);
-    return (key && secretNameLike(key[1])) || secretHits(file, line).length > 0;
+    return (key && secretNameLike(key[1] as string)) || secretHits(file, line).length > 0;
   });
 
 const sealedCustodyFindings = (file: string, posix: Parsed, repo: Repo) => {

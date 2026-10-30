@@ -82,13 +82,13 @@ export type Surface = 'all' | 'lint' | 'check';
 
 /** The options of `checkArchitecture`. */
 export interface ArchitectureCheckOptions {
-  repositoryRoot?: string;
-  injectedTypeScript?: TypeScriptApi | null;
-  paths?: string[];
-  base?: string;
-  fast?: boolean;
-  hfs?: ArchitectureConfig['hfs'];
-  surface?: Surface;
+  repositoryRoot?: string | undefined;
+  injectedTypeScript?: TypeScriptApi | null | undefined;
+  paths?: string[] | undefined;
+  base?: string | undefined;
+  fast?: boolean | undefined;
+  hfs?: ArchitectureConfig['hfs'] | undefined;
+  surface?: Surface | undefined;
 }
 
 /** The coverage of the contract checks. */

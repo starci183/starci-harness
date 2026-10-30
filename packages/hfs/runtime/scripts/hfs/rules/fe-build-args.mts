@@ -90,7 +90,7 @@ function schemaRequirements(text: string) {
 
 function requiredNames(root: string, files: string[], app: Parsed, ts: Ts) {
   const prefix = `fe/apps/${app}/`;
-  const names = new Set();
+  const names = new Set<string>();
   for (const file of files.filter((file: string) => file.startsWith(prefix))) {
     const local = file.slice(prefix.length);
     const source = SOURCE.test(local) && (local.startsWith('src/') || local.startsWith('next.config.') || SCHEMA.test(local));

@@ -9,7 +9,7 @@ import { byCodeUnit } from '../lib/list.mjs';
 // so nothing built here outlives the run that built it. Outside a run every call
 // builds afresh.
 /** The caller's TypeScript compiler module. */
-export type TsApi = typeof TypeScript;
+export type TsApi = typeof import('typescript');
 
 const runs = new AsyncLocalStorage<Map<TsApi, Map<string, unknown>>>();
 
@@ -55,7 +55,7 @@ export function sharedInProgramRun<T>(kind: string, ts: TsApi, input: unknown, b
 }
 
 /** ts.createProgram, shared inside a program run. */
-export function createTypeScriptProgram(ts: TsApi, { rootNames, options, projectReferences }: { rootNames: string[]; options: TypeScript.CompilerOptions; projectReferences?: readonly TypeScript.ProjectReference[] }): TypeScript.Program {
+export function createTypeScriptProgram(ts: TsApi, { rootNames, options, projectReferences }: { rootNames: readonly string[]; options: TypeScript.CompilerOptions; projectReferences?: readonly TypeScript.ProjectReference[] | undefined }): TypeScript.Program {
   return sharedInProgramRun('program', ts, { rootNames, options, projectReferences },
     () => ts.createProgram({ rootNames, options, projectReferences, host: sharedSourceHost(ts, options) } as TypeScript.CreateProgramOptions)); // exactOptionalPropertyTypes: the optional host and references are passed through as undefined, as before
 }
@@ -81,12 +81,17 @@ function sharedSourceHost(ts: TsApi, options: TypeScript.CompilerOptions): TypeS
   return host;
 }
 
+/** A tsconfig read by readTypeScriptProject: the parsed project, or null with the read error. */
+export type ProjectRead =
+  | { read: { config?: unknown; error: TypeScript.Diagnostic }; parsed: null }
+  | { read: { config?: unknown; error?: undefined }; parsed: TypeScript.ParsedCommandLine };
+
 /** Read and expand a tsconfig with the caller's TypeScript compiler and optional tracked file reader. */
-export function readTypeScriptProject(ts: TsApi, configFile: string, readFile: (file: string) => string | undefined = ts.sys.readFile) {
+export function readTypeScriptProject(ts: TsApi, configFile: string, readFile: (file: string) => string | undefined = ts.sys.readFile): ProjectRead {
   const read = ts.readConfigFile(configFile, readFile);
-  if (read.error) return { read, parsed: null };
+  if (read.error) return { read: read as typeof read & { error: TypeScript.Diagnostic }, parsed: null };
   const host = readFile === ts.sys.readFile ? ts.sys : { ...ts.sys, readFile };
-  return { read, parsed: ts.parseJsonConfigFileContent(read.config, host, path.dirname(configFile), undefined, configFile) };
+  return { read: read as typeof read & { error?: undefined }, parsed: ts.parseJsonConfigFileContent(read.config, host, path.dirname(configFile), undefined, configFile) };
 }
 
 /** Resolve a project reference with the compiler's API, including older compiler fallback. */

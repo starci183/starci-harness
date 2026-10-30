@@ -21,10 +21,10 @@ interface Machine { listLedgers(): Array<{ file: string; repoRoot: string }> }
 /** What artifactHoldOf answers when a removal touches a held file. */
 export interface ArtifactHold { ledger: string; repo: string | null; paths: string[]; count: number | null; error?: string }
 interface HoldOptions { env?: NodeJS.ProcessEnv; repos?: RegisteredRepo[] | null }
-let cache: { file: string | null; at: number; repos: RegisteredRepo[] } = { file: null, at: 0, repos: [] };
+let cache: { file: string | null; at: number; repos: RegisteredRepo[] | null } = { file: null, at: 0, repos: [] };
 
 /** The repositories whose ledgers the registry enrols: [{repo, ledger}], cached briefly per registry file; null when the registry cannot be read. */
-function registeredRepos({ env = process.env, now = Date.now() }: { env?: NodeJS.ProcessEnv; now?: number } = {}): RegisteredRepo[] {
+function registeredRepos({ env = process.env, now = Date.now() }: { env?: NodeJS.ProcessEnv; now?: number } = {}): RegisteredRepo[] | null {
   const file = machineFileFor(env);
   if (cache.file === file && now - cache.at < REGISTRY_TTL_MS) return cache.repos;
   const repos = fs.existsSync(file) ? readMachine((m: Machine) => m.listLedgers().map((l) => ({ ledger: l.file, repo: l.repoRoot })), null, { file, env }) : [];

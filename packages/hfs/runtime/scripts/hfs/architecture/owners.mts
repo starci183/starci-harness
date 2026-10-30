@@ -40,7 +40,8 @@ function absolute(root: string, relative: string): string {
  */
 function slotEntries(config: ArchitectureConfig, owner: OwnerRecord): { exact: string[]; patterns: RegExp[] } {
   const found = config.hfs?.classifyPath?.(owner.entry);
-  const names: string[] = found?.slot ? config.hfs.slot(found.slot)?.entries ?? [] : [];
+  if (!found?.slot) return { exact: [], patterns: [] };
+  const names: string[] = config.hfs.slot(found.slot)?.entries ?? [];
   const exact = names.filter(name => !name.includes('*')).map(name => absolute(config.root, `${found.root}/${name}`));
   const patterns: RegExp[] = names.filter(name => name.includes('*')).map(name => globExpression(`${posixPath(absolute(config.root, found.root))}/${name}`));
   return { exact, patterns };

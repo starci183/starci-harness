@@ -27,6 +27,15 @@ export interface CiEntry {
 
 export interface CiDeclaration { secrets: CiEntry[]; vars: CiEntry[]; dependabotSecrets: CiEntry[]; problems: CiProblem[] }
 
+/** An entry of a declaration readCiDeclaration found no problem in: an uppercase name, its scope, and the environment an environment scope names (else null). */
+export type ValidCiEntry = CiEntry & { name: string } & ({ scope: 'repository'; environment: null } | { scope: 'environment'; environment: string });
+
+/** A CI declaration without problems, so every entry is valid. */
+export interface ValidCiDeclaration extends CiDeclaration { secrets: ValidCiEntry[]; vars: ValidCiEntry[]; dependabotSecrets: ValidCiEntry[] }
+
+/** True when readCiDeclaration found no problem in `declaration`. */
+export const isValidCiDeclaration = (declaration: CiDeclaration): declaration is ValidCiDeclaration => declaration.problems.length === 0;
+
 const nameOf = (item: ParsedDoc): unknown => typeof item === 'string' ? item : item?.name;
 
 /** A public CI variable declares either a manifest value or an owner-supplied value, never both. */

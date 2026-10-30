@@ -5,11 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { revParseQuery } from '../api/git/rev-parse-query.mjs';
 import { remote as gitRemote } from '../api/git/remote.mjs';
-import { gitOutputOf } from '../lib/git.mjs';
+import { gitOutputOf, type GitSpawnResult } from '../lib/git.mjs';
 import { trimTrailingSlashes } from './trailing-slashes.mjs';
 
 /** One git call (a scripts/api/git call file) in `root`: its trimmed stdout; throws unless git exits 0. */
-const git = (call: (args: string[], options: { cwd: string }) => unknown, root: string, args: string[]): string => gitOutputOf(call(args, { cwd: root })).trim();
+const git = (call: (args: string[], options: { cwd: string }) => GitSpawnResult, root: string, args: string[]): string => (gitOutputOf(call(args, { cwd: root })) as string).trim(); // gitOutputOf threw unless git exited 0, whose stdout is text
 const real = (p: string): string => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
 const GIT_SUFFIX_SOURCE = String.raw`\.git$`;
 const GIT_SUFFIX = new RegExp(GIT_SUFFIX_SOURCE, 'iu');

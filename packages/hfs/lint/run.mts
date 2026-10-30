@@ -22,6 +22,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { linterReport, mergeReports, sonarReport, sourceRootsOf } from '../report/sonar.mjs';
 import { SIDES, appRelativeMessages, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import { isSide } from '../runtime/scripts/hfs/slot-manifest-shape.mjs';
 import { chunkByChars, mapBounded, mergeRuns } from './chunk.mjs';
 import { STYLE_GLOB } from '../sync/index.mjs';
 import { byCodeUnit } from '../report/order.mjs';
@@ -66,7 +67,7 @@ export function workspaceOf(workspace: string): string {
 /** Side scopes partition the full lint; Sonar reports share that scope and a frontend workspace cannot belong to be. */
 function validateSide(opts: { side?: string | undefined; workspace?: string | undefined }): void {
   if (opts.side === undefined) return;
-  if (!SIDES.includes(opts.side)) throw new Error('LINT_SIDE_INVALID: --side is be or fe');
+  if (!isSide(opts.side)) throw new Error('LINT_SIDE_INVALID: --side is be or fe');
   if (opts.side === 'be' && opts.workspace !== undefined) throw new Error('LINT_SIDE_WORKSPACE_CONFLICT: --side be cannot judge a frontend workspace');
 }
 

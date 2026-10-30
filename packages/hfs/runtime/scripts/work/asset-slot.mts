@@ -30,6 +30,8 @@ import path from 'node:path';
 import { isMain } from '../lib/is-main.mjs';
 import { sha256File } from '../../engine/digest.mjs';
 import { openEventItems } from '../lib/event-items.mjs';
+import type { SqliteDb } from '../lib/sqlite.mjs';
+import type { EventPayload, EventRow } from '../lib/event-items.mjs';
 import { ASSET_SLOT_ATTR, COMPONENT_ATTR, parseHtml, walkElements, type HtmlElement } from './draw/draw-dna.mjs';
 import { isDir, isFile, slash } from './work-io.mjs';
 
@@ -277,10 +279,10 @@ export function recordAssetSlots(ledger: AssetLedger, { job, repo, files, now = 
 }
 
 /** The workflow's open asset slots (owed, not filled since): [{key, id, ui, html, request, jobId, opId, owedAt}]. */
-export function openAssetSlots(db: unknown, workflowId: string) {
+export function openAssetSlots(db: SqliteDb, workflowId: string) {
   return openEventItems(db, workflowId, {
-    owedKind: ASSET_SLOT_OWED, resolvedKind: ASSET_SLOT_FILLED, keyOf: (p: OpenSlotPayload) => p.key,
-    item: (p: OpenSlotPayload, row: { created_at: number }) => ({ key: p.key, id: p.id ?? null, ui: p.ui ?? null, html: p.html ?? null, request: p.request ?? null, requested: p.requested !== false, jobId: p.jobId ?? null, opId: p.opId ?? null, owedAt: row.created_at }),
+    owedKind: ASSET_SLOT_OWED, resolvedKind: ASSET_SLOT_FILLED, keyOf: (payload: EventPayload) => (payload as unknown as OpenSlotPayload).key, // reason: the payload is the ledger's parsed JSON, written by recordAssetSlots as an AssetSlotPayload
+    item: (payload: EventPayload, row: EventRow) => { const p = payload as unknown as OpenSlotPayload; return { key: p.key, id: p.id ?? null, ui: p.ui ?? null, html: p.html ?? null, request: p.request ?? null, requested: p.requested !== false, jobId: p.jobId ?? null, opId: p.opId ?? null, owedAt: row.created_at }; },
   });
 }
 

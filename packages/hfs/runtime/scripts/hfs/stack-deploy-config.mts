@@ -12,7 +12,9 @@ type Block = any;
 /** What the caller knows of the app tree: file presence below .starcistacks/<env>/, the stack's services and the sealed members. */
 export interface DeployProbe extends TreeProbe { services?: Set<string>; members?: Set<string> }
 
-export interface RemoteConfig { host: string; releasesBase: string | null; sealed: Record<string, string> | null; serverRecipient: string | null }
+/** The sealed SSH roles of `deploy.remote.sealed`: the member that holds each. */
+export interface SealedRoles { ops: string; sshKey: string; knownHosts: string }
+export interface RemoteConfig { host: string; releasesBase: string | null; sealed: SealedRoles | null; serverRecipient: string | null }
 export interface ImageBuildArgs { values: Record<string, string>; sealed: { member: string; keys: string[] } | null }
 export interface ImageEntry { app: string; buildArgs: ImageBuildArgs }
 export interface SourceEntry { member: string; keys: string[] | null; required: boolean; fill: boolean }
@@ -21,7 +23,7 @@ export interface SettingsEntry { member: string; keys: string[] }
 export interface SecretsConfig { grants: GrantEntry[]; settings: SettingsEntry[] }
 export interface ServiceEnvironment { files: string[]; values: Record<string, string>; settings: Record<string, { key: string; default: string | null }> }
 export interface ConfigEntry { name: string; file: string; env: string }
-export interface HttpCheck { name: string; url: string; method: string; body: unknown; status: number; json: unknown; contains: unknown; retry: boolean }
+export interface HttpCheck { name: string; url: string; method: string; body: unknown; status: number; json: Record<string, unknown> | null; contains: unknown; retry: boolean }
 export interface ExecCheck { name: string; service: string; command: string[]; stdout: string | null }
 export interface VerifyConfig { http: HttpCheck[]; exec: ExecCheck[] }
 export interface JobsConfig { service: string; command: string[] }
@@ -70,7 +72,6 @@ const UPPER_ENV = KEY;
 const FIELDS = {
   deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'ingress', 'registry'],
   remote: ['host', 'releasesBase', 'sealed', 'serverRecipient'],
-  sealed: ['ops', 'sshKey', 'knownHosts'],
   image: ['app', 'buildArgs'],
   buildArgs: ['values', 'sealed'],
   secrets: ['grants', 'settings'],
@@ -112,11 +113,12 @@ function remote(c: Collector, block: Block): RemoteConfig {
   if (block.host !== undefined) nameField(c, 'deploy.remote.host', block.host, HOST_ALIAS);
   if (block.releasesBase !== undefined && (!REMOTE_BASE.test(String(block.releasesBase)) || String(block.releasesBase).includes('..')))
     c.problem('deploy.remote.releasesBase', 'must be an absolute path without ..');
-  let sealed: Record<string, string> | null = null;
+  let sealed: SealedRoles | null = null;
   // One member holds VPS_HOST, VPS_USER, privateKey and knownHosts (`sealed: vps`); it plays all three SSH roles of the transport.
   if (typeof block.sealed === 'string') {
     nameField(c, 'deploy.remote.sealed', block.sealed);
-    sealed = Object.fromEntries(FIELDS.sealed.map((key) => [key, block.sealed]));
+    const member: string = block.sealed;
+    sealed = { ops: member, sshKey: member, knownHosts: member };
   } else if (block.sealed !== undefined) {
     c.problem('deploy.remote.sealed', 'names one member holding VPS_HOST, VPS_USER, privateKey and knownHosts (sealed: vps); fold a member per role into it with starci app secret migrate <env> <member> --to vps --into-existing');
   }
@@ -213,7 +215,7 @@ function secrets(c: Collector, block: Block, services: Set<string>, members: Set
 function serviceEnvironment(c: Collector, at: string, entry: Block, probe: DeployProbe): ServiceEnvironment {
   const out: ServiceEnvironment = { files: [], values: {}, settings: {} };
   if (!closedFields(c, at, entry, FIELDS.environment)) return out;
-  list(entry.files).forEach((file: string, index: number) => { treeFile(c, `${at}.files[${index}]`, file, probe); out.files.push(file); });
+  list<string>(entry.files).forEach((file: string, index: number) => { treeFile(c, `${at}.files[${index}]`, file, probe); out.files.push(file); });
   for (const [key, value] of Object.entries(entry.values ?? {})) {
     if (!UPPER_ENV.test(key) || typeof value !== 'string') c.problem(`${at}.values.${key}`, 'must be KEY: "string"');
     else out.values[key] = value;

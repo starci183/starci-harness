@@ -6,7 +6,7 @@ import { sourceLocation } from '../runtime/scripts/lib/ts-ast.mjs';
 import type * as TsTypes from 'typescript';
 
 /** The TypeScript compiler API of the app's own install (loadTypescript), typed by the version this package develops against. */
-type Ts = typeof TsTypes;
+type Ts = typeof import('typescript');
 type Node = TsTypes.Node;
 type SourceFile = TsTypes.SourceFile;
 type Opening = TsTypes.JsxOpeningElement | TsTypes.JsxSelfClosingElement;
@@ -292,7 +292,7 @@ export function transformButtonIntent({ ts, text, file = 'component.tsx' }: { ts
     }
     const intent = button.variant === 'secondary'
       ? commits.some(other => other.group === button.group && canCoexist(button, other)) ? 'alternative' : 'neutral'
-      : button.mapped;
+      : button.mapped ?? ''; // a variant without a mapping was flagged and skipped above
     const step = button.variant === 'danger' ? 'confirm' : button.variant === 'danger-soft' ? 'entry' : null;
     const attribute = button.props.get('variant') as TsTypes.JsxAttribute;
     const replacement = `intent="${intent}"${step ? ` step="${step}"` : ''}`;

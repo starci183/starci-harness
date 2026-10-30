@@ -86,7 +86,7 @@ const checkRelations = (scan: CouplingScan, file: GraphFile, ownContext: string)
     const targetContext = home ? model.contextOfCapability(home.root) : null;
     if (!home || !targetContext || targetContext === ownContext) return;
     covered.add(`${file.rel}|${home.root}`);
-    once(`${file.rel}|${node.getStart()}`, { ...kit.at(file.rel, file.sourceFile, node), message: `A ${binding.name} relation in ${file.owner.root} (context ${ownContext}) targets an entity of ${home.root} (context ${targetContext}); a relation never crosses a context. Keep the other context's id as a plain column and fill a local copy or a projection from its events.`, context: ownContext, targetContext });
+    once(`${file.rel}|${node.getStart()}`, { ...kit.at(file.rel, file.sourceFile, node), message: `A ${binding.name} relation in ${file.owner?.root} (context ${ownContext}) targets an entity of ${home.root} (context ${targetContext}); a relation never crosses a context. Keep the other context's id as a plain column and fill a local copy or a projection from its events.`, context: ownContext, targetContext });
   });
 };
 

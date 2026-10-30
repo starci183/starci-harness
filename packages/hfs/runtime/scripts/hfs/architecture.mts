@@ -35,7 +35,7 @@ export interface ArchitectureMainIo { check?: typeof checkArchitecture; write?: 
 function architectureMain(argv: string[], {check = checkArchitecture, write = (text: string) => process.stdout.write(text), fail = (text: string) => process.stderr.write(text)}: ArchitectureMainIo = {}): number {
   let parsed: ArchitectureArgs;
   try { parsed = parseArchitectureArgs(argv); } catch (error) { fail(`${(error as Error).message}\n`); return 2; }
-  let report: { ok?: boolean; [key: string]: unknown };
+  let report: ReturnType<typeof checkArchitecture> | { ok?: boolean; [key: string]: unknown };
   try { report = check({repositoryRoot: path.resolve(parsed.root), base: parsed.base}); } catch (error) {
     report = {schema: 'starci/architecture-check@1', ok: false, repository: parsed.root, kinds: [], files: 0, violations: [],
       errors: [{ruleId: 'ARCH_EXECUTION_UNAVAILABLE', message: String((error as { message?: unknown } | null | undefined)?.message ?? error)}]};

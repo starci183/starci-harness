@@ -42,7 +42,8 @@ const gitSpawn = (file: string, args: readonly string[], options: GitSpawnOption
   const spawn: GitSpawnOptions = { encoding: 'utf8', windowsHide: true, ...options };
   if (spawn.encoding === 'buffer') spawn.encoding = null;
   // tempChildEnv copies the env (node adds NODE_V8_COVERAGE to the env object it is given: a frozen caller env must not throw under coverage) and points TEMP/TMP/TMPDIR at the temp root
-  const spawnOptions: SpawnSyncOptionsWithStringEncoding = withTempEnv(spawn);
+  // reason: encoding:null (the former 'buffer') returns Buffers; callers of that mode read the result as raw bytes
+  const spawnOptions = withTempEnv(spawn) as SpawnSyncOptionsWithStringEncoding;
   return spawnSync(file, args, spawnOptions);
 };
 

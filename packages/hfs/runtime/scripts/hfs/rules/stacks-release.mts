@@ -30,7 +30,7 @@ const TEST = /(?:\.(?:spec|test)|-spec)\.[cm]?[jt]s$|\/(?:tests|__tests__)\//;
 const SECRET = /(?:(?:^|\/)(?:secrets|\.claude|\.aws|\.codex)(?:\/|$))|(?:(?:^|\/)\.env(?:\.|$))|(?:\.(?:enc|pem|key|p12|pfx)$)/i;
 const CLI_ENTRY = /^(?:be\/)?dist\/apps\/cli\/[A-Za-z0-9_./-]+\.(?:js|mjs|cjs)$/;
 const mapping = (value: Parsed) => plain(value) ? value : {};
-const present = (value: Parsed) => typeof value === 'string' && Boolean(value.trim());
+const present = (value: unknown): value is string => typeof value === 'string' && Boolean(value.trim());
 const issue = (code: string, at: Parsed, message: string) => ({ code, at, message });
 const scheduleIssue = (at: Parsed, message: string) => issue('HFS_SCHEDULE_UNDECLARED', at, message);
 
@@ -65,10 +65,10 @@ function releaseIssues({ environment, spec, repoRoot, files }: { environment: Pa
     'Swarm release must declare tracked public imagesLock, pointer and previous records, and nonempty healthAssertions')];
 }
 
-function persistentVolume(volume: Parsed) {
+function persistentVolume(volume: unknown) {
   if (plain(volume)) return volume.type === 'volume' && present(volume.source);
   if (!present(volume)) return false;
-  const source = volume.split(':')[0];
+  const source = volume.split(':')[0] as string; // split always yields one element
   return volume.includes(':') && /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(source);
 }
 
@@ -118,9 +118,11 @@ function commandWords(value: Parsed) {
 
 function cliCommand(value: Parsed) {
   const words = commandWords(value);
-  if (words.length < 3 || words[0] !== 'node' || !CLI_ENTRY.test(words[1]) || words[1].split('/').includes('..')) return null;
-  if (!/^[a-z][A-Za-z0-9:_-]*$/.test(words[2])) return null;
-  return [words[1].replace(/^be\//, ''), ...words.slice(2)].join(' ');
+  if (words.length < 3 || words[0] !== 'node') return null;
+  const entry = words[1] as string; // words.length >= 3
+  if (!CLI_ENTRY.test(entry) || entry.split('/').includes('..')) return null;
+  if (!/^[a-z][A-Za-z0-9:_-]*$/.test(words[2] as string)) return null;
+  return [entry.replace(/^be\//, ''), ...words.slice(2)].join(' ');
 }
 
 function jobIssues(doc: Parsed) {

@@ -39,7 +39,7 @@ interface TableConnection {
 
 /** The part of the app declaration the table verb reads. */
 interface TableRepo {
-  readonly edition?: string;
+  readonly edition?: string | undefined;
   readonly sides?: {
     readonly be?: { readonly apps: readonly DeclaredApp[]; readonly connections?: readonly TableConnection[] };
     readonly fe?: { readonly apps?: readonly DeclaredApp[] };
