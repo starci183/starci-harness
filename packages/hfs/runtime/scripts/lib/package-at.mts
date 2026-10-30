@@ -1,0 +1,66 @@
+// scripts/lib/package-at.mjs — a package the runtime does not ship (playwright, esbuild, tailwindcss) comes from the
+// project that owns it: node resolution from that project's directory, walking up its node_modules.
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { skillRoot } from '../../engine/runtime-root.mjs';
+
+/** The package.json of `name` as resolved from `dir`, or null. */
+export const packageAt = (dir: string, name: string): string | null => {
+  try { return createRequire(path.join(dir, 'package.json')).resolve(`${name}/package.json`); } catch { return null; }
+};
+
+/** This runtime's own `starci` bin (packages/cli is the only package that declares one). */
+const RUNTIME_STARCI_BIN = path.join(skillRoot, 'packages', 'cli', 'bin', 'starci.mjs');
+
+/** The `starci` bin of the starci-harness that `dir` installs (a product runs its own pinned CLI), else this runtime's own. */
+function starciBin(dir: string): string {
+  const packageFile = packageAt(dir, 'starci-harness');
+  if (packageFile) {
+    try {
+      // reason: package.json is parsed from disk; only `bin` is read.
+      const { bin }: { bin?: string | { starci?: string } } = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
+      const rel = typeof bin === 'string' ? bin : bin?.starci;
+      const file = rel ? path.join(path.dirname(packageFile), rel) : null;
+      if (file && fs.existsSync(file)) return file;
+    } catch { /* an unreadable install falls back to the runtime's own CLI */ }
+  }
+  return RUNTIME_STARCI_BIN;
+}
+
+/** A package located by findPackage. */
+export interface FoundPackage { name: string; root: string; packageFile: string; version: string }
+
+/** The first of `names` resolvable from the first of `dirs` that has one: {name, root, packageFile, version} or null. */
+export function findPackage(dirs: readonly (string | null | undefined)[], names: readonly string[]): FoundPackage | null {
+  for (const dir of dirs.filter((entry): entry is string => Boolean(entry))) {
+    for (const name of names) {
+      const packageFile = packageAt(dir, name);
+      if (!packageFile) continue;
+      const require = createRequire(packageFile);
+      return { name, root: path.dirname(packageFile), packageFile, version: require(packageFile).version };
+    }
+  }
+  return null;
+}
+
+/** The CommonJS entry of a package found by findPackage. */
+// reason: a package loaded by a runtime-resolved name has no static type; each caller states the module shape it expects.
+export const requirePackage = (found: FoundPackage): any => createRequire(found.packageFile)(found.name);
+
+/** The TypeScript compiler resolvable from the first of `dirs` (an app root, then the caller's own), or null. */
+export const loadTypescript = (...dirs: (string | null | undefined)[]): typeof import('typescript') | null => {
+  const located = findPackage(dirs, ['typescript']);
+  return located ? requirePackage(located) : null;
+};
+
+/**
+ * The app's command line and the app implementation behind it: `bin` the `starci` bin of the app's installed starci-harness, else
+ * this runtime's packages/cli/bin/starci.mjs (starciBin); `dir` the @starci/hfs that answers
+ * `starci app` - the app's own install, else the one beside its starci-harness, else this runtime's packages/hfs.
+ */
+export function hfsEntry(root: string): { dir: string; bin: string } {
+  const cli = packageAt(root, 'starci-harness');
+  const manifest = packageAt(root, '@starci/hfs') ?? (cli && packageAt(path.dirname(cli), '@starci/hfs'));
+  return { dir: manifest ? path.dirname(manifest) : path.join(skillRoot, 'packages', 'hfs'), bin: starciBin(root) };
+}

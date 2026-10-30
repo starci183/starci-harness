@@ -18,40 +18,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { skillRoot } from '../../engine/runtime-root.mjs';
-
 export { tempRoot } from '../../engine/temp-root.mjs';
 export { starciLocalRoot, starciSourceRoot } from '../../engine/runtime-root.mjs';
-
 /** The runtime tree this code runs from. */
 const runtimeTree = skillRoot;
-
-
 /** The name of the Work records directory inside a product tree. */
 export const WORK_DIR_NAME = '.starciwork';
-
 /** The directory a command was started in: `io.cwd` when the caller injects one, else the process working directory. A default for flags only. */
 export const invocationDir = (io = undefined) => path.resolve(io?.cwd ?? process.cwd());
-
 /** The distinct, resolved trees that may hold a product's records, in precedence order: the workflow tree, then the main checkout. */
-export const treesInOrder = ({ tree = null, repo = null } = {}) => [...new Set([tree, repo].filter(Boolean).map((dir) => path.resolve(dir)))];
-
+export const treesInOrder = ({ tree = null, repo = null } = {}) => [...new Set([tree, repo].filter((dir) => Boolean(dir)).map((dir) => path.resolve(dir)))];
 /** The Work directories of those trees, in the same order. */
 export const workDirsInOrder = ({ tree = null, repo = null, workDirName = WORK_DIR_NAME } = {}) => treesInOrder({ tree, repo }).map((dir) => path.join(dir, workDirName));
-
 /**
  * The first Work directory (workflow tree first, then the main checkout) that `holds` accepts, else the main checkout's own (the
  * path a refusal names), else the tree's when there is no main checkout.
  */
 export function workDirHolding(holds, { tree = null, repo = null, workDirName = WORK_DIR_NAME } = {}) {
-  const dirs = workDirsInOrder({ tree, repo, workDirName });
-  return dirs.find((dir) => holds(dir)) ?? (repo ? path.join(path.resolve(repo), workDirName) : (dirs[0] ?? null));
+    const dirs = workDirsInOrder({ tree, repo, workDirName });
+    return dirs.find((dir) => holds(dir)) ?? (repo ? path.join(path.resolve(repo), workDirName) : (dirs[0] ?? null));
 }
-
 /** The file of a Work record (`rel` under the Work directory) from the first tree that has it, else the main checkout's path. */
 export function workRecordPath(rel, { tree = null, repo = null, workDirName = WORK_DIR_NAME, exists = fs.existsSync } = {}) {
-  const parts = String(rel).split('/');
-  return path.join(workDirHolding((dir) => exists(path.join(dir, ...parts)), { tree, repo, workDirName }) ?? '', ...parts);
+    const parts = String(rel).split('/');
+    return path.join(workDirHolding((dir) => exists(path.join(dir, ...parts)), { tree, repo, workDirName }) ?? '', ...parts);
 }
-
 /** The directories a tool is looked up from: the caller's (the tree the work happens in, then the project) first, the runtime's own install last. */
 export const toolSearchDirs = (dirs, runtime = runtimeTree) => [...dirs.filter(Boolean), runtime].filter(Boolean);
