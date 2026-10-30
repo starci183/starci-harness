@@ -24,7 +24,7 @@ rules:
   - id: FE-UI
     title: Compose the selected Grammar
     kind: mandatory
-    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320]
+    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320, R337, R338]
     requirement: |-
       Components compose the selected Grammar through its published entry and props; application CSS carries
       layout only (css.yaml). A missing visual capability is added to that Grammar before the app consumes it.
@@ -59,6 +59,15 @@ rules:
           (owner:agent-avatar-initials-bot-badge). Apps neither declare nor import an avatar-generation
           library and draw no avatar visuals; the family owns the renderer API (the StarCi recipe is
           groupIdentity in its playbook).
+      - id: case-4
+        date: "2026-10-30"
+        source: owner
+        when: A screen shows generated character art (a mascot)
+        write: |-
+          Render it with the selected Grammar's Mascot at a step of its size scale (sm, md, lg, or hero for a split
+          screen), passing the asset slot it was requested under (assetSlot, and assetSha256 once delivered); a scene
+          or illustration is framed by MediaFrame. Generated art under /images/ never renders through a bare Image or
+          img (R337, R338).
     verification:
       automated:
         - FE_VENDOR_BOUNDARY
@@ -81,5 +90,7 @@ rules:
         - FE_SINGLE_COMMIT_PER_RENDER
         - FE_NO_COMMIT_IN_COLLECTION_ITEM
         - FE_CONTROL_HEIGHT
+        - FE_GENERATED_ART_OUTSIDE_FRAME
+        - FE_MASCOT_ASSET_SLOT_MISSING
       manual: []
     relatedExamples: [full-app-shell, lite-app-shell]

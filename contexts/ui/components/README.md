@@ -72,4 +72,5 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
 | a region with nothing in it yet, or a failed region | [empty-state](empty-state.md) |
 | a compact identity beside a name | [identity-mark](identity-mark.md) |
+| show the product's generated character (mascot) art | [mascot](mascot.md) |
 | draw a diagram: an article's Mermaid source, or nodes and edges the app holds | [diagram](diagram.md) |

@@ -47,6 +47,7 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
 | Alert | The vendor Alert: white surface, tone only on the indicator and title (ruling `alert-white-surface`); toasts the same |
 | EmptyState | Common's notice on the region's surface |
 | Avatar | Common initials coloured by seed; members ringed in the surface colour; the agent badge hidden below the `sm` step |
+| Mascot | Common's scale and transparent ground, inherited unchanged |
 | Shell | Common shell painted by `surface` and `separator`; the bar is a solid surface band with a full-width separator |
 | PageHeader | The same band as the bar: `surface` fill and a full-width 1px `separator` hairline at its bottom edge; page tabs stand on the hairline with the accent underline over it |
 | Page | Common's frame: the core band, the body in the measure and gutter a region step below it |

@@ -5890,3 +5890,49 @@ rules:
       - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}
     witness:
       - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}
+  - id: R337
+    code: "FE_GENERATED_ART_OUTSIDE_FRAME"
+    law: "Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives, so the same art comes out at a different size on every screen."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_GENERATED_ART_OUTSIDE_FRAME"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template draws no generated art; the art is the app's."
+    proves:
+      - packages/eslint-grammar-core/src/mascot.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_GENERATED_ART_OUTSIDE_FRAME]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_GENERATED_ART_OUTSIDE_FRAME]}
+    cases:
+      - id: case-1
+        date: "2026-10-30"
+        source: owner
+        quote: "Generated art renders at one consistent size across screens (relayed by the nivo-lite app)."
+        ruling: "Grammar's Mascot owns the character size scale (sm 96px, md 160px, lg 240px, hero up to its cap), always contained on a transparent ground; generated art under /images/ renders through Mascot or inside MediaFrame, never a bare Image."
+  - id: R338
+    code: "FE_MASCOT_ASSET_SLOT_MISSING"
+    law: "Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_MASCOT_ASSET_SLOT_MISSING"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template draws no mascot; the art is the app's."
+    proves:
+      - packages/eslint-grammar-core/src/mascot.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_MASCOT_ASSET_SLOT_MISSING]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_MASCOT_ASSET_SLOT_MISSING]}
+    cases:
+      - id: case-1
+        date: "2026-10-30"
+        source: owner
+        quote: "A Mascot reuses the provenance props of Image and MediaFrame; a Mascot without an assetSlot is a finding (relayed by the nivo-lite app)."
+        ruling: "Mascot takes AssetSlotProps (assetSlot, assetSha256, assetPrompt) and emits them as data-asset-* on its root; the lint requires assetSlot on every Mascot."
