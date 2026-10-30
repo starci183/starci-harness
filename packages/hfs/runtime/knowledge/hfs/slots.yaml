@@ -887,14 +887,14 @@ slots:
     tests: none
     requires: [application-stacks.yaml]
     allows: [application-stacks.yaml, "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm,k8s,terraform}/**", "<env>/infra/metadata.json",
-             "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.enc", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
+             "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
     forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
     # Owner ruling 2026-10-14: lite declares docker-swarm production, app runtime config, sealed custody and seed data.
     # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
       allows: [application-stacks.yaml, images/db/Dockerfile, "<env>/README.md", "<env>/environment.json", "<env>/infra/swarm/**", "<env>/infra/metadata.json",
-               "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.enc", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
+               "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
       forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
     rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY]
   - id: app.sops
@@ -950,7 +950,7 @@ slots:
     tracked: external
     tier: none
     tests: none
-    goesTo: ".starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
+    goesTo: ".starcistacks/<env>/secrets/<slug>.enc.yaml (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
     rules: [HFS_PLAINTEXT_SECRET]
 
   # ----- app root: the database of a lite app (ruling:lite-self-hosted-postgres-passport-minio): a self-hosted PostgreSQL in the app's
@@ -1248,7 +1248,7 @@ slots:
     tracked: external
     tier: none
     tests: none
-    goesTo: ".starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
+    goesTo: ".starcistacks/<env>/secrets/<slug>.enc.yaml (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
     rules: [HFS_PLAINTEXT_SECRET]
   - id: be.root-e2e
     since: 3.1.0

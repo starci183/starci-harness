@@ -658,6 +658,10 @@ $defs:
           ops: {$ref: '#/$defs/deployName'}
           sshKey: {$ref: '#/$defs/deployName'}
           knownHosts: {$ref: '#/$defs/deployName'}
+      serverRecipient:
+        description: The deploy server's public age recipient, recorded by starci app secret server-key <env> --execute.
+        type: string
+        pattern: '^age1[a-z0-9]+$'
   deployImage:
     type: object
     additionalProperties: false
@@ -682,7 +686,11 @@ $defs:
         description: Which sealed keys become which Swarm secrets, granted to which services.
         type: array
         items: {$ref: '#/$defs/deployGrant'}
-      settings: {$ref: '#/$defs/deployMemberKeys'}
+      settings:
+        description: One sealed member and its keys, or a list of them (one per member); a key is named by one entry only.
+        oneOf:
+          - {$ref: '#/$defs/deployMemberKeys'}
+          - {type: array, minItems: 1, items: {$ref: '#/$defs/deployMemberKeys'}}
   deployGrant:
     type: object
     additionalProperties: false

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.17 - 2026-10-30
+
+- Changed: the bundled canon pins name hfs 4.11.18 (sealed `.enc.yaml` members pass HFS_STACKS_SHAPE; the deploy schema takes `serverRecipient` and a settings list), eslint-canon-be 3.8.17, eslint-canon-fe 9.5.19 and the Grammar family 0.15.30. No rule changed.
+
 ## 3.8.16 - 2026-10-30
 
 - Added: a `compose/<area>.ts` group may carry its area's catalogs: a typed list of error-kind tables (every value `platform/errors`' `ErrorKind`) or of `platform/i18n` `MessageBundle`s, which `compose/platform.ts` spreads into `ErrorsModule` and `I18nModule` (`app-composition-typed`, R265 `BE_COMPOSITION_UNTYPED`), so a large app keeps each compose file within its budget. An untyped catalog list, or a list of anything else, is still refused. Spec: `src/app-composition.spec.ts` (typed fixture `MessageBundle`).

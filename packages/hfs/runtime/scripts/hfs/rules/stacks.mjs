@@ -1,7 +1,7 @@
 // stacks.mjs - HFS_STACKS_SHAPE (R10): standard stack shape, Sonar owner and deployment runtime consistency.
 //   - every tracked path under the app root's `.starcistacks/` is one the app.starcistacks slot allows (its `allows` list is the shape:
 //     application-stacks.yaml and <env>/{README.md, environment.json, infra/{compose,swarm,k8s,terraform}, runtime/{config,env},
-//     secrets/<slug>.enc, seeds}); a `.enc` outside <env>/secrets/ is never allowed, `runtime/files/`, a root `DESIGN.md`,
+//     secrets/<slug>.enc.yaml, seeds}); a `.enc` outside <env>/secrets/ is never allowed, `runtime/files/`, a root `DESIGN.md`,
 //     `deployment.json` and `k8s/` are not in the list, so they fall out of it;
 //   - the declaration (read by scripts/lib/stack-declaration.mjs, the one reader of it) states a sonar service, a local
 //     Sonar is owned by the host (`stack.owner: host`, root `.claude/ext/sonar`).
@@ -26,8 +26,8 @@ function treeFindings(files, allowed, prefix) {
   const findings = [];
   for (const file of files.filter((f) => f.startsWith(prefix))) {
     const rel = file.slice(prefix.length);
-    if (/\.enc(?:\.yaml)?$/.test(rel) && !INSIDE_SECRETS.test(rel)) findings.push(shapeFinding(file, `${file} is a sealed secret outside <env>/secrets/<slug>.enc; move it to .starcistacks/<env>/secrets/`));
-    else if (!allowed.some((expression) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml, images/db/Dockerfile in lite and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc, seeds}); move or delete it`));
+    if (/\.enc(?:\.yaml)?$/.test(rel) && !INSIDE_SECRETS.test(rel)) findings.push(shapeFinding(file, `${file} is a sealed secret outside <env>/secrets/<slug>.enc.yaml; move it to .starcistacks/<env>/secrets/`));
+    else if (!allowed.some((expression) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml, images/db/Dockerfile in lite and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc.yaml, seeds}); move or delete it`));
   }
   return findings;
 }

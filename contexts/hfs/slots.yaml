@@ -1263,7 +1263,7 @@ slots:
       - <env>/infra/metadata.json
       - <env>/runtime/{config,env}/**
       - <env>/runtime/env/KEYS.md
-      - <env>/secrets/<slug>.enc
+      - "<env>/secrets/<slug>.{enc.yaml,enc}"
       - <env>/secrets/.gitkeep
       - <env>/seeds/**
     forbids:
@@ -1284,7 +1284,7 @@ slots:
         - <env>/infra/metadata.json
         - <env>/runtime/{config,env}/**
         - <env>/runtime/env/KEYS.md
-        - <env>/secrets/<slug>.enc
+        - "<env>/secrets/<slug>.{enc.yaml,enc}"
         - <env>/secrets/.gitkeep
         - <env>/seeds/**
       forbids:
@@ -1357,7 +1357,7 @@ slots:
     tracked: external
     tier: none
     tests: none
-    goesTo: .starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or
+    goesTo: .starcistacks/<env>/secrets/<slug>.enc.yaml (at the app root); decrypted values only in memory or
       under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE
     rules:
       - HFS_PLAINTEXT_SECRET
@@ -1653,7 +1653,7 @@ slots:
     tracked: external
     tier: none
     tests: none
-    goesTo: .starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or
+    goesTo: .starcistacks/<env>/secrets/<slug>.enc.yaml (at the app root); decrypted values only in memory or
       under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE
     rules:
       - HFS_PLAINTEXT_SECRET

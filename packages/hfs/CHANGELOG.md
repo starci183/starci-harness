@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.11.18 - 2026-10-30
+
+- Fixed: `HFS_STACKS_SHAPE` (R10) accepts the sealed member `app secret set` writes, `<env>/secrets/<slug>.enc.yaml` (ruling app-secrets-one-standard, `scripts/lib/sealed-member.mjs`), beside the legacy `<slug>.enc`. The `.starcistacks` slot (`knowledge/hfs/slots.yaml`, both editions) allowed only `<slug>.enc`, so every standard member was refused; the messages and `goesTo` name `.enc.yaml`. Spec: `src/hfs-stacks-shape.spec.mjs` holds one of each.
+- Fixed: `application-stacks.schema.yaml` declares `deploy.remote.serverRecipient` (a public `age1…` recipient), which `app secret server-key <env> --execute` records and the deploy config parser reads, and takes `deploy.secrets.settings` as one `{ member, keys }` or a non-empty list of them, as `stack-deploy-config.mjs` does. Spec: `src/hfs-stacks-deploy-schema.spec.mjs`.
+
 ## 4.11.17 - 2026-10-30
 
 - Fixed: `stemOfEvent` (the event class file name of R151) maps underscores to dashes as well as dots, matching eslint-canon-be's `event-consumer-shape` and the kebab case of `source-suffix`.

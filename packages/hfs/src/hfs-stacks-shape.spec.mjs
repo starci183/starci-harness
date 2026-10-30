@@ -24,6 +24,9 @@ function judge(t, edition, invalid) {
   const files = {
     '.starcistacks/application-stacks.yaml': invalid ? declarationText.replace('owner: host', 'owner: repository') : declarationText,
     '.starcistacks/dev/environment.json': '{}',
+    // the sealed member `app secret set` writes, and a legacy dotenv member
+    '.starcistacks/dev/secrets/ai.enc.yaml': 'sops: {}\n',
+    '.starcistacks/dev/secrets/legacy.enc': 'sops_version=3\n',
     ...(invalid ? { '.starcistacks/DESIGN.md': '# misplaced design' } : {}),
   };
   for (const [file, content] of Object.entries(files)) {

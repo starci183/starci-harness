@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.30 - 2026-10-30
+
+- Changed: the peer moves to eslint-grammar-core 0.15.30; the bundled canon pins name hfs 4.11.18 (sealed `.enc.yaml` members pass HFS_STACKS_SHAPE; the deploy schema takes `serverRecipient` and a settings list), eslint-canon-be 3.8.17, eslint-canon-fe 9.5.19 and the Grammar family 0.15.30. No rule changed.
+
 ## 0.15.29 - 2026-10-30
 
 - Changed: the peer moves to eslint-grammar-core 0.15.29; the bundled canon pins name ai-router 0.4.0 (mounted keys), hfs 4.11.17, eslint-canon-be 3.8.16, eslint-canon-fe 9.5.18 and the Grammar family 0.15.29. No rule changed.
