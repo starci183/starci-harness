@@ -343,6 +343,18 @@ roles:
     dna: [DNA-COMMON-BACKDROP-GROUND, DNA-COMMON-ACCENT-CORNER]
     lint: [starci-grammar/generated-art-in-mascot-or-media-frame, starci-grammar/mascot-asset-slot-required]
 
+  - id: pane-grid
+    ui: ui/components/pane-grid.md
+    renderers: [PaneGrid, Pane]
+    vendorParity: [Drawer]
+    slots: ["Pane children: the app's own elements, placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes"]
+    variants: { surface: [true, false], scroll: [true, false], collapse: [drawer], track: [auto, fill, fill-2, fill-3, compact, standard, wide], breakpoint: [base, medium, wide] }
+    sizes: { fills: "its host's block and inline size" }
+    states: [drawer-open]
+    grammarMayChange: ["nothing: the grid, the dividers, the surface ground and the drawer are Common's"]
+    dna: []
+    lint: []
+
   - id: freestyle
     ui: ui/components/freestyle.md
     renderers: [Freestyle]

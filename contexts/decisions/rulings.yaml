@@ -327,8 +327,14 @@ rulings:
     date: '2026-10-31'
     status: live
     words: "tên gì chung chung tính chất grammar là cấp ui ux chung chung k bias tính năng hiểu k, ghi vào knowlege đi"
-    ruling: "The grammar is a generic UI/UX layer: a component, prop or token name says what it does as a layout or UI role (PaneLayout, SurfaceCard, Rail), never a product feature (chat, customer, order, invoice), so any product can reach for it. The multi-pane frame is PaneLayout; its old chat-named spelling is removed, not aliased (removedVocabulary)."
-    owner: "@starci/grammar src/core/composition/PaneLayout; contexts/grammars/contract.md What a grammar provides; contexts/ui/components/page-header.md Owner split"
+    ruling: "The grammar is a generic UI/UX layer: a component, prop or token name says what it does as a layout or UI role (PaneGrid, SurfaceCard, Rail), never a product feature (chat, customer, order, invoice), so any product can reach for it. The multi-pane frame is PaneGrid; the old chat-named and PaneLayout spellings are removed, not aliased (removedVocabulary)."
+    owner: "@starci/grammar src/core/composition/PaneGrid; contexts/grammars/contract.md What a grammar provides; contexts/ui/components/page-header.md Owner split"
+  - id: pane-grid
+    date: '2026-10-31'
+    status: live
+    words: "phải xây kiểu grid hiểu không, kiểu bỏ A BC ngang hàng D ở dưới... và cách nhau bởi divider; chuẩn build grid và ghép các element nghiệp vụ của chat, mỗi grid có option surface hoặc k"
+    ruling: "The multi-pane frame is one generic PaneGrid, not a layout with fixed chat-shaped slots: named areas (A B C side by side, D below) laid out flush with a divider between neighbours, columns and rows by track role, the arrangement chosen per breakpoint, and each Pane either a borderless surface or a plain div. It only divides the space; what goes in a cell is the app's business. PaneLayout is removed, not aliased (removedVocabulary). A short inset separator inside a pane's content is the app's own element, not a grammar option."
+    owner: "@starci/grammar src/core/composition/PaneGrid, src/common/styles.css; contexts/grammars/contract.md PaneGrid; contexts/ui/components/pane-grid.md"
   - id: grammar-freestyle-region
     date: '2026-10-31'
     status: live
@@ -664,8 +670,12 @@ rulings:
 removedVocabulary:
   - spelling: ChatWorkspace
     as: grammar composition
-    replacedBy: PaneLayout
+    replacedBy: PaneGrid
     ruling: "grammar-names-are-generic"
+  - spelling: PaneLayout
+    as: grammar composition
+    replacedBy: PaneGrid
+    ruling: "pane-grid"
   - spelling: starci
     as: grammar family id
     replacedBy: core

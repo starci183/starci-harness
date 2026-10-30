@@ -12,7 +12,7 @@ WHEN to use it; a grammar file ([core](core.md), [offset-pop](offset-pop.md)) sa
   only way two grammars can share every renderer: paint changes, the DOM never does. Overlay and toast mechanics
   are Common's ([common](common.md#one-root)); a grammar inherits them and never re-portals.
 - **Names that describe the UI role.** A component, prop or token name says what it does as a layout or UI role
-  (`PaneLayout`, `SurfaceCard`, `Rail`), never a product feature (chat, customer, order, invoice), so any product
+  (`PaneGrid`, `SurfaceCard`, `Rail`), never a product feature (chat, customer, order, invoice), so any product
   can reach for it. The grammar is a generic UI/UX layer (ruling `grammar-names-are-generic`).
 - **The token roles, bound or declared.** The HeroUI semantic variables are the interface between Common's
   anatomy and a grammar's material. A grammar binds each one or declares that it keeps HeroUI's default; an
@@ -238,6 +238,16 @@ A backdrop is the brand's own ground in a split screen: the family's light tint 
 with the brand copy at the top and the artwork (a hero `Mascot`) filling the height left. It is a ground, not a card:
 no border, no shadow, no card inset, and square corners except the one `accentCorner` names (ruling backdrop). A brand
 moment among other content stays a soft `SurfaceCard`.
+
+### PaneGrid
+
+A pane grid divides a bounded height into named areas (`["a b c", "d d d"]`): A, B and C side by side with D below. Panes
+sit flush with no gap and one divider between neighbours (vertical between columns, horizontal between rows, n-1 lines,
+none on an outer edge), all in the same border colour and weight as every other divider. Columns and rows are track roles (`auto`,
+`fill`, `fill-2`, `fill-3`, `compact`, `standard`, `wide`), and `areas`, `columns` and `rows` may be given per breakpoint
+(`base`, `medium` from 48rem, `wide` from 70rem), chosen by container query on the grid's own width. Each `Pane` is a
+borderless surface (`surface`) or a plain div, may be its own scroll owner, and may collapse into a drawer where its
+area is not arranged. It only divides the space: the pane's content is the app's (ruling pane-grid).
 
 ### Freestyle
 

@@ -410,7 +410,7 @@ MarkdownTableFrame, MediaFrame, Rail, SectionHeader, StaticStateRow, SurfaceAcco
 SurfaceCard, SurfaceCopyGroup, SurfaceListCard, VerticalScrollRegion.
 
 **Compositions (11).** BottomNav, Footer, NavigationFeatureNav, Page, PageContainer, PageHeader,
-PaneLayout, PrimaryRailLayout, Sidebar, TopBar, WorkspaceShell. Storybook pins settings and data-list content
+PaneGrid, PrimaryRailLayout, Sidebar, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
 
 `PageHeader` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
@@ -423,7 +423,7 @@ children are the body, and `measure` (`reading`, `product`, `full`) is the one m
 body. The band runs full width; the body sits in the measure and gutter one region step below it (one region step
 from the top without a header), its sections a region step apart, and it clips past its content box so nothing in it
 reaches across the gutter. `isSkeleton` passes to the header. Page is the single owner of the page inset: the layout
-frames (`WorkspaceShell`, `PrimaryRailLayout`, `PaneLayout`) never wrap a page in a `PageContainer`.
+frames (`WorkspaceShell`, `PrimaryRailLayout`, `PaneGrid`) never wrap a page in a `PageContainer`.
 
 ```tsx
 <Page measure="reading" header={{ breadcrumbs, title: "Profile", tabs: { label: "Profile", items, selectedKey, onSelect } }}>

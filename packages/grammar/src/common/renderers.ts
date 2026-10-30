@@ -40,7 +40,7 @@ export { PrimaryRailLayout, type PrimaryRailLayoutProps } from "../core/composit
 export { NavigationFeatureNav, type NavigationFeatureNavProps } from "../core/composition/NavigationFeatureNav/index.js"
 export { Sidebar, type SidebarGroup, type SidebarItem, type SidebarProps } from "../core/composition/Sidebar/index.js"
 export { WorkspaceShell, type WorkspaceShellHeaderLandmark, type WorkspaceShellNavigationDrawer, type WorkspaceShellProps } from "../core/composition/WorkspaceShell/index.js"
-export { PaneLayout, type PaneLayoutProps } from "../core/composition/PaneLayout/index.js"
+export { PaneGrid, Pane, type PaneGridProps, type PaneProps, type PaneTrack } from "../core/composition/PaneGrid/index.js"
 export { StateMark, type StateMarkProps } from "../core/StateMark.js"
 export { LeadingNumber, type LeadingNumberProps } from "../core/LeadingNumber.js"
 export { OtpInput, type OtpInputProps } from "../core/OtpInput.js"

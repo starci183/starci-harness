@@ -114,7 +114,7 @@ export type ChatBubbleSkeletonsProps = {
 
 /**
  * A loading conversation: `count` skeleton bubbles that alternate incoming and outgoing, inside one `aria-busy` thread.
- * Place it as the conversation content of a `PaneLayout` (or any scroll owner) while the messages are unresolved.
+ * Place it as the conversation content of a `PaneGrid` (or any scroll owner) while the messages are unresolved.
  */
 export const ChatBubbleSkeletons = ({ count = 3, hasAvatar = false }: ChatBubbleSkeletonsProps) => (
     <div className="starci-core-chat-bubble-thread" data-grammar-chat-skeleton-thread="true" data-loading="true" aria-busy="true">
