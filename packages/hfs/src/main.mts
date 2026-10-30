@@ -77,7 +77,9 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isMain } from '../runtime/scripts/lib/is-main.mjs';
-import { explainPath, trackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
+import { explainPath, readWhy, trackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
+import { withWhy } from '../runtime/scripts/hfs/check-results.mjs';
+import { skillRoot } from '../runtime/engine/runtime-root.mjs';
 import { secretMain } from '../runtime/scripts/hfs/secret.mjs';
 import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
@@ -93,7 +95,8 @@ import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
-import { eslintRepository, lintRepository, parseLintArgs, printLintText } from '../lint/run.mjs';
+import { cachedLinters, eslintRepository, lintRepository, parseLintArgs, printLintText } from '../lint/run.mjs';
+import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
 import { createProgress, silentProgress } from '../cache/progress.mjs';
@@ -183,7 +186,7 @@ const PARSED: Record<string, ParsedVerb> = {
       { operands: 'image', flags: [] },
     ],
   },
-  check: { run: checkMain, value: ['--coverage-from'], boolean: ['--json', '--staged', '--full', ...FAMILY_FLAGS], edition: true, forms: [{ only: { boolean: ['--json', '--full', ...FAMILY_FLAGS], value: ['--coverage-from'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
+  check: { run: checkMain, value: ['--coverage-from', '--shard'], boolean: ['--json', '--staged', '--full', ...FAMILY_FLAGS], edition: true, forms: [{ only: { boolean: ['--json', '--full', ...FAMILY_FLAGS], value: ['--coverage-from', '--shard'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
 };
@@ -194,7 +197,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
-  '--registry-visibility': 'public|private', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -219,7 +222,7 @@ const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', D
 const VERB_USAGE: Record<string, string[]> = {
   ...Object.fromEntries(Object.entries(PARSED).map(([verb, spec]) => [verb, spec.forms.map((form: UsageForm) => line(`starci app ${verb}`, form.operands,
     specUsage(form.only ?? (form.flags === undefined ? spec : { value: form.flags })), spec.edition && form.edition !== false ? flagUsage('--edition', { value: true }) : ''))])),
-  lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--json] [--out <file>]'],
+  lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--full] [--json] [--out <file>]'],
   codemod: ['starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]'],
   upgrade: ['starci app upgrade [--execute]'],
   sync: [SYNC_USAGE.sync],
@@ -302,7 +305,7 @@ function printCheckOverview(result: Dynamic, out: (text: string) => unknown): vo
 
 function printFindingGroup(code: string, list: Dynamic[], out: (text: string) => unknown): void {
   const first = list[0] as Dynamic;
-  if (first.engine === 'eslint') out(`\n[${first.level.toUpperCase()}] ${code} x${list.length}\n`);
+  if (first.engine) out(`\n[${first.level.toUpperCase()}] ${code} x${list.length}\n`);
   else out(`\n[${first.level.toUpperCase()}] ${code} x${list.length}: ${first.titleVi}\n  ${first.whyVi}\n  -> ${first.nextStepVi}\n`);
   for (const finding of list.slice(0, PER_CODE_LIMIT)) out(`  - ${finding.message}\n`);
   if (list.length > PER_CODE_LIMIT) out(`  ... and ${list.length - PER_CODE_LIMIT} more (use --json for all)\n`);
@@ -360,17 +363,24 @@ function openSession({ repoRoot, tracked, io, full, use, planned }: { repoRoot: 
  * The app pass of `starci app check` and `starci app lint`: the families the verb selects, against one cache session, merged into one result.
  * `only` limits the formatter to those (app-relative) files and bypasses the cache (`app lint --changed`).
  */
-async function appPass({ repoRoot, harness, only, presets, prettier, io, selected, full, use = 'normal' }: {
+async function appPass({ repoRoot, harness, only, presets, prettier, io, selected, full, use = 'normal', session: given }: {
   repoRoot: string; harness?: AppIo['harness']; only?: string[] | undefined; presets?: Presets | undefined; prettier?: Prettier | undefined; io: AppIo;
-  selected: Set<FamilyId>; full?: Set<FamilyId> | undefined; use?: CacheUse;
+  selected: Set<FamilyId>; full?: Set<FamilyId> | undefined; use?: CacheUse; session?: DiskSession | undefined;
 }): Promise<Dynamic> {
   const tracked = trackedFiles(repoRoot);
-  const session = openSession({ repoRoot, tracked, io, full, use: only === undefined ? use : 'bypass', planned: tracked.length * Math.max(1, selected.size) });
+  const session = given ?? openSession({ repoRoot, tracked, io, full, use: only === undefined ? use : 'bypass', planned: tracked.length * Math.max(1, selected.size) });
   const result = await runAppFamilies({ repoRoot, tracked, session, selected, harness, presets, prettier, only, edition: undefined });
+  if (given !== undefined) return result;
   const flushed = session.flush();
+  return { ...result, findings: [...result.findings, ...verdictFindings(session)], cacheWarnings: flushed.warnings };
+}
+
+/** The verdicts of the CI comparison (forged, stale, missing) as findings with their why. */
+function verdictFindings(session: DiskSession): Dynamic[] {
   const verdicts = session.verdicts();
-  const findings = [...result.findings, ...verdicts.map((verdict) => ({ code: verdict.code, level: verdict.level, path: verdict.path, message: verdict.message }))];
-  return { ...result, findings, cacheWarnings: flushed.warnings, cache: { fingerprint: session.fingerprint.portable ? 'portable' : 'local', trust: session.trust.kind, written: flushed.written.length } };
+  if (verdicts.length === 0) return [];
+  const why = readWhy(skillRoot, [...new Set(verdicts.map((verdict) => verdict.code))]);
+  return withWhy(verdicts.map((verdict) => ({ code: verdict.code, level: verdict.level, path: verdict.path, message: verdict.message })), why);
 }
 
 /** The nearest folder at or above `dir` that holds hfs.json (the app root of a workspace), or `dir` itself when none does (the lint then refuses it). */
@@ -390,16 +400,23 @@ async function lintMain(argv: string[], io: AppIo): Promise<number> {
   const workspaceDir = opts.workspace === undefined ? null : path.resolve(cwd, opts.workspace);
   const repoRoot = path.resolve(workspaceDir ? appRootAbove(workspaceDir) : cwd);
   if (workspaceDir) opts.workspace = path.relative(repoRoot, workspaceDir).split(path.sep).join('/');
-  // The lint shares the cache of `app check`: --workspace reads it and writes none, --changed and --fix neither read nor write.
+  // The lint shares the cache of `app check`: --workspace reads it and writes none, --changed and --fix neither read nor write, --full judges again.
   const use: CacheUse = opts.changed !== null || opts.fix ? 'bypass' : opts.workspace !== undefined ? 'read' : 'normal';
+  const selected = new Set<FamilyId>(['hfs', 'secrets', 'db', 'format']);
+  // One session for the app findings and the linters, so the two never hold two answers; checkApp is a spec seam that brings its own.
+  const session = io.checkApp === undefined ? openSession({ repoRoot, tracked: trackedFiles(repoRoot), io, full: opts.full === true ? new Set<FamilyId>([...selected, 'lint']) : undefined, use, planned: 1 }) : undefined;
   const { report, sonar, exit } = await lintRepository({
-    repoRoot, opts, trackedFiles, runLinter,
-    hfsCheck: (root: string) => checkApp({ repoRoot: root, harness, only: opts.changed ?? undefined, presets, prettier, io, selected: new Set<FamilyId>(['hfs', 'secrets', 'db', 'format']), use }),
+    repoRoot, opts, trackedFiles, runLinter, ...(session === undefined ? {} : { cache: { session } }),
+    hfsCheck: (root: string) => checkApp({ repoRoot: root, harness, only: opts.changed ?? undefined, presets, prettier, io, selected, use, session }),
   });
+  const flushed = session?.flush();
+  const verdicts = session === undefined ? [] : verdictFindings(session);
   if (opts.out !== undefined) writeReport(path.resolve(cwd, opts.out), sonar);
   if (opts.format === 'json') stdout(`${JSON.stringify(report, null, 2)}
 `); else printLintText(report, stdout);
-  return exit;
+  for (const verdict of verdicts) stdout(`${verdict.level.toUpperCase()} ${verdict.code}: ${verdict.message}\n`);
+  for (const warning of flushed?.warnings ?? []) stdout(`cache: ${warning}\n`);
+  return Math.max(exit, verdicts.some((verdict) => verdict.level === 'error') ? 1 : 0);
 }
 
 /**
@@ -474,7 +491,7 @@ function printCheckProofs(result: Dynamic, out: (text: string) => unknown): void
 }
 
 /** The flags `check --staged` refuses: it is the pre-commit guard alone, so none of the whole-app pass's options means anything with it. */
-const STAGED_REFUSES = ['--json', '--full', '--coverage-from', ...FAMILY_FLAGS] as const;
+const STAGED_REFUSES = ['--json', '--full', '--coverage-from', '--shard', ...FAMILY_FLAGS] as const;
 
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
@@ -486,23 +503,38 @@ function familyOf(finding: { code?: string | null; engine?: string }): FamilyId 
   return SECRET_CODE_LIST.has(code) ? 'secrets' : 'hfs';
 }
 
-/** One run of the selected families against the cache, then the coverage proof and ESLint on top; returns the result and what it took. */
+/** One run of the selected families against the cache, then the coverage proof on top; returns the result and what it took. */
 async function checkRun({ io, selected, full, use, coverageFrom }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined }): Promise<{ result: Dynamic; seconds: number }> {
   const { cwd: repoRoot, harness, edition, presets, prettier, checkApp = appPass, runLinter } = io;
   const started = Date.now();
-  const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, presets, prettier, io, selected, full, use }), presets, prettier });
+  const tracked = io.checkApp === undefined ? trackedFiles(repoRoot) : [];
+  const session = io.checkApp === undefined ? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) }) : undefined;
+  const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, presets, prettier, io, selected, full, use, session }), presets, prettier });
   const proof = withCheckProofs(checked, { repoRoot, edition, wiring: false, coverageFrom });
-  const reports: FamilyReport[] = [...(checked.families ?? [])];
+  const extra: Dynamic[] = [];
+  const lines: string[] = [];
   let eslint: Awaited<ReturnType<typeof eslintRepository>> | null = null;
   if (selected.has('lint')) {
-    eslint = await eslintRepository({ repoRoot, changed: null, existing: [], run: runLinter });
-    reports.push({ family: 'lint', mode: 'full', reason: 'no lint cache in this build', checked: Object.values(eslint.engine.sides as Record<string, { files: number }>).reduce((sum, side) => sum + side.files, 0), reused: 0, newFindings: eslint.findings.length, knownFindings: 0, fixedFindings: 0 });
+    if (session !== undefined) {
+      const app = readRepoDeclaration(loadSlotManifest(), repoRoot);
+      eslint = (await cachedLinters({ repoRoot, app, opts: { changed: null, fix: false, format: 'text', out: undefined, workspace: undefined }, workspace: null, onFe: null, run: runLinter, cache: { session } })).eslint;
+    } else eslint = await eslintRepository({ repoRoot, changed: null, existing: [], run: runLinter });
   }
-  const findings = [...proof.findings, ...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: 'error' }))];
+  if (session !== undefined && selected.has('types')) extra.push(...runTypesForApp(session, { repoRoot, tracked, env: io.env }).findings);
+  if (session !== undefined && selected.has('test')) {
+    const tests = await runTestForApp(session, { repoRoot, tracked });
+    extra.push(...tests.findings);
+  }
+  if (session !== undefined && selected.has('sonar')) lines.push(...(runSonarForApp(session, { repoRoot })?.lines ?? []));
+  const flushed = session?.flush();
+  const verdicts = session === undefined ? [] : verdictFindings(session);
+  const reports: FamilyReport[] = session === undefined ? [...(checked.families ?? [])] : [...session.reports];
+  const findings = [...proof.findings, ...extra, ...verdicts, ...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: 'error' }))];
   // Green under the threshold (gate-threshold.mjs): every finding is still listed, only the verdict changes.
   const verdict = gateVerdict(findings.filter(finding => finding.level === 'error'));
   const toolErrors = eslint?.errors ?? [];
-  const result = { ...proof, findings, families: reports, counts: { ...proof.counts, error: proof.counts.error + (eslint?.findings.length ?? 0) }, ...(eslint ? { eslint: { ...eslint.engine, errors: eslint.errors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
+  const counts = { ...proof.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };
+  const result = { ...proof, findings, families: reports, predictions: lines, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(eslint ? { eslint: { ...eslint.engine, errors: eslint.errors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
   return { result, seconds: (Date.now() - started) / 1000 };
 }
 
@@ -531,6 +563,13 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
     return runWorkHygiene({ cwd: repoRoot, out: (text) => out(`${text}\n`) });
   }
   const coverageFrom = valueFlag(opts, 'coverage-from');
+  const shard = valueFlag(opts, 'shard');
+  if (shard !== undefined) {
+    // The sharded full unit run of CI (--test --full --shard <i>/<n>): the shard's Jest run in the shape the shard merge reads; nothing is recorded.
+    const match = /^(\d+)\/(\d+)$/.exec(shard);
+    if (match === null || opts.test !== true || opts.full !== true) throw new Error('--shard <i>/<n> belongs to `starci app check --test --full`');
+    return runTestShard(repoRoot, Number(match[1]), Number(match[2]));
+  }
   const explicit = selectedFamilies(opts, []);
   // A coverage report judged on its own (the merge job of a sharded run) runs no family; with selectors it comes on top of them.
   const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(DEFAULT_FAMILIES) : new Set<FamilyId>();
