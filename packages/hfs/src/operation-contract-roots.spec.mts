@@ -1,6 +1,7 @@
 // proves: HFS_UNUSED_FILE@lite HFS_UNUSED_FILE@full
 // The operation emitter is a real consumer of one declared API-app source entry, in both editions.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,7 +14,9 @@ const PLATFORM = 'src/modules/platform/operations';
 const DIRECT = `import { defineOperations as register, query } from '../../../${PLATFORM}/operation.policy';
 export const OPERATIONS = register({ 'health.read@1': query() });`;
 
-function fixture(t, edition, { entry = DIRECT, kind = 'api', declared = true } = {}) {
+interface Owner { slot: string; root: string }
+
+function fixture(t: TestContext, edition: string, { entry = DIRECT, kind = 'api', declared = true }: { entry?: string; kind?: string; declared?: boolean } = {}) {
   const root = mkdtemp(t, 'hfs-operation-contract-roots-');
   const contents = {
     'apps/core/src/main.ts': 'export {};',
@@ -31,30 +34,32 @@ function fixture(t, edition, { entry = DIRECT, kind = 'api', declared = true } =
   }
   const options = { noLib: true, types: [], strict: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, moduleResolution: ts.ModuleResolutionKind.Node10 };
   const program = ts.createProgram(Object.keys(contents).map(file => path.join(root, file)), options);
-  const relativeOf = file => path.relative(root, file).split(path.sep).join('/');
-  const app = { slot: kind === 'api' ? 'be.app.api' : 'be.app.worker', root: 'apps/core/src' };
-  const platform = { slot: 'be.platform', root: PLATFORM };
-  const ownerOf = file => file.startsWith('apps/core/src/') ? app : file.startsWith(`${PLATFORM}/`) ? platform : null;
+  const relativeOf = (file: string) => path.relative(root, file).split(path.sep).join('/');
+  const app: Owner = { slot: kind === 'api' ? 'be.app.api' : 'be.app.worker', root: 'apps/core/src' };
+  const platform: Owner = { slot: 'be.platform', root: PLATFORM };
+  const ownerOf = (file: string): Owner | null => file.startsWith('apps/core/src/') ? app : file.startsWith(`${PLATFORM}/`) ? platform : null;
   const files = new Map(Object.keys(contents).map(relative => {
-    const owner = ownerOf(relative);
-    return [relative, { sourceFile: program.getSourceFile(path.join(root, relative)), owner, slot: owner.slot, tier: owner === app ? 'app' : 'platform' }];
+    const owner = ownerOf(relative) as Owner;
+    return [relative, { sourceFile: program.getSourceFile(path.join(root, relative)) as ts.SourceFile, owner, slot: owner.slot, tier: owner === app ? 'app' : 'platform' }];
   }));
   const edges = [...files].flatMap(([from, node]) => node.sourceFile.statements.flatMap(declaration => {
     if ((!ts.isImportDeclaration(declaration) && !ts.isExportDeclaration(declaration)) || !declaration.moduleSpecifier) return [];
-    const resolved = ts.resolveModuleName(declaration.moduleSpecifier.text, node.sourceFile.fileName, options, ts.sys).resolvedModule;
+    const resolved = ts.resolveModuleName((declaration.moduleSpecifier as ts.StringLiteral).text, node.sourceFile.fileName, options, ts.sys).resolvedModule;
     const to = resolved && relativeOf(resolved.resolvedFileName);
-    return files.has(to) ? [{ from, to, edge: { declaration }, reexport: ts.isExportDeclaration(declaration) }] : [];
+    return files.has(to as string) ? [{ from, to, edge: { declaration }, reexport: ts.isExportDeclaration(declaration) }] : [];
   }));
   const graph = {
     files, edges, ownerRoots: new Map(), unit: () => null,
-    abs: file => files.has(relativeOf(file)) ? relativeOf(file) : null,
+    abs: (file: string) => files.has(relativeOf(file)) ? relativeOf(file) : null,
     resolver: {
       repo: { profile: 'be', edition }, ownerOf,
       classifyPath: () => ({ slot: null }), ruleParams: () => ({}),
-      slot: id => ({ tier: id.startsWith('be.app.') ? 'app' : 'platform', requires: ['main.ts', 'app.module.ts'] }),
+      slot: (id: string) => ({ tier: id.startsWith('be.app.') ? 'app' : 'platform', requires: ['main.ts', 'app.module.ts'] }),
     },
   };
-  return checkDeadExports({ context: { ts, checkerFor: () => program.getTypeChecker() }, graph, config: { root, apps: declared ? [{ name: 'core', kind }] : [] } })
+  // reason: the graph, context and config are hand-built minimal fakes of the structures the architecture machine produces.
+  const input = { context: { ts, checkerFor: () => program.getTypeChecker() }, graph, config: { root, apps: declared ? [{ name: 'core', kind }] : [] } } as unknown as Parameters<typeof checkDeadExports>[0];
+  return checkDeadExports(input)
     .violations.filter(finding => finding.ruleId === 'HFS_UNUSED_FILE').map(finding => finding.path);
 }
 

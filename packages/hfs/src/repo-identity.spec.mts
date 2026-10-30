@@ -9,10 +9,10 @@ import path from 'node:path';
 import { repositoryName } from '../runtime/scripts/hfs/repo-identity.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 
-const git = (dir, ...args) => execFileSync('git', ['-C', dir, '-c', 'user.name=spec', '-c', 'user.email=spec@example.invalid', ...args], { stdio: 'ignore' });
+const git = (dir: string, ...args: string[]) => execFileSync('git', ['-C', dir, '-c', 'user.name=spec', '-c', 'user.email=spec@example.invalid', ...args], { stdio: 'ignore' });
 
 /** A repository with one commit in `<base>/<folder>`, with `origin` set when given. */
-function repository(base, folder, origin) {
+function repository(base: string, folder: string, origin?: string): string {
   const dir = path.join(base, folder);
   fs.mkdirSync(dir, { recursive: true });
   git(dir, 'init', '-q');

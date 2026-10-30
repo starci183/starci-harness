@@ -3,6 +3,7 @@
 // any ssh, rotate stages, swaps and retires, and the GitHub backup streams through a pipe into a protected Environment secret
 // without a private byte reaching stdout, stderr or disk. Every key and value here is a fake.
 import test from "node:test";
+import type { TestContext } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -14,6 +15,10 @@ import {
   BACKUP_SECRET, SERVER_AGE_IDENTITY, ageKeygenScript, ensureIdentityScript, publicKeyScript, streamIdentityCommand, swapIdentityScript,
 } from "../stack/server-key.mjs";
 
+/** One call the fake server received: the remote command and the script sent on its stdin. */
+interface Call { command: string; input: string | undefined }
+type Fixture = ReturnType<typeof app>;
+
 const OWNER = `age1${"q".repeat(58)}`;
 const SERVER = `age1${"s".repeat(58)}`;
 const NEXT = `age1${"n".repeat(58)}`;
@@ -22,7 +27,7 @@ const PRIVATE = ["AGE", "SECRET", "KEY", "1FAKEPRIVATEBYTESNEVERSHOWNANYWHERE"].
 const ENC = "ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]";
 const member = `API_KEY: ${ENC}\nsops:\n  age:\n    - recipient: ${OWNER}\n      enc: |\n        -----BEGIN AGE ENCRYPTED FILE-----\n        YWdl\n        -----END AGE ENCRYPTED FILE-----\n  mac: ${ENC}\n  version: 3.13.2\n`;
 
-const stacks = (remote) => [
+const stacks = (remote: boolean) => [
   "environments:",
   "  production:",
   "    runtime: docker-swarm",
@@ -34,7 +39,7 @@ const stacks = (remote) => [
 ].join("\n");
 
 /** An app with a production swarm deploy (with or without a remote), one member and a production rule naming the owner key. */
-async function productionApp(t, { remote = true } = {}) {
+async function productionApp(t: TestContext, { remote = true }: { remote?: boolean } = {}) {
   const fixture = app(t, { "app.enc.yaml": member }, "production");
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "application-stacks.yaml"), stacks(remote));
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "production", "stack.yml"), "services:\n  api:\n    image: x\n");
@@ -46,9 +51,9 @@ async function productionApp(t, { remote = true } = {}) {
  * A fake server reached through the injected runner: it holds `identity` (a public key standing for the private file) and
  * answers the scripts server-key sends. Every call is recorded with its stdin.
  */
-function fakeServer({ identity = null, tool = true, next = NEXT } = {}) {
-  const state = { identity, staged: null, retired: [], calls: [] };
-  const run = (command, { input } = {}) => {
+function fakeServer({ identity = null, tool = true, next = NEXT }: { identity?: string | null; tool?: boolean; next?: string } = {}) {
+  const state: { identity: string | null; staged: string | null; retired: Array<string | null>; calls: Call[] } = { identity, staged: null, retired: [], calls: [] };
+  const run = (command: string, { input }: { input?: string } = {}) => {
     state.calls.push({ command, input });
     if (input === ageKeygenScript()) return tool ? { status: 0, stdout: "/usr/local/bin/age-keygen\n", stderr: "" } : { status: 127, stdout: "", stderr: "age-keygen is not installed\n" };
     if (input === ensureIdentityScript(SERVER_AGE_IDENTITY)) {
@@ -75,16 +80,16 @@ function fakeServer({ identity = null, tool = true, next = NEXT } = {}) {
 
 /** A sops seam double: the owner identity is present; updateKeys records each member it would wrap again. */
 const fakeSops = () => {
-  const wrapped = [];
-  return { wrapped, seam: { identity: { source: "spec" }, requireIdentity: () => {}, updateKeys: (file) => { wrapped.push(path.basename(file)); } } };
+  const wrapped: string[] = [];
+  return { wrapped, seam: { identity: { source: "spec" }, requireIdentity: () => {}, updateKeys: (file: string) => { wrapped.push(path.basename(file)); } } };
 };
 
-async function serverKey(fixture, argv, { server, sops = fakeSops(), deps = {}, io = {} }) {
-  const out = [];
-  const err = [];
+async function serverKey(fixture: Fixture, argv: string[], { server, sops = fakeSops(), deps = {}, io = {} }: { server?: { run: unknown }; sops?: ReturnType<typeof fakeSops>; deps?: Record<string, unknown>; io?: Record<string, unknown> }) {
+  const out: string[] = [];
+  const err: string[] = [];
   const [environment, ...flags] = argv;
-  const code = await secretMain(["server-key", "--env", environment, ...flags], {
-    cwd: fixture.root, env: fixture.env, stdout: (text) => out.push(text), stderr: (text) => err.push(text),
+  const code = await secretMain(["server-key", "--env", environment as string, ...flags], {
+    cwd: fixture.root, env: fixture.env, stdout: (text: string) => out.push(text), stderr: (text: string) => err.push(text),
     tools: { secretEnv: () => ({}) },
     hostIdentity: { label: "spec", read: () => undefined },
     serverKeyIo: { io: { sops: sops.seam, now: () => Date.UTC(2026, 9, 29, 12, 0, 0), ...io }, deps: { ssh: server?.run, ...deps } },
@@ -92,15 +97,15 @@ async function serverKey(fixture, argv, { server, sops = fakeSops(), deps = {}, 
   return { code, out: out.join(""), err: err.join(""), sops };
 }
 
-const ruleOf = (fixture) => {
+const ruleOf = (fixture: Fixture) => {
   const config = parseYaml(fs.readFileSync(path.join(fixture.root, ".sops.yaml"), "utf8"));
-  return config.creation_rules.find((rule) => String(rule.path_regex).includes("production")).age.split(",");
+  return config.creation_rules.find((rule: { path_regex?: unknown }) => String(rule.path_regex).includes("production")).age.split(",");
 };
-const recorded = (fixture) =>
+const recorded = (fixture: Fixture) =>
   parseYaml(fs.readFileSync(path.join(fixture.root, ".starcistacks", "application-stacks.yaml"), "utf8")).environments.production.deploy.remote.serverRecipient;
 
 /** Every script sent to the server writes its stdout only through `age-keygen -y` (as "$k", its root-resolved path); age-keygen -o goes to /dev/null. */
-function onlyPublicReadBack(calls) {
+function onlyPublicReadBack(calls: Call[]) {
   for (const { command, input } of calls) {
     const text = `${command}\n${input ?? ""}`;
     assert.doesNotMatch(text, /\bcat\b|\bhead\b|\btail\b|base64|\bxxd\b|\bdd\b/u, "no script reads the private file back");
@@ -168,8 +173,8 @@ test("server-key refuses an environment whose deploy declares no remote, before 
  * `command -v age-keygen` finds it, and a root script that calls age-keygen by name exits 127 as sh does.
  */
 function securePathServer() {
-  const state = { identity: null, calls: [] };
-  const run = (command, { input } = {}) => {
+  const state: { identity: string | null; calls: Call[] } = { identity: null, calls: [] };
+  const run = (command: string, { input }: { input?: string } = {}) => {
     state.calls.push({ command, input });
     if (/^command -v age(-keygen)?$/u.test(command)) return { status: 0, stdout: "/usr/local/bin/age-keygen\n", stderr: "" };
     if (!command.includes("sudo -n sh -s") || input === undefined) return { status: 127, stdout: "", stderr: "unexpected command" };
@@ -234,42 +239,42 @@ test("server-key --rotate refuses when the server holds no identity", async (t) 
 test("audit holds production to the server key plus the owner key (RECIPIENT_DRIFT)", async (t) => {
   const fixture = await productionApp(t);
   const missing = auditSecrets(fixture.root, "production").filter((finding) => finding.code === "RECIPIENT_DRIFT");
-  assert.match(missing[0].detail, /records no deploy server recipient/u);
+  assert.match(missing[0]?.detail as string, /records no deploy server recipient/u);
   assert.equal((await serverKey(fixture, ["production", "--execute"], { server: fakeServer() })).code, 0);
   assert.deepEqual(auditSecrets(fixture.root, "production").filter((finding) => finding.member === ".sops.yaml"), []);
   assert.equal(await secretMain(["recipients", "--env", "production", "--remove", OWNER, "--execute"], { cwd: fixture.root, env: fixture.env, stdout: () => {}, stderr: () => {} }), 0);
   const ownerless = auditSecrets(fixture.root, "production").filter((finding) => finding.member === ".sops.yaml");
-  assert.match(ownerless[0].detail, /names only the deploy server recipient/u);
+  assert.match(ownerless[0]?.detail as string, /names only the deploy server recipient/u);
 });
 
 /**
  * A gh port double: the origin repository, the Environment `environment` answers, and the names of the repository's own Actions
  * secrets (`repoSecrets`, or null when they cannot be read). Every gh api call is recorded; none reaches GitHub.
  */
-const fakeGithub = (environment, policies = [], repoSecrets = []) => {
-  const runs = [];
-  const reads = [];
+const fakeGithub = (environment: unknown, policies: unknown[] = [], repoSecrets: string[] | null = []) => {
+  const runs: string[][] = [];
+  const reads: string[][] = [];
   return {
     runs, reads,
     port: {
       repository: () => "owner/app",
-      json: (args) => {
+      json: (args: string[]) => {
         reads.push(args);
-        if (args[1].startsWith("repos/owner/app/actions/secrets")) {
+        if ((args[1] as string).startsWith("repos/owner/app/actions/secrets")) {
           if (repoSecrets === null) throw new Error("403");
-          return { total_count: repoSecrets.length, secrets: repoSecrets.map((name) => ({ name, created_at: "2026-10-29T00:00:00Z" })) };
+          return { total_count: repoSecrets.length, secrets: repoSecrets.map((name: string) => ({ name, created_at: "2026-10-29T00:00:00Z" })) };
         }
-        if (args[1].endsWith("/deployment-branch-policies")) return { branch_policies: policies };
+        if ((args[1] as string).endsWith("/deployment-branch-policies")) return { branch_policies: policies };
         if (environment === null) throw new Error("404");
         return environment;
       },
-      run: (args) => { runs.push(args); return ""; },
+      run: (args: string[]) => { runs.push(args); return ""; },
     },
   };
 };
 
 /** Every file under `root`, read as text, contains no `needle`. */
-function nowhereOnDisk(root, needle) {
+function nowhereOnDisk(root: string, needle: string) {
   for (const entry of fs.readdirSync(root, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile()) continue;
     const file = path.join(entry.parentPath, entry.name);
@@ -280,11 +285,11 @@ function nowhereOnDisk(root, needle) {
 test("server-key --backup github streams the identity through a pipe into a protected Environment secret, never to stdout, logs or disk", async (t) => {
   const fixture = await productionApp(t);
   const gh = fakeGithub({ protection_rules: [{ type: "required_reviewers", reviewers: [{ type: "User" }] }], deployment_branch_policy: null });
-  const remotes = [];
+  const remotes: unknown[] = [];
   const sent = `${PRIVATE}\n`;
   const runner = Object.assign(() => ({ status: 127, stdout: "", stderr: "" }), {
     cleanup: () => {}, notes: [],
-    argv: (remote) => { remotes.push(remote); return { command: process.execPath, args: ["-e", `process.stdout.write(${JSON.stringify(sent)})`], env: process.env }; },
+    argv: (remote: unknown) => { remotes.push(remote); return { command: process.execPath, args: ["-e", `process.stdout.write(${JSON.stringify(sent)})`], env: process.env }; },
   });
   // The sink stands for gh: it exits 0 only when its stdin is exactly the streamed identity, and it names its arguments on stderr.
   const sink = { command: process.execPath, args: ["-e", `let b='';process.stdin.on('data',c=>b+=c);process.stdin.on('end',()=>{process.stderr.write(process.argv.slice(1).join(' '));process.exit(b===${JSON.stringify(sent)}?0:3)})`, "--"] };
@@ -300,8 +305,8 @@ test("server-key --backup github streams the identity through a pipe into a prot
 test("server-key --backup github refuses an Environment without protection, and one that does not exist, before any ssh", async (t) => {
   const fixture = await productionApp(t);
   const server = fakeServer();
-  const piped = [];
-  const io = { pipe: async (...ends) => { piped.push(ends); return { source: 0, sink: 0, stderr: "" }; } };
+  const piped: unknown[][] = [];
+  const io = { pipe: async (...ends: unknown[]) => { piped.push(ends); return { source: 0, sink: 0, stderr: "" }; } };
   const open = await serverKey(fixture, ["production", "--backup", "github", "--execute"], { server, io, deps: { github: fakeGithub({ protection_rules: [], deployment_branch_policy: { protected_branches: true, custom_branch_policies: false } }).port } });
   assert.equal(open.code, 2);
   assert.match(open.err, /STACK_SERVER_KEY_UNPROTECTED: .*no required reviewers and its deployment branches are not limited to main/u);
@@ -339,7 +344,7 @@ test("server-key --backup and --restore github warn, by name only, while the rep
     assert.equal(result.code, 0, result.err);
     assert.match(result.out, /warning: owner\/app holds a repository secret SOPS_AGE_KEY; .*gh secret delete SOPS_AGE_KEY --repo owner\/app\. The owner key never belongs in GitHub\./u, action);
   }
-  assert.ok(held.reads.some((args) => args[0] === "api" && args[1].startsWith("repos/owner/app/actions/secrets")), "the names are read from the repository's Actions secrets");
+  assert.ok(held.reads.some((args) => args[0] === "api" && (args[1] as string).startsWith("repos/owner/app/actions/secrets")), "the names are read from the repository's Actions secrets");
   const clean = await serverKey(fixture, ["production", "--backup", "github"], { deps: { github: fakeGithub(environment, [], ["NPM_TOKEN"]).port } });
   assert.doesNotMatch(clean.out, /warning/u);
   assert.match(clean.out, /gh secret set SOPS_AGE_KEY --env production --repo owner\/app/u);

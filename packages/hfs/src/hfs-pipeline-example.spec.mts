@@ -17,7 +17,7 @@ for (const edition of ['lite', 'full']) {
     fs.mkdirSync(path.join(root, '.github/workflows'), { recursive: true });
     fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ kind: 'app', edition }));
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { lint: 'starci app lint', unit: 'echo unit' } }));
-    const findings = (command) => {
+    const findings = (command: string) => {
       fs.writeFileSync(path.join(root, '.github/workflows/ci.yml'), 'steps:\n  - run: ' + command + '\n');
       return pipelineFindings({ repoRoot: root, files: ['.github/workflows/ci.yml'], pins: { 'starci-harness': { version: '4.4.0' } } });
     };

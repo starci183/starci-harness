@@ -1,6 +1,7 @@
 // proves: HFS_PROOF_COMMAND_FILE_MISSING@lite
 // proves: HFS_PROOF_COMMAND_FILE_MISSING@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,7 +14,7 @@ const RECORD = '.starciwork/brand/drawings/logo/index.yaml';
 const TARGET = 'scripts/render-logo.mjs';
 
 /** A temp app of `edition` that tracks one Work record whose proof commands are `commands` (kind -> command). */
-function app(t, edition, commands, extra = {}) {
+function app(t: TestContext, edition: string, commands: Record<string, string>, extra: Record<string, unknown> = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-command-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const declaration = { hfs: 3, kind: 'app', project: 'demo', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
@@ -25,7 +26,7 @@ function app(t, edition, commands, extra = {}) {
 }
 
 /** The HFS_PROOF_COMMAND_FILE_MISSING findings of the proof-command-files check over the tracked `files` of a temp app. */
-const judge = ({ repoRoot, declaration }, files = [RECORD]) => {
+const judge = ({ repoRoot, declaration }: { repoRoot: string; declaration: unknown }, files: string[] = [RECORD]) => {
   const { repo, ...resolver } = openHfs({ repoRoot, declaration });
   return proofCommandFindings({ repoRoot, files, resolver: { repo, ...resolver }, sides: Object.keys(repo.sides ?? {}) })
     .filter((finding) => finding.code === CODE);
@@ -38,7 +39,7 @@ for (const edition of ['lite', 'full']) {
       { code: CODE, level: 'error', file: RECORD, kind: 'measurement', absent: TARGET },
       { code: CODE, level: 'error', file: RECORD, kind: 'unit', absent: 'scripts/gone.spec.mjs' },
     ]);
-    assert.match(missing[0].message, /repository does not hold/);
+    assert.match(missing[0]?.message as string, /repository does not hold/);
   });
 
   test(`${CODE} ${edition}: a proof command whose file exists, flags, globs, build products and other repositories is valid and passes`, (t) => {

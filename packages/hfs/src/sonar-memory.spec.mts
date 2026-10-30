@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { renderTargets } from '../sync/index.mjs';
+import type { Presets } from '../sync/index.mjs';
 
 const heapProperty = 'sonar.javascript.node.maxspace';
 const intendedHeapMiB = 6144;
 const mib = 1024 * 1024;
 
-function propertiesOf(text) {
-  return new Map(text.split(/\r?\n/u).map(line => line.trim()).filter(line => line && !line.startsWith('#')).map(line => {
+function propertiesOf(text: string): Map<string, string> {
+  return new Map(text.split(/\r?\n/u).map((line: string) => line.trim()).filter((line: string) => line && !line.startsWith('#')).map((line: string): [string, string] => {
     const separator = line.indexOf('=');
     return [line.slice(0, separator), line.slice(separator + 1)];
   }));
@@ -20,7 +21,7 @@ for (const edition of ['full', 'lite']) {
       be: { apps: [{ name: 'api', kind: 'api' }] },
       fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
     } };
-    const target = renderTargets(hfs, {}).find(item => item.path === 'sonar-project.properties');
+    const target = renderTargets(hfs, {} as Presets).find(item => item.path === 'sonar-project.properties');
     assert.ok(target, 'the managed Sonar properties are rendered');
     const properties = propertiesOf(target.content);
     // SonarJS reads this property into its Node command's maxOldSpaceSize. The 6 GiB budget leaves room for Java and the OS on an 8 GiB runner.

@@ -2,6 +2,7 @@
 // nothing installed): the CLI's whole static module graph loads from the published folders alone - hfs declares no
 // dependency, so any bare import here would fail - and a call with no verb prints the usage and refuses with exit 2.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -24,8 +25,8 @@ test('global options use cwd, upgrade refuses a lite app because editions are fi
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
   const wanted = path.join(base, 'app');
   fs.mkdirSync(wanted);
-  let call;
-  const stackMain = async (argv, io) => { call = { argv, cwd: io.cwd }; return 0; };
+  let call: { argv: string[]; cwd: string } | undefined;
+  const stackMain = async (argv: string[], io: { cwd: string }) => { call = { argv, cwd: io.cwd }; return 0; };
   assert.equal(await main(['world', 'status', '--cwd', 'app', '--edition', 'full'], { cwd: base, stackMain }), 0);
   assert.deepEqual(call, { argv: ['status'], cwd: wanted });
   let err = '';
@@ -73,7 +74,7 @@ test('upgrade adds the test world a full app lacks, never overwrites one, and th
     'be/src/tests/world/global-setup.ts', 'be/src/tests/world/global-teardown.ts', 'be/src/tests/fixtures/persistence/migrations.sql.ts',
     'be/src/tests/integration/readiness/readiness.integration-spec.ts', 'be/src/tests/e2e/system-health/core-serves-once-migrated.e2e-spec.ts',
   ];
-  const run = async (argv) => {
+  const run = async (argv: string[]) => {
     let stdout = '';
     let stderr = '';
     const code = await main([...argv, '--cwd', root], { stdout: (text) => { stdout += text; }, stderr: (text) => { stderr += text; } });
@@ -123,7 +124,7 @@ test('world refuses with exit 2 and an install hint when the app has no test-wor
 });
 
 /** Runs `starci app <argv>` in a fresh folder; returns { code, out, err }. */
-async function app(t, argv) {
+async function app(t: TestContext, argv: string[]) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-app-flags-'));
   t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
   let out = '';
@@ -149,7 +150,7 @@ test('the shared parser refuses a flag of another verb and a value flag that wou
     [['check', '--fast', '--base', '--json'], '--base needs a value'],
     [['add', 'job', 'x', '--event', '--from', 'y'], '--event needs a value'],
     [['check', '--coverage-from', 'a', '--coverage-from=b'], '--coverage-from may be given only once'],
-  ]) {
+  ] as Array<[string[], string]>) {
     const run = await app(t, argv);
     assert.equal(run.code, 2, argv.join(' '));
     assert.ok(run.err.startsWith(`starci app: ${message}\n`), `${argv.join(' ')}: ${run.err.split('\n')[0]}`);
@@ -164,6 +165,9 @@ test('sync takes only --execute: any other argument prints the usage and refuses
   }
 });
 
+/** The flag lists a verb's parser table may carry. */
+interface FlagsSpec { boolean?: readonly string[]; value?: readonly string[]; list?: readonly string[]; retired?: readonly string[] }
+
 test('the usage is generated from the parser tables: every flag every verb parses appears on that verb\'s lines', async (t) => {
   const { out } = await app(t, ['--help']);
   const { FLAGS: STACK_FLAGS, ACTIONS: STACK_ACTIONS } = await import('../stack/cli.mjs');
@@ -173,18 +177,18 @@ test('the usage is generated from the parser tables: every flag every verb parse
   const { LOCAL_FLAGS } = await import('../ci/local.mjs');
   const { BASELINE_OPTIONS } = await import('../runtime/scripts/hfs/db-baseline-verb.mjs');
   const { RESTAMP_OPTIONS } = await import('../runtime/scripts/hfs/db-restamp-verb.mjs');
-  const db = Object.fromEntries(await Promise.all(['migrate', 'post-cutover', 'dump', 'new', 'drift'].map(async (verb) => [verb, (await import(`../db/${verb}.mjs`)).SPEC])));
+  const db = Object.fromEntries(await Promise.all(['migrate', 'post-cutover', 'dump', 'new', 'drift'].map(async (verb: string): Promise<[string, FlagsSpec]> => [verb, (await import(`../db/${verb}.mjs`)).SPEC])));
   const { parseLintArgs } = await import('../lint/run.mjs');
   const { codemodArguments } = await import('../codemod/button-intent.mjs');
   const { upgradeArguments } = await import('../upgrade/index.mjs');
-  const flagsOfSpec = (spec) => [...(spec.boolean ?? []), ...(spec.value ?? []), ...(spec.list ?? [])].filter((flag) => !(spec.retired ?? []).includes(flag));
+  const flagsOfSpec = (spec: FlagsSpec) => [...(spec.boolean ?? []), ...(spec.value ?? []), ...(spec.list ?? [])].filter((flag) => !(spec.retired ?? []).includes(flag));
   // A hand-parsed verb: the flag literals its parser compares with.
-  const flagsOfParser = (parser) => [...new Set([...parser.toString().matchAll(/['"`](--[a-z][a-z0-9-]*)['"`]/g)].map((match) => match[1]))];
-  const lines = (prefix) => out.split('\n').filter((text) => text.startsWith(`starci app ${prefix} `) || text === `starci app ${prefix}`);
-  const expect = (prefix, flags) => {
+  const flagsOfParser = (parser: { toString(): string }) => [...new Set([...parser.toString().matchAll(/['"`](--[a-z][a-z0-9-]*)['"`]/g)].map((match) => match[1] as string))];
+  const lines = (prefix: string) => out.split('\n').filter((text) => text.startsWith(`starci app ${prefix} `) || text === `starci app ${prefix}`);
+  const expect = (prefix: string, flags: readonly string[]) => {
     const text = lines(prefix).join('\n');
     assert.ok(text, `no usage line for starci app ${prefix}`);
-    for (const flag of flags.filter((name) => name !== '--cwd')) assert.ok(text.includes(`[${flag}]`) || text.includes(`[${flag} `), `starci app ${prefix} usage lacks ${flag}`);
+    for (const flag of flags.filter((name: string) => name !== '--cwd')) assert.ok(text.includes(`[${flag}]`) || text.includes(`[${flag} `), `starci app ${prefix} usage lacks ${flag}`);
   };
   assert.deepEqual(new Set(Object.keys(STACK_FLAGS)), new Set(STACK_ACTIONS), 'every stack action declares its flags');
   for (const action of STACK_ACTIONS) expect(`stack ${action}`, [...STACK_FLAGS[action], '--json']);
@@ -192,7 +196,7 @@ test('the usage is generated from the parser tables: every flag every verb parse
   for (const flag of flagsOfSpec(SECRET_FLAGS).filter((name) => name !== '--cwd')) assert.ok(lines('secret').some((text) => text.includes(`${flag} `) || text.includes(`${flag}]`)), `secret usage lacks ${flag}`);
   for (const [command, options] of Object.entries(CI_COMMANDS)) expect(`ci ${command}`, options.map((name) => `--${name}`));
   expect('ci local', flagsOfSpec(LOCAL_FLAGS));
-  for (const [verb, names] of [['baseline', BASELINE_OPTIONS], ['restamp', RESTAMP_OPTIONS]]) expect(`db ${verb}`, names.map((name) => `--${name}`));
+  for (const [verb, names] of [['baseline', BASELINE_OPTIONS], ['restamp', RESTAMP_OPTIONS]] as Array<[string, readonly string[]]>) expect(`db ${verb}`, names.map((name: string) => `--${name}`));
   for (const [verb, spec] of Object.entries(db)) expect(`db ${verb}`, flagsOfSpec(spec));
   expect('lint', flagsOfParser(parseLintArgs));
   expect('codemod', flagsOfParser(codemodArguments));
@@ -214,9 +218,9 @@ test('the scaffold hint and the managed scripts name commands that exist', async
   const scripts = fs.readFileSync(new URL('../templates/app/package-scripts/package.json', import.meta.url), 'utf8');
   const calls = [...scripts.matchAll(/"starci app ([a-z-]+)((?: [a-z-]+)*)"/g)];
   assert.ok(calls.length > 0);
-  for (const [, verb, rest] of calls) {
+  for (const [, verb = '', rest = ''] of calls) {
     assert.ok(VERBS.includes(verb), `starci app ${verb}`);
-    if (verb === 'stack') assert.ok(STACK_ACTIONS.includes(rest.trim().split(' ')[0]), `starci app stack${rest} names no action`);
-    if (verb === 'world') assert.ok(['up', 'down', 'status'].includes(rest.trim().split(' ')[0]), `starci app world${rest} names no action`);
+    if (verb === 'stack') assert.ok((STACK_ACTIONS as readonly string[]).includes(rest.trim().split(' ')[0] as string), `starci app stack${rest} names no action`);
+    if (verb === 'world') assert.ok(['up', 'down', 'status'].includes(rest.trim().split(' ')[0] as string), `starci app world${rest} names no action`);
   }
 });

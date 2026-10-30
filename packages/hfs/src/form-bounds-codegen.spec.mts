@@ -1,4 +1,5 @@
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,13 +8,15 @@ import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { parse, print } from 'graphql';
+import type { DocumentNode } from 'graphql';
 import { render } from '../sync/index.mjs';
 import { INPUT_BOUNDS_VERSION, INPUT_BOUNDS_OPENAPI_EXTENSION } from '../emit/input-bounds.mjs';
 import { withInputBounds } from '../emit/graphql-input-bounds.mjs';
+import type { DocumentLike } from '../emit/graphql-input-bounds.mjs';
 
 const require = createRequire(import.meta.url);
 
-function codegenApp(t) {
+function codegenApp(t: TestContext) {
   const parent = fs.realpathSync(os.tmpdir());
   const root = fs.mkdtempSync(path.join(parent, 'starci-rest-form-codegen-'));
   t.after(() => {
@@ -21,7 +24,7 @@ function codegenApp(t) {
     assert.ok(path.basename(root).startsWith('starci-rest-form-codegen-'));
     fs.rmSync(root, { recursive: true, force: true });
   });
-  const put = (relative, source) => {
+  const put = (relative: string, source: string) => {
     const file = path.join(root, relative);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, source);
@@ -75,13 +78,14 @@ test('the app codegen clears GraphQL form limits when its contracts disappear', 
   assert.deepEqual(result.INPUT_BOUNDS, {});
 });
 
-const SDL = fields => `type Query { ping: String } input CreateInput { ${fields} }`;
+const SDL = (fields: string) => `type Query { ping: String } input CreateInput { ${fields} }`;
 
 /** The snapshot a service emits: the SDL plus the versioned directive and the field bounds the back end carries. */
-const snapshot = (sdl, bounds) => print(withInputBounds(parse(sdl), new Map(Object.entries(bounds).map(([type, fields]) => [type, new Map(Object.entries(fields))]))));
+// reason: graphql's DocumentNode and the emitter's structural DocumentLike describe the same parsed document; neither is assignable to the other.
+const snapshot = (sdl: string, bounds: Record<string, Record<string, Record<string, number>>>) => print(withInputBounds(parse(sdl) as unknown as DocumentLike, new Map(Object.entries(bounds).map(([type, fields]) => [type, new Map(Object.entries(fields))]))) as unknown as DocumentNode);
 
 /** A front end whose GraphQL codegen runs for real: @graphql-codegen/cli with the client preset and the starci-harness plugin. */
-function graphqlApp(t) {
+function graphqlApp(t: TestContext) {
   const app = codegenApp(t);
   for (const name of ['graphql', '@graphql-codegen/cli', '@graphql-codegen/client-preset']) {
     app.put(`node_modules/${name}/package.json`, JSON.stringify({ name, main: require.resolve(name) }));

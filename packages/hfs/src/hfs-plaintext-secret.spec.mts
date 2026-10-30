@@ -1,6 +1,7 @@
 // proves: HFS_PLAINTEXT_SECRET@lite
 // proves: HFS_PLAINTEXT_SECRET@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,7 +14,7 @@ import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 const code = 'HFS_PLAINTEXT_SECRET';
 const envelope = JSON.stringify({ data: 'ENC[AES256_GCM,data:YWJj,iv:ZGVm,tag:Z2hp,type:str]', sops: { mac: 'ENC[AES256_GCM,data:YWJj,iv:ZGVm,tag:Z2hp,type:str]', age: [] } });
 
-function judge(t, edition, files) {
+function judge(t: TestContext, edition: string, files: Record<string, string>) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-plaintext-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(files)) {
@@ -30,7 +31,7 @@ function judge(t, edition, files) {
 for (const edition of ['lite', 'full']) {
   test(`${code} ${edition}: refuses an empty tracked env file and a fake sealed envelope`, t => {
     const violations = judge(t, edition, { '.env': '', '.starcistacks/dev/secrets/app.enc': 'not an encrypted envelope' });
-    assert.deepEqual(violations.map(item => item.path).sort((left, right) => left.localeCompare(right)), ['.env', '.starcistacks/dev/secrets/app.enc']);
+    assert.deepEqual(violations.map(item => item.path as string).sort((left: string, right: string) => left.localeCompare(right)), ['.env', '.starcistacks/dev/secrets/app.enc']);
     assert.ok(violations.every(item => item.level === 'error'));
     assert.ok(violations.some(item => item.pattern === 'sops-not-envelope'));
   });
@@ -42,13 +43,13 @@ for (const edition of ['lite', 'full']) {
 
 for (const edition of ['lite', 'full']) {
   test(`${edition}: staged hygiene and file judgement reject plaintext secret paths`, () => {
-    assert.equal(hygieneFindings(['.starcistacks/dev/secrets/app.txt'], new Set())[0].code, code);
-    assert.equal(secretFileFindings({ file: '.env', text: '' })[0].code, code);
+    assert.equal(hygieneFindings(['.starcistacks/dev/secrets/app.txt'], new Set())[0]?.code, code);
+    assert.equal(secretFileFindings({ file: '.env', text: '' })[0]?.code, code);
   });
   test(`${edition}: staged hygiene and file judgement accept public configuration`, () => {
     assert.deepEqual(hygieneFindings(['.starcistacks/dev/config.json'], new Set()), []);
     assert.deepEqual(hygieneFindings(['.starcistacks/dev/secrets/.gitkeep'], new Set()), [], 'the empty placeholder that keeps the custody directory tracked holds no secret');
-    assert.equal(hygieneFindings(['.starcistacks/dev/secrets/nested/.gitkeep.txt'], new Set())[0].code, code);
+    assert.equal(hygieneFindings(['.starcistacks/dev/secrets/nested/.gitkeep.txt'], new Set())[0]?.code, code);
     assert.deepEqual(secretFileFindings({ file: 'config.json', text: '{}' }), []);
   });
 }
