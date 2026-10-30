@@ -4,7 +4,8 @@
 // Without `execute` a deploy renders locally and prints the plan: NO remote call at all. A rollback cannot undo data effects.
 // An urgent deploy (`urgent`, owner ruling urgent-release 2026-10-29) runs the safety floor of urgent-floor.mjs first (fresh verified encrypted
 // backup with a test decrypt, rollback target, migrate preview then execute) and refuses with the floor's own code when a step of it fails; its
-// first start (`firstStart`) proves the database empty and migrates it inside its own container, a `first-start` step between edge and converge.
+// first start (`firstStart`) deploys the stack with only the database running (the `deploy-hold` step), proves the database empty and migrates it inside its own
+// container (the `first-start` step), then deploys the real stack and converges.
 //
 // `deps` are the collaborators, all factories or functions with the signature of their module, defaulting to lazy dynamic imports so this
 // module never needs render.mjs / provision.mjs / remote.mjs at load time (the specs inject stubs):
@@ -53,6 +54,8 @@ export interface DeployOptions {
   remote?: string | undefined;
   /** The `first-start` step the urgent floor adds between edge and converge. */
   firstStartStep?: (() => Promise<FirstStartStepResult>) | undefined;
+  /** The stack service of the database a first start bootstraps: the one service its hold deploy leaves running. */
+  firstStartDb?: string | undefined;
 }
 
 /** What a rollback takes. */
@@ -159,11 +162,35 @@ async function attempt(action: () => ActionResult | Promise<ActionResult>): Prom
   }
 }
 
-/** `docker stack deploy` of a stored or rendered file. */
-function stackDeploy(ctx: StackContext, config: DeployConfig, file: string): ActionResult {
-  const run = tool(ctx, 'docker', ['stack', 'deploy', '--prune', '--with-registry-auth', '--resolve-image', 'always', '--detach=true', '-c', file, config.stack]);
+/** `docker stack deploy` of a stored or rendered file (`overrides`: compose files merged over it, in order). */
+function stackDeploy(ctx: StackContext, config: DeployConfig, file: string, overrides: string[] = []): ActionResult {
+  const files = [file, ...overrides].flatMap((one) => ['-c', one]);
+  const run = tool(ctx, 'docker', ['stack', 'deploy', '--prune', '--with-registry-auth', '--resolve-image', 'always', '--detach=true', ...files, config.stack]);
   if (run.status !== 0) return { ok: false, lines: [`docker stack deploy failed: ${firstLine(run.stderr)}`] };
   return { ok: true, lines: [`deploy: requested ${config.stack} from ${path.basename(path.dirname(file))}/${path.basename(file)}`] };
+}
+
+/** The node label no node carries: a global service constrained to it has no node to run on, so none of its tasks start. */
+const HOLD_LABEL = 'node.labels.starci-first-start-hold == 1';
+
+/**
+ * The compose override of a first start's hold deploy, written beside the stack: every service except the database at 0 replicas, a global-mode
+ * service (it has no replica count) constrained to a node label no node carries. Merged over the rendered stack by `docker stack deploy -c`, so the
+ * release's own bytes (and id) stay untouched and the real deploy that follows is the stored stack.yaml.
+ */
+function writeHoldOverride(config: DeployConfig, out: string, database: string): string {
+  // reason: the rendered stack, parsed YAML read defensively
+  const stack = parseYaml(fs.readFileSync(path.join(out, 'stack.yaml'), 'utf8'));
+  const services: Record<string, any> = stack?.services ?? {};
+  if (!Object.hasOwn(services, database)) throw refusal('STACK_FIRST_START_USAGE', `--db-service ${database} is not a service of the stack ${config.stack}; nothing was deployed`);
+  const held = Object.fromEntries(Object.entries(services).filter(([name]) => name !== database).map(([name, entry]): [string, unknown] => [
+    name,
+    entry?.deploy?.mode === 'global' ? { deploy: { placement: { constraints: [HOLD_LABEL] } } } : { deploy: { replicas: 0 } },
+  ]));
+  const file = path.join(out, 'stack.first-start-hold.yaml');
+  fs.writeFileSync(file, `${JSON.stringify({ version: stack?.version ?? '3.8', services: held }, null, 2)}
+`);
+  return file;
 }
 
 /** Runs [name, action] steps in order until one fails; records { step, ok } and collects the lines. Returns the failed step name or ''. */
@@ -256,12 +283,16 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
   if (!prepared.ok) return { ok: false, lines: [...lines, 'deploy not started; the services are untouched'], data };
   const since = isoBefore(ctx, 60);
   const { skipPublic } = options;
+  const stackFile = path.join(out, 'stack.yaml');
+  // The first start of a self-hosted database (urgent-floor.mjs): the services that need its schema must not start against an empty one (their
+  // healthchecks fail and update_config rolls them back), so the stack is first deployed with only the database running, the schema is
+  // bootstrapped and migrated, and then the real stack is deployed.
+  const hold = options.firstStartStep && options.firstStartDb ? writeHoldOverride(config, out, options.firstStartDb) : null;
   const failed = await runSteps([
-    ['deploy', () => stackDeploy(ctx, config, path.join(out, 'stack.yaml'))],
-    ['edge', async () => d.reconcileEdge(ctx, config, path.join(out, 'stack.yaml'))],
-    // The first start of a self-hosted database (urgent-floor.mjs): its schema is bootstrapped and migrated once the database runs, before the
-    // services that need it are waited for.
+    ...(hold ? [['deploy-hold', () => stackDeploy(ctx, config, stackFile, [hold])] satisfies Step] : []),
     ...(options.firstStartStep ? [['first-start', options.firstStartStep] satisfies Step] : []),
+    ['deploy', () => stackDeploy(ctx, config, stackFile)],
+    ['edge', async () => d.reconcileEdge(ctx, config, stackFile)],
     ['converge', () => d.convergeStack(ctx, config, { since, timeoutSeconds: options.timeoutSeconds })],
     ...(config.postDeploy.length > 0 ? [['post-deploy', () => d.postDeployStack(ctx, config)] satisfies Step] : []),
     ['verify', () => d.verifyStack(ctx, config, { retrySeconds: options.retrySeconds, skipPublic: skipPublic === true, stackFile: path.join(out, 'stack.yaml') })],
@@ -310,7 +341,7 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
     };
     if (options.urgent === true) {
       return await urgentDeploy(ctx, config, options, {
-        render, dryRun, openStore: () => openStore(ctx, config, options, d, cleanups), deployExecute: (extra: Pick<DeployOptions, 'firstStartStep'> = {}) => deployExecute(ctx, config, { ...options, ...extra }, d, out, cleanups), sha256: fileSha256,
+        render, dryRun, openStore: () => openStore(ctx, config, options, d, cleanups), deployExecute: (extra: Pick<DeployOptions, 'firstStartStep' | 'firstStartDb'> = {}) => deployExecute(ctx, config, { ...options, ...extra }, d, out, cleanups), sha256: fileSha256,
       }, d.floor);
     }
     if (options.execute !== true) return await dryRun();

@@ -12,9 +12,11 @@
 // The public-host checks are never skipped (STACK_URGENT_SKIP_PUBLIC). A rollback cannot undo the migrations: the backup above is their way back.
 // The first start (`--first-start --db-service <service>`, owner ruling 2026-10-29) is the floor of a self-hosted database the release itself
 // starts: there is nothing to back up and nothing reaches it before the stack runs it, so instead of backup, decrypt and migrate before the deploy
-// the release deploys and, between edge and converge, the floor waits for the database service's container to accept connections, proves the
-// database empty (no migration history, no table in public) and runs migrate preview then execute inside that container (db/bootstrap.sql first,
-// as the --db-url-env role). Every other step holds: record, rollback target, readiness verify, automatic rollback. Each failure is its own code:
+// the release is first deployed with every service but the database at 0 replicas (a global-mode service is held off every node by an
+// unsatisfiable placement constraint), so no app starts against an empty schema (its healthcheck would fail and update_config would roll it
+// back); then the floor waits for the database service's container to accept connections, proves the database empty (no migration history, no
+// table in public) and runs migrate preview then execute inside that container (db/bootstrap.sql first, as the --db-url-env role); then the real
+// stack is deployed and converged. Every other step holds: record, rollback target, readiness verify, automatic rollback. Each failure is its own code:
 //   STACK_FIRST_START_USAGE (no --db-service), STACK_FIRST_START_NO_DATABASE (no container accepted connections in time),
 //   STACK_FIRST_START_NOT_EMPTY (a history or a public table: use the plain urgent floor), STACK_FIRST_START_MIGRATE_RED (preview or execute red);
 // each rolls the release back to the previous one; the migrations a red first start applied stay in a database no release used before.
@@ -80,7 +82,7 @@ interface UrgentRecord { tag: string; role: string; reason: string; pushed?: boo
 export interface UrgentRun {
   render(): Promise<{ releaseId: string }>;
   openStore(): Promise<{ current(): Promise<string> }>;
-  deployExecute(hooks?: { firstStartStep?: () => Promise<FirstStartStepResult> }): Promise<DeployOutcome>;
+  deployExecute(hooks?: { firstStartStep?: () => Promise<FirstStartStepResult>; firstStartDb?: string }): Promise<DeployOutcome>;
   dryRun(): Promise<ActionResult>;
   sha256(file: string): string;
 }
@@ -258,7 +260,7 @@ async function firstStartStep(ctx: StackContext, config: DeployConfig, options: 
 async function firstStartDeploy(ctx: StackContext, config: DeployConfig, options: FloorOptions, run: UrgentRun, f: FloorDeps, lines: string[]): Promise<(ActionResult & { deployed?: undefined }) | { deployed: DeployOutcome }> {
   if (options.execute !== true) {
     const plan = await run.dryRun();
-    return { ...plan, lines: [...lines, `floor (never skipped), first start of ${config.stack}_${options.dbService}: rollback target, deploy, then before converge: wait for the database, prove it empty, migrate preview then execute inside its container; readiness verify and automatic rollback`, ...plan.lines] };
+    return { ...plan, lines: [...lines, `floor (never skipped), first start of ${config.stack}_${options.dbService}: rollback target, hold deploy (every service but the database at 0 replicas, global services held off every node), wait for the database, prove it empty, migrate preview then execute inside its container, then the real deploy; converge, readiness verify and automatic rollback`, ...plan.lines] };
   }
   const { releaseId } = await run.render();
   lines.push(`floor: release ${releaseId} rendered`);
@@ -266,6 +268,7 @@ async function firstStartDeploy(ctx: StackContext, config: DeployConfig, options
   if (!(await store.current())) return refused(lines, 'STACK_URGENT_NO_ROLLBACK_TARGET', 'no accepted previous release is stored on the manager, so a red first start could not roll back; nothing was deployed');
   let code = null as string | null; // assigned by the step below
   const deployed = await run.deployExecute({
+    firstStartDb: options.dbService as string, // preconditions required --db-service
     firstStartStep: async () => {
       const step = await firstStartStep(ctx, config, options, f);
       code = step.code ?? null;
@@ -304,7 +307,7 @@ export async function urgentDeploy(ctx: StackContext, config: DeployConfig, opti
   const all = [...lines, ...deployed.lines];
   if (deployed.ok) return { ...deployed, lines: all, data: { ...deployed.data, urgent: record.tag } };
   const data = { ...deployed.data, urgent: record.tag };
-  if (!(deployed.data?.steps ?? []).some((step: { step: string }) => step.step === 'deploy')) return refused(all, 'STACK_URGENT_DEPLOY_NOT_STARTED', 'the release failed before the stack deploy, so the services are untouched; the migrations stay (backup above)', data);
+  if (!(deployed.data?.steps ?? []).some((step: { step: string }) => step.step === 'deploy' || step.step === 'deploy-hold')) return refused(all, 'STACK_URGENT_DEPLOY_NOT_STARTED', 'the release failed before the stack deploy, so the services are untouched; the migrations stay (backup above)', data);
   if (deployed.data?.rolledBack) return refused(all, 'STACK_URGENT_RED_ROLLED_BACK', `the release failed its deploy or readiness verify and was rolled back to ${deployed.data.previous}; the migrations stay (backup above)`, data);
   return refused(all, 'STACK_URGENT_ROLLBACK_FAILED', 'the release is red and the automatic rollback did not converge: follow the stack runbook, Rollback', data);
 }

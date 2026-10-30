@@ -42,7 +42,7 @@ const FLAGS = {
     remote: { kind: "string", summary: "deploy --urgent without --image and --source-sha: the remote HEAD and its tag are pushed to (default origin)" },
     "db-url-env": { kind: "string", summary: "deploy --urgent: the environment variable holding the database URL the floor backs up and migrates (default the linked project of the database block)" },
     "backup-out": { kind: "string", summary: "deploy --urgent: the folder outside every repository that receives the floor's encrypted backup (default ~/.starci-backups/<project>)" },
-    "first-start": { kind: "boolean", summary: "deploy --urgent: the first start of a self-hosted database the release itself starts: no backup (the floor proves the database empty), migrate preview then execute inside its container before converge; needs --db-service" },
+    "first-start": { kind: "boolean", summary: "deploy --urgent: the first start of a self-hosted database the release itself starts: no backup (the floor proves the database empty), migrate preview then execute inside its container while every other service is held at 0 replicas, then the real stack is deployed and converged; needs --db-service" },
     "db-service": { kind: "string", summary: "deploy --urgent --first-start: the stack service the database runs as" },
     ...QUIET_FLAG,
 } as const satisfies Readonly<Record<string, FlagSpec>>
