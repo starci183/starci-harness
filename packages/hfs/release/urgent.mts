@@ -13,7 +13,7 @@ import { assertUnmoved, git, inspect, releaseDir, runGate, summaryOf } from './g
 import type { Gate, GateRow, ReleaseConfig } from './gate.mjs';
 import type { VerbContext, VerbResult } from './index.mjs';
 import { assertNames, branchRefs, probe, tagRefs } from './push.mjs';
-import { URGENT_RULING, URGENT_SCHEMA, greenRow, recordRow, writeUrgent } from './records.mjs';
+import { URGENT_RULING, URGENT_SCHEMA, greenRow, parseUrgentTrailers, recordRow, urgentTrailerBlock, writeUrgent } from './records.mjs';
 
 /**
  * The fast local checks of an urgent release, by gate name, in the order they run: what can break production, the types and the build
@@ -71,6 +71,24 @@ function planOf(checks: readonly UrgentCheck[]): string[] {
 }
 
 /**
+ * Writes the urgent trailers (`Starci-Urgent`, `Starci-Urgent-Reason`) into the annotation of the release tag, so the tag's own CI run knows the release was
+ * urgent and back-fills its record instead of deploying it again. A new tag carries them from the start; a tag the gate already put on HEAD and nobody has
+ * published yet is re-annotated (its message kept, the trailers appended); a tag already on the remote is never moved, so it stays without them and the line says so.
+ */
+function annotateTag(ctx: VerbContext, { tag, head, role, reason, onHead, unpublished }: { tag: string; head: string; role: string; reason: string; onHead: boolean; unpublished: boolean }): { written: boolean; line: string } {
+  const trailers = urgentTrailerBlock(role, reason);
+  if (!onHead) {
+    git(ctx, ['tag', '-a', tag, '-m', `URGENT release ${tag} on ${head.slice(0, 12)} by ${role}: ${reason} (fast local checks only; back-fill: starci app release gate --backfill ${tag})`, '-m', trailers, head]);
+    return { written: true, line: `tag trailers   ${tag}: Starci-Urgent, Starci-Urgent-Reason` };
+  }
+  const message = git(ctx, ['for-each-ref', '--format=%(contents)', `refs/tags/${tag}`]).stdout;
+  if (parseUrgentTrailers(message)) return { written: true, line: `tag trailers   ${tag}: already there` };
+  if (!unpublished) return { written: false, line: `tag trailers   NONE: ${tag} is already published without them and a published tag is never moved; the deploy record still names the urgent role and reason` };
+  git(ctx, ['tag', '-a', '-f', tag, '-m', message.trim() === '' ? `release ${tag}` : message.trim(), '-m', trailers, head]);
+  return { written: true, line: `tag trailers   ${tag}: re-annotated (not yet published): Starci-Urgent, Starci-Urgent-Reason` };
+}
+
+/**
  * `starci app release push --urgent`. options: { execute, remote, reason, role, platform }. Dry run prints the checks, the tag and the push it would
  * make; --execute runs them, tags, pushes atomically and writes the urgent record. A red check is RELEASE_URGENT_CHECK_RED: nothing tagged, nothing pushed.
  */
@@ -101,7 +119,8 @@ export async function releaseUrgentPush(ctx: VerbContext, config: ReleaseConfig,
   const failed = rows.find((row) => !row.pass);
   if (failed) throw failure('RELEASE_URGENT_CHECK_RED', `${failed.name} is red (${failed.detail}; log ${failed.log}): nothing tagged, nothing pushed`);
   assertUnmoved(ctx, head);
-  if (chosen.state !== 'on-head') git(ctx, ['tag', '-a', chosen.tag, '-m', `URGENT release ${chosen.tag} on ${head.slice(0, 12)} by ${role}: ${reason} (fast local checks only; back-fill: starci app release gate --backfill ${chosen.tag})`, head]);
+  const trailers = annotateTag(ctx, { tag: chosen.tag, head, role, reason, onHead: chosen.state === 'on-head', unpublished: refs.includes(`refs/tags/${chosen.tag}`) });
+  out.push(trailers.line);
   if (refs.length > 0) {
     const hook = probe(ctx, remote, refs, red);
     out.push(...hook.lines);
@@ -111,7 +130,7 @@ export async function releaseUrgentPush(ctx: VerbContext, config: ReleaseConfig,
   }
   const record = {
     schema: URGENT_SCHEMA, head, tag: chosen.tag, createdAt: new Date(ctx.now()).toISOString(), producedBy: 'starci app release push --urgent',
-    role, reason, ruling: URGENT_RULING, remote, branch, refs, pushed: true, checks: rows, backfill: null,
+    role, reason, trailers: trailers.written, ruling: URGENT_RULING, remote, branch, refs, pushed: true, checks: rows, backfill: null,
   };
   writeUrgent(common, record);
   return { ok: true, lines: [...out, `pushed to ${remote}: ${refs.join(' ') || '(already there)'}`, `URGENT record written: ${path.join(common, `${head}.urgent.json`)}`, `back-fill later: starci app release gate --backfill ${chosen.tag} --execute (in a clean checkout of ${chosen.tag})`], data: { ...data, pushed: true, record: path.join(common, `${head}.urgent.json`) } };

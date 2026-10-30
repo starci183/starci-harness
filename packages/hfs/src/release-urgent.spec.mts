@@ -10,7 +10,7 @@ import path from 'node:path';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
 import { contextOf } from '../release/index.mjs';
 import { dirtyPaths, normalizeRelease, releaseGate } from '../release/gate.mjs';
-import { readUrgent } from '../release/records.mjs';
+import { parseUrgentTrailers, readUrgent, urgentTrailerBlock } from '../release/records.mjs';
 import { releaseUrgentPush } from '../release/urgent.mjs';
 
 const git = (cwd: string, ...args: string[]): string => {
@@ -66,6 +66,48 @@ test('urgent push runs the fast checks, tags and pushes atomically, and writes t
   assert.equal(record.checks.some((row: CheckRow) => ['app-check', 'lint', 'test'].includes(row.name)), false, 'app check, lint and the tests wait for the back-fill, red or not');
 });
 
+
+test('the urgent tag carries the Starci-Urgent trailers, which git and the record read back', async (t) => {
+  const { ctx, config, root, remote, head } = app(t);
+  const result = await releaseUrgentPush(ctx, config, { execute: true, reason: 'CI budget exhausted', role: 'owner' });
+  assert.equal(result.ok, true, result.lines!.join('\n'));
+  const message = git(remote, 'for-each-ref', '--format=%(contents)', 'refs/tags/v1.0.0');
+  assert.deepEqual(parseUrgentTrailers(message), { role: 'owner', reason: 'CI budget exhausted' });
+  const parsed = spawnSync('git', ['interpret-trailers', '--parse'], { input: message, encoding: 'utf8' }).stdout.trim().split('\n');
+  assert.deepEqual(parsed, ['Starci-Urgent: owner', 'Starci-Urgent-Reason: CI budget exhausted']);
+  assert.equal(readUrgent(common(root), head).trailers, true);
+});
+
+test('a tag the gate left on HEAD and nobody published is re-annotated with the trailers, its message kept', async (t) => {
+  const { ctx, config, root, remote } = app(t);
+  git(root, 'tag', '-a', 'v1.0.0', '-m', 'release v1.0.0 gate OK');
+  const result = await releaseUrgentPush(ctx, config, { execute: true, reason: 'prod is down', role: 'release' });
+  assert.equal(result.ok, true, result.lines!.join('\n'));
+  const message = git(remote, 'for-each-ref', '--format=%(contents)', 'refs/tags/v1.0.0');
+  assert.match(message, /release v1\.0\.0 gate OK/u);
+  assert.deepEqual(parseUrgentTrailers(message), { role: 'release', reason: 'prod is down' });
+});
+
+test('a tag already published without trailers is never moved and the record says it has none', async (t) => {
+  const { ctx, config, root, remote, head } = app(t);
+  git(root, 'tag', '-a', 'v1.0.0', '-m', 'release v1.0.0 gate OK');
+  git(root, 'push', '-q', 'origin', 'refs/tags/v1.0.0');
+  const before = git(remote, 'rev-parse', 'refs/tags/v1.0.0');
+  const result = await releaseUrgentPush(ctx, config, { execute: true, reason: 'prod is down', role: 'release' });
+  assert.equal(result.ok, true, result.lines!.join('\n'));
+  assert.equal(git(remote, 'rev-parse', 'refs/tags/v1.0.0'), before);
+  assert.match(result.lines!.join('\n'), /tag trailers {3}NONE/u);
+  assert.equal(readUrgent(common(root), head).trailers, false);
+});
+
+test('trailers round-trip: only the last paragraph counts, both keys are needed, the role is a plain name', () => {
+  const block = urgentTrailerBlock('re lease/x', '  fix   login ');
+  assert.equal(block, 'Starci-Urgent: re-lease-x\nStarci-Urgent-Reason: fix login');
+  assert.deepEqual(parseUrgentTrailers(`subject line\n\n${block}\n`), { role: 're-lease-x', reason: 'fix login' });
+  assert.equal(parseUrgentTrailers(`${block}\n\nlater paragraph`), null);
+  assert.equal(parseUrgentTrailers('subject\n\nStarci-Urgent: owner'), null);
+  assert.equal(parseUrgentTrailers(''), null);
+});
 
 test('a red fast check refuses the urgent release: nothing tagged, nothing pushed', async (t) => {
   const { ctx, config, root, remote } = app(t, ['typecheck']);
