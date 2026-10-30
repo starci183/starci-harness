@@ -1,0 +1,143 @@
+import path from 'node:path';
+import type { CallExpression, ExportAssignment, FunctionLikeDeclaration, JsxTagNameExpression, Node, TypeChecker } from 'typescript';
+import type { TypeScriptApi } from './config.mjs';
+import type { ArchitectureViolation, CheckInput, GraphFile, HfsGraph } from './hfs-graph.mjs';
+import type { MachineKit } from './machine-ast.mjs';
+import { machineKit } from './machine-ast.mjs';
+
+/**
+ * R54 `route-files-thin` (FE_ROUTE_FILES_THIN, knowledge/hfs/README.md 6.2). A route file only mounts an owner: it holds no
+ * inline component, no drawing and no hook. For every file of the route slot (fe.route, apps/<app>/src/app) named
+ * `layout`, `template`, `loading` or `not-found`:
+ *
+ *   - no host element (`<div>`, `<main>`): drawing belongs to the feature the file mounts;
+ *   - no function other than the default export that returns JSX: an inline component is a feature in the wrong folder;
+ *   - JSX, when present, mounts exactly one feature owner (a component resolved to a file of tier `feature`); a file with no
+ *     JSX re-exports or delegates and needs none. Package components (a locale shell) may wrap the owner.
+ *
+ * and, for every such file and every `page`: no hook call. A hook is an imported `use<Name>` function or any function of
+ * hooks/. The page's own mount, redirect and decision rules are the existing FE_ROUTE_ONE_PAGE, FE_ROUTE_DRAWING_DECISION,
+ * FE_ROUTE_CLIENT_BOUNDARY and FE_ROUTE_CLIENT_HOOK checks of frontend.mjs and are not judged a second time here.
+ */
+export const ROUTE_FILES_THIN_RULE_IDS = ['FE_ROUTE_FILES_THIN'];
+
+const RULE = 'FE_ROUTE_FILES_THIN';
+const ROUTE_SLOT = 'fe.route';
+const MOUNTING_ROUTES = new Set(['layout', 'template', 'loading', 'not-found']);
+const HOOK_ROUTES = new Set([...MOUNTING_ROUTES, 'page']);
+const HOOK_NAME = /^use[A-Z0-9]/u;
+const HOOKS_SLOT = 'fe.hooks';
+
+/** The client providers (fe.components.providers) wrap the mounted owner like a package shell; they are not a second owner. */
+const PROVIDERS_SLOT = 'fe.components.providers';
+const isFeatureOwner = (target: GraphFile | undefined) => target?.tier === 'feature' && target.slot !== PROVIDERS_SLOT;
+const isFunction = (ts: TypeScriptApi, node: Node): node is FunctionLikeDeclaration => ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node);
+const jsxOf = (ts: TypeScriptApi, node: Node): boolean => ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node);
+
+function tagOf(ts: TypeScriptApi, node: Node) {
+  if (ts.isJsxElement(node)) return node.openingElement.tagName;
+  if (ts.isJsxSelfClosingElement(node)) return node.tagName;
+  return null;
+}
+
+function addExportAssignmentDefaults(ts: TypeScriptApi, statement: ExportAssignment, kit: MachineKit, checker: TypeChecker, defaults: Set<Node>) {
+  const target = statement.expression;
+  if (!ts.isIdentifier(target)) { defaults.add(target); return; }
+  for (const declaration of kit.declarationsOf(checker, target)) defaults.add(ts.isVariableDeclaration(declaration) ? declaration.initializer ?? declaration : declaration);
+}
+
+function routeDefaults(ts: TypeScriptApi, file: GraphFile, kit: MachineKit, checker: TypeChecker): Set<Node> {
+  const defaults = new Set<Node>();
+  for (const statement of file.sourceFile.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.modifiers?.some((item) => item.kind === ts.SyntaxKind.DefaultKeyword)) defaults.add(statement);
+    if (ts.isExportAssignment(statement) && !statement.isExportEquals) addExportAssignmentDefaults(ts, statement, kit, checker, defaults);
+  }
+  return defaults;
+}
+
+/** True when the function contains JSX that is not inside a nested function. */
+function drawsDirectly(ts: TypeScriptApi, fn: Node): boolean {
+  let found = false;
+  const visit = (node: Node): void => {
+    if (found) return;
+    if (node !== fn && isFunction(ts, node)) return;
+    if (jsxOf(ts, node)) { found = true; return; }
+    ts.forEachChild(node, visit);
+  };
+  visit(fn);
+  return found;
+}
+
+/** What one route-file walk shares across its node inspections. */
+interface RouteContext {
+  graph: HfsGraph;
+  kit: MachineKit;
+  ts: TypeScriptApi;
+  file: GraphFile;
+  stem: string;
+  mounting: boolean;
+  checker: TypeChecker;
+  defaults: Set<Node>;
+  violations: ArchitectureViolation[];
+  state: { hasJsx: boolean; owners: number };
+}
+
+function reportRoute(violations: ArchitectureViolation[], kit: MachineKit, file: GraphFile, stem: string, node: Node, message: string, extra: Record<string, unknown> = {}) {
+  violations.push({ ruleId: RULE, ...kit.at(file.rel, file.sourceFile, node), message, route: stem, ...extra });
+}
+
+function inspectMountingTag(tag: JsxTagNameExpression, { graph, kit, ts, file, stem, checker, violations, state }: RouteContext) {
+  if (ts.isIdentifier(tag) && /^[a-z]/u.test(tag.text)) {
+    reportRoute(violations, kit, file, stem, tag, `<${tag.text}> is drawing in a ${stem} route file; a route file mounts one feature and draws nothing. Move the markup into the feature.`);
+  } else if (kit.declarationsOf(checker, ts.isPropertyAccessExpression(tag) ? tag.name : tag).some(declaration => isFeatureOwner(graph.files.get(kit.graphPath(declaration) ?? '')))) {
+    state.owners += 1;
+  }
+}
+
+function inspectHookCall(node: CallExpression, { graph, kit, ts, file, stem, checker, violations }: RouteContext) {
+  const callee = ts.isIdentifier(node.expression) ? node.expression : null;
+  if (!callee || !HOOK_NAME.test(callee.text)) return;
+  const binding = kit.importBinding(checker, callee);
+  const inHooks = kit.declarationsOf(checker, callee).some(declaration => graph.files.get(kit.graphPath(declaration) ?? '')?.slot === HOOKS_SLOT);
+  if (binding || inHooks) reportRoute(violations, kit, file, stem, callee, `${callee.text} is a hook called in a ${stem} route file; a route file is a server adapter and holds no hook. Read the data in the feature it mounts.`);
+}
+
+function inspectRouteNode(node: Node, context: RouteContext): boolean {
+  const { kit, ts, file, stem, mounting, defaults, violations, state } = context;
+  if (jsxOf(ts, node)) state.hasJsx = true;
+  const tag = tagOf(ts, node);
+  if (mounting && tag) inspectMountingTag(tag, context);
+  if (mounting && isFunction(ts, node) && !defaults.has(node) && drawsDirectly(ts, node)) {
+    reportRoute(violations, kit, file, stem, node, `A function other than the default export draws JSX in a ${stem} route file; that is an inline component. Move it into the feature the route mounts.`);
+  }
+  if (ts.isCallExpression(node)) inspectHookCall(node, context);
+  return true;
+}
+
+function inspectRouteFile(graph: HfsGraph, kit: MachineKit, file: GraphFile, stem: string, violations: ArchitectureViolation[]) {
+  const { ts } = kit;
+  const mounting = MOUNTING_ROUTES.has(stem);
+  const checker = kit.checkerOf(file.sourceFile);
+  const defaults = routeDefaults(ts, file, kit, checker);
+  const state = { hasJsx: false, owners: 0 };
+  kit.walk(file.sourceFile, (node: Node) => inspectRouteNode(node, { graph, kit, ts, file, stem, mounting, checker, defaults, violations, state }));
+  if (mounting && state.hasJsx && state.owners !== 1) {
+    violations.push({ ruleId: RULE, path: file.rel, line: 1, column: 1, route: stem, owners: state.owners,
+      message: `${file.rel} mounts ${state.owners} feature owners; a ${stem} route file mounts exactly one feature (a layouts- or pages-tier component of the app), optionally inside a package shell.` });
+  }
+}
+
+export function checkRouteFilesThin(input: CheckInput) {
+  const { graph } = input;
+  const kit = machineKit(input);
+  const violations: ArchitectureViolation[] = [];
+  let routes = 0;
+  for (const file of graph.files.values()) {
+    if (file.slot !== ROUTE_SLOT) continue;
+    const stem = path.posix.basename(file.rel).replace(/\.[cm]?[jt]sx?$/u, '');
+    if (!HOOK_ROUTES.has(stem)) continue;
+    routes += 1;
+    inspectRouteFile(graph, kit, file, stem, violations);
+  }
+  return { violations, coverage: { status: 'checked', routes } };
+}
