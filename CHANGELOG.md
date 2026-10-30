@@ -10,6 +10,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- The CLI requires @starci/hfs@4.11.20, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 - `app sonar` leaves out of `sonar.coverage.exclusions` the files a slot declares as logic (hfs 4.11.20 `logic`), so Sonar measures what jest measures (`core/check/sonar-scope.ts`).
 - The CLI keeps @starci/hfs 4.11.17 until npm serves 4.11.20; cli-follow then raises the requirement and lockfile to the pin.
 
