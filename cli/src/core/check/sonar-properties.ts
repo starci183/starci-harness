@@ -57,7 +57,7 @@ const testsCoverSources = (sources: readonly string[], tests: readonly string[])
  * The Sonar scope exclusions of a properties file that widen a gate. An entry narrows nothing when it names only
  * dependencies or build output, or when `sonar.exclusions` moves a file `sonar.test.inclusions` also names from the sources
  * to the tests and `sonar.tests` covers every source directory. The generated block (sonar-scope.ts) is accepted only when
- * it equals what `starci app sonar` writes for the file's app (`block`), line for line; edited or stale, it is judged like
+ * it equals what `starci app sync --execute` writes for the file's app (`block`), line for line; edited or stale, it is judged like
  * any hand-written line. `code` is the file with comments blanked, `raw` the file as it stands.
  */
 export const judgeSonarProperties = (code: readonly string[], raw: readonly string[], block: readonly string[] | undefined): PropertyHit[] => {
@@ -76,7 +76,7 @@ export const judgeSonarProperties = (code: readonly string[], raw: readonly stri
         if (widening.length === 0) continue
         const shown = widening.slice(0, 3).join(", ") + (widening.length > 3 ? `, +${String(widening.length - 3)}` : "")
         const label = inBlock(property.line)
-            ? `a generated Sonar block that differs from what \`starci app sonar\` writes for this app; run it with --write (${shown})`
+            ? `a generated Sonar block that differs from what \`starci app sync --execute\` writes for this app; run it (${shown})`
             : `a Sonar scope exclusion outside the generated block (${shown})`
         hits.push({ marker: "gate-widening", line: property.line + 1, label })
     }

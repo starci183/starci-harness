@@ -406,6 +406,6 @@ export const blockOnCustody = (db: DatabaseSync, taskId: string, from: TaskStatu
     })
     const next = harness
         ? "once the harness reads the declaration (its harness-defect ticket), retry it"
-        : "seal the key (starci app secret set <env> <member> <KEY> --from-host <KEY>), then retry it"
+        : "seal the key (starci app secret set --env <env> <member> <KEY> --from-host <KEY>), then retry it"
     return new Refusal(error.code, `${error.message}\ntask ${taskId} is awaiting_owner, blocked on custody: no try is spent and its work stays where it is; ${next}`)
 }

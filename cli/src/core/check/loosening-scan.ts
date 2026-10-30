@@ -49,7 +49,7 @@ const judgeFile = (root: string, policy: Policy, file: string, banned: ReadonlyS
 }
 
 /**
- * The Sonar block `starci app sonar` writes for the app that holds `file` (its sonar-project.properties), or undefined when
+ * The Sonar block `starci app sync --execute` writes for the app that holds `file` (its sonar-project.properties), or undefined when
  * the file is no app's Sonar file or the block cannot be derived; then no block is accepted and every exclusion is judged.
  */
 const generatedSonarBlock = (root: string, file: string): readonly string[] | undefined => {

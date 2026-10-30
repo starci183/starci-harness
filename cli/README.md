@@ -503,7 +503,7 @@ naming who reopened it. `needs list` and `needs show <key>` read the store.
 
 A slot of the hfs manifest that names a `pattern` is enabled only by `sides.<side>.patterns` of the app's
 `hfs.json`, an app-root file every workflow shares and no task writes, so the harness owns those lists (`harness/hfs-patterns.ts`).
-It reads which slots a task's paths lie in through @starci/hfs's own classifier (`starci app explain`) and declares each pattern
+It reads which slots a task's paths lie in through @starci/hfs's own classifier (`starci app slot`) and declares each pattern
 the branch lacks: before the task's Op worktree is cut (its `allowPaths`), before its verify (those and the files its result
 names), and when a red of its verify or of its wave names an `HFS_SLOT_NOT_ENABLED` slot. The declaration adds the names to that
 one list and keeps every other byte of `hfs.json` (`addToStringArray` in `shared/json-edit.ts`, proved by parsing the result), and
@@ -744,10 +744,10 @@ keeping no other key. It reads only the keys [policy/security.yaml](../policy/se
 other `SECRET_KEY_UNLISTED` before it opens the file; no message, envelope or evidence carries a value. A host service
 (`telegram-bridge`, `supervisor tick`) reads the file itself, so a key `host up` strips from its environment still arrives.
 [secret.env.example](../secret.env.example) names every key the host's secret.env holds. A provider key the owner sets once
-for several apps (`OPENROUTER_API_KEY`) reaches each app's sealed custody through `app secret set <env> <member> <KEY>
+for several apps (`OPENROUTER_API_KEY`) reaches each app's sealed custody through `app secret set --env <env> <member> <KEY>
 --from-host <HOST_KEY>` (`core/app/secret.ts`): the CLI reads HOST_KEY through the loader and hands the value to @starci/hfs as
 the stdin `set` reads, so no shell, argument, output, error or evidence carries it; an unlisted key is `SECRET_KEY_UNLISTED`,
-a listed one the host lacks `HOST_SECRET_MISSING`, and `--from-host` names exactly one key. Without it, `app secret set <env>
+a listed one the host lacks `HOST_SECRET_MISSING`, and `--from-host` names exactly one key. Without it, `app secret set --env <env>
 <member> <KEY>...` prompts on a terminal for each key with masked input and reads redirected stdin otherwise (the whole of it
 for one key, one `KEY=value` line per key for several), sealing every key in one write. `SOPS_AGE_KEY` is one of
 `secretKeys`: every `app` verb (`runHfs`) and `harness/custody.ts` hand @starci/hfs the loader's reader of it

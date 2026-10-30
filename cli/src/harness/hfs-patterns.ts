@@ -83,7 +83,7 @@ const appOf = (checkout: string): { readonly root: string; readonly file: string
 
 /**
  * The opt-in patterns the slots owning `paths` (repository-relative files or folders of `checkout`) need, enabled or not, read
- * through @starci/hfs's own classifier (`starci app explain`). A checkout with no app hfs.json, or one @starci/hfs refuses, needs none.
+ * through @starci/hfs's own classifier (`starci app slot`). A checkout with no app hfs.json, or one @starci/hfs refuses, needs none.
  */
 export const patternsOfPaths = async (checkout: string, paths: readonly string[]): Promise<PatternNeed[]> => {
     const app = appOf(checkout)

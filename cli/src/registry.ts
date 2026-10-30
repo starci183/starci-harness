@@ -15,7 +15,6 @@ import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
 import { versionVerb } from "./core/version.js"
 import { appInfoVerb } from "./lite/app/info.js"
-import { appSonarVerb } from "./core/app/sonar.js"
 import { appAddVerb } from "./core/app/add.js"
 import { appCheckVerb } from "./core/app/check.js"
 import { appCiVerb } from "./core/app/ci.js"
@@ -23,16 +22,15 @@ import { appCodemodVerb } from "./core/app/codemod.js"
 import { appCoverageVerb } from "./core/app/coverage.js"
 import { appDbVerb } from "./core/app/db.js"
 import { appEmitVerb } from "./core/app/emit.js"
-import { appExplainVerb } from "./core/app/explain.js"
-import { appHygieneVerb } from "./core/app/hygiene.js"
 import { appLintVerb } from "./core/app/lint.js"
-import { appNewVerb } from "./core/app/new.js"
 import { appReleaseVerb } from "./core/app/release.js"
 import { appScaffoldVerb } from "./core/app/scaffold.js"
 import { appSecretVerb } from "./core/app/secret.js"
 import { appStackVerb } from "./core/app/stack.js"
 import { appSyncVerb } from "./core/app/sync.js"
 import { appUpgradeVerb } from "./core/app/upgrade.js"
+import { appSlotVerb } from "./core/app/slot.js"
+import { appWorldVerb } from "./core/app/world.js"
 import { projectParkVerb } from "./core/project/park.js"
 import { projectRetireVerb } from "./core/project/retire.js"
 import { projectUnparkVerb } from "./core/project/unpark.js"
@@ -138,7 +136,6 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     taskResultVerb,
     taskCancelVerb,
     appInfoVerb,
-    appSonarVerb,
     appAddVerb,
     appCheckVerb,
     appCiVerb,
@@ -146,16 +143,15 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     appCoverageVerb,
     appDbVerb,
     appEmitVerb,
-    appExplainVerb,
-    appHygieneVerb,
     appLintVerb,
-    appNewVerb,
     appReleaseVerb,
     appScaffoldVerb,
     appSecretVerb,
+    appSlotVerb,
     appStackVerb,
     appSyncVerb,
     appUpgradeVerb,
+    appWorldVerb,
     seatStartVerb,
     projectRetireVerb,
     projectParkVerb,

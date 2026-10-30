@@ -5,7 +5,7 @@ import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { packageVersion } from "../version.js"
 
 /** The `starci app` verbs @starci/hfs implements; each is one verb file of this folder. */
-export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "explain" | "hygiene" | "lint" | "new" | "release" | "scaffold" | "secret" | "stack" | "sync" | "upgrade"
+export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "lint" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
 
 /**
  * What the CLI hands @starci/hfs besides its version, for the verbs that use it: the caller's role an urgent release record names, and the
@@ -67,7 +67,7 @@ export const withoutArg = (args: readonly string[], name: string): string[] => {
     return args.filter((_token, at) => !drop.has(at))
 }
 
-/** The operands of a forwarded argv that come before its first option: the action and what it names (`secret set <env> <slug> <KEY>`). */
+/** The operands of a forwarded argv that come before its first option: the action and what it names (`secret set <slug> <KEY>`, its `--env` aside). */
 export const leadingOperands = (args: readonly string[]): string[] => {
     const first = args.findIndex((token) => token.startsWith("-"))
     return first < 0 ? [...args] : args.slice(0, first)
