@@ -16,8 +16,11 @@
 // src/ and its module tiers, and the trees that belong to the app root alone (.starciwork, .starcistacks), in lite and in full. Each case lets the
 // machine judge a hermetic app and compares the paths it names with the clean tree.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import type { FileMap, Side } from './helpers/hfs-arch-fixture.mjs';
+import type { ArchitectureCheckResult } from '../runtime/scripts/hfs/architecture/index.mjs';
 import { archFixture, appDeclaration, runArch } from './helpers/hfs-arch-fixture.mjs';
 import { checkHfsWithoutConfig } from '../runtime/scripts/hfs/architecture/hfs.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
@@ -32,11 +35,11 @@ const ROOT_BE = { ...APP_ROOT, 'eslint.config.mjs': 'export default [];\n', 'tsc
 const SOURCE = 'export const value = 1;\n';
 
 /** The files of a fixture of `edition`: the app hfs.json carries the edition. */
-const declared = (profile, edition, files) => ({ '../hfs.json': `${JSON.stringify({ ...appDeclaration(profile, { apps: profile === 'be' ? [{ name: 'core', kind: 'api' }] : [{ name: 'web', kind: 'next' }] }), edition }, null, 2)}\n`, ...files });
-const sideRun = (context, profile, edition, files) => runArch(archFixture(context, { profile, files: declared(profile, edition, files) }));
+const declared = (profile: Side, edition: string, files: FileMap) => ({ '../hfs.json': `${JSON.stringify({ ...appDeclaration(profile, { apps: profile === 'be' ? [{ name: 'core', kind: 'api' }] : [{ name: 'web', kind: 'next' }] }), edition }, null, 2)}\n`, ...files });
+const sideRun = (context: TestContext, profile: Side, edition: string, files: FileMap) => runArch(archFixture(context, { profile, files: declared(profile, edition, files) }));
 /** The app-root tree findings of the app whose fe side folder the fixture is. */
-const rootRun = (context, edition, files) => checkHfsWithoutConfig(path.dirname(archFixture(context, { profile: 'fe', files: declared('fe', edition, files) })));
-const paths = (report, code) => report.violations.filter((item) => item.ruleId === code).map((item) => item.path).sort(byCodeUnit);
+const rootRun = (context: TestContext, edition: string, files: FileMap) => checkHfsWithoutConfig(path.dirname(archFixture(context, { profile: 'fe', files: declared('fe', edition, files) })));
+const paths = (report: Pick<ArchitectureCheckResult, 'violations'>, code: string) => report.violations.filter((item) => item.ruleId === code).map((item) => item.path).sort(byCodeUnit);
 
 for (const edition of ['lite', 'full']) {
   test(`${edition}: a root entry of a side that no slot names is refused, a clean side is accepted`, (context) => {

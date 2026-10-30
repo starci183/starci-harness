@@ -1,21 +1,30 @@
 // Owning-package behavior proof: synthetic custody and injected tools never reach a real provider.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import type { DeployConfig } from '../stack/config.mjs';
+import type { StackContext, StackIo } from '../stack/context.mjs';
 import { openSealedSession } from '../stack/remote.mjs';
 import { withDockerTransport } from '../stack/docker-transport.mjs';
 import { stackMain } from '../stack/cli.mjs';
 import { parseTargetBinding, bindStackTarget, assertBoundCustody } from '../stack/target-binding.mjs';
 
 const STACK = { kind: 'docker-swarm', environment: 'staging', stack: 'fixture', host: 'host.example', user: 'ops', port: 22 };
-const stamp = '20261018000000_base.sql';
 
-function files(t) {
+// reason: the tests inject partial contexts, configs and IO that carry only the fields the code under test reads.
+const asContext = (value: object) => value as unknown as StackContext;
+const asConfig = (value: object) => value as unknown as DeployConfig;
+const asIo = (value: object) => value as unknown as StackIo;
+
+interface SpawnCall { file: string; args: string[]; options: { env: Record<string, string>; input?: string; background?: boolean } }
+
+function files(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-native-binding-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const write = (name, value) => { const file = path.join(root, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, value); };
+  const write = (name: string, value: string) => { const file = path.join(root, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, value); };
   return { root, write };
 }
 
@@ -24,7 +33,7 @@ test('a wrong sealed account stops before opening a key, writing session files o
   const ctx = { env: {}, spawn: () => { tools += 1; }, sops: {
     decrypt: () => ({ VPS_HOST: 'other.example', VPS_USER: 'ops' }), decryptBinary: () => { keyReads += 1; throw new Error('unexpected private key open'); },
   } };
-  assert.throws(() => openSealedSession(ctx, { remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, secretsDir: 'synthetic', nativeTarget: STACK }), /differs from the accepted native target/);
+  assert.throws(() => openSealedSession(asContext(ctx), asConfig({ remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, secretsDir: 'synthetic', nativeTarget: STACK })), /differs from the accepted native target/);
   assert.equal(keyReads, 0);
   assert.equal(tools, 0);
 });
@@ -32,21 +41,21 @@ test('a wrong sealed account stops before opening a key, writing session files o
 test('a bound private Docker session pins the accepted SSH port and closes its owned temporary files', async t => {
   const f = files(t), secretsDir = path.join(f.root, 'secrets');
   for (const member of ['ops', 'key', 'known']) f.write(`secrets/${member}.enc`, 'synthetic envelope');
-  const calls = [], env = { HOME: f.root, PATH: '' };
+  const calls: SpawnCall[] = [], env = { HOME: f.root, PATH: '' };
   const ctx = { env, platform: 'linux', sshPath: 'ssh', stderr: () => {},
-    spawn: (file, args, options) => { calls.push({ file, args, options }); return { status: 0, stdout: '', stderr: '' }; },
+    spawn: (file: string, args: string[], options: SpawnCall['options']) => { calls.push({ file, args, options }); return { status: 0, stdout: '', stderr: '' }; },
     sops: { decrypt: () => ({ VPS_HOST: STACK.host, VPS_USER: STACK.user }),
-      decryptBinary: file => file.endsWith('key.enc') ? 'synthetic PRIVATE KEY' : 'host.example ssh-ed25519 synthetic' },
+      decryptBinary: (file: string) => file.endsWith('key.enc') ? 'synthetic PRIVATE KEY' : 'host.example ssh-ed25519 synthetic' },
   };
-  const config = bindStackTarget(ctx, { repoRoot: f.root, env: 'staging', stack: 'fixture', secretsDir,
-    remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, verify: { http: [] } }, STACK);
-  let temporaryHome;
-  await withDockerTransport(ctx, config, {}, async bound => {
+  const config = bindStackTarget(ctx, asConfig({ repoRoot: f.root, env: 'staging', stack: 'fixture', secretsDir,
+    remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, verify: { http: [] } }), STACK);
+  let temporaryHome = '';
+  await withDockerTransport(asContext(ctx), config, {}, async bound => {
     bound.spawn('docker', ['info']);
     const ssh = calls.find(call => call.file === 'ssh' && call.args.includes('-MNf'));
     assert.ok(ssh);
     assert.equal(ssh.args[ssh.args.indexOf('-p') + 1], '22');
-    temporaryHome = ssh.options.env.HOME;
+    temporaryHome = ssh.options.env.HOME!;
     assert.match(fs.readFileSync(path.join(temporaryHome, '.ssh/config'), 'utf8'), /\n  Port 22\n/);
   });
   assert.ok(calls.some(call => call.file === 'ssh' && call.args.includes('exit')));
@@ -63,14 +72,14 @@ test('only a bound stack tool boundary removes AGE aliases while preserving lazy
   } } }));
   f.write('.starcistacks/staging/secrets/vps.enc.yaml', 'synthetic envelope');
   const inherited = { sops_age_key: 'synthetic-age', SOPS_AGE_KEY_FILE: 'synthetic-key-file', HOME: f.root, PATH: '' };
-  const calls = [];
+  const calls: SpawnCall[] = [];
   let custodyReads = 0;
   // The one member holds the host, the user, the private key and the pinned known_hosts.
   const sops = { decrypt: () => { custodyReads += 1; assert.equal(inherited.sops_age_key, 'synthetic-age');
     return { VPS_HOST: STACK.host, VPS_USER: STACK.user, privateKey: 'synthetic PRIVATE KEY', knownHosts: 'host.example ssh-ed25519 synthetic' }; } };
-  const spawn = (file, args, options) => { calls.push({ file, args, options }); return { status: 0, stdout: '', stderr: '' }; };
+  const spawn = (file: string, args: string[], options: SpawnCall['options']) => { calls.push({ file, args, options }); return { status: 0, stdout: '', stderr: '' }; };
   const io = { cwd: f.root, env: inherited, platform: 'linux', sshPath: 'ssh', stdout: () => {}, stderr: () => {}, spawn, sops,
-    importer: async () => ({ verifyStack: async ctx => {
+    importer: async () => ({ verifyStack: async (ctx: StackContext) => {
       assert.equal(ctx.env, inherited);
       assert.equal(ctx.sops, sops);
       assert.equal(Object.hasOwn(ctx, 'sops'), false);
@@ -80,17 +89,17 @@ test('only a bound stack tool boundary removes AGE aliases while preserving lazy
         env: { SoPs_AgE_KeY: 'synthetic-explicit-age', PUBLIC_VALUE: 'kept' } });
       return { ok: true, lines: [], data: {} };
     } }) };
-  assert.equal(await stackMain(['verify', '--env', 'staging', '--target-binding', JSON.stringify(STACK)], io), 0);
+  assert.equal(await stackMain(['verify', '--env', 'staging', '--target-binding', JSON.stringify(STACK)], asIo(io)), 0);
   assert.ok(custodyReads > 0);
   assert.ok(calls.some(call => call.file === 'ssh' && call.args.includes('exit')));
   assert.ok(calls.every(call => !Object.keys(call.options.env).some(key => /^SOPS_/i.test(key))));
-  const explicit = calls.find(call => call.file === 'explicit-tool').options;
+  const explicit = calls.find(call => call.file === 'explicit-tool')!.options;
   assert.equal(explicit.input, 'public-input');
   assert.equal(explicit.background, true);
   assert.equal(explicit.env.PUBLIC_VALUE, 'kept');
   assert.equal(inherited.sops_age_key, 'synthetic-age');
   calls.length = 0;
-  assert.equal(await stackMain(['verify', '--env', 'staging'], io), 0);
+  assert.equal(await stackMain(['verify', '--env', 'staging'], asIo(io)), 0);
   assert.ok(calls.some(call => call.options.env?.sops_age_key === 'synthetic-age'));
 });
 
@@ -98,17 +107,17 @@ test('a native stack binding refuses ambient Docker routing and preserves explic
   const f = files(t), config = { repoRoot: f.root, env: 'staging', stack: 'fixture', secretsDir: f.root,
     remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, verify: { http: [] } };
   for (const name of ['ops', 'key', 'known']) f.write(`${name}.enc`, 'synthetic');
-  assert.throws(() => bindStackTarget({ env: { DOCKER_HOST: 'ssh://other.example' } }, config, STACK));
+  assert.throws(() => bindStackTarget({ env: { DOCKER_HOST: 'ssh://other.example' } }, asConfig(config), STACK));
   const selected = { ...config, verify: { http: [{ method: 'POST' }], exec: [{ command: ['declared-command'] }] } };
-  assert.deepEqual(bindStackTarget({ env: {} }, selected, STACK).verify, selected.verify);
+  assert.deepEqual(bindStackTarget({ env: {} }, asConfig(selected), STACK).verify, selected.verify);
 });
 
 test('losing a declared sealed member after admission cannot select ambient Docker', async t => {
   const f = files(t);
   let calls = 0, bodyCalls = 0;
-  const ctx = { env: {}, platform: 'linux', spawn: () => { calls += 1; }, sops: { decrypt: () => { throw new Error('synthetic missing custody'); } } };
-  await assert.rejects(withDockerTransport(ctx, { nativeTarget: STACK, secretsDir: f.root,
-    remote: { host: 'unrelated-alias', sealed: { ops: 'missing', sshKey: 'key', knownHosts: 'known' } } }, {},
+  const ctx = asContext({ env: {}, platform: 'linux', spawn: () => { calls += 1; }, sops: { decrypt: () => { throw new Error('synthetic missing custody'); } } });
+  await assert.rejects(withDockerTransport(ctx, asConfig({ nativeTarget: STACK, secretsDir: f.root,
+    remote: { host: 'unrelated-alias', sealed: { ops: 'missing', sshKey: 'key', knownHosts: 'known' } } }), {},
   async () => { bodyCalls += 1; }), /cannot open the sealed member/);
   assert.equal(calls, 0);
   assert.equal(bodyCalls, 0);

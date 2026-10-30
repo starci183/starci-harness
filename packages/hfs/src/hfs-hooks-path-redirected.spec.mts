@@ -3,6 +3,7 @@
 // proves: HFS_HOOKS_NOT_INSTALLED@lite
 // proves: HFS_HOOKS_NOT_INSTALLED@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,9 +13,9 @@ import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
 import { checkHfsWithoutConfig } from '../runtime/scripts/hfs/architecture/hfs.mjs';
 
 const CODE = 'HFS_HOOKS_PATH_REDIRECTED';
-const git = (root, ...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe', encoding: 'utf8' });
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, stdio: 'pipe', encoding: 'utf8' });
 
-function fixture(t, edition) {
+function fixture(t: TestContext, edition: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-hooks-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const declaration = { hfs: 3, kind: 'app', project: 'proof', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
@@ -26,7 +27,7 @@ function fixture(t, edition) {
   return root;
 }
 
-const findings = (root) => checkHfsWithoutConfig(root).violations.filter((finding) => finding.ruleId === CODE);
+const findings = (root: string) => checkHfsWithoutConfig(root).violations.filter((finding) => finding.ruleId === CODE);
 
 for (const edition of ['lite', 'full']) {
   test(`${CODE}@${edition}: a redirected clone reports its actual config and accepts the husky path`, (t) => {
@@ -34,8 +35,8 @@ for (const edition of ['lite', 'full']) {
     git(root, 'config', '--local', 'core.hooksPath', '.git/disabled-hooks');
     const found = findings(root);
     assert.equal(found.length, 1);
-    assert.equal(found[0].path, '.git/config');
-    assert.match(found[0].message, /\.git\/disabled-hooks/);
+    assert.equal(found[0]!.path, '.git/config');
+    assert.match(found[0]!.message, /\.git\/disabled-hooks/);
     git(root, 'config', '--local', 'core.hooksPath', '.husky/_');
     assert.deepEqual(findings(root), []);
     git(root, 'config', '--local', '--unset', 'core.hooksPath');
@@ -44,7 +45,7 @@ for (const edition of ['lite', 'full']) {
 }
 
 const NOT_INSTALLED = 'HFS_HOOKS_NOT_INSTALLED';
-const installFindings = (root) => checkHfsWithoutConfig(root).violations.filter((finding) => finding.ruleId === NOT_INSTALLED);
+const installFindings = (root: string) => checkHfsWithoutConfig(root).violations.filter((finding) => finding.ruleId === NOT_INSTALLED);
 
 for (const edition of ['lite', 'full']) {
   test(`${NOT_INSTALLED}@${edition}: a husky path without installed hooks is a violation and an installed folder is a valid pass`, (t) => {
@@ -53,7 +54,7 @@ for (const edition of ['lite', 'full']) {
     git(root, 'config', '--local', 'core.hooksPath', '.husky/_');
     const missing = installFindings(root);
     assert.equal(missing.length, 1);
-    assert.match(missing[0].message, /does not exist/);
+    assert.match(missing[0]!.message, /does not exist/);
     fs.mkdirSync(path.join(root, '.husky', '_'), { recursive: true });
     fs.writeFileSync(path.join(root, '.husky', '_', 'pre-commit'), '#!/bin/sh\n');
     assert.match(installFindings(root)[0]?.message ?? '', /holds no installed hook/);

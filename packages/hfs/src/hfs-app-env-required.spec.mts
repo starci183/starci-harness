@@ -1,5 +1,6 @@
 // proves: BE_APP_ENV_REQUIRED@lite BE_APP_ENV_REQUIRED@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,7 +18,7 @@ export const readApiEnv = (env: EnvSource): ApiEnv => ({ port: env.int('PORT') }
 `;
 
 /** Each fixture uses a real tree, including the untracked-file and unreadable-path cases. */
-function tree(t, files) {
+function tree(t: TestContext, files: Record<string, string>) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-app-env-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(files)) {

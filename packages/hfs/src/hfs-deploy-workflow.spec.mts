@@ -7,6 +7,7 @@
 // proves: HFS_APP_WORKFLOW_TRIGGER@lite
 // proves: HFS_APP_WORKFLOW_TRIGGER@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -14,23 +15,32 @@ import path from 'node:path';
 import { ALL_CHECK_CODES, checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { deployWorkflowFindings } from '../runtime/scripts/hfs/rules/deploy-workflow.mjs';
 import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.mjs';
-import { OR_ECHO, OR_TRUE } from './fixtures/loosening/swallows.mjs';
 import { renderTargets } from '../sync/index.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
+
+// reason: src/fixtures holds untyped .mjs fixtures (excluded from tsconfig, no declarations), so they are imported by a variable specifier and typed here.
+const SWALLOWS = './fixtures/loosening/swallows.mjs';
+const { OR_ECHO, OR_TRUE }: Record<'OR_ECHO' | 'OR_TRUE', string> = await import(SWALLOWS);
+
+// reason: a workflow document is parsed-YAML-shaped data that the cases delete from, assign to and replace freely.
+type Doc = any;
+// reason: the stub carries only the facts the workflow templates read.
+type AppSource = NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
+interface Context { repoRoot: string; files: string[]; repo: { kind: string; edition: string }; all?: string[]; isRoot?: boolean; inScope?: (file: string) => boolean }
 
 const SHA = 'a'.repeat(40);
 const HASH = 'b'.repeat(64);
 const DEPLOY_FILE = '.github/workflows/api-deploy.yml';
 const CODES = new Set(['HFS_DEPLOY_WORKFLOW', 'HFS_WORKFLOW_PIN', 'HFS_CI_TOOL_INSTALL', 'HFS_APP_WORKFLOW_TRIGGER']);
-const compare = (left, right) => left.localeCompare(right);
-const reference = (name) => '${{ secrets.' + name + ' }}';
+const compare = (left: string, right: string) => left.localeCompare(right);
+const reference = (name: string) => '${{ secrets.' + name + ' }}';
 const on = { push: { tags: ['v*'] }, workflow_dispatch: {} };
 // The release CI (ci.yml) also runs on the release candidate branches (owner ruling candidate-ci, 2026-10-18).
 const ciOn = { push: { tags: ['v*'], branches: ['main', 'release/candidate-*'] }, workflow_dispatch: {} };
 // HFS_WORKFLOW_PIN is reported by the supply-chain enforcer of R251; the other three codes by deploy-workflow.
-const workflowFindings = (context) => [...deployWorkflowFindings(context), ...supplyChainFindings({ ...context, isRoot: true }).filter((finding) => finding.code === 'HFS_WORKFLOW_PIN')];
-const workflow = () => ({
+const workflowFindings = (context: Context) => [...deployWorkflowFindings(context), ...supplyChainFindings({ ...context, isRoot: true }).filter((finding) => finding.code === 'HFS_WORKFLOW_PIN')];
+const workflow = (): Doc => ({
   on,
   permissions: { contents: 'read' },
   concurrency: { group: 'deploy-production', 'cancel-in-progress': false },
@@ -41,7 +51,7 @@ const workflow = () => ({
     },
   },
 });
-const tree = (t, files) => {
+const tree = (t: TestContext, files: Record<string, unknown>) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-deploy-workflow-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(files)) {
@@ -51,33 +61,33 @@ const tree = (t, files) => {
   }
   return root;
 };
-const run = (t, edition, doc, file = DEPLOY_FILE) => workflowFindings({ repoRoot: tree(t, { [file]: doc }), files: [file], repo: { kind: 'app', edition } });
-const hasCode = (findings, code) => findings.some((finding) => finding.code === code);
+const run = (t: TestContext, edition: string, doc: Doc, file = DEPLOY_FILE) => workflowFindings({ repoRoot: tree(t, { [file]: doc }), files: [file], repo: { kind: 'app', edition } });
+const hasCode = (findings: { code: string }[], code: string) => findings.some((finding) => finding.code === code);
 
 for (const edition of ['lite', 'full']) {
   test(`HFS_DEPLOY_WORKFLOW ${edition}: refuses every missing custody/control field and dotenv/extra secret escape`, (t) => {
-    const cases = [
-      ['environment', (doc) => { delete doc.jobs.deploy.environment; }],
-      ['empty environment name', (doc) => { doc.jobs.deploy.environment = { name: '' }; }],
-      ['permissions', (doc) => { delete doc.permissions; }],
-      ['concurrency', (doc) => { delete doc.concurrency; }],
-      ['empty concurrency', (doc) => { doc.concurrency = {}; }],
-      ['materialization', (doc) => { doc.jobs.deploy.steps[1] = { run: 'docker stack deploy -c stack.yaml demo' }; }],
-      ['materialize comment', (doc) => { doc.jobs.deploy.steps[1] = { run: '# starci app secret materialize --env production\ndocker stack deploy -c stack.yaml demo' }; }],
-      ['echoed materialize', (doc) => { doc.jobs.deploy.steps[1] = { run: 'echo "starci app secret materialize --env production"\ndocker stack deploy -c stack.yaml demo' }; }],
-      ['age key comment', (doc) => { doc.jobs.deploy.steps[1] = { run: '# SOPS_AGE_KEY=' + reference('SOPS_AGE_KEY') + '\ndocker stack deploy -c stack.yaml demo' }; }],
-      ['disabled materialization', (doc) => { doc.jobs.deploy.steps[1].if = '${{ false }}'; doc.jobs.deploy.steps.push({ run: 'docker stack deploy -c stack.yaml demo' }); }],
-      ['API_ENV blob', (doc) => { doc.jobs.deploy.steps[1].env.API_ENV = reference('API_ENV'); }],
-      ['bracket WEB_ENV blob', (doc) => { doc.jobs.deploy.steps[1].env.WEB_ENV = "${{ secrets['WEB_ENV'] }}"; }],
-      ['dynamic secret', (doc) => { doc.jobs.deploy.steps[1].env.VALUE = '${{ secrets[inputs.secret_name] }}'; }],
-      ['bulk secret', (doc) => { doc.jobs.deploy.steps[1].env.VALUE = '${{ toJSON(secrets) }}'; }],
-      ['inherited secrets', (doc) => { doc.jobs.deploy.secrets = 'inherit'; }],
-      ['dotenv redirect', (doc) => { doc.jobs.deploy.steps[1].run += '\nprintf "%s" "$API_ENV" > .env'; }],
-      ['nested dotenv append', (doc) => { doc.jobs.deploy.steps[1].run += '\nprintf "%s" "$API_ENV" >> "deploy/api.env"'; }],
-      ['tee dotenv', (doc) => { doc.jobs.deploy.steps[1].run += '\nprintenv | tee -a ./deploy/.env.production'; }],
-      ['env_file', (doc) => { doc.jobs.deploy.steps[1].with = { env_file: 'API_ENV' }; }],
-      ['second unprotected deploy job', (doc) => { doc.jobs['worker-deploy'] = { 'runs-on': 'ubuntu-latest', steps: [{ run: 'docker stack deploy -c stack.yaml worker' }] }; }],
-      ['age key belongs to another job', (doc) => { doc.jobs.prepare = doc.jobs.deploy; doc.jobs.deploy = { 'runs-on': 'ubuntu-latest', environment: 'production', steps: [{ run: 'docker stack deploy -c stack.yaml demo' }] }; }],
+    const cases: [string, (doc: Doc) => void][] = [
+      ['environment', (doc: Doc) => { delete doc.jobs.deploy.environment; }],
+      ['empty environment name', (doc: Doc) => { doc.jobs.deploy.environment = { name: '' }; }],
+      ['permissions', (doc: Doc) => { delete doc.permissions; }],
+      ['concurrency', (doc: Doc) => { delete doc.concurrency; }],
+      ['empty concurrency', (doc: Doc) => { doc.concurrency = {}; }],
+      ['materialization', (doc: Doc) => { doc.jobs.deploy.steps[1] = { run: 'docker stack deploy -c stack.yaml demo' }; }],
+      ['materialize comment', (doc: Doc) => { doc.jobs.deploy.steps[1] = { run: '# starci app secret materialize --env production\ndocker stack deploy -c stack.yaml demo' }; }],
+      ['echoed materialize', (doc: Doc) => { doc.jobs.deploy.steps[1] = { run: 'echo "starci app secret materialize --env production"\ndocker stack deploy -c stack.yaml demo' }; }],
+      ['age key comment', (doc: Doc) => { doc.jobs.deploy.steps[1] = { run: '# SOPS_AGE_KEY=' + reference('SOPS_AGE_KEY') + '\ndocker stack deploy -c stack.yaml demo' }; }],
+      ['disabled materialization', (doc: Doc) => { doc.jobs.deploy.steps[1].if = '${{ false }}'; doc.jobs.deploy.steps.push({ run: 'docker stack deploy -c stack.yaml demo' }); }],
+      ['API_ENV blob', (doc: Doc) => { doc.jobs.deploy.steps[1].env.API_ENV = reference('API_ENV'); }],
+      ['bracket WEB_ENV blob', (doc: Doc) => { doc.jobs.deploy.steps[1].env.WEB_ENV = "${{ secrets['WEB_ENV'] }}"; }],
+      ['dynamic secret', (doc: Doc) => { doc.jobs.deploy.steps[1].env.VALUE = '${{ secrets[inputs.secret_name] }}'; }],
+      ['bulk secret', (doc: Doc) => { doc.jobs.deploy.steps[1].env.VALUE = '${{ toJSON(secrets) }}'; }],
+      ['inherited secrets', (doc: Doc) => { doc.jobs.deploy.secrets = 'inherit'; }],
+      ['dotenv redirect', (doc: Doc) => { doc.jobs.deploy.steps[1].run += '\nprintf "%s" "$API_ENV" > .env'; }],
+      ['nested dotenv append', (doc: Doc) => { doc.jobs.deploy.steps[1].run += '\nprintf "%s" "$API_ENV" >> "deploy/api.env"'; }],
+      ['tee dotenv', (doc: Doc) => { doc.jobs.deploy.steps[1].run += '\nprintenv | tee -a ./deploy/.env.production'; }],
+      ['env_file', (doc: Doc) => { doc.jobs.deploy.steps[1].with = { env_file: 'API_ENV' }; }],
+      ['second unprotected deploy job', (doc: Doc) => { doc.jobs['worker-deploy'] = { 'runs-on': 'ubuntu-latest', steps: [{ run: 'docker stack deploy -c stack.yaml worker' }] }; }],
+      ['age key belongs to another job', (doc: Doc) => { doc.jobs.prepare = doc.jobs.deploy; doc.jobs.deploy = { 'runs-on': 'ubuntu-latest', environment: 'production', steps: [{ run: 'docker stack deploy -c stack.yaml demo' }] }; }],
     ];
     for (const [name, mutate] of cases) {
       const doc = workflow();
@@ -99,15 +109,15 @@ for (const edition of ['lite', 'full']) {
   test(`HFS_DEPLOY_WORKFLOW ${edition}: protected materialization and transport-only secrets pass`, (t) => {
     const doc = workflow();
     doc.jobs.deploy.environment = { name: 'production', url: 'https://demo.example' };
-    doc.jobs.deploy.steps[1].env.VPS_SSH_KEY = reference('VPS_SSH_KEY');
-    doc.jobs.deploy.steps[1].env.SSH_KNOWN_HOSTS = reference('SSH_KNOWN_HOSTS');
+    doc.jobs.deploy.steps[1]!.env.VPS_SSH_KEY = reference('VPS_SSH_KEY');
+    doc.jobs.deploy.steps[1]!.env.SSH_KNOWN_HOSTS = reference('SSH_KNOWN_HOSTS');
     doc.jobs.prepare = { 'runs-on': 'ubuntu-latest', steps: [{ run: 'starci app lint' }] };
     assert.deepEqual(run(t, edition, doc), []);
     const ageOnly = workflow();
-    ageOnly.jobs.deploy.steps[1].run = 'docker stack deploy -c stack.yaml demo';
+    ageOnly.jobs.deploy.steps[1]!.run = 'docker stack deploy -c stack.yaml demo';
     assert.deepEqual(run(t, edition, ageOnly), []);
     const materializeOnly = workflow();
-    delete materializeOnly.jobs.deploy.steps[1].env;
+    delete materializeOnly.jobs.deploy.steps[1]!.env;
     materializeOnly.jobs.deploy.permissions = {};
     materializeOnly.jobs.deploy.concurrency = 'production';
     delete materializeOnly.permissions;
@@ -119,7 +129,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`HFS_DEPLOY_WORKFLOW ${edition}: a job that reads SOPS_AGE_KEY is bound to its environment, deployment job or not`, (t) => {
-    const build = (job, extra = {}) => ({ name: 'images', on, permissions: { contents: 'read' }, ...extra, jobs: { image: { 'runs-on': 'ubuntu-latest', ...job } } });
+    const build = (job: Doc, extra: Doc = {}) => ({ name: 'images', on, permissions: { contents: 'read' }, ...extra, jobs: { image: { 'runs-on': 'ubuntu-latest', ...job } } });
     const step = { env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') }, run: 'npx --no-install starci app stack build-args --env production --app api' };
     const file = '.github/workflows/images.yml';
     const unbound = run(t, edition, build({ steps: [step] }), file);
@@ -143,7 +153,7 @@ for (const edition of ['lite', 'full']) {
   test(`HFS_DEPLOY_WORKFLOW ${edition}: dotenv output targets preserve path and filename boundaries`, (t) => {
     for (const target of ['.env', '.env.production', 'api.env', '"deploy/api.env"', "'./deploy/.env.production'", `${'nested/'.repeat(1000)}api.env`]) {
       const doc = workflow();
-      doc.jobs.deploy.steps[1].run += `\nprintf content > ${target}`;
+      doc.jobs.deploy.steps[1]!.run += `\nprintf content > ${target}`;
       assert.equal(hasCode(run(t, edition, doc), 'HFS_DEPLOY_WORKFLOW'), true, target);
     }
     for (const command of [
@@ -152,7 +162,7 @@ for (const edition of ['lite', 'full']) {
       `printf content > ${'nested/'.repeat(1000)}${'a'.repeat(20000)}.log`,
     ]) {
       const doc = workflow();
-      doc.jobs.deploy.steps[1].run += `\n${command}`;
+      doc.jobs.deploy.steps[1]!.run += `\n${command}`;
       assert.deepEqual(run(t, edition, doc), [], command);
     }
   });
@@ -164,7 +174,7 @@ for (const edition of ['lite', 'full']) {
     }
     assert.equal(hasCode(run(t, edition, { on, jobs: { reuse: { uses: 'org/repo/.github/workflows/release.yml@v2' } } }, '.github/workflows/release.yml'), 'HFS_WORKFLOW_PIN'), true);
     const doc = workflow();
-    doc.jobs.deploy.steps[0].uses = 'actions/checkout@v4';
+    doc.jobs.deploy.steps[0]!.uses = 'actions/checkout@v4';
     assert.equal(hasCode(run(t, edition, doc), 'HFS_WORKFLOW_PIN'), true);
   });
 
@@ -226,7 +236,7 @@ for (const edition of ['lite', 'full']) {
     for (const trigger of [on, { push: { tags: ['v*'] } }, { workflow_dispatch: { inputs: { ref: { required: true } } } }, 'workflow_dispatch', ['workflow_dispatch']]) {
       assert.deepEqual(run(t, edition, { on: trigger, jobs: { lint: { steps: [{ run: 'starci app lint' }] } } }, '.github/workflows/lint.yml'), []);
     }
-    const ci = (trigger) => run(t, edition, { on: trigger, jobs: { lint: { steps: [{ run: 'starci app lint' }] } } }, '.github/workflows/ci.yml');
+    const ci = (trigger: Doc) => run(t, edition, { on: trigger, jobs: { lint: { steps: [{ run: 'starci app lint' }] } } }, '.github/workflows/ci.yml');
     assert.deepEqual(ci(ciOn), []);
     assert.equal(hasCode(ci(on), 'HFS_APP_WORKFLOW_TRIGGER'), true, 'the release CI must also run on the release candidate branches');
     const yaml = `name: Release\non:\n  push:\n    tags: ['v*']\n  workflow_dispatch:\npermissions: {}\nconcurrency: production\njobs:\n  deploy:\n    environment: production\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@${SHA}\n      - run: starci app secret materialize --env production\n`;
@@ -237,8 +247,8 @@ for (const edition of ['lite', 'full']) {
     const doc = workflow();
     doc.on = { push: { branches: ['main'] } };
     delete doc.jobs.deploy.environment;
-    doc.jobs.deploy.steps[0].uses = 'actions/checkout@v4';
-    doc.jobs.deploy.steps[1].run += '\nnpm i -g tool';
+    doc.jobs.deploy.steps[0]!.uses = 'actions/checkout@v4';
+    doc.jobs.deploy.steps[1]!.run += '\nnpm i -g tool';
     const root = tree(t, { [DEPLOY_FILE]: doc });
     const declaration = { hfs: 3, kind: 'app', project: 'demo', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }, { name: 'cli', kind: 'cli' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
     const findings = checkRepo({ repoRoot: root, declaration, files: [DEPLOY_FILE], tree: false }).findings.filter((finding) => CODES.has(finding.code));
@@ -251,11 +261,11 @@ for (const edition of ['lite', 'full']) {
 test('R251 scopes to app editions, tracked workflows and the requested paths, with all-tree root ownership', (t) => {
   const bad = { on: 'push', jobs: { lint: { steps: [{ uses: 'actions/checkout@v4' }] } } };
   const files = ['.github/workflows/ci.yml', 'be/.github/workflows/ci.yml', 'tests/fixtures/.github/workflows/ci.yml', '.github/actions/local/action.yml', 'docs/workflow.yml'];
-  const context = { repoRoot: tree(t, Object.fromEntries(files.map((file) => [file, bad]))), files, repo: { kind: 'app', edition: 'lite' } };
+  const context: Context = { repoRoot: tree(t, Object.fromEntries(files.map((file) => [file, bad]))), files, repo: { kind: 'app', edition: 'lite' } };
   for (const repo of [{ kind: 'be', edition: 'lite' }, { kind: 'app', edition: 'unknown' }, { kind: 'fe', edition: 'full' }]) assert.deepEqual(deployWorkflowFindings({ ...context, repo }), []);
   assert.deepEqual(deployWorkflowFindings({ ...context, isRoot: false }), []);
   assert.deepEqual(deployWorkflowFindings({ ...context, inScope: () => false }), []);
-  const findings = deployWorkflowFindings({ ...context, files: [], all: files, isRoot: true, inScope: (file) => file.startsWith('be/') });
+  const findings = deployWorkflowFindings({ ...context, files: [], all: files, isRoot: true, inScope: (file: string) => file.startsWith('be/') });
   assert.deepEqual(findings.map((finding) => finding.path), ['be/.github/workflows/ci.yml', 'be/.github/workflows/ci.yml']);
   // Every tracked workflow is judged wherever it lives (the runtime-test exemption for tests/ went with the runtime tests):
   // a ci.yml on `push` breaks the release-CI trigger and the push filter; the actions/composite files are no workflows.
@@ -273,22 +283,22 @@ test('R251: every managed workflow that opens sealed members is bound to the env
   };
   for (const edition of ['lite', 'full']) {
     for (const [name, stack] of Object.entries(stacks)) {
-      const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source: { files: [], read: () => '', stack, hasImage: () => true } });
+      const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source: { files: [], read: () => '', stack, hasImage: () => true } as unknown as AppSource });
       const workflows = Object.fromEntries(targets.filter((target) => target.path.startsWith('.github/workflows/')).map((target) => [target.path, target.content]));
       const files = Object.keys(workflows);
       const findings = deployWorkflowFindings({ repoRoot: tree(t, workflows), files, repo: { kind: 'app', edition } });
       assert.deepEqual(findings.filter((finding) => finding.code === 'HFS_DEPLOY_WORKFLOW'), [], `${edition} ${name}`);
       for (const [file, content] of Object.entries(workflows)) {
-        for (const [job, body] of Object.entries(parseWorkflow(content).jobs ?? {})) {
+        for (const [job, body] of Object.entries<Doc>(parseWorkflow(content).jobs ?? {})) {
           if (JSON.stringify(body).includes('secrets.SOPS_AGE_KEY') && !(name === 'no image' && file.endsWith('images.yml')))
             assert.ok(body.environment, `${edition} ${name}: ${file} job ${job} reads SOPS_AGE_KEY and is bound to an environment`);
         }
       }
-      const restore = parseWorkflow(workflows['.github/workflows/stack-key-restore.yml']);
+      const restore = parseWorkflow(workflows['.github/workflows/stack-key-restore.yml']!);
       assert.deepEqual(Object.keys(restore.on.workflow_dispatch.inputs), ['environment', 'recipient']);
       assert.equal(restore.jobs.restore.environment, '${{ inputs.environment }}');
       assert.equal(restore.jobs.restore.steps[0].env.AGE_IDENTITY, '${{ secrets.SOPS_AGE_KEY }}');
-      assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml'], /secrets\[|SOPS_AGE_KEY_/u);
+      assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml']!, /secrets\[|SOPS_AGE_KEY_/u);
     }
   }
 });

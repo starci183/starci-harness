@@ -7,6 +7,7 @@
 // proves: HFS_DEPLOY_SCHEDULER@lite
 // proves: HFS_DEPLOY_SCHEDULER@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,7 +16,7 @@ import { ALL_CHECK_CODES, checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { deployScanFindings } from '../runtime/scripts/hfs/rules/deploy-scan.mjs';
 
 const CODES = new Set(['HFS_HOST_CRON', 'HFS_DEPLOY_NO_LOGIC', 'HFS_DEPLOY_COMPOSE_ON_VPS', 'HFS_DEPLOY_SCHEDULER']);
-function tree(t, entries) {
+function tree(t: TestContext, entries: Record<string, string>) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-deploy-scan-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   for (const [file, text] of Object.entries(entries)) {
@@ -25,10 +26,11 @@ function tree(t, entries) {
   }
   return dir;
 }
-const scan = (t, edition, entries, extra = {}) => deployScanFindings({ repoRoot: tree(t, entries), files: Object.keys(entries), repo: { kind: 'app', edition }, ...extra });
-const only = (findings, code) => findings.filter((finding) => finding.code === code);
-const paths = (findings) => findings.map((finding) => finding.path).sort((left, right) => left.localeCompare(right));
-function workflow(run, environment = 'production') {
+// reason: the rule's declared parameter type lists `all` and `isRoot` as required, but it reads `all ?? files` and only `isRoot === false`; the cases omit them.
+const scan = (t: TestContext, edition: string, entries: Record<string, string>, extra: Record<string, unknown> = {}) => deployScanFindings({ repoRoot: tree(t, entries), files: Object.keys(entries), repo: { kind: 'app', edition }, ...extra } as unknown as Parameters<typeof deployScanFindings>[0]);
+const only = (findings: ReturnType<typeof scan>, code: string) => findings.filter((finding) => finding.code === code);
+const paths = (findings: ReturnType<typeof scan>) => findings.map((finding) => finding.path).sort((left, right) => left.localeCompare(right));
+function workflow(run: string, environment = 'production') {
   const body = run.split('\n').map((line) => `          ${line}`).join('\n');
   return `on: workflow_dispatch\njobs:\n  ship:\n    environment: ${environment}\n    steps:\n      - run: |\n${body}\n`;
 }
@@ -181,7 +183,7 @@ test('HFS_HOST_CRON: app check wiring reports side deployment sources once with 
   const findings = result.findings.filter((finding) => CODES.has(finding.code));
   const catalog = new Set(ALL_CHECK_CODES);
   assert.deepEqual(findings.map((finding) => [finding.code, finding.path]), [['HFS_HOST_CRON', 'be/scripts/timer.sh']]);
-  assert.ok(findings[0].titleVi.length > 0);
+  assert.ok(typeof findings[0]!.titleVi === 'string' && findings[0]!.titleVi.length > 0);
   assert.ok(findings.every((finding) => catalog.has(finding.code)));
   assert.ok([...CODES].every((code) => catalog.has(code)));
 });

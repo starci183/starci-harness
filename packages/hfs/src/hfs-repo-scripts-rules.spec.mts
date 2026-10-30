@@ -3,6 +3,7 @@
 // Restored from tests/hfs/hfs-repo-scripts-rules.spec.mjs and run against the bundled checker; the rule is judged in the full edition.
 // proves: BE_INTEGRATION_SPEC_MISSING@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -14,7 +15,7 @@ const PAY = 'be/src/modules/integrations/pay';
 const PAY_SPEC = 'be/src/tests/integration/pay/pay-client.integration-spec.ts';
 const MODULE = 'export class PayModule {\n  static register(options: object): object {\n    return options;\n  }\n}\n';
 
-const payIntegration = (extra = {}) => ({
+const payIntegration = (extra: Record<string, string> = {}): Record<string, string> => ({
   [`${PAY}/pay.config.ts`]: 'export const parsePayConfig = (): { readonly url: string } => ({ url: "x" });\n',
   [`${PAY}/errors/pay.error.ts`]: "export enum PayErrorCode {\n  Refused = 'PAY_REFUSED',\n}\nexport const PAY_ERROR_KINDS = { [PayErrorCode.Refused]: 'invalid' };\n",
   [`${PAY}/pay.module.ts`]: MODULE,
@@ -22,7 +23,7 @@ const payIntegration = (extra = {}) => ({
   ...extra,
 });
 
-const specText = ({ modules, refusal = 'await expect(Promise.reject({ code: PayErrorCode.Refused })).rejects.toMatchObject({ code: PayErrorCode.Refused })', outage = 'await world.fake.pay.failNext({ status: 500 })', head = '' }) => [
+const specText = ({ modules, refusal = 'await expect(Promise.reject({ code: PayErrorCode.Refused })).rejects.toMatchObject({ code: PayErrorCode.Refused })', outage = 'await world.fake.pay.failNext({ status: 500 })', head = '' }: { modules: string; refusal?: string; outage?: string; head?: string }) => [
   "import { PayErrorCode, PayModule } from '../../../modules/integrations/pay';",
   "import { useTestWorld } from '../../world/use-test-world';",
   head,
@@ -39,7 +40,7 @@ const specText = ({ modules, refusal = 'await expect(Promise.reject({ code: PayE
 const IMPORT_FROM_INTEGRATION = "import { PayErrorCode, PayModule } from '../../../modules/integrations/pay';";
 
 /** The findings of a temp back end holding `files`, judged in `edition`. */
-function judge(t, edition, files) {
+function judge(t: TestContext, edition: string, files: Record<string, string>) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-integration-specs-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   for (const [file, text] of Object.entries(files)) {
@@ -49,7 +50,7 @@ function judge(t, edition, files) {
   return integrationSpecFindings({ repoRoot, files: Object.keys(files), repo: { edition } }).filter((finding) => finding.code === CODE);
 }
 
-const missingOf = (found) => found.map((finding) => finding.missing);
+const missingOf = (found: ReturnType<typeof judge>) => found.map((finding) => finding.missing);
 
 test('BE_INTEGRATION_SPEC_MISSING full: an integration without an integration spec is a violation on its folder', (t) => {
   const found = judge(t, 'full', payIntegration());

@@ -12,13 +12,13 @@ import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 
 const MIGRATIONS = 'db/migrations';
 const MIGRATION = `${MIGRATIONS}/20260101120000_adversarial.sql`;
-const made = [];
+const made: string[] = [];
 
 test.after(() => {
   for (const dir of made) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-function repo(contents, supabase) {
+function repo(contents: Record<string, string>, supabase?: unknown) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-adversarial-'));
   made.push(dir);
   const declaration = {
@@ -39,12 +39,12 @@ function repo(contents, supabase) {
 }
 
 const noRemote = () => ({ ok: false, stdout: '' });
-const git = (dir, args, env = {}) => execFileSync('git', ['-C', dir, ...args], {
+const git = (dir: string, args: string[], env: NodeJS.ProcessEnv = {}) => execFileSync('git', ['-C', dir, ...args], {
   env: { ...withoutGitLocalEnv(process.env), ...env },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
-const uniqueCodes = (findings) => [...new Set(findings.map((finding) => finding.code))].sort(byCodeUnit);
-const expectCodes = async ({ contents, files = Object.keys(contents), supabase, codes }) => {
+const uniqueCodes = (findings: { code: string }[]) => [...new Set(findings.map((finding) => finding.code))].sort(byCodeUnit);
+const expectCodes = async ({ contents, files = Object.keys(contents), supabase, codes }: { contents: Record<string, string>; files?: string[]; supabase?: unknown; codes: string[] }) => {
   const dir = repo(contents, supabase);
   const findings = await checkDatabase({ repoRoot: dir, files, git: noRemote });
   assert.deepEqual(uniqueCodes(findings), [...codes].sort(byCodeUnit), JSON.stringify(findings, null, 2));
@@ -55,7 +55,7 @@ create table public.${name} (id uuid primary key, user_id uuid not null);
 alter table public.${name} enable row level security;
 `;
 
-const sqlCases = [
+const sqlCases: [string, string, string[]][] = [
   ['extensions are not tables', 'create extension if not exists pgcrypto with schema extensions;', []],
   ['enums are not tables', "create type public.order_state as enum ('open', 'closed');", []],
   ['composite types are not tables', 'create type public.money_pair as (amount numeric, currency text);', []],
@@ -235,7 +235,7 @@ test('adversarial policy set: a policy in a later migration covers an earlier an
   return expectCodes({ contents, codes: [] });
 });
 
-const migrationCases = [
+const migrationCases: [string, string, string[]][] = [
   ['valid leap-day UTC timestamp', `${MIGRATIONS}/20240229010203_leap.sql`, []],
   ['invalid leap-day UTC timestamp', `${MIGRATIONS}/20230229010203_bad-leap.sql`, ['DB_MIGRATION_SHAPE']],
   ['uppercase extension is not a valid migration name', `${MIGRATIONS}/20260101120000_upper.SQL`, ['DB_MIGRATION_SHAPE']],
@@ -257,6 +257,6 @@ test('adversarial migration: a tracked stamp may be later than the file commit',
   });
   const findings = await checkDatabase({ repoRoot: dir, files: [file] });
   assert.deepEqual(findings, []);
-  assert.ok(findings.every((finding) => finding.tracked !== true), 'no finding judges the stamp against the file commit time');
+  assert.ok(findings.every((finding: { tracked?: unknown }) => finding.tracked !== true), 'no finding judges the stamp against the file commit time');
   assert.equal(uniqueCodes(findings).includes('DB_MIGRATION_SHAPE'), false);
 });

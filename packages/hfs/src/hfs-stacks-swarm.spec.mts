@@ -11,22 +11,27 @@
 // proves: STACKS_UPDATE_POLICY_MISSING@lite STACKS_UPDATE_POLICY_MISSING@full
 // proves: STACKS_REALTIME_SCALED@lite STACKS_REALTIME_SCALED@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import { randomBytes } from 'node:crypto';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { swarmFixture, swarmService } from './helpers/swarm-stack-fixture.mjs';
+import type { SwarmFixture } from './helpers/swarm-stack-fixture.mjs';
 import { swarmHardeningIssues, stacksSwarmFindings } from '../runtime/scripts/hfs/rules/stacks-swarm.mjs';
 import { ingressIssues } from '../runtime/scripts/hfs/rules/stacks-ingress.mjs';
 import { ts } from '../runtime/scripts/hfs/runtime-rules/source-ast.mjs';
-import { OR_TRUE, SEMI_TRUE } from './fixtures/loosening/swallows.mjs';
+
+// reason: src/fixtures holds untyped .mjs fixtures (excluded from tsconfig, no declarations), so they are imported by a variable specifier and typed here.
+const SWALLOWS = './fixtures/loosening/swallows.mjs';
+const { OR_TRUE, SEMI_TRUE }: Record<'OR_TRUE' | 'SEMI_TRUE', string> = await import(SWALLOWS);
 
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const ROUTE = 'traefik.http.routers.api.rule';
 const REALTIME = 'be/src/features/realtime/chat/index.ts';
-const pinned = image => `${image}@sha256:${'a'.repeat(64)}`;
+const pinned = (image: string) => `${image}@sha256:${'a'.repeat(64)}`;
 
-function fixture(t, edition = 'lite') {
+function fixture(t: TestContext, edition = 'lite') {
   const value = swarmFixture(t, edition);
   const spec = value.manifest.environments.production;
   value.manifest.components.ingress.image = pinned('traefik:v3.6');
@@ -42,23 +47,23 @@ function fixture(t, edition = 'lite') {
   return value;
 }
 
-const inputFor = value => ({ doc: value.manifest, spec: value.manifest.environments.production,
+const inputFor = (value: SwarmFixture) => ({ doc: value.manifest, spec: value.manifest.environments.production,
   model: value.model, environment: 'production', repo: value.declaration, repoRoot: value.root, files: [...value.files] });
-const issuesFor = (value, code) => swarmHardeningIssues(inputFor(value)).filter(issue => issue.code === code);
-const finderContext = value => ({ repoRoot: value.root, files: [...value.files], repo: value.declaration, isRoot: true });
+const issuesFor = (value: SwarmFixture, code: string) => swarmHardeningIssues(inputFor(value)).filter(issue => issue.code === code);
+const finderContext = (value: SwarmFixture) => ({ repoRoot: value.root, files: [...value.files], repo: value.declaration, isRoot: true });
 
 const cases = [
-  { code: 'STACKS_SECRET_NOT_EXTERNAL', violate(value) { value.model.secrets['database-url'].external = false; } },
-  { code: 'STACKS_SECRET_UNVERSIONED', violate(value) { value.model.secrets['database-url'].name = 'swarm-app-database-url'; } },
-  { code: 'STACKS_SECRET_ENV_LITERAL', violate(value) { value.model.services.api.environment = { API_TOKEN: 'synthetic-fixture-value' }; } },
-  { code: 'STACKS_PORT_PUBLISHED', violate(value) { value.model.services.api.ports = ['3000:3000']; } },
-  { code: 'STACKS_DNS_UNDECLARED', violate(value) { delete value.manifest.environments.production.dns; } },
-  { code: 'STACKS_HOST_UNROUTED', violate(value) { delete value.model.services.api.deploy.labels; } },
-  { code: 'STACKS_TLS_UNDECLARED', violate(value) { delete value.manifest.environments.production.tls; } },
-  { code: 'STACKS_PLACEMENT_MISSING', violate(value) { value.model.services.api.volumes = ['data:/data']; } },
-  { code: 'STACKS_HEALTHCHECK_MISSING', violate(value) { delete value.model.services.api.healthcheck; } },
-  { code: 'STACKS_UPDATE_POLICY_MISSING', violate(value) { delete value.model.services.api.deploy.update_config; } },
-  { code: 'STACKS_REALTIME_SCALED', violate(value) { addRealtime(value); runRealtime(value, 2, 'memory'); } },
+  { code: 'STACKS_SECRET_NOT_EXTERNAL', violate(value: SwarmFixture) { value.model.secrets['database-url'].external = false; } },
+  { code: 'STACKS_SECRET_UNVERSIONED', violate(value: SwarmFixture) { value.model.secrets['database-url'].name = 'swarm-app-database-url'; } },
+  { code: 'STACKS_SECRET_ENV_LITERAL', violate(value: SwarmFixture) { value.model.services.api.environment = { API_TOKEN: 'synthetic-fixture-value' }; } },
+  { code: 'STACKS_PORT_PUBLISHED', violate(value: SwarmFixture) { value.model.services.api.ports = ['3000:3000']; } },
+  { code: 'STACKS_DNS_UNDECLARED', violate(value: SwarmFixture) { delete value.manifest.environments.production.dns; } },
+  { code: 'STACKS_HOST_UNROUTED', violate(value: SwarmFixture) { delete value.model.services.api.deploy.labels; } },
+  { code: 'STACKS_TLS_UNDECLARED', violate(value: SwarmFixture) { delete value.manifest.environments.production.tls; } },
+  { code: 'STACKS_PLACEMENT_MISSING', violate(value: SwarmFixture) { value.model.services.api.volumes = ['data:/data']; } },
+  { code: 'STACKS_HEALTHCHECK_MISSING', violate(value: SwarmFixture) { delete value.model.services.api.healthcheck; } },
+  { code: 'STACKS_UPDATE_POLICY_MISSING', violate(value: SwarmFixture) { delete value.model.services.api.deploy.update_config; } },
+  { code: 'STACKS_REALTIME_SCALED', violate(value: SwarmFixture) { addRealtime(value); runRealtime(value, 2, 'memory'); } },
 ];
 
 for (const edition of ['lite', 'full']) {
@@ -236,7 +241,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-function addRealtime(value, composition = "import { ChatModule } from '@features/realtime/chat'; export const modules = [ChatModule];") {
+function addRealtime(value: SwarmFixture, composition = "import { ChatModule } from '@features/realtime/chat'; export const modules = [ChatModule];") {
   value.put('be/apps/api/src/main.ts', "import { AppModule } from './app.module'; export const entry = AppModule;");
   value.put('be/apps/api/src/app.module.ts', "import { modules } from './compose/streams'; export class AppModule { modules = modules; }");
   value.put('be/apps/api/src/compose/streams.ts', composition);
@@ -244,13 +249,13 @@ function addRealtime(value, composition = "import { ChatModule } from '@features
 }
 
 /** Runs the composed realtime API with `replicas` replicas and the hub `hub` (undefined declares none). */
-function runRealtime(value, replicas, hub) {
+function runRealtime(value: SwarmFixture, replicas: number | string | undefined, hub: string | undefined) {
   value.model.services.api.deploy.replicas = replicas;
   value.model.services.api.environment = { DATABASE_URL_FILE: '/run/secrets/database-url', ...(hub === undefined ? {} : { REALTIME_HUB: hub }) };
 }
 
 /** Titles are literal so the coverage scanner reads the evidence of each edition. */
-function provesSharedHubForReplicas(t, edition) {
+function provesSharedHubForReplicas(t: TestContext, edition: string) {
   const value = fixture(t, edition);
   addRealtime(value);
   for (const replicas of [2, 10, '3'])
@@ -266,7 +271,7 @@ function provesSharedHubForReplicas(t, edition) {
   assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
 }
 
-function provesOneReplicaMayRunMemory(t, edition) {
+function provesOneReplicaMayRunMemory(t: TestContext, edition: string) {
   const value = fixture(t, edition);
   addRealtime(value);
   for (const replicas of [undefined, 0, 1, '1'])
@@ -276,7 +281,7 @@ function provesOneReplicaMayRunMemory(t, edition) {
     }
 }
 
-function provesUnjudgedApis(t, edition) {
+function provesUnjudgedApis(t: TestContext, edition: string) {
   const value = fixture(t, edition);
   runRealtime(value, 3, 'memory');
   assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
@@ -285,7 +290,7 @@ function provesUnjudgedApis(t, edition) {
   assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
 }
 
-function provesGlobalModeIsScaled(t, edition) {
+function provesGlobalModeIsScaled(t: TestContext, edition: string) {
   const value = fixture(t, edition);
   addRealtime(value);
   value.model.services.api.deploy.mode = 'global';
@@ -375,11 +380,11 @@ test('STACKS_REALTIME_SCALED@lite: untracked composition evidence cannot enable 
 });
 
 test('STACKS_REALTIME_SCALED@lite: tracked config cannot read untracked or secret-path extensions', t => {
-  const value = fixture(t), compiler = ts(), reads = [];
+  const value = fixture(t), compiler = ts(), reads: string[] = [];
   addRealtime(value);
   runRealtime(value, 2, 'memory');
   const original = compiler.sys.readFile;
-  compiler.sys.readFile = file => { reads.push(file); return original(file); };
+  compiler.sys.readFile = (file: string) => { reads.push(file); return original(file); };
   try {
     for (const extension of ['./untracked.json', '../secrets/config.json', '../../../outside.json']) {
       value.put('be/tsconfig.json', JSON.stringify({ extends: extension }));
@@ -473,7 +478,7 @@ test('R266 config reads reject secret paths, parent traversal and symlinks', t =
   try {
     fs.symlinkSync(path.join(value.root, config), path.join(value.root, alias));
   } catch (error) {
-    if (['EPERM', 'EACCES', 'ENOSYS'].includes(error.code)) return;
+    if (['EPERM', 'EACCES', 'ENOSYS'].includes((error as NodeJS.ErrnoException).code ?? '')) return;
     throw error;
   }
   value.files.add(alias);

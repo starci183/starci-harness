@@ -3,6 +3,7 @@
 // proves: HFS_MONO_FE_WORKSPACE@lite
 // proves: HFS_MONO_FE_WORKSPACE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,12 +18,15 @@ const ROOT_MANIFEST = 'package.json';
 const APP_MANIFEST = 'fe/apps/web/package.json';
 const PACKAGE_MANIFEST = 'fe/packages/ui/package.json';
 
-function fixture(t, edition, mutate) {
+// reason: the documents are JSON-shaped manifests that the cases mutate freely (delete, assign, replace by a string).
+type Documents = Record<string, any>;
+
+function fixture(t: TestContext, edition: string, mutate?: (files: Documents) => void) {
   const repo = {
     hfs: 3, kind: 'app', edition, project: 'demo',
     sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
   };
-  const documents = {
+  const documents: Documents = {
     'hfs.json': repo,
     [ROOT_MANIFEST]: {
       name: 'demo', private: true, workspaces: ['fe/apps/*', 'fe/packages/*'],
@@ -66,11 +70,11 @@ for (const edition of ['lite', 'full']) {
 
   test(`${edition} rejects invalid root workspaces, package manager and missing turbo`, (t) => {
     const mutations = [
-      (files) => { files[ROOT_MANIFEST].workspaces = ['fe/packages/*']; },
-      (files) => { files[ROOT_MANIFEST].workspaces.reverse(); },
-      (files) => { files[ROOT_MANIFEST].packageManager = 'npm@^11'; },
-      (files) => { delete files[ROOT_MANIFEST].packageManager; },
-      (files) => { delete files[ROOT_MANIFEST].devDependencies.turbo; },
+      (files: Documents) => { files[ROOT_MANIFEST].workspaces = ['fe/packages/*']; },
+      (files: Documents) => { files[ROOT_MANIFEST].workspaces.reverse(); },
+      (files: Documents) => { files[ROOT_MANIFEST].packageManager = 'npm@^11'; },
+      (files: Documents) => { delete files[ROOT_MANIFEST].packageManager; },
+      (files: Documents) => { delete files[ROOT_MANIFEST].devDependencies.turbo; },
     ];
     for (const mutate of mutations) {
       const findings = monorepoFindings(fixture(t, edition, mutate));
@@ -81,14 +85,14 @@ for (const edition of ['lite', 'full']) {
 
   test(`${edition} rejects invalid front-end workspace manifests`, (t) => {
     const mutations = [
-      (files) => { files[APP_MANIFEST] = '{'; },
-      (files) => { files[APP_MANIFEST].name = 'web'; },
-      (files) => { files[APP_MANIFEST].private = false; },
-      (files) => { files[APP_MANIFEST].scripts.lint = 'eslint .'; },
-      (files) => { files[APP_MANIFEST].scripts.test = 'jest'; },
-      (files) => { files[PACKAGE_MANIFEST].private = false; },
-      (files) => { delete files[PACKAGE_MANIFEST].scripts.build; },
-      (files) => { files[PACKAGE_MANIFEST].scripts.lint = 'eslint src'; },
+      (files: Documents) => { files[APP_MANIFEST] = '{'; },
+      (files: Documents) => { files[APP_MANIFEST].name = 'web'; },
+      (files: Documents) => { files[APP_MANIFEST].private = false; },
+      (files: Documents) => { files[APP_MANIFEST].scripts.lint = 'eslint .'; },
+      (files: Documents) => { files[APP_MANIFEST].scripts.test = 'jest'; },
+      (files: Documents) => { files[PACKAGE_MANIFEST].private = false; },
+      (files: Documents) => { delete files[PACKAGE_MANIFEST].scripts.build; },
+      (files: Documents) => { files[PACKAGE_MANIFEST].scripts.lint = 'eslint src'; },
     ];
     for (const mutate of mutations) {
       const findings = monorepoFindings(fixture(t, edition, mutate));

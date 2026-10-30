@@ -1,6 +1,7 @@
 // proves: HFS_FORMAT@lite
 // proves: HFS_FORMAT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,7 +13,7 @@ import { formatFindings, loadPrettier } from '../sync/format.mjs';
 const CODE = 'HFS_FORMAT';
 const prettierRoot = path.dirname(createRequire(import.meta.url).resolve('prettier/package.json'));
 
-function setup(t, edition) {
+function setup(t: TestContext, edition: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-format-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'proof', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
@@ -32,8 +33,10 @@ function setup(t, edition) {
 for (const edition of ['lite', 'full']) {
   test(`${CODE}@${edition} violating: the installed formatter reports an unformatted file`, async (t) => {
     const { repoRoot, repo, file } = setup(t, edition);
-    assert.equal((await formatFindings({ repoRoot, files: [file] }))[0].code, 'HFS_FORMAT');
-    const [finding] = await formatFindings({ repoRoot, files: [file], repo });
+    assert.equal((await formatFindings({ repoRoot, files: [file] }))[0]!.code, 'HFS_FORMAT');
+    const withRepo = { repoRoot, files: [file], repo }; // not an object literal: formatFindings reads only repoRoot, files and prettier
+    const [finding] = await formatFindings(withRepo);
+    assert.ok(finding);
     assert.equal(finding.code, CODE);
     assert.equal(finding.level, 'error');
     assert.equal(finding.path, file);
@@ -41,10 +44,11 @@ for (const edition of ['lite', 'full']) {
 
   test(`${CODE}@${edition} passing: the installed formatter accepts the formatted output`, async (t) => {
     const { repoRoot, repo, file, absolute, source } = setup(t, edition);
-    const prettier = loadPrettier(repoRoot);
+    // reason: the Prettier interface of sync/format.mts lists only what the rule calls; the real module also has format() and an options-optional resolveConfig()
+    const prettier = loadPrettier(repoRoot) as unknown as { resolveConfig(file: string): Promise<Record<string, unknown> | null>; format(source: string, options: Record<string, unknown>): Promise<string> };
     const options = await prettier.resolveConfig(absolute);
     fs.writeFileSync(absolute, await prettier.format(source, { ...options, filepath: absolute }));
     assert.deepEqual((await formatFindings({ repoRoot, files: [file] })).filter((item) => item.code === CODE), []);
-    assert.deepEqual(await formatFindings({ repoRoot, files: [file], repo }), []);
+    assert.deepEqual(await formatFindings({ repoRoot, files: [file], repo } as { repoRoot: string; files: string[] }), []);
   });
 }
