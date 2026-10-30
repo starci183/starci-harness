@@ -80,6 +80,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 - `.starciwork/` — **app.starciwork** optional · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), HFS_IDENTITY_CUSTODY (no rule)
   - `images/db/Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
+  - `cache/` — **app.starcistacks.cache** optional
 - `.sops.yaml` — **app.sops** required
 - `db/` — **app.db** required
   - `migrations/`
@@ -261,6 +262,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `{be,fe}/` — **app.sides** required
 - `.starciwork/` — **app.starciwork** required · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), HFS_IDENTITY_CUSTODY (no rule)
+  - `cache/` — **app.starcistacks.cache** optional
 - `.sops.yaml` — **app.sops** required
 
 Git-ignored: `app.build-output`.

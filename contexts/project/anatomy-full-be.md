@@ -42,6 +42,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `{be,fe}/` — **app.sides** required
 - `.starciwork/` — **app.starciwork** required · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, HFS_IDENTITY_CUSTODY (no rule)
+  - `cache/` — **app.starcistacks.cache** optional
 - `.sops.yaml` — **app.sops** required
 
 Git-ignored: `app.build-output`.
