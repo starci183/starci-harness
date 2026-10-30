@@ -6,25 +6,27 @@ import os from "node:os"
 import path from "node:path"
 import { appDeclaration } from "../../eslint-canon-be/fixtures/app.mjs"
 import { dockerFindings, NODE_IMAGE } from "../runtime/scripts/hfs/rules/docker.mjs"
-import { OR_ECHO, OR_TRUE } from './fixtures/loosening/swallows.mjs'
+// reason: src/fixtures is outside tsconfig (allowJs is off), so the fixture module has no types; a non-literal specifier keeps the import untyped and the cast declares its shape
+const swallowsFixture = "./fixtures/loosening/swallows.mjs"
+const { OR_ECHO, OR_TRUE } = (await import(swallowsFixture)) as { OR_ECHO: string; OR_TRUE: string }
 
-const fixtures = []
+const fixtures: string[] = []
 test.after(() => { for (const root of fixtures) fs.rmSync(root, { recursive: true, force: true }) })
 const fixture = () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "starci-docker-health-"))
     fixtures.push(root)
     return root
 }
-const put = (root, filename, code) => {
+const put = (root: string, filename: string, code: string) => {
     const target = path.join(root, filename)
     fs.mkdirSync(path.dirname(target), { recursive: true })
     fs.writeFileSync(target, code)
     return target
 }
-const declaration = (edition) => ({ ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }, { name: "worker", kind: "worker" }] }), edition })
+const declaration = (edition: string) => ({ ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }, { name: "worker", kind: "worker" }] }), edition })
 const liveController = '@Controller("health") export class LiveController { @Get("live") live() { return { ok: true } } }'
 
-const dockerText = (health) => `# docker build -f be/apps/api/Dockerfile -t fixture/api:tag .
+const dockerText = (health: string) => `# docker build -f be/apps/api/Dockerfile -t fixture/api:tag .
 FROM ${NODE_IMAGE} AS build
 RUN npm ci --ignore-scripts
 FROM ${NODE_IMAGE} AS runtime
@@ -35,7 +37,7 @@ EXPOSE 3000
 HEALTHCHECK --timeout=5s CMD ${health}
 CMD ["node", "be/dist/apps/api/src/main.js"]
 `
-const dockerCodes = (root, edition, health, withRoute = true) => {
+const dockerCodes = (root: string, edition: string, health: string, withRoute = true) => {
     const file = put(root, "be/apps/api/Dockerfile", dockerText(health))
     put(root, "be/apps/api/src/app.module.ts", withRoute ? 'import { HealthModule } from "@features/api/system-health/transport/http/health.module"; @Module({imports:[HealthModule]}) export class AppModule {}' : 'import { HealthModule } from "@features/api/system-health/transport/http/health.module"; void HealthModule; const unused=[HealthModule]; export class AppModule {}')
     put(root, "be/src/features/api/system-health/transport/http/health.module.ts", 'import { LiveController } from "./live.controller"; @Module({controllers:[LiveController]}) export class HealthModule {}')

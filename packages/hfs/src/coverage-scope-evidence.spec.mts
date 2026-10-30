@@ -1,15 +1,17 @@
 // proves: HFS_COVERAGE_SCOPE_DRIFT@lite
 // proves: HFS_COVERAGE_SCOPE_DRIFT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { renderTargets, writeTargets } from '../sync/index.mjs';
 import { managedFindings } from '../sync/managed.mjs';
+import type { ManagedFinding } from '../sync/managed.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
-function synced(context, edition) {
+function synced(context: TestContext, edition: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-coverage-scope-evidence-'));
   context.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const declaration = { ...structuredClone(APP), edition };
@@ -19,10 +21,10 @@ function synced(context, edition) {
   return { repoRoot, tracked: ['hfs.json', ...targets.map(target => target.path)], presets: PRESETS };
 }
 
-const mutations = [
-  ['be/jest.config.js', text => text.replace('"service",', '')],
-  ['codecov.yml', text => text.replace('target: 100%', 'target: 80%')],
-  ['sonar-project.properties', text => text.replace('sonar.coverage.exclusions=', 'sonar.coverage.exclusions=be/src/modules/**,')],
+const mutations: [string, (text: string) => string][] = [
+  ['be/jest.config.js', (text: string) => text.replace('"service",', '')],
+  ['codecov.yml', (text: string) => text.replace('target: 100%', 'target: 80%')],
+  ['sonar-project.properties', (text: string) => text.replace('sonar.coverage.exclusions=', 'sonar.coverage.exclusions=be/src/modules/**,')],
 ];
 
 for (const edition of ['lite', 'full']) {
@@ -30,7 +32,7 @@ for (const edition of ['lite', 'full']) {
     const options = synced(context, edition);
     const findings = await managedFindings(options);
     assert.deepEqual(findings, []);
-    assert.equal(findings.some(finding => finding.code === 'HFS_COVERAGE_SCOPE_DRIFT'), false);
+    assert.equal(findings.some((finding: ManagedFinding) => finding.code === 'HFS_COVERAGE_SCOPE_DRIFT'), false);
   });
 
   for (const [relative, mutate] of mutations) {

@@ -8,13 +8,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
+import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 import { emitContracts } from '../emit/contracts.mjs';
 import { APP, STACKS_DECLARATION, appOf, cleanup, gitAdd, installTypeScript, writeCleanRepo } from './helpers/hfs-cli-fixture.mjs';
+import type { AppDeclaration } from './helpers/hfs-cli-fixture.mjs';
 
 const MULTI = appOf({ be: { apps: [{ name: 'core', kind: 'api' }, { name: 'billing', kind: 'worker' }] } });
-const made = [];
-const repoOf = (declaration = MULTI, mutate) => {
+const made: string[] = [];
+type Mutate = (dir: string) => void;
+const repoOf = (declaration: AppDeclaration = MULTI, mutate?: Mutate) => {
   const dir = writeCleanRepo(declaration);
   made.push(dir);
   if (mutate) mutate(dir);
@@ -22,21 +25,21 @@ const repoOf = (declaration = MULTI, mutate) => {
 };
 test.after(() => cleanup(made));
 
-const put = (dir, relative, text = 'export {};\n') => {
+const put = (dir: string, relative: string, text = 'export {};\n') => {
   const target = path.join(dir, ...relative.split('/'));
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, text);
 };
-const only = (declaration, mutate, code) => checkRepo({ repoRoot: repoOf(declaration, mutate) }).findings.filter((f) => f.code === code);
-const pathsOf = (findings) => findings.map((f) => f.path).sort(byCodeUnit);
+const only = (declaration: AppDeclaration, mutate: Mutate | undefined, code: string) => checkRepo({ repoRoot: repoOf(declaration, mutate) }).findings.filter((f) => f.code === code);
+const pathsOf = (findings: CheckFinding[]) => findings.map((f) => f.path!).sort(byCodeUnit);
 
-const stack = (components) => `${STACKS_DECLARATION}components:\n${components}`;
+const stack = (components: string) => `${STACKS_DECLARATION}components:\n${components}`;
 const COMPONENTS = [
   '  postgres:', '    image: postgres:16.4@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '    role: stateful',
   '  core:', '    image: demo/core:1.0.0', '    role: service',
   '  billing:', '    image: demo/billing:1.0.0', '    role: service', '',
 ].join('\n');
-const withStack = (components) => (dir) => put(dir, '.starcistacks/application-stacks.yaml', stack(components));
+const withStack = (components: string) => (dir: string) => put(dir, '.starcistacks/application-stacks.yaml', stack(components));
 
 // ------------------------------------------------------------------------------------------------ R163 HFS_SERVICE_PLACEMENT
 
@@ -47,7 +50,7 @@ test('HFS_SERVICE_PLACEMENT: a Dockerfile or a package.json of a folder outside 
     put(dir, 'Dockerfile', 'FROM node\n');
   }, 'HFS_SERVICE_PLACEMENT');
   assert.deepEqual(pathsOf(findings), ['Dockerfile', 'be/billing/package.json', 'services/billing/Dockerfile']);
-  assert.match(findings[0].message, /be\/apps\/<service>\//);
+  assert.match(findings[0]!.message!, /be\/apps\/<service>\//);
 });
 
 test('HFS_SERVICE_PLACEMENT: the Dockerfile of a be app, of a front-end app, the root package.json and the package.json of an fe workspace pass', () => {
@@ -68,8 +71,8 @@ test('HFS_IMAGE_UNPINNED: a multi-service stack with a moving image (no tag, lat
     '  billing:', '    image: demo/billing:1.0.0', '    role: service', '',
   ].join('\n')), 'HFS_IMAGE_UNPINNED');
   assert.deepEqual(findings.map((f) => f.component).sort(byCodeUnit), ['core', 'postgres', 'redis']);
-  assert.match(findings.find((f) => f.component === 'core').message, /has no tag/);
-  assert.match(findings.find((f) => f.component === 'postgres').message, /not an exact version/);
+  assert.match(findings.find((f) => f.component === 'core')!.message!, /has no tag/);
+  assert.match(findings.find((f) => f.component === 'postgres')!.message!, /not an exact version/);
 });
 
 test('HFS_IMAGE_UNPINNED: exact versions and digests pass, and a single-service product is not judged', () => {
@@ -95,7 +98,7 @@ const EVENTS_DIR = 'be/src/modules/events';
 const PLACED_PATH = `${EVENTS_DIR}/core/order-placed.event.ts`;
 const REJECTED_PATH = `${EVENTS_DIR}/billing/invoice-rejected.event.ts`;
 /** An event class in the shape of knowledge/patterns/be/event-bus.yaml: a payload interface, static eventName and version, create(payload). */
-const eventClass = ({ className, name, version = 1, compensates, fields = 'readonly orderId: string; readonly totalCents: number; readonly note?: string' }) => `import { BaseEvent } from '@modules/platform/event-bus';
+const eventClass = ({ className, name, version = 1, compensates, fields = 'readonly orderId: string; readonly totalCents: number; readonly note?: string' }: { className: string; name: string; version?: number; compensates?: string; fields?: string }) => `import { BaseEvent } from '@modules/platform/event-bus';
 export interface ${className}Payload { ${fields} }
 export class ${className} extends BaseEvent {
   static readonly eventName = "${name}";
@@ -107,7 +110,7 @@ const PLACED = eventClass({ className: 'OrderPlacedEvent', name: 'order.placed' 
 const REJECTED = eventClass({ className: 'InvoiceRejectedEvent', name: 'billing.invoice-rejected', compensates: 'order.placed', fields: 'readonly orderId: string; readonly reason: string' });
 
 /** What `starci app emit` writes for the event classes of `service`, in a scratch app that holds only those files. */
-const emitted = (service, classes) => {
+const emitted = (service: string, classes: Record<string, string>) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-events-'));
   made.push(temp);
   put(temp, 'package.json', '{}\n');
@@ -118,17 +121,17 @@ const emitted = (service, classes) => {
   return fs.readFileSync(path.join(out, 'contracts', service, 'events.json'), 'utf8');
 };
 /** The provider `core` (order.placed) and `billing` (invoice-rejected, compensating order.placed), their snapshots as emitted. */
-const withEvents = ({ classes = { [PLACED_PATH]: PLACED, [REJECTED_PATH]: REJECTED }, snapshots = true } = {}) => (dir) => {
+const withEvents = ({ classes = { [PLACED_PATH]: PLACED, [REJECTED_PATH]: REJECTED }, snapshots = true }: { classes?: Record<string, string>; snapshots?: boolean } = {}) => (dir: string) => {
   withStack(COMPONENTS)(dir);
   for (const [file, text] of Object.entries(classes)) put(dir, file, text);
   if (snapshots) {
-    for (const service of new Set(Object.keys(classes).map((file) => file.split('/')[4]))) {
+    for (const service of new Set(Object.keys(classes).map((file) => file.split("/")[4]!))) {
       const own = Object.fromEntries(Object.entries(classes).filter(([file]) => file.split('/')[4] === service));
       put(dir, `be/contracts/${service}/events.json`, emitted(service, own));
     }
   }
 };
-const r139 = (options) => only(MULTI, withEvents(options), 'HFS_EVENT_CONTRACT');
+const r139 = (options?: Parameters<typeof withEvents>[0]) => only(MULTI, withEvents(options), 'HFS_EVENT_CONTRACT');
 
 test('HFS_EVENT_CONTRACT: event classes whose vendored snapshots equal what they emit pass', () => {
   assert.deepEqual(r139(), []);
@@ -156,18 +159,18 @@ test('HFS_EVENT_CONTRACT: a changed payload field is drift too, and an unreadabl
     withEvents()(dir);
     put(dir, PLACED_PATH, PLACED.replace('static readonly version = 1', 'static readonly version = VERSION'));
   }, 'HFS_EVENT_CONTRACT');
-  assert.match(loose.find((f) => f.path === PLACED_PATH).message, /needs `static readonly version`/);
+  assert.match(loose.find((f) => f.path === PLACED_PATH)!.message!, /needs `static readonly version`/);
   const nested = only(MULTI, (dir) => {
     withEvents()(dir);
     put(dir, PLACED_PATH, PLACED.replace('readonly note?: string', 'readonly note: { text: string }'));
   }, 'HFS_EVENT_CONTRACT');
-  assert.match(nested.find((f) => f.path === PLACED_PATH).message, /payload field note must be/);
+  assert.match(nested.find((f) => f.path === PLACED_PATH)!.message!, /payload field note must be/);
 });
 
 test('HFS_EVENT_CONTRACT: an event that compensates an event no class declares is refused, one that compensates a declared event passes', () => {
   const refused = only(MULTI, withEvents({ classes: { [PLACED_PATH]: PLACED, [REJECTED_PATH]: eventClass({ className: 'InvoiceRejectedEvent', name: 'billing.invoice-rejected', compensates: 'order.shipped', fields: 'readonly orderId: string' }) } }), 'HFS_EVENT_CONTRACT');
   assert.equal(refused.length, 1);
-  assert.match(refused[0].message, /compensates "order.shipped", which no event class declares/);
+  assert.match(refused[0]!.message!, /compensates "order.shipped", which no event class declares/);
 });
 
 test('HFS_EVENT_CONTRACT: a committed snapshot of a service with no event class is left behind', () => {
@@ -185,34 +188,34 @@ test('starci app emit writes events.json for a service that declares event class
 
 // ------------------------------------------------------------------------------------------------ R167 BE_ASYNC_SPEC_MISSING
 
-const consumerOf = (className, file) => `import { ${className} } from '@modules/events/${file}';\nexport class ${className}Consumer {\n  readonly event = ${className}\n}\n`;
+const consumerOf = (className: string, file: string) => `import { ${className} } from '@modules/events/${file}';\nexport class ${className}Consumer {\n  readonly event = ${className}\n}\n`;
 const CONSUMER_REJECTED = 'be/src/features/orders/transport/message/invoice-rejected.consumer.ts';
 const CONSUMER_PLACED = 'be/src/features/billing/transport/message/order-placed.consumer.ts';
 const SPEC_PLACED = 'be/src/tests/e2e/orders/order-placed.e2e-spec.ts';
 const SPEC_REJECTED = 'be/src/tests/e2e/orders/invoice-rejected.e2e-spec.ts';
-const eventSpec = (event) => `it('handles ${event}', () => undefined);`;
-const SPEC = (...events) => `import { useTestWorld } from '../../world/use-test-world';\nconst world = useTestWorld({ apps: ['core'] });\n${events.map(eventSpec).join('\n')}\n`;
+const eventSpec = (event: string) => `it('handles ${event}', () => undefined);`;
+const SPEC = (...events: string[]) => `import { useTestWorld } from '../../world/use-test-world';\nconst world = useTestWorld({ apps: ['core'] });\n${events.map(eventSpec).join('\n')}\n`;
 /** `billing` consumes `order.placed`; `core` consumes `billing.invoice-rejected`, which compensates `order.placed`. */
-const asyncRepo = (specs = {}) => (dir) => {
+const asyncRepo = (specs: Record<string, string> = {}) => (dir: string) => {
   withEvents()(dir);
   put(dir, CONSUMER_PLACED, consumerOf('OrderPlacedEvent', 'core'));
   put(dir, CONSUMER_REJECTED, consumerOf('InvoiceRejectedEvent', 'billing'));
   for (const [file, text] of Object.entries(specs)) put(dir, file, text);
 };
-const r140 = (specs) => only(MULTI, asyncRepo(specs), 'BE_ASYNC_SPEC_MISSING');
+const r140 = (specs?: Record<string, string>) => only(MULTI, asyncRepo(specs), 'BE_ASYNC_SPEC_MISSING');
 
 test('BE_ASYNC_SPEC_MISSING (full): a consumed event no e2e spec names, and a spec that does not boot the world, are refused on the consumer', () => {
   assert.deepEqual(r140().map((f) => [f.path, f.event]).sort((left, right) => byCodeUnit(left[0], right[0])), [[CONSUMER_PLACED, 'order.placed'], [CONSUMER_REJECTED, 'billing.invoice-rejected']]);
   const notWorld = r140({ [SPEC_PLACED]: "it('order.placed', () => undefined)\n", [SPEC_REJECTED]: "it('billing.invoice-rejected', () => undefined)\n" });
   assert.equal(notWorld.length, 2);
-  assert.match(notWorld[0].message, /has no e2e spec/);
+  assert.match(notWorld[0]!.message!, /has no e2e spec/);
 });
 
 test('BE_ASYNC_SPEC_MISSING (full): the spec of a saga step must also drive the event it compensates', () => {
   const stepOnly = r140({ [SPEC_PLACED]: SPEC('order.placed'), [SPEC_REJECTED]: SPEC('billing.invoice-rejected') });
   assert.equal(stepOnly.length, 1);
-  assert.equal(stepOnly[0].path, SPEC_REJECTED);
-  assert.match(stepOnly[0].message, /undoes "order.placed", but never names it/);
+  assert.equal(stepOnly[0]!.path, SPEC_REJECTED);
+  assert.match(stepOnly[0]!.message!, /undoes "order.placed", but never names it/);
 });
 
 test('BE_ASYNC_SPEC_MISSING (full): every consumed event named by an e2e spec through the world, a saga step driving the whole flow, passes', () => {

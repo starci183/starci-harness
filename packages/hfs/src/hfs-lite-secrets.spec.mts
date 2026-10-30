@@ -1,5 +1,6 @@
 // proves: HFS_LITE_SECRET_CUSTODY@lite
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,7 +10,7 @@ import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { liteSecretCustodyFindings, liteSecretFindings } from '../runtime/scripts/hfs/rules/lite-secrets.mjs';
 import { secretFindings, untrackedSecretFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 
-const tree = (t, files) => {
+const tree = (t: TestContext, files: Record<string, string>) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-supabase-secrets-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, text] of Object.entries(files)) {
@@ -20,8 +21,8 @@ const tree = (t, files) => {
   return root;
 };
 
-const app = edition => ({ profile: 'app', edition });
-const fe = edition => ({ profile: 'fe', edition });
+const app = (edition: string) => ({ profile: 'app', edition });
+const fe = (edition: string) => ({ profile: 'fe', edition });
 const resolver = { classifyPath: () => ({ status: 'owned' }), slot: () => null };
 const jwtFixture = `${Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify({ role: 'service_role', exp: 4102444800 })).toString('base64url')}.${'C'.repeat(43)}`;
 const fullApp = { hfs: 3, kind: 'app', project: 'fixture', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
@@ -37,9 +38,9 @@ for (const ignored of [false, true]) {
     const result = checkRepo({ repoRoot: root, declaration: liteApp });
     const findings = result.findings.filter(item => item.path === 'secrets.env');
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].code, 'HFS_PLAINTEXT_SECRET');
-    assert.equal(findings[0].level, 'warning');
-    assert.match(findings[0].message, /starci app secret set/);
+    assert.equal(findings[0]!.code, 'HFS_PLAINTEXT_SECRET');
+    assert.equal(findings[0]!.level, 'warning');
+    assert.match(findings[0]!.message!, /starci app secret set/);
     assert.equal(result.counts.warning, 1);
     assert.equal(result.counts.error, baseline.counts.error, 'the generic untracked-entry gate must not turn the custody warning into an error');
     const fast = checkRepo({ repoRoot: root, declaration: liteApp, tree: false, only: [] });
@@ -109,7 +110,7 @@ test('HFS_LITE_SECRET_CUSTODY (lite): Supabase tokens, long eyJ service material
   ].join('\n');
   const root = tree(t, { 'apps/web/src/modules/config/generated.ts': source });
   const findings = liteSecretCustodyFindings({ repoRoot: root, files: ['apps/web/src/modules/config/generated.ts'], repo: fe('lite') });
-  assert.deepEqual(findings.map(item => item.pattern).sort((left, right) => left.localeCompare(right)), [
+  assert.deepEqual(findings.map(item => item.pattern as string).sort((left, right) => left.localeCompare(right)), [
     'password-connection-string', 'signed-jwt', 'supabase-personal-access-token', 'supabase-secret-token',
   ]);
   assert.ok(findings.every(item => !item.message.includes('postgresql://') && !item.message.includes('sb_secret_')), 'a finding never prints the captured value');
@@ -123,7 +124,7 @@ export const passwordless='postgresql://db.invalid/product';
 export const injected='postgresql://app:\${DATABASE_PASSWORD}@db.invalid/product';
 `;
   const files = ['apps/web/src/modules/config/index.ts', 'package-lock.json'];
-  const root = tree(t, { [files[0]]: harmless, [files[1]]: `{"note":"sbp_${'Z'.repeat(30)}"}` });
+  const root = tree(t, { [files[0]!]: harmless, [files[1]!]: `{"note":"sbp_${'Z'.repeat(30)}"}` });
   assert.deepEqual(liteSecretCustodyFindings({ repoRoot: root, files, repo: fe('lite') }), []);
 });
 
@@ -132,8 +133,8 @@ test('the extended scanner emits one specific L17 finding instead of duplicate R
   const root = tree(t, { [file]: `export const copied = '${jwtFixture}'\n` });
   const lite = liteSecretFindings({ repoRoot: root, files: [file], repo: app('lite'), resolver });
   assert.equal(lite.length, 1, JSON.stringify(lite, null, 2));
-  assert.equal(lite[0].code, 'HFS_LITE_SECRET_CUSTODY');
+  assert.equal(lite[0]!.code, 'HFS_LITE_SECRET_CUSTODY');
   const full = secretFindings({ repoRoot: root, files: [file], resolver });
   assert.equal(full.length, 1, JSON.stringify(full, null, 2));
-  assert.equal(full[0].code, 'HFS_PLAINTEXT_SECRET', 'full edition keeps the unchanged R06 judgement');
+  assert.equal(full[0]!.code, 'HFS_PLAINTEXT_SECRET', 'full edition keeps the unchanged R06 judgement');
 });

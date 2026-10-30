@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderTargets } from '../sync/index.mjs';
+import type { Presets, RenderedTarget } from '../sync/index.mjs';
 import { ciWorkflowCommands } from '../sync/ci-commands.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 
@@ -15,10 +16,11 @@ for (const edition of ['full', 'lite']) {
       be: { apps: [{ name: 'api', kind: 'api' }] },
       fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
     } };
-    const target = renderTargets(hfs, {}).find(item => item.path === '.github/workflows/ci.yml');
+    // reason: the presets are deliberately empty; the managed CI reads none of them
+    const target = renderTargets(hfs, {} as Presets).find((item: RenderedTarget) => item.path === '.github/workflows/ci.yml');
     assert.ok(target, 'the managed CI is rendered');
     const job = parseYaml(target.content).jobs.coverage;
-    const step = job.steps.find(item => item.name === 'coverage proof');
+    const step = job.steps.find((item: { name: string }) => item.name === 'coverage proof');
     assert.equal(step.run, verify);
     assert.doesNotMatch(step.run, /app check|codegen/u, 'no rule of the whole app check runs again');
     assert.equal(job['timeout-minutes'], 15);

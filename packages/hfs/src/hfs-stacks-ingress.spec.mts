@@ -10,9 +10,21 @@ import { ingressIssues, stacksIngressFindings } from '../runtime/scripts/hfs/rul
 
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const STACK_FILE = '.starcistacks/production/infra/swarm/stack.yaml';
-const pinned = image => `${image}@sha256:${'a'.repeat(64)}`;
+const pinned = (image: string) => `${image}@sha256:${'a'.repeat(64)}`;
 
-function fixture(edition, image = 'traefik:v3.6') {
+interface Component { role?: string; image: string }
+/** The shape of an ingress evidence fixture: the inventory, the environment declaration and the rendered model the ingress contract judges. */
+interface Fixture {
+  doc: { components: Record<string, Component>; environments: Record<string, unknown> };
+  spec: { runtime: string; composeFiles: string[]; components: Record<string, object>; ingress?: { component?: string; hosts?: string[]; external?: unknown } };
+  model: { services: Record<string, { image: string }> };
+  environment: string;
+  repo: { edition: string };
+}
+type Mutation = (value: Fixture) => void;
+type Context = { repoRoot: string; files: string[]; repo: { edition: string } };
+
+function fixture(edition: string, image = 'traefik:v3.6'): Fixture {
   const spec = {
     runtime: 'docker-swarm', composeFiles: ['infra/swarm/stack.yaml'],
     components: { edge: {}, api: {} }, ingress: { component: 'edge', hosts: ['app.example.test'] },
@@ -25,7 +37,7 @@ function fixture(edition, image = 'traefik:v3.6') {
   return { doc, spec, model, environment: 'production', repo: { edition } };
 }
 
-const issuesFor = (value, code) => ingressIssues(value).filter(issue => issue.code === code);
+const issuesFor = (value: Fixture, code: string) => ingressIssues(value).filter(issue => issue.code === code);
 
 for (const edition of ['lite', 'full']) {
   test(`STACKS_INGRESS_UNDECLARED@${edition}: inventoried, bound and deployed ingress passes`, () => {
@@ -33,12 +45,12 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`STACKS_INGRESS_UNDECLARED@${edition}: missing declaration, inventory, ingress role, binding or service fails`, () => {
-    const mutations = [
-      value => { delete value.spec.ingress; },
-      value => { delete value.doc.components.edge; },
-      value => { value.doc.components.edge.role = 'service'; },
-      value => { delete value.spec.components.edge; },
-      value => { delete value.model.services.edge; },
+    const mutations: Mutation[] = [
+      (value) => { delete value.spec.ingress; },
+      (value) => { delete value.doc.components.edge; },
+      (value) => { value.doc.components.edge!.role = 'service'; },
+      (value) => { delete value.spec.components.edge; },
+      (value) => { delete value.model.services.edge; },
     ];
     for (const mutate of mutations) {
       const value = fixture(edition);
@@ -56,8 +68,8 @@ for (const edition of ['lite', 'full']) {
     assert.ok(issuesFor(fixture(edition, 'nginx:1.28.0'), 'STACKS_INGRESS_UNKNOWN').length > 0);
     for (const source of ['inventory', 'rendered']) {
       const value = fixture(edition);
-      if (source === 'inventory') value.doc.components.edge.image = 'traefik:v3.6';
-      else value.model.services.edge.image = 'traefik:v3.6';
+      if (source === 'inventory') value.doc.components.edge!.image = 'traefik:v3.6';
+      else value.model.services.edge!.image = 'traefik:v3.6';
       assert.ok(issuesFor(value, 'STACKS_INGRESS_UNKNOWN').length > 0);
     }
   });
@@ -95,11 +107,11 @@ test('R275: non-Swarm development environment retains its existing contract', ()
   assert.deepEqual(ingressIssues(value), []);
 });
 
-function trackedFixture(value, run) {
+function trackedFixture(value: Fixture, run: (context: Context) => void) {
   const base = path.resolve(os.tmpdir());
   const repoRoot = fs.mkdtempSync(path.join(base, 'ingress-spec-'));
   try {
-    for (const [file, doc] of [[DECLARATION, value.doc], [STACK_FILE, value.model]]) {
+    for (const [file, doc] of [[DECLARATION, value.doc], [STACK_FILE, value.model]] as [string, object][]) {
       const target = path.join(repoRoot, file);
       fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.writeFileSync(target, JSON.stringify(doc));
@@ -112,16 +124,16 @@ function trackedFixture(value, run) {
 }
 
 const finderMutations = [
-  { code: 'STACKS_INGRESS_UNDECLARED', violate(value) { delete value.spec.ingress; } },
-  { code: 'STACKS_INGRESS_UNKNOWN', violate(value) { value.model.services.edge.image = pinned('nginx:1.28.0'); } },
-  { code: 'STACKS_SECOND_INGRESS', violate(value) { value.model.services.preview = { image: pinned('caddy:2.10.2') }; } },
+  { code: 'STACKS_INGRESS_UNDECLARED', violate(value: Fixture) { delete value.spec.ingress; } },
+  { code: 'STACKS_INGRESS_UNKNOWN', violate(value: Fixture) { value.model.services.edge!.image = pinned('nginx:1.28.0'); } },
+  { code: 'STACKS_SECOND_INGRESS', violate(value: Fixture) { value.model.services.preview = { image: pinned('caddy:2.10.2') }; } },
 ];
 
 for (const edition of ['lite', 'full']) {
   for (const { code, violate } of finderMutations) {
     test(`${code}@${edition}: tracked declared digest-pinned ingress passes the finder`, () => {
       trackedFixture(fixture(edition), context => {
-        assert.deepEqual(stacksIngressFindings(context).filter(finding => finding.code === code), []);
+        assert.deepEqual(stacksIngressFindings(context).filter((finding) => finding.code === code), []);
       });
     });
 
@@ -129,7 +141,7 @@ for (const edition of ['lite', 'full']) {
       const value = fixture(edition);
       violate(value);
       trackedFixture(value, context => {
-        assert.ok(stacksIngressFindings(context).some(finding => finding.code === code));
+        assert.ok(stacksIngressFindings(context).some((finding) => finding.code === code));
       });
     });
   }
@@ -141,7 +153,7 @@ test('R275 HFS finder reads the tracked model and returns standard findings for 
     delete value.spec.ingress;
     trackedFixture(value, context => {
       const findings = stacksIngressFindings(context);
-      assert.ok(findings.some(finding => finding.code === 'STACKS_INGRESS_UNDECLARED'));
+      assert.ok(findings.some((finding) => finding.code === 'STACKS_INGRESS_UNDECLARED'));
       for (const finding of findings) {
         assert.equal(finding.level, 'error');
         assert.equal(finding.path, STACK_FILE);
@@ -159,7 +171,7 @@ test('R275 HFS finder leaves unavailable rendered model evidence to R267', () =>
 });
 
 // An application whose ingress is a shared stack outside its own (nivo): `ingress.external.stack` instead of `ingress.component`.
-function externalFixture(edition) {
+function externalFixture(edition: string) {
   const value = fixture(edition);
   delete value.doc.components.edge;
   delete value.spec.components.edge;
@@ -174,13 +186,13 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`STACKS_INGRESS_UNDECLARED@${edition}: an external ingress needs its stack name, its hosts and no component`, () => {
-    const mutations = [
-      value => { value.spec.ingress.external = {}; },
-      value => { value.spec.ingress.external = { stack: '  ' }; },
-      value => { value.spec.ingress.external = 'ingress'; },
-      value => { delete value.spec.ingress.hosts; },
-      value => { value.spec.ingress.hosts = []; },
-      value => { value.spec.ingress.component = 'edge'; },
+    const mutations: Mutation[] = [
+      (value) => { value.spec.ingress!.external = {}; },
+      (value) => { value.spec.ingress!.external = { stack: '  ' }; },
+      (value) => { value.spec.ingress!.external = 'ingress'; },
+      (value) => { delete value.spec.ingress!.hosts; },
+      (value) => { value.spec.ingress!.hosts = []; },
+      (value) => { value.spec.ingress!.component = 'edge'; },
     ];
     for (const mutate of mutations) {
       const value = externalFixture(edition);
