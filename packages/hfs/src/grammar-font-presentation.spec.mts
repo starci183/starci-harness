@@ -9,7 +9,6 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { familyPresentationKnowledge as presentedKnowledge, fontWeightsOf } from '../runtime/scripts/hfs/grammar-presentation.mjs';
 
 // reason: the topics and playbooks are YAML parsed from disk; the shapes the assertions read are judged by those assertions at run time.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Parsed = any;
 interface Topic { rel: string; layer?: string; doc: Parsed; familySource?: string }
 interface Presented { family: string; knowledge: Topic[] }

@@ -7,7 +7,6 @@ import { openHfs } from '../../runtime/scripts/hfs/slots.mjs';
 import { stacksFindings } from '../../runtime/scripts/hfs/rules/stacks.mjs';
 
 // reason: manifest and compose model are YAML-shaped documents that specs mutate at arbitrary depth (the same shape parseYaml hands back), so they stay loosely typed.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Doc = Record<string, any>;
 
 export interface SwarmFixture {

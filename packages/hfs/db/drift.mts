@@ -67,6 +67,11 @@ function sourceFile(specifier: string, from: string, pairs: readonly [string, st
   return candidates.find((file) => fs.existsSync(file) && fs.statSync(file).isFile()) ?? null;
 }
 
+/** The slice of Node's CommonJS loader internals the `.ts` hook touches: the extension table and a module's `_compile`. */
+interface CjsLoader {
+  _extensions: Record<string, ((module: { _compile(code: string, filename: string): void }, filename: string) => void) | undefined>;
+}
+
 /**
  * Requires the entity list with a `.ts` loader that transpiles each source file with the app's typescript (CommonJS, legacy decorators and
  * their design metadata, as Nest compiles them) and points every relative or aliased require at its source file. The previous loader is
@@ -74,10 +79,11 @@ function sourceFile(specifier: string, from: string, pairs: readonly [string, st
  */
 function requireEntityList(ts: AppModule, appRequire: NodeJS.Require, root: string): unknown {
   const pairs = aliases(ts, root);
-  // reason: Module._extensions and Module#_compile are Node internals the loader hook needs; they are not in @types/node
-  const extensions = (Module as any)._extensions;
+  // reason: Module._extensions and Module#_compile are Node internals the loader hook needs; they are not in @types/node, so the table is
+  // read by name and its shape stated by the declaration.
+  const extensions: CjsLoader['_extensions'] = Reflect.get(Module, '_extensions');
   const previous = extensions['.ts'];
-  extensions['.ts'] = (module: any, filename: string) => {
+  extensions['.ts'] = (module, filename) => {
     const { outputText } = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { fileName: filename, compilerOptions: {
       module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, experimentalDecorators: true, emitDecoratorMetadata: true,
       esModuleInterop: true, useDefineForClassFields: false } });

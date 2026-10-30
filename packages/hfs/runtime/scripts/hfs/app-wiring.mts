@@ -136,8 +136,8 @@ function sourceLoader(repoRoot: string, entry: string, fixture: string | null): 
   program.emit(undefined, (file, text, _bom, _error, sources) => {
     if (file.endsWith('.js')) for (const source of sources ?? []) outputs.set(path.resolve(source.fileName), text);
   });
-  // reason: Module._resolveFilename and Module#_compile are private Node internals with no declared types.
-  const NodeModule = require('node:module') as any;
+  // reason: Module._resolveFilename is a private Node internal with no declared type; `require` answers any, so the shape is stated by the declaration.
+  const NodeModule: ResolverInternals = require('node:module');
   const resolve = NodeModule._resolveFilename;
   NodeModule._resolveFilename = function resolveSource(this: unknown, request: string, parent: { filename?: string } | undefined, ...rest: unknown[]) {
     if (parent?.filename && (request.startsWith('.') || Object.keys(options.paths ?? {}).some((alias) => request.startsWith(alias.replace(/\*$/, ''))))) {
@@ -147,14 +147,20 @@ function sourceLoader(repoRoot: string, entry: string, fixture: string | null): 
     return resolve.call(this, request, parent, ...rest);
   };
   // reason: Module#_compile is a private Node internal with no declared type.
-  require.extensions['.ts'] = (loaded: any, file: string) => {
+  require.extensions['.ts'] = (loaded: NodeJS.Module, file: string) => {
     const output = outputs.get(path.resolve(file));
     if (output === undefined) throw new Error('source is outside the compiled graph');
-    loaded._compile(output, file);
+    (loaded as NodeJS.Module & CompilableModule)._compile(output, file);
   };
   require('reflect-metadata');
   return require;
 }
+
+/** A loaded CommonJS module with the private `_compile` the source loader runs the emitted JavaScript through. */
+interface CompilableModule { _compile(code: string, filename: string): void }
+
+/** Node's private module resolver hook, as far as the source loader overrides it. */
+interface ResolverInternals { _resolveFilename(request: string, parent: { filename?: string } | undefined, ...rest: unknown[]): string }
 
 interface WorkerInput { repoRoot: string; app: string; fixture: string | null; timeout: number }
 

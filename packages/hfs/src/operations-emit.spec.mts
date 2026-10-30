@@ -15,7 +15,6 @@ import { mkdtemp } from './helpers/tmpdir.mjs';
 
 const require = createRequire(import.meta.url);
 // reason: the emitted wire schemas and the OpenAPI document are JSON documents; the specs probe them at arbitrary depth.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = any;
 /** What readOperations answers for a fixture whose entry file is always in the program. */
 interface ReadResult { operations: Json[]; components: Record<string, Json> }

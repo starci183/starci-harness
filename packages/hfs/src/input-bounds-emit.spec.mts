@@ -18,7 +18,6 @@ import { inputBoundsPlugin } from '../emit/form-bounds.mjs';
 import { contractEmitFindings } from '../runtime/scripts/hfs/rules/contract.mjs';
 
 // reason: schemas read back from the emitted OpenAPI contract and the operation reader are JSON trees whose members the assertions judge.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = any;
 type Put = (relative: string, text: string) => void;
 interface Read { operations: Json[]; components: Json }
