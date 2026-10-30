@@ -107,6 +107,7 @@ import { LOCAL_FLAGS as CI_LOCAL_FLAGS } from '../ci/local.mjs';
 import { USAGE as COVERAGE_USAGE } from '../coverage/cli.mjs';
 import { SYNC_USAGE } from '../sync/cli.mjs';
 import { codemodMain } from '../codemod/button-intent.mjs';
+import { REFUSE_RETIRED_SPELLINGS, RetiredSpelling, retiredUsage, rewriteRetired } from './retired.mjs';
 import type { VerbIo } from '../release/index.mjs';
 import type { GhSpawn } from '../ci/github.mjs';
 import type { Prompt } from '../runtime/scripts/hfs/secret-prompt.mjs';
@@ -173,7 +174,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 const PLACEHOLDERS: Record<string, string> = {
   '--into': '<dir>', '--registry-visibility': 'public|private', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
-  '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--source-sha': '<sha>',
+  '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>', '--source-sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
   '--keep': '<release.json>', '--ssh-cmd': '<command>', '--extra-compose': '<file>', '--target-binding': '<json>', '--db-url-env': '<NAME>',
   '--backup-out': '<dir>', '--db-service': '<service>', '--reason': '<text>', '--remote': '<name>', '--source': '<ref>', '--tag-prefix': '<prefix>',
@@ -218,6 +219,8 @@ const VERB_USAGE: Record<string, string[]> = {
 };
 export const USAGE = `${VERBS.flatMap((verb) => VERB_USAGE[verb]).join('\n')}
 every verb: [--cwd <dir>] [--quiet] [--help]
+retired spellings (src/retired.mts; ${REFUSE_RETIRED_SPELLINGS ? 'refused' : 'still run, with a notice naming the new one'}):
+${retiredUsage().join('\n')}
 `;
 const PER_CODE_LIMIT = 25;
 
@@ -539,7 +542,7 @@ function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> 
 
 function errorMessage(error: unknown): string {
   if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
-  if (error instanceof ScaffoldError) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
+  if (error instanceof ScaffoldError || error instanceof RetiredSpelling) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
   return `starci app: ${(error as Error).message}\n${USAGE}`;
 }
 
@@ -548,14 +551,18 @@ function errorMessage(error: unknown): string {
  * scaffolded at (runtime/scripts/hfs/canon-pins.mjs). `run` injects the database runner, `runLinter` the linter transport, `checkApp`
  * the HFS check and `stackIo` Swarm tools; production defaults execute every check. `hostIdentity` ({ label, read }) is the
  * harness CLI's own secret.env SOPS_AGE_KEY, which every verb that opens a sealed member (secret, stack, release, db) reads last for the age identity (decryptionIdentity); `prompt` replaces its masked prompt.
+ * `refuseRetired` replaces REFUSE_RETIRED_SPELLINGS (retired.mts) for one call: a spec proves both the notice and the refusal.
  */
 export async function main(argv: string[], {
   cwd: baseCwd = process.cwd(), harness, stdout = (s: string): unknown => process.stdout.write(s), stderr = (s: string): unknown => process.stderr.write(s), presets, prettier, lock, run, stackMain,
-  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp,
-}: MainOptions = {}): Promise<number> {
+  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp, refuseRetired = REFUSE_RETIRED_SPELLINGS,
+}: MainOptions & { refuseRetired?: boolean } = {}): Promise<number> {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
-    const [verb, ...given] = global.argv;
+    // Every retired spelling becomes its canonical one before a verb is picked (retired.mts), so no parser sees an old spelling.
+    const rewritten = rewriteRetired(global.argv, refuseRetired);
+    for (const notice of rewritten.notices) stderr(`${notice}\n`);
+    const [verb, ...given] = rewritten.argv;
     const out = global.quiet ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb as string)) { stderr(USAGE); return 2; }

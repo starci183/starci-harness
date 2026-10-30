@@ -58,6 +58,7 @@
     "LICENSE",
     "src/main.mjs",
     "src/main.d.mts",
+    "src/retired*.mjs",
     "emit/**",
     "stack/**",
     "release/**",
