@@ -41,7 +41,7 @@ services:
         path: data.liveness
         equals: alive
     start:
-      argv: ["{starci}", supervisor, tick]
+      argv: ["{starci}", supervisor, tick, --execute]
     install:
       kind: none
     requires: [orca]
@@ -52,7 +52,7 @@ services:
       kind: schedule
       name: StarCi Supervisor Tick
       everyMinutes: 1
-      argv: ["{starci}", supervisor, tick]
+      argv: ["{starci}", supervisor, tick, --execute]
       env:
         STARCI_ROLE: supervisor
       log: "{state}/tick.log"
@@ -61,18 +61,18 @@ services:
     summary: the owner's Telegram channel (ops/telegram.yaml), notices out and the owner's replies in as owner requests; needs TELEGRAM_BOT_TOKEN in secret.env or the environment and a chat stored by connect telegram discover-chat
     platform: any
     check:
-      argv: ["{starci}", supervisor, telegram-bridge, status, --json]
+      argv: ["{starci}", connect, telegram, bridge, status, --json]
       json:
         path: data.liveness
         equals: alive
     start:
-      argv: ["{starci}", supervisor, telegram-bridge, run]
+      argv: ["{starci}", connect, telegram, bridge, run]
       detach: true
     install:
       kind: schedule
       name: StarCi Telegram Bridge
       everyMinutes: 1
-      argv: ["{starci}", supervisor, telegram-bridge, run]
+      argv: ["{starci}", connect, telegram, bridge, run]
       env:
         STARCI_ROLE: owner
       log: "{state}/telegram-bridge.log"

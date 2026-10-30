@@ -10,9 +10,10 @@ import { DISPATCHING, graphVersionOfCommand, recordReplan, snapshotOf } from "..
 import type { WorkflowRow } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
-import type { VerbContext } from "../../shared/verb.js"
+import type { VerbContext, VerbResult } from "../../shared/verb.js"
 import { cancelTasks, readSnapshot, reconcile, reportMessage, reportOf, stepWorkflow } from "./engine.js"
 import type { StepAction, WorkflowReport } from "./engine.js"
+import { regoal } from "./goal-change.js"
 import { buildReplan, classCounts, classificationTable, readReplanSource } from "./replan.js"
 import type { RelayAdd, Replan } from "./replan.js"
 
@@ -149,7 +150,7 @@ export const amendWithRelays = async (context: VerbContext, workflowId: string, 
  */
 export const workflowAmendVerb = defineVerb({
     path: ["workflow", "amend"],
-    summary: "replan a workflow from a desired graph (--desired, --based-on) or a change file: reconcile by task key, record graph n+1, cancel what is dropped or redone live, resume",
+    summary: "replan a workflow from a desired graph (--desired, --based-on) or a change file: reconcile by task key, record graph n+1, cancel what is dropped or redone live, resume; --goal records goal n+1 instead",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "kernel", "supervisor"],
@@ -158,14 +159,19 @@ export const workflowAmendVerb = defineVerb({
         workflow: { kind: "string", summary: "the workflow id", required: true, positional: true },
         desired: { kind: "string", summary: "the desired graph: a whole starci/workflow@1 file of the same id (needs --based-on)" },
         change: { kind: "string", summary: "a starci/workflow-change@1 file (add, edit, remove, retry, accept), or a whole workflow file" },
-        "based-on": { kind: "string", summary: "the graph version the replan was built on; STALE when the workflow moved past it" },
+        goal: { kind: "string", summary: "a starci/goal-change@1 file, yaml or json: record goal n+1 (goal text, acceptance, scope ceiling) based on goal n (--based-on); owner and Supervisor only" },
+        "based-on": { kind: "string", summary: "the graph version the replan was built on (with --goal: the goal version); STALE when the workflow moved past it" },
         "cmd-id": { kind: "string", summary: "the command id: the same id again returns the graph version it recorded" },
         "keep-effect": { kind: "string", summary: "comma list of removed keys whose committed effect stays (no revert node)" },
         accept: { kind: "string", summary: "comma list of stale keys kept on their dependencies' current results" },
     },
-    run: async (context, flags) => {
+    run: async (context, flags): Promise<VerbResult<unknown>> => {
+        if (flags.goal !== undefined) {
+            if (flags.desired !== undefined || flags.change !== undefined) throw new Refusal("FLAG_INVALID", "--goal records a goal change alone; the Kernel answers it with its own amend --desired")
+            return regoal(context, flags.workflow, flags.goal, flags["based-on"])
+        }
         const named = flags.desired ?? flags.change
-        if (named === undefined || (flags.desired !== undefined && flags.change !== undefined)) throw new Refusal("FLAG_INVALID", "give one of --desired <workflow file> or --change <change file>")
+        if (named === undefined || (flags.desired !== undefined && flags.change !== undefined)) throw new Refusal("FLAG_INVALID", "give one of --desired <workflow file>, --change <change file> or --goal <goal-change file>")
         const basedOn = versionOf(flags["based-on"])
         if (flags.desired !== undefined && basedOn === undefined) throw new Refusal("FLAG_INVALID", "--desired needs --based-on <graph version>")
         const place = await planPlace(context.cwd)

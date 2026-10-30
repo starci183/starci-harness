@@ -2281,7 +2281,7 @@ rules:
       - {kind: eslint-be, id: event-dedupe-key}
       - {kind: eslint-be, id: event-subscription-static}
 
-# Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
+# Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
 # dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is
 # red (ANATOMY_PENDING_UNRULED) and one that holds no open gap is red (ANATOMY_PENDING_STALE), so this list only shrinks.

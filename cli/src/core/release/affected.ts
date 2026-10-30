@@ -171,10 +171,10 @@ export const releaseAffectedVerb = defineVerb({
     schema: "starci/release-affected@1",
     flags: {
         base: { kind: "string", summary: "the commit the change is measured from (empty or unknown: every node is affected)" },
-        head: { kind: "string", summary: "the commit measured (default HEAD)" },
+        sha: { kind: "string", summary: "the commit measured (default HEAD)" },
     },
     run: async (context, flags) => {
-        const data = await affectedBy(context.cwd, flags.base, flags.head)
+        const data = await affectedBy(context.cwd, flags.base, flags.sha)
         return { data, message: data.summary.join("\n") }
     },
 })

@@ -21,12 +21,12 @@ merged tree there is: a check a later tier runs anyway is not run earlier, and r
 | role | edit | commit | merge to main | push | publish | tiers it runs |
 |---|---|---|---|---|---|---|
 | Owner | anything | yes | yes | yes | yes, through a push CI publishes | none required; CI judges |
-| Debug | harness settings (`config set`); code through its own lanes | merge commits of what it lands | main: its lanes, a workflow's or `[Worker]`'s branch, a package edit branch | main (`release push`) | yes, by pushing the bumped version, which CI publishes; `release publish --publish` only as the fallback with the owner's yes | 2 after merging, once per batch it lands |
+| Debug | harness settings (`config set`); code through its own lanes | merge commits of what it lands | main: its lanes, a workflow's or `[Worker]`'s branch, a package edit branch | main (`release push --execute`) | yes, by pushing the bumped version, which CI publishes; `release publish --execute` only as the fallback with the owner's yes | 2 after merging, once per batch it lands |
 | Supervisor | nothing: it dispatches a `[Worker]` for any edit, a package edit included | no | no | no | no | none of its own: `supervisor accept` runs the worker's tier 1 verify |
 | Kernel (an orca workflow's seat) | contracts and the workflow file; never product code | no: the harness commits a green task | no | no | no | 2 when a batch of tasks lands and before its handoff |
 | Worker (an Op under a Kernel, a `[Worker]` under the Supervisor) | its contract's `allowPaths`, or a `@starci` package on its package edit branch | only on that package branch; the harness commits a green task (a `[Worker]`'s on `starci/<worker>`) | no | no | no | 1 |
 | inline agent (the chat session that is Kernel and worker of an `inline` workflow) | its task's `allowPaths`, one task at a time | no: the harness commits a green task | no | no | no | 1 per task; 2 when a batch lands and before the workflow finishes |
-| app session (a chat session working in a product repository outside a workflow) | the product, on its branch or worktree; a `@starci` package only on a package edit branch | yes, on its own branch | the product's main, for its own branch | the product's main (`release push`) | no: the package edit goes to Debug | 1 while editing; 2 before it pushes |
+| app session (a chat session working in a product repository outside a workflow) | the product, on its branch or worktree; a `@starci` package only on a package edit branch | yes, on its own branch | the product's main, for its own branch | the product's main (`release push --execute`) | no: the package edit goes to Debug | 1 while editing; 2 before it pushes |
 
 `inline` and `orca` follow the same tiers: the inline agent holds the worker's tier 1 and the Kernel's tier 2, and a
 Kernel seat holds tier 2 for the Ops it coordinates. Mail, Op worktrees and the harness commit are
@@ -55,9 +55,9 @@ tickets it for Debug at the cap (`cli/src/harness/worktree-busy.ts`).
 | a clean-verify checkout | `task verify` | its verdict is reached |
 | any of the above of a retired project | its maker | `project retire`, which then detaches the repository from Orca |
 
-The collector `starci worktree gc` (run by every `supervisor tick`, and by `supervisor accept`, `reject` and a workflow step
+The collector `starci worktree gc --execute` (run by every `supervisor tick`, and by `supervisor accept`, `reject` and a workflow step
 of an ended workflow) finds every harness worktree whose owner ended, every orphan no ledger row owns, every busy one due again
-and every one a retired project still holds, and removes it as above; `--dry-run` lists them (`cli/src/harness/worktree-gc.ts`).
+and every one a retired project still holds, and removes it as above; without `--execute` it lists them (`cli/src/harness/worktree-gc.ts`).
 
 ## Not enforced yet
 

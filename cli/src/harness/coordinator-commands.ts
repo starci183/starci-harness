@@ -202,7 +202,7 @@ export const getCommand = (db: DatabaseSync, cmdId: string): CommandRow | undefi
     return row === undefined ? undefined : toCommand(row)
 }
 
-/** The goal version of a workflow (goal@1 is the defined goal; workflow regoal and a goal-change move it). */
+/** The goal version of a workflow (goal@1 is the defined goal; workflow amend --goal and a goal-change move it). */
 export const goalVersionOf = (db: DatabaseSync, workflowId: string): number => getWorkflow(db, workflowId).goalVersion
 
 /**

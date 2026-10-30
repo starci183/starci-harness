@@ -79,7 +79,7 @@ base), `inputs`, `output`, `cwd`, `budget`, `difficulty`, `risk`.
 For orca tasks, show who the router would pick:
 
 ```text
-starci route explain --label <label> --difficulty <d> [--risk <tag,...>]
+starci route show --label <label> --difficulty <d> [--risk <tag,...>]
 ```
 
 ## 5. Present and get the OK

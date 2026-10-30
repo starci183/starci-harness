@@ -9,6 +9,6 @@ checks gate each, the refusals, the fallback and the secret). Which suites each
 profile's CI runs is `ci` of [policy/quality.yaml](../../policy/quality.yaml); the workflow is
 [.github/workflows/ci.yml](../../.github/workflows/ci.yml).
 
-A red CI after a push opens the next fix at once, scoped to the red checks (`starci release ci-status` names them): a
+A red CI after a push opens the next fix at once, scoped to the red checks (`starci check ci` names them): a
 `code` contract from a Supervisor, a lane from Debug, a commit from an app session. It is top priority and blocks nobody:
 main, the next push and the next goal keep moving while it runs. Only the actions `requireCi` lists wait for a green CI.

@@ -184,24 +184,24 @@ const planOf = async (packages: readonly WorkspacePackage[], cwd: string): Promi
 /**
  * `starci release publish`: plans which package versions are missing from npm and judges the plan (each due package requires its
  * siblings at their versions here, published or due; with `--base`, no package changed since it is on npm at its old version); with
- * --publish it publishes them, a dependency before its dependent, from a clean commit on the remote main and reads each back. CI's
+ * --execute it publishes them, a dependency before its dependent, from a clean commit on the remote main and reads each back. CI's
  * publish jobs run it on every push to main; from a workstation it is Debug's fallback.
  */
 export const releasePublishVerb = defineVerb({
     path: ["release", "publish"],
-    summary: "plan the npm publication of every package version not yet on the registry; --publish performs it and reads each back",
+    summary: "plan the npm publication of every package version not yet on the registry; --execute performs it and reads each back",
     editions: ["lite", "full"],
     effect: "publish",
     roles: ["owner", "release"],
     schema: "starci/release-publish@1",
     flags: {
-        publish: { kind: "boolean", summary: "perform the plan (default: print it only)" },
+        execute: { kind: "boolean", summary: "perform the plan (default: a dry run that prints it only)" },
         package: { kind: "string", summary: "only this package (its folder or name)" },
         base: { kind: "string", summary: "refuse RELEASE_VERSION_NOT_BUMPED for a package changed since this commit (empty: any package) whose version is on npm" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
-        if (flags.publish) assertMayPushBranch(await currentBranch(root))
+        if (flags.execute) assertMayPushBranch(await currentBranch(root))
         const all = listPackages(root)
         const packages = all.filter((pkg) => flags.package === undefined || pkg.relativeDir === flags.package || pkg.name === flags.package)
         if (packages.length === 0) throw new Refusal("RELEASE_PACKAGE_UNKNOWN", `no package matches ${flags.package ?? "this repository"}`)
@@ -213,20 +213,20 @@ export const releasePublishVerb = defineVerb({
         // The CLI's own phase (CI's publish-cli plans it alone): a due CLI is judged at its stack pins before it is planned.
         if (packages.every((pkg) => pkg.relativeDir === HELD_DIR) && due.length > 0) assertCliPins(root)
         const published: string[] = []
-        if (flags.publish && due.length > 0) {
+        if (flags.execute && due.length > 0) {
             const dirty = await trackedChanges(root)
             if (dirty.length > 0) throw new Refusal("PUBLISH_DIRTY_TREE", "publish from a clean tree: the archive must equal the commit")
             await captureGit(["fetch", "--quiet", "origin", "main"], root)
             const head = await resolveSha(root, "HEAD")
             if (!(await refExists(root, "origin/main")) || !(await isAncestor(root, head, "origin/main"))) {
-                throw new Refusal("PUBLISH_NOT_ON_REMOTE_MAIN", "push the commit first (starci release push); a published version must come from a commit on main")
+                throw new Refusal("PUBLISH_NOT_ON_REMOTE_MAIN", "push the commit first (starci release push --execute); a published version must come from a commit on main")
             }
             await requireCiGreen(context, root, "release.publish", head)
             await publishDue(due, all, root, published)
         }
-        const data: PublishData = { mode: flags.publish ? "publish" : "plan", rows, published }
+        const data: PublishData = { mode: flags.execute ? "publish" : "plan", rows, published }
         const table = formatTable([["PACKAGE", "VERSION", "TAG", "ACTION"], ...rows.map((row) => [row.package, row.version, row.distTag, row.action])])
-        const summary = flags.publish ? `published ${String(published.length)} package(s)` : `${String(due.length)} to publish (plan only; add --publish)`
+        const summary = flags.execute ? `published ${String(published.length)} package(s)` : `${String(due.length)} to publish (plan only; add --execute)`
         return { data, message: `${table}\n${summary}` }
     },
 })

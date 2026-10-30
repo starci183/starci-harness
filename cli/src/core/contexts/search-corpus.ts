@@ -18,7 +18,7 @@ export const CHUNKER_VERSION = 4
 export interface Chunk {
     /**
      * The stable anchor id: an explicit anchor (`tabs.choose`), a rule or decision id (`R12`, `DNA-CORE-LABEL-OUTSIDE`,
-     * `two-grammars`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor --check`).
+     * `two-grammars`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor` with no id judges it).
      */
     readonly anchor: string
     /** The other forms the chunk resolves by: the fallback beside an explicit or rule id, a rule id beside an explicit anchor. */

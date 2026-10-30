@@ -77,7 +77,7 @@ export const cancelTask = async (cwd: string, taskId: string, reason: string | u
         if (unknown.length > 0) {
             throw new Refusal(
                 "SEAT_LAUNCH_UNKNOWN",
-                `task ${before.id} stays cancelling: the launch of seat ${unknown.map((seat) => seat.seat).join(", ")} named no dispatch, so a worker may run that nobody can stop yet; learn its dispatch with starci seat start ${before.id} --resume, then cancel again`,
+                `task ${before.id} stays cancelling: the launch of seat ${unknown.map((seat) => seat.seat).join(", ")} named no dispatch, so a worker may run that nobody can stop yet; learn its dispatch with starci seat start ${before.id} --resume --execute, then cancel again`,
             )
         }
         const preserved = gone ? { dir: null, patch: null, tracked: [], untracked: [] } : await preserveForCancel(db, root, getTask(db, before.id))

@@ -16,6 +16,6 @@ The verbs it runs are the ones its brief names: `starci task status <task>`,
 `starci task verify <task> --contract <file>` and `starci task result <task> --status <s> --output @<file>`.
 
 From the Kernel's side: a worker is launched by `workflow step` (orca runner) or by
-`starci seat start <task>`, which writes the brief, claims the queued task and starts the agent.
-`starci seat start <task> --dry-run` writes the brief and prints the Orca argv without launching, the way to
+`starci seat start <task> --execute`, which writes the brief, claims the queued task and starts the agent.
+`starci seat start <task>` (its dry run) writes the brief and prints the Orca argv without launching, the way to
 read exactly what a worker will see. Never type into a worker's terminal; read its result and the verify.

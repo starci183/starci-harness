@@ -5,11 +5,12 @@ import { runtimeRoot } from "../../harness/ledger.js"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { EVERYONE, defineVerb } from "../../shared/verb.js"
+import type { VerbResult } from "../../shared/verb.js"
 import { EVAL_FILE } from "./anchors.js"
 import { corpusRoot } from "./anchors-verb.js"
 import { SEARCH_SCOPES, readCorpus } from "./search-corpus.js"
 import type { SearchScope } from "./search-corpus.js"
-import { INDEX_PATH, loadIndex, search, staleness } from "./search-index.js"
+import { INDEX_PATH, buildIndex, loadIndex, search, staleness, writeIndex } from "./search-index.js"
 import type { LoadedIndex, SearchHit } from "./search-index.js"
 
 const DEFAULT_LIMIT = 5
@@ -41,6 +42,14 @@ interface ModeScore {
     readonly held: boolean
     readonly mrr: number
     readonly misses: readonly { readonly q: string; readonly expect: readonly string[]; readonly got: readonly string[] }[]
+}
+
+/** What `--execute` wrote: the rebuilt index's size and its vectors. */
+interface BuildData {
+    readonly mode: "build"
+    readonly chunks: number
+    readonly files: number
+    readonly embedding: string
 }
 
 interface SearchData {
@@ -143,35 +152,45 @@ const evalFile = (cwd: string, flag: string | undefined): string => {
  * files, policy/, the starci skill and the harness documents (each a Markdown section or a yaml entry) for a question, by BM25
  * fused with local embeddings when the index carries them, and prints each hit's anchor first, then its file, line, score and
  * text: the anchor is what a worker cites, and `contexts anchor <anchor>` resolves it. The tree is English, so a question in
- * another language is refused with the hint to translate it first. `--check` fails when the built index does not match the
- * tree's files (it names the files that changed); `--eval` measures recall@5 and MRR and fails under the eval's floor.
+ * another language is refused with the hint to translate it first. With no question it judges the index (its dry run): exit 1
+ * when the built index does not match the tree's files (it names the files that changed), and `--execute` rebuilds it as the
+ * build does (search-build.ts); `--eval` measures recall@5 and MRR and fails under the eval's floor.
  */
 export const contextsSearchVerb = defineVerb({
     path: ["contexts", "search"],
-    summary: "look up contexts, op files, policy and harness docs for a question, anchor first (BM25 fused with local embeddings); --check fails on a stale index, --eval fails under the recall floor",
+    summary: "look up contexts, op files, policy and harness docs for a question, anchor first (BM25 fused with local embeddings); with no question, judge the index (stale exits 1; --execute rebuilds it); --eval fails under the recall floor",
     editions: ["lite", "full"],
-    effect: "read",
+    effect: "local-write",
     roles: EVERYONE,
     schema: "starci/contexts-search@2",
     flags: {
-        question: { kind: "string", positional: true, summary: "the question, a rule id or a few words" },
+        question: { kind: "string", positional: true, summary: "the question, a rule id or a few words (none: judge the built index against the files of the tree)" },
         scope: { kind: "string", summary: `comma-separated scopes to search: ${SEARCH_SCOPES.join(", ")}` },
         limit: { kind: "string", summary: `how many hits to print (default ${String(DEFAULT_LIMIT)})` },
         lexical: { kind: "boolean", summary: "rank by BM25 only, even when the index carries vectors" },
-        check: { kind: "boolean", summary: "exit 1 when the built index does not match the files of the tree" },
-        root: { kind: "string", summary: "with --check: the tree to compare the built index with instead of the harness's own" },
+        execute: { kind: "boolean", summary: "with no question: rebuild the index from the harness's own tree, as the build does" },
+        cwd: { kind: "string", summary: "with no question: the tree to compare the built index with instead of the harness's own" },
         eval: { kind: "boolean", summary: "measure recall@5 and MRR of each ranking on the search eval set; exit 1 under its floor" },
         file: { kind: "string", summary: "with --eval: an eval file other than the one beside the verb's source" },
     },
-    run: async (context, flags) => {
+    run: async (context, flags): Promise<VerbResult<BuildData | SearchData>> => {
+        const judging = flags.question === undefined && !flags.eval
+        if (flags.execute) {
+            if (!judging) throw new UsageError("--execute rebuilds the index; it takes no question and no --eval")
+            if (flags.cwd !== undefined) throw new UsageError("--execute rebuilds the harness's own index; --cwd only names a tree to compare it with")
+            const built = await buildIndex(runtimeRoot(), context.progress)
+            writeIndex(built)
+            const vectors = built.embedding === null ? `none (${built.embeddingNote})` : built.embeddingNote
+            return { data: { mode: "build", chunks: built.chunks.length, files: built.files, embedding: vectors } satisfies BuildData, message: `wrote ${INDEX_PATH}: ${String(built.chunks.length)} chunks from ${String(built.files)} files; vectors: ${vectors}` }
+        }
         const index = indexOrRefuse()
-        if (flags.check) {
-            const stale = staleness(index.file, readCorpus(corpusRoot(context.cwd, flags.root)))
+        if (judging) {
+            const stale = staleness(index.file, readCorpus(corpusRoot(context.cwd, flags.cwd)))
             const data: SearchData = { mode: "check", ...describe(index), stale }
             const size = `${String(Math.round(statSync(INDEX_PATH).size / 1024))} KB`
             return {
                 data,
-                message: stale === undefined ? `green: ${INDEX_PATH} (${String(data.chunks)} chunks, ${size}) matches the tree; vectors: ${data.embedding}` : `SEARCH_INDEX_STALE: ${stale}; run \`npm run build\` in cli/`,
+                message: stale === undefined ? `green: ${INDEX_PATH} (${String(data.chunks)} chunks, ${size}) matches the tree; vectors: ${data.embedding}` : `SEARCH_INDEX_STALE: ${stale}; run \`starci contexts search --execute\` (or \`npm run build\` in cli/)`,
                 exitCode: stale === undefined ? 0 : 1,
             }
         }
@@ -186,7 +205,7 @@ export const contextsSearchVerb = defineVerb({
             const red = unknown !== "" || result.scores.some((score) => !score.held)
             return { data, message: `${String(result.questions)} question(s), vectors: ${data.embedding}\n${lines.join("\n")}${unknown}`, exitCode: red ? 1 : 0 }
         }
-        if (flags.question === undefined || flags.question.trim() === "") throw new UsageError("contexts search needs a question (or --check or --eval)")
+        if (flags.question === undefined || flags.question.trim() === "") throw new UsageError("contexts search needs a question (or none, to judge the index, or --eval)")
         if (NON_ENGLISH_LETTER.test(flags.question)) {
             throw new Refusal("SEARCH_QUERY_NOT_ENGLISH", "the contexts are English: translate the question to English first and search again, keeping rule ids and names as written")
         }

@@ -309,7 +309,7 @@ export const scheduleState = (plan: SchedulePlan, tasks: readonly ScheduledTask[
     const same = task.command.toLowerCase() === plan.action.command.toLowerCase() && task.arguments.trim().toLowerCase() === plan.action.arguments.toLowerCase()
     if (!same) return { state: "differs", evidence: `${plan.name} runs ${task.command} ${task.arguments}` }
     const stale = plan.launchers.find((launcher) => !existsSync(launcher.path) || readFileSync(launcher.path, "utf8") !== launcher.content)
-    if (stale !== undefined) return { state: "differs", evidence: `${stale.path} is missing or not what ops/host.yaml writes; starci host install ${plan.service}` }
+    if (stale !== undefined) return { state: "differs", evidence: `${stale.path} is missing or not what ops/host.yaml writes; starci host install ${plan.service} --execute` }
     if (!task.enabled) return { state: "disabled", evidence: `${plan.name} is disabled` }
     return { state: "installed", evidence: `${plan.name} runs ${plan.launchers.map((launcher) => launcher.path).join(", ")}` }
 }
@@ -340,7 +340,7 @@ export interface HostStatus {
 
 const scheduleOf = (service: HostService, tasks: readonly ScheduledTask[] | string): ServiceStatus["schedule"] => {
     if (service.install.kind !== "schedule") return undefined
-    if (process.platform !== "win32") return { name: service.install.name, state: "unsupported", evidence: `scheduling on ${process.platform} is not built; run starci supervisor watch in a terminal` }
+    if (process.platform !== "win32") return { name: service.install.name, state: "unsupported", evidence: `scheduling on ${process.platform} is not built; run starci supervisor tick --loop --execute in a terminal` }
     let plan: SchedulePlan
     try {
         plan = planSchedule(service)
@@ -363,7 +363,7 @@ const statusOf = async (service: HostService, config: HostConfig, tasks: readonl
     let state: ServiceStatus["state"] = "down"
     if (scheduled === "installed") state = "up"
     else if (scheduled === "absent" || scheduled === "unsupported") state = "not installed"
-    const hint = state === "up" ? "" : `; starci host install ${service.id}`
+    const hint = state === "up" ? "" : `; starci host install ${service.id} --execute`
     return { ...base, state, evidence: `${schedule?.evidence ?? "no schedule"}${hint}`, ...withSchedule }
 }
 
@@ -473,7 +473,7 @@ const upService = async (
     return { id: service.id, outcome: probe.up ? "started" : "still down", evidence: probe.evidence }
 }
 
-/** What `host install` or `host uninstall` did (or, with --dry, would do) for one service. */
+/** What `host install` or `host uninstall` did (or, without --execute, would do) for one service. */
 export interface InstallOutcome {
     readonly id: string
     readonly outcome: "installed" | "uninstalled" | "absent" | "planned" | "skipped"
@@ -485,12 +485,12 @@ export interface InstallOutcome {
 /** The platform a schedule is planned for: this host's, or another only for a dry run. */
 export const targetPlatform = (platform: string | undefined, dry: boolean): string => {
     if (platform === undefined || platform === process.platform) return process.platform
-    if (!dry) throw new Refusal("HOST_PLATFORM_DRY_ONLY", `--platform ${platform} plans for another host; it runs only with --dry`)
+    if (!dry) throw new Refusal("HOST_PLATFORM_DRY_ONLY", `--platform ${platform} plans for another host; it runs only as a dry run (without --execute)`)
     return platform
 }
 
 const assertSchedulable = (platform: string): void => {
-    if (platform !== "win32") throw new Refusal("HOST_INSTALL_UNSUPPORTED", `scheduling on ${platform} is not built; run starci supervisor watch in a terminal`)
+    if (platform !== "win32") throw new Refusal("HOST_INSTALL_UNSUPPORTED", `scheduling on ${platform} is not built; run starci supervisor tick --loop --execute in a terminal`)
 }
 
 const scheduled = (services: readonly HostService[], platform: string): { readonly plans: HostService[]; readonly skipped: InstallOutcome[] } => {
@@ -504,7 +504,7 @@ const scheduled = (services: readonly HostService[], platform: string): { readon
     return { plans, skipped }
 }
 
-/** Registers each named service's schedule (Windows: its launchers, then `schtasks /Create /F`, so a rerun replaces it); --dry writes and runs nothing. */
+/** Registers each named service's schedule (Windows: its launchers, then `schtasks /Create /F`, so a rerun replaces it); a dry run writes and runs nothing. */
 export const hostInstall = async (services: readonly HostService[], cwd: string, dry: boolean, platform: string): Promise<InstallOutcome[]> => {
     assertSchedulable(platform)
     const { plans, skipped } = scheduled(services, platform)
@@ -534,7 +534,7 @@ export const describeOutcomes = (outcomes: readonly InstallOutcome[]): string =>
         })
         .join("\n")
 
-/** Removes each named service's schedule and launchers; a task no service declares is never touched. --dry runs nothing. */
+/** Removes each named service's schedule and launchers; a task no service declares is never touched. A dry run runs nothing. */
 export const hostUninstall = async (services: readonly HostService[], cwd: string, dry: boolean, platform: string): Promise<InstallOutcome[]> => {
     assertSchedulable(platform)
     const { plans, skipped } = scheduled(services, platform)

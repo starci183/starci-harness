@@ -95,8 +95,8 @@ export const stateLine = (outlook: BudgetOutlook): string => {
 }
 
 /** The `budget raise` a near workflow's question proposes. */
-const raiseCommand = (outlook: BudgetOutlook, by: string): string => {
-    return `starci budget raise ${outlook.workflow} ${raiseFlags(outlook.proposed).join(" ")} --by ${by} --reason "${String(outlook.tasks.remaining)} task(s) left"`
+const raiseCommand = (outlook: BudgetOutlook): string => {
+    return `starci budget raise ${outlook.workflow} ${raiseFlags(outlook.proposed).join(" ")} --reason "${String(outlook.tasks.remaining)} task(s) left"`
 }
 
 /** How a budget reads in one line: minutes and tries against the ceiling, and the tasks left. */
@@ -138,7 +138,7 @@ export const tickBudgets = async (): Promise<string[]> => {
                     title: question,
                     evidence: { workflow: outlook.workflow, question },
                     tried: `the near threshold is ${String(loadRouting().budgets.nearPercent)}% of the ceiling (ops/routing.yaml budgets.nearPercent), or fewer tries left than tasks; the raise is sized to the remaining tasks at the done tasks' pace`,
-                    proposedDefault: raiseCommand(outlook, "owner"),
+                    proposedDefault: raiseCommand(outlook),
                     options: ["hold: no raise; dispatch stops at the ceiling (BUDGET_EXHAUSTED)"],
                     project,
                     workflow: outlook.workflow,
@@ -146,7 +146,7 @@ export const tickBudgets = async (): Promise<string[]> => {
                     key: nearKey(outlook),
                     waiters: [],
                 })
-                return [`budget near: workflow ${outlook.workflow} (${outlook.near.join(", ")}; ${budgetLine(outlook)}): question ticket ${ticket.id} ${outcome === "opened" ? "opened" : `seen ${String(ticket.occurrences)} times`}, proposing: ${raiseCommand(outlook, "supervisor")}`]
+                return [`budget near: workflow ${outlook.workflow} (${outlook.near.join(", ")}; ${budgetLine(outlook)}): question ticket ${ticket.id} ${outcome === "opened" ? "opened" : `seen ${String(ticket.occurrences)} times`}, proposing: ${raiseCommand(outlook)}`]
             })
         } catch {
             return []

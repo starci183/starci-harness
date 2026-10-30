@@ -113,7 +113,9 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   one spelling of their meaning; `app secret` takes `--env`; `feedback` folds into `ticket --kind feedback`; `ci secret set`,
   `ci var set` and `secret recipients --add/--remove` are dry until `--execute`; the test world is `app world up|down|status`;
   one parser refuses a flag an action does not take and help is generated from the parser tables. A retired spelling is
-  refused for one minor with a message naming the new one, then removed. It ships in lanes; until a line ships the code is the
+  refused for one minor with a message naming the new one, then removed; until the app nivo-lite has deployed on the new
+  spellings it is accepted and rewritten with a one-line notice naming the new one (`REFUSE_RETIRED_SPELLINGS` of
+  `cli/src/shared/retired.ts`, the one table of retired spellings). It ships in lanes; until a line ships the code is the
   truth. Owner, 2026-10-30: "Duyệt cả 6" (the six decisions of the audit), then "Làm theo lane".
 - **App check and lint pass under 20 findings (`gate-threshold-20`).** `starci app check` and `starci app lint` exit green while
   fewer than 20 error findings remain and none is a hard blocker: a plaintext secret, a failed boot proof or a migration finding
@@ -211,7 +213,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   --local`, `cli/src/core/deps/`), so finished code serves both apps before any release. Publishing to npm is separate and
   automatic: every push to main publishes, once its own CI jobs are green, each package and CLI version not on npm yet, and refuses a
   package changed under a version already there (`RELEASE_VERSION_NOT_BUMPED`, `cli/src/core/release/publish.ts`;
-  [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20). A workstation `release publish --publish` is Debug's fallback. Only the
+  [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20). A workstation `release publish --execute` is Debug's fallback. Only the
   edited package is bumped and re-pinned ([contexts/authority/packages.md](../authority/packages.md)).
 - **Open source under MIT.** The harness and every package it publishes are MIT, copyright starci183
   ([LICENSE](../../LICENSE)); the CLI ships on npm as `starci-harness`, published by CI.

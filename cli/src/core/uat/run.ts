@@ -63,8 +63,8 @@ const envOf = (value: string | undefined): string[] => {
 
 const timeoutOf = (value: string | undefined, fallback: number): number => {
     if (value === undefined) return fallback
-    const ms = Number(value)
-    if (!/^\d+$/.test(value) || ms < 1) throw new UsageError(`--timeout-ms takes a whole number of milliseconds, not "${value}"`)
+    const ms = Math.round(Number(value) * 1000)
+    if (value.trim() === "" || !Number.isFinite(ms) || ms < 1) throw new UsageError(`--timeout takes a positive number of seconds, not "${value}"`)
     return ms
 }
 
@@ -163,7 +163,7 @@ export const uatRunVerb = defineVerb({
         script: { kind: "string", summary: "the script (.mjs): `import { chromium } from \"playwright\"`, work at top level, relative paths land in /evidence", required: true, positional: true },
         forward: { kind: "string", summary: "host ports the browser reaches on 127.0.0.1 inside the container (port,port,...)" },
         out: { kind: "string", summary: "the evidence folder, relative to the repository root, created (default uat-evidence/<container>)" },
-        "timeout-ms": { kind: "string", summary: "the deadline of the run; the container is killed and removed at it (default ops/uat.yaml timeoutMs)" },
+        timeout: { kind: "string", summary: "seconds to the deadline of the run; the container is killed and removed at it (default ops/uat.yaml timeoutMs)" },
         image: { kind: "string", summary: "another official Playwright image (<repo>:v<x.y.z>-<distro>) instead of the pinned one" },
         env: { kind: "string", summary: "variables of this process's environment handed to the script by name only (NAME,NAME,...); the values never reach argv or the output" },
         args: { kind: "rest", summary: "after --: arguments handed to the script as process.argv" },
@@ -172,7 +172,7 @@ export const uatRunVerb = defineVerb({
         const config = loadUat()
         const forwards = portsOf(flags.forward)
         const env = envOf(flags.env)
-        const timeoutMs = timeoutOf(flags["timeout-ms"], config.timeoutMs)
+        const timeoutMs = timeoutOf(flags.timeout, config.timeoutMs)
         const image = flags.image ?? config.image
         const script = resolve(context.cwd, flags.script)
         if (!existsSync(script) || !statSync(script).isFile()) throw new Refusal("UAT_SCRIPT_MISSING", `${script} is not a file`)

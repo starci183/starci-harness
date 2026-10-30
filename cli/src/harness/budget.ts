@@ -80,7 +80,7 @@ export const assertWorkflowBudget = (root: string, workflow: string): WorkflowBu
     if (budget === undefined) throw new Refusal("WORKFLOW_UNKNOWN", `no workflow ${workflow} in this project's ledger`)
     if (budget.exhausted.length > 0) {
         const spent = budget.exhausted.map((key) => `${key} ${String(budget.used[key])} of ${String(budget.ceiling[key])}`).join(", ")
-        throw new Refusal("BUDGET_EXHAUSTED", `workflow ${workflow} has used its budget (${spent}); dispatch holds until the owner or the Supervisor runs: starci budget raise ${workflow} --minutes <n>|--tries <n> --by <owner|supervisor> --reason <why>`)
+        throw new Refusal("BUDGET_EXHAUSTED", `workflow ${workflow} has used its budget (${spent}); dispatch holds until the owner or the Supervisor runs: starci budget raise ${workflow} --minutes <n>|--tries <n> --reason <why> (as the owner or the Supervisor)`)
     }
     return budget
 }

@@ -42,21 +42,21 @@ usage. Read every refusal code; never retry blindly.
 
 ## Seats and the chat
 
-The host: owner runs `starci host install` once, `starci host status` to check ([ops/host.yaml](../../ops/host.yaml)).
+The host: owner runs `starci host install --execute` once (without it, a dry run printing the schedules), `starci host status` to check ([ops/host.yaml](../../ops/host.yaml)).
 The owner starts a project's Supervisor once (`starci supervisor start` from any checkout of the project, or a scheduled
-`starci supervisor tick` for every project) and then talks to its `[Supervisor] <project>` terminal, hands it a request
+`starci supervisor tick --execute` for every project) and then talks to its `[Supervisor] <project>` terminal, hands it a request
 from anywhere with `starci supervisor ask "<request>"`, or answers on Telegram once the bridge runs (`starci connect
-telegram`, `starci supervisor telegram-bridge`; [cli/README.md](../../cli/README.md) "The owner's Telegram channel"): it turns a request
+telegram`, `starci connect telegram bridge run`; [cli/README.md](../../cli/README.md) "The owner's Telegram channel"): it turns a request
 into a workflow of its project, starts it from its own terminal, or hands a one-off job to a `[Worker]` under it
 (`starci supervisor dispatch`), reads each worker's result and accepts it, and answers its Kernels' escalations; it never
 works hands-on. Each orca workflow's `[Kernel]` plans (every contract and the workflow file) and drives
 it with `kernel next` / `kernel submit`; Ops run their label's op file ([ops/ops/](../../ops/ops/README.md)) on one
 contract. [cli/README.md](../../cli/README.md) "Seats as a tree", "Coordinators and their drivers" and "Supervisor dispatch" own the verbs, "Coordinator commands" the command file.
 
-A chat agent outside Orca is Debug: it diagnoses the harness and works the ticket queue (`starci ticket list --state open`,
+A chat agent outside Orca is Debug: it diagnoses the harness and works the ticket queue (`starci ticket list --status open`,
 then `ticket take` and `ticket close --fixed-by <sha>`), changes nothing but a harness setting (`starci config set`),
 hands the Supervisor the owner's words (`starci supervisor ask`), and alone lands work: it merges the
-workflows' and workers' branches, pushes (`starci release push`) and publishes harness packages with the owner's yes; it
+workflows' and workers' branches, pushes (`starci release push --execute`) and publishes harness packages with the owner's yes; it
 never starts an orca workflow (that refuses `SUPERVISOR_REQUIRED`). Under the `inline` runner the chat is the Kernel and
 the worker, one task at a time, without seats.
 
@@ -67,12 +67,12 @@ Get the owner's OK on the exact artefact before each effect, and reuse it only w
 | Effect | The owner approves |
 | --- | --- |
 | `workflow define`, `workflow start` | the workflow file: goal, runner, tasks, allowPaths, checks, risk |
-| `task send`, `seat start` outside a workflow | the contract |
+| `task send`, `seat start --execute` outside a workflow | the contract |
 | `workflow amend` that adds, removes or widens work | the `plan diff` output |
 | `workflow stop`, `task cancel`, `budget raise` | the target and the reason |
 | `config set` | the key and the value |
-| `release push`, `release cut` | the repository, commit and version (a harness push publishes the package versions it raises) |
-| `release publish --publish` | every package and version in the plan, each time (npm is public) |
+| `release push --execute`, `release cut --execute` | the repository, commit and version (a harness push publishes the package versions it raises) |
+| `release publish --execute` | every package and version in the plan, each time (npm is public) |
 
 Silence, a question or "handle it" is not an OK. A retry or a contract fix inside an accepted goal is the
 Kernel's own call; report it. Never decide for the owner, enter a credential or print a secret.

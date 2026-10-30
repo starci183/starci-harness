@@ -80,7 +80,7 @@ const npmCi = async (root: string): Promise<void> => {
 
 /**
  * `starci deps source`: where the app's `@starci` packages come from. With no flag it prints each package's mode; `--local`
- * builds each named package (every pinned one the folder holds by default) in `--from` (default the harness's
+ * builds each named package (every pinned one the folder holds by default) in `--cwd` (default the harness's
  * `packages/`) and copies its publishable files over the app's installed copies; `--npm` runs `npm ci` and clears the
  * record. The mechanism and why it never touches package.json or package-lock.json is the doc comment of `./packages.ts`.
  */
@@ -95,13 +95,13 @@ export const depsSourceVerb = defineVerb({
         local: { kind: "boolean", summary: "build each package in its folder and copy it over the app's installed copies; the committed pins stay npm versions" },
         npm: { kind: "boolean", summary: "restore pure npm resolution: npm ci, and clear the local record" },
         package: { kind: "list", summary: "with --local, the package to take locally (grammar or @starci/grammar), repeatable; default every pinned @starci package the folder holds" },
-        from: { kind: "string", summary: "with --local, the folder holding the @starci package folders (default packages/ of this harness)" },
+        cwd: { kind: "string", summary: "with --local, the folder holding the @starci package folders (default packages/ of this harness)" },
         prebuilt: { kind: "boolean", summary: "with --local, copy each package's dist as it stands instead of building it first" },
         sync: { kind: "boolean", summary: "re-apply the repository's recorded local packages here as they stand (after an npm ci, or in another worktree of the repository)" },
     },
     run: async (context, flags) => {
         if ([flags.local, flags.npm, flags.sync].filter(Boolean).length > 1) throw new UsageError("--local, --npm and --sync are three actions; pass one")
-        if (!flags.local && (flags.package.length > 0 || flags.from !== undefined || flags.prebuilt)) throw new UsageError("--package, --from and --prebuilt go with --local")
+        if (!flags.local && (flags.package.length > 0 || flags.cwd !== undefined || flags.prebuilt)) throw new UsageError("--package, --cwd and --prebuilt go with --local")
         const root = await repositoryRoot(context.cwd)
         const pins = await workingPins(root)
         const warnings: string[] = []
@@ -117,7 +117,7 @@ export const depsSourceVerb = defineVerb({
         } else if (flags.local) {
             action = "local"
             assertNpm(root)
-            const from = resolve(flags.from ?? defaultPackagesRoot())
+            const from = resolve(flags.cwd ?? defaultPackagesRoot())
             const available = localPackages(from)
             // Every @starci package the app uses: those it pins and those installed through another package (hfs through starci-harness).
             const pinnedNames = [...new Set([...pins.map((pin) => pin.name), ...installedNames(root)])]

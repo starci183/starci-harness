@@ -6,7 +6,7 @@ fixes that package, never a shim in the app. The edit is a tier 1 branch ([branc
 1. `starci pkg branch <topic>` cuts `pkg/<app>-<topic>` into a worktree under the harness's `.claude/worktrees/`.
 2. Edit and commit there. Bump only the package you changed, with its CHANGELOG entry, in the commit that changes it; a
    package that requires it moves only when it needs the new API.
-3. Build the changed package, the one build a branch takes, so the app can link it: `starci deps source --local --from
+3. Build the changed package, the one build a branch takes, so the app can link it: `starci deps source --local --cwd
    <worktree>/packages` as `pkg branch` prints it.
 4. `starci pkg handoff` (`--urgent` when a deploy waits on it: Debug lands it on main first).
 

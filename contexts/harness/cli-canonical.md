@@ -6,7 +6,9 @@ run by @starci/hfs). Written by the read-only CLI audit of 2026-10-30 (127 harne
 343 call sites) and approved by the owner as written ("Duyệt cả 6", the six decisions folded into the table: generators
 dry by default, `app secret --env`, `feedback` folded into `ticket`, remote writes dry until `--execute`, the test world
 as `app world`, one refused minor for every retired spelling). The table is rolled out in lanes; until a line ships, the
-code is the truth and `starci explain` lists what runs today.
+code is the truth and `starci explain` lists what runs today. The harness layer's lines have shipped: their retired
+spellings are the rows of `cli/src/shared/retired.ts`, accepted with a notice naming the new spelling until
+`REFUSE_RETIRED_SPELLINGS` turns refusal on.
 
 Status of each line: KEEP, RENAME (the old spelling is refused for one minor with a message naming the new one, then
 removed), FOLD (merged into another verb), DROP (removed), FIX (a behaviour bug).

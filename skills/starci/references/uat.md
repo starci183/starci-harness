@@ -67,7 +67,7 @@ where the Docker gateway reaches it (`0.0.0.0`), since the relay arrives from th
 starci uat run <run-folder>/walk.mjs --forward 3000,3001 --out <run-folder>
 ```
 
-- `--out` is relative to the repository root and is created. `--timeout-ms` bounds the run (the default is in
+- `--out` is relative to the repository root and is created. `--timeout <seconds>` bounds the run (the default is in
   `ops/uat.yaml`); at the deadline the container is killed and removed.
 - `--json` reports the image, the forwards, the files the run wrote, the exit code, the duration and the tail of
   stdout and stderr. Exit 0 is green, 1 is red or refused, 2 is bad usage.

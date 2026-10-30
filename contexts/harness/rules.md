@@ -15,7 +15,7 @@ These hold for every role and every task. A rule with a gate names it; the other
 4. **Two tools never touch the same checkout.** Parallel agents, seats or tools each write in a checkout of their own; the
    harness gives every task of a workflow its own Op worktree and lands it on the workflow's branch through a rebase,
    returning a textual conflict as `conflict` (`harness/land.ts`). A defect found outside your paths goes into your report.
-5. **Public actions need the owner's approval.** Publishing a package from a workstation (`release publish --publish`),
+5. **Public actions need the owner's approval.** Publishing a package from a workstation (`release publish --execute`),
    deploying, and anything posted outside the repository wait for the owner's yes. Who pushes main, and after which
    checks, is [contexts/authority/](../authority/README.md); on the harness that push publishes, through CI, every package
    version it raised ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20).
