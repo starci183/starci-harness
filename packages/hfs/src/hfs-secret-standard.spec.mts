@@ -9,35 +9,40 @@ import { app, run, privateAbsent } from "./helpers/hfs-secret-fixture.mjs";
 import { parseYaml } from "../runtime/engine/yaml.mjs";
 import { envelopeOf } from "../runtime/scripts/hfs/secret-document.mjs";
 import { memberFile } from "../runtime/scripts/lib/sealed-member.mjs";
+import type { SecretSops } from "../runtime/scripts/hfs/secret-sops.mjs";
 
 const OWNER = `age1${"q".repeat(58)}`;
 const SERVER = `age1${"s".repeat(58)}`;
 const ENC = "ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]";
 const PEM = "-----BEGIN FAKE KEY-----\nAAAA\r\n-----END FAKE KEY-----\n";
-const FAKE = ["fake-merchant-1", "fake-ipn-2", "fake-signing-3"];
+const FAKE = ["fake-merchant-1", "fake-ipn-2", "fake-signing-3"] as const;
 
 /** A sops YAML envelope naming `keys`, sealed to `recipients`. */
-const sealedYaml = (keys, recipients = [OWNER]) =>
+const sealedYaml = (keys: readonly string[], recipients: readonly string[] = [OWNER]) =>
   `${keys.map((key) => `${key}: ${ENC}`).join("\n")}\nsops:\n  age:\n${recipients.map((recipient) => `    - recipient: ${recipient}\n      enc: |\n        -----BEGIN AGE ENCRYPTED FILE-----\n        YWdl\n        -----END AGE ENCRYPTED FILE-----\n`).join("")}  lastmodified: "2026-10-29T00:00:00Z"\n  mac: ${ENC}\n  version: 3.13.2\n`;
 
 /** A legacy sops dotenv envelope naming `keys`. */
-const sealedDotenv = (keys) =>
+const sealedDotenv = (keys: readonly string[]) =>
   `${keys.map((key) => `${key}=${ENC}`).join("\n")}\nsops_age__list_0__map_recipient=${OWNER}\nsops_age__list_0__map_enc=-----BEGIN AGE ENCRYPTED FILE-----\\nYWdl\\n-----END AGE ENCRYPTED FILE-----\nsops_mac=${ENC}\nsops_version=3.13.2\n`;
 
 /** The keys of a YAML plaintext the fake seal received, parsed as sops would read it. */
-const plainMap = (plaintext) => parseYaml(plaintext);
+const plainMap = (plaintext: string): Record<string, string> => parseYaml(plaintext);
 
 /** A sops seam double: records each seal (format, the parsed plaintext, recipients, file) and decrypts to `stored`. */
-const fakeSops = (seals, stored = {}) => ({
+/** One seal the double recorded. */
+interface Seal { format: string; map: Record<string, string>; recipients: string[]; file: string }
+
+// reason: the double implements only decrypt and seal, the two members the verbs under test call.
+const fakeSops = (seals: Seal[], stored: Record<string, string> = {}): SecretSops => ({
   decrypt: () => ({ ...stored }),
-  seal: (request) => {
-    const map = request.inputType === "yaml" ? plainMap(request.plaintext) : Object.fromEntries(request.plaintext.split("\n").filter(Boolean).map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
+  seal: (request: { inputType: string; plaintext: string; recipients: string[]; filenameOverride: string }) => {
+    const map = request.inputType === "yaml" ? plainMap(request.plaintext) : Object.fromEntries(request.plaintext.split("\n").filter(Boolean).map((line): [string, string] => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
     seals.push({ format: request.inputType, map, recipients: request.recipients, file: path.basename(request.filenameOverride) });
     return request.inputType === "yaml" ? sealedYaml(Object.keys(map)) : sealedDotenv(Object.keys(map));
   },
-});
+}) as unknown as SecretSops;
 
-const sopsConfig = (root, rules) =>
+const sopsConfig = (root: string, rules: [string, string][]) =>
   fs.writeFileSync(path.join(root, ".sops.yaml"), `creation_rules:\n${rules.map(([regex, age]) => `  - path_regex: '${regex}'\n    age: ${age}\n`).join("")}`);
 const APP_WIDE = String.raw`\.starcistacks[/\\][^/\\]+[/\\]secrets[/\\][^/\\]+\.enc$`;
 
@@ -45,15 +50,15 @@ test("set creates <member>.enc.yaml as sops YAML whose values keep every byte, a
   const { root, dir, env } = app(t);
   const pem = path.join(root, "..", "fake.pem");
   fs.writeFileSync(pem, PEM);
-  const seals = [];
+  const seals: Seal[] = [];
   const result = await run(["set", "--env", "dev", "sepay", "SEPAY_MERCHANT_ID", "SEPAY_SIGNING_KEY", "--from-file", `SEPAY_SIGNING_KEY=${pem}`], {
     cwd: root, env, stdin: () => FAKE[0], sops: fakeSops(seals),
   });
   assert.equal(result.code, 0, result.err);
   assert.equal(seals.length, 1);
-  assert.equal(seals[0].format, "yaml");
-  assert.equal(seals[0].file, "sepay.enc.yaml");
-  assert.deepEqual(seals[0].map, { SEPAY_MERCHANT_ID: FAKE[0], SEPAY_SIGNING_KEY: PEM }, "a multi-line value with CR and its trailing newline round-trips");
+  assert.equal(seals[0]?.format, "yaml");
+  assert.equal(seals[0]?.file, "sepay.enc.yaml");
+  assert.deepEqual(seals[0]?.map, { SEPAY_MERCHANT_ID: FAKE[0], SEPAY_SIGNING_KEY: PEM }, "a multi-line value with CR and its trailing newline round-trips");
   assert.ok(fs.existsSync(path.join(dir, "sepay.enc.yaml")));
   privateAbsent(result, [FAKE[0], PEM]);
 });
@@ -72,12 +77,12 @@ test("--from-file names a key of this set once, and an empty file seals nothing"
 test("a legacy dotenv member stays dotenv to its own recipients until migrate moves it", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["SEPAY_MERCHANT_ID"]));
-  const seals = [];
+  const seals: Seal[] = [];
   const result = await run(["set", "--env", "dev", "sepay", "SEPAY_IPN_SECRET_KEY"], { cwd: root, env, stdin: () => FAKE[1], sops: fakeSops(seals, { SEPAY_MERCHANT_ID: FAKE[0] }) });
   assert.equal(result.code, 0, result.err);
-  assert.equal(seals[0].format, "dotenv");
-  assert.equal(seals[0].file, "sepay.enc");
-  assert.deepEqual(seals[0].recipients, [OWNER]);
+  assert.equal(seals[0]?.format, "dotenv");
+  assert.equal(seals[0]?.file, "sepay.enc");
+  assert.deepEqual(seals[0]?.recipients, [OWNER]);
   assert.equal(memberFile(dir, "sepay"), path.join(dir, "sepay.enc"));
 });
 
@@ -109,10 +114,10 @@ test("a member is sealed to its environment's rule, so a set after a recipients 
   sopsConfig(root, [[APP_WIDE, OWNER]]);
   await run(["recipients", "--env", "production", "--add", SERVER, "--execute"], { cwd: root, env });
   fs.mkdirSync(path.join(root, ".starcistacks", "production", "secrets"), { recursive: true });
-  const seals = [];
+  const seals: Seal[] = [];
   const result = await run(["set", "--env", "production", "api", "OPENROUTER_API_KEY"], { cwd: root, env, stdin: () => FAKE[2], sops: fakeSops(seals) });
   assert.equal(result.code, 0, result.err);
-  assert.deepEqual(seals[0].recipients, [], "no recipients are pinned: the seam reads the environment's rule for the file");
+  assert.deepEqual(seals[0]?.recipients, [], "no recipients are pinned: the seam reads the environment's rule for the file");
   assert.ok(dir);
 });
 
@@ -153,7 +158,7 @@ test("the sealed VPS member and a member whose entry lists its keys are groups, 
 test("migrate is a dry run naming keys only, then moves a legacy member to <slug>.enc.yaml and removes the old file", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "ai.enc"), sealedDotenv(["OPENROUTER_API_KEY"]));
-  const seals = [];
+  const seals: Seal[] = [];
   const sops = fakeSops(seals, { OPENROUTER_API_KEY: FAKE[2] });
   const dry = await run(["migrate", "--env", "dev", "ai", "--to", "openrouter"], { cwd: root, env, sops });
   assert.equal(dry.out, "dry run: would move dev/ai.enc to dev/openrouter.enc.yaml (OPENROUTER_API_KEY); add --execute\n");
@@ -169,7 +174,7 @@ test("migrate is a dry run naming keys only, then moves a legacy member to <slug
 test("split divides a member by provider into one <provider>.enc.yaml each and merges into an existing member only when asked", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "sepay.enc.yaml"), sealedYaml(["SEPAY_MERCHANT_ID", "OPENROUTER_API_KEY"]));
-  const seals = [];
+  const seals: Seal[] = [];
   const sops = fakeSops(seals, { SEPAY_MERCHANT_ID: FAKE[0], OPENROUTER_API_KEY: FAKE[2] });
   const done = await run(["split", "--env", "dev", "sepay", "--execute"], { cwd: root, env, sops });
   assert.equal(done.code, 0, done.err);
@@ -203,7 +208,7 @@ test("set declares each key of a compose environment in its stack secrets: once,
   const text = fs.readFileSync(stacks, "utf8");
   assert.ok(text.includes("# kept comment") && text.includes("# custody"), "comments survive the edit");
   const declared = parseYaml(text).environments.dev.secrets;
-  assert.deepEqual(declared.map((entry) => [entry.name, entry.member, entry.key, entry.where]), [
+  assert.deepEqual(declared.map((entry: Record<string, string>) => [entry.name, entry.member, entry.key, entry.where]), [
     ["sepay-merchant-id", "sepay", "SEPAY_MERCHANT_ID", "secrets/sepay"],
     ["sepay-ipn-secret-key", "sepay", "SEPAY_IPN_SECRET_KEY", "secrets/sepay"],
     ["sepay-signing-secret-key", "sepay", "SEPAY_SIGNING_SECRET_KEY", "secrets/sepay"],
@@ -215,13 +220,13 @@ test("set declares each key of a compose environment in its stack secrets: once,
 });
 
 /** A sops seam double whose decrypt answers per member file (`byFile` keyed by file name); seals are recorded as fakeSops does. */
-const filesSops = (seals, byFile) => ({ ...fakeSops(seals), decrypt: (file) => ({ ...byFile[path.basename(file)] }) });
+const filesSops = (seals: Seal[], byFile: Record<string, Record<string, string>>): SecretSops => ({ ...fakeSops(seals), decrypt: (file: string) => ({ ...byFile[path.basename(file)] }) });
 
 test("split --group sends keys to the owner's members, merges an identical key into an existing member with --into-existing, then removes the source", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "api.enc.yaml"), sealedYaml(["OTP_PEPPER", "WEBHOOK_SIGNING_SECRET", "PRIMARY_DB_URL", "N8N_API_KEY"]));
   fs.writeFileSync(path.join(dir, "n8n.enc.yaml"), sealedYaml(["N8N_API_KEY", "N8N_HOST"]));
-  const seals = [];
+  const seals: Seal[] = [];
   const sops = filesSops(seals, {
     "api.enc.yaml": { OTP_PEPPER: FAKE[0], WEBHOOK_SIGNING_SECRET: FAKE[1], PRIMARY_DB_URL: FAKE[2], N8N_API_KEY: "fake-n8n" },
     "n8n.enc.yaml": { N8N_API_KEY: "fake-n8n", N8N_HOST: "fake-host" },
@@ -247,7 +252,7 @@ test("a merge whose target holds a key with another value is refused naming the 
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "stack.enc.yaml"), sealedYaml(["OPENCLAW_TOKEN", "OPENCLAW_URL"]));
   fs.writeFileSync(path.join(dir, "openclaw.enc.yaml"), sealedYaml(["OPENCLAW_TOKEN"]));
-  const seals = [];
+  const seals: Seal[] = [];
   const sops = filesSops(seals, { "stack.enc.yaml": { OPENCLAW_TOKEN: FAKE[0], OPENCLAW_URL: FAKE[1] }, "openclaw.enc.yaml": { OPENCLAW_TOKEN: FAKE[2] } });
   const result = await run(["migrate", "--env", "dev", "stack", "--to", "openclaw", "--into-existing", "--execute"], { cwd: root, env, sops });
   assert.equal(result.code, 2);
@@ -279,7 +284,7 @@ test("--group-file reads KEY: member, and a group naming a key the member does n
 
 test("audit accepts a member the stack groups on purpose (every key declared in it) and still names an ungrouped mix", async (t) => {
   const { root, dir, env } = app(t);
-  const entry = (key, member) => `      - {name: ${key.toLowerCase().replaceAll("_", "-")}, member: ${member}, key: ${key}, where: secrets/${member}}\n`;
+  const entry = (key: string, member: string) => `      - {name: ${key.toLowerCase().replaceAll("_", "-")}, member: ${member}, key: ${key}, where: secrets/${member}}\n`;
   const declared = ["PRIMARY_DB_URL", "APP_BE_DB_PASSWORD", "POSTGRES_PASSWORD"].map((key) => entry(key, "postgres")).join("");
   fs.writeFileSync(path.join(root, ".starcistacks", "application-stacks.yaml"),
     `schema: starci/application-stacks@1\nenvironments:\n  dev:\n    secrets:\n${declared}${entry("OTP_PEPPER", "mixed")}`);

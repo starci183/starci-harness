@@ -1,6 +1,7 @@
 // proves: HFS_E2E_IN_AUTOMATIC_GATE@lite
 // proves: HFS_E2E_IN_AUTOMATIC_GATE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,7 +22,7 @@ const cleanFiles = {
   '.github/workflows/e2e.yml': 'on:\n  workflow_dispatch:\njobs:\n  e2e:\n    steps:\n      - run: npm run test:e2e\n',
 };
 
-function appFixture(t, edition, files = {}) {
+function appFixture(t: TestContext, edition: string, files: Record<string, string> = {}): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-e2e-gate-proof-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const declaration = JSON.stringify({
@@ -36,7 +37,7 @@ function appFixture(t, edition, files = {}) {
   return root;
 }
 
-const automaticFindings = root => checkHfsWithoutConfig(root).violations
+const automaticFindings = (root: string) => checkHfsWithoutConfig(root).violations
   .filter(item => item.ruleId === CODE);
 
 for (const edition of ['lite', 'full']) {

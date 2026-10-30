@@ -1,10 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import type { Presets } from '../sync/index.mjs';
 import { renderTargets } from '../sync/index.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { ciStandardFindings } from '../runtime/scripts/hfs/rules/ci-standard.mjs';
 
+interface Step { name?: string; run?: string; env?: Record<string, string> }
+interface Job { steps?: Step[] }
+
+// reason: the CI standard is a parsed YAML knowledge file (parseYaml returns any); only the fields read below are relied on.
 const standard = parseYaml(fs.readFileSync(new URL('../runtime/knowledge/hfs/ci-standard.yaml', import.meta.url), 'utf8'));
 const nodeOptions = `--max-old-space-size=${standard.heap.minMiB}`;
 
@@ -14,13 +19,14 @@ for (const edition of ['full', 'lite']) {
       be: { apps: [{ name: 'api', kind: 'api' }] },
       fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
     } };
-    const target = renderTargets(hfs, {}).find((item) => item.path === '.github/workflows/ci.yml');
+    // reason: the spec renders with no jest-preset exclusions at all, so the presets are the empty object, not a full Presets.
+    const target = renderTargets(hfs, {} as unknown as Presets).find((item) => item.path === '.github/workflows/ci.yml');
     assert.ok(target, 'the managed CI is rendered');
     const doc = parseYaml(target.content);
-    const typecheck = doc.jobs.fast.steps.find((step) => step.run === 'npm run typecheck');
+    const typecheck = doc.jobs.fast.steps.find((step: Step) => step.run === 'npm run typecheck');
     assert.equal(typecheck?.env?.NODE_OPTIONS, nodeOptions);
-    const heavy = Object.values(doc.jobs).flatMap((job) => job.steps ?? [])
-      .filter((step) => standard.heap.steps.some((needle) => String(step.run ?? '').includes(needle)));
+    const heavy = Object.values(doc.jobs as Record<string, Job>).flatMap(job => job.steps ?? [])
+      .filter((step: Step) => standard.heap.steps.some((needle: string) => String(step.run ?? '').includes(needle)));
     assert.ok(heavy.length >= 3, 'typecheck, lint and coverage are checked');
     for (const step of heavy) assert.equal(step.env?.NODE_OPTIONS, nodeOptions, step.name);
     assert.deepEqual(ciStandardFindings({ doc, file: target.path, scope: 'app-ci', edition }), []);
@@ -28,9 +34,9 @@ for (const edition of ['full', 'lite']) {
 }
 
 test('the bundled CI standard rejects missing and undersized typecheck heaps in apps and the runtime', () => {
-  const heapOnly = { ...standard, items: standard.items.filter((item) => item.id === 'heap-per-step') };
+  const heapOnly = { ...standard, items: standard.items.filter((item: { id: string }) => item.id === 'heap-per-step') };
   for (const scope of ['app-ci', 'runtime']) {
-    const findings = (stepEnv, jobEnv) => ciStandardFindings({ scope, standard: heapOnly, file: '.github/workflows/ci.yml',
+    const findings = (stepEnv?: unknown, jobEnv?: unknown) => ciStandardFindings({ scope, standard: heapOnly, file: '.github/workflows/ci.yml',
       doc: { jobs: { fast: { env: jobEnv, steps: [{ name: 'typecheck', run: 'npm run typecheck', env: stepEnv }] } } },
     });
     for (const env of [undefined, {}, { NODE_OPTIONS: `--max-old-space-size=${standard.heap.minMiB - 1}` }]) {

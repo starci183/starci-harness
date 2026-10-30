@@ -1,20 +1,22 @@
 // proves: HFS_STACKS_SHAPE@lite
 // proves: HFS_STACKS_SHAPE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { stacksRuntimeFindings } from '../runtime/scripts/hfs/rules/stacks-runtime.mjs';
 import { checkApplicationStacks, trackedStacksGateFindings } from '../runtime/scripts/hfs/stacks-gate.mjs';
 import { applicationStackFindings } from '../runtime/scripts/hfs/starcistacks-runtime.mjs';
 import { checkStarciStacks } from '../runtime/scripts/gates/starcistacks.mjs';
+import type { SwarmFixture } from './helpers/swarm-stack-fixture.mjs';
 import { swarmFixture, swarmService } from './helpers/swarm-stack-fixture.mjs';
 
 const code = 'HFS_STACKS_SHAPE';
-function runtimeContext(fixture, edition) {
+function runtimeContext(fixture: SwarmFixture, edition: string) {
   return { repoRoot: fixture.root, files: [...fixture.files], all: [...fixture.files],
     repo: { profile: 'app', edition }, isRoot: true };
 }
 
-function runtimeInput(fixture, edition) {
+function runtimeInput(fixture: SwarmFixture, edition: string) {
   return { repoRoot: fixture.root, files: [...fixture.files], doc: fixture.manifest, edition };
 }
 
@@ -42,7 +44,7 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-function developmentFixture(t, edition, runtime) {
+function developmentFixture(t: TestContext, edition: string, runtime: string) {
   const fixture = swarmFixture(t, edition);
   const productionModel = structuredClone(fixture.model), write = fixture.write;
   const stackFile = runtime === 'docker-swarm' ? 'infra/swarm/stack.yaml' : 'infra/compose/stack.yaml';
@@ -66,13 +68,13 @@ function developmentFixture(t, edition, runtime) {
   return fixture;
 }
 
-function dependencyFindings(fixture, edition) {
+function dependencyFindings(fixture: SwarmFixture, edition: string) {
   return checkApplicationStacks({ repoRoot: fixture.root, environment: 'dev',
     deploymentModelFile: fixture.modelFile, repo: { edition } }).errors
     .filter(item => item.code === code && item.path.startsWith('services.dependency'));
 }
 
-for (const [edition, runtime] of [['lite', 'docker-swarm'], ['full', 'docker-compose'], ['full', 'docker-swarm']]) {
+for (const [edition, runtime] of [['lite', 'docker-swarm'], ['full', 'docker-compose'], ['full', 'docker-swarm']] as [string, string][]) {
   test(`STACK-DEV ${edition} ${runtime}: the selected dependency runs in a Linux Docker service`, t => {
     const fixture = developmentFixture(t, edition, runtime);
     fixture.model.services.dependency.platform = 'linux/amd64';

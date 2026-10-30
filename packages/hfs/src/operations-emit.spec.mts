@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import type { TestContext } from 'node:test';
 import { spawnSync } from 'node:child_process';
 import ts from 'typescript';
 import { z } from 'zod';
@@ -13,6 +14,11 @@ import { createSchemaBuilder } from '../emit/type-schema.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 
 const require = createRequire(import.meta.url);
+// reason: the emitted wire schemas and the OpenAPI document are JSON documents; the specs probe them at arbitrary depth.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Json = any;
+/** What readOperations answers for a fixture whose entry file is always in the program. */
+interface ReadResult { operations: Json[]; components: Record<string, Json> }
 const SCHEMAS = `import { z } from 'zod'
 export const InputSchema = z.strictObject({ ids: z.array(z.string().min(1).max(24)).max(5), mode: z.enum(['ready', 'all']).default('ready') })
 export const OutputSchema = z.strictObject({ names: z.array(z.string().max(60)).max(5), total: z.number().int().min(0).max(5) })
@@ -25,9 +31,9 @@ function query<Input extends z.ZodType, Output extends z.ZodType, const Refusal 
 function defineOperations<Table>(table: Table): Table { throw new Error('table must not execute during emit') }
 `;
 
-function fixture(t, { schemas = SCHEMAS, entries = `'plans.read@1': query({ input: InputSchema, output: OutputSchema, refusal: ['DENIED'] })` } = {}) {
+function fixture(t: TestContext, { schemas = SCHEMAS, entries = `'plans.read@1': query({ input: InputSchema, output: OutputSchema, refusal: ['DENIED'] })` }: { schemas?: string; entries?: string } = {}) {
   const root = mkdtemp(t, 'hfs-operation-schemas-');
-  const write = (relative, text) => {
+  const write = (relative: string, text: string) => {
     const target = path.join(root, relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, text);
@@ -44,9 +50,10 @@ function fixture(t, { schemas = SCHEMAS, entries = `'plans.read@1': query({ inpu
   const file = write('apps/api/src/operations.ts', `export { OPERATIONS } from '../../../src/modules/platform/operations'\n`);
   return {
     root, file, write, table,
-    read() {
+    read(): ReadResult {
       const program = ts.createProgram({ rootNames: [file], options: { strict: true, skipLibCheck: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, moduleResolution: ts.ModuleResolutionKind.Node10 } });
-      return readOperations({ ts, program, file, repoRoot: root });
+      // reason: the fixture entry file is always in the program, so readOperations never answers null here.
+      return readOperations({ ts, program, file, repoRoot: root }) as unknown as ReadResult;
     },
   };
 }
@@ -55,7 +62,7 @@ test('operation emit derives input/output bounds, defaults and closed refusals f
   const app = fixture(t);
   const result = app.read();
   const input = z.strictObject({ ids: z.array(z.string().min(1).max(24)).max(5), mode: z.enum(['ready', 'all']).default('ready') });
-  const expected = z.toJSONSchema(input, { io: 'input' });
+  const expected: Json = z.toJSONSchema(input, { io: 'input' });
   delete expected.$schema;
   assert.deepEqual(result.operations[0].input, expected);
   assert.deepEqual(result.operations[0].refusal, ['DENIED']);
@@ -145,7 +152,7 @@ test('operation emit refuses bounds lost by z.toJSONSchema, including custom rec
 
 test('operation emit refuses a non-strict object, publishes fixed-format maxima and keeps readOnly out of requests', (t) => {
   const OUT = 'export const OutputSchema = z.strictObject({ ok: z.boolean() })';
-  const schema = (input, output = OUT) => ['import { z } from \'zod\'', input, output, ''].join('\n');
+  const schema = (input: string, output = OUT) => ['import { z } from \'zod\'', input, output, ''].join('\n');
   const app = fixture(t, { schemas: schema('export const InputSchema = z.object({ a: z.string().max(3) })') });
   assert.throws(() => app.read(), /operation plans.read@1: input schema:.*open object.*z\.strictObject/);
   app.write('src/modules/platform/operations/operation.schema.ts', schema('export const InputSchema = z.strictObject({ id: z.uuid(), ips: z.array(z.ipv4()).max(2).readonly() })'));
@@ -164,7 +171,7 @@ for (const [parsedType, transform, reason] of [
 ]) {
   test(`operation emit refuses a bounded wire schema whose parsed input becomes ${parsedType}`, (t) => {
     const app = fixture(t, { schemas: `import { z } from 'zod'\nexport const InputSchema = z.string().max(24).transform(${transform})\nexport const OutputSchema = z.strictObject({ok:z.boolean()})\n` });
-    assert.throws(() => app.read(), error => error.message.startsWith(`operation plans.read@1: parsed input: ${reason}`));
+    assert.throws(() => app.read(), (error: unknown) => (error as Error).message.startsWith(`operation plans.read@1: parsed input: ${reason}`));
   });
 }
 
@@ -186,10 +193,10 @@ test('type-only schema generation still refuses empty object types without a sch
   const file = app.write('empty.ts', 'export type Empty = {}\nexport type EmptyRecord = { [key: string]: never }\n');
   const program = ts.createProgram({ rootNames: [file], options: { noLib: true } });
   const checker = program.getTypeChecker();
-  const source = program.getSourceFile(file);
-  const type = checker.getTypeFromTypeNode(source.statements[0].type);
+  const source = program.getSourceFile(file) as ts.SourceFile;
+  const type = checker.getTypeFromTypeNode((source.statements[0] as ts.TypeAliasDeclaration).type);
   assert.throws(() => createSchemaBuilder({ ts, checker }).schemaOf(type, 'input'), /input: an object type with no members and no index signature says nothing/);
-  const record = checker.getTypeFromTypeNode(source.statements[1].type);
+  const record = checker.getTypeFromTypeNode((source.statements[1] as ts.TypeAliasDeclaration).type);
   assert.throws(() => createSchemaBuilder({ ts, checker }).schemaOf(record, 'input'), /input\[key\]: never/);
 });
 

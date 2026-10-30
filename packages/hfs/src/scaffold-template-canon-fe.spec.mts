@@ -8,27 +8,31 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
+import type { Linter } from 'eslint';
 import { loadHfs, starciFeConfig } from '../../eslint-canon-fe/src/index.ts';
+import type { LockResult } from '../scaffold/app.mjs';
 import { bundledPresets } from '../sync/index.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { gitAdd, installTypeScript } from './helpers/hfs-cli-fixture.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 
-const lockedOk = (root) => {
+const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
   return { ok: true };
 };
 
 /** The canon's flat config with only its own starci-fe rules on: the canon-fe laws, not the stock rules it composes. */
-const canonRulesOnly = (config) => config.map((block) => (block.rules === undefined ? block : {
+const canonRulesOnly = (config: Linter.Config[]): Linter.Config[] => config.map((block) => (block.rules === undefined ? block : {
   ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => id.startsWith('starci-fe/'))),
 }));
 
 for (const edition of ['full', 'lite']) {
   test(`every fe file the ${edition} scaffold writes passes the starci-fe canon`, { timeout: 300_000 }, async (t) => {
-    const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-template-canon-'), harness: { version: '1.1.0-alpha.3' }, edition, authCallback: edition === 'lite',
-      presets: bundledPresets(), lock: lockedOk, initGit: init, emitTypes: () => 'export type Database = Record<string, never>\n' });
+    // reason: authCallback and emitTypes are options scaffoldApp no longer declares; they are still passed, through a variable (no excess-property check).
+    const options = { name: 'demo', into: mkdtemp(t, 'starci-template-canon-'), harness: { version: '1.1.0-alpha.3' }, edition, authCallback: edition === 'lite',
+      presets: bundledPresets(), lock: lockedOk, initGit: init, emitTypes: () => 'export type Database = Record<string, never>\n' };
+    const { root } = scaffoldApp(options);
     gitAdd(installTypeScript(root));
     const fe = path.join(root, 'fe');
     const config = canonRulesOnly(starciFeConfig({ hfs: loadHfs(pathToFileURL(path.join(fe, 'eslint.config.mjs'))) }));

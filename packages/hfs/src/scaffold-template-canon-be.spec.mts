@@ -13,7 +13,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
-import { loadHfs, starciBeConfig } from '../../eslint-canon-be/src/index.ts';
+import type { Linter } from 'eslint';
+import type { LockResult } from '../scaffold/app.mjs';
 import { bundledPresets } from '../sync/index.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
 import { addKind } from '../scaffold/add.mjs';
@@ -21,23 +22,33 @@ import { init } from '../runtime/scripts/api/git/init.mjs';
 import { gitAdd, installTypeScript } from './helpers/hfs-cli-fixture.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 
+/** The part of the sibling canon's public entry this spec calls. */
+interface CanonBe {
+  loadHfs(configUrl: string | URL): unknown;
+  starciBeConfig(options: { hfs: unknown }): Promise<Linter.Config[]>;
+}
+// reason: the sibling package's source is loaded by a computed specifier, as the type-stripped import it was, because tsc would otherwise
+// typecheck that package's own sources (and their runtime copies) under this package's strict program; the shape above is what the spec calls.
+const canonBeEntry = '../../eslint-canon-be/src/index.ts';
+const { loadHfs, starciBeConfig } = await import(canonBeEntry) as CanonBe;
+
 const HFS = path.resolve(import.meta.dirname, '..');
 const KIT = path.resolve(HFS, '..', 'jest-preset');
 /** Where the types a skeleton file imports are installed: this package's dev dependencies and the kit's (jest's globals). */
 const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules')];
 
-const lockedOk = (root) => {
+const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
   return { ok: true };
 };
 
 /** The canon's flat config with only its own starci-be rules on: the canon-be laws, not the stock rules it composes. */
-const canonRulesOnly = (config) => config.map((block) => (block.rules === undefined ? block : {
+const canonRulesOnly = (config: Linter.Config[]): Linter.Config[] => config.map((block) => (block.rules === undefined ? block : {
   ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => id.startsWith('starci-be/'))),
 }));
 
 /** A tsconfig beside the app's that resolves every package from the installs above; the app's own tsconfig stays as rendered. */
-const lintProject = (be) => {
+const lintProject = (be: string) => {
   const { paths } = JSON.parse(fs.readFileSync(path.join(be, 'tsconfig.json'), 'utf8')).compilerOptions;
   const file = path.join(be, 'tsconfig.canon.json');
   fs.writeFileSync(file, JSON.stringify({ extends: './tsconfig.json', compilerOptions: {
@@ -48,7 +59,7 @@ const lintProject = (be) => {
 };
 
 /** The kit, built, where an app installs it. */
-const installKit = (root) => {
+const installKit = (root: string) => {
   for (const part of ['package.json', 'dist']) fs.cpSync(path.join(KIT, part), path.join(root, 'node_modules', '@starci', 'jest-preset', part), { recursive: true });
 };
 
@@ -60,7 +71,7 @@ const TABLE_ENTITY = 'src/modules/domain/widgets/persistence/entities/widgets.en
  * The connection retry window of the rendered DatabaseModule: an app that boots beside the db service of its stack waits about 30 s
  * (10 attempts 3 s apart) for it, never the ~3 s of TypeORM's default that exits the first start and rolls the release back.
  */
-const assertConnectRetry = (module) => {
+const assertConnectRetry = (module: string) => {
   assert.match(module, /^const CONNECT_RETRY = \{ retryAttempts: 10, retryDelay: 3000 \} as const$/mu);
   const registrations = module.split('TypeOrmModule.forRoot(').slice(1);
   assert.ok(registrations.length > 0 && registrations.every((call) => /^\{[^}]*\.\.\.CONNECT_RETRY,/u.test(call)), 'every connection takes the retry window');
@@ -68,18 +79,20 @@ const assertConnectRetry = (module) => {
 };
 
 /** Adds one table the way `starci app add table` does; a full app's starter connection names no provider, so it is declared postgres. */
-const addTable = (root) => {
+const addTable = (root: string) => {
   const file = path.join(root, 'hfs.json');
   const hfs = JSON.parse(fs.readFileSync(file, 'utf8'));
-  hfs.sides.be.connections = hfs.sides.be.connections.map((connection) => ({ provider: 'postgres', ...connection }));
+  hfs.sides.be.connections = hfs.sides.be.connections.map((connection: Record<string, unknown>) => ({ provider: 'postgres', ...connection }));
   fs.writeFileSync(file, `${JSON.stringify(hfs, null, 2)}\n`);
   addKind({ repoRoot: root, noun: 'table', name: 'widgets' });
 };
 
 for (const edition of ['full', 'lite']) {
   test(`the ${edition} skeleton's platform capabilities pass the starci-be canon`, { timeout: 300_000 }, async (t) => {
-    const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-template-canon-be-'), harness: { version: '1.1.0-alpha.3' }, edition, authCallback: edition === 'lite',
-      presets: bundledPresets(), lock: lockedOk, initGit: init, emitTypes: () => 'export type Database = Record<string, never>\n' });
+    // reason: authCallback and emitTypes are options scaffoldApp no longer declares; they are still passed, through a variable (no excess-property check).
+    const options = { name: 'demo', into: mkdtemp(t, 'starci-template-canon-be-'), harness: { version: '1.1.0-alpha.3' }, edition, authCallback: edition === 'lite',
+      presets: bundledPresets(), lock: lockedOk, initGit: init, emitTypes: () => 'export type Database = Record<string, never>\n' };
+    const { root } = scaffoldApp(options);
     assert.equal(fs.existsSync(path.join(root, 'be', ENTITY_BASE)), false, 'a starter carries no entity base: no starter table extends it (R25)');
     assertConnectRetry(fs.readFileSync(path.join(root, 'be', 'src/modules/platform/database/database.module.ts'), 'utf8'));
     addTable(root);
