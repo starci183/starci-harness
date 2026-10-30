@@ -1,6 +1,7 @@
 // scaffold-standalone.spec.mjs - `npx starci-harness app scaffold` works from the published packages alone: the Sonar exclusions come from the
 // jest preset copy @starci/hfs ships (bundledPresets), and a new path is git-initialised with an unborn main before any file is written.
 import { test } from 'node:test';
+import type { TestContext } from 'node:test';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
@@ -9,35 +10,48 @@ import os from 'node:os';
 import path from 'node:path';
 import { bundledPresets } from '../sync/index.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
+import type { LockResult } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { swarmHardeningIssues } from '../runtime/scripts/hfs/rules/stacks-swarm.mjs';
 import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import { renderRelease } from '../stack/render.mjs';
+import type { StackContext } from '../stack/context.mjs';
+
+// reason: normalizeDeploy yields the runtime's deploy config, while renderRelease declares the stack module's own DeployConfig; the render reads the shared fields.
+type RenderConfig = Parameters<typeof renderRelease>[1];
 import { stackConfigModels } from './helpers/stack-compose.mjs';
 
 /** The CLI that runs the scaffold: its version is the starci-harness the new app pins. */
 const HARNESS = { version: '1.1.0-alpha.3' };
 const BUNDLED = new URL('../runtime/packages/jest-preset/sonar-exclusions.cjs', import.meta.url);
-const tempRoot = (t) => {
+const tempRoot = (t: TestContext): string => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-scaffold-standalone-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 };
-const lockedOk = (root) => {
+const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
   return { ok: true };
 };
 
+/** The docker stack config override the render proof reads (the fields this spec asserts on). */
+interface RenderedOverride {
+  version: unknown;
+  services: Record<string, { secrets: Array<{ source: string; target: string }>; environment: Record<string, string> }>;
+  secrets: Record<string, { external: boolean }>;
+}
+
 /** Exercise managed rendering with synthetic custody and a Docker seam; no real credentials or daemon are used. */
-async function renderedOverride(root, spec, model) {
+// reason: `spec` and `model` are parsed YAML of the scaffolded stack; the helper reads only the fields typed below.
+async function renderedOverride(root: string, spec: any, model: any): Promise<{ override: RenderedOverride; configName: string; release: { configs: unknown } }> {
   const envDir = path.join(root, '.starcistacks', 'production');
   const normalized = normalizeDeploy(spec.deploy, { project: 'demo', probe: {
-    exists: relative => fs.existsSync(path.join(envDir, relative)), services: new Set(Object.keys(model.services)),
-    members: new Set(spec.secrets.map(member => member.name)),
+    exists: (relative: string) => fs.existsSync(path.join(envDir, relative)), services: new Set(Object.keys(model.services)),
+    members: new Set(spec.secrets.map((member: { name: string }) => member.name)),
   } });
   assert.deepEqual(normalized.problems, []);
-  const config = { ...normalized.config, repoRoot: root, envDir, secretsDir: path.join(envDir, 'secrets'),
+  const config = { ...normalized.config!, repoRoot: root, envDir, secretsDir: path.join(envDir, 'secrets'),
     stackFile: path.join(envDir, 'infra', 'swarm', 'stack.yaml') };
   const fixtureMembers = {
     'primary-db-url': { PRIMARY_DB_URL: 'postgresql://fixture.invalid/database' },
@@ -49,33 +63,35 @@ async function renderedOverride(root, spec, model) {
     'storage-access-key-id': { STORAGE_ACCESS_KEY_ID: 'fixture-access-value' },
     'storage-secret-access-key': { STORAGE_SECRET_ACCESS_KEY: 'fixture-storage-value' },
   };
-  let override, configName;
+  // reason: the render only reads env, now, sops.decrypt and spawn of the stack context; the doubles below carry just those.
+  let override: RenderedOverride | undefined;
+  let configName: string | undefined;
   const result = await renderRelease({ env: { STARCI_SECRET_VERSION_KEY: 'fixture-version-value' }, now: () => 0,
-    sops: { decrypt: file => fixtureMembers[path.basename(file, '.enc')] },
-    spawn: (command, args, options) => {
+    sops: { decrypt: (file: string) => fixtureMembers[path.basename(file, '.enc') as keyof typeof fixtureMembers] },
+    spawn: (command: string, args: readonly string[], options?: { env?: NodeJS.ProcessEnv | undefined }) => {
       assert.equal(command, 'docker');
       assert.deepEqual(args.slice(0, 2), ['stack', 'config']);
-      override = stackConfigModels(args)[1];
-      configName = options.env.POSTGRES_INIT_CONFIG;
+      override = stackConfigModels(args)[1] as unknown as RenderedOverride;
+      configName = options?.env?.POSTGRES_INIT_CONFIG;
       return { status: 0, stdout: JSON.stringify(override), stderr: '' };
     },
-  }, config, { sourceSha: 'b'.repeat(40), out: path.join(root, 'render-proof'),
-    images: Object.fromEntries(Object.keys(config.images).map(service => [service, `registry.example/${service}@sha256:${'a'.repeat(64)}`])),
+  } as unknown as StackContext, config as unknown as RenderConfig, { sourceSha: 'b'.repeat(40), out: path.join(root, 'render-proof'),
+    images: Object.fromEntries(Object.keys(config.images).map((service) => [service, `registry.example/${service}@sha256:${'a'.repeat(64)}`])),
   });
   assert.equal(result.ok, true);
-  return { override, configName, release: JSON.parse(fs.readFileSync(path.join(result.data.out, 'release.json'), 'utf8')) };
+  return { override: override!, configName: configName!, release: JSON.parse(fs.readFileSync(path.join(result.data!.out as string, 'release.json'), 'utf8')) };
 }
 
 test('bundledPresets answers the jest preset exclusions @starci/hfs ships', () => {
   const list = createRequire(import.meta.url)(fileURLToPath(BUNDLED));
-  assert.ok(list.length > 0 && list.every((glob) => typeof glob === 'string'));
+  assert.ok(list.length > 0 && list.every((glob: unknown) => typeof glob === 'string'));
   assert.deepEqual(bundledPresets(), { sonarExclusions: list.join(',') });
 });
 
 test('a new path is git-initialised with an unborn main before the app files are written', (t) => {
   const into = tempRoot(t);
-  const calls = [];
-  const initGit = (root, options) => {
+  const calls: Array<{ root: string; options: { branch: string }; hadFiles: number }> = [];
+  const initGit = (root: string, options: { branch: string }) => {
     calls.push({ root, options, hadFiles: fs.readdirSync(root).length });
     return init(root, options);
   };
@@ -97,7 +113,7 @@ test('the full ui package pins react-dom beside react, the peer @heroui/react ne
 
 test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persisted data and separate secret grants for production', async (t) => {
   const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
-  const yaml = file => parseYaml(fs.readFileSync(path.join(root, '.starcistacks', ...file.split('/')), 'utf8'));
+  const yaml = (file: string) => parseYaml(fs.readFileSync(path.join(root, '.starcistacks', ...file.split('/')), 'utf8'));
   const stacks = yaml('application-stacks.yaml');
   const model = yaml('production/infra/swarm/stack.yaml');
   const dev = yaml('dev/infra/compose/stack.yaml');
@@ -110,7 +126,7 @@ test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persi
   assert.deepEqual(model.services.postgres.volumes, ['postgres-data:/var/lib/postgresql/data']);
   assert.deepEqual(model.volumes['postgres-data'], { external: true, name: 'demo-production-postgres-data' });
   assert.ok(spec.deploy.volumes.includes(model.volumes['postgres-data'].name));
-  assert.ok(spec.backup.some(entry => entry.component === 'postgres' && entry.restoreProof));
+  assert.ok(spec.backup.some((entry: { component: string; restoreProof?: unknown }) => entry.component === 'postgres' && entry.restoreProof));
   assert.deepEqual(model.services.postgres.networks, ['backing']);
   assert.ok(model.services.core.networks.includes('backing'));
   assert.equal(model.networks.backing.internal, true);
@@ -129,7 +145,7 @@ test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persi
   assert.equal(model.services.core.environment.PRIMARY_DB_URL_FILE, undefined);
   assert.deepEqual(model.configs['postgres-init'], { external: true, name: '${POSTGRES_INIT_CONFIG}' });
   assert.deepEqual(spec.deploy.configs, [{ name: 'postgres-init', file: 'infra/swarm/postgres-init.sh', env: 'POSTGRES_INIT_CONFIG' }]);
-  assert.deepEqual(model.services.postgres.configs.map(({ source, target }) => ({ source, target })), [
+  assert.deepEqual(model.services.postgres.configs.map(({ source, target }: { source: string; target: string }) => ({ source, target })), [
     { source: 'postgres-init', target: '/docker-entrypoint-initdb.d/10-app-role.sh' },
   ]);
   assert.equal(model.services.postgres.configs[0].mode, 0o555);
@@ -141,29 +157,30 @@ test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persi
   assert.match(configName, /^demo-production-postgres-init-c[0-9a-f]{10}$/);
   assert.deepEqual(release.configs, [{ logical: 'postgres-init', name: configName }]);
   for (const [service, keys] of Object.entries({ core: ['PRIMARY_DB_URL'], postgres: ['POSTGRES_PASSWORD', 'PRIMARY_DB_PASSWORD'] })) {
-    assert.deepEqual(override.services[service].secrets.map(secret => secret.target).sort(), [...keys].sort());
+    assert.deepEqual(override.services[service]!.secrets.map((secret) => secret.target).sort(), [...keys].sort());
     for (const key of keys) {
-      assert.equal(override.services[service].environment[`${key}_FILE`], `/run/secrets/${key}`);
-      assert.ok(override.services[service].secrets.some(secret => secret.source === key && secret.target === key));
-      assert.equal(override.secrets[key].external, true);
+      assert.equal(override.services[service]!.environment[`${key}_FILE`], `/run/secrets/${key}`);
+      assert.ok(override.services[service]!.secrets.some((secret) => secret.source === key && secret.target === key));
+      assert.equal(override.secrets[key]!.external, true);
     }
   }
 });
 
 test('the lite starter keeps its vector backing in its db service without a Qdrant declaration, client or container', async (t) => {
+  // reason: the spec feeds the scaffold a types-emit seam its declared options do not list.
   const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init,
-    emitTypes: () => 'export type Database = Record<string, never>\n' });
-  const read = file => fs.readFileSync(path.join(root, ...file.split('/')), 'utf8');
+    emitTypes: () => 'export type Database = Record<string, never>\n' } as Parameters<typeof scaffoldApp>[0]);
+  const read = (file: string) => fs.readFileSync(path.join(root, ...file.split('/')), 'utf8');
   const declaration = JSON.parse(read('hfs.json'));
   const pkg = JSON.parse(read('package.json'));
   const stacks = parseYaml(read('.starcistacks/application-stacks.yaml'));
   assert.equal(declaration.sides.be.connections[0].provider, 'postgres');
   assert.deepEqual(declaration.sides.be.backing ?? [], []);
-  assert.ok(!Object.keys(pkg.dependencies).some(name => name.startsWith('@qdrant/')));
+  assert.ok(!Object.keys(pkg.dependencies).some((name: string) => name.startsWith('@qdrant/')));
   assert.deepEqual(stacks.backing, { db: { provider: 'postgres', component: 'db' } });
   for (const env of ['dev', 'production']) {
     const model = parseYaml(read(`.starcistacks/${env}/infra/swarm/stack.yaml`));
-    assert.ok(!Object.values(model.services).some(service => service.image.includes('qdrant')));
+    assert.ok(!Object.values<{ image: string }>(model.services).some((service) => service.image.includes('qdrant')));
   }
   const model = parseYaml(read('.starcistacks/production/infra/swarm/stack.yaml'));
   const { override } = await renderedOverride(root, stacks.environments.production, model);
@@ -174,8 +191,8 @@ test('the lite starter keeps its vector backing in its db service without a Qdra
 test('full and lite scaffolds leave Compose versions to the runtime default', (t) => {
   for (const edition of ['full', 'lite']) {
     const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition, presets: bundledPresets(), lock: lockedOk, initGit: init,
-      emitTypes: () => 'export type Database = Record<string, never>\n' });
-    const composeFiles = files.filter(file => /^\.starcistacks\/[^/]+\/infra\/(?:swarm|compose)\/[^/]+\.ya?ml$/u.test(file));
+      emitTypes: () => 'export type Database = Record<string, never>\n' } as Parameters<typeof scaffoldApp>[0]);
+    const composeFiles = files.filter((file) => /^\.starcistacks\/[^/]+\/infra\/(?:swarm|compose)\/[^/]+\.ya?ml$/u.test(file));
     assert.ok(composeFiles.length > 0, `${edition} has stack sources`);
     for (const file of composeFiles) {
       const model = parseYaml(fs.readFileSync(path.join(root, ...file.split('/')), 'utf8'));
@@ -189,7 +206,7 @@ test('a failed git init refuses before any app file is written', (t) => {
   const initGit = () => ({ ok: false, stderr: 'git: not found' });
   assert.throws(
     () => scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit }),
-    (error) => error.code === 'HFS_SCAFFOLD_GIT_INIT_FAILED' && /git: not found/.test(error.message),
+    (error: { code?: string; message: string }) => error.code === 'HFS_SCAFFOLD_GIT_INIT_FAILED' && /git: not found/.test(error.message),
   );
   assert.equal(fs.existsSync(path.join(into, 'demo', 'hfs.json')), false);
 });
@@ -214,8 +231,8 @@ test('without the CLI that runs it the scaffold refuses before git init, since n
   const into = tempRoot(t);
   const initGit = () => assert.fail('a refused scaffold initialises nothing');
   assert.throws(
-    () => scaffoldApp({ name: 'demo', into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit }),
-    (error) => error.code === 'HFS_SCAFFOLD_PIN_MISSING' && /starci-harness/.test(error.message),
+    () => scaffoldApp({ name: 'demo', harness: undefined, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit }),
+    (error: { code?: string; message: string }) => error.code === 'HFS_SCAFFOLD_PIN_MISSING' && /starci-harness/.test(error.message),
   );
   assert.equal(fs.existsSync(path.join(into, 'demo')), false);
 });

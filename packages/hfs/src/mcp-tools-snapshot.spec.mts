@@ -3,6 +3,7 @@
 // R302 HFS_MCP_TOOLS_SNAPSHOT: a committed MCP tool catalog `contracts/<app>/<contract>.tools.json` has the canonical tools/list
 // shape and belongs to a declared be app.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,7 +11,7 @@ import path from 'node:path';
 import { mcpToolsSnapshotFindings } from '../runtime/scripts/hfs/rules/mcp-tools.mjs';
 
 const repo = { profile: 'be', apps: [{ name: 'api', kind: 'api' }, { name: 'mcp', kind: 'api' }] };
-const catalog = (overrides = {}) => ({
+const catalog = (overrides: Record<string, unknown> = {}) => ({
   contract: 'shop-mcp@1',
   server: { name: 'shop-mcp', version: '1.0.0' },
   tools: [{ name: 'rooms.search', description: 'Search rooms', inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true } }],
@@ -18,7 +19,7 @@ const catalog = (overrides = {}) => ({
 });
 
 /** The R302 findings of a be side holding `files` ({ be-relative path: JSON value or raw text }). */
-function judge(t, files) {
+function judge(t: TestContext, files: Record<string, unknown>) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-r302-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(files)) {
@@ -36,14 +37,14 @@ for (const edition of ['lite', 'full']) {
   test(`HFS_MCP_TOOLS_SNAPSHOT ${edition}: a catalog under an undeclared app is a violation`, (t) => {
     const findings = judge(t, { 'contracts/bot/shop-mcp@1.tools.json': catalog() });
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].code, 'HFS_MCP_TOOLS_SNAPSHOT');
-    assert.match(findings[0].message, /bot is not declared/);
+    assert.equal(findings[0]!.code, 'HFS_MCP_TOOLS_SNAPSHOT');
+    assert.match(findings[0]!.message, /bot is not declared/);
   });
 
   test(`HFS_MCP_TOOLS_SNAPSHOT ${edition}: a contract that differs from the file name or the server name is a violation`, (t) => {
     const findings = judge(t, { 'contracts/mcp/shop-mcp@2.tools.json': catalog({ server: { name: 'other', version: '1.0.0' } }) });
     assert.equal(findings.length, 1);
-    assert.match(findings[0].message, /differs from the file name shop-mcp@2\.tools\.json/);
+    assert.match(findings[0]!.message, /differs from the file name shop-mcp@2\.tools\.json/);
   });
 
   test(`HFS_MCP_TOOLS_SNAPSHOT ${edition}: duplicate, undescribed or schema-less tools and unreadable JSON are violations`, (t) => {
@@ -53,8 +54,8 @@ for (const edition of ['lite', 'full']) {
       { name: 'b', inputSchema: { type: 'string' } },
     ];
     const [shape] = judge(t, { 'contracts/mcp/shop-mcp@1.tools.json': catalog({ tools }) });
-    assert.deepEqual(shape.problems, ['tool a is listed twice', 'tool b has no description', 'tool b has no inputSchema of type object']);
+    assert.deepEqual(shape!.problems, ['tool a is listed twice', 'tool b has no description', 'tool b has no inputSchema of type object']);
     const [broken] = judge(t, { 'contracts/mcp/shop-mcp@1.tools.json': '{ not json' });
-    assert.deepEqual(broken.problems, ['is not readable JSON']);
+    assert.deepEqual(broken!.problems, ['is not readable JSON']);
   });
 }

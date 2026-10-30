@@ -10,6 +10,8 @@ import { PassThrough } from "node:stream";
 import { app, run, privateAbsent } from "./helpers/hfs-secret-fixture.mjs";
 import { promptHidden, stdinValues } from "../runtime/scripts/hfs/secret-prompt.mjs";
 import { defaultSops } from "../runtime/scripts/hfs/secret-sops.mjs";
+import type { SealRequest, SecretSops } from "../runtime/scripts/hfs/secret-sops.mjs";
+import type { SecretToolOverrides } from "../runtime/scripts/hfs/secret-init.mjs";
 import { envelopeOf } from "../runtime/scripts/hfs/secret-document.mjs";
 import { parseYaml } from "../runtime/engine/yaml.mjs";
 
@@ -17,47 +19,48 @@ const RECIPIENT = `age1${"q".repeat(58)}`;
 const HOST_KEY = `AGE-SECRET-KEY-1${"H".repeat(58)}`;
 const MAIN_KEY = `AGE-SECRET-KEY-1${"M".repeat(58)}`;
 const ENC = "ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]";
-const FAKE = ["fake-signing-value-1", "fake-ipn-value-2", "fake-third-value-3"];
+const FAKE = ["fake-signing-value-1", "fake-ipn-value-2", "fake-third-value-3"] as const;
 
-const sealedDotenv = (keys, recipient = RECIPIENT) =>
+const sealedDotenv = (keys: string[], recipient = RECIPIENT): string =>
   `${keys.map((key) => `${key}=${ENC}`).join("\n")}\n` +
   `sops_age__list_0__map_recipient=${recipient}\n` +
   `sops_age__list_0__map_enc=-----BEGIN AGE ENCRYPTED FILE-----\\nYWdl\\n-----END AGE ENCRYPTED FILE-----\n` +
   `sops_mac=${ENC}\nsops_version=3.13.2\nsops_lastmodified=2026-01-01T00:00:00Z\n`;
 
 /** A sops YAML envelope naming `keys` (what a new member is sealed as). */
-const sealedYaml = (keys) =>
+const sealedYaml = (keys: string[]): string =>
   `${keys.map((key) => `${key}: ${ENC}`).join("\n")}\nsops:\n  age:\n    - recipient: ${RECIPIENT}\n      enc: |\n        -----BEGIN AGE ENCRYPTED FILE-----\n        YWdl\n        -----END AGE ENCRYPTED FILE-----\n  mac: ${ENC}\n  version: 3.13.2\n`;
 
 /** A sops seam double: records each seal's keys and values (YAML for a member, dotenv for a legacy one), returns its envelope. */
-const fakeSeal = (seals) => (request) => {
+const fakeSeal = (seals: Array<Record<string, string>>) => (request: SealRequest): string => {
   const map = request.inputType === "yaml"
     ? parseYaml(request.plaintext)
-    : Object.fromEntries(request.plaintext.split("\n").filter(Boolean).map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
+    : Object.fromEntries(request.plaintext.split("\n").filter(Boolean).map((line: string) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
   seals.push(map);
   return request.inputType === "yaml" ? sealedYaml(Object.keys(map)) : sealedDotenv(Object.keys(map));
 };
 
-const fakeSops = (seals, existing = {}) => ({
+// reason: the set command only calls decrypt and seal on this seam; the double leaves the other SecretSops members out.
+const fakeSops = (seals: Array<Record<string, string>>, existing: Record<string, string> = {}): SecretSops => ({
   decrypt: () => ({ ...existing }),
   seal: fakeSeal(seals),
-});
+}) as unknown as SecretSops;
 
 /** A queue of typed answers; records the labels it was asked with. */
-const answers = (values, labels) => async (label) => {
+const answers = (values: string[], labels: string[]) => async (label: string): Promise<string> => {
   labels.push(label);
-  return values.shift();
+  return values.shift() as string;
 };
 
 // A runProgram double of the selected-identity contract (as hfs-secret-custody.spec.mjs): it records the age key each
 // decrypt's child env carries; the member it decrypts holds TOKEN.
-const selectedTools = (calls, secretEnv = () => ({})) => ({
+const selectedTools = (calls: Array<{ args: string[]; ageKey: string | undefined }>, secretEnv: NonNullable<SecretToolOverrides["secretEnv"]> = () => ({})): SecretToolOverrides => ({
   resolveSops: () => process.execPath,
   resolveRealTool: () => process.execPath,
   secretEnv,
-  runProgram: (program, args, options) => {
+  runProgram: (_program: string, args: readonly string[], options?: { env?: NodeJS.ProcessEnv | undefined }) => {
     calls.push({ args: [...args], ageKey: options?.env?.SOPS_AGE_KEY });
-    const ok = (text) => ({ status: 0, signal: null, error: null, stdout: Buffer.from(text), stderr: Buffer.alloc(0) });
+    const ok = (text: string) => ({ status: 0, signal: null, error: null, stdout: Buffer.from(text), stderr: Buffer.alloc(0) });
     if (args[0] === "--disable-version-check") return ok("sops 3.13.2\n");
     if (args[0] === "--version") return ok("1.3.1\n");
     if (args[0] === "-y") return ok(`${RECIPIENT}\n`);
@@ -67,19 +70,22 @@ const selectedTools = (calls, secretEnv = () => ({})) => ({
 });
 
 /** A fake terminal: a stream with isTTY and a raw mode switch that records each change. */
-const fakeTerminal = () => {
-  const input = new PassThrough();
+type FakeTerminal = PassThrough & { isTTY: boolean; isRaw: boolean; modes: boolean[]; setRawMode: (on: boolean) => FakeTerminal };
+// reason: promptHidden reads a NodeJS.ReadStream; the fake carries the members it touches (isTTY, isRaw, setRawMode, the stream events).
+const asTerminal = (terminal: FakeTerminal): NodeJS.ReadStream => terminal as unknown as NodeJS.ReadStream;
+const fakeTerminal = (): FakeTerminal => {
+  const input = new PassThrough() as FakeTerminal;
   input.isTTY = true;
   input.isRaw = false;
   input.modes = [];
-  input.setRawMode = (on) => { input.isRaw = on; input.modes.push(on); return input; };
+  input.setRawMode = (on: boolean) => { input.isRaw = on; input.modes.push(on); return input; };
   return input;
 };
 
 test("promptHidden echoes one * per character, takes a paste in one chunk, erases on backspace and restores the mode", async () => {
   const input = fakeTerminal();
-  const shown = [];
-  const typed = promptHidden("SEPAY_SIGNING_SECRET_KEY: ", { input, output: (s) => shown.push(s) });
+  const shown: string[] = [];
+  const typed = promptHidden("SEPAY_SIGNING_SECRET_KEY: ", { input: asTerminal(input), output: (s) => shown.push(s) });
   input.write(FAKE[0]);
   input.write("x\u007f");
   input.write("\r");
@@ -93,19 +99,19 @@ test("promptHidden echoes one * per character, takes a paste in one chunk, erase
 
 test("promptHidden cancels on Ctrl+C and on end of input before anything is typed", async () => {
   const input = fakeTerminal();
-  const pending = promptHidden("K: ", { input, output: () => {} });
+  const pending = promptHidden("K: ", { input: asTerminal(input), output: () => {} });
   input.write("abc\u0003");
   await assert.rejects(pending, /cancelled at the prompt; nothing was sealed/u);
   const closed = fakeTerminal();
-  const ended = promptHidden("K: ", { input: closed, output: () => {} });
+  const ended = promptHidden("K: ", { input: asTerminal(closed), output: () => {} });
   closed.end();
   await assert.rejects(ended, /cancelled/u);
 });
 
 test("set on a terminal prompts each key in turn, masked, and seals them all in one write", async (t) => {
   const { root, env } = app(t);
-  const seals = [];
-  const labels = [];
+  const seals: Array<Record<string, string>> = [];
+  const labels: string[] = [];
   const result = await run(["set", "--env", "dev", "sepay", "K1", "K2", "K3"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([...FAKE], labels), sops: fakeSops(seals),
   });
@@ -121,7 +127,7 @@ test("set on a terminal prompts each key in turn, masked, and seals them all in 
 
 test("an empty typed value seals nothing", async (t) => {
   const { root, env, dir } = app(t);
-  const seals = [];
+  const seals: Array<Record<string, string>> = [];
   const result = await run(["set", "--env", "dev", "sepay", "K1", "K2"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([FAKE[0], ""], []), sops: fakeSops(seals),
   });
@@ -133,7 +139,7 @@ test("an empty typed value seals nothing", async (t) => {
 
 test("redirected stdin gives one key its whole text, or one KEY=value line per key, sealed in one write", async (t) => {
   const { root, env } = app(t);
-  const seals = [];
+  const seals: Array<Record<string, string>> = [];
   const one = await run(["set", "--env", "dev", "solo", "K1"], { cwd: root, env, stdin: () => `${FAKE[0]}\nsecond line\n`, sops: fakeSops(seals) });
   assert.equal(one.code, 0, one.err);
   assert.deepEqual(seals[0], { K1: `${FAKE[0]}\nsecond line` }, "a multi-line value survives byte for byte in the YAML member");
@@ -164,8 +170,8 @@ test("set refuses a key named twice", async (t) => {
 test("adding to an existing member with no identity anywhere refuses before any prompt, naming every place and the fix", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["SEPAY_IPN_SECRET_KEY"]));
-  const calls = [];
-  const labels = [];
+  const calls: Array<{ args: string[]; ageKey: string | undefined }> = [];
+  const labels: string[] = [];
   const host = { label: path.join(root, "..", "harness", "secret.env"), read: () => undefined };
   const result = await run(["set", "--env", "dev", "sepay", "SEPAY_SIGNING_SECRET_KEY"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([FAKE[0]], labels), tools: selectedTools(calls), hostIdentity: host,
@@ -182,8 +188,8 @@ test("adding to an existing member with no identity anywhere refuses before any 
 test("the harness secret.env's SOPS_AGE_KEY opens an existing member when the environment and the app hold none", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["TOKEN"]));
-  const calls = [];
-  const seals = [];
+  const calls: Array<{ args: string[]; ageKey: string | undefined }> = [];
+  const seals: Array<Record<string, string>> = [];
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };
   const seam = defaultSops(env, root, process.platform, selectedTools(calls), host);
   const result = await run(["set", "--env", "dev", "sepay", "K1", "K2"], {
@@ -193,7 +199,7 @@ test("the harness secret.env's SOPS_AGE_KEY opens an existing member when the en
   assert.equal(result.code, 0, result.err);
   const decrypt = calls.find((call) => call.args[0] === "decrypt");
   assert.equal(decrypt?.ageKey, HOST_KEY, "the host identity reaches the sops child alone");
-  assert.deepEqual(Object.keys(seals[0]).sort(), ["K1", "K2", "TOKEN"], "the existing key is kept, both new ones added, one write");
+  assert.deepEqual(Object.keys(seals[0]!).sort(), ["K1", "K2", "TOKEN"], "the existing key is kept, both new ones added, one write");
   assert.equal(result.out, "sealed dev/sepay (K1, K2)\n");
   privateAbsent(result, [HOST_KEY, ...FAKE]);
   const got = await run(["get", "--env", "dev", "sepay", "TOKEN", "--to-file"], { cwd: root, env, tools: selectedTools(calls), hostIdentity: host });
@@ -220,7 +226,7 @@ test("the app's own .claude/secret.env wins over the harness's, and a worktree r
   fs.mkdirSync(path.join(main, ".claude"));
   fs.writeFileSync(path.join(main, ".claude", "secret.env"), `SOPS_AGE_KEY=${MAIN_KEY}\n`);
   fs.writeFileSync(path.join(root, ".git"), `gitdir: ${path.join(main, ".git", "worktrees", "app")}\n`);
-  const calls = [];
+  const calls: Array<{ args: string[]; ageKey: string | undefined }> = [];
   const tools = selectedTools(calls);
   delete tools.secretEnv;
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };

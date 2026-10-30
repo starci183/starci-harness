@@ -2,6 +2,7 @@
 // app check), and the staged run of `starci app check --staged` refuses a new measured back-end logic file without its unit spec
 // (BE_UNIT_SPEC_NOT_STAGED), naming the file.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,13 +16,13 @@ import { starterDeclaration } from '../scaffold/app.mjs';
 /** The lite app declaration the package's own scaffold writes: the package proof carries no examples/ tree. */
 const APP_DECLARATION = `${JSON.stringify(starterDeclaration('fixture', undefined, 'lite'), null, 2)}\n`;
 const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
-const git = (cwd, ...args) => {
+const git = (cwd: string, ...args: string[]): void => {
   const run = spawnSync('git', args, { cwd, encoding: 'utf8', env: gitEnv, windowsHide: true });
   assert.equal(run.status, 0, `git ${args.join(' ')}: ${run.stderr}`);
 };
 
 /** A fresh app repository: git initialised on main, the scaffold's lite app declaration at its root. */
-function appRepo(t, prefix) {
+function appRepo(t: TestContext, prefix: string): string {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   git(root, 'init', '-q', '-b', 'main');
@@ -29,7 +30,7 @@ function appRepo(t, prefix) {
   return root;
 }
 
-const write = (root, file, text = '') => {
+const write = (root: string, file: string, text = ''): void => {
   fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
   fs.writeFileSync(path.join(root, file), text);
 };
@@ -41,9 +42,9 @@ test('HFS_HOOKS_NOT_INSTALLED: a set core.hooksPath naming a missing or dispatch
   git(root, 'config', 'core.hooksPath', '.husky/_');
   const missing = hooks();
   assert.deepEqual(missing.map((v) => v.ruleId), ['HFS_HOOKS_NOT_INSTALLED']);
-  assert.match(missing[0].message, /does not exist/);
-  assert.match(missing[0].message, /run `npm ci` at the app root/);
-  assert.doesNotMatch(missing[0].message, /starci npm/, 'the hint names a command that exists');
+  assert.match(missing[0]!.message, /does not exist/);
+  assert.match(missing[0]!.message, /run `npm ci` at the app root/);
+  assert.doesNotMatch(missing[0]!.message, /starci npm/, 'the hint names a command that exists');
   write(root, '.husky/_/.gitignore', '*\n');
   write(root, '.husky/_/pre-commit', '#!/bin/sh\n');
   assert.match(hooks()[0]?.message ?? '', /holds no installed hook/, 'a folder without husky\'s dispatcher h runs no tracked hook');
@@ -53,7 +54,7 @@ test('HFS_HOOKS_NOT_INSTALLED: a set core.hooksPath naming a missing or dispatch
 
 test('BE_UNIT_SPEC_NOT_STAGED: the staged hygiene run refuses a new measured logic file without its spec and names it', async (t) => {
   const root = appRepo(t, 'hfs-staged-spec-');
-  const lines = [];
+  const lines: string[] = [];
   const hygiene = async () => { lines.length = 0; return runWorkHygiene({ cwd: root, out: (line) => lines.push(line) }); };
   const policy = 'be/src/modules/domain/order/order.policy.ts';
   write(root, policy, 'export const allowed = (amount) => amount > 0;\n');
@@ -62,7 +63,7 @@ test('BE_UNIT_SPEC_NOT_STAGED: the staged hygiene run refuses a new measured log
   assert.equal(await hygiene(), 1);
   const findings = lines.filter((line) => line.startsWith('BE_UNIT_SPEC_NOT_STAGED'));
   assert.equal(findings.length, 1, 'a thin feature file owes no unit spec');
-  assert.match(findings[0], new RegExp(`^BE_UNIT_SPEC_NOT_STAGED ${policy} .*order\\.policy\\.spec\\.ts`));
+  assert.match(findings[0]!, new RegExp(`^BE_UNIT_SPEC_NOT_STAGED ${policy} .*order\\.policy\\.spec\\.ts`));
   write(root, 'be/src/modules/domain/order/order.policy.spec.ts', 'it("allows", () => undefined);\n');
   git(root, 'add', '-A');
   assert.equal(await hygiene(), 0, lines.join('\n'));
@@ -72,7 +73,7 @@ test('BE_UNIT_SPEC_NOT_STAGED owes no spec for a measured file with nothing to e
   const root = appRepo(t, 'hfs-staged-constants-');
   write(root, 'be/src/modules/domain/order/order-status.policy.ts', 'export type Status = "open" | "paid";\nexport const STATUS_CODE: Readonly<Record<Status, number>> = { open: 1, paid: 2 };\n');
   git(root, 'add', '-A');
-  const lines = [];
+  const lines: string[] = [];
   assert.equal(await runWorkHygiene({ cwd: root, out: (line) => lines.push(line) }), 0, lines.join('\n'));
 });
 

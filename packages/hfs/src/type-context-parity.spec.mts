@@ -1,4 +1,5 @@
 import test from 'node:test';
+import type { CompilerOptions, Identifier, ImportDeclaration, ModuleResolutionHost, NamedImports, Program, SourceFile } from 'typescript';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { archFixture, ts, writeFiles } from './helpers/hfs-arch-fixture.mjs';
@@ -7,6 +8,12 @@ import { buildTypeScriptContext, relativePath } from '../runtime/scripts/hfs/arc
 import { checkBackend } from '../runtime/scripts/hfs/architecture/backend.mjs';
 import { createTypeScriptProgram, withTypeScriptProgramRun } from '../runtime/scripts/hfs/typescript-programs.mjs';
 import { contextFromProjects } from '../runtime/scripts/hfs/architecture/type-context.mjs';
+import type { TypeContext, TypeContextHelpers } from '../runtime/scripts/hfs/architecture/type-context.mjs';
+import type { ArchitectureConfig } from '../runtime/scripts/hfs/architecture/config.mjs';
+
+// reason: the context builder reads only `ts` of the loaded TypeScript and a few members of the config and helpers; the last test builds those by hand.
+// The helpers double likewise carries only the members the build reads.
+type LoadedTypeScript = Parameters<typeof contextFromProjects>[1];
 
 const LIB = 'src/modules/platform/library';
 const APPLICATION = 'src/features/api/orders/application/read.service.ts';
@@ -50,16 +57,22 @@ const fixtureFiles = {
   '../fe/source.ts': 'export const other = 1;\n',
 };
 
-const relativeEdges = (config, context) => [...context.edges.values()].flat().map(edge => [
+const relativeEdges = (config: { root: string }, context: Pick<TypeContext, 'edges'>) => [...context.edges.values()].flat().map(edge => [
   relativePath(config.root, edge.from), relativePath(config.root, edge.to),
   edge.specifier, edge.runtime, edge.reexport, edge.project, edge.line, edge.column,
 ]).sort((a, b) => `${a[0]}:${a[6]}:${a[7]}`.localeCompare(`${b[0]}:${b[6]}:${b[7]}`));
 
-const localOrigin = (root, program) => {
-  const source = program.getSourceFile(path.join(root, 'apps/core/src/main.ts'));
-  const name = source.statements[0].importClause.namedBindings.elements[0].name;
+/** The identifier of the first named import of a source file whose first statement is `import { name } from '...'`. */
+const firstImportName = (source: SourceFile): Identifier => {
+  const statement = source.statements[0] as ImportDeclaration;
+  return (statement.importClause!.namedBindings as NamedImports).elements[0]!.name;
+};
+
+const localOrigin = (root: string, program: Program): string => {
+  const source = program.getSourceFile(path.join(root, 'apps/core/src/main.ts'))!;
+  const name = firstImportName(source);
   const checker = program.getTypeChecker();
-  return relativePath(root, checker.getAliasedSymbol(checker.getSymbolAtLocation(name)).declarations[0].getSourceFile().fileName);
+  return relativePath(root, checker.getAliasedSymbol(checker.getSymbolAtLocation(name)!).declarations![0]!.getSourceFile().fileName);
 };
 
 // These are the complete findings and graph recorded before the memory change. Locations, project ownership, type-only
@@ -114,27 +127,27 @@ const expectedBackendFindings = [
   },
 ];
 
-test('type context preserves dependency findings, transitive transport findings and project-owned callable origins', t => {
+test('type context preserves dependency findings, transitive transport findings and project-owned callable origins', (t) => {
   const root = archFixture(t, { files: fixtureFiles });
   const config = loadArchitectureConfig(root);
   const context = withTypeScriptProgramRun(() => buildTypeScriptContext(config, ts));
   assert.deepEqual(context.errors, expectedErrors);
   assert.deepEqual(relativeEdges(config, context), expectedEdges);
   assert.deepEqual(checkBackend(config, context), expectedBackendFindings);
-  const sourceFile = context.files.find(file => relativePath(root, file.fileName) === APPLICATION);
+  const sourceFile = context.files.find((file) => relativePath(root, file.fileName) === APPLICATION)!;
   const checker = context.checkerFor(sourceFile.fileName);
-  const importedName = sourceFile.statements[0].importClause.namedBindings.elements[0].name;
-  const importedSymbol = checker.getSymbolAtLocation(importedName);
-  const declaration = checker.getAliasedSymbol(importedSymbol).declarations[0];
+  const importedName = firstImportName(sourceFile);
+  const importedSymbol = checker.getSymbolAtLocation(importedName)!;
+  const declaration = checker.getAliasedSymbol(importedSymbol).declarations![0]!;
   assert.equal(relativePath(root, declaration.getSourceFile().fileName), `${LIB}/value.ts`);
-  assert.equal(declaration.name.text, 'measure');
-  const main = context.files.find(file => relativePath(root, file.fileName) === 'apps/core/src/main.ts');
-  const localName = main.statements[0].importClause.namedBindings.elements[0].name;
+  assert.equal((declaration as unknown as { name: Identifier }).name.text, 'measure');
+  const main = context.files.find((file) => relativePath(root, file.fileName) === 'apps/core/src/main.ts')!;
+  const localName = firstImportName(main);
   const mainChecker = context.checkerFor(main.fileName);
-  const local = mainChecker.getAliasedSymbol(mainChecker.getSymbolAtLocation(localName));
-  assert.equal(relativePath(root, local.declarations[0].getSourceFile().fileName), 'apps/core/src/compose/local.ts');
-  const rootProgram = context.projects.find(project => project.relative === 'tsconfig.json').program;
-  const nestedProgram = context.projects.find(project => project.relative === 'apps/core/tsconfig.json').program;
+  const local = mainChecker.getAliasedSymbol(mainChecker.getSymbolAtLocation(localName)!);
+  assert.equal(relativePath(root, local.declarations![0]!.getSourceFile().fileName), 'apps/core/src/compose/local.ts');
+  const rootProgram = context.projects.find((project) => project.relative === 'tsconfig.json')!.program;
+  const nestedProgram = context.projects.find((project) => project.relative === 'apps/core/tsconfig.json')!.program;
   const mainFile = path.join(root, 'apps/core/src/main.ts');
   assert.notEqual(rootProgram.getSourceFile(mainFile), nestedProgram.getSourceFile(mainFile));
   assert.equal(localOrigin(root, rootProgram), `${LIB}/root-local.ts`);
@@ -149,14 +162,14 @@ test('type context preserves dependency findings, transitive transport findings 
   }
 });
 
-test('a program run shares compatible parses, isolates parsing modes and releases programs between runs', t => {
+test('a program run shares compatible parses, isolates parsing modes and releases programs between runs', (t) => {
   const root = archFixture(t, { files: { ...fixtureFiles, 'src/view.tsx': 'export const view = <div />;\n', 'src/plain.ts': 'const plain = 1;\n' } });
   const viewFile = path.join(root, 'src/view.tsx');
   const plainFile = path.join(root, 'src/plain.ts');
   const rootLocal = path.join(root, LIB, 'root-local.ts');
-  const options = { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
+  const options: CompilerOptions = { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
     jsx: ts.JsxEmit.Preserve, noLib: true };
-  const build = (rootNames, compiler = options) => createTypeScriptProgram(ts, { rootNames, options: compiler });
+  const build = (rootNames: string[], compiler: CompilerOptions = options) => createTypeScriptProgram(ts, { rootNames, options: compiler });
   const first = withTypeScriptProgramRun(() => {
     const program = build([viewFile, plainFile]);
     assert.equal(build([viewFile, plainFile]), program);
@@ -174,23 +187,23 @@ test('a program run shares compatible parses, isolates parsing modes and release
     assert.notEqual(build([viewFile], { ...options, target: ts.ScriptTarget.ES2019 }).getSourceFile(viewFile), program.getSourceFile(viewFile));
     assert.notEqual(build([viewFile], { ...options, jsx: ts.JsxEmit.ReactJSX }).getSourceFile(viewFile), program.getSourceFile(viewFile));
     const forced = build([plainFile], { ...options, moduleDetection: ts.ModuleDetectionKind.Force });
-    assert.equal(ts.isExternalModule(program.getSourceFile(plainFile)), false);
-    assert.equal(ts.isExternalModule(forced.getSourceFile(plainFile)), true);
+    assert.equal(ts.isExternalModule(program.getSourceFile(plainFile)!), false);
+    assert.equal(ts.isExternalModule(forced.getSourceFile(plainFile)!), true);
     const nodeProgram = build([plainFile], { ...options, module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext });
-    assert.equal(nodeProgram.getSourceFile(plainFile).impliedNodeFormat, ts.ModuleKind.CommonJS);
-    assert.equal(program.getSourceFile(plainFile).impliedNodeFormat, undefined);
+    assert.equal(nodeProgram.getSourceFile(plainFile)!.impliedNodeFormat, ts.ModuleKind.CommonJS);
+    assert.equal(program.getSourceFile(plainFile)!.impliedNodeFormat, undefined);
     return program;
   });
   writeFiles(root, { 'src/plain.ts': 'export const plain = 2;\n' });
   const second = withTypeScriptProgramRun(() => build([viewFile, plainFile]));
   assert.notEqual(first, second);
   assert.notEqual(first.getSourceFile(viewFile), second.getSourceFile(viewFile));
-  assert.equal(first.getSourceFile(plainFile).text, 'const plain = 1;\n');
-  assert.equal(second.getSourceFile(plainFile).text, 'export const plain = 2;\n');
+  assert.equal(first.getSourceFile(plainFile)!.text, 'const plain = 1;\n');
+  assert.equal(second.getSourceFile(plainFile)!.text, 'export const plain = 2;\n');
   assert.notEqual(build([viewFile, plainFile]), build([viewFile, plainFile]));
 });
 
-test('a shared type context gives each caller an independent finding list and a fresh later run', t => {
+test('a shared type context gives each caller an independent finding list and a fresh later run', (t) => {
   const root = archFixture(t, { files: fixtureFiles });
   const config = loadArchitectureConfig(root);
   const first = withTypeScriptProgramRun(() => {
@@ -209,7 +222,7 @@ test('a shared type context gives each caller an independent finding list and a 
   assert.deepEqual(first.errors, expectedErrors);
 });
 
-test('dependency resolution rotates bounded caches without changing edges or unresolved findings', t => {
+test('dependency resolution rotates bounded caches without changing edges or unresolved findings', (t) => {
   const repeated = Array.from({ length: 1030 }, () => "void import('./value');");
   repeated.splice(1023, 0, "void import('./missing-before');", "void import('./missing-after');");
   const root = archFixture(t, { files: {
@@ -218,14 +231,14 @@ test('dependency resolution rotates bounded caches without changing edges or unr
     'src/references.ts': repeated.join('\n'),
   } });
   const config = loadArchitectureConfig(root);
-  const counts = new Map();
+  const counts = new Map<unknown, number>();
   let created = 0;
   const tracked = new Proxy(ts, { get(target, key) {
-    if (key === 'createModuleResolutionCache') return (...args) => {
+    if (key === 'createModuleResolutionCache') return (...args: Parameters<typeof ts.createModuleResolutionCache>) => {
       created += 1;
       return ts.createModuleResolutionCache(...args);
     };
-    if (key === 'resolveModuleName') return (...args) => {
+    if (key === 'resolveModuleName') return (...args: Parameters<typeof ts.resolveModuleName>) => {
       const cache = args[4];
       assert.ok(cache);
       counts.set(cache, (counts.get(cache) ?? 0) + 1);
@@ -234,7 +247,7 @@ test('dependency resolution rotates bounded caches without changing edges or unr
     return Reflect.get(target, key);
   } });
   const uncached = new Proxy(ts, { get(target, key) {
-    if (key === 'resolveModuleName') return (specifier, from, options, host) => ts.resolveModuleName(specifier, from, options, host);
+    if (key === 'resolveModuleName') return (specifier: string, from: string, options: CompilerOptions, host: ModuleResolutionHost) => ts.resolveModuleName(specifier, from, options, host);
     return Reflect.get(target, key);
   } });
   const expected = withTypeScriptProgramRun(() => buildTypeScriptContext(config, uncached));
@@ -255,7 +268,7 @@ for (const mode of ['throws', 'missing']) {
     const root = archFixture(t, { files: { 'src/unreadable.ts': 'export const unreadable = 1;\n' } });
     const file = path.join(root, 'src/unreadable.ts');
     const options = { noLib: true, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 };
-    const createHost = compiler => {
+    const createHost = (compiler: CompilerOptions) => {
       const host = ts.createCompilerHost(compiler);
       const readFile = host.readFile;
       host.readFile = candidate => {
@@ -272,7 +285,7 @@ for (const mode of ['throws', 'missing']) {
     const actual = withTypeScriptProgramRun(() => createTypeScriptProgram(compiler, { rootNames: [file], options }));
     assert.equal(actual.getSourceFile(file)?.text, mode === 'throws' ? '' : undefined);
     assert.deepEqual(actual.getSourceFiles().map(source => source.fileName), expected.getSourceFiles().map(source => source.fileName));
-    const diagnostics = program => ts.getPreEmitDiagnostics(program).map(item => ({
+    const diagnostics = (program: Program) => ts.getPreEmitDiagnostics(program).map(item => ({
       code: item.code, file: item.file?.fileName, start: item.start, message: ts.flattenDiagnosticMessageText(item.messageText, '\n'),
     }));
     assert.deepEqual(diagnostics(actual), diagnostics(expected));
@@ -280,8 +293,8 @@ for (const mode of ['throws', 'missing']) {
   });
 }
 
-test('equal-depth project owners and files outside all project directories keep the first candidate', t => {
-  const project = target => JSON.stringify({
+test('equal-depth project owners and files outside all project directories keep the first candidate', (t) => {
+  const project = (target: string) => JSON.stringify({
     compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', noLib: true, baseUrl: '..', paths: { '@choice': [`src/${target}.ts`] } },
     files: ['local.ts', '../src/shared.ts'],
   });
@@ -297,28 +310,29 @@ test('equal-depth project owners and files outside all project directories keep 
     const context = withTypeScriptProgramRun(() => buildTypeScriptContext({ ...config, projects }, ts));
     assert.deepEqual(context.errors, []);
     for (const relative of ['projects/local.ts', 'src/shared.ts']) {
-      const edges = context.edges.get(path.join(root, relative));
+      const edges = context.edges.get(path.join(root, relative))!;
       assert.equal(edges.length, 1);
-      assert.equal(edges[0].project, projects[0]);
-      assert.equal(relativePath(root, edges[0].to), `src/${order[0]}.ts`);
-      assert.equal(context.checkerFor(path.join(root, relative)), context.projects[0].program.getTypeChecker());
+      assert.equal(edges[0]!.project, projects[0]);
+      assert.equal(relativePath(root, edges[0]!.to), `src/${order[0]}.ts`);
+      assert.equal(context.checkerFor(path.join(root, relative)), context.projects[0]!.program.getTypeChecker());
     }
   }
 });
 
-test('multiple source names for one canonical file keep the last occurrence within the owning program', t => {
+test('multiple source names for one canonical file keep the last occurrence within the owning program', (t) => {
   const root = archFixture(t);
   const canonicalFile = path.join(root, 'src/shared.ts');
   const first = ts.createSourceFile(path.join(root, 'src/alias-a.ts'), 'export const value = 1;', ts.ScriptTarget.ES2022);
   const last = ts.createSourceFile(path.join(root, 'src/alias-b.ts'), 'export const value = 2;', ts.ScriptTarget.ES2022);
   const checker = {};
-  const program = { getSourceFiles: () => [first, last], getTypeChecker: () => checker, getSyntacticDiagnostics: () => [] };
-  const context = contextFromProjects({ root, projects: ['tsconfig.json'] }, { ts }, [], {
+  // reason: the context reads only these three members of a program.
+  const program = { getSourceFiles: () => [first, last], getTypeChecker: () => checker, getSyntacticDiagnostics: () => [] } as unknown as Program;
+  const context = contextFromProjects({ root, projects: ['tsconfig.json'] } as unknown as ArchitectureConfig, { ts } as unknown as LoadedTypeScript, [], {
     readTypeScriptProject: () => ({ read: {}, parsed: { errors: [], fileNames: [first.fileName, last.fileName], options: {} } }),
     createTypeScriptProgram: () => program, isProductionSource: () => true, canonical: () => canonicalFile,
-    isInside: (parent, file) => !path.relative(parent, file).startsWith('..'),
+    isInside: (parent: string, file: string) => !path.relative(parent, file).startsWith('..'),
     workspaceMetadata: () => [], workspaceOf: () => null, moduleReferences: () => ({ found: [], unproven: [] }),
-  });
+  } as unknown as TypeContextHelpers);
   assert.deepEqual(context.errors, []);
   assert.deepEqual(context.files, [last]);
   assert.equal(context.checkerFor(canonicalFile), checker);

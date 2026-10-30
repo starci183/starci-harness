@@ -1,5 +1,6 @@
 // proves: HFS_UNUSED_SYMBOL@lite HFS_UNUSED_SYMBOL@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,7 +9,7 @@ import ts from 'typescript';
 import { unusedSymbolFindings } from '../runtime/scripts/hfs/rules/unused-symbol.mjs';
 import { checkDeadExports } from '../runtime/scripts/hfs/architecture/dead-exports.mjs';
 
-function fixture(t, contents) {
+function fixture(t: TestContext, contents: Record<string, string>) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-unused-symbol-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   for (const [file, text] of Object.entries(contents)) {
@@ -194,22 +195,24 @@ test('HFS_UNUSED_SYMBOL: numeric reverse enum indexing reads the member at that 
   assert.deepEqual(unusedSymbolFindings(fixture(t, contents)).map(finding => finding.name), ['State.Gone']);
 });
 
-function namespaceFindings(t, consumer, entry = 'export const Keep = () => 1; export const Dead = () => 2;', javascript = false) {
+function namespaceFindings(t: TestContext, consumer: string, entry = 'export const Keep = () => 1; export const Dead = () => 2;', javascript = false): string[] {
   const root = 'src/modules/domain/values';
   const publicEntry = `${root}/index.ts`;
   const from = `src/consumer.service.${javascript ? 'js' : 'ts'}`;
   const context = fixture(t, { [publicEntry]: entry, [from]: consumer });
-  const source = file => ts.createSourceFile(path.join(context.repoRoot, file), fs.readFileSync(path.join(context.repoRoot, file), 'utf8'), ts.ScriptTarget.Latest, true);
+  const source = (file: string) => ts.createSourceFile(path.join(context.repoRoot, file), fs.readFileSync(path.join(context.repoRoot, file), 'utf8'), ts.ScriptTarget.Latest, true);
   const owner = { root, tier: 'domain', slot: 'be.domain' };
   const consumerSource = source(from);
   const graph = {
     files: new Map([[publicEntry, { sourceFile: source(publicEntry), ...owner, owner }], [from, { sourceFile: consumerSource, tier: 'route' }]]),
     ownerRoots: new Map([['owner', owner]]),
     edges: consumerSource.statements.filter(statement => ts.isImportDeclaration(statement)).map(declaration => ({ from, to: publicEntry, reexport: false, edge: { declaration } })),
-    unit: file => file === publicEntry ? 'owner' : null,
+    unit: (file: string) => file === publicEntry ? 'owner' : null,
     resolver: { classifyPath: () => ({ slot: null }), ruleParams: () => ({}), slot: () => ({ tier: 'domain' }), ownerOf: () => null },
   };
-  return checkDeadExports({ context: { ts }, graph, config: { root: context.repoRoot, apps: [] } }).violations.filter(finding => finding.ruleId === 'HFS_UNUSED_EXPORT').map(finding => finding.name).sort((a, b) => a.localeCompare(b));
+  // reason: the dead-export check reads only these members of the type context, the graph and the architecture config; the fixture builds that minimum by hand.
+  const input = { context: { ts }, graph, config: { root: context.repoRoot, apps: [] } } as unknown as Parameters<typeof checkDeadExports>[0];
+  return checkDeadExports(input).violations.filter((finding) => finding.ruleId === 'HFS_UNUSED_EXPORT').map((finding) => finding.name as string).sort((a, b) => a.localeCompare(b));
 }
 
 for (const edition of ['lite', 'full']) {
@@ -242,7 +245,7 @@ test('HFS_UNUSED_EXPORT: JSDoc type references consume their export while docume
   assert.deepEqual(namespaceFindings(t, `${imported}/** @see values.Keep */\nlet example;`, undefined, true), ['Dead', 'Keep']);
 });
 
-const namesOf = (context, edition, profile = 'fe') => unusedSymbolFindings({ ...context, repo: { profile, edition } }).map(finding => finding.name);
+const namesOf = (context: ReturnType<typeof fixture>, edition: string, profile = 'fe') => unusedSymbolFindings({ ...context, repo: { profile, edition } }).map(finding => finding.name);
 
 for (const edition of ['lite', 'full']) {
   test(`HFS_UNUSED_SYMBOL ${edition}: a catalog key read through an imported object, as const or nested, is live and its dead sibling is not`, t => {

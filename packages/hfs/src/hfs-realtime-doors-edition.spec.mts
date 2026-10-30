@@ -12,7 +12,7 @@ import { effectiveSlot } from '../runtime/scripts/hfs/edition-slots.mjs';
 
 const manifest = loadSlotManifest();
 const DOOR_SLOTS = ['be.feature.realtime.sse', 'be.feature.realtime.websocket', 'be.feature.realtime.graphql', 'be.feature.realtime.dto'];
-const declaration = (edition) => ({
+const declaration = (edition: string) => ({
   hfs: 3, kind: 'app', project: 'doors', edition,
   sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
 });

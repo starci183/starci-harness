@@ -1,6 +1,7 @@
 // The remote release-pointer shell (stack prepare and the release store): an absent link or releases directory is an empty answer, a real failure is
 // a failed script - there is no `|| true` to swallow it.
 import { test } from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -8,11 +9,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { checkPointers } from '../stack/prepare.mjs';
 import { releaseListScript, releasePointerScript, shellQuote } from '../stack/remote.mjs';
+import type { Runner } from '../stack/remote.mjs';
+import type { Report } from '../stack/context.mjs';
 
-const sh = (script) => spawnSync('sh', ['-c', script], { encoding: 'utf8', windowsHide: true });
-const posix = (file) => file.split(path.sep).join('/');
+// reason: the pointer check reads only the stack name and the releases base; the full deploy config is not needed.
+type DeployConfig = Parameters<typeof checkPointers>[2];
 
-function releasesRoot(t) {
+const sh = (script: string) => spawnSync('sh', ['-c', script], { encoding: 'utf8', windowsHide: true });
+const posix = (file: string) => file.split(path.sep).join('/');
+
+function releasesRoot(t: TestContext): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-release-pointer-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
@@ -58,13 +64,15 @@ test('a list script prints the releases newest first, nothing for an absent rele
 });
 
 test('the doctor reports an unreadable release pointer as bad, an absent one as none and a named one as ok', () => {
-  const noted = [];
-  const report = { ok: (text) => noted.push(`ok ${text}`), bad: (text) => noted.push(`bad ${text}`) };
+  const noted: string[] = [];
+  // reason: the pointer check only calls ok and bad on the report and only calls the runner as a function; the full Report and Runner shapes are not needed.
+  const report = { ok: (text: string) => noted.push(`ok ${text}`), bad: (text: string) => noted.push(`bad ${text}`) } as unknown as Report;
+  const asRunner = (run: (script: string) => { status: number; stdout: string; stderr: string }): Runner => run as unknown as Runner;
   const answers = { current: { status: 0, stdout: '0123456789abcdef\n', stderr: '' }, previous: { status: 1, stdout: '', stderr: 'readlink: permission denied\n' } };
-  const run = (script) => answers[script.includes('/previous') ? 'previous' : 'current'];
-  const pointers = checkPointers(run, report, { stack: 'demo', remote: {} });
+  const run = (script: string) => answers[script.includes('/previous') ? 'previous' : 'current'];
+  const pointers = checkPointers(asRunner(run), report, { stack: 'demo', remote: {} } as unknown as DeployConfig);
   assert.deepEqual(pointers, { current: '0123456789abcdef', previous: null });
   assert.deepEqual(noted, ['ok release current: 0123456789abcdef', 'bad release previous could not be read: readlink: permission denied']);
-  const none = checkPointers(() => ({ status: 0, stdout: '\n', stderr: '' }), { ok: (text) => noted.push(`ok ${text}`), bad: () => assert.fail('an absent link is not bad') }, { stack: 'demo', remote: {} });
+  const none = checkPointers(asRunner(() => ({ status: 0, stdout: '\n', stderr: '' })), { ok: (text: string) => noted.push(`ok ${text}`), bad: () => assert.fail('an absent link is not bad') } as unknown as Report, { stack: 'demo', remote: {} } as unknown as DeployConfig);
   assert.deepEqual(none, { current: null, previous: null });
 });

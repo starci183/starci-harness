@@ -6,7 +6,8 @@ import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs
 import { declaredHfsView } from '../runtime/scripts/hfs/view.mjs';
 
 const runtimeRoot = fileURLToPath(new URL('../runtime/', import.meta.url));
-const declaration = (grammar, edition) => ({
+interface DeclarationFixture { hfs: number; kind: string; project: string; edition: string; sides: Record<string, Record<string, unknown>> }
+const declaration = (grammar: unknown, edition: string): DeclarationFixture => ({
   hfs: 3, kind: 'app', project: 'grammar-proof', edition,
   sides: {
     be: { apps: [{ name: 'api', kind: 'api' }] },
@@ -18,7 +19,7 @@ test('a selected Grammar family survives the resolved frontend declaration and i
   const manifest = loadSlotManifest();
   for (const edition of ['lite', 'full']) for (const grammar of ['starci', 'offset-pop']) {
     const app = declaration(grammar, edition);
-    assert.equal(resolveRepoDeclaration(manifest, app).sides.fe.grammar, grammar);
+    assert.equal(resolveRepoDeclaration(manifest, app).sides?.fe?.grammar, grammar);
     assert.equal(resolveRepoDeclaration(manifest, app, { side: 'fe' }).grammar, grammar);
     const view = declaredHfsView({ runtimeRoot, declaration: app, repoRoot: '/grammar-proof/fe', side: 'fe' });
     assert.equal(view.grammar, grammar);
@@ -29,7 +30,7 @@ test('a selected Grammar family survives the resolved frontend declaration and i
 test('an absent Grammar family stays absent rather than choosing a family', () => {
   const manifest = loadSlotManifest();
   const app = declaration(undefined, 'lite');
-  assert.equal(Object.hasOwn(resolveRepoDeclaration(manifest, app).sides.fe, 'grammar'), false);
+  assert.equal(Object.hasOwn(resolveRepoDeclaration(manifest, app).sides!.fe!, 'grammar'), false);
   const view = declaredHfsView({ runtimeRoot, declaration: app, repoRoot: '/grammar-proof/fe', side: 'fe' });
   assert.equal(Object.hasOwn(view, 'grammar'), false);
 });
@@ -40,6 +41,6 @@ test('a Grammar family must be a frontend family identifier', () => {
     assert.throws(() => resolveRepoDeclaration(manifest, declaration(grammar, 'full')), /sides\.fe\.grammar must name a Grammar family/);
   }
   const app = declaration('starci', 'lite');
-  app.sides.be.grammar = 'starci';
+  app.sides.be!.grammar = 'starci';
   assert.throws(() => resolveRepoDeclaration(manifest, app), /grammar belongs to the fe side/);
 });

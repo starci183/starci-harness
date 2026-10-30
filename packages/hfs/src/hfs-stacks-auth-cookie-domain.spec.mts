@@ -7,15 +7,15 @@ import path from 'node:path';
 import { authCookieDomainIssues, commonParentDomain, publicHosts, stacksAuthCookieDomainFindings } from '../runtime/scripts/hfs/rules/stacks-auth-cookie-domain.mjs';
 
 /** A temp tree whose files and directories are removed one by one (never recursively). */
-function sandbox(prefix) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix)), written = [];
-  const write = (rel, content) => {
+function sandbox(prefix: string) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix)), written: string[] = [];
+  const write = (rel: string, content: string): void => {
     fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true });
     fs.writeFileSync(path.join(root, rel), content);
     written.push(rel);
   };
   const dispose = () => {
-    const directories = new Set();
+    const directories = new Set<string>();
     for (const rel of written) {
       fs.unlinkSync(path.join(root, rel));
       for (let dir = path.dirname(rel); dir !== '.'; dir = path.dirname(dir)) directories.add(dir);
@@ -31,22 +31,23 @@ const PASSPORT = 'be/src/modules/integrations/passport/passport.config.ts';
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const STACK = '.starcistacks/production/infra/swarm/stack.yaml';
 
-const model = ({ web = 'https://app.example.com', api = 'https://api.example.com', cookieDomain } = {}) => ({
+interface ModelOptions { web?: string | undefined; api?: string | undefined; cookieDomain?: string | undefined }
+const model = ({ web = 'https://app.example.com', api = 'https://api.example.com', cookieDomain }: ModelOptions = {}) => ({
   services: {
     api: { environment: { AUTH_JWT_ISSUER: api, GOOGLE_CALLBACK_URL: `${api}/auth/google/callback`, ...(cookieDomain === undefined ? {} : { AUTH_COOKIE_DOMAIN: cookieDomain }) } },
     web: { environment: { NEXT_PUBLIC_SITE_URL: web } },
   },
 });
 
-const issues = (value, extra = {}) => authCookieDomainIssues({ environment: 'production', spec: {}, model: value, files: [], passport: true, ...extra });
+const issues = (value: unknown, extra: { repoRoot?: string; files?: string[]; passport?: boolean } = {}) => authCookieDomainIssues({ environment: 'production', spec: {}, model: value, files: [], passport: true, ...extra });
 
 test('different hosts without the key: one finding naming both hosts and the common parent domain', () => {
   const found = issues(model());
   assert.equal(found.length, 1);
-  assert.equal(found[0].code, CODE);
-  assert.match(found[0].message, /app\.example\.com/u);
-  assert.match(found[0].message, /api\.example\.com/u);
-  assert.match(found[0].message, /AUTH_COOKIE_DOMAIN=example\.com/u);
+  assert.equal(found[0]!.code, CODE);
+  assert.match(found[0]!.message, /app\.example\.com/u);
+  assert.match(found[0]!.message, /api\.example\.com/u);
+  assert.match(found[0]!.message, /AUTH_COOKIE_DOMAIN=example\.com/u);
 });
 
 test('different hosts with the key set to the parent domain: clean', () => {
@@ -58,9 +59,9 @@ test('the key set to something that is not a parent of both hosts: a finding', (
   for (const cookieDomain of ['other.com', 'api.example.com', 'app.example.com']) {
     const found = issues(model({ cookieDomain }));
     assert.equal(found.length, 1, cookieDomain);
-    assert.match(found[0].message, /not a parent of/u);
+    assert.match(found[0]!.message, /not a parent of/u);
   }
-  assert.match(issues(model({ cookieDomain: 'api.example.com' }))[0].message, /set it to example\.com/u);
+  assert.match(issues(model({ cookieDomain: 'api.example.com' }))[0]!.message, /set it to example\.com/u);
 });
 
 test('the key set to a value that is not a bare domain: a finding', () => {
@@ -102,7 +103,7 @@ test('an unknown host or a missing service is not judged; no shared parent domai
   assert.deepEqual(issues({ services: { api: model().services.api } }), []);
   const found = issues(model({ web: 'https://app-example.com', api: 'https://api.example.org' }));
   assert.equal(found.length, 1);
-  assert.match(found[0].message, /no registrable parent domain/u);
+  assert.match(found[0]!.message, /no registrable parent domain/u);
 });
 
 test('commonParentDomain: needs two labels and is not a second-level public suffix', () => {
@@ -117,7 +118,7 @@ test('an app whose api does not use the skeleton passport is not judged', () => 
   assert.deepEqual(issues(model(), { passport: false }), []);
 });
 
-function app(files, { web, api, cookieDomain } = {}) {
+function app(files: string[], { web, api, cookieDomain }: ModelOptions = {}) {
   const { root, write, dispose } = sandbox('cookie-domain-app-');
   write(DECLARATION, [
     'schema: starci/application-stacks@1',
@@ -141,10 +142,10 @@ test('the finder: a lite app with the skeleton passport and different hosts is r
   try {
     const findings = stacksAuthCookieDomainFindings({ repoRoot: root, all, files: all, isRoot: true, repo: { edition: 'lite', profile: 'app' } });
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].code, CODE);
-    assert.equal(findings[0].level, 'error');
-    assert.equal(findings[0].path, STACK);
-    assert.match(findings[0].message, /AUTH_COOKIE_DOMAIN=example\.com/u);
+    assert.equal(findings[0]!.code, CODE);
+    assert.equal(findings[0]!.level, 'error');
+    assert.equal(findings[0]!.path, STACK);
+    assert.match(findings[0]!.message, /AUTH_COOKIE_DOMAIN=example\.com/u);
   } finally {
     dispose();
   }
@@ -155,7 +156,7 @@ test('the finder: key set to the parent is clean; same host is clean; no passpor
   const same = app([PASSPORT], { web: 'https://example.com', api: 'https://example.com' });
   const bare = app([]);
   try {
-    const context = ({ root, all }, edition = 'lite') => ({ repoRoot: root, all, files: all, isRoot: true, repo: { edition, profile: 'app' } });
+    const context = ({ root, all }: { root: string; all: string[] }, edition = 'lite') => ({ repoRoot: root, all, files: all, isRoot: true, repo: { edition, profile: 'app' } });
     assert.deepEqual(stacksAuthCookieDomainFindings(context(set)), []);
     assert.deepEqual(stacksAuthCookieDomainFindings(context(same)), []);
     assert.deepEqual(stacksAuthCookieDomainFindings(context(bare)), []);

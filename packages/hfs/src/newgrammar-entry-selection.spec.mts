@@ -1,36 +1,41 @@
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { appDeclaration, archFixture, ts } from './helpers/hfs-arch-fixture.mjs';
 import { loadArchitectureConfig } from '../runtime/scripts/hfs/architecture/config.mjs';
 import { checkGrammar } from '../runtime/scripts/hfs/architecture/frontend-grammar.mjs';
+import type { MakeViolation } from '../runtime/scripts/hfs/architecture/frontend-grammar.mjs';
+import type { TypeContext } from '../runtime/scripts/hfs/architecture/type-context.mjs';
 import { grammarContractFor } from '../runtime/scripts/lib/grammar-lint.mjs';
+import type { GrammarComponentContract } from '../runtime/scripts/lib/grammar-lint.mjs';
+import type { FileMap } from './helpers/hfs-arch-fixture.mjs';
 
 const genericContract = {
   package: '@fixture/ui-grammar', entry: '@fixture/ui-grammar/renderers',
   styleEntry: '@fixture/ui-grammar/palette.css', peers: ['react', '@fixture/primitives'],
 };
 
-function selectedCatalog(context) {
+function selectedCatalog(context: TestContext): void {
   const catalog = new URL('../runtime/knowledge/grammars/index.yaml', import.meta.url);
   const originalRead = fs.readFileSync;
   const content = JSON.stringify({ families: [
     { id: 'components', componentContract: genericContract },
     { id: 'alternate', contractRef: 'components' },
   ] });
-  context.mock.method(fs, 'readFileSync', function readCatalog(file, ...options) {
+  context.mock.method(fs, 'readFileSync', function readCatalog(this: unknown, file: unknown, ...options: unknown[]) {
     if (file instanceof URL && file.href === catalog.href) return content;
-    return originalRead.call(this, file, ...options);
+    return originalRead.apply(this, [file, ...options] as unknown as Parameters<typeof fs.readFileSync>);
   });
 }
 
-function fixture(context, edition, grammar, contract = genericContract, files = {}) {
-  const dependencies = Object.fromEntries([contract.package, ...contract.peers].map(name => [name, '1.0.0']));
-  const declaration = appDeclaration('fe', {
+function fixture(context: TestContext, edition: string, grammar?: string, contract: Readonly<GrammarComponentContract> = genericContract, files: FileMap = {}): string {
+  const dependencies = Object.fromEntries([contract.package, ...contract.peers].map((name) => [name, '1.0.0']));
+  const declared = appDeclaration('fe', {
     apps: [{ name: 'web', kind: 'next' }], ...(grammar === undefined ? {} : { grammar }),
   });
-  declaration.edition = edition;
+  const declaration = { ...declared, edition };
   return archFixture(context, { profile: 'fe', files: {
     '../hfs.json': JSON.stringify(declaration),
     '../package.json': JSON.stringify({ private: true, workspaces: ['fe/apps/*', 'fe/packages/*'] }),
@@ -49,12 +54,16 @@ function fixture(context, edition, grammar, contract = genericContract, files = 
   } });
 }
 
-function grammarSource(root, entry) {
+function grammarSource(root: string, entry: string): TypeContext {
   const file = ts.createSourceFile(path.join(root, 'apps/web/src/app/page.tsx'), `import { Surface } from '${entry}';`, ts.ScriptTarget.Latest);
-  return { ts, workspaces: [], files: [file], edges: new Map(), checkerFor: () => null };
+  // reason: the grammar check reads only these four members of the type context.
+  return { ts, workspaces: [], files: [file], edges: new Map(), checkerFor: () => null } as unknown as TypeContext;
 }
 
-const sourceFinding = (config, file, node, ruleId, message, details) => ({ ruleId, message, ...details });
+// reason: a source-free scan reads only workspaces and files of the type context.
+const EMPTY_CONTEXT = { workspaces: [], files: [] } as unknown as TypeContext;
+
+const sourceFinding: MakeViolation = (_config, _file, _node, ruleId, message, details) => ({ ruleId, message, ...details });
 
 for (const edition of ['lite', 'full']) {
   test(`architecture resolves the explicit catalog family and its actual installed contract (${edition})`, context => {
@@ -66,7 +75,7 @@ for (const edition of ['lite', 'full']) {
         ...contract, styleSources: ['apps/web/src/app/globals.css'],
         consumerManifests: ['apps/web/package.json', 'packages/ui/package.json'],
       });
-      assert.deepEqual(checkGrammar(config, { workspaces: [], files: [] }), []);
+      assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding), []);
     }
   });
 
@@ -81,15 +90,15 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(checkGrammar(config, grammarSource(root, genericContract.entry), sourceFinding), []);
     const bypass = checkGrammar(config, grammarSource(root, `${genericContract.package}/internal`), sourceFinding);
     assert.deepEqual(bypass.map(finding => finding.ruleId), ['ARCH_GRAMMAR_EXPORT_BYPASS']);
-    assert.equal(bypass[0].specifier, `${genericContract.package}/internal`);
+    assert.equal(bypass[0]!.specifier, `${genericContract.package}/internal`);
     const installed = path.join(path.dirname(root), 'node_modules', genericContract.package, 'package.json');
     const manifest = JSON.parse(fs.readFileSync(installed, 'utf8'));
     delete manifest.peerDependencies['@fixture/primitives'];
     fs.writeFileSync(installed, JSON.stringify(manifest));
-    const findings = checkGrammar(config, { workspaces: [], files: [] });
+    const findings = checkGrammar(config, EMPTY_CONTEXT, sourceFinding);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].ruleId, 'ARCH_GRAMMAR_CONTRACT_INVALID');
-    assert.match(findings[0].message, /selected peers @fixture\/primitives, react/);
+    assert.equal(findings[0]!.ruleId, 'ARCH_GRAMMAR_CONTRACT_INVALID');
+    assert.match(findings[0]!.message, /selected peers @fixture\/primitives, react/);
   });
 
   test(`architecture refuses absent or unsupported selection when styles need a contract (${edition})`, context => {
