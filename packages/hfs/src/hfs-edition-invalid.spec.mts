@@ -8,6 +8,8 @@ import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { checkEdition } from '../upgrade/check.mjs';
+import type { HfsSlotsError } from '../runtime/scripts/hfs/slot-errors.mjs';
+import type { UpgradeError } from '../upgrade/index.mjs';
 
 const manifest = loadSlotManifest();
 for (const edition of ['lite', 'full']) {
@@ -21,7 +23,7 @@ for (const edition of ['lite', 'full']) {
     const check = () => checkRepo({ repoRoot, files: ['hfs.json'], tree: false });
     const invalid = { ...declaration, edition: `${edition}-unknown` };
     fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify(invalid));
-    assert.throws(() => resolveRepoDeclaration(manifest, invalid), (error) =>
+    assert.throws(() => resolveRepoDeclaration(manifest, invalid), (error: HfsSlotsError) =>
       error.code === 'HFS_EDITION_INVALID' && error.details.edition === invalid.edition);
     const refused = check();
     assert.equal(refused.ok, false);
@@ -37,14 +39,14 @@ for (const edition of ['lite', 'full']) {
     let normalCalls = 0;
     const normal = () => { normalCalls += 1; return 'normal-check'; };
     await assert.rejects(checkEdition({ repoRoot, edition: `${edition}-unknown`, normal, manifest }),
-      (error) => error.code === 'HFS_EDITION_INVALID');
+      (error: UpgradeError) => error.code === 'HFS_EDITION_INVALID');
     assert.equal(normalCalls, 0, 'an invalid selector must refuse before the normal check');
     if (edition === 'full') {
       await assert.rejects(checkEdition({ repoRoot, edition: 'lite', normal, manifest }),
-        (error) => error.code === 'HFS_EDITION_INVALID' && /editions are fixed at scaffold/.test(error.message));
+        (error: UpgradeError) => error.code === 'HFS_EDITION_INVALID' && /editions are fixed at scaffold/.test(error.message));
     } else {
       await assert.rejects(checkEdition({ repoRoot, edition: 'full', normal, manifest }),
-        (error) => error.code === 'HFS_EDITION_INVALID' && /editions are fixed at scaffold/.test(error.message));
+        (error: UpgradeError) => error.code === 'HFS_EDITION_INVALID' && /editions are fixed at scaffold/.test(error.message));
     }
     assert.equal(normalCalls, 0, 'a mismatched edition is refused before the normal check');
     assert.equal(await checkEdition({ repoRoot, edition, normal, manifest }), 'normal-check');

@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { monorepoFindings, FE_APP_SCRIPTS, WORKSPACE_LINT } from '../runtime/scripts/hfs/rules/monorepo.mjs';
 
-function workspaceFindings(edition, section, version) {
+function workspaceFindings(edition: string, section: string, version: string | null) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-r146-'));
   const repo = { hfs: 3, kind: 'app', edition, project: 'demo', sides: { be: { apps: [] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
   const dependencies = version === null ? {} : { '@demo/ui': version };
@@ -42,9 +42,9 @@ for (const edition of ['lite', 'full']) {
       for (const version of ['1.2.3', '^1.2.3', 'workspace:*', 'file:../../packages/ui', null]) {
         const findings = workspaceFindings(edition, section, version);
         assert.equal(findings.length, 1, `${section}: ${version}`);
-        assert.equal(findings[0].code, 'HFS_MONO_WORKSPACE_DEP');
-        assert.equal(findings[0].path, 'fe/apps/web/package.json');
-        assert.equal(findings[0].dependency, '@demo/ui');
+        assert.equal(findings[0]?.code, 'HFS_MONO_WORKSPACE_DEP');
+        assert.equal(findings[0]?.path, 'fe/apps/web/package.json');
+        assert.equal(findings[0]?.dependency, '@demo/ui');
       }
     }
   });

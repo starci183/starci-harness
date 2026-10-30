@@ -1,6 +1,7 @@
 // proves: BE_CONTRACT_BREAKING@lite
 // proves: BE_CONTRACT_BREAKING@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,10 +13,10 @@ const publishedEvent = {
   version: 1,
   payload: { orderId: 'string', totalCents: 'number', note: 'string?' },
 };
-const contract = (events) => ({ schema: 'starci/event-contract@1', service: 'order', events });
+const contract = (events: Record<string, unknown>) => ({ schema: 'starci/event-contract@1', service: 'order', events });
 const pinned = contract({ 'order.placed': publishedEvent });
 
-function repository(t, edition, current) {
+function repository(t: TestContext, edition: string, current: unknown) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-contract-coverage-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const members = {
@@ -38,8 +39,8 @@ for (const edition of ['lite', 'full']) {
     });
     const findings = contractCompatFindings(repository(t, edition, current));
     assert.deepEqual(findings.map((finding) => finding.code), ['BE_CONTRACT_BREAKING']);
-    assert.equal(findings[0].path, 'be/contracts/order/events.json');
-    assert.match(findings[0].message, /lost payload field totalCents/);
+    assert.equal(findings[0]?.path, 'be/contracts/order/events.json');
+    assert.match(findings[0]?.message ?? '', /lost payload field totalCents/);
   });
 
   test(`${edition} BE_CONTRACT_BREAKING rejects adding a required payload field`, (t) => {
@@ -48,7 +49,7 @@ for (const edition of ['lite', 'full']) {
     });
     const findings = contractCompatFindings(repository(t, edition, current));
     assert.deepEqual(findings.map((finding) => finding.code), ['BE_CONTRACT_BREAKING']);
-    assert.match(findings[0].message, /gained required payload field currency/);
+    assert.match(findings[0]?.message ?? '', /gained required payload field currency/);
   });
 
   test(`${edition} BE_CONTRACT_BREAKING accepts additive fields and a new version beside the old event`, (t) => {

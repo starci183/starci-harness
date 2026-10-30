@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,7 +11,7 @@ import { derivePatternFileSlots } from '../scaffold/pattern-file-slots.mjs';
 import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 
-const fixture = (t, edition) => {
+const fixture = (t: TestContext, edition: string) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-queue-edition-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({
@@ -37,21 +38,22 @@ guidance:
   - path: an-unrelated-prose-path
 `;
   const resolver = openHfs({ repoRoot: root });
-  const classify = file => resolver.classifyPath(file).slot ?? null;
+  const classify = (file: string) => resolver.classifyPath(file).slot ?? null;
   const result = derivePatternFileSlots(source, classify);
   assert.deepEqual(result.problems, []);
   const derived = parseYaml(result.text);
   assert.equal(derived.files[0].slot, 'be.platform.queue');
-  assert.deepEqual(derived.liteFiles.map(entry => entry.slot), ['app.db.migrations', 'be.platform.queue']);
+  assert.deepEqual(derived.liteFiles.map((entry: { slot: string }) => entry.slot), ['app.db.migrations', 'be.platform.queue']);
   assert.deepEqual(derivePatternFileSlots(result.text, classify), result);
 });
 
 test('the lite starter carries the record guard and leaves the sequential primitive to the queue generator that consumes it', () => {
-  const files = skeletonOf('be', starterDeclaration('demo', undefined, 'lite'), {});
+  const files = skeletonOf('be', { ...starterDeclaration('demo', undefined, 'lite'), edition: 'lite' }, {}) // reason: starterDeclaration types edition as optional where skeletonOf requires it; a lite declaration always carries it;
   assert.ok(!files.some(file => file.path === 'be/src/modules/platform/primitives/sequence.policy.ts'));
   assert.ok(!files.some(file => file.path === 'be/src/modules/platform/primitives/sequence.policy.spec.ts'));
   assert.ok(files.some(file => file.path === 'be/src/modules/platform/primitives/record.policy.ts'));
   const entry = files.find(file => file.path === 'be/src/modules/platform/primitives/index.ts');
+  assert.ok(entry);
   assert.doesNotMatch(entry.content, /eachInOrder/);
   assert.match(entry.content, /export \{ isRecord \} from "\.\/record.policy"/);
 });

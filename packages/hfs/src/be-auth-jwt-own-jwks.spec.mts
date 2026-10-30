@@ -1,5 +1,6 @@
 // proves: BE_AUTH_JWT_OWN_JWKS@lite
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { appDeclaration, archFixture, findings, runArch } from './helpers/hfs-arch-fixture.mjs';
 
@@ -10,10 +11,11 @@ export declare function createLocalJWKSet(jwks: unknown): { kind: 'local' };
 export declare function jwtVerify(token: string, jwks: unknown, options: { issuer: string; audience: string; algorithms: string[] }): Promise<unknown>;
 export declare function decodeJwt(token: string): unknown;`;
 
-function fixture(t, verifier, extra = {}) {
+function fixture(t: TestContext, verifier: string, extra: Record<string, string> = {}) {
   const declaration = appDeclaration('be', { apps: [{ name: 'core', kind: 'api' }] });
-  declaration.edition = 'lite';
-  declaration.sides.be.connections = [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' }];
+  const declared: Record<string, unknown> = declaration; // reason: appDeclaration types the declaration without edition and the side fields; this fixture adds them
+  declared['edition'] = 'lite';
+  (declaration.sides.be as Record<string, unknown>)['connections'] = [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' }];
   return archFixture(t, { profile: 'be', files: {
     '../hfs.json': JSON.stringify(declaration),
     '../node_modules/jose/package.json': JSON.stringify({ name: 'jose', types: 'index.d.ts' }),
@@ -29,7 +31,7 @@ export const verify = (token: string) => jwtVerify(token, keys, { issuer: 'https
 
 test(`${code}: the passport integration verifies against the app's own key set`, t => {
   const report = runArch(fixture(t, OWN));
-  assert.ok(report.coverage.checkedRuleIds.includes(code));
+  assert.ok('checkedRuleIds' in report.coverage && report.coverage.checkedRuleIds?.includes(code));
   assert.deepEqual(findings(report, code), []);
 });
 
@@ -48,7 +50,7 @@ export const verify = (token: string) => jwtVerify(token, createLocalJWKSet({ ke
 });
 
 const OPTIONS = `export interface TokenOptions { readonly issuer: string; readonly audience: string }`;
-const verifierWith = (signature, audience) => `import { createLocalJWKSet, jwtVerify } from 'jose';
+const verifierWith = (signature: string, audience: string) => `import { createLocalJWKSet, jwtVerify } from 'jose';
 import type { TokenOptions } from './passport.options';
 const keys = createLocalJWKSet({ keys: [] });
 export const verify = (${signature}) => jwtVerify(token, keys, { issuer: options.issuer, audience: ${audience}, algorithms: ['ES256'] });`;

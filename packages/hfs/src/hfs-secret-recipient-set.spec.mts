@@ -5,6 +5,7 @@
 // identity outside the set is refused naming the member, its format, its recipients and the identity's source and recipient.
 // Skipped where sops or age-keygen is not installed. Every value here is a fake.
 import test from "node:test";
+import type { TestContext } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -30,26 +31,28 @@ const PEM = [["-----BEGIN", "OPENSSH", "PRIVATE", "KEY-----"].join(" "), "ZmFrZS
 const KNOWN = "203.0.113.7 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeFakeFakeFakeFakeFakeFakeFakeFakeFake";
 
 /** A test identity made with age-keygen in `dir`: its public recipient and secret key, and the host port that reads it. */
-function testKey(dir, name) {
+function testKey(dir: string, name: string) {
   const file = path.join(dir, `${name}.txt`);
-  assert.equal(spawnSync(keygen, ["-o", file], { stdio: "ignore" }).status, 0);
-  const recipient = spawnSync(keygen, ["-y", file], { encoding: "utf8" }).stdout.trim();
-  const secret = fs.readFileSync(file, "utf8").split(/\r?\n/u).find((line) => line.startsWith("AGE-SECRET-KEY-"));
+  assert.equal(spawnSync(keygen as string, ["-o", file], { stdio: "ignore" }).status, 0);
+  const recipient = spawnSync(keygen as string, ["-y", file], { encoding: "utf8" }).stdout.trim();
+  const secret = fs.readFileSync(file, "utf8").split(/\r?\n/u).find((line) => line.startsWith("AGE-SECRET-KEY-")) as string;
   return { recipient, secret, host: { label: `/harness/${name}/secret.env`, read: () => secret } };
 }
 
 /** A production app whose rule names `recipients`, with an empty .claude so no app secret.env selects an identity. */
-async function productionApp(t, recipients) {
+type KeyName = "owner" | "server" | "stranger";
+
+async function productionApp(t: TestContext, recipients: KeyName[]) {
   const fixture = app(t, {}, "production");
   const keys = path.join(path.dirname(fixture.root), "test-keys");
   fs.mkdirSync(keys);
-  const made = Object.fromEntries(["owner", "server", "stranger"].map((name) => [name, testKey(keys, name)]));
+  const made = Object.fromEntries(["owner", "server", "stranger"].map((name) => [name, testKey(keys, name)])) as Record<KeyName, ReturnType<typeof testKey>>;
   const quiet = { cwd: fixture.root, env: fixture.env, stdout: () => {}, stderr: () => {} };
   for (const name of recipients) assert.equal(await secretMain(["recipients", "--env", "production", "--add", made[name].recipient, "--execute"], quiet), 0);
   return { ...fixture, keys: made, quiet };
 }
 
-const recipientsOf = (file) => envelopeOf(fs.readFileSync(file, "utf8")).recipients.sort();
+const recipientsOf = (file: string) => envelopeOf(fs.readFileSync(file, "utf8")).recipients.sort();
 
 test("a member sealed to the owner and server keys opens with either alone, and set keeps both recipients", { skip }, async (t) => {
   const fixture = await productionApp(t, ["owner", "server"]);
@@ -64,8 +67,8 @@ test("a member sealed to the owner and server keys opens with either alone, and 
     assert.equal(seam.decrypt(file, "yaml").API_KEY === VALUE, true, "the member opens with this key alone");
   }
 
-  const err = [];
-  const added = await secretMain(["set", "--env", "production", "app", "ADDED_KEY"], { ...fixture.quiet, stderr: (text) => err.push(text), stdin: () => ADDED, hostIdentity: owner.host });
+  const err: string[] = [];
+  const added = await secretMain(["set", "--env", "production", "app", "ADDED_KEY"], { ...fixture.quiet, stderr: (text: string) => err.push(text), stdin: () => ADDED, hostIdentity: owner.host });
   assert.equal(added, 0, err.join(""));
   assert.deepEqual(recipientsOf(file), [owner.recipient, server.recipient].sort(), "set kept the server recipient");
   const map = defaultSops(fixture.env, fixture.root, process.platform, undefined, server.host).decrypt(file, "yaml");
@@ -79,8 +82,8 @@ test("a rewrite with no rule for the member keeps the member's own recipient set
   const file = path.join(fixture.dir, "app.enc.yaml");
   assert.equal(await secretMain(["set", "--env", "production", "app", "API_KEY"], { ...fixture.quiet, stdin: () => VALUE }), 0);
   fs.writeFileSync(path.join(fixture.root, ".sops.yaml"), `creation_rules:\n  - path_regex: \\.starcistacks[/\\\\]dev[/\\\\]secrets[/\\\\][^/\\\\]+\\.enc(?:\\.yaml)?$\n    age: ${owner.recipient}\n`);
-  const err = [];
-  const code = await secretMain(["set", "--env", "production", "app", "ADDED_KEY"], { ...fixture.quiet, stderr: (text) => err.push(text), stdin: () => ADDED, hostIdentity: owner.host });
+  const err: string[] = [];
+  const code = await secretMain(["set", "--env", "production", "app", "ADDED_KEY"], { ...fixture.quiet, stderr: (text: string) => err.push(text), stdin: () => ADDED, hostIdentity: owner.host });
   assert.equal(code, 0, err.join(""));
   assert.deepEqual(recipientsOf(file), [owner.recipient, server.recipient].sort());
 });
@@ -90,7 +93,7 @@ test("an identity outside the member's set is refused naming the member, its for
   const { owner, server, stranger } = fixture.keys;
   assert.equal(await secretMain(["set", "--env", "production", "app", "API_KEY"], { ...fixture.quiet, stdin: () => VALUE }), 0);
   const seam = defaultSops(fixture.env, fixture.root, process.platform, undefined, stranger.host);
-  assert.throws(() => seam.decrypt(path.join(fixture.dir, "app.enc.yaml"), "yaml"), (error) => {
+  assert.throws(() => seam.decrypt(path.join(fixture.dir, "app.enc.yaml"), "yaml"), (error: Error) => {
     for (const fact of ["app.enc.yaml", owner.recipient, server.recipient, stranger.recipient, stranger.host.label]) assert.ok(error.message.includes(fact), `${fact} in: ${error.message}`);
     assert.doesNotMatch(error.message, /AGE-SECRET-KEY|not qualified/u);
     return true;
@@ -98,7 +101,7 @@ test("an identity outside the member's set is refused naming the member, its for
 });
 
 /** A production deploy whose owner-machine transport opens its one sealed SSH member `vps` (VPS_HOST, VPS_USER, privateKey, knownHosts). */
-async function sealedRemoteApp(t) {
+async function sealedRemoteApp(t: TestContext) {
   const fixture = await productionApp(t, ["owner", "server"]);
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "application-stacks.yaml"), [
     "environments:", "  production:", "    runtime: docker-swarm", "    composeFiles: [stack.yml]", "    deploy:", "      remote:",
@@ -106,7 +109,7 @@ async function sealedRemoteApp(t) {
   ].join("\n"));
   fs.writeFileSync(path.join(fixture.root, ".starcistacks", "production", "stack.yml"), "services:\n  api:\n    image: x\n");
   // Adding a key to the existing member opens it, so the later writes carry the owner's identity.
-  const set = async (member, keys, value, more = {}) => { const err = []; assert.equal(await secretMain(["set", "--env", "production", member, ...keys], { ...fixture.quiet, ...more, stderr: (text) => err.push(text), stdin: () => value }), 0, err.join("")); };
+  const set = async (member: string, keys: string[], value: string, more: Record<string, unknown> = {}) => { const err: string[] = []; assert.equal(await secretMain(["set", "--env", "production", member, ...keys], { ...fixture.quiet, ...more, stderr: (text: string) => err.push(text), stdin: () => value }), 0, err.join("")); };
   await set("vps", ["VPS_HOST", "VPS_USER"], "VPS_HOST=203.0.113.7\nVPS_USER=deploy\n");
   await set("vps", [SEALED_SSH_KEYS.sshKey], PEM, { hostIdentity: fixture.keys.owner.host });
   await set("vps", [SEALED_SSH_KEYS.knownHosts], KNOWN, { hostIdentity: fixture.keys.owner.host });
@@ -132,7 +135,7 @@ test("a sealed SSH member the host's identity cannot open is refused naming the 
   const fixture = await sealedRemoteApp(t);
   const { owner, server, stranger } = fixture.keys;
   const ctx = stackContext({ cwd: fixture.root, env: fixture.env, platform: "linux", hostIdentity: stranger.host, stdout: () => {}, stderr: () => {} });
-  assert.throws(() => openSealedSession(ctx, loadDeployConfig({ repoRoot: fixture.root, env: "production" })), (error) => {
+  assert.throws(() => openSealedSession(ctx, loadDeployConfig({ repoRoot: fixture.root, env: "production" })), (error: Error) => {
     assert.match(error.message, /^STACK_REMOTE_SEALED: cannot open the sealed member vps: /u);
     for (const fact of ["vps.enc.yaml", owner.recipient, server.recipient, stranger.recipient, stranger.host.label]) assert.ok(error.message.includes(fact), `${fact} in: ${error.message}`);
     return true;
@@ -143,10 +146,10 @@ const ENC = "ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]";
 const AGE_BLOCK = "-----BEGIN AGE ENCRYPTED FILE-----\nYWdl\n-----END AGE ENCRYPTED FILE-----\n";
 const A = `age1${"q".repeat(58)}`;
 const B = `age1${"p".repeat(58)}`;
-const yamlMember = (recipients) => [`API_KEY: ${ENC}`, "sops:", "  age:",
-  ...recipients.flatMap((recipient) => [`    - recipient: ${recipient}`, "      enc: |", ...AGE_BLOCK.trimEnd().split("\n").map((line) => `        ${line}`)]),
+const yamlMember = (recipients: string[]) => [`API_KEY: ${ENC}`, "sops:", "  age:",
+  ...recipients.flatMap((recipient: string) => [`    - recipient: ${recipient}`, "      enc: |", ...AGE_BLOCK.trimEnd().split("\n").map((line) => `        ${line}`)]),
   "  lastmodified: \"2026-10-29T10:15:02Z\"", `  mac: ${ENC}`, "  version: 3.13.2", ""].join("\n");
-const dotenvMember = (entries) => [`API_KEY=${ENC}`,
+const dotenvMember = (entries: [number, string][]) => [`API_KEY=${ENC}`,
   ...entries.flatMap(([index, recipient]) => [`sops_age__list_${index}__map_enc=${AGE_BLOCK.replaceAll("\n", String.raw`\n`)}`, `sops_age__list_${index}__map_recipient=${recipient}`]),
   "sops_lastmodified=2026-10-29T10:15:02Z", `sops_mac=${ENC}`, "sops_version=3.13.2", ""].join("\n");
 

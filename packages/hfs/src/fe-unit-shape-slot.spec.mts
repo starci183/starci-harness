@@ -6,20 +6,27 @@
 // are type-checked under the @starci/tsconfig next preset in a small app whose library types are stubs written here (the app's own
 // modules/api is the skeleton template itself).
 import { test } from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
+import type { Linter } from 'eslint';
 import ts from 'typescript';
 import { loadHfs, starciFeConfig } from '../../eslint-canon-fe/src/index.ts';
-import grammarCore, { recommended as grammarRecommended } from '../../eslint-grammar-core/src/index.ts';
 import { bundledPresets } from '../sync/index.mjs';
 import { addKind } from '../scaffold/add.mjs';
+import type { AddOptions } from '../scaffold/add.mjs';
 import { scaffoldApp, starterDeclaration } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { gitAdd, installTypeScript } from './helpers/hfs-cli-fixture.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
+
+// The core Grammar is loaded from its .ts source at run time (type stripping), but that source is typechecked by its own package: a computed
+// specifier keeps it out of this program, and its two exports are typed here.
+const GRAMMAR_CORE_SOURCE = '../../eslint-grammar-core/src/index.ts';
+const { default: grammarCore, recommended: grammarRecommended } = await import(GRAMMAR_CORE_SOURCE) as { default: NonNullable<Linter.Config['plugins']>[string]; recommended: Linter.RulesRecord };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGES = path.join(HERE, '..', '..');
@@ -27,7 +34,7 @@ const SKELETON_API = path.join(HERE, '..', 'templates', 'fe', 'skeleton', 'apps'
 const SHAPES = ['prepared', 'sent', 'returned'];
 const UNITS = ['composite:term-value', 'branch:disclosure', 'leaf:status-label'];
 /** The route and overlay owners, added after the block they compose: [noun, name, options]. */
-const OWNERS = [
+const OWNERS: [string, string, AddOptions][] = [
   ['page', 'handoffs', { blocks: 'sign-in-form' }],
   ['page', 'settings/billing', {}],
   ['page', 'account', { tabs: 'profile,security' }],
@@ -115,16 +122,16 @@ const STUBS = {
   '@storybook/react-vite/package.json': '{"name":"@storybook/react-vite","types":"index.d.ts"}',
 };
 
-const write = (file, text) => {
+const write = (file: string, text: string) => {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, text.endsWith('\n') ? text : `${text}\n`);
 };
 
 /** Adds the block and the three lower units to the app at `root`; returns every file written, app-relative. */
-const addUnits = (root) => {
+const addUnits = (root: string) => {
   const block = addKind({ repoRoot: root, noun: 'block', name: 'handoff-block', options: { shapes: SHAPES.join(',') } });
   const units = UNITS.map((entry) => {
-    const [noun, name] = entry.split(':');
+    const [noun, name] = entry.split(':') as [string, string];
     return addKind({ repoRoot: root, noun, name });
   });
   const owners = OWNERS.map(([noun, name, options]) => addKind({ repoRoot: root, noun, name, options }));
@@ -132,7 +139,7 @@ const addUnits = (root) => {
 };
 
 /** A starter declaration with its product app `app`, the app's catalogs, its api module, the read and the library stubs. */
-function stubbedApp(t) {
+function stubbedApp(t: TestContext) {
   const root = mkdtemp(t, 'starci-fe-unit-');
   write(path.join(root, 'hfs.json'), JSON.stringify(starterDeclaration('demo'), null, 2));
   const app = path.join(root, 'fe', 'apps', 'app');
@@ -144,7 +151,7 @@ function stubbedApp(t) {
   write(path.join(app, 'src', 'modules', 'routes', 'index.ts'), 'export const APP_ROUTES = { home: "/" } as const');
   write(path.join(app, 'src', 'components', 'blocks', 'SignInForm', 'index.tsx'), SIGN_IN_FORM);
   for (const [relative, text] of Object.entries(STUBS)) write(path.join(app, 'node_modules', ...relative.split('/')), text);
-  const preset = (name) => JSON.parse(fs.readFileSync(path.join(PACKAGES, 'tsconfig', `${name}.json`), 'utf8')).compilerOptions;
+  const preset = (name: string) => JSON.parse(fs.readFileSync(path.join(PACKAGES, 'tsconfig', `${name}.json`), 'utf8')).compilerOptions;
   const next = Object.fromEntries(Object.entries(preset('next')).filter(([key]) => key !== 'plugins' && key !== 'incremental'));
   write(path.join(root, 'fe', 'tsconfig.json'), JSON.stringify({ compilerOptions: { ...preset('base'), ...next, types: [] }, exclude: ['node_modules'] }, null, 2));
   write(path.join(app, 'tsconfig.json'), JSON.stringify({
@@ -157,20 +164,20 @@ function stubbedApp(t) {
 }
 
 /** Type-checks the app through its own tsconfig; returns every diagnostic as `file message`. */
-function typecheck(app) {
+function typecheck(app: string) {
   const file = path.join(app, 'tsconfig.json');
   const parsed = ts.parseJsonConfigFileContent(ts.readConfigFile(file, ts.sys.readFile).config, ts.sys, app, undefined, file);
   const program = ts.createProgram(parsed.fileNames, parsed.options);
   return [...parsed.errors, ...ts.getPreEmitDiagnostics(program)].map((diagnostic) => `${diagnostic.file ? path.relative(app, diagnostic.file.fileName) : ''} ${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`);
 }
 
-const lockedOk = (root) => {
+const lockedOk = (root: string) => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
-  return { ok: true };
+  return { ok: true as const };
 };
 
 /** The canon's flat config with only its own starci-fe rules on, plus every rule of the core Grammar's lint factory. */
-const unitConfig = (fe) => [
+const unitConfig = (fe: string) => [
   ...starciFeConfig({ hfs: loadHfs(pathToFileURL(path.join(fe, 'eslint.config.mjs'))) }).map((block) => (block.rules === undefined ? block : {
     ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => id.startsWith('starci-fe/'))),
   })),
@@ -179,7 +186,7 @@ const unitConfig = (fe) => [
 
 test('the units added to a scaffolded full app pass the starci-fe canon and the core Grammar rules', { timeout: 300_000 }, async (t) => {
   const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-fe-unit-app-'), harness: { version: '1.1.0-alpha.3' }, edition: 'full',
-    presets: bundledPresets(), lock: lockedOk, initGit: init, emitTypes: () => 'export type Database = Record<string, never>\n' });
+    presets: bundledPresets(), lock: lockedOk, initGit: init });
   const app = path.join(root, 'fe', 'apps', 'app');
   write(path.join(app, 'src', 'hooks', 'swr', 'useQueryHandoffSwr.ts'), READ_HOOK);
   fs.appendFileSync(path.join(app, 'src', 'hooks', 'swr', 'index.ts'), 'export { useQueryHandoffSwr } from "./useQueryHandoffSwr"\n');
@@ -196,7 +203,7 @@ test('the units added to a scaffolded full app pass the starci-fe canon and the 
   const results = await eslint.lintFiles(linted.map((relative) => path.join(root, ...relative.split('/'))));
   assert.deepEqual(results.map((result) => path.relative(root, result.filePath).split(path.sep).join('/')).sort(), [...linted].sort(), 'every unit source is linted');
   // A unit or an overlay is added before the author places it, so nothing reaches it yet: reachability is the placement's verdict.
-  const PLACEMENT = new Set(['starci-fe/dead-exports', 'starci-fe/owner-reachable']);
+  const PLACEMENT = new Set<string | null>(['starci-fe/dead-exports', 'starci-fe/owner-reachable']);
   const findings = results.flatMap((result) => result.messages.filter((message) => !PLACEMENT.has(message.ruleId))
     .map((message) => `${path.relative(fe, result.filePath).split(path.sep).join('/')}:${message.line} ${message.ruleId ?? 'parse'} ${message.message}`));
   assert.deepEqual(findings, []);
@@ -263,7 +270,7 @@ test('the scaffold refuses a single shape, a shape that is no camelCase word, sh
 test('a page is one Page with its own loading and error views, an overlay is a Dialog or a Drawer, a layout composes a frame', (t) => {
   const { root, app } = stubbedApp(t);
   addUnits(root);
-  const read = (...parts) => fs.readFileSync(path.join(app, ...parts), 'utf8');
+  const read = (...parts: string[]) => fs.readFileSync(path.join(app, ...parts), 'utf8');
   const route = ['src', 'app', '[locale]', 'handoffs'];
   assert.match(read(...route, 'page.tsx'), /const Page = \(\) => <HandoffsPage \/>/);
   assert.match(read(...route, 'loading.tsx'), /<HandoffsLoadingPage \/>/);
