@@ -1,6 +1,7 @@
 // proves: HFS_PACKAGE_MANAGER_MIXED@lite
 // proves: HFS_PACKAGE_MANAGER_MIXED@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,9 +10,9 @@ import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
 import { checkHfsWithoutConfig } from '../runtime/scripts/hfs/architecture/hfs.mjs';
 
 const CODE = 'HFS_PACKAGE_MANAGER_MIXED';
-const findings = (root) => checkHfsWithoutConfig(root).violations.filter((finding) => finding.ruleId === CODE);
+const findings = (root: string) => checkHfsWithoutConfig(root).violations.filter((finding) => finding.ruleId === CODE);
 
-function fixture(t, edition) {
+function fixture(t: TestContext, edition: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-manager-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'proof', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
@@ -26,8 +27,8 @@ for (const edition of ['lite', 'full']) {
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ packageManager: 'pnpm@9.0.0' }));
     const found = findings(root);
     assert.equal(found.length, 1);
-    assert.equal(found[0].path, 'package.json');
-    assert.match(found[0].message, /pnpm@9\.0\.0/);
+    assert.equal(found[0]?.path, 'package.json');
+    assert.match(found[0]?.message ?? '', /pnpm@9\.0\.0/);
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ packageManager: 'npm@10.8.2' }));
     assert.deepEqual(findings(root), []);
   });

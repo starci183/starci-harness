@@ -9,7 +9,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import { randomBytes } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,15 +17,21 @@ import { withoutGitLocalEnv } from '../runtime/scripts/lib/git.mjs';
 import { eachInOrder } from '../runtime/scripts/lib/in-order.mjs';
 
 const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'hfs-db');
-const fixture = (name) => fs.readFileSync(path.join(FIXTURES, name), 'utf8');
+const fixture = (name: string) => fs.readFileSync(path.join(FIXTURES, name), 'utf8');
 
-const made = [];
+/** The files of a temp app by path. */
+type Contents = Record<string, string>;
+/** One finding of the database rules. */
+type Found = Awaited<ReturnType<typeof checkDatabase>>[number];
+
+const made: string[] = [];
 test.after(() => { for (const dir of made) fs.rmSync(dir, { recursive: true, force: true }); });
 
 const DB = {};
 
 /** A temp app root holding `contents` ({path: text}) and an hfs.json declaring the lite edition. Pass `db: null` for an hfs.json with no db block. */
-function repo(contents, { db = DB, edition = 'lite' } = {}) {
+interface RepoOptions { db?: object | null; edition?: string }
+function repo(contents: Contents, { db = DB, edition = 'lite' }: RepoOptions = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-'));
   made.push(dir);
   fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo', edition, ...(db ? { db } : {}), sides: { be: { apps: [] }, fe: { apps: [] } } }));
@@ -43,9 +48,9 @@ const gitOk = { ok: false, stdout: '' };
 const noRemote = () => gitOk;
 
 /** `git -C dir ...args` with the repository-local env of a hosting worktree stripped. */
-const git = (dir, args) => execFileSync('git', ['-C', dir, ...args], { env: withoutGitLocalEnv(process.env), stdio: ['ignore', 'pipe', 'pipe'] });
+const git = (dir: string, args: string[]) => execFileSync('git', ['-C', dir, ...args], { env: withoutGitLocalEnv(process.env), stdio: ['ignore', 'pipe', 'pipe'] });
 /** A real repository on `main` holding `contents` committed. */
-function committedRepo(contents, options) {
+function committedRepo(contents: Contents, options?: RepoOptions) {
   const dir = repo(contents, options);
   git(dir, ['init', '-b', 'main', '-q']);
   git(dir, ['add', '-A', '--', '.']);
@@ -54,9 +59,9 @@ function committedRepo(contents, options) {
 }
 
 const MIGRATIONS = 'db/migrations';
-const migration = (name, sql) => ({ [`${MIGRATIONS}/${name}`]: sql });
-const only = (list, code) => list.filter((f) => f.code === code);
-const CODES = ['DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'DB_CONFIG_POLICY', 'DB_TYPES_DRIFT'];
+const migration = (name: string, sql: string) => ({ [`${MIGRATIONS}/${name}`]: sql });
+const only = (list: Found[], code: string) => list.filter((f) => f.code === code);
+export const CODES = ['DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'DB_CONFIG_POLICY', 'DB_TYPES_DRIFT'];
 
 test('a full app without a db tree is not judged at all', async () => {
   const dir = repo({ 'README.md': 'x\n' }, { db: null, edition: 'full' });
@@ -71,7 +76,7 @@ test('the violations fixture reports one finding for every rule it breaks', asyn
     assert.ok(only(findings, code).length > 0, `${code} expected`);
   }
   assert.ok(only(findings, 'DB_RLS_REQUIRED').some((f) => f.message.includes('public.no_rls')));
-  assert.ok(only(findings, 'DB_DYNAMIC_DDL').some((f) => f.query?.includes('alter table %I enable row level security')));
+  assert.ok(only(findings, 'DB_DYNAMIC_DDL').some((f) => (f.query as string | undefined)?.includes('alter table %I enable row level security')));
 });
 
 // ------------------------------------------------------------------------------------------------ L02 DB_MIGRATION_SHAPE
@@ -105,8 +110,8 @@ test('DB_MIGRATION_SHAPE: new migrations sort after every committed active migra
   const files = ['20260101120000_old.sql', '20250101000000_backdated.sql', '20261001120000_new.sql'].map((n) => `${MIGRATIONS}/${n}`);
   const findings = only(await checkDatabase({ repoRoot: dir, files }), 'DB_MIGRATION_SHAPE');
   assert.equal(findings.length, 1, JSON.stringify(findings));
-  assert.equal(findings[0].path, `${MIGRATIONS}/20250101000000_backdated.sql`);
-  assert.match(findings[0].message, /not after every migration/);
+  assert.equal(findings[0]?.path, `${MIGRATIONS}/20250101000000_backdated.sql`);
+  assert.match(findings[0]?.message ?? '', /not after every migration/);
 });
 
 test('DB_MIGRATION_SHAPE: committed migrations after the merge-base constrain new files, without being judged against themselves', async () => {
@@ -124,7 +129,7 @@ test('DB_MIGRATION_SHAPE: committed migrations after the merge-base constrain ne
   fs.writeFileSync(path.join(dir, next), 'select 1;\n');
   const findings = only(await checkDatabase({ repoRoot: dir, files: [old, latest, backdated, next] }), 'DB_MIGRATION_SHAPE');
   assert.deepEqual(findings.map((finding) => finding.path), [backdated]);
-  assert.match(findings[0].message, /repository history/);
+  assert.match(findings[0]?.message ?? '', /repository history/);
 });
 
 test('DB_MIGRATION_SHAPE: future migration stamps on a divergent origin/main do not constrain HEAD', async () => {
@@ -248,9 +253,9 @@ test('DB_MIGRATION_SHAPE: an archive copy does not retire a migration that remai
 // ------------------------------------------------------------------------------------------------ L03 DB_RLS_REQUIRED
 
 const RLS = 'DB_RLS_REQUIRED';
-const rlsOf = async (sql, config) => {
+const rlsOf = async (sql: string, config?: string) => {
   const file = `${MIGRATIONS}/20260101120000_t.sql`;
-  const contents = { [file]: sql };
+  const contents: Contents = { [file]: sql };
   if (config !== undefined) contents['supabase/config.toml'] = config;
   const dir = repo(contents);
   const files = Object.keys(contents);
@@ -287,7 +292,7 @@ test('DB_RLS_REQUIRED: a table hfs.json db.forceRls declares must be forced', as
 // ------------------------------------------------------------------------------------------------ L04 DB_DYNAMIC_DDL
 
 const DDL = 'DB_DYNAMIC_DDL';
-const ddlOf = async (sql) => {
+const ddlOf = async (sql: string) => {
   const file = `${MIGRATIONS}/20260101120000_t.sql`;
   const dir = repo({ [file]: sql });
   return checkDatabase({ repoRoot: dir, files: [file], git: noRemote });
@@ -319,7 +324,7 @@ test('DB_DYNAMIC_DDL: dynamic DDL inside a function body is refused too', async 
 // ------------------------------------------------------------------------------------------------ L05 DB_POLICY_SHAPE
 
 const POLICY = 'DB_POLICY_SHAPE';
-const policyOf = async (sql) => {
+const policyOf = async (sql: string) => {
   const file = `${MIGRATIONS}/20260101120000_t.sql`;
   const dir = repo({ [file]: `create table public.t (id int);\nalter table public.t enable row level security;\n${sql}` });
   return checkDatabase({ repoRoot: dir, files: [file], git: noRemote });
@@ -367,7 +372,7 @@ test('DB_POLICY_SHAPE: every policy is named <table>_<role>_<action>', async () 
 // ------------------------------------------------------------------------------------------------ L06 DB_DEFINER_SAFE
 
 const DEFINER = 'DB_DEFINER_SAFE';
-const definerOf = async (sql, edition = 'lite') => {
+const definerOf = async (sql: string, edition = 'lite') => {
   const file = `${MIGRATIONS}/20260101120000_t.sql`;
   const dir = repo({ [file]: sql }, { edition });
   return checkDatabase({ repoRoot: dir, files: [file], git: noRemote });
@@ -461,7 +466,7 @@ test('DB_DEFINER_SAFE: dynamic SQL inside a definer interpolates only through fo
 // ------------------------------------------------------------------------------------------------ L07 DB_STORAGE_POLICY
 
 const BUCKET = 'DB_STORAGE_POLICY';
-const bucketOf = async (sql) => {
+const bucketOf = async (sql: string) => {
   const file = `${MIGRATIONS}/20260101120000_t.sql`;
   const dir = repo({ [file]: sql });
   return checkDatabase({ repoRoot: dir, files: [file], git: noRemote });
@@ -488,8 +493,8 @@ test('DB_STORAGE_POLICY: a bucket declares public, bounds and its objects policy
 
 // ------------------------------------------------------------------------------------------------ L08 DB_CONFIG_POLICY
 
-const CONFIG = 'DB_CONFIG_POLICY';
+export const CONFIG = 'DB_CONFIG_POLICY';
 
 // ------------------------------------------------------------------------------------------------ L09 DB_TYPES_DRIFT
 
-const TYPES = 'DB_TYPES_DRIFT';
+export const TYPES = 'DB_TYPES_DRIFT';

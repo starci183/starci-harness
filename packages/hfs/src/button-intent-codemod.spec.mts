@@ -1,4 +1,5 @@
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,7 +9,7 @@ import { transformButtonIntent, migrateButtonIntent, codemodMain, buttonIntentMa
 import { main as appMain } from './main.mjs';
 
 const PREFIX = `import { Button, IconButton } from '@starci/grammar/core';\n`;
-const transform = text => transformButtonIntent({ ts, text: PREFIX + text, file: 'fe/component.tsx' });
+const transform = (text: string) => transformButtonIntent({ ts, text: PREFIX + text, file: 'fe/component.tsx' });
 
 test('maps every published legacy variant and destructive step without changing surrounding source', () => {
   const input = `export const Actions = () => <><Button variant='primary'>Save</Button><Button variant="secondary">Other</Button><Button variant={"tertiary"}>Cancel</Button><Button variant="outline">Edit</Button><Button variant="ghost">Export</Button><IconButton variant="danger-soft" label="Remove" /><Button variant="danger">Delete</Button></>;`;
@@ -132,11 +133,11 @@ test('reports dynamic, absent, unsupported and overlapping props rather than inv
 
 test('a parse error retains the whole file and returns a visible finding', () => {
   const result = transform('const View = () => <Button variant="primary">');
-  assert.equal(result.findings[0].code, 'parse-error');
+  assert.equal(result.findings[0]?.code, 'parse-error');
   assert.deepEqual(result.changes, []);
 });
 
-function fixture(t) {
+function fixture(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'button-intent-codemod-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'fe/apps/web/src'), { recursive: true });
@@ -151,8 +152,8 @@ test('dry run preserves source, --write applies only safe changes, and reports r
   const preview = migrateButtonIntent({ root, ts });
   assert.equal(fs.readFileSync(file, 'utf8'), text);
   assert.deepEqual(preview.filesChanged, ['fe/apps/web/src/component.tsx']);
-  assert.equal(preview.findings[0].file, preview.filesChanged[0]);
-  assert.equal(preview.findings[0].line, 2);
+  assert.equal(preview.findings[0]?.file, preview.filesChanged[0]);
+  assert.equal(preview.findings[0]?.line, 2);
   const written = migrateButtonIntent({ root, write: true, ts });
   assert.equal(fs.readFileSync(file, 'utf8'), text.replace('variant="outline"', 'intent="neutral"'));
   assert.equal(written.findings.length, 1);
@@ -163,12 +164,12 @@ test('dry run preserves source, --write applies only safe changes, and reports r
 
 test('the app verb dispatch previews by default and writes safe edits plus a JSON decision report', async t => {
   const { root, file, text } = fixture(t);
-  const output = [];
-  const errors = [];
-  const io = { cwd: root, stdout: value => output.push(value), stderr: value => errors.push(value) };
+  const output: string[] = [];
+  const errors: string[] = [];
+  const io = { cwd: root, stdout: (value: string) => output.push(value), stderr: (value: string) => errors.push(value) };
   assert.equal(await appMain(['codemod', 'button-intent', '--json'], io), 1);
   assert.equal(fs.readFileSync(file, 'utf8'), text);
-  assert.equal(JSON.parse(output.pop()).write, false);
+  assert.equal(JSON.parse(output.pop() as string).write, false);
   assert.deepEqual(errors, []);
   assert.equal(await appMain(['codemod', 'button-intent', '--execute', '--json', '--out', 'migration.json'], io), 1);
   const report = JSON.parse(fs.readFileSync(path.join(root, 'migration.json'), 'utf8'));

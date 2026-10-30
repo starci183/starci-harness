@@ -3,9 +3,11 @@
 // `ci secret set`, `ci var set` and `ci local`, and the dry run of `db migrate` that carries the plan (exit 0 agree, 1 drift, 2
 // refused). An old spelling is an unknown flag or operand and fails with exit 2. Every value here is a fake.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import type { SpawnSyncOptions } from 'node:child_process';
 import { main } from './main.mjs';
 import { app } from './helpers/hfs-secret-fixture.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
@@ -19,9 +21,11 @@ const APP_WIDE = String.raw`\.starcistacks[/\\][^/\\]+[/\\]secrets[/\\][^/\\]+\.
 const SECRET_VALUE = 'fake-secret-value-not-to-print';
 
 /** Runs main and collects both streams. */
-async function run(argv, options = {}) {
-  const out = [];
-  const err = [];
+type MainOptions = NonNullable<Parameters<typeof main>[1]>;
+
+async function run(argv: string[], options: MainOptions = {}) {
+  const out: string[] = [];
+  const err: string[] = [];
   const code = await main(argv, { stdout: (text) => out.push(text), stderr: (text) => err.push(text), ...options });
   return { code, out: out.join(''), err: err.join('') };
 }
@@ -94,12 +98,12 @@ const CI_DECLARATION = `ci:
       ownerValue: true
 `;
 
-function ciApp(t) {
+function ciApp(t: TestContext) {
   const root = mkdtemp(t, 'hfs-canonical-ci-');
   fs.mkdirSync(path.join(root, '.starcistacks'), { recursive: true });
   fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), CI_DECLARATION);
-  const calls = [];
-  const spawn = (command, args, options) => {
+  const calls: { command: string; args: string[]; input: unknown }[] = [];
+  const spawn = (command: string, args: string[], options: SpawnSyncOptions) => {
     calls.push({ command, args: [...args], input: options?.input });
     return { status: 0, stdout: '', stderr: '' };
   };
@@ -143,7 +147,7 @@ test('ci var set is dry until --execute: public and owner-supplied variables are
   assert.equal(argvOwner.code, 2);
   assert.match(argvOwner.err, /^CI_VALUE_ARGV/u);
   assert.equal(reads, 0);
-  assert.deepEqual(calls, []);
+  assert.deepEqual(calls, [] as typeof calls);
   assert.equal((await run(['ci', 'var', 'set', 'PUBLIC_HOST', '--repo', 'example/app', '--execute'], { cwd: root, tools, stdin, env: {} })).code, 0);
   assert.equal((await run(['ci', 'var', 'set', 'VPS_USER', '--env', 'production', '--repo', 'example/app', '--execute'], { cwd: root, tools, stdin, env: {} })).code, 0);
   assert.deepEqual(calls.map((call) => call.args), [
@@ -163,7 +167,7 @@ test('ci local is dry by default (the plan, nothing run) and --execute runs it; 
   assert.equal(dry.out, 'fast\n  skip actions/checkout - a GitHub action\n');
   const dryJson = await run(['ci', 'local', '--json', '--logs', logs], { cwd: root });
   assert.equal(dryJson.code, 0, dryJson.err);
-  assert.deepEqual(JSON.parse(dryJson.out).map((instance) => instance.label), ['fast']);
+  assert.deepEqual(JSON.parse(dryJson.out).map((instance: { label: string }) => instance.label), ['fast']);
   assert.equal(fs.existsSync(logs), false, 'the dry run creates no log directory');
   const old = await run(['ci', 'local', '--dry-run'], { cwd: root });
   assert.equal(old.code, 2);
@@ -182,7 +186,7 @@ const FIRST = '20260101000000';
 const SECOND = '20260102000000';
 const TICK = { name: 'events-tick', schedule: '* * * * *', command: 'select 1' };
 
-function dbApp(t, { second = `select cron.schedule('${TICK.name}', '${TICK.schedule}', '${TICK.command}');\nselect pgmq.create('events');\n` } = {}) {
+function dbApp(t: TestContext, { second = `select cron.schedule('${TICK.name}', '${TICK.schedule}', '${TICK.command}');\nselect pgmq.create('events');\n` }: { second?: string } = {}) {
   const root = mkdtemp(t, 'hfs-canonical-db-');
   fs.mkdirSync(path.join(root, 'db', 'migrations'), { recursive: true });
   fs.writeFileSync(path.join(root, 'db', 'migrations', `${FIRST}_init.sql`), 'create table widgets (id int);\n');
@@ -191,15 +195,15 @@ function dbApp(t, { second = `select cron.schedule('${TICK.name}', '${TICK.sched
 }
 
 /** A psql double over a small database: the history, the cron jobs and the queues it holds; a `-1` transaction that marks a version applied records it. */
-function psqlDouble({ history, cron = [], queues = [] }) {
-  const calls = [];
+function psqlDouble({ history, cron = [], queues = [] }: { history: string[]; cron?: object[]; queues?: object[] }) {
+  const calls: { command: string; args: string[] }[] = [];
   const state = { history: [...history], cron, queues };
-  const spawn = (command, args) => {
+  const spawn = (command: string, args: string[]) => {
     calls.push({ command, args: [...args] });
-    const sql = args.at(-1);
-    const answer = (rows) => ({ status: 0, stdout: JSON.stringify(rows), stderr: '' });
+    const sql = args.at(-1) as string;
+    const answer = (rows: unknown) => ({ status: 0, stdout: JSON.stringify(rows), stderr: '' });
     if (args.includes('-1')) {
-      for (const argument of args) for (const match of argument.matchAll(/insert into supabase_migrations\.schema_migrations \(version, name\) values \('(\d{14})'/gu)) state.history.push(match[1]);
+      for (const argument of args) for (const match of argument.matchAll(/insert into supabase_migrations\.schema_migrations \(version, name\) values \('(\d{14})'/gu)) state.history.push(match[1] as string);
       return { status: 0, stdout: '', stderr: '' };
     }
     if (sql.includes('as present')) return answer([{ present: true }]);
@@ -218,7 +222,7 @@ const agreeing = () => psqlDouble({
   queues: [{ name: 'events' }],
 });
 
-const migrate = (root, argv, double, extra = {}) => run(['db', ...argv], { cwd: root, env: { ...process.env, DATABASE_URL, SOURCE_URL: DATABASE_URL }, stackIo: { spawn: double.spawn }, ...extra });
+const migrate = (root: string, argv: string[], double: ReturnType<typeof psqlDouble>, extra: MainOptions = {}) => run(['db', ...argv], { cwd: root, env: { ...process.env, DATABASE_URL, SOURCE_URL: DATABASE_URL }, stackIo: { spawn: double.spawn }, ...extra });
 
 test('db migrate without --execute prints the plan and exits 0 when the repository and the database agree', async (t) => {
   const root = dbApp(t);
@@ -271,7 +275,7 @@ test('db migrate without --execute exits 2 when the migrations or the inventory 
   assert.match(refused.err, /dynamic migration blocks cannot prove database inventory/u);
   const root = dbApp(t);
   const base = agreeing();
-  const broken = (command, args) => (args.at(-1).includes('from cron.job') ? { status: 0, stdout: 'not json', stderr: '' } : base.spawn(command, args));
+  const broken = (command: string, args: string[]) => ((args.at(-1) as string).includes('from cron.job') ? { status: 0, stdout: 'not json', stderr: '' } : base.spawn(command, args));
   const bad = await run(['db', 'migrate'], { cwd: root, env: { ...process.env, DATABASE_URL }, stackIo: { spawn: broken } });
   assert.equal(bad.code, 2);
   const noUrl = await run(['db', 'migrate'], { cwd: root, env: { PATH: process.env.PATH }, stackIo: { spawn: agreeing().spawn } });

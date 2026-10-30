@@ -1,14 +1,25 @@
 // The sonar row's quality-gate wait: the compute-engine task is polled to its end, then the quality gate of that analysis
 // decides; a deadline, a failed task and a missing scanner report are typed refusals.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
 import { sonarQualityGate } from '../release/sonar-quality-gate.mjs';
+import type { VerbContext } from '../release/index.mjs';
+
+/** The seams of the stack context the quality gate reads: the clock, the sleep and the fetch. */
+interface Seams {
+  now: () => number;
+  sleep: (ms: number) => Promise<void>;
+  fetch: (url: string, init?: RequestInit) => Promise<Response>;
+}
+/** One recorded request: its url and Authorization header, or the transient failure that answered it. */
+interface Call { url: string; auth?: string | undefined; failed?: string | number }
 
 /** A scanner working directory holding report-task.txt (or none when `task` is null). */
-function scanned(t, task = 'ceTaskId=AX-1\nprojectKey=product\n') {
+function scanned(t: TestContext, task: string | null = 'ceTaskId=AX-1\nprojectKey=product\n') {
   const root = fs.mkdtempSync(path.join(tempRoot(), 'hfs-sonar-qg-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   if (task !== null) {
@@ -19,11 +30,13 @@ function scanned(t, task = 'ceTaskId=AX-1\nprojectKey=product\n') {
 }
 
 /** A clock that advances by each sleep, and a fetch answering from `answer(url)`; every request is recorded. */
-function server(answer) {
-  const calls = [];
+function server(answer: (url: string, n: number) => unknown) {
+  const calls: Call[] = [];
   let clock = 0;
-  return { calls, ctx: { now: () => clock, sleep: async (ms) => { clock += ms; },
-    fetch: async (url, init) => { calls.push({ url, auth: init?.headers?.Authorization }); return { ok: true, json: async () => answer(url, calls.length) }; } } };
+  const seams: Seams = { now: () => clock, sleep: async (ms: number) => { clock += ms; },
+    fetch: async (url: string, init?: RequestInit) => { calls.push({ url, auth: (init?.headers as Record<string, string> | undefined)?.['Authorization'] }); return { ok: true, json: async () => answer(url, calls.length) } as Response; } };
+  // reason: a test double carrying only the seams the gate reads (the full stack context also holds spawn, platform, username, ...); the same object, so a spec may still replace a seam.
+  return { calls, seams, ctx: seams as unknown as VerbContext };
 }
 
 test('a pending task is polled until SUCCESS and an OK quality gate passes, with the scanner token on every request', async (t) => {
@@ -31,7 +44,7 @@ test('a pending task is polled until SUCCESS and an OK quality gate passes, with
   const verdict = await sonarQualityGate(ctx, { cwd: scanned(t), host: 'https://q.example.invalid/', token: 'tok' });
   assert.deepEqual(verdict, { pass: true, detail: 'exit 0, quality gate OK' });
   assert.equal(calls.filter((call) => call.url.includes('/api/ce/task?id=AX-1')).length, 3);
-  assert.equal(calls.at(-1).url, 'https://q.example.invalid/api/qualitygates/project_status?analysisId=AN-9');
+  assert.equal(calls.at(-1)?.url, 'https://q.example.invalid/api/qualitygates/project_status?analysisId=AN-9');
   assert.ok(calls.every((call) => call.auth === `Basic ${Buffer.from('tok:').toString('base64')}`));
 });
 
@@ -52,20 +65,20 @@ test('a missing scanner report or an HTTP error is an unreadable refusal, never 
   const { ctx } = server(() => ({}));
   const none = await sonarQualityGate(ctx, { cwd: scanned(t, null), host: 'https://q.example.invalid', token: 'tok' });
   assert.match(none.detail, /^RELEASE_SONAR_GATE_UNREADABLE: the scanner wrote no \.scannerwork\/report-task\.txt/u);
-  const denied = await sonarQualityGate({ ...ctx, fetch: async () => ({ ok: false, status: 403 }) }, { cwd: scanned(t), host: 'https://q.example.invalid', token: 'tok' });
+  const denied = await sonarQualityGate({ ...ctx, fetch: async () => ({ ok: false, status: 403 }) as Response }, { cwd: scanned(t), host: 'https://q.example.invalid', token: 'tok' });
   assert.deepEqual(denied, { pass: false, detail: 'RELEASE_SONAR_GATE_UNREADABLE: HTTP 403 from https://q.example.invalid/api/ce/task' });
 });
 
 /** A fetch that fails transiently (a thrown network error or an HTTP 5xx) on the listed call numbers, else answers like `server`. */
-function flaky(answer, failures) {
+function flaky(answer: (url: string, n: number) => unknown, failures: Record<string, string | number>) {
   const base = server(answer);
   let n = 0;
-  const ok = base.ctx.fetch;
-  base.ctx.fetch = async (url, init) => {
+  const ok = base.seams.fetch;
+  base.seams.fetch = async (url: string, init?: RequestInit) => {
     n += 1;
     const failure = failures[n];
     if (failure === 'network') { base.calls.push({ url, failed: 'network' }); throw new TypeError('fetch failed'); }
-    if (typeof failure === 'number') { base.calls.push({ url, failed: failure }); return { ok: false, status: failure }; }
+    if (typeof failure === 'number') { base.calls.push({ url, failed: failure }); return { ok: false, status: failure } as Response; }
     return ok(url, init);
   };
   return base;

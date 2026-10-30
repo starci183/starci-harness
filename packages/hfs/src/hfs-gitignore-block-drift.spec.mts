@@ -1,6 +1,7 @@
 // proves: HFS_GITIGNORE_BLOCK_DRIFT@lite
 // proves: HFS_GITIGNORE_BLOCK_DRIFT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,7 +10,7 @@ import { renderTargets, writeTargets } from '../sync/index.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
-const synced = (context, edition) => {
+const synced = (context: TestContext, edition: string) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-'));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const declaration = structuredClone(APP);
@@ -37,7 +38,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(found.map(finding => [finding.code, finding.path, finding.level]), [
       ['HFS_GITIGNORE_BLOCK_DRIFT', '.gitignore', 'error'],
     ]);
-    assert.match(found[0].message, /managed block of \.gitignore is not its render/);
+    assert.match(found[0]?.message ?? '', /managed block of \.gitignore is not its render/);
     fs.writeFileSync(file, `# application ignores\nlocal-notes/\n${rendered}\n.idea/\n`);
     assert.deepEqual(await findings(), []);
   });

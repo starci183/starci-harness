@@ -2,6 +2,7 @@
 // default, --execute writes), slot, world, upgrade (dry by default, --execute applies), lint --json --out, codemod --execute --out --json,
 // the managed hook and scripts that call them, and that an old spelling is an unknown verb or flag (exit 2, nothing written).
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,28 +12,28 @@ import { main } from './main.mjs';
 import { bundledPresets } from '../sync/index.mjs';
 
 const HARNESS = { version: '1.1.0-alpha.3' };
-const lockedOk = (root) => { fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n'); return { ok: true }; };
-const temp = (t, prefix) => {
+const lockedOk = (root: string) => { fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n'); return { ok: true as const }; };
+const temp = (t: TestContext, prefix: string) => {
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 };
 /** Runs `main` and returns { code, out, err }. */
-async function run(argv, options = {}) {
+async function run(argv: string[], options: NonNullable<Parameters<typeof main>[1]> = {}) {
   let out = '';
   let err = '';
   const code = await main(argv, { harness: HARNESS, lock: lockedOk, stdout: (text) => { out += text; }, stderr: (text) => { err += text; }, ...options });
   return { code, out, err };
 }
 const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
-const git = (cwd, ...args) => {
+const git = (cwd: string, ...args: string[]) => {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8', env: gitEnv, windowsHide: true });
   assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.stderr}`);
 };
-const files = (dir) => fs.readdirSync(dir, { recursive: true }).map((file) => String(file).split(path.sep).join('/')).sort();
+const files = (dir: string) => fs.readdirSync(dir, { recursive: true }).map((file) => String(file).split(path.sep).join('/')).sort();
 
 /** A scaffolded lite app whose @starci/jest-preset resolves offline to the copy this package ships, so sync renders without an install. */
-async function scaffolded(t, name = 'shop') {
+async function scaffolded(t: TestContext, name = 'shop') {
   const base = temp(t, 'hfs-canonical-app-');
   const created = await run(['scaffold', name, '--cwd', base]);
   assert.equal(created.code, 0, created.err);
@@ -79,7 +80,7 @@ test('add image, add service and add spec run the generators and refuse what a n
     [['add', 'spec', 'be/x.service.ts', '--event', 'e'], 'starci app add spec takes no --event'],
     [['add', 'service', 'be/x', 'y', '--shapes', 'a'], 'starci app add service takes no --shapes'],
     [['add', 'image', 'extra'], 'starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`'],
-  ]) {
+  ] as [string[], string][]) {
     const result = await run(argv, { cwd: root });
     assert.equal(result.code, 2, argv.join(' '));
     assert.ok(result.err.startsWith(`starci app: ${message}\n`), `${argv.join(' ')}: ${result.err.split('\n')[0]}`);
@@ -137,8 +138,8 @@ test('slot names the slot that owns a path', async (t) => {
 test('world dispatches up, down and status to the installed test-world cli, and refuses a lite app', async (t) => {
   const base = temp(t, 'hfs-canonical-world-');
   fs.mkdirSync(path.join(base, 'app'));
-  const calls = [];
-  const stackMain = async (argv, io) => { calls.push({ argv, cwd: io.cwd }); return 0; };
+  const calls: { argv: string[]; cwd: string }[] = [];
+  const stackMain = async (argv: string[], io: { cwd: string }) => { calls.push({ argv, cwd: io.cwd }); return 0; };
   for (const action of ['up', 'down', 'status']) {
     const result = await run(['world', action, '--k3d', '--cwd', 'app'], { cwd: base, stackMain });
     assert.deepEqual([result.code, result.err], [0, ''], action);

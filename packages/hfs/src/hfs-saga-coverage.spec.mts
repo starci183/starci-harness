@@ -29,7 +29,7 @@ const CONTRACT_EVENTS = {
   'order.placed': { version: 1, payload: {} },
   'billing.invoice-rejected': { version: 1, payload: {}, compensates: 'order.placed' },
 };
-const BASE_FILES = {
+const BASE_FILES: Record<string, string | null> = {
   [STEP]: 'export class ReserveStep { readonly event = "order.placed"; }',
   [COMPENSATION]: 'export class ReserveCompensation { readonly event = "billing.invoice-rejected"; }',
   [ORCHESTRATOR]: ORCHESTRATOR_TS,
@@ -37,14 +37,14 @@ const BASE_FILES = {
   [CONSUMER]: 'export class InvoiceRejectedConsumer { constructor(readonly command: CancelOrder) {} handle(message: { eventId: string }) { return this.command.execute({ eventId: message.eventId }); } }',
   [CONTRACT]: JSON.stringify({ schema: 'starci/event-contract@1', service: 'orders', events: CONTRACT_EVENTS }),
 };
-const made = [];
+const made: string[] = [];
 
-function fixture(edition, overrides = {}) {
+function fixture(edition: string, overrides: Record<string, string | null> = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-saga-coverage-'));
   made.push(repoRoot);
   const sources = { ...BASE_FILES, ...overrides };
   if (edition === 'full') sources[E2E] = "const world = useTestWorld({ apps: ['order'] }); it('compensates billing.invoice-rejected', () => world.infra.postgresql.connection('order').cut());";
-  const files = [];
+  const files: string[] = [];
   for (const [file, source] of Object.entries(sources)) {
     if (source === null) continue;
     const target = path.join(repoRoot, file);

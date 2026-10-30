@@ -2,6 +2,7 @@
 // proves: FE_ROUTE_HANDLER_FORBIDDEN@lite FE_ROUTE_HANDLER_FORBIDDEN@full
 // proves: FE_STACK_FORBIDDEN@lite FE_STACK_FORBIDDEN@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,22 +10,27 @@ import path from 'node:path';
 import ts from 'typescript';
 import { checkServerActions } from '../runtime/scripts/hfs/architecture/server-action.mjs';
 import { feStackFindings } from '../runtime/scripts/hfs/rules/fe-stack.mjs';
+import type { CheckInput } from '../runtime/scripts/hfs/architecture/hfs-graph.mjs';
 
-const source = (rel, text, slot) => ({
+/** The part of a graph file the server-action check reads: its path, slot and parsed source. */
+interface SourceFileInput { rel: string; slot: string | undefined; sourceFile: ts.SourceFile }
+
+const source = (rel: string, text: string, slot?: string): SourceFileInput => ({
   rel, slot, sourceFile: ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true),
 });
 
-const actionInput = (edition, files) => ({
+// reason: the check reads only graph.files (rel, slot, sourceFile) and context.ts, so the double carries just those; the full graph and check context are built by the machine from a repository.
+const actionInput = (edition: string, files: SourceFileInput[]) => ({
   graph: { files: new Map(files.map(file => [file.rel, file])) },
   context: { ts, edition, repo: { profile: 'fe', edition } },
-});
+}) as unknown as Pick<CheckInput, 'graph' | 'context'>;
 
-function manifestInput(t, edition, dependencies) {
+function manifestInput(t: TestContext, edition: string, dependencies: object) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-frontend-stack-coverage-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.mkdirSync(path.join(repoRoot, 'apps/web'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, 'apps/web/package.json'), JSON.stringify(dependencies));
-  return { repoRoot, files: ['apps/web/package.json'], repo: { profile: 'fe', edition } };
+  return { repoRoot, files: ['apps/web/package.json'], repo: { profile: 'fe', edition }, manifest: undefined };
 }
 
 for (const edition of ['lite', 'full']) {
