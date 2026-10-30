@@ -37,7 +37,7 @@ const workflow = () => ({
   jobs: {
     deploy: {
       'runs-on': 'ubuntu-latest', environment: 'production',
-      steps: [{ uses: `actions/checkout@${SHA}` }, { env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') }, run: 'starci app secret materialize production\ndocker stack deploy -c .starcistacks/production/infra/swarm/stack.yaml demo' }],
+      steps: [{ uses: `actions/checkout@${SHA}` }, { env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') }, run: 'starci app secret materialize --env production\ndocker stack deploy -c .starcistacks/production/infra/swarm/stack.yaml demo' }],
     },
   },
 });
@@ -63,8 +63,8 @@ for (const edition of ['lite', 'full']) {
       ['concurrency', (doc) => { delete doc.concurrency; }],
       ['empty concurrency', (doc) => { doc.concurrency = {}; }],
       ['materialization', (doc) => { doc.jobs.deploy.steps[1] = { run: 'docker stack deploy -c stack.yaml demo' }; }],
-      ['materialize comment', (doc) => { doc.jobs.deploy.steps[1] = { run: '# starci app secret materialize production\ndocker stack deploy -c stack.yaml demo' }; }],
-      ['echoed materialize', (doc) => { doc.jobs.deploy.steps[1] = { run: 'echo "starci app secret materialize production"\ndocker stack deploy -c stack.yaml demo' }; }],
+      ['materialize comment', (doc) => { doc.jobs.deploy.steps[1] = { run: '# starci app secret materialize --env production\ndocker stack deploy -c stack.yaml demo' }; }],
+      ['echoed materialize', (doc) => { doc.jobs.deploy.steps[1] = { run: 'echo "starci app secret materialize --env production"\ndocker stack deploy -c stack.yaml demo' }; }],
       ['age key comment', (doc) => { doc.jobs.deploy.steps[1] = { run: '# SOPS_AGE_KEY=' + reference('SOPS_AGE_KEY') + '\ndocker stack deploy -c stack.yaml demo' }; }],
       ['disabled materialization', (doc) => { doc.jobs.deploy.steps[1].if = '${{ false }}'; doc.jobs.deploy.steps.push({ run: 'docker stack deploy -c stack.yaml demo' }); }],
       ['API_ENV blob', (doc) => { doc.jobs.deploy.steps[1].env.API_ENV = reference('API_ENV'); }],
@@ -126,7 +126,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(hasCode(unbound, 'HFS_DEPLOY_WORKFLOW'), true, 'a build job opening sealed build arguments without an environment');
     assert.match(unbound[0].message, /job image reads secrets\.SOPS_AGE_KEY without an environment/u);
     for (const [name, doc] of [
-      ['bracket reference', build({ steps: [{ run: 'echo "${{ secrets[\'SOPS_AGE_KEY\'] }}" | starci app secret verify production' }] })],
+      ['bracket reference', build({ steps: [{ run: 'echo "${{ secrets[\'SOPS_AGE_KEY\'] }}" | starci app secret verify --env production' }] })],
       ['job env', build({ env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') }, steps: [{ run: 'starci app lint' }] })],
       ['workflow env', build({ steps: [{ run: 'starci app lint' }] }, { env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') } })],
       ['reusable workflow secret', { on, jobs: { call: { uses: './.github/workflows/build.yml', secrets: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') } } } }],
@@ -229,7 +229,7 @@ for (const edition of ['lite', 'full']) {
     const ci = (trigger) => run(t, edition, { on: trigger, jobs: { lint: { steps: [{ run: 'starci app lint' }] } } }, '.github/workflows/ci.yml');
     assert.deepEqual(ci(ciOn), []);
     assert.equal(hasCode(ci(on), 'HFS_APP_WORKFLOW_TRIGGER'), true, 'the release CI must also run on the release candidate branches');
-    const yaml = `name: Release\non:\n  push:\n    tags: ['v*']\n  workflow_dispatch:\npermissions: {}\nconcurrency: production\njobs:\n  deploy:\n    environment: production\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@${SHA}\n      - run: starci app secret materialize production\n`;
+    const yaml = `name: Release\non:\n  push:\n    tags: ['v*']\n  workflow_dispatch:\npermissions: {}\nconcurrency: production\njobs:\n  deploy:\n    environment: production\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@${SHA}\n      - run: starci app secret materialize --env production\n`;
     assert.deepEqual(run(t, edition, yaml), []);
   });
 

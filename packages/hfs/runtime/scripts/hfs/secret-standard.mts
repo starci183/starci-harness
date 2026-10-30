@@ -299,7 +299,7 @@ function serverRecipientDrift(repoRoot: string, env: string, spec: EnvironmentSp
   return null;
 }
 
-/** `starci app secret audit [<env>]`: each deviation on its own line and exit 1, else one clean line and exit 0. */
+/** `starci app secret audit [--env <env>]`: each deviation on its own line and exit 1, else one clean line and exit 0. */
 export function printAudit(repoRoot: string, environment: string | null | undefined, stdout: (text: string) => unknown): number {
   const findings = auditSecrets(repoRoot, environment);
   for (const finding of findings) stdout(`${finding.code} ${finding.env}/${finding.member}: ${finding.detail}\n`);
@@ -433,7 +433,7 @@ export function groupMap(entries: string[] = [], groupFile: string | null = null
 }
 
 /**
- * `migrate <env> <member> [--to <slug>] [--into-existing] [--execute]`: moves a member (a legacy dotenv `.enc`, one sealed to
+ * `migrate --env <env> <member> [--to <slug>] [--into-existing] [--execute]`: moves a member (a legacy dotenv `.enc`, one sealed to
  * other recipients than its rule, or one whose keys belong to another member) to `<slug>.enc.yaml` sealed to the environment's
  * recipients, merging into an existing `<slug>` only with --into-existing, then removes the old file. A dry run until --execute.
  */
@@ -451,7 +451,7 @@ export function migrateMember({ directory, environment, member, to, intoExisting
 }
 
 /**
- * `split <env> <member> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]`: divides a member into one
+ * `split --env <env> <member> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]`: divides a member into one
  * `<member>.enc.yaml` per group, each sealed to the environment's recipients, then removes the old file. A key's group is its
  * --group member, else its provider (providerOf); an existing member is merged into only with --into-existing. A dry run until
  * --execute.

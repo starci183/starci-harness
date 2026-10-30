@@ -62,10 +62,6 @@ test('urgent push runs the fast checks, tags and pushes atomically, and writes t
   assert.equal(record.checks.some((row) => ['app-check', 'lint', 'test'].includes(row.name)), false, 'app check, lint and the tests wait for the back-fill, red or not');
 });
 
-test('--lint-baseline is retired with lint itself: refused before anything runs', async (t) => {
-  const { ctx, config } = app(t);
-  await assert.rejects(releaseUrgentPush(ctx, config, { execute: true, reason: 'hotfix', lintBaseline: 'v0.9.0' }), (error) => error.code === 'RELEASE_URGENT_LINT_BASELINE_RETIRED');
-});
 
 test('a red fast check refuses the urgent release: nothing tagged, nothing pushed', async (t) => {
   const { ctx, config, root, remote } = app(t, ['typecheck']);

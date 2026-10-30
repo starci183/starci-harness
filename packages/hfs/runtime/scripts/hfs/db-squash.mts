@@ -563,7 +563,7 @@ function printReport(stdout: (text: string) => unknown, projection: Projection, 
  * the move of the active chain. Dry run by default; `execute` writes the baseline, the bootstrap section and the seed, then archives.
  */
 export function squashBaseline({ root, opts, plan, urlEnv, connection, commandOf, precondition, managedSchema, archive, stdout }: SquashInput): number {
-  if (!opts.image && !fs.existsSync(path.join(root, DB_DOCKERFILE))) throw new DbVerbError(`baseline --squash replays on the app's db image: ${DB_DOCKERFILE} is missing (run "npx starci app sync --write") and no --image names one`);
+  if (!opts.image && !fs.existsSync(path.join(root, DB_DOCKERFILE))) throw new DbVerbError(`baseline --squash replays on the app's db image: ${DB_DOCKERFILE} is missing (run "npx starci app sync --execute") and no --image names one`);
   const bootstrapPath = path.join(root, BOOTSTRAP_FILE);
   if (!fs.existsSync(bootstrapPath)) throw new DbVerbError(`baseline --squash needs ${BOOTSTRAP_FILE}; run "npx starci app sync --execute" first`);
   const head = bootstrapSection(fs.readFileSync(bootstrapPath, 'utf8').replace(/\r\n/g, '\n')).head;

@@ -642,29 +642,8 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
-        "sonar": {
-          "summary": "derive the Sonar scope block of sonar-project.properties from the HFS slots of this app's edition and the ruled cpd exclusions; --check fails on drift, --write puts it in place",
-          "flags": [
-            {
-              "name": "check",
-              "type": "boolean",
-              "summary": "exit 1 when the file's generated block differs from the derivation or a line outside it sets one of its keys"
-            },
-            {
-              "name": "write",
-              "type": "boolean",
-              "summary": "write the block between its markers, dropping hand-written lines of the keys it sets"
-            }
-          ],
-          "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
         "add": {
-          "summary": "add one canonical back-end capability or front-end unit and register its patterns",
+          "summary": "add one canonical back-end capability or front-end unit, service, spec or image and register its patterns",
           "flags": [],
           "positional": [
             {
@@ -680,7 +659,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture",
+          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture; --staged is the pre-commit guard",
           "flags": [],
           "positional": [
             {
@@ -775,56 +754,8 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
-        "explain": {
-          "summary": "explain which HFS slot owns one app-relative path",
-          "flags": [],
-          "positional": [
-            {
-              "name": "args",
-              "required": false,
-              "variadic": true
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "hygiene": {
-          "summary": "judge staged worktree metadata, stack files, plaintext secrets and new logic files without a spec",
-          "flags": [],
-          "positional": [
-            {
-              "name": "args",
-              "required": false,
-              "variadic": true
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
         "lint": {
           "summary": "lint both app sides and report repository, ESLint and stylelint findings together (--fix writes)",
-          "flags": [],
-          "positional": [
-            {
-              "name": "args",
-              "required": false,
-              "variadic": true
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "new": {
-          "summary": "create a canonical service, unit spec or app image definition",
           "flags": [],
           "positional": [
             {
@@ -887,8 +818,24 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "slot": {
+          "summary": "name the HFS slot that owns one app-relative path",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "editions": [
+            "lite",
+            "full"
+          ],
+          "json": "flag"
+        },
         "stack": {
-          "summary": "Swarm deploy tooling of an app (prepare to rollback, dry runs without --execute) and the full edition's local test-world infrastructure",
+          "summary": "Swarm deploy tooling of an app (prepare to rollback, dry runs without --execute)",
           "flags": [],
           "positional": [
             {
@@ -904,7 +851,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "sync": {
-          "summary": "compare (--check) or write (--write) every managed app file from its canonical template",
+          "summary": "compare every managed app file and the Sonar block with their canonical template (exit 1 on drift); --execute writes them",
           "flags": [],
           "positional": [
             {
@@ -921,6 +868,22 @@ export const CATALOG = {
         },
         "upgrade": {
           "summary": "add the test world a full app lacks; a lite app is refused because editions are fixed at scaffold",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "editions": [
+            "lite",
+            "full"
+          ],
+          "json": "flag"
+        },
+        "world": {
+          "summary": "bring the test world of an app up or down and read its status (up, down, status)",
           "flags": [],
           "positional": [
             {

@@ -93,14 +93,14 @@ for (const edition of ['lite', 'full']) {
 
   test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: nearest scripts, cd, npm prefix and catalog app verbs pass`, (t) => {
     const context = fixture(t, edition, { ...manifests,
-      'README.md': 'Run `npm run build`, `npm --prefix be run contract:emit`, `npx starci app check`.\n```sh\ncd be\nnpm run contract:emit\n```\nRun `starci app secret verify production`.\nThe command starci app retired is removed.',
+      'README.md': 'Run `npm run build`, `npm --prefix be run contract:emit`, `npx starci app check`.\n```sh\ncd be\nnpm run contract:emit\n```\nRun `starci app secret verify --env production`.\nThe command starci app retired is removed.',
       'be/docs/setup.md': 'Run `npm run contract:emit` or starci app lint.',
     });
     assert.deepEqual(docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN'), []);
   });
 
   test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: the app verbs are the live CLI registry's (gen-catalog.mjs), not a retired runtime's`, (t) => {
-    const context = fixture(t, edition, { ...manifests, 'README.md': 'Run `starci app sonar --check`.\n```sh\nstarci app missing-verb\n```' });
+    const context = fixture(t, edition, { ...manifests, 'README.md': 'Run `starci app sync --execute`.\n```sh\nstarci app missing-verb\n```' });
     const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN');
     assert.deepEqual(hits.map((finding) => finding.message.replace(/^.*: unknown verb /, '').replace(/;.*$/, '')), ['"app missing-verb"']);
     for (const retired of ['git', 'worker', 'gate', 'docker', 'npm', 'runtime', 'machine', 'work']) assert.equal(CATALOG.groups[retired], undefined, `starci ${retired} is no verb group of the CLI`);

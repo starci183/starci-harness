@@ -407,7 +407,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(dbRestampMain(['--map', 'restamp.yaml', '--execute'], io(crowded).ports), 2);
   });
 
-  test(`app db plan ${edition}: compares all four inventories using SELECT-only queries and emits counts`, () => {
+  test(`app db migrate plan ${edition}: compares all four inventories using SELECT-only queries and emits counts`, () => {
     const contents = { [old]: ownedStateSql };
     const root = fixture(edition, contents);
     const ports = remoteInventory(root);
@@ -422,11 +422,11 @@ for (const edition of ['lite', 'full']) {
     for (const [file, text] of Object.entries(contents)) assert.equal(fs.readFileSync(path.join(root, file), 'utf8'), text);
     const applied = remoteInventory(root);
     assert.equal(dbPlanMain(['--apply'], applied.ports), 2);
-    assert.equal(applied.err.join(''), 'starci app db plan: unknown or duplicate database option --apply\n');
+    assert.equal(applied.err.join(''), 'starci app db migrate: unknown or duplicate database option --apply\n');
     assert.equal(applied.calls.length, 0);
   });
 
-  test(`app db plan ${edition}: remote extra jobs, missing queues, cron changes and migration drift fail without exposing data`, () => {
+  test(`app db migrate plan ${edition}: remote extra jobs, missing queues, cron changes and migration drift fail without exposing data`, () => {
     const root = fixture(edition, { [old]: ownedStateSql });
     const ports = remoteInventory(root, { migrations: [{ version: replacement }], queues: [], cron: [
       { name: 'events-tick', schedule: '0 * * * *', commandHash: createHash('sha256').update('PRIVATE_REMOTE_COMMAND').digest('hex'), active: true },
@@ -443,7 +443,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(ports.out.join('').includes('PRIVATE_'), false);
   });
 
-  test(`app db plan ${edition}: absent optional catalogs, archived SQL and inert function declarations are handled read-only`, () => {
+  test(`app db migrate plan ${edition}: absent optional catalogs, archived SQL and inert function declarations are handled read-only`, () => {
     const contents = { [old]: "select 'pgmq.create(''inert'')';\ncreate function public.probe() returns void language sql as $$select pgmq.create('deferred')$$;", [retired]: ownedStateSql };
     const root = fixture(edition, contents);
     const ports = remoteInventory(root, { presence: [{ migrations: true, cron: false, queues: false, vault: false }], cron: [], queues: [], vault: [] });
@@ -451,7 +451,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(ports.calls.length, 2);
   });
 
-  test(`app db plan ${edition}: malformed inventory and private failures return a sanitized refusal`, () => {
+  test(`app db migrate plan ${edition}: malformed inventory and private failures return a sanitized refusal`, () => {
     const root = fixture(edition, { [old]: 'select 1;' });
     for (const result of [{ status: 1, stderr: 'PRIVATE_CLI_DIAGNOSTIC' }, { status: 0, stdout: 'PRIVATE_DATABASE_OUTPUT' }, { status: 0, stdout: '{}' }]) {
       const ports = io(root, result);
@@ -461,7 +461,7 @@ for (const edition of ['lite', 'full']) {
     }
   });
 
-  test(`app db plan ${edition}: dynamic blocks refuse naming every EXECUTE by file and line, before querying the database`, () => {
+  test(`app db migrate plan ${edition}: dynamic blocks refuse naming every EXECUTE by file and line, before querying the database`, () => {
     const later = `${migrations}/${second}_later.sql`;
     const root = fixture(edition, {
       [old]: "select 1;\n-- é widens the byte offsets past the character offsets\ndo $x$\nbegin\n  execute format('select %s', 1);\n  perform 1;\n  execute 'select 2';\nend\n$x$;\n",
@@ -471,7 +471,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(dbPlanMain([], ports.ports), 2);
     assert.deepEqual(ports.calls, []);
     assert.equal(ports.err.join(''), [
-      'starci app db plan: dynamic migration blocks cannot prove database inventory:',
+      'starci app db migrate: dynamic migration blocks cannot prove database inventory:',
       `  ${old}:5: EXECUTE builds its SQL at run time`,
       `  ${old}:7: EXECUTE builds its SQL at run time`,
       `  ${later}:1: EXECUTE builds its SQL at run time`,
@@ -488,7 +488,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(drifted.err.join(''), 'starci app db baseline: baseline requires a clean database plan with every migration already applied; the plan found drift:\n  migrations: missing 0, unexpected 1, changed 0\n');
   });
 
-  test(`app db plan ${edition}: inert and conditional declarations refuse before querying the database`, () => {
+  test(`app db migrate plan ${edition}: inert and conditional declarations refuse before querying the database`, () => {
     for (const sql of ["create view public.inert as select pgmq.create('events');", "explain select pgmq.create('events');", "select pgmq.create('events') where false;", "do $$begin if false then perform pgmq.create('events'); end if; end$$;"]) {
       const root = fixture(edition, { [old]: sql });
       const ports = io(root);
@@ -497,7 +497,7 @@ for (const edition of ['lite', 'full']) {
     }
   });
 
-  test(`app db plan ${edition}: unconditional migration DO declarations are inventoried safely`, () => {
+  test(`app db migrate plan ${edition}: unconditional migration DO declarations are inventoried safely`, () => {
     const sql = `do $$begin perform pgmq.create('events'); end$$;\nselect cron.schedule('events-tick', '* * * * *', $job$${command}$job$);`;
     const config = '[auth]\nlabel = """ignored""""\n[db.vault]\nwebhook = "env(WEBHOOK_TOKEN)"\n';
     const root = fixture(edition, { [old]: sql, 'supabase/config.toml': config });

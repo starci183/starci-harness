@@ -44,7 +44,7 @@ for (const edition of ['lite', 'full']) {
 
   test(`HFS_SCRIPT_PLAINTEXT_LOAD: ${edition} accepts sealed CLI and metadata operations without reading secret files`, (t) => {
     const context = fixture(t, {
-      'scripts/seal.sh': 'starci app secret materialize production\n',
+      'scripts/seal.sh': 'starci app secret materialize --env production\n',
       'deploy/metadata.sh': 'test -f secrets.env\nrm -f secrets.env\ncp .env.example template\n',
       'scripts/example.sh': 'cat .env.example\n',
       'scripts/ordinary.mjs': 'fs.readFileSync("input.json")\nconst note = "secrets.env"\n',
@@ -79,8 +79,8 @@ for (const edition of ['lite', 'full']) {
       'scripts/options.sh': 'sh -o xtrace deploy/run.sh\n',
       'scripts/shellopts.sh': 'SHELLOPTS="errexit:xtrace:pipefail"\n',
       'scripts/many-options.sh': 'bash --noprofile --norc -o errexit -o pipefail -eux deploy/run.sh\n',
-      'scripts/reveal.sh': 'starci app secret list production --reveal\n',
-      '.github/workflows/release.yml': 'jobs:\n  release:\n    steps:\n      - shell: bash -x {0}\n        run: starci app secret materialize production\n',
+      'scripts/reveal.sh': 'starci app secret list --env production --reveal\n',
+      '.github/workflows/release.yml': 'jobs:\n  release:\n    steps:\n      - shell: bash -x {0}\n        run: starci app secret materialize --env production\n',
       'package.json': { scripts: { release: 'bash -x deploy/run.sh' } },
     }, edition);
     const findings = scriptHygieneFindings(context);
@@ -91,8 +91,8 @@ for (const edition of ['lite', 'full']) {
 
   test(`HFS_SCRIPT_XTRACE: ${edition} accepts tracing disabled and safe shell commands`, (t) => {
     const context = fixture(t, {
-      'deploy/safe.sh': '# set -x is prohibited\nset +x\nset +o xtrace\nset -eu\nsh -c "starci app secret verify production"\n',
-      'scripts/safe.mjs': '// bash -x and --reveal are forbidden\nrun("starci app secret verify production")\n',
+      'deploy/safe.sh': '# set -x is prohibited\nset +x\nset +o xtrace\nset -eu\nsh -c "starci app secret verify --env production"\n',
+      'scripts/safe.mjs': '// bash -x and --reveal are forbidden\nrun("starci app secret verify --env production")\n',
       'scripts/options.sh': 'bash --noprofile -o errexit -o pipefail deploy/run.sh\nSHELLOPTS="errexit:pipefail"\n',
       'package.json': { description: 'avoid --reveal', scripts: { release: 'bash deploy/run.sh' } },
     }, edition);

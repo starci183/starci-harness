@@ -384,7 +384,7 @@ function cleanPlan(root: string, urlEnv: string, ports: DbPorts): void {
   const code = dbPlanMain(['--json', '--db-url-env', urlEnv], { ...ports, cwd: root, stdout: (text) => { out += text; }, stderr: (text) => { err += text; } });
   if (code === 0) return;
   const heading = 'baseline requires a clean database plan with every migration already applied';
-  if (code !== 1) throw new DbVerbError(`${heading}; the plan refused: ${err.trim().replace(/^starci app db plan: /, '')}`);
+  if (code !== 1) throw new DbVerbError(`${heading}; the plan refused: ${err.trim().replace(/^starci app db migrate: /, '')}`);
   const drift = Object.entries(JSON.parse(out) as Record<string, DriftItem | boolean>).filter(([, item]) => item && typeof item === 'object' && (item.missing || item.unexpected || item.changed))
     .map(([kind, item]) => `${kind}: missing ${(item as DriftItem).missing}, unexpected ${(item as DriftItem).unexpected}, changed ${(item as DriftItem).changed}`);
   throw offendersError(`${heading}; the plan found drift`, drift);

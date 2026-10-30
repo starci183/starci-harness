@@ -653,7 +653,7 @@ $defs:
         description: 'Owner-machine session for prepare and deploy: the one member of .starcistacks/<environment>/secrets holding VPS_HOST, VPS_USER, privateKey and knownHosts.'
         $ref: '#/$defs/deployName'
       serverRecipient:
-        description: The deploy server's public age recipient, recorded by starci app secret server-key <env> --execute.
+        description: The deploy server's public age recipient, recorded by starci app secret server-key --env <env> --execute.
         type: string
         pattern: '^age1[a-z0-9]+$'
   deployImage:

@@ -221,20 +221,20 @@ Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (no
 
 `starci app secret` keeps an app's sealed members (the standard is the harness's PROJECT-STACKS-5): one per provider,
 `.starcistacks/<env>/secrets/<provider>.enc.yaml`, sops YAML whose values keep every byte, a legacy dotenv `<member>.enc`
-read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mjs` names both). `set <env> <provider> <KEY> [KEY ...]`
+read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mjs` names both). `set --env <env> <provider> <KEY> [KEY ...]`
 seals every named key in one sops write (`runtime/scripts/hfs/secret.mjs`): on a terminal it prompts `<KEY>: ` for each with
 masked input (one `*` per character; a paste, backspace, Enter, Ctrl+C to cancel with nothing written), redirected stdin gives
 one key its whole text or several one `KEY=value` line each, `--from-file KEY=path` reads a key byte for byte
 (`secret-prompt.mjs`), and `--generate <bytes>` makes a random value per key. It then declares the keys in the environment's
 `secrets:` of a compose environment (`declareKeys`, `secret-standard.mjs`) and names a swarm environment's to wire by hand.
-A member is sealed to its environment's rule of the managed `.sops.yaml`; `recipients <env> [--add|--remove <age1...|owner>]`
+A member is sealed to its environment's rule of the managed `.sops.yaml`; `recipients --env <env> [--add|--remove <age1...|owner>]`
 rewrites that rule (`environmentRecipients`, `secret-init.mjs`), and `init` takes the owner's identity as the app's recipient.
 Re-sealing a member whose every key the set replaces needs no age identity; adding a key to one does, and the identity is found
 by itself (`decryptionIdentity`, the one lookup every decrypt of a member uses: secret, stack, release, db): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the app's git-ignored
 `.claude/secret.env`, else of its main checkout's when the app is a git worktree, else the `hostIdentity` the harness CLI passes
 (its own secret.env), else the sops `keys.txt`; with none, the verb refuses before asking for a value, naming every place it
-looked and the one line that fixes it. `audit [<env>]` names every deviation and exits 1; `migrate <env> <member> [--to
-<provider>]` and `split <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). `server-key <env>` makes
+looked and the one line that fixes it. `audit [--env <env>]` names every deviation and exits 1; `migrate --env <env> <member> [--to
+<provider>]` and `split --env <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). `server-key --env <env>` makes
 the deploy server's own age identity on the server through the deploy's transport and seals the environment to it beside the
 owner key, `--rotate` replaces it, `--backup github` stores it as the SOPS_AGE_KEY of the GitHub Environment `<env>` that
 every CI job bound to `<env>` reads, and `--restore github` writes it back (`stack/server-key.mjs`). No output carries a value

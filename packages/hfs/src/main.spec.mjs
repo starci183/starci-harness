@@ -189,7 +189,6 @@ test('the usage is generated from the parser tables: every flag every verb parse
   assert.deepEqual(new Set(Object.keys(STACK_FLAGS)), new Set(STACK_ACTIONS), 'every stack action declares its flags');
   for (const action of STACK_ACTIONS) expect(`stack ${action}`, [...STACK_FLAGS[action], '--json']);
   for (const [action, spec] of Object.entries(RELEASE_FLAGS)) expect(`release ${action}`, flagsOfSpec(spec));
-  assert.doesNotMatch(out, /--lint-baseline/, 'a retired flag is parsed only to be refused');
   for (const flag of flagsOfSpec(SECRET_FLAGS).filter((name) => name !== '--cwd')) assert.ok(lines('secret').some((text) => text.includes(`${flag} `) || text.includes(`${flag}]`)), `secret usage lacks ${flag}`);
   for (const [command, options] of Object.entries(CI_COMMANDS)) expect(`ci ${command}`, options.map((name) => `--${name}`));
   expect('ci local', flagsOfSpec(LOCAL_FLAGS));

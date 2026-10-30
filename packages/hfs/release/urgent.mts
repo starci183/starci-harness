@@ -75,10 +75,9 @@ function planOf(checks: readonly UrgentCheck[]): string[] {
  * make; --execute runs them, tags, pushes atomically and writes the urgent record. A red check is RELEASE_URGENT_CHECK_RED: nothing tagged, nothing pushed.
  */
 export async function releaseUrgentPush(ctx: VerbContext, config: ReleaseConfig, options: {
-  execute?: boolean | undefined; remote?: string | boolean | undefined; reason?: string | boolean | undefined; lintBaseline?: string | boolean | undefined; role?: string | undefined; platform?: string;
+  execute?: boolean | undefined; remote?: string | boolean | undefined; reason?: string | boolean | undefined; role?: string | undefined; platform?: string;
 } = {}): Promise<VerbResult & { lines: string[] }> {
   const reason = reasonOf(options.reason);
-  if (options.lintBaseline !== undefined) throw refusal('RELEASE_URGENT_LINT_BASELINE_RETIRED', 'an urgent release no longer lints (owner ruling urgent-typecheck-build): lint runs in the back-fill, so --lint-baseline has nothing to judge');
   const role = options.role ?? 'unset';
   const remote = (options.remote ?? 'origin') as string;
   const branch = config.defaultBranch;

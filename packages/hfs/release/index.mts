@@ -38,8 +38,8 @@ export interface VerbIo {
   harness?: { version?: string | undefined; role?: string | undefined; openTicket?: ((ticket: unknown) => unknown) | undefined } | undefined;
 }
 
-/** The flags of one verb ({ boolean, value, retired }); the parser refuses every other. */
-export interface FlagSpec { boolean: readonly string[]; value: readonly string[]; retired?: readonly string[] }
+/** The flags of one verb ({ boolean, value }); the parser refuses every other. */
+export interface FlagSpec { boolean: readonly string[]; value: readonly string[] }
 
 /** The parsed flags of a verb: a boolean flag is true, a value flag its string. */
 export type VerbFlags = Record<string, string | boolean | undefined>;
@@ -129,18 +129,17 @@ const ACTIONS: Record<string, ReleaseAction> = {
     }),
   },
   push: {
-    spec: { boolean: ['--execute', '--json', '--urgent'], value: ['--remote', '--reason', '--lint-baseline'], retired: ['--lint-baseline'] },
+    spec: { boolean: ['--execute', '--json', '--urgent'], value: ['--remote', '--reason'] },
     run: (ctx, flags, harness) => {
       if (flags.reason !== undefined && flags.urgent !== true) throw refusal('RELEASE_USAGE', '--reason belongs to an urgent release (--urgent)');
-      if (flags['lint-baseline'] !== undefined && flags.urgent !== true) throw refusal('RELEASE_USAGE', '--lint-baseline belongs to an urgent release (--urgent)');
       const config = loadReleaseConfig(ctx.cwd);
-      if (flags.urgent === true) return releaseUrgentPush(ctx, config, { execute: flags.execute === true, remote: flags.remote, reason: flags.reason, lintBaseline: flags['lint-baseline'], role: harness?.role ?? ctx.env.STARCI_ROLE });
+      if (flags.urgent === true) return releaseUrgentPush(ctx, config, { execute: flags.execute === true, remote: flags.remote, reason: flags.reason, role: harness?.role ?? ctx.env.STARCI_ROLE });
       return releasePush(ctx, config, { execute: flags.execute === true, remote: flags.remote });
     },
   },
 };
 
-/** The flags of each release action ({ boolean, value, retired }): the parser refuses every other flag, and the usage of `starci app` is generated from them (a retired flag is parsed only to refuse it with its own code). */
+/** The flags of each release action ({ boolean, value }): the parser refuses every other flag, and the usage of `starci app` is generated from them. */
 export const RELEASE_FLAGS = Object.freeze(Object.fromEntries(Object.entries(ACTIONS).map(([name, action]) => [name, action.spec])));
 
 /** Runs `starci app release <gate|push>`; `io` is the app IO (cwd, stdout, stderr, env, sops, stackIo). Returns the exit code. */

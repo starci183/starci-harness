@@ -88,7 +88,7 @@ for (const edition of ['lite', 'full']) {
 
   test(`HFS_DEPLOY_NO_LOGIC@${edition}: thin deployment wrappers and application-owned cli logic pass`, (t) => {
     assert.deepEqual(only(scan(t, edition, {
-      'deploy/release.sh': '#!/bin/sh\nset -eu\nstarci app secret materialize production\ndocker stack deploy -c .starcistacks/production/infra/swarm/stack.yaml demo\nnode be/dist/apps/cli/src/main.js backup\n',
+      'deploy/release.sh': '#!/bin/sh\nset -eu\nstarci app secret materialize --env production\ndocker stack deploy -c .starcistacks/production/infra/swarm/stack.yaml demo\nnode be/dist/apps/cli/src/main.js backup\n',
       'deploy/inspect.sh': '# node -e and psql belong in the cli app.\ndocker service inspect demo_api\n',
       'be/apps/cli/src/commands/backup.ts': 'await database.query("SELECT id FROM jobs");\n',
     }), 'HFS_DEPLOY_NO_LOGIC'), []);

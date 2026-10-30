@@ -142,7 +142,7 @@ function repositoryState(root: string): RepositoryState {
   return state;
 }
 
-/** Reads one read-only inventory query as rows (db plan: psql through the ports; db migrate's dry run: the verb context's psql). */
+/** Reads one read-only inventory query as rows (the clean-plan check of baseline: psql through the ports; db migrate's dry run: the verb context's psql). */
 export type InventoryQuery = (sql: string) => Row[];
 
 function queryRows(root: string, sql: string, urlEnv: string, ports: DbPorts): Row[] {
@@ -186,7 +186,7 @@ function compare(expected: Map<string, CronJob | null>, actual: Row[], kind: Kin
 /** The inventories of the active migrations against those of the database: the counts of each kind and whether any differs. */
 export interface PlanInventory { summaries: Record<Kind, Summary>; drift: boolean }
 
-/** The one line of a summary, as `db plan` and the dry run of `db migrate` print it. */
+/** The one line of a summary, as the clean-plan check of `db baseline` and the dry run of `db migrate` print it. */
 export const summaryLine = (kind: Kind, item: Summary): string => `${kind}: repo ${item.expected}, remote ${item.remote}, missing ${item.missing}, unexpected ${item.unexpected}, changed ${item.changed}`;
 
 /** True when a summary names a missing, unexpected or changed entry. */
@@ -219,5 +219,5 @@ export function dbPlanMain(argv: string[], { cwd = invocationDir(), stdout = (te
       for (const [kind, item] of Object.entries(summaries) as Array<[Kind, Summary]>) stdout(`${summaryLine(kind, item)}\n`);
     }
     return drift ? 1 : 0;
-  } catch (error) { return dbFailure('plan', error, stderr); }
+  } catch (error) { return dbFailure('migrate', error, stderr); }
 }

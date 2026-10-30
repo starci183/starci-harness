@@ -123,8 +123,8 @@ import type { Presets } from '../sync/index.mjs';
 // reason: results of the check machine and the declaration readers (runtime/scripts/hfs/*.mjs) are plain objects whose shape those modules own; this entry only prints them
 type Dynamic = any;
 
-/** The flags a verb takes, by kind (a retired flag is parsed only to be refused). */
-interface FlagTable { boolean?: readonly string[]; value?: readonly string[]; list?: readonly string[]; retired?: readonly string[] }
+/** The flags a verb takes, by kind. */
+interface FlagTable { boolean?: readonly string[]; value?: readonly string[]; list?: readonly string[] }
 /** The parsed arguments of a verb: the operands and each flag by name. */
 interface Opts { positional: string[]; [flag: string]: string | boolean | string[] | undefined }
 /** A value flag as parse stores it: the string given, else undefined. */
@@ -193,10 +193,10 @@ const PLACEHOLDERS: Record<string, string> = {
 };
 const flagUsage = (flag: string, { value = false, repeat = false, placeholders = PLACEHOLDERS }: { value?: boolean; repeat?: boolean; placeholders?: Record<string, string> } = {}): string => `[${flag}${value ? ` ${placeholders[flag] ?? `<${flag.slice(2)}>`}` : ''}]${repeat ? '...' : ''}`;
 const line = (...parts: unknown[]): string => parts.flat().filter(Boolean).join(' ');
-/** The flags of a { boolean, value, list, retired } spec as usage text; a retired flag is parsed only to be refused, so it is not offered. */
-const specUsage = ({ boolean = [], value = [], list = [], retired = [] }: FlagTable, placeholders: Record<string, string> = PLACEHOLDERS): string[] => [
-  ...boolean.filter((flag) => !retired.includes(flag)).map((flag) => flagUsage(flag)),
-  ...value.filter((flag) => !retired.includes(flag)).map((flag) => flagUsage(flag, { value: true, placeholders })),
+/** The flags of a { boolean, value, list } spec as usage text. */
+const specUsage = ({ boolean = [], value = [], list = [] }: FlagTable, placeholders: Record<string, string> = PLACEHOLDERS): string[] => [
+  ...boolean.map((flag) => flagUsage(flag)),
+  ...value.map((flag) => flagUsage(flag, { value: true, placeholders })),
   ...list.map((flag: string) => flagUsage(flag, { value: true, repeat: true, placeholders })),
 ];
 /** A dbOptions list (bare names) as a spec; --cwd is the global flag. */
@@ -552,7 +552,7 @@ async function stackAppMain(argv: string[], { cwd, stdout: out, stderr: err, env
 /** The actions of `starci app world`: the full edition's test-world infrastructure, run by the app's installed @starci/test-world cli. */
 const WORLD_ACTIONS = ['up', 'down', 'status'];
 
-/** `starci app world <up|down|status>`: the local test world (it was `stack up|down|status` before `stack` meant only the Swarm deploy tooling). */
+/** `starci app world <up|down|status>`: the local test world. */
 async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: out, stderr: err }: AppIo): Promise<number> {
   if (!WORLD_ACTIONS.includes(argv[0] as string)) throw new Error(`starci app world takes ${WORLD_ACTIONS.join(', ')}`);
   if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app world up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
