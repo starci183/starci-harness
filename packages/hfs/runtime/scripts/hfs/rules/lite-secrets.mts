@@ -1,0 +1,99 @@
+// lite-secrets.mjs - L17 extends the one R06 secret scan for edition lite. It keeps the ordinary
+// HFS_PLAINTEXT_SECRET judgement, then adds the reduced lite custody tree and provider-shaped literals
+// in the trees that hold no secret at all (fe/ and db/). Findings name shapes, never captured values.
+import { Buffer } from 'node:buffer';
+import { secretFindings } from './secrets.mjs';
+import { found, readText } from './read.mjs';
+import type { Finding, Parsed, Repo } from './rule-types.mjs';
+
+const LITE_SECRET_CUSTODY = 'HFS_LITE_SECRET_CUSTODY';
+
+const LOCKFILE = /(^|\/)package-lock\.json$/u;
+const ROOT_ENV = /^\.env(?:\..*)?$/iu;
+const SECRETS_ENV = /^secrets\.env$/iu;
+const SECRETS_DIRECTORY = /^\.secrets(?:\/|$)/iu;
+const SEALED_HOME = /^\.starcistacks\/[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/iu;
+
+const LITE_SECRET_PATTERNS = Object.freeze([
+  { name: 'supabase-personal-access-token', re: /\bsbp_[A-Za-z0-9_-]{20,}\b/u },
+  { name: 'supabase-publishable-key', re: /\bsb_publishable_[A-Za-z0-9_-]{20,}\b/u },
+  { name: 'supabase-secret-token', re: /\bsb_secret_[A-Za-z0-9_-]{20,}\b/u },
+  { name: 'password-connection-string', re: /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis):\/\/[^:\s/@]+:[^@\s/${}]{8,}@/iu },
+]);
+const JWT_CANDIDATE = /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}(?![A-Za-z0-9_-])/gu;
+
+const jsonObject = (segment: Parsed) => {
+  try {
+    const value = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8'));
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const validJwt = (candidate: Parsed) => {
+  const [header, payload, signature, extra] = candidate.split('.');
+  if (extra !== undefined || !signature) return false;
+  const decodedHeader = jsonObject(header);
+  const decodedPayload = jsonObject(payload);
+  return typeof decodedHeader?.alg === 'string' && decodedHeader.alg.toLowerCase() !== 'none' && decodedPayload !== null;
+};
+
+const liteSecretPatterns = (line: string) => {
+  const names = LITE_SECRET_PATTERNS.filter(pattern => pattern.re.test(line)).map(pattern => pattern.name);
+  if ([...line.matchAll(JWT_CANDIDATE)].some(match => validJwt(match[0]))) names.push('signed-jwt');
+  return names;
+};
+
+const inSecretFreeTree = (repo: Repo, file: string) => repo.profile === 'fe' || file.startsWith('fe/') || file.startsWith('db/');
+
+function custodyPathFinding(file: string, repo: Repo, findings: Finding[]) {
+  if (repo.profile === 'app') {
+    if (ROOT_ENV.test(file) || SECRETS_ENV.test(file) || SECRETS_DIRECTORY.test(file)) {
+      findings.push(found(LITE_SECRET_CUSTODY, file, `${file} is forbidden at the lite app root; lite keeps no .env*, secrets.env or .secrets/ custody path.`, { pattern: 'lite-forbidden-entry' }));
+      return true;
+    }
+    if (/\.enc(?:\.yaml)?$/iu.test(file) && !SEALED_HOME.test(file)) {
+      findings.push(found(LITE_SECRET_CUSTODY, file, `${file} is a sealed file outside .starcistacks/<env>/secrets/; lite has exactly one encrypted custody path.`, { pattern: 'sealed-file-home' }));
+    }
+  } else if (/\.enc(?:\.yaml)?$/iu.test(file)) {
+    findings.push(found(LITE_SECRET_CUSTODY, file, `${file} is a sealed file inside a side tree; lite keeps *.enc only at the app root under .starcistacks/<env>/secrets/.`, { pattern: 'sealed-file-home' }));
+  }
+  return false;
+}
+
+function providerSecretFindings(repoRoot: string, file: string, repo: Repo, findings: Finding[]) {
+  if (!inSecretFreeTree(repo, file) || LOCKFILE.test(file)) return;
+  const text = readText(repoRoot, file);
+  if (text === null) return;
+  const seen = new Set();
+  const lines = text.split(/\r?\n/u);
+  for (const [index, line] of lines.entries()) {
+    for (const pattern of liteSecretPatterns(line)) {
+      if (seen.has(pattern)) continue;
+      seen.add(pattern);
+      findings.push(found(LITE_SECRET_CUSTODY, file, `${file}:${index + 1} holds a provider-shaped secret (${pattern}); lite keeps no secret literal under fe/ or db/.`, { line: index + 1, pattern }));
+    }
+  }
+}
+
+/** Raw L17 findings. The catalog-driven findings filter decides which editions judge them. */
+export function liteSecretCustodyFindings({ repoRoot, files, repo }: { repoRoot: string; files: string[]; repo: Repo }) {
+  const findings: Finding[] = [];
+  for (const file of files) {
+    if (custodyPathFinding(file, repo, findings)) continue;
+    providerSecretFindings(repoRoot, file, repo, findings);
+  }
+  return findings;
+}
+
+/**
+ * Drop-in extension of secretFindings for scripts/hfs/check.mjs. When an L17 finding identifies the same file/line as
+ * the generic R06 scanner (a complete JWT, for example), the specific lite code wins so one physical issue is emitted once.
+ */
+export function liteSecretFindings(input: Parsed) {
+  const ordinary = secretFindings(input);
+  const lite = liteSecretCustodyFindings(input);
+  const liteJwtAuthority = (input.repo.edition ?? 'full') === 'lite';
+  return [...ordinary.filter(item => !(liteJwtAuthority && (item.pattern === 'jwt' || item.pattern === 'password-connection-string') && inSecretFreeTree(input.repo, item.path))), ...lite];
+}
