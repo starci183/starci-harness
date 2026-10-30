@@ -2,6 +2,7 @@
 // proves: HFS_BACKING_UNUSED@lite
 // ruling:R212/case-10 and owner:lite-vector-is-pgvector: lite admits declared Redis; vector search uses Supabase pgvector.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,10 +11,15 @@ import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { editionFindings } from '../runtime/scripts/hfs/rules/edition.mjs';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { ruleParamsProblems } from '../runtime/scripts/hfs/rule-params-shape.mjs';
+import type { Resolver } from '../runtime/scripts/hfs/rules/rule-types.mjs';
 
+// reason: the edition rule only reads `slots()` of the resolver; a full Resolver is not needed to prove it.
+const NO_SLOTS = { slots: () => [] } as unknown as Resolver;
 const CODES = ['HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_DECLARATION_INVALID'];
 
-function judge(t, { edition = 'lite', be = {}, dependencies = {} }) {
+interface BackingFinding { code: string; file: string; name?: string; service?: string; level: string }
+
+function judge(t: TestContext, { edition = 'lite', be = {}, dependencies = {} }: { edition?: string; be?: Record<string, unknown>; dependencies?: Record<string, string> }): BackingFinding[] {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-backing-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const declaration = {
@@ -23,12 +29,12 @@ function judge(t, { edition = 'lite', be = {}, dependencies = {} }) {
   fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ dependencies }));
   return checkRepo({ repoRoot, declaration, files: ['package.json'], tree: false }).findings
     .filter((finding) => CODES.includes(finding.code))
-    .map(({ code, path: file, name, service, level }) => ({ code, file, ...(name ? { name } : {}), ...(service ? { service } : {}), level }));
+    .map(({ code, path: file, name, service, level }): BackingFinding => ({ code, file: file as string, ...(name ? { name: name as string } : {}), ...(service ? { service: service as string } : {}), level }));
 }
 
 test('HFS_BACKING_UNDECLARED (lite): a client library of an undeclared service is refused', (t) => {
   const findings = judge(t, { dependencies: { bullmq: '6.3.11', '@qdrant/js-client-rest': '1.12.0' } });
-  assert.deepEqual(findings.sort((left, right) => left.name.localeCompare(right.name)), [
+  assert.deepEqual(findings.sort((left, right) => left.name!.localeCompare(right.name!)), [
     { code: 'HFS_BACKING_UNDECLARED', file: 'package.json', name: '@qdrant/js-client-rest', service: 'qdrant', level: 'error' },
     { code: 'HFS_BACKING_UNDECLARED', file: 'package.json', name: 'bullmq', service: 'redis', level: 'error' },
   ]);
@@ -57,10 +63,10 @@ test('HFS_BACKING_UNUSED (lite): a declared service needs a consuming dependency
 test('HFS_BACKING_UNUSED (lite): a standalone back end reads its own package.json; a side scope of an app is not judged twice', (t) => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-backing-be-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
-  const judgeBe = (dependencies, withDeclaration = true) => {
+  const judgeBe = (dependencies: Record<string, string>, withDeclaration = true) => {
     fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ dependencies }));
     const repo = { profile: 'be', edition: 'lite', apps: [{ name: 'api', kind: 'api' }], backing: ['redis'] };
-    return editionFindings({ repoRoot, files: ['package.json'], repo, resolver: { slots: () => [] }, manifest: loadSlotManifest(), withDeclaration })
+    return editionFindings({ repoRoot, files: ['package.json'], repo, resolver: NO_SLOTS, manifest: loadSlotManifest(), withDeclaration })
       .map(({ code, service }) => ({ code, service }));
   };
   assert.deepEqual(judgeBe({}), [{ code: 'HFS_BACKING_UNUSED', service: 'redis' }]);
@@ -74,7 +80,7 @@ test('lite: a declared redis with its queue client and pattern is legal', (t) =>
 
 test('HFS_BACKING_UNDECLARED (lite): the realtime hub Redis clients (ioredis, the socket.io adapter) need a declared redis', (t) => {
   const findings = judge(t, { dependencies: { ioredis: '5.11.1', '@socket.io/redis-adapter': '8.3.0' } });
-  assert.deepEqual(findings.sort((left, right) => left.name.localeCompare(right.name)), [
+  assert.deepEqual(findings.sort((left, right) => left.name!.localeCompare(right.name!)), [
     { code: 'HFS_BACKING_UNDECLARED', file: 'package.json', name: '@socket.io/redis-adapter', service: 'redis', level: 'error' },
     { code: 'HFS_BACKING_UNDECLARED', file: 'package.json', name: 'ioredis', service: 'redis', level: 'error' },
   ]);
@@ -109,7 +115,7 @@ test('HFS_BACKING_UNDECLARED (lite): a raw side declaration cannot admit a Qdran
   fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ dependencies: { '@qdrant/js-client-rest': '1.12.0' } }));
   const findings = editionFindings({
     repoRoot, files: ['package.json'], repo: { profile: 'be', edition: 'lite', backing: ['qdrant'] },
-    resolver: { slots: () => [] }, manifest: loadSlotManifest(),
+    resolver: NO_SLOTS, manifest: loadSlotManifest(),
   });
   assert.deepEqual(findings.map(({ code, path: file, service }) => ({ code, file, service })), [
     { code: 'HFS_BACKING_UNDECLARED', file: 'hfs.json', service: 'qdrant' },
@@ -134,7 +140,7 @@ test('full: Qdrant with its declared client remains admitted, including the defa
       hfs: 3, kind: 'app', project: 'demo', ...(edition ? { edition } : {}),
       sides: { be: { apps: [{ name: 'api', kind: 'api' }], backing: ['qdrant'] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
     };
-    assert.deepEqual(resolveRepoDeclaration(loadSlotManifest(), declaration).sides.be.backing, ['qdrant']);
+    assert.deepEqual(resolveRepoDeclaration(loadSlotManifest(), declaration).sides?.be?.backing, ['qdrant']);
   }
 });
 

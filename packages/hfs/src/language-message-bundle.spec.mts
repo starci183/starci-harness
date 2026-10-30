@@ -7,7 +7,7 @@ import { sourceLanguageHits } from '../runtime/scripts/lib/language.mjs';
 // Construct the character under test so each fixture exercises a raw Unicode source character rather than an escape.
 const translated = String.fromCodePoint(0x111);
 const imported = 'import type { MessageBundle } from "@modules/platform/i18n";\n';
-const hits = (text, file = 'messages.ts', parser = ts) => sourceLanguageHits(file, text, parser);
+const hits = (text: string, file = 'messages.ts', parser: typeof ts | null = ts) => sourceLanguageHits(file, text, parser);
 
 test('typed MessageBundle literal vi values may contain translated text in any owner', () => {
   const source = `${imported}export const M: MessageBundle = { vi: { key: "${translated}" }, en: { key: "Message" } };\n`;

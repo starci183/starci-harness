@@ -1,13 +1,14 @@
 // proves: FE_I18N_PLACEMENT@lite
 // proves: FE_I18N_PLACEMENT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { appFrontendFindings, frontendFindings } from '../runtime/scripts/hfs/rules/frontend-tree.mjs';
 
-function fixture(t, edition) {
+function fixture(t: TestContext, edition: string) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-i18n-placement-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const manifest = path.join(repoRoot, 'fe/apps/web/package.json');
