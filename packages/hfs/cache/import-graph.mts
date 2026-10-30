@@ -175,8 +175,8 @@ export interface DirtySet { dirty: Set<string>; wholeSide: string | null; change
 
 /**
  * The files to lint again after a change from `previous` (the recorded graph, null when none) to `next`: every changed path, and every file that
- * reaches one through imports in either graph (a file that stopped importing a changed file still holds a result from the old types). A changed
- * file that declares globals, now or before, dirties the whole side.
+ * reaches one through imports in either graph (a file that stopped importing a changed file still holds a result from the old types), and every
+ * file whose imports resolve to other files than recorded. A changed file that declares globals, now or before, dirties the whole side.
  */
 export function dirtySetOf(previous: ImportGraph | null, next: ImportGraph): DirtySet {
   const changed = changedPaths(previous, next);
@@ -186,6 +186,11 @@ export function dirtySetOf(previous: ImportGraph | null, next: ImportGraph): Dir
       return { dirty: new Set(next.keys()), wholeSide: `${file} declares globals`, changed };
     }
   }
-  const dirty = new Set<string>([...changed, ...dependentsOf(next, changed), ...dependentsOf(previous, changed)]);
+  // a file whose imports resolve elsewhere now (a new file shadows a module, a missing one appeared) reads other types than before
+  const rewired = [...next].filter(([file, node]) => {
+    const before = previous.get(file);
+    return before !== undefined && before.hash === node.hash && before.imports.join(' ') !== node.imports.join(' ');
+  }).map(([file]) => file);
+  const dirty = new Set<string>([...changed, ...rewired, ...dependentsOf(next, [...changed, ...rewired]), ...dependentsOf(previous, changed)]);
   return { dirty, wholeSide: null, changed };
 }
