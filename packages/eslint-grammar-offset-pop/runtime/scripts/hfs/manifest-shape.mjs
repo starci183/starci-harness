@@ -58,6 +58,40 @@ export const unitRolesOf = (manifest) => manifest.ruleParams.be.unitRoles;
 /** The roles that carry logic (ruleParams.be.logicRoles): measured at 100 per file inside a coverage-required slot. */
 export const logicRolesOf = (manifest) => manifest.ruleParams.be.logicRoles;
 
+/** A declared logic file: `<name>.<part>.ts` below the slot path, kebab-case parts, no placeholder, glob or spec. */
+const LOGIC_FILE = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)*[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)+\.ts$/;
+
+/** The role suffix of a file name (`passport.tokens.ts` gives `tokens`). */
+export const suffixOf = (file) => /\.([a-z0-9-]+)\.ts$/.exec(file)?.[1] ?? null;
+
+/**
+ * The files a slot declares as logic (`logic`, names relative to the slot path): a file that carries logic without a logic-role suffix.
+ * Each is measured at 100 per file like a logic-role file (scripts/hfs/coverage-scope.mjs), and its `<stem>.spec.ts` beside it is a
+ * legitimate unit spec its slot admits (scripts/hfs/allows.mjs, eslint-canon-be unit-test-colocated). No role name is added for it.
+ */
+export const declaredLogicOf = (slot) => (Array.isArray(slot?.logic) ? slot.logic : []);
+
+/** The unit spec beside a declared logic file: `passport.tokens.ts` gives `passport.tokens.spec.ts`. */
+export const declaredLogicSpecOf = (file) => file.replace(/\.ts$/, '.spec.ts');
+
+/**
+ * Shape problems of a slot's `logic`: a non-empty list of unique `<name>.<part>.ts` files, each one the slot requires or allows by that
+ * exact name, on a tracked directory slot of profile be that is coverage: required and unit-beside, and (given the logic roles) none
+ * already of a logic role, which its role measures.
+ */
+export function slotLogicProblems(slot, at, logicRoles = []) {
+  if (slot.logic === undefined) return [];
+  const list = slot.logic;
+  if (!strList(list) || !list.length || new Set(list).size !== list.length || !list.every((file) => LOGIC_FILE.test(file) && !file.endsWith('.spec.ts'))) return [`${at}: logic must be a non-empty list of unique <name>.<part>.ts files relative to the slot path`];
+  const bad = [];
+  const home = typeof slot.path === 'string' && slot.path.endsWith('/') && slot.tracked === 'tracked' && Array.isArray(slot.profiles) && slot.profiles.includes('be') && slot.coverage === 'required' && slot.tests === 'unit-beside';
+  if (!home) bad.push(`${at}: logic belongs to a tracked directory slot of profile be whose coverage is required and whose tests are unit-beside`);
+  const named = [...(slot.requires ?? []), ...(slot.allows ?? [])];
+  for (const file of list.filter((entry) => !named.includes(entry))) bad.push(`${at}: logic file ${file} must be one the slot requires or allows by that name`);
+  for (const file of list.filter((entry) => logicRoles.includes(suffixOf(entry)))) bad.push(`${at}: logic file ${file} is of the logic role ${suffixOf(file)}, which measures it already`);
+  return bad;
+}
+
 
 /** Shape problems of ruleParams.be.unitRoles: unique roles of the suffix vocabulary, each spec `<role>.spec`. */
 export function unitRolesProblems(be) {
@@ -87,7 +121,7 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m) => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'logic'];
 /** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mjs). */
 const SLOT_ROLES = ['entity-registry'];
 /** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
@@ -266,7 +300,7 @@ function slotPolicyProblems(slot, at) {
   return bad;
 }
 
-export function slotProblems(slot, index, kind, { appScope = 'app', scopes = [] } = {}) {
+export function slotProblems(slot, index, kind, { appScope = 'app', scopes = [], logicRoles = [] } = {}) {
   const runtime = kind === RUNTIME_KIND;
   const slotKeys = new Set(runtime ? RUNTIME_SLOT_KEYS : APP_SLOT_KEYS);
   const tracked = runtime ? RUNTIME_TRACKED : TRACKED;
@@ -276,6 +310,7 @@ export function slotProblems(slot, index, kind, { appScope = 'app', scopes = [] 
   bad.push(...slotLocationProblems(slot, at, runtime, tracked), ...slotPatternProblems(slot, at), ...slotListProblems(slot, at));
   if (!runtime) bad.push(...slotAppOptionProblems(slot, at), ...slotLiteOverlayProblems(slot, at));
   bad.push(...slotEntryProblems(slot, at), ...slotPolicyProblems(slot, at));
+  if (!runtime) bad.push(...slotLogicProblems(slot, at, logicRoles));
   return bad;
 }
 

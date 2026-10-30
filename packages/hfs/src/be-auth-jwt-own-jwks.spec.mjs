@@ -46,3 +46,23 @@ export const verify = (token: string) => jwtVerify(token, createLocalJWKSet({ ke
   assert.ok(violations.some(item => /own key set/.test(item.message)));
   assert.ok(violations.some(item => /outside be\.integrations\.passport/.test(item.message)));
 });
+
+const OPTIONS = `export interface TokenOptions { readonly issuer: string; readonly audience: string }`;
+const verifierWith = (signature, audience) => `import { createLocalJWKSet, jwtVerify } from 'jose';
+import type { TokenOptions } from './passport.options';
+const keys = createLocalJWKSet({ keys: [] });
+export const verify = (${signature}) => jwtVerify(token, keys, { issuer: options.issuer, audience: ${audience}, algorithms: ['ES256'] });`;
+
+test(`${code}: an audience of typed configuration is pinned, as the lite skeleton's TokenOptions passes it (R260 accepts the same)`, t => {
+  const report = runArch(fixture(t, verifierWith('token: string, options: TokenOptions', 'options.audience'), {
+    'src/modules/integrations/passport/passport.options.ts': OPTIONS,
+  }));
+  assert.deepEqual(findings(report, code), []);
+});
+
+test(`${code}: an audience that is neither a literal nor typed configuration is refused`, t => {
+  const report = runArch(fixture(t, verifierWith('token: string, options: TokenOptions, audience: string', 'audience'), {
+    'src/modules/integrations/passport/passport.options.ts': OPTIONS,
+  }));
+  assert.ok(findings(report, code).some(item => /pin issuer, audience/.test(item.message)));
+});

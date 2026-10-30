@@ -358,7 +358,32 @@ test('empty roots have no threshold and populated roots share one glob with ever
   }
 });
 
-test('no project sets a test timeout: a unit spec runs under the jest default and a world spec sets its own through useTestWorld', () => {
+test('a declared logic file is collected and joins the per-file threshold once it exists; a scope rendered without files still loads', () => {
+  const declared = { ...SCOPE, files: ['src/modules/integrations/passport/passport.tokens.ts'] };
+  assert.deepEqual(preset.collectCoverageFrom(declared).filter((g) => !g.startsWith('!')), [
+    'src/modules/domain/*/**/*.{service,guard}.ts', 'src/modules/platform/*/**/*.{service,guard}.ts', 'src/modules/integrations/passport/passport.tokens.ts',
+  ]);
+  assert.deepEqual(preset.collectCoverageFrom(SCOPE), preset.collectCoverageFrom({ ...SCOPE, files: [] }), 'files absent reads as none');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-files-'));
+  const previous = process.cwd();
+  try {
+    process.chdir(root);
+    assert.deepEqual(preset.starciJestConfig({ coverage: declared }).coverageThreshold, {}, 'no subject yet, no key');
+    fs.mkdirSync(path.join(root, 'src', 'modules', 'integrations', 'passport'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'modules', 'integrations', 'passport', 'passport.tokens.ts'), 'export {};\n');
+    fs.mkdirSync(path.join(root, 'src', 'modules', 'domain', 'a'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'modules', 'domain', 'a', 'a.service.ts'), 'export {};\n');
+    assert.deepEqual(preset.starciJestConfig({ coverage: declared }).coverageThreshold, {
+      './{src/modules/domain/*/**/*.{service,guard}.ts,src/modules/integrations/passport/passport.tokens.ts}': { lines: 100, branches: 100, functions: 100, statements: 100 },
+    });
+    assert.throws(() => Reflect.apply(preset.starciJestConfig, undefined, [{ coverage: { ...SCOPE, files: 'src/x.ts' } }]), /coverage: \{ roots, roles, files, excludes \}/, 'files is a list');
+  } finally {
+    process.chdir(previous);
+    removeTree(root);
+  }
+});
+
+test('no project sets a test timeout:a unit spec runs under the jest default and a world spec sets its own through useTestWorld', () => {
   const config = preset.starciJestConfig(OPTIONS);
   assert.equal(config.testTimeout, undefined);
   for (const project of config.projects) assert.equal(Reflect.get(project, 'testTimeout'), undefined, `${String(project.displayName)} keeps the jest default`);

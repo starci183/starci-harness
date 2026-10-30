@@ -94,10 +94,14 @@ versioning:
 #   allows / forbids   names inside the instance; the loader exposes them, slot-check enforces them.
 #   tests       unit-beside | e2e | none.
 #   coverage    required | none, on every tracked slot of profile be. A required slot's subtree is measured at 100 per file on every
-#               ruleParams.be.logicRoles file (lines, branches, functions, statements); a none slot's subtree is never measured and
-#               is excluded from Sonar's coverage. scripts/hfs/coverage-scope.mjs derives the jest per-file thresholds, Sonar's
-#               sonar.coverage.exclusions and the Codecov paths and components from this field and nowhere else (R204).
-#               Orthogonal to the lite `editions`: an edition never changes what a slot measures.
+#               ruleParams.be.logicRoles file and on every file a slot of it declares in `logic` (lines, branches, functions,
+#               statements); a none slot's subtree is never measured and is excluded from Sonar's coverage. scripts/hfs/coverage-scope.mjs
+#               derives the jest per-file thresholds, Sonar's sonar.coverage.exclusions and the Codecov paths and components from this
+#               field and `logic` and nowhere else (R204). Orthogonal to the lite `editions`: an edition never changes what a slot measures.
+#   logic       on a coverage-required unit-beside directory slot: the files of the slot that carry logic without a logic-role suffix
+#               (`<name>.<part>.ts`, relative to the slot path, each one the slot requires or allows, none of a logic role). Each is
+#               measured at 100 per file like a logic-role file, and its `<name>.<part>.spec.ts` beside it is a legitimate unit spec
+#               (R47, R48): the slot admits it without listing it. No role name is added to ruleParams.be.logicRoles.
 #   composedBy the app kinds allowed to compose a transport slot (an app of another kind imports none of its modules); on an
 #               owner slot (be.cli) the app kinds that list its root module, every folder of the root holding one static module.
 #   budget      size budgets (lines per file, files per slot, exports).
@@ -2012,6 +2016,7 @@ slots:
     owner: true
     requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.tokens.ts, passport.password.ts, passport.cookie.ts]   # Secrets, no defaults (R44); options and named injectors (R83); tokens and JWKS; bcrypt; the refresh cookie
     allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.tokens.ts, passport.password.ts, passport.cookie.ts, strategies/, errors/]
+    logic: [passport.tokens.ts, passport.password.ts, passport.cookie.ts]   # JWT sign and verify over the own JWKS, bcrypt, the refresh cookie: measured at 100 per file
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
     coverage: required
@@ -2028,8 +2033,8 @@ slots:
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, storage.config.ts, storage.options.ts, storage.decorators.ts, storage.client.ts]
-    allows: [index.ts, storage.config.ts, storage.options.ts, storage.decorators.ts, storage.client.ts, errors/]
+    requires: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.client.ts]
+    allows: [index.ts, object-storage.module.ts, object-storage.module-definition.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.client.ts, errors/]
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_STORAGE_OWNER]
     coverage: required

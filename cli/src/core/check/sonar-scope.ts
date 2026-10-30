@@ -25,6 +25,7 @@ interface Slot {
     readonly provider?: string | undefined
     readonly requires?: readonly string[] | undefined
     readonly allows?: readonly string[] | undefined
+    readonly logic?: readonly string[] | undefined
 }
 
 /** What an app's hfs.json says that the derivation needs. */
@@ -61,6 +62,7 @@ const effectiveSlot = (raw: Record<string, unknown>, edition: string): Slot | un
         provider: text(merged.provider),
         requires: strings(merged.requires),
         allows: strings(merged.allows),
+        logic: strings(merged.logic),
     }
 }
 
@@ -141,13 +143,13 @@ const withoutCovered = (entries: readonly string[]): string[] =>
 
 /** The side-relative path variants of a slot, placeholders as `*`. */
 const variantsOf = (slot: Slot): string[] => braceVariants(slot.path).map(star)
-/** The fixed non-role `.ts` files the required slots name (their `requires` and `allows`), under each of their directories. */
+/** The fixed non-role `.ts` files the required slots name (their `requires` and `allows`) and do not declare as logic (`logic`), under each of their directories. */
 const fixedFileExclusions = (required: readonly Slot[], suffixes: readonly string[]): string[] => {
     const roleAlternatives = suffixes.map((suffix) => suffix.replace(/[-.]/g, String.raw`\$&`)).join("|")
     const isRole = new RegExp(String.raw`\.(?:${roleAlternatives})\.ts$`)
     return required.flatMap((slot) =>
         [...(slot.requires ?? []), ...(slot.allows ?? [])]
-            .filter((entry) => entry.endsWith(".ts") && !entry.includes("<role>"))
+            .filter((entry) => entry.endsWith(".ts") && !entry.includes("<role>") && !(slot.logic ?? []).includes(entry))
             .flatMap((entry) => braceVariants(entry))
             .filter((name) => !isRole.test(star(name).replaceAll("*", "x")))
             .flatMap((name) => variantsOf(slot).map((dir) => `be/${dir}${star(name)}`.replace(/\/\/+/g, "/"))),
@@ -156,7 +158,7 @@ const fixedFileExclusions = (required: readonly Slot[], suffixes: readonly strin
 
 /**
  * The coverage exclusions of one side: the whole side when it holds no `coverage: required` slot, else (the back end only)
- * every `coverage: none` path, every non-logic suffix and every fixed non-role file a required slot names.
+ * every `coverage: none` path, every non-logic suffix and every fixed non-role file a required slot names and does not declare as logic.
  */
 const sideExclusions = (side: string, slots: readonly Slot[], suffixes: readonly string[], roles: readonly string[]): string[] => {
     const own = slots.filter((slot) => slot.profiles.includes(side))
@@ -182,8 +184,9 @@ const sideExclusions = (side: string, slots: readonly Slot[], suffixes: readonly
 
 /**
  * `sonar.coverage.exclusions` of an app, derived from the slots of its edition: the back end's complement of the measured
- * files (a `<name>.<role>.ts` of a `ruleParams.be.logicRoles` role inside a `coverage: required` slot), that is every
- * `coverage: none` path, every non-logic suffix and every fixed non-role file a required slot names; and every declared
+ * files (a `<name>.<role>.ts` of a `ruleParams.be.logicRoles` role inside a `coverage: required` slot, and every logic file such a
+ * slot declares in `logic`), that is every `coverage: none` path, every non-logic suffix and every fixed non-role file a required
+ * slot names and does not declare as logic; and every declared
  * side that holds no `coverage: required` slot, whole. SonarQube has no coverage inclusions, so the complement is the list.
  */
 export const coverageExclusions = (manifest: Manifest, app: AppFacts): string[] => {

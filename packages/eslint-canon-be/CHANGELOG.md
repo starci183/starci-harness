@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.8.19 - 2026-10-30
+
+- Changed: `unit-test-colocated` (R47) accepts the spec beside a file its slot declares as logic (`HfsSlot.logic`, `src/lib/unit-spec.ts`) as an optional logic-role spec, so the lite passport specs are unit specs and the spec-form rules (R48, R281) apply to them; a spec beside an undeclared file that plays no role is still refused. Spec: `src/unit-spec-declared-logic.spec.ts`.
+- Changed: the bundled slot manifest carries the `logic` field (passport declares its tokens, password and cookie files) and the object-storage slot's `object-storage.*` names; the bundled `allows.mjs` and manifest shape admit them; the bundled architecture machine takes a typed-configuration JWT audience (BE_AUTH_JWT_OWN_JWKS, hfs 4.11.20); the bundled canon pins name hfs 4.11.20, jest-preset 2.5.2, eslint-canon-be 3.8.19, eslint-canon-fe 9.5.21 and the Grammar family 0.15.32.
+
 ## 3.8.18 - 2026-10-30
 
 - Changed: the bundled canon pins name hfs 4.11.19 (the schedule scanner reads interpolated identifiers and const-named SQL), eslint-canon-be 3.8.18, eslint-canon-fe 9.5.20 and the Grammar family 0.15.31. No rule changed.

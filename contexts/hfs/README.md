@@ -32,7 +32,8 @@ backing services and its grammar). No product content lives here; product record
 | `tier`, `owner`, `entries` | the node in the direction matrix; whether each matching directory is an owner; extra entry files besides `index.ts` |
 | `role`, `importedBy` | the one part a file slot plays that a rule reads (`entity-registry`: the lite `PRIMARY_ENTITIES` list); the side-relative patterns of the only files that import it by deep path |
 | `requires`, `allows`, `forbids`, `minInstances`, `requiredInstances` | what an instance must, may and must not hold |
-| `tests`, `coverage` | `unit-beside`, `e2e` or `none`; whether the logic roles of the subtree are measured |
+| `tests`, `coverage` | `unit-beside`, `e2e` or `none`; whether the logic roles of the subtree, and the files its slots declare in `logic`, are measured |
+| `logic` | on a coverage-required `unit-beside` directory slot, the files it requires or allows that carry logic without a logic-role suffix (`passport.tokens.ts`): each is measured at 100 per file like a logic-role file, and its `<file>.spec.ts` beside it is a legitimate unit spec the slot admits unlisted; it names files, never a role |
 | `budget` | size budgets of the slot (lines per file, files, exports, hooks); the one owner of those numbers |
 | `trigger`, `pattern`, `appKind`, `composedBy`, `provider` | the feature kind, the declared pattern that enables it, the app kind it describes, the app kinds that compose it, the connection provider that enables it |
 | `managedBy`, `liteManagedBy` | the template directory the app sync renders it from; a difference is drift |

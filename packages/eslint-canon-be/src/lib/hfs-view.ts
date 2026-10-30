@@ -53,6 +53,8 @@ export interface HfsSlot {
     readonly trigger?: string
     readonly coverage?: string
     readonly allows?: readonly string[]
+    /** The files of the slot that carry logic without a logic-role suffix (names relative to the slot path): measured like a logic role, each with its optional spec beside it. */
+    readonly logic?: readonly string[]
     /** The one special part a file slot plays that a rule reads: `entity-registry` (persistence.md BE-PERSISTENCE-3). */
     readonly role?: string
     /** The side-relative path patterns of the only files that may import this file by deep path. */

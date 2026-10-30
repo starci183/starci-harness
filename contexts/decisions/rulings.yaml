@@ -599,6 +599,11 @@ rulings:
     status: live
     ruling: "The capability that owns a table stays its only reader and writer. Another capability reads that data through the owner's read service or through a projection the reader owns, never by querying, joining or mapping the owner's table. R86 sql-owner refuses a write to another capability's table and a read across contexts; a same-context read of another capability's table is held by review."
     owner: "contexts/code/be/persistence.md BE-PERSISTENCE-9"
+  - id: slot-declared-logic
+    date: '2026-10-30'
+    status: live
+    ruling: "A slot may declare which of its own files carry logic (`logic`, file names relative to the slot path, each one it requires or allows, on a coverage-required unit-beside slot). Those files are measured at 100 per file like any logic role, and the `<file>.spec.ts` beside each is a legitimate unit spec, held to the unit-spec form; no new role name is added to ruleParams.be.logicRoles. be.integrations.passport declares passport.tokens.ts, passport.password.ts and passport.cookie.ts."
+    owner: "contexts/hfs/slots.yaml be.integrations.passport, contexts/hfs/README.md Slot fields, contexts/code/be/test.md BE-TEST-1 and BE-TEST-13 (R47, R204, R273)"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.

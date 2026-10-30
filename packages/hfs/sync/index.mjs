@@ -279,13 +279,13 @@ export function componentsYaml(components, { prefix = '', ids = id => id } = {})
   return components.map(component => [`    - component_id: ${ids(component.id)}`, `      name: ${ids(component.name)}`, '      paths:', ...component.paths.map(glob => `        - ${JSON.stringify(prefix + glob)}`)].join('\n')).join('\n');
 }
 
-/** The managed be/jest.config.js option text of a coverage scope { roots, roles, excludes }, laid out exactly as prettier lays it out (width 120, indent 4). */
+/** The managed be/jest.config.js option text of a coverage scope { roots, roles, files, excludes }, laid out exactly as prettier lays it out (width 120, indent 4). */
 export function jestCoverageSource(coverage) {
   const list = (key, items) => {
     const one = `        ${key}: [${items.map(item => JSON.stringify(item)).join(', ')}],`;
     return one.length <= 120 ? one : [`        ${key}: [`, ...items.map(item => `            ${JSON.stringify(item)},`), '        ],'].join('\n');
   };
-  return ['{', list('roots', coverage.roots), list('roles', coverage.roles), list('excludes', coverage.excludes), '    }'].join('\n');
+  return ['{', list('roots', coverage.roots), list('roles', coverage.roles), list('files', coverage.files), list('excludes', coverage.excludes), '    }'].join('\n');
 }
 
 /**

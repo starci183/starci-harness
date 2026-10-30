@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.11.20 - 2026-10-30
+
+- Added: a slot may declare the files of its own that carry logic: `logic: [file, ...]` (owner ruling slot-declared-logic, contexts/decisions/rulings.yaml), valid only on a tracked be directory slot with `coverage: required` and `tests: unit-beside`, each a `<name>.<part>.ts` the slot requires or allows and not already a logic-role file (`manifest-shape.mjs` `slotLogicProblems`, `declaredLogicOf`). A declared file is measured at 100 per file like a logic role (`coverage-scope.mjs` `files` and `measuredBy`, `rules/coverage-below.mjs`, `sync/index.mjs` renders `files` into be/jest.config.js, Sonar no longer excludes it), and its colocated `.spec.ts` is admitted unlisted (`allows.mjs`). `be.integrations.passport` declares `passport.tokens.ts`, `passport.password.ts` and `passport.cookie.ts`; the lite skeleton ships their specs in the testing-module form (`passport.password.spec.ts` and `passport.cookie.spec.ts` are new), each file at 100. Specs: `src/slot-declared-logic.spec.mjs`; `codecov-scope` and `scaffold-template-canon-be` follow.
+- Fixed: the object-storage slot requires and allows the skeleton's names, `object-storage.{config,options,decorators,client}.ts` (it named `storage.*`, so the scaffold failed HFS_SLOT_REQUIRED_MISSING and a renamed app's module was judged a sub-module), and allows `object-storage.module.ts` and `object-storage.module-definition.ts`.
+- Fixed: `BE_AUTH_JWT_OWN_JWKS` takes an audience of typed configuration as pinned, as R260 already did (`identity.mjs` with `fromConfig` of `jwt-ast.mjs`), so the skeleton's `audience: options.audience` passes; an audience that is neither a literal nor typed configuration is still refused. Spec: `src/be-auth-jwt-own-jwks.spec.mjs`.
+- Changed: the bundled canon pins name jest-preset 2.5.2, eslint-canon-be 3.8.19, eslint-canon-fe 9.5.21 and the Grammar family 0.15.32.
+
 ## 4.11.19 - 2026-10-30
 
 - Fixed: `HFS_SCHEDULE_UNDECLARED` (R268) reads an application SQL template whose `${}` sits where Postgres wants an identifier (`LISTEN ${channel}`, `SET x = ${n}`): the template is read with each `${}` as NULL, and when that does not parse, again with each as an identifier (`stacks-release.mjs` `templateObservations`). Such a statement was taken for an undeclared pg_cron job. A bare interpolated function name (`FROM ${fn}(...)`) still fails closed, since it may be `cron.schedule`; the skeleton's `callDbFunction` quotes `"${schema}"."${name}"` and parses as it is.

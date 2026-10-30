@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.2 - 2026-10-30
+
+- Added: `coverage.files` of the rendered be/jest.config.js: the files a slot declares as logic (hfs 4.11.20 `logic`) are collected and held to 100 per file like the logic roles; a config rendered without `files` loads as before. Specs: `test/coverage-scoped.spec.ts`, `test/preset.spec.ts`.
+
 ## 2.5.1 - 2026-10-29
 
 - Fixed: `fakeTransaction` records a `query` that calls a migration's database function the way `callDbFunction` writes it (`SELECT * FROM "<schema>"."<fn>"(...)`, any schema but `pg_catalog`) as a write, so a rolled-back inbox claim or event send appears in `rolledBackWrites`; any other `SELECT` stays a read.

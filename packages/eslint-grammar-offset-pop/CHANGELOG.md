@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.32 - 2026-10-30
+
+- Changed: the peer moves to eslint-grammar-core 0.15.32; the bundled slot manifest carries the `logic` field (passport declares its tokens, password and cookie files) and the object-storage slot's `object-storage.*` names; the bundled `allows.mjs` and manifest shape admit them; the bundled canon pins name hfs 4.11.20, jest-preset 2.5.2, eslint-canon-be 3.8.19, eslint-canon-fe 9.5.21 and the Grammar family 0.15.32. No rule changed.
+
 ## 0.15.31 - 2026-10-30
 
 - Changed: the peer moves to eslint-grammar-core 0.15.31; the bundled canon pins name hfs 4.11.19 (the schedule scanner reads interpolated identifiers and const-named SQL), eslint-canon-be 3.8.18, eslint-canon-fe 9.5.20 and the Grammar family 0.15.31. No rule changed.

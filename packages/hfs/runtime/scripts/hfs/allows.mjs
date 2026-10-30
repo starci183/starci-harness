@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { braceVariants, globExpression } from '../lib/glob.mjs';
+import { declaredLogicOf } from './manifest-shape.mjs';
 
 /**
  * What a slot's `requires`, `allows` and `forbids` entries (knowledge/hfs/slots.yaml) say about a file, read through the
@@ -8,9 +9,26 @@ import { braceVariants, globExpression } from '../lib/glob.mjs';
  *
  * An entry is a name relative to the slot instance root: `<var>` is the instance's bound variable when the slot binds it
  * (`<feature>`, `<capability>`) and one path segment of any text otherwise (`<action>`), `*` and `?` stay inside a segment,
- * `{a,b}` alternates, a trailing `/` names a directory and everything below it.
+ * `{a,b}` alternates, a trailing `/` names a directory and everything below it. A slot also admits, unlisted, the unit spec beside each
+ * measured file it names (isMeasuredSpec): a file it declares in `logic`, or a named file of a logic role.
  */
 const VAR = /<([A-Za-z][A-Za-z0-9-]*)>/g;
+const SPEC = /\.spec\.ts$/;
+
+/**
+ * Whether `relative` is the unit spec `<stem>.spec.ts` of a measured file beside it that the slot names: a file the slot declares in
+ * `logic`, or a `requires`/`allows` file of a logic role (ruleParams.be.logicRoles), in a slot whose coverage is required and whose tests
+ * are unit-beside. The slot admits that spec without listing it, as unit-test-colocated (R47) accepts it.
+ */
+function isMeasuredSpec(resolver, classified, slot, relative, named) {
+  if (!SPEC.test(relative) || slot.coverage !== 'required' || slot.tests !== 'unit-beside') return false;
+  const subject = relative.replace(SPEC, '.ts');
+  if (declaredLogicOf(slot).includes(subject)) return true;
+  const role = /\.([a-z0-9-]+)\.ts$/.exec(subject)?.[1];
+  // An app resolver keeps no rule parameters of its own: a path on a side reads that side's.
+  const params = classified.side ? resolver.sides?.[classified.side]?.ruleParams() : resolver.ruleParams?.();
+  return (params?.logicRoles ?? []).includes(role) && named.some(matcher => matcher.expression.test(subject));
+}
 
 function matchersOf(entries, bindings) {
   return (entries ?? []).flatMap(entry => {
@@ -36,7 +54,8 @@ export function slotAdmitsFile(resolver, file) {
   if (classified.status === 'no-slot' || classified.status === 'ambiguous' || !classified.slot) return null;
   const slot = resolver.slot(classified.slot);
   const relative = relativeToRoot(classified.path, classified.root);
-  const hit = matchersOf([...(slot.requires ?? []), ...(slot.allows ?? [])], classified.bindings).some(matcher => matcher.expression.test(relative));
+  const named = matchersOf([...(slot.requires ?? []), ...(slot.allows ?? [])], classified.bindings);
+  const hit = named.some(matcher => matcher.expression.test(relative)) || isMeasuredSpec(resolver, classified, slot, relative, named);
   const forbidden = matchersOf(slot.forbids, classified.bindings).some(matcher => matcher.expression.test(relative) || matcher.expression.test(`${relative}/`));
   return hit && !forbidden;
 }
@@ -51,7 +70,9 @@ export function allowsFile(resolver, file) {
   const slot = resolver.slot(classified.slot);
   if (!slot?.allows?.length) return null;
   const relative = relativeToRoot(classified.path, classified.root);
-  const hit = matchersOf([...(slot.requires ?? []), ...slot.allows], classified.bindings).find(matcher => matcher.expression.test(relative));
+  const named = matchersOf([...(slot.requires ?? []), ...slot.allows], classified.bindings);
+  const hit = named.find(matcher => matcher.expression.test(relative));
+  const spec = !hit && isMeasuredSpec(resolver, classified, slot, relative, named);
   const forbidden = matchersOf(slot.forbids, classified.bindings).find(matcher => matcher.expression.test(relative) || matcher.expression.test(`${relative}/`));
-  return { slot: slot.id, root: classified.root, relative, allowed: Boolean(hit) && !forbidden, entry: hit?.entry, forbiddenBy: forbidden?.entry, allows: slot.allows };
+  return { slot: slot.id, root: classified.root, relative, allowed: (Boolean(hit) || spec) && !forbidden, entry: hit?.entry, forbiddenBy: forbidden?.entry, allows: slot.allows };
 }

@@ -5,13 +5,13 @@ The jest config of a Nest repository and the one shared unit-test double kit (`m
 ```js
 // jest.config.js (a managed file: `starci app sync` renders it, `starci app check` compares it; do not edit)
 module.exports = require("@starci/jest-preset").starciJestConfig({
-  coverage: { roots, roles, excludes },
+  coverage: { roots, roles, files, excludes },
 })
 ```
 
 The only option is `coverage`: the measured scope `starci app sync` derives once from the slot manifest
-(`scripts/hfs/coverage-scope.mjs`, R204 `HFS_COVERAGE_SCOPE_DRIFT`) — the measured roots, the roles a measured file carries
-and the exclusions. A repository has no other jest setting to tune.
+(`scripts/hfs/coverage-scope.mjs`, R204 `HFS_COVERAGE_SCOPE_DRIFT`) — the measured roots, the roles a measured file carries,
+the logic files a slot declares (`logic`) and the exclusions. A repository has no other jest setting to tune.
 
 ## What it sets
 
@@ -32,9 +32,9 @@ and the exclusions. A repository has no other jest setting to tune.
   (`src/tests/tsconfig.json`), and `test:integration`/`test:e2e`/`test:contract` run `typecheck:tests` first, so no world spec
   runs on code that does not type-check.
 - **Coverage of the measured logic, per-file 100.** `collectCoverageFrom` is one glob per `coverage.roots` entry covering `<root>/**/*.{<roles>}.ts`
-  (the `ruleParams.be.logicRoles` of the rendered scope), minus its `excludes`, `dist` and `coverage`, and `coverageThreshold` holds
-  `{ lines: 100, branches: 100, functions: 100, statements: 100 }` on one union glob of those roots. Jest applies a glob threshold to each file on its own, so every file of a
-  `ruleParams.be.logicRoles` role inside a measured slot must reach 100 on every metric (an average never passes). The
+  (the `ruleParams.be.logicRoles` of the rendered scope) plus each `coverage.files` entry (a logic file its slot declares), minus its `excludes`, `dist` and `coverage`, and `coverageThreshold` holds
+  `{ lines: 100, branches: 100, functions: 100, statements: 100 }` on one union glob of those roots and files. Jest applies a glob threshold to each file on its own, so every file of a
+  `ruleParams.be.logicRoles` role inside a measured slot, and every declared logic file, must reach 100 on every metric (an average never passes). The
   managed `test` script runs the unit project with `--coverage` and fails below it. Coverage is measured by v8, which counts the
   real source. The unit project overlays `isolatedModules: true`, `importHelpers: true` and `sourceMap: true` on the repository tsconfig, so ts-jest
   transpiles each file without building a type program. `unit-metadata.js`, a ts-jest wrapper and after-transformer, maps

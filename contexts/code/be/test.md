@@ -6,13 +6,14 @@ slots: [be.cli, be.tests, be.root-e2e]
 Where a back-end spec lives, how its subject is built, which doubles it uses, what it asserts and what coverage
 measures. Which side is tested and what an op runs is shared ([SHARED-TEST-1 … 3](../shared/test.md)); the jest
 projects, doubles and coverage mechanics are the `@starci/jest-preset` README. The spec-required roles are
-`ruleParams.be.unitRoles`, the measured roles `ruleParams.be.logicRoles`.
+`ruleParams.be.unitRoles`, the measured roles `ruleParams.be.logicRoles`, and a slot's own measured files its `logic`.
 
 ## BE-TEST-1 Test kinds are placed by folder and suffix
 
 A unit spec is `<name>.<role>.spec.ts` beside its subject: required beside every `*.service.ts`, every `*.cli.ts` and a
 webhook or realtime door; optional beside any other logic-role file (`policy`, `mapper`, `client`, `guard`, `schema`,
-`processor`, `step`, ...). A spec of a handler, resolver, controller, module or app file is a finding. Integration
+`processor`, `step`, ...) and beside a logic file its slot declares (`logic`: `passport.tokens.spec.ts` beside
+`passport.tokens.ts`). A spec of a handler, resolver, controller, module or app file, or of any other file, is a finding. Integration
 specs are `src/tests/integration/<area>/*.integration-spec.ts` on real infrastructure through `useTestWorld`; contract
 specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e2e/<area>/*.e2e-spec.ts`. Test
 infrastructure lives only in `src/tests/world/`, shared data in `src/tests/fixtures/`. Integration and contract run
@@ -123,9 +124,10 @@ Enforced by: `tests-no-override`, `e2e-uses-production-transport`, `e2e-asserts-
 ## BE-TEST-13 Coverage is 100 per measured file, from one derivation
 
 The unit project measures every logic-role file of the measured roots (`src/modules/{domain,integrations,platform}/*`,
-minus `errors/`, `messages/`, `persistence/`) at 100 lines, branches, functions and statements per file. The scope is
-rendered once into the managed `jest.config.js`, `sonar-project.properties` and `codecov.yml`; no file carries a
-coverage ignore.
+minus `errors/`, `messages/`, `persistence/`), and every file a measured slot declares in `logic`, at 100 lines, branches,
+functions and statements per file. A file that carries logic without a role suffix is declared by its slot, never by a new
+role name. The scope is rendered once into the managed `jest.config.js`, `sonar-project.properties` and `codecov.yml`; no
+file carries a coverage ignore.
 
 Why: decisions live in the modules' logic, so a per-file bar on exactly those files is meaningful, and one denominator
 everywhere makes a gap visible wherever it is read.

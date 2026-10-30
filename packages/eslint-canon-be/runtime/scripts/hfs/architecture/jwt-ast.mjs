@@ -62,7 +62,7 @@ const configType = (checker, node) => {
 };
 
 /** Trace an issuer or audience to typed configuration values through local URL/string transformations. */
-const fromConfig = (ts, checker, expression, seen = new Set()) => {
+export const fromConfig = (ts, checker, expression, seen = new Set()) => {
   const node = unwrap(ts, expression);
   if (!node || seen.has(node)) return false;
   const next = new Set(seen).add(node);

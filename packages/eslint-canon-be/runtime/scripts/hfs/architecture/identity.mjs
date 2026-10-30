@@ -4,7 +4,7 @@
 // In both editions every jwtVerify call holds the JWT policy (R260, jwtPolicyProblems).
 import path from 'node:path';
 import { machineKit } from './machine-ast.mjs';
-import { importedFrom, jwtPolicyProblems, reportAt, unwrap } from './jwt-ast.mjs';
+import { fromConfig, importedFrom, jwtPolicyProblems, reportAt, unwrap } from './jwt-ast.mjs';
 import { accessName } from '../../lib/ts-ast.mjs';
 
 const PASSPORT_SLOT = 'be.integrations.passport';
@@ -87,7 +87,11 @@ function verifyJwtCall(kit, checker, file, node, counters, violations) {
   const issuer = property('issuer');
   const audience = values('audience');
   const algorithms = values('algorithms');
-  const good = jwksArgument(kit, checker, node.arguments[1]) && issuer != null && audience !== null && audience.length > 0
+  // The audience is pinned by a literal or, as R260 accepts, by typed configuration (the skeleton's TokenOptions.audience).
+  const audienceEntry = property('audience');
+  const pinnedAudience = (audience !== null && audience.length > 0)
+    || (audienceEntry != null && fromConfig(kit.ts, checker, kit.valueOfProperty(audienceEntry)));
+  const good = jwksArgument(kit, checker, node.arguments[1]) && issuer != null && pinnedAudience
     && algorithms !== null && algorithms.length > 0;
   if (!good) {
     reportAt(violations, kit, BE_JWT_VERIFIED, file, node, 'jwtVerify must check the app\'s own key set (createLocalJWKSet(...) over the keys integrations/passport signs with) and pin issuer, audience and a non-empty algorithms list; jwtVerify then enforces signature and exp.');

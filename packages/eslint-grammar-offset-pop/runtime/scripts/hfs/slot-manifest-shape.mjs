@@ -53,7 +53,8 @@ function checkAppKindAndTierShapes(m, bad) {
 
 function checkSlotShapes(m, bad) {
   if (!Array.isArray(m.slots) || !m.slots.length) { bad.push('slots must be a non-empty list'); return false; }
-  m.slots.forEach((slot, index) => bad.push(...slotProblems(slot, index, APP_KIND, { appScope: APP_SCOPE, scopes: SCOPES })));
+  const logicRoles = Array.isArray(m.ruleParams?.be?.logicRoles) ? m.ruleParams.be.logicRoles : [];
+  m.slots.forEach((slot, index) => bad.push(...slotProblems(slot, index, APP_KIND, { appScope: APP_SCOPE, scopes: SCOPES, logicRoles })));
   return true;
 }
 

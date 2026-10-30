@@ -1,10 +1,11 @@
 // coverage-scope.mjs - THE derivation of what a back end measures (R204 HFS_COVERAGE_SCOPE_DRIFT).
 //
-// One input: the slot manifest. Every tracked slot of the be profile declares `coverage: required | none`, and
-// `ruleParams.be.logicRoles` names the roles that carry logic. A file `<name>.<role>.ts` of a logic role inside a required slot is
-// measured at 100 per file; every other file of the back end is not. Three consumers read this module and nothing else:
-//   - the jest preset: `jestCoverage` (roots x roles, and the none subtrees inside a root) becomes the per-file thresholds and
-//     collectCoverageFrom of the rendered be/jest.config.js;
+// One input: the slot manifest. Every tracked slot of the be profile declares `coverage: required | none`,
+// `ruleParams.be.logicRoles` names the roles that carry logic, and a required slot may declare in `logic` the files of its own that
+// carry logic without a logic-role suffix. A file `<name>.<role>.ts` of a logic role inside a required slot, and every declared logic
+// file, is measured at 100 per file; every other file of the back end is not. Three consumers read this module and nothing else:
+//   - the jest preset: `jestCoverage` (roots x roles, the declared logic files, and the none subtrees inside a root) becomes the
+//     per-file thresholds and collectCoverageFrom of the rendered be/jest.config.js;
 //   - Sonar: `sonarCoverageExclusions` are the complement (SonarQube has no inclusions and no negation), rendered into
 //     sonar.coverage.exclusions;
 //   - Codecov: `codecovPaths` are the measured roots, and `coverageComponents` one component per service app plus platform,
@@ -12,7 +13,7 @@
 // starci app sync renders the three for an app, scripts/checks/check-examples-ci.mjs for the example apps of the runtime repository,
 // and `starci app check` compares the files with this derivation. Nothing here lists a path of a product: it all comes from slots.yaml.
 import { braceVariants, globExpression } from '../lib/glob.mjs';
-import { logicRolesOf } from './manifest-shape.mjs';
+import { declaredLogicOf, logicRolesOf } from './manifest-shape.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { trimTrailingSlashes } from './trailing-slashes.mjs';
 
@@ -68,7 +69,7 @@ function addRequiredPatterns(sonar, required, suffixes) {
 }
 
 function addEntryPatterns(sonar, slot, entry, isRole) {
-  if (!entry.endsWith('.ts') || entry.includes('<role>')) return;
+  if (!entry.endsWith('.ts') || entry.includes('<role>') || declaredLogicOf(slot).includes(entry)) return;
   for (const name of braceVariants(entry)) {
     if (isRole.test(star(name).replaceAll('*', 'x'))) continue;
     for (const dir of variantsOf(slot)) sonar.add(`be/${dir}${star(name)}`.replace(/\/\/+/g, '/'));
@@ -116,6 +117,7 @@ const minimal = (patterns) => {
  *   roles     ruleParams.be.logicRoles;
  *   roots     the minimal required directories (be-relative, `*` for a placeholder, trailing slash), sorted;
  *   excludes  the none directories inside a root (never measured though their root is);
+ *   files     the declared logic files of the required slots (be-relative, `*` for a placeholder) outside every none directory, sorted;
  *   none      the minimal none paths of the whole back end (a directory ends in a slash), sorted;
  *   sonar     sonar.coverage.exclusions, repository-relative from the app root, sorted;
  *   codecovPaths  the measured roots as `be/<root>**`.
@@ -135,13 +137,15 @@ export function coverageScope(manifest, providers = []) {
   const noneUnique = [...new Set(nonePaths)];
   const noneMinimal = noneUnique.filter((path) => !noneUnique.some((other) => other !== path && isDir(other) && nested(dirOf(path), other)));
   const excludes = noneMinimal.filter((path) => isDir(path) && roots.some((root) => nested(path, root))).sort(byCodeUnit);
+  const declared = required.flatMap((slot) => declaredLogicOf(slot).flatMap((file) => variantsOf(slot).map((dir) => `${dir}${file}`)));
+  const files = [...new Set(declared)].filter((file) => !noneMinimal.some((path) => isDir(path) && nested(dirOf(file), path))).sort(byCodeUnit);
   const suffixes = manifest.ruleParams.be.suffixes;
   const sonar = new Set(noneMinimal.map((path) => `be/${path}${isDir(path) ? '**' : ''}`));
   for (const role of suffixes.filter((suffix) => !roles.includes(suffix))) sonar.add(`be/**/*.${role}.ts`);
   addRequiredPatterns(sonar, required, suffixes);
   sonar.add('fe/**');
   noneMinimal.sort(byCodeUnit);
-  return { roles, roots, excludes, none: noneMinimal, sonar: withoutCovered([...sonar]).sort(byCodeUnit), codecovPaths: roots.map((root) => `be/${root}**`) };
+  return { roles, roots, files, excludes, none: noneMinimal, sonar: withoutCovered([...sonar]).sort(byCodeUnit), codecovPaths: roots.map((root) => `be/${root}**`) };
 }
 
 /** The glob a root measures: every file of a logic role below it (`src/modules/domain/*\/**\/*.{service,policy}.ts`). */
@@ -150,10 +154,10 @@ export const rootGlob = (root, roles) => {
   return `${root}**/*.${roleGlob}.ts`;
 };
 
-/** The jest coverage options of the rendered be/jest.config.js: { roots, roles, excludes }. */
+/** The jest coverage options of the rendered be/jest.config.js: { roots, roles, files, excludes }. */
 export function jestCoverage(manifest, providers = []) {
-  const { roots, roles, excludes } = coverageScope(manifest, providers);
-  return { roots, roles, excludes: excludes.map((dir) => `${dir}**`) };
+  const { roots, roles, files, excludes } = coverageScope(manifest, providers);
+  return { roots, roles, files, excludes: excludes.map((dir) => `${dir}**`) };
 }
 
 /** Sonar's sonar.coverage.exclusions of an app: the complement of the measured files, repository-relative from the app root. */
@@ -225,11 +229,20 @@ function assignRoot({ root, files, services, imports, platformPaths, ownedBy }) 
   }
 }
 
-/** True when the be-relative `file` is measured: it is `<name>.<role>.ts` of a logic role below a measured root and inside no none directory of it. */
-export function isMeasured(manifest, file) {
-  const { roots, roles, excludes } = coverageScope(manifest);
-  const role = /\.([a-z][a-z0-9-]*)\.ts$/.exec(file)?.[1];
-  if (!role || !roles.includes(role)) return false;
-  const inside = (dir) => globExpression(`${dir}**`).test(file);
-  return roots.some(inside) && !excludes.some(inside);
+/**
+ * The one test of whether a be-relative file is measured, over a coverage scope: a declared logic file of `files`, or `<name>.<role>.ts`
+ * of a logic role below a measured root and inside no none directory of it. isMeasured and R273 (rules/coverage-below.mjs) ask it.
+ */
+export function measuredBy({ roots, roles, files, excludes }) {
+  const declared = files.map((file) => globExpression(file));
+  const rootGlobs = roots.map((dir) => globExpression(`${dir}**`));
+  const excludeGlobs = excludes.map((dir) => globExpression(`${dir}**`));
+  return (file) => {
+    if (declared.some((glob) => glob.test(file))) return true;
+    const role = /\.([a-z][a-z0-9-]*)\.ts$/.exec(file)?.[1];
+    return Boolean(role) && roles.includes(role) && rootGlobs.some((glob) => glob.test(file)) && !excludeGlobs.some((glob) => glob.test(file));
+  };
 }
+
+/** True when the be-relative `file` is measured by the scope of the whole manifest (measuredBy). */
+export const isMeasured = (manifest, file) => measuredBy(coverageScope(manifest))(file);

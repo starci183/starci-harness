@@ -25,10 +25,15 @@ export type { RecordingQueueOutbox } from "./queue.ts"
 export type { FakeInbox } from "./inbox.ts"
 export type { RefusalReason } from "./matchers.ts"
 
-/** The coverage scope `starci app sync` renders from the slot manifest: the measured roots (a directory pattern per measured slot, a placeholder folder written as a star), the logic roles measured in them and the directories inside a root that are never measured (each ending in a double star). */
+/**
+ * The coverage scope `starci app sync` renders from the slot manifest: the measured roots (a directory pattern per measured slot, a placeholder
+ * folder written as a star), the logic roles measured in them, the logic files a slot declares (`logic`: a file that carries logic without a
+ * logic-role suffix, measured like one) and the directories inside a root that are never measured (each ending in a double star).
+ */
 export interface StarciCoverageScope {
   readonly roots: readonly string[]
   readonly roles: readonly string[]
+  readonly files?: readonly string[]
   readonly excludes: readonly string[]
 }
 export interface StarciJestOptions {
@@ -48,10 +53,11 @@ export type StarciJestConfig = Omit<Config, "projects" | "coverageReporters" | "
 
 /**
  * Coverage is measured where logic runs: every file `<name>.<role>.ts` of a LOGIC role (service, policy, projection, guard, mapper, client, ...)
- * inside the roots the slot manifest marks `coverage: required` (the modules of the back end: domain, integrations, platform, projections).
+ * inside the roots the slot manifest marks `coverage: required` (the modules of the back end: domain, integrations, platform, projections), and
+ * every logic file such a slot declares (`logic`: a file that carries logic without a logic-role suffix).
  * The features (handlers, resolvers, controllers, consumers, processors, steps, sagas, cli commands) are thin by rule (BE_FEATURE_THIN) and are
  * never measured. The scope is NOT written here: `starci app sync` renders it from the manifest (scripts/hfs/coverage-scope.mjs) into the repository's
- * jest.config.js as `starciJestConfig({ coverage: { roots, roles, excludes } })`, and the same derivation renders Sonar's
+ * jest.config.js as `starciJestConfig({ coverage: { roots, roles, files, excludes } })`, and the same derivation renders Sonar's
  * `sonar.coverage.exclusions` and the Codecov paths and components, so the three can never disagree. Every measured file must reach 100 on every metric.
  * The unit run also writes `coverage/lcov.info`: Sonar and Codecov import it.
  */
@@ -65,16 +71,20 @@ function rootGlob(root: string, roles: readonly string[]): string {
 }
 
 /**
- * jest's `collectCoverageFrom` of a coverage scope `{ roots, roles, excludes }`: the glob of every root, then the none directories inside a
- * root (`excludes`, each a glob that ends in `**`) and the generated folders as negations.
+ * jest's `collectCoverageFrom` of a coverage scope `{ roots, roles, files, excludes }`: the glob of every root, every declared logic file, then
+ * the none directories inside a root (`excludes`, each a glob that ends in `**`) and the generated folders as negations.
  */
 function collectCoverageFrom(coverage: StarciCoverageScope): string[] {
-  return [...coverage.roots.map((root) => rootGlob(root, coverage.roles)), ...[...coverage.excludes, ...COVERAGE_EXCLUDES].map((glob) => `!${glob}`)]
+  return [
+    ...coverage.roots.map((root) => rootGlob(root, coverage.roles)),
+    ...(coverage.files ?? []),
+    ...[...coverage.excludes, ...COVERAGE_EXCLUDES].map((glob) => `!${glob}`),
+  ]
 }
 
-/** One union glob keeps Jest's per-file checks while a scoped map may contain files from only one measured root. */
+/** One union glob keeps Jest's per-file checks while a scoped map may contain files from only one measured root or declared logic file. */
 function coverageThresholdOf(coverage: StarciCoverageScope, root: string): Record<string, { lines: number; branches: number; functions: number; statements: number }> {
-  const rootGlobs = coverage.roots.map((entry) => rootGlob(entry, coverage.roles)).filter((glob) => hasCoverageSubjects(root, glob))
+  const rootGlobs = [...coverage.roots.map((entry) => rootGlob(entry, coverage.roles)), ...(coverage.files ?? [])].filter((glob) => hasCoverageSubjects(root, glob))
   if (rootGlobs.length === 0) return {}
   const glob = rootGlobs.length === 1 ? rootGlobs[0] : `{${rootGlobs.join(",")}}`
   return { [`./${glob}`]: { ...COVERAGE_THRESHOLD } }
@@ -232,16 +242,20 @@ const isList = (value: unknown): value is string[] => Array.isArray(value) && va
 /** A property of an unknown value, `undefined` when the value is not an object that has it. */
 const fieldOf = (value: unknown, name: string): unknown => (typeof value === "object" && value !== null && name in value ? Reflect.get(value, name) : undefined)
 
-/** The scope `{ roots, roles, excludes }` of an options object, or a refusal: the scope is rendered by `starci app sync`, never defaulted. */
+/**
+ * The scope `{ roots, roles, files, excludes }` of an options object, or a refusal: the scope is rendered by `starci app sync`, never defaulted.
+ * `files` (the declared logic files) is absent from a config rendered before slots could declare them, and is then empty.
+ */
 function coverageOf(options: unknown): StarciCoverageScope {
   const coverage = fieldOf(options, "coverage")
   const roots = fieldOf(coverage, "roots")
   const roles = fieldOf(coverage, "roles")
+  const files = fieldOf(coverage, "files") ?? []
   const excludes = fieldOf(coverage, "excludes")
-  if (!coverage || !isList(roots) || !isList(roles) || !roles.length || !isList(excludes)) {
-    throw new Error("starciJestConfig({ coverage: { roots, roles, excludes } }) needs the coverage scope starci app sync renders from the slot manifest; run \"npx starci app sync --write\"")
+  if (!coverage || !isList(roots) || !isList(roles) || !roles.length || !isList(files) || !isList(excludes)) {
+    throw new Error("starciJestConfig({ coverage: { roots, roles, files, excludes } }) needs the coverage scope starci app sync renders from the slot manifest; run \"npx starci app sync --write\"")
   }
-  return { roots, roles, excludes }
+  return { roots, roles, files, excludes }
 }
 
 /** The whole jest config: projects `unit`, `integration`, `e2e` and `contract`. It takes the coverage scope the managed repository config renders; without it it refuses. */

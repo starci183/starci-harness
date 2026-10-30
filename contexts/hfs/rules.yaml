@@ -430,7 +430,7 @@ rules:
       - {kind: eslint-be, id: background-unowned}
   - id: R47
     code: BE_TEST_TOPOLOGY
-    law: The back end has one jest config with the unit, integration, e2e and contract projects, unit specs beside their subjects at full per-file coverage, and `be/src/tests/world/` as the only test infrastructure, running the real stack.
+    law: The back end has one jest config with the unit, integration, e2e and contract projects, unit specs beside their subjects (a logic-role file, or a logic file its slot declares) at full per-file coverage, and `be/src/tests/world/` as the only test infrastructure, running the real stack.
     failureCodes:
       - BE_TEST_TOPOLOGY
       - BE_CONTRACT_UNGUARDED
@@ -1480,7 +1480,7 @@ rules:
       - {kind: eslint-be, id: feature-thin}
   - id: R204
     code: HFS_COVERAGE_SCOPE_DRIFT
-    law: The back-end coverage scope is derived once from the slot manifest, and the jest, Sonar and Codecov configurations are its render.
+    law: The back-end coverage scope is derived once from the slot manifest (its coverage fields, logic roles and the logic files slots declare), and the jest, Sonar and Codecov configurations are its render.
     failureCodes:
       - HFS_COVERAGE_SCOPE_DRIFT
     enforcers:
@@ -1816,7 +1816,7 @@ rules:
       - {kind: hfs, id: boot-proof}
   - id: R273
     code: HFS_COVERAGE_BELOW
-    law: A supplied coverage report proves full line, function and branch coverage per back-end logic file in the slot-derived measured scope.
+    law: A supplied coverage report proves full line, function and branch coverage per back-end logic file (a logic-role file or one its slot declares) in the slot-derived measured scope.
     failureCodes:
       - HFS_COVERAGE_BELOW
     enforcers:

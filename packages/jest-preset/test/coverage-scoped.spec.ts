@@ -17,9 +17,14 @@ const metrics = ['lines', 'branches', 'functions', 'statements'] as const;
 const coveredFile = 'src/modules/domain/cart/covered.service.ts';
 const partialFile = 'src/modules/platform/access/partial.guard.ts';
 const unloadedFile = 'src/modules/integrations/remote/unloaded.client.ts';
+/** A logic file of no logic role (a slot declares it in `logic`): measured only when the scope lists it in `files`. */
+const logicFile = 'src/modules/integrations/passport/passport.tokens.ts';
 
 /** The same declared roots contain covered, partially covered and unloaded subjects in every fixture. */
-function fixture(t: TestContext, partial = false): string {
+/** How the fixture holds the non-role logic file: declared in `coverage.files` or not, and covered by its spec on both paths or on one. */
+type Declared = { declared: boolean; covered: boolean };
+
+function fixture(t: TestContext, partial = false, logic?: Declared): string {
   const fixtureParent = path.resolve(os.tmpdir());
   const app = fs.mkdtempSync(path.join(fixtureParent, 'starci-coverage-scoped-'));
   t.after(() => {
@@ -37,7 +42,7 @@ function fixture(t: TestContext, partial = false): string {
   write('tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', strict: true, esModuleInterop: true, isolatedModules: true } }));
   write('jest.config.cjs', `const config = require(${JSON.stringify(presetIndex)}).starciJestConfig({ coverage: {
     roots: ['src/modules/domain/*/', 'src/modules/integrations/*/', 'src/modules/platform/*/'],
-    roles: ['service', 'guard', 'client'], excludes: []
+    roles: ['service', 'guard', 'client'], files: ${JSON.stringify(logic?.declared ? [logicFile] : [])}, excludes: []
   } })
 const defaults = require(${JSON.stringify(tsJestPreset)}).transform
 for (const project of config.projects) {
@@ -71,6 +76,11 @@ module.exports = config
 `);
   if (partial) {
     write('src/modules/platform/access/partial.guard.spec.ts', 'import { PartialGuard } from "./partial.guard"\ntest("covers one path", () => { expect(new PartialGuard().accept(false)).toBe("no") })\n');
+  }
+  if (logic) {
+    write(logicFile, 'export const pick = (flag: boolean): string => (flag ? "yes" : "no")\n');
+    const checks = logic.covered ? 'expect(pick(true)).toBe("yes")\n    expect(pick(false)).toBe("no")' : 'expect(pick(false)).toBe("no")';
+    write(logicFile.replace(/\.ts$/, '.spec.ts'), `import { pick } from "./passport.tokens"\ntest("picks", () => {\n    ${checks}\n})\n`);
   }
   return app;
 }
@@ -144,4 +154,22 @@ test('a partially covered file fails all four per-file metrics despite a large f
     assert.ok(totalOf(summary)[metric].pct > actual, `${metric} average does not hide the smaller file`);
     assert.match(output, new RegExp(`partial\\.guard\\.ts.*coverage threshold for ${metric} \\(100%\\) not met`), metric);
   }
+});
+
+test('a declared logic file is held at 100 per file: one branch left uncovered fails its threshold', (t) => {
+  const app = fixture(t, false, { declared: true, covered: false });
+  const { result, output, summary } = run(app, [coveredFile, logicFile]);
+  assert.equal(result.status, 1, output);
+  assert.match(output, /Test Suites:\s+2 passed/);
+  assert.ok(measured(summary, logicFile).branches.pct < 100, 'the declared file is in the report below 100');
+  assert.match(output, /passport\.tokens\.ts.*coverage threshold for branches \(100%\) not met/is);
+});
+
+test('a declared logic file its spec covers on every path passes, and the same file undeclared carries no threshold', (t) => {
+  const covered = run(fixture(t, false, { declared: true, covered: true }), [coveredFile, logicFile]);
+  assert.equal(covered.result.status, 0, covered.output);
+  for (const metric of metrics) assert.equal(measured(covered.summary, logicFile)[metric].pct, 100, metric);
+  const undeclared = run(fixture(t, false, { declared: false, covered: false }), [coveredFile, logicFile]);
+  assert.equal(undeclared.result.status, 0, undeclared.output);
+  assert.ok(measured(undeclared.summary, logicFile).branches.pct < 100, 'collected but not held: no role and no declaration');
 });

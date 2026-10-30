@@ -1,4 +1,5 @@
-// scaffold-template-canon-be.spec.mjs - the skeleton's platform capabilities, code and specs, pass the back-end canon they ship with.
+// scaffold-template-canon-be.spec.mjs - the skeleton's platform capabilities, code and specs, and the lite passport's declared-logic specs,
+// pass the back-end canon they ship with.
 // An app copies a platform capability byte-identical, so a skeleton file the canon refuses is a finding every app inherits
 // and cannot fix. Each edition is scaffolded into a temp folder and every file under its src/modules/platform is linted, typed, with the
 // starci-be rules of @starci/eslint-canon-be (the sibling package's source, the factory the rendered be/eslint.config.mjs
@@ -62,10 +63,13 @@ for (const edition of ['full', 'lite']) {
     const eslint = new ESLint({ cwd: be, overrideConfigFile: true, errorOnUnmatchedPattern: false, overrideConfig: [
       ...config, { files: ['**/*.ts'], languageOptions: { parserOptions: { projectService: false, project, tsconfigRootDir: be } } },
     ] });
-    const results = await eslint.lintFiles(['src/modules/platform/**/*.ts']);
+    // lite also lints the specs beside the logic files be.integrations.passport declares (`logic`): unit specs held to the canon form.
+    const passportSpecs = edition === 'lite' ? ['tokens', 'password', 'cookie'].map((part) => `src/modules/integrations/passport/passport.${part}.spec.ts`) : [];
+    const results = await eslint.lintFiles(['src/modules/platform/**/*.ts', ...passportSpecs]);
     const linted = results.map((result) => path.relative(be, result.filePath).split(path.sep).join('/'));
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.ts'), 'the client is linted');
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.spec.ts'), 'its spec is linted');
+    for (const spec of passportSpecs) assert.ok(linted.includes(spec), `${spec} is linted`);
     const findings = results.flatMap((result) => result.messages.map((message) => `${path.relative(be, result.filePath).split(path.sep).join('/')}:${message.line} ${message.ruleId ?? 'parse'} ${message.message}`));
     assert.deepEqual(findings, []);
   });

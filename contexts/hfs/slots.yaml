@@ -2855,6 +2855,10 @@ slots:
       - passport.cookie.ts
       - strategies/
       - errors/
+    logic:
+      - passport.tokens.ts
+      - passport.password.ts
+      - passport.cookie.ts
     tests: unit-beside
     rules:
       - BE_TIER_DIRECTION
@@ -2877,16 +2881,18 @@ slots:
     owner: true
     requires:
       - index.ts
-      - storage.config.ts
-      - storage.options.ts
-      - storage.decorators.ts
-      - storage.client.ts
+      - object-storage.config.ts
+      - object-storage.options.ts
+      - object-storage.decorators.ts
+      - object-storage.client.ts
     allows:
       - index.ts
-      - storage.config.ts
-      - storage.options.ts
-      - storage.decorators.ts
-      - storage.client.ts
+      - object-storage.module.ts
+      - object-storage.module-definition.ts
+      - object-storage.config.ts
+      - object-storage.options.ts
+      - object-storage.decorators.ts
+      - object-storage.client.ts
       - errors/
     tests: unit-beside
     rules:

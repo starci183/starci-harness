@@ -8,7 +8,9 @@ const covered = 'be/src/modules/domain/orders/orders.service.ts';
 const uncovered = 'be/src/modules/domain/orders/policies/payment.policy.ts';
 const platformCovered = 'be/src/modules/platform/clock/clock.service.ts';
 const platformUncovered = 'be/src/modules/platform/clock/deadline.policy.ts';
-const measured = [covered, uncovered, platformCovered, platformUncovered];
+// A logic file its slot declares (`logic` of be.integrations.passport) is measured like a logic-role file.
+const declaredLogic = 'be/src/modules/integrations/passport/passport.tokens.ts';
+const measured = [covered, uncovered, platformCovered, platformUncovered, declaredLogic];
 // A shard reports every loaded import, including files outside the slot-derived logic scope.
 const report = [
   { path: covered, lines: 4, hits: 4 },
@@ -20,7 +22,7 @@ const report = [
   { path: 'be/src/modules/domain/orders/persistence/order.rows.ts', lines: 50, hits: 0 },
   { path: 'be/src/modules/domain/orders/persistence/hydrate.service.ts', lines: 5, hits: 0 },
   { path: 'be/src/modules/platform/clock/clock.config.ts', lines: 10, hits: 1 },
-  { path: 'be/src/modules/integrations/passport/passport.tokens.ts', lines: 10, hits: 1 },
+  { path: declaredLogic, lines: 10, hits: 1 },
   { path: 'fe/apps/web/src/app/page.tsx', lines: 10, hits: 0 },
 ];
 

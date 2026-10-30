@@ -5,12 +5,13 @@
  * only. Only a `<name>.<role>.spec.ts` beside `<name>.<role>.ts` is a legitimate unit spec (R47): of a spec-required unit role
  * (`ruleParams.be.unitRoles`: a service, a cli command) anywhere its slot admits, and of any other LOGIC role (`ruleParams.be.logicRoles`: a policy,
  * a client, a guard, a mapper, ...) inside a slot whose `coverage` is required, where the spec is optional (the file owes 100 per file, not a spec of
- * its own). So is the spec of a door of a feature kind that has no service of its own
+ * its own), and so is `<file>.spec.ts` beside a logic file its slot declares (`logic`), measured like a logic role. So is the spec of a door of a
+ * feature kind that has no service of its own
  * (`<provider>.webhook.spec.ts`, `<channel>.gateway.spec.ts`, `<channel>.subscription.spec.ts` beside its door, in the kind's slot);
  * the quality rules of R48 judge the service specs.
  */
 import { basename } from "node:path"
-import type { HfsUnitRole, HfsView } from "./hfs.ts"
+import type { HfsClassification, HfsUnitRole, HfsView } from "./hfs.ts"
 
 /** A unit-tested role, or an optional logic role whose spec the coverage slot asks for. */
 export interface SpecRole {
@@ -63,8 +64,25 @@ const optionalRoles = (hfs: HfsView): SpecRole[] => (hfs.ruleParams.logicRoles ?
 /** Whether a role admits a file by its slot (a role with no slot admits any slot; an optional logic role only a coverage-required slot). */
 const inRoleSlot = (hfs: HfsView, role: SpecRole, filename: string): boolean => (role.optional === true ? inCoverageSlot(hfs, filename) : role.slot === undefined || hfs.slotOf(filename) === role.slot)
 
+/** The path of a classified file below the instance root of its slot. */
+const slotRelative = (found: HfsClassification): string => (found.root !== undefined && found.path.startsWith(`${found.root}/`) ? found.path.slice(found.root.length + 1) : baseOf(found.path))
+
 /**
- * The unit-tested role whose spec a file is (`<name>.<role>.spec.ts`, in the role's slot), or null.
+ * The optional spec role of a spec beside a logic file its slot declares (`logic`): `passport.tokens.spec.ts` beside the declared
+ * `passport.tokens.ts` gives `{ role: "tokens", spec: "tokens.spec" }`, so the subject resolves as a logic role's does. It holds for that
+ * one declared file only, never for another `*.tokens.ts`, and adds no role name to the manifest.
+ */
+const declaredLogicRole = (hfs: HfsView, filename: string): SpecRole | null => {
+    const found = hfs.classify(filename)
+    const logic = found.slot === undefined ? undefined : hfs.slot(found.slot)?.logic
+    const subject = slotRelative(found).replace(/\.spec\.ts$/, ".ts")
+    if (logic?.includes(subject) !== true) return null
+    const role = subject.slice(0, -".ts".length).split(".").pop() ?? ""
+    return { role, spec: `${role}.spec`, optional: true }
+}
+
+/**
+ * The unit-tested role whose spec a file is (`<name>.<role>.spec.ts`, in the role's slot, or the spec beside a declared logic file), or null.
  *
  * @param {object} hfs - The HFS view.
  * @param {string} filename - The linted file.
@@ -73,7 +91,7 @@ const inRoleSlot = (hfs: HfsView, role: SpecRole, filename: string): boolean => 
 export const unitRoleOfSpec = (hfs: HfsView, filename: string): SpecRole | null => {
     if (!isUnitSpecFile(hfs, filename)) return null
     const name = baseOf(filename)
-    return [...unitRoles(hfs), ...optionalRoles(hfs)].find((role: SpecRole) => name.endsWith(`.${role.spec}.ts`) && inRoleSlot(hfs, role, filename)) ?? null
+    return [...unitRoles(hfs), ...optionalRoles(hfs)].find((role: SpecRole) => name.endsWith(`.${role.spec}.ts`) && inRoleSlot(hfs, role, filename)) ?? declaredLogicRole(hfs, filename)
 }
 
 /** Whether a file is the spec of a value role (`ruleParams.be.valueRoles`: a zod schema): its subject is a declared value, so the spec parses it and builds no testing module. */

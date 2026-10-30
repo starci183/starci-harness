@@ -3,9 +3,8 @@
 // lcov carries lines, functions and branches; the unit runner also enforces its statement threshold.
 import fs from 'node:fs';
 import path from 'node:path';
-import { coverageScope } from '../coverage-scope.mjs';
+import { coverageScope, measuredBy } from '../coverage-scope.mjs';
 import { editionRuleParams, effectiveSlot, slotInEdition } from '../edition-slots.mjs';
-import { globExpression } from '../../lib/glob.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { found } from './read.mjs';
 
@@ -102,17 +101,11 @@ function inventory({ files, all, repo, manifest }) {
   const prefix = repo.profile === 'app' || repo.sides ? 'be/' : '';
   const effective = manifestOfEdition(manifest, repo.edition ?? 'full');
   const scope = coverageScope(effective, repo.providers ?? repo.sides?.be?.providers ?? []);
-  const roots = scope.roots.map((dir) => globExpression(`${dir}**`));
-  const excludes = scope.excludes.map((dir) => globExpression(`${dir}**`));
+  const measures = measuredBy(scope);
   const candidates = [...new Set((all ?? files ?? []).map(slash))].filter((file) => file.startsWith(prefix) && file.endsWith('.ts') && !SPEC.test(file)).sort(byCodeUnit);
   const measured = [];
   const unmeasured = [];
-  for (const file of candidates) {
-    const relative = file.slice(prefix.length);
-    const role = /\.([a-z][a-z0-9-]*)\.ts$/.exec(relative)?.[1];
-    const measuredFile = scope.roles.includes(role) && roots.some((root) => root.test(relative)) && !excludes.some((exclude) => exclude.test(relative));
-    (measuredFile ? measured : unmeasured).push(file);
-  }
+  for (const file of candidates) (measures(file.slice(prefix.length)) ? measured : unmeasured).push(file);
   return { measured, unmeasured, unmeasuredScopes: scope.none.map((entry) => `${prefix}${entry}`), scope, prefix };
 }
 
