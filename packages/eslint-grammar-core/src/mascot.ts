@@ -4,7 +4,7 @@ import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Node } from "./lib/types.ts"
 /**
- * The mascot law (HFS R337 `FE_GENERATED_ART_OUTSIDE_FRAME`, R338 `FE_MASCOT_ASSET_SLOT_MISSING`): generated art renders
+ * The mascot law (HFS R338 `FE_GENERATED_ART_OUTSIDE_FRAME`, R339 `FE_MASCOT_ASSET_SLOT_MISSING`): generated art renders
  * at the Grammar's size scale and stays tied to the asset workflow's request.
  *
  * Generated art is a raster the asset workflow delivers under the public `/images/` tree, as `.webp` or `.png`. Drawn
@@ -81,7 +81,7 @@ const insideFrame = (node: Node): boolean => {
 export const generatedArtInMascotOrMediaFrame: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R337: generated art (a .webp or .png under /images/) renders only through Grammar's Mascot or inside a MediaFrame." },
+    docs: { description: "R338: generated art (a .webp or .png under /images/) renders only through Grammar's Mascot or inside a MediaFrame." },
     schema: [],
     messages: {
       outside:
@@ -124,7 +124,7 @@ const namesNothing = (attribute: TSESTree.JSXAttribute): boolean => {
 export const mascotAssetSlotRequired: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R338: every Grammar Mascot names its asset slot (assetSlot), tying the rendered art to the asset workflow's request." },
+    docs: { description: "R339: every Grammar Mascot names its asset slot (assetSlot), tying the rendered art to the asset workflow's request." },
     schema: [],
     messages: {
       missing:
@@ -150,8 +150,8 @@ export const rules: Record<string, Rule.RuleModule> = {
   "mascot-asset-slot-required": mascotAssetSlotRequired,
 }
 
-defineFamilyRules({ "generated-art-in-mascot-or-media-frame": generatedArtInMascotOrMediaFrame }, "knowledge/hfs/rules.yaml#R337")
-defineFamilyRules({ "mascot-asset-slot-required": mascotAssetSlotRequired }, "knowledge/hfs/rules.yaml#R338")
+defineFamilyRules({ "generated-art-in-mascot-or-media-frame": generatedArtInMascotOrMediaFrame }, "knowledge/hfs/rules.yaml#R338")
+defineFamilyRules({ "mascot-asset-slot-required": mascotAssetSlotRequired }, "knowledge/hfs/rules.yaml#R339")
 
 /** Every rule of this law is an error. */
 export const recommended: Record<string, "error"> = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-grammar/${name}`, "error"]))

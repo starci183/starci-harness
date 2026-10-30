@@ -24,7 +24,7 @@ rules:
   - id: FE-UI
     title: Compose the selected Grammar
     kind: mandatory
-    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320, R337, R338]
+    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320, R338, R339]
     requirement: |-
       Components compose the selected Grammar through its published entry and props; application CSS carries
       layout only (css.yaml). A missing visual capability is added to that Grammar before the app consumes it.
@@ -67,7 +67,7 @@ rules:
           Render it with the selected Grammar's Mascot at a step of its size scale (sm, md, lg, or hero for a split
           screen), passing the asset slot it was requested under (assetSlot, and assetSha256 once delivered); a scene
           or illustration is framed by MediaFrame. Generated art under /images/ never renders through a bare Image or
-          img (R337, R338).
+          img (R338, R339).
     verification:
       automated:
         - FE_VENDOR_BOUNDARY

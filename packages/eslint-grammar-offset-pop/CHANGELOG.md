@@ -3,6 +3,7 @@
 ## 0.16.0 - 2026-10-30
 
 - Changed: the peer moves to eslint-grammar-core 0.16.0; the bundled runtime copies are now generated from the hfs build (TypeScript emitted as .mjs) per runtime/bundle.json, with a drift check in CI; the copies the package keeps as its own are listed there and stay hand-maintained; the bundled canon pins name hfs 4.12.0, eslint-canon-be 3.9.0, eslint-canon-fe 9.6.0, the Grammar family 0.16.0, jest-preset 2.5.3 and test-world 1.3.3. No rule changed.
+- Changed: inherits the Mascot rules of eslint-grammar-core 0.16.0 (R338, R339).
 
 ## 0.15.34 - 2026-10-30
 

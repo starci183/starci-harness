@@ -45,5 +45,5 @@ Loading keeps the box transparent (no plate); a failed load keeps the box.
 - **App author decides:** the asset slot and its delivered file, the step by the table, `alt` copy.
 
 ## Rules
-BRAND-2, DISCIPLINE-3, A11Y-2; lint `starci-grammar/generated-art-in-mascot-or-media-frame` (R337),
-`starci-grammar/mascot-asset-slot-required` (R338).
+BRAND-2, DISCIPLINE-3, A11Y-2; lint `starci-grammar/generated-art-in-mascot-or-media-frame` (R338),
+`starci-grammar/mascot-asset-slot-required` (R339).

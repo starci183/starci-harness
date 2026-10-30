@@ -1,6 +1,6 @@
 # Generated art renders through Mascot
 
-Law module: `mascot.ts`. Catalogue: R337 FE_GENERATED_ART_OUTSIDE_FRAME, R338 FE_MASCOT_ASSET_SLOT_MISSING.
+Law module: `mascot.ts`. Catalogue: R338 FE_GENERATED_ART_OUTSIDE_FRAME, R339 FE_MASCOT_ASSET_SLOT_MISSING.
 
 Generated art is a raster the asset workflow delivers under the public `/images/` tree, as `.webp` or `.png`. Grammar's
 `Mascot` renders a character at one size scale (`sm` 96px, `md` 160px, `lg` 240px square, `hero` filling its host's

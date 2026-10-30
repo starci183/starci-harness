@@ -1,5 +1,5 @@
 /**
- * Twin tests for the mascot law (R337, R338): generated art under `/images/` renders only through Grammar's `Mascot` or
+ * Twin tests for the mascot law (R338, R339): generated art under `/images/` renders only through Grammar's `Mascot` or
  * inside a `MediaFrame`, and every `Mascot` names its asset slot.
  *
  *   node --test src/mascot.spec.ts
@@ -22,7 +22,7 @@ test("the law publishes two rules and both are errors", () => {
   })
 })
 
-test("R337: generated art under /images/ (webp or png) renders only through Mascot or inside MediaFrame", () => {
+test("R338: generated art under /images/ (webp or png) renders only through Mascot or inside MediaFrame", () => {
   slotTester().run("generated-art-in-mascot-or-media-frame", generatedArtInMascotOrMediaFrame, {
     valid: [
       // the Mascot renders generated art at its size scale
@@ -57,7 +57,7 @@ test("R337: generated art under /images/ (webp or png) renders only through Masc
   })
 })
 
-test("R338: every Mascot names its asset slot", () => {
+test("R339: every Mascot names its asset slot", () => {
   slotTester().run("mascot-asset-slot-required", mascotAssetSlotRequired, {
     valid: [
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Mascot src=\"/images/mascot/welcome.webp\" assetSlot=\"onboarding.welcome\" />" },

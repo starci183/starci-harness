@@ -224,7 +224,7 @@ host's height up to a cap for a split screen. The art is always contained, never
 with no loading plate; below 48rem a square step drops one step, and a hero is absent below 64rem unless the app keeps
 it. It is decorative unless its `alt` names it. It carries the asset-slot props of `Image` and `MediaFrame`, so the
 render is tied to the request that generated it; generated art reaches the page only through `Mascot` or a
-`MediaFrame` (lint R337, R338). The scale is Common's: a grammar changes nothing about it.
+`MediaFrame` (lint R338, R339). The scale is Common's: a grammar changes nothing about it.
 
 ### PageHeader
 
