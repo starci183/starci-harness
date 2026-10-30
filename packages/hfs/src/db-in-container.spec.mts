@@ -2,7 +2,7 @@
 // the database's own container against 127.0.0.1, each -f file is copied in first, and the password travels on stdin, never in argv or env.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dbTarget, inContainer, psqlTransaction, queryRows } from '../db/postgres.mjs';
+import { OWN_PASSWORD_SHELL, dbTarget, inContainer, ownContainerTarget, psqlTransaction, queryRows } from '../db/postgres.mjs';
 import { stackContext } from '../stack/context.mjs';
 import type { Spawn, SpawnOptions } from '../stack/context.mjs';
 
@@ -44,4 +44,33 @@ test('an in-container query reads its rows from the exec output', () => {
   const { ctx } = recorder({ stdout: '[{"history":false,"public_tables":0}]\n' });
   const rows = queryRows(ctx, inContainer(dbTarget(ctx, 'DATABASE_URL'), CONTAINER), 'select 1');
   assert.deepEqual(rows, [{ history: false, public_tables: 0 }]);
+});
+
+// An own-credentials target (ownContainerTarget, the automatic deploy): the role and database are read from the container, the password is read
+// INSIDE it from its POSTGRES_PASSWORD_FILE, and no value of this machine reaches the exec: no DATABASE_URL, no stdin password, no environment.
+test('an own-credentials target holds no URL and no password on this machine', () => {
+  const calls: Call[] = [];
+  const spawn = ((command: string, args: readonly string[], options: SpawnOptions = {}) => {
+    calls.push({ command, args, options });
+    if (args.includes('printf') || String(args[4]).startsWith('printf')) return { status: 0, stdout: 'appowner\nappdb\n', stderr: '' };
+    return { status: 0, stdout: '[{"n":1}]\n', stderr: '' };
+  }) as Spawn;
+  const ctx = stackContext({ cwd: '.', env: {}, spawn });
+  const target = ownContainerTarget(ctx, CONTAINER);
+  assert.equal(target.url, 'postgresql://appowner@127.0.0.1:5432/appdb');
+  assert.deepEqual(target.env, {});
+  assert.deepEqual(target.secrets, []);
+  assert.equal(target.own, true);
+  const rows = queryRows(ctx, target, 'select 1 as n');
+  assert.deepEqual(rows, [{ n: 1 }]);
+  const exec = calls.at(-1)!;
+  assert.deepEqual(exec.args.slice(0, 5), ['exec', CONTAINER, 'sh', '-c', OWN_PASSWORD_SHELL]);
+  assert.equal(exec.options.input, undefined, 'nothing is sent on stdin: the container reads its own secret file');
+  assert.match(OWN_PASSWORD_SHELL, /POSTGRES_PASSWORD_FILE/u);
+  assert.ok(calls.every((call) => call.options.env === undefined && call.options.input === undefined));
+});
+
+test('a container that answers something that is not a plain role and database name is refused', () => {
+  const spawn = (() => ({ status: 0, stdout: 'bad;role\ndb\n', stderr: '' })) as unknown as Spawn;
+  assert.throws(() => ownContainerTarget(stackContext({ cwd: '.', env: {}, spawn }), CONTAINER), /not a plain identifier/u);
 });

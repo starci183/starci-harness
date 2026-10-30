@@ -96,7 +96,7 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
   ingress: ['--execute', ...SSH],
   retire: ['--project', '--execute', ...SSH],
   build: ['--push', '--execute'],
-  accept: ['--release', '--execute', '--retry', ...SSH],
+  accept: ['--release', '--execute', '--retry', '--db-url-env', ...SSH],
   status: [...SSH],
 });
 
@@ -136,7 +136,6 @@ function checkDeployForm(flags: Flags): void {
   if (!flags.urgent && (flags['first-start'] || flags['db-service'])) throw refusal('STACK_USAGE', '--first-start and --db-service are the first start of an empty database under the urgent floor: add --urgent');
   if (flags.urgent && flags['ci-run']) throw refusal('STACK_USAGE', '--ci-run names the CI run that deploys; an urgent deploy runs no CI (the CI run of its tag is the back-fill)');
   if (flags['ci-run'] !== undefined && !/^[0-9]{1,20}$/u.test(flags['ci-run'])) throw refusal('STACK_USAGE', '--ci-run takes the numeric id of the CI run');
-  if (!flags.urgent && (flags['db-url-env'] || flags['backup-out'])) throw refusal('STACK_USAGE', '--db-url-env and --backup-out choose the urgent floor\'s database and backup folder: add --urgent');
 }
 
 /** `--image api=ghcr.io/o/x@sha256:...` (repeatable or comma separated) -> { api: 'ghcr.io/o/x@sha256:...' }. */
@@ -183,7 +182,7 @@ const OPTIONS: Record<Action, (input: OptionInput) => Record<string, unknown>> =
   backup: ({ flags }) => ({ swarmState: flags['swarm-state'] === true, execute: flags.execute === true }),
   ingress: ({ flags, positional }) => ({ action: positional[0], execute: flags.execute === true, args: positional.slice(1) }),
   build: ({ flags }) => ({ push: flags.push === true, execute: flags.execute === true }),
-  accept: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, retrySeconds: number(flags, 'retry') }),
+  accept: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, retrySeconds: number(flags, 'retry'), dbUrlEnv: flags['db-url-env'] }),
   status: () => ({}),
   retire: ({ flags }) => ({ projects: flags.project ?? [], execute: flags.execute === true }),
   jobs: ({ flags, positional }) => ({ action: positional[0], args: positional.slice(1), execute: flags.execute === true }),

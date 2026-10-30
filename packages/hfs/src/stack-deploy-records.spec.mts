@@ -402,12 +402,12 @@ test('an urgent deploy is an attempt of its own trigger, journals its floor refu
   const rendered = { renderRelease: async (_c: unknown, _k: unknown, o: { out: string }) => { fs.writeFileSync(path.join(o.out, 'stack.yaml'), NEW_STACK); return { ok: true, lines: [] }; } };
   const result = await deployRelease(ctx, config, { sourceSha: sha, execute: true, urgent: true, out, reason: 'tonight' }, { ...deps, ...rendered } as Partial<DeployDeps>);
   assert.equal(result.ok, false);
-  assert.equal(result.refused?.code, 'STACK_URGENT_BACKUP_FAILED');
+  assert.equal(result.refused?.code, 'STACK_DEPLOY_BACKUP_FAILED');
   const doc = phasesOf(records) as unknown as { trigger: string; urgent: { role: string; reason: string; tag: string }; outcome: string; error: { code: string } };
   assert.equal(doc.trigger, 'urgent');
   assert.deepEqual(doc.urgent, { role: 'owner', reason: 'tonight', tag: 'v1.0.0' });
   assert.equal(doc.outcome, 'refused');
-  assert.equal(doc.error.code, 'STACK_URGENT_BACKUP_FAILED');
+  assert.equal(doc.error.code, 'STACK_DEPLOY_BACKUP_FAILED');
   assert.equal(records.calls[0], 'try:urgent');
   assert.equal(records.lock, null);
 });

@@ -34,7 +34,15 @@ export interface RestampPair { from: string; to: string }
 export interface DatabaseDecl {
   migrationsDir: string; archiveDir: string | null; baseline: string | null; standard: string | null;
   heldBack: string[]; restamp: RestampPair[]; postCutover: PostCutover | null;
+  /** Where the database runs: `stack` is a service of the environment's own stack (the deploy reaches it inside its container), `external` is outside it (the deploy keeps `--db-url-env`). */
+  target: DatabaseTarget;
+  /** The stack service of a `stack` database. */
+  service: string;
 }
+/** Where the database of an app runs (see DatabaseDecl.target). */
+export type DatabaseTarget = 'stack' | 'external';
+/** Which migrations a pass applies: all of them, the expand ones a deploy applies before the services update, or the contract ones it applies after accept. */
+export type MigrationPhase = 'all' | 'expand' | 'contract';
 /** An archived migration: its file name under the restamped version, and that version. */
 interface ArchiveRow { name: string; version: string }
 /** The migration files of the app classified: baseline pair, held-back, forward, restamp pairs and archive. */
@@ -65,6 +73,7 @@ const matches = (pattern: RegExp): Check => (value) => typeof value === 'string'
 const listOf = (item: Check): Check => (value) => Array.isArray(value) && value.every((entry) => item(entry));
 const dirOk: Check = (value) => typeof value === 'string' && value.split('/').every((part) => SEGMENT.test(part) && part !== '..');
 const pairOk: Check = (value) => plain(value) && Object.keys(value as Block).length === 2 && matches(STAMP)((value as Block).from) && matches(STAMP)((value as Block).to);
+const SERVICE = /^[a-z][a-z0-9_-]*$/u;
 const POST_FIELDS = ['schema', 'functionPrefixes', 'functionNames', 'functions', 'minAgeHours'];
 const POST_CHECKS: Record<string, Check> = {
   schema: matches(IDENT), functionPrefixes: listOf(matches(IDENT)), functionNames: listOf(matches(IDENT)),
@@ -80,9 +89,11 @@ const CHECKS: Record<string, [Check, string]> = {
   heldBack: [listOf(matches(NAME)), 'must be a list of migration names'],
   restamp: [listOf(pairOk), 'must be a list of { from, to } fourteen-digit stamps'],
   postCutover: [postOk, `must use only ${POST_FIELDS.join(', ')} with valid values`],
+  target: [(value) => value === 'stack' || value === 'external', 'must be stack (a service of the environment stack) or external'],
+  service: [matches(SERVICE), `must match ${SERVICE} (the stack service that runs the database)`],
 };
 
-const DEFAULTS: Readonly<DatabaseDecl> = Object.freeze({ migrationsDir: MIGRATIONS_DIR, archiveDir: null, baseline: null, standard: null, heldBack: [], restamp: [], postCutover: null });
+const DEFAULTS: Readonly<DatabaseDecl> = Object.freeze({ migrationsDir: MIGRATIONS_DIR, archiveDir: null, baseline: null, standard: null, heldBack: [], restamp: [], postCutover: null, target: 'stack', service: 'db' });
 
 /** Judges the `database:` block. Returns { config } or { problems }; every field is optional (`standard` needs `baseline`). */
 function normalizeDatabase(block: unknown): { config: DatabaseDecl; problems?: undefined } | { config?: undefined; problems: string[] } {
@@ -163,6 +174,24 @@ export function buildModel(root: string, decl: DatabaseDecl): MigrationModel {
   return { ...model, pushVersions: new Set([...base, ...model.pushPending]), allowed: new Set([...base, ...model.pushPending, ...model.heldVersions]) };
 }
 
+const fileOf = (model: MigrationModel, version: string): string => model.files.find((file) => file.startsWith(`${version}_`)) as string;
+
+/* ---- phases: expand before the services update, contract after accept */
+
+/** True for a contract migration, a file named `<stamp>_..contract_...sql` (BE-PERSISTENCE-19): destructive DDL that runs only after the release is accepted. */
+export const isContractMigration = (file: string): boolean => /^\d{14}_(?:[A-Za-z0-9-]+_)?contract_[A-Za-z0-9_-]+\.sql$/u.test(file);
+
+/**
+ * The model one phase of a deploy works with. `expand` leaves the contract migrations out of the forward set (they are not pending yet, and a
+ * history that already holds them is still explained); `contract` keeps only them. The baseline stays in both: it was applied before.
+ */
+export function phaseModel(model: MigrationModel, phase: MigrationPhase): MigrationModel {
+  if (phase === 'all') return model;
+  const keep = (version: string): boolean => isContractMigration(fileOf(model, version)) === (phase === 'contract');
+  const pushPending = model.pushPending.filter(keep);
+  return { ...model, pushPending, pushVersions: new Set([...(model.baseline === null ? [] : [model.baseline]), ...pushPending]) };
+}
+
 /* ---- the target */
 
 /** The database of `--db-url-env` (default DATABASE_URL). */
@@ -206,7 +235,6 @@ export function planMigration(model: MigrationModel, remote: ReadonlySet<string>
   return { done, repairs, reverts, mark, push, bootstrap, missingFiles, unexpected: [...sim].filter((version) => !model.allowed.has(version)), final: sim.size };
 }
 
-const fileOf = (model: MigrationModel, version: string): string => model.files.find((file) => file.startsWith(`${version}_`)) as string;
 
 function planLines(model: MigrationModel, session: MigrationSession, remote: ReadonlySet<string>, plan: MigrationPlan): string[] {
   return [
@@ -223,7 +251,7 @@ function planLines(model: MigrationModel, session: MigrationSession, remote: Rea
 
 const dataOf = (model: MigrationModel, plan: MigrationPlan, remote: ReadonlySet<string>, extra: Record<string, unknown>): Record<string, unknown> => ({
   remoteCount: remote.size, repairs: plan.repairs.length, reverts: plan.reverts, baseline: model.baseline, markBaseline: plan.mark, push: plan.push,
-  heldBack: model.heldVersions, done: plan.done, ...extra,
+  heldBack: model.heldVersions, done: plan.done, pushFiles: plan.push.map((version) => fileOf(model, version)), ...extra,
 });
 
 /* ---- applying */
@@ -255,8 +283,8 @@ function applyPlan(session: MigrationSession, plan: MigrationPlan): string[] {
  * read-only inventory of cron jobs and queues, see withInventory; this function stays ok while work is pending, for the urgent floor); --execute applies it,
  * armed with STARCI_DB_ARMED=1 unless the database is on the loopback (the local db service of `npm run db:push`). Already baseline + forward: `nothing to do`, no mutating call, ok.
  */
-export async function migrateDatabase(ctx: VerbContext, decl: DatabaseDecl, options: { execute?: boolean; urlEnv?: string | undefined; target?: DbTarget } = {}): Promise<VerbResult> {
-  const model = buildModel(ctx.cwd, decl);
+export async function migrateDatabase(ctx: VerbContext, decl: DatabaseDecl, options: { execute?: boolean; urlEnv?: string | undefined; target?: DbTarget; phase?: MigrationPhase } = {}): Promise<VerbResult> {
+  const model = phaseModel(buildModel(ctx.cwd, decl), options.phase ?? 'all');
   const session: MigrationSession = { ctx, model, target: resolveTarget(ctx, options) };
   const remote = listRemote(session);
   const plan = planMigration(model, remote);

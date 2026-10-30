@@ -2,6 +2,9 @@
 // deploy: render, provision, store the release record, pre-pull, `docker stack deploy`, converge, post-deploy tasks (deploy.postDeploy, when declared), verify, accept, prune. A failure at or
 // after the stack deploy redeploys the previous accepted release from its STORED bytes; a failure before it leaves the services untouched.
 // Without `execute` a deploy renders locally and prints the plan: NO remote call at all. A rollback cannot undo data effects.
+// An app that declares the `database:` block gets the database phases of db-phases.mjs in every deploy (owner approval 2026-10-31): migrate preview, a
+// verified backup only when something is pending, the expand migrations inside the database container before the stack deploy, the contract migrations
+// after accept, and an automatic first start when no release was ever accepted. An app without the block deploys exactly as before.
 // An urgent deploy (`urgent`, owner ruling urgent-release 2026-10-29) runs the safety floor of urgent-floor.mjs first (fresh verified encrypted
 // backup with a test decrypt, rollback target, migrate preview then execute) and refuses with the floor's own code when a step of it fails; its
 // first start (`firstStart`) deploys the stack with only the database running (the `deploy-hold` step), proves the database empty and migrates it inside its own
@@ -25,6 +28,8 @@ import { describeClash, edgeCollisions, reconcileEdgeAliases } from './edge-alia
 import { firstLine, tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { hasPlaceholderDigest, isReleaseId } from './digest.mjs';
+import { contractPhase, declaredDatabase, expandPhase, firstStartHooks, FLOOR_DEPS, unknownDatabaseService } from './db-phases.mjs';
+import type { PhaseInput } from './db-phases.mjs';
 import { failure, refusal } from './errors.mjs';
 import { recordedAttempt } from './journal.mjs';
 import type { AttemptMeta, Recorder } from './journal.mjs';
@@ -75,7 +80,7 @@ export interface DeployOptions {
 export interface RollbackOptions { release?: string | null | undefined; execute?: boolean | undefined; timeoutSeconds?: number | undefined; sshCmd?: string | null | undefined; lockWaitSeconds?: number | undefined }
 
 /** What an accept takes. */
-export interface AcceptOptions { release?: string | null | undefined; execute?: boolean | undefined; retrySeconds?: number | undefined; sshCmd?: string | null | undefined; lockWaitSeconds?: number | undefined }
+export interface AcceptOptions { release?: string | null | undefined; execute?: boolean | undefined; retrySeconds?: number | undefined; sshCmd?: string | null | undefined; lockWaitSeconds?: number | undefined; dbUrlEnv?: string | undefined }
 
 /** The collaborators of a deploy (see the header); the specs inject stubs. */
 export interface DeployDeps {
@@ -361,7 +366,7 @@ async function prepareRelease(ctx: StackContext, config: DeployConfig, options: 
 }
 
 async function deployExecute(ctx: StackContext, config: DeployConfig, options: DeployOptions, d: DeployDeps, out: string, seams: { run: Runner; store: ReleaseStore; rec: Recorder }): Promise<DeployOutcome> {
-  const { store, rec } = seams;
+  const { store, rec, run } = seams;
   const prepared = await prepareRelease(ctx, config, options, d, out, seams);
   const { releaseId, previous } = prepared;
   const lines = [...prepared.lines];
@@ -374,10 +379,29 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
   // The first start of a self-hosted database (urgent-floor.mjs): the services that need its schema must not start against an empty one (their
   // healthchecks fail and update_config rolls them back), so the stack is first deployed with only the database running, the schema is
   // bootstrapped and migrated, and then the real stack is deployed.
-  const hold = options.firstStartStep && options.firstStartDb ? writeHoldOverride(config, out, options.firstStartDb) : null;
+  // An app that declares the `database:` block migrates in every deploy (db-phases.mjs); with no accepted release the first start is chosen by itself.
+  const database = options.urgent === true ? null : await declaredDatabase(ctx, config);
+  const phase: PhaseInput | null = database ? { ctx, config, database, f: { ...FLOOR_DEPS, ...d.floor }, run, dbUrlEnv: options.dbUrlEnv, backupOut: options.backupOut } : null;
+  const unknown = database ? unknownDatabaseService(config, database) : null;
+  if (unknown) return { ok: false, refused: unknown, lines: [...lines, 'deploy not started; the services are untouched'], data: { ...data, refused: unknown.code } };
+  let first = options.firstStartStep && options.firstStartDb ? { step: options.firstStartStep, service: options.firstStartDb } : null;
+  let firstCode: string | null = null;
+  if (phase && !first && phase.database.target === 'stack' && !previous) {
+    const automatic = firstStartHooks(phase);
+    first = { service: automatic.service, step: async () => { const outcome = await automatic.step(); firstCode = outcome.code ?? null; return outcome; } };
+  }
+  if (phase && !first) {
+    const expanded = await rec.phase('migrate', () => expandPhase(phase), (done) => done.ok);
+    rec.note({ backup: expanded.record.backup, migrations: expanded.record.applied });
+    lines.push(...expanded.lines);
+    steps.push(...expanded.steps);
+    data.migrations = expanded.record;
+    if (!expanded.ok) return { ok: false, refused: expanded.refused, lines: [...lines, 'deploy not started; the services are untouched'], data: { ...data, refused: expanded.refused?.code } };
+  }
+  const hold = first ? writeHoldOverride(config, out, first.service) : null;
   const failed = await runSteps([
     ...(hold ? [['deploy-hold', () => stackDeploy(ctx, config, stackFile, [hold])] satisfies Step] : []),
-    ...(options.firstStartStep ? [['first-start', options.firstStartStep] satisfies Step] : []),
+    ...(first ? [['first-start', first.step] satisfies Step] : []),
     ['deploy', () => stackDeploy(ctx, config, stackFile)],
     ['edge', async () => d.reconcileEdge(ctx, config, stackFile)],
     ['converge', async () => { const converged = await d.convergeStack(ctx, config, { since, timeoutSeconds: options.timeoutSeconds }); snapshot(ctx, config, d, rec, 'converge'); return converged; }],
@@ -387,17 +411,29 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
   ], lines, steps, rec);
   if (!failed && skipPublic) {
     data.pendingAccept = true;
-    return { ok: true, lines: [...lines, `deployed release ${releaseId}: converged and verified inside the stack; the public hosts were NOT checked and the release is NOT accepted yet`, `next: starci app stack ingress publish --env ${config.env} --execute, then starci app stack accept --env ${config.env} --release ${releaseId} --execute`], data };
+    return { ok: true, lines: [...lines, ...(phase && !first ? ['db: the contract migrations (if any) run when the release is accepted'] : []), `deployed release ${releaseId}: converged and verified inside the stack; the public hosts were NOT checked and the release is NOT accepted yet`, `next: starci app stack ingress publish --env ${config.env} --execute, then starci app stack accept --env ${config.env} --release ${releaseId} --execute`], data };
   }
   if (!failed) {
     await housekeeping(ctx, config, d, store, { previous, out }, lines);
+    // The contract migrations run only now, with the release accepted and serving: the previous release is no longer the one the stack runs.
+    const contract = phase && !first ? await rec.phase('contract', () => contractPhase(phase), (done) => done.ok) : null;
+    if (contract) {
+      lines.push(...contract.lines);
+      rec.note({ migrations: [...((data.migrations as { applied?: string[] } | undefined)?.applied ?? []), ...contract.applied] });
+      steps.push({ step: 'contract', ok: contract.ok });
+      data.migrations = { ...(data.migrations as object), contractApplied: contract.applied };
+    }
+    if (contract && !contract.ok) return { ok: false, lines: [...lines, `release ${releaseId} is accepted and serving; its contract migration is red: the owner decides`], data: { ...data, accepted: true, contractFailed: true } };
     return { ok: true, lines: [...lines, `deployed release ${releaseId}`], data };
   }
   lines.push(`deploy failed at ${failed}`);
-  if (!previous) return { ok: false, lines: [...lines, 'no previous accepted release; services were rolled back by update_config where they had a previous spec'], data };
+  const migrations = data.migrations as { applied?: string[]; backup?: { receiptPath?: string } | null } | undefined;
+  if (migrations?.applied?.length) lines.push(`db: the ${migrations.applied.length} expand migration(s) this deploy applied stay (the previous release keeps working on the expanded schema; a rollback restores services, never data); the backup ${migrations.backup?.receiptPath ?? ''} is the way back for data`);
+  const stopped = firstCode ? { refused: { code: firstCode, message: 'the first start failed' } } : {};
+  if (!previous) return { ok: false, lines: [...lines, 'no previous accepted release; services were rolled back by update_config where they had a previous spec'], data, ...stopped };
   const back = await redeployStored(ctx, config, d, store, previous, out, steps, rec);
   data.rolledBack = back.ok;
-  return { ok: false, lines: [...lines, ...back.lines], data };
+  return { ok: false, lines: [...lines, ...back.lines], data, ...stopped };
 }
 
 /** What starts an attempt: the owner's urgent deploy, a CI run (`--ci-run`) or a manual dispatch. */
@@ -426,9 +462,11 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
     const dryRun = async () => {
       const { rendered, releaseId } = await render();
       const post = config.postDeploy.length > 0 ? ` post-deploy tasks (${config.postDeploy.join(', ')}),` : '';
+      const database = options.urgent === true ? null : await declaredDatabase(ctx, config);
+      const databasePlan = database ? `; database (${database.target === 'stack' ? `inside the ${database.service} container, no URL held` : 'external, by --db-url-env'}): migrate preview, a verified backup only when a migration is pending, the expand migrations before the deploy, the contract migrations after the accept, and an automatic first start when no release was ever accepted` : '';
       const plan = options.skipPublic
-        ? `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} and verified inside the stack (public hosts skipped); it would stay pending until ingress publish and stack accept`
-        : `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} verified, accepted`;
+        ? `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} and verified inside the stack (public hosts skipped); it would stay pending until ingress publish and stack accept${databasePlan}`
+        : `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} verified, accepted${databasePlan}`;
       return { ok: true, lines: [...(rendered.lines ?? []), plan], data: { releaseId, steps: [{ step: 'render', ok: true }], executed: false } };
     };
     if (options.execute !== true) {
@@ -532,7 +570,11 @@ export async function acceptRelease(ctx: StackContext, config: DeployConfig, opt
       await rec.phase('accept', () => acceptObserved(ctx, config, d, store, rec, { out, releaseId: release }));
       lines.push(`accepted release ${release}`);
       await housekeeping(ctx, config, d, store, { previous: previous || null, out }, lines);
-      return { ok: true, lines, data: { release, accepted: true, executed: true } };
+      const database = await declaredDatabase(ctx, config);
+      const contract = database ? await rec.phase('contract', () => contractPhase({ ctx, config, database, f: { ...FLOOR_DEPS, ...d.floor }, run: null, dbUrlEnv: options.dbUrlEnv }), (done) => done.ok) : null;
+      if (contract) { lines.push(...contract.lines); rec.note({ migrations: contract.applied }); }
+      if (contract && !contract.ok) return { ok: false, lines: [...lines, `release ${release} is accepted and serving; its contract migration is red: the owner decides`], data: { release, accepted: true, executed: true, contractFailed: true } };
+      return { ok: true, lines, data: { release, accepted: true, executed: true, ...(contract ? { contractApplied: contract.applied } : {}) } };
     });
   } finally {
     fs.rmSync(out, { recursive: true, force: true });

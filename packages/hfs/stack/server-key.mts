@@ -78,7 +78,7 @@ export const RESTORE_WORKFLOW = 'stack-key-restore.yml';
 
 const RECIPIENT = /^age1[a-z0-9]+$/u;
 /** A command run as root: directly when the deploy user is root, else over passwordless sudo, the script read from stdin. */
-const AS_ROOT = 'if [ "$(id -u)" -eq 0 ]; then sh -s; else sudo -n sh -s; fi';
+export const AS_ROOT = 'if [ "$(id -u)" -eq 0 ]; then sh -s; else sudo -n sh -s; fi';
 
 /**
  * The directories, after root's PATH, where age-keygen is looked for: sudo's secure_path (AlmaLinux 10, RHEL) leaves out
