@@ -343,6 +343,18 @@ roles:
     dna: [DNA-COMMON-BACKDROP-GROUND, DNA-COMMON-ACCENT-CORNER]
     lint: [starci-grammar/generated-art-in-mascot-or-media-frame, starci-grammar/mascot-asset-slot-required]
 
+  - id: freestyle
+    ui: ui/components/freestyle.md
+    renderers: [Freestyle]
+    vendorParity: []                              # no HeroUI part: a Common region
+    slots: ["children: the app's own elements and CSS", "reason: required, why no Grammar component fits"]
+    variants: {}
+    sizes: { fills: "its host's block and inline size" }
+    states: []
+    grammarMayChange: ["nothing: it adds no paint, inset or radius"]
+    dna: []
+    lint: [starci-grammar/freestyle-has-reason]
+
   - id: shell
     ui: ui/composition.md
     renderers: [WorkspaceShell, TopBar, NavigationFeatureNav, Sidebar, PageContainer, PrimaryRailLayout]

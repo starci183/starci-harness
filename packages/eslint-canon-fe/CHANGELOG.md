@@ -1,5 +1,10 @@
 # Changelog
 
+## 9.6.3 - 2026-10-31
+
+- Changed: the bundled canon pins name @starci/grammar 0.16.3 (the chat-named pane frame is now PaneLayout, no alias: grammar names are generic). The surface-rules spec uses PaneLayout.
+- Added: lib/freestyle (`exemptFreestyle`, `freestyleContext`): no-arbitrary-value, no-app-surface-paint, no-raw-brand-value, no-list-panel-padding, no-inline-class-name and no-native-img do not report the raw elements inside a `<Freestyle>` subtree of the same file; a Grammar component inside it is judged as before (owner ruling grammar-freestyle-region). Specs: src/freestyle.spec.ts.
+
 ## 9.6.2 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).

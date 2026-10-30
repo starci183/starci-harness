@@ -955,6 +955,18 @@
      * inset; its corners stay square but the accent one). The copy sits at the top; the artwork takes the height left, so
      * a hero Mascot fills it.
      */
+    /*
+     * Freestyle (ruling grammar-freestyle-region): the app's own region. It fills its host and adds no paint, inset or
+     * radius of its own; what is inside is the app's.
+     */
+    .starci-core-freestyle {
+        display: block;
+        box-sizing: border-box;
+        min-width: 0;
+        inline-size: 100%;
+        block-size: 100%;
+    }
+
     .starci-core-backdrop {
         position: relative;
         display: flex;
@@ -2730,7 +2742,7 @@
         }
     }
 
-    .starci-core-chat-workspace {
+    .starci-core-pane-layout {
         display: flex;
         height: 100%;
         min-height: 0;
@@ -2740,21 +2752,21 @@
         background: var(--background, var(--starci-core-canvas, Canvas));
     }
 
-    .starci-core-chat-workspace-header,
-    .starci-core-chat-workspace-composer,
-    .starci-core-chat-workspace-rail-trigger-boundary {
+    .starci-core-pane-layout-header,
+    .starci-core-pane-layout-composer,
+    .starci-core-pane-layout-rail-trigger-boundary {
         min-width: 0;
         flex: none;
     }
 
-    .starci-core-chat-workspace-rail-trigger-boundary {
+    .starci-core-pane-layout-rail-trigger-boundary {
         display: flex;
         justify-content: flex-end;
         padding: 0.5rem 1rem;
         border-bottom: 1px solid var(--separator, var(--starci-core-separator, GrayText));
     }
 
-    .starci-core-chat-workspace-rail-trigger {
+    .starci-core-pane-layout-rail-trigger {
         display: inline-flex;
         min-width: var(--starci-core-control-min-size, 2.5rem);
         min-height: var(--starci-core-control-min-size, 2.5rem);
@@ -2769,14 +2781,14 @@
         font-weight: 500;
     }
 
-    .starci-core-chat-workspace-rail-trigger:focus-visible,
-    .starci-core-chat-workspace-conversation:focus-visible,
-    .starci-core-chat-workspace-overlay-rail:focus-visible {
+    .starci-core-pane-layout-rail-trigger:focus-visible,
+    .starci-core-pane-layout-conversation:focus-visible,
+    .starci-core-pane-layout-overlay-rail:focus-visible {
         outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
         outline-offset: -2px;
     }
 
-    .starci-core-chat-workspace-layout {
+    .starci-core-pane-layout-layout {
         display: grid;
         min-height: 0;
         min-width: 0;
@@ -2785,11 +2797,11 @@
         gap: var(--grammar-region-gap, 1.5rem);
     }
 
-    .starci-core-chat-workspace-layout-without-rail {
+    .starci-core-pane-layout-layout-without-rail {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .starci-core-chat-workspace-primary {
+    .starci-core-pane-layout-primary {
         display: flex;
         min-height: 0;
         min-width: 0;
@@ -2797,7 +2809,7 @@
         overflow: hidden;
     }
 
-    .starci-core-chat-workspace-conversation {
+    .starci-core-pane-layout-conversation {
         min-height: 0;
         min-width: 0;
         flex: 1;
@@ -2806,35 +2818,35 @@
         scroll-behavior: smooth;
     }
 
-    .starci-core-chat-workspace-composer {
+    .starci-core-pane-layout-composer {
         border-top: 1px solid var(--separator, var(--starci-core-separator, GrayText));
         background: var(--background, var(--starci-core-canvas, Canvas));
     }
 
-    .starci-core-chat-workspace-inline-rail { display: none; }
+    .starci-core-pane-layout-inline-rail { display: none; }
 
-    .starci-core-chat-workspace-drawer-content {
+    .starci-core-pane-layout-drawer-content {
         right: 0 !important;
         left: auto !important;
         width: min(24rem, calc(100dvw - 1rem)) !important;
         max-width: calc(100dvw - 1rem) !important;
     }
 
-    .starci-core-chat-workspace-drawer-dialog {
+    .starci-core-pane-layout-drawer-dialog {
         width: 100% !important;
         height: 100% !important;
         min-height: 0 !important;
         max-width: none !important;
     }
 
-    .starci-core-chat-workspace-drawer-body {
+    .starci-core-pane-layout-drawer-body {
         min-height: 0;
         min-width: 0;
         padding: 0;
         overflow: hidden;
     }
 
-    .starci-core-chat-workspace-overlay-rail {
+    .starci-core-pane-layout-overlay-rail {
         height: 100%;
         min-height: 0;
         min-width: 0;
@@ -2843,7 +2855,7 @@
         overscroll-behavior: contain;
     }
 
-    .starci-core-chat-workspace-drawer-close {
+    .starci-core-pane-layout-drawer-close {
         width: 2.5rem !important;
         height: 2.5rem !important;
         border: 1px solid var(--separator, var(--starci-core-separator, GrayText)) !important;
@@ -2924,19 +2936,19 @@
     }
 
     @media (min-width: 48rem) {
-        .starci-core-chat-workspace-layout[data-grammar-chat-workspace-rail-width="compact"] {
+        .starci-core-pane-layout-layout[data-grammar-pane-layout-rail-width="compact"] {
             grid-template-columns: minmax(0, 1fr) minmax(14rem, var(--starci-core-rail-compact, 16rem));
         }
 
-        .starci-core-chat-workspace-layout[data-grammar-chat-workspace-rail-width="standard"] {
+        .starci-core-pane-layout-layout[data-grammar-pane-layout-rail-width="standard"] {
             grid-template-columns: minmax(0, 1fr) minmax(16rem, var(--starci-core-rail-standard, 20rem));
         }
 
-        .starci-core-chat-workspace-layout[data-grammar-chat-workspace-rail-width="wide"] {
+        .starci-core-pane-layout-layout[data-grammar-pane-layout-rail-width="wide"] {
             grid-template-columns: minmax(0, 1fr) minmax(20rem, var(--starci-core-rail-wide, 24rem));
         }
 
-        .starci-core-chat-workspace-inline-rail {
+        .starci-core-pane-layout-inline-rail {
             display: block;
             min-height: 0;
             min-width: 0;
@@ -3791,18 +3803,18 @@
     }
 
     /* --- Chat workspace: the compact rail trigger's resting paint. --- */
-    .starci-core-chat-workspace-rail-trigger {
+    .starci-core-pane-layout-rail-trigger {
         box-shadow: 0 1px 2px 0 color-mix(in srgb, CanvasText 8%, transparent);
         outline: none;
         transition: background-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
     }
 
-    .starci-core-chat-workspace-rail-trigger:hover {
+    .starci-core-pane-layout-rail-trigger:hover {
         background: var(--default, var(--starci-core-surface-secondary, Canvas));
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .starci-core-chat-workspace-rail-trigger {
+        .starci-core-pane-layout-rail-trigger {
             transition: none;
         }
     }

@@ -40,7 +40,7 @@ const useIsoLayoutEffect = typeof window === "undefined" ? () => {} : useLayoutE
  * `--starci-core-fill-top` and any Grammar bottom chrome (a phone navigation bar) into `--starci-core-fill-bottom`; CSS
  * does the rest (`100dvh` minus both minus the bottom inset), so the server
  * render already has a sensible full-height fallback. Children fill it (a SurfaceCard with `height="fill"`, a
- * ChatWorkspace).
+ * PaneLayout).
  */
 export const FillViewport = ({ children, minHeight = "md", bottomInset = "page", label }: FillViewportProps) => {
     const ref = useRef<HTMLDivElement>(null)

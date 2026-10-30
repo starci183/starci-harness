@@ -5,6 +5,7 @@
 
 import type { TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
+import { exemptFreestyle } from "./lib/freestyle.ts"
 import { isComponentFile, roleOfFile } from "./lib/scope.ts"
 
 /** The owner a cn call may sit in, and the exports that publish one. */
@@ -86,7 +87,7 @@ const usesImportedClassName = (node: Node | null | undefined, imported: Readonly
 }
 
 /** Report className values written directly in component JSX. */
-export const noInlineClassName = defineRule({
+export const noInlineClassName = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "Component JSX must import a named className declaration." },
@@ -104,7 +105,7 @@ export const noInlineClassName = defineRule({
       },
     }
   },
-})
+}))
 
 /** Require every classNames declaration to use the colocated classNames.ts convention. */
 export const classNamesInColocatedFile = defineRule({

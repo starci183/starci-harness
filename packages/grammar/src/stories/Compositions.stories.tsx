@@ -621,11 +621,11 @@ export const WorkspaceShell: Story = {
   ),
 };
 
-const ChatDemo = () => {
+const PaneLayoutDemo = () => {
   const [railOpen, setRailOpen] = useState(false);
   return (
     <div style={{ height: '36rem', display: 'flex' }}>
-      <G.ChatWorkspace
+      <G.PaneLayout
         label="Tutor chat"
         header={<G.Text weight="semibold">Tutor chat</G.Text>}
         conversationLabel="Messages"
@@ -652,8 +652,8 @@ const ChatDemo = () => {
   );
 };
 
-export const ChatWorkspace: Story = {
-  render: () => <ChatDemo />,
+export const PaneLayout: Story = {
+  render: () => <PaneLayoutDemo />,
 };
 
 /** One message: incoming on the recessed face, outgoing on the accent-soft pair; actions appear on hover or focus. */

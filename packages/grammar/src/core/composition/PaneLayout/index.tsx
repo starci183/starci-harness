@@ -12,20 +12,20 @@ import { VerticalScrollRegion } from "../../composite/VerticalScrollRegion/index
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import {
-    chatWorkspaceClassName,
-    chatWorkspaceComposerClassName,
-    chatWorkspaceConversationClassName,
-    chatWorkspaceDrawerBodyClassName,
-    chatWorkspaceDrawerCloseClassName,
-    chatWorkspaceDrawerContentClassName,
-    chatWorkspaceDrawerDialogClassName,
-    chatWorkspaceHeaderClassName,
-    chatWorkspaceInlineRailClassName,
-    chatWorkspaceOverlayRailClassName,
-    chatWorkspacePrimaryClassName,
-    chatWorkspaceRailTriggerBoundaryClassName,
-    chatWorkspaceRailTriggerClassName,
-    getChatWorkspaceLayoutClassName,
+    paneLayoutClassName,
+    paneLayoutComposerClassName,
+    paneLayoutConversationClassName,
+    paneLayoutDrawerBodyClassName,
+    paneLayoutDrawerCloseClassName,
+    paneLayoutDrawerContentClassName,
+    paneLayoutDrawerDialogClassName,
+    paneLayoutHeaderClassName,
+    paneLayoutInlineRailClassName,
+    paneLayoutOverlayRailClassName,
+    paneLayoutPrimaryClassName,
+    paneLayoutRailTriggerBoundaryClassName,
+    paneLayoutRailTriggerClassName,
+    getPaneLayoutLayoutClassName,
 } from "./classNames.js"
 
 const compactRailQuery = "(max-width: 47.999rem)"
@@ -43,7 +43,7 @@ const getCompactRailSnapshot = () => (
 
 const getCompactRailServerSnapshot = () => false
 
-type ChatWorkspaceBaseProps = Omit<ComponentPropsWithoutRef<"section">, "aria-label" | "children"> & {
+type PaneLayoutBaseProps = Omit<ComponentPropsWithoutRef<"section">, "aria-label" | "children"> & {
     /** Accessible name for the complete workspace landmark. */
     readonly label: string
     /** Optional non-scrolling workspace heading or toolbar. */
@@ -56,7 +56,7 @@ type ChatWorkspaceBaseProps = Omit<ComponentPropsWithoutRef<"section">, "aria-la
     readonly composer: ReactNode
 }
 
-type ChatWorkspaceWithRailProps = {
+type PaneLayoutWithRailProps = {
     /** Caller-owned supporting content; Grammar supplies only layout and overlay mechanics. */
     readonly rail: ReactNode
     /** Accessible name shared by the persistent rail and compact drawer. */
@@ -72,7 +72,7 @@ type ChatWorkspaceWithRailProps = {
     readonly railWidth?: "compact" | "standard" | "wide"
 }
 
-type ChatWorkspaceWithoutRailProps = {
+type PaneLayoutWithoutRailProps = {
     readonly rail?: undefined
     readonly railLabel?: never
     readonly railOpenLabel?: never
@@ -83,17 +83,17 @@ type ChatWorkspaceWithoutRailProps = {
 }
 
 /**
- * Generic bounded chat workbench composition.
+ * Generic bounded multi-pane layout: a header, a scrolling main region with a pinned bottom bar, and an optional side rail.
  *
- * The host supplies a height. ChatWorkspace owns the remaining height chain,
+ * The host supplies a height. PaneLayout owns the remaining height chain,
  * keeps the composer outside the conversation scroll owner, and transforms one
  * optional persistent supporting rail into a controlled compact drawer.
  */
-export type ChatWorkspaceProps = ChatWorkspaceBaseProps & (
-    ChatWorkspaceWithRailProps | ChatWorkspaceWithoutRailProps
+export type PaneLayoutProps = PaneLayoutBaseProps & (
+    PaneLayoutWithRailProps | PaneLayoutWithoutRailProps
 )
 
-export const ChatWorkspace = (props: ChatWorkspaceProps) => {
+export const PaneLayout = (props: PaneLayoutProps) => {
     const {
         className,
         composer,
@@ -137,16 +137,16 @@ export const ChatWorkspace = (props: ChatWorkspaceProps) => {
         <section
             {...sectionProps}
             aria-label={label}
-            className={cn(chatWorkspaceClassName, className)}
-            data-grammar-chat-workspace="true"
-            data-component="ChatWorkspace"
+            className={cn(paneLayoutClassName, className)}
+            data-grammar-pane-layout="true"
+            data-component="PaneLayout"
             data-tier="composition"
-            data-grammar-chat-workspace-rail={hasRail ? "present" : "absent"}
+            data-grammar-pane-layout-rail={hasRail ? "present" : "absent"}
         >
             {header === undefined ? null : (
                 <header
-                    className={chatWorkspaceHeaderClassName}
-                    data-grammar-chat-workspace-slot="header"
+                    className={paneLayoutHeaderClassName}
+                    data-grammar-pane-layout-slot="header"
                 >
                     <ButtonPlacementProvider placement="chrome">{header}</ButtonPlacementProvider>
                 </header>
@@ -157,33 +157,33 @@ export const ChatWorkspace = (props: ChatWorkspaceProps) => {
                     isOpen={railConfig.isOpen}
                     onOpenChange={railConfig.onOpenChange}
                 >
-                    <div className={chatWorkspaceRailTriggerBoundaryClassName} data-contract="BOUNDARY-1 PADDING-4 PADDING-2">
-                        <Drawer.Trigger className={chatWorkspaceRailTriggerClassName} data-contract="PADDING-3 SURFACE-2 FONT-2 TONE-1">
+                    <div className={paneLayoutRailTriggerBoundaryClassName} data-contract="BOUNDARY-1 PADDING-4 PADDING-2">
+                        <Drawer.Trigger className={paneLayoutRailTriggerClassName} data-contract="PADDING-3 SURFACE-2 FONT-2 TONE-1">
                             {railConfig.openLabel}
                         </Drawer.Trigger>
                     </div>
                     <Drawer.Backdrop>
                         <Drawer.Content
-                            className={chatWorkspaceDrawerContentClassName}
+                            className={paneLayoutDrawerContentClassName}
                             placement="right"
                         >
-                            <Drawer.Dialog className={chatWorkspaceDrawerDialogClassName} data-grammar-nesting="surface">
+                            <Drawer.Dialog className={paneLayoutDrawerDialogClassName} data-grammar-nesting="surface">
                                 <SurfaceNesting>
                                     <Drawer.Header>
                                         <Drawer.Heading>{railConfig.label}</Drawer.Heading>
                                     </Drawer.Header>
                                     <Drawer.CloseTrigger
                                         aria-label={railConfig.closeLabel}
-                                        className={chatWorkspaceDrawerCloseClassName}
+                                        className={paneLayoutDrawerCloseClassName}
                                         data-contract="SURFACE-2 TONE-1"
                                     />
-                                    <Drawer.Body className={chatWorkspaceDrawerBodyClassName} data-contract="OVERFLOW-2 PADDING-0">
+                                    <Drawer.Body className={paneLayoutDrawerBodyClassName} data-contract="OVERFLOW-2 PADDING-0">
                                         <VerticalScrollRegion
                                             aria-label={railConfig.label}
-                                            className={chatWorkspaceOverlayRailClassName}
+                                            className={paneLayoutOverlayRailClassName}
                                             data-contract="OVERFLOW-4 OVERFLOW-5 PADDING-4"
-                                            data-grammar-chat-workspace-rail-presentation="overlay"
-                                            data-grammar-chat-workspace-slot="rail"
+                                            data-grammar-pane-layout-rail-presentation="overlay"
+                                            data-grammar-pane-layout-slot="rail"
                                             isScrollable
                                             role="region"
                                             tabIndex={0}
@@ -199,18 +199,18 @@ export const ChatWorkspace = (props: ChatWorkspaceProps) => {
             ) : null}
 
             <div
-                className={getChatWorkspaceLayoutClassName(railWidth, hasRail)}
+                className={getPaneLayoutLayoutClassName(railWidth, hasRail)}
                 data-contract="GAP-5"
-                data-grammar-chat-workspace-layout="true"
-                data-grammar-chat-workspace-rail-width={hasRail ? railWidth : undefined}
+                data-grammar-pane-layout-layout="true"
+                data-grammar-pane-layout-rail-width={hasRail ? railWidth : undefined}
             >
-                <div className={chatWorkspacePrimaryClassName} data-grammar-chat-workspace-slot="primary">
+                <div className={paneLayoutPrimaryClassName} data-grammar-pane-layout-slot="primary">
                     <VerticalScrollRegion
                         aria-label={conversationLabel}
-                        className={chatWorkspaceConversationClassName}
+                        className={paneLayoutConversationClassName}
                         data-contract="OVERFLOW-4 OVERFLOW-5"
-                        data-grammar-chat-workspace-scroll-owner="conversation"
-                        data-grammar-chat-workspace-slot="conversation"
+                        data-grammar-pane-layout-scroll-owner="conversation"
+                        data-grammar-pane-layout-slot="conversation"
                         isScrollable
                         role="region"
                         tabIndex={0}
@@ -218,16 +218,16 @@ export const ChatWorkspace = (props: ChatWorkspaceProps) => {
                         {conversation}
                     </VerticalScrollRegion>
                     <div
-                        className={chatWorkspaceComposerClassName}
+                        className={paneLayoutComposerClassName}
                         data-contract="BOUNDARY-1"
-                        data-grammar-chat-workspace-slot="composer"
+                        data-grammar-pane-layout-slot="composer"
                     >
                         {composer}
                     </div>
                 </div>
 
                 {hasRail && !isCompactRail ? (
-                    <div className={chatWorkspaceInlineRailClassName}>
+                    <div className={paneLayoutInlineRailClassName}>
                         <Rail
                             height="fill"
                             inset="none"
@@ -238,10 +238,10 @@ export const ChatWorkspace = (props: ChatWorkspaceProps) => {
                         >
                             <VerticalScrollRegion
                                 aria-label={railConfig.label}
-                                className={chatWorkspaceOverlayRailClassName}
+                                className={paneLayoutOverlayRailClassName}
                                 data-contract="OVERFLOW-4 OVERFLOW-5 PADDING-4"
-                                data-grammar-chat-workspace-rail-presentation="inline"
-                                data-grammar-chat-workspace-slot="rail"
+                                data-grammar-pane-layout-rail-presentation="inline"
+                                data-grammar-pane-layout-slot="rail"
                                 isScrollable
                                 role="region"
                                 tabIndex={0}

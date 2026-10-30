@@ -1,4 +1,5 @@
 import type { Rule } from "eslint"
+import { freestyleContext } from "@starci/eslint-canon-fe/lib/freestyle.mjs"
 import type { Context, RuleDefinition } from "./types.ts"
 
 /** The ordered ownership test that governs every Grammar-specific lint rule. */
@@ -12,6 +13,15 @@ export const RULE_OWNERSHIP = "knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHI
 export const defineRule = (definition: RuleDefinition): Rule.RuleModule => ({
   meta: definition.meta,
   create: (context) => definition.create(context as Context) as Rule.RuleListener,
+})
+
+/**
+ * A rule that leaves the raw elements of a Freestyle subtree alone (owner ruling grammar-freestyle-region): a finding about a
+ * plain element, or its class or style, inside `<Freestyle>` is dropped; a Grammar component inside it is judged as before.
+ */
+export const exemptFreestyle = (rule: Rule.RuleModule): Rule.RuleModule => ({
+  ...rule,
+  create: (context) => rule.create(freestyleContext(context)),
 })
 
 /** Attach the governing ownership rule and the rule's behavioral source without changing enforcement. */

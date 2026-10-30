@@ -1,6 +1,7 @@
 /** Universal closed-token discipline, independent of a Grammar scale. */
 import { classTextVisitors } from "./lib/class-text.ts"
 import { defineRule, type Recommended, type Rules } from "./lib/rule.ts"
+import { exemptFreestyle } from "./lib/freestyle.ts"
 
 /** A bracketed length: a value chosen once, for one screen, findable by nobody. */
 const ARBITRARY_LENGTH =
@@ -10,7 +11,7 @@ const ARBITRARY_LENGTH =
 const RAW_COLOUR = /\b(?:text|bg|border|ring|from|to|via|fill|stroke|shadow|decoration)-\[#[0-9a-fA-F]/
 
 /** An arbitrary value escapes the system, whatever it happens to evaluate to. */
-export const noArbitraryValue = defineRule({
+export const noArbitraryValue = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "Bracketed lengths and raw colours escape the closed vocabulary." },
@@ -31,7 +32,7 @@ export const noArbitraryValue = defineRule({
       if (colour) context.report({ node, messageId: "colour", data: { cls: colour[0] } })
     })
   },
-})
+}))
 
 /** Rules of universal token discipline. */
 export const rules = { "no-arbitrary-value": noArbitraryValue } satisfies Rules

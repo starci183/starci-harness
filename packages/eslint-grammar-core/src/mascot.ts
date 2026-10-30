@@ -1,7 +1,7 @@
 import type { Rule, Scope } from "eslint"
 import type { TSESTree } from "@typescript-eslint/types"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
-import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
+import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contract.ts"
 import type { Node } from "./lib/types.ts"
 /**
  * The mascot law (HFS R338 `FE_GENERATED_ART_OUTSIDE_FRAME`, R339 `FE_MASCOT_ASSET_SLOT_MISSING`): generated art renders
@@ -78,7 +78,7 @@ const insideFrame = (node: Node): boolean => {
 }
 
 /** Generated art under `/images/` renders only through `Mascot` or inside a `MediaFrame`. */
-export const generatedArtInMascotOrMediaFrame: Rule.RuleModule = defineRule({
+export const generatedArtInMascotOrMediaFrame: Rule.RuleModule = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "R338: generated art (a .webp or .png under /images/) renders only through Grammar's Mascot or inside a MediaFrame." },
@@ -104,7 +104,7 @@ export const generatedArtInMascotOrMediaFrame: Rule.RuleModule = defineRule({
       },
     }
   },
-})
+}))
 
 /** True when an attribute names nothing: no value, an empty string, or `undefined`. */
 const namesNothing = (attribute: TSESTree.JSXAttribute): boolean => {

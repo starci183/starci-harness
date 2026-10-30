@@ -4,6 +4,7 @@
 // its sealed secret. The verb also declares redis in hfs.json sides.be.backing with its bullmq client, and renders the one
 // declared Redis into every docker-swarm environment of the stack: the stateful component, its backup and restore record, the
 // sealed redis-password member and its grants, the AOF service on a named volume and an internal network, and the images lock.
+import { nextMigrationStamp } from './migration-stamp.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
@@ -137,9 +138,8 @@ function migrationFiles({ repoRoot, beRoot, patterns, now }: { repoRoot: string,
   if (!sections.length) return [];
   const folder = path.join(repoRoot, 'db', 'migrations');
   const migrations = fs.existsSync(folder) ? fs.readdirSync(folder).filter((file) => MIGRATION.test(file)).sort(byCodeUnit) : [];
-  const stamp = new Date(now()).toISOString().replace(/\D/g, '').slice(0, 14);
   const latest = migrations.at(-1)?.slice(0, 14);
-  if (latest && stamp <= latest) throw new ScaffoldError('HFS_ADD_MIGRATION_ORDER', `the current UTC timestamp ${stamp} is not later than the latest migration ${latest}; fix the clock or wait for the next second`);
+  const stamp = nextMigrationStamp(now, latest);
   const text = sections.map(([, , source]) => template(`be/patterns/${source}`)).join('\n');
   return [{ relative: `db/migrations/${stamp}_${sections.map(([name]) => name).join('-')}.sql`, text }];
 }

@@ -55,7 +55,7 @@ wrappers:
   - { file: core/composite/VerticalScrollRegion/index.tsx, wraps: [ScrollShadow],
       overrides: [
         { kind: slot, target: ".scroll-shadow--vertical", ruling: grammar-scroll-region-fills-parent, status: proposed, reason: "a contained scroll region fills its parent's block size, so the parent owns the height cap and one owner scrolls each axis" } ] }
-  - { file: core/composition/ChatWorkspace/index.tsx, wraps: [Drawer] }
+  - { file: core/composition/PaneLayout/index.tsx, wraps: [Drawer] }
   - { file: core/composition/Sidebar/index.tsx, wraps: [Description, Header, Label, ListBox, Separator],
       overrides: [
         { kind: style, target: "ListBox.Item:background", ruling: grammar-menu-drawer-live-time, reason: "the current navigation item paints its exclusive mark" } ] }

@@ -6,6 +6,7 @@ import { reactHookOf } from "./lib/react.ts"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import type { PathStep } from "./lib/bindings.ts"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
+import { exemptFreestyle } from "./lib/freestyle.ts"
 import type { TypedString } from "./lib/typed-class-values.ts"
 
 /** A same-file variable definition: its declarator holds the binding pattern and the initializer. */
@@ -294,7 +295,7 @@ export const nestedControlVariant = defineRule({
 })
 
 /** App classes carry layout; Grammar owns surface paint. */
-export const noAppSurfacePaint = defineRule({
+export const noAppSurfacePaint = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "App composition CSS is layout-only; Grammar paints surfaces." },
@@ -344,10 +345,10 @@ export const noAppSurfacePaint = defineRule({
       },
     }
   },
-})
+}))
 
 /** PADDING-0: app padding wrappers cannot add a second horizontal inset to Grammar's list or section caption. */
-export const noListPanelPadding = defineRule({
+export const noListPanelPadding = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "PADDING-0: panel lists and section captions share the Grammar surface's content edge." },
@@ -375,7 +376,7 @@ export const noListPanelPadding = defineRule({
       },
     }
   },
-})
+}))
 
 /** BOUNDARY-1 case-5: only content bands carry inset; horizontal separators reach the surface edges. */
 export const dividerFullBleed = defineRule({

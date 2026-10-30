@@ -86,7 +86,7 @@ for (const Surface of ["SurfaceCard", "SurfaceListCard", "Sidebar", "Drawer", "D
 }
 
 test("ANATOMY-2: Tabs distinguishes painted slots, transparent containers and overlay triggers", () => {
-  const imports = 'import { WorkspaceShell, TopBar, NavigationFeatureNav, Rail, ChatWorkspace, SurfaceAccordionCard, Dialog, Tabs } from "@starci/grammar/core"; '
+  const imports = 'import { WorkspaceShell, TopBar, NavigationFeatureNav, Rail, PaneLayout, SurfaceAccordionCard, Dialog, Tabs } from "@starci/grammar/core"; '
   assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
     valid: [
       imports + 'const Page=()=> <Tabs variant="primary" />',
@@ -98,7 +98,7 @@ test("ANATOMY-2: Tabs distinguishes painted slots, transparent containers and ov
       imports + 'const props={id:"details"}; const Page=()=> <SurfaceAccordionCard frame="unpainted" {...props}><Tabs variant="primary" /></SurfaceAccordionCard>',
       imports + 'const Page=()=> <SurfaceAccordionCard frame="unpainted" {...(active ? {id:"details"} : {frame:"unpainted"})}><Tabs variant="primary" /></SurfaceAccordionCard>',
       imports + 'const Page=()=> <WorkspaceShell primary={<Tabs variant="primary" />} />',
-      imports + 'const Page=()=> <ChatWorkspace rail={<Tabs variant="primary" />} />',
+      imports + 'const Page=()=> <PaneLayout rail={<Tabs variant="primary" />} />',
       imports + 'const Page=()=> <Dialog trigger={<Tabs variant="primary" />}><Tabs /></Dialog>',
       imports + 'const Page=()=> <TopBar actions={<Tabs variant="secondary" />} />',
     ],

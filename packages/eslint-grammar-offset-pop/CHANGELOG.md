@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.3 - 2026-10-31
+
+- Changed: the peer moves to eslint-grammar-core 0.16.3 (R341 freestyle-has-reason); the bundled canon pins name @starci/grammar 0.16.3 (the chat-named pane frame is now PaneLayout, no alias: grammar names are generic).
+
 ## 0.16.2 - 2026-10-31
 
 - Changed: the peer moves to eslint-grammar-core 0.16.2; the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).

@@ -323,6 +323,18 @@ rulings:
     words: "sao mà background dc nửa màn thôi thế???"
     ruling: "A WorkspaceShell is at least one viewport tall, so the canvas under a short page runs to the bottom of the screen."
     owner: "@starci/grammar src/common/styles.css .starci-core-workspace-shell"
+  - id: grammar-names-are-generic
+    date: '2026-10-31'
+    status: live
+    words: "tên gì chung chung tính chất grammar là cấp ui ux chung chung k bias tính năng hiểu k, ghi vào knowlege đi"
+    ruling: "The grammar is a generic UI/UX layer: a component, prop or token name says what it does as a layout or UI role (PaneLayout, SurfaceCard, Rail), never a product feature (chat, customer, order, invoice), so any product can reach for it. The multi-pane frame is PaneLayout; its old chat-named spelling is removed, not aliased (removedVocabulary)."
+    owner: "@starci/grammar src/core/composition/PaneLayout; contexts/grammars/contract.md What a grammar provides; contexts/ui/components/page-header.md Owner split"
+  - id: grammar-freestyle-region
+    date: '2026-10-31'
+    status: live
+    words: "cái trang này free style đi trò div và làm bth thôi, thêm 1 component Freestyle hoặc tên gì đó tương đương đi trò, ý là cho custom nhưng vẫm bám grammar trừ bất đắc dĩ ntn"
+    ruling: "The grammar has one sanctioned escape hatch, Freestyle: a region that fills its host where the app writes its own plain divs and app CSS (layout, paint, radius, arbitrary values, absolutely positioned art) because no Grammar component fits. It names its reason, adds no paint of its own, and is a last resort: the rest of the page still follows the grammar, and a Grammar component used inside it is judged as before."
+    owner: "@starci/grammar src/core/composite/Freestyle; @starci/eslint-grammar-core src/freestyle.ts (R341) and exemptFreestyle; @starci/eslint-canon-fe src/lib/freestyle.ts; contexts/ui/components/freestyle.md"
   - id: STATE-8/loading-keeps-anatomy
     date: '2026-10-11'
     status: live
@@ -650,6 +662,10 @@ rulings:
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.
 removedVocabulary:
+  - spelling: ChatWorkspace
+    as: grammar composition
+    replacedBy: PaneLayout
+    ruling: "grammar-names-are-generic"
   - spelling: starci
     as: grammar family id
     replacedBy: core

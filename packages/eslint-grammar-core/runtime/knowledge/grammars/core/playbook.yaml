@@ -357,7 +357,7 @@ guidance:
       NumberField, DateField, TimeField, Select, ComboBox, DatePicker, DateRangePicker, Checkbox,
       CheckboxGroup, RadioGroup, OtpInput and PressableField resolve variant="secondary" inside it and
       variant="primary" outside. Compose the surface and omit the field variant.
-      Switch and Slider have no layer variant; a Radio follows its RadioGroup. ChatWorkspace's
+      Switch and Slider have no layer variant; a Radio follows its RadioGroup. PaneLayout's
       compact drawer also establishes the context. SurfaceCard and bounded SurfaceAccordionCard derive
       data-grammar-surface-depth from the parent context. The top layer is raised and a nested layer is
       subordinate; never raise both. The family DNA owns their surface paint.
@@ -597,22 +597,22 @@ presentation:
         Retained ownership reference, not proof of the current package/API. Verify actual installed source/props/tokens before use; correct outdated rows within selected maintenance scope using [source and maintenance](index.yaml#source-and-maintenance).
         A part that carries one rule per side or per property names that CSS property after the part (`item padding-inline`); one part and property has one rule.
       rows:
-        - component: ChatWorkspace
+        - component: PaneLayout
           element: drawer body, hasRail, isCompactRail
           rule: PADDING-0
-        - component: ChatWorkspace
+        - component: PaneLayout
           element: overlay rail, hasRail, isCompactRail
           rule: PADDING-4
-        - component: ChatWorkspace
+        - component: PaneLayout
           element: overlay rail, hasRail, not isCompactRail
           rule: PADDING-4
-        - component: ChatWorkspace
+        - component: PaneLayout
           element: rail trigger boundary padding-block, hasRail, isCompactRail
           rule: PADDING-2
-        - component: ChatWorkspace
+        - component: PaneLayout
           element: rail trigger boundary padding-inline, hasRail, isCompactRail
           rule: PADDING-4
-        - component: ChatWorkspace
+        - component: PaneLayout
           element: rail trigger, hasRail, isCompactRail
           rule: PADDING-3
         - component: EmptyNotice
@@ -959,7 +959,7 @@ presentation:
         source/props/tokens before use; correct outdated rows within selected maintenance scope using [source
         and maintenance](index.yaml#source-and-maintenance).
       rows:
-        - component: ChatWorkspace
+        - component: PaneLayout
           element: rail trigger, hasRail, isCompactRail
           rule: FONT-2
         - component: Heading

@@ -13,6 +13,7 @@
  */
 
 import { defineRule, type Rules, type Recommended } from "./lib/rule.ts"
+import { exemptFreestyle } from "./lib/freestyle.ts"
 import { attribute } from "./lib/ast.ts"
 
 /** Intrinsic elements a reader operates, that the grammar renders for the product. */
@@ -42,7 +43,7 @@ export const noNativeFormControl = defineRule({
 // -- NATIVE-2 --------------------------------------------------------------------------------------
 
 /** No bare `<img>`; the framework's image owns size, format, lazy loading and layout shift. */
-export const noNativeImg = defineRule({
+export const noNativeImg = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "Use `next/image`, never a bare `<img>`." },
@@ -59,7 +60,7 @@ export const noNativeImg = defineRule({
       },
     }
   },
-})
+}))
 
 // -- NATIVE-3 --------------------------------------------------------------------------------------
 

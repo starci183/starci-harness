@@ -53,7 +53,9 @@ and the tab labels stay real (STATE-8); the body's blocks own their own loading.
 - **Grammar owns:** the surface band, its top and inline inset, the separator at its bottom edge, the heading rank,
   the slot arrangement and wrapping, tabs on the separator; through `Page`, the body's measure and gutter, the region
   step between the band and the body and between its sections, and the clip that keeps the body inside the gutter.
-  Layout frames (`WorkspaceShell`, `PrimaryRailLayout`, `ChatWorkspace`) place regions only and never inset a page.
+  Layout frames (`WorkspaceShell`, `PrimaryRailLayout`, `PaneLayout`) place regions only and never inset a page.
+  A full-bleed multi-pane frame (a list column, a scrolling main region with a pinned bottom bar, an optional side rail
+  that becomes a drawer when narrow) is a `PaneLayout`, never a `SurfaceCard` wrapped around the panes.
 - **Knowledge decides:** page header vs section header; which slot carries a fact; one commit.
 - **App author decides:** the trail, the heading, the mark, the facts, the commands and the tabs.
 
