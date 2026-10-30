@@ -251,3 +251,9 @@ for (const entry of [
     Object.assign(rules, entry.rules)
     Object.assign(recommended, entry.recommended)
 }
+
+// The result cache of `starci app lint` (contexts/project/check-cache.md) reads these two declarations of the installed canon.
+export { crossFileInputs } from "./cross-file-inputs.ts"
+export type { CrossFileInput } from "./cross-file-inputs.ts"
+export { projectGraph } from "./project-graph.ts"
+export type { ProjectGraphFinding, ProjectGraphSnapshot } from "./project-graph.ts"
