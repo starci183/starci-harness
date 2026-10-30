@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderTargets } from '../sync/index.mjs';
+import type { AppSourceFacts, Presets } from '../sync/index.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { globExpression } from '../runtime/scripts/lib/glob.mjs';
 
@@ -26,11 +27,13 @@ const report = [
   { path: 'fe/apps/web/src/app/page.tsx', lines: 10, hits: 0 },
 ];
 
-const matches = (patterns, file) => patterns.some(pattern => globExpression(pattern).test(file));
-const selected = (config, paths, records) => records.filter(record => matches(paths, record.path) && !matches(config.ignore, record.path));
-const reachesTarget = (records, status) => {
-  const lines = records.reduce((total, record) => total + record.lines, 0);
-  const hits = records.reduce((total, record) => total + record.hits, 0);
+interface Rec { path: string; lines: number; hits: number }
+interface Rule { target: string; threshold: string }
+const matches = (patterns: string[], file: string) => patterns.some((pattern: string) => globExpression(pattern).test(file));
+const selected = (config: { ignore: string[] }, paths: string[], records: Rec[]) => records.filter(record => matches(paths, record.path) && !matches(config.ignore, record.path));
+const reachesTarget = (records: Rec[], status: Rule) => {
+  const lines = records.reduce((total: number, record: Rec) => total + record.lines, 0);
+  const hits = records.reduce((total: number, record: Rec) => total + record.hits, 0);
   assert.ok(lines > 0, 'a status keeps its measured files');
   return 100 * hits / lines >= Number.parseFloat(status.target);
 };
@@ -45,21 +48,22 @@ for (const edition of ['full', 'lite']) {
     } };
     const source = {
       files: ['apps/api/src/api.module.ts', ...report.filter(record => record.path.startsWith('be/')).map(record => record.path.slice(3))],
-      read: file => file === 'apps/api/src/api.module.ts' ? "import { OrdersModule } from '@modules/domain/orders';" : '',
+      read: (file: string) => file === 'apps/api/src/api.module.ts' ? "import { OrdersModule } from '@modules/domain/orders';" : '',
     };
-    const target = renderTargets(hfs, {}, { source }).find(item => item.path === 'codecov.yml');
+    // reason: the spec feeds renderTargets no Sonar presets and only the files/read fields of the source facts, the two it reads for the Codecov scope.
+    const target = renderTargets(hfs, {} as unknown as Presets, { source: source as unknown as AppSourceFacts }).find(item => item.path === 'codecov.yml');
     assert.ok(target, 'the managed Codecov configuration is rendered');
     const config = parseYaml(target.content);
     const project = config.coverage.status.project.default;
-    const retained = selected(config, project.paths, report).map(record => record.path);
+    const retained = selected(config, project.paths, report).map((record: Rec) => record.path);
     assert.deepEqual(retained, measured, 'the provider denominator is exactly the measured logic, including uncovered files');
     const allCovered = report.map(record => measured.includes(record.path) ? { ...record, hits: record.lines } : record);
     const statuses = [
-      ...Object.values(config.coverage.status).map(status => ({ paths: status.default.paths, rule: status.default })),
-      ...config.component_management.individual_components.flatMap(component =>
-        config.component_management.default_rules.statuses.map(rule => ({ paths: component.paths, rule }))),
+      ...Object.values(config.coverage.status as Record<string, { default: Rule & { paths: string[] } }>).map((status) => ({ paths: status.default.paths, rule: status.default })),
+      ...config.component_management.individual_components.flatMap((component: { paths: string[] }) =>
+        config.component_management.default_rules.statuses.map((rule: Rule) => ({ paths: component.paths, rule }))),
     ];
-    assert.deepEqual(config.component_management.individual_components.map(component => component.component_id), ['api', 'platform']);
+    assert.deepEqual(config.component_management.individual_components.map((component: { component_id: string }) => component.component_id), ['api', 'platform']);
     for (const { paths, rule } of statuses) {
       assert.equal(String(rule.target), '100%');
       assert.equal(String(rule.threshold), '0%');

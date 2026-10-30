@@ -1,6 +1,7 @@
 // The ESLint child of `starci app lint` and `starci app check` runs on the heap the starci CLI hands it (STARCI_ESLINT_HEAP_MB, from the eslint
 // memory of ops/liveness.yaml): a typed lint of a large back end outgrew node's default 4 GB heap. Unset, ESLint runs on node's default.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +9,7 @@ import { tempRoot } from '../runtime/engine/temp-root.mjs';
 import { ESLINT_HEAP_ENV, eslintHeapArgs, runLinter } from '../lint/run.mjs';
 
 /** A side folder whose installed `eslint` is a stand-in reporting the node flags it was started with. */
-function side(t) {
+function side(t: TestContext) {
   const root = fs.mkdtempSync(path.join(tempRoot(), 'hfs-lint-heap-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const pkg = path.join(root, 'node_modules', 'eslint');
@@ -19,7 +20,7 @@ function side(t) {
   return root;
 }
 
-const withHeap = (t, value) => {
+const withHeap = (t: TestContext, value: string | undefined) => {
   const previous = process.env[ESLINT_HEAP_ENV];
   if (value === undefined) delete process.env[ESLINT_HEAP_ENV]; else process.env[ESLINT_HEAP_ENV] = value;
   t.after(() => { if (previous === undefined) delete process.env[ESLINT_HEAP_ENV]; else process.env[ESLINT_HEAP_ENV] = previous; });
@@ -28,13 +29,13 @@ const withHeap = (t, value) => {
 test('the ESLint child runs on the heap the CLI sets', async (t) => {
   withHeap(t, '8192');
   const linted = await runLinter({ cwd: side(t), pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'] });
-  assert.match(linted.results[0].messages[0].message, /--max-old-space-size=8192/u);
+  assert.match(linted.results![0].messages[0].message, /--max-old-space-size=8192/u);
 });
 
 test('without the CLI the ESLint child keeps node\'s default heap', async (t) => {
   withHeap(t, undefined);
   const linted = await runLinter({ cwd: side(t), pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'] });
-  assert.doesNotMatch(linted.results[0].messages[0].message, /max-old-space-size/u);
+  assert.doesNotMatch(linted.results![0].messages[0].message, /max-old-space-size/u);
 });
 
 test('a heap that is not a whole positive number of MiB is ignored', () => {

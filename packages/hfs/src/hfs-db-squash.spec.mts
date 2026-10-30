@@ -7,6 +7,7 @@
 // applied), the dropped extension absent.
 // A kept function calling an excluded one is refused with both names. Without a Docker daemon the verb refuses (exit 2) and so does the spec.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -17,6 +18,7 @@ import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { BOOTSTRAP_SQUASH_BEGIN, BOOTSTRAP_SQUASH_END } from '../runtime/scripts/hfs/rules/database-constants.mjs';
 import { baselineMarkers } from '../runtime/scripts/hfs/rules/database-baseline.mjs';
 import { DEFAULT_DROPPED_EXTENSIONS, queueDropped } from '../runtime/scripts/hfs/db-squash.mjs';
+import type { RenderedTarget } from '../sync/index.mjs';
 
 const IMAGE = 'postgres:17-alpine';
 const DOCKER = spawnSync('docker', ['version', '--format', '{{.Server.Version}}'], { encoding: 'utf8' }).status === 0;
@@ -56,14 +58,14 @@ create table if not exists supabase_migrations.schema_migrations (version text p
 insert into supabase_migrations.schema_migrations (version, name) values ('${STAMP}', 'init');
 `;
 
-const docker = (args, input) => spawnSync('docker', args, { input, encoding: 'utf8', maxBuffer: 1 << 28 });
-const psql = (container, database, sql) => {
+const docker = (args: string[], input?: string | undefined) => spawnSync('docker', args, { input, encoding: 'utf8', maxBuffer: 1 << 28 });
+const psql = (container: string, database: string, sql: string) => {
   const result = docker(['exec', '-i', container, 'psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', database, '-At', '-f', '-'], sql);
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
 };
 
-function app(t, chain) {
+function app(t: TestContext, chain: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-squash-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const [file, text] of Object.entries({ 'hfs.json': JSON.stringify({ kind: 'app', edition: 'lite' }), 'db/bootstrap.sql': BOOTSTRAP, [MIGRATION]: chain })) {
@@ -74,13 +76,13 @@ function app(t, chain) {
 }
 
 /** The committed history the baseline's archive rules read: the one active migration, as committed. */
-const committed = (chain) => (args) => {
+const committed = (chain: string) => (args: string[]) => {
   if (args[0] === 'merge-base') return { ok: true, stdout: 'base' };
   if (args[0] === 'ls-tree') return { ok: true, stdout: `${MIGRATION}\0` };
   return args[1] === `base:./${MIGRATION}` ? { ok: true, stdout: chain } : { ok: false, stdout: '' };
 };
 
-function squash(root, chain, port, database, extra = []) {
+function squash(root: string, chain: string, port: string | number, database: string, extra: string[] = []) {
   let stdout = '';
   let stderr = '';
   const env = { ...process.env, SOURCE_DB_URL: `postgres://postgres:source@127.0.0.1:${port}/${database}` };
@@ -90,7 +92,7 @@ function squash(root, chain, port, database, extra = []) {
 }
 
 /** A source container: `source` holds the chain, `refusing` the chain plus a kept function calling an excluded one, `unrecorded` no history. */
-function sourceContainer(t) {
+function sourceContainer(t: TestContext) {
   const name = `starci-squash-spec-${randomBytes(4).toString('hex')}`;
   const started = docker(['run', '-d', '--rm', '--name', name, '-e', 'POSTGRES_PASSWORD=source', '-p', '127.0.0.1::5432', IMAGE]);
   assert.equal(started.status, 0, started.stderr);
@@ -104,7 +106,7 @@ function sourceContainer(t) {
 ${CHAIN}`);
   psql(name, 'source', `${BOOTSTRAP}\n${CHAIN}\n${HISTORY}`);
   psql(name, 'refusing', `${BOOTSTRAP}\n${CHAIN}${WRAPPER}\n${HISTORY}`);
-  const port = /:(\d+)\s*$/.exec(docker(['port', name, '5432/tcp']).stdout.split('\n')[0])[1];
+  const port = /:(\d+)\s*$/.exec(docker(['port', name, '5432/tcp']).stdout.split('\n')[0]!)![1]!;
   return { name, port };
 }
 
@@ -203,14 +205,15 @@ test('squash previews, proves, writes four outputs that replay green, and refuse
 test('sync judges db/bootstrap.sql except the squash section, keeps that section on write, and flags a hand edit outside it', async (t) => {
   const { checkTargets, hashOf, writtenContent } = await import('../sync/index.mjs');
   const root = app(t, CHAIN);
-  const target = { path: 'db/bootstrap.sql', mode: 'section', content: BOOTSTRAP, hash: hashOf(BOOTSTRAP) };
+  // reason: the sync checks read path, mode, content and hash of a target; the render scope is not needed for this section judgement.
+  const target = { path: 'db/bootstrap.sql', mode: 'section', content: BOOTSTRAP, hash: hashOf(BOOTSTRAP) } as RenderedTarget;
   const section = `${BOOTSTRAP_SQUASH_BEGIN}\ncreate role "app_be";\n${BOOTSTRAP_SQUASH_END}\n`;
   const file = path.join(root, 'db/bootstrap.sql');
   fs.writeFileSync(file, `${BOOTSTRAP}${section}`);
-  assert.equal(checkTargets(root, [target])[0].status, 'ok');
+  assert.equal(checkTargets(root, [target])[0]!.status, 'ok');
   assert.equal(writtenContent(target, `stale\n${section}`), `${BOOTSTRAP}${section}`);
   fs.writeFileSync(file, `${BOOTSTRAP}${section}grant all on schema public to app_be;\n`);
-  assert.equal(checkTargets(root, [target])[0].status, 'drift');
+  assert.equal(checkTargets(root, [target])[0]!.status, 'drift');
   fs.writeFileSync(file, `${BOOTSTRAP}${BOOTSTRAP_SQUASH_BEGIN}\ncreate role "app_be";\n`);
-  assert.equal(checkTargets(root, [target])[0].status, 'drift');
+  assert.equal(checkTargets(root, [target])[0]!.status, 'drift');
 });

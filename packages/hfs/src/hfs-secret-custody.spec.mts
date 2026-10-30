@@ -4,8 +4,10 @@
 // proves: HFS_SECRET_OUTSIDE_ENC@full
 // Names and paths may be printed. Compare private test data only as booleans.
 import test from "node:test";
+import type { TestContext } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import type { SpawnSyncOptions } from "node:child_process";
 import path from "node:path";
 import { runGit } from "../runtime/scripts/api/git/lib.mjs";
 import { judge } from "../sync/hygiene.mjs";
@@ -23,6 +25,7 @@ import { canonCopyDriftFindings } from "../runtime/scripts/hfs/rules/canon-copy-
 import { secretCustodyOnlyFindings } from "../runtime/scripts/hfs/rules/secret-custody-only.mjs";
 import { liteSecretCustodyFindings } from "../runtime/scripts/hfs/rules/lite-secrets.mjs";
 import { secretRoots } from "../runtime/scripts/hfs/secret-files.mjs";
+import type { SecretToolOverrides } from "../runtime/scripts/hfs/secret-init.mjs";
 
 const RECIPIENT = `age1${"q".repeat(58)}`;
 const PRIVATE_KEY = `AGE-SECRET-KEY-1${"Q".repeat(58)}`;
@@ -30,7 +33,7 @@ const OTHER_KEY = `AGE-SECRET-KEY-1${"P".repeat(58)}`;
 const ENC = "ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]";
 const AGE_PAYLOAD =
   "-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWJsb2Nr\n-----END AGE ENCRYPTED FILE-----";
-const sealedDotenv = (keys, recipient = RECIPIENT) => {
+const sealedDotenv = (keys: string[], recipient = RECIPIENT) => {
   const members = keys.map((key) => `${key}=${ENC}`).join("\n");
   const payload = AGE_PAYLOAD.replaceAll("\n", String.raw`\n`);
   return `${members}\n` +
@@ -39,17 +42,18 @@ const sealedDotenv = (keys, recipient = RECIPIENT) => {
     `sops_mac=${ENC}\nsops_version=3.13.2\nsops_lastmodified=2026-01-01T00:00:00Z\n`;
 };
 
-const write = (root, file, text = "x\n") => {
+const write = (root: string, file: string, text: string | Buffer = "x\n") => {
   const target = path.join(root, file);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, text);
 };
-const codes = (findings) => findings.map((finding) => finding.code);
-const ctx = (root, files, edition) => ({
+const codes = (findings: { code: string }[]) => findings.map((finding) => finding.code);
+const ctx = (root: string, files: string[], edition: string) => ({
   repoRoot: root,
   files,
   repo: { profile: "app", edition },
-  inScope: undefined,
+  // reason: the finders default an absent inScope; the spec deliberately passes none.
+  inScope: undefined as unknown as (file: string) => boolean,
 });
 
 // The canon template bytes a scaffolded file must equal (sha256-judged, never content-compared).
@@ -167,7 +171,7 @@ test("SQL password scanning handles long role statements and repeated non-value 
 
 test("R06 pre-commit scanner refuses widened names from the index", (t) => {
   const { root } = app(t);
-  const git = (args) => {
+  const git = (args: string[]) => {
     const result = runGit(args, { cwd: root });
     assert.equal(result.status, 0, "fixture git operation succeeds");
     return result.stdout;
@@ -213,17 +217,17 @@ for (const edition of ["lite", "full"]) {
 
   test(`HFS_CANON_COPY_DRIFT (${edition}): a byte-equal canon copy and a drifted one`, (t) => {
     const { root } = app(t);
-    const drifted = CANON[0];
-    const pristine = CANON[1];
+    const drifted = CANON[0]!;
+    const pristine = CANON[1]!;
     for (const rel of CANON)
       write(root, rel, fs.readFileSync(path.join(TEMPLATE, rel)));
     write(root, drifted, "// locally edited\n");
     const findings = canonCopyDriftFindings(ctx(root, CANON, edition));
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].code, "HFS_CANON_COPY_DRIFT");
-    assert.equal(findings[0].path, drifted);
-    assert.ok(findings[0].expectedHash !== findings[0].actualHash);
-    assert.ok(!findings[0].message.includes(fs.readFileSync(path.join(TEMPLATE, drifted), "utf8").slice(0, 40)));
+    assert.equal(findings[0]!.code, "HFS_CANON_COPY_DRIFT");
+    assert.equal(findings[0]!.path, drifted);
+    assert.ok(findings[0]!.expectedHash !== findings[0]!.actualHash);
+    assert.ok(!findings[0]!.message.includes(fs.readFileSync(path.join(TEMPLATE, drifted), "utf8").slice(0, 40)));
     assert.equal(pristine !== drifted, true);
   });
 
@@ -295,7 +299,7 @@ test("HFS_SECRET_OUTSIDE_ENC (full): a sealed file outside its home is refused; 
     ctx(root, ["x/app.enc", ".starcistacks/dev/secrets/app.enc"], "full"),
   );
   assert.deepEqual(codes(findings), ["HFS_SECRET_OUTSIDE_ENC"]);
-  assert.equal(findings[0].path, "x/app.enc");
+  assert.equal(findings[0]!.path, "x/app.enc");
   assert.deepEqual(
     secretCustodyOnlyFindings(ctx(root, [".starcistacks/dev/secrets/app.enc"], "full")),
     [],
@@ -333,16 +337,16 @@ for (const edition of ["lite", "full"]) {
     for (const rel of CANON) write(root, rel, fs.readFileSync(path.join(TEMPLATE, rel)));
     const input = ctx(root, CANON, edition);
     assert.deepEqual(packagedFinder(input), []);
-    write(root, CANON[2], "// locally edited\n");
+    write(root, CANON[2]!, "// locally edited\n");
     assert.deepEqual(packagedFinder(input).map((finding) => [finding.path, finding.code]),
-      [[CANON[2], "HFS_CANON_COPY_DRIFT"]]);
+      [[CANON[2]!, "HFS_CANON_COPY_DRIFT"]]);
   });
 }
 
 // R253 judges the skeleton of the hfs the app pins, never of a newer hfs running the check: an installed copy at the pinned
 // version holds the canon an app's copy must equal, and with no copy of that version at hand the check leaves it to the
 // app's own run.
-const pinnedApp = (t, version) => {
+const pinnedApp = (t: TestContext, version: string) => {
   const { root } = app(t);
   write(root, "package.json", JSON.stringify({ name: "pinned-app", private: true, devDependencies: { "@starci/hfs": version } }));
   return root;
@@ -356,9 +360,9 @@ test("HFS_CANON_COPY_DRIFT: an app pinning an older hfs is judged by that hfs's 
   for (const rel of CANON) write(copy, path.join("templates", "be", "skeleton", rel), `// pinned ${rel}\n`);
   for (const rel of CANON) write(root, rel, `// pinned ${rel}\n`);
   assert.deepEqual(canonCopyDriftFindings(ctx(root, CANON, "full")), []);
-  write(root, CANON[1], fs.readFileSync(path.join(TEMPLATE, CANON[1])));
+  write(root, CANON[1]!, fs.readFileSync(path.join(TEMPLATE, CANON[1]!)));
   assert.deepEqual(canonCopyDriftFindings(ctx(root, CANON, "full")).map((finding) => [finding.path, finding.code]),
-    [[CANON[1], "HFS_CANON_COPY_DRIFT"]]);
+    [[CANON[1]!, "HFS_CANON_COPY_DRIFT"]]);
 });
 
 test("HFS_CANON_COPY_DRIFT: no copy of the pinned hfs at hand judges nothing against another version", (t) => {
@@ -369,11 +373,12 @@ test("HFS_CANON_COPY_DRIFT: no copy of the pinned hfs at hand judges nothing aga
 
 // A runProgram double of the selected-identity contract: version probes, the `age -y` recipient derivation and
 // the one sops file action. It records every call's argv and child env so the custody assertions can name them.
-const selectedTools = (calls) => ({
+interface Call { args: string[]; ageKey: string | undefined; hasKeyFile: boolean }
+const selectedTools = (calls: Call[]): SecretToolOverrides => ({
   resolveSops: () => process.execPath,
   resolveRealTool: () => process.execPath,
   secretEnv: () => ({ SOPS_AGE_KEY: PRIVATE_KEY }),
-  runProgram: (program, args, options) => {
+  runProgram: (_program: string, args: string[], options?: SpawnSyncOptions) => {
     // The selected-identity owner removes the key from the env map after the operation, so custody is
     // asserted on the snapshot taken while the child options are being built.
     calls.push({
@@ -381,7 +386,7 @@ const selectedTools = (calls) => ({
       ageKey: options?.env?.SOPS_AGE_KEY,
       hasKeyFile: "SOPS_AGE_KEY_FILE" in (options?.env ?? {}),
     });
-    const ok = (text) => ({
+    const ok = (text: string) => ({
       status: 0,
       signal: null,
       error: null,
@@ -401,7 +406,7 @@ const selectedTools = (calls) => ({
     };
   },
 });
-const keyNeverVisible = (calls, result, keys) => {
+const keyNeverVisible = (calls: Call[], result: { out: string; err: string }, keys: string[]) => {
   for (const call of calls)
     for (const arg of call.args)
       for (const key of keys) assert.ok(!String(arg).includes(key), "key on argv");
@@ -414,7 +419,7 @@ test("SOPS_AGE_KEY of .claude/secret.env reaches the sops child env only, and wi
   const keys = secretRoots(env, process.platform).identity;
   fs.mkdirSync(path.dirname(keys), { recursive: true });
   fs.writeFileSync(keys, `${OTHER_KEY}\n`, { mode: 0o600 });
-  const calls = [];
+  const calls: Call[] = [];
   const result = await run(["get", "--env", "dev", "app", "TOKEN", "--to-file"], {
     cwd: root,
     env,
@@ -434,7 +439,7 @@ test("an explicit environment SOPS_AGE_KEY is not displaced by secret.env", asyn
   const { root, dir, env } = app(t);
   write(dir, "app.enc", sealedDotenv(["TOKEN"]));
   env.SOPS_AGE_KEY = OTHER_KEY;
-  const calls = [];
+  const calls: Call[] = [];
   const result = await run(["get", "--env", "dev", "app", "TOKEN", "--to-file"], {
     cwd: root,
     env,
@@ -442,7 +447,7 @@ test("an explicit environment SOPS_AGE_KEY is not displaced by secret.env", asyn
   });
   assert.equal(result.code, 0, result.err);
   const decrypt = calls.find((call) => call.args[0] === "decrypt");
-  assert.equal(decrypt.ageKey, OTHER_KEY);
+  assert.equal(decrypt!.ageKey, OTHER_KEY);
   keyNeverVisible(calls, result, [PRIVATE_KEY, OTHER_KEY]);
 });
 
@@ -453,7 +458,7 @@ test("the CLI loads .claude/secret.env itself before considering legacy keys.txt
   const keys = secretRoots(env, process.platform).identity;
   fs.mkdirSync(path.dirname(keys), { recursive: true });
   fs.writeFileSync(keys, `${OTHER_KEY}\n`, { mode: 0o600 });
-  const calls = [];
+  const calls: Call[] = [];
   const tools = selectedTools(calls);
   delete tools.secretEnv;
   const result = await run(["get", "--env", "dev", "app", "TOKEN", "--to-file"], {
@@ -473,7 +478,7 @@ test("an empty SOPS_AGE_KEY in secret.env refuses instead of falling back to key
   const keys = secretRoots(env, process.platform).identity;
   fs.mkdirSync(path.dirname(keys), { recursive: true });
   fs.writeFileSync(keys, `${OTHER_KEY}\n`, { mode: 0o600 });
-  const calls = [];
+  const calls: Call[] = [];
   const tools = { ...selectedTools(calls), secretEnv: () => ({ SOPS_AGE_KEY: "" }) };
   const result = await run(["get", "--env", "dev", "app", "TOKEN", "--to-file"], {
     cwd: root,

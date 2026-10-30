@@ -19,7 +19,7 @@ for (const edition of ['lite', 'full']) {
     fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify(declaration));
     fs.mkdirSync(path.join(repoRoot, 'be'));
     fs.mkdirSync(path.join(repoRoot, 'fe'));
-    const write = (version) => fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ private: true, devDependencies: { typescript: version } }));
+    const write = (version: string) => fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ private: true, devDependencies: { typescript: version } }));
     const findings = () => checkRepo({ repoRoot, files: ['hfs.json', 'package.json'] }).findings.filter((finding) => finding.code === CODE);
 
     write(`^${pins.typescript.version}`);

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { PassThrough, Readable, Writable } from 'node:stream';
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { HOOK_INPUT_LIMITS, readInput, writeHookOutput } from '../runtime/scripts/guards/hook-io.mjs';
 import { main as pushMain, pushRefusals } from '../runtime/scripts/guards/release-push-gate.mjs';
@@ -14,7 +15,7 @@ const hookFiles = [
   { file: 'release-push-gate.mjs', code: 1 },
 ];
 
-function fixture(t) {
+function fixture(t: TestContext) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'starci-hook-input-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const env = { ...process.env, STARCI_ROLE: '', ORCA_TERMINAL_HANDLE: '',
@@ -23,7 +24,7 @@ function fixture(t) {
   return { root, env };
 }
 
-async function runHook(t, { file, env, input = null, preload = null, closeInput = false }) {
+async function runHook(t: TestContext, { file, env, input = null, preload = null, closeInput = false }: { file: string; env: NodeJS.ProcessEnv; input?: Buffer | string | null; preload?: string | null; closeInput?: boolean }) {
   const args = [...(preload ? ['--import', pathToFileURL(preload).href] : []), path.join(bundledRoot, 'scripts', 'guards', file)];
   const started = performance.now();
   const child = spawn(process.execPath, args, {
@@ -35,8 +36,8 @@ async function runHook(t, { file, env, input = null, preload = null, closeInput 
   child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
   child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
   // A bounded reader may close its pipe while the oversized write is still buffered in the parent.
-  child.stdin.on('error', (error) => { if (error.code !== 'EPIPE' && error.code !== 'ERR_STREAM_DESTROYED') throw error; });
-  const result = new Promise((resolve, reject) => {
+  child.stdin.on('error', (error: NodeJS.ErrnoException) => { if (error.code !== 'EPIPE' && error.code !== 'ERR_STREAM_DESTROYED') throw error; });
+  const result = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
     child.once('error', reject);
     child.once('close', (code, signal) => resolve({ code, signal }));
   });
@@ -110,9 +111,9 @@ test('early close and an already closed source reject without leaving read liste
 
 test('hook output waits for the pipe write callback before the caller may exit', async () => {
   let written = '';
-  let complete;
+  let complete!: () => void;
   let settled = false;
-  const output = { write: (text, done) => { written += text; complete = done; return false; } };
+  const output = { write: (text: string, done: (error?: Error | null) => void) => { written += text; complete = done; return false; } };
   const pending = writeHookOutput(output, 'hook verdict\n').then((flushed) => { settled = true; return flushed; });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(written, 'hook verdict\n');
@@ -142,7 +143,7 @@ test('a complete push ref list retains its allowed branch and protected-main ref
   const zero = '0'.repeat(40);
   const head = 'a'.repeat(40);
   let stderr = '';
-  const output = { write: (chunk, done) => { stderr += chunk; done?.(); } };
+  const output = { write: (chunk: string, done?: () => void) => { stderr += chunk; done?.(); } };
   assert.equal(await pushMain({ stdin: Readable.from([`refs/heads/fixture ${head} refs/heads/fixture ${zero}\n`]), stderr: output, cwd: root }), 0);
   assert.equal(stderr, '');
   assert.equal(await pushMain({ stdin: Readable.from([`refs/heads/main ${zero} refs/heads/main ${head}\n`]), stderr: output, cwd: root }), 1);
@@ -182,13 +183,13 @@ test('all stdin-reading guard children bound oversized input without waiting for
 test('a complete main ref list reaches the bundled secret scanner without release evidence', t => {
   const { root } = fixture(t);
   const head = 'a'.repeat(40);
-  const calls = [];
+  const calls: { cwd: string; from: string; to: string }[] = [];
   const result = pushRefusals({ cwd: root, text: `refs/heads/main ${head} refs/heads/main ${'0'.repeat(40)}\n`, scan: range => {
     calls.push(range);
     return { ok: true, findings: [] };
   } });
   assert.deepEqual(result, []);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].cwd, root);
-  assert.equal(calls[0].to, head);
+  assert.equal(calls[0]!.cwd, root);
+  assert.equal(calls[0]!.to, head);
 });

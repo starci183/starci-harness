@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cliFindings } from '../runtime/scripts/hfs/rules/cli.mjs';
 import { createSlotResolver, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import type { AppRef, ConnectionView } from '../runtime/scripts/hfs/slots.mjs';
 
 const manifest = loadSlotManifest();
 const API = { name: 'api', kind: 'api' };
@@ -12,7 +13,7 @@ const COMMAND = 'be/src/features/cli/migrate/subs/run.cli.ts';
 const IMAGE = 'be/apps/cli/Dockerfile';
 const PRIMARY = [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'database' }];
 
-function input(edition, apps, files, connections = []) {
+function input(edition: string, apps: AppRef[], files: string[], connections: ConnectionView[] = []) {
     const repo = resolveRepoDeclaration(manifest, {
         hfs: 3,
         kind: 'app',
@@ -40,10 +41,10 @@ for (const edition of ['lite', 'full']) {
     test(`${edition} invalid CLI name and missing CLI image are rejected`, () => {
         const renamed = cliFindings(input(edition, [API, { name: 'ops', kind: 'cli' }], [COMMAND]));
         assert.deepEqual(renamed.map((finding) => finding.code), ['BE_CLI_REQUIRED']);
-        assert.equal(renamed[0].app, 'ops');
+        assert.equal(renamed[0]!.app, 'ops');
         const imageless = cliFindings(input(edition, [API, CLI], [COMMAND]));
         assert.deepEqual(imageless.map((finding) => finding.code), ['BE_CLI_REQUIRED']);
-        assert.equal(imageless[0].path, IMAGE);
+        assert.equal(imageless[0]!.path, IMAGE);
     });
 
     test(`${edition} connection-only requirements follow the actual edition slot`, () => {

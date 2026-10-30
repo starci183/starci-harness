@@ -4,9 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
+import type { DbOperation } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { MIGRATIONS_DIR, MIGRATIONS_ARCHIVE_DIR } from '../runtime/scripts/hfs/rules/database-constants.mjs';
 
-const made = [];
+const made: string[] = [];
 const first = '20260101000000';
 const second = '20260102000000';
 const next = '20260104000000';
@@ -28,7 +29,7 @@ test.after(() => {
   }
 });
 
-function fixture(edition, contents, map) {
+function fixture(edition: string, contents: Record<string, string>, map: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-restamp-active-'));
   made.push(root);
   const files = { 'hfs.json': JSON.stringify({ kind: 'app', edition }), 'restamp.yaml': map, ...archives, ...contents };
@@ -40,15 +41,15 @@ function fixture(edition, contents, map) {
   return root;
 }
 
-function io(root) {
-  const out = [];
-  const err = [];
-  const calls = [];
+function io(root: string) {
+  const out: string[] = [];
+  const err: string[] = [];
+  const calls: string[][] = [];
   return { out, err, calls, ports: {
     cwd: root,
-    stdout: (text) => out.push(text),
-    stderr: (text) => err.push(text),
-    runPostgres: (cwd, op) => {
+    stdout: (text: string) => out.push(text),
+    stderr: (text: string) => err.push(text),
+    runPostgres: (cwd: string, op: DbOperation) => {
       assert.equal(cwd, root);
       calls.push(op.kind === 'query' ? ['db', 'query', op.sql] : op.kind === 'dump' ? ['db', 'dump'] : ['migration', 'repair', op.stamp, '--status', op.status]);
       return { status: 0, stdout: '' };
@@ -56,8 +57,8 @@ function io(root) {
   } };
 }
 
-function snapshot(root) {
-  return Object.fromEntries(fs.readdirSync(root, { recursive: true })
+function snapshot(root: string) {
+  return Object.fromEntries((fs.readdirSync(root, { recursive: true }) as string[])
     .filter((file) => fs.statSync(path.join(root, file)).isFile()).sort()
     .map((file) => [file.replaceAll('\\', '/'), fs.readFileSync(path.join(root, file))]));
 }

@@ -3,6 +3,7 @@
 // proves: HFS_LINT_SUPPRESSION_FILE@lite
 // proves: HFS_LINT_SUPPRESSION_FILE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,7 +11,7 @@ import path from 'node:path';
 import { repoLocalCheckFindings } from '../runtime/scripts/hfs/rules/repo-local-checks.mjs';
 import { lintSuppressionFindings } from '../runtime/scripts/hfs/rules/lint-suppression.mjs';
 
-function repository(t, edition, entries) {
+function repository(t: TestContext, edition: string, entries: Record<string, string>) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-repository-hygiene-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   for (const [file, text] of Object.entries(entries)) {

@@ -1,6 +1,7 @@
 // proves: FE_PACKAGE_SHAPE@lite
 // proves: FE_PACKAGE_SHAPE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkPackageShape } from '../runtime/scripts/hfs/architecture/package-shape.mjs';
 import { tempSide, writeFiles } from './helpers/hfs-arch-fixture.mjs';
@@ -13,7 +14,7 @@ const built = {
   exports: { '.': { types: './dist/index.d.ts', default: './dist/index.js' }, './css': './dist/app.css' },
 };
 
-function packageInput(t, edition, manifest) {
+function packageInput(t: TestContext, edition: string, manifest: object) {
   const root = tempSide(t, `a16-package-shape-${edition}-`, 'fe');
   writeFiles(root, {
     'packages/shared/package.json': JSON.stringify(manifest),
@@ -21,14 +22,15 @@ function packageInput(t, edition, manifest) {
   });
   // Supply the package owner's resolved slot; the real checker reads and judges its manifest.
   const resolver = {
-    ownerOf(file) {
+    ownerOf(file: string) {
       return file.startsWith('packages/shared/') ? { slot: 'repo.packages', root: 'packages/shared' } : null;
     },
-    slot(id) {
+    slot(id: string) {
       return id === 'repo.packages' ? { tier: 'package' } : null;
     },
   };
-  return { config: { root, edition }, graph: { resolver } };
+  // reason: the checker reads only config.root and graph.resolver.ownerOf/slot; a full ArchitectureConfig and HfsGraph would need a real TypeScript context.
+  return { config: { root, edition }, graph: { resolver } } as unknown as Parameters<typeof checkPackageShape>[0];
 }
 
 for (const edition of ['lite', 'full']) {
@@ -41,13 +43,13 @@ for (const edition of ['lite', 'full']) {
   test(`${edition} invalid package without a build emits FE_PACKAGE_SHAPE`, t => {
     const report = checkPackageShape(packageInput(t, edition, { ...built, scripts: {} }));
     assert.deepEqual(report.violations.map(item => item.ruleId), ['FE_PACKAGE_SHAPE']);
-    assert.match(report.violations[0].message, /no scripts.build/);
+    assert.match(report.violations[0]!.message, /no scripts.build/);
   });
 
   test(`${edition} invalid package without exports emits FE_PACKAGE_SHAPE`, t => {
     const report = checkPackageShape(packageInput(t, edition, { scripts: built.scripts }));
     assert.deepEqual(report.violations.map(item => item.ruleId), ['FE_PACKAGE_SHAPE']);
-    assert.match(report.violations[0].message, /declares no exports map/);
+    assert.match(report.violations[0]!.message, /declares no exports map/);
   });
 
   test(`${edition} invalid package source targets and wildcard exports emit FE_PACKAGE_SHAPE`, t => {
