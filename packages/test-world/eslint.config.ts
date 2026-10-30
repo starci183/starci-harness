@@ -8,7 +8,7 @@ import tseslint from "typescript-eslint"
 export default tseslint.config(
     { ignores: ["dist/**", "node_modules/**"] },
     {
-        files: ["src/**/*.ts", "*.mjs"],
+        files: ["src/**/*.ts", "*.ts"],
         extends: [tseslint.configs.recommended],
         linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: "error" },
         rules: {

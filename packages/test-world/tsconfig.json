@@ -6,7 +6,7 @@
     "lib": ["ES2023"],
     "types": ["node", "jest"],
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "declaration": true,
     "sourceMap": false,
     "strict": true,
@@ -19,5 +19,5 @@
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "eslint.config.ts"]
 }

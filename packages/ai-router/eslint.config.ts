@@ -4,7 +4,7 @@ import tseslint from "typescript-eslint"
 
 /** The package source and specs are linted at the strictest typed level; nothing is disabled inline. */
 export default defineConfig(
-    { ignores: ["dist/**", "node_modules/**", "eslint.config.mjs"] },
+    { ignores: ["dist/**", "node_modules/**"] },
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,
     tseslint.configs.stylisticTypeChecked,
