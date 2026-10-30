@@ -43,7 +43,7 @@ const ROSTER_KEY = /`([A-Za-z_]\w*)`/gu;
 
 const REQUIRED_ALWAYS = new Set(['string', 'url', 'secret', 'enum']);
 const FALLBACK_OPTIONAL = new Set(['int', 'bool', 'duration']);
-const OPTIONAL_ONLY = new Set(['optional', 'has', 'anyDeclared']);
+const OPTIONAL_ONLY = new Set(['optional', 'optionalDomain', 'has', 'anyDeclared']);
 const READER_METHODS = new Set([...REQUIRED_ALWAYS, ...FALLBACK_OPTIONAL, ...OPTIONAL_ONLY]);
 
 const typescriptFor = (repoRoot: string) => loadTypescript(repoRoot, HERE);

@@ -14,6 +14,7 @@ services:
       AUTH_JWT_ISSUER: https://api.{{project}}.example.invalid
       AUTH_JWT_AUDIENCE: {{project}}
       AUTH_JWT_KEY_ID: production-1
+      AUTH_COOKIE_DOMAIN: {{project}}.example.invalid
       AUTH_JWT_PRIVATE_KEY_FILE: /run/secrets/auth-jwt-private-key
       STORAGE_ENDPOINT: https://storage.{{project}}.example.invalid
       STORAGE_REGION: us-east-1

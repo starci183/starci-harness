@@ -3228,6 +3228,17 @@ HFS_AUDIT_STEP_MISSING:
   owner: op-retry
   kind: check-finding
 
+HFS_AUTH_COOKIE_DOMAIN_MISSING:
+  title: "The api's refresh cookie cannot reach a web served on another host"
+  title_vi: "Cookie refresh của api không tới được web chạy ở host khác"
+  meaning_vi: "Web và api của một môi trường chạy ở hai host khác nhau nhưng môi trường của api không có AUTH_COOKIE_DOMAIN (hoặc giá trị khai báo không phải tên miền trần, hoặc không phải miền cha của cả hai host), nên cookie refresh chỉ gắn với host của api và không có trong header Cookie mà máy chủ web chuyển tiếp: api từ chối phiên và người dùng bị đưa về trang đăng nhập."
+  causes_vi:
+    - "Vi phạm R337: passport của skeleton lite đặt cookie refresh theo host khi AUTH_COOKIE_DOMAIN không được đặt."
+    - "AUTH_COOKIE_DOMAIN có scheme, cổng, dấu chấm đầu, hoặc là miền không bao trùm host của web hay của api."
+  nextStep_vi: "Đặt AUTH_COOKIE_DOMAIN bằng miền cha chung của hai host (thông báo nêu giá trị) trong environment của api, KEYS.md hoặc một khoá sealed, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
 HFS_BACKING_UNDECLARED:
   title: "A lite app uses undeclared Redis or full-only Qdrant instead of Supabase pgvector"
   title_vi: "App lite dùng Redis chưa khai báo hoặc Qdrant chỉ thuộc full thay cho Supabase pgvector"

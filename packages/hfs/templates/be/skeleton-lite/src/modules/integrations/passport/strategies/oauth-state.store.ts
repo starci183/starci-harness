@@ -1,5 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto"
 import type { Request, Response } from "express"
+import { domainAttribute } from "../passport.cookie"
 
 const COOKIE = "oauth_state"
 const MAX_AGE_MS = 600_000
@@ -37,19 +38,22 @@ const sameText = (left: string, right: string): boolean => {
  * httpOnly, Secure, SameSite=Lax cookie scoped to the callback path, and the callback must present the same state.
  */
 export class CookieStateStore {
-    constructor(private readonly callbackPath: string) {}
+    constructor(
+        private readonly callbackPath: string,
+        private readonly cookieDomain?: string,
+    ) {}
 
     /** Stores a fresh state with the PKCE verifier and hands the state to the authorization redirect. */
     store(request: Request, verifier: string, _state: unknown, _meta: unknown, callback: StoreCallback): void {
         const state = randomBytes(24).toString("base64url")
-        responseOf(request)?.cookie(COOKIE, `${state}.${verifier}`, { httpOnly: true, secure: true, sameSite: "lax", path: this.callbackPath, maxAge: MAX_AGE_MS })
+        responseOf(request)?.cookie(COOKIE, `${state}.${verifier}`, { httpOnly: true, secure: true, sameSite: "lax", path: this.callbackPath, maxAge: MAX_AGE_MS, ...domainAttribute(this.cookieDomain) })
         callback(null, state)
     }
 
     /** Answers the stored verifier only when the callback's state equals the stored one; the cookie is cleared either way. */
     verify(request: Request, provided: string, callback: VerifyCallback): void {
         const stored = readStored(request)
-        responseOf(request)?.clearCookie(COOKIE, { httpOnly: true, secure: true, sameSite: "lax", path: this.callbackPath })
+        responseOf(request)?.clearCookie(COOKIE, { httpOnly: true, secure: true, sameSite: "lax", path: this.callbackPath, ...domainAttribute(this.cookieDomain) })
         if (stored === undefined || !sameText(stored.state, provided)) {
             callback(null, false)
             return

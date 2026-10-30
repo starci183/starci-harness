@@ -4,6 +4,7 @@ import { ConfigError, ConfigErrorCode } from "./errors/config.error"
 const FILE_SUFFIX = "_FILE"
 const DURATION_UNITS: Readonly<Record<string, number>> = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 }
 const DURATION_PATTERN = /^(\d+)(ms|s|m|h)?$/
+const BARE_DOMAIN_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/
 
 /** A secret value (password, token, connection string with credentials): never logged, serialized as a mask. */
 export class Secret {
@@ -50,6 +51,17 @@ export class EnvSource {
     /** The declared value of an optional key, or undefined. */
     optional(key: string): string | undefined {
         return this.values[key] || undefined
+    }
+
+    /**
+     * The declared value of an optional bare domain (`example.com`: labels of letters, digits and hyphens, a letter-led
+     * top level; no scheme, port, path, leading dot or IP), lower-cased, or undefined. Any other value is a boot failure.
+     */
+    optionalDomain(key: string): string | undefined {
+        const value = this.optional(key)?.toLowerCase()
+        if (value === undefined) return undefined
+        if (!BARE_DOMAIN_PATTERN.test(value)) throw new ConfigError({ code: ConfigErrorCode.KeyInvalid, params: { key } })
+        return value
     }
 
     /** A required string. */

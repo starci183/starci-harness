@@ -78,6 +78,10 @@ image, so any digest-pinned supported reverse proxy serves.
 - dev: the ingress publishes on loopback only, `127.0.0.1:<port>:<port>`, never `0.0.0.0` and never a bare port.
 - vps: the ingress publishes 80 and 443 only. DNS is an owner-run prerequisite with its receipt; the ingress obtains
   and persists its certificate, and exposes a route only after the upstream is ready.
+- Web and api on different hosts (R337): the web server forwards the browser's Cookie header to the api, and the
+  skeleton's passport sets its refresh cookie host-only unless `AUTH_COOKIE_DOMAIN` is set. A lite environment whose
+  web and api hosts differ gives the api `AUTH_COOKIE_DOMAIN` (the bare common parent domain, such as `example.com`) in
+  its stack environment, its KEYS.md or a sealed key; `starci app check` reports `HFS_AUTH_COOKIE_DOMAIN_MISSING` otherwise.
 - An app routed by a shared ingress outside its own stack declares that ingress as external with its hosts; its own
   stack then renders no ingress and publishes no port, and its DNS and TLS stay declared (R275).
 - The application origin the back end trusts (BE-AUTH-7 in [code/be/api-auth.md](../code/be/api-auth.md)) is the
