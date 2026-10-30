@@ -1,0 +1,430 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { slash } from '../../lib/path-key.mjs';
+import { readJsonFile as readJson } from '../../lib/json.mjs';
+import { isInside } from '../../lib/walk.mjs';
+import { openHfs } from '../slots.mjs';
+import { byCodeUnit } from '../../lib/list.mjs';
+import { grammarContractFor } from '../../lib/grammar-lint.mjs';
+
+/** The compiler API the checkers receive as their `ts` argument (the target repository's own installed TypeScript). */
+export type TypeScriptApi = typeof import('typescript');
+
+/** One owner derived from the slot manifest: an owner directory with its entry file. */
+export interface OwnerRecord {
+  id: string;
+  root: string;
+  entry: string;
+  slot: string;
+  tier: string;
+}
+
+/** The selected Grammar family's component contract with the derived style sources and consumer manifests. */
+export interface GrammarContext {
+  package: string;
+  entry: string;
+  styleEntry: string;
+  peers: readonly string[];
+  styleSources: string[];
+  consumerManifests: string[];
+}
+
+/** The slice of a package.json this file reads. */
+interface PackageManifest {
+  dependencies?: Record<string, unknown>;
+  devDependencies?: Record<string, unknown>;
+  peerDependencies?: Record<string, unknown>;
+  optionalDependencies?: Record<string, unknown>;
+  workspaces?: unknown[] | { packages?: unknown[] };
+}
+
+/** The state one workspace walk step shares with the admit helpers. */
+interface WorkspaceWalk {
+  root: string;
+  appPackageRoot: string;
+  packageRoot: string;
+  sideRoot: boolean;
+  side: string | null;
+  repository: string | null;
+  state: { directories: Set<string>; queue: string[] };
+}
+
+/** The slice of the opened slot resolver that owner derivation reads. */
+interface OwnerResolver {
+  ownerOf(directory: string): { root: string; slot: string } | null | undefined;
+  slot(id: string): { tier: string };
+}
+
+type FrontendRole = 'routes' | 'features' | 'components' | 'hooks' | 'modules';
+
+/** The layout contract `loadArchitectureConfig` resolves. */
+export interface ArchitectureConfig {
+  root: string;
+  packageRoot: string;
+  repository: string | null;
+  kinds: string[];
+  projects: string[];
+  workspaces: string[];
+  apps: { name: string; kind: string }[];
+  hfs: ReturnType<typeof openHfs>;
+  owners: OwnerRecord[];
+  backend: {
+    modules: string[];
+    features: string[];
+    apps: string[];
+    moduleRegistration: { providerIdentity: string; handlerDecorators: string[] };
+  };
+  frontend: {
+    routes: string[];
+    features: string[];
+    components: string[];
+    hooks: string[];
+    modules: string[];
+    transport: string[];
+    grammar: ReturnType<typeof derivedGrammar>;
+  };
+}
+
+
+/** A file's identity: its resolved real path, or the resolved path when it does not exist. */
+function canonical(file: string): string {
+  const absolute = path.resolve(file);
+  try { return path.resolve(fs.realpathSync(absolute)); } catch { return absolute; }
+}
+
+function exactKeys(value: unknown, allowed: Set<string>, label: string): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object.`);
+  const unknown = Object.keys(value).filter(key => !allowed.has(key));
+  if (unknown.length) {
+    unknown.sort(byCodeUnit);
+    throw new Error(`${label} has unsupported fields: ${unknown.join(', ')}.`);
+  }
+}
+
+/**
+ * The git repository `root` sits in, found by walking up for a `.git` entry (a directory in a clone, a
+ * file in a worktree), or null when there is none. It is the outer boundary a `file:` dependency may
+ * resolve into: a checked project is routinely one package of a repository that also ships the packages
+ * it consumes, and `--root` is the project, not the repository.
+ */
+function enclosingRepository(root: string): string | null {
+  let cursor = path.resolve(root);
+  for (;;) {
+    if (fs.existsSync(path.join(cursor, '.git'))) return cursor;
+    const parent = path.dirname(cursor);
+    if (parent === cursor) return null;
+    cursor = parent;
+  }
+}
+
+function existingPackageDirectory(absolute: string): boolean {
+  try {
+    if (!fs.lstatSync(absolute).isDirectory()) return false;
+    const manifest = fs.lstatSync(path.join(absolute, 'package.json'));
+    return manifest.isFile() && !manifest.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+function existingDirectory(root: string, relative: string): boolean {
+  try {
+    return fs.lstatSync(path.join(root, relative)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function existingRegularFile(root: string, relative: string): boolean {
+  try {
+    const stat = fs.lstatSync(path.join(root, ...relative.split('/')));
+    return stat.isFile() && !stat.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+function admitWorkspace(root: string, directories: Set<string>, queue: string[], candidate: string, label = 'local package', strict = false): void {
+  const absolute = path.resolve(candidate);
+  if (!isInside(root, absolute) || absolute === root || !existingDirectory(root, slash(path.relative(root, absolute)))) {
+    if (strict) throw new Error(`${label} must resolve to a package directory inside the repository.`);
+    return;
+  }
+  const manifest = path.join(absolute, 'package.json');
+  try {
+    if (!fs.lstatSync(manifest).isFile() || fs.lstatSync(manifest).isSymbolicLink()) {
+      if (strict) throw new Error(`${label} must resolve to a regular package.json inside the repository.`);
+      return;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (strict) throw new Error(message.startsWith(label) ? message : `${label} must resolve to a regular package.json inside the repository.`);
+    return;
+  }
+  const relative = slash(path.relative(root, absolute));
+  if (!directories.has(relative)) { directories.add(relative); queue.push(absolute); }
+}
+
+function expandSegment(base: string, segment: string): string[] {
+  if (segment !== '*') return [path.join(base, segment)];
+  if (!fs.existsSync(base) || !fs.lstatSync(base).isDirectory()) return [];
+  return fs.readdirSync(base, { withFileTypes: true })
+    .filter(item => item.isDirectory())
+    .sort((a, b) => byCodeUnit(a.name, b.name))
+    .map(item => path.join(base, item.name));
+}
+
+function workspaceCandidates(packageRoot: string, normalized: string): { candidates: string[]; wildcard: boolean } {
+  const segments = normalized.split('/');
+  if (path.isAbsolute(normalized) || segments.some(segment => segment === '..' || (segment.includes('*') && segment !== '*'))) {
+    throw new Error(`Unsupported local workspace pattern: ${normalized}.`);
+  }
+  let candidates = [packageRoot];
+  for (const segment of segments) candidates = candidates.flatMap(base => expandSegment(base, segment));
+  return { candidates, wildcard: segments.includes('*') };
+}
+
+const admitFileDependency = (walk: WorkspaceWalk, section: string, name: string, value: unknown): void => {
+  const { root, appPackageRoot, packageRoot, sideRoot, repository, state } = walk;
+  if (typeof value !== 'string' || !value.startsWith('file:')) return;
+  const absolute = path.resolve(sideRoot ? appPackageRoot : packageRoot, value.slice('file:'.length));
+  if (sideRoot && !isInside(root, absolute) && isInside(appPackageRoot, absolute)) return;
+  const label = `${section}.${name} file dependency`;
+  if (isInside(root, absolute)) { admitWorkspace(root, state.directories, state.queue, absolute, label, true); return; }
+  if (!repository || !isInside(repository, absolute) || !existingPackageDirectory(absolute)) {
+    throw new Error(`${label} must resolve to a package directory inside the repository.`);
+  }
+};
+
+function admitFileDependencies(walk: WorkspaceWalk, pkg: PackageManifest | null): void {
+  for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const) {
+    for (const [name, value] of Object.entries(pkg?.[section] ?? {}))
+      admitFileDependency(walk, section, name, value);
+  }
+}
+
+const admitPackageWorkspaces = (walk: WorkspaceWalk, pkg: PackageManifest | null): void => {
+  const { root, packageRoot, sideRoot, side, state } = walk;
+  const declared = pkg?.workspaces;
+  const patterns = Array.isArray(declared) ? declared : declared?.packages;
+  for (const pattern of Array.isArray(patterns) ? patterns : []) {
+    if (typeof pattern !== 'string' || !pattern.trim()) throw new Error('package.json workspace entries must be non-empty paths.');
+    const written = slash(pattern.trim()).replace(/^\.\//, '');
+    if (sideRoot && !written.startsWith(`${side}/`)) continue;
+    const normalized = sideRoot ? written.slice((side ?? '').length + 1) : written;
+    const { candidates, wildcard } = workspaceCandidates(packageRoot, normalized);
+    // npm expands a `*` segment to the directories that hold a package.json and skips the rest (an empty or untracked folder is
+    // HFS_EMPTY_DIR / HFS_SLOT_UNDECLARED, never a reason to analyse nothing); a literal workspace path must resolve. A `*`
+    // pattern may match nothing: every app declares the same workspaces (fe/apps/*, fe/packages/*, HFS_MONO_WORKSPACES) whether
+    // or not it has a package yet, and the root patterns are held to that fixed list by the rule, not here.
+    for (const candidate of candidates) admitWorkspace(root, state.directories, state.queue, candidate, `workspace ${normalized}`, !wildcard);
+  }
+};
+
+/**
+ * The npm workspaces below `root`. The one package.json of an app is at `packageRoot` (the app root; `root` is its side folder):
+ * its workspace patterns under `<side>/` are this side's, read relative to the side folder, and every other pattern is the other
+ * side's.
+ */
+function workspaceDirectories(root: string, { packageRoot: appPackageRoot = root, side = null }: { packageRoot?: string; side?: string | null } = {}): string[] {
+  const directories = new Set<string>();
+  const queue = [root];
+  const visited = new Set<string>();
+  const repository = enclosingRepository(root);
+  while (queue.length) {
+    const packageRoot = queue.shift() as string; // length checked by the loop condition
+    if (visited.has(packageRoot)) continue;
+    visited.add(packageRoot);
+    const sideRoot = side !== null && packageRoot === root;
+    const pkg: PackageManifest | null = readJson(path.join(sideRoot ? appPackageRoot : packageRoot, 'package.json'));
+    const walk: WorkspaceWalk = { root, appPackageRoot, packageRoot, sideRoot, side, repository, state: { directories, queue } };
+    admitPackageWorkspaces(walk, pkg);
+    admitFileDependencies(walk, pkg);
+  }
+  return [...directories].sort(byCodeUnit);
+}
+
+function discoveredProjects(root: string, workspaces: string[]): string[] {
+  const projects: string[] = [];
+  if (fs.existsSync(path.join(root, 'tsconfig.json'))) projects.push('tsconfig.json');
+  for (const workspace of workspaces) {
+    for (const name of ['tsconfig.json', 'tsconfig.app.json', 'tsconfig.build.json']) {
+      const candidate = `${workspace}/${name}`;
+      if (fs.existsSync(path.join(root, ...candidate.split('/')))) {
+        projects.push(candidate);
+        break;
+      }
+    }
+  }
+  return [...new Set(projects)];
+}
+
+function inferredLayout(root: string, workspaces: string[]): Omit<ArchitectureConfig['frontend'], 'grammar'> {
+  // HFS: frontend source roots live only under workspace packages (apps/<app>/, packages/<pkg>/);
+  // the repository root itself is never a frontend source root.
+  // The route, feature, component, hook and module roles are app slots (fe.route, fe.feature, fe.components, fe.hooks, fe.modules:
+  // apps/<app>/src/...); a workspace package is tier `package` and holds none of them - its own src/hooks is package source, and a
+  // grammar package's tier folders make it a component root below.
+  const appWorkspaces = workspaces.filter(prefix => prefix.startsWith('apps/'));
+  const collect = (suffix: string): string[] =>appWorkspaces.map(prefix => `${prefix}/${suffix}`).filter(relative => existingDirectory(root, relative));
+  // A design-system workspace whose src carries tier dirs (leaves/branches/…) IS a component root;
+  // collecting its src/components too would nest two roots in one role and fail the disjoint check.
+  const tierSources = new Set(workspaces.map(prefix => `${prefix}/src`)
+    .filter(source => ['leaves', 'branches', 'blocks', 'overlays', 'composites', 'layouts', 'product-shells', 'pages']
+      .some(tier => existingDirectory(root, `${source}/${tier}`))));
+  const components = collect('src/components')
+    .filter(relative => !tierSources.has(path.posix.dirname(relative)));
+  components.push(...tierSources);
+  return {
+    routes: collect('src/app'),
+    features: collect('src/features'),
+    components: [...new Set(components)],
+    hooks: collect('src/hooks'),
+    // src/redux/ (fe.redux) is a modules-tier owner beside src/modules/ (owner ruling 2026-10-13, fe-stack state-global).
+    modules: [...collect('src/modules'), ...collect('src/redux')],
+    transport: collect('src/modules/api'),
+  };
+}
+
+function assertFrontendRolesDisjoint(root: string, frontend: Record<FrontendRole, string[]>): void {
+  const roles: FrontendRole[] = ['routes', 'features', 'components', 'hooks', 'modules'];
+  const entries = roles.flatMap(role => frontend[role].map(relative => ({
+    role,
+    relative,
+    absolute: path.join(root, ...relative.split('/')),
+  })));
+  for (let index = 0; index < entries.length; index += 1) for (let other = index + 1; other < entries.length; other += 1) {
+    const left = entries[index];
+    const right = entries[other];
+    if (!left || !right) continue;
+    if (isInside(left.absolute, right.absolute) || isInside(right.absolute, left.absolute)) {
+      throw new Error(`Architecture frontend role roots must be disjoint; ${left.role} ${left.relative} overlaps ${right.role} ${right.relative}.`);
+    }
+  }
+}
+
+const SKIPPED_DIRECTORIES = new Set(['node_modules', '.git', 'dist', '.next', '.turbo', 'coverage', 'test-results', '.starciwork', '.starcistacks']);
+
+function directoriesUnder(root: string, relative: string, depth: number): string[] {
+  const out: string[] = [];
+  const visit = (dir: string, left: number): void => {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(path.join(root, ...dir.split('/').filter(Boolean)), { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || SKIPPED_DIRECTORIES.has(entry.name)) continue;
+      const child = dir ? `${dir}/${entry.name}` : entry.name;
+      out.push(child);
+      if (left > 1) visit(child, left - 1);
+    }
+  };
+  visit(relative, depth);
+  return out;
+}
+
+/** The owner entry a slot instance exposes: index.ts/index.tsx, a package's src/index.ts, an app's app.module.ts. */
+function ownerEntry(root: string, ownerRoot: string, tier: string): string | null {
+  let candidates: string[];
+  if (tier === 'package') candidates = ['src/index.ts', 'src/index.tsx', 'index.ts', 'index.tsx'];
+  else if (tier === 'app') candidates = ['app.module.ts'];
+  else candidates = ['index.ts', 'index.tsx'];
+  for (const candidate of candidates) {
+    const relative = `${ownerRoot}/${candidate}`;
+    if (existingRegularFile(root, relative)) return relative;
+  }
+  return null;
+}
+
+/**
+ * Owners are derived from the slot manifest: every directory that an `owner: true` slot matches, with its entry file.
+ * An instance with no entry file is not listed: the required-files check reports the missing entry.
+ */
+function derivedOwners(root: string, resolver: OwnerResolver): OwnerRecord[] {
+  const seen = new Map<string, OwnerRecord>();
+  for (const directory of directoriesUnder(root, '', 6)) {
+    const owner = resolver.ownerOf(directory);
+    if (!owner || owner.root !== directory || seen.has(owner.root)) continue;
+    const slot = resolver.slot(owner.slot);
+    const entry = ownerEntry(root, owner.root, slot.tier);
+    if (entry) seen.set(owner.root, { id: `${owner.slot}:${owner.root}`, root: owner.root, entry, slot: owner.slot, tier: slot.tier });
+  }
+  return [...seen.values()].sort((a, b) => a.root.localeCompare(b.root));
+}
+
+const DECLARED_HANDLER_DECORATORS = ['CommandHandler', 'QueryHandler'];
+
+/**
+ * The selected family's component contract with derived consumers: every app's globals.css is a style
+ * source, every app and every workspace package that depends on its package is a consumer. null when no app has
+ * a globals.css to judge (the contract is then reported unavailable, never passed).
+ */
+function derivedGrammar(root: string, packageRoot: string, workspaces: string[], apps: { name: string }[], family: string): GrammarContext | null {
+  const styleSources = apps.map(app => `apps/${app.name}/src/app/globals.css`).filter(relative => existingRegularFile(root, relative));
+  if (!styleSources.length) return null;
+  const contract = grammarContractFor(family);
+  // Every fe app and package is an npm workspace that declares what it imports (HFS_MONO_WORKSPACE_DEP): each workspace that
+  // declares the Grammar package is a consumer, and so is the app root's manifest when it does.
+  const declaresGrammar = (pkg: PackageManifest | null): boolean => Boolean(pkg && [pkg.dependencies, pkg.peerDependencies, pkg.devDependencies].some(section => section && Object.hasOwn(section, contract.package)));
+  const appManifest = slash(path.relative(root, path.join(packageRoot, 'package.json')));
+  const consumerManifests = declaresGrammar(readJson(path.join(packageRoot, 'package.json'))) ? [appManifest] : [];
+  for (const workspace of workspaces) {
+    if (!workspace.startsWith('packages/') && !workspace.startsWith('apps/')) continue;
+    const manifest = `${workspace}/package.json`;
+    const pkg = readJson(path.join(root, ...manifest.split('/')));
+    if (declaresGrammar(pkg)) consumerManifests.push(manifest);
+  }
+  if (!consumerManifests.length) return null;
+  return { ...contract, styleSources, consumerManifests };
+}
+
+/**
+ * Resolve the layout contract from hfs.json and the slot manifest (knowledge/hfs/slots.yaml). A repository carries only hfs.json. Owners, roots and the tier of every path come from slots; the contract
+ * has no ignore, waiver or baseline field.
+ */
+export function loadArchitectureConfig(repositoryRoot: string, { hfs }: { hfs?: ArchitectureConfig['hfs'] } = {}): ArchitectureConfig {
+  const root = fs.realpathSync(path.resolve(repositoryRoot));
+  if (!fs.lstatSync(root).isDirectory()) throw new Error('Repository root must be a directory.');
+  const opened = hfs ?? openHfs({ repoRoot: root });
+  const { profile, apps }: { profile: string; apps: ArchitectureConfig['apps'] } = opened.repo;
+  // A side of an app (the side folder is the root the machine judges) keeps its dependencies in the app root's one package.json.
+  const side = opened.repo.side ?? null;
+  const packageRoot = side === null ? root : path.dirname(root);
+  const workspaces = workspaceDirectories(root, { packageRoot, side });
+  const appDirs = apps.map(app => `apps/${app.name}`);
+  const inferred = inferredLayout(root, [...new Set([...workspaces, ...appDirs])].sort(byCodeUnit));
+  const kinds = [profile === 'be' ? 'backend' : 'frontend'];
+  const projects = discoveredProjects(root, [...new Set([...workspaces, ...appDirs])].sort(byCodeUnit));
+  if (!projects.length) throw new Error('The repository has no tsconfig.json to derive a TypeScript project from.');
+  const backend = {
+    modules: ['src/modules'],
+    // The layered feature root is the api kind (src/features/api/<feature>/: application/ and transport/<protocol>/); the cli
+    // feature root (src/features/cli/) has its own shape, held by its slot and the cli rules.
+    features: ['src/features/api'],
+    apps: ['apps'],
+    moduleRegistration: { providerIdentity: 'exported-class-token', handlerDecorators: [...DECLARED_HANDLER_DECORATORS] },
+  };
+  const frontend = {
+    routes: inferred.routes,
+    features: inferred.features,
+    components: inferred.components,
+    hooks: inferred.hooks,
+    modules: inferred.modules,
+    transport: inferred.transport,
+    grammar: profile === 'fe' ? derivedGrammar(root, packageRoot, workspaces, apps, opened.repo.grammar) : null,
+  };
+  if (profile === 'fe') assertFrontendRolesDisjoint(root, frontend);
+  return {
+    root,
+    packageRoot,
+    repository: enclosingRepository(root),
+    kinds,
+    projects,
+    workspaces,
+    apps: apps.map(app => ({ name: app.name, kind: app.kind })),
+    hfs: opened,
+    owners: derivedOwners(root, opened),
+    backend,
+    frontend,
+  };
+}
+
+export { canonical, exactKeys, isInside, slash };
