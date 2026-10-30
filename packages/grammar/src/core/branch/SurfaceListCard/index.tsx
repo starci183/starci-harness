@@ -1,7 +1,7 @@
 "use client"
 
 import { Children, useId, type ReactNode } from "react"
-import { SurfaceNesting } from "../../surfaceContext.js"
+import { SurfaceNesting, useSurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { ListRow } from "../../composite/ListRow/index.js"
 import type { RowVerdict } from "../../composite/StaticStateRow/index.js"
@@ -24,6 +24,7 @@ type SurfaceListFrameProps = (LabelledSurfaceList | SelfNamedSurfaceList) & {
     readonly labelEnd?: ReactNode
     readonly labelHidden?: boolean
     readonly footer?: ReactNode
+    /** Overrides the depth read from context: inside another surface the list is nested (outlined, BOUNDARY-5), else top (raised, BOUNDARY-6). */
     readonly depth?: "top" | "nested"
     /**
      * Outline rank of the visible `label` (default 3). Pick the rank below the nearest heading
@@ -79,13 +80,15 @@ export const SurfaceListCard = (props: SurfaceListCardProps) => {
         labelEnd,
         labelHidden = false,
         footer,
-        depth = "top",
+        depth: depthProp,
         headingLevel = DEFAULT_SURFACE_HEADING_LEVEL,
         isLoading = false,
         loadingRows = DEFAULT_LOADING_ROWS,
         isVerdict = false,
         isScrollable = false,
     } = props
+    const nested = useSurfaceNesting()
+    const depth = depthProp ?? (nested ? "nested" : "top")
     const headingId = useId()
     const accessibleName = ariaLabel ?? label
     const hasRows = Children.toArray(children).length > 0

@@ -3,6 +3,7 @@
 ## 0.16.2 - 2026-10-31
 
 - Changed: a horizontal Stepper is a track: each step is an equal column with its marker centred over its label, and a connector line joins the markers through their centres (the accent after a completed step, the border colour otherwise); below 30rem every step keeps its equal column so the line stays straight (owner ruling stepper-connector).
+- Fixed: a SurfaceListCard inside another surface (a SurfaceCard, a wizard step card) drew the top-level face, no outline and a shadow that vanishes on the parent: its depth now comes from the surface context like SurfaceCard's, so a nested list is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); `depth` still overrides.
 
 ## 0.16.1 - 2026-10-30
 
