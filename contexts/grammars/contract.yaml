@@ -50,6 +50,7 @@ tokens:
     spacing: [--grammar-inline-gap, --grammar-row-gap, --grammar-section-gap, --grammar-region-gap, --grammar-page-inset]
     controlHeight: [--grammar-control-height-sm, --grammar-control-height-md, --grammar-control-height-lg]
     target: [--grammar-target-coarse, --grammar-target-fine]
+    mascot: [--grammar-mascot-sm, --grammar-mascot-md, --grammar-mascot-lg, --grammar-mascot-hero-max]
 
 dna:
   required:
@@ -307,6 +308,20 @@ roles:
     states: [image, initials fallback, skeleton]
     grammarMayChange: [ring, fallback paint]
     dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AGENT-NAMED]
+
+  - id: mascot
+    ui: ui/components/mascot.md
+    renderers: [Mascot]
+    vendorParity: []                              # no HeroUI part: Common's Image under a sized box
+    slots: [src, alt, "provenance: assetSlot, assetSha256, assetPrompt (Image and MediaFrame's AssetSlotProps)"]
+    variants:
+      meaning: { values: ["decorative (alt empty, aria-hidden)", "meaningful (a non-empty alt names it)"], chosenBy: app, default: decorative }
+      visibility: { values: [wide, always], meaning: { wide: "a hero is absent below 64rem", always: "a hero is kept, as the lg box" }, chosenBy: app, default: wide }
+    sizes: { steps: [sm, md, lg, hero], default: md, values: { sm: --grammar-mascot-sm 96px, md: --grammar-mascot-md 160px, lg: --grammar-mascot-lg 240px, hero: "fills its host's height up to --grammar-mascot-hero-max 30rem" }, compact: "below 48rem lg draws md and md draws sm" }
+    states: ["loading (transparent, no plate)", loaded, "error (the Image's fallback)"]
+    grammarMayChange: ["nothing: fit contain, the transparent ground with no plate, and the scale are Common's"]
+    dna: []
+    lint: [starci-grammar/generated-art-in-mascot-or-media-frame, starci-grammar/mascot-asset-slot-required]
 
   - id: shell
     ui: ui/composition.md

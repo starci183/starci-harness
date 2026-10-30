@@ -56,6 +56,7 @@ this file says why.
 | Alert | Alert `surface` is a sticker with the tone on indicator and title; `soft` is the tone's palette fill with ink text (O-10); stacked toasts are spaced so each shadow clears the next |
 | EmptyState | Common's notice on the sticker |
 | Avatar | Common initials and agent badge, inherited unchanged |
+| Mascot | Common's scale and transparent ground, inherited unchanged: no sticker, no ink outline |
 | Shell | The contract shell: bar, sidebar and left drawer as stickers; no bottom dock (O-4) |
 | PageHeader | A surface band closed by the TopBar's ink rule at the outline width, a heavy heading; page tabs stand on the rule with the pink underline over it |
 | Page | Common's frame around the offset-pop band; the body's rhythm and gutter are Common's |

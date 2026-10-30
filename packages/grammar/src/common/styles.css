@@ -14,6 +14,11 @@
         --grammar-section-gap: 1rem;
         --grammar-region-gap: 1.5rem;
         --grammar-page-inset: clamp(1rem, 3vw, 2rem);
+        /* The Mascot scale: square boxes sm 96px, md 160px, lg 240px; the hero fills its host's height up to the cap. */
+        --grammar-mascot-sm: 6rem;
+        --grammar-mascot-md: 10rem;
+        --grammar-mascot-lg: 15rem;
+        --grammar-mascot-hero-max: 30rem;
         min-width: 0;
     }
 

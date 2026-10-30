@@ -208,6 +208,16 @@ An avatar is an identity mark on the ramp (`sm`, `md`, `lg`, and `control` in a 
 beside it. Without an image it draws generated initials coloured by a stable seed; an agent carries a badge and an
 accessible name that says so; a group is one composite at one size.
 
+### Mascot
+
+A mascot is generated character art on its own size scale, so one character comes out at one size on every screen:
+square boxes `sm`, `md` and `lg` (Common tokens `--grammar-mascot-*`, 96, 160 and 240 px) and `hero`, which fills its
+host's height up to a cap for a split screen. The art is always contained, never cropped, on a transparent ground
+with no loading plate; below 48rem a square step drops one step, and a hero is absent below 64rem unless the app keeps
+it. It is decorative unless its `alt` names it. It carries the asset-slot props of `Image` and `MediaFrame`, so the
+render is tied to the request that generated it; generated art reaches the page only through `Mascot` or a
+`MediaFrame` (lint R337, R338). The scale is Common's: a grammar changes nothing about it.
+
 ### PageHeader
 
 The page header is the top of one page: the trail, the page heading (the document's one h1) with the subject's mark,

@@ -2280,6 +2280,20 @@ rules:
     enforcers:
       - {kind: eslint-be, id: event-dedupe-key}
       - {kind: eslint-be, id: event-subscription-static}
+  - id: R337
+    code: FE_GENERATED_ART_OUTSIDE_FRAME
+    law: Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives.
+    failureCodes:
+      - FE_GENERATED_ART_OUTSIDE_FRAME
+    enforcers:
+      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+  - id: R338
+    code: FE_MASCOT_ASSET_SLOT_MISSING
+    law: Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged.
+    failureCodes:
+      - FE_MASCOT_ASSET_SLOT_MISSING
+    enforcers:
+      - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
 
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

@@ -214,9 +214,23 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Primitives (27).** Avatar, Badge, Button, CloseButton, Divider, GrammarRoot, Heading, Icon,
-IconButton, IconTile, Image, IncludedMark, Kbd, Label, LeadingNumber, Link, Meter, PlainPressable,
+**Primitives (28).** Avatar, Badge, Button, CloseButton, Divider, GrammarRoot, Heading, Icon,
+IconButton, IconTile, Image, IncludedMark, Kbd, Label, LeadingNumber, Link, Mascot, Meter, PlainPressable,
 Progress, ProgressCircle, RankArtwork, RelativeTime, Skeleton, Spinner, StateMark, Text, TextAction.
+
+`Mascot` renders generated character art at one size scale: `size` `sm` (96px), `md` (160px, the default) or `lg`
+(240px) square, the Common tokens `--grammar-mascot-sm|md|lg`, or `hero`, which fills its host's height up to
+`--grammar-mascot-hero-max` (30rem) for a split screen such as a sign-in page. The art is always contained on a
+transparent ground with no plate. Below 48rem a square step drops one step (lg to md, md to sm); a hero is absent
+below 64rem unless `visibility="always"` keeps it, as the lg box. It is decorative by default (`alt=""` hides it from
+assistive technology; a non-empty `alt` names it) and takes the asset-slot props of `Image` and `MediaFrame`
+(`assetSlot`, `assetSha256`, `assetPrompt`); the grammar lint requires `assetSlot`
+(`starci-grammar/mascot-asset-slot-required`) and refuses generated art under `/images/` outside `Mascot` or
+`MediaFrame` (`starci-grammar/generated-art-in-mascot-or-media-frame`).
+
+```tsx
+<Mascot src="/images/mascot/welcome.webp" size="lg" assetSlot="onboarding.welcome" assetSha256={sha} />
+```
 
 **Forms (26).** ButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
 DateRangePicker, Field, Fieldset, FileDropzone, Form, FormGrid, Input, NumberField, OtpInput,

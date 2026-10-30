@@ -157,10 +157,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Reading order for an author · Where feedback lands
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, four relationships · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 16 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 17 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 74 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-COPYFIELD-MASKED, DNA-COMMON-COPYFIELD-TAIL, DNA-COMMON-DIAGRAM-ERROR-SOURCE and 112 more
+- [grammars/contract.yaml](../grammars/contract.yaml) · 75 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-COPYFIELD-MASKED, DNA-COMMON-COPYFIELD-TAIL, DNA-COMMON-DIAGRAM-ERROR-SOURCE and 113 more
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 7 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
@@ -178,8 +178,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing
 - [hfs/harness.yaml](../hfs/harness.yaml) · 17 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, never.build-output, never.cli-js, never.env, never.examples, never.grammar-tests, never.knowledge-outside-contexts, never.package-js and 32 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 99 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 232 more
+- [hfs/rules.yaml](../hfs/rules.yaml) · 100 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+  - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 234 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 97 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.db.seed, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta and 131 more
 - [project/README.md](../project/README.md) · 7 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
@@ -203,7 +203,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: CONTRIB-20, R111, R190, starci-harness
 - [ui/README.md](../ui/README.md) · 5 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work
-- [ui/components/README.md](../ui/components/README.md) · 4 KB — One page per component role: **when and how** to use it.
+- [ui/components/README.md](../ui/components/README.md) · 5 KB — One page per component role: **when and how** to use it.
   - sections: The Choose format · Choosing a role
 - [ui/components/action-group.md](../ui/components/action-group.md) · 3 KB — Contract: ButtonGroup.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -222,6 +222,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 2 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/list-table.md](../ui/components/list-table.md) · 3 KB — Contract: List and Table.
+  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/mascot.md](../ui/components/mascot.md) · 2 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 2 KB — Contract: Menu.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules

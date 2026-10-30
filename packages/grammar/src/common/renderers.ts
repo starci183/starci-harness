@@ -29,6 +29,7 @@ export { RelativeTime, type RelativeTimeFormat, type RelativeTimeMode, type Rela
 export { TextAction, type TextActionAppearance, type TextActionProps, type TextActionSize } from "../core/primitive/TextAction/index.js"
 export { SectionHeader, type SectionHeaderProps } from "../core/primitive/SectionHeader/index.js"
 export { MediaFrame, type MediaFrameProps } from "../core/primitive/MediaFrame/index.js"
+export { MASCOT_SIZE_TOKENS, Mascot, type MascotProps, type MascotSize, type MascotVisibility } from "../core/primitive/Mascot/index.js"
 export { PinnedActionBar, type PinnedActionBarProps, type PinnedActionBarVisibility } from "../core/primitive/PinnedActionBar/index.js"
 export { IncludedMark, type IncludedMarkProps } from "../core/primitive/IncludedMark/index.js"
 export { RankArtwork, type RankArtworkKind, type RankArtworkProps } from "../core/primitive/RankArtwork/index.js"

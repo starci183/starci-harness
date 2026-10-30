@@ -3,7 +3,7 @@
 import {
     Badge, Button, Code, ChatBubble, ChatWorkspace, Divider, EmptyNotice, FencedCodeBlock, FillViewport, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, IncludedMark, Input,
-    Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, MediaFrame,
+    Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
     Progress, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
     SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Terminal, Text,
@@ -25,7 +25,7 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
     Badge, Button, Code, ChatBubble, ChatWorkspace, Divider, EmptyNotice, FencedCodeBlock, FillViewport, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, IncludedMark, Input,
-    Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, MediaFrame,
+    Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
     Progress, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
     SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Terminal, Text,
