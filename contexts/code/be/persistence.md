@@ -12,7 +12,7 @@ bounded contexts (BE-PERSISTENCE-11).
 ## BE-PERSISTENCE-1 Migrations are the only schema authority
 
 Lite: every schema change is one `db/migrations/<stamp>_<name>.sql` (`npm run db:new -- <kebab-name>`), applied after the
-managed `db/bootstrap.sql` by `starci app db migrate --url-env <NAME>`; entities only map tables a migration created. Full: `persistence/migrations/<epochMs13>-<name>.ts`
+managed `db/bootstrap.sql` by `starci app db migrate --db-url-env <NAME>`; entities only map tables a migration created. Full: `persistence/migrations/<epochMs13>-<name>.ts`
 of the owning capability, with a `down()` that reverses `up()`. Everywhere `synchronize` is the literal `false`, no
 `migrationsRun`, no DDL string outside a migration, no entity or migration glob. Seed data is never a migration.
 

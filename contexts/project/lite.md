@@ -15,7 +15,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 ## Backing services
 
 - PostgreSQL is self-hosted: the `db` service in Docker in dev and on the Swarm stack in production, migrated by
-  `starci app db migrate --url-env <NAME>`. Its image is the managed `.starcistacks/images/db/Dockerfile`: the Docker Official `postgres` image
+  `starci app db migrate --db-url-env <NAME>`. Its image is the managed `.starcistacks/images/db/Dockerfile`: the Docker Official `postgres` image
   pinned by digest plus pgvector from PGDG and pgmq from its pinned release (verified by sha256), so its extensions are
   pgvector, pgmq and the image's contrib set (pgcrypto, pg_trgm, unaccent, uuid-ossp, btree_gist), with no pg_cron, pg_net
   or supabase_vault; the local container (`npm run db:create`), the drift scratch database and the release image all build
@@ -96,11 +96,11 @@ An app scaffolded on the earlier lite edition moves in one commit on hfs 4.10: `
 (an `_archive/` folder becomes `db/migrations/archive/`), `git mv supabase/seed.sql db/seed.sql`, then delete
 `supabase/config.toml`, `supabase/types/` and the rest of `supabase/`; in hfs.json replace the `supabase` block with an
 optional `db` block (`forceRls`, `appRole`), set every connection's `provider` to `postgres`, drop `supabase/types/` from
-`sides.<side>.reads`, and list the app's database functions, schema-qualified (`public.job_claim`), in `sides.be.dbFunctions`; run `npx --no-install starci app sync --write`
+`sides.<side>.reads`, and list the app's database functions, schema-qualified (`public.job_claim`), in `sides.be.dbFunctions`; run `npx --no-install starci app sync --execute`
 (it renders `db/bootstrap.sql`, the db scripts, codegen and CI, and removes a leftover `supabase/types/`); restore the
-data with `starci app db migrate --url-env DATABASE_URL --execute` on an empty database after `pg_restore` of the hosted
+data with `starci app db migrate --db-url-env DATABASE_URL --execute` on an empty database after `pg_restore` of the hosted
 dump, which keeps the `supabase_migrations.schema_migrations` history the migrate verb reads. On hfs 4.11 the db service
-moves to the official image: `npx --no-install starci app sync --write` writes `.starcistacks/images/db/Dockerfile` (ruling `lite-db-image-in-stacks`; it removes a `db/Dockerfile` an earlier sync wrote) and the db scripts, the stack's db
+moves to the official image: `npx --no-install starci app sync --execute` writes `.starcistacks/images/db/Dockerfile` (ruling `lite-db-image-in-stacks`; it removes a `db/Dockerfile` an earlier sync wrote) and the db scripts, the stack's db
 component and service take the app's own `db` image (`deploy.images.db: {app: db}`, pushed with the release), and a
 migration that needs what the Supabase image carried is rewritten in a new forward migration: a `pg_net` call becomes an
 outbound call of the back end through its integration (BE-INFRA-2), a `pgmq` queue becomes a BullMQ queue of
@@ -110,9 +110,9 @@ and the `supabase_realtime` publication is dropped; the `extensions` schema stay
 
 An app whose production starts on an EMPTY database (no hosted data to restore) need not rewrite its chain: it squashes it.
 Apply the whole active chain to a rehearsal database with `starci app db migrate`, so its history records it, then run
-`starci app db baseline --squash --url-env <NAME> --stamp <ts14> --seed-tables <reference tables>` (add `--drop-extension`
+`starci app db baseline --squash --db-url-env <NAME> --stamp <ts14> --seed-tables <reference tables>` (add `--drop-extension`
 for each extension the db image lacks beyond the default `pg_net,pg_cron`, and `--drop-pgmq-queue` for queues whose work
-moved to BullMQ), read its report, and repeat with `--apply`. The verb writes the one baseline, the marked role section of
+moved to BullMQ), read its report, and repeat with `--execute`. The verb writes the one baseline, the marked role section of
 `db/bootstrap.sql` and `db/seed.sql`, archives the chain, and refuses unless the replay on the app's db image equals the
 rehearsal minus what it drops; nobody writes a migration after it by hand. Production then takes `starci app db migrate` on
 its empty database and the seed. The verb's flags and outputs are the hfs README's `db baseline --squash`.

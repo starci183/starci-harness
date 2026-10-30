@@ -37,8 +37,8 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 
 - `.starcistacks/` may carry compose, swarm, k8s and terraform trees per environment; dev runs every dependency from
   its compose files. Owner: slot `app.starcistacks`; R10; [stacks.md](stacks.md).
-- `stack up|down` start and stop the full infrastructure (broker, identity provider, test world) beside the shared
-  `stack deploy|verify|rollback`. Owner: [README.md](../../README.md) (verb groups; `starci explain` lists what is built).
+- `world up|down|status` start, stop and report the full infrastructure (broker, identity provider, test world), apart from
+  the Swarm deploy tooling `stack deploy|verify|rollback`. Owner: [README.md](../../README.md) (verb groups; `starci explain` lists what is built).
 
 ## Deploy targets
 

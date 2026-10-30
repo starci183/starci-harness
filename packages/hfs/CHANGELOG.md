@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Upgrade note: right after upgrading, run `npx --no-install starci app sync --execute` in the app. The app's managed hooks and scripts still call `starci app hygiene` and `starci app sync --check`, which no longer exist, so the pre-commit hook fails until sync renders the new ones (and every managed file header now names `sync --execute`, so each managed file drifts once).
+- Changed: the app verbs take the canonical spellings of owner ruling cli-canonical-2026-10-30 (contexts/harness/cli-canonical.md); the old spellings are unknown verbs and flags:
+  - `app sync` is a dry run by default (exit 1 on drift) and writes with `--execute`; the Sonar scope block of `sonar-project.properties` is one of its managed files.
+  - `app check --staged` is the pre-commit guard (staged `.starciwork`/`.starcistacks` paths, the secrets guard over the index, a new back-end logic file without its spec).
+  - `app add service <dir> <name> [--inject ...]`, `app add spec <file>.service.ts` and `app add image` generate what the former `new` did; a flag a noun does not take is refused.
+  - `app slot <path>` names the slot that owns a path; `app world up|down|status` runs the full edition's test world (`npm run test:world`); `app stack` is the Swarm deploy tooling alone.
+  - `app scaffold <name>` creates `<--cwd>/<name>`; `app upgrade` is a dry run unless `--execute`.
+  - `app lint --json` and `--out <sonar file>`; `app codemod --execute`, `--json` and `--out <file>`.
+  - `app stack prepare` without `--execute` is the read-only host check; `--sha` names the commit on every stack action and on `release gate`, which adds the Sonar step whenever `services.sonar` is declared.
+  - `app secret <action> --env <env>` on every action but `init`; `secret recipients --add/--remove`, `ci secret set` and `ci var set` are dry runs until `--execute`; `ci local` is a dry run unless `--execute`.
+  - `app db migrate` without `--execute` prints the read-only plan with exit 0 (in step), 1 (drift) or 2 (unreadable); `--db-url-env <NAME>` on every db action; `db baseline` and `db restamp` act with `--execute`.
 - Fixed: the first start of the urgent floor (`stack deploy --urgent --first-start --db-service <service>`) no longer starts the app services against an empty schema (their healthchecks failed and `failure_action: rollback` rolled every first start back at converge). The stack is first deployed with every service but the database at 0 replicas (a compose override merged by `docker stack deploy -c`, `stack.first-start-hold.yaml` beside the stack; a global-mode service is held off every node by an unsatisfiable placement constraint), then the `first-start` step waits for the database, proves it empty and migrates, then the real stack deploys and converges, verifies and rolls back as before. New step `deploy-hold`; a `--db-service` that is not a service of the stack is refused with `STACK_FIRST_START_USAGE`. A deploy without `--first-start` is unchanged.
 
 ## 4.11.22 - 2026-10-30

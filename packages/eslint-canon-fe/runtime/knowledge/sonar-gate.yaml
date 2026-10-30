@@ -41,7 +41,7 @@ newCode:
     minReviewedPercent: 100
     unreviewedMax: 0
 # The whole code, not only the new code. Every finding of the HFS canon reaches Sonar through ONE entry, `starci app lint`
-# (packages/hfs, contract changes hfs-sonar-import and hfs-lint-entry). CI runs it per side with --side and --sonar,
+# (packages/hfs, contract changes hfs-sonar-import and hfs-lint-entry). CI runs it per side with --side and --out,
 # then merges rules by id and joins issues into ONE file, reports/lint.sonar.json, named by sonar.externalIssuesReportPaths; the gate holds the open-issue count of
 # the whole project at zero. The file carries three engines:
 #   starci-hfs   the repository findings of `starci app check` (managed files, tree, pins, CI, contracts; the rule id is the finding code)

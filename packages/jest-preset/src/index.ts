@@ -253,7 +253,7 @@ function coverageOf(options: unknown): StarciCoverageScope {
   const files = fieldOf(coverage, "files") ?? []
   const excludes = fieldOf(coverage, "excludes")
   if (!coverage || !isList(roots) || !isList(roles) || !roles.length || !isList(files) || !isList(excludes)) {
-    throw new Error("starciJestConfig({ coverage: { roots, roles, files, excludes } }) needs the coverage scope starci app sync renders from the slot manifest; run \"npx starci app sync --write\"")
+    throw new Error("starciJestConfig({ coverage: { roots, roles, files, excludes } }) needs the coverage scope starci app sync renders from the slot manifest; run \"npx starci app sync --execute\"")
   }
   return { roots, roles, files, excludes }
 }

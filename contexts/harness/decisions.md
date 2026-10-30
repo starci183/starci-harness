@@ -101,7 +101,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   dropping them all; asked for in nivo-lite's words "build local bypass ci, thao tác thẳng với vps"): typecheck and the build
   (the release gates `typecheck`, `build`, `build-be`, `build-fe` the app declares); app check, lint and the tests wait for the
   back-fill, so `--lint-baseline` (`urgent-lint-baseline`, 2026-10-29) is retired and refused. And it is one command:
-  `starci app stack deploy --env <env> --urgent --reason "<text>" --execute` with no `--image` and no `--source-sha` releases HEAD
+  `starci app stack deploy --env <env> --urgent --reason "<text>" --execute` with no `--image` and no `--sha` releases HEAD
   (unless it already has a pushed urgent record), builds and pushes its images on the operator's machine before the deploy's
   transport reaches the server, and deploys their digests under the unchanged floor (`packages/hfs/stack/urgent-release.mjs`). A
   tag pushed by hand carries no record: the one command adopts a tag already on HEAD and writes the record only after the checks

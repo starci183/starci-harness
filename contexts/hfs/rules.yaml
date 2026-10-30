@@ -1663,7 +1663,7 @@ rules:
       - {kind: hfs, id: db-definer-revoke}
   - id: R257
     code: DB_BASELINE_SHAPE
-    law: An archived migration chain has exactly one active baseline, archive contents stay immutable, and the db baseline verbs are read-only unless `--apply` is explicit.
+    law: An archived migration chain has exactly one active baseline, archive contents stay immutable, and the db baseline verbs are read-only unless `--execute` is explicit.
     editions: [lite]
     failureCodes:
       - DB_BASELINE_SHAPE
