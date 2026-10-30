@@ -12,7 +12,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
-import type { Linter } from 'eslint';
 import ts from 'typescript';
 import { loadHfs, starciFeConfig } from '../../eslint-canon-fe/src/index.ts';
 import { bundledPresets } from '../sync/index.mjs';
@@ -23,10 +22,7 @@ import { init } from '../runtime/scripts/api/git/init.mjs';
 import { gitAdd, installTypeScript } from './helpers/hfs-cli-fixture.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 
-// The core Grammar is loaded from its .ts source at run time (type stripping), but that source is typechecked by its own package: a computed
-// specifier keeps it out of this program, and its two exports are typed here.
-const GRAMMAR_CORE_SOURCE = '../../eslint-grammar-core/src/index.ts';
-const { default: grammarCore, recommended: grammarRecommended } = await import(GRAMMAR_CORE_SOURCE) as { default: NonNullable<Linter.Config['plugins']>[string]; recommended: Linter.RulesRecord };
+import grammarCore, { recommended as grammarRecommended } from '../../eslint-grammar-core/dist/index.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGES = path.join(HERE, '..', '..');

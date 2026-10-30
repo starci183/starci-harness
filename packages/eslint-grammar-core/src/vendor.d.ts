@@ -182,42 +182,7 @@ declare module "*/runtime/engine/yaml.mjs" {
   export function parseYaml(source: string): unknown
 }
 
-declare module "*/eslint-canon-be/fixtures/app.mjs" {
-  type AppDeclaration = import("@starci/eslint-canon-fe/lib/hfs.mjs").AppDeclaration
-  /** The app `hfs.json` of a fixture: the declaration of one side with the defaults of the other. */
-  export function appDeclaration(side: string, fields?: { readonly [key: string]: unknown }): AppDeclaration
-}
-
-declare module "*/eslint-canon-be/fixtures/gathered-plugin.mjs" {
-  /** Register the gathered-plugin contract against one side's index. */
-  export function gatheredPluginSpec(input: {
-    readonly side: string
-    readonly dir: string
-    readonly plugin: import("eslint").ESLint.Plugin
-    readonly lawOwners: readonly string[]
-    readonly recommended: Readonly<Record<string, string>>
-    readonly ruleDeclarations: readonly { readonly law: string; readonly name: string }[]
-    readonly rules: Readonly<Record<string, import("eslint").Rule.RuleModule>>
-  }): void
-}
-
-declare module "*/eslint-canon-be/fixtures/project/tester.mjs" {
-  /** A hermetic app on disk whose project graph the project rules read. */
-  export interface ProjectFixture {
-    readonly root: string
-    readonly at: (rel: string) => string
-    readonly tester: import("eslint").RuleTester
-    readonly cleanup: () => void
-    /** The ESLint instance a spec keeps per fixture, created on first use. */
-    linter?: import("eslint").Linter
-  }
-  export function projectFixture(input?: {
-    readonly profile?: "be" | "fe"
-    readonly edition?: "full" | "lite"
-    readonly files?: Readonly<Record<string, string | null>>
-    readonly rootFiles?: Readonly<Record<string, string>>
-    readonly declaration?: { readonly [key: string]: unknown }
-    readonly apps?: readonly { readonly name: string; readonly kind: string }[]
-    readonly manifestText?: string
-  }): ProjectFixture
+declare module "*/runtime/scripts/hfs/project-graph.mjs" {
+  /** Forget every cached project graph, so the next rule run reads the disk again. */
+  export function resetProjectGraphs(): void
 }

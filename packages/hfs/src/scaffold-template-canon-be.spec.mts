@@ -3,8 +3,8 @@
 // the first `starci app add table` writes in either edition (persistence.md BE-PERSISTENCE-3, ruling entity-base).
 // An app copies a platform capability byte-identical, so a skeleton file the canon refuses is a finding every app inherits
 // and cannot fix. Each edition is scaffolded into a temp folder and every file under its src/modules/platform is linted, typed, with the
-// starci-be rules of @starci/eslint-canon-be (the sibling package's source, the factory the rendered be/eslint.config.mjs
-// calls). The parser reads a tsconfig that extends the app's own and adds only where this package's installs live, so the
+// starci-be rules of @starci/eslint-canon-be (the sibling package's built entry, typed by its declarations: the factory the rendered
+// be/eslint.config.mjs calls). The parser reads a tsconfig that extends the app's own and adds only where this package's installs live, so the
 // rules judge the real types of Nest, undici, node and the kit; the kit is copied to node_modules/@starci/jest-preset,
 // where a rule recognises a kit double by its declaring package.
 import { test } from 'node:test';
@@ -21,16 +21,7 @@ import { addKind } from '../scaffold/add.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { gitAdd, installTypeScript } from './helpers/hfs-cli-fixture.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
-
-/** The part of the sibling canon's public entry this spec calls. */
-interface CanonBe {
-  loadHfs(configUrl: string | URL): unknown;
-  starciBeConfig(options: { hfs: unknown }): Promise<Linter.Config[]>;
-}
-// reason: the sibling package's source is loaded by a computed specifier, as the type-stripped import it was, because tsc would otherwise
-// typecheck that package's own sources (and their runtime copies) under this package's strict program; the shape above is what the spec calls.
-const canonBeEntry = '../../eslint-canon-be/src/index.ts';
-const { loadHfs, starciBeConfig } = await import(canonBeEntry) as CanonBe;
+import { loadHfs, starciBeConfig } from '../../eslint-canon-be/dist/index.js';
 
 const HFS = path.resolve(import.meta.dirname, '..');
 const KIT = path.resolve(HFS, '..', 'jest-preset');
@@ -89,10 +80,8 @@ const addTable = (root: string) => {
 
 for (const edition of ['full', 'lite']) {
   test(`the ${edition} skeleton's platform capabilities pass the starci-be canon`, { timeout: 300_000 }, async (t) => {
-    // reason: authCallback and emitTypes are options scaffoldApp no longer declares; they are still passed, through a variable (no excess-property check).
-    const options = { name: 'demo', into: mkdtemp(t, 'starci-template-canon-be-'), harness: { version: '1.1.0-alpha.3' }, edition, authCallback: edition === 'lite',
-      presets: bundledPresets(), lock: lockedOk, initGit: init, emitTypes: () => 'export type Database = Record<string, never>\n' };
-    const { root } = scaffoldApp(options);
+    const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-template-canon-be-'), harness: { version: '1.1.0-alpha.3' }, edition,
+      presets: bundledPresets(), lock: lockedOk, initGit: init });
     assert.equal(fs.existsSync(path.join(root, 'be', ENTITY_BASE)), false, 'a starter carries no entity base: no starter table extends it (R25)');
     assertConnectRetry(fs.readFileSync(path.join(root, 'be', 'src/modules/platform/database/database.module.ts'), 'utf8'));
     addTable(root);
@@ -100,7 +89,9 @@ for (const edition of ['full', 'lite']) {
     installKit(root);
     const be = path.join(root, 'be');
     const project = lintProject(be);
-    const config = canonRulesOnly(await starciBeConfig({ hfs: loadHfs(pathToFileURL(path.join(be, 'eslint.config.mjs'))) }));
+    // reason: the canon answers typescript-eslint's FlatConfig blocks; they are eslint's flat config, but under exactOptionalPropertyTypes its
+    // LanguageOptions lacks the index signature eslint's own type declares, so the one boundary is named here.
+    const config = canonRulesOnly(await starciBeConfig({ hfs: loadHfs(pathToFileURL(path.join(be, 'eslint.config.mjs')).href) }) as Linter.Config[]);
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-be/http-needs-timeout')), 'the canon rules are on');
     const eslint = new ESLint({ cwd: be, overrideConfigFile: true, errorOnUnmatchedPattern: false, overrideConfig: [
       ...config, { files: ['**/*.ts'], languageOptions: { parserOptions: { projectService: false, project, tsconfigRootDir: be } } },
