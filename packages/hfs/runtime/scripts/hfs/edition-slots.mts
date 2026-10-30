@@ -1,0 +1,81 @@
+// edition.mjs - the one edition filter shared by the HFS slot resolver, declaration validation, rule catalog and
+// edition-specific rule parameters. Full is the default; lite changes data views, never the checks that consume them.
+// Lite uses provider adapters and declares Docker Swarm production infrastructure (owner:lite-production-swarm, ruling:R212/case-4).
+// Its overlays exclude the e2e world, and every slot keeps its own `tests`.
+import { isPlainObject } from '../../engine/plain-object.mjs';
+import { EDITIONS } from './manifest-shape.mjs';
+import type { Parsed, RuleParams, Slot, SlotManifest, SlotPresence } from './manifest-shape.mjs';
+
+/** A row that may narrow itself to some editions (a rule, an enforcer, a backing service). */
+interface EditionScoped { editions?: readonly string[] | undefined }
+
+/** The presence of `slot` under edition lite for `profile`: `litePresence`, else the slot's own presence. */
+export function litePresenceOf(slot: Pick<Slot, 'litePresence' | 'presence'>, profile: string): SlotPresence {
+  const lp = slot.litePresence;
+  if (lp === undefined) return slot.presence;
+  return isPlainObject(lp) ? ((lp as Record<string, SlotPresence>)[profile] ?? slot.presence) : (lp as SlotPresence);
+}
+
+/** Whether `slot` exists under `edition` of `manifest` (default: the manifest's own editions). */
+export function slotInEdition(manifest: Pick<SlotManifest, 'editions'>, slot: Pick<Slot, 'editions'>, edition: string): boolean {
+  return (slot.editions ?? manifest.editions ?? EDITIONS).includes(edition);
+}
+
+/** The slot as `edition` sees it: lite overlays its data, presence and tracking; `tests` stays the slot's own (lite keeps the unit specs). */
+export function effectiveSlot(slot: Slot, profile: string, edition: string): Slot {
+  if (edition !== 'lite') return slot;
+  const { lite, litePresence, ...base } = slot;
+  const presence = litePresenceOf(slot, profile);
+  let tracked = slot.tracked;
+  if (presence === 'forbidden') tracked = 'external';
+  else if (tracked === 'external') tracked = 'tracked';
+  return { ...base, ...lite, presence, tracked };
+}
+
+/** The template group starci app sync renders `slot` from under `edition`: `liteManagedBy` (else `managedBy`) in lite, `managedBy` otherwise; undefined when unmanaged. */
+export function managedGroupOf(slot: Pick<Slot, 'managedBy' | 'liteManagedBy'>, edition: string): string | undefined {
+  return edition === 'lite' ? (slot.liteManagedBy ?? slot.managedBy) : slot.managedBy;
+}
+
+/** The declared edition and the vocabulary against which it is validated. */
+export function declarationEdition(manifest: Pick<SlotManifest, 'editions'>, declaration: Parsed): { edition: string; known: readonly string[]; valid: boolean } {
+  const edition = declaration.edition === undefined ? 'full' : declaration.edition;
+  const known = manifest.editions ?? EDITIONS;
+  return { edition, known, valid: known.includes(edition) };
+}
+
+/** Problems of an optional rule-catalog `editions` list, in the catalog schema's words. */
+export function ruleEditionProblems(rule: Parsed, label: string): string[] {
+  if (rule.editions === undefined) return [];
+  const bad: string[] = [];
+  if (!Array.isArray(rule.editions) || !rule.editions.length) return [`${label}.editions must be a non-empty list`];
+  for (const value of rule.editions as Parsed[]) if (!EDITIONS.includes(value)) bad.push(`${label}.editions has ${JSON.stringify(value)}, not one of ${EDITIONS.join(', ')}`);
+  if (new Set(rule.editions).size !== rule.editions.length) bad.push(`${label}.editions repeats a value`);
+  return bad;
+}
+
+/** Whether a catalogued rule owner judges its finding under `edition`; uncatalogued codes always remain judged. */
+export function judgedInEdition(owner: EditionScoped | null | undefined, edition = 'full'): boolean {
+  return !owner?.editions || owner.editions.includes(edition);
+}
+
+/** Whether the enforcer `kind:id` of the catalog `rules` runs under `edition`: every rule listing it is judged there, and the enforcer row's own `editions` (a rule with several enforcers where only one is full-only) agrees. A lint rule no rule lists runs everywhere. */
+export function enforcerJudgedInEdition(rules: ReadonlyArray<EditionScoped & { enforcers: ReadonlyArray<EditionScoped & { kind: string; id: string }> }>, kind: string, id: string, edition = 'full'): boolean {
+  const owners = rules.filter((rule) => rule.enforcers.some((enforcer) => enforcer.kind === kind && enforcer.id === id));
+  return owners.every((rule) => judgedInEdition(rule, edition) && rule.enforcers.filter((enforcer) => enforcer.kind === kind && enforcer.id === id).every((enforcer) => judgedInEdition(enforcer, edition)));
+}
+
+/**
+ * A frozen copy of one profile's parameters, with its lite overrides applied only in the lite edition. A lite key whose base
+ * value and override are both maps merges one level deep (lite.infraOwners restates only the specifiers whose owner changes);
+ * any other value replaces the base.
+ */
+export function editionRuleParams(params: RuleParams, edition: string): RuleParams {
+  const { lite, ...base } = params;
+  const merged = edition === 'lite' && lite ? { ...base } : base;
+  if (edition === 'lite' && lite) {
+    for (const [key, value] of Object.entries(lite) as Array<[string, Parsed]>) merged[key] = isPlainObject(value) && isPlainObject(base[key]) ? { ...base[key], ...value } : value;
+  }
+  const deepFreeze = (value: Parsed): Parsed => { if (value && typeof value === 'object') { Object.values(value).forEach(deepFreeze); } return Object.freeze(value); };
+  return deepFreeze(structuredClone(merged));
+}
