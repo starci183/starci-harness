@@ -45,12 +45,12 @@ export interface ProjectGraphSnapshot {
  * ones: a file whose graph findings differ is linted again by ESLint itself, so ESLint stays the only emitter of each message. It is the very
  * graph the rules read (same machine, same manifest, same filter), never a second judge.
  *
- * @param input - The side folder (`repoRoot`, the folder of the side's `eslint.config.mjs`).
+ * @param input - The side folder (`repoRoot`, the folder of the side's `eslint.config.mjs`); `injectedTypeScript` is for hermetic fixtures only.
  * @returns The findings of the rules of `recommended`, keyed by path relative to the side folder.
  */
-export const projectGraph = ({ repoRoot }: { repoRoot: string }): ProjectGraphSnapshot => {
+export const projectGraph = ({ repoRoot, injectedTypeScript }: { repoRoot: string; injectedTypeScript?: object }): ProjectGraphSnapshot => {
   resetProjectGraphs()
-  const graph = buildProjectGraph({ repoRoot, runtimeRoot: RUNTIME })
+  const graph = buildProjectGraph({ repoRoot, ...(injectedTypeScript === undefined ? {} : { injectedTypeScript }), runtimeRoot: RUNTIME })
   const byFile: Record<string, ProjectGraphFinding[]> = {}
   for (const [file, findings] of graph.byFile) {
     for (const finding of findings) {
