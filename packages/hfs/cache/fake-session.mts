@@ -46,6 +46,7 @@ export function createFakeIndex(files: Readonly<Record<string, string>>): Conten
 
 export function createFakeSession(options: FakeSessionOptions = {}): FakeSession {
   const index = createFakeIndex(options.files ?? {});
+  const initial = new Map(index.paths.map((file) => [file, index.hashOf(file)]));
   const stored = new Map<string, readonly CacheRecord[]>(Object.entries(options.records ?? {}));
   const events: ProgressEvent[] = [];
   const reports: FamilyReport[] = [];
@@ -70,6 +71,7 @@ export function createFakeSession(options: FakeSessionOptions = {}): FakeSession
     decide: () => decision,
     records: (folder) => replaced.get(folder) ?? stored.get(folder) ?? [],
     replace: (folder, records) => void replaced.set(folder, records),
+    unchanged: (paths) => paths.every((file) => index.hashOf(file) === initial.get(file)),
     report: (report) => void reports.push(report),
     progress,
     setFile: (path, text) => index.set(path, text),
