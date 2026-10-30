@@ -859,5 +859,11 @@ $defs:
       where: {type: string, minLength: 1}
       member: {type: string, pattern: '^[a-z0-9][a-z0-9-]*$', description: "The provider member holding this key (`secrets/<member>`, the slug of where); with key, the entry declares one key of it."}
       key: {type: string, pattern: '^[A-Z][A-Z0-9_]*$', description: "The one key of the member this entry declares; materialized as its own file, read by the app as <KEY>_FILE."}
+      keys:
+        description: The keys a member groups on purpose (several providers in one member), declared in one entry instead of an entry per key; every one must be in the member's envelope.
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items: {type: string, pattern: '^[A-Za-z][A-Za-z0-9_]*$'}
       recipientPolicy: {type: string, minLength: 1, description: "Which age recipients the envelope is encrypted to: its environment's rule of the app's managed .sops.yaml."}
       keyCustody: {type: string, minLength: 1, description: "Where the shared decrypting identity is held; docs/host-secrets.md owns host custody and its execution prerequisites."}

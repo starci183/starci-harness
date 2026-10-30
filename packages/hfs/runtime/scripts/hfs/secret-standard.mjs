@@ -20,21 +20,31 @@ export const providerOf = (key) => key.split("_")[0].toLowerCase();
 const sameSet = (left, right) => left.length === right.length && left.every((item) => right.includes(item));
 const keyList = (keys) => keys.join(", ");
 
+/** The member a `secrets:` entry names: `member`, else the slug of `where`, else its `name`. */
+const memberOfEntry = (entry) => entry?.member ?? /^secrets\/([a-z0-9-]+)/u.exec(entry?.where ?? "")?.[1] ?? entry?.name;
+
 /** The keys an environment's `secrets:` declares for `member`: an entry naming `key` with that `member`, or a whole-member entry. */
 function declaredKeys(spec, member, keys) {
   const entries = Array.isArray(spec?.secrets) ? spec.secrets : [];
-  const memberOfEntry = (entry) => entry?.member ?? /^secrets\/([a-z0-9-]+)/u.exec(entry?.where ?? "")?.[1] ?? entry?.name;
   if (entries.some((entry) => entry?.key === undefined && memberOfEntry(entry) === member)) return keys;
   return entries.filter((entry) => entry?.key !== undefined && memberOfEntry(entry) === member).map((entry) => entry.key);
 }
 
+/** The keys of the one sealed SSH member `deploy.remote.sealed` names (stack/remote.mjs): the deploy transport reads exactly these. */
+const SSH_GROUP = Object.freeze(["VPS_HOST", "VPS_USER", "privateKey", "knownHosts"]);
+
 /**
- * True when the stack groups `member` on purpose: the environment's `secrets:` declares every key of it per key, naming this member.
- * A member the owner groups (an app's own keys, the keys one service reads) holds keys of several first words by design.
+ * True when the stack groups `member` on purpose: every key of it is declared in the environment's `secrets:`, per key (`key` with
+ * `member: <member>`) or in the `keys` list of an entry naming the member, or is a key of the sealed SSH member the deploy names.
+ * A member the owner groups (an app's own keys, the keys one service reads, the VPS session) holds keys of several first words by design.
  */
 function declaredGroup(spec, member, keys) {
   const entries = Array.isArray(spec?.secrets) ? spec.secrets : [];
-  return keys.length > 0 && keys.every((key) => entries.some((entry) => entry?.key === key && entry?.member === member));
+  const sealed = spec?.deploy?.remote?.sealed;
+  const ssh = (typeof sealed === "string" ? [sealed] : Object.values(sealed ?? {})).includes(member) ? SSH_GROUP : [];
+  const declared = (key) => ssh.includes(key) || entries.some((entry) => memberOfEntry(entry) === member
+    && (entry?.key === key || (Array.isArray(entry?.keys) && entry.keys.includes(key))));
+  return keys.length > 0 && keys.every(declared);
 }
 
 /** The tracked member file names of one environment, or null outside a git work tree. */
@@ -75,7 +85,7 @@ export function auditSecrets(repoRoot, environment = null) {
       const providers = [...new Set(envelope.keys.map(providerOf))];
       if (isLegacyName(name)) add("LEGACY_MEMBER", `is a dotenv .enc member; move it: starci app secret migrate ${env} ${member} [--to <provider>] --execute`);
       if (providers.length > 1 && !declaredGroup(spec, member, envelope.keys))
-        add("MIXED_PROVIDERS", `holds keys of ${providers.length} providers by their first word (${providers.join(", ")}) that the stack does not group in it; split it (starci app secret split ${env} ${member} [--group KEY=member] --execute) or declare each key with member: ${member} in environments.${env}.secrets`);
+        add("MIXED_PROVIDERS", `holds keys of ${providers.length} providers by their first word (${providers.join(", ")}) that the stack does not group in it; split it (starci app secret split ${env} ${member} [--group KEY=member] --execute) or declare its keys in environments.${env}.secrets (an entry naming ${member} with keys: [...])`);
       const wanted = recipientsFor(repoRoot, path.join(directory, `${member}${MEMBER_SUFFIX}`));
       if (!isLegacyName(name) && wanted.length && !sameSet(wanted, envelope.recipients))
         add("RECIPIENT_DRIFT", `is sealed to ${keyList(envelope.recipients)}, its environment's rule names ${keyList(wanted)}; seal it again: starci app secret migrate ${env} ${member} --execute`);

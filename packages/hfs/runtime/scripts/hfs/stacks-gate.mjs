@@ -264,6 +264,12 @@ const checkSecret=(secret,at,{envDir,environment,root,tracked,secretNames,add})=
     add('encrypted-ref-invalid',`${at}.where`,'secret must resolve to <where>.enc.yaml (or a legacy <where>.enc) as a recognizable SOPS envelope, an existing regular file below the environment directory');
   else if(nonempty(secret.key)&&!envelopeOf(fs.readFileSync(enc,'utf8')).keys.includes(secret.key))
     add('encrypted-ref-invalid',`${at}.key`,`the member at ${secret.where} holds no ${secret.key}`);
+  else if(Array.isArray(secret.keys)){
+    // A grouped member declares its keys in one entry; each must be in the envelope, and one entry declares one key or a group, not both.
+    if(nonempty(secret.key))add('encrypted-ref-invalid',`${at}.keys`,'an entry declares one key (key) or a group (keys), not both');
+    const held=envelopeOf(fs.readFileSync(enc,'utf8')).keys;
+    for(const key of secret.keys.filter(key=>!held.includes(key)))add('encrypted-ref-invalid',`${at}.keys`,`the member at ${secret.where} holds no ${key}`);
+  }
   if(nonempty(secret.where)&&!plain)
     add('materialized-path-invalid',`${at}.where`,'secret plaintext path and its existing ancestors must remain below the environment directory without symlinks');
   if(!String(secret.recipientPolicy??'').trim()||!String(secret.keyCustody??'').trim())

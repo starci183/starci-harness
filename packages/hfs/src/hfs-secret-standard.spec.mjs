@@ -130,6 +130,22 @@ test("audit names legacy members, mixed providers, recipient drift and undeclare
   assert.ok(!result.out.includes("SEPAY_MERCHANT_ID,"), "a declared key is not named undeclared");
 });
 
+test("the sealed VPS member and a member whose entry lists its keys are groups, not mixed providers; an unlisted key still is", async (t) => {
+  const { root, dir, env } = app(t);
+  sopsConfig(root, [[APP_WIDE, OWNER]]);
+  fs.writeFileSync(path.join(root, ".starcistacks", "application-stacks.yaml"), [
+    "schema: starci/application-stacks@1", "environments:", "  dev:", "    deploy:", "      remote: {sealed: vps}", "    secrets:",
+    "      - {name: ai, where: secrets/ai, keys: [AI_ROUTER_TOKEN, OPENROUTER_API_KEY], recipientPolicy: rule, keyCustody: harness}",
+    "      - {name: mail, where: secrets/mail, keys: [MAIL_FROM], recipientPolicy: rule, keyCustody: harness}", "",
+  ].join("\n"));
+  fs.writeFileSync(path.join(dir, "vps.enc.yaml"), sealedYaml(["VPS_HOST", "VPS_USER", "privateKey", "knownHosts"]));
+  fs.writeFileSync(path.join(dir, "ai.enc.yaml"), sealedYaml(["AI_ROUTER_TOKEN", "OPENROUTER_API_KEY"]));
+  fs.writeFileSync(path.join(dir, "mail.enc.yaml"), sealedYaml(["MAIL_FROM", "SMTP_PASSWORD"]));
+  const result = await run(["audit", "dev"], { cwd: root, env });
+  const mixed = result.out.split("\n").filter((line) => line.startsWith("MIXED_PROVIDERS"));
+  assert.deepEqual(mixed.map((line) => line.split(":")[0]), ["MIXED_PROVIDERS dev/mail.enc.yaml"], result.out);
+});
+
 test("migrate is a dry run naming keys only, then moves a legacy member to <slug>.enc.yaml and removes the old file", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "ai.enc"), sealedDotenv(["OPENROUTER_API_KEY"]));
