@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rootDir": ".",
+    "outDir": "."
+  },
+  "exclude": [
+    "node_modules",
+    "templates",
+    "src/fixtures",
+    "**/*.spec.mts",
+    "**/*.d.mts"
+  ],
+  "files": [
+    "migration.d.mts",
+    "vendor-types.d.mts"
+  ]
+}
