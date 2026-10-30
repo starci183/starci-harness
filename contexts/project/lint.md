@@ -96,4 +96,5 @@ only; it never keeps a second wording of what the rule flags, and a gate never c
 
 [README.md](README.md) (the profiles a project picks), [anatomy.md](anatomy.md) (the packages each gate judges),
 [work.md](work.md) (the Work facts listed above), [stacks.md](stacks.md), [lite.md](lite.md) and [full.md](full.md)
-(how an edition changes which slots and rules apply).
+(how an edition changes which slots and rules apply), [check-cache.md](check-cache.md) (the committed result
+cache of `app check`, `app lint` and unit coverage).
