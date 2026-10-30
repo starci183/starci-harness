@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.11.19 - 2026-10-30
+
+- Fixed: `HFS_SCHEDULE_UNDECLARED` (R268) reads an application SQL template whose `${}` sits where Postgres wants an identifier (`LISTEN ${channel}`, `SET x = ${n}`): the template is read with each `${}` as NULL, and when that does not parse, again with each as an identifier (`stacks-release.mjs` `templateObservations`). Such a statement was taken for an undeclared pg_cron job. A bare interpolated function name (`FROM ${fn}(...)`) still fails closed, since it may be `cron.schedule`; the skeleton's `callDbFunction` quotes `"${schema}"."${name}"` and parses as it is.
+- Fixed: SQL named in a same-file `const` before its `query`/`execute` call is judged as if inline (`sqlConstants`); moving the text out of the call no longer hid it from the scanner. Specs: `src/hfs-stacks-release.spec.mjs`.
+
 ## 4.11.18 - 2026-10-30
 
 - Fixed: `HFS_STACKS_SHAPE` (R10) accepts the sealed member `app secret set` writes, `<env>/secrets/<slug>.enc.yaml` (ruling app-secrets-one-standard, `scripts/lib/sealed-member.mjs`), beside the legacy `<slug>.enc`. The `.starcistacks` slot (`knowledge/hfs/slots.yaml`, both editions) allowed only `<slug>.enc`, so every standard member was refused; the messages and `goesTo` name `.enc.yaml`. Spec: `src/hfs-stacks-shape.spec.mjs` holds one of each.

@@ -269,25 +269,61 @@ function sqlObservations(text, file) {
 
 function sourceSqlObservations(source, file) {
   const observations = [];
+  const constants = sqlConstants(source);
   const visit = node => {
     if (ts.isCallExpression(node) && /(?:^|\.)(?:query|execute)$/.test(node.expression.getText())) {
       const argument = unwrap(node.arguments[0]);
-      const text = sqlTemplateText(argument);
-      if (text !== null) observations.push(...sqlObservations(text, file));
+      const text = argument && ts.isIdentifier(argument) ? constants.get(argument.text) : argument;
+      if (text) observations.push(...templateObservations(text, file));
     }
     if (ts.isTaggedTemplateExpression(node) && /(?:^|\.)sql$/.test(node.tag.getText()))
-      observations.push(...sqlObservations(sqlTemplateText(node.template), file));
+      observations.push(...templateObservations(node.template, file));
     ts.forEachChild(node, visit);
   };
   visit(source);
   return observations;
 }
 
-function sqlTemplateText(node) {
-  if (!node) return null;
-  if (ts.isStringLiteralLike(node)) return node.text;
-  if (!ts.isTemplateExpression(node)) return null;
-  return node.head.text + node.templateSpans.map(span => `NULL${span.literal.text}`).join('');
+/** The file's `const NAME = <string or template>` statements, so SQL named before its query call is judged as if inline. */
+function sqlConstants(source) {
+  const constants = new Map();
+  const visit = node => {
+    if (ts.isVariableDeclarationList(node) && (node.flags & ts.NodeFlags.Const)) {
+      for (const declaration of node.declarations) {
+        const value = unwrap(declaration.initializer);
+        if (ts.isIdentifier(declaration.name) && value && (ts.isStringLiteralLike(value) || ts.isTemplateExpression(value)))
+          constants.set(declaration.name.text, value);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return constants;
+}
+
+const DYNAMIC = 'starci_dynamic_sql';
+
+/**
+ * The observations of an application SQL text. A template is read with each `${}` as NULL; when that does not parse (an
+ * interpolated identifier: `LISTEN ${channel}`, `SET x = ${n}`, `FROM ${fn}(...)`), it is read again with each `${}` as an
+ * identifier. A function whose name is interpolated bare may be pg_cron, so it stays an unknown observation; the skeleton's
+ * `callDbFunction` quotes `"${schema}"."${name}"`, which parses as it is.
+ */
+function templateObservations(node, file) {
+  if (ts.isStringLiteralLike(node)) return sqlObservations(node.text, file);
+  if (!ts.isTemplateExpression(node)) return [];
+  const spell = placeholder => node.head.text + node.templateSpans.map(span => `${placeholder}${span.literal.text}`).join('');
+  const nulls = spell('NULL');
+  if (parseSql(nulls)) return sqlObservations(nulls, file);
+  const named = spell(DYNAMIC);
+  const tree = parseSql(named);
+  if (!tree) return [{ id: null, cadence: null, at: file }];
+  let dynamicCall = false;
+  walkSql(tree, value => {
+    if (value.FuncCall && (value.FuncCall.funcname ?? []).some(part => part.String?.sval === DYNAMIC)) dynamicCall = true;
+  });
+  if (dynamicCall) return [{ id: null, cadence: null, at: file }];
+  return sqlObservations(named, file);
 }
 
 function recurringObservations({ doc, repoRoot, files, file, issues }) {

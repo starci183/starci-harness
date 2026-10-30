@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.5.20 - 2026-10-30
+
+- Changed: the bundled canon pins name hfs 4.11.19 (the schedule scanner reads interpolated identifiers and const-named SQL), eslint-canon-be 3.8.18, eslint-canon-fe 9.5.20 and the Grammar family 0.15.31. No rule changed.
+
 ## 9.5.19 - 2026-10-30
 
 - Changed: the bundled canon pins name hfs 4.11.18 (sealed `.enc.yaml` members pass HFS_STACKS_SHAPE; the deploy schema takes `serverRecipient` and a settings list), eslint-canon-be 3.8.17, eslint-canon-fe 9.5.19 and the Grammar family 0.15.30. No rule changed.

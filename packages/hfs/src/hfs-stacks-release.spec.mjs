@@ -370,6 +370,25 @@ for (const edition of ['lite', 'full']) {
       assert.equal(scheduleIssues(value).length, 1);
       writeTracked(value, 'be/src/modules/jobs/register.ts', 'sql' + quote + template + quote + ';');
       assert.equal(scheduleIssues(value).length, 1);
+      // SQL named in a const before the call is judged as if inline
+      writeTracked(value, 'be/src/modules/jobs/register.ts', 'const statement = ' + quote + template + quote + '; db.query(statement);');
+      assert.equal(scheduleIssues(value).length, 1);
+    });
+    withFixture(edition, value => {
+      const quote = String.fromCodePoint(96);
+      // a bare interpolated function name may be pg_cron, named in a const or not
+      writeTracked(value, 'be/src/modules/platform/database/database.client.ts', 'const named = ' + quote + 'SELECT * FROM ${fn}(${params})' + quote + '; db.query(named);');
+      assert.equal(scheduleIssues(value).length, 1);
+    });
+  });
+
+  test('HFS_SCHEDULE_UNDECLARED@' + edition + ': interpolated identifiers that are not a function name declare no schedule', () => {
+    withFixture(edition, value => {
+      const quote = String.fromCodePoint(96);
+      const query = text => 'db.query(' + quote + text + quote + ');';
+      writeTracked(value, 'be/src/modules/platform/database/database.client.ts', query('SELECT * FROM "${schema}"."${name}"(${params})'));
+      writeTracked(value, 'be/src/modules/domain/session/customer-sessions.client.ts', query('LISTEN ${channel}') + '\nconst timeout = ' + quote + 'SET SESSION statement_timeout = ${ms}' + quote + '; db.query(timeout);');
+      assert.deepEqual(scheduleIssues(value), []);
     });
   });
 
