@@ -26,8 +26,7 @@ function tree(t: TestContext, entries: Record<string, string>) {
   }
   return dir;
 }
-// reason: the rule's declared parameter type lists `all` and `isRoot` as required, but it reads `all ?? files` and only `isRoot === false`; the cases omit them.
-const scan = (t: TestContext, edition: string, entries: Record<string, string>, extra: Record<string, unknown> = {}) => deployScanFindings({ repoRoot: tree(t, entries), files: Object.keys(entries), repo: { kind: 'app', edition }, ...extra } as unknown as Parameters<typeof deployScanFindings>[0]);
+const scan = (t: TestContext, edition: string, entries: Record<string, string>, extra: { inScope?: (file: string) => boolean } = {}) => deployScanFindings({ repoRoot: tree(t, entries), files: Object.keys(entries), repo: { kind: 'app', edition }, ...extra });
 const only = (findings: ReturnType<typeof scan>, code: string) => findings.filter((finding) => finding.code === code);
 const paths = (findings: ReturnType<typeof scan>) => findings.map((finding) => finding.path).sort((left, right) => left.localeCompare(right));
 function workflow(run: string, environment = 'production') {

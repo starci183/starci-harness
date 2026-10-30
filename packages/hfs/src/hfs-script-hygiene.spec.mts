@@ -13,14 +13,14 @@ import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 
 type HygieneInput = Parameters<typeof scriptHygieneFindings>[0];
 
-function fixture(t: TestContext, entries: Record<string, unknown>, edition: string, extra: Record<string, unknown> = {}) {
+function fixture(t: TestContext, entries: Record<string, unknown>, edition: string, extra: Partial<HygieneInput> = {}): HygieneInput & { files: string[] } {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-script-hygiene-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(entries)) {
     fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true });
     fs.writeFileSync(path.join(repoRoot, file), typeof content === 'string' ? content : JSON.stringify(content));
   }
-  return { repoRoot, files: Object.keys(entries), repo: { kind: 'app', profile: 'app', edition }, isRoot: true, ...extra } as unknown as HygieneInput & { files: string[] }; // reason: the finder never reads the resolver its type lists, and these fixtures name none
+  return { repoRoot, files: Object.keys(entries), repo: { kind: 'app', profile: 'app', edition }, isRoot: true, ...extra };
 }
 
 for (const edition of ['lite', 'full']) {

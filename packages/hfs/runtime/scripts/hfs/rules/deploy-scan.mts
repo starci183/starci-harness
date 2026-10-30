@@ -223,7 +223,7 @@ function sourceFindings(file: string, text: string, doc: Parsed) {
 }
 
 /** Findings are names and paths only: deployment source snippets and credential values are never reported. */
-export function deployScanFindings({ repoRoot, files, all, repo, isRoot, inScope = () => true }: { repoRoot: string; files: string[]; all: string[]; repo: Repo; isRoot: boolean; inScope?: (file: string) => boolean }) {
+export function deployScanFindings({ repoRoot, files, all, repo, isRoot, inScope = () => true }: { repoRoot: string; files: string[]; all?: string[] | undefined; repo?: Repo | undefined; isRoot?: boolean | undefined; inScope?: ((file: string) => boolean) | undefined }) {
   if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
   const findings = [];
   for (const file of new Set(all ?? files)) {

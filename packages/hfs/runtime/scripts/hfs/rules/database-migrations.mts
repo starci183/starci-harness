@@ -149,7 +149,7 @@ function removedMigrationFindings(local: Parsed, retired: Parsed, baseNames: Par
  * cutover is retired from the ordering chain, not removed. New files append after HEAD's active migrations; timestamps
  * on archived migrations, remote branches and the wall clock do not constrain a replacement baseline.
  */
-export async function migrationShapeFindings({ repoRoot, migrations, archived = [], git, base }: { repoRoot: string; migrations: Parsed; archived?: Parsed; git: Parsed; base: Parsed }) {
+export async function migrationShapeFindings({ repoRoot, migrations, archived = [], git, base }: { repoRoot: string; migrations: Parsed; archived?: Parsed; git: Parsed; base?: Parsed }) {
   const prefix = `${MIGRATIONS_DIR}/`;
   const local = migrations.map((file: string) => {
     const name = file.startsWith(prefix) ? file.slice(prefix.length) : file;

@@ -110,7 +110,7 @@ function archiveFindings(repoRoot: string, current: Parsed, archived: Parsed, ma
 }
 
 /** A cutover may archive only unchanged, committed source files from the same history the finder judges. */
-export function baselineSourceFindings({ repoRoot, files = [], all = files, git = baselineGit, base }: { repoRoot: string; files?: string[]; all?: string[]; git?: Parsed; base: Parsed }) {
+export function baselineSourceFindings({ repoRoot, files = [], all = files, git = baselineGit, base }: { repoRoot: string; files?: string[]; all?: string[]; git?: Parsed; base?: Parsed }) {
   const active = all.filter((file: string) => ACTIVE.test(file));
   const archived = all.filter((file: string) => file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`));
   const prior = snapshot(repoRoot, git, base);
@@ -132,7 +132,7 @@ export function baselineSourceFindings({ repoRoot, files = [], all = files, git 
 }
 
 /** R257 content finder, synchronous in both editions; all paths judge cross-file cutovers even under --fast. */
-export function databaseBaselineFindings({ repoRoot, files = [], all, repo, isRoot, inScope, base, git = baselineGit }: { repoRoot: string; files?: string[]; all: string[]; repo: Repo; isRoot: boolean; inScope: (file: string) => boolean; base: Parsed; git?: Parsed }) {
+export function databaseBaselineFindings({ repoRoot, files = [], all, repo, isRoot, inScope, base, git = baselineGit }: { repoRoot: string; files?: string[]; all: string[]; repo: Repo; isRoot: boolean; inScope: (file: string) => boolean; base?: Parsed; git?: Parsed }) {
   if (isRoot === false || (repo?.edition && !['lite', 'full'].some((value) => value === repo.edition))) return [];
   const inventory = Array.isArray(all) ? all : files;
   const active = inventory.filter((file) => ACTIVE.test(file));

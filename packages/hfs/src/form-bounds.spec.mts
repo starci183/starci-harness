@@ -1,16 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSchema } from 'graphql';
-import type { GraphQLSchema } from 'graphql';
 import ts from 'typescript';
 import { inputBoundsPlugin, openApiBoundsSource, assertCompatibleInputBounds, emptyInputBoundsSource } from '../emit/form-bounds.mjs';
 import type { GraphqlSchemaLike, OpenApiSchemaLike } from '../emit/form-bounds.mjs';
 import { INPUT_BOUND_ARGUMENTS, INPUT_BOUNDS_DIRECTIVE, INPUT_BOUNDS_VERSION, INPUT_BOUNDS_VERSION_ARGUMENT, INPUT_BOUNDS_OPENAPI_EXTENSION } from '../emit/input-bounds.mjs';
 
 const directive = `directive @${INPUT_BOUNDS_DIRECTIVE}(${INPUT_BOUNDS_VERSION_ARGUMENT}: Int = ${INPUT_BOUNDS_VERSION}, ${Object.entries(INPUT_BOUND_ARGUMENTS).map(([name, type]) => `${name}: ${type}`).join(', ')}) on INPUT_FIELD_DEFINITION`;
-// reason: a real GraphQLSchema is the schema the bounds read, but its astNode is Maybe<...> (may be undefined) where GraphqlSchemaLike (exactOptionalPropertyTypes) allows null only.
-const asSchemaLike = (schema: GraphQLSchema): GraphqlSchemaLike => schema as unknown as GraphqlSchemaLike;
-const schemaOf = (input: string): GraphqlSchemaLike => asSchemaLike(buildSchema(`${directive}\n${input}\ntype Query { ready: Boolean }`, { assumeValidSDL: true }));
+const schemaOf = (input: string): GraphqlSchemaLike => buildSchema(`${directive}\n${input}\ntype Query { ready: Boolean }`, { assumeValidSDL: true });
 
 // reason: the generated module is imported at run time from a data: URL, so its shape is unknown to the type system.
 async function generatedBounds(schema: GraphqlSchemaLike): Promise<any> {
@@ -192,10 +189,10 @@ test('REST tuple item bounds reach the generated reader through prefixItems', as
 });
 
 test('codegen refuses legacy and unsupported contract formats instead of assuming empty bounds', () => {
-  const legacy = asSchemaLike(buildSchema('input ExistingInput { count: Float } type Query { ready: Boolean }'));
+  const legacy = buildSchema('input ExistingInput { count: Float } type Query { ready: Boolean }');
   assert.throws(() => inputBoundsPlugin(legacy), /input-bounds metadata; run starci app emit/);
   assert.throws(() => assertCompatibleInputBounds({ legacy }), /legacy: missing or unsupported/);
-  const unsupported = asSchemaLike(buildSchema(`${directive.replace(`= ${INPUT_BOUNDS_VERSION},`, `= ${INPUT_BOUNDS_VERSION + 1},`)} input ExistingInput { count:Float } type Query { ready:Boolean }`));
+  const unsupported = buildSchema(`${directive.replace(`= ${INPUT_BOUNDS_VERSION},`, `= ${INPUT_BOUNDS_VERSION + 1},`)} input ExistingInput { count:Float } type Query { ready:Boolean }`);
   assert.throws(() => inputBoundsPlugin(unsupported), /unsupported input-bounds metadata/);
   const rest = openApi({ count: { type: 'number' } });
   delete rest[INPUT_BOUNDS_OPENAPI_EXTENSION];

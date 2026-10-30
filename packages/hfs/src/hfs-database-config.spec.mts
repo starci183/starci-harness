@@ -30,7 +30,7 @@ function fixture(contents: Record<string, string> = {}, edition = 'lite', option
     fs.writeFileSync(target, text);
   }
   const all = Object.keys(files);
-  return { repoRoot, files: all, all, repo: { edition }, isRoot: true, manifest: undefined, base: undefined, ...options }; // reason: both finders read manifest and base as optional (absent means the shipped defaults) though their types require them
+  return { repoRoot, files: all, all, repo: { edition }, isRoot: true, ...options };
 }
 
 function findings(contents: Record<string, string>, edition?: string, options?: FixtureOptions) {

@@ -64,7 +64,7 @@ function history(contents: Record<string, string>): Git {
 }
 
 function judge(root: string, edition: string, contents: Record<string, string>, git: Git = noHistory, extra: Record<string, unknown> = {}) {
-  return databaseBaselineFindings({ repoRoot: root, files: Object.keys(contents), all: Object.keys(contents), repo: { kind: 'app', edition }, isRoot: true, inScope: () => true, base: undefined, git, ...extra }); // reason: base is read as optional (absent means origin/main, then main) though the finder types it as required
+  return databaseBaselineFindings({ repoRoot: root, files: Object.keys(contents), all: Object.keys(contents), repo: { kind: 'app', edition }, isRoot: true, inScope: () => true, git, ...extra });
 }
 
 function io(root: string, result?: Answer) {
@@ -262,9 +262,9 @@ for (const edition of ['lite', 'full']) {
 
   test(`DB_ARCHIVE_MUTATED ${edition}: a baseline cutover refuses uncommitted, changed or missing source history`, () => {
     const root = fixture(edition, { [old]: 'select 1;' });
-    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], base: undefined, git: history({}) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
-    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], base: undefined, git: history({ [old]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
-    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], base: undefined, git: history({ [old]: 'select 1;', [`${migrations}/${second}_removed.sql`]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
+    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], git: history({}) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
+    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], git: history({ [old]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
+    assert.ok(baselineSourceFindings({ repoRoot: root, files: [old], git: history({ [old]: 'select 1;', [`${migrations}/${second}_removed.sql`]: 'select 2;' }) }).some((item) => item.code === 'DB_ARCHIVE_MUTATED'));
     const ports = io(root);
     assert.equal(dbBaselineMain(['--stamp', replacement, '--execute'], { ...ports.ports, git: history({}) }), 2);
     assert.deepEqual(ports.calls, []);

@@ -18,8 +18,6 @@ import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs'
 import { renderRelease } from '../stack/render.mjs';
 import type { StackContext } from '../stack/context.mjs';
 
-// reason: normalizeDeploy yields the runtime's deploy config, while renderRelease declares the stack module's own DeployConfig; the render reads the shared fields.
-type RenderConfig = Parameters<typeof renderRelease>[1];
 import { stackConfigModels } from './helpers/stack-compose.mjs';
 
 /** The CLI that runs the scaffold: its version is the starci-harness the new app pins. */
@@ -46,12 +44,11 @@ interface RenderedOverride {
 // reason: `spec` and `model` are parsed YAML of the scaffolded stack; the helper reads only the fields typed below.
 async function renderedOverride(root: string, spec: any, model: any): Promise<{ override: RenderedOverride; configName: string; release: { configs: unknown } }> {
   const envDir = path.join(root, '.starcistacks', 'production');
-  const normalized = normalizeDeploy(spec.deploy, { project: 'demo', probe: {
-    exists: (relative: string) => fs.existsSync(path.join(envDir, relative)), services: new Set(Object.keys(model.services)),
-    members: new Set(spec.secrets.map((member: { name: string }) => member.name)),
-  } });
+  const services = new Set<string>(Object.keys(model.services));
+  const members = new Set<string>(spec.secrets.map((member: { name: string }) => member.name));
+  const normalized = normalizeDeploy(spec.deploy, { project: 'demo', probe: { exists: (relative: string) => fs.existsSync(path.join(envDir, relative)), services, members } });
   assert.deepEqual(normalized.problems, []);
-  const config = { ...normalized.config!, repoRoot: root, envDir, secretsDir: path.join(envDir, 'secrets'),
+  const config = { ...normalized.config!, env: 'production', project: 'demo', members, services, repoRoot: root, envDir, secretsDir: path.join(envDir, 'secrets'),
     stackFile: path.join(envDir, 'infra', 'swarm', 'stack.yaml') };
   const fixtureMembers = {
     'primary-db-url': { PRIMARY_DB_URL: 'postgresql://fixture.invalid/database' },
@@ -75,7 +72,7 @@ async function renderedOverride(root: string, spec: any, model: any): Promise<{ 
       configName = options?.env?.POSTGRES_INIT_CONFIG;
       return { status: 0, stdout: JSON.stringify(override), stderr: '' };
     },
-  } as unknown as StackContext, config as unknown as RenderConfig, { sourceSha: 'b'.repeat(40), out: path.join(root, 'render-proof'),
+  } as unknown as StackContext, config, { sourceSha: 'b'.repeat(40), out: path.join(root, 'render-proof'),
     images: Object.fromEntries(Object.keys(config.images).map((service) => [service, `registry.example/${service}@sha256:${'a'.repeat(64)}`])),
   });
   assert.equal(result.ok, true);
@@ -167,9 +164,7 @@ test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persi
 });
 
 test('the lite starter keeps its vector backing in its db service without a Qdrant declaration, client or container', async (t) => {
-  // reason: the spec feeds the scaffold a types-emit seam its declared options do not list.
-  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init,
-    emitTypes: () => 'export type Database = Record<string, never>\n' } as Parameters<typeof scaffoldApp>[0]);
+  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
   const read = (file: string) => fs.readFileSync(path.join(root, ...file.split('/')), 'utf8');
   const declaration = JSON.parse(read('hfs.json'));
   const pkg = JSON.parse(read('package.json'));
@@ -190,8 +185,7 @@ test('the lite starter keeps its vector backing in its db service without a Qdra
 
 test('full and lite scaffolds leave Compose versions to the runtime default', (t) => {
   for (const edition of ['full', 'lite']) {
-    const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition, presets: bundledPresets(), lock: lockedOk, initGit: init,
-      emitTypes: () => 'export type Database = Record<string, never>\n' } as Parameters<typeof scaffoldApp>[0]);
+    const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition, presets: bundledPresets(), lock: lockedOk, initGit: init });
     const composeFiles = files.filter((file) => /^\.starcistacks\/[^/]+\/infra\/(?:swarm|compose)\/[^/]+\.ya?ml$/u.test(file));
     assert.ok(composeFiles.length > 0, `${edition} has stack sources`);
     for (const file of composeFiles) {

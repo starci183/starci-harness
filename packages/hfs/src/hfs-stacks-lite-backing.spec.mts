@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { liteBackingIssues as strictLiteBackingIssues, stacksLiteBackingFindings } from '../runtime/scripts/hfs/rules/stacks-lite-backing.mjs';
+import { liteBackingIssues, stacksLiteBackingFindings } from '../runtime/scripts/hfs/rules/stacks-lite-backing.mjs';
 import type { Repo } from '../runtime/scripts/hfs/rules/rule-types.mjs';
 
 /** A component of the stack inventory (application-stacks.yaml components). */
@@ -42,8 +42,6 @@ interface Fixture {
   environment: string;
   repo: Repo;
 }
-// reason: the rule's declared parameter also requires a repoRoot, which only the tracked-file finder reads.
-const liteBackingIssues = (value: Fixture) => strictLiteBackingIssues(value as unknown as Parameters<typeof strictLiteBackingIssues>[0]);
 
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const STACK_FILE = '.starcistacks/production/infra/swarm/stack.yaml';

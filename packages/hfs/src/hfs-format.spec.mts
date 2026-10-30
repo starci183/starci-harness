@@ -44,11 +44,11 @@ for (const edition of ['lite', 'full']) {
 
   test(`${CODE}@${edition} passing: the installed formatter accepts the formatted output`, async (t) => {
     const { repoRoot, repo, file, absolute, source } = setup(t, edition);
-    // reason: the Prettier interface of sync/format.mts lists only what the rule calls; the real module also has format() and an options-optional resolveConfig()
-    const prettier = loadPrettier(repoRoot) as unknown as { resolveConfig(file: string): Promise<Record<string, unknown> | null>; format(source: string, options: Record<string, unknown>): Promise<string> };
+    const prettier = loadPrettier(repoRoot);
     const options = await prettier.resolveConfig(absolute);
     fs.writeFileSync(absolute, await prettier.format(source, { ...options, filepath: absolute }));
+    const withRepo = { repoRoot, files: [file], repo }; // not an object literal: formatFindings reads only repoRoot, files and prettier
     assert.deepEqual((await formatFindings({ repoRoot, files: [file] })).filter((item) => item.code === CODE), []);
-    assert.deepEqual(await formatFindings({ repoRoot, files: [file], repo } as { repoRoot: string; files: string[] }), []);
+    assert.deepEqual(await formatFindings(withRepo), []);
   });
 }

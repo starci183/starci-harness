@@ -21,8 +21,6 @@ const SCENARIOS: Record<string, string[]> = {
   idempotency: ['repeat-returns-same-outcome', 'reused-key-other-body-is-refused'],
 };
 const SPEC = 'be/src/tests/integration/patterns/proofs.integration-spec.ts';
-// reason: liteProofLaneFindings types its `manifest` input as required, but it falls back to the bundled manifest when none is given; the specs that give none go through this.
-const liteLane = (input: Omit<Parameters<typeof liteProofLaneFindings>[0], 'manifest'>) => liteProofLaneFindings(input as Parameters<typeof liteProofLaneFindings>[0]);
 interface Fixture { repoRoot: string; files: string[]; all?: string[] }
 const declaration = (edition: string | undefined, patterns: string[]) => ({
   hfs: 3, kind: 'app', project: 'demo', edition,
@@ -45,7 +43,7 @@ const spec = (scenarios: string[]) => scenarios.map((id, index) => {
   const title = JSON.stringify(`${id}: proves the outcome`);
   return `${index % 2 ? 'test' : 'it'}(${title}, () => { expect(true).toBe(true); });`;
 }).join('\n');
-const find = (fixture: Fixture, edition: string | undefined, patterns: string[]) => liteLane({ ...fixture, repo: declaration(edition, patterns) });
+const find = (fixture: Fixture, edition: string | undefined, patterns: string[]) => liteProofLaneFindings({ ...fixture, repo: declaration(edition, patterns) });
 const proofFindings = (result: ReturnType<typeof checkRepo>) => result.findings.filter((finding) => ['BE_LITE_PROOF_LANE_MISSING', 'BE_PATTERN_SPEC_MISSING'].includes(finding.code));
 
 test('BE_LITE_PROOF_LANE_MISSING: every declared lite pattern without integration specs is refused; full is unchanged', (t) => {
@@ -145,7 +143,7 @@ test('BE_LITE_PROOF_LANE_MISSING: no patterns, non-pattern capabilities, side pa
     assert.deepEqual(find(fixture, edition, []), []);
     assert.deepEqual(find(fixture, edition, ['cqrs']), []);
   }
-  assert.deepEqual(liteLane({ ...fixture, repo: { edition: 'lite', profile: 'be', patterns: ['queue'] } }), []);
+  assert.deepEqual(liteProofLaneFindings({ ...fixture, repo: { edition: 'lite', profile: 'be', patterns: ['queue'] } }), []);
   assert.deepEqual(find(fixture, undefined, ['queue']), []);
 });
 

@@ -144,7 +144,7 @@ function sourceText(repoRoot: string, file: string) {
 }
 
 /** Both editions share this custody boundary; the app root scans `all` once, including its sides. */
-export function scriptHygieneFindings({ repoRoot, files = [], all = files, repo, isRoot, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver: Resolver; isRoot: boolean; inScope?: (file: string) => boolean }) {
+export function scriptHygieneFindings({ repoRoot, files = [], all = files, repo, isRoot, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver?: Resolver; isRoot: boolean; inScope?: (file: string) => boolean }) {
   if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
   const findings = [];
   for (const file of new Set(all)) {

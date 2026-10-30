@@ -102,7 +102,7 @@ function pathFindings(file: string, lines: string[], tracked: Parsed, generated:
 }
 
 /** Tool reports are generated, never tracked; both their consumer and the slot policy must declare them. */
-function generatedReports(repoRoot: string, tracked: Parsed, resolver: Resolver) {
+function generatedReports(repoRoot: string, tracked: Parsed, resolver?: Resolver) {
   const reports = new Set();
   if (!tracked.has('sonar-project.properties') || !resolver) return reports;
   const text = readText(repoRoot, 'sonar-project.properties') ?? '';
@@ -289,7 +289,7 @@ function nameFindings(file: string, lines: string[], keys: Parsed, rules: Parsed
 }
 
 /** Findings of R270 over product READMEs and docs, in lite and full; runtime docs retain their own checks. */
-export function docFreshFindings({ repoRoot, files = [], all = files, repo, resolver, appSide = false, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver: Resolver; appSide?: Parsed; inScope?: (file: string) => boolean }) {
+export function docFreshFindings({ repoRoot, files = [], all = files, repo, resolver, appSide = false, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver?: Resolver; appSide?: Parsed; inScope?: (file: string) => boolean }) {
   if (appSide || repo?.profile === 'runtime' || !['lite', 'full'].includes(repo?.edition!)) return [];
   const inventory = repo.profile === 'app' ? all : files;
   const docs = inventory.filter((file: string) => DOCUMENT.test(file) && path.posix.basename(file) !== 'KEYS.md' && inScope(file));

@@ -13,8 +13,9 @@ const IGNORE_FILE = '.prettierignore';
 /** The slice of the repository's own prettier module this check calls. */
 export interface Prettier {
   getFileInfo(file: string, options: { ignorePath: string | undefined; resolveConfig: boolean }): Promise<{ ignored: boolean; inferredParser: string | null }> | { ignored: boolean; inferredParser: string | null };
-  resolveConfig(file: string, options: { editorconfig: boolean; useCache: boolean }): Promise<Record<string, unknown> | null> | Record<string, unknown> | null;
+  resolveConfig(file: string, options?: { editorconfig?: boolean; useCache?: boolean }): Promise<Record<string, unknown> | null> | Record<string, unknown> | null;
   check(text: string, options: Record<string, unknown>): Promise<boolean> | boolean;
+  format(text: string, options: Record<string, unknown>): Promise<string> | string;
 }
 
 /** One HFS_FORMAT finding. */

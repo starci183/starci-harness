@@ -85,7 +85,7 @@ function verbNamedFile(file: string) {
 }
 
 /** Findings are names and paths only: no source snippet leaves this finder. One finding per file and replacing verb. */
-export function stackToolingFindings({ repoRoot, files, all, repo, isRoot, inScope = () => true }: { repoRoot: string; files: string[]; all: string[]; repo: Repo; isRoot: boolean; inScope?: (file: string) => boolean }) {
+export function stackToolingFindings({ repoRoot, files, all, repo, isRoot, inScope = () => true }: { repoRoot: string; files: string[]; all?: string[] | undefined; repo?: Repo | undefined; isRoot?: boolean | undefined; inScope?: ((file: string) => boolean) | undefined }) {
   if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
   const findings = new Map();
   for (const file of new Set(all ?? files)) {

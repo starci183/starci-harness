@@ -15,8 +15,6 @@ import { checkReachability } from '../runtime/scripts/hfs/architecture/reachabil
 const SPEC = 'be/src/tests/integration/projection/proofs.integration-spec.ts';
 const FIRST = "test('projection/recompute-is-idempotent: repeated input preserves the result', () => {});\n";
 const SECOND = "it('projection/replay-rebuilds: replay restores the view', () => {});\n";
-// reason: liteProofLaneFindings types its `manifest` input as required, but it falls back to the bundled manifest when none is given; these specs give none.
-const liteLane = (input: Omit<Parameters<typeof liteProofLaneFindings>[0], 'manifest'>) => liteProofLaneFindings(input as Parameters<typeof liteProofLaneFindings>[0]);
 const repo = (edition: string): Repo => ({ edition, sides: { be: { patterns: ['projection'] } } });
 
 function fixture(t: TestContext, files: Record<string, string>) {
@@ -50,20 +48,20 @@ test('full accepts declared pattern scenarios in its e2e proof lane', (t) => {
 
 test('lite rejects a declared pattern with a missing scenario in its integration spec', (t) => {
   const input = { ...fixture(t, { [SPEC]: FIRST }), repo: repo('lite') };
-  assert.deepEqual(liteLane(input).map((finding) => [finding.code, finding.scenario]), [
+  assert.deepEqual(liteProofLaneFindings(input).map((finding) => [finding.code, finding.scenario]), [
     ['BE_PATTERN_SPEC_MISSING', 'projection/replay-rebuilds'],
   ]);
 });
 
 test('lite accepts all declared pattern scenarios in its integration spec', (t) => {
   const input = { ...fixture(t, { [SPEC]: FIRST + SECOND }), repo: repo('lite') };
-  assert.deepEqual(liteLane(input), []);
+  assert.deepEqual(liteProofLaneFindings(input), []);
 });
 
 test('lite rejects e2e specs as evidence of declared pattern scenarios', (t) => {
   const files = { 'be/src/tests/e2e/projection/proofs.e2e-spec.ts': FIRST + SECOND };
   const input = { ...fixture(t, files), repo: repo('lite') };
-  assert.deepEqual(liteLane(input).filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING')
+  assert.deepEqual(liteProofLaneFindings(input).filter((finding) => finding.code === 'BE_PATTERN_SPEC_MISSING')
     .map((finding) => finding.scenario), ['projection/recompute-is-idempotent', 'projection/replay-rebuilds']);
 });
 
@@ -73,7 +71,7 @@ test('client idempotency requires both replay and changed-body refusal proofs in
   const refusal = "it('idempotency/reused-key-other-body-is-refused: rejects different input', () => {});\n";
   for (const edition of ['full', 'lite']) {
     const declaration = { edition, sides: { be: { patterns: ['idempotency'] } } };
-    const check = edition === 'full' ? patternSpecFindings : liteLane;
+    const check = edition === 'full' ? patternSpecFindings : liteProofLaneFindings;
     const missing = { ...fixture(t, { [file]: replay }), repo: declaration };
     assert.deepEqual(check(missing).map((finding) => finding.scenario), ['idempotency/reused-key-other-body-is-refused']);
     assert.deepEqual(check({ ...fixture(t, { [file]: replay + refusal }), repo: declaration }), []);
@@ -121,7 +119,7 @@ for (const edition of ['lite', 'full']) {
       ...fixture(t, { [file]: 'test("unrelated: a queue is configured", () => {});\n' }),
       repo: { edition, sides: { be: { patterns: ['logging'] } } },
     };
-    const findings = edition === 'lite' ? liteLane : patternSpecFindings;
+    const findings = edition === 'lite' ? liteProofLaneFindings : patternSpecFindings;
     assert.deepEqual(findings(input).map((finding) => [finding.code, finding.scenario]), [
       ['BE_PATTERN_SPEC_MISSING', 'logging/correlation-survives-queue'],
     ]);

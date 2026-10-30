@@ -65,7 +65,7 @@ function integrationProof(ts: Ts | null,repoRoot: string, files: string[]) {
 }
 
 /** Findings of R284 and R155 at the app root; side passes must not duplicate them. */
-export function liteProofLaneFindings({ repoRoot, files, all = files, repo, manifest }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; manifest: Parsed }) {
+export function liteProofLaneFindings({ repoRoot, files, all = files, repo, manifest }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; manifest?: Parsed }) {
   if (repo.edition !== 'lite' || !repo.sides?.be) return [];
   const patterns = [...new Set<string>(repo.sides.be.patterns ?? [])].filter((pattern) => PATTERNS.has(pattern));
   if (patterns.length === 0) return [];

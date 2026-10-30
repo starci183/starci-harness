@@ -22,19 +22,19 @@ export interface DirectiveArgumentLike {
 /** A directive use on a field: its arguments with their literal values. */
 export interface DirectiveNodeLike {
   readonly name: { readonly value: string };
-  readonly arguments?: ReadonlyArray<{ readonly name: { readonly value: string }; readonly value: { readonly kind: string; readonly value?: string } }>;
+  readonly arguments?: ReadonlyArray<{ readonly name: { readonly value: string }; readonly value: { readonly kind: string; readonly value?: unknown } }>;
 }
 
 /** A field of an input object type. */
 export interface InputFieldLike {
   readonly name: string;
-  readonly astNode?: { readonly directives?: readonly DirectiveNodeLike[] } | null;
+  readonly astNode?: { readonly directives?: readonly DirectiveNodeLike[] | undefined } | null | undefined;
 }
 
 /** A named type of the schema; input objects carry `getFields`. */
 export interface SchemaTypeLike {
   readonly name: string;
-  readonly astNode?: { readonly kind: string } | null;
+  readonly astNode?: { readonly kind: string } | null | undefined;
   readonly getFields?: () => Record<string, InputFieldLike>;
 }
 

@@ -62,7 +62,7 @@ function fileBytes(repoRoot: string, file: string) {
 }
 
 /** Side-relative tracked paths only: the app root and FE are left to their own rules, avoiding duplicate root/side findings. */
-export function assetsFindings({ repoRoot, files = [], repo, manifest, isRoot = false, inScope = () => true }: { repoRoot: string; files?: string[]; repo: Repo; manifest: Parsed; isRoot?: boolean; inScope?: (file: string) => boolean }) {
+export function assetsFindings({ repoRoot, files = [], repo, manifest, isRoot = false, inScope = () => true }: { repoRoot: string; files?: string[]; repo: Repo; manifest?: Parsed; isRoot?: boolean; inScope?: (file: string) => boolean }) {
   const edition = repo?.edition ?? 'full';
   if (isRoot || repo?.profile !== 'be' || !['lite', 'full'].includes(edition)) return [];
   const policy = assetPolicy(manifest, edition);

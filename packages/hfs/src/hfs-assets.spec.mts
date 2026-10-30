@@ -7,10 +7,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { assetsFindings, DEFAULT_ASSET_BYTES } from '../runtime/scripts/hfs/rules/assets.mjs';
 
-type AssetsContext = Omit<Parameters<typeof assetsFindings>[0], 'manifest'> & { manifest?: unknown; all?: string[] };
-// reason: the rule reads manifest as optional and tolerates the extra `all` key a root run carries; its declared parameter type requires manifest and has no `all`.
-const assets = (context: AssetsContext) => assetsFindings({ manifest: undefined, ...context });
-
 const tree = (t: TestContext, files: Record<string, string | number>): string => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-assets-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -20,7 +16,7 @@ const tree = (t: TestContext, files: Record<string, string | number>): string =>
   }
   return dir;
 };
-const judge = (t: TestContext, edition: string | undefined, files: Record<string, string | number>, extra: { manifest?: unknown } = {}) => assets({ repoRoot: tree(t, files), files: Object.keys(files), repo: { profile: 'be', edition }, ...extra });
+const judge = (t: TestContext, edition: string | undefined, files: Record<string, string | number>, extra: { manifest?: unknown } = {}) => assetsFindings({ repoRoot: tree(t, files), files: Object.keys(files), repo: { profile: 'be', edition }, ...extra });
 const forCode = (findings: Array<{ code: string }>, code: string) => findings.filter((finding) => finding.code === code);
 
 for (const edition of ['lite', 'full']) {
@@ -78,12 +74,12 @@ for (const edition of ['lite', 'full']) {
     const files = { 'src/assets/fonts/large.ttf': DEFAULT_ASSET_BYTES + 1, 'src/media/video.mp4': 'media' };
     const repoRoot = tree(t, files);
     const context = { repoRoot, files: Object.keys(files), repo: { profile: 'be', edition } };
-    assert.deepEqual(assets({ ...context, files: [] }), []);
-    assert.deepEqual(assets({ ...context, inScope: () => false }), []);
-    assert.deepEqual(assets({ ...context, files: ['src/assets/fonts/missing.ttf'], all: Object.keys(files) }), []);
-    assert.deepEqual(assets({ ...context, repo: { profile: 'app', edition }, isRoot: true }), []);
-    assert.deepEqual(assets({ ...context, repo: { profile: 'fe', edition } }), []);
-    assert.deepEqual(assets({ ...context, inScope: (file: string) => file.endsWith('.mp4') }).map((finding) => finding.code), ['HFS_ASSET_KIND']);
+    assert.deepEqual(assetsFindings({ ...context, files: [] }), []);
+    assert.deepEqual(assetsFindings({ ...context, inScope: () => false }), []);
+    assert.deepEqual(assetsFindings({ ...context, files: ['src/assets/fonts/missing.ttf'] }), []);
+    assert.deepEqual(assetsFindings({ ...context, repo: { profile: 'app', edition }, isRoot: true }), []);
+    assert.deepEqual(assetsFindings({ ...context, repo: { profile: 'fe', edition } }), []);
+    assert.deepEqual(assetsFindings({ ...context, inScope: (file: string) => file.endsWith('.mp4') }).map((finding) => finding.code), ['HFS_ASSET_KIND']);
   });
 }
 
@@ -95,6 +91,6 @@ test('HFS_ASSET_OVERSIZE: maxBytes and edition overlays are supported; the absen
 });
 
 test('HFS_ASSET_KIND: backslash paths and uppercase media extensions are normalized', (t) => {
-  const findings = assets({ repoRoot: tree(t, {}), files: ['src\\media\\clip.MP4'], repo: { profile: 'be', edition: 'full' } });
+  const findings = assetsFindings({ repoRoot: tree(t, {}), files: ['src\\media\\clip.MP4'], repo: { profile: 'be', edition: 'full' } });
   assert.deepEqual(findings.map((finding) => [finding.code, finding.path]), [['HFS_ASSET_KIND', 'src/media/clip.MP4']]);
 });

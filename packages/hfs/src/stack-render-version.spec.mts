@@ -20,11 +20,11 @@ function renderFixture(t: TestContext, versionLine = '') {
   const root = mkdtemp(t, 'hfs-stack-render-version-');
   const stackFile = path.join(root, 'stack.yaml');
   fs.writeFileSync(stackFile, `${versionLine}services:\n  api:\n    image: registry.example/api:old\n`);
-  const normalized = normalizeDeploy({ images: { api: { app: 'api' } } }, { project: 'demo', probe: {
-    exists: () => true, services: new Set(['api']), members: new Set(),
-  } });
+  const services = new Set(['api']);
+  const members = new Set<string>();
+  const normalized = normalizeDeploy({ images: { api: { app: 'api' } } }, { project: 'demo', probe: { exists: () => true, services, members } });
   assert.deepEqual(normalized.problems, []);
-  const config = { ...normalized.config!, repoRoot: root, envDir: root, secretsDir: path.join(root, 'secrets'), stackFile } as DeployConfig; // reason: the render reads the paths and the deploy block, not the resolved env, project, members and services
+  const config: DeployConfig = { ...normalized.config!, env: 'production', project: 'demo', members, services, repoRoot: root, envDir: root, secretsDir: path.join(root, 'secrets'), stackFile };
   const calls = { spawn: 0, sops: 0, decrypt: 0 };
   const ctx = {
     env: { STARCI_SECRET_VERSION_KEY: 'fixture-version-value' }, now: () => 0,

@@ -29,10 +29,8 @@ const canonRulesOnly = (config: Linter.Config[]): Linter.Config[] => config.map(
 
 for (const edition of ['full', 'lite']) {
   test(`every fe file the ${edition} scaffold writes passes the starci-fe canon`, { timeout: 300_000 }, async (t) => {
-    // reason: authCallback and emitTypes are options scaffoldApp no longer declares; they are still passed, through a variable (no excess-property check).
-    const options = { name: 'demo', into: mkdtemp(t, 'starci-template-canon-'), harness: { version: '1.1.0-alpha.3' }, edition, authCallback: edition === 'lite',
-      presets: bundledPresets(), lock: lockedOk, initGit: init, emitTypes: () => 'export type Database = Record<string, never>\n' };
-    const { root } = scaffoldApp(options);
+    const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-template-canon-'), harness: { version: '1.1.0-alpha.3' }, edition,
+      presets: bundledPresets(), lock: lockedOk, initGit: init });
     gitAdd(installTypeScript(root));
     const fe = path.join(root, 'fe');
     const config = canonRulesOnly(starciFeConfig({ hfs: loadHfs(pathToFileURL(path.join(fe, 'eslint.config.mjs'))) }));

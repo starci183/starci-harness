@@ -12,7 +12,6 @@ import { RELEASE_FLAGS, releaseMain } from '../release/index.mjs';
 import { doctorHost, prepareHost } from '../stack/prepare.mjs';
 import type { DeployConfig } from '../stack/config.mjs';
 import type { StackContext } from '../stack/context.mjs';
-import type { Runner } from '../stack/remote.mjs';
 
 function app(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-canonical-stack-'));
@@ -88,8 +87,7 @@ function manager() {
   };
   run.cleanup = () => {};
   run.notes = [] as string[];
-  // reason: the double's argv shape ({ file, args }) is not the source's RemoteArgv ({ command, args, env }); no check here reads it.
-  run.argv = ((command: string) => ({ file: 'ssh', args: [command] })) as unknown as Runner['argv'];
+  run.argv = (command: string) => ({ command: 'ssh', args: [command], env: {} });
   return { run, commands };
 }
 

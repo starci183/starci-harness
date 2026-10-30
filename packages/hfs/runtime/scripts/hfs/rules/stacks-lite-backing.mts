@@ -23,7 +23,7 @@ const NON_SQLITE_URL = /^(?:postgres(?:ql)?|rediss?|mongo(?:db)?(?:\+srv)?|mysql
 const SQLITE_URL = /^sqlite(?:3)?:/i;
 const NAMED_VOLUME = /^[a-z0-9][a-z0-9_.-]*$/i;
 const mapping = (value: Parsed) => plain(value) ? value : {};
-const present = (value: Parsed) => typeof value === 'string' && Boolean(value.trim());
+const present = (value: unknown): value is string => typeof value === 'string' && Boolean(value.trim());
 
 /** The backing service (a key of ruleParams.be.backing) whose image repository `image` names, or null. */
 function serviceOfImage(catalog: Parsed, image: string) {
@@ -33,7 +33,7 @@ function serviceOfImage(catalog: Parsed, image: string) {
 }
 
 /** The services hfs.json sides.be.backing declares: from the resolved declaration, else from hfs.json at the app root. */
-function declaredBacking(repo: Repo, repoRoot: string) {
+function declaredBacking(repo: Repo, repoRoot?: string) {
   const declared = repo?.sides?.be?.backing ?? repo?.backing ?? (present(repoRoot) ? readJson(repoRoot, 'hfs.json')?.sides?.be?.backing : undefined);
   return new Set(Array.isArray(declared) ? declared : []);
 }
@@ -159,7 +159,7 @@ function sidecarIssues({ components, services, bindings, volumes }: { components
 }
 
 /** The lite backing contract; full keeps its existing backing choices. */
-export function liteBackingIssues({ doc, environment, spec = doc?.environments?.[environment], model, repo, repoRoot, edition = repo?.edition }: { doc: Parsed; environment: Parsed; spec?: Parsed; model: Parsed; repo: Repo; repoRoot: string; edition?: string }) {
+export function liteBackingIssues({ doc, environment, spec = doc?.environments?.[environment], model, repo, repoRoot, edition = repo?.edition }: { doc: Parsed; environment: Parsed; spec?: Parsed; model: Parsed; repo: Repo; repoRoot?: string; edition?: string }) {
   if (edition !== 'lite' || spec?.runtime !== 'docker-swarm') return [];
   const components = mapping(doc?.components), services = mapping(model?.services), volumes = mapping(model?.volumes);
   const backing = { catalog: mapping(loadSlotManifest().ruleParams?.be?.backing), declared: declaredBacking(repo, repoRoot) };

@@ -5,22 +5,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CATALOG } from '../runtime/packages/cli/src/catalog.generated.mjs';
-import { docFreshFindings as strictDocFreshFindings } from '../runtime/scripts/hfs/rules/doc-fresh.mjs';
-import type { Repo } from '../runtime/scripts/hfs/rules/rule-types.mjs';
+import { docFreshFindings } from '../runtime/scripts/hfs/rules/doc-fresh.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 
-/** The context the finder reads; the rule resolves its own slot resolver when a spec gives none. */
-interface DocContext {
-  repoRoot: string;
-  files: string[];
-  all?: string[] | undefined;
-  repo: Repo;
-  appSide?: boolean | undefined;
-  inScope?: ((file: string) => boolean) | undefined;
-}
-// reason: the rule's declared parameter requires a resolver, which the finder builds itself when the specs leave it out.
-const docFreshFindings = (context: DocContext) => strictDocFreshFindings(context as unknown as Parameters<typeof strictDocFreshFindings>[0]);
+/** The context the finder reads, with the tracked files always listed. */
+type DocContext = Parameters<typeof docFreshFindings>[0] & { files: string[] };
 
 /** A rule id no catalog has, built from parts: the fixture text is data of the test, not a citation of the catalog. */
 const UNKNOWN = ['R', '9', '9', '9'].join('');
