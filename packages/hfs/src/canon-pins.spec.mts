@@ -27,9 +27,10 @@ test('every @starci pin names its folder in starci-harness at the version there'
   const rows = Object.entries(bundledPins()).filter(([, pin]) => pin.source !== undefined);
   assert.ok(rows.length > 0);
   for (const [name, pin] of rows) {
-    const manifest = JSON.parse(fs.readFileSync(path.join(REPOSITORY, pin.source), 'utf8'));
-    assert.equal(manifest.name, name, pin.source);
-    assert.equal(pin.version, manifest.version, `${name} is pinned at ${pin.version}, ${pin.source} is ${manifest.version}`);
+    const source = pin.source as string; // the filter above keeps only rows with a source path
+    const manifest = JSON.parse(fs.readFileSync(path.join(REPOSITORY, source), 'utf8')); // reason: parsed package.json
+    assert.equal(manifest.name, name, source);
+    assert.equal(pin.version, manifest.version, `${name} is pinned at ${pin.version}, ${source} is ${manifest.version}`);
   }
 });
 
@@ -51,8 +52,8 @@ for (const edition of ['lite', 'full']) {
     fs.writeFileSync(path.join(repoRoot, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'proof', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
     fs.mkdirSync(path.join(repoRoot, 'be'));
     fs.mkdirSync(path.join(repoRoot, 'fe'));
-    const declare = (version) => fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ private: true, devDependencies: { [HARNESS_PACKAGE]: version } }));
-    const drift = (harness) => checkRepo({ repoRoot, harness, files: ['hfs.json', 'package.json'] }).findings
+    const declare = (version: string) => fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ private: true, devDependencies: { [HARNESS_PACKAGE]: version } }));
+    const drift = (harness: { version: string } | undefined) => checkRepo({ repoRoot, harness, files: ['hfs.json', 'package.json'] }).findings
       .filter((finding) => finding.code === 'HFS_CANON_PIN_DRIFT').map(({ dependency, pinned, declared }) => ({ dependency, pinned, declared }));
 
     declare('1.1.0-alpha.2');
@@ -66,7 +67,7 @@ test('HFS_CI_MISSING_CANON: a CI step naming a starci-harness version names the 
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-harness-ci-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.mkdirSync(path.join(repoRoot, '.github', 'workflows'), { recursive: true });
-  const findings = (version) => {
+  const findings = (version: string) => {
     fs.writeFileSync(path.join(repoRoot, '.github/workflows/ci.yml'), `steps:\n  - run: npx starci-harness@${version} app lint\n`);
     return pipelineFindings({ repoRoot, files: ['.github/workflows/ci.yml'], pins: canonPins({ harness: HARNESS }) }).map((finding) => finding.code);
   };

@@ -9,7 +9,7 @@ import { validateAgainstSchema } from '../runtime/scripts/lib/json-schema.mjs';
 import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 
 const schema = parseYaml(fs.readFileSync(new URL('../runtime/modules/schemas/application-stacks.schema.yaml', import.meta.url), 'utf8'));
-const judge = (def, value) => validateAgainstSchema(value, { $ref: `#/$defs/${def}`, $defs: schema.$defs });
+const judge = (def: string, value: unknown) => validateAgainstSchema(value, { $ref: `#/$defs/${def}`, $defs: schema.$defs });
 const RECIPIENT = `age1${'q'.repeat(58)}`;
 
 test('deploy.remote accepts the recorded server recipient and refuses a non-age value', () => {
@@ -33,10 +33,10 @@ test('deploy.remote.sealed is one member name, nothing else', () => {
 });
 
 test('the deploy config reads one sealed member as the member of all three SSH roles', () => {
-  const read = (sealed) => normalizeDeploy({ remote: { sealed } }, { project: 'shop', probe: { services: new Set(), members: new Set(['vps']) } });
+  const read = (sealed: unknown) => normalizeDeploy({ remote: { sealed } }, { project: 'shop', probe: { exists: () => false, services: new Set(), members: new Set(['vps']) } });
   const one = read('vps');
   assert.deepEqual(one.problems ?? [], []);
-  assert.deepEqual(one.config.remote.sealed, { ops: 'vps', sshKey: 'vps', knownHosts: 'vps' });
+  assert.deepEqual(one.config?.remote.sealed, { ops: 'vps', sshKey: 'vps', knownHosts: 'vps' });
   assert.ok(read({ ops: 'vps', sshKey: 'vps', knownHosts: 'vps' }).problems.some((problem) => /secret migrate/.test(problem.message ?? problem)), 'the three-role object is refused, pointing to the fold');
   assert.ok(read('Not A Name').problems.some((problem) => /deploy\.remote\.sealed/.test(problem.at ?? problem)));
 });

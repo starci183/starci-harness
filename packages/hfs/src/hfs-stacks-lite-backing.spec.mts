@@ -7,17 +7,53 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { liteBackingIssues, stacksLiteBackingFindings } from '../runtime/scripts/hfs/rules/stacks-lite-backing.mjs';
+import { liteBackingIssues as strictLiteBackingIssues, stacksLiteBackingFindings } from '../runtime/scripts/hfs/rules/stacks-lite-backing.mjs';
+import type { Repo } from '../runtime/scripts/hfs/rules/rule-types.mjs';
+
+/** A component of the stack inventory (application-stacks.yaml components). */
+interface Component {
+  role?: string;
+  app?: string;
+  image?: string;
+  stateful?: boolean;
+  database?: { provider?: string | undefined; volume?: string };
+  volumes?: string[];
+}
+type Mount = string | { type: string; source: string; target: string; read_only?: boolean };
+/** A service of the rendered stack model. */
+interface Service {
+  image?: string;
+  command?: string | string[];
+  volumes?: Mount[];
+  environment?: unknown;
+}
+/** The inventory, the rendered model and the repository declaration one check judges. */
+interface Fixture {
+  doc: {
+    components: { api: Component; automation: Component; [name: string]: Component | undefined };
+    environments: { production: object };
+    backing: object;
+  };
+  spec: { runtime: string; composeFiles: string[]; components: object };
+  model: {
+    services: { api: Service; automation: Service; [name: string]: Service | undefined };
+    volumes?: Record<string, object | null>;
+  };
+  environment: string;
+  repo: Repo;
+}
+// reason: the rule's declared parameter also requires a repoRoot, which only the tracked-file finder reads.
+const liteBackingIssues = (value: Fixture) => strictLiteBackingIssues(value as unknown as Parameters<typeof strictLiteBackingIssues>[0]);
 
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const STACK_FILE = '.starcistacks/production/infra/swarm/stack.yaml';
 const SQLITE_DATA_DIR = path.posix.join(path.posix.sep, 'home', 'node', '.n8n');
-const pinned = image => `${image}@sha256:${'b'.repeat(64)}`;
+const pinned = (image: string) => `${image}@sha256:${'b'.repeat(64)}`;
 const CODES = ['STACKS_LITE_SELFHOSTED_DB', 'STACKS_SIDECAR_VOLUME_UNDECLARED', 'STACKS_SIDECAR_DB_UNSUPPORTED', 'STACKS_LITE_REDIS_PERSISTENCE'];
 const REDIS_IMAGE = pinned('redis:7.4.3');
 const PERSISTED_REDIS = { image: REDIS_IMAGE, command: ['redis-server', '--appendonly', 'yes'], volumes: ['redis-data:/data'] };
 
-function fixture(edition = 'lite') {
+function fixture(edition = 'lite'): Fixture {
   const spec = { runtime: 'docker-swarm', composeFiles: ['infra/swarm/stack.yaml'], components: { api: {}, automation: {} } };
   const doc = {
     components: {
@@ -33,7 +69,7 @@ function fixture(edition = 'lite') {
   return { doc, spec, model, environment: 'production', repo: { edition } };
 }
 
-const issuesFor = (value, code) => liteBackingIssues(value).filter(issue => issue.code === code);
+const issuesFor = (value: Fixture, code: string) => liteBackingIssues(value).filter(issue => issue.code === code);
 
 test('STACKS_LITE_SELFHOSTED_DB@lite: managed Supabase and SQLite sidecar pass', () => {
   assert.deepEqual(issuesFor(fixture(), 'STACKS_LITE_SELFHOSTED_DB'), []);
@@ -47,7 +83,7 @@ test('STACKS_LITE_SELFHOSTED_DB@lite: Postgres and Mongo images and an undeclare
       else value.model.services.database = { image: pinned(image) };
       const issues = issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB');
       assert.equal(issues.length, 1, `${source} ${image}`);
-      assert.equal(issues[0].at, `${source === 'inventory' ? 'components' : 'services'}.database.image`);
+      assert.equal(issues[0]!.at, `${source === 'inventory' ? 'components' : 'services'}.database.image`);
     }
   }
 });
@@ -57,11 +93,11 @@ test('STACKS_LITE_SELFHOSTED_DB@lite: declared Redis runs; undeclared Redis and 
   value.repo.sides = { be: { backing: ['redis'] } };
   value.doc.components.redis = { role: 'stateful', image: REDIS_IMAGE };
   value.model.services.redis = PERSISTED_REDIS;
-  value.model.volumes['redis-data'] = {};
+  value.model.volumes!['redis-data'] = {};
   assert.deepEqual(issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB'), []);
-  value.repo.sides.be.backing = [];
+  value.repo.sides!['be'].backing = [];
   assert.deepEqual(issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB').map(issue => issue.at), ['components.redis.image', 'services.redis.image']);
-  value.repo.sides.be.backing = ['redis'];
+  value.repo.sides!['be'].backing = ['redis'];
   value.model.services.database = { image: pinned('postgres:16.9') };
   assert.equal(issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB').length, 1);
 });
@@ -88,7 +124,7 @@ test('STACKS_LITE_REDIS_PERSISTENCE@lite: the Redis of the stack runs AOF on a w
   const value = fixture();
   value.repo.sides = { be: { backing: ['redis'] } };
   value.model.services.redis = PERSISTED_REDIS;
-  value.model.volumes['redis-data'] = {};
+  value.model.volumes!['redis-data'] = {};
   assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE'), []);
   value.model.services.redis = { ...PERSISTED_REDIS, command: 'sh -c "exec redis-server --appendonly yes --requirepass \\"$$(cat /run/secrets/redis-password)\\""' };
   assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE'), [], 'a shell wrapper keeps the flag');
@@ -105,10 +141,10 @@ test('STACKS_LITE_REDIS_PERSISTENCE@lite: the Redis of the stack runs AOF on a w
 });
 
 test('STACKS_LITE_REDIS_PERSISTENCE@lite: no AOF, an OS-timed fsync, an ephemeral, bind, read-only or undeclared mount, or an evicting policy fails', () => {
-  const mutations = [
+  const mutations: ((redis: Service) => void)[] = [
     redis => { delete redis.command; },
     redis => { redis.command = ['redis-server', '--appendonly', 'no']; },
-    redis => { redis.command = [...redis.command, '--appendfsync', 'no']; },
+    redis => { redis.command = [...(redis.command as string[]), '--appendfsync', 'no']; },
     redis => { redis.command = `sh -c "exec redis-server --appendonly yes --appendfsync 'no'"`; },
     redis => { delete redis.volumes; },
     redis => { redis.volumes = ['/data']; },
@@ -116,22 +152,22 @@ test('STACKS_LITE_REDIS_PERSISTENCE@lite: no AOF, an OS-timed fsync, an ephemera
     redis => { redis.volumes = ['redis-data:/data:ro']; },
     redis => { redis.volumes = ['other-data:/data']; },
     redis => { redis.volumes = ['redis-data:/var/lib/redis']; },
-    redis => { redis.command = [...redis.command, '--maxmemory-policy', 'allkeys-lru']; },
-    redis => { redis.command = [...redis.command, '--maxmemory-policy', 'volatile-ttl']; },
+    redis => { redis.command = [...(redis.command as string[]), '--maxmemory-policy', 'allkeys-lru']; },
+    redis => { redis.command = [...(redis.command as string[]), '--maxmemory-policy', 'volatile-ttl']; },
     redis => { redis.command = `sh -c "exec redis-server --appendonly yes --maxmemory-policy 'allkeys-lfu'"`; },
   ];
   for (const mutate of mutations) {
     const value = fixture();
     value.repo.sides = { be: { backing: ['redis'] } };
     value.model.services.redis = structuredClone(PERSISTED_REDIS);
-    value.model.volumes['redis-data'] = {};
-    mutate(value.model.services.redis);
+    value.model.volumes!['redis-data'] = {};
+    mutate(value.model.services.redis!);
     assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE').map(issue => issue.at), ['services.redis']);
   }
 });
 
 test('STACKS_LITE_REDIS_PERSISTENCE@lite: a declared Redis runs as exactly one service of the swarm stack', () => {
-  const mutations = [
+  const mutations: ((services: Fixture['model']['services']) => void)[] = [
     services => { delete services.redis; },
     services => { services.redis = { ...PERSISTED_REDIS, image: pinned('valkey/valkey:8.0.1') }; },
     services => { services.cache = structuredClone(PERSISTED_REDIS); },
@@ -140,7 +176,7 @@ test('STACKS_LITE_REDIS_PERSISTENCE@lite: a declared Redis runs as exactly one s
     const value = fixture();
     value.repo.sides = { be: { backing: ['redis'] } };
     value.model.services.redis = structuredClone(PERSISTED_REDIS);
-    value.model.volumes['redis-data'] = {};
+    value.model.volumes!['redis-data'] = {};
     mutate(value.model.services);
     assert.deepEqual(issuesFor(value, 'STACKS_LITE_REDIS_PERSISTENCE').map(issue => issue.at), ['services']);
   }
@@ -162,7 +198,7 @@ test('STACKS_SIDECAR_DB_UNSUPPORTED@lite: declared SQLite sidecar passes', () =>
 test('STACKS_SIDECAR_DB_UNSUPPORTED@lite: sidecar requiring Postgres, Redis or Mongo fails without a rendered database image', () => {
   for (const provider of ['postgres', 'redis', 'mongo', 'mysql', '', undefined]) {
     const value = fixture();
-    value.doc.components.automation.database.provider = provider;
+    value.doc.components.automation.database!.provider = provider;
     assert.equal(issuesFor(value, 'STACKS_SIDECAR_DB_UNSUPPORTED').length, 1);
   }
 });
@@ -195,13 +231,13 @@ test('STACKS_SIDECAR_VOLUME_UNDECLARED@lite: declared named volume with short or
   assert.deepEqual(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED'), []);
   value.model.services.automation.volumes = [{ type: 'volume', source: 'automation-data', target: SQLITE_DATA_DIR }];
   assert.deepEqual(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED'), []);
-  value.model.volumes['automation-data'] = null;
+  value.model.volumes!['automation-data'] = null;
   assert.deepEqual(issuesFor(value, 'STACKS_SIDECAR_VOLUME_UNDECLARED'), []);
 });
 
 test('STACKS_SIDECAR_VOLUME_UNDECLARED@lite: absent volume metadata, component volume, rendered declaration or mount fails', () => {
-  const mutations = [
-    value => { delete value.doc.components.automation.database.volume; },
+  const mutations: ((value: Fixture) => void)[] = [
+    value => { delete value.doc.components.automation.database!.volume; },
     value => { delete value.doc.components.automation.volumes; },
     value => { value.doc.components.automation.volumes = ['unrelated-data']; },
     value => { delete value.model.volumes; },
@@ -228,7 +264,7 @@ test('STACKS_SIDECAR_VOLUME_UNDECLARED@lite: rendered SQLite configuration needs
 test('STACKS_SIDECAR_VOLUME_UNDECLARED@lite: path-like volume names cannot turn a bind mount into named-volume evidence', () => {
   for (const source of ['./automation-data', '/srv/automation-data']) {
     const value = fixture();
-    value.doc.components.automation.database.volume = source;
+    value.doc.components.automation.database!.volume = source;
     value.doc.components.automation.volumes = [source];
     value.model.volumes = { [source]: {} };
     value.model.services.automation.volumes = [`${source}:${SQLITE_DATA_DIR}`];
@@ -268,11 +304,14 @@ test('R276: non-Swarm development environment retains its existing contract', ()
   assert.deepEqual(liteBackingIssues(value), []);
 });
 
-function trackedFixture(value, run) {
+/** What the tracked-file finder reads of an app root. */
+interface FinderContext { repoRoot: string; files: string[]; repo: Repo }
+
+function trackedFixture(value: Fixture, run: (context: FinderContext) => void) {
   const base = path.resolve(os.tmpdir());
   const repoRoot = fs.mkdtempSync(path.join(base, 'backing-spec-'));
   try {
-    for (const [file, doc] of [[DECLARATION, value.doc], [STACK_FILE, value.model]]) {
+    for (const [file, doc] of [[DECLARATION, value.doc], [STACK_FILE, value.model]] as [string, object][]) {
       const target = path.join(repoRoot, file);
       fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.writeFileSync(target, JSON.stringify(doc));
@@ -285,10 +324,10 @@ function trackedFixture(value, run) {
 }
 
 const finderMutations = [
-  { code: 'STACKS_LITE_SELFHOSTED_DB', violate(value) { value.model.services.cache = { image: pinned('redis:7.4.3') }; } },
-  { code: 'STACKS_SIDECAR_VOLUME_UNDECLARED', violate(value) { delete value.model.volumes; } },
-  { code: 'STACKS_SIDECAR_DB_UNSUPPORTED', violate(value) { value.doc.components.automation.database.provider = 'postgres'; } },
-  { code: 'STACKS_LITE_REDIS_PERSISTENCE', violate(value) { value.repo.sides = { be: { backing: ['redis'] } }; value.model.services.redis = { image: REDIS_IMAGE }; } },
+  { code: 'STACKS_LITE_SELFHOSTED_DB', violate(value: Fixture) { value.model.services.cache = { image: pinned('redis:7.4.3') }; } },
+  { code: 'STACKS_SIDECAR_VOLUME_UNDECLARED', violate(value: Fixture) { delete value.model.volumes; } },
+  { code: 'STACKS_SIDECAR_DB_UNSUPPORTED', violate(value: Fixture) { value.doc.components.automation.database!.provider = 'postgres'; } },
+  { code: 'STACKS_LITE_REDIS_PERSISTENCE', violate(value: Fixture) { value.repo.sides = { be: { backing: ['redis'] } }; value.model.services.redis = { image: REDIS_IMAGE }; } },
 ];
 
 for (const { code, violate } of finderMutations) {
@@ -313,9 +352,9 @@ test('R276 HFS finder reads rendered services and reports standard lite findings
   trackedFixture(value, context => {
     const findings = stacksLiteBackingFindings(context);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].code, 'STACKS_LITE_SELFHOSTED_DB');
-    assert.equal(findings[0].level, 'error');
-    assert.equal(findings[0].path, STACK_FILE);
+    assert.equal(findings[0]!.code, 'STACKS_LITE_SELFHOSTED_DB');
+    assert.equal(findings[0]!.level, 'error');
+    assert.equal(findings[0]!.path, STACK_FILE);
   });
 });
 

@@ -2,11 +2,13 @@
 // proves: FE_STACK_CORE_MISSING@lite FE_STACK_CORE_MISSING@full
 // proves: FE_STACK_FAMILY_LINT_MISSING@lite FE_STACK_FAMILY_LINT_MISSING@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
+import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { feStackAllowlistFindings } from '../runtime/scripts/hfs/rules/fe-stack.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
@@ -15,10 +17,11 @@ import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 // concern's `forbids` (owner ruling 2026-10-13, lite = full). The fe side judges every package.json it holds; the app root's one
 // package.json carries both sides, so a library the back end owns (be infraOwners, e.g. graphql-ws, moment) is not a fe finding there.
 const BE = { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }], connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'database' }] };
-const FE = { apps: [{ name: 'web', kind: 'next' }] };
-const app = (edition) => ({ hfs: 3, kind: 'app', project: 'demo', ...(edition ? { edition } : {}), sides: { be: BE, fe: FE } });
+const FE: { apps: { name: string; kind: string }[]; [field: string]: unknown } = { apps: [{ name: 'web', kind: 'next' }] };
+interface AppDeclaration { hfs: number; kind: string; project: string; edition?: string; sides: { be: object; fe: Record<string, unknown> } }
+const app = (edition?: string | undefined): AppDeclaration => ({ hfs: 3, kind: 'app', project: 'demo', ...(edition ? { edition } : {}), sides: { be: BE, fe: FE } });
 
-const tree = (t, files) => {
+const tree = (t: TestContext, files: Record<string, unknown>) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-fe-stack-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   for (const [file, content] of Object.entries(files)) {
@@ -27,7 +30,7 @@ const tree = (t, files) => {
   }
   return dir;
 };
-const stack = (repoRoot, files, edition) => checkRepo({ repoRoot, declaration: app(edition), files, tree: false }).findings.filter((f) => f.code === 'FE_STACK_FORBIDDEN');
+const stack = (repoRoot: string, files: string[], edition?: string | undefined) => checkRepo({ repoRoot, declaration: app(edition), files, tree: false }).findings.filter((f) => f.code === 'FE_STACK_FORBIDDEN');
 
 test('FE_STACK_FORBIDDEN: the canonical libraries of every concern raise nothing, in the apps, the packages and the app root', (t) => {
   const files = {
@@ -54,8 +57,8 @@ test('FE_STACK_FORBIDDEN: a forbidden alternative in an app or a package manifes
     'fe/packages/demo-ui/package.json|optionalDependencies|sonner|toast',
     'fe/packages/demo-ui/package.json|peerDependencies|lucide-react|icons',
   ]);
-  assert.ok(found.every((f) => f.level === 'error' && /fe-stack\.yaml/.test(f.message)), JSON.stringify(found, null, 1));
-  assert.match(found.find((f) => f.dependency === 'urql').message, /@apollo\/client/, 'the finding names the canonical package');
+  assert.ok(found.every((f) => f.level === 'error' && /fe-stack\.yaml/.test(f.message!)), JSON.stringify(found, null, 1));
+  assert.match(found.find((f) => f.dependency === 'urql')!.message!, /@apollo\/client/, 'the finding names the canonical package');
 });
 
 test('FE_STACK_FORBIDDEN: the app root manifest is judged too, except a library the back end owns', (t) => {
@@ -76,11 +79,12 @@ test('FE_STACK_FORBIDDEN judges a lite app exactly as a full one, and a back-end
   }
 });
 
-const catalog = parseYaml(fs.readFileSync(new URL('../runtime/knowledge/hfs/fe-stack.yaml', import.meta.url), 'utf8'));
+interface Concern { id: string; tier?: string; packages: string[] }
+const catalog: { concerns: Concern[] } = parseYaml(fs.readFileSync(new URL('../runtime/knowledge/hfs/fe-stack.yaml', import.meta.url), 'utf8'));
 const core = [...new Set(catalog.concerns.filter(concern => concern.tier === 'core').flatMap(concern => concern.packages))];
-const dependencies = names => Object.fromEntries(names.map(name => [name, '1.0.0']));
-const product = (extra = {}) => ({ name: '@demo/web', dependencies: dependencies(core), ...extra });
-const allowlist = (repoRoot, files, edition, extra = {}) => feStackAllowlistFindings({
+const dependencies = (names: string[]) => Object.fromEntries(names.map(name => [name, '1.0.0']));
+const product = (extra: Record<string, unknown> = {}) => ({ name: '@demo/web', dependencies: dependencies(core), ...extra });
+const allowlist = (repoRoot: string, files: Record<string, unknown>, edition: string, extra: object = {}) => feStackAllowlistFindings({
   repoRoot: path.join(repoRoot, 'fe'), files: Object.keys(files).filter(file => file.startsWith('fe/')).map(file => file.slice(3)),
   repo: { profile: 'fe', kind: 'app', edition, ...FE, ...extra },
 });
@@ -99,7 +103,7 @@ for (const edition of ['lite', 'full']) {
     const root = tree(t, files);
     const findings = stack(root, Object.keys(files), edition);
     assert.equal(findings.length, 12);
-    assert.ok(findings.every(finding => finding.concern === 'avatar-illustration' && /Avatar.*seed|seed.*Avatar/.test(finding.message)));
+    assert.ok(findings.every(finding => finding.concern === 'avatar-illustration' && /Avatar.*seed|seed.*Avatar/.test(finding.message!)));
     assert.deepEqual(allowlist(root, files, edition), []);
   });
 
@@ -116,11 +120,12 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`The DiceBear scope boundary does not suppress unknown packages or admit direct dependencies through extras (${edition})`, t => {
+    const declaration = app(edition);
     const files = {
-      'hfs.json': app(edition),
+      'hfs.json': declaration,
       'fe/apps/web/package.json': product({ dependencies: { ...dependencies(core), '@dicebear/core': '1.0.0', '@dicebearish/core': '1.0.0' } }),
     };
-    files['hfs.json'].sides.fe = { ...FE, extraPackages: [{ name: '@dicebear/core', reason: 'Avatar generator' }] };
+    declaration.sides.fe = { ...FE, extraPackages: [{ name: '@dicebear/core', reason: 'Avatar generator' }] };
     const root = tree(t, files);
     assert.deepEqual(allowlist(root, files, edition).map(finding => finding.dependency), ['@dicebearish/core']);
     assert.deepEqual(stack(root, Object.keys(files), edition).map(finding => finding.dependency), ['@dicebear/core']);
@@ -194,9 +199,9 @@ for (const edition of ['lite', 'full']) {
 }
 
 // From canon-fe 9 the Grammar component rules ship in the selected family's lint package (FE-RULE-OWNERSHIP).
-const FAMILY_LINT = { core: ['@starci/eslint-grammar-core', 'coreGrammarConfig'], 'offset-pop': ['@starci/eslint-grammar-offset-pop', 'offsetPopGrammarConfig'] };
+const FAMILY_LINT: Record<string, [string, string]> = { core: ['@starci/eslint-grammar-core', 'coreGrammarConfig'], 'offset-pop': ['@starci/eslint-grammar-offset-pop', 'offsetPopGrammarConfig'] };
 const rootLintTools = () => dependencies(catalog.concerns.filter(concern => ['codegen', 'lint'].includes(concern.id)).flatMap(concern => concern.packages).concat(['typescript', 'tailwindcss']));
-const familyApp = (t, edition, grammar, rootExtra) => {
+const familyApp = (t: TestContext, edition: string, grammar: string, rootExtra: Record<string, string>) => {
   const declaration = app(edition);
   declaration.sides.fe = { ...FE, grammar };
   const devDependencies = { ...rootLintTools(), ...rootExtra };
@@ -207,7 +212,7 @@ const familyApp = (t, edition, grammar, rootExtra) => {
   };
   return { declaration, files, root: tree(t, files) };
 };
-const familyFindings = (findings) => findings.filter(finding => finding.code === 'FE_STACK_FAMILY_LINT_MISSING');
+const familyFindings = (findings: CheckFinding[]) => findings.filter(finding => finding.code === 'FE_STACK_FAMILY_LINT_MISSING');
 
 for (const edition of ['lite', 'full']) for (const [grammar, [family, factory]] of Object.entries(FAMILY_LINT)) {
   test(`FE_STACK_FAMILY_LINT_MISSING accepts a ${grammar} app that installs canon-fe 9 with ${family} (${edition})`, t => {
@@ -219,13 +224,15 @@ for (const edition of ['lite', 'full']) for (const [grammar, [family, factory]] 
     const { files, root } = familyApp(t, edition, grammar, { '@starci/eslint-canon-fe': '9.0.0' });
     const findings = allowlist(root, files, edition, { grammar });
     assert.deepEqual(findings.map(finding => finding.code), ['FE_STACK_FAMILY_LINT_MISSING']);
-    const [finding] = findings;
+    const finding = findings[0]!;
+    const nextStep = finding.nextStep as string;
+    const message = finding.message as string;
     assert.equal(finding.level, 'error');
     assert.equal(finding.path, 'apps/web/package.json');
     assert.equal(finding.dependency, family);
     assert.equal(finding.family, grammar);
-    assert.ok(finding.nextStep.includes(family) && finding.nextStep.includes(factory), finding.nextStep);
-    assert.ok(finding.message.includes(family) && finding.message.includes(`sides.fe.grammar ${grammar}`), finding.message);
+    assert.ok(nextStep.includes(family) && nextStep.includes(factory), nextStep);
+    assert.ok(message.includes(family) && message.includes(`sides.fe.grammar ${grammar}`), message);
   });
 }
 

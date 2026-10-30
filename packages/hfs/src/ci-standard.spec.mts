@@ -13,8 +13,21 @@ const SHA = 'a'.repeat(40);
 const HEAP = { NODE_OPTIONS: '--max-old-space-size=6144' };
 const checkout = { uses: `actions/checkout@${SHA}`, with: { 'fetch-depth': 0 } };
 const baseRef = { run: 'echo "STARCI_BASE_REF=origin/main" >> "$GITHUB_ENV"' };
-const job = (steps, extra = {}) => ({ 'runs-on': 'ubuntu-latest', 'timeout-minutes': 20, steps, ...extra });
-const compliant = (edition) => ({
+interface Step { [key: string]: unknown }
+interface Job {
+  'runs-on': string;
+  'timeout-minutes'?: number;
+  steps: Step[];
+  strategy?: { matrix: { side?: string[]; shard?: number[] } };
+  permissions?: Record<string, string>;
+}
+interface Workflow {
+  name: string;
+  on: object;
+  jobs: { fast?: Job; lint: Job; test: Job; coverage: Job; build?: Job; 'db-types'?: Job; extra?: Job };
+}
+const job = (steps: Step[], extra: Partial<Job> = {}): Job => ({ 'runs-on': 'ubuntu-latest', 'timeout-minutes': 20, steps, ...extra });
+const compliant = (edition: string): Workflow => ({
   name: 'ci',
   on: { push: { tags: ['v*'], branches: ['main', 'release/candidate-*'] }, workflow_dispatch: {} },
   jobs: {
@@ -31,9 +44,8 @@ const compliant = (edition) => ({
     ...(edition === 'lite' ? { 'db-types': job([checkout, { run: 'echo types' }]) } : {}),
   },
 });
-const clone = (value) => structuredClone(value);
-const items = (findings) => findings.map((finding) => finding.item);
-const judge = (doc, edition) => ciStandardFindings({ doc, file: FILE, scope: 'app-ci', edition });
+const items = (findings: { item: string }[]) => findings.map((finding) => finding.item);
+const judge = (doc: Workflow, edition: string) => ciStandardFindings({ doc, file: FILE, scope: 'app-ci', edition });
 
 for (const edition of ['lite', 'full']) {
   test(`${edition}: a conforming managed ci.yml is clean`, () => {
@@ -44,7 +56,7 @@ for (const edition of ['lite', 'full']) {
     const doc = compliant(edition);
     delete doc.jobs.build;
     doc.jobs.extra = job([checkout]);
-    doc.jobs.fast.steps.push({ name: 'unit', run: 'npx jest' });
+    doc.jobs.fast!.steps.push({ name: 'unit', run: 'npx jest' });
     const found = judge(doc, edition);
     assert.ok(found.every((finding) => finding.code === FAILURE));
     const messages = found.filter((finding) => finding.item === 'job-shape').map((finding) => finding.message).join('\n');
@@ -55,9 +67,9 @@ for (const edition of ['lite', 'full']) {
 
   test(`${edition}: ${FAILURE} reject - an unpinned action, a missing timeout, a short history and a small heap are each named`, () => {
     const doc = compliant(edition);
-    doc.jobs.fast.steps[0] = { uses: 'actions/checkout@v4' };
-    delete doc.jobs.build['timeout-minutes'];
-    doc.jobs.lint.steps[2].env = { NODE_OPTIONS: '--max-old-space-size=2048' };
+    doc.jobs.fast!.steps[0] = { uses: 'actions/checkout@v4' };
+    delete doc.jobs.build!['timeout-minutes'];
+    doc.jobs.lint.steps[2]!['env'] = { NODE_OPTIONS: '--max-old-space-size=2048' };
     const found = items(judge(doc, edition));
     for (const item of ['sha-pinned-actions', 'timeouts', 'full-history-base-ref', 'heap-per-step']) assert.ok(found.includes(item), item);
   });
@@ -65,10 +77,10 @@ for (const edition of ['lite', 'full']) {
   test(`${edition}: ${FAILURE} negative - sharding, lint matrix, sonar side, cache and provider probe violations are flagged`, () => {
     const doc = compliant(edition);
     delete doc.jobs.test.strategy;
-    doc.jobs.lint.strategy.matrix.side = ['be'];
+    doc.jobs.lint.strategy!.matrix.side = ['be'];
     doc.jobs.lint.steps.push({ run: 'starci app lint --out reports/lint.sonar.json', env: HEAP });
-    doc.jobs.fast.steps.push({ uses: `actions/cache@${SHA}`, with: { key: 'k-${{ github.sha }}' } });
-    doc.jobs.coverage.steps[3]['continue-on-error'] = true;
+    doc.jobs.fast!.steps.push({ uses: `actions/cache@${SHA}`, with: { key: 'k-${{ github.sha }}' } });
+    doc.jobs.coverage.steps[3]!['continue-on-error'] = true;
     const found = items(judge(doc, edition));
     for (const item of ['test-sharding', 'lint-parallel', 'sonar-lint-per-side', 'cache-saved-always', 'required-providers']) assert.ok(found.includes(item), item);
   });
@@ -77,7 +89,7 @@ for (const edition of ['lite', 'full']) {
     const root = mkdtemp(t, 'hfs-ci-standard-');
     const doc = compliant(edition);
     delete doc.jobs.fast;
-    const write = (file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
+    const write = (file: string, text: string) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
     write(FILE, JSON.stringify(doc));
     write('.github/workflows/other.yml', JSON.stringify({ jobs: {} }));
     const ctx = { repoRoot: root, files: [FILE, '.github/workflows/other.yml'], repo: { kind: 'app', edition }, isRoot: true };

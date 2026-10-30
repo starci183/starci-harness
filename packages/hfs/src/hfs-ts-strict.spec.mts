@@ -1,6 +1,7 @@
 // proves: HFS_TS_STRICT@lite
 // proves: HFS_TS_STRICT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { tsStrictFindings } from '../sync/ts-strict.mjs';
 import fs from 'node:fs';
@@ -10,7 +11,7 @@ import { renderTargets, writeTargets } from '../sync/index.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
-const synced = (context, edition) => {
+const synced = (context: TestContext, edition: string) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-'));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const declaration = structuredClone(APP);
@@ -40,7 +41,7 @@ for (const edition of ['lite', 'full']) {
       assert.deepEqual(found.map(finding => [finding.code, finding.path, finding.flag, finding.level]), [
         ['HFS_TS_STRICT', relative, 'strict', 'error'],
       ]);
-      assert.match(found[0].message, /lowers strict/);
+      assert.match(found[0]!.message, /lowers strict/);
       fs.writeFileSync(file, rendered);
       assert.deepEqual(await findings(), []);
     });
@@ -51,7 +52,7 @@ for (const edition of ['lite', 'full']) {
   test(`${edition}: ts-strict rejects a lowered compiler flag`, () => {
     const expected = JSON.stringify({ extends: '@starci/tsconfig/next.json', exclude: ['node_modules'] });
     const actual = JSON.stringify({ extends: '@starci/tsconfig/next.json', exclude: ['node_modules'], compilerOptions: { strict: false } });
-    assert.equal(tsStrictFindings(actual, expected)[0].code, 'HFS_TS_STRICT');
+    assert.equal(tsStrictFindings(actual, expected)[0]!.code, 'HFS_TS_STRICT');
   });
   test(`${edition}: ts-strict accepts the strict preset configuration`, () => {
     const expected = JSON.stringify({ extends: '@starci/tsconfig/next.json', exclude: ['node_modules'] });

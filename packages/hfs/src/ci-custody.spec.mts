@@ -5,6 +5,7 @@
 // proves: CI_DECLARATION_DRIFT@lite
 // proves: CI_DECLARATION_DRIFT@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,21 +15,21 @@ import { mkdtemp } from './helpers/tmpdir.mjs';
 const SEALED_FAILURE = 'CI_SECRET_SEALED';
 const RUNTIME_FAILURE = 'APP_SECRET_IN_CI';
 const DRIFT_FAILURE = 'CI_DECLARATION_DRIFT';
-const workflow = (reads) => `name: ci\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n        env:\n          A: \${{ ${reads} }}\n`;
-const sealedMember = (keys) => keys.map((key) => `${key}=ENC[AES256_GCM,data:abc,type:str]`).join('\n') + '\nsops_version=3.9.0\n';
+const workflow = (reads: string) => `name: ci\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n        env:\n          A: \${{ ${reads} }}\n`;
+const sealedMember = (keys: string[]) => keys.map((key) => `${key}=ENC[AES256_GCM,data:abc,type:str]`).join('\n') + '\nsops_version=3.9.0\n';
 const GRANT = { service: 'api', from: [{ member: 'api', keys: ['DB_PASSWORD'] }] };
-const declaration = (ci, extra = {}) => ({ ci, environments: { production: { deploy: { secrets: { grants: [GRANT] } } } }, ...extra });
+const declaration = (ci: object, extra: object = {}) => ({ ci, environments: { production: { deploy: { secrets: { grants: [GRANT] } } } }, ...extra });
 // The declaration is written as flow-style YAML (JSON is a YAML subset), so no hand indentation is needed.
-const tree = (t, { doc, workflows = {}, sealed = { 'production/secrets/api.enc': ['DB_PASSWORD'] } }) => {
+const tree = (t: TestContext, { doc, workflows = {}, sealed = { 'production/secrets/api.enc': ['DB_PASSWORD'] } }: { doc: object; workflows?: Record<string, string>; sealed?: Record<string, string[]> }) => {
   const root = mkdtemp(t, 'hfs-ci-custody-');
-  const put = (file, content) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), content); };
+  const put = (file: string, content: string) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), content); };
   put('.starcistacks/application-stacks.yaml', JSON.stringify(doc, null, 2) + '\n');
   for (const [file, keys] of Object.entries(sealed)) put(`.starcistacks/${file}`, sealedMember(keys));
   for (const [name, text] of Object.entries(workflows)) put(`.github/workflows/${name}`, text);
   return root;
 };
-const run = (root, edition) => ciCustodyFindings({ repoRoot: root, repo: { kind: 'app', edition }, isRoot: true });
-const codes = (findings) => findings.map((finding) => finding.code);
+const run = (root: string, edition: string) => ciCustodyFindings({ repoRoot: root, repo: { kind: 'app', edition }, isRoot: true });
+const codes = (findings: { code: string }[]) => findings.map((finding) => finding.code);
 const cleanCi = { secrets: [{ name: 'DEPLOY_TOKEN', scope: 'repository' }], vars: [] };
 
 for (const edition of ['lite', 'full']) {

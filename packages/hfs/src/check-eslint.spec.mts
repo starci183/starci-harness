@@ -5,11 +5,25 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import type { TestContext } from 'node:test';
 import { main } from './main.mjs';
+import type { LinterRunner } from '../lint/run.mjs';
 
 const familyCode = 'FE_APP_SHELL_FRAME';
 
-function installedPackage(root, name, source) {
+interface Fixture { root: string; files: Record<string, string[]>; entries: Record<string, string> }
+interface Run { side: string; args: string[] }
+/** The fields of the CLI's JSON report this spec reads. */
+interface Report {
+  ok: boolean;
+  schema: string;
+  gate: { pass: boolean };
+  counts: { error: number };
+  findings: { code: string; rule?: string }[];
+  eslint: { sides: unknown; errors: unknown };
+}
+
+function installedPackage(root: string, name: string, source: string) {
   const directory = path.join(root, 'node_modules', ...name.split('/'));
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(directory, 'package.json'), JSON.stringify({ name, type: 'module', exports: './index.mjs' }));
@@ -17,19 +31,19 @@ function installedPackage(root, name, source) {
   return pathToFileURL(path.join(directory, 'index.mjs')).href;
 }
 
-function fixture(context) {
+function fixture(context: TestContext): Fixture {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-check-eslint-'));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'package.json'), '{"private":true}');
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'fixture', sides: {
     be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }] },
   } }));
-  const files = { be: ['src/backend.ts'], fe: ['src/universal.ts', 'src/family.tsx'] };
-  const entries = {};
+  const files: Record<string, string[]> = { be: ['src/backend.ts'], fe: ['src/universal.ts', 'src/family.tsx'] };
+  const entries: Record<string, string> = {};
   for (const side of ['be', 'fe']) {
     const cwd = path.join(root, side);
     fs.mkdirSync(path.join(cwd, 'src'), { recursive: true });
-    for (const file of files[side]) fs.writeFileSync(path.join(cwd, file), 'export const value = 1;\n');
+    for (const file of files[side]!) fs.writeFileSync(path.join(cwd, file), 'export const value = 1;\n');
     const factory = side === 'be' ? 'starciBeConfig' : 'starciFeConfig';
     entries[side] = installedPackage(root, `@starci/eslint-canon-${side}`, [
       "import fs from 'node:fs';", "import path from 'node:path';", "import { fileURLToPath } from 'node:url';",
@@ -51,40 +65,40 @@ function fixture(context) {
   return { root, files, entries };
 }
 
-const cleanCheck = (root, findings = []) => ({ ok: findings.length === 0, repoRoot: root, profile: 'app', manifest: '3.4.0', tracked: 3,
+const cleanCheck = (root: string, findings: Record<string, unknown>[] = []) => ({ ok: findings.length === 0, repoRoot: root, profile: 'app', manifest: '3.4.0', tracked: 3,
   findings, counts: { error: findings.length, warning: 0, info: 0 }, machine: { status: 'ran', files: 3, kinds: ['backend', 'frontend'] } });
 
-function transport(fixture, calls) {
+function transport(fixture: Fixture, calls: Run[]): LinterRunner {
   return async ({ cwd, pkg, args }) => {
     assert.equal(pkg, 'eslint');
     const side = path.basename(cwd);
     calls.push({ side, args });
-    const universal = await import(fixture.entries[side]);
-    const family = side === 'fe' ? await import(fixture.entries.family) : null;
+    const universal = await import(fixture.entries[side]!);
+    const family = side === 'fe' ? await import(fixture.entries['family']!) : null;
     const before = { universal: universal.calls, family: family?.calls };
     const { default: config } = await import(pathToFileURL(path.join(cwd, 'eslint.config.mjs')).href);
     assert.equal(universal.calls - before.universal, 1, 'one universal factory call in the ESLint invocation');
     if (family) {
       assert.equal(family.calls - before.family, 1, 'one family factory call in the same ESLint invocation');
-      assert.deepEqual(config.map(block => block.settings), [{ universal: 'fe' }, { family: 'core' }]);
+      assert.deepEqual(config.map((block: { settings: unknown }) => block.settings), [{ universal: 'fe' }, { family: 'core' }]);
     }
-    const selected = args.at(-1) === '.' ? fixture.files[side] : fixture.files[side].filter(file => args.includes(file));
-    return { results: selected.map(file => ({ filePath: path.join(cwd, file), messages: file.endsWith('family.tsx')
+    const selected = args.at(-1) === '.' ? fixture.files[side]! : fixture.files[side]!.filter((file) => args.includes(file));
+    return { results: selected.map((file) => ({ filePath: path.join(cwd, file), messages: file.endsWith('family.tsx')
       ? [{ ruleId: 'starci-grammar/app-shell-frame', message: `[${familyCode}] Fixed frame is required.`, line: 1, column: 1 }]
       : [] })) };
   };
 }
 
-async function invoke(argv, fixture, checkApp, runLinter) {
+async function invoke(argv: string[], fixture: Fixture, checkApp: (args: { repoRoot: string; fast?: boolean }) => unknown, runLinter: LinterRunner) {
   let stdout = '', stderr = '';
   const exit = await main([...argv, '--json'], { cwd: fixture.root, checkApp, runLinter,
-    stdout: text => { stdout += text; }, stderr: text => { stderr += text; } });
+    stdout: (text) => { stdout += text; }, stderr: (text) => { stderr += text; } });
   assert.equal(stderr, '');
-  return { exit, report: JSON.parse(stdout) };
+  return { exit, report: JSON.parse(stdout) as Report };
 }
 
 test('CLI app check executes both FE packages in one ESLint invocation, retains HFS findings and reports the family code', async context => {
-  const app = fixture(context), runs = [];
+  const app = fixture(context), runs: Run[] = [];
   let checks = 0;
   const checked = await invoke(['check'], app, ({ repoRoot }) => {
     checks++;
@@ -98,12 +112,12 @@ test('CLI app check executes both FE packages in one ESLint invocation, retains 
   assert.equal(checked.report.gate.pass, true);
   assert.equal(checked.report.counts.error, 2);
   assert.deepEqual(checked.report.findings.map(finding => finding.code), ['HFS_MANAGED_FILE_DRIFT', familyCode]);
-  assert.equal(checked.report.findings[1].rule, 'starci-grammar/app-shell-frame');
+  assert.equal(checked.report.findings[1]!.rule, 'starci-grammar/app-shell-frame');
   assert.deepEqual(checked.report.eslint.sides, { be: { files: 1 }, fe: { files: 2 } });
 });
 
 test('app lint uses the shared ESLint execution once and calls the in-process HFS checker without recursively invoking app check', async context => {
-  const app = fixture(context), runs = [];
+  const app = fixture(context), runs: Run[] = [];
   let checks = 0;
   const checked = await invoke(['lint', '--changed', 'fe/src/family.tsx'], app, ({ repoRoot }) => { checks++; return cleanCheck(repoRoot); }, transport(app, runs));
   assert.equal(checks, 1);
@@ -114,7 +128,7 @@ test('app lint uses the shared ESLint execution once and calls the in-process HF
 });
 
 test('CLI app check refuses an unavailable ESLint transport with exit 2 and preserves its tool errors', async context => {
-  const app = fixture(context), runs = [];
+  const app = fixture(context), runs: string[] = [];
   const checked = await invoke(['check'], app, ({ repoRoot }) => cleanCheck(repoRoot), async ({ cwd }) => {
     runs.push(path.basename(cwd));
     return { error: 'ESLint transport did not complete.' };
@@ -126,7 +140,7 @@ test('CLI app check refuses an unavailable ESLint transport with exit 2 and pres
 });
 
 test('CLI app check --fast runs the combined FE config only over changed source files', async context => {
-  const app = fixture(context), runs = [];
+  const app = fixture(context), runs: Run[] = [];
   execFileSync('git', ['init', '-q', '-b', 'main', app.root]);
   execFileSync('git', ['-C', app.root, 'add', '--', 'hfs.json', 'package.json', 'be', 'fe']);
   execFileSync('git', ['-C', app.root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '-qm', 'Fixture']);

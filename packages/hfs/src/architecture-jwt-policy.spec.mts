@@ -1,13 +1,14 @@
 // proves: BE_JWT_ALG_PINNED@lite BE_JWT_ALG_PINNED@full
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import { appDeclaration, archFixture, ts } from './helpers/hfs-arch-fixture.mjs';
 import { loadArchitectureConfig } from '../runtime/scripts/hfs/architecture/config.mjs';
 import { buildTypeScriptContext } from '../runtime/scripts/hfs/architecture/typescript.mjs';
 import { buildHfsGraph } from '../runtime/scripts/hfs/architecture/hfs-graph.mjs';
 import { checkJwtPolicy } from '../runtime/scripts/hfs/architecture/identity.mjs';
 
-const verifier = (algorithms, shorthandIssuer = false) => `
+const verifier = (algorithms: string | null, shorthandIssuer = false) => `
 import { jwtVerify } from 'jose';
 interface Options { url: string }
 export async function verify(token: string, options: Options) {
@@ -19,7 +20,7 @@ export async function verify(token: string, options: Options) {
   return { id: payload.sub, role: 'authenticated' };
 }`;
 
-const oidcVerifier = (audience) => `
+const oidcVerifier = (audience: string) => `
 import { jwtVerify } from 'jose';
 interface KeycloakOptions { issuer: string; clientId: string }
 export async function exchange(token: string, options: KeycloakOptions) {
@@ -27,8 +28,8 @@ export async function exchange(token: string, options: KeycloakOptions) {
   return { subject: payload.sub };
 }`;
 
-const jwtPolicyFindings = (t, edition, algorithms, shorthandIssuer = false, source = { 'src/modules/integrations/supabase/supabase.jwks.ts': verifier(algorithms, shorthandIssuer) }) => {
-  const declaration = appDeclaration('be', {
+const jwtPolicyFindings = (t: TestContext, edition: string, algorithms: string | null, shorthandIssuer = false, source: Record<string, string> = { 'src/modules/integrations/supabase/supabase.jwks.ts': verifier(algorithms, shorthandIssuer) }) => {
+  const declaration: Record<string, unknown> = appDeclaration('be', {
     apps: [{ name: 'core', kind: 'api' }],
     connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' }],
   });
@@ -57,7 +58,7 @@ for (const edition of ['lite', 'full']) {
   test(`R260 BE_JWT_ALG_PINNED rejects a shared-secret algorithm (${edition})`, (t) => {
     const findings = jwtPolicyFindings(t, edition, "['HS256']");
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].ruleId, 'BE_JWT_ALG_PINNED');
+    assert.equal(findings[0]!.ruleId, 'BE_JWT_ALG_PINNED');
   });
 
   test(`R260 BE_JWT_ALG_PINNED admits a role-free OIDC verifier whose audience is typed configuration (${edition})`, (t) => {
@@ -67,6 +68,6 @@ for (const edition of ['lite', 'full']) {
   test(`R260 BE_JWT_ALG_PINNED rejects a role-free OIDC verifier with a literal audience (${edition})`, (t) => {
     const findings = jwtPolicyFindings(t, edition, null, false, { 'src/modules/integrations/keycloak/keycloak.client.ts': oidcVerifier("'authenticated'") });
     assert.equal(findings.length, 1);
-    assert.match(findings[0].message, /audience must derive from typed configuration/);
+    assert.match(findings[0]!.message, /audience must derive from typed configuration/);
   });
 }

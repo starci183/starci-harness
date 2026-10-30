@@ -24,7 +24,7 @@ for (const edition of ['lite', 'full']) {
       fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true });
       fs.writeFileSync(path.join(repoRoot, file), file.endsWith('.yaml') ? '{}\n' : '');
     }
-    const findings = (files, tree = false) => checkRepo({ repoRoot, declaration, files, tree }).findings
+    const findings = (files: string[], tree = false) => checkRepo({ repoRoot, declaration, files, tree }).findings
       .filter((finding) => finding.code === 'HFS_STARCIWORK_LITE_FORBIDDEN');
     const tracked = findings([...allowed, feature]);
     if (edition === 'lite') {

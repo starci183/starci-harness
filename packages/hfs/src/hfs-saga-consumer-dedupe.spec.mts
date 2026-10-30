@@ -14,7 +14,7 @@ const SHIPPED_CONSUMERS = [
   'export class PaymentFailedConsumer { constructor(private readonly commandBus: CommandBus) {} async handle(delivery: EventDelivery<PaymentFailedEvent>): Promise<void> { await this.commandBus.execute(new CompensateOrderCommand({ request: { id: delivery.event.payload.id, eventId: delivery.eventId } })); } }',
 ];
 
-function check(edition, body, source = `export class Consumer { handle(message: Delivery) { ${body} } }`) {
+function check(edition: string, body: string, source = `export class Consumer { handle(message: Delivery) { ${body} } }`) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-saga-dedupe-'));
   const sources = {
     [STATE]: 'export interface State { status: string; version: number; }',
