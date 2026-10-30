@@ -27,13 +27,12 @@ const FRAMEWORK = new Set([
     "@as-integrations/express5", "express", "nest-commander", "typeorm",
 ])
 const TEST_LIBRARIES = new Set(["@nestjs/testing", "@starci/jest-preset", "@starci/test-world", "@jest/globals", "jest", "jest-mock"])
-/** The app dependency declarations (name -> package) and the module references of each integration file. */
-interface Inventory {
-    readonly dependencies: Map<string, string>
-    readonly byFile: Map<string, Set<string>>
-}
+/** The app dependency declarations (name -> package). */
+type Dependencies = Map<string, string>
 
-const INVENTORIES = new WeakMap<HfsView, Inventory>()
+const DEPENDENCIES = new WeakMap<HfsView, Dependencies>()
+/** The module references of each integration file; read only when an integration file is judged. */
+const INTEGRATIONS = new WeakMap<HfsView, Map<string, Set<string>>>()
 const SOURCE = /\.[cm]?[jt]sx?$/
 const GENERATED = new Set(["node_modules", "dist", "coverage", ".git"])
 
@@ -68,11 +67,11 @@ const referencesOf = (file: string, text: string) => {
 }
 
 /**
- * The app's dependency declarations and the SDK imports of all integration owners, read once for this HFS view.
+ * The app's dependency declarations, read once for this HFS view.
  * No ancestor search: be/ has the app-root package.json immediately above it; standalone fixtures may put it at root.
  */
-const inventoryOf = (hfs: HfsView): Inventory => {
-    const cached = INVENTORIES.get(hfs)
+const dependenciesOf = (hfs: HfsView): Dependencies => {
+    const cached = DEPENDENCIES.get(hfs)
     if (cached) return cached
     const appManifest = join(dirname(hfs.repoRoot), "package.json")
     const manifest = existsSync(appManifest) ? appManifest : join(hfs.repoRoot, "package.json")
@@ -87,6 +86,17 @@ const inventoryOf = (hfs: HfsView): Inventory => {
             dependencies.set(name, alias?.[1] ?? name)
         }
     }
+    DEPENDENCIES.set(hfs, dependencies)
+    return dependencies
+}
+
+/**
+ * The SDK imports of all integration owners, read once for this HFS view. Only a file of an integration owner needs them (to see whether
+ * another owner imports the same SDK), so every other file is judged without walking the tree.
+ */
+const integrationsOf = (hfs: HfsView): Map<string, Set<string>> => {
+    const cached = INTEGRATIONS.get(hfs)
+    if (cached) return cached
     const byFile = new Map<string, Set<string>>()
     const walk = (directory: string) => {
         for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -97,9 +107,8 @@ const inventoryOf = (hfs: HfsView): Inventory => {
         }
     }
     walk(hfs.repoRoot)
-    const result = { dependencies, byFile }
-    INVENTORIES.set(hfs, result)
-    return result
+    INTEGRATIONS.set(hfs, byFile)
+    return byFile
 }
 
 /** The table already owns this import (including a package subpath); R90 alone judges it. */
@@ -131,12 +140,10 @@ export const thirdPartyImportOwner: RuleModule = {
         const hfs = hfsOf(context)
         const file = context.filename
         if (!inSource(hfs, file)) return {}
-        let inventory: Inventory | undefined
         return moduleReferences(({ source, value }) => {
             // Relative paths, node builtins and the infrastructure table need no dependency manifest.
             if (packageOf(value) === null || inInfraTable(hfs, value)) return
-            inventory ??= inventoryOf(hfs)
-            const { dependencies, byFile } = inventory
+            const dependencies = dependenciesOf(hfs)
             const sdk = sdkOf(hfs, dependencies, file, value)
             if (sdk === null) return
             const here = hfs.ownerOf(file)
@@ -145,7 +152,7 @@ export const thirdPartyImportOwner: RuleModule = {
                 return
             }
             const owners = new Set<string | null>([here])
-            for (const [other, references] of byFile) {
+            for (const [other, references] of integrationsOf(hfs)) {
                 // ESLint's current buffer replaces the on-disk text of this file.
                 if (other === resolve(file)) continue
                 if ([...references].some((reference) => sdkOf(hfs, dependencies, other, reference) === sdk)) owners.add(hfs.ownerOf(other))

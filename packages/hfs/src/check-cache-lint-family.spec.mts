@@ -104,7 +104,7 @@ class World {
   }
 
   /** Runs the family once over this tree against `records` and answers the outcome with the records it wrote. */
-  async run(records: readonly CacheRecord[], options: { full?: string | null; canon?: CanonDeclarations; write?: boolean; report?: ((file: string) => boolean) | null; style?: boolean; styleCanon?: CanonDeclarations } = {}): Promise<{ outcome: LintSideOutcome; written: readonly CacheRecord[] | undefined }> {
+  async run(records: readonly CacheRecord[], options: { full?: string | null; canon?: CanonDeclarations; write?: boolean; report?: ((file: string) => boolean) | null; style?: boolean; styleCanon?: CanonDeclarations; gitToken?: string } = {}): Promise<{ outcome: LintSideOutcome; written: readonly CacheRecord[] | undefined }> {
     const files: Record<string, string> = {};
     for (const file of this.walk()) files[`${SIDE}/${file}`] = this.text(file);
     const session = createFakeSession({ files, records: { [`lint/${SIDE}`]: records } });
@@ -112,7 +112,7 @@ class World {
     const outcome = await lintSide({
       session, side: SIDE, sideRoot: this.root, scope: this.scope, stylesheets: style ? this.stylesheets : [],
       report: options.report ?? null, canons: [options.canon ?? this.canon()], styleCanon: style ? (options.styleCanon ?? this.styleCanon()) : null,
-      typescript: () => ts, extraKey: '', full: options.full ?? null, write: options.write ?? true,
+      typescript: () => ts, extraKey: '', gitToken: options.gitToken ?? '', full: options.full ?? null, write: options.write ?? true,
       eslint: async (list) => {
         this.eslintCalls.push(list === null ? null : [...list]);
         const results = (list ?? this.scope).map((file) => this.lintOne(file));
@@ -419,4 +419,22 @@ test('the records are byte-stable: two runs over one tree write the same records
   const one = await world.run([]);
   const two = await world.run([], { full: 'again' });
   assert.deepEqual(one.written, two.written);
+});
+
+test('a rule that compares with git history ties the files above its line count to the merge-base, and only those', async (context) => {
+  const world = new World(context);
+  seed(world);
+  world.write('src/long.ts', `${'export const x = 1;\n'.repeat(8)}`);
+  const history: CrossFileInput = { rule: 'fake/size-growth', kind: 'git', relativeTo: 'side', globs: [], minLines: 5, appliesTo: ['**/*.ts'] };
+  const canon = world.canon({ crossFileInputs: [history] });
+  const first = await world.run([], { canon, gitToken: 'base-1' });
+  world.eslintCalls.length = 0;
+  const same = await world.run(first.written as CacheRecord[], { canon, gitToken: 'base-1' });
+  assert.deepEqual(world.eslintCalls, []);
+  assert.equal(same.outcome.stats.reason, 'the side key is unchanged');
+  // the base moved, and a README changed so the side key moved too: only the long file depends on the merge-base
+  world.write('README.md', 'moved\n');
+  const moved = await world.run(first.written as CacheRecord[], { canon, gitToken: 'base-2' });
+  assert.deepEqual(world.eslintCalls, [['src/long.ts']]);
+  assert.equal(moved.outcome.stats.reused, 5);
 });

@@ -30,10 +30,12 @@ export const SIDE_RECORD = '.side';
 /** One input a rule reads that the import graph does not carry (`crossFileInputs` of a canon; see its cross-file-inputs.ts). */
 export interface CrossFileInput {
   readonly rule: string;
-  readonly kind: 'content' | 'exists';
+  readonly kind: 'content' | 'exists' | 'git';
   readonly relativeTo: 'file' | 'side';
   readonly globs: readonly string[];
   readonly appliesTo: readonly string[];
+  /** For `git`: the line count above which the rule reads history; a shorter file does not depend on it. */
+  readonly minLines?: number;
   readonly reader?: string;
 }
 /** One finding of the canon's project graph on a file. */
@@ -83,6 +85,8 @@ export interface LintSideInput {
   typescript: () => Ts;
   /** A digest of the side's untracked program inputs (generated code the program reads); a change dirties the side. */
   extraKey: string;
+  /** The merge-base of HEAD with the base branch (what the size-growth rules compare with), or a marker when there is none; `git` inputs depend on it. */
+  gitToken?: string;
   /** Set for `--full` or a full decision: ignore the records and rewrite them. */
   full: string | null;
   /** Whether this run may write the side's records. */
@@ -189,6 +193,10 @@ export function crossDigestFactory(options: {
   declarations: readonly CrossFileInput[];
   paths: readonly string[];
   hashOf: (appRelative: string) => string | undefined;
+  /** The state of git history the `git` inputs stand for (the merge-base with the base branch); changes when the base moves. */
+  gitToken?: string;
+  /** The line count of a side-relative file, for the `git` inputs that matter only above a size. */
+  lineCountOf?: (file: string) => number;
 }): (file: string) => string | undefined {
   const { side, declarations, paths, hashOf } = options;
   const compiled = declarations.map((declaration) => ({ declaration, applies: declaration.appliesTo.flatMap(expressions) }));
@@ -210,6 +218,11 @@ export function crossDigestFactory(options: {
     const parts: Record<string, string> = {};
     compiled.forEach((entry, index) => {
       if (!matchesAny(entry.applies, file)) return;
+      if (entry.declaration.kind === 'git') {
+        const long = (options.lineCountOf?.(file) ?? Number.POSITIVE_INFINITY) > (entry.declaration.minLines ?? 0);
+        parts[`${index}:${entry.declaration.rule}:git`] = long ? `git:${options.gitToken ?? ''}` : 'short';
+        return;
+      }
       parts[`${index}:${entry.declaration.rule}:${entry.declaration.kind}`] = matched(index, path.posix.dirname(file) === '.' ? '' : path.posix.dirname(file));
     });
     return Object.keys(parts).length === 0 ? undefined : combineHashes(parts);
@@ -304,8 +317,14 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
     // a file the program reads that is no lint source (a JSON module, untracked generated code) is part of the side too
     && ofStep(LINT_STEPS.imports).filter((record) => !scopeSet.has(record.path)).every((record) => hashOf(record.path) === record.hash);
 
+  const lineCountOf = (file: string): number => {
+    const text = readText(abs(file));
+    if (text === null) return 0;
+    const lines = text.split(/\r?\n/);
+    return lines.at(-1) === '' ? lines.length - 1 : lines.length;
+  };
   const crossFor = (canons: readonly CanonDeclarations[]): ((file: string) => string | undefined) =>
-    crossDigestFactory({ side, declarations: canons.flatMap((canon) => canon.crossFileInputs ?? []), paths: appPaths, hashOf: appHash });
+    crossDigestFactory({ side, declarations: canons.flatMap((canon) => canon.crossFileInputs ?? []), paths: appPaths, hashOf: appHash, gitToken: input.gitToken ?? '', lineCountOf });
   const eslintCross = crossFor(input.canons);
   const styleCross = crossFor(input.styleCanon === null ? [] : [input.styleCanon]);
   if (!sideUnchanged) {

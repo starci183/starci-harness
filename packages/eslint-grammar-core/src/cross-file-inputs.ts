@@ -7,6 +7,8 @@
  *
  * - `content`: the rule reads the bytes of the files the globs match; a changed, added or removed match dirties the dependants.
  * - `exists`: the rule only asks whether a file is there or lists a folder; an added or removed match dirties the dependants.
+ * - `git`: the rule compares the file with git history (the merge-base with the base branch), which no file holds; a change of the merge-base
+ *   dirties every dependant of more than `minLines` lines (the rule reads history only for a file over its size budget). `globs` is empty.
  *
  * `globs` are relative to the linted file's folder (`relativeTo: "file"`) or to the side root, the folder of the side's `eslint.config.mjs`
  * (`relativeTo: "side"`); they use `*`, `**`, `?` and `{a,b}`, posix separators. `appliesTo` are side-root globs of the linted files that
@@ -19,9 +21,11 @@
 export interface CrossFileInput {
   /** The published rule name (without the plugin prefix). */
   readonly rule: string
-  readonly kind: "content" | "exists"
+  readonly kind: "content" | "exists" | "git"
   readonly relativeTo: "file" | "side"
   readonly globs: readonly string[]
+  /** For `git`: the line count above which the rule reads history; a file of fewer lines does not depend on it. */
+  readonly minLines?: number
   /** The linted files (side-root globs) whose result depends on the input. */
   readonly appliesTo: readonly string[]
   /** The source file of this package (relative to `src/`) that performs the read; the audit checks it exists and that no reader is missing. */

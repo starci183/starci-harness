@@ -33,6 +33,7 @@ import { byCodeUnit } from '../report/order.mjs';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
 import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
+import { mergeBase } from '../runtime/scripts/api/git/merge-base.mjs';
 import { lintFamilyReport, lintSide, loadAppTypeScript, type CanonDeclarations, type EslintResult, type LintSideStats, type LinterOutcome, type StylelintResult } from '../cache/lint-family.mjs';
 import type { CheckSession } from '../cache/types.mjs';
 
@@ -383,7 +384,7 @@ export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loa
 /** A `crossFileInputs` export that has the shape the cache reads, or null (an installed canon without it, or with a broken one, is linted whole). */
 function declaredInputs(value: unknown): CanonDeclarations['crossFileInputs'] {
   if (!Array.isArray(value)) return null;
-  const sound = value.every((entry: Dynamic) => entry && typeof entry.rule === 'string' && (entry.kind === 'content' || entry.kind === 'exists') && (entry.relativeTo === 'file' || entry.relativeTo === 'side')
+  const sound = value.every((entry: Dynamic) => entry && typeof entry.rule === 'string' && (entry.kind === 'content' || entry.kind === 'exists' || entry.kind === 'git') && (entry.relativeTo === 'file' || entry.relativeTo === 'side')
     && Array.isArray(entry.globs) && entry.globs.every((glob: unknown) => typeof glob === 'string') && Array.isArray(entry.appliesTo) && entry.appliesTo.every((glob: unknown) => typeof glob === 'string'));
   return sound ? value : null;
 }
@@ -428,6 +429,19 @@ function stylesheetsOf(cwd: string): string[] {
   return found.sort(byCodeUnit);
 }
 
+/**
+ * What the size-growth rules compare an over-budget file with: the merge-base of HEAD with the base branch (STARCI_BASE_REF, origin/main, then
+ * main), the same lookup the rules make. The cache keys the files those rules read history for on it, so a base that moved judges them again.
+ */
+export function gitBaseToken(repoRoot: string): string {
+  const named = process.env['STARCI_BASE_REF'];
+  for (const ref of named ? [named] : ['origin/main', 'main']) {
+    const sha = mergeBase(repoRoot, 'HEAD', ref);
+    if (sha) return sha;
+  }
+  return 'no-base';
+}
+
 /** What the cached linters answer: the ESLint answer in the shape of eslintRepository's, the stylelint results, and each side's counts. */
 export interface CachedLinters {
   eslint: Awaited<ReturnType<typeof eslintRepository>>;
@@ -448,6 +462,7 @@ export async function cachedLinters({ repoRoot, app, opts, workspace, onFe, run,
   const sides: CachedLinters['sides'] = [];
   const decision = cache.session.decide('lint');
   const full = opts.full === true ? '--full' : decision.mode === 'full' ? decision.reason : null;
+  const gitToken = gitBaseToken(repoRoot);
   for (const side of SIDES.filter((candidate: string) => opts.side === undefined || opts.side === candidate)) {
     if (workspace !== null && side !== STYLE_SIDE) { eslint.engine.sides[side] = { files: 0, skipped: `outside --workspace ${workspace}` }; continue; }
     const cwd = path.join(repoRoot, side);
@@ -458,7 +473,7 @@ export async function cachedLinters({ repoRoot, app, opts, workspace, onFe, run,
     const outcome = await lintSide({
       session: cache.session, side, sideRoot: cwd, scope, stylesheets: styled ? stylesheetsOf(cwd) : [],
       report: onFe === null ? null : (file: string): boolean => file.startsWith(`${onFe}/`),
-      canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', full, write: workspace === null,
+      canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', gitToken, full, write: workspace === null,
       eslint: async (files): Promise<LinterOutcome<EslintResult>> => {
         const listed = files === null ? null : files.map((file) => `${side}/${file}`);
         const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], workspace: listed === null ? workspace : null, onFe: listed === null ? onFe : null, run });
