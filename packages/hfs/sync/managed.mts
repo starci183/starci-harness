@@ -1,0 +1,188 @@
+// The managed-file findings of `starci app check`: the rendered set of `starci app sync`, compared
+// with the tracked repository, and the tool configuration nothing may add to it.
+//   HFS_MANAGED_FILE_DRIFT (R05)  a managed file that exists but differs from its render: tsconfig*.json (but see R22),
+//                                 jest.config.js (back end), .prettierrc, .prettierignore, husky hooks, both workflows and sonar
+//                                 files, and the `scripts` block of package.json (compared as parsed JSON, so key order is
+//                                 not drift). A file that is absent is the slot manifest's finding (HFS_SLOT_REQUIRED_MISSING);
+//                                 the `.gitignore` block is R04's.
+//   HFS_GITIGNORE_BLOCK_DRIFT (R04)
+//                                 the managed block of `.gitignore` differs from the rendered block, or is not there; the
+//                                 repository's own lines around the block are not judged.
+//   HFS_RULE_OFF_WITHOUT_REPLACEMENT (R17)
+//                                 eslint.config.mjs (either profile) or stylelint.config.mjs (front end) differs from its render.
+//                                 The render is the one-liner that calls the canon factory, and the factory takes no override, so a rule can be off, warned or redefined
+//                                 in a repository only through a difference from the render: R17's proof is the comparison.
+//                                 The file is judged here and not under R05, so one edit is one finding.
+//   HFS_TOOL_CONFIG_LOCAL (R16)   what the render does not cover and could still weaken the canon: a tracked file that defines
+//                                 an ESLint rule (`meta.type` plus `create(context)`) or a stylelint plugin (`createPlugin`), a script or
+//                                 nested package.json that runs eslint, stylelint or prettier with a flag that swaps or switches off the
+//                                 configuration, and a package.json that carries a tool configuration key (`eslintConfig`, `stylelint`,
+//                                 `prettier`, `lint-staged`, `jest`). Forbidden tool-config files (.eslintrc*, .eslintignore, a second
+//                                 eslint.config.*) are refused by hfs-check through the slot manifest under the same code.
+//   HFS_COVERAGE_SCOPE_DRIFT (R204)
+//                                 a file that states the coverage scope no longer states what the slot manifest derives (the `coverage` field of
+//                                 knowledge/hfs/slots.yaml through scripts/hfs/coverage-scope.mjs): be/jest.config.js, codecov.yml, or the
+//                                 `sonar.coverage.exclusions` line of sonar-project.properties. The scope is never edited by hand.
+//   HFS_SONAR_CONFIG (R11)        sonar-project.properties differs from its render (the render names no host URL, the source folders as
+//                                 `sonar.tests` too, the jest preset's test patterns as `sonar.test.inclusions` moved out of the sources by
+//                                 `sonar.exclusions` beside the build and dependency folders (sync/index.mjs sonarScope), the be lcov with the logic of be/src/modules as the coverage scope, the ESLint report and the
+//                                 HFS import files Sonar reads), or the stack declaration names a quality gate other than the one
+//                                 gate of knowledge/sonar-gate.yaml (bundled in the runtime copy). One edit is one finding.
+//   HFS_TS_STRICT (R22)           the root tsconfig.json drift (either profile), named by flag (ts-strict.mjs) instead of by hash.
+import fs from 'node:fs';
+import path from 'node:path';
+import { SyncError, checkTargets, renderRepo } from './index.mjs';
+import type { Presets, RenderedTarget, SlotManifest } from './index.mjs';
+import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
+import { readDeclaredSonarGate, sonarGateName } from './sonar-key.mjs';
+import { TS_STRICT_FILE, tsStrictFindings } from './ts-strict.mjs';
+
+// reason: the stack declaration is YAML parsed from disk
+type ParseYaml = (text: string) => any;
+/** One finding of the managed-file check: a code, a level, the path it is about and its message, with the extras some codes carry. */
+export interface ManagedFinding { code: string; level: string; path: string; message: string; [extra: string]: unknown }
+
+// The managed one-liners whose difference from the render is the proof that no rule is off, warned or redefined (R17).
+const ONE_LINER_FILES = new Set(['eslint.config.mjs', 'stylelint.config.mjs']);
+const SONAR_PROPERTIES_FILE = 'sonar-project.properties';
+// The files whose whole content is a statement of the coverage scope, and the one line of the Sonar file that is (R204).
+const COVERAGE_SCOPE_FILES = new Set(['be/jest.config.js', 'codecov.yml']);
+const SONAR_COVERAGE_LINE = 'sonar.coverage.exclusions=';
+const statesCoverageScope = (result: { path: string; difference?: { expected?: unknown } | null }): boolean => COVERAGE_SCOPE_FILES.has(result.path) || (result.path === SONAR_PROPERTIES_FILE && String(result.difference?.expected ?? '').startsWith(SONAR_COVERAGE_LINE));
+const SONAR_GATE_FILE = new URL('../runtime/knowledge/sonar-gate.yaml', import.meta.url);
+const MAX_SCANNED_BYTES = 1024 * 1024;
+const RULE_FILE = /\.[cm]?[jt]s$/;
+// The places a command line can still live: the repository's scripts (repo.scripts) and its nested package.json files. The
+// root package.json, the hooks and the workflows are managed files, and no other hook, workflow or shell script has a slot.
+const SCRIPT_FILE = /^scripts\/[^/]+\.mjs$/;
+// An ESLint rule module: `meta` with an ESLint rule type, and a `create` that takes the rule context.
+const RULE_META = /\bmeta\s*:\s*\{[^}]*\btype\s*:\s*["'`](?:problem|suggestion|layout)["'`]/s;
+const RULE_CREATE = /\bcreate\s*(?:\(|:\s*(?:async\s+)?(?:function\s*)?\()\s*\w+/;
+// A stylelint plugin: `stylelint.createPlugin(ruleName, rule)` in a file that imports stylelint, the only way a repository adds a CSS rule.
+const STYLELINT_CREATE_PLUGIN = /\bcreatePlugin\s*\(/;
+const STYLELINT_IMPORT = /["']stylelint["']/;
+// Keys of package.json that are a second home for a tool's configuration.
+const TOOL_CONFIG_KEYS = ['eslintConfig', 'stylelint', 'prettier', 'lint-staged', 'jest'];
+// Flags that swap the configuration or switch a rule or a directive off. Only a line that runs the tool is judged.
+const TOOL_FLAGS = [
+  { tool: /\beslint\b/, flag: /(?<![\w-])(--rule|--no-inline-config|--no-eslintrc|--no-config-lookup|--config|-c|--ignore-pattern|--ignore-path|--no-ignore|--rulesdir|--plugin|--parser|--parser-options|--env|--global)(?![\w-])/ },
+  { tool: /\bstylelint\b/, flag: /(?<![\w-])(--config|--config-basedir|--ignore-path|--ignore-pattern|--custom-syntax|--disable-default-ignores)(?![\w-])/ },
+  { tool: /\bprettier\b/, flag: /(?<![\w-])(--config|--no-config|--ignore-path|--no-editorconfig|--plugin)(?![\w-])/ },
+];
+
+const readText = (root: string, file: string): string | null => {
+  try {
+    const target = path.join(root, file);
+    return fs.statSync(target).size > MAX_SCANNED_BYTES ? null : fs.readFileSync(target, 'utf8');
+  } catch {
+    return null;
+  }
+};
+
+const local = (file: string, message: string): ManagedFinding => ({ code: 'HFS_TOOL_CONFIG_LOCAL', level: 'error', path: file, message });
+
+/** Every managed target that exists on disk but differs from its render, as one finding each. */
+function driftFindings(repoRoot: string, targets: readonly RenderedTarget[]): ManagedFinding[] {
+  const findings: ManagedFinding[] = [];
+  for (const result of checkTargets(repoRoot, targets)) {
+    const target = targets.find(candidate => candidate.path === result.path) as RenderedTarget;
+    if (!fs.existsSync(path.join(repoRoot, result.path)) || result.status === 'ok') continue;
+    // A side's tsconfig.json (be/tsconfig.json, fe/tsconfig.json: the side's own root) is judged by flag (R22).
+    if (target.scope !== 'app' && result.path === `${target.scope}/${TS_STRICT_FILE}`) {
+      const flags = tsStrictFindings(fs.readFileSync(path.join(repoRoot, result.path), 'utf8'), target.content, result.path);
+      if (flags.length) {
+        findings.push(...flags);
+        continue;
+      }
+    }
+    const code = target.mode === 'block' ? 'HFS_GITIGNORE_BLOCK_DRIFT' : ONE_LINER_FILES.has(path.posix.basename(result.path)) ? 'HFS_RULE_OFF_WITHOUT_REPLACEMENT' : statesCoverageScope(result) ? 'HFS_COVERAGE_SCOPE_DRIFT' : result.path === SONAR_PROPERTIES_FILE ? 'HFS_SONAR_CONFIG' : 'HFS_MANAGED_FILE_DRIFT';
+    const where = result.difference ? `; line ${result.difference.line} expected ${JSON.stringify(result.difference.expected)}, found ${JSON.stringify(result.difference.actual)}` : '';
+    const what = target.mode === 'block' ? `the managed block of ${result.path} is ${result.status === 'missing' ? 'missing' : 'not its render'}` : target.mode === 'scripts' ? 'the scripts block of package.json is not the rendered one' : `${result.path} is not its render${code === 'HFS_RULE_OFF_WITHOUT_REPLACEMENT' ? ', so a rule can be off or redefined in it' : code === 'HFS_COVERAGE_SCOPE_DRIFT' ? ', so it no longer states the coverage scope derived from the slot manifest' : ''}`;
+    findings.push({ code, level: 'error', path: result.path, mode: target.mode, expectedHash: result.expectedHash, ...(result.actualHash ? { actualHash: result.actualHash } : {}), message: `${what} (expected sha256 ${result.expectedHash.slice(0, 12)}${result.actualHash ? `, found ${result.actualHash.slice(0, 12)}` : ''}${where}); run "npx starci app sync --write"` });
+  }
+  return findings;
+}
+
+/** R11: the quality gate the be side's stack declaration names is the one gate of the bundled knowledge/sonar-gate.yaml. */
+function sonarGateFindings(repoRoot: string, parseYaml: ParseYaml | undefined, edition: string): ManagedFinding[] {
+  const declared = readDeclaredSonarGate(repoRoot, { parseYaml });
+  if (declared === null) return [];
+  const gate = sonarGateName((parseYaml ?? bundledParseYaml)(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), edition);
+  if (declared.qualityGate === gate) return [];
+  return [{ code: 'HFS_SONAR_CONFIG', level: 'error', path: declared.file, message: `${declared.file} services.sonar.qualityGate is ${declared.qualityGate ?? 'absent'}; every product names the one gate ${gate} of knowledge/sonar-gate.yaml and states no threshold of its own` }];
+}
+
+function ruleFileFindings(repoRoot: string, tracked: readonly string[]): ManagedFinding[] {
+  const findings: ManagedFinding[] = [];
+  for (const file of tracked.filter(candidate => RULE_FILE.test(candidate))) {
+    const text = readText(repoRoot, file);
+    if (text === null) continue;
+    if (RULE_META.test(text) && RULE_CREATE.test(text)) findings.push(local(file, `${file} defines an ESLint rule; a repository defines no rule, the canon plugin is the only source`));
+    else if (STYLELINT_CREATE_PLUGIN.test(text) && STYLELINT_IMPORT.test(text)) findings.push(local(file, `${file} defines a stylelint plugin; a repository defines no rule, @starci/stylelint-canon is the only source`));
+  }
+  return findings;
+}
+
+/** A package.json that keeps a tool's configuration under a key: a second source beside the managed file. */
+function toolKeyFindings(repoRoot: string, tracked: readonly string[]): ManagedFinding[] {
+  const findings: ManagedFinding[] = [];
+  for (const file of tracked.filter(candidate => candidate === 'package.json' || candidate.endsWith('/package.json'))) {
+    const text = readText(repoRoot, file);
+    if (text === null) continue;
+    let manifest: unknown;
+    try { manifest = JSON.parse(text); } catch { continue; }
+    for (const key of TOOL_CONFIG_KEYS) {
+      if (manifest && typeof manifest === 'object' && Object.hasOwn(manifest, key)) findings.push(local(file, `${file} carries a "${key}" configuration; the tool's configuration is the managed file and nothing else`));
+    }
+  }
+  return findings;
+}
+
+function flagFindings(repoRoot: string, tracked: readonly string[], managed: ReadonlySet<string>): ManagedFinding[] {
+  const findings: ManagedFinding[] = [];
+  const commandLines = (file: string, text: string): [string, string][] => {
+    if (file.endsWith('package.json')) {
+      try {
+        return Object.entries(JSON.parse(text).scripts ?? {}).map(([name, command]) => [`script ${name}`, String(command)]);
+      } catch {
+        return [];
+      }
+    }
+    return text.split('\n').map((line, index) => [`line ${index + 1}`, line]);
+  };
+  for (const file of tracked.filter(candidate => !managed.has(candidate) && (SCRIPT_FILE.test(candidate) || candidate.endsWith('/package.json')))) {
+    const text = readText(repoRoot, file);
+    if (text === null) continue;
+    for (const [where, line] of commandLines(file, text)) {
+      for (const { tool, flag } of TOOL_FLAGS) {
+        const hit = tool.test(line) && flag.exec(line);
+        if (hit) findings.push(local(file, `${file} (${where}) runs ${tool.source.replace(/\\b/g, '')} with ${hit[1]}, which swaps or switches off the canon configuration; run the tool with no such flag`));
+      }
+    }
+  }
+  return findings;
+}
+
+/**
+ * The managed-file findings of the repository at `repoRoot` whose tracked paths are `tracked`. A repository whose hfs.json
+ * is unreadable has none: the slot check reports the declaration. A missing preset or an unreadable stack declaration is
+ * a SyncError the caller reports as a refusal.
+ */
+export async function managedFindings({ repoRoot, tracked, presets, parseYaml, manifest }: {
+  repoRoot: string; tracked: readonly string[]; presets?: Presets | undefined; parseYaml?: ParseYaml | undefined; manifest?: SlotManifest | undefined;
+}): Promise<ManagedFinding[]> {
+  let rendered: Awaited<ReturnType<typeof renderRepo>>;
+  try {
+    rendered = await renderRepo(repoRoot, { presets, parseYaml, ...(manifest ? { manifest } : {}) });
+  } catch (error) {
+    if (error instanceof SyncError && error.code === 'HFS_SYNC_HFS_INVALID') return [];
+    throw error;
+  }
+  const { targets } = rendered;
+  const findings = driftFindings(repoRoot, targets);
+  findings.push(...sonarGateFindings(repoRoot, parseYaml, rendered.hfs.edition ?? 'full'));
+  findings.push(...ruleFileFindings(repoRoot, tracked));
+  findings.push(...toolKeyFindings(repoRoot, tracked));
+  findings.push(...flagFindings(repoRoot, tracked, new Set(targets.map(target => target.path))));
+  return findings;
+}
