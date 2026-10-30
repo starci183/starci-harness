@@ -19,9 +19,7 @@ import { renderTargets } from '../sync/index.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
 
-// reason: src/fixtures holds untyped .mjs fixtures (excluded from tsconfig, no declarations), so they are imported by a variable specifier and typed here.
-const SWALLOWS = './fixtures/loosening/swallows.mjs';
-const { OR_ECHO, OR_TRUE }: Record<'OR_ECHO' | 'OR_TRUE', string> = await import(SWALLOWS);
+import { OR_ECHO, OR_TRUE } from './fixtures/loosening/swallows.mjs';
 
 // reason: a workflow document is parsed-YAML-shaped data that the cases delete from, assign to and replace freely.
 type Doc = any;

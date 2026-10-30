@@ -13,10 +13,7 @@ import { stringifyYaml as stringify } from '../runtime/engine/yaml.mjs';
 import { withoutGitLocalEnv } from '../runtime/scripts/lib/git.mjs';
 import { releaseProvenanceFindings } from '../runtime/scripts/hfs/rules/release-provenance.mjs';
 
-// The swallowed-failure spellings live in an untyped fixture (src/fixtures is outside the typechecked program and ships no declaration): a computed
-// specifier loads it unchanged and the two spellings read here are typed.
-const SWALLOWS = './fixtures/loosening/swallows.mjs';
-const { OR_EXIT_ZERO, OR_TRUE } = await import(SWALLOWS) as { OR_EXIT_ZERO: string; OR_TRUE: string };
+import { OR_EXIT_ZERO, OR_TRUE } from './fixtures/loosening/swallows.mjs';
 
 const IMAGE = '.github/workflows/images.yml';
 const DB = '.github/workflows/db-deploy.yml';

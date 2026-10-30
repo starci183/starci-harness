@@ -9,9 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.mjs';
 import { ALL_CHECK_CODES, checkRepo } from '../runtime/scripts/hfs/check.mjs';
-// reason: src/fixtures holds untyped .mjs fixtures (excluded from tsconfig, no declarations), so they are imported by a variable specifier and typed here.
-const SWALLOWS = './fixtures/loosening/swallows.mjs';
-const { OR_ECHO, OR_TRUE, OR_COLON }: Record<'OR_ECHO' | 'OR_TRUE' | 'OR_COLON', string> = await import(SWALLOWS);
+import { OR_ECHO, OR_TRUE, OR_COLON } from './fixtures/loosening/swallows.mjs';
 
 const sha = 'a'.repeat(40);
 const NPM_POLICY = '\n    groups:\n      minor-and-patch:\n        applies-to: version-updates\n        update-types: [minor, patch]\n      security:\n        applies-to: security-updates\n        update-types: [minor, patch]\n    ignore:\n      - dependency-name: "@starci/*"';

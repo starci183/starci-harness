@@ -9,16 +9,11 @@ import fs from 'node:fs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { stateFindings, readTruths, truthsDigest, inScope, findingLine } from '../runtime/scripts/lib/loosening-state.mjs';
 import { lexSource } from '../runtime/scripts/lib/js-lex.mjs';
-// The fixtures are untyped .mjs data (src/fixtures is outside the typecheck): they are read by a dynamic import and typed here.
-interface Form { id: string; file: string; text: string; kind: string; detail?: string }
-interface Lookalike { id: string; file: string; text: string }
-const fixtureModule = async <T,>(relative: string): Promise<T> => (await import(new URL(relative, import.meta.url).href)) as T;
-const { FORBIDDEN, LOOKALIKES } = await fixtureModule<{ FORBIDDEN: Form[]; LOOKALIKES: Lookalike[] }>('./fixtures/loosening/forms.mjs');
-const { FORBIDDEN_INDEX, LOOKALIKES_INDEX } = await fixtureModule<{ FORBIDDEN_INDEX: Form[]; LOOKALIKES_INDEX: Lookalike[] }>('./fixtures/bypass-index.mjs');
-const { ADVERSARIAL, SAFE } = await fixtureModule<{ ADVERSARIAL: Form[]; SAFE: Lookalike[] }>('./fixtures/loosening/adversarial.mjs');
+import { FORBIDDEN, LOOKALIKES } from './fixtures/loosening/forms.mjs';
+import { FORBIDDEN_INDEX, LOOKALIKES_INDEX } from './fixtures/bypass-index.mjs';
+import { ADVERSARIAL, SAFE } from './fixtures/loosening/adversarial.mjs';
 
 // reason: the design-truths manifest is YAML parsed from disk; its members are read and rebuilt by the specs below.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Parsed = any;
 
 const TRUTHS_TEXT = fs.readFileSync(new URL('../runtime/knowledge/hfs/design-truths.yaml', import.meta.url), 'utf8');

@@ -14,12 +14,8 @@ import { spawnSync } from 'node:child_process';
 import { bypassesIn } from '../runtime/scripts/lib/bypass-markers.mjs';
 import { bypassMarkerFindings } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
 import { judge as hygieneJudge, runWorkHygiene } from '../sync/hygiene.mjs';
-// reason: src/fixtures holds untyped .mjs fixtures (excluded from tsconfig, no declarations), so they are imported by a variable specifier and typed here.
-interface Form { id: string; file: string; text: string; kind?: string; detail?: string }
-const FORMS = './fixtures/loosening/forms.mjs';
-const BYPASS_INDEX = './fixtures/bypass-index.mjs';
-const { FORBIDDEN, LOOKALIKES }: { FORBIDDEN: Form[]; LOOKALIKES: Form[] } = await import(FORMS);
-const { FORBIDDEN_INDEX, LOOKALIKES_INDEX }: { FORBIDDEN_INDEX: Form[]; LOOKALIKES_INDEX: Form[] } = await import(BYPASS_INDEX);
+import { FORBIDDEN, LOOKALIKES } from './fixtures/loosening/forms.mjs';
+import { FORBIDDEN_INDEX, LOOKALIKES_INDEX } from './fixtures/bypass-index.mjs';
 
 const markers = [...FORBIDDEN, ...FORBIDDEN_INDEX].filter((form) => form.kind === 'bypass');
 

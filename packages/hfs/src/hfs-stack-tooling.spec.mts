@@ -5,33 +5,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import passing from './fixtures/hfs-stack-tooling/passing.mjs';
+import violating from './fixtures/hfs-stack-tooling/violating.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
-import { stackToolingFindings as strictStackToolingFindings } from '../runtime/scripts/hfs/rules/stack-tooling.mjs';
-import type { Repo } from '../runtime/scripts/hfs/rules/rule-types.mjs';
+import { stackToolingFindings } from '../runtime/scripts/hfs/rules/stack-tooling.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 
-/** The context the finder reads; the rule defaults `all`, `repo`, `isRoot` and `inScope` when a spec leaves them out or undefined. */
-interface ToolingContext {
-  repoRoot: string;
-  files: string[];
-  all?: string[] | undefined;
-  repo?: Repo | undefined;
-  isRoot?: boolean | undefined;
-  inScope?: ((file: string) => boolean) | undefined;
-}
-// reason: the rule's declared parameter requires all, repo and isRoot, while the specs below also feed it the omitted or undefined forms it defaults.
-const stackToolingFindings = (context: ToolingContext) => strictStackToolingFindings(context as Parameters<typeof strictStackToolingFindings>[0]);
-
-/** A fixture app record: the file map it writes and, for the violating one, the findings expected of it. */
-interface StackToolingRecord { files: Record<string, unknown>; expect: { path: string; verb: string }[] }
-
 const CODE = 'STACK_TOOLING_REIMPLEMENTED';
-// The fixtures are untyped .mjs data files; the computed specifier keeps their module out of the typed graph.
-const loadRecord = async (name: string): Promise<StackToolingRecord> => (await import(`./fixtures/hfs-stack-tooling/${name}.mjs`)).default;
-const RECORDS: Record<string, StackToolingRecord> = {
-  passing: await loadRecord('passing'),
-  violating: await loadRecord('violating'),
-};
 const base = path.resolve(os.tmpdir());
 const roots: string[] = [];
 
@@ -56,11 +36,12 @@ function tree(edition: string, files: Record<string, unknown>, extra: object = {
   return { repoRoot, files: Object.keys(files), repo: { kind: 'app', edition }, isRoot: true, ...extra };
 }
 
-const fixture = (name: string): StackToolingRecord => structuredClone(RECORDS[name]!);
+/** A copy of the violating fixture app record: the file map it writes and the findings expected of it. */
+const violatingRecord = () => structuredClone(violating);
 const byText = (a: string, b: string) => a.localeCompare(b);
 const byPath = (a: { path: string }, b: { path: string }) => a.path.localeCompare(b.path);
 const summary = (findings: { path?: unknown; verb?: unknown }[]) => findings.map((finding) => ({ path: finding.path as string, verb: finding.verb as string })).sort(byPath);
-const sorted = (entries: { path: string; verb: string }[]) => [...entries].sort(byPath);
+const sorted = (entries: readonly { path: string; verb: string }[]) => [...entries].sort(byPath);
 const workflow = (command: string) => `name: ship\non: workflow_dispatch\njobs:\n  ship:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ${command}\n`;
 const one = (edition: string, file: string, content: unknown) => stackToolingFindings(tree(edition, { [file]: content }));
 const sourcesOf = (command: string): [string, unknown][] => [
@@ -100,7 +81,7 @@ const VERB_FILES = ['render', 'provision', 'converge', 'verify', 'prune', 'rollb
 
 for (const edition of ['lite', 'full']) {
   test(`${CODE}: ${edition} rejects the violating fixture app and names the replacing verb`, () => {
-    const record = fixture('violating');
+    const record = violatingRecord();
     const findings = stackToolingFindings(tree(edition, record.files));
     assert.equal(findings.length, record.expect.length);
     assert.equal(findings[0].code, CODE);
@@ -112,7 +93,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${CODE}: ${edition} accepts the passing fixture app that only calls starci verbs`, () => {
-    assert.deepEqual(stackToolingFindings(tree(edition, fixture('passing').files)), []);
+    assert.deepEqual(stackToolingFindings(tree(edition, passing.files)), []);
   });
 
   test(`${CODE}: ${edition} rejects every docker command a verb owns in a script, a workflow and a package script`, () => {
@@ -204,7 +185,7 @@ test(`${CODE}: a scoped check judges only the files in scope but reads the whole
 });
 
 test(`${CODE}: the app check wires the finder and ships the catalog explanation`, () => {
-  const record = fixture('violating');
+  const record = violatingRecord();
   for (const edition of ['lite', 'full']) {
     const context = tree(edition, record.files);
     const wired = a15Findings({ ...context, all: context.files }).filter((finding) => finding.code === CODE);

@@ -10,24 +10,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import passing from './fixtures/hfs-stacks-full/passing.mjs';
+import violating from './fixtures/hfs-stacks-full/violating.mjs';
+import modelUnavailable from './fixtures/hfs-stacks-full/model-unavailable.mjs';
 import { stacksSwarmFindings } from '../runtime/scripts/hfs/rules/stacks-swarm.mjs';
 import { stacksIngressFindings } from '../runtime/scripts/hfs/rules/stacks-ingress.mjs';
 import { stacksReleaseFindings } from '../runtime/scripts/hfs/rules/stacks-release.mjs';
 
 /** A recorded fixture (src/fixtures/hfs-stacks-full/*.mjs): the files of a repository and the finding codes each rule is expected to report. */
-interface StacksRecord {
-  edition: string;
-  files: Record<string, unknown> & { 'hfs.json': object };
-  expect: Record<'R266' | 'R267' | 'R268' | 'R275', string[]>;
-}
+type StacksRecord = typeof passing;
 type RecordName = 'model-unavailable' | 'passing' | 'violating';
-// reason: the fixtures are plain-data .mjs modules outside the typechecked tree; the variable specifier keeps the import untyped and the result is typed here.
-const load = async (name: RecordName): Promise<StacksRecord> => (await import(`./fixtures/hfs-stacks-full/${name}.mjs`)).default;
-const RECORDS: Record<RecordName, StacksRecord> = {
-  'model-unavailable': await load('model-unavailable'),
-  passing: await load('passing'),
-  violating: await load('violating'),
-};
+const RECORDS: Record<RecordName, StacksRecord> = { 'model-unavailable': modelUnavailable, passing, violating };
 const HARDENING_CODES = [
   'STACKS_SECRET_NOT_EXTERNAL', 'STACKS_SECRET_UNVERSIONED', 'STACKS_SECRET_ENV_LITERAL',
   'STACKS_PORT_PUBLISHED', 'STACKS_DNS_UNDECLARED', 'STACKS_HOST_UNROUTED', 'STACKS_TLS_UNDECLARED',

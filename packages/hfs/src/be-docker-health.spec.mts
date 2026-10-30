@@ -4,11 +4,9 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { appDeclaration } from "../../eslint-canon-be/fixtures/app.mjs"
+import { appDeclaration } from "../../eslint-canon-be/fixtures/app.ts"
 import { dockerFindings, NODE_IMAGE } from "../runtime/scripts/hfs/rules/docker.mjs"
-// reason: src/fixtures is outside tsconfig (allowJs is off), so the fixture module has no types; a non-literal specifier keeps the import untyped and the cast declares its shape
-const swallowsFixture = "./fixtures/loosening/swallows.mjs"
-const { OR_ECHO, OR_TRUE } = (await import(swallowsFixture)) as { OR_ECHO: string; OR_TRUE: string }
+import { OR_ECHO, OR_TRUE } from "./fixtures/loosening/swallows.mjs"
 
 const fixtures: string[] = []
 test.after(() => { for (const root of fixtures) fs.rmSync(root, { recursive: true, force: true }) })

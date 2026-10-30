@@ -22,9 +22,7 @@ import { swarmHardeningIssues, stacksSwarmFindings } from '../runtime/scripts/hf
 import { ingressIssues } from '../runtime/scripts/hfs/rules/stacks-ingress.mjs';
 import { ts } from '../runtime/scripts/hfs/runtime-rules/source-ast.mjs';
 
-// reason: src/fixtures holds untyped .mjs fixtures (excluded from tsconfig, no declarations), so they are imported by a variable specifier and typed here.
-const SWALLOWS = './fixtures/loosening/swallows.mjs';
-const { OR_TRUE, SEMI_TRUE }: Record<'OR_TRUE' | 'SEMI_TRUE', string> = await import(SWALLOWS);
+import { OR_TRUE, SEMI_TRUE } from './fixtures/loosening/swallows.mjs';
 
 const DECLARATION = '.starcistacks/application-stacks.yaml';
 const ROUTE = 'traefik.http.routers.api.rule';
