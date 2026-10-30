@@ -1,4 +1,4 @@
-// prepare.mjs - `starci app stack prepare` and `doctor`: read-only checks of the Swarm manager, plus (prepare, --execute) the missing external
+// prepare.mjs - `starci app stack prepare`: its dry run is the read-only check of the Swarm manager (doctorHost), --execute adds the missing external
 // volumes and the ONE-TIME, owner-approved `docker swarm init`. Every docker call runs ON the manager through the ssh runner (remote.mjs), so the
 // same code serves CI and the owner's machine. Lines are `ok    text` / `FAIL  text`; a failing check makes the result not ok but all checks run.
 import fs from 'node:fs';
@@ -211,6 +211,9 @@ export async function prepareHost(ctx: StackContext, config: DeployConfig, { exe
   if (wantInit && execute && !ownerApproved && ctx.env.STARCI_SWARM_INIT_APPROVED !== '1') {
     throw approvalMissing('STACK_SWARM_INIT_UNAPPROVED', 'docker swarm init is an owner-approved effect; pass --owner-approved (or set STARCI_SWARM_INIT_APPROVED=1) after the owner said yes');
   }
+  // The dry run is the read-only check of the manager (doctorHost): its lines, data and exit code. Only a dry run that asks
+  // to preview an effect (--init-swarm, --fix-live-restore) keeps the plan lines of that effect.
+  if (!execute && !wantInit && !wantFix) return doctorHost(ctx, config, { sshCmd }, deps);
   const advertise = wantInit ? advertiseArguments(ctx) : [];
   return withRunner(ctx, config, { sshCmd }, deps, async (run, notes): Promise<ActionResult> => {
     const report = newReport();
@@ -277,7 +280,7 @@ async function checkEdgeNames(run: Runner, report: Report, config: DeployConfig)
   if (found.clashes.length === 0) report.ok(`edge networks (${found.networks.length}): no short service name is resolved by another tenant`);
 }
 
-/** doctor: the prepare checks plus services, managed secrets and configs and the release pointers. Changes nothing. */
+/** The dry run of prepare: the prepare checks plus services, managed secrets and configs and the release pointers. Changes nothing. */
 export async function doctorHost(ctx: StackContext, config: DeployConfig, { sshCmd = null }: { sshCmd?: string | null } = {}, deps: RunnerDeps = {}): Promise<ActionResult> {
   return withRunner(ctx, config, { sshCmd }, deps, async (run, notes): Promise<ActionResult> => {
     const report = newReport();

@@ -43,7 +43,7 @@ test('native release sends selected Sonar credentials only to its scanner and ke
     }
     if (command === 'build-probe' || command === 'lint-probe') return {status: 0, stdout: JSON.stringify(options.env)};
     if (command === 'npx' && args[0] === 'starci') {
-      const file = path.join(options.cwd, args[args.indexOf('--sonar') + 1]), side = args[args.indexOf('--side') + 1];
+      const file = path.join(options.cwd, args[args.indexOf('--out') + 1]), side = args[args.indexOf('--side') + 1];
       if (lintExit !== 0) return {status: lintExit, stdout: `lint ${side} findings`};
       fs.mkdirSync(path.dirname(file), {recursive: true});
       fs.writeFileSync(file, JSON.stringify({rules: [{id: 'shared', side}, {id: `only-${side}`}], issues: [{ruleId: `only-${side}`}]}));
@@ -62,7 +62,7 @@ test('native release sends selected Sonar credentials only to its scanner and ke
   const result = await releaseGate({cwd: root, spawn, now: () => 1000, fetch: sonarServer('OK'),
     get sops() {throw new Error('A release gate must not open unrelated stack custody');},
     env: {SONAR_TOKEN: secret, SONAR_NIVO_TOKEN: secret, KEEP_PUBLIC: 'retained', SONAR_SCANNER_JSON_PARAMS: '{"sonar.qualitygate.wait":"true"}'}},
-  {...normalized.config, version: '1.0.0'}, {execute: true, sonar: true, platform: 'linux'});
+  {...normalized.config, version: '1.0.0'}, {execute: true, platform: 'linux'});
   assert.equal(result.ok, true);
   const ordinary = calls.filter(call => ['build-probe', 'lint-probe'].includes(call.command));
   assert.equal(ordinary.length, 2);
@@ -94,7 +94,7 @@ test('native release sends selected Sonar credentials only to its scanner and ke
   assert.equal(merged.issues.length, 2);
   const order = calls.filter(call => call.command === 'npx').map(call => call.args.includes('starci') ? `lint-${call.args[call.args.indexOf('--side') + 1]}` : 'scan');
   assert.deepEqual(order, ['lint-be', 'lint-fe', 'scan']);
-  assert.match(fs.readFileSync(record.gates.find(row => row.name === 'sonar').log, 'utf8'), /\$ npx starci app lint --side be --sonar reports\/lint\.be\.sonar\.json[\s\S]*wrote reports\/lint\.sonar\.json/u);
+  assert.match(fs.readFileSync(record.gates.find(row => row.name === 'sonar').log, 'utf8'), /\$ npx starci app lint --side be --out reports\/lint\.be\.sonar\.json[\s\S]*wrote reports\/lint\.sonar\.json/u);
 });
 
 test('a failing lint fails the sonar row and the scanner never runs', async t => {
@@ -116,7 +116,7 @@ test('a failing lint fails the sonar row and the scanner never runs', async t =>
     host: {public: 'https://quality.example.invalid'}, ci: {token: 'SONAR_NIVO_TOKEN'}}};
   const normalized = normalizeRelease({gates: [{name: 'build', command: ['build-probe']}]}, {}, services);
   const result = await releaseGate({cwd: root, spawn, now: () => 1000, fetch: async () => ({ok: true, json: async () => ({status: 'UP'})}),
-    env: {SONAR_NIVO_TOKEN: 'fixture-private-analysis-value'}}, {...normalized.config, version: '1.0.0'}, {execute: true, sonar: true, platform: 'linux'});
+    env: {SONAR_NIVO_TOKEN: 'fixture-private-analysis-value'}}, {...normalized.config, version: '1.0.0'}, {execute: true, platform: 'linux'});
   assert.equal(result.ok, false, result.lines.join(' | '));
   const sonar = result.data.results.find(row => row.name === 'sonar');
   assert.equal(sonar.pass, false);
@@ -135,7 +135,7 @@ test('a quality gate ERROR fails the sonar row after a scanner exit 0 and names 
       return {status: 0, stdout: ''};
     }
     if (command === 'npx' && args[0] === 'starci') {
-      const file = path.join(options.cwd, args[args.indexOf('--sonar') + 1]);
+      const file = path.join(options.cwd, args[args.indexOf('--out') + 1]);
       fs.mkdirSync(path.dirname(file), {recursive: true});
       fs.writeFileSync(file, JSON.stringify({rules: [], issues: []}));
       return {status: 0, stdout: 'lint ok'};
@@ -149,7 +149,7 @@ test('a quality gate ERROR fails the sonar row after a scanner exit 0 and names 
   const conditions = [{status: 'ERROR', metricKey: 'new_critical_violations', comparator: 'GT', errorThreshold: '0', actualValue: '5'},
     {status: 'OK', metricKey: 'new_coverage', comparator: 'LT', errorThreshold: '80', actualValue: '91'}];
   const result = await releaseGate({cwd: root, spawn, now: () => 1000, fetch: sonarServer('ERROR', conditions),
-    env: {SONAR_NIVO_TOKEN: 'fixture-private-analysis-value'}}, {...normalized.config, version: '1.0.0'}, {execute: true, sonar: true, platform: 'linux'});
+    env: {SONAR_NIVO_TOKEN: 'fixture-private-analysis-value'}}, {...normalized.config, version: '1.0.0'}, {execute: true, platform: 'linux'});
   assert.equal(result.ok, false);
   const sonar = result.data.results.find(row => row.name === 'sonar');
   assert.equal(sonar.pass, false);

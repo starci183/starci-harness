@@ -182,6 +182,6 @@ export async function buildImages(ctx: StackContext, config: DeployConfig, { pus
   }
   const visibility = push ? await checkVisibility(ctx, config, images) : { ok: true, lines: [], actual: {} };
   lines.push(...visibility.lines);
-  if (push) lines.push('', 'for the deploy:', `${Object.entries(images).map(([service, ref]) => `--image ${service}=${ref}`).join(' ')} --source-sha ${release.sha}`);
+  if (push) lines.push('', 'for the deploy:', `${Object.entries(images).map(([service, ref]) => `--image ${service}=${ref}`).join(' ')} --sha ${release.sha}`);
   return { ok: visibility.ok, lines, data: { tag: release.tag, sha: release.sha, images, visibility: visibility.actual } };
 }

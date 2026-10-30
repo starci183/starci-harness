@@ -33,7 +33,7 @@ function liveRestoreEnabled(run: Runner): boolean {
   return remoteDocker(run, ['info', '--format', '{{.LiveRestoreEnabled}}']).stdout.trim() === 'true';
 }
 
-/** Read-only check used by prepare and doctor. */
+/** Read-only check used by prepare (its dry run and --execute). */
 export function checkLiveRestore(run: Runner, report: Report): void {
   if (liveRestoreEnabled(run)) report.bad('docker live-restore is enabled and is incompatible with swarm: run "starci app stack prepare --env <env> --fix-live-restore --owner-approved --execute"');
   else report.ok('docker live-restore is off');

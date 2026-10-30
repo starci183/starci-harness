@@ -346,10 +346,10 @@ function judgeVerdict(run: SpawnResult, gate: Gate, text: string): { pass: boole
 
 function sourceProblem(ctx: VerbContext, source: string, head: string): string | null {
   if (source === 'HEAD') return null;
-  if (!refName(source)) return `--source ${source} is not a ref name`;
+  if (!refName(source)) return `--sha ${source} is not a ref name`;
   const resolved = git(ctx, ['rev-parse', '--verify', `${source}^{commit}`], { allowFail: true });
-  if (resolved.code !== 0) return `cannot resolve --source ${source}`;
-  if (resolved.stdout !== head) return `--source ${source} is ${resolved.stdout.slice(0, 10)} but HEAD is ${head.slice(0, 10)}: the hook and the L4 record are about HEAD; check the candidate out first`;
+  if (resolved.code !== 0) return `cannot resolve --sha ${source}`;
+  if (resolved.stdout !== head) return `--sha ${source} is ${resolved.stdout.slice(0, 10)} but HEAD is ${head.slice(0, 10)}: the hook and the L4 record are about HEAD; check the candidate out first`;
   return null;
 }
 
@@ -458,15 +458,15 @@ function backfillRed(ctx: VerbContext, { common, urgent, failed, openTicket }: {
 
 /**
  * `starci app release gate`: dry run prints the preconditions, the gate list, the head and the tag; --execute runs every gate and, only if required gates pass,
- * writes the L4 record and creates the annotated tag. options: { execute, sonar, source, tagPrefix, platform, backfill, openTicket }.
+ * writes the L4 record and creates the annotated tag. options: { execute, source (the --sha ref), tagPrefix, platform, backfill, openTicket }.
  * With `backfill` (a tag pushed by `release push --urgent`, checked out at HEAD) the same full gate judges that commit: green writes its L4 record
  * (promotedFrom the urgent record) and marks the urgent record promoted, with no new tag and no push; red opens a fix ticket through `openTicket`.
  */
 export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, options: {
-  execute?: boolean; sonar?: boolean; source?: string | boolean | undefined; tagPrefix?: string | boolean | undefined; platform?: string; backfill?: string | boolean | undefined; openTicket?: unknown;
+  execute?: boolean; source?: string | boolean | undefined; tagPrefix?: string | boolean | undefined; platform?: string; backfill?: string | boolean | undefined; openTicket?: unknown;
 } = {}): Promise<VerbResult> {
-  // Sonar is a row of the managed CI, so it is a row of the local gate whenever the app declares it (and when --sonar asks for it); a missing token is a refusal, never a skip.
-  if (options.sonar || config.services?.sonar) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx.env)] };
+  // Sonar is a row of the managed CI, so it is a row of the local gate whenever the app declares services.sonar; a missing token is a refusal, never a skip.
+  if (config.services?.sonar) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx.env)] };
   const credentialNames: string[] = config.gates.find(gate => gate.provider)?.credentialNames ?? ['SONAR_TOKEN', config.services?.sonar?.token].filter(Boolean);
   ctx = Object.create(ctx, {env: {value: withoutCredentials(ctx.env, credentialNames)}}) as VerbContext;
   // The CI verdict of a release is the candidate run of its own sha, judged by `starci app release push` (candidate-ci.mjs, OWNER RULING candidate-ci 2026-10-18):

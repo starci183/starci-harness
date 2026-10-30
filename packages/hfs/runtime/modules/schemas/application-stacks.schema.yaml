@@ -582,7 +582,7 @@ $defs:
         propertyNames: {$ref: '#/$defs/deployName'}
         additionalProperties: {$ref: '#/$defs/deployImage'}
       volumes:
-        description: External volumes prepare creates and doctor checks.
+        description: External volumes prepare creates (with --execute) and checks (dry run).
         type: array
         items: {$ref: '#/$defs/deployVolumeName'}
       secrets: {$ref: '#/$defs/deploySecrets'}
@@ -650,7 +650,7 @@ $defs:
         pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$'
       releasesBase: {$ref: '#/$defs/deployAbsolutePath'}
       sealed:
-        description: 'Owner-machine session for prepare, doctor and deploy: the one member of .starcistacks/<environment>/secrets holding VPS_HOST, VPS_USER, privateKey and knownHosts.'
+        description: 'Owner-machine session for prepare and deploy: the one member of .starcistacks/<environment>/secrets holding VPS_HOST, VPS_USER, privateKey and knownHosts.'
         $ref: '#/$defs/deployName'
       serverRecipient:
         description: The deploy server's public age recipient, recorded by starci app secret server-key <env> --execute.

@@ -1,6 +1,6 @@
 // urgent-release.mjs - the one-command urgent release (owner ruling urgent-typecheck-build, 2026-10-30):
 //   starci app stack deploy --env <env> --urgent --reason "<text>" [--execute]
-// with no --image and no --source-sha takes HEAD from the laptop to the server in one command, CI not involved:
+// with no --image and no --sha takes HEAD from the laptop to the server in one command, CI not involved:
 //   1. the urgent release of HEAD (release/urgent.mjs: typecheck and the build, tag, one atomic push, the urgent record), skipped when HEAD
 //      already has a pushed urgent record;
 //   2. the images of that tag built and pushed on THIS machine's Docker (stack/build.mjs), which yields their digests;

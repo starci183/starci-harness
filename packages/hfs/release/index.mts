@@ -1,6 +1,6 @@
 // index.mjs - `starci app release <gate|push>` and the plumbing the release and database verbs share: the context built from the app's IO, strict flag
 // parsing, the optional `release:` / `database:` blocks of .starcistacks/application-stacks.yaml, text and --json output and the exit-code mapping.
-//   starci app release gate [--execute] [--sonar] [--source <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]
+//   starci app release gate [--execute] [--sha <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]
 //   starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json]
 // `harness` of the app IO ({ version, role, openTicket }) is what the starci CLI hands in: the caller's role an urgent record names and the ticket
 // queue a red back-fill files into.
@@ -123,9 +123,9 @@ interface ReleaseAction { spec: FlagSpec; run: (ctx: VerbContext, flags: VerbFla
 
 const ACTIONS: Record<string, ReleaseAction> = {
   gate: {
-    spec: { boolean: ['--execute', '--json', '--sonar'], value: ['--source', '--tag-prefix', '--backfill'] },
+    spec: { boolean: ['--execute', '--json'], value: ['--sha', '--tag-prefix', '--backfill'] },
     run: (ctx, flags, harness) => releaseGate(ctx, loadReleaseConfig(ctx.cwd), {
-      execute: flags.execute === true, sonar: flags.sonar === true, source: flags.source, tagPrefix: flags['tag-prefix'], backfill: flags.backfill, openTicket: harness?.openTicket,
+      execute: flags.execute === true, source: flags.sha, tagPrefix: flags['tag-prefix'], backfill: flags.backfill, openTicket: harness?.openTicket,
     }),
   },
   push: {

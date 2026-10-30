@@ -143,7 +143,7 @@ function sshMember(ctx: StackContext, config: DeployConfig, slug: string, key: s
   const map = openMember(slug, () => ctx.sops.decrypt(file, 'yaml'));
   const held = map[key];
   if (typeof held !== 'string' || held === '')
-    throw refusal('STACK_REMOTE_SEALED', `the sealed member ${slug} holds no ${key} (it holds ${Object.keys(map).join(', ') || 'no key'}): seal it with starci app secret set ${config.env ?? '<env>'} ${slug} ${key} --from-file ${key}=<file>`);
+    throw refusal('STACK_REMOTE_SEALED', `the sealed member ${slug} holds no ${key} (it holds ${Object.keys(map).join(', ') || 'no key'}): seal it with starci app secret set --env ${config.env ?? '<env>'} ${slug} ${key} --from-file ${key}=<file>`);
   return lfOnly(held);
 }
 

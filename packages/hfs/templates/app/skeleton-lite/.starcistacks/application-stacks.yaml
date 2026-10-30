@@ -191,7 +191,7 @@ environments:
         where: secrets/storage-secret-access-key
         recipientPolicy: This app's own age recipient configured in .sops.yaml
         keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
-    # What `starci app stack` deploys (verbs: prepare, doctor, deploy, verify, rollback); names and shapes only, never a value.
+    # What `starci app stack` deploys (verbs: prepare, deploy, verify, rollback); names and shapes only, never a value.
     # Add a backup block (digest-pinned tar helper image) once the stateful volumes are provisioned.
     deploy:
       stack: {{project}}-production
@@ -278,7 +278,7 @@ services:
     projects: [{repository: "{{project}}", key: "{{project}}"}]
     ci: {wiring: required, workflow: .github/workflows/ci.yml, token: SONAR_TOKEN, hostVar: SONAR_HOST_URL}
     ownerAction:
-      needed: Provision this app's Sonar host and project, then set SONAR_TOKEN with starci app ci secret set and sync SONAR_HOST_URL.
+      needed: Provision this app's Sonar host and project, then set SONAR_TOKEN with starci app ci secret set SONAR_TOKEN --execute and sync SONAR_HOST_URL.
       reason: A fresh app declares its quality service without fabricating credentials or a successful analysis.
   codecov:
     provider: codecov

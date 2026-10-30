@@ -17,7 +17,7 @@ async function stack(t, argv) {
 
 test('a flag of another action is refused with the action named, never ignored', async (t) => {
   for (const argv of [
-    ['doctor', '--execute'],
+    ['build-args', '--execute'],
     ['verify', '--env', 'production', '--execute'],
     ['render', '--ssh-cmd', 'ssh x'],
     ['connect', '--env', 'production', '--ssh-cmd', 'ssh x'],
@@ -51,14 +51,14 @@ test('every action with an effect names its environment; the read-only actions d
   }
 });
 
-test('--reason and --remote belong to the one-command urgent deploy, never beside --image or --source-sha', async (t) => {
+test('--reason and --remote belong to the one-command urgent deploy, never beside --image or --sha', async (t) => {
   for (const argv of [
-    ['deploy', '--env', 'production', '--urgent', '--reason', 'hotfix', '--source-sha', 'abcdef1'],
+    ['deploy', '--env', 'production', '--urgent', '--reason', 'hotfix', '--sha', 'abcdef1'],
     ['deploy', '--env', 'production', '--urgent', '--remote', 'origin', '--image', 'api=ghcr.io/o/api@sha256:00'],
   ]) {
     const run = await stack(t, argv);
     assert.equal(run.code, 2, argv.join(' '));
-    assert.match(run.err, /STACK_USAGE: --reason and --remote belong to the one-command urgent deploy without --image and --source-sha/, argv.join(' '));
+    assert.match(run.err, /STACK_USAGE: --reason and --remote belong to the one-command urgent deploy without --image and --sha/, argv.join(' '));
   }
   assert.match((await stack(t, ['deploy', '--env', 'production', '--reason', 'hotfix'])).err, /--reason and --remote release HEAD in the one-command urgent deploy: add --urgent/);
 });

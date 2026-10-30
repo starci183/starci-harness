@@ -31,7 +31,7 @@ const OWNED = new Map([
   ['stack deploy', 'deploy'], ['stack config', 'render'],
   ['secret create', 'deploy'], ['secret rm', 'prune'], ['config create', 'deploy'], ['config rm', 'prune'],
   ['service ls', 'converge'], ['service ps', 'converge'], ['service inspect', 'verify'], ['service update', 'rollback'],
-  ['swarm init', 'prepare'], ['volume create', 'prepare'], ['node ls', 'doctor'],
+  ['swarm init', 'prepare'], ['volume create', 'prepare'], ['node ls', 'prepare'],
 ]);
 
 /** Comments run nothing; a `starci app stack ...` command line is the canon call itself and is never judged. */

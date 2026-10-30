@@ -1,4 +1,4 @@
-// server-key.mjs - `starci app secret server-key <env> [--rotate | --backup github | --restore github] [--execute]`: the deploy
+// server-key.mjs - `starci app secret server-key --env <env> [--rotate | --backup github | --restore github] [--execute]`: the deploy
 // server's own age identity, made ON the server and never leaving it, and the environment sealed to it (ruling
 // app-secrets-one-standard, contexts/project/stacks.md PROJECT-STACKS-5).
 //   (none)     the server keeps SERVER_AGE_IDENTITY when it exists, else age-keygen makes it there (umask 077, mode 600, owner
@@ -208,7 +208,7 @@ function requireOwnerRecipient(config: DeployConfig, server: string[] = []): voi
   let rule: string[] = [];
   try { rule = configuredRecipients(config.repoRoot, path.join(config.secretsDir, 'member.enc.yaml')); } catch { rule = []; }
   if (!rule.some((recipient) => !server.includes(recipient)))
-    throw refusal('STACK_SERVER_KEY_NO_OWNER', `the ${config.env} rule of .sops.yaml names no owner key, so the server key would be its only recipient: starci app secret recipients ${config.env} --add owner`);
+    throw refusal('STACK_SERVER_KEY_NO_OWNER', `the ${config.env} rule of .sops.yaml names no owner key, so the server key would be its only recipient: starci app secret recipients --env ${config.env} --add owner --execute`);
 }
 
 /** The members need the owner identity to be wrapped again: refused before the server is touched. */
@@ -249,7 +249,7 @@ async function rotateKey(ctx: StackContext, config: DeployConfig, { execute }: S
     const lines = [...notes];
     if (!ensureTool(run, execute, lines)) return { ok: true, lines, data: { env: config.env, identity: SERVER_AGE_IDENTITY, execute } };
     const current = asRoot(run, publicKeyScript(SERVER_AGE_IDENTITY));
-    if (current.status === 5) throw refusal('STACK_SERVER_KEY_NONE', `the server holds no ${SERVER_AGE_IDENTITY} to rotate: starci app secret server-key ${config.env} --execute`);
+    if (current.status === 5) throw refusal('STACK_SERVER_KEY_NONE', `the server holds no ${SERVER_AGE_IDENTITY} to rotate: starci app secret server-key --env ${config.env} --execute`);
     const old = recipientOf(current, 'age-keygen -y');
     const retired = retiredName(ctx);
     if (!execute) {
@@ -305,7 +305,7 @@ export function repositoryKeyWarnings(gh: GithubPort, repo: string): string[] {
     return [`warning: the repository secret names of ${repo} cannot be read (gh api repos/${repo}/actions/secrets needs admin access); make sure the repository holds no ${BACKUP_SECRET} of its own`];
   }
   if (!names.includes(BACKUP_SECRET)) return [];
-  return [`warning: ${repo} holds a repository secret ${BACKUP_SECRET}; a job bound to no Environment, or to one without its own ${BACKUP_SECRET}, reads it. Once every environment holds its server key (server-key <env> --backup github --execute), delete it: gh secret delete ${BACKUP_SECRET} --repo ${repo}. The owner key never belongs in GitHub.`];
+  return [`warning: ${repo} holds a repository secret ${BACKUP_SECRET}; a job bound to no Environment, or to one without its own ${BACKUP_SECRET}, reads it. Once every environment holds its server key (server-key --env <env> --backup github --execute), delete it: gh secret delete ${BACKUP_SECRET} --repo ${repo}. The owner key never belongs in GitHub.`];
 }
 
 async function backupKey(ctx: StackContext, config: DeployConfig, { execute }: ServerKeyOptions, deps: ServerKeyDeps): Promise<ActionResult> {
@@ -329,14 +329,14 @@ async function backupKey(ctx: StackContext, config: DeployConfig, { execute }: S
 async function restoreKey(ctx: StackContext, config: DeployConfig, { execute }: ServerKeyOptions, deps: ServerKeyDeps): Promise<ActionResult> {
   const recipient = config.remote.serverRecipient;
   if (!recipient)
-    throw refusal('STACK_SERVER_KEY_NO_RECIPIENT', `environments.${config.env}.deploy.remote records no serverRecipient, so the restore cannot tell the server key from another identity: starci app secret server-key ${config.env} --execute records it`);
+    throw refusal('STACK_SERVER_KEY_NO_RECIPIENT', `environments.${config.env}.deploy.remote records no serverRecipient, so the restore cannot tell the server key from another identity: starci app secret server-key --env ${config.env} --execute records it`);
   const gh = deps.github ?? github({ cwd: config.repoRoot, env: ctx.env });
   const repo = protectedEnvironment(gh, config.env);
   const warnings = repositoryKeyWarnings(gh, repo);
   const args = ['workflow', 'run', RESTORE_WORKFLOW, '--repo', repo, '-f', `environment=${config.env}`, '-f', `recipient=${recipient}`];
   const data = { env: config.env, repo, recipient, repositorySecret: warnings.length > 0, execute };
   if (!execute) return { ok: true, lines: [`dry run: would run gh ${args.join(' ')}; the workflow writes the ${config.env} Environment's ${BACKUP_SECRET} to ${SERVER_AGE_IDENTITY} on the server when none is there and its public key is ${recipient} (--execute)`, ...warnings], data };
-  try { gh.run(args); } catch { throw failure('STACK_SERVER_KEY_RESTORE', `gh could not dispatch ${RESTORE_WORKFLOW} in ${repo}; is the managed workflow rendered (starci app sync --write) and pushed?`); }
+  try { gh.run(args); } catch { throw failure('STACK_SERVER_KEY_RESTORE', `gh could not dispatch ${RESTORE_WORKFLOW} in ${repo}; is the managed workflow rendered (starci app sync --execute) and pushed?`); }
   return { ok: true, lines: [`dispatched ${RESTORE_WORKFLOW} in ${repo} for ${config.env}; follow it with gh run list --workflow ${RESTORE_WORKFLOW} --repo ${repo}`, ...warnings], data };
 }
 

@@ -321,7 +321,7 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
  */
 export async function deployRelease(ctx: StackContext, config: DeployConfig, options: DeployOptions = {}, deps: Partial<DeployDeps> = {}): Promise<ActionResult> {
   const d: DeployDeps = { ...DEFAULT_DEPS, ...deps };
-  if (!hasSourceSha(options)) throw refusal('STACK_DEPLOY_SOURCE_SHA', '--source-sha is required (the git commit being deployed)');
+  if (!hasSourceSha(options)) throw refusal('STACK_DEPLOY_SOURCE_SHA', '--sha is required (the git commit being deployed)');
   const made = options.out ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'stack-release-'));
   const out = (options.out ?? made) as string; // made exists whenever options.out is absent
   const cleanups: Cleanups = [];

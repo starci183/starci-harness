@@ -120,7 +120,7 @@ function remote(c: Collector, block: Block): RemoteConfig {
     const member: string = block.sealed;
     sealed = { ops: member, sshKey: member, knownHosts: member };
   } else if (block.sealed !== undefined) {
-    c.problem('deploy.remote.sealed', 'names one member holding VPS_HOST, VPS_USER, privateKey and knownHosts (sealed: vps); fold a member per role into it with starci app secret migrate <env> <member> --to vps --into-existing');
+    c.problem('deploy.remote.sealed', 'names one member holding VPS_HOST, VPS_USER, privateKey and knownHosts (sealed: vps); fold a member per role into it with starci app secret migrate --env <env> <member> --to vps --into-existing --execute');
   }
   return { host: block.host ?? 'vps', releasesBase: block.releasesBase ?? null, sealed, serverRecipient: block.serverRecipient ?? null };
 }

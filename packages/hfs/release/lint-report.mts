@@ -1,5 +1,5 @@
 // lint-report.mjs - the external issues report the release gate's sonar row produces before it runs the scanner.
-// The app declares `sonar.externalIssuesReportPaths=reports/lint.sonar.json`; the managed CI makes it with `lint --side <side> --sonar reports/lint.<side>.sonar.json`
+// The app declares `sonar.externalIssuesReportPaths=reports/lint.sonar.json`; the managed CI makes it with `lint --side <side> --out reports/lint.<side>.sonar.json`
 // per lint matrix side and a "merge Sonar lint reports" step. This module does the same locally, through the same process seam as every gate
 // (an argument array through ctx.spawn, never a shell). The merge below is the one in packages/hfs/sync/ci-commands.mjs (sonarMergeSteps): keep them identical.
 import fs from 'node:fs';
@@ -22,7 +22,7 @@ function mergeSonarReports(reports: readonly { rules: { id: string }[]; issues: 
 const sidesOf = (root: string): string[] => LINT_SIDES.filter((side) => fs.existsSync(path.join(root, side)));
 
 /**
- * Runs `starci app lint --side <side> --sonar <file>` for every side the app has, then writes reports/lint.sonar.json.
+ * Runs `starci app lint --side <side> --out <file>` for every side the app has, then writes reports/lint.sonar.json.
  * `launch` turns an argv into [command, args] for the platform. Returns { pass, text }: the honest log of every lint run and the verdict.
  * A lint that exits non-zero (findings or error) or writes no report fails the row; nothing is skipped.
  */
@@ -34,7 +34,7 @@ export function produceLintReports(ctx: VerbContext, { launch, platform, env }: 
   for (const side of sides) {
     const file = path.join(ctx.cwd, sideReport(side));
     fs.rmSync(file, { force: true });
-    const argv = ['npx', 'starci', 'app', 'lint', '--side', side, '--sonar', sideReport(side)];
+    const argv = ['npx', 'starci', 'app', 'lint', '--side', side, '--out', sideReport(side)];
     const [command, args] = launch(argv, platform);
     out.push(`$ ${argv.join(' ')}\n`);
     const run = tool(ctx, command, args, { cwd: ctx.cwd, env });

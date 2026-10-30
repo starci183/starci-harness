@@ -65,7 +65,7 @@ const OWNED = [
   ['docker service update --image x shop_api', 'rollback'],
   ['docker swarm init', 'prepare'],
   ['docker volume create shop-data', 'prepare'],
-  ['docker node ls', 'doctor'],
+  ['docker node ls', 'prepare'],
   ['docker --context vps stack deploy -c stack.yaml shop', 'deploy'],
   ['docker -H ssh://vps service ls', 'converge'],
 ];
@@ -75,7 +75,7 @@ const NOT_OWNED = [
   'docker compose up -d', 'docker run --rm alpine true', 'docker exec shop_api true', 'docker ps', 'docker logs shop_api',
   'docker service logs shop_api', 'docker volume ls', 'docker secret ls', 'docker network create shop',
   'starci app stack deploy --env production', 'npx starci app stack render --note "docker stack deploy"',
-  'node starci.mjs app stack prepare && starci app stack doctor',
+  'node starci.mjs app stack prepare && starci app stack verify',
 ];
 
 const VERB_FILES = ['render', 'provision', 'converge', 'verify', 'prune', 'rollback', 'release', 'backup', 'prepare', 'doctor', 'jobs', 'public'];
@@ -118,8 +118,8 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${CODE}: ${edition} reports one finding per replacing verb of a file`, () => {
-    const findings = one(edition, 'deploy/ops.sh', 'docker swarm init\ndocker volume create a\ndocker node ls\ndocker node ls\n');
-    assert.deepEqual(findings.map((finding) => finding.verb).sort(byText), ['doctor', 'prepare']);
+    const findings = one(edition, 'deploy/ops.sh', 'docker swarm init\ndocker volume create a\ndocker node ls\ndocker node ls\ndocker service ls\n');
+    assert.deepEqual(findings.map((finding) => finding.verb).sort(byText), ['converge', 'prepare']);
     assert.ok(findings.every((finding) => finding.code === CODE));
   });
 
