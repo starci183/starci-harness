@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0 - 2026-10-30
+
+- Changed: the build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots) are TypeScript, typechecked by tsconfig.scripts.json; no component change.
+
 ## 0.15.34 - 2026-10-30
 
 - Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.34), which re-pin hfs 4.11.22.

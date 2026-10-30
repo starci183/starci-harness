@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 4.12.0 - 2026-10-30
+
+- Changed: the package is strict TypeScript. Every source is a .mts compiled in place to .mjs and .d.mts at the path it always shipped at, so every import specifier and the exports map answer as before (src/package-exports.spec.mjs proves each one from the packed tarball). The specs, their fixtures and helpers stay .mjs and ran unchanged against the TypeScript build.
+- Added: the platform database entity bases of the skeleton, AbstractEntity (created_at, updated_at, set by the database) and UuidAbstractEntity (the uuid id), written by the first `app add table`, whose entity extends UuidAbstractEntity (owner ruling entity-base); R86 sql-owner reads inherited columns.
+- Fixed: a first start (`stack deploy --urgent --first-start`) deploys the stack with every service but the database at 0 replicas, waits for the database, proves it empty and migrates, then deploys the real stack: the app services no longer start against an empty schema and roll back.
+- Fixed: the skeleton's database connection retries 10 times 3 s apart, so an app outlives its database's own start.
+- Added: R337 HFS_AUTH_COOKIE_DOMAIN_MISSING: when a lite app's web and api are served on different hosts, the api's environment names AUTH_COOKIE_DOMAIN, a parent of both; the skeleton passport sets that Domain on its cookies when it is configured.
+- Changed: the skeleton CLI apps log info to stderr (LoggingModule `info: "stderr"`), so a command's stdout carries only its output; the skeleton's stateless services roll back start-first.
+- Fixed: the CLI audit's behaviour bugs: flags of another action are refused, a value flag cannot swallow the next flag, `--env` is required for stack effects, the generated USAGE lists every parser flag, `npm ci` is the scaffold hint, failure-code hints name live verbs.
 
 - Upgrade note: right after upgrading, run `npx --no-install starci app sync --execute` in the app. The app's managed hooks and scripts still call `starci app hygiene` and `starci app sync --check`, which no longer exist, so the pre-commit hook fails until sync renders the new ones (and every managed file header now names `sync --execute`, so each managed file drifts once).
 - Changed: the app verbs take the canonical spellings of owner ruling cli-canonical-2026-10-30 (contexts/harness/cli-canonical.md); the old spellings are unknown verbs and flags:
