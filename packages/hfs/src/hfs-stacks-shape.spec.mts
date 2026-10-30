@@ -1,6 +1,7 @@
 // proves: HFS_STACKS_SHAPE@lite
 // proves: HFS_STACKS_SHAPE@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -18,7 +19,7 @@ services:
       root: .claude/ext/sonar
 `;
 
-function judge(t, edition, invalid) {
+function judge(t: TestContext, edition: string, invalid: boolean) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-stacks-shape-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const files = {
@@ -44,7 +45,7 @@ for (const edition of ['lite', 'full']) {
   test(`${code} ${edition}: refuses misplaced files and a non-host local Sonar`, t => {
     const violations = judge(t, edition, true);
     assert.deepEqual(violations.map(item => item.path).sort(), ['.starcistacks/DESIGN.md', '.starcistacks/application-stacks.yaml']);
-    assert.ok(violations.some(item => /not owned by the host/.test(item.message)));
+    assert.ok(violations.some(item => /not owned by the host/.test(item.message ?? '')));
   });
 
   test(`${code} ${edition}: accepts the standard tree and host-owned Sonar`, t => {

@@ -2,27 +2,31 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setVariable, syncVariables } from '../ci/vars.mjs';
 import { verifyCi } from '../ci/verify.mjs';
+import type { CiOptions, Gh, StdinSource } from '../ci/github.mjs';
+import type { ValidCiDeclaration } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { readCiDeclaration } from '../runtime/scripts/hfs/ci-declaration.mjs';
 
 const owner = { name: 'VPS_USER', scope: 'environment', environment: 'production', ownerValue: true };
 const literal = { name: 'PUBLIC_HOST', scope: 'repository', value: 'https://example.invalid' };
-const declarationOf = (...vars) => readCiDeclaration({ ci: { vars } });
+const declarationOf = (...vars: unknown[]) => readCiDeclaration({ ci: { vars } });
 
 /** The fake GitHub seam records writes and repository lookups without invoking any child process. */
-function harness(declaration, options = {}) {
-  const calls = [], lookups = [], output = [];
+function harness(declaration: ReturnType<typeof declarationOf>, options: CiOptions = {}) {
+  const calls: Parameters<Gh['run']>[] = [], lookups: (string | undefined)[] = [], output: string[] = [];
+  // reason: only the specs that verify install gh.json, so the seam starts as the two members the others call.
   const gh = {
-    repository: (repo) => { lookups.push(repo); return 'example/app'; },
-    run: (...args) => calls.push(args),
-  };
-  return { declaration, options, gh, calls, lookups, output, stdout: (text) => output.push(text) };
+    repository: (repo?: string) => { lookups.push(repo); return 'example/app'; },
+    run: (...args: Parameters<Gh['run']>) => calls.push(args),
+  } as unknown as Gh;
+  // reason: every declaration passed here is one without problems, which is what the CI verbs take.
+  return { declaration: declaration as ValidCiDeclaration, options, gh, calls, lookups, output, stdout: (text: string) => output.push(text) };
 }
 
 test('sync skips owner values and executes the remaining public plan', () => {
   const context = harness(declarationOf(owner, literal), { execute: true });
   assert.equal(syncVariables(context), 0);
   assert.deepEqual(context.calls, [[['variable', 'set', 'PUBLIC_HOST', '--body', literal.value, '--repo', 'example/app']]]);
-  assert.match(context.output[0], /^skip variable VPS_USER \(environment:production\): owner-supplied value; the owner runs starci app ci var set VPS_USER \[--env ENV\] --execute with the value on stdin\n$/);
+  assert.match(context.output[0] as string, /^skip variable VPS_USER \(environment:production\): owner-supplied value; the owner runs starci app ci var set VPS_USER \[--env ENV\] --execute with the value on stdin\n$/);
   assert.equal(context.output[1], 'set variable PUBLIC_HOST (repository)\n');
 });
 
@@ -54,7 +58,8 @@ test('owner set refuses argv and empty input before GitHub access', async () => 
   let reads = 0;
   await assert.rejects(setVariable({ ...context, name: owner.name, stdin: () => { reads += 1; return 'unused'; } }), { code: 'CI_VALUE_ARGV', message: 'CI_VALUE_ARGV: an owner-supplied variable takes its value on stdin' });
   assert.equal(reads, 0);
-  for (const stdin of ['', '\n', '\r\n', null]) {
+  // reason: null is a deliberately malformed stdin source the verb must refuse as empty.
+  for (const stdin of ['', '\n', '\r\n', null] as unknown as StdinSource[]) {
     await assert.rejects(setVariable({ ...context, options: { env: 'production', execute: true }, name: owner.name, stdin }), { code: 'CI_VALUE_EMPTY' });
   }
   assert.deepEqual(context.calls, []);
@@ -65,18 +70,18 @@ test('owner set refuses argv and empty input before GitHub access', async () => 
 test('owner input strips only one newline and literal vars retain argv agreement', async () => {
   const context = harness(declarationOf(owner), { env: 'production', execute: true });
   await setVariable({ ...context, name: owner.name, stdin: 'synthetic\n\n' });
-  assert.equal(context.calls[0][0][4], 'synthetic\n');
+  assert.equal((context.calls[0] as Parameters<Gh['run']>)[0][4], 'synthetic\n');
   const publicContext = harness(declarationOf(literal), { value: literal.value, execute: true });
-  assert.equal(await setVariable({ ...publicContext, name: literal.name }), 0);
-  await assert.rejects(setVariable({ ...publicContext, name: literal.name, options: { value: 'different', execute: true } }), { code: 'CI_VAR_DRIFT' });
+  assert.equal(await setVariable({ ...publicContext, name: literal.name, stdin: undefined }), 0);
+  await assert.rejects(setVariable({ ...publicContext, name: literal.name, stdin: undefined, options: { value: 'different', execute: true } }), { code: 'CI_VAR_DRIFT' });
 });
 
 test('declarations normalize ownerValue and refuse both or neither source', () => {
   const declaration = declarationOf(owner, literal);
   assert.deepEqual(declaration.problems, []);
-  assert.equal(declaration.vars[0].ownerValue, true);
-  assert.equal(declaration.vars[0].value, undefined);
-  assert.equal(declaration.vars[1].ownerValue, false);
+  assert.equal(declaration.vars[0]?.ownerValue, true);
+  assert.equal(declaration.vars[0]?.value, undefined);
+  assert.equal(declaration.vars[1]?.ownerValue, false);
   for (const ownerValue of [true, false]) {
     assert.deepEqual(declarationOf({ ...literal, ownerValue }).problems, [{ code: 'CI_DECLARATION_INVALID', at: 'ci.vars[0]', message: 'a variable has either a value or ownerValue' }]);
   }
@@ -87,7 +92,7 @@ test('declarations normalize ownerValue and refuse both or neither source', () =
 
 test('verification checks owner variable presence without comparing its body', () => {
   const context = harness(declarationOf(owner));
-  context.gh.json = (args) => args[0] === 'variable' && args.includes('production') ? [{ name: owner.name, value: 'synthetic-live-value' }] : [];
+  context.gh.json = (args: string[]) => args[0] === 'variable' && args.includes('production') ? [{ name: owner.name, value: 'synthetic-live-value' }] : [];
   assert.equal(verifyCi({ ...context, sealed: [] }), 0);
   assert.equal(context.output.join(''), 'CI verification passed\n');
   context.gh.json = () => [];

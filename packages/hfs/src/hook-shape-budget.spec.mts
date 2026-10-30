@@ -4,12 +4,12 @@ import { HOOK_INPUT_LIMITS } from '../runtime/scripts/guards/hook-io.mjs';
 import { hookShapeFindings } from '../runtime/scripts/hfs/runtime-rules/hook-shape.mjs';
 
 const settingsFile = '.claude/settings.json';
-const settingsContext = (timeouts) => {
+const settingsContext = (timeouts: readonly (number | undefined)[]) => {
   const commands = ['command', 'seat-tools'];
   const settings = { hooks: { PreToolUse: commands.map((verb, index) => ({ hooks: [{
     type: 'command', command: `starci guard ${verb}`, timeout: timeouts[index],
   }] })) } };
-  return { fileSet: new Set([settingsFile]), read: (file) => file === settingsFile ? JSON.stringify(settings) : null };
+  return { fileSet: new Set([settingsFile]), read: (file: string) => file === settingsFile ? JSON.stringify(settings) : null };
 };
 
 test('tracked guard settings admit the shared host timeout above the complete hook budget', () => {
@@ -23,21 +23,21 @@ test('tracked guard settings refuse a host timeout shorter than the shared budge
   const limits = HOOK_INPUT_LIMITS;
   const found = hookShapeFindings(settingsContext([1, limits.hookTimeoutSeconds]));
   assert.equal(found.length, 1);
-  assert.equal(found[0].code, 'RT_HOOK_SHAPE');
-  assert.equal(found[0].path, settingsFile);
+  assert.equal(found[0]?.code, 'RT_HOOK_SHAPE');
+  assert.equal(found[0]?.path, settingsFile);
 });
 
 test('tracked seat-tool hooks require the shared explicit timeout too', () => {
   const found = hookShapeFindings(settingsContext([HOOK_INPUT_LIMITS.hookTimeoutSeconds, undefined]));
   assert.equal(found.length, 1);
-  assert.equal(found[0].code, 'RT_HOOK_SHAPE');
-  assert.equal(found[0].path, settingsFile);
+  assert.equal(found[0]?.code, 'RT_HOOK_SHAPE');
+  assert.equal(found[0]?.path, settingsFile);
 });
 
 test('an unreadable host hook declaration is a runtime finding', () => {
   const found = hookShapeFindings({ fileSet: new Set([settingsFile]), read: () => '{' });
   assert.equal(found.length, 1);
-  assert.equal(found[0].code, 'RT_HOOK_SHAPE');
+  assert.equal(found[0]?.code, 'RT_HOOK_SHAPE');
 });
 
 

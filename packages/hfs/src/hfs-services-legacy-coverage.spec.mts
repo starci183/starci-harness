@@ -5,6 +5,7 @@
 // proves: HFS_SERVICE_STACK_DECLARATION@lite
 // proves: HFS_SERVICE_STACK_DECLARATION@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -28,7 +29,7 @@ function stack({ image = 'demo/core:1.2.3', billingRole = 'service' } = {}) {
   ].join('\n');
 }
 
-function findings(t, edition, contents, code) {
+function findings(t: TestContext, edition: string, contents: Record<string, string>, code: string) {
   const repoRoot = fs.mkdtempSync(TEMP_PREFIX);
   assert.ok(path.resolve(repoRoot).startsWith(TEMP_PREFIX));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));

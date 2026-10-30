@@ -1,6 +1,7 @@
 // proves: HFS_MONO_NEST_PROJECTS@lite
 // proves: HFS_MONO_NEST_PROJECTS@full
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,11 +9,17 @@ import path from 'node:path';
 import { monorepoFindings } from '../runtime/scripts/hfs/rules/monorepo.mjs';
 
 const NEST_CLI = 'be/nest-cli.json';
-const SINGLE_APP = [{ name: 'api', kind: 'api' }];
-const MULTIPLE_APPS = [{ name: 'core', kind: 'api' }, { name: 'worker', kind: 'worker' }];
+interface App { name: string; kind: string }
+interface NestProject { type: string; root: string; sourceRoot: string }
+interface NestConfiguration {
+  monorepo: boolean | undefined; root: string; sourceRoot: string; projects: Record<string, NestProject>;
+}
 
-function nestConfiguration(apps) {
-  const api = apps.find(({ kind }) => kind === 'api');
+const SINGLE_APP: App[] = [{ name: 'api', kind: 'api' }];
+const MULTIPLE_APPS: App[] = [{ name: 'core', kind: 'api' }, { name: 'worker', kind: 'worker' }];
+
+function nestConfiguration(apps: App[]): NestConfiguration {
+  const api = apps.find(({ kind }) => kind === 'api') as App;
   return {
     monorepo: true, root: `apps/${api.name}`, sourceRoot: `apps/${api.name}/src`,
     projects: Object.fromEntries(apps.map(({ name }) => [name, {
@@ -21,7 +28,7 @@ function nestConfiguration(apps) {
   };
 }
 
-function fixture(t, edition, apps = MULTIPLE_APPS, mutate) {
+function fixture(t: TestContext, edition: string, apps: App[] = MULTIPLE_APPS, mutate?: (cli: NestConfiguration) => void) {
   const repo = {
     hfs: 3, kind: 'app', edition, project: 'demo',
     sides: { be: { apps }, fe: { apps: [] } },
@@ -65,8 +72,8 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition} rejects invalid Nest project type, root and sourceRoot independently`, (t) => {
-    for (const [field, value] of [['type', 'library'], ['root', 'src'], ['sourceRoot', 'src/core']]) {
-      const input = fixture(t, edition, MULTIPLE_APPS, (cli) => { cli.projects.core[field] = value; });
+    for (const [field, value] of [['type', 'library'], ['root', 'src'], ['sourceRoot', 'src/core']] as [keyof NestProject, string][]) {
+      const input = fixture(t, edition, MULTIPLE_APPS, (cli) => { (cli.projects.core as NestProject)[field] = value; });
       assert.deepEqual(monorepoFindings(input).map(({ code }) => code), ['HFS_MONO_NEST_PROJECTS']);
     }
   });

@@ -4,6 +4,7 @@
 // asserted: with a Docker daemon the matching app is green and a drifted copy is red with its three findings; without one the verb
 // answers no verdict (exit 2, needs a database), which is the only other outcome it may give.
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -15,7 +16,7 @@ const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtur
 const APP = path.join(FIXTURES, 'app');
 const DOCKER = spawnSync('docker', ['version', '--format', '{{.Server.Version}}'], { encoding: 'utf8' }).status === 0;
 
-async function drift(cwd) {
+async function drift(cwd: string) {
   let stdout = '';
   let stderr = '';
   const code = await main(['db', 'drift', '--json'], { cwd, stdout: (text) => { stdout += text; }, stderr: (text) => { stderr += text; } });
@@ -23,7 +24,7 @@ async function drift(cwd) {
 }
 
 /** A copy of the fixture app (inside the package, so its be/ still reaches typeorm) whose migration drifts from the entity. */
-function drifted(t) {
+function drifted(t: TestContext): string {
   const root = fs.mkdtempSync(path.join(FIXTURES, '.run-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.cpSync(APP, root, { recursive: true });
@@ -58,7 +59,7 @@ test('a type mismatch, a missing column and a nullability mismatch are red again
   }
   assert.equal(run.code, 1, run.stderr);
   const result = JSON.parse(run.stdout);
-  assert.deepEqual(result.findings.map(({ code, kind, column }) => [code, kind, column]), [
+  assert.deepEqual(result.findings.map(({ code, kind, column }: { code: string; kind: string; column: string }) => [code, kind, column]), [
     ['BE_ENTITY_SCHEMA_DRIFT', 'type-mismatch', 'total_cents'],
     ['BE_ENTITY_SCHEMA_DRIFT', 'nullable-mismatch', 'status'],
     ['BE_ENTITY_SCHEMA_DRIFT', 'missing-column', 'note'],

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,7 +9,7 @@ import { unusedSymbolFindings } from '../runtime/scripts/hfs/rules/unused-symbol
 import { writtenDeclarations } from '../runtime/scripts/hfs/rules/unused-symbol-flow.mjs';
 import { writesTarget } from '../runtime/scripts/hfs/rules/unused-symbol-properties.mjs';
 
-function findings(t, edition, sources, catalog, qualified = false) {
+function findings(t: TestContext, edition: string, sources: Record<string, string>, catalog: unknown, qualified = false): string[] {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-catalog-flow-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const contents = { ...sources, 'fe/src/messages/en.json': JSON.stringify(catalog) };
@@ -625,13 +626,13 @@ test('the write index answers exactly what the per-member tree scan answered', (
     const checker = program.getTypeChecker();
     const state = { ts, checker };
     const sources = program.getSourceFiles().filter(source => !source.isDeclarationFile);
-    const symbolAt = target => checker.getSymbolAtLocation(target);
-    const old = declaration => sources.some(source => writesTarget(state, source, target => symbolAt(target)?.valueDeclaration === declaration));
+    const symbolAt = (target: ts.Node) => checker.getSymbolAtLocation(target);
+    const old = (declaration: ts.ClassElement) => sources.some(source => writesTarget(state, source, (target: ts.Node) => symbolAt(target)?.valueDeclaration === declaration));
     const index = writtenDeclarations(state, sources);
     const members = sources.flatMap(source => source.statements).filter(ts.isClassDeclaration).flatMap(klass => [...klass.members]);
     assert.ok(members.length >= 12);
-    for (const member of members) assert.equal(index.has(member), old(member), `member ${member.name.getText()}`);
-    assert.ok(index.has(members.find(member => member.name.getText() === 'k')));
-    assert.ok(!index.has(members.find(member => member.name.getText() === 'r')));
+    for (const member of members) assert.equal(index.has(member), old(member), `member ${(member.name as ts.PropertyName).getText()}`);
+    assert.ok(index.has(members.find(member => (member.name as ts.PropertyName).getText() === 'k') as ts.ClassElement));
+    assert.ok(!index.has(members.find(member => (member.name as ts.PropertyName).getText() === 'r') as ts.ClassElement));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

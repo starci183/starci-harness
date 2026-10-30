@@ -16,7 +16,7 @@ const clean = {
   [SNAPSHOT]: JSON.stringify({ schema: 'starci/event-contract@1', service: 'core', events }),
 };
 
-function check(edition, override = {}) {
+function check(edition: string, override: Record<string, string | null> = {}) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-event-table-'));
   const sources = Object.entries({ ...clean, ...override }).filter(([, text]) => text !== null);
   try {

@@ -16,7 +16,11 @@ import path from 'node:path';
 import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
 import { withoutGitLocalEnv } from '../runtime/scripts/lib/git.mjs';
 
-const made = [];
+interface CaseOptions { contents?: Record<string, string>; db?: Record<string, unknown> }
+/** A rule case: its name, the migration, whether it violates, and the declaration or extra migrations it runs under. */
+type Case = [name: string, sql: string, violates: boolean, options?: CaseOptions];
+
+const made: string[] = [];
 const MIGRATION = 'db/migrations/20260101120000_access.sql';
 const NEXT_MIGRATION = 'db/migrations/20260102120000_hardening.sql';
 
@@ -24,7 +28,7 @@ test.after(() => {
   for (const dir of made) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-function fixtureRepo(edition, contents, db = {}) {
+function fixtureRepo(edition: string, contents: Record<string, string>, db: Record<string, unknown> = {}): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-access-'));
   made.push(dir);
   const declaration = {
@@ -43,13 +47,13 @@ function fixtureRepo(edition, contents, db = {}) {
   return dir;
 }
 
-async function findingsFor(edition, sql, options = {}) {
+async function findingsFor(edition: string, sql: string, options: CaseOptions = {}) {
   const contents = { [MIGRATION]: sql, ...options.contents };
   const repoRoot = fixtureRepo(edition, contents, options.db);
   return checkDatabase({ repoRoot, files: Object.keys(contents) });
 }
 
-async function expectCode(edition, code, sql, violates, options) {
+async function expectCode(edition: string, code: string, sql: string, violates: boolean, options?: CaseOptions) {
   const findings = await findingsFor(edition, sql, options);
   const matching = findings.filter((finding) => finding.code === code);
   assert.equal(matching.length > 0, violates, JSON.stringify(findings, null, 2));
@@ -64,7 +68,7 @@ create table public.items (id uuid primary key, user_id uuid not null, tenant_id
 alter table public.items enable row level security;
 `;
 const listed = {};
-const memberPolicy = (predicate, action = 'select') => `${table}
+const memberPolicy = (predicate: string, action = 'select') => `${table}
 create policy items_member_${action} on public.items for ${action} to authenticated
   ${action === 'insert' ? 'with check' : 'using'} (${predicate});`;
 const publicRead = `${table}
@@ -75,7 +79,7 @@ create function public.identity(subject uuid) returns uuid language sql security
 set search_path = '' as $$ select subject $$;
 `;
 
-const roleCases = [
+const roleCases: Case[] = [
   ['superuser application role', 'create role app_be login noinherit nobypassrls superuser;', true],
   ['bypassrls application role', 'create role app_be login noinherit bypassrls;', true],
   ['inherited privileges', 'create role app_be login inherit nobypassrls;', true],
@@ -90,7 +94,7 @@ const roleCases = [
 ];
 
 const owned = `${table} alter table public.items owner to app_be;`;
-const forceCases = [
+const forceCases: Case[] = [
   ['owner role needs force RLS', owned, true],
   ['owner role enables force RLS', `${owned} alter table public.items force row level security;`, false],
   ['SET ROLE determines the creator', `set role app_be; ${table} reset role;`, true],
@@ -102,7 +106,7 @@ const forceCases = [
   ['another owner has no default-force obligation', `${table} alter table public.items owner to migration_owner;`, false],
 ];
 
-const policyCases = [
+const policyCases: Case[] = [
   ['literal true', memberPolicy('true'), true, listed],
   ['non-null column', memberPolicy('id is not null'), true, listed],
   ['self equality', memberPolicy('user_id = user_id'), true, listed],
@@ -120,7 +124,7 @@ const policyCases = [
   ['public read suffix cannot authorize writes', `${table} create policy items_public_read on public.items for insert to anon with check (true);`, true],
 ];
 
-const viewCases = [
+const viewCases: Case[] = [
   ['exposed owner view', `${table} create view public.item_view as select id from public.items;`, true],
   ['exposed materialized view', `${table} create materialized view public.item_view as select id from public.items;`, true],
   ['invoker view', `${table} create view public.item_view with (security_invoker = true) as select id from public.items;`, false],
@@ -133,7 +137,7 @@ const viewCases = [
   ['private owner view', `${table} create view private.item_view as select id from public.items;`, false],
 ];
 
-const rlsCases = [
+const rlsCases: Case[] = [
   ['disable exposed RLS', `${table} alter table public.items disable row level security;`, true],
   ['remove exposed forced RLS', `${table} alter table public.items force row level security; alter table public.items no force row level security;`, true],
   ['enabled RLS', table, false],
@@ -142,7 +146,7 @@ const rlsCases = [
   ['private RLS weakening', 'create table private.items (id uuid); alter table private.items disable row level security;', false],
 ];
 
-const definerCases = [
+const definerCases: Case[] = [
   ['authenticated revoke is missing', `${definer} revoke execute on function public.identity(uuid) from public, anon;`, true],
   ['all browser roles revoked', `${definer} revoke execute on function public.identity(uuid) from public, anon, authenticated;`, false],
   ['private definer', "create function private.identity(subject uuid) returns uuid language sql security definer set search_path = '' as $$ select subject $$;", false],
@@ -151,8 +155,8 @@ const definerCases = [
   ['invoker function does not need revocation', 'create function public.identity(subject uuid) returns uuid language sql security invoker as $$ select subject $$;', false],
 ];
 
-const storagePolicy = (predicate, action = 'select') => `create policy objects_member_${action} on storage.objects for ${action} to authenticated ${action === 'insert' ? 'with check' : 'using'} (${predicate});`;
-const storageCases = [
+const storagePolicy = (predicate: string, action = 'select') => `create policy objects_member_${action} on storage.objects for ${action} to authenticated ${action === 'insert' ? 'with check' : 'using'} (${predicate});`;
+const storageCases: Case[] = [
   ['private bucket without owner prefix', storagePolicy("bucket_id = 'avatars'"), true],
   ['private bucket ownership prefix', storagePolicy("bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text"), false],
   ['insert with ownership prefix', storagePolicy("bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text", 'insert'), false],
@@ -165,14 +169,14 @@ const storageCases = [
   ['every OR branch enforces ownership or public bucket', storagePolicy("(bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text) or bucket_id = 'brand_public'"), false],
 ];
 
-const ruleCases = [
+const ruleCases: [string, Case[]][] = [
   ['DB_APP_ROLE', roleCases], ['DB_FORCE_RLS_DEFAULT', forceCases],
   ['DB_POLICY_TAUTOLOGY', policyCases], ['DB_VIEW_UNSAFE', viewCases],
   ['DB_RLS_REQUIRED', rlsCases], ['DB_DEFINER_REVOKE', definerCases],
   ['DB_STORAGE_PREFIX', storageCases],
 ];
 
-const historicalCases = [
+const historicalCases: [name: string, code: string, initial: string, hardening: string, violates?: boolean][] = [
   ['view access revoked by the next migration', 'DB_VIEW_UNSAFE', `${table} create view public.item_view as select id from public.items;`, 'revoke select on public.item_view from anon, authenticated;'],
   ['definer revoke completed by the next migration', 'DB_DEFINER_REVOKE', `${definer} revoke execute on function public.identity(uuid) from public, anon;`, 'revoke execute on function public.identity(uuid) from authenticated;'],
   ['definer schema revoke completed by the next migration', 'DB_DEFINER_REVOKE', `${definer} revoke execute on function public.identity(uuid) from public, anon;`, 'revoke all on all functions in schema public from authenticated;'],
@@ -231,5 +235,5 @@ for (const edition of ['lite', 'full']) {
 }
 
 // The same literal-block proof for R254: one block per code, a violating and a passing migration each.
-for (const edition of ['lite', 'full']) {
+for (const _edition of ['lite', 'full']) {
 }
