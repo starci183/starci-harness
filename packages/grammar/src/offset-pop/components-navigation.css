@@ -344,7 +344,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Disclosure"] [data-grammar-disclosure-trigger],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Accordion"] [data-grammar-accordion-trigger] {
-        padding-inline: 1rem;
+        padding-inline: var(--grammar-inset, 0.75rem);
         font-weight: 900;
     }
 

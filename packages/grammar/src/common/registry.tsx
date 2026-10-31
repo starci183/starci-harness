@@ -6,6 +6,7 @@ import {
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
     Progress, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
+    Stack, Cluster, Grid,
     SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
 } from "./renderers.js"
@@ -28,6 +29,7 @@ export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
     Progress, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
+    Stack, Cluster, Grid,
     SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
     ...COMMON_FORMS_COMPONENTS,

@@ -13,6 +13,7 @@
  * canvas (3.95:1) and a hair too light on the secondary surface (4.44:1). `accentSoft` is the
  * selected/soft tint that `accentText` and `muted` both stay AA on.
  */
+import { COMMON_SPACING_SCALE } from "../common/spacing.js"
 export const STARCI_CORE_DNA = Object.freeze({
     id: "core",
     version: 1,
@@ -125,23 +126,8 @@ export const STARCI_CORE_DNA = Object.freeze({
     }),
 } as const)
 
-/** Canonical 4px spacing scale shared by Core components and host composition. */
-export const STARCI_CORE_SPACING_SCALE = Object.freeze({
-    "0": "0rem",
-    "0.5": "0.125rem",
-    "1": "0.25rem",
-    "1.5": "0.375rem",
-    "2": "0.5rem",
-    "2.5": "0.625rem",
-    "3": "0.75rem",
-    "4": "1rem",
-    "5": "1.25rem",
-    "6": "1.5rem",
-    "8": "2rem",
-    "10": "2.5rem",
-    "12": "3rem",
-    "16": "4rem",
-} as const)
+/** The family spacing scale is Common's (common/spacing.ts): the family does not re-space. */
+export const STARCI_CORE_SPACING_SCALE = COMMON_SPACING_SCALE
 
 export type StarCiCoreSpacingStep = keyof typeof STARCI_CORE_SPACING_SCALE
 export type StarCiCoreSpacingValue = (typeof STARCI_CORE_SPACING_SCALE)[StarCiCoreSpacingStep]

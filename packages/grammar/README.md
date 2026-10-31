@@ -409,8 +409,8 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 MarkdownTableFrame, MediaFrame, Rail, SectionHeader, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceCopyGroup, SurfaceListCard, VerticalScrollRegion.
 
-**Compositions (12).** BottomNav, Footer, NavigationFeatureNav, Page, PageContainer, PageHeader,
-PaneGrid, PaneSection, PrimaryRailLayout, Sidebar, TopBar, WorkspaceShell. Storybook pins settings and data-list content
+**Compositions (15).** BottomNav, Cluster, Footer, Grid, NavigationFeatureNav, Page, PageContainer, PageHeader,
+PaneGrid, PaneSection, PrimaryRailLayout, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
 
 `PageHeader` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
@@ -444,9 +444,9 @@ exactly one `PaneGrid` attached flush to the band's separator, reaching both con
 and arrays of Panes are legal; anything else throws `PANE_GRID_CHILD_NOT_PANE` in development). A `Pane` owns its
 content inset (`inset="content"`, default, or `"flush"` for a nested PaneGrid or a full-bleed canvas) and takes no
 `className`: it never pads itself, it publishes the inset to its descendants so dividers and scrollbars stay full-bleed.
-The inline inset is `--grammar-pane-inset-inline` (1rem) on both sides at every breakpoint; the block start is
-`--grammar-pane-inset-block-start` (0.75rem); the block end is `--grammar-pane-inset-block-end-outer` (1rem) when the
-pane touches the grid's bottom edge and `--grammar-pane-inset-block-end-divider` (0.75rem) when it faces a divider.
+Every side takes the container inset `--grammar-inset` (0.75rem) at every breakpoint, through
+`--grammar-pane-inset-inline`, `--grammar-pane-inset-block-start`, `--grammar-pane-inset-block-end-outer` (the grid's
+bottom edge) and `--grammar-pane-inset-block-end-divider` (a divider below).
 A `collapse="drawer"` pane renders its children in the drawer under the same inset.
 
 `PaneSection` is the one band primitive of a pane: every child of a Pane is a `PaneSection` or one nested `PaneGrid`.
@@ -462,8 +462,26 @@ box keeps the vendor's own padding. In a Pane, `ListBox` resolves `inset="panel"
 padding so the row box and the selected pill start at the edge, and a `Tabs variant="secondary"` track drops its inline
 padding so the first pill does.
 
-Card padding has one place per axis too: `--grammar-card-padding-inline` and `--grammar-card-padding-block` (1rem each)
-pad the content of `SurfaceCard` and its kin.
+**Spacing.** One scale, 0 4 8 12 24 32 (`COMMON_SPACING_SCALE`), and every value is a root token named by its role:
+gaps `--grammar-identity-gap` (4), `--grammar-inline-gap` (8), `--grammar-row-gap` (12), `--grammar-section-gap` (24)
+and `--grammar-region-gap` (32) (`COMMON_GAP_ROLES`); insets `--grammar-inset` (12, every container: card, pane,
+overlay, band), `--grammar-inset-nested` (8, a box inside a card) and `--grammar-inset-open` (24, an empty state or a
+drop target); the page gutter `--grammar-page-inset` (12, 24 from 48rem, 32 from 70rem); and the control inline
+padding `--grammar-control-padding-inline-{sm,md,lg}` (8, 12, 24) with `--grammar-control-padding-glyph-*` one step
+less on a glyph's side. `--grammar-card-padding-inline`, `--grammar-card-padding-block` and `--grammar-overlay-inset`
+read `--grammar-inset`. Vendor parts take their step in `src/common/components-spacing.css`. Tabs are the underline
+bar everywhere, the first label on the content edge.
+
+An app writes no spacing value; it names the relation of the blocks it places:
+
+- `Stack` (`gap`: `identity` | `inline` | `row` | `section` | `region`, required; `align`; `measure`: `full` |
+  `reading` | `form`; `as`): blocks in the block axis.
+- `Cluster` (`gap`: `identity` | `inline` | `row` | `section`, the same on both axes; `wrap`, default true; `align`;
+  `justify`): items side by side that wrap, a chip set, a toolbar group.
+- `Grid` (`kind="cards"` with `columns?: 2 | 3 | 4`, the section gap on both axes; `kind="form"` renders `FormGrid`;
+  `kind="main-rail"` renders `PrimaryRailLayout` with its props).
+
+None takes a `className` or a `style`.
 
 ```tsx
 <Page measure="reading" header={{ breadcrumbs, title: "Profile", tabs: { label: "Profile", items, selectedKey, onSelect } }}>

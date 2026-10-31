@@ -6,25 +6,52 @@
 @import "./components-navigation.css";
 @import "./components-list-panel.css";
 @import "./components-avatar-group.css";
+@import "./components-spacing.css";
 
 @layer starci-grammar-common {
     .grammar-common-root {
+        /*
+         * THE SPACING SCALE IS 0 4 8 12 24 32 (common/spacing.ts), and every value below names one step by its role.
+         * Gaps, by the relation between siblings: identity 4 < inline 8 < row 12 < section 24 < region 32.
+         */
+        --grammar-identity-gap: 0.25rem;
         --grammar-inline-gap: 0.5rem;
         --grammar-row-gap: 0.75rem;
-        --grammar-section-gap: 1rem;
-        --grammar-region-gap: 1.5rem;
-        --grammar-page-inset: clamp(1rem, 3vw, 2rem);
-        /* Card box padding, one place per axis: SurfaceCard and SurfaceListCard content (PADDING-4). */
-        --grammar-card-padding-inline: 1rem;
-        --grammar-card-padding-block: 1rem;
+        --grammar-section-gap: 1.5rem;
+        --grammar-region-gap: 2rem;
         /*
-         * Pane inset, one place per axis. Inline: both pane edges. Block start: the side facing a divider or the page
-         * band. Block end: the grid's outer bottom edge, or a divider below.
+         * Insets, by the level of the box. Every container (card, pane, overlay, notice, band) holds its content 12 in
+         * on every side, so a closed box has equal block sides; a box inside a card takes the nested step (8); a large
+         * empty or waiting region takes the open step (24). Extra separation belongs to the parent's gap.
          */
-        --grammar-pane-inset-inline: 1rem;
-        --grammar-pane-inset-block-start: 0.75rem;
-        --grammar-pane-inset-block-end-outer: 1rem;
-        --grammar-pane-inset-block-end-divider: 0.75rem;
+        --grammar-inset: 0.75rem;
+        --grammar-inset-nested: 0.5rem;
+        --grammar-inset-open: 1.5rem;
+        /* The page gutter steps by breakpoint (12, 24 from 48rem, 32 from 70rem), never fluid. */
+        --grammar-page-inset: 0.75rem;
+        /* Card box padding, one place per axis: SurfaceCard and SurfaceListCard content. */
+        --grammar-card-padding-inline: var(--grammar-inset);
+        --grammar-card-padding-block: var(--grammar-inset);
+        /* Dialog and drawer: header, body and footer share this inset on every side. */
+        --grammar-overlay-inset: var(--grammar-inset);
+        /*
+         * Pane inset, one place per side. Inline: both pane edges. Block start: the side facing a divider or the page
+         * band. Block end: the grid's outer bottom edge, or a divider below. One value on every side.
+         */
+        --grammar-pane-inset-inline: var(--grammar-inset);
+        --grammar-pane-inset-block-start: var(--grammar-inset);
+        --grammar-pane-inset-block-end-outer: var(--grammar-inset);
+        --grammar-pane-inset-block-end-divider: var(--grammar-inset);
+        /*
+         * Control inline padding by size step (sm 8, md 12, lg 24); the side a leading or trailing glyph sits on takes
+         * one step less (sm 4, md 8, lg 12). Block padding is never chosen: the control height derives it.
+         */
+        --grammar-control-padding-inline-sm: 0.5rem;
+        --grammar-control-padding-inline-md: 0.75rem;
+        --grammar-control-padding-inline-lg: 1.5rem;
+        --grammar-control-padding-glyph-sm: 0.25rem;
+        --grammar-control-padding-glyph-md: 0.5rem;
+        --grammar-control-padding-glyph-lg: 0.75rem;
         /* The Mascot scale: square boxes sm 96px, md 160px, lg 240px; the hero fills its host's height up to the cap. */
         --grammar-mascot-sm: 6rem;
         --grammar-mascot-md: 10rem;
@@ -33,6 +60,18 @@
         /* The accent corner: the one logical corner a SurfaceCard or MediaFrame names in `accentCorner`. */
         --grammar-accent-corner: 2.5rem;
         min-width: 0;
+    }
+
+    @media (min-width: 48rem) {
+        .grammar-common-root {
+            --grammar-page-inset: 1.5rem;
+        }
+    }
+
+    @media (min-width: 70rem) {
+        .grammar-common-root {
+            --grammar-page-inset: 2rem;
+        }
     }
 
     /*
@@ -260,7 +299,7 @@
         width: min(100%, var(--starci-core-page-measure, 80rem));
         min-width: 0;
         margin-inline: auto;
-        padding-inline: var(--grammar-page-inset, clamp(1rem, 3vw, 2rem));
+        padding-inline: var(--grammar-page-inset, 0.75rem);
     }
 
     .starci-core-page-container[data-grammar-page-measure="reading"] {
@@ -277,7 +316,7 @@
         flex-wrap: wrap;
         align-items: flex-end;
         justify-content: space-between;
-        gap: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-region-gap, 2rem);
     }
 
     /* The copy keeps a readable basis, so a narrow header wraps its action below instead of crushing the copy. */
@@ -355,7 +394,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        margin-block-end: var(--grammar-region-gap, 1.5rem);
+        margin-block-end: var(--grammar-region-gap, 2rem);
         background: var(--surface, Canvas);
         color: var(--surface-foreground, var(--foreground, CanvasText));
     }
@@ -364,7 +403,7 @@
         display: flex;
         flex-direction: column;
         gap: var(--grammar-row-gap, 0.75rem);
-        padding-block: var(--grammar-region-gap, 1.5rem);
+        padding-block: var(--grammar-section-gap, 1.5rem);
     }
 
     .starci-core-page-header[data-grammar-page-header-tabs="true"] .starci-core-page-header-body {
@@ -378,7 +417,7 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: var(--grammar-row-gap, 0.75rem) var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-row-gap, 0.75rem) var(--grammar-region-gap, 2rem);
     }
 
     .starci-core-page-header-lead {
@@ -457,7 +496,7 @@
     /*
      * Page: the single owner of the page inset and rhythm. The header band runs full width; the body is the page's
      * PageContainer, one region step below the band (or below the top without one) and one above the bottom, its
-     * sections a region step apart. The body clips one gutter step (1rem, the least gutter) beyond its content box, so
+     * sections a region step apart. The body clips one gutter step (0.75rem, the least gutter) beyond its content box, so
      * nothing in it (a negative margin, a full-bleed width) reaches across the gutter, while focus rings and card shadows
      * still draw. Overlays portal to the Grammar root, so the clip never cuts one.
      */
@@ -465,8 +504,8 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 1.5rem);
-        padding-block-end: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-region-gap, 2rem);
+        padding-block-end: var(--grammar-region-gap, 2rem);
     }
 
     .starci-core-page > .starci-core-page-header {
@@ -474,15 +513,15 @@
     }
 
     .starci-core-page[data-grammar-page-header="false"] {
-        padding-block-start: var(--grammar-region-gap, 1.5rem);
+        padding-block-start: var(--grammar-region-gap, 2rem);
     }
 
     .starci-core-page-body {
         display: flex;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-region-gap, 2rem);
         overflow: clip;
-        overflow-clip-margin: content-box 1rem;
+        overflow-clip-margin: content-box 0.75rem;
     }
 
     /*
@@ -540,7 +579,7 @@
     /* Over panes the trail is the band: it ends in the separator the grid attaches to. */
     .starci-core-page[data-grammar-page-chrome="panes"] > .starci-core-page-trail {
         padding-block: var(--grammar-pane-inset-block-start, 0.75rem);
-        padding-inline: var(--grammar-page-inset, 1rem);
+        padding-inline: var(--grammar-page-inset, 0.75rem);
         border-block-end: 1px solid var(--separator, var(--starci-core-separator, GrayText));
     }
 
@@ -664,7 +703,7 @@
         display: grid;
         min-width: 0;
         grid-template-columns: minmax(0, 1fr);
-        gap: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-region-gap, 2rem);
     }
 
     .starci-core-primary-rail-layout[data-grammar-layout-align="start"] { align-items: start; }
@@ -690,7 +729,7 @@
     .starci-core-form-page {
         display: flex;
         min-height: 100dvh;
-        padding: 1.5rem 1rem;
+        padding: var(--grammar-section-gap, 1.5rem) var(--grammar-page-inset, 0.75rem);
         align-items: center;
         justify-content: center;
         overflow: hidden;
@@ -707,7 +746,7 @@
         width: min(100%, var(--starci-core-form-measure, 30rem));
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-section-gap, 1rem);
+        gap: var(--grammar-row-gap, 0.75rem);
     }
 
     .starci-core-form-surface--compact {
@@ -915,7 +954,7 @@
 
     @media (min-width: 40rem) {
         .starci-core-form-page {
-            padding-block: 2.5rem;
+            padding-block: var(--grammar-region-gap, 2rem);
         }
 
         .starci-core-form-scroll-viewport {
@@ -938,7 +977,7 @@
         min-width: 0;
         width: 100%;
         flex-direction: column;
-        gap: var(--grammar-section-gap, 1rem);
+        gap: var(--grammar-row-gap, 0.75rem);
     }
 
     .starci-core-surface-label {
@@ -1021,7 +1060,7 @@
         min-block-size: 100%;
         block-size: 100%;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-region-gap, 2rem);
         padding: var(--grammar-page-inset, 2rem);
         overflow: hidden;
         background: var(--accent-soft, var(--starci-core-accent-soft, Canvas));
@@ -1106,8 +1145,13 @@
 
     .starci-core-surface-content {
         min-width: 0;
-        padding-block: var(--grammar-card-padding-block, 1rem);
-        padding-inline: var(--grammar-card-padding-inline, 1rem);
+        padding-block: var(--grammar-card-padding-block, 0.75rem);
+        padding-inline: var(--grammar-card-padding-inline, 0.75rem);
+    }
+
+    /* A box inside a card (a nested card, a stat cell, a notice) is one level in: the nested step on every side. */
+    .starci-core-surface[data-grammar-surface-depth="nested"]:not([data-grammar-surface-composition="joined"], .starci-core-frameless-surface) > .starci-core-surface-content {
+        padding: var(--grammar-inset-nested, 0.5rem);
     }
 
     .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content {
@@ -1238,7 +1282,7 @@
         width: 11.25rem;
         height: 7.5rem;
         margin-block-start: 0.25rem;
-        margin-inline: auto -2.5rem;
+        margin-inline: auto calc(-1 * var(--grammar-accent-corner));
         pointer-events: none;
         user-select: none;
     }
@@ -1515,8 +1559,16 @@
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__tab {
-        padding-inline: 0.75rem !important;
+        padding-inline: var(--starci-core-tab-padding-start, var(--grammar-inset, 0.75rem)) var(--grammar-inset, 0.75rem) !important;
         padding-block-end: 0 !important;
+    }
+
+    /*
+     * Text edge: the first underline tab's label stands on the content edge it shares with the page title and the
+     * card or pane box below; its hit area keeps the end padding, so two labels sit one section step apart.
+     */
+    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__tab:first-child {
+        --starci-core-tab-padding-start: 0px;
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__indicator {
@@ -1552,7 +1604,7 @@
         margin: 0;
         align-items: flex-start;
         gap: var(--grammar-row-gap, 0.75rem);
-        padding: var(--starci-core-row-inset, 1rem);
+        padding: var(--starci-core-row-inset, var(--grammar-inset, 0.75rem));
     }
 
     .starci-core-static-row + .starci-core-static-row {
@@ -1701,7 +1753,7 @@
     .starci-core-accordion-body {
         width: 100% !important;
         min-width: 0;
-        padding: 0 1rem 0.75rem 1.5rem !important;
+        padding: 0 var(--grammar-inset, 0.75rem) var(--grammar-inset, 0.75rem) var(--grammar-section-gap, 1.5rem) !important;
         color: var(--foreground, var(--starci-core-foreground, CanvasText));
     }
 
@@ -1718,7 +1770,7 @@
         width: 100% !important;
         min-width: 0;
         min-height: 44px;
-        padding: var(--starci-core-row-inset, 1rem) !important;
+        padding: var(--starci-core-row-inset, var(--grammar-inset, 0.75rem)) !important;
         border: 0;
         background: transparent;
         box-shadow: none;
@@ -1768,7 +1820,7 @@
         width: 100%;
         min-width: 0;
         flex-direction: column;
-        gap: 1rem;
+        gap: var(--grammar-row-gap, 0.75rem);
         color: inherit;
         font-size: 0.875rem;
         line-height: 1.65;
@@ -1789,7 +1841,7 @@
     }
 
     .starci-core-markdown-article :where(h1, h2, h3, h4) {
-        margin: 1.5rem 0 0.625rem;
+        margin: var(--grammar-section-gap, 1.5rem) 0 var(--grammar-inline-gap, 0.5rem);
         color: inherit;
         font-weight: 600;
         line-height: 1.3;
@@ -1815,12 +1867,12 @@
     .starci-core-markdown-article em { font-style: italic; }
 
     .starci-core-markdown-article li + li {
-        margin-top: 0.375rem;
+        margin-top: var(--grammar-identity-gap, 0.25rem);
     }
 
     .starci-core-markdown-article :not(pre) > code {
         display: inline;
-        padding: 0.125rem 0.375rem;
+        padding: 0 var(--grammar-identity-gap, 0.25rem);
         border: 1px solid var(--border, GrayText);
         border-radius: 999px;
         background: var(--muted-surface, color-mix(in srgb, CanvasText 7%, Canvas));
@@ -1833,7 +1885,7 @@
     .starci-core-fenced-code-block pre {
         max-width: 100%;
         margin: 0;
-        padding: 1rem;
+        padding: var(--grammar-inset, 0.75rem);
         overflow-x: auto;
         border: 1px solid var(--border, GrayText);
         border-radius: 0.75rem;
@@ -1855,7 +1907,7 @@
     .starci-core-fenced-code-block {
         width: 100%;
         min-width: 0;
-        margin: 0 0 1rem;
+        margin: 0 0 var(--grammar-row-gap, 0.75rem);
         overflow: auto;
     }
 
@@ -1891,14 +1943,14 @@
     [data-grammar-fenced-code-highlight="true"] pre {
         width: max-content;
         min-width: 100%;
-        padding: 1rem;
+        padding: var(--grammar-inset, 0.75rem);
         border: 0;
         border-radius: 0;
         background: transparent !important;
     }
 
     .starci-core-markdown-article blockquote {
-        padding-inline-start: 1rem;
+        padding-inline-start: var(--grammar-inset, 0.75rem);
         border-inline-start: 3px solid var(--border, GrayText);
         color: var(--muted, GrayText);
     }
@@ -1926,14 +1978,14 @@
 
     .starci-core-markdown-article hr {
         width: 100%;
-        margin: 1rem 0;
+        margin: var(--grammar-row-gap, 0.75rem) 0;
         border: 0;
         border-top: 1px solid var(--separator, var(--border, GrayText));
     }
 
     .starci-core-markdown-article :where(th, td) {
         min-width: 8rem;
-        padding: 0.625rem 0.75rem;
+        padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
         border-bottom: 1px solid var(--separator, var(--border, GrayText));
         text-align: start;
         vertical-align: top;
@@ -2000,7 +2052,7 @@
         min-width: 0;
         max-height: calc(100dvh - var(--starci-core-rail-offset, var(--starci-core-band-offset, 5.5rem)) - 1.5rem);
         flex-direction: column;
-        gap: var(--starci-core-rail-gap, 1rem);
+        gap: var(--starci-core-rail-gap, var(--grammar-row-gap, 0.75rem));
     }
 
     .starci-core-rail[data-grammar-rail-mode="sticky"] .starci-core-rail-frame {
@@ -2018,8 +2070,7 @@
 
     /* Grammar-owned content inset, selected by the attribute the branch already emits. */
     .starci-core-rail-body[data-grammar-rail-inset="content"] {
-        padding-inline: 0.75rem;
-        padding-block: 1.5rem;
+        padding: var(--grammar-inset, 0.75rem);
     }
 
     .starci-core-rail[data-grammar-rail-height="fill"],
@@ -2090,7 +2141,7 @@
         .starci-core-section-header {
             align-items: flex-start;
             flex-direction: column;
-            gap: var(--grammar-region-gap, 1.5rem);
+            gap: var(--grammar-region-gap, 2rem);
         }
     }
 
@@ -2366,7 +2417,7 @@
 
     .starci-core-workspace-shell-header {
         min-width: 0;
-        margin-block-end: var(--grammar-region-gap, 1.5rem);
+        margin-block-end: var(--grammar-region-gap, 2rem);
     }
 
     .starci-core-workspace-shell-compact-header,
@@ -2394,7 +2445,7 @@
         min-width: 0;
         grid-template-areas: "navigation" "primary" "rail";
         grid-template-columns: minmax(0, 1fr);
-        gap: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-region-gap, 2rem);
     }
 
     .starci-core-workspace-shell-layout[data-grammar-workspace-navigation-track="intrinsic"] {
@@ -2509,7 +2560,7 @@
     .starci-core-workspace-shell-primary {
         display: flex;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-region-gap, 2rem);
         outline: none;
     }
 
@@ -2542,7 +2593,7 @@
         block-size: 4rem;
         align-items: center;
         padding-block: 0.5rem;
-        padding-inline: var(--grammar-page-inset, 1rem);
+        padding-inline: var(--grammar-page-inset, 0.75rem);
         border-block-end: 1px solid var(--separator, GrayText);
         background: var(--surface, Canvas);
     }
@@ -2582,7 +2633,7 @@
         min-block-size: 4rem;
         align-items: center;
         gap: var(--grammar-inline-gap, 0.5rem);
-        padding-inline: var(--grammar-page-inset, 1rem);
+        padding-inline: var(--grammar-page-inset, 0.75rem);
         padding-block: 0.5rem;
         border-block-end: 1px solid var(--separator, var(--starci-core-separator, GrayText));
         background: var(--surface, Canvas);
@@ -2678,8 +2729,8 @@
 
     .starci-core-sidebar[data-collapsed="true"] .starci-core-sidebar-list {
         align-items: center;
-        gap: 1rem;
-        padding: 0.5rem !important;
+        gap: var(--grammar-section-gap, 1.5rem);
+        padding: var(--grammar-inset, 0.75rem) !important;
     }
 
     .starci-core-sidebar-section {
@@ -2836,9 +2887,9 @@
      */
     .starci-core-pane[data-grammar-pane-inset="content"],
     .starci-core-pane-drawer-scroll[data-grammar-pane-inset="content"] {
-        --starci-core-pane-inset-inline: var(--grammar-pane-inset-inline, 1rem);
+        --starci-core-pane-inset-inline: var(--grammar-pane-inset-inline, 0.75rem);
         --starci-core-pane-inset-block-start: var(--grammar-pane-inset-block-start, 0.75rem);
-        --starci-core-pane-inset-block-end: var(--starci-core-pane-be, var(--grammar-pane-inset-block-end-outer, 1rem));
+        --starci-core-pane-inset-block-end: var(--starci-core-pane-be, var(--grammar-pane-inset-block-end-outer, 0.75rem));
     }
 
     .starci-core-pane[data-grammar-pane-inset="flush"] {
@@ -2875,7 +2926,7 @@
     }
 
     .starci-core-pane-section[data-grammar-pane-section-gap="inline"] { gap: var(--grammar-inline-gap, 0.5rem); }
-    .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap, 1rem); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap, 1.5rem); }
 
     .starci-core-pane-section[data-grammar-pane-section-grow="true"] {
         min-height: 0;
@@ -2908,7 +2959,7 @@
     }
 
     .starci-core-pane-section[data-grammar-pane-section-gap="inline"] > .starci-core-pane-section-content { gap: var(--grammar-inline-gap, 0.5rem); }
-    .starci-core-pane-section[data-grammar-pane-section-gap="section"] > .starci-core-pane-section-content { gap: var(--grammar-section-gap, 1rem); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="section"] > .starci-core-pane-section-content { gap: var(--grammar-section-gap, 1.5rem); }
 
     .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-section-content {
         padding-block-start: var(--starci-core-pane-inset-block-start, 0px);
@@ -2956,7 +3007,7 @@
         flex-wrap: wrap;
         justify-content: flex-end;
         gap: var(--grammar-inline-gap, 0.5rem);
-        padding: 0.5rem 1rem;
+        padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
         border-bottom: 1px solid var(--separator, var(--starci-core-separator, GrayText));
     }
 
@@ -3124,7 +3175,7 @@
             gap: var(--grammar-inline-gap, 0.5rem);
             border-block-start: 1px solid var(--separator, var(--starci-core-separator, GrayText));
             background: var(--background, var(--starci-core-canvas, Canvas));
-            padding: 0.75rem 1rem;
+            padding: var(--grammar-inset, 0.75rem);
         }
     }
 
@@ -3172,7 +3223,7 @@
         width: 100% !important;
         min-width: 0;
         flex-direction: column !important;
-        gap: var(--grammar-section-gap, 1rem) !important;
+        gap: var(--grammar-row-gap, 0.75rem) !important;
         padding: 0 !important;
     }
 
@@ -3228,8 +3279,8 @@
         min-width: 0;
         flex-direction: column;
         align-items: center;
-        gap: 0.75rem;
-        padding: 1rem;
+        gap: var(--grammar-row-gap, 0.75rem);
+        padding: var(--grammar-inset-open, 1.5rem);
         text-align: center;
     }
 
@@ -3254,8 +3305,8 @@
     .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
         align-self: stretch;
         inline-size: auto !important;
-        margin-inline: calc(-1 * var(--grammar-card-padding-inline, 1rem)) !important;
-        margin-block: var(--grammar-card-padding-block, 1rem);
+        margin-inline: calc(-1 * var(--grammar-card-padding-inline, 0.75rem)) !important;
+        margin-block: var(--grammar-card-padding-block, 0.75rem);
     }
 
     /* A vertical hairline between touching columns of one joined surface: it fills the row, whatever its height. */
@@ -3267,6 +3318,81 @@
     /* A scroll region on the page tone: the surface's content scrolls on the background so what it holds (bubbles) stands out. */
     [data-grammar-scroll-region-tone="background"] {
         background-color: var(--background);
+    }
+
+    /*
+     * --- Stack, Cluster, Grid: layout named by the relation, the step resolved here. ---
+     *
+     * The app names a gap role (`identity`, `inline`, `row`, `section`, `region`); each resolves to its root token, so
+     * an app writes no spacing value. A cluster's wrapped line is the same set, so its two axes take one role. Peer cards
+     * of one collection stand a section step apart on both axes: wider than the card's own inset (12), so each card
+     * reads as its own unit, never as one box.
+     */
+    .starci-core-stack {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    .starci-core-cluster {
+        display: flex;
+        min-width: 0;
+        flex-flow: row wrap;
+    }
+
+    .starci-core-cluster[data-grammar-wrap="false"] {
+        flex-wrap: nowrap;
+    }
+
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="identity"] { gap: var(--grammar-identity-gap, 0.25rem); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="inline"] { gap: var(--grammar-inline-gap, 0.5rem); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="row"] { gap: var(--grammar-row-gap, 0.75rem); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="section"] { gap: var(--grammar-section-gap, 1.5rem); }
+    .starci-core-stack[data-grammar-gap="region"] { gap: var(--grammar-region-gap, 2rem); }
+
+    .starci-core-stack[data-grammar-align="start"] { align-items: flex-start; }
+    .starci-core-stack[data-grammar-align="center"] { align-items: center; }
+    .starci-core-stack[data-grammar-align="end"] { align-items: flex-end; }
+
+    .starci-core-stack[data-grammar-measure="reading"] {
+        width: min(100%, var(--starci-core-reading-measure, 72ch));
+        margin-inline: auto;
+    }
+
+    .starci-core-stack[data-grammar-measure="form"] {
+        width: min(100%, var(--starci-core-form-measure, 30rem));
+        margin-inline: auto;
+    }
+
+    .starci-core-cluster[data-grammar-align="start"] { align-items: flex-start; }
+    .starci-core-cluster[data-grammar-align="center"] { align-items: center; }
+    .starci-core-cluster[data-grammar-align="baseline"] { align-items: baseline; }
+    .starci-core-cluster[data-grammar-align="end"] { align-items: flex-end; }
+    .starci-core-cluster[data-grammar-justify="end"] { justify-content: flex-end; }
+    .starci-core-cluster[data-grammar-justify="between"] { justify-content: space-between; }
+
+    .starci-core-grid[data-grammar-grid-kind="cards"] {
+        --starci-core-grid-gap: var(--grammar-section-gap, 1.5rem);
+        --starci-core-grid-min: 16rem;
+        display: grid;
+        min-width: 0;
+        gap: var(--starci-core-grid-gap);
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--starci-core-grid-min)), 1fr));
+    }
+
+    /* A column cap: each track is at least the share of `n` columns, so a row never holds more than `n` cards. */
+    .starci-core-grid[data-grammar-grid-columns="2"] { --starci-core-grid-share: 2; }
+    .starci-core-grid[data-grammar-grid-columns="3"] { --starci-core-grid-share: 3; }
+    .starci-core-grid[data-grammar-grid-columns="4"] { --starci-core-grid-share: 4; }
+
+    .starci-core-grid:is([data-grammar-grid-columns="2"], [data-grammar-grid-columns="3"], [data-grammar-grid-columns="4"]) {
+        grid-template-columns: repeat(
+            auto-fill,
+            minmax(
+                min(100%, max(var(--starci-core-grid-min), (100% - (var(--starci-core-grid-share) - 1) * var(--starci-core-grid-gap)) / var(--starci-core-grid-share))),
+                1fr
+            )
+        );
     }
 
     /* Region, List, ListItem: semantic page structure that draws nothing of its own. */
@@ -3282,7 +3408,7 @@
     }
 
     .starci-core-nav-landmark[data-grammar-nav-layout="bar"] {
-        gap: 1rem;
+        gap: var(--grammar-section-gap, 1.5rem);
     }
 
     .starci-core-nav-landmark[data-grammar-nav-layout="scrolling"] {
@@ -3317,7 +3443,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+        padding: var(--grammar-inset, 0.75rem) var(--grammar-inset, 0.75rem) calc(var(--grammar-inset, 0.75rem) + env(safe-area-inset-bottom, 0px));
         border-block-start: 1px solid var(--separator, var(--starci-core-separator, CanvasText));
         background: var(--surface, Canvas);
         color: var(--surface-foreground, CanvasText);
@@ -3640,7 +3766,7 @@
 
     .starci-core-input-actions .starci-core-input-reveal {
         min-height: 1.75rem;
-        padding-inline: 0.375rem;
+        padding-inline: var(--grammar-identity-gap, 0.25rem);
         border-radius: var(--radius-sm, calc(var(--radius, 0.5rem) * 0.5));
     }
 
@@ -4021,7 +4147,7 @@
     .starci-core-status-dot-mark[data-tone="danger"] { --starci-core-status-dot-color: var(--danger, CanvasText); }
 
     .starci-core-status-dot-chip > .starci-core-status-dot-mark {
-        margin-inline-end: 0.125rem;
+        margin-inline-end: var(--grammar-identity-gap, 0.25rem);
     }
 
     .starci-core-status-dot-label {
@@ -4076,7 +4202,7 @@
     .starci-core-badge-muted {
         display: inline-flex;
         align-items: center;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
         color: var(--muted, GrayText);
     }
 
@@ -4223,7 +4349,7 @@
     .starci-core-chat-bubble-actions {
         display: flex;
         align-items: center;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
         opacity: 0;
         transition: opacity var(--starci-core-motion-duration, 150ms) cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -4234,7 +4360,7 @@
             z-index: 1;
             inset-block-start: 50%;
             transform: translateY(-50%);
-            padding: 0.125rem;
+            padding: var(--grammar-identity-gap, 0.25rem);
             border: 1px solid var(--border, GrayText);
             border-radius: 0.75rem;
             background: var(--surface, Canvas);
@@ -4268,7 +4394,7 @@
     /* Loading bubble (knowledge STATE-8): the face on its side with two Skeleton lines; a thread alternates sides. */
     .starci-core-chat-bubble-skeleton-body { inline-size: min(18rem, 70vw); white-space: normal; }
     .starci-core-chat-bubble-skeleton-body .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
-    .starci-core-chat-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: 1rem; }
+    .starci-core-chat-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap, 0.75rem); }
 
     @media (forced-colors: active) {
         .starci-core-chat-bubble-body { border: 1px solid CanvasText; }
@@ -4313,7 +4439,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
         padding: 0.5rem 0.75rem;
         border-radius: var(--radius, 0.5rem);
         cursor: pointer;

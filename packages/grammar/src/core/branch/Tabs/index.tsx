@@ -4,7 +4,6 @@ import { Tabs as HeroTabs } from "@heroui/react"
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { HorizontalScrollFrame } from "../../HorizontalScrollFrame.js"
 import { usePaneContext } from "../../paneContext.js"
-import { useSurfaceNesting } from "../../surfaceContext.js"
 import {
     tabContentClassName,
     tabLabelClassName,
@@ -42,11 +41,11 @@ export type TabsProps = {
     /** Page chrome owns whether the peer strip starts at the shared page inset. */
     readonly inset?: "page" | "none"
     /**
-     * `primary` is the underline tab bar: the page's main area switcher, at most one per page.
+     * `primary` (default) is the underline tab bar, on the page and inside a sub-region alike: the labels are text on
+     * the content edge, the first label on the edge it shares with the title and the box below.
      * `secondary` is HeroUI's own pill tabs, unpainted by the grammar (a soft track, the selected tab a white segment
-     * pill with the surface shadow): for tabs inside a sub-region (drawer, card, dialog, rail). Same roles, keyboard, panel
-     * wiring and focus ring either way. Omit it to follow the surrounding surface (`secondary` inside,
-     * `primary` on the page background).
+     * pill with the surface shadow). A pill is a filter's shape: a filter over a collection is a selectable `TagGroup`,
+     * so a new screen never picks `secondary`. Same roles, keyboard, panel wiring and focus ring either way.
      */
     readonly variant?: "primary" | "secondary"
     /** Accessible name of the previous-tabs scroll caret. HeroUI hardcodes English; pass the localized text. Defaults to "Scroll tabs left". */
@@ -90,7 +89,6 @@ const useLocationPath = (enabled: boolean): readonly [string | undefined, (path:
 
 /** Render peer tabs through Core's selected, accessible and responsive treatment. */
 export const Tabs = (props: TabsProps) => {
-    const nested = useSurfaceNesting()
     const inPane = usePaneContext() !== undefined
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
@@ -160,7 +158,7 @@ export const Tabs = (props: TabsProps) => {
     const scrollNextLabel = props.scrollNextLabel ?? "Scroll tabs right"
 
     const inset = props.inset ?? "none"
-    const variant = props.variant ?? (nested ? "secondary" : "primary")
+    const variant = props.variant ?? "primary"
     // STATE-6 names the page underline "primary" and the nested pill "secondary".
     // HeroUI names those looks secondary and primary respectively.
     const vendorVariant = variant === "secondary" ? "primary" : "secondary"

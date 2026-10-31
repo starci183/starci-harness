@@ -138,6 +138,11 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
     } = props
     const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? legacyVariant
     const unavailable = isDisabled || isPending || isSkeleton
+    // The side a glyph stands on takes the control's glyph padding (one step less): the glyph carries its own room.
+    const glyphSides = {
+        "data-grammar-button-start": (isPending && !isSkeleton) || startContent != null ? "glyph" : undefined,
+        "data-grammar-button-end": !(isPending && !isSkeleton) && endContent != null ? "glyph" : undefined,
+    }
     const content = (
         <>
             {isPending && !isSkeleton ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : startContent}
@@ -154,6 +159,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
                 data-component="Button"
                 data-size={size}
                 data-grammar-control-size={size === "control" ? "control" : undefined}
+                {...glyphSides}
                 data-element={unavailable ? "span" : "a"}
                 data-loading={isSkeleton ? "true" : "false"}
                 data-action-pending={isPending ? "true" : "false"}
@@ -182,6 +188,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
             data-component="Button"
             data-size={size}
             data-grammar-control-size={size === "control" ? "control" : undefined}
+            {...glyphSides}
             data-element="button"
             data-loading={isSkeleton ? "true" : "false"}
             data-action-pending={isPending ? "true" : "false"}

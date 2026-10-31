@@ -33,7 +33,7 @@
     display: flex;
     min-height: 60rem;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--grammar-row-gap, 0.75rem);
 }
 
 .app-shell-story-mobile-search {

@@ -27,7 +27,7 @@ export type RailProps = (ComplementaryRailProps | ContentNavigationRailProps) & 
     readonly motion?: "static" | "animated" | "reduced"
     /** Visually hide the landmark label when children already expose visible headings. */
     readonly isLabelHidden?: boolean
-    /** Grammar-owned content inset. `content` is exactly px-3 py-6. */
+    /** Grammar-owned content inset. `content` is the Grammar container inset on every side. */
     readonly inset?: "none" | "content"
     /** Outline rank of the rail's (possibly visually hidden) name. Default 2: a peer of the page's sections. */
     readonly headingLevel?: 2 | 3 | 4 | 5 | 6
@@ -60,7 +60,7 @@ export const Rail = (props: RailProps) => {
         // so OVERFLOW-3 no longer describes it; MEASURE-6 ("the rail body fills its shell")
         // takes over instead.
         height === "fill" ? "MEASURE-6" : "OVERFLOW-3",
-        inset === "content" ? "PADDING-3 PADDING-5" : null,
+        inset === "content" ? "PADDING-3" : null,
     ].filter(Boolean).join(" ")
 
     /*

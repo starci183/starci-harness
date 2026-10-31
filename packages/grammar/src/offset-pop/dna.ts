@@ -36,6 +36,7 @@
  * and soft tint, the blush secondary surface in light and the plum one in dark) mirror Core's
  * keys of the same names.
  */
+import { COMMON_SPACING_SCALE } from "../common/spacing.js"
 export const OFFSET_POP_DNA = Object.freeze({
     id: "offset-pop",
     version: 1,
@@ -156,23 +157,8 @@ export const OFFSET_POP_DNA = Object.freeze({
     }),
 } as const)
 
-/** Canonical 4px spacing scale; the same values as Common and Core, which the family does not re-space. */
-export const OFFSET_POP_SPACING_SCALE = Object.freeze({
-    "0": "0rem",
-    "0.5": "0.125rem",
-    "1": "0.25rem",
-    "1.5": "0.375rem",
-    "2": "0.5rem",
-    "2.5": "0.625rem",
-    "3": "0.75rem",
-    "4": "1rem",
-    "5": "1.25rem",
-    "6": "1.5rem",
-    "8": "2rem",
-    "10": "2.5rem",
-    "12": "3rem",
-    "16": "4rem",
-} as const)
+/** The family spacing scale is Common's (common/spacing.ts): the family does not re-space. */
+export const OFFSET_POP_SPACING_SCALE = COMMON_SPACING_SCALE
 
 export type OffsetPopSpacingStep = keyof typeof OFFSET_POP_SPACING_SCALE
 export type OffsetPopSpacingValue = (typeof OFFSET_POP_SPACING_SCALE)[OffsetPopSpacingStep]

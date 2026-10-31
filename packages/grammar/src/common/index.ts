@@ -1,5 +1,5 @@
 export { PRESENTATION_STATES, assertPresentationState, isPresentationState, type PresentationState } from "./state.js"
-export { COMMON_SPACING_SCALE, COMMON_SPACING_TOKENS, type CommonSpacingStep, type CommonSpacingValue } from "./spacing.js"
+export { COMMON_GAP_ROLES, COMMON_SPACING_SCALE, COMMON_SPACING_TOKENS, type CommonGapRole, type CommonSpacingStep, type CommonSpacingValue, type GapRole } from "./spacing.js"
 export { COMMON_UI_RULE_IDS, defineGrammarRuleConformance, type GrammarRuleConformance } from "./conformance.js"
 export * from "./renderers.js"
 export {
