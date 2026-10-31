@@ -34,6 +34,8 @@
   },
   "files": [
     "dist",
+    "!dist/**/*.test.js",
+    "!dist/**/*.test.js.map",
     "ops",
     "policy",
     "contexts",
@@ -53,6 +55,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node dist/core/contexts/search-build.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test \"dist/**/*.test.js\"",
     "lint": "eslint .",
     "start": "node dist/main.js",
     "prepare": "node -e \"if (require('node:fs').existsSync('src') && !['pack', 'publish'].includes(process.env.npm_command)) require('node:child_process').execSync('npm run build', {stdio: 'inherit'})\"",

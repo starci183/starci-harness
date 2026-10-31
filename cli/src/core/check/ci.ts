@@ -8,6 +8,8 @@ import { gitCommonDir, resolveSha } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 import type { VerbContext } from "../../shared/verb.js"
+import { editionOf, ghReader, requireCiRun, requiredJobsOf } from "./ci-evidence.js"
+import type { CiRunEvidence, GithubReader, RequiredJobs } from "./ci-evidence.js"
 
 /** One GitHub Actions run of a commit, as `gh run list` reports it. */
 interface WorkflowRun {
@@ -118,6 +120,21 @@ export const requireCiGreen = async (context: VerbContext, root: string, action:
     }
     throw new Refusal("CI_NOT_GREEN", `${action} waits for a green CI (policy/quality.yaml requireCi); CI of ${sha.slice(0, 9)} is ${reading.verdict}: ${reading.detail.split("\n")[0] ?? ""}`)
 }
+
+/** The seams of the run-evidence check: where GitHub is read from and which jobs the CI standard requires; tests hand recorded answers. */
+export interface CiRunDeps {
+    readonly read?: GithubReader
+    readonly standard?: RequiredJobs
+}
+
+/**
+ * The in-run evidence gate of a deploy (`starci app stack deploy --ci-run <run>`, contexts/project/cicd.md WP3): accepts only when the GitHub run
+ * `ciRun` is a run of the managed CI of exactly `sha` whose every required job (the CI standard of the installed @starci/hfs for the app's edition,
+ * never the workflow file) concluded success. It does not look at policy/quality.yaml requireCi: a deploy that names its run is always judged.
+ * Refuses CI_NOT_GREEN, CI_RUN_SHA_MISMATCH, CI_RUN_WORKFLOW, CI_RUN_UNREADABLE or CI_RUN_USAGE; nothing is read from or printed of the token.
+ */
+export const requireCiRunGreen = async (root: string, sha: string, ciRun: string, deps: CiRunDeps = {}): Promise<CiRunEvidence> =>
+    requireCiRun(deps.read ?? ghReader(root), sha, ciRun, deps.standard ?? requiredJobsOf(editionOf(root)))
 
 /**
  * `starci check ci`: the GitHub Actions verdict of one pushed commit (green, red, pending, none or unreadable) with its runs, the

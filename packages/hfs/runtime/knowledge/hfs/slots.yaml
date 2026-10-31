@@ -646,7 +646,7 @@ slots:
     since: 3.1.0
     profiles: [app]
     editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite renders its image workflow; full renders images for its separately deployed services."
-    # Builds every image of the app (one matrix entry per declared app, path-filtered), never pushes: rendered by starci app sync.
+    # The reusable workflow ci.yml calls: builds every image of the app once per commit beside the checks, pushes the deployed ones to the registry by sha-<sha> with SBOM and provenance. Rendered by starci app sync.
     path: ".github/workflows/images.yml"
     presence: required
     tracked: tracked
@@ -658,23 +658,23 @@ slots:
   - id: app.ci-db
     profiles: [app]
     exemplifiedBy:
-      - packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite manages its database deploy workflow; full owns an optional provider-specific workflow."
-    # The database deploy workflow: workflow_dispatch only (like app.ci-e2e); starci app sync renders it under the managed ci group.
+    editionWhy: "ruling:app-cicd-auto-deploy: a lite app migrates in the migrate phase of its stack deploy, so its database deploy workflow is retired (starci app sync --execute removes it); full owns an optional provider-specific workflow."
+    # The database deploy workflow: workflow_dispatch only (like app.ci-e2e). A lite app has none: the stack deploy backs up and migrates inside the database container.
     path: ".github/workflows/db-deploy.yml"
     presence: optional
+    litePresence: forbidden     # ruling:app-cicd-auto-deploy: retired in lite; migrations are the deploy's migrate phase
     tracked: tracked
     tier: none
     tests: none
-    liteManagedBy: ci-workflows-lite
+    goesTo: "the stack deploy: starci app stack deploy takes a verified backup, applies the expand migrations before the services update and the contract migrations after the accept (a full app keeps its own optional workflow)"
     rules: [HFS_MANAGED_FILE_DRIFT]
     since: 2.1.0
   - id: app.ci-stack-deploy
     since: 3.3.0
     profiles: [app]
     editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): both editions deploy their images to a Docker Swarm stack through the same starci stack verbs; the workflow lists the images the app declares."
-    # The Swarm stack deploy workflow: workflow_dispatch only (like app.ci-db); a thin file that calls `starci app stack`, rendered by starci app sync.
+    # The Swarm stack deploy workflow: reusable (ci.yml calls it after the verdict for every environment with deploy.auto) and workflow_dispatch for the owner's manual operations; a thin file that calls `starci app stack`, rendered by starci app sync.
     path: ".github/workflows/stack-deploy.yml"
     presence: optional
     tracked: tracked

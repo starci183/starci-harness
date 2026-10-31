@@ -25,6 +25,8 @@ export interface DbTarget {
   env: Record<string, string>;
   secrets: string[];
   container?: string;
+  /** In-container only: the container holds its own credentials (its POSTGRES_PASSWORD_FILE), so no password travels from this machine. */
+  own?: boolean;
 }
 
 /** { url, password } of a postgres connection URL with the password removed, or null when `value` is not one. */
@@ -65,7 +67,37 @@ export function inContainer(target: DbTarget, container: string): DbTarget & { c
   return { ...target, how: `${target.how}, inside container ${container.slice(0, 12)}`, url: url.toString(), container };
 }
 
-/** Runs `command` of an in-container target: copies each `-f` file in, then execs the tool through the stdin-password shell. */
+/** The shell an own-credentials client runs under: the password is read from the container's own secret file (the postgres image's POSTGRES_PASSWORD_FILE), so nothing about it crosses to the machine that runs docker. */
+export const OWN_PASSWORD_SHELL = 'if [ -n "${POSTGRES_PASSWORD_FILE:-}" ] && [ -r "$POSTGRES_PASSWORD_FILE" ]; then PGPASSWORD=$(cat "$POSTGRES_PASSWORD_FILE"); export PGPASSWORD; fi; exec "$@"';
+/** The role and database names a container is allowed to answer with (they reach a connection URL and a remote script). */
+export const DB_IDENT = /^[A-Za-z_][A-Za-z0-9_]{0,62}$/u;
+/** What the container is asked: its role and database, one per line. */
+const IDENTITY_SCRIPT = 'printf "%s\\n%s\\n" "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"';
+
+/**
+ * The role and database of the running container `container`: the ones the image was started with (POSTGRES_USER, default postgres;
+ * POSTGRES_DB, default the role). Names only, never a secret.
+ */
+export function containerIdentity(ctx: VerbContext, container: string): { role: string; database: string } {
+  const short = container.slice(0, 12);
+  const run = tool(ctx, 'docker', ['exec', container, 'sh', '-c', IDENTITY_SCRIPT]);
+  if (run.error || run.status !== 0) throw failure('DB_CLI_FAILED', `cannot read the role and database of container ${short}: ${firstLine(run.stderr)}`);
+  const [role, database] = String(run.stdout ?? '').split(/\r?\n/u);
+  if (!role || !database || !DB_IDENT.test(role) || !DB_IDENT.test(database)) throw failure('DB_CLI_FAILED', `container ${short} names a role or database that is not a plain identifier`);
+  return { role, database };
+}
+
+/**
+ * The database of the running container `container` reached with the credentials that container holds: its own role and database on its own
+ * loopback, the password read inside the container from its POSTGRES_PASSWORD_FILE. A CI job that reaches the Docker daemon holds no database
+ * URL and no password: the deploy's migrate, emptiness proof and first start go through this target.
+ */
+export function ownContainerTarget(ctx: VerbContext, container: string): DbTarget & { container: string; own: true } {
+  const { role, database } = containerIdentity(ctx, container);
+  return { kind: 'url', how: `the database credentials held inside container ${container.slice(0, 12)}`, url: `postgresql://${role}@127.0.0.1:5432/${database}`, env: {}, secrets: [], container, own: true };
+}
+
+/** Runs `command` of an in-container target: copies each `-f` file in, then execs the tool through the password shell. */
 function containerRun(ctx: VerbContext, target: DbTarget & { container: string }, command: string, args: readonly string[]): SpawnResult {
   const short = target.container.slice(0, 12);
   const step = (what: string, run: SpawnResult): void => {
@@ -78,6 +110,7 @@ function containerRun(ctx: VerbContext, target: DbTarget & { container: string }
     step(`docker cp of ${path.basename(arg)}`, tool(ctx, 'docker', ['cp', arg, `${target.container}:${copied}`]));
     return copied;
   });
+  if (target.own) return tool(ctx, 'docker', ['exec', target.container, 'sh', '-c', OWN_PASSWORD_SHELL, 'sh', command, ...inside]);
   return tool(ctx, 'docker', ['exec', '-i', target.container, 'sh', '-c', STDIN_PASSWORD, 'sh', command, ...inside], { input: `${target.env.PGPASSWORD ?? ''}\n` });
 }
 

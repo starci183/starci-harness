@@ -300,3 +300,70 @@ test('R251: every managed workflow that opens sealed members is bound to the env
     }
   }
 });
+
+const CI_FILE = '.github/workflows/ci.yml';
+const caller = (): Doc => ({
+  needs: ['plan', 'verdict'], permissions: { contents: 'read', packages: 'read', actions: 'read' },
+  concurrency: { group: 'deploy-production', 'cancel-in-progress': false },
+  uses: './.github/workflows/stack-deploy.yml', with: { environment: 'production', operation: 'deploy' },
+});
+const pipeline = (): Doc => ({
+  on: { push: { tags: ['v*'], branches: ['main', 'release/candidate-*'] }, pull_request: { branches: ['main'] }, workflow_dispatch: {} },
+  permissions: { contents: 'read' },
+  jobs: {
+    lint: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'npm run lint' }] },
+    sonar: { 'runs-on': 'ubuntu-latest', env: { SONAR_TOKEN: reference('SONAR_TOKEN') }, steps: [{ run: 'sonar-scanner' }] },
+    'deploy-production': caller(),
+  },
+});
+
+for (const edition of ['lite', 'full']) {
+  test(`HFS_DEPLOY_WORKFLOW ${edition}: a deployment caller in ci.yml holds permissions, concurrency and the environment it passes; the check jobs beside it keep their own tokens`, (t) => {
+    assert.deepEqual(run(t, edition, pipeline(), CI_FILE), [], 'a Sonar token in a check job is no deploy secret');
+    const cases: [string, (doc: Doc) => void][] = [
+      ['an environment on the call', (doc) => { doc.jobs['deploy-production'].environment = 'production'; }],
+      ['no environment to pass', (doc) => { delete doc.jobs['deploy-production'].with.environment; }],
+      ['permissions', (doc) => { delete doc.jobs['deploy-production'].permissions; delete doc.permissions; }],
+      ['concurrency', (doc) => { delete doc.jobs['deploy-production'].concurrency; }],
+      ['inherited secrets', (doc) => { doc.jobs['deploy-production'].secrets = 'inherit'; }],
+      ['a deploy secret outside the allowlist', (doc) => { doc.jobs['deploy-production'].with.token = reference('DEPLOY_TOKEN'); }],
+      ['a deploy step beside the call', (doc) => { doc.jobs['deploy-staging'] = { 'runs-on': 'ubuntu-latest', steps: [{ run: 'npx --no-install starci app stack deploy --env staging --execute' }] }; }],
+    ];
+    for (const [name, mutate] of cases) {
+      const doc = pipeline();
+      mutate(doc);
+      const findings = run(t, edition, doc, CI_FILE);
+      assert.equal(hasCode(findings, 'HFS_DEPLOY_WORKFLOW'), true, name);
+      assert.ok(findings.every((finding) => finding.path === CI_FILE), name);
+    }
+  });
+
+  test(`HFS_APP_WORKFLOW_TRIGGER ${edition}: a pull request runs ci.yml only, to main only, read-only, with no environment`, (t) => {
+    const trigger = (doc: Doc, file = CI_FILE) => run(t, edition, doc, file).filter((finding) => finding.code === 'HFS_APP_WORKFLOW_TRIGGER').map((finding) => finding.message);
+    assert.deepEqual(trigger(pipeline()), []);
+    const cases: [string, (doc: Doc) => void, RegExp][] = [
+      ['another base branch', (doc) => { doc.on.pull_request = { branches: ['develop'] }; }, /pull_request may contain only branches/u],
+      ['a path filter', (doc) => { doc.on.pull_request = { branches: ['main'], paths: ['be/**'] }; }, /pull_request may contain only branches/u],
+      ['write permissions', (doc) => { doc.permissions = { contents: 'write' }; }, /read-only workflow permissions/u],
+      ['no permissions', (doc) => { delete doc.permissions; }, /read-only workflow permissions/u],
+      ['a job bound to an environment', (doc) => { doc.jobs.lint.environment = 'production'; }, /binds an environment in a workflow that runs on pull_request/u],
+      ['pull_request_target', (doc) => { doc.on.pull_request_target = {}; }, /trigger pull_request_target is forbidden/u],
+      ['workflow_run', (doc) => { doc.on.workflow_run = { workflows: ['ci'] }; }, /trigger workflow_run is forbidden/u],
+      ['a schedule', (doc) => { doc.on.schedule = [{ cron: '0 * * * *' }]; }, /trigger schedule is forbidden/u],
+    ];
+    for (const [name, mutate, message] of cases) {
+      const doc = pipeline();
+      mutate(doc);
+      assert.match(trigger(doc).join('\n'), message, name);
+    }
+    const other = pipeline();
+    assert.match(trigger(other, '.github/workflows/stack-deploy.yml').join('\n'), /pull_request may start only ci\.yml/u, 'no other app workflow runs a pull request');
+  });
+
+  test(`HFS_APP_WORKFLOW_TRIGGER ${edition}: a reusable workflow has workflow_call and no trigger of its own`, (t) => {
+    const reusable = (extra: Doc = {}): Doc => ({ on: { workflow_call: { inputs: { push: { type: 'boolean', required: true } } }, ...extra }, permissions: { contents: 'read' }, jobs: { image: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo build' }] } } });
+    const trigger = (doc: Doc) => run(t, edition, doc, '.github/workflows/images.yml').filter((finding) => finding.code === 'HFS_APP_WORKFLOW_TRIGGER');
+    assert.deepEqual(trigger(reusable()), []);
+    assert.equal(trigger(reusable({ push: { branches: ['feature'] } })).length > 0, true);
+  });
+}

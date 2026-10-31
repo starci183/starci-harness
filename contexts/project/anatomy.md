@@ -63,7 +63,6 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `workflows/`
     - `ci.yml` — **app.ci** required · R13 (machine `hooks-path-not-redirected`; hfs `ci-missing-canon`), R05 (hfs `managed-file-drift`), HFS_CI_E2E_AUTOMATIC (no rule)
     - `images.yml` — **app.ci-images** required · R05 (hfs `managed-file-drift`)
-    - `db-deploy.yml` — **app.ci-db** optional · R05 (hfs `managed-file-drift`)
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05 (hfs `managed-file-drift`)
     - `stack-key-restore.yml` — **app.ci-stack-key-restore** optional · R05 (hfs `managed-file-drift`)
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
@@ -90,7 +89,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `bootstrap.sql` — **app.db.bootstrap** required · R05 (hfs `managed-file-drift`)
 
 Git-ignored: `app.build-output`.
-Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
+Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-db`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### lite · be/
 

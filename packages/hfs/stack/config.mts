@@ -69,6 +69,12 @@ export interface DeployBlock {
   environment: Record<string, ServiceEnvironment>;
   configs: ConfigEntry[];
   passEnv: string[];
+  /** deploy.auto: a green release tag deploys here by itself (the CI workflow reads it; the verbs do not). */
+  auto: boolean;
+  /** deploy.approval: none, or reviewers set on the GitHub Environment. */
+  approval: 'none' | 'reviewers';
+  /** deploy.platforms: the platforms the images are built for (default linux/amd64). */
+  platforms: string[];
   verify: { http: HttpCheck[]; exec: ExecCheck[] };
   jobs: JobsBlock | null;
   tasks: Record<string, TaskEntry>;

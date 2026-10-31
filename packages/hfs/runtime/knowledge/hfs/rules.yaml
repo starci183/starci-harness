@@ -3776,7 +3776,7 @@ rules:
       - {path: packages/hfs/src/hfs-lite-secrets.spec.mjs, edition: lite}
   - id: R221
     code: "CI_TRIGGERS_RELEASE_ONLY"
-    law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, and workflow_dispatch. Runtime workflows and app ci.yml also admit main. App ci.yml includes the candidate branch filter for starci app release push. Other branches, events, path filters and ignore filters are refused."
+    law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, workflow_call (a reusable workflow has no trigger of its own) and workflow_dispatch. Runtime workflows and app ci.yml also admit main, and app ci.yml admits pull_request to main (branches ['main'] only: a pull request run has no secret and no environment). App ci.yml includes the candidate branch filter for starci app release push. pull_request_target, workflow_run, schedules, other branches, events, path filters and ignore filters are refused."
     scope: runtime
     editions: [lite, full]
     docs: [docs/git-governance.md#r221]
@@ -4195,7 +4195,7 @@ rules:
     editions: [lite, full]
     docs:
       - {path: docs/application-stacks.md#r251-deploy-workflow, editions: [lite, full]}
-    law: "In lite and full apps, deployment jobs declare a protected environment, explicit permissions and concurrency, materialize sealed secrets through SOPS_AGE_KEY or starci app secret materialize, and reference only the age key and transport SSH key/known_hosts secrets; every job that reads secrets.SOPS_AGE_KEY, a deployment job or not, is bound to the GitHub Environment whose members it opens, so it reads that environment's server key and never a repository secret of that name. Deployment jobs never embed a dotenv blob or write a dotenv file. Every remote workflow action uses a 40-hex commit SHA (local actions are allowed and container actions require a full sha256 digest); supply-chain reports each unpinned uses reference at its source line, including disabled jobs and steps; installed tools are checksum or digest verified, or supplied by a pinned action. App workflows start only on release tags [v*], the release candidate branches release/candidate-* (required in ci.yml: starci app release push waits for that run, owner ruling candidate-ci 2026-10-18) or workflow_dispatch; ci.yml also runs on main, and other branch pushes are refused."
+    law: "In lite and full apps, deployment jobs declare a protected environment, explicit permissions and concurrency, materialize sealed secrets through SOPS_AGE_KEY or starci app secret materialize, and reference only the age key and transport SSH key/known_hosts secrets; every job that reads secrets.SOPS_AGE_KEY, a deployment job or not, is bound to the GitHub Environment whose members it opens, so it reads that environment's server key and never a repository secret of that name. Deployment jobs never embed a dotenv blob or write a dotenv file. Every remote workflow action uses a 40-hex commit SHA (local actions are allowed and container actions require a full sha256 digest); supply-chain reports each unpinned uses reference at its source line, including disabled jobs and steps; installed tools are checksum or digest verified, or supplied by a pinned action. App workflows start only on release tags [v*], the release candidate branches release/candidate-* (required in ci.yml: starci app release push waits for that run, owner ruling candidate-ci 2026-10-18), workflow_call or workflow_dispatch; ci.yml also runs on main and on pull_request to main (read-only workflow permissions, no environment bound in the file), and other branch pushes are refused. A release deploys through the reusable stack-deploy.yml (ruling app-cicd-auto-deploy): the job of ci.yml that calls it (deploy-<env>, after the verdict job) holds permissions, concurrency and with.environment, the called deploy job binds the GitHub Environment (deployment refs restricted to v* tags) and reads SOPS_AGE_KEY there, and the transport is the sealed member vps-ci opened with that key, so the CI deploy key, the host and the pinned host keys are never GitHub secrets, workflow text or log lines; STARCI_DEPLOY_PAUSED on the environment stops the automatic deploy. The secrets allowlist and the dotenv ban are judged on the deployment jobs, not on the check jobs beside them."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_DEPLOY_WORKFLOW", "HFS_WORKFLOW_PIN", "HFS_CI_TOOL_INSTALL", "HFS_APP_WORKFLOW_TRIGGER"]
@@ -4205,7 +4205,7 @@ rules:
     proves:
       - {path: packages/hfs/src/hfs-deploy-workflow.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml, edition: lite}
+      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml, edition: lite}
       - {path: packages/hfs/templates/app/ci-workflows/github/workflows/ci.yml, edition: full}
       - {path: packages/hfs/src/hfs-deploy-workflow.spec.mjs, editions: [lite, full]}
     witness:
@@ -4224,7 +4224,7 @@ rules:
     proves:
       - {path: packages/hfs/src/hfs-script-hygiene.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml, edition: lite}
+      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml, edition: lite}
       - {path: packages/hfs/templates/app/ci-workflows/github/workflows/ci.yml, edition: full}
       - {path: packages/hfs/src/hfs-script-hygiene.spec.mjs, editions: [lite, full]}
     witness:
@@ -4331,7 +4331,7 @@ rules:
     editionWhy: "owner:lite-backing-services makes the db service lite's database; database configuration, extension, migration and seed requirements apply to that backing."
     docs: [docs/microservices.md#r259]
     templateNa: "Extension use, contract migrations, vault operations and seed literals are product-authored db content, rather than a scaffolded SQL surface."
-    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities. Seeds contain no real email or phone literals."
+    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities, and a contract migration that is new since the previous release tag (the newest v* tag HEAD contains) never destroys an object that the back-end sources of that tag still reference: the deploy applies it right after the accept, while that release is the rollback target, so the code change goes in one release and its contract migration in the next. Seeds contain no real email or phone literals."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_EXTENSION_ALLOWED", "DB_MIGRATION_DESTRUCTIVE", "HFS_SEED_PII", "DB_VAULT_WRITE"]
@@ -4600,7 +4600,7 @@ rules:
       - {path: packages/hfs/src/hfs-doc-fresh.spec.mjs, edition: full}
   - id: R271
     code: "HFS_RELEASE_TAG_MISMATCH"
-    law: "A lite or full product release uses a v-prefixed semantic version tag equal to package.json version; images.yml publishes images under that release tag, and every database deployment refuses a non-tag ref before migration."
+    law: "A lite or full product release uses a v-prefixed semantic version tag equal to package.json version; images.yml pushes each image under the immutable tag sha-<github.sha> and adds the release name v<version> only as a retag of that digest on a release tag run, under a guard that rejects any other ref; and every database deployment refuses a non-tag ref before migration (a lite app migrates inside its stack deploy, which stack-deploy.yml starts only from a release tag, so its db-deploy.yml is retired and starci app sync removes it)."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["HFS_RELEASE_TAG_MISMATCH", "HFS_DB_DEPLOY_UNGUARDED"]
@@ -4614,7 +4614,7 @@ rules:
     exemplifiedBy:
       - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/images.yml","edition":"lite"}
       - {"path":"packages/hfs/templates/app/ci-workflows/github/workflows/images.yml","edition":"full"}
-      - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml","edition":"lite"}
+      - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml","edition":"lite"}
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: lite}
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
     witness:

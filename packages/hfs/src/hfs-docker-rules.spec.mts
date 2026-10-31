@@ -67,7 +67,7 @@ test('the managed .dockerignore and images workflow are required at the app root
   const statusOf = (dir: string, file: string) => checkTargets(dir, renderTargets(APP, PRESETS)).find((item) => item.path === file)?.status;
   assert.equal(statusOf(repoOf(APP), '.dockerignore'), 'ok');
   assert.equal(statusOf(repoOf(APP, edit('.dockerignore', (text) => text.replace('.starcistacks\n', ''))), '.dockerignore'), 'drift');
-  assert.equal(statusOf(repoOf(APP, edit('.github/workflows/images.yml', replace('push: false', 'push: true'))), '.github/workflows/images.yml'), 'drift');
+  assert.equal(statusOf(repoOf(APP, edit('.github/workflows/images.yml', replace('provenance: mode=max', 'provenance: false'))), '.github/workflows/images.yml'), 'drift');
 });
 
 const EDITED = ['# the app edited this file', 'FROM scratch', ''].join('\n');

@@ -131,3 +131,17 @@ test('R269 uses the tracked inventory; files on disk alone cannot satisfy gates'
   const ctx = fixture(t, clean, 'lite', { files: [] });
   assert.equal(supplyChainFindings(ctx).length, 3);
 });
+
+for (const edition of ['lite', 'full']) {
+  test(`HFS_SBOM_MISSING and HFS_AUDIT_STEP_MISSING accept jobs the plan or the caller decides, never a job that is switched off (${edition})`, (t) => {
+    const decided = (condition: string, steps: string) => `on:\n  workflow_call:\npermissions:\n  contents: read\njobs:\n  check:\n    if: ${condition}\n    runs-on: ubuntu-latest\n    steps:\n${steps}\n`;
+    const build = `      - uses: docker/build-push-action@${sha}\n        with:\n          sbom: true\n          provenance: mode=max`;
+    const audit = '      - run: npm audit --omit=dev --audit-level=high';
+    for (const condition of ['${{ inputs.release }}', "${{ needs.plan.outputs.checks == 'true' }}"]) {
+      assert.deepEqual(codes(fixture(t, { ...clean, '.github/workflows/images.yml': decided(condition, build), '.github/workflows/ci.yml': decided(condition, audit) }, edition)), [], condition);
+    }
+    for (const condition of ['${{ false }}', "${{ github.event_name == 'never' }}", "${{ needs.plan.outputs.checks == 'false' }}"]) {
+      assert.deepEqual(codes(fixture(t, { ...clean, '.github/workflows/images.yml': decided(condition, build), '.github/workflows/ci.yml': decided(condition, audit) }, edition)).sort(), ['HFS_AUDIT_STEP_MISSING', 'HFS_SBOM_MISSING'], condition);
+    }
+  });
+}

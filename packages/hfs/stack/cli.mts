@@ -1,7 +1,7 @@
 // cli.mjs - `starci app stack <action>` for the Swarm deploy tooling: flags, dry run versus --execute, dispatch, text and --json output.
 //   starci app stack <action> --env <env> [the action's FLAGS]     (only the READ_ONLY actions default --env to production)
 // Each action takes only its own flags: a flag of another action is a refusal, never ignored.
-// (up, down and status are the test-world verbs and are dispatched by packages/hfs/src/main.mjs.)
+// (`starci app world <up|down|status>` is the test world's, dispatched by packages/hfs/src/main.mjs; `stack status` below is the deploy's drift report.)
 // Every action module exports one async function (ctx, config, options) -> { ok, lines, data }; a refusal throws StackError.
 import path from 'node:path';
 import { stackContext } from './context.mjs';
@@ -31,6 +31,7 @@ export interface Flags {
   push?: boolean;
   urgent?: boolean;
   'first-start'?: boolean;
+  redeploy?: boolean;
   image?: string[];
   keep?: string[];
   'extra-compose'?: string[];
@@ -50,6 +51,7 @@ export interface Flags {
   'db-service'?: string;
   reason?: string;
   remote?: string;
+  'ci-run'?: string;
 }
 
 /** What each OPTIONS entry reads. */
@@ -58,17 +60,17 @@ interface OptionInput { flags: Flags; positional: string[]; cwd: string }
 type Handler = (ctx: StackContext, config: DeployConfig, options: Record<string, unknown>) => Promise<ActionResult>;
 
 /** The actions that drive the docker CLI of the operator machine (pointed at the manager by docker-transport.mjs when the key is sealed). */
-const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollback', 'prune']);
+const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollback', 'prune', 'status']);
 
-export const ACTIONS = Object.freeze(['prepare', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept'] as const);
+export const ACTIONS = Object.freeze(['prepare', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept', 'status'] as const);
 
 /** One action of `starci app stack`. */
 export type Action = (typeof ACTIONS)[number];
 /** True when `value` names one action of `starci app stack`. */
 export const isAction = (value: unknown): value is Action => (ACTIONS as readonly unknown[]).includes(value);
 
-export const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start']);
-export const VALUE = new Set(['--env', '--image', '--sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote']);
+export const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start', '--redeploy']);
+export const VALUE = new Set(['--env', '--image', '--sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote', '--ci-run']);
 export const REPEAT = new Set(['--image', '--keep', '--extra-compose', '--project']);
 /** `--ssh-cmd` replaces the configured alias for an action whose module (or the Docker transport) reaches the manager over SSH. */
 const SSH: string[] = ['--ssh-cmd'];
@@ -83,7 +85,7 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
   disconnect: ['--execute'],
   'build-args': ['--app'],
   render: ['--image', '--sha', '--previous', '--out', '--allow-unpinned', '--extra-compose'],
-  deploy: ['--image', '--sha', '--execute', '--out', '--timeout', '--retry', '--skip-public', '--target-binding', '--urgent', '--reason', '--remote', '--db-url-env', '--backup-out', '--first-start', '--db-service', ...SSH],
+  deploy: ['--image', '--sha', '--execute', '--out', '--timeout', '--retry', '--skip-public', '--target-binding', '--urgent', '--reason', '--remote', '--db-url-env', '--backup-out', '--first-start', '--db-service', '--ci-run', '--redeploy', ...SSH],
   converge: ['--since', '--timeout', ...SSH],
   verify: ['--retry', '--skip-public', '--skip-internal', '--target-binding', ...SSH],
   rollback: ['--release', '--execute', '--timeout', ...SSH],
@@ -94,14 +96,15 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
   ingress: ['--execute', ...SSH],
   retire: ['--project', '--execute', ...SSH],
   build: ['--push', '--execute'],
-  accept: ['--release', '--execute', '--retry', ...SSH],
+  accept: ['--release', '--execute', '--retry', '--db-url-env', ...SSH],
+  status: [...SSH],
 });
 
 /** The operands of the actions that take any, as the usage prints them. */
 export const OPERANDS: Readonly<Partial<Record<Action, string>>> = Object.freeze({ jobs: '<action> [<arg>...]', task: '<name> [<arg>...]', ingress: '<action> [<arg>...]' });
 
 /** The read-only actions, whose `--env` defaults to production. Every action with an effect names its environment, so none reaches production by omission. */
-export const READ_ONLY: readonly string[] = Object.freeze(['build-args', 'render', 'verify']);
+export const READ_ONLY: readonly string[] = Object.freeze(['build-args', 'render', 'verify', 'status']);
 
 /** Splits argv into { flags, positional }; an unknown flag, a flag of another action or a flag without its value is a refusal. */
 function parseFlags(action: Action, argv: string[]): { flags: Flags; positional: string[] } {
@@ -131,7 +134,8 @@ function checkDeployForm(flags: Flags): void {
     if (flags.sha || flags.image) throw refusal('STACK_USAGE', '--reason and --remote belong to the one-command urgent deploy without --image and --sha; the image form deploys a commit whose urgent record was already pushed');
   }
   if (!flags.urgent && (flags['first-start'] || flags['db-service'])) throw refusal('STACK_USAGE', '--first-start and --db-service are the first start of an empty database under the urgent floor: add --urgent');
-  if (!flags.urgent && (flags['db-url-env'] || flags['backup-out'])) throw refusal('STACK_USAGE', '--db-url-env and --backup-out choose the urgent floor\'s database and backup folder: add --urgent');
+  if (flags.urgent && flags['ci-run']) throw refusal('STACK_USAGE', '--ci-run names the CI run that deploys; an urgent deploy runs no CI (the CI run of its tag is the back-fill)');
+  if (flags['ci-run'] !== undefined && !/^[0-9]{1,20}$/u.test(flags['ci-run'])) throw refusal('STACK_USAGE', '--ci-run takes the numeric id of the CI run');
 }
 
 /** `--image api=ghcr.io/o/x@sha256:...` (repeatable or comma separated) -> { api: 'ghcr.io/o/x@sha256:...' }. */
@@ -169,6 +173,7 @@ const OPTIONS: Record<Action, (input: OptionInput) => Record<string, unknown>> =
     out: flags.out ? path.resolve(cwd, flags.out) : null, timeoutSeconds: number(flags, 'timeout'), retrySeconds: number(flags, 'retry'), skipPublic: flags['skip-public'] === true,
     urgent: flags.urgent === true, dbUrlEnv: flags['db-url-env'], backupOut: flags['backup-out'] ? path.resolve(cwd, flags['backup-out']) : undefined,
     firstStart: flags['first-start'] === true, dbService: flags['db-service'], reason: flags.reason, remote: flags.remote,
+    ciRun: flags['ci-run'], redeploy: flags.redeploy === true,
   }),
   converge: ({ flags }) => ({ since: flags.since, timeoutSeconds: number(flags, 'timeout') }),
   verify: ({ flags }) => ({ retrySeconds: number(flags, 'retry'), skipPublic: flags['skip-public'] === true, skipInternal: flags['skip-internal'] === true }),
@@ -177,7 +182,8 @@ const OPTIONS: Record<Action, (input: OptionInput) => Record<string, unknown>> =
   backup: ({ flags }) => ({ swarmState: flags['swarm-state'] === true, execute: flags.execute === true }),
   ingress: ({ flags, positional }) => ({ action: positional[0], execute: flags.execute === true, args: positional.slice(1) }),
   build: ({ flags }) => ({ push: flags.push === true, execute: flags.execute === true }),
-  accept: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, retrySeconds: number(flags, 'retry') }),
+  accept: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, retrySeconds: number(flags, 'retry'), dbUrlEnv: flags['db-url-env'] }),
+  status: () => ({}),
   retire: ({ flags }) => ({ projects: flags.project ?? [], execute: flags.execute === true }),
   jobs: ({ flags, positional }) => ({ action: positional[0], args: positional.slice(1), execute: flags.execute === true }),
   task: ({ flags, positional }) => ({ name: positional[0], args: positional.slice(1), execute: flags.execute === true }),
@@ -194,6 +200,7 @@ const MODULES: Record<Action, [string, string]> = {
   retire: ['./retire.mjs', 'retireCompose'],
   build: ['./build.mjs', 'buildImages'],
   accept: ['./deploy.mjs', 'acceptRelease'],
+  status: ['./status.mjs', 'statusStack'],
 };
 
 async function handlerOf(action: Action, importer: (file: string) => Promise<Record<string, unknown>>): Promise<Handler> {

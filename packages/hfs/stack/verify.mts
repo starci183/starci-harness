@@ -1,6 +1,7 @@
 // verify.mjs - functional verification after convergence: the declared HTTP journeys (config.verify.http) and the declared checks inside a
 // running task (config.verify.exec). Probes are bounded and read-only; a POST body comes only from the declared config and nothing here
 // mutates business data. HTTP goes through ctx.fetch, docker through ctx.spawn, waits through ctx.sleep and time through ctx.now.
+import fs from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import { eachInOrder, repeatInOrder } from '../runtime/scripts/lib/in-order.mjs';
 import type { DeployConfig, ExecCheck, HttpCheck } from './config.mjs';
@@ -9,6 +10,7 @@ import type { StackContext } from './context.mjs';
 import { edgeAttachmentsOf, verifyEdgeAttachment } from './edge-alias.mjs';
 import type { EdgeAttachment } from './edge-alias.mjs';
 import type { ActionResult } from './remote.mjs';
+import { compareWithRelease, digestOf, observedServices, stackImages } from './status.mjs';
 
 /** The record of one check. */
 interface CheckResult { name: string; ok: boolean; detail: string }
@@ -87,6 +89,27 @@ async function verifyEdge(ctx: StackContext, config: DeployConfig, results: Chec
   await eachInOrder(attachments, (item: EdgeAttachment) => runCheck(ctx, results, `edge aliases of ${item.service} on ${item.network} are exactly the declared ones`, () => verifyEdgeAttachment(ctx, config, item)));
 }
 
+/**
+ * Drift: when the stack file pins its images by digest (a rendered release), every service it names runs exactly that digest and none was rolled back by
+ * Swarm, so a release that Swarm quietly reverted never reads as verified. A stack file without pinned images (the source) has nothing to compare.
+ */
+async function verifyDrift(ctx: StackContext, config: DeployConfig, results: CheckResult[], file: string): Promise<void> {
+  let stackYaml: string;
+  try {
+    stackYaml = fs.readFileSync(file, 'utf8');
+    if (!Object.values(stackImages(stackYaml)).some((image) => digestOf(image) !== null)) return;
+  } catch (error) {
+    results.push({ name: 'drift: the stack file is readable', ok: false, detail: String((error as Error).message) });
+    return;
+  }
+  await runCheck(ctx, results, 'drift: the services run the digests of the stack file', () => {
+    const live = observedServices(ctx, config);
+    const drift = compareWithRelease({ stackYaml, release: {} }, live).filter((entry) => entry.kind !== 'not in the release');
+    expect(drift.length === 0, drift.map((entry) => `${entry.service}: ${entry.kind}`).join('; '));
+    return `${live.length} service(s)`;
+  });
+}
+
 const verifyExec = (ctx: StackContext, config: DeployConfig, results: CheckResult[]): Promise<void> => eachInOrder([...new Set(config.verify.exec.map((check) => check.service))], (service: string) => verifyService(ctx, config, results, service));
 
 /**
@@ -98,6 +121,7 @@ export async function verifyStack(ctx: StackContext, config: DeployConfig, { ret
   const results: CheckResult[] = [];
   if (!skipPublic) await eachInOrder(config.verify.http, (check: HttpCheck) => runCheck(ctx, results, check.name, () => probeHttp(ctx, check), { retry: check.retry, retrySeconds }));
   if (!skipInternal && stackFile) await verifyEdge(ctx, config, results, stackFile);
+  if (!skipInternal && stackFile) await verifyDrift(ctx, config, results, stackFile);
   if (!skipInternal) await verifyExec(ctx, config, results);
   return {
     ok: results.every((entry) => entry.ok),

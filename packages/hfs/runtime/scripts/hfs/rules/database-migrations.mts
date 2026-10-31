@@ -3,6 +3,7 @@
 import { lsTree } from '../../api/git/ls-tree.mjs';
 import { mergeBase } from '../../api/git/merge-base.mjs';
 import { show } from '../../api/git/show.mjs';
+import { tag } from '../../api/git/tag.mjs';
 import { withoutGitLocalEnv } from '../../lib/git.mjs';
 import { eachInOrder, findInOrder } from '../../lib/in-order.mjs';
 import { sameText } from '../../lib/same-text.mjs';
@@ -38,10 +39,19 @@ export function defaultGit(args: Parsed, { cwd }: { cwd: string }) {
   const [verb, ...rest] = args;
   const env = withoutGitLocalEnv(process.env);
   if (verb === 'merge-base') { const sha = mergeBase(cwd, rest[0], rest[1]); return { ok: sha !== null, stdout: sha ?? '' }; }
+  if (verb === 'previous-release') return previousReleaseTag(cwd, env, rest[0]);
   let call = show;
   if (verb === 'ls-tree') call = lsTree;
   const result = call(rest, { cwd, env, maxBuffer: 64 * 1024 * 1024 });
   return { ok: !result.error && result.status === 0, stdout: result.stdout };
+}
+
+/** The nearest release tag before HEAD: the newest version among the tags HEAD contains that do not point at HEAD itself. `pattern` is a tag glob (v*). */
+function previousReleaseTag(cwd: string, env: Parsed, pattern: string) {
+  const listed = (args: string[]) => { const result = tag(args, { cwd, env }); return !result.error && result.status === 0 ? String(result.stdout).split(/\r?\n/).map((line) => line.trim()).filter(Boolean) : []; };
+  const here = new Set(listed(['--points-at', 'HEAD']));
+  const previous = listed(['--merged', 'HEAD', '--list', pattern, '--sort=-v:refname']).find((name) => !here.has(name));
+  return { ok: previous !== undefined, stdout: previous ?? '' };
 }
 
 const runGit = (git: Parsed, repoRoot: string, args: Parsed) => Promise.resolve(git(args, { cwd: repoRoot }))
@@ -474,6 +484,48 @@ function destructiveFileFindings(file: string, text: string, references: Parsed)
     seen.add(key);
     const finding = destructiveObjectFinding(file, object, contract, references);
     return finding ? [finding] : [];
+  });
+}
+
+const BE_SQL_SOURCE = /^be\/src\/.+\.(?:sql|entity)\.[cm]?tsx?$/;
+/** The tag glob of a release (release.tagPrefix defaults to v). */
+const RELEASE_TAG_GLOB = 'v*';
+
+/**
+ * A contract migration must not ship in the same release as the code change it depends on (cicd.md, Database migrations). The deploy applies
+ * a contract migration right after the accept, while the release it replaced is still the rollback target: if that release's code still names
+ * the destroyed object, a rollback after the contract would run code against a schema that no longer has it. The check judges exactly that
+ * with git: each contract migration that is new since the previous release tag (absent there) is read for the objects it destroys, and the
+ * be/src sources AS THEY WERE AT THE PREVIOUS RELEASE TAG must not reference them (the sources at HEAD are judged by destructiveMigrationFindings).
+ * The first release, a repository without a release tag, or an unreadable git history has no previous release and no finding. It reports
+ * DB_MIGRATION_DESTRUCTIVE (R259), a hard blocker: ship the code change in one release and its contract migration in the next.
+ */
+export async function contractReleaseFindings({ repoRoot, migrations, git }: { repoRoot: string; migrations: Parsed; git: Parsed }) {
+  const contracts = migrations.filter((file: string) => /_contract_[a-z0-9]+(?:[-_][a-z0-9]+)*\.sql$/.test(file));
+  if (!contracts.length) return [];
+  const previous = await runGit(git, repoRoot, ['previous-release', RELEASE_TAG_GLOB]);
+  const release = previous.stdout.trim();
+  if (!previous.ok || !release) return [];
+  const known = new Set(await migrationFilesAt(git, repoRoot, release));
+  const fresh = contracts.filter((file: string) => !known.has(file));
+  if (!fresh.length) return [];
+  const listing = await runGit(git, repoRoot, ['ls-tree', '-r', '--name-only', '-z', release, '--', 'be/src']);
+  const sources = listing.ok ? listing.stdout.split('\0').filter((file) => BE_SQL_SOURCE.test(file)) : [];
+  if (!sources.length) return [];
+  const ts = loadTypescript(repoRoot, HERE);
+  if (!ts) return [found(DB_MIGRATION_DESTRUCTIVE, 'hfs.json', 'the contract-release check requires the TypeScript parser to read the be/src references of the previous release')];
+  const references: Parsed[] = [];
+  await eachInOrder(sources, async (file: string) => {
+    references.push({ file, scopes: sourceNameScopes(ts, await baseFileText(git, repoRoot, release, file) ?? '', file) });
+  });
+  return fresh.flatMap((file: string) => {
+    const text = readText(repoRoot, file);
+    if (text === null) return [];
+    return databaseSqlStatements(databaseExecutableTokens(text)).flatMap(destructiveObjects).flatMap((object: Parsed) => {
+      const reference = references.find(({ scopes }: { scopes: Parsed }) => referencesObject(scopes, object));
+      return reference ? [found(DB_MIGRATION_DESTRUCTIVE, file, `${file}:${object.line} destroys ${object.name}, which the previous release ${release} still references in ${reference.file}; the contract migration runs right after the accept while that release is the rollback target: ship the code change in one release and this contract migration in the next`,
+        { line: object.line, object: object.name, release, reference: reference.file })] : [];
+    });
   });
 }
 

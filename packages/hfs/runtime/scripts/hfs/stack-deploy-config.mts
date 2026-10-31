@@ -41,6 +41,12 @@ export interface DeployConfig {
   environment: Record<string, ServiceEnvironment>;
   configs: ConfigEntry[];
   passEnv: string[];
+  /** deploy.auto: a green release tag deploys here by itself. */
+  auto: boolean;
+  /** deploy.approval: none, or reviewers set on the GitHub Environment. */
+  approval: 'none' | 'reviewers';
+  /** deploy.platforms: the platforms the images are built for (default linux/amd64). */
+  platforms: string[];
   verify: VerifyConfig;
   jobs: JobsConfig | null;
   tasks: Record<string, TaskConfig>;
@@ -70,7 +76,7 @@ const ARGUMENT = /^[A-Za-z0-9_@%+=:,./-]+$/u;
 const UPPER_ENV = KEY;
 
 const FIELDS = {
-  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'ingress', 'registry'],
+  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'ingress', 'registry'],
   remote: ['host', 'releasesBase', 'sealed', 'serverRecipient'],
   image: ['app', 'buildArgs'],
   buildArgs: ['values', 'sealed'],
@@ -92,6 +98,31 @@ const FIELDS = {
 };
 
 const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
+
+const APPROVALS = ['none', 'reviewers'];
+const PLATFORMS = ['linux/amd64', 'linux/arm64'];
+
+function flag(c: Collector, at: string, value: unknown, fallback: boolean): boolean {
+  if (value === undefined) return fallback;
+  if (typeof value !== 'boolean') c.problem(at, 'must be true or false');
+  return value === true;
+}
+
+function choice(c: Collector, at: string, value: unknown, allowed: readonly string[], fallback: string): string {
+  if (value === undefined) return fallback;
+  if (typeof value !== 'string' || !allowed.includes(value)) { c.problem(at, `must be one of ${allowed.join(', ')}`); return fallback; }
+  return value;
+}
+
+/** `deploy.platforms`: the platforms the images are built for, default linux/amd64 (the VPS's architecture). */
+function platforms(c: Collector, value: unknown): string[] {
+  if (value === undefined) return ['linux/amd64'];
+  if (!Array.isArray(value) || value.length === 0 || new Set(value).size !== value.length || value.some((item) => typeof item !== 'string' || !PLATFORMS.includes(item))) {
+    c.problem('deploy.platforms', `must be a list of ${PLATFORMS.join(' and ')}, each once`);
+    return ['linux/amd64'];
+  }
+  return value as string[];
+}
 
 const nameField = (c: Collector, at: string, value: unknown, pattern: RegExp = NAME): boolean => patternField(c, at, value, pattern);
 
@@ -394,6 +425,9 @@ export function normalizeDeploy(block: Block, { project, probe }: { project: str
     environment: environmentBlock(c, block.environment, services, probe),
     configs: configs(c, block.configs, probe),
     passEnv: block.passEnv === undefined ? [] : stringList(c, 'deploy.passEnv', block.passEnv, KEY),
+    auto: flag(c, 'deploy.auto', block.auto, false),
+    approval: choice(c, 'deploy.approval', block.approval, APPROVALS, 'none') as DeployConfig['approval'],
+    platforms: platforms(c, block.platforms),
     verify: verify(c, block.verify, services),
     jobs: jobs(c, block.jobs, services),
     tasks,

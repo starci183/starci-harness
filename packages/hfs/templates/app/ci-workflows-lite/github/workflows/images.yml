@@ -1,74 +1,30 @@
 {{header}}
-# Builds each image declared by the lite app. The API image is required; a front-end image is emitted only when declared.
-# It runs on the release tag, so every image is built there, and never pushes.
-# When an environment declares images, the job is bound to that protected GitHub environment and opens its sealed build
-# arguments with that environment's SOPS_AGE_KEY (its server identity, starci app secret server-key --env <env> --backup github --execute).
+# Builds every image the app declares, once per commit, and pushes the deployed ones to GHCR. ci.yml calls it next to the checks, so the images
+# are built in parallel with them and a Dockerfile that no longer builds fails the same run. It has no trigger of its own.
+#   tags       sha-<sha> on every push; the release tag v<version> is added on a release run by retagging that digest (no rebuild), so the
+#              image the checks ran beside is the image that ships. No mutable environment tag is ever written or deployed.
+#   evidence   an SBOM and provenance (mode=max) are attached to the pushed digest; a build that is not pushed only proves the Dockerfile builds.
+#   values     build arguments are public values (the browser receives them); a secret never enters an image build.
+#   sealed     an image whose public build values live in a sealed member is built by the job bound to the release environment, on a release
+#              tag run only (that environment is restricted to v* tags); every other image builds without an environment or a secret.
+# The workflow is read by anyone when the repository is public: it runs on GitHub-hosted runners only, and nothing it prints names a host.
 name: images
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      push:
+        description: Push the deployed images (a push run); a pull request or a manual run only builds them
+        required: true
+        type: boolean
+      release:
+        description: A release tag run - also tag the pushed images v<version> and build the images that open sealed build values
+        required: true
+        type: boolean
+{{imageWorkflowOutputs}}
 
 permissions:
   contents: read
 
-# One run per ref.
-concurrency:
-  group: images-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  image:
-    timeout-minutes: 30
-    runs-on: ubuntu-latest{{imageJobEnvironment}}
-    env:
-      STACK_ENVIRONMENT: {{imageEnvironment}}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-{{imageMatrix}}
-    steps:{{imageEnvironmentGuard}}
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: release tag matches package version
-        run: node -e "const version=require('./package.json').version;if(process.env.GITHUB_REF_NAME!=='v'+version)process.exit(1)"
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        if: {{imageBuildArgsIf}}
-        with:
-          node-version: {{nodeMajor}}
-          cache: npm
-      - run: npm ci --ignore-scripts
-        if: {{imageBuildArgsIf}}
-      - name: install SOPS
-        if: {{imageBuildArgsIf}}
-        uses: mdgreenwald/mozilla-sops-action@bb2d96a13ef438ad122e5827a57ebd75d6ff118d # v2.1.0
-        with:
-          version: v3.13.2
-      - name: public build values
-        id: args
-        if: {{imageBuildArgsIf}}
-        env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-          IMAGE_APP: ${{ matrix.name }}
-        run: npx --no-install starci app stack build-args --env "$STACK_ENVIRONMENT" --app "$IMAGE_APP"
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
-        with:
-          context: .
-          file: ${{ matrix.file }}
-          build-args: ${{ steps.args.outputs.args }}
-          push: false
-          tags: {{imageProject}}/${{ matrix.name }}:${{ github.ref_name }}
-          # OCI keeps the SBOM and provenance attestations without publishing to a registry.
-          outputs: type=oci,dest=${{ runner.temp }}/${{ matrix.name }}.oci.tar
-          sbom: true
-          provenance: mode=max
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,scope=${{ matrix.name }},mode=max
-      - name: retain image with SBOM and provenance
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: image-${{ matrix.name }}-${{ github.sha }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/${{ matrix.name }}.oci.tar
-          if-no-files-found: error
-          compression-level: 0
+{{imageJobs}}

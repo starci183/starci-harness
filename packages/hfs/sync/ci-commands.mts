@@ -17,9 +17,11 @@ const exampleCommand = (source: CiSource | undefined, command: string): string =
 
 const UPLOAD_ARTIFACT = 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2';
 const DOWNLOAD_ARTIFACT = 'actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0';
-const SONAR_CONDITION = "${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}";
+// Sonar and the Codecov upload run on every full run (a release tag or a candidate), so a release is analysed before it ships; the plan job decides.
+const FULL_RUN = "needs.plan.outputs.full == 'true'";
+const SONAR_CONDITION = `\${{ !cancelled() && ${FULL_RUN} }}`;
 
-/** Codecov uploads on release tags with its required authentication; a missing report, an unavailable endpoint or a rejected upload fails the job. */
+/** Codecov uploads on every full run with its required authentication; a missing report, an unavailable endpoint or a rejected upload fails the job. */
 function codecovSteps(lcovReport: string, codecov: Declaration): string {
   if (codecov.enabled === false || codecov.wiring === 'not-used') return [
     '      - name: coverage upload',
@@ -28,7 +30,7 @@ function codecovSteps(lcovReport: string, codecov: Declaration): string {
   return [
     '      - name: coverage upload',
     '        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5',
-    "        if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}",
+    `        if: ${SONAR_CONDITION}`,
     '        with:',
     codecov.auth === 'token' ? `          token: \${{ secrets.${codecov.token} }}` : '          use_oidc: true',
     `          files: ${lcovReport}`,
@@ -37,14 +39,15 @@ function codecovSteps(lcovReport: string, codecov: Declaration): string {
   ].join('\n');
 }
 
-/** Sonar is required: on release tags it consumes the test coverage and lint artifacts, and a missing token fails the job with a clear refusal. */
+/** Sonar is required: on every full run it consumes the test coverage and lint artifacts, and a missing token fails the job with a clear refusal. */
 function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, nodeMajor: string, timeout: string): string {
   if (!sonar) return '';
   const condition = SONAR_CONDITION;
   const host = sonar.provider === 'sonarcloud' ? 'https://sonarcloud.io' : `\${{ vars.${sonar.hostVar} }}`;
   const header = [
     '  sonar:',
-    '    needs: [lint, coverage]',
+    '    needs: [plan, lint, coverage]',
+    `    if: \${{ ${FULL_RUN} }}`,
     `    timeout-minutes: ${timeout}`,
     '    runs-on: ubuntu-latest',
     '    env:',
@@ -226,6 +229,8 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
       `          NODE_OPTIONS: ${settings.nodeOptions}`,
     ]).join('\n'),
     codecovSteps: codecovSteps(lcovReport, codecov),
+    verdictSonarNeed: sonar ? ', sonar' : '',
+    verdictSonarCheck: sonar ? `\n          if [[ "$FULL" == true && "$CHECKS" == true ]]; then expect sonar success; else expect sonar idle; fi` : '',
     sonarJob: sonarJob(sonar, lcovReport, lcovArtifact, nodeMajor, settings.timeoutSonar as string),
     lcovArtifact,
   };

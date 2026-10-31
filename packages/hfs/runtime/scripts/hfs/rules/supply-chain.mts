@@ -7,7 +7,10 @@ const DEPENDABOT = '.github/dependabot.yml';
 const CI = '.github/workflows/ci.yml';
 const IMAGES = '.github/workflows/images.yml';
 const ECOSYSTEMS = ['npm', 'github-actions', 'docker'];
-const enabled = (entry: Parsed) => entry && (entry.if === undefined || entry.if === true || entry.if === 'true') && !entry['continue-on-error'];
+// A job the plan or the caller decides is no disabled job: a reusable workflow runs a job on `if: ${{ inputs.release }}` whenever its caller asks, and the CI jobs
+// run on `if: ${{ needs.plan.outputs.checks == 'true' }}` on every run that checks (the plan leaves them out only where a green run of the same commit stands in).
+const DECIDED_CONDITION = /^\$\{\{\s*(?:inputs\.[A-Za-z_][\w-]*|needs\.plan\.outputs\.[A-Za-z_]\w*\s*==\s*'true')\s*\}\}$/;
+const enabled = (entry: Parsed) => entry && (entry.if === undefined || entry.if === true || entry.if === 'true' || (typeof entry.if === 'string' && DECIDED_CONDITION.test(entry.if.trim()))) && !entry['continue-on-error'];
 
 function shellSeparator(line: string, index: number, quote: Parsed) {
   if (quote) return null;

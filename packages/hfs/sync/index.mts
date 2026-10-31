@@ -32,6 +32,7 @@ import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
+import type { ImageApp } from './stack-images.mjs';
 import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
@@ -378,15 +379,10 @@ function imageEntries(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'ha
   return [...app.sides.be.apps.map((entry): ImageEntry => ({ side: 'be', entry })), ...frontend.map((entry): ImageEntry => ({ side: 'fe', entry }))];
 }
 
-/**
- * The build matrix of the images workflow: one entry per declared app (be then fe, then a lite app's db image), each with the image name and its Dockerfile. The workflow
- * runs on the release tag, so every image is built there; no path filter narrows it. A YAML block mapping per entry, indented for
- * `strategy.matrix.include`.
- */
-export function imageMatrix(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined): string {
-  const entry = (side: string, item: AppEntry): string => `          - name: ${item.name}\n            file: ${dockerfilePath(side, item.name)}`;
-  const db = app.edition === 'lite' ? [`          - name: ${DB_IMAGE_APP}\n            file: ${DB_DOCKERFILE}`] : [];
-  return [...imageEntries(app, source).map(image => entry(image.side, image.entry)), ...db].join('\n');
+/** The apps images.yml builds (one matrix entry per declared app): name and Dockerfile, be then fe, then a lite app's db image. */
+export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined): ImageApp[] {
+  const db = app.edition === 'lite' ? [{ name: DB_IMAGE_APP, file: DB_DOCKERFILE }] : [];
+  return [...imageEntries(app, source).map(image => ({ name: image.entry.name, file: dockerfilePath(image.side, image.entry.name) })), ...db];
 }
 
 /** The Dockerfile of the app a deploy image names (be first, then fe, then a lite app's db image); an app hfs.json does not declare cannot be built by the managed workflow. */
@@ -395,6 +391,12 @@ function stackDockerfile(app: ResolvedApp, name: string): string {
   const side = (['be', 'fe'] as const).find(which => app.sides[which].apps.some(entry => entry.name === name));
   if (!side) throw new SyncError('HFS_SYNC_STACK_IMAGE', `deploy.images names the app ${name}, which hfs.json does not declare under be or fe`);
   return dockerfilePath(side, name);
+}
+
+/** The apps images.yml builds; every deploy image must name one of them (an app hfs.json does not declare cannot be built by the managed workflow). */
+function deployableApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined, stack: { images: readonly { app: string }[] }): ImageApp[] {
+  for (const image of stack.images) stackDockerfile(app, image.app);
+  return imageApps(app, source);
 }
 
 const IMAGE_TEMPLATE: Readonly<Record<string, string>> = Object.freeze({ api: 'be/image/api', worker: 'be/image/worker', cli: 'be/image/cli', next: 'fe/image/next' });
@@ -472,9 +474,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     styleGlob: STYLE_GLOB,
     grammarLintImport: grammarLint?.package ? `import { ${grammarLint.factory} } from "${grammarLint.package}"` : '',
     grammarLintExport: grammarLint?.package ? `export default [...starciFeConfig({ hfs }), ...${grammarLint.factory}({ hfs })]` : 'export default starciFeConfig({ hfs })',
-    imageMatrix: imageMatrix(app, source),
-    imageProject: app.project,
-    ...stackWorkflowVariables(stack, app.project, (name: string) => stackDockerfile(app, name)),
+    ...stackWorkflowVariables(stack, app.project, deployableApps(app, source, stack), String(NODE_MAJOR)),
   };
 }
 
@@ -634,6 +634,7 @@ const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
 /** The files a lite app's sync retires, each with the reason the dry run prints. */
 const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   [RETIRED_DB_DOCKERFILE]: `the db image moved to ${DB_DOCKERFILE} (ruling lite-db-image-in-stacks)`,
+  '.github/workflows/db-deploy.yml': 'the stack deploy migrates the database (a verified backup, the expand migrations before the services, the contract migrations after the accept; ruling app-cicd-auto-deploy)',
 });
 /** Why a retired file goes: a retired file's own reason, else the folder's. */
 const retiredReason = (file: string): string => LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';

@@ -1,4 +1,6 @@
 // R251: product workflow custody, immutable dependencies and release-only triggers, in both editions.
+// A release deploys through the reusable stack-deploy.yml: its jobs hold the environment, the age key and the transport; the job of ci.yml that calls it
+// (a deployment caller) holds permissions, concurrency and the environment name it passes. A pull_request run reads and never binds an environment.
 import { parseWorkflow } from '../runtime-rules/workflow-source.mjs';
 import { found } from './read.mjs';
 import { appWorkflowFindings } from './app-workflow-findings.mjs';
@@ -62,6 +64,7 @@ const deployName = (value: Parsed) => !/authorize[\s_.-]+deploy[\s_.-]+key/i.tes
 const materializeCommand = (script: Parsed) => commands(script).some(({ text }) => /^starci\s+app\s+secret\s+materialize\b/.test(commandBody(text)));
 const DEPLOYMENT_COMMANDS = [
   /^starci\s+(?:app\s+)?(?:deploy|secret\s+materialize)\b/,
+  /^(?:npx\s+(?:--no-install\s+)?)?starci\s+app\s+stack\s+(?:deploy|rollback|accept)\b/,
   /^docker\s+stack\s+deploy\b/,
   /^(?:ba?sh\s+)?(?:\.\/)?deploy\//,
   /^(?:ba?sh\s+)?(?:\.\/)?(?:scripts\/)?[\w.-]*deploy[\w.-]*\.sh\b/,
@@ -85,20 +88,42 @@ const pushFilterValid = (options: Parsed, ci: Parsed) => record(options) && Obje
   && (options.tags === undefined || (Array.isArray(options.tags) && options.tags.length === 1 && options.tags[0] === 'v*'))
   && (options.branches === undefined || (Array.isArray(options.branches) && options.branches.length > 0 && new Set(options.branches).size === options.branches.length && options.branches.every((branch: Parsed) => branch === CANDIDATE_BRANCHES || (ci && branch === 'main'))));
 
+const isCi = (file: string) => /(^|\/)ci\.ya?ml$/.test(file);
+
+/** A pull request to main in ci.yml: the checks of a change. Read-only workflow permissions, no environment on a job of the file itself (a call of a reusable workflow cannot have one). */
+function pullRequestFindings(doc: Parsed, options: Parsed, refuse: Parsed, file: string) {
+  if (!isCi(file)) return [refuse(TRIGGER, 'pull_request may start only ci.yml: no other app workflow runs the code of a pull request')];
+  const findings = [];
+  const filters = record(options) ? options : {};
+  const branches = filters.branches;
+  if (!Array.isArray(branches) || branches.length !== 1 || branches[0] !== 'main' || Object.keys(filters).some((key) => key !== 'branches')) findings.push(refuse(TRIGGER, "pull_request may contain only branches: ['main']"));
+  const permissions = doc.permissions;
+  const readOnly = record(permissions) && Object.values(permissions).every((value) => value === 'read' || value === 'none');
+  if (!readOnly) findings.push(refuse(TRIGGER, 'a workflow that runs on pull_request declares read-only workflow permissions (permissions: contents: read); a job that needs more asks for it itself'));
+  for (const [name, job] of Object.entries<Parsed>(record(doc.jobs) ? doc.jobs : {})) {
+    if (record(job) && job.environment !== undefined) findings.push(refuse(TRIGGER, `job ${name} binds an environment in a workflow that runs on pull_request; a pull request run reads no environment secret`));
+  }
+  return findings;
+}
+
 function triggerFindings(doc: Parsed, refuse: Parsed, file = '') {
   const on = workflowEventOptions(doc.on);
   if (!record(on) || !Object.keys(on).length) return [refuse(TRIGGER, 'declare release tags [v*] and/or workflow_dispatch')];
   const findings = [];
-  if (/(^|\/)ci\.ya?ml$/.test(file) && !(record(on.push) && Array.isArray(on.push.branches) && on.push.branches.includes(CANDIDATE_BRANCHES))) {
+  if (isCi(file) && !(record(on.push) && Array.isArray(on.push.branches) && on.push.branches.includes(CANDIDATE_BRANCHES))) {
     findings.push(refuse(TRIGGER, `the release CI must run on push of branches ['${CANDIDATE_BRANCHES}']: starci app release push waits for that run (starci app sync renders it)`));
   }
   for (const [event, options] of Object.entries<Parsed>(on)) {
-    if (event === 'workflow_dispatch') continue;
-    if (event !== 'push') {
-      findings.push(refuse(TRIGGER, `trigger ${event} is forbidden; app CI starts only on release tags [v*], the release candidate branches, main in ci.yml, or workflow_dispatch`));
+    if (event === 'workflow_dispatch' || event === 'workflow_call') continue;
+    if (event === 'pull_request') {
+      findings.push(...pullRequestFindings(doc, options, refuse, file));
       continue;
     }
-    if (!pushFilterValid(options, /(^|\/)ci\.ya?ml$/.test(file))) {
+    if (event !== 'push') {
+      findings.push(refuse(TRIGGER, `trigger ${event} is forbidden; app CI starts only on release tags [v*], the release candidate branches, main and pull requests to main in ci.yml, workflow_call or workflow_dispatch`));
+      continue;
+    }
+    if (!pushFilterValid(options, isCi(file))) {
       findings.push(refuse(TRIGGER, `push may contain only tags: [v*] and branches: ['${CANDIDATE_BRANCHES}']; ci.yml may also name main; other branch and path filters are forbidden`));
     }
   }
@@ -144,6 +169,9 @@ function writesDotenv(doc: Parsed) {
   return entries(doc).some(({ key, value }: { key: string; value: Parsed }) => key === 'env_file' || key === 'env-file' || (['run', 'script'].includes(key) && typeof value === 'string' && scriptWritesDotenv(value)));
 }
 
+/** The job of a workflow that calls a reusable workflow of the app (`uses: ./.github/workflows/<file>`): a deployment caller when the callee deploys. */
+const localCall = (job: Parsed) => typeof job.uses === 'string' && job.uses.startsWith('./.github/workflows/');
+
 function deploymentJobs(doc: Parsed, file: string) {
   const jobs = record(doc.jobs) ? Object.entries<Parsed>(doc.jobs).filter(([, job]) => record(job)) : [];
   const identified = jobs.filter(([name, job]) => deployName(name) || deployName(String(job.name ?? '')) || scripts(job).some(deploymentCommand) || (typeof job.uses === 'string' && deployName(job.uses)));
@@ -152,7 +180,19 @@ function deploymentJobs(doc: Parsed, file: string) {
   return [];
 }
 
+/** A deployment caller (ci.yml's deploy-<env>): permissions, concurrency and the environment it passes; the called job binds the environment and opens the key. */
+function callerFindings(name: string, job: Parsed, doc: Parsed, refuse: Parsed) {
+  const findings = [];
+  const environment = record(job.with) ? job.with.environment : undefined;
+  if (job.environment !== undefined) findings.push(refuse(DEPLOY, `job ${name} calls a reusable workflow, which cannot bind an environment itself; pass the name as with.environment and let the called job bind it`));
+  if (!nonempty(environment)) findings.push(refuse(DEPLOY, `job ${name} must pass with.environment: the GitHub environment the called deploy job binds`));
+  if (!validPermissions(job.permissions ?? doc.permissions)) findings.push(refuse(DEPLOY, `job ${name} must declare permissions at job or workflow scope`));
+  if (!validConcurrency(job.concurrency ?? doc.concurrency)) findings.push(refuse(DEPLOY, `job ${name} must declare concurrency at job or workflow scope`));
+  return findings;
+}
+
 function deploymentJobFindings(name: string, job: Parsed, doc: Parsed, refuse: Parsed) {
+  if (localCall(job)) return callerFindings(name, job, doc, refuse);
   const findings = [];
   if (!validEnvironment(job.environment)) findings.push(refuse(DEPLOY, `job ${name} must declare its protected environment`));
   if (!validPermissions(job.permissions ?? doc.permissions)) findings.push(refuse(DEPLOY, `job ${name} must declare permissions at job or workflow scope`));
@@ -186,8 +226,10 @@ function deploymentFindings(doc: Parsed, file: string, refuse: Parsed) {
   const findings = [];
   if (!deployment.length) findings.push(refuse(DEPLOY, 'the deploy workflow must declare a deployment job'));
   for (const [name, job] of deployment) findings.push(...deploymentJobFindings(name, job, doc, refuse));
-  for (const problem of secretProblems(doc)) findings.push(refuse(DEPLOY, problem));
-  if (writesDotenv(doc)) findings.push(refuse(DEPLOY, 'deploy workflows must never write dotenv files or use env_file blobs; materialize sealed custody'));
+  // The secrets and dotenv writes are judged where the deploy runs: the workflow-level env and the deployment jobs, not a check job beside them (the Sonar token of ci.yml).
+  const judged = { env: doc.env, jobs: Object.fromEntries(deployment) };
+  for (const problem of secretProblems(judged)) findings.push(refuse(DEPLOY, problem));
+  if (writesDotenv(judged)) findings.push(refuse(DEPLOY, 'deploy workflows must never write dotenv files or use env_file blobs; materialize sealed custody'));
   return findings;
 }
 

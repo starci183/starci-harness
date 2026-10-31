@@ -10,6 +10,7 @@ import path from 'node:path';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
 import { deployRelease } from '../stack/deploy.mjs';
 import { urgentDeploy } from '../stack/urgent-floor.mjs';
+import { recordsDouble } from './stack-records-double.mjs';
 import type { FirstStartStepResult } from '../stack/urgent-floor.mjs';
 import type { DbTarget } from '../db/postgres.mjs';
 import type { DeployConfig } from '../stack/config.mjs';
@@ -107,12 +108,12 @@ test('a dry run plans the floor and touches nothing', async (t) => {
 });
 
 const REFUSALS: [string, Fail, string, string[]][] = [
-  ['a failed backup', { backup: true }, 'STACK_URGENT_BACKUP_FAILED', ['backup']],
-  ['a backup whose receipt does not match its archive', { hash: true }, 'STACK_URGENT_BACKUP_UNVERIFIED', ['backup']],
-  ['a failed test decrypt', { decrypt: true }, 'STACK_URGENT_DECRYPT_FAILED', ['backup', 'decrypt']],
+  ['a failed backup', { backup: true }, 'STACK_DEPLOY_BACKUP_FAILED', ['backup']],
+  ['a backup whose receipt does not match its archive', { hash: true }, 'STACK_DEPLOY_BACKUP_UNVERIFIED', ['backup']],
+  ['a failed test decrypt', { decrypt: true }, 'STACK_DEPLOY_BACKUP_DECRYPT_FAILED', ['backup', 'decrypt']],
   ['no previous release to roll back to', { noPrevious: true }, 'STACK_URGENT_NO_ROLLBACK_TARGET', ['backup', 'decrypt', 'render', 'current']],
-  ['a red migration preview', { preview: true }, 'STACK_URGENT_MIGRATE_PREVIEW_RED', ['backup', 'decrypt', 'render', 'current', 'preview']],
-  ['a failed migration', { migrate: true }, 'STACK_URGENT_MIGRATE_FAILED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate']],
+  ['a red migration preview', { preview: true }, 'STACK_DEPLOY_MIGRATE_PREVIEW_RED', ['backup', 'decrypt', 'render', 'current', 'preview']],
+  ['a failed migration', { migrate: true }, 'STACK_DEPLOY_MIGRATE_FAILED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate']],
   ['a red readiness verify that rolled back', { deploy: 'rolled-back' }, 'STACK_URGENT_RED_ROLLED_BACK', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
   ['a red release whose rollback did not converge', { deploy: 'stuck' }, 'STACK_URGENT_ROLLBACK_FAILED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
   ['a release red before the stack deploy', { deploy: 'early' }, 'STACK_URGENT_DEPLOY_NOT_STARTED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
@@ -145,10 +146,10 @@ for (const [title, shape, options, code] of PRECONDITIONS) {
   });
 }
 
-test('STACK_URGENT_DECRYPT_UNAVAILABLE: without an age identity the backup cannot be proven, so nothing runs', async (t) => {
+test('STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE: without an age identity the backup cannot be proven, so nothing runs', async (t) => {
   const { ctx, config, root } = app(t);
   const { calls, deps, run } = world(root);
-  await assert.rejects(urgentDeploy({ ...ctx, env: {} }, config, OPTIONS, run, deps), (error: { code?: string }) => error.code === 'STACK_URGENT_DECRYPT_UNAVAILABLE');
+  await assert.rejects(urgentDeploy({ ...ctx, env: {} }, config, OPTIONS, run, deps), (error: { code?: string }) => error.code === 'STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE');
   assert.deepEqual(calls, []);
 });
 
@@ -268,7 +269,7 @@ async function firstDeploy(t: TestContext, { stepOk = true, plain = false, db = 
   const store = { current: async () => 'a'.repeat(16), store: ok('store'), accept: ok('accept'), fetch: async (_release: unknown, dir: string) => { order.push('fetch'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'stack.yaml'), STACK); } };
   const deps = {
     renderRelease: async (_ctx: unknown, _config: unknown, options: { out: string }) => { fs.writeFileSync(path.join(options.out, 'stack.yaml'), STACK); return { ok: true, lines: [] }; },
-    provisionRelease: ok('provision'), releaseStore: () => store, ssh: async () => ({ cleanup() {} }),
+    provisionRelease: ok('provision'), releaseStore: () => ({ ...store, ...recordsDouble() }), ssh: async () => ({ cleanup() {} }),
     reconcileEdge: ok('edge'), convergeStack: ok('converge'), verifyStack: ok('verify'), pruneStack: ok('prune'),
   };
   const spawn = (_command: string, args: string[]) => {

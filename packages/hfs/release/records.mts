@@ -55,3 +55,34 @@ export function greenRow(dir: string, head: string, name: string, command: strin
   const row = rows.find((known: Json) => known?.name === name && known.command === command && known.pass === true);
   return row && row.log && fileSha256(row.log) === row.logSha256 ? row : null;
 }
+
+/** The trailer keys an urgent release writes into its tag annotation (WP3 of contexts/project/cicd.md): the tag's CI run reads them to back-fill the record. */
+export const URGENT_TRAILER = 'Starci-Urgent';
+export const URGENT_REASON_TRAILER = 'Starci-Urgent-Reason';
+
+/** What the trailers of an urgent tag say: who released it and why. */
+export interface UrgentTrailers { role: string; reason: string }
+
+/** The role as a trailer value: the caller's role name (letters, digits, dot, dash, underscore); anything else becomes a dash. */
+const trailerRole = (role: string): string => role.replaceAll(/[^\w.-]/gu, '-');
+
+/** The trailer block of an urgent tag annotation: one `Starci-Urgent: <role>` and one `Starci-Urgent-Reason: <text>` line (the reason is one line, so it cannot forge a trailer). */
+export function urgentTrailerBlock(role: string, reason: string): string {
+  return `${URGENT_TRAILER}: ${trailerRole(role)}\n${URGENT_REASON_TRAILER}: ${reason.replaceAll(/\s+/gu, ' ').trim()}`;
+}
+
+/**
+ * The urgent trailers of a tag annotation, read from its last paragraph (the place `git interpret-trailers` reads), or null when it has none.
+ * Both keys must be there; the last occurrence of a key wins, like git's own parse.
+ */
+export function parseUrgentTrailers(message: string): UrgentTrailers | null {
+  const last = message.replaceAll('\r\n', '\n').trim().split(/\n\s*\n/u).at(-1) ?? '';
+  const found = new Map<string, string>();
+  for (const line of last.split('\n')) {
+    const match = /^([A-Za-z][A-Za-z0-9-]*):[ \t]*(.*)$/u.exec(line.trimEnd());
+    if (match) found.set(match[1] as string, (match[2] as string).trim());
+  }
+  const role = found.get(URGENT_TRAILER);
+  const reason = found.get(URGENT_REASON_TRAILER);
+  return role && reason ? { role, reason } : null;
+}
