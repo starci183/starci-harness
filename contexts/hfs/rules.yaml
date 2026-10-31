@@ -2332,6 +2332,15 @@ rules:
       - HFS_CHECK_CACHE_MISSING
     enforcers:
       - {kind: hfs, id: check-cache}
+  - id: R344
+    code: BE_AI_VIRTUAL_KEY
+    law: An app's ai-router gateway has one client key, `STARCI_AI_KEY`, and no admin token; `integrations/ai` reads exactly that secret name, the gateway's custody owner passes no `adminToken`, and the retired names `AI_API_KEY`, `OPENCLAW_AI_KEY` and `AI_ROUTER_ADMIN_TOKEN` (and their `_FILE` twins) appear in no code and no tracked app file.
+    failureCodes:
+      - BE_AI_VIRTUAL_KEY
+      - HFS_AI_RETIRED_KEY
+    enforcers:
+      - {kind: eslint-be, id: ai-virtual-key-name}
+      - {kind: hfs, id: ai-retired-key}
 
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.5 - 2026-10-31
+
+- Changed: requires @starci/eslint-canon-fe 9.6.5; the bundled runtime copies follow @starci/hfs 4.13.2 (R344 in the catalog) and the canon pins name hfs 4.13.2 and the lint cohort (eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5); no rule changed.
+
 ## 0.16.4 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/hfs 4.13.1 and the lint cohort (eslint-canon-be 3.9.4, eslint-canon-fe 9.6.4, eslint-grammar-core and eslint-grammar-offset-pop 0.16.4); no rule changed. The peer moves to eslint-canon-fe 9.6.4.

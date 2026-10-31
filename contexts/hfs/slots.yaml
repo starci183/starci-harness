@@ -2829,6 +2829,7 @@ slots:
       - BE_INTEGRATION_SPEC_MISSING
       - BE_AI_KEY_CUSTODY
       - BE_AI_GATEWAY_CLIENT
+      - BE_AI_VIRTUAL_KEY
   - id: be.integrations.model
     profiles:
       - be

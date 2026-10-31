@@ -5913,3 +5913,30 @@ rules:
         source: owner
         quote: "Entities do not repeat the columns every table shares; the owner approved a lint so they never repeat them again (ruling entity-base, 2026-10-31)."
         ruling: "A table whose migration has created_at, updated_at (set by the database) and the generated uuid id maps them by extending AbstractEntity or UuidAbstractEntity from @modules/platform/database; an entity that declares them itself is a finding. A table without them extends nothing."
+  - id: R344
+    code: "BE_AI_VIRTUAL_KEY"
+    law: "An app's ai-router gateway has one client key, STARCI_AI_KEY (sk-starci-<app>-<48 hex>, sealed in the ai member, used by the integrations/ai LangChain client and the agent runtime alike), and no admin token: integrations/ai reads exactly that secret name with env.secret, the custody owner integrations/ai-gateway passes no adminToken, and the retired names AI_API_KEY, OPENCLAW_AI_KEY and AI_ROUTER_ADMIN_TOKEN (and their _FILE twins) appear in no code (BE_AI_VIRTUAL_KEY) and no other tracked app file: stack manifest, env example, swarm file, entrypoint or doc (HFS_AI_RETIRED_KEY)."
+    kinds: [lint, check]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_AI_VIRTUAL_KEY", "HFS_AI_RETIRED_KEY"]
+    enforcers:
+      - {kind: eslint-be, id: ai-virtual-key-name}
+      - {kind: hfs, id: ai-retired-key, at: scripts/hfs/rules/ai-retired-key.mjs}
+    editions: [lite, full]
+    docs: [contexts/code/be/ai.md]
+    templateNa: "The skeleton scaffolds no model call; an app adds the ai and ai-gateway integrations and the ai member when it calls a model."
+    proves:
+      - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_VIRTUAL_KEY]}
+      - {path: packages/hfs/src/hfs-ai-retired-key.spec.mjs, editions: [lite, full], codes: [HFS_AI_RETIRED_KEY]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_VIRTUAL_KEY]}
+      - {path: packages/hfs/src/hfs-ai-retired-key.spec.mjs, editions: [lite, full], codes: [HFS_AI_RETIRED_KEY]}
+    witness:
+      - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_VIRTUAL_KEY]}
+      - {path: packages/hfs/src/hfs-ai-retired-key.spec.mjs, editions: [lite, full], codes: [HFS_AI_RETIRED_KEY]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "Xóa ai api key và openclaw ai key chỉnh thành starci ai key là key ảo"
+        ruling: "Per app and environment the ai member holds the upstream provider key and one random virtual key STARCI_AI_KEY that the gateway mounts and every client uses; the per-caller AI_API_KEY and OPENCLAW_AI_KEY and the admin AI_ROUTER_ADMIN_TOKEN are gone (ruling be-ai-one-virtual-key)."

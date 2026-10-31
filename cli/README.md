@@ -751,7 +751,9 @@ a listed one the host lacks `HOST_SECRET_MISSING`, and `--from-host` names exact
 <member> <KEY>...` prompts on a terminal for each key with masked input and reads redirected stdin otherwise (the whole of it
 for one key, one `KEY=value` line per key for several), sealing every key in one write. `SOPS_AGE_KEY` is one of
 `secretKeys`: every `app` verb (`runHfs`) and `harness/custody.ts` hand @starci/hfs the loader's reader of it
-(`hostAgeIdentity`), read only when neither the environment nor the app's own `.claude/secret.env` selects an identity. Full and lite apps keep the same custody (`.starcistacks/<env>/secrets/<member>.enc.yaml`
+(`hostAgeIdentity`), read only when neither the environment nor the app's own `.claude/secret.env` selects an identity. It looks in
+this CLI's own secret.env, then in the harness home's (`harnessHomeOf` of the verb's directory: the nearest ancestor that is a
+harness checkout or whose `.claude` is one), so a CLI an app installs, which carries no secret.env, still finds the host's key. Full and lite apps keep the same custody (`.starcistacks/<env>/secrets/<member>.enc.yaml`
 under the app's `.sops.yaml`), so the verb serves both. Another shared key is one line in `secretKeys`, its entry in
 secret.env.example and one `set --from-host` per app.
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.10.0 - 2026-10-31
+
+- Added: `ai-virtual-key-name` (R344 `BE_AI_VIRTUAL_KEY`): inside `integrations/ai` every `<env>.secret(...)` names exactly `STARCI_AI_KEY` (a literal), the one virtual key the ai-router gateway mounts and every client uses; anywhere, specs and the test world included, the retired `AI_API_KEY`, `OPENCLAW_AI_KEY` and `AI_ROUTER_ADMIN_TOKEN` (and their `_FILE` twins) are refused as a literal, a member or a property; the custody owner `integrations/ai-gateway` passes the gateway no `adminToken` (ruling be-ai-one-virtual-key). Exported: `VIRTUAL_KEY_VARIABLE`, `RETIRED_KEY_VARIABLES`.
+- Changed: the bundled runtime copies follow @starci/hfs 4.13.2 (R344 in the catalog and on the `be.integrations` slot) and the canon pins name the lint cohort eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5.
+
 ## 3.9.4 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/hfs 4.13.1 and the lint cohort (eslint-canon-be 3.9.4, eslint-canon-fe 9.6.4, eslint-grammar-core and eslint-grammar-offset-pop 0.16.4); no rule changed.

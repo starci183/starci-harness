@@ -38,6 +38,7 @@ import { ciCustodyFindings } from './ci-custody.mjs';
 import { workflowContextsFindings } from './workflow-contexts.mjs';
 import { ciStandardAppFindings } from './ci-standard.mjs';
 import { feBuildArgsFindings } from './fe-build-args.mjs';
+import { aiRetiredKeyFindings } from './ai-retired-key.mjs';
 import type { Parsed } from './rule-types.mjs';
 // finders-import-end
 
@@ -47,6 +48,7 @@ export const A15_CODES = [
   'FE_STACK_FAMILY_LINT_MISSING',
   'HFS_TEXT_CORRUPT',
   'FE_PUBLIC_BUILD_ARG_MISSING',
+  'HFS_AI_RETIRED_KEY',
   'HFS_WORKFLOW_CONTEXT',
   'CI_STANDARD',
   'CI_SECRET_SEALED', 'APP_SECRET_IN_CI', 'CI_DECLARATION_DRIFT',
@@ -91,6 +93,7 @@ export const FINDERS = [
   stacksDeployFindings,
   stacksAuthCookieDomainFindings,
   ciCustodyFindings,
+  aiRetiredKeyFindings,
   // finders-end
 ];
 

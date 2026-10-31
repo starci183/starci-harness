@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.13.2 - 2026-10-31
+
+- Added: `ai-retired-key` (R344 `HFS_AI_RETIRED_KEY`): an app's ai-router gateway has one virtual key, `STARCI_AI_KEY`, used by the api and the agent runtime, and no admin token, so a tracked app file the canon lint does not read (the stack manifest, env examples, swarm files, entrypoints, init scripts, docs) that names `AI_API_KEY`, `OPENCLAW_AI_KEY` or `AI_ROUTER_ADMIN_TOKEN` (or a `_FILE` twin) is a finding at its line, naming the name, never a value. TypeScript is `@starci/eslint-canon-be` `ai-virtual-key-name`'s; sealed envelopes, lockfiles and CHANGELOGs are not read (ruling be-ai-one-virtual-key).
+- Added: R344 `BE_AI_VIRTUAL_KEY` in the bundled rule catalog and on the `be.integrations` slot; the failure code `HFS_AI_RETIRED_KEY`.
+- Changed: the bundled canon pins name hfs 4.13.2 and the lint cohort eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5.
+
 ## 4.13.1 - 2026-10-31
 
 The open items of the delivery pipeline (contexts/project/cicd.md, "As built").

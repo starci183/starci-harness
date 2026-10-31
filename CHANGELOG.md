@@ -6,6 +6,16 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.25] - 2026-10-31
+
+### Added
+
+- Knowledge: contexts/code/be/ai.md BE-AI-1, 2, 3 and 6 lock the AI key architecture (ruling be-ai-one-virtual-key): below the ai-router gateway a pool of providers, each with an array of keys, rotated, failed over and blacklisted, the `embed` profile pinned to one model; above it one random virtual key `STARCI_AI_KEY` per app and environment, used by `integrations/ai` and the agent runtime alike, with no admin API and no `AI_ROUTER_ADMIN_TOKEN`. R344 `BE_AI_VIRTUAL_KEY` holds it (`@starci/eslint-canon-be` 3.10.0 `ai-virtual-key-name`, `@starci/hfs` 4.13.2 `ai-retired-key`); the pins name the cohort hfs 4.13.2, eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5 (this CLI follows to the new hfs once npm serves it).
+
+### Fixed
+
+- A CLI an app installs (`<app>/node_modules/starci-harness`, which carries no secret.env) now finds the host's age identity: `hostAgeIdentity` looks in its own secret.env, then in the harness home's (`harnessHomeOf` of the verb's directory: the nearest ancestor that is a harness checkout or whose `.claude` is one), so `starci app secret`, `stack`, `release`, `db` and the CLI's custody open sealed members from inside an app as every stack's `keyCustody` says ("SOPS_AGE_KEY in the harness secret.env"). The label names the files looked in and, once read, the one that held the key; never the value.
+
 ## [1.1.0-alpha.24] - 2026-10-31
 
 ### Added

@@ -15,21 +15,39 @@ docs.langchain.com/oss/javascript/integrations/text_embedding/openai, structured
 docs.langchain.com/oss/javascript/langchain/models, retrievers at reference.langchain.com/javascript/langchain-core/retrievers/BaseRetriever.
 Re-read them before raising either pin.
 
-## BE-AI-1 Every model call goes through the ai-router gateway, and only its custody reads a provider key
+## BE-AI-1 Every model call goes through the ai-router gateway: a key pool below, one virtual key above
 
 The app hosts the gateway in process: `integrations/ai-gateway` registers `AiRouterModule` (the provider pool) and
 `AiRouterGatewayModule` with `listen: true`, so the gateway serves the OpenAI-compatible API on the app's port plus one
 (owner: `@starci/ai-router src/ai-router-gateway.listen.ts`). That owner is the custody of the upstream keys: its
 `ai-gateway.config.ts` reads them as `Secret` (BE-CONFIG-3, sealed by BE-CONFIG-4) and hands them to the pool through
-`resolve`. Every client, the app's own LangChain integration and the agent runtime alike, authenticates with a
-gateway-issued virtual key (`sk-starci-...`) bound to its profiles and quota; no other file, spec or runtime holds a
-provider key, and no provider SDK is imported anywhere.
+`resolve`.
 
-Why: one door for every call gives one place for keys, quotas, failover and usage, and a leaked client key is revoked
-at the gateway without touching a provider.
+Below the gateway sits a pool: one or more providers, each with an array of keys, which the router rotates, fails over
+and blacklists when a key is exhausted (owner: `@starci/ai-router`). The upstream key variables (`OPENROUTER_API_KEY`
+and the rest of the canon's list) are named only in the custody owner. The `embed` profile is pinned to one embedding
+model and never falls back to a different model: its keys may rotate, its model may not, because a second model writes
+vectors of another dimension and space. The `work` profile may fall back across models and providers.
 
-Enforced by: `provider-key-custody` (R326), `infra-import-owner` (R90: `@starci/ai-router` in the custody owner, every
-provider SDK and `openai` nowhere).
+Above the gateway there is exactly one virtual key per app and environment, `STARCI_AI_KEY` (`sk-starci-<app>-<48
+hex>`, generated at random and sealed in the `ai` member next to the upstream key). The gateway mounts it from that
+secret (`mountedKeys`, profiles `work` and `embed`); every client, the app's own LangChain integration and the agent
+runtime alike, authenticates with it. The gateway exposes no admin API and the app passes it no admin token: a key is
+rotated by resealing the member and deploying, and the gateway's key store keeps only the usage and quota counters of
+the mounted key. Dev and production each seal their own `STARCI_AI_KEY`; one is never shared across environments. No
+other file, spec or runtime holds a provider key, and no provider SDK is imported anywhere.
+
+Why: one door for every call gives one place for keys, quotas, failover and usage, and a leaked client key is rotated
+at the gateway without touching a provider. One client key per app trades per-caller revocation and attribution at
+the gateway (api and agent runtime share it) for fewer secrets and less custody drift: both callers run in one stack
+and trust domain, and usage is attributed by the app's own usage events. A pool raises headroom only across separate
+accounts or providers, or keys with their own caps: keys of one provider account share its credits and rate limits. The
+breaker state and the key store live in the hosting process, so the api that hosts the gateway runs one replica, or
+the gateway moves to a service of its own before the api scales out.
+
+Enforced by: `provider-key-custody` (R326), `ai-virtual-key-name` (R344: the virtual key is `STARCI_AI_KEY`, the
+retired per-caller and admin names are refused in code and in every tracked app file), `infra-import-owner` (R90:
+`@starci/ai-router` in the custody owner, every provider SDK and `openai` nowhere); the embed pin is review only.
 
 ## BE-AI-2 Choose: a code chain or the agent runtime
 
@@ -37,9 +55,9 @@ Work splits by its shape, never by convenience:
 
 | the work | runs in | through |
 | --- | --- | --- |
-| a fixed-shape task: classify, extract, draft, parse a rule, summarise to a schema, embed | a LangChain chain of `integrations/ai`, called by the domain service that owns the data (BE-AI-4) | the gateway, with the app's virtual key |
-| an answer grounded in the app's knowledge | the same chain with a retriever the caller scopes (BE-AI-5) | the gateway, with the app's virtual key |
-| an open, multi-step conversation that decides which tools to call | the agent runtime (openclaw), outside the app (BE-AI-6) | the single MCP gateway for every tool, the ai-router gateway with its own virtual key for every model call |
+| a fixed-shape task: classify, extract, draft, parse a rule, summarise to a schema, embed | a LangChain chain of `integrations/ai`, called by the domain service that owns the data (BE-AI-4) | the gateway, with `STARCI_AI_KEY` |
+| an answer grounded in the app's knowledge | the same chain with a retriever the caller scopes (BE-AI-5) | the gateway, with `STARCI_AI_KEY` |
+| an open, multi-step conversation that decides which tools to call | the agent runtime (openclaw), outside the app (BE-AI-6) | the single MCP gateway for every tool, the ai-router gateway with the same `STARCI_AI_KEY` for every model call |
 
 A task whose steps code can list is a chain, even when it calls the model twice; a task whose next step depends on
 what a tool returned is the runtime's. Code never runs an agent loop, and the runtime never writes business data
@@ -53,7 +71,7 @@ Enforced by: `infra-import-owner` (R90: `langchain` and `@langchain/langgraph` n
 ## BE-AI-3 One integration owns LangChain, and its clients point at the gateway
 
 `integrations/ai` is the only owner of `@langchain/*`. Its `ai.config.ts` parses the gateway's base URL (`env.url`, no
-default) and the virtual key (`env.secret`); its `ai.client.ts` builds exactly two clients, `ChatOpenAI` and
+default) and the virtual key `STARCI_AI_KEY` (`env.secret`, the one secret name it reads); its `ai.client.ts` builds exactly two clients, `ChatOpenAI` and
 `OpenAIEmbeddings`, with `configuration.baseURL` from those options and `apiKey` revealed from the `Secret`. A missing
 base URL would reach the provider directly and a missing key would read `OPENAI_API_KEY`, so both are written out. The
 model name is a gateway profile or pool alias, never a provider's model id baked into code.
@@ -61,7 +79,7 @@ model name is a gateway profile or pool alias, never a provider's model id baked
 Why: LangChain is the protocol code speaks; holding it in one owner keeps one configuration, one failure mapping into
 the integration's error family (BE-INFRA-3) and one upgrade path.
 
-Enforced by: `infra-import-owner` (R90), `ai-client-through-gateway` (R327).
+Enforced by: `infra-import-owner` (R90), `ai-client-through-gateway` (R327), `ai-virtual-key-name` (R344).
 
 ## BE-AI-4 A domain task is a chain: prompt, model, parser, then code's fixed tail
 
@@ -120,9 +138,10 @@ Enforced by: `infra-import-owner` (R90: `@langchain/community` nowhere), `tier-d
 Open work runs in the agent runtime. Each of its tools is a tool of the single MCP gateway, which authenticates the
 agent, applies the same authorization as every other door (BE-AUTH-1, BE-AUTH-2) and writes the audit row; its
 catalog is the committed `be.contract.mcp-tools` snapshot (R302). The runtime calls models through the same ai-router
-gateway with its own virtual key, holds no database credential and changes business data only through a tool, which
+gateway with the app's `STARCI_AI_KEY`, granted to it from the sealed `ai` member (BE-AI-1), holds no database credential and changes business data only through a tool, which
 runs the app's use case. The app neither embeds the runtime nor calls back into it from a chain.
 
 Why: every effect an agent has then passes the checks a human's request passes, and is attributable after the fact.
 
-Enforced by: R302 (hfs `mcp-tools-snapshot`) for the catalog; the runtime's credentials and tool routing are review only.
+Enforced by: R302 (hfs `mcp-tools-snapshot`) for the catalog, R344 (hfs `ai-retired-key`: no per-runtime key name in a stack file); the
+runtime's other credentials and tool routing are review only.

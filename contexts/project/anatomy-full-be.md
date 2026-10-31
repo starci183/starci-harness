@@ -112,7 +112,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
     - `queues/<queue>/` — **be.queues** opt-in · [be/queues](../code/be/queues.md) · R152, R26
     - `projections/<name>/` — **be.projections** opt-in · [be/projections](../code/be/projections.md) · R161, R162, R26, R175
     - `integrations/`
-      - `<provider>/` — **be.integrations** optional · [be/ai](../code/be/ai.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md) · R26, R38, R44, R112, R326, R327
+      - `<provider>/` — **be.integrations** optional · [be/ai](../code/be/ai.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md) · R26, R38, R44, R112, R326, R327, R344
         - `model/` — **be.integrations.model** opt-in · [be/ai](../code/be/ai.md) · R26, R90, R112
       - `object-storage/` — **be.integrations.object-storage** optional · R26, R38, R44, R90, R331
   - `tests/`

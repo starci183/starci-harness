@@ -11,7 +11,7 @@ export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "
  * What the CLI hands @starci/hfs besides its version, for the verbs that use it: the caller's role an urgent release record names, and the
  * ticket queue a red release back-fill files its fix ticket into (returns the ticket id), and the harness secret.env's age identity
  * every verb that opens a sealed member reads last (`hostIdentity`, handed to @starci/hfs as its own io port, never inside
- * `harness`; `hostAgeIdentity` when the caller names none).
+ * `harness`; `hostAgeIdentity` of the verb's working directory when the caller names none: this CLI's secret.env, then the harness home's).
  */
 export interface HfsHarness {
     readonly hostIdentity?: { readonly label: string; readonly read: () => string | undefined }
@@ -95,7 +95,7 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     let stdout = ""
     let stderr = ""
     Object.assign(process.env, hfsLimitsEnv(), { STARCI_GATE_ERROR_LIMIT: String(loadPolicy().quality.gate.errorLimit) })
-    const { hostIdentity = hostAgeIdentity(), ...more } = extra
+    const { hostIdentity = hostAgeIdentity(context.cwd), ...more } = extra
     const harness = { version: packageVersion(), ...more }
     const io = context.json
         ? { cwd: context.cwd, harness, stdin, hostIdentity, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }

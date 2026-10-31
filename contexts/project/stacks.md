@@ -108,7 +108,8 @@ image, so any digest-pinned supported reverse proxy serves.
   the harness's secret.env, backed up by the owner (R253); every verb that opens a member (`starci app secret`, `stack`,
   `release`, `db`, the CLI's custody) finds it with nothing exported or pointed to through one lookup, taking the first of:
   SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, the app's git-ignored `.claude/secret.env` (its main checkout's for a
-  worktree), the harness secret.env, the sops `keys.txt` (`decryptionIdentity`, @starci/hfs `secret-init.mjs`), and with none
+  worktree), the harness secret.env (the running CLI's own, then the harness home's: the nearest ancestor of the app that is a
+  harness checkout or holds one as `.claude`, `cli/src/harness/secret-env.ts`), the sops `keys.txt` (`decryptionIdentity`, @starci/hfs `secret-init.mjs`), and with none
   refuses before asking for a value, naming each place. A member it cannot open is refused naming the member, the format it
   was read as, its recipients, the identity's source and recipient, and why. Whoever holds that identity can decrypt every member in the whole git history, so
   it never leaves the harness secret.env and the app repositories stay private.
