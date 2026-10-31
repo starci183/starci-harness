@@ -50,7 +50,7 @@ An inset steps down one level each time a box sits inside another, and an inner 
 
 | Level | Box | Inset (owner token) |
 | --- | --- | --- |
-| 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`); a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
+| 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`), except on `Page chrome="panes"`, where the header takes 12 at every width so the gutter column starts at the pane content edge; a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
 | 1 surface | a card (dense or holding a form or prose alike), a pane, a band of a joined card | 12 on every side (`--grammar-inset`, `--grammar-card-padding-*`, `--grammar-pane-inset-*`) |
 | 2 box in a surface | a nested card, a notice in a card, a list option, a table cell's block side, a stat cell | 8 (`--grammar-inset-nested`) |
 | 3 control | a button, field, tab, chip, badge | the control's height decides the block padding; inline sm 8, md 12, lg 24, one step less on a glyph's side (`--grammar-control-padding-*`) |
@@ -126,7 +126,7 @@ Values in px at the `core` family; each is a token or the anatomy of the compone
 | Component | Inline | Block | Column gap | Row gap |
 | --- | --- | --- | --- | --- |
 | Page body | gutter 12 / 24 / 32 | bottom region | main ↔ rail region | region |
-| PageHeader | gutter | top section, bottom 0 over tabs | title ↔ actions region | title ↔ description identity, copy ↔ tabs row |
+| PageHeader | gutter, 12 under `chrome="panes"` | top section, bottom 0 over tabs | title ↔ actions region | title ↔ description identity, copy ↔ tabs row |
 | Page tabs (underline) | first label 0, each tab 12 per side | 0 | labels 24 apart | — |
 | Header → body | — | — | — | region, or 0 under `chrome="panes"` |
 | Sidebar rail (collapsed) | 12 | 12 | — | items identity, groups section |

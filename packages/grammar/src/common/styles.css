@@ -547,6 +547,8 @@
      * --starci-core-fill-top and --starci-core-fill-bottom), so the grid reaches the viewport bottom less Grammar bottom chrome.
      */
     .starci-core-page[data-grammar-page-chrome="panes"] {
+        /* The gutter column starts at the pane content edge: the title, the first tab and the pane content share the container inset (ruling spacing-roles). */
+        --grammar-page-inset: var(--grammar-inset, 0.75rem);
         flex: 1 0 auto;
         gap: 0;
         padding-block: 0;

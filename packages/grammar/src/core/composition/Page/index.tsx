@@ -98,7 +98,7 @@ export const Page = (props: PageProps) => {
             data-grammar-page-header={band === undefined ? "false" : "true"}
             data-grammar-page-trail={trail === undefined ? "false" : "true"}
         >
-            {band === undefined ? null : <PageHeader {...band} measure={measure} isSkeleton={isSkeleton} />}
+            {band === undefined ? null : <PageHeader {...band} measure={chrome === "panes" ? "full" : measure} isSkeleton={isSkeleton} />}
             {trail === undefined ? null : (
                 <div className="starci-core-page-trail" data-grammar-page-trail-row="true">
                     <Breadcrumbs label={trail.label} items={trail.items} {...(trail.onAction === undefined ? {} : { onAction: trail.onAction })} />

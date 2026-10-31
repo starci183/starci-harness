@@ -71,7 +71,7 @@ a padded wrapper is never the outermost element of a band.
 ## Size
 It fills its host's block and inline size; the host supplies a definite height, or `Page chrome="panes"` measures it.
 Panes sit with no gap. The content inset is the container inset (PADDING-3) on every side, divider-facing or outer, and
-one value at every breakpoint, so the page gutter at phone width and the pane inset share one edge
+one value at every breakpoint, so on `Page chrome="panes"` (whose header takes 12 at every width) the page gutter and the pane inset share one edge
 ([presentation](../presentation.md#space) P1, P8).
 
 ## States
