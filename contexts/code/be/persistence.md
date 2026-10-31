@@ -66,30 +66,38 @@ Inherited columns count as the entity's own: `starci app db drift` reads them fr
 reads an inherited primary key; `entity-extends-base` (R342) refuses an entity that declares a database-set `created_at` or
 `updated_at` (and the generated uuid `id` beside both) itself, and names the base to extend.
 
-## BE-PERSISTENCE-4 Lite reads and writes through entities; full SQL is a `sql`-tagged constant
+## BE-PERSISTENCE-4 Lite holds no SQL text: entities or `callDbFunction`; full SQL is a `sql`-tagged constant
 
-Lite: domain, feature and test code uses the entity API of an EntityManager (`find`, `findOne`, `findBy`, `count`,
-`exists`, `insert`, `save`, `update`, `delete`, `upsert`, `increment`) and `createQueryBuilder(Entity, "alias")` with
-named parameters for joins, aggregates, `FOR UPDATE` / `SKIP LOCKED` and jsonb or vector operators; it writes no `.query(`
-and no `sql` template, and no `<Name>Row` interface: a service maps entities to its contracts. Domain code takes the
-injected manager; integration and e2e specs, builders and fixtures seed and assert through the world's
-`world.db.<connection>`. Raw SQL has two owners: `platform/database` and the test world `src/tests/world/`, which as the
-owner of test infrastructure wraps only what entities cannot express (a trigger, a database function, a row-level-security
-probe, a pgmq queue inspection) in a named, typed helper on the world (`world.db.<connection>.raw...`) that specs call.
-A database function TypeORM cannot express is called, in domain and test code alike, through the helpers of `platform/database/database.client.ts`
-(`callDbFunction(manager, name, args)`, `advisoryXactLock(manager, key)`, `notify(manager, channel, payload)`), which
-build the parameterised statement and accept only a function `ruleParams.be.dbFunctions` (the canon's) or hfs.json
-`sides.be.dbFunctions` (the app's own, each with its reason) lists. A function of a migration is named schema-qualified
-(`public.job_claim`, `be_access.chat_target_member`) in the call and in the list; a pg built-in the canon lists is
-named bare and called in `pg_catalog`. `callDbFunction` refuses any other name with `DATABASE_IDENTIFIER_REJECTED`,
-double-quotes each checked part and passes the arguments as numbered parameters; that file is the one place a call
-statement is composed (R68 names it). TypeORM 0.3 traps the builder hides: a dotted join (`innerJoin("public.x", ...)`)
-throws, so join the entity or the unqualified table; `InsertQueryBuilder.returning()` takes the string form and ignores an array; an
-`UPDATE ... RETURNING` stays one builder statement, never a write followed by a read, and the `raw` rows a builder's `execute()`
-answers are read through `returnedRows(result.raw, rowShape({ column: kind }))` of `platform/database`, which checks each row
-against the returned columns and refuses another shape (`DATABASE_RETURNING_ROW_REJECTED`), never cast. A query builder names its entity:
-a table-name builder and a Repository are refused. The unit doubles are `mockEntityManager` of `@starci/jest-preset`
-(`{ method: [Entity, result] }`) and, for a builder, its `queueQueryBuilders(em, answers)` (`fakeQueryBuilder` per call).
+Lite: TypeScript holds no SQL text outside the test world (R334). A table is read and written through its entity on an
+EntityManager (`find`, `findOne`, `count`, `exists`, `insert`, `save`, `update`, `delete`, `upsert`, `increment`, a pessimistic
+`lock` option) and `createQueryBuilder(Entity, "alias")` with named parameters for joins, aggregates, `SKIP LOCKED` and jsonb or
+vector operators; every table a migration creates has an entity, and a service maps entities to its contracts, no `<Name>Row`
+interface. Domain code takes the injected manager; specs, builders, fixtures and the world use `world.db.<connection>`.
+Anything an entity cannot express is a database function, called through `callDbFunction(manager, name, args)` of
+`platform/database/database.client.ts`, which accepts only a function `ruleParams.be.dbFunctions` (the canon's) or hfs.json
+`sides.be.dbFunctions` (the app's own, each with its reason) lists: a function of a migration or an extension is named
+schema-qualified (`public.job_claim`, `be_access.chat_target_member`), a pg built-in the canon lists is named bare and called in
+`pg_catalog`. `callDbFunction` refuses any other name with `DATABASE_IDENTIFIER_REJECTED`, double-quotes each checked part and
+passes the arguments as numbered parameters. That file alone composes SQL text: the call statement and `LISTEN`, from parts its
+validator checked (R68); `advisoryXactLock(manager, key)` is `callDbFunction` of `hashtextextended(key, 0)` then
+`pg_advisory_xact_lock(hash)`, and `notify(manager, channel, payload)` is `callDbFunction` of `pg_notify`. The only other
+`.query(` outside the world is the pass-through of a file that `ruleParams.be.sqlPassThrough` or hfs.json `sides.be.sqlPassThrough`
+lists with a reason, because its text is not the app's own (the tracked seed file, a customer data-source read, an outside
+session's setup): it passes a plain string, never a template or a `+`, and its unit spec is exempt. No `sql` template, no
+`*.sql.ts` and no import of `sql`, `ident`, `SqlText` or `SqlIdent` exists outside the world, and the persistence slot forbids
+`.sql.ts` and `.rows.ts`. The test world `src/tests/world` may hold raw SQL, as `sql`-tagged text with numbered `$n` parameters
+(inline or in its `*.sql.ts`), only for what neither an entity nor a listed function expresses: a privilege or row-level-security
+probe, catalog, cron or trigger introspection, a pgmq queue table, a lock or failure probe. In the world too plain CRUD on an
+application table goes through its entity, an application function through `callDbFunction`, and seeded rows come from builders
+(R98); the lint refuses a world statement that only calls a listed function or writes a `public` or `be_access` table. Test-only
+database functions never enter the main database. TypeORM 0.3 traps the builder hides: a dotted join
+(`innerJoin("public.x", ...)`) throws, so join the entity or the unqualified table; `InsertQueryBuilder.returning()` takes the
+string form and ignores an array; an `UPDATE ... RETURNING` stays one builder statement, never a write followed by a read, and
+the `raw` rows a builder's `execute()` answers are read through `returnedRows(result.raw, rowShape({ column: kind }))` of
+`platform/database`, which checks each row against the returned columns and refuses another shape
+(`DATABASE_RETURNING_ROW_REJECTED`), never cast. A query builder names its entity: a table-name builder and a Repository are
+refused. The unit doubles are `mockEntityManager` of `@starci/jest-preset` (`{ method: [Entity, result] }`) and, for a builder,
+its `queueQueryBuilders(em, answers)` (`fakeQueryBuilder` per call).
 
 Full: every statement is an UPPER_SNAKE constant built with the `sql` tag of `platform/database` in
 `persistence/<name>.sql.ts`, documented with what it does and its numbered parameters. Values are `$n` parameters with

@@ -790,6 +790,10 @@ ruleParams:
       - {name: public.event_bus_bury, reason: "platform/event-bus (add webhook, lite): the move of an exhausted or malformed message to its consumer's dead-letter queue"}
       - {name: public.event_bus_dead_letters, reason: "platform/event-bus (add webhook, lite): the operator read of a consumer's dead-letter queue"}
       - {name: public.event_bus_requeue, reason: "platform/event-bus (add webhook, lite): the operator requeue of one dead letter"}
+    # R334 (lite): the only `.query(` outside platform/database's composer and the test world is the pass-through of a file listed here
+    # (or in hfs.json sides.be.sqlPassThrough), whose SQL text is not the app's own. Paths are relative to the side folder.
+    sqlPassThrough:
+      - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed file's text, run as it is (db/seed.sql); the app writes no SQL there"}
     lite:
       schemaAuthority: sql
       infraOwners:
@@ -2942,6 +2946,7 @@ slots:
       - use-test-world.ts
       - fakes/<provider>/server.ts
       - fakes/
+      - <name>.sql.ts
     tests: none
     coverage: none
     why: "the ONLY test infrastructure location, shared by integration and e2e: global-setup.ts starts

@@ -35,9 +35,10 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 ## Patterns
 
-- Schema authority is `db/migrations`; TypeORM entities only map those tables and domain code writes no raw SQL.
+- Schema authority is `db/migrations`; TypeORM entities map those tables and lite TypeScript holds no SQL text outside the test
+  world: entities, or a listed function through `callDbFunction`; the world keeps raw SQL for probes only.
   Owners: `ruleParams.be.lite.schemaAuthority` and slot `be.persistence`; R213 to R215, R255 to R259, R332, R334;
-  ruling `lite-persistence-typeorm-entities`; [code/be/persistence.md](../code/be/persistence.md).
+  rulings `lite-persistence-typeorm-entities`, `no-raw-sql-one-style`; [code/be/persistence.md](../code/be/persistence.md).
 - Identity is the app's own: Google OAuth and email and password through Passport, its own access tokens verified
   against its own JWKS, a rotating httpOnly refresh cookie, and a front end that holds no credential. Owners: R328 to
   R330; [code/be/api-auth.md](../code/be/api-auth.md); [code/fe/transport.md](../code/fe/transport.md) FE-AUTH.

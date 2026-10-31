@@ -19,10 +19,16 @@ specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e
 infrastructure lives only in `src/tests/world/`, shared data in `src/tests/fixtures/`. Integration and contract run
 through `npm run test:integration` (after `typecheck:tests`), never in a hook or the default typecheck.
 
+In lite the world is also the one place of raw SQL text (R334): plain CRUD on an application table goes through its entity on
+`world.db.<connection>`, a database function of the app through `callDbFunction`, and seeded rows come from builders
+(BE-TEST-16); only a probe stays raw, as `sql`-tagged text with `$n` parameters (a privilege or row-level-security probe,
+catalog, cron or trigger introspection, a pgmq queue table, a lock or failure probe). Test-only functions are never added to
+the main database. A unit spec of a listed pass-through file may pass its fake `session.query("select 1")`.
+
 Why: one placement rule makes discovery mechanical, and slow suites stay out of fast gates.
 
 Enforced by: `unit-test-colocated`, `test-world-files`, `tests-infra-only-in-world`, `test-world-shape` (R47),
-`spec-placement` (R102), R112.
+`spec-placement` (R102), R112, R334 (the world's raw SQL).
 
 ## BE-TEST-2 The subject is built by the testing module from providers only
 
