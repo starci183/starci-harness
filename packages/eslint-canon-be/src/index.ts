@@ -21,6 +21,7 @@ import { pluginForEdition } from "./lib/edition.ts"
 import { recommended as aiGatewayRecommended, rules as aiGatewayRules } from "./ai-gateway.ts"
 import { recommended as authPassportRecommended, rules as authPassportRules } from "./auth-passport.ts"
 import { recommended as noRawSqlRecommended, rules as noRawSqlRules } from "./no-raw-sql.ts"
+import { recommended as entityBaseRecommended, rules as entityBaseRules } from "./entity-base.ts"
 import { recommended as eventBusLiteRecommended, rules as eventBusLiteRules } from "./event-bus-lite.ts"
 import { recommended as jobsSchedulerRecommended, rules as jobsSchedulerRules } from "./jobs-scheduler.ts"
 import { recommended as ambientIdRecommended, rules as ambientIdRules } from "./ambient-id.ts"
@@ -98,6 +99,7 @@ const CONTRIBUTIONS: Contribution[] = [
     { law: "ai-gateway", rules: aiGatewayRules, recommended: aiGatewayRecommended },
     { law: "auth-passport", rules: authPassportRules, recommended: authPassportRecommended },
     { law: "no-raw-sql", rules: noRawSqlRules, recommended: noRawSqlRecommended },
+    { law: "entity-base", rules: entityBaseRules, recommended: entityBaseRecommended },
     { law: "event-bus-lite", rules: eventBusLiteRules, recommended: eventBusLiteRecommended },
     { law: "jobs-scheduler", rules: jobsSchedulerRules, recommended: jobsSchedulerRecommended },
     { law: "ambient-id", rules: ambientIdRules, recommended: ambientIdRecommended },

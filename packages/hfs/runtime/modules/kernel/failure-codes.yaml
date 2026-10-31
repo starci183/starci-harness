@@ -5541,6 +5541,17 @@ BE_ENTITY_SCHEMA_DRIFT:
   owner: op-retry
   kind: check-finding
 
+BE_ENTITY_EXTENDS_BASE:
+  title: "An entity repeats the columns every table shares instead of extending the base"
+  title_vi: "Entity lặp lại các cột mọi bảng đều có thay vì kế thừa lớp nền"
+  meaning_vi: "File `<path>` khai một lớp @Entity tự map cột created_at hoặc updated_at do cơ sở dữ liệu đặt (CreateDateColumn, UpdateDateColumn, hoặc Column với insert false, update false hay default) và có thể cả khóa uuid được sinh ra bên cạnh cả hai."
+  causes_vi:
+    - "Vi phạm R342 (BE-PERSISTENCE-3, phán quyết entity-base): các cột mọi bảng cùng có được kế thừa, không lặp lại trong từng entity."
+    - "Entity được viết tay hoặc sao chép từ entity cũ trước khi có AbstractEntity và UuidAbstractEntity trong platform/database."
+  nextStep_vi: "Xóa các thuộc tính đó và khai `extends UuidAbstractEntity` (có khóa uuid id) hoặc `extends AbstractEntity` (không có), import từ `@modules/platform/database`. Bảng có timestamp do ứng dụng đặt hoặc thiếu một trong hai cột thì không kế thừa gì và map cột đó bằng `@Column` thường."
+  owner: op-retry
+  kind: check-finding
+
 BE_AUTH_PASSPORT_OWNER:
   title: "An identity library is imported outside integrations/passport"
   title_vi: "Thư viện định danh bị import ngoài integrations/passport"

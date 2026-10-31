@@ -2315,6 +2315,13 @@ rules:
       - FE_FREESTYLE_REASON_MISSING
     enforcers:
       - {kind: eslint-grammar-core, id: freestyle-has-reason}
+  - id: R342
+    code: BE_ENTITY_EXTENDS_BASE
+    law: "An @Entity class does not repeat the columns every table shares: a database-set created_at or updated_at (CreateDateColumn, UpdateDateColumn, or a Column on those names with insert false, update false or a default) and, beside both, the generated uuid id are inherited from AbstractEntity or UuidAbstractEntity of @modules/platform/database (BE-PERSISTENCE-3, ruling entity-base). A table whose timestamps the application sets, or that lacks one, extends nothing; the base file platform/database/abstract.entity.ts is exempt."
+    failureCodes:
+      - BE_ENTITY_EXTENDS_BASE
+    enforcers:
+      - {kind: eslint-be, id: entity-extends-base}
 
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
