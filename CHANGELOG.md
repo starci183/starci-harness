@@ -10,6 +10,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- The CLI requires @starci/hfs@4.16.0, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 - Knowledge: the spacing doctrine (ruling spacing-roles): one scale 0 4 8 12 24 32 with no 16, gap roles (identity, inline, row, section, region), four inset levels (every container 12, a box in a card 8, a low-density region 24, the page gutter 12 / 24 / 32), the laws P1-P8, G1-G5, R1-R3, M1-M2, the text edge (tabs are the underline bar everywhere) and the per-component table in `ui/presentation.md` Space; `grammars/common.md`, `grammars/contract.md` and `contract.yaml` (spacing tokens, `DNA-COMMON-TABS-BY-LAYER`), `ui/components/tabs.md`, `ui/components/pane-grid.md`, `code/fe/naming.md`, `vendor/wrappers.yaml`. R350 (`FE_SPACING_UTILITY`, `FE_SPACING_OFF_SCALE`) joins the rule catalog; the stack pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.18.0, eslint-canon-fe 9.8.0, stylelint-canon 2.4.0 and hfs 4.16.0, which the CLI follows once npm serves them.
 
 ## [1.1.0-alpha.28] - 2026-10-31
