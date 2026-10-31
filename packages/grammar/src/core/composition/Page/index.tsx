@@ -1,10 +1,10 @@
 import { cn } from "@heroui/react"
 import { isValidElement, type ReactElement, type ReactNode } from "react"
 import { Breadcrumbs } from "../../composite/Breadcrumbs/index.js"
-import { useFillMeasure } from "../../composite/FillViewport/useFillMeasure.js"
 import type { FillViewportMinHeight } from "../../composite/FillViewport/index.js"
 import { PageContainer, type PageContainerProps } from "../../primitive/PageContainer/index.js"
 import { PaneGrid, type PaneGridProps } from "../PaneGrid/index.js"
+import { PanesFill } from "./PanesFill.js"
 import { PageHeader, type PageHeaderBreadcrumbs, type PageHeaderProps } from "../PageHeader/index.js"
 
 /** The page header Page draws: every `PageHeader` prop except the two Page owns, `measure` and `isSkeleton`. */
@@ -83,7 +83,6 @@ const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent
  */
 export const Page = (props: PageProps) => {
     const { chrome = "standard", header, children, measure = "product", isSkeleton = false, className } = props
-    const fillRef = useFillMeasure()
     if (props.chrome === "panes" && !(isValidElement(children) && children.type === PaneGrid)) {
         throw new Error("PAGE_PANES_CHILD_NOT_PANE_GRID")
     }
@@ -106,14 +105,7 @@ export const Page = (props: PageProps) => {
                 </div>
             )}
             {chrome === "panes" ? (
-                <div
-                    ref={fillRef}
-                    className="starci-core-page-body starci-core-page-panes-fill"
-                    data-grammar-page-body="true"
-                    data-grammar-fill-min={props.chrome === "panes" ? props.minHeight ?? "md" : "md"}
-                >
-                    {children}
-                </div>
+                <PanesFill minHeight={props.chrome === "panes" ? props.minHeight ?? "md" : "md"}>{children}</PanesFill>
             ) : chrome === "bleed" ? (
                 <div className="starci-core-page-body" data-grammar-page-body="true">
                     {children}

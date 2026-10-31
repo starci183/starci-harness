@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.1 - 2026-10-31
+
+- Fixed: `Page` renders from a server component again. 0.17.0 called the fill measuring hook inside `Page` itself, so every `Page` rendered by a server component failed with "Attempted to call useFillMeasure() from the server". The measured fill box of `chrome="panes"` is now its own client component (`PanesFill`), and `Page` calls no hook.
+
 ## 0.17.0 - 2026-10-31
 
 - Added: `PaneSection`, the one band primitive of a Pane (composition tier, exported from common, core and offset-pop; type `PaneSectionProps`): `grow`, `scroll` (`{ label, role, tone, scrollRef }`, a full-bleed scroll owner with the inset inside), `align` (`start` | `center`), `bleed="inline"`, `gap` (`inline` | `row` | `section`) and `as` (`div` | `header` | `footer`); no `className`, no `style`. It throws `PANE_SECTION_OUTSIDE_PANE` outside a Pane. Data-contract `PADDING-4 GAP-3`.
