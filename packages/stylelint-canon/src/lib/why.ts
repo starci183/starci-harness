@@ -78,6 +78,11 @@ export const why: Record<string, Why> = {
     en: "A `@media` in `<file>` uses breakpoint `<what>` outside the grammar scale, so the layout changes at a width different from the other components.",
     fix: "Use a breakpoint of the grammar scale (30rem, 40rem, 48rem, 70rem), or the px equivalent at 16px/rem.",
   },
+  "spacing-scale": {
+    code: "FE_SPACING_OFF_SCALE",
+    en: "CSS in `<file>` spaces content with `<what>`, which is not a step of the spacing scale (0 4 8 12 24 32), or with a fluid value.",
+    fix: "Use the Grammar token of the role (`--grammar-inset`, `--grammar-row-gap`, `--grammar-section-gap`, ...); a value between steps belongs to the nearer step.",
+  },
   "source-resolves": {
     code: "FE_STYLE_SOURCE_UNRESOLVED",
     en: "`@source` in `<file>` points at a path that does not exist (`<what>`). Tailwind scans no file and silently drops the utilities the components use.",

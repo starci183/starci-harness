@@ -181,6 +181,7 @@ test('the usage is generated from the parser tables: every flag every verb parse
   const db = Object.fromEntries(await Promise.all(['migrate', 'post-cutover', 'dump', 'new', 'drift'].map(async (verb: string): Promise<[string, FlagsSpec]> => [verb, (await import(`../db/${verb}.mjs`)).SPEC])));
   const { parseLintArgs } = await import('../lint/run.mjs');
   const { codemodArguments } = await import('../codemod/button-intent.mjs');
+  const { spacingRolesArguments } = await import('../codemod/main.mjs');
   const { upgradeArguments } = await import('../upgrade/index.mjs');
   const flagsOfSpec = (spec: FlagsSpec) => [...(spec.boolean ?? []), ...(spec.value ?? []), ...(spec.list ?? [])].filter((flag) => !(spec.retired ?? []).includes(flag));
   // A hand-parsed verb: the flag literals its parser compares with.
@@ -200,12 +201,13 @@ test('the usage is generated from the parser tables: every flag every verb parse
   for (const [verb, names] of [['baseline', BASELINE_OPTIONS], ['restamp', RESTAMP_OPTIONS]] as Array<[string, readonly string[]]>) expect(`db ${verb}`, names.map((name: string) => `--${name}`));
   for (const [verb, spec] of Object.entries(db)) expect(`db ${verb}`, flagsOfSpec(spec));
   expect('lint', flagsOfParser(parseLintArgs));
-  expect('codemod', flagsOfParser(codemodArguments));
+  expect('codemod button-intent', flagsOfParser(codemodArguments));
+  expect('codemod spacing-roles', flagsOfParser(spacingRolesArguments));
   expect('upgrade', flagsOfParser(upgradeArguments).filter((flag) => !['--repo', '--edition'].includes(flag)));
   for (const verb of ['check', 'scaffold']) expect(verb, ['--edition']);
   // The canonical spellings are on the usage lines.
   for (const line of ['starci app slot <path> [--json]', 'starci app world <up|down|status>', 'starci app add service <dir> <name> [--inject <binding>]...', 'starci app add spec <file>.service.ts', 'starci app add image',
-    'starci app check [--staged]', 'starci app sync [--execute]', 'starci app upgrade [--execute]', 'starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out ']) assert.ok(out.includes(line), line);
+    'starci app check [--staged]', 'starci app sync [--execute]', 'starci app upgrade [--execute]', 'starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out ', 'starci app codemod spacing-roles [--execute] [--json] [--format json|markdown] [--out ']) assert.ok(out.includes(line), line);
   assert.match(out, /^starci app lint .*\[--json\] \[--out <file>\]$/m);
   assert.match(out, /^starci app scaffold <name> \[--registry-visibility public\|private\] \[--edition full\|lite\]$/m);
   assert.doesNotMatch(out, /app (hygiene|explain|new|sonar)\b|--plan|--write|--check\b|--into\b(?!-)|--report|app stack <up/, 'the usage lists no old spelling');

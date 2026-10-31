@@ -61,6 +61,15 @@ export const BORROWED: Readonly<Record<string, "error">> = Object.freeze({
 const levelOf = (setting: Linter.RuleEntry | undefined): Linter.RuleEntry | undefined => (Array.isArray(setting) ? setting[0] : setting)
 
 /**
+ * The counting cohort: a rule the owner ruled to ship at `warn` for one release while a codemod moves apps onto the API
+ * it asks for, each with the HFS rule id it enforces. `starci app lint` reports and counts its findings and never fails
+ * on them; the next cohort moves the rule to error and deletes its entry. No other rule may be below error.
+ */
+export const COUNTING: Readonly<Record<string, { readonly rule: string; readonly ruling: string }>> = Object.freeze({
+  "starci-fe/no-spacing-utility": { rule: "R350", ruling: "spacing-roles" },
+})
+
+/**
  * The flat config of one front-end repository.
  *
  * @param input - Attachment options.
@@ -85,8 +94,8 @@ export const buildFeConfig = ({ hfs, plugin, source, reactHooks, tsPlugin, sonar
   }
   if (hfs.profile !== "fe") throw new Error(`starciFeConfig lints the fe side of an app (its eslint.config.mjs lives in fe/); this view is ${hfs.side ? `the ${hfs.side} side` : "the app root"}`)
   if (Object.keys(source).length === 0) throw new Error("starciFeConfig received an empty source recommendation - a config with no rules is not adoption")
-  const weak = Object.entries(source).filter(([, setting]) => levelOf(setting) !== "error").map(([name]) => name)
-  if (weak.length > 0) throw new Error(`starciFeConfig refuses source rules not at error: ${weak.join(", ")}`)
+  const weak = Object.entries(source).filter(([name, setting]) => levelOf(setting) !== (name in COUNTING ? "warn" : "error")).map(([name]) => name)
+  if (weak.length > 0) throw new Error(`starciFeConfig refuses source rules not at error (or not at warn in the counting cohort): ${weak.join(", ")}`)
   const settings = { starci: { hfs } }
   return [
     { ignores: [...IGNORED] },

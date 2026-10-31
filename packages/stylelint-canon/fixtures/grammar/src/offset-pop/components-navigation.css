@@ -53,17 +53,21 @@
         box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink);
     }
 
-    /* Stepper: ink-ringed markers, pink current, mint complete, critical error. */
+    /*
+     * Stepper: markers ringed in the border ink (the family ink, or the separator a painted SurfaceCard rebinds it to),
+     * pink current, mint complete, critical error. Every filled marker reads its fill's own foreground, which is ink in
+     * both themes, so the number holds on the fill wherever the stepper stands; an outlined one is the surface pair.
+     */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-marker] {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border: var(--offset-pop-outline-width) solid var(--border);
         background: var(--surface);
         color: var(--foreground);
         font-weight: 900;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-state="complete"] [data-grammar-step-marker] {
-        background: var(--offset-pop-mint);
-        color: var(--offset-pop-ink);
+        background: var(--offset-pop-success);
+        color: var(--offset-pop-success-foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-state="current"] [data-grammar-step-marker] {
@@ -85,6 +89,20 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TopBar"] {
         border-block-end: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         background: var(--background);
+    }
+
+    /* PageHeader: a surface band closed by the same ink rule; page tabs stand on it and the selected underline is ink. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="PageHeader"] [data-grammar-page-header-separator] > [data-component="Divider"] {
+        block-size: var(--offset-pop-outline-width);
+        background: var(--offset-pop-ink);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="PageHeader"][data-grammar-page-header-tabs="true"] [data-grammar-page-header-separator] {
+        margin-block-start: calc(-1 * var(--offset-pop-outline-width));
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="PageHeader"] .starci-core-page-header-title {
+        font-weight: 800;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TopBar"] [data-grammar-top-bar-trigger] {
@@ -148,8 +166,9 @@
         letter-spacing: -.01em;
     }
 
-    /* Avatar / AvatarGroup: ink-ringed faces; the current identity gets a pink ring. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Avatar"] {
+    /* Avatar / AvatarGroup: ink-ringed faces; the current identity gets a pink ring. A loading avatar has no ring: its
+       Skeleton circle already takes the avatar's whole box (skeleton parity). */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Avatar"]:not([data-grammar-skeleton="true"]) {
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
     }
 
@@ -271,9 +290,9 @@
      * ListBox: every option (role="option") is an interactive row - it is the pointer and focus
      * target itself, so its states come from the vendor's attributes on the row, never from an
      * inner link or button (an option may not hold one). At rest the row keeps a transparent 2px
-     * edge so selecting it never shifts the layout.
+     * edge so selecting it never shifts the layout; a loading option keeps the same edge (skeleton parity).
      */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ListBox"] [data-grammar-list-item] {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ListBox"] :is([data-grammar-list-item], .starci-core-list-box-skeleton-option) {
         border: var(--offset-pop-outline-width) solid transparent;
         border-radius: var(--offset-pop-control-radius);
         font-weight: 700;
@@ -325,7 +344,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Disclosure"] [data-grammar-disclosure-trigger],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Accordion"] [data-grammar-accordion-trigger] {
-        padding-inline: 1rem;
+        padding-inline: var(--grammar-inset, 0.75rem);
         font-weight: 900;
     }
 
@@ -334,8 +353,11 @@
         box-shadow: inset 0.25rem 0 0 var(--offset-pop-pink);
     }
 
-    /* Image: ink frame at the family surface radius. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Image"] {
+    /*
+     * Image: ink frame at the family surface radius. Character art is not a framed image: an Image drawn by a Mascot,
+     * or standing in a painted SurfaceCard's artwork zone, keeps Common's transparent ground with no outline.
+     */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Image"]:not([data-component="Mascot"] > *, .starci-core-surface-artwork *) {
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         border-radius: var(--offset-pop-surface-radius);
         background: var(--offset-pop-blush);
@@ -377,8 +399,12 @@
         box-shadow: 0.125rem 0.1875rem 0 var(--offset-pop-shadow-ink);
     }
 
-    /* Timeline attention: an inked, tone-filled card that sits on the offset shadow, like a raised sticker. */
+    /*
+     * Timeline attention: an inked, tone-filled card that sits on the offset shadow, like a raised sticker. The outline
+     * comes out of Common's 0.5rem padding, so the marker and the copy stay in the column of the other entries.
+     */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Timeline"] [data-grammar-attention="true"] {
+        padding: calc(0.5rem - var(--offset-pop-outline-width));
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         border-radius: var(--offset-pop-control-radius);
         background: color-mix(in srgb, var(--starci-core-timeline-attention-tone) 55%, var(--surface));
@@ -386,7 +412,10 @@
         color: var(--offset-pop-ink);
     }
 
+    /* The connector is placed from the padding edge, one outline inside the border edge Common measures from. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Timeline"] [data-grammar-attention="true"]:not(:last-child)::before {
+        top: calc(2rem - var(--offset-pop-outline-width));
+        bottom: calc(-0.5rem - var(--offset-pop-outline-width));
         inset-inline-start: calc(1.25rem - var(--offset-pop-outline-width) / 2 + var(--offset-pop-outline-width) * -1);
     }
 

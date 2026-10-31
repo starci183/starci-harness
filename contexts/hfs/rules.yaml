@@ -2375,6 +2375,16 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-hand-built-panes}
 
+  - id: R350
+    code: FE_SPACING_UTILITY
+    law: "Every spacing value is the Grammar's, on its one scale 0 4 8 12 24 32: an app names the relation between the blocks it places through a role prop (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page) and writes no padding, margin, gap or space utility and no arbitrary spacing value in a class string; a Grammar stylesheet writes no spacing length off the scale and no fluid spacing value."
+    failureCodes:
+      - FE_SPACING_UTILITY
+      - FE_SPACING_OFF_SCALE
+    enforcers:
+      - {kind: eslint-fe, id: no-spacing-utility}
+      - {kind: stylelint, id: spacing-scale}
+
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
 # dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is

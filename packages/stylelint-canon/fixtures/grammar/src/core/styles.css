@@ -42,6 +42,10 @@
         --starci-core-surface-shadow: 0 8px 28px oklch(21.03% 0.0059 354.13 / 0.07);
         --starci-core-motion-duration: 180ms;
         --starci-core-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+        /* The Terminal console: dark in both themes. */
+        --starci-core-terminal-background: oklch(20% 0.01 286);
+        --starci-core-terminal-foreground: oklch(92% 0.005 286);
+        --starci-core-terminal-title-foreground: oklch(72% 0.01 286);
 
         /* HeroUI and existing Grammar anatomy resolve through the same DNA. */
         --accent: var(--starci-core-accent);
@@ -53,6 +57,9 @@
         --surface-foreground: var(--starci-core-foreground);
         --surface-secondary: var(--starci-core-surface-secondary);
         --surface-secondary-foreground: var(--starci-core-foreground);
+        --terminal-background: var(--starci-core-terminal-background);
+        --terminal-foreground: var(--starci-core-terminal-foreground);
+        --terminal-title-foreground: var(--starci-core-terminal-title-foreground);
         /*
          * The StarCi tertiary face (a raised band on the secondary surface) is published under the
          * family's own name, never as HeroUI's --surface-tertiary: that vendor variable stays Common's
@@ -113,11 +120,12 @@
     /*
      * The violet is a FILL (white on it is 5.1:1) but not a text colour: 3.95:1 on the dark canvas
      * and 4.44:1 on the light secondary surface. Where Common paints the accent as TEXT - a link,
-     * the current tab and bottom-nav destination, the current step number, the section eyebrow -
-     * the family re-declares the accent on that element as the themed, text-safe accent, so each
-     * Common rule reads it unchanged and its other states (current link, disabled) keep their own.
+     * the current tab and bottom-nav destination, the section eyebrow - the family re-declares the
+     * accent on that element as the themed, text-safe accent, so each Common rule reads it unchanged
+     * and its other states (current link, disabled) keep their own. The current step number reads
+     * `--accent-soft-foreground`, which the root binds to the same text-safe accent.
      */
-    .grammar-common-root[data-grammar-family="core"] :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item[data-grammar-current="true"], .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker) {
+    .grammar-common-root[data-grammar-family="core"] :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item[data-grammar-current="true"]) {
         --accent: var(--starci-core-accent-text);
     }
 
@@ -125,25 +133,30 @@
         --starci-core-accent: var(--starci-core-accent-text);
     }
 
-    /* StarCi labelled surfaces paint one material box around label and content. */
+    /*
+     * Card label placement (ruling card-label-placement-per-grammar): a FLOATING Core card keeps Common's anatomy, its label
+     * an unpainted row above the material. A PANEL card (`placement="panel"`: a docked panel or full-height region of the
+     * layout) carries its title inside, as the card header: one material box around title and content, the title inset
+     * by the surface inset, and the content frame (also inside a highlight) losing its own material so it paints once.
+     */
     .grammar-common-root[data-grammar-family="core"]
-        .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-frame="bounded"] {
+        .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-surface-placement="panel"][data-grammar-frame="bounded"] {
         overflow: hidden;
         background: var(--starci-core-surface, var(--surface, Canvas));
         box-shadow: var(--starci-core-surface-shadow, var(--shadow-surface, none));
     }
 
     .grammar-common-root[data-grammar-family="core"]
-        .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-frame="bounded"]
+        .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-surface-placement="panel"][data-grammar-frame="bounded"]
         > [data-grammar-surface-label] {
-        --starci-core-surface-label-padding: var(--starci-core-surface-inset, 1rem) var(--starci-core-surface-inset, 1rem) 0;
+        --starci-core-surface-label-padding: var(--grammar-card-padding-block, 0.75rem) var(--grammar-card-padding-inline, 0.75rem) 0;
     }
 
     .grammar-common-root[data-grammar-family="core"]
-        .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-frame="bounded"]
+        .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-surface-placement="panel"][data-grammar-frame="bounded"]
         > [data-grammar-frame="bounded"],
     .grammar-common-root[data-grammar-family="core"]
-        .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-frame="bounded"]
+        .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-surface-placement="panel"][data-grammar-frame="bounded"]
         > [data-grammar-highlight="true"]
         > [data-grammar-frame="bounded"] {
         border: 0;

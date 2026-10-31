@@ -2,7 +2,7 @@
  * Common form anatomy: the structure every family inherits for the form and input renderers
  * (Field, Textarea, Select, ComboBox, SearchField, NumberField, Checkbox, CheckboxGroup, RadioGroup,
  * Switch, Slider, SegmentedControl, DateField, DatePicker, DateRangePicker, TimeField, FileDropzone,
- * Fieldset, Form, ButtonGroup).
+ * CopyField, Fieldset, Form, FormGrid, ButtonGroup).
  *
  * Only structure, rhythm and the touch floor live here. Paint resolves through the semantic
  * variables every family binds (`--field-*`, `--accent`, `--danger`, `--muted`, `--focus`,
@@ -14,7 +14,13 @@
  * order.
  */
 @layer starci-grammar-common {
-    /* --- Field anatomy: label, control, description, error --- */
+    /*
+     * --- Field anatomy: label, control, description, error ---
+     * HeroUI's field order, in the DOM of every field primitive and every branch field: the description is standing
+     * guidance under the control, never between the label and the control, so the label and the control are always
+     * adjacent and a row of fields keeps its controls on one line (FormGrid). Groups (RadioGroup, CheckboxGroup,
+     * Fieldset) keep HeroUI's group order: legend or label, description, then the options or fields.
+     */
     .starci-core-field {
         display: flex !important;
         min-width: 0;
@@ -124,58 +130,42 @@
     }
 
     /*
-     * Loading field (knowledge STATE-8, Select and Textarea `isSkeleton`): the label stays real, the control is one
-     * Skeleton block of the loaded control's height (the select trigger 2.5rem, with the touch floor below; the textarea
-     * `rows` at 1.25rem a line plus its padding, never under the 5rem field minimum). Not focusable: no control exists.
+     * Loading field (knowledge STATE-8) with skeleton parity: the control renders its ready anatomy inside
+     * `.starci-core-field-skeleton-scope` (layout-neutral, inert), so label, description and control box keep the ready
+     * geometry by construction. Every control box in the scope is painted as a Skeleton (the vendor skeleton tint and
+     * shimmer); what it holds - a value, a placeholder, an indicator, a thumb - is not drawn. Its border stays, so a
+     * family's outline keeps the field box.
      */
-    /* The loading root (Field, Select, NumberField, SearchField, SegmentedControl, CheckboxGroup, Switch, Textarea): inert geometry that can shrink inside its row or column. */
-    .starci-core-field-skeleton {
-        min-width: 0;
-        pointer-events: none;
+    .starci-core-field-skeleton-scope { display: contents; }
+
+    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options), .starci-core-input-field, [data-grammar-choice-control], [data-grammar-tag-id]) {
+        position: relative;
+        overflow: hidden;
+        background: color-mix(in oklab, var(--surface-tertiary, #e4e4e7) 70%, transparent) !important;
+        color: transparent !important;
         user-select: none;
     }
 
-    .starci-core-field-skeleton-control { display: block; min-width: 0; }
-
-    .starci-core-field-skeleton-control > .starci-core-skeleton {
-        block-size: 100%;
-        aspect-ratio: auto;
+    /* A control box whose rounded part is inside it (a ComboBox or SegmentedControl group, a Field control slot) takes the field radius. */
+    .starci-core-field-skeleton-scope [data-grammar-field-control="true"]:is(.starci-core-combo-box-group, .starci-core-segmented-control-group, .starci-core-field-control) {
+        border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
     }
 
-    .starci-core-field-skeleton-control:is([data-grammar-field-skeleton="input"]) { block-size: 2.5rem; }
+    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options), [data-grammar-choice-control], [data-grammar-tag-id]) > * { visibility: hidden; }
+    .starci-core-field-skeleton-scope :is(input, textarea)::placeholder { color: transparent; }
 
-    /* The select trigger is HeroUI's own (min-h-9). */
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="select"] { block-size: var(--starci-core-control-min-size, 2.5rem); }
-
-    /* Joined segments: one block, a segment-width (5rem) per option, never wider than the field; `fill` takes the whole row. */
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"] {
-        block-size: 2.5rem;
-        inline-size: min(100%, calc(var(--starci-core-skeleton-segments, 2) * 5rem));
+    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options, textarea), [data-grammar-choice-control], [data-grammar-tag-id])::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        visibility: visible;
+        background-image: linear-gradient(to right, transparent, var(--surface-tertiary, #e4e4e7), transparent);
+        translate: -100%;
+        animation: skeleton 2s linear infinite;
     }
 
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"][data-width="fill"] { inline-size: 100%; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"][data-grammar-segmented-size="control"] { block-size: var(--starci-core-control-min-size, 2.75rem); }
-
-    /* A checkbox box and a switch track beside their real labels. */
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="choice"] { flex: none; block-size: 1rem; inline-size: 1rem; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"] { flex: none; block-size: 1.25rem; inline-size: 2rem; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="lg"] { block-size: 1.5rem; inline-size: 3rem; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="control"] { block-size: var(--starci-core-control-min-size, 2.5rem); inline-size: 4.5rem; }
-
-    .starci-core-field-skeleton-choice-label {
-        color: var(--foreground, CanvasText);
-        font-size: 0.875rem;
-        line-height: 1.25;
-    }
-
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="textarea"] {
-        block-size: max(5rem, calc(var(--starci-core-skeleton-rows, 4) * 1.25rem + 1rem));
-    }
-
-    @media (pointer: coarse), (max-width: 40rem) {
-        .starci-core-field-skeleton-control:is([data-grammar-field-skeleton="select"], [data-grammar-field-skeleton="input"], [data-grammar-field-skeleton="segmented"]) {
-            min-block-size: var(--starci-core-control-min-size, 2.5rem);
-        }
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"], [data-grammar-choice-control])::after { animation: none; content: none; }
     }
 
     .starci-core-combo-box-group,
@@ -204,13 +194,144 @@
     .starci-core-combo-box-group,
     .starci-core-search-field-group,
     .starci-core-number-field-group,
-    .starci-core-date-group {
+    .starci-core-date-group,
+    .starci-core-copy-field-group {
         box-sizing: border-box;
     }
 
     .starci-core-input-field,
-    .starci-core-combo-box-group {
+    .starci-core-combo-box-group,
+    .starci-core-search-field-group,
+    .starci-core-number-field-group,
+    .starci-core-date-group,
+    .starci-core-copy-field-group {
         min-block-size: var(--starci-core-field-min-height, 2.5rem);
+    }
+
+    /*
+     * CopyField: the InputGroup frame is the field box (the single-line anatomy above), the value its text and the copy
+     * action its Suffix. The value is truncated in the middle: the head gives way under an ellipsis, the tail (the last
+     * characters, or the four a masked field shows) never does, and the text content stays whole for a screen reader.
+     * One focus ring, on the frame, while the value has focus; the action draws its own ring as every in-field action.
+     */
+    .starci-core-copy-field-group {
+        width: 100%;
+        min-width: 0;
+        align-items: center;
+    }
+
+    .starci-core-copy-field-value {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+        align-items: center;
+        align-self: stretch;
+        padding-inline: 0.75rem 0.25rem;
+        overflow: hidden;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        white-space: pre;
+        cursor: text;
+        user-select: text;
+        outline: none;
+    }
+
+    .starci-core-copy-field-head {
+        min-width: 0;
+        flex: 0 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .starci-core-copy-field-tail {
+        flex: 0 0 auto;
+    }
+
+    .starci-core-copy-field-group:has(.starci-core-copy-field-value:focus-visible) {
+        box-shadow: 0 0 0 2px var(--focus, Highlight);
+    }
+
+    .starci-core-copy-field-tooltip {
+        max-inline-size: min(32rem, 90vw);
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-copy-field[data-grammar-copy-state="failed"] .starci-core-input-copy {
+        color: var(--danger, CanvasText);
+    }
+
+    @media (forced-colors: active) {
+        .starci-core-copy-field-group:has(.starci-core-copy-field-value:focus-visible) {
+            outline: 2px solid Highlight;
+        }
+    }
+
+    /*
+     * FormGrid: rows of fields that align on the control line. Each row is a grid of four tracks (label, control,
+     * description, error); each field (or the field a skeleton scope wraps) spans them as a subgrid and places its own
+     * parts by role, so a description, an error or a two-line label in one field never moves its neighbour's control.
+     * The field's inner gap becomes a margin on the part after the label, so an absent description or error adds no
+     * space. Below the container width one row is one column and its fields stack a section gap apart.
+     */
+    .starci-core-form-grid {
+        display: flex;
+        inline-size: 100%;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+        container-type: inline-size;
+    }
+
+    .starci-core-form-grid-row {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr);
+        grid-auto-rows: auto;
+        gap: 0 var(--grammar-row-gap, 0.75rem);
+        align-items: start;
+    }
+
+    :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) {
+        display: grid !important;
+        min-width: 0;
+        grid-row: span 4;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: subgrid;
+        gap: 0 !important;
+        align-content: start;
+    }
+
+    :is(.starci-core-form-grid-row > [data-component]:not(:first-child), .starci-core-form-grid-row > .starci-core-field-skeleton-scope:not(:first-child) > [data-component]) {
+        margin-block-start: var(--grammar-row-gap, 0.75rem);
+    }
+
+    :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is([data-slot="label"], [data-grammar-field-label]) {
+        grid-row: 1;
+    }
+
+    :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is([data-grammar-field-control="true"], [data-grammar-input-control="true"]) {
+        grid-row: 2;
+        margin-block-start: var(--starci-core-field-gap, 0.5rem);
+    }
+
+    :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > [data-grammar-field-description] {
+        grid-row: 3;
+        margin-block-start: var(--starci-core-field-gap, 0.5rem);
+    }
+
+    :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is(.starci-core-field-error, [data-slot="error-message"], [data-slot="field-error"]) {
+        grid-row: 4;
+        margin-block-start: var(--starci-core-field-gap, 0.5rem);
+    }
+
+    @container (min-width: 32rem) {
+        .starci-core-form-grid[data-grammar-form-grid-columns="2"] > .starci-core-form-grid-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .starci-core-form-grid[data-grammar-form-grid-columns="2"] :is(.starci-core-form-grid-row > [data-component]:not(:first-child), .starci-core-form-grid-row > .starci-core-field-skeleton-scope:not(:first-child) > [data-component]) {
+            margin-block-start: 0;
+        }
     }
 
     /* Owner 2026-10-25: Select has the same 2.5rem field height as Input. */
@@ -305,7 +426,7 @@
 
     [data-grammar-orientation="horizontal"] > .starci-core-choice-group-options {
         flex-flow: row wrap;
-        gap: 0.75rem 1rem;
+        gap: var(--grammar-row-gap, 0.75rem);
     }
 
     /*
@@ -450,7 +571,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-section-gap, 1rem);
+        gap: var(--grammar-row-gap, 0.75rem);
     }
 
     .starci-core-fieldset-actions {
@@ -465,7 +586,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-row-gap, 0.75rem);
     }
 
     /* --- FileDropzone: a native file input stretched over the drop target --- */
@@ -478,7 +599,7 @@
         justify-content: center;
         border: 2px dashed var(--border, ButtonBorder);
         border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
-        padding: 1.5rem;
+        padding: var(--grammar-inset-open, 1.5rem);
         background: var(--field-background, var(--surface, Canvas));
         color: var(--muted, GrayText);
         text-align: center;
@@ -535,7 +656,7 @@
 
     .starci-core-file-dropzone-files {
         margin: 0;
-        padding-inline-start: 1rem;
+        padding-inline-start: var(--grammar-section-gap, 1.5rem);
         color: var(--foreground, CanvasText);
         font-size: 0.875rem;
         overflow-wrap: anywhere;

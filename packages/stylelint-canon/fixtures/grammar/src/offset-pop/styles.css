@@ -58,6 +58,10 @@
         --offset-pop-surface-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink);
         --offset-pop-motion-duration: 140ms;
         --offset-pop-motion-easing: cubic-bezier(.2, .8, .2, 1);
+        /* The Terminal console: an ink panel with canvas text and a yellow title. */
+        --offset-pop-terminal-background: var(--offset-pop-ink);
+        --offset-pop-terminal-foreground: var(--offset-pop-canvas);
+        --offset-pop-terminal-title-foreground: var(--offset-pop-yellow);
 
         /* The composite motion value every family transition reads; reduced motion replaces it. */
         --offset-pop-transition: var(--offset-pop-motion-duration) var(--offset-pop-motion-easing);
@@ -72,6 +76,9 @@
         --surface-foreground: var(--offset-pop-foreground);
         --surface-secondary: var(--offset-pop-surface-secondary);
         --surface-secondary-foreground: var(--offset-pop-foreground);
+        --terminal-background: var(--offset-pop-terminal-background);
+        --terminal-foreground: var(--offset-pop-terminal-foreground);
+        --terminal-title-foreground: var(--offset-pop-terminal-title-foreground);
         --muted: var(--offset-pop-muted);
         --border: var(--offset-pop-border);
         --separator: var(--offset-pop-separator);
@@ -166,11 +173,12 @@
     }
 
     /*
-     * Every other Common rule that paints the accent as TEXT (link, current tab, bottom-nav and
-     * step, eyebrow) reads the text-safe accent too: the family re-declares the accent on those
+     * Every other Common rule that paints the accent as TEXT (link, current tab, bottom-nav,
+     * eyebrow) reads the text-safe accent too: the family re-declares the accent on those
      * elements, so a rule the family does not restyle still never paints pink body-size text.
+     * The Stepper's markers are the family's own pairs (components-navigation.css).
      */
-    .grammar-common-root[data-grammar-family="offset-pop"] :is(.starci-core-link, .starci-core-section-eyebrow, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item, .starci-core-step-marker) {
+    .grammar-common-root[data-grammar-family="offset-pop"] :is(.starci-core-link, .starci-core-section-eyebrow, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item) {
         --accent: var(--offset-pop-accent-text);
     }
 
@@ -179,6 +187,11 @@
         border-radius: var(--radius);
         box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink);
         font-weight: 800;
+    }
+
+    /* A disabled Button's tooltip wrapper carries its focus ring in the family's button radius. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"]) {
+        border-radius: var(--radius);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Badge"] {
@@ -210,14 +223,14 @@
         color: var(--offset-pop-ink);
     }
 
-    /* Terminal: ink panel with the family's offset shadow. */
+    /*
+     * Terminal: ink panel with the family's offset shadow. An ink shadow would vanish into an ink panel (it only
+     * notched the corners), so the shadow takes the family's pink.
+     */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Terminal"] {
-        --starci-core-terminal-bg: var(--offset-pop-ink);
-        --starci-core-terminal-fg: var(--offset-pop-canvas);
-        --starci-core-terminal-title-fg: var(--offset-pop-yellow);
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         border-radius: var(--offset-pop-control-radius);
-        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-pink);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] {
@@ -233,6 +246,12 @@
         color: var(--surface-foreground);
         background: var(--surface);
     }
+
+    /* The accent corner survives this family's surface radius. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-start"][data-grammar-surface-depth] { border-start-start-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-end"][data-grammar-surface-depth] { border-start-end-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-start"][data-grammar-surface-depth] { border-end-start-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-end"][data-grammar-surface-depth] { border-end-end-radius: var(--grammar-accent-corner); }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="top"] {

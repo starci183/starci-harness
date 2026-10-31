@@ -112,7 +112,7 @@
     /* A crumb whose label is not known yet (knowledge STATE-8): a short Skeleton text line of the label's size. */
     .starci-core-breadcrumb-skeleton { display: inline-block; inline-size: 6rem; }
     .starci-core-breadcrumb-skeleton > .starci-core-skeleton-group { gap: 0; }
-    .starci-core-breadcrumb-skeleton .starci-core-skeleton { block-size: 0.875rem; }
+    .starci-core-breadcrumb-skeleton .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
 
     @media (max-width: 30rem) {
         .starci-core-breadcrumb-label {
@@ -189,7 +189,39 @@
     .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-stepper-list {
         flex-direction: row;
         align-items: flex-start;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: 0;
+    }
+
+    /*
+     * Horizontal track (owner ruling stepper-connector): each step is an equal column with its marker centred over its
+     * label, and a connector line runs from one marker to the next through the markers' centres, leaving a small gap at
+     * each circle. The line before a completed step is the accent, the rest the border colour.
+     */
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step-body {
+        inline-size: 100%;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step-copy {
+        align-items: center;
+        padding-block-start: 0;
+    }
+
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step:not(:last-child)::after {
+        position: absolute;
+        inset-block-start: calc(1.25rem - 1px);
+        inset-inline-start: calc(50% + 1.5rem);
+        inset-inline-end: calc(-50% + 1.5rem);
+        block-size: 2px;
+        border-radius: 999px;
+        background: var(--border, var(--starci-core-border, CanvasText));
+        content: "";
+    }
+
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step[data-grammar-step-state="complete"]:not(:last-child)::after {
+        background: var(--accent, Highlight);
     }
 
     .starci-core-stepper[data-grammar-stepper-orientation="vertical"] .starci-core-stepper-list {
@@ -255,27 +287,33 @@
         color: var(--accent-foreground, HighlightText);
     }
 
+    /*
+     * Every marker is a pair that holds on any ground: the outlined states draw their circle in `--surface` and their
+     * number in a text token paired with it (muted, the accent as text, the danger as text), the complete state fills
+     * the accent under its own foreground. A SurfaceCard treatment rebinds the surface pair and those text tokens
+     * together, so the number keeps its contrast in every treatment (COLOR-5).
+     */
     .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker {
-        border-color: var(--accent, Highlight);
-        color: var(--accent, Highlight);
+        border-color: currentColor;
+        color: var(--accent-soft-foreground, var(--accent, Highlight));
     }
 
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger, Mark);
-        color: var(--danger, CanvasText);
+        color: var(--danger-soft-foreground, var(--danger, CanvasText));
     }
 
     /* Loading stepper (knowledge STATE-8): a static Skeleton circle for the mark, labels stay real. */
     .starci-core-step-skeleton-marker { border: 0; background: transparent; }
     .starci-core-step-skeleton-label { display: block; inline-size: 5rem; }
     .starci-core-step-skeleton-label > .starci-core-skeleton-group { gap: 0; }
-    .starci-core-step-skeleton-label .starci-core-skeleton { block-size: 0.875rem; }
+    .starci-core-step-skeleton-label .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
 
     .starci-core-step-copy {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
         padding-block-start: 0.25rem;
     }
 
@@ -304,10 +342,6 @@
             clip: rect(0, 0, 0, 0);
             white-space: nowrap;
         }
-
-        .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step:not([data-grammar-current="true"]) {
-            flex: 0 0 auto;
-        }
     }
 
     /* ---------- TopBar ---------- */
@@ -320,9 +354,9 @@
         align-items: center;
         gap: var(--grammar-row-gap, 0.75rem);
         padding-block: 0.5rem;
-        padding-inline: var(--grammar-page-inset, 1rem);
-        padding-inline-start: max(var(--grammar-page-inset, 1rem), env(safe-area-inset-left));
-        padding-inline-end: max(var(--grammar-page-inset, 1rem), env(safe-area-inset-right));
+        padding-inline: var(--grammar-page-inset, 0.75rem);
+        padding-inline-start: max(var(--grammar-page-inset, 0.75rem), env(safe-area-inset-left));
+        padding-inline-end: max(var(--grammar-page-inset, 0.75rem), env(safe-area-inset-right));
         border-block-end: 1px solid var(--separator, var(--border, CanvasText));
         background: var(--surface, Canvas);
         color: var(--foreground, CanvasText);
@@ -427,16 +461,16 @@
         }
     }
 
-    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]):not(:has(.starci-core-footer)) :is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page-container):not(:is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page-container, .starci-core-navigation-feature-nav, .starci-core-top-bar, .starci-core-bottom-nav) *) {
+    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]):not(:has(.starci-core-footer)) :is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page:not([data-grammar-page-chrome="bleed"]), .starci-core-page-container):not(:is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page, .starci-core-page-header, .starci-core-page-container, .starci-core-navigation-feature-nav, .starci-core-top-bar, .starci-core-bottom-nav) *) {
         padding-block-end: var(--starci-core-bottom-nav-offset);
     }
 
     .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]) .starci-core-footer {
-        padding-block-end: calc(var(--grammar-section-gap, 1rem) + max(var(--starci-core-bottom-nav-offset), env(safe-area-inset-bottom, 0px)));
+        padding-block-end: calc(var(--grammar-inset, 0.75rem) + max(var(--starci-core-bottom-nav-offset), env(safe-area-inset-bottom, 0px)));
     }
 
     .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]) .starci-core-toaster:is([data-placement="bottom-start"], [data-placement="bottom"], [data-placement="bottom-end"]) {
-        bottom: max(var(--grammar-page-inset, 1rem), env(safe-area-inset-bottom, 0px), calc(var(--starci-core-bottom-nav-offset) + var(--grammar-page-inset, 1rem)));
+        bottom: max(var(--grammar-page-inset, 0.75rem), env(safe-area-inset-bottom, 0px), calc(var(--starci-core-bottom-nav-offset) + var(--grammar-page-inset, 0.75rem)));
     }
 
     .starci-core-bottom-nav-list {
@@ -460,7 +494,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
         padding: 0.25rem;
         border: 0;
         border-radius: var(--radius, 0.5rem);
@@ -536,9 +570,9 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 1.5rem);
-        padding-block: var(--grammar-region-gap, 1.5rem) calc(var(--grammar-section-gap, 1rem) + env(safe-area-inset-bottom, 0px));
-        padding-inline: var(--grammar-page-inset, 1rem);
+        gap: var(--grammar-section-gap, 1.5rem);
+        padding-block: var(--grammar-section-gap, 1.5rem) calc(var(--grammar-inset, 0.75rem) + env(safe-area-inset-bottom, 0px));
+        padding-inline: var(--grammar-page-inset, 0.75rem);
         border-block-start: 1px solid var(--separator, var(--border, CanvasText));
         color: var(--foreground, CanvasText);
     }
@@ -547,7 +581,7 @@
         display: grid;
         min-width: 0;
         grid-template-columns: minmax(0, 1fr);
-        gap: var(--grammar-region-gap, 1.5rem);
+        gap: var(--grammar-region-gap, 2rem);
     }
 
     @media (min-width: 48rem) {
@@ -568,7 +602,7 @@
         display: grid;
         min-width: 0;
         grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-        gap: var(--grammar-section-gap, 1rem);
+        gap: var(--grammar-section-gap, 1.5rem);
     }
 
     .starci-core-footer-group {
@@ -779,6 +813,11 @@
         white-space: nowrap;
     }
 
+    /* The reorder layer's event wrapper takes no box: the TagGroup lays out as if it were not there. */
+    .starci-core-tag-group-reorder {
+        display: contents;
+    }
+
     /* Reorderable tags: the grab cursor, the lifted tag and the tag a drop would replace. */
     .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[draggable="true"] {
         cursor: grab;
@@ -865,6 +904,15 @@
         width: max-content;
     }
 
+    /*
+     * A table that hosts editors, or has folded its low columns for a narrow container, fits the container instead:
+     * at max-content an editor's TagGroup never wraps its chips and the folded text never wraps, so the table ran
+     * past its container. It still scrolls sideways once its columns cannot shrink further.
+     */
+    .starci-core-data-table:is([data-grammar-table-editors="true"], [data-grammar-table-narrow="true"]) .starci-core-data-table-content {
+        width: 100%;
+    }
+
     .starci-core-data-table[data-grammar-table-sticky="true"] .starci-core-data-table-header {
         position: sticky;
         z-index: 1;
@@ -897,7 +945,7 @@
         min-block-size: 8rem;
         align-items: center;
         justify-content: center;
-        padding: var(--grammar-section-gap, 1rem);
+        padding: var(--grammar-inset, 0.75rem);
         color: var(--muted, GrayText);
         white-space: normal;
         text-align: center;
@@ -912,7 +960,7 @@
         cursor: pointer;
     }
 
-    /* An editor cell hosts a field; the field keeps its own control height and may not widen past the column. */
+    /* An editor cell hosts a field; the field keeps its own control height and fills the column, never wider. */
     .starci-core-data-table-editor {
         display: flex;
         min-width: 0;
@@ -921,22 +969,45 @@
         white-space: normal;
     }
 
+    .starci-core-data-table-editor > * {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    /*
+     * A text input's intrinsic width is its `size` (20 characters, about 11rem), which an auto-layout table takes as the
+     * column's minimum: a NumberField editor alone pushed the table past its container, even in narrow mode. In an editor
+     * cell the input asks for no width of its own and fills its track through its minimum (a percentage minimum does not
+     * count toward the column's intrinsic width), so the column can shrink to the room the table has and the input still
+     * fills what it gets, never less than three characters beside its own inline padding.
+     */
+    .starci-core-data-table-editor input {
+        inline-size: 0;
+        min-inline-size: max(calc(3ch + 1.5rem), 100%);
+    }
+
     /* Narrow mode: low-priority columns stack under the first column's content as secondary text. */
     .starci-core-data-table-secondary {
         display: flex;
         flex-direction: column;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
         margin-block-start: 0.25rem;
         color: var(--muted, GrayText);
         font-size: 0.875em;
         white-space: normal;
     }
 
+    /* A long value (an email, an id) may break anywhere, so the folded text never sets the first column's minimum. */
     .starci-core-data-table-secondary-item {
         display: flex;
         min-width: 0;
         flex-wrap: wrap;
         gap: 0.25rem;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-data-table-secondary-value {
+        min-width: 0;
     }
 
     .starci-core-data-table-secondary-label::after {
@@ -1072,6 +1143,9 @@
         line-height: 1.25rem;
     }
 
+    /* A loading stat keeps its unit's place, unseen (skeleton parity). */
+    .starci-core-description-list[data-loading="true"] .starci-core-description-unit { visibility: hidden; }
+
     .starci-core-description-meta {
         min-width: 0;
         margin: 0;
@@ -1163,15 +1237,15 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
+        gap: 0.25rem;
     }
 
     /* Loading options (knowledge STATE-8): a label line and a description line, at the loaded option's height. */
     .starci-core-list-box-skeleton-option {
         display: flex;
-        min-block-size: 2.25rem;
         align-items: center;
         padding-inline: 0.5rem;
-        padding-block: 0.375rem;
+        padding-block: var(--grammar-inset-nested, 0.5rem);
         pointer-events: none;
     }
 
@@ -1179,11 +1253,13 @@
     .starci-core-list-box-skeleton-option .starci-core-list-box-description { display: block; }
     .starci-core-list-box-skeleton-option .starci-core-list-box-label > .starci-core-skeleton-group { inline-size: 55%; }
     .starci-core-list-box-skeleton-option .starci-core-list-box-description > .starci-core-skeleton-group { inline-size: 80%; }
-    .starci-core-list-box-skeleton-option .starci-core-skeleton { block-size: 0.75rem; }
-    .starci-core-list-box-skeleton-option .starci-core-skeleton-group { gap: 0; margin-block: 0.125rem; }
+    /* Skeleton parity: each line takes the line box of the vendor label (0.875rem / 1.25rem) and description (0.75rem / 1rem). */
+    .starci-core-list-box-skeleton-option .starci-core-list-box-label { font-size: 0.875rem; line-height: 1.25rem; }
+    .starci-core-list-box-skeleton-option .starci-core-list-box-description { font-size: 0.75rem; line-height: 1rem; }
+    .starci-core-list-box-skeleton-option .starci-core-skeleton-group { gap: 0; }
 
     .starci-core-list-box-empty {
-        padding: var(--grammar-section-gap, 1rem);
+        padding: var(--grammar-inset, 0.75rem);
         color: var(--muted, GrayText);
     }
 
@@ -1304,11 +1380,69 @@
         color: var(--muted, GrayText);
     }
 
+    /* ---------- Mascot ---------- */
+    /*
+     * One size scale for generated character art. A square step is a box of its token, the art contained in it on a
+     * transparent ground (no plate, no corner, no crop). The hero fills its host's height up to the hero cap. Below
+     * 48rem a square step drops one step; a hero is absent below 64rem unless kept, then it is the lg box (md below 48rem).
+     */
+    .starci-core-mascot {
+        --starci-core-mascot-box: var(--grammar-mascot-md, 10rem);
+        display: block;
+        flex: none;
+        min-width: 0;
+        max-inline-size: 100%;
+        aspect-ratio: 1 / 1;
+        inline-size: var(--starci-core-mascot-box);
+    }
+
+    .starci-core-mascot[data-grammar-mascot-size="sm"] { --starci-core-mascot-box: var(--grammar-mascot-sm, 6rem); }
+    .starci-core-mascot[data-grammar-mascot-size="lg"] { --starci-core-mascot-box: var(--grammar-mascot-lg, 15rem); }
+
+    .starci-core-mascot[data-grammar-mascot-size="hero"] {
+        aspect-ratio: auto;
+        inline-size: 100%;
+        block-size: 100%;
+        max-block-size: var(--grammar-mascot-hero-max, 30rem);
+    }
+
+    .starci-core-mascot > .starci-core-image {
+        inline-size: 100%;
+        block-size: 100%;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .starci-core-mascot .starci-core-image-element {
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: contain;
+    }
+
+    @media (max-width: 63.999rem) {
+        .starci-core-mascot[data-grammar-mascot-size="hero"][data-grammar-mascot-visibility="wide"] { display: none; }
+
+        .starci-core-mascot[data-grammar-mascot-size="hero"][data-grammar-mascot-visibility="always"] {
+            aspect-ratio: 1 / 1;
+            inline-size: var(--grammar-mascot-lg, 15rem);
+            block-size: auto;
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        .starci-core-mascot[data-grammar-mascot-size="md"] { --starci-core-mascot-box: var(--grammar-mascot-sm, 6rem); }
+        .starci-core-mascot[data-grammar-mascot-size="lg"] { --starci-core-mascot-box: var(--grammar-mascot-md, 10rem); }
+
+        .starci-core-mascot[data-grammar-mascot-size="hero"][data-grammar-mascot-visibility="always"] {
+            inline-size: var(--grammar-mascot-md, 10rem);
+        }
+    }
+
     /* ---------- Rating ---------- */
     .starci-core-rating {
         display: inline-flex;
         align-items: center;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
     }
 
     .starci-core-rating-item {
@@ -1385,7 +1519,7 @@
         min-width: 0;
         grid-template-columns: 1.5rem minmax(0, 1fr);
         gap: var(--grammar-row-gap, 0.75rem);
-        padding-block-end: var(--grammar-section-gap, 1rem);
+        padding-block-end: var(--grammar-row-gap, 0.75rem);
     }
 
     .starci-core-timeline-item:not(:last-child)::before {
@@ -1465,19 +1599,22 @@
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-time > .starci-core-skeleton-group { inline-size: 25%; }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-description > .starci-core-skeleton-group { inline-size: 80%; }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-skeleton-group { gap: 0; }
-    .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-skeleton { block-size: 0.8125rem; }
+    .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-skeleton { --starci-core-skeleton-line: 0.8125rem; }
 
     .starci-core-timeline-copy {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
     }
 
+    /* The list title scale (the ListBox and panel row label, text-sm), not whatever size the page body inherits. */
     .starci-core-timeline-title {
         margin: 0;
         overflow-wrap: anywhere;
+        font-size: 0.875rem;
         font-weight: 600;
+        line-height: 1.25rem;
     }
 
     .starci-core-timeline-time,
@@ -1559,6 +1696,8 @@
     .starci-core-flow-graph[data-grammar-flow-height="sm"] .starci-core-flow-graph-canvas { block-size: 16rem; }
     .starci-core-flow-graph[data-grammar-flow-height="lg"] .starci-core-flow-graph-canvas { block-size: 32rem; }
     .starci-core-flow-graph[data-grammar-flow-height="custom"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-height, 24rem); }
+    /* The readable fit grew the canvas to the graph's aspect at its width rather than shrink the text below 12px. */
+    .starci-core-flow-graph[data-grammar-flow-grown="true"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-grown-height); }
 
     .starci-core-flow-graph-loading > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
 
@@ -1638,7 +1777,7 @@
         align-items: center;
         gap: 0.5rem;
         max-inline-size: 14rem;
-        padding: 0.375rem 0.875rem;
+        padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
         border: 1px solid var(--separator, CanvasText);
         border-radius: 999px;
         background-color: var(--surface, Canvas);
@@ -1666,7 +1805,7 @@
     }
 
     .starci-core-flow-graph-header {
-        padding: 0.125rem 0.625rem;
+        padding: 0 var(--grammar-inset-nested, 0.5rem);
         color: var(--muted, GrayText);
         font-size: 0.6875rem;
         font-weight: 600;
@@ -1678,14 +1817,65 @@
 
     .starci-core-flow-graph-header[data-direction="TB"] { text-align: end; }
 
-    .starci-core-flow-graph-node[data-size="sm"] { padding: 0.25rem 0.625rem; font-size: 0.75rem; }
-    .starci-core-flow-graph-node[data-size="lg"] { padding: 0.625rem 1.25rem; font-size: 1rem; font-weight: 600; }
+    .starci-core-flow-graph-node[data-size="sm"] { padding: var(--grammar-identity-gap, 0.25rem) var(--grammar-inset-nested, 0.5rem); font-size: 0.75rem; }
+    .starci-core-flow-graph-node[data-size="lg"] { padding: var(--grammar-inset, 0.75rem) var(--grammar-section-gap, 1.5rem); font-size: 1rem; font-weight: 600; }
     .starci-core-flow-graph-node[data-tone="accent"] { --starci-flow-tint: var(--accent-soft, transparent); --starci-flow-ink: var(--accent-soft-foreground, CanvasText); }
     .starci-core-flow-graph-node[data-tone="success"] { --starci-flow-tint: var(--success-soft, transparent); --starci-flow-ink: var(--success-soft-foreground, CanvasText); }
     .starci-core-flow-graph-node[data-tone="warning"] { --starci-flow-tint: var(--warning-soft, transparent); --starci-flow-ink: var(--warning-soft-foreground, CanvasText); }
     .starci-core-flow-graph-node[data-tone="danger"] { --starci-flow-tint: var(--danger-soft, transparent); --starci-flow-ink: var(--danger-soft-foreground, CanvasText); }
     .starci-core-flow-graph-node[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted, GrayText); }
     .starci-core-flow-graph-node[data-placeholder="true"] { border-style: dashed; }
+
+    /*
+     * Node shapes (the flowchart outlines). `stadium` is the default pill above. A diamond cannot carry a CSS border, so
+     * its outline and fill are two clipped layers behind the copy: the outer layer in the separator colour, the inner one
+     * inset by the border width in the node's surface and tint.
+     */
+    .starci-core-flow-graph-node[data-shape="rect"] { border-radius: 0.25rem; }
+    .starci-core-flow-graph-node[data-shape="round"] { border-radius: 0.75rem; }
+
+    .starci-core-flow-graph-node[data-shape="circle"] {
+        justify-content: center;
+        min-inline-size: 4.5rem;
+        aspect-ratio: 1;
+        padding: 0.5rem;
+        border-radius: 50%;
+        text-align: center;
+    }
+
+    .starci-core-flow-graph-node[data-shape="diamond"] {
+        isolation: isolate;
+        justify-content: center;
+        min-block-size: 4rem;
+        padding: var(--grammar-inset, 0.75rem) var(--grammar-section-gap, 1.5rem);
+        border-color: transparent;
+        background: none;
+        text-align: center;
+    }
+
+    .starci-core-flow-graph-node[data-shape="diamond"]::before,
+    .starci-core-flow-graph-node[data-shape="diamond"]::after {
+        position: absolute;
+        z-index: -1;
+        content: "";
+        clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    }
+
+    .starci-core-flow-graph-node[data-shape="diamond"]::before {
+        inset: -1px;
+        background: var(--separator, CanvasText);
+    }
+
+    .starci-core-flow-graph-node[data-shape="diamond"]::after {
+        inset: 0.5px;
+        background-color: var(--surface, Canvas);
+        background-image: linear-gradient(var(--starci-flow-tint), var(--starci-flow-tint));
+    }
+
+    /* Edge labels: a small chip at the edge midpoint, the surface under foreground ink so the label reads over any edge. */
+    .starci-core-flow-graph .react-flow__edge-textwrapper { pointer-events: none; }
+    .starci-core-flow-graph .react-flow__edge-textbg { fill: var(--surface, Canvas); stroke: var(--separator, CanvasText); stroke-width: 1px; }
+    .starci-core-flow-graph .react-flow__edge-text { fill: var(--foreground, CanvasText); font-size: 0.75rem; }
 
     .starci-core-flow-graph-copy {
         display: flex;
@@ -1710,7 +1900,7 @@
     .starci-core-flow-graph-count {
         flex: 0 0 auto;
         min-inline-size: 1.25rem;
-        padding: 0 0.375rem;
+        padding: 0 var(--grammar-identity-gap, 0.25rem);
         border-radius: 999px;
         background: var(--surface, Canvas);
         color: var(--foreground, CanvasText);
@@ -1741,7 +1931,7 @@
         justify-content: center;
         inline-size: 2rem;
         block-size: 2rem;
-        padding: 0.375rem;
+        padding: var(--grammar-inset-nested, 0.5rem);
         border: 0;
         background: transparent;
         color: var(--foreground, CanvasText);
@@ -1759,6 +1949,58 @@
 
     @media (forced-colors: active) {
         .starci-core-flow-graph-node[data-grammar-selected="true"] { outline-color: Highlight; forced-color-adjust: none; }
+        .starci-core-flow-graph-node[data-shape="diamond"]::before { background: CanvasText; forced-color-adjust: none; }
+        .starci-core-flow-graph-node[data-shape="diamond"]::after { background: Canvas; forced-color-adjust: none; }
+    }
+
+    /* ---------- MermaidDiagram ----------
+     * The FlowGraph frame (separator edge, surface radius, surface fill). Every state reserves the canvas height, so the
+     * drawing, its skeleton and the error take the same least box; a wider drawing scrolls inline in the canvas. */
+    .starci-core-mermaid-diagram {
+        --starci-mermaid-height: 16rem;
+        display: block;
+        min-width: 0;
+        margin: 0;
+        border: 1px solid var(--separator, CanvasText);
+        border-radius: var(--starci-core-surface-radius, 1rem);
+        background: var(--surface, Canvas);
+        color: var(--foreground, CanvasText);
+    }
+
+    .starci-core-mermaid-diagram[data-grammar-mermaid-height="md"] { --starci-mermaid-height: 24rem; }
+    .starci-core-mermaid-diagram[data-grammar-mermaid-height="lg"] { --starci-mermaid-height: 32rem; }
+
+    .starci-core-mermaid-diagram-canvas {
+        display: grid;
+        min-block-size: var(--starci-mermaid-height);
+        place-items: center;
+        padding: var(--grammar-inset, 0.75rem);
+        overflow-x: auto;
+        border-radius: inherit;
+        outline: none;
+    }
+
+    .starci-core-mermaid-diagram-canvas:focus-visible {
+        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline-offset: -2px;
+    }
+
+    .starci-core-mermaid-diagram-canvas > .starci-core-skeleton {
+        inline-size: 100%;
+        block-size: calc(var(--starci-mermaid-height) - 2 * var(--grammar-section-gap, 1.5rem));
+        aspect-ratio: auto;
+    }
+
+    /* Mermaid sizes the svg to the canvas width up to its natural width (its own max-width); it sits centred. */
+    .starci-core-mermaid-diagram-drawing { min-width: 0; inline-size: 100%; }
+    .starci-core-mermaid-diagram-drawing > svg { display: block; block-size: auto; margin-inline: auto; }
+
+    .starci-core-mermaid-diagram-error {
+        display: flex;
+        min-block-size: var(--starci-mermaid-height);
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+        padding: var(--grammar-inset, 0.75rem);
     }
 
     /*

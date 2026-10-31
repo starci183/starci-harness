@@ -42,6 +42,7 @@ value. Everywhere else CSS uses the grammar's tokens.
 | `starci/no-css-module` | Any `*.module.css`. |
 | `starci/no-class-selector` | A class selector in a plain app stylesheet (`globals.css`, `brand.css` have their own shape rules). |
 | `starci/breakpoint-scale` | A width in `@media` that is not on the grammar's scale (rem, or px at 16px to the rem). |
+| `starci/spacing-scale` | A padding, margin, gap or scroll inset (and a custom property carrying one) whose length is off the spacing scale 0 4 8 12 24 32 (rem, or px at 16px to the rem; a 1px or 2px line passes), or fluid (`clamp()`, a viewport unit). Its spec also judges every `@starci/grammar` stylesheet (finding `FE_SPACING_OFF_SCALE`). |
 | `starci/source-resolves` | A Tailwind `@source` path that does not exist, resolved from the stylesheet's folder (finding `FE_STYLE_SOURCE_UNRESOLVED`). |
 | `starci/globals-import-order` | In `globals.css`: an import outside, or out of, the order `tailwindcss`, `@heroui/styles/css`, a grammar family stylesheet, `modules/brand/brand.css`, then `@source`. |
 

@@ -163,7 +163,7 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null }: { cwd: st
 }
 
 const eslintFindings = (results: readonly Dynamic[], appRoot: string): LintFinding[] => results.flatMap((result) => (result.messages ?? []).map((message: Dynamic): LintFinding => ({
-  engine: 'eslint', rule: message.ruleId ?? 'eslint-error', code: CODE_PREFIX.exec(message.message ?? '')?.[1] ?? null, severity: 'error',
+  engine: 'eslint', rule: message.ruleId ?? 'eslint-error', code: CODE_PREFIX.exec(message.message ?? '')?.[1] ?? null, severity: message.severity === 1 ? 'warning' : 'error',
   path: posix(path.relative(appRoot, result.filePath)), line: message.line ?? null, column: message.column ?? null, message: message.message,
 })));
 
@@ -597,16 +597,22 @@ export async function lintRepository({ repoRoot, opts, hfsCheck, trackedFiles = 
     linterReport('eslint', raw.eslint, { root: repoRoot, sourceRoots, tracked }),
     linterReport('stylelint', raw.stylelint, { root: repoRoot, sourceRoots, tracked }),
   ]);
-  // Green under the threshold (gate-threshold.mjs): every finding is still reported, only the verdict changes.
-  const gate = gateVerdict(findings);
-  const report = { schema: LINT_SCHEMA, ok: gate.pass && errors.length === 0, repoRoot, changed: changed ? [...changed].sort(byCodeUnit) : null, workspace, ...(opts.side === undefined ? {} : { side: opts.side }), counts: { error: findings.length }, engines, errors, findings, gate };
+  // Green under the threshold (gate-threshold.mjs): every finding is still reported, only the verdict changes. A warning is a
+  // rule of the canon's counting cohort (eslint-canon-fe COUNTING): reported and counted per rule, never part of the verdict.
+  const failing = findings.filter((finding) => finding.severity !== 'warning');
+  const counting: Record<string, number> = {};
+  for (const finding of findings) if (finding.severity === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
+  const gate = gateVerdict(failing);
+  const report = { schema: LINT_SCHEMA, ok: gate.pass && errors.length === 0, repoRoot, changed: changed ? [...changed].sort(byCodeUnit) : null, workspace, ...(opts.side === undefined ? {} : { side: opts.side }), counts: { error: failing.length, warning: findings.length - failing.length }, counting, engines, errors, findings, gate };
   return { report, sonar, exit: errors.length ? 2 : gate.pass ? 0 : 1 };
 }
 
 export function printLintText(report: Dynamic, out: (text: string) => unknown): void {
-  for (const f of report.findings as LintFinding[]) out(`${f.path ?? '-'}${f.line ? `:${f.line}${f.column ? `:${f.column}` : ''}` : ''}  ${f.engine}/${f.rule}  ${f.message}\n`);
+  for (const f of report.findings as LintFinding[]) out(`${f.path ?? '-'}${f.line ? `:${f.line}${f.column ? `:${f.column}` : ''}` : ''}  ${f.severity === 'warning' ? 'warn ' : ''}${f.engine}/${f.rule}  ${f.message}\n`);
   for (const e of report.errors as string[]) out(`ERROR ${e}\n`);
-  const per = Object.keys(report.engines).map((engine) => `${engine} ${report.findings.filter((f: LintFinding) => f.engine === engine).length}`).join(', ');
+  const per = Object.keys(report.engines).map((engine) => `${engine} ${report.findings.filter((f: LintFinding) => f.engine === engine && f.severity !== 'warning').length}`).join(', ');
   out(`\nstarci app lint: ${report.counts.error} finding${report.counts.error === 1 ? '' : 's'} (${per})${report.errors.length ? `, ${report.errors.length} tool error${report.errors.length === 1 ? '' : 's'}` : ''}\n`);
+  const counting = Object.entries((report.counting ?? {}) as Record<string, number>).sort(([a], [b]) => a.localeCompare(b));
+  if (counting.length) out(`counting (warn, not in the verdict): ${counting.map(([rule, count]) => `${rule} ${count}`).join(', ')}\n`);
   if (report.gate?.line) out(`${report.gate.line}\n`);
 }

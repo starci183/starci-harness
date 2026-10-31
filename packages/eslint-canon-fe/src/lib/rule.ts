@@ -33,6 +33,9 @@ export type Rules = Readonly<Record<string, Rule<string, readonly unknown[]>>>
 /** The level a law asks for each of its rules, by `starci-fe/<name>`. */
 export type Recommended = Readonly<Record<string, "error">>
 
+/** The level of a rule in its counting cohort (lib/config.ts `COUNTING`): reported and counted, never failing. */
+export type CountingRecommended = Readonly<Record<string, "warn">>
+
 /**
  * A rule with its message ids and options inferred from the literal: `defineRule({ meta: { messages: { a: "..." } }, ... })`
  * types `context.report({ messageId })` against `a`. It returns the object it is given.

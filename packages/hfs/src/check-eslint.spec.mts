@@ -17,8 +17,9 @@ interface Report {
   ok: boolean;
   schema: string;
   gate: { pass: boolean };
-  counts: { error: number };
-  findings: { code: string; rule?: string }[];
+  counts: { error: number; warning?: number };
+  counting?: Record<string, number>;
+  findings: { code: string; rule?: string; severity?: string }[];
   eslint: { sides: unknown; errors: unknown };
 }
 
@@ -138,3 +139,19 @@ test('CLI app check refuses an unavailable ESLint transport with exit 2 and pres
   assert.deepEqual(checked.report.eslint.errors, ['ESLint transport did not complete.', 'ESLint transport did not complete.']);
 });
 
+
+test('a counting-cohort warning is reported and counted per rule and never enters the verdict, however many there are', async context => {
+  const app = fixture(context), runs: Run[] = [];
+  const base = transport(app, runs);
+  const warning = { ruleId: 'starci-fe/no-spacing-utility', severity: 1, message: '`gap-4` writes a distance the Grammar owns.', line: 2, column: 1 };
+  const counting: LinterRunner = async (spec) => {
+    const run = await base(spec);
+    return { results: (run.results ?? []).map((result: { filePath: string; messages: unknown[] }) => ({ ...result, messages: [...result.messages, ...Array.from({ length: 25 }, () => warning)] })) };
+  };
+  const checked = await invoke(['lint', '--changed', 'fe/src/family.tsx'], app, ({ repoRoot }) => cleanCheck(repoRoot), counting);
+  assert.equal(checked.exit, 0, '25 warnings sit above the error threshold and still leave the gate green');
+  assert.equal(checked.report.gate.pass, true);
+  assert.deepEqual(checked.report.counts, { error: 1, warning: 25 });
+  assert.deepEqual(checked.report.counting, { 'starci-fe/no-spacing-utility': 25 });
+  assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning').length, 25);
+});

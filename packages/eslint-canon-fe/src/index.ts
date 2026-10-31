@@ -45,9 +45,10 @@ import { recommended as translationRecommended, rules as translationRules } from
 import { recommended as typeSafetyRecommended, rules as typeSafetyRules } from "./type-safety.ts"
 import { recommended as projectGraphRecommended, rules as projectGraphRules } from "./project-graph.ts"
 import { recommended as sonarParityRecommended, rules as sonarParityRules } from "./sonar-parity.ts"
+import { recommended as spacingRecommended, rules as spacingRules } from "./spacing.ts"
 import type { ESLint, Linter } from "eslint"
-import { buildFeConfig, buildPlainSourceConfig, type CanonPlugin, type SonarPlugins } from "./lib/config.ts"
-import type { Recommended, Rule, Rules } from "./lib/rule.ts"
+import { buildFeConfig, buildPlainSourceConfig, COUNTING, type CanonPlugin, type SonarPlugins } from "./lib/config.ts"
+import type { Rule, Rules } from "./lib/rule.ts"
 import { why } from "./lib/why.ts"
 import { recommended as uiRulingsRecommended, rules as uiRulingsRules } from "./ui-rulings.ts"
 
@@ -55,7 +56,7 @@ import { recommended as uiRulingsRecommended, rules as uiRulingsRules } from "./
 interface Contribution {
   readonly law: string
   rules: Rules
-  recommended: Recommended
+  recommended: Readonly<Record<string, "error" | "warn">>
 }
 
 /** A rule as declared by its law. */
@@ -105,6 +106,7 @@ const CONTRIBUTIONS: Contribution[] = [
   { law: "transport", rules: transportRules, recommended: transportRecommended },
   { law: "type-safety", rules: typeSafetyRules, recommended: typeSafetyRecommended },
   { law: "sonar-parity", rules: sonarParityRules, recommended: sonarParityRecommended },
+  { law: "spacing", rules: spacingRules, recommended: spacingRecommended },
 ]
 
 /** Every gathered law. */
@@ -147,9 +149,10 @@ export const rules: Record<string, Rule> = Object.fromEntries(
  * The levels this canon asks for, as the plugin's own opinion.
  *
  * Every FE canon rule is an error. Existing debt is fixed before adoption; lowering architecture
- * to warn teaches every later author that the boundary is optional and is not a supported rollout.
+ * to warn teaches every later author that the boundary is optional and is not a supported rollout. The one
+ * exception is the closed counting cohort of lib/config.ts (`COUNTING`), an owner-ruled warn for one release.
  */
-export const recommended: Record<string, "error"> = Object.fromEntries(
+export const recommended: Record<string, "error" | "warn"> = Object.fromEntries(
   CONTRIBUTIONS.flatMap((entry) => Object.entries(entry.recommended)),
 )
 
@@ -261,7 +264,7 @@ export const reactHooksRules = (reactHooks: unknown): Record<string, "error"> =>
  */
 export const starciFeConfig = ({ hfs }: { readonly hfs?: unknown } = {}): Linter.Config[] => {
   const published = Object.keys(rules).map((name) => `starci-fe/${name}`)
-  const notRequested = published.filter((name) => recommended[name] !== "error")
+  const notRequested = published.filter((name) => recommended[name] !== (name in COUNTING ? "warn" : "error"))
   if (notRequested.length > 0) {
     throw new Error(`starciFeConfig: these published rules are not requested at error: ${notRequested.join(", ")}`)
   }

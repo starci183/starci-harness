@@ -22,7 +22,7 @@ import plugin, {
   starciTypedSourceConfig,
   why,
 } from "./index.ts"
-import { BORROWED, PLAIN_SOURCE_FILES, SLOT_FREE_RULES } from "./lib/config.ts"
+import { BORROWED, COUNTING, PLAIN_SOURCE_FILES, SLOT_FREE_RULES } from "./lib/config.ts"
 import { eslintPlugin } from "./lib/eslint-boundary.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { PACKAGE_ROOT, RUNTIME_ROOT } from "./lib/package-root.ts"
@@ -98,24 +98,37 @@ test("the factory returns an ignore block, a typed source block and the Sonar wa
   assert.throws(() => starciFeConfig({ hfs: be }), /this view is the be side/)
 })
 
-test("every published rule is enabled at error - no rule is off, none is a warning", () => {
+/** The level a published rule must have: error, or warn for a rule of the counting cohort. */
+const levelFor = (name: string): "error" | "warn" => (name in COUNTING ? "warn" : "error")
+
+test("every published rule is enabled at error - no rule is off, only the counting cohort is a warning", () => {
   const enabled = rulesOf(source)
   for (const name of Object.keys(rules)) {
-    assert.equal(enabled[`starci-fe/${name}`], "error", `starci-fe/${name} is not an error in the factory's blocks`)
+    assert.equal(enabled[`starci-fe/${name}`], levelFor(`starci-fe/${name}`), `starci-fe/${name} is not at its level in the factory's blocks`)
   }
 })
 
-test("no rule in either block is off, warn or a numeric level below error", () => {
+test("no rule in either block is off, warn or a numeric level below error, outside the counting cohort", () => {
   for (const block of single) {
     for (const [name, setting] of Object.entries(rulesOf(block))) {
       const level = levelOf(setting)
-      assert.equal(level, "error", `${name} is ${JSON.stringify(setting)}`)
+      assert.equal(level, levelFor(name), `${name} is ${JSON.stringify(setting)}`)
     }
   }
 })
 
+test("the counting cohort is closed: each entry is a published rule at warn naming its HFS rule and ruling", () => {
+  assert.deepEqual(Object.keys(COUNTING), ["starci-fe/no-spacing-utility"])
+  for (const [name, entry] of Object.entries(COUNTING)) {
+    assert.ok(name.replace(/^starci-fe\//, "") in rules, `${name} is a published rule`)
+    assert.equal(recommended[name], "warn", name)
+    assert.match(entry.rule, /^R\d+$/, name)
+    assert.ok(entry.ruling.length > 0, name)
+  }
+})
+
 test("the source block carries every published rule and the hooks rules", () => {
-  for (const name of Object.keys(recommended)) assert.equal(rulesOf(source)[name], "error")
+  for (const name of Object.keys(recommended)) assert.equal(rulesOf(source)[name], levelFor(name))
   assert.deepEqual(Object.keys(recommended).sort(), Object.keys(rulesOf(source)).filter((name) => name.startsWith("starci-fe/")).sort(), "the block holds the canon rules and nothing else of the plugin")
 })
 

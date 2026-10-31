@@ -80,42 +80,30 @@ for (const Field of ["Input", "TextField", "Textarea", "TextArea", "SearchField"
 }
 
 for (const Surface of ["SurfaceCard", "SurfaceListCard", "Sidebar", "Drawer", "Dialog", "AlertDialog", "Popover", "TopBar", "NavigationFeatureNav"]) {
-  test(`ANATOMY-2: Tabs uses the ${Surface} surface context`, () => {
+  test(`ANATOMY-2: Tabs in ${Surface} are the underline bar`, () => {
     assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
-      valid: [`import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs /></${Surface}>`],
-      invalid: [{ code: `import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs variant="primary" /></${Surface}>`, errors: [tabs] }],
+      valid: [
+        `import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs /></${Surface}>`,
+        `import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs variant="primary" /></${Surface}>`,
+      ],
+      invalid: [{ code: `import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs variant="secondary" /></${Surface}>`, errors: [tabs] }],
     }))
   })
 }
 
-test("ANATOMY-2: Tabs distinguishes painted slots, transparent containers and overlay triggers", () => {
-  const imports = 'import { WorkspaceShell, TopBar, NavigationFeatureNav, Rail, PaneGrid, SurfaceAccordionCard, Dialog, Tabs } from "@starci/grammar/core"; '
+test("ANATOMY-2: Tabs are the underline bar on the page, in a slot or a pane; the pill is refused wherever it is set", () => {
+  const imports = 'import { WorkspaceShell, TopBar, Rail, PaneGrid, Dialog, Tabs } from "@starci/grammar/core"; '
   assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
     valid: [
       imports + 'const Page=()=> <Tabs variant="primary" />',
-      imports + 'const Page=()=> <Rail><Tabs variant="primary" /></Rail>',
-      imports + 'const Page=()=> <SurfaceAccordionCard frame="unpainted"><Tabs variant="primary" /></SurfaceAccordionCard>',
-      imports + 'const choice="unpainted"; const Page=()=> <SurfaceAccordionCard frame={choice}><Tabs variant="primary" /></SurfaceAccordionCard>',
-      imports + 'const Page=()=> <SurfaceAccordionCard {...props} frame="unpainted"><Tabs variant="primary" /></SurfaceAccordionCard>',
-      imports + 'const Page=()=> <SurfaceAccordionCard {...{...props,frame:"unpainted"}}><Tabs variant="primary" /></SurfaceAccordionCard>',
-      imports + 'const props={id:"details"}; const Page=()=> <SurfaceAccordionCard frame="unpainted" {...props}><Tabs variant="primary" /></SurfaceAccordionCard>',
-      imports + 'const Page=()=> <SurfaceAccordionCard frame="unpainted" {...(active ? {id:"details"} : {frame:"unpainted"})}><Tabs variant="primary" /></SurfaceAccordionCard>',
-      imports + 'const Page=()=> <WorkspaceShell primary={<Tabs variant="primary" />} />',
-      imports + 'const Page=()=> <PaneGrid label="Panes" areas={["a"]}><Tabs variant="primary" /></PaneGrid>',
-      imports + 'const Page=()=> <Dialog trigger={<Tabs variant="primary" />}><Tabs /></Dialog>',
-      imports + 'const Page=()=> <TopBar actions={<Tabs variant="secondary" />} />',
+      imports + 'const Page=()=> <Rail><Tabs /></Rail>',
+      imports + 'const Page=()=> <WorkspaceShell header={<Tabs variant="primary" />} />',
+      imports + 'const Page=()=> <PaneGrid label="Panes" areas={["a"]}><Tabs /></PaneGrid>',
     ],
     invalid: [
-      { code: imports + 'const Page=()=> <WorkspaceShell header={<Tabs variant="primary" />} />', errors: [tabs] },
-      { code: imports + 'const Page=()=> <TopBar actions={<Tabs variant="primary" />} />', errors: [tabs] },
-      { code: imports + 'const Page=()=> <NavigationFeatureNav primary={<Tabs variant="primary" />} />', errors: [tabs] },
-      { code: imports + 'const Page=()=> <SurfaceAccordionCard><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
-      { code: imports + 'const Page=()=> <SurfaceAccordionCard frame="bounded"><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
-      { code: imports + 'const Page=()=> <SurfaceAccordionCard frame={active ? "bounded" : "unpainted"}><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
-      { code: imports + 'const Page=()=> <SurfaceAccordionCard frame={frame}><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
-      { code: imports + 'const Page=()=> <SurfaceAccordionCard frame={active ? "unpainted" : frame}><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
-      { code: imports + 'const Page=()=> <SurfaceAccordionCard frame="unpainted" {...props}><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
-      { code: imports + 'const Page=()=> <SurfaceAccordionCard {...{frame:"unpainted",...props}}><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
+      { code: imports + 'const Page=()=> <Tabs variant="secondary" />', errors: [tabs] },
+      { code: imports + 'const Page=()=> <TopBar actions={<Tabs variant="secondary" />} />', errors: [tabs] },
+      { code: imports + 'const Page=()=> <Dialog trigger={<Tabs variant={"secondary"} />}><Tabs /></Dialog>', errors: [tabs] },
     ],
   }))
 })

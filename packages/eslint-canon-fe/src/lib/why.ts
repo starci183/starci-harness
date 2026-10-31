@@ -34,6 +34,11 @@ export const why = {
     en: "`<file>` insets a horizontal Grammar divider with wrapper padding.",
     fix: "Move horizontal padding to the sibling content bands so the divider reaches both surface edges.",
   },
+  "no-spacing-utility": {
+    code: "FE_SPACING_UTILITY",
+    en: "`<file>` writes a padding, margin, gap or space utility (`<what>`): a distance the Grammar owns.",
+    fix: "Name the relation instead: a Stack or Cluster gap role, a Grid kind, or the inset of the Grammar box that holds the content.",
+  },
   "no-hand-built-panes": {
     code: "FE_HAND_BUILT_PANES",
     en: "`<file>` draws a multi-pane frame by hand: a vertical Divider between columns of a flex row, or a flex row of columns inside a joined SurfaceCard.",

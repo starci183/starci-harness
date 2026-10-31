@@ -13,6 +13,7 @@ import { dirname } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import plugin, { lawOwners, linterOptions, recommended, ruleDeclarations, rules } from "./index.ts"
+import { COUNTING } from "./lib/config.ts"
 import { gatheredPluginSpec } from "../../eslint-canon-be/fixtures/gathered-plugin.ts"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -25,8 +26,8 @@ test("fe: the plugin publishes rules only - no repository audit rides beside it"
   assert.equal(module.auditOwners, undefined)
 })
 
-test("fe: every FE canon rule is strict - no warn or off rollout", () => {
-  const loose = Object.entries(recommended).filter(([, level]) => level !== "error")
+test("fe: every FE canon rule is strict - no warn or off rollout outside the counting cohort", () => {
+  const loose = Object.entries(recommended).filter(([name, level]) => level !== (name in COUNTING ? "warn" : "error"))
   assert.deepEqual(loose, [], "FE canon contains a rule that is not an error")
 })
 

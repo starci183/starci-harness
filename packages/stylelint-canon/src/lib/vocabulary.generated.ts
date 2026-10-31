@@ -68,6 +68,7 @@ export const DECLARED: readonly string[] = [
   "--shadow-surface",
   "--starci-flow-ink",
   "--starci-flow-tint",
+  "--starci-mermaid-height",
   "--starci-surface-tertiary",
   "--starci-surface-tertiary-foreground",
   "--success",
@@ -84,6 +85,9 @@ export const DECLARED: readonly string[] = [
   "--surface-shadow",
   "--surface-tertiary",
   "--surface-tertiary-foreground",
+  "--terminal-background",
+  "--terminal-foreground",
+  "--terminal-title-foreground",
   "--warning",
   "--warning-foreground",
   "--warning-hover",
@@ -109,6 +113,7 @@ export const VENDOR: readonly string[] = [
   "--radius-xl",
   "--radius-xs",
   "--starci-drag-item-leading",
+  "--starci-flow-grown-height",
   "--starci-flow-height",
 ]
 
@@ -120,6 +125,7 @@ export const BREAKPOINTS: readonly string[] = [
   "47.999rem",
   "48rem",
   "56rem",
+  "63.999rem",
   "70rem",
 ]
 

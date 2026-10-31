@@ -38,13 +38,19 @@ configuration for source that has not adopted the product composition laws.
 
 The [surface composition law](docs/surface-rules.md) (R318) holds ANATOMY-2 and PADDING-0 for every
 family that publishes the shared HeroUI surface and field API: `nested-control-variant` refuses static
-variants on layer-aware fields and primary Tabs inside painted Grammar surfaces (`FE_NESTED_VARIANT`),
+variants on layer-aware fields and the pill (`variant="secondary"`) on Tabs, which are the underline bar (`FE_NESTED_VARIANT`),
 `no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`) and
 `no-list-panel-padding` refuses horizontal padding wrappers around Grammar lists and section captions
 within the nearest painted surface, a `Pane` or a `PaneSection` included (`FE_LIST_PANEL_PADDING`), and
 `no-hand-built-panes` refuses a multi-pane frame drawn by hand, a vertical divider as a column seam or
 columns inside a joined card, where `PaneGrid` owns both (`FE_HAND_BUILT_PANES`). The R65 budget law's
 `no-app-relative-clock` leaves live relative time and countdowns to Grammar's shared clock.
+
+The spacing law (R350) leaves every distance to Grammar: `no-spacing-utility` refuses a padding, margin, gap
+or space utility (`p-*`, `px-*`, `m*-*`, `gap-*`, `space-*`, arbitrary values and variants included) in an app class
+string, where a role prop names the relation instead (`Stack`/`Cluster` `gap`, `Grid` `kind`, `PaneSection`, `Page`;
+`FE_SPACING_UTILITY`). It runs in the counting cohort (`COUNTING` of `src/lib/config.ts`): `starci app lint` reports
+and counts every finding at warn and fails on none, while `starci app codemod spacing-roles` migrates the app.
 
 The [button intent law](docs/button-intent.md) (CTA-6) requires every app Button and IconButton to
 declare intent and leave variants to Grammar. It contains destructive confirms in their same-file

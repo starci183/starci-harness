@@ -15,6 +15,7 @@ import { globalsImportOrder } from "./globals-import-order.ts"
 import { noClassSelector } from "./no-class-selector.ts"
 import { noCssModule } from "./no-css-module.ts"
 import { sourceResolves } from "./source-resolves.ts"
+import { spacingScale } from "./spacing-scale.ts"
 import { statusContrast } from "./status-contrast.ts"
 import { globalsShape } from "./globals-shape.ts"
 import { noApplyRaw } from "./no-apply-raw.ts"
@@ -31,6 +32,7 @@ export { loadAppTokens } from "./lib/app-tokens.ts"
 export { findRawBrandValue, HEX_COLOR, COLOR_FUNCTION, PIXEL_LENGTH } from "./lib/brand-value.ts"
 export { isGrammarToken, FAMILY_PREFIXES } from "./lib/vocabulary.ts"
 export { BRAND_FILE, fileKind } from "./lib/scope.ts"
+export { SPACING_SCALE_REM, isSpacingProperty } from "./spacing-scale.ts"
 
 /** Every rule of the canon by short name; each is published as `starci/<name>`. */
 export const rules = {
@@ -46,6 +48,7 @@ export const rules = {
   "no-css-module": noCssModule,
   "no-class-selector": noClassSelector,
   "breakpoint-scale": breakpointScale,
+  "spacing-scale": spacingScale,
   "source-resolves": sourceResolves,
   "globals-import-order": globalsImportOrder,
 }

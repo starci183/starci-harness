@@ -270,11 +270,11 @@ const inSectionCaption = (context: AnyContext, node: TSESTree.JSXOpeningElement)
 export const nestedControlVariant = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "ANATOMY-2: Grammar context supplies field variants; nested Tabs cannot force primary." },
+    docs: { description: "ANATOMY-2: Grammar context supplies field variants; Tabs are the underline bar, never the pill." },
     schema: [],
     messages: {
       variant: "FE_NESTED_VARIANT: app fields cannot set a static variant. Omit variant so Grammar's surface context supplies the appropriate default.",
-      tabs: "FE_NESTED_VARIANT: Tabs inside a Grammar surface cannot force variant=\"primary\". Omit variant so Grammar supplies secondary.",
+      tabs: "FE_NESTED_VARIANT: Tabs are the underline bar, their labels text on the content edge; variant=\"secondary\" is the pill, a filter's shape. Omit variant, or filter a collection with a selectable TagGroup.",
     },
   },
   create(context) {
@@ -286,8 +286,8 @@ export const nestedControlVariant = defineRule({
           const variant = node.attributes.find((entry) => propStrings(context, entry, "variant", "variant").length > 0)
           if (variant) context.report({ node: variant, messageId: "variant" })
         } else if (name[0] === "Tabs") {
-          const primary = node.attributes.find((entry) => propStrings(context, entry, "variant", "variant").some((value) => value.text === "primary"))
-          if (primary && [...surfaceAncestors(context, node.parent)].some((ancestor) => isSurface(context, ancestor, node))) context.report({ node: primary, messageId: "tabs" })
+          const pill = node.attributes.find((entry) => propStrings(context, entry, "variant", "variant").some((value) => value.text === "secondary"))
+          if (pill) context.report({ node: pill, messageId: "tabs" })
         }
       },
     }

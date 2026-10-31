@@ -121,7 +121,7 @@ import { BOOLEAN as CI_BOOLEAN, COMMANDS as CI_COMMANDS } from '../ci/cli.mjs';
 import { LOCAL_FLAGS as CI_LOCAL_FLAGS } from '../ci/local.mjs';
 import { USAGE as COVERAGE_USAGE } from '../coverage/cli.mjs';
 import { SYNC_USAGE } from '../sync/cli.mjs';
-import { codemodMain } from '../codemod/button-intent.mjs';
+import { codemodMain } from '../codemod/main.mjs';
 import type { VerbIo } from '../release/index.mjs';
 import type { GhSpawn } from '../ci/github.mjs';
 import type { Prompt } from '../runtime/scripts/hfs/secret-prompt.mjs';
@@ -223,7 +223,7 @@ const VERB_USAGE: Record<string, string[]> = {
   ...Object.fromEntries(Object.entries(PARSED).map(([verb, spec]) => [verb, spec.forms.map((form: UsageForm) => line(`starci app ${verb}`, form.operands,
     specUsage(form.only ?? (form.flags === undefined ? spec : { value: form.flags })), spec.edition && form.edition !== false ? flagUsage('--edition', { value: true }) : ''))])),
   lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--full] [--json] [--out <file>]'],
-  codemod: ['starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]'],
+  codemod: ['starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]', 'starci app codemod spacing-roles [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]'],
   upgrade: ['starci app upgrade [--execute]'],
   sync: [SYNC_USAGE.sync],
   world: ['starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--edition full|lite]'],

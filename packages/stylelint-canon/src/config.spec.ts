@@ -84,6 +84,7 @@ test("every rule fires through the factory config on a stylesheet that breaks it
     ["@media (min-width: 500px) { [data-a] { color: var(--accent); } }", FILES.css],
     ["@source \"./nowhere-at-all\";", FILES.globals],
     ["@import \"other.css\";", FILES.globals],
+    ["[data-a] { gap: var(--grammar-row-gap, 0.375rem); }", FILES.css],
   ]
   for (const [code, file] of cases) for (const warning of await lint(code, file)) fired.add(warning.rule)
   assert.deepEqual([...fired].sort(), [...ruleNames].sort())
@@ -101,9 +102,9 @@ test("every rule has a why with a code, an English headline and an English next 
   }
 })
 
-const CODES: Record<string, string> = { "no-inline-lint-config": "HFS_INLINE_SUPPRESSION", "source-resolves": "FE_STYLE_SOURCE_UNRESOLVED" }
+const CODES: Record<string, string> = { "no-inline-lint-config": "HFS_INLINE_SUPPRESSION", "source-resolves": "FE_STYLE_SOURCE_UNRESOLVED", "spacing-scale": "FE_SPACING_OFF_SCALE" }
 
-test("no why names a rule that does not exist, and the rules share the R61 code except suppression and unresolved @source", () => {
+test("no why names a rule that does not exist, and the rules share the R61 code except suppression, unresolved @source and the spacing scale", () => {
   assert.deepEqual(Object.keys(why).sort(), Object.keys(rules).sort())
   for (const name of Object.keys(rules)) {
     assert.equal(why[name]?.code, CODES[name] ?? "FE_STYLE_TOKEN_ONLY", name)

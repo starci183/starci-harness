@@ -4,7 +4,7 @@ Law module: `surface-rules.mjs`. HFS rule: R318. Canon: ANATOMY-2 and PADDING-0.
 
 ## `starci-fe/nested-control-variant`
 
-Finding code: `FE_NESTED_VARIANT`. Grammar context supplies field variants on the page background and inside painted surfaces. App code omits every static `variant` on layer-aware fields, including fields rendered by imported or helper components. Named import aliases, namespace imports, static constants and props spreads preserve Grammar ownership. Explicit primary `Tabs` inside a painted surface is also refused; its default follows the surface context.
+Finding code: `FE_NESTED_VARIANT`. Grammar context supplies field variants on the page background and inside painted surfaces. App code omits every static `variant` on layer-aware fields, including fields rendered by imported or helper components. Named import aliases, namespace imports, static constants and props spreads preserve Grammar ownership. `Tabs` are the underline bar everywhere, their labels text on the content edge, so the pill (`variant="secondary"`) is refused wherever it is set: a pill is a filter's shape, and a filter over a collection is a selectable `TagGroup`.
 
 Invalid:
 

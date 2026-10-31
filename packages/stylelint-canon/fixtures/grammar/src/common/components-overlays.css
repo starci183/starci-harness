@@ -41,7 +41,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: var(--grammar-page-inset, 1rem);
+        padding: var(--grammar-page-inset, 0.75rem);
         background: color-mix(in srgb, var(--foreground, CanvasText) 40%, transparent);
         overscroll-behavior: contain;
     }
@@ -106,7 +106,7 @@
         min-width: 0;
         flex: 1;
         flex-direction: column;
-        gap: var(--grammar-section-gap, 1rem);
+        gap: var(--grammar-row-gap, 0.75rem);
         overflow: hidden;
         color: var(--surface-foreground, CanvasText);
     }
@@ -393,25 +393,25 @@
         position: fixed;
         z-index: 60;
         display: flex;
-        width: min(24rem, calc(100vw - 2 * var(--grammar-page-inset, 1rem)));
+        width: min(24rem, calc(100vw - 2 * var(--grammar-page-inset, 0.75rem)));
         flex-direction: column;
         pointer-events: none;
     }
 
     .starci-core-toaster:is([data-placement="top-start"], [data-placement="top"], [data-placement="top-end"]) {
-        top: var(--grammar-page-inset, 1rem);
+        top: var(--grammar-page-inset, 0.75rem);
     }
 
     .starci-core-toaster:is([data-placement="bottom-start"], [data-placement="bottom"], [data-placement="bottom-end"]) {
-        bottom: max(var(--grammar-page-inset, 1rem), env(safe-area-inset-bottom));
+        bottom: max(var(--grammar-page-inset, 0.75rem), env(safe-area-inset-bottom));
     }
 
     .starci-core-toaster:is([data-placement="top-start"], [data-placement="bottom-start"]) {
-        inset-inline-start: var(--grammar-page-inset, 1rem);
+        inset-inline-start: var(--grammar-page-inset, 0.75rem);
     }
 
     .starci-core-toaster:is([data-placement="top-end"], [data-placement="bottom-end"]) {
-        inset-inline-end: var(--grammar-page-inset, 1rem);
+        inset-inline-end: var(--grammar-page-inset, 0.75rem);
     }
 
     .starci-core-toaster:is([data-placement="top"], [data-placement="bottom"]) {
@@ -441,8 +441,6 @@
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto auto;
         align-items: start;
-        gap: 0.5rem 0.75rem;
-        padding: 0.75rem 0.5rem 0.75rem 1rem;
         border-radius: var(--starci-core-surface-radius, 1rem);
         background: var(--surface, Canvas);
         color: var(--surface-foreground, CanvasText);
@@ -452,14 +450,14 @@
 
     .starci-core-toast-indicator {
         display: inline-flex;
-        margin-block-start: 0.125rem;
+        margin-block-start: var(--grammar-identity-gap, 0.25rem);
         color: var(--starci-core-overlay-tone);
     }
 
     .starci-core-toast-indicator[data-grammar-toast-indicator] {
         width: 0.625rem;
         height: 0.625rem;
-        margin-block-start: 0.375rem;
+        margin-block-start: var(--grammar-identity-gap, 0.25rem);
         border-radius: 999px;
         background: var(--starci-core-overlay-tone);
     }
@@ -468,7 +466,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
         align-self: center;
     }
 
@@ -493,7 +491,7 @@
 
     @media (max-width: 40rem) {
         .starci-core-toaster {
-            inset-inline: var(--grammar-page-inset, 1rem);
+            inset-inline: var(--grammar-page-inset, 0.75rem);
             width: auto;
             margin-inline: 0;
         }
@@ -518,6 +516,8 @@
      */
     .starci-core-alert[data-grammar-appearance="soft"] {
         --starci-core-alert-soft: var(--default-soft, var(--default, transparent));
+        background: color-mix(in oklab, var(--starci-core-alert-soft) 50%, transparent);
+        box-shadow: none;
     }
 
     .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="informative"] {
@@ -546,6 +546,14 @@
     .starci-core-alert-indicator {
         flex: none;
     }
+
+    /* A loading Alert (skeleton parity): the glyph keeps its place as a round Skeleton tint. */
+    .starci-core-alert[data-loading="true"] .starci-core-alert-indicator {
+        border-radius: 999px;
+        background: color-mix(in oklab, var(--surface-tertiary, #e4e4e7) 70%, transparent);
+    }
+
+    .starci-core-alert[data-loading="true"] .starci-core-alert-indicator > * { visibility: hidden; }
 
     .starci-core-alert-title {
         margin: 0;
@@ -612,7 +620,7 @@
         min-width: 1.5rem;
         align-items: center;
         justify-content: center;
-        gap: 0.125rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
         border: 1px solid var(--border, CanvasText);
         white-space: nowrap;
     }
@@ -663,11 +671,16 @@
     }
 
     /* ---------------------------------------------------------------- skeleton */
+    /*
+     * Skeleton parity: a text skeleton takes the line box of the copy it stands for. Each line occupies exactly `1lh` of
+     * the inherited type (the bar, `--starci-core-skeleton-line` tall, is centred in it by its margins), so `lines={n}`
+     * is as tall as n lines of that copy. A context sizes the bar through the variable, never the block size.
+     */
     .starci-core-skeleton-group {
         display: flex;
         width: 100%;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0;
     }
 
     .starci-core-skeleton {
@@ -678,8 +691,31 @@
 
     .starci-core-skeleton-group > .starci-core-skeleton {
         width: 100%;
-        height: 0.875em;
+        height: var(--starci-core-skeleton-line, 0.875em);
+        margin-block: calc((1lh - var(--starci-core-skeleton-line, 0.875em)) / 2);
     }
+
+    /*
+     * The measured placeholder (internal `SkeletonPlaceholder`): the ready content is laid out unseen and the shimmer
+     * paints its box. A text run is an inline block one line box per line (`vertical-align: top` keeps it from growing
+     * the line box); a block or circle sizes to its control or mark.
+     */
+    .starci-core-skeleton-placeholder {
+        display: inline-block;
+        max-inline-size: 100%;
+        vertical-align: top;
+        color: transparent;
+        user-select: none;
+    }
+
+    .starci-core-skeleton-placeholder > * { visibility: hidden; }
+    .starci-core-skeleton-placeholder[data-shape="block"] { display: inline-flex; }
+    .starci-core-skeleton-placeholder[data-shape="circle"] { display: inline-flex; border-radius: 999px; }
+    .starci-core-skeleton-placeholder[data-shape="region"] { display: block; }
+    .starci-core-skeleton-placeholder[data-shape="text"]:empty { inline-size: min(100%, 8rem); block-size: 1lh; }
+
+    /* A skeleton root that keeps its content as a measured placeholder (Button, Badge, StatusDot) paints none of it. */
+    :is(.starci-core-button, [data-component="Badge"], [data-component="StatusDot"])[data-loading="true"] > * { visibility: hidden; }
 
     .starci-core-skeleton[data-grammar-skeleton-line="last"] {
         width: 60%;
@@ -757,7 +793,7 @@
         width: 100%;
         min-width: 0;
         flex-direction: column;
-        gap: 0.375rem;
+        gap: var(--grammar-identity-gap, 0.25rem);
     }
 
     .starci-core-meter-header {
