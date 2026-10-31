@@ -117,19 +117,96 @@ function bindTranslator(state: Parsed, name: Parsed, initializer: Parsed, factor
   }
 }
 
+/**
+ * The key a translator helper's member is known by in its declared type: the app's own type alias the member is typed with
+ * (`readonly t: OfficeText`), else the member itself. An alias with type arguments or one declared outside the app's sources is no key.
+ */
+function declaredTranslatorKey(state: Parsed, type: Parsed, member: Parsed) {
+  const alias = type?.aliasSymbol;
+  if (alias) {
+    const declarations = alias.declarations ?? [];
+    const own = declarations.length > 0 && declarations.every((declaration: Parsed) => state.sourceNames?.has(declaration.getSourceFile().fileName));
+    return own && !type.aliasTypeArguments?.length ? alias : null;
+  }
+  return member ?? null;
+}
+
+/**
+ * The declared object type an object literal is written for: its contextual type, or, when the literal is what `useMemo(() => literal)` makes
+ * and React's own types are not part of the program, the type argument of that useMemo or the type the call itself is written for.
+ */
+function literalType(state: Parsed, literal: Parsed) {
+  const { ts, checker } = state;
+  const known = (type: Parsed) => type && !(type.flags & ts.TypeFlags.Any) && type.getProperties().length > 0 ? type : null;
+  const contextual = known(checker.getContextualType(literal));
+  if (contextual) return contextual;
+  let body = literal;
+  while (ts.isParenthesizedExpression(body.parent)) body = body.parent;
+  let fn = body.parent;
+  if (fn && ts.isReturnStatement(fn)) {
+    while (fn && !ts.isFunctionLike(fn)) fn = fn.parent;
+  } else if (!fn || !ts.isArrowFunction(fn) || fn.body !== body) return null;
+  if (!fn || !ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return null;
+  const call = fn.parent;
+  if (!call || !ts.isCallExpression(call) || call.arguments[0] !== fn || leafName(ts, call.expression) !== 'useMemo') return null;
+  const [argument] = call.typeArguments ?? [];
+  return known(argument ? checker.getTypeFromTypeNode(argument) : checker.getContextualType(call));
+}
+
+/**
+ * A helper that exposes a bound translator as a member of a declared object type (`useMemo<OfficeWords>(() => ({ t: (key, values) => t(key, values) }))`)
+ * binds that member's declared type: every value of that type, wherever the helper is handed on, reads in the namespaces bound to it.
+ */
+function bindTypedMember(state: Parsed, property: Parsed, factories: Parsed) {
+  const { ts, checker } = state;
+  const literal = property.parent;
+  if (!ts.isObjectLiteralExpression(literal)) return;
+  const name = nameText(ts, property.name, { numbers: true });
+  if (name === null) return;
+  const initializer = ts.isShorthandPropertyAssignment(property) ? property.name : property.initializer;
+  const value = unwrap(ts, initializer);
+  const namespaces = value && ts.isIdentifier(value)
+    ? state.translators.get(symbolAt(state, value)) ?? wrapperNamespaces(state, value)
+    : translatorNamespace(state, initializer, factories) ?? wrapperNamespaces(state, initializer);
+  if (!namespaces?.length) return;
+  const member = literalType(state, literal)?.getProperty(name);
+  if (!member) return;
+  const key = declaredTranslatorKey(state, checker.getTypeOfSymbolAtLocation(member, literal), member);
+  if (!key) return;
+  const bound = state.typedTranslators.get(key) ?? new Set();
+  for (const namespace of namespaces) bound.add(namespace);
+  state.typedTranslators.set(key, bound);
+}
+
 /** Wrappers depend on translators bound in other modules, so bind until nothing new appears. */
 export function translationBindings(state: Parsed, sources: Parsed) {
+  const { ts } = state;
   const factories = new Map([...sources.values()].map(source => [source, translationFactories(state, source)]));
-  for (let pass = 0, size = -1; pass < 4 && size !== state.translators.size; pass++) {
-    size = state.translators.size;
+  state.typedTranslators ??= new Map();
+  state.sourceNames ??= new Set([...sources.values()].map((source: Parsed) => source.fileName));
+  const typedSize = () => [...state.typedTranslators.values()].reduce((sum: number, bound: Parsed) => sum + bound.size, 0);
+  for (let pass = 0, size = -1; pass < 4 && size !== state.translators.size + typedSize(); pass++) {
+    size = state.translators.size + typedSize();
     for (const source of sources.values()) {
       const visit = (node: Parsed) => {
-        if (state.ts.isVariableDeclaration(node) && node.initializer) bindTranslator(state, node.name, node.initializer, factories.get(source));
-        state.ts.forEachChild(node, visit);
+        if (ts.isVariableDeclaration(node) && node.initializer) bindTranslator(state, node.name, node.initializer, factories.get(source));
+        if (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) bindTypedMember(state, node, factories.get(source));
+        ts.forEachChild(node, visit);
       };
       visit(source);
     }
   }
+}
+
+/** The namespaces bound to the declared type of a receiver (its own type alias, or the member it reads), if a translator helper bound it. */
+function typedNamespaces(state: Parsed, receiver: Parsed): Parsed[] {
+  const { ts, checker } = state;
+  if (!state.typedTranslators?.size) return [];
+  const node = unwrap(ts, receiver);
+  if (!node) return [];
+  const member = ts.isPropertyAccessExpression(node) ? symbolAt(state, node.name) : null;
+  const keys = [declaredTranslatorKey(state, checker.getTypeAtLocation(node), null), member];
+  return [...new Set(keys.flatMap(key => key ? [...state.typedTranslators.get(key) ?? []] : []))];
 }
 
 /** Namespaces of the translators a receiver can be: declared here, or handed in through arguments and props. */
@@ -183,10 +260,12 @@ export function catalogNamespace(state: Parsed, callee: Parsed) {
   if (ts.isPropertyAccessExpression(callee) && /^(?:rich|raw|markup)$/u.test(callee.name.text)) receiver = callee.expression;
   const resolved = receiverNamespaces(state, receiver);
   if (resolved.length) return resolved;
+  // A value of a type a translator helper bound reads in that helper's namespaces, on top of what the fallbacks below allow.
+  const typed = typedNamespaces(state, receiver);
   const binding = receiverBinding(state, receiver);
   // Observed unresolved producers cannot use the generic namespace fallback.
   if (binding.handedIn && (TRANSLATOR_NAME.test(leafName(ts, receiver)) || translatorShaped(state, receiver)))
-    return binding.observed ? [] : [null];
-  if (ts.isIdentifier(callee) && TRANSLATOR_NAME.test(callee.text)) return binding.observed ? [] : [''];
-  return [];
+    return binding.observed ? typed : [...typed, null];
+  if (ts.isIdentifier(callee) && TRANSLATOR_NAME.test(callee.text)) return binding.observed ? typed : [...typed, ''];
+  return typed;
 }

@@ -397,6 +397,54 @@ export const a = rows(text); export const b = rows(useTranslations("admin"));`,
   });
 }
 
+// The Office words of nivo-lite: a hook exposes its translators as members of a declared type, the views pass `words.t` on as a `text`
+// prop through spreads, and the leaves call `text("key")` / `props.text("key")` / `view.text("key")`.
+const TRANSLATOR_HELPER = {
+  'apps/web/src/modules/i18n/messages/en.json': JSON.stringify({
+    office: { composerLabel: 'Composer', promptSummary: 'Summary', mentionButton: 'Mention', title: 'Title', retired: 'Retired' },
+    governance: { status_failed: 'Failed', dead: 'Dead' },
+    other: { composerLabel: 'Other', unrelated: 'Unrelated', dead: 'Dead' },
+  }),
+  'apps/web/src/modules/types.ts': `export type OfficeText = (key: string, values?: Readonly<Record<string, string | number>>) => string;
+export type PlainLabel = (key: string) => string;
+export interface OfficeWords { readonly t: OfficeText; readonly g: OfficeText; readonly time: (iso: string) => string }
+export interface ComposerProps { readonly props: { readonly draft: string; readonly isSkeleton: boolean; readonly text: OfficeText } }`,
+  'apps/web/src/hooks/useOfficeWords.ts': `import type { OfficeWords } from '../modules/types';
+export const useOfficeWords = (): OfficeWords => {
+  const t = useTranslations("office");
+  const g = useTranslations("governance");
+  return useMemo<OfficeWords>(() => {
+    const time = (iso: string) => iso;
+    return { t: (key, values) => t(key, values), g: (key, values) => g(key, values), time };
+  }, [t, g]);
+};`,
+  'apps/web/src/hooks/useMessenger.ts': `import { useOfficeWords } from './useOfficeWords';
+export const useMessenger = () => { const words = useOfficeWords(); return { composer: { draft: "", text: words.t }, title: words.t("title"), failed: words.g("status_failed") }; };`,
+  'apps/web/src/components/Composer.tsx': `import type { ComposerProps } from '../modules/types';
+const promptsOf = (view: ComposerProps["props"]) => [view.text("promptSummary")];
+export const Composer = (props: ComposerProps) => { const view = props.props; const text = view.text; return [text("composerLabel"), props.props.text("mentionButton"), ...promptsOf(view)]; };`,
+  'apps/web/src/components/Messenger.tsx': `import { SlotView } from '@starci/grammar/common';
+import { Composer } from './Composer'; import { useMessenger } from '../hooks/useMessenger';
+export const Messenger = () => { const { composer } = useMessenger();
+  return <SlotView slot={{ items: composer }}>{(items, isSkeleton) => <Composer props={{ ...items, isSkeleton }} />}</SlotView>; };`,
+  'apps/web/src/components/Plain.tsx': `import type { PlainLabel } from '../modules/types';
+const label: PlainLabel = (key) => key.toUpperCase(); export const plain = [label("retired"), "unrelated", label("dead")];`,
+};
+
+for (const edition of ['lite', 'full']) {
+  test(`HFS_UNUSED_SYMBOL ${edition}: a translator helper's member type reads its namespaces wherever a value of that type is handed on through props`, t => {
+    // office.* read through text / props.text / view.text are live; a literal handed to a callback of another type, or a bare literal, reads nothing.
+    assert.deepEqual(namesOf(fixture(t, { ...TRANSLATOR_HELPER }), edition), ['governance.dead', 'office.retired', 'other.composerLabel', 'other.dead', 'other.unrelated']);
+  });
+
+  test(`HFS_UNUSED_SYMBOL ${edition}: a translator helper type binds only the namespaces its own members forward to`, t => {
+    // The same shape with a member that is no translator binds nothing: the keys its values are called with stay unused.
+    const contents = { ...TRANSLATOR_HELPER, 'apps/web/src/hooks/useOfficeWords.ts': `import type { OfficeWords } from '../modules/types';
+export const useOfficeWords = (): OfficeWords => useMemo<OfficeWords>(() => ({ t: (key) => key, g: (key) => key, time: (iso: string) => iso }), []);` };
+    assert.deepEqual(namesOf(fixture(t, contents), edition), ['governance.dead', 'governance.status_failed', 'office.composerLabel', 'office.mentionButton', 'office.promptSummary', 'office.retired', 'office.title', 'other.composerLabel', 'other.dead', 'other.unrelated']);
+  });
+}
+
 for (const edition of ['lite', 'full']) {
   test(`HFS_UNUSED_SYMBOL ${edition}: an imported key table indexed by a dynamic key reads every value it holds in the translator's namespace`, t => {
     const contents = {
