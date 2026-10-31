@@ -181,7 +181,10 @@ Commit with hooks, in small commits whose message says what the change does.
 ### CONTRIB-18 Push after a green scoped check
 
 Main is pushed right after a green wave round ([contexts/authority/wave.md](contexts/authority/wave.md)) with
-`starci release push --execute` (dry without it; it refuses a dirty tree, a non fast-forward and a secret in the pushed range). CI judges
+`starci release push --execute` (dry without it; it refuses a dirty tree, a non fast-forward and a secret in the pushed range). In this repository it also
+runs the light gates CI refuses on, locally and in the dry run: the plan judgement of CI's publish step against the base CI would use
+(`RELEASE_VERSION_NOT_BUMPED`, `RELEASE_DEPENDENCY_SKEW`, `RELEASE_DEPENDENCY_UNPUBLISHED`) and the contexts anchors
+(`PUSH_ANCHORS_RED`: `contexts anchor` with no id) (`cli/src/core/release/push-gate.ts`). The specs of a package stay CI's. CI judges
 everything else.
 
 ### CONTRIB-19 A red CI is the next commit

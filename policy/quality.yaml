@@ -12,6 +12,11 @@ runtime:
   # allowPaths to that task; the composer's verify and the workflow's final verify enforce them, and a relayed source's
   # head never answers for them as its baseline (cli/src/core/check/composition.ts, relay-baseline.ts).
   compositionRules: [dead-exports, feature-not-composed]
+  # Package folders that keep no ESLint config: a Grammar edit is content only and adds no test or lint config
+  # (contexts/authority/packages.md "Grammar edits are content only"). Their lint step is the compiler's, `tsc --noEmit
+  # --noUnusedLocals --noUnusedParameters` over every tsconfig*.json the folder holds, never a pass for want of a config
+  # (cli/src/core/check/scope.ts compilerLintPackage). A folder that is not listed and has no config is red.
+  compilerLint: [packages/grammar]
 # Where a task's heavy checks run (typecheck, lint and tests: the scoped `starci check` presets and every command check).
 # wave: `task verify` runs only the cheap checks of each task (lands, secrets and loosening on its diff, paths, files, json,
 #   cited and cite); a workflow's wave verify runs the heavy ones once over the union of the tasks that landed, before any

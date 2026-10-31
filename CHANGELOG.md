@@ -6,7 +6,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
-## [1.1.0-alpha.30] - 2026-10-31
+## [1.1.0-alpha.31] - 2026-10-31
 
 ### Changed
 
@@ -15,6 +15,18 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ### Changed
 
 - Knowledge: `contexts/ui/components/diagram.md` and the diagram role of `grammars/contract.yaml` name the FlowGraph `orbit` layout, the bubble form, the status fills and ring (grammar 0.19.0); the API awaits the owner as D-16 of `decisions/open-grammar.md`.
+
+## [1.1.0-alpha.30] - 2026-10-31
+
+### Added
+
+- `release push` (dry run included) in the harness repository runs the plan judgement of CI's publish step against the base CI would use (the head of the last successful CI run on main, else the remote tip): `RELEASE_VERSION_NOT_BUMPED`, `RELEASE_DEPENDENCY_SKEW`, `RELEASE_DEPENDENCY_UNPUBLISHED`, and the contexts anchors (`PUSH_ANCHORS_RED`, as `contexts anchor` with no id). `release publish` and `release push` share `judgePlan` (`core/release/push-gate.ts`). Package specs stay CI's.
+- `policy/quality.yaml` `runtime.compilerLint`: package folders with no ESLint config by ruling (`packages/grammar`) are linted by `tsc --noEmit --noUnusedLocals --noUnusedParameters` over each of their tsconfigs.
+- Specs for the tsconfig lookup and the push gate (`tsconfigs.test.ts`, `push-gate.test.ts`).
+
+### Fixed
+
+- `check run` judged `packages/grammar` red `TYPECHECK_CONFIG_MISSING` and `LINT_CONFIG_MISSING` because it holds `tsconfig.build.json`, `tsconfig.scripts.json` and `tsconfig.stories.json` but no `tsconfig.json`: a folder with no `tsconfig.json` is now typechecked through every `tsconfig.*.json` it holds. Source under no tsconfig or no ESLint config was counted and passed when nothing else was judged; it is now red.
 
 ## [1.1.0-alpha.29] - 2026-10-31
 

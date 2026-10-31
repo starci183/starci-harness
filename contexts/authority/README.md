@@ -66,6 +66,10 @@ The CLI holds part of this folder. Until the code below lands, the rest is held 
 - A wave's typecheck runs one `tsc` per tsconfig the changed files reach and its lint the changed files, not their reverse
   imports; its scope decision names the diff, the changed files and the commands, not the reach
   (`cli/src/harness/wave.ts`, `cli/src/core/check/scope.ts`).
+- A package under `policy/quality.yaml` `runtime.compilerLint` (`packages/grammar`: a Grammar edit adds no lint config,
+  [packages.md](packages.md)) is linted by the compiler, `tsc --noEmit --noUnusedLocals --noUnusedParameters` over every
+  `tsconfig*.json` it holds; a package with source and neither an ESLint config nor that entry is red `LINT_CONFIG_MISSING`,
+  and one whose TypeScript sits under no tsconfig is red `TYPECHECK_CONFIG_MISSING` (`cli/src/core/check/scope.ts`).
 - Debug's round after landing a `[Worker]` branch, an app session's round before it pushes, and `release push` itself run
   no wave verb: they run `starci check run`, which reuses every green row whose inputs did not change
   (`cli/src/harness/check-reuse.ts`).

@@ -182,6 +182,17 @@ const planOf = async (packages: readonly WorkspacePackage[], cwd: string): Promi
     )
 
 /**
+ * The plan judgement of CI's publish step, one function for `release publish` and `release push`: every package's row, the
+ * sibling requirements of each due package, and with a base the packages changed since it that are already on npm.
+ */
+export const judgePlan = async (root: string, packages: readonly WorkspacePackage[], base: string | undefined): Promise<PlanRow[]> => {
+    const rows = await planOf(packages, root)
+    await judgeRequires(rows, packages, root)
+    if (base !== undefined) await judgeBumped(rows, root, base)
+    return rows
+}
+
+/**
  * `starci release publish`: plans which package versions are missing from npm and judges the plan (each due package requires its
  * siblings at their versions here, published or due; with `--base`, no package changed since it is on npm at its old version); with
  * --execute it publishes them, a dependency before its dependent, from a clean commit on the remote main and reads each back. CI's
@@ -205,9 +216,7 @@ export const releasePublishVerb = defineVerb({
         const all = listPackages(root)
         const packages = all.filter((pkg) => flags.package === undefined || pkg.relativeDir === flags.package || pkg.name === flags.package)
         if (packages.length === 0) throw new Refusal("RELEASE_PACKAGE_UNKNOWN", `no package matches ${flags.package ?? "this repository"}`)
-        const everyRow = await planOf(all, root)
-        await judgeRequires(everyRow, all, root)
-        if (flags.base !== undefined) await judgeBumped(everyRow, root, flags.base)
+        const everyRow = await judgePlan(root, all, flags.base)
         const rows = everyRow.filter((row) => packages.some((pkg) => pkg.name === row.package))
         const due = publicationOrder(rows.filter((row) => row.action === "publish"), all)
         // The CLI's own phase (CI's publish-cli plans it alone): a due CLI is judged at its stack pins before it is planned.

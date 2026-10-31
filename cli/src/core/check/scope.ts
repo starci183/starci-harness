@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { parse } from "yaml"
 import { runtimeRoot } from "../../harness/ledger.js"
+import { loadPolicy } from "../../harness/policy.js"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
@@ -10,7 +11,7 @@ import { opForkOf, ownChanges } from "../../harness/baseline.js"
 import { underPaths } from "../../harness/contract.js"
 import { branchBase, changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
-import { ESLINT_CONFIGS, listPackages, ownerOf } from "../../shared/workspace.js"
+import { ESLINT_CONFIGS, listPackages, ownerOf, tsconfigsOf } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { CONFIG_FILES } from "./canon.js"
 import { NO_COMPOSITION, judgeDeferred, taskComposition, waveComposition, workflowComposition } from "./composition.js"
@@ -152,21 +153,22 @@ const skipped = (pkg: WorkspacePackage, step: StepResult["step"], reason: string
 
 const TYPESCRIPT_FILE = /\.[cm]?tsx?$/
 
-/** The `tsconfig.json` nearest a folder: from the folder up to the repository root. Undefined when no folder on the way holds one. */
+/** The nearest folder holding a tsconfig (`tsconfigsOf`), from the folder up to the repository root. Undefined when no folder on the way holds one. */
 export const resolveTsconfig = (root: string, dir: string): string | undefined => {
     for (let current = dir; ; current = dirname(current)) {
-        if (existsSync(join(current, "tsconfig.json"))) return current
+        if (tsconfigsOf(current).length > 0) return current
         if (resolve(current) === resolve(root) || dirname(current) === current) return undefined
     }
 }
 
-/** One `tsc --noEmit -p tsconfig.json` over a tsconfig folder, from that folder so its relative paths and `extends` resolve. */
-const typecheckGroup = async (scope: Scope, pkg: WorkspacePackage, dir: string, options: RunOptions): Promise<{ readonly label: string; readonly run: ToolRun | undefined }> => {
-    const label = `tsconfig ${toSlash(relative(scope.root, join(dir, "tsconfig.json")))}`
-    const tsc = [dir, pkg.dir, scope.root].map((each) => join(each, "node_modules", "typescript", "bin", "tsc")).find((candidate) => existsSync(candidate))
-    if (tsc === undefined) return { label, run: undefined }
-    return { label, run: await withHeavySlot("tsc", `tsc ${label}`, dir, options, (held) => captureTool(process.execPath, [tsc, "-p", "tsconfig.json", "--noEmit"], dir, held.options)) }
-}
+/** One `tsc --noEmit -p <config>` over each tsconfig a folder holds, from that folder so relative paths and `extends` resolve. */
+const typecheckGroup = async (scope: Scope, pkg: WorkspacePackage, dir: string, options: RunOptions, extra: readonly string[] = []): Promise<{ readonly label: string; readonly run: ToolRun | undefined }[]> =>
+    Promise.all(tsconfigsOf(dir).map(async (config) => {
+        const label = `tsconfig ${toSlash(relative(scope.root, join(dir, config)))}`
+        const tsc = [dir, pkg.dir, scope.root].map((each) => join(each, "node_modules", "typescript", "bin", "tsc")).find((candidate) => existsSync(candidate))
+        if (tsc === undefined) return { label, run: undefined }
+        return { label, run: await withHeavySlot("tsc", `tsc ${label}`, dir, options, (held) => captureTool(process.execPath, [tsc, "-p", config, "--noEmit", ...extra], dir, held.options)) }
+    }))
 
 /**
  * `tsc --noEmit` over the judged TypeScript files of the package (every tracked one it owns with --all), within the runtime
@@ -182,7 +184,7 @@ export const typecheckPackage = async (scope: Scope, target: ScopeTarget, option
     const { pkg } = target
     const files = (await lintableFiles(scope, target)).filter((file) => TYPESCRIPT_FILE.test(file))
     const own = pkg.hasTsconfig && !pkg.workspaceRoot
-    if (files.length === 0 && !pkg.hasTsconfig) return skipped(pkg, "typecheck", "no tsconfig.json")
+    if (files.length === 0 && !pkg.hasTsconfig) return skipped(pkg, "typecheck", "no TypeScript file and no tsconfig")
     const groups = new Set<string>()
     const judged = new Set(scope.files)
     const missing: string[] = []
@@ -194,19 +196,21 @@ export const typecheckPackage = async (scope: Scope, target: ScopeTarget, option
     }
     if (files.length === 0 && own) groups.add(pkg.dir)
     if (pkg.workspaceRoot) groups.delete(pkg.dir)
+    // A package whose TypeScript sits under no tsconfig is not typechecked: that is a red, never a pass.
+    if (groups.size === 0 && missing.length === 0 && outside.length > 0 && !pkg.workspaceRoot) missing.push(...outside)
     if (groups.size === 0 && missing.length === 0) return skipped(pkg, "typecheck", pkg.workspaceRoot ? "workspace root: its members are typechecked" : "no judged TypeScript file under a tsconfig.json")
-    const runs = await Promise.all([...groups].sort((left, right) => left.localeCompare(right)).map((dir) => typecheckGroup(scope, pkg, dir, options)))
+    const runs = (await Promise.all([...groups].sort((left, right) => left.localeCompare(right)).map((dir) => typecheckGroup(scope, pkg, dir, options)))).flat()
     const ran = runs.filter((each): each is { readonly label: string; readonly run: ToolRun } => each.run !== undefined)
     if (missing.length === 0 && ran.length === 0) return skipped(pkg, "typecheck", "typescript is not installed (run npm ci)")
     const failed = ran.filter((each) => each.run.exitCode !== 0)
     const reasons = [
-        ...(missing.length === 0 ? [] : [`TYPECHECK_CONFIG_MISSING: no tsconfig.json in the folder of ${listedFiles(missing)} or any folder up to the repository root`]),
+        ...(missing.length === 0 ? [] : [`TYPECHECK_CONFIG_MISSING: no tsconfig.json or tsconfig.*.json in the folder of ${listedFiles(missing)} or any folder up to the repository root`]),
         ...runs.map((each) => (each.run === undefined ? `${each.label} skipped: typescript is not installed (run npm ci)` : each.label)),
         ...(outside.length === 0 ? [] : [`${String(outside.length)} unchanged file(s) under no tsconfig.json, not checked: ${listedFiles(outside)}`]),
     ]
     const output = failed.map((each) => `--- ${each.label}\n${tail(each.run)}`).join("\n")
     const red = missing.length > 0 || failed.length > 0
-    return { package: pkg.name, step: "typecheck", command: `tsc -p <tsconfig.json> --noEmit over ${String(groups.size)} tsconfig(s)`, status: red ? "red" : "green", reason: reasons.join("; "), output }
+    return { package: pkg.name, step: "typecheck", command: `tsc -p <tsconfig> --noEmit over ${String(runs.length)} tsconfig(s)`, status: red ? "red" : "green", reason: reasons.join("; "), output }
 }
 /**
  * The flat config ESLint itself resolves for a package folder: the nearest `eslint.config.*` from the folder upward, stopping at
@@ -306,6 +310,7 @@ export const lintPackage = async (scope: Scope, target: ScopeTarget, options: Ru
     const { pkg } = target
     const files = await lintableFiles(scope, target)
     if (files.length === 0) return skipped(pkg, "lint", "no judged source file")
+    if (loadPolicy(scope.root).quality.runtime.compilerLint.includes(pkg.relativeDir)) return compilerLintPackage(scope, pkg, options)
     const groups = new Map<string, { file: string; paths: string[] }>()
     const judged = new Set(scope.files)
     const missing: string[] = []
@@ -323,7 +328,9 @@ export const lintPackage = async (scope: Scope, target: ScopeTarget, options: Ru
     }
     const runs = await Promise.all([...groups].map(([dir, group]) => lintGroup(scope, pkg, { dir, ...group }, options)))
     const ran = runs.filter((each) => each.ran)
-    if (missing.length === 0 && ran.length === 0) return skipped(pkg, "lint", groups.size === 0 ? "no judged source file under an eslint.config.*" : "eslint is not installed (run npm ci)")
+    // Source under no eslint.config.* is not linted: that is a red, never a pass.
+    if (groups.size === 0 && missing.length === 0 && outside.length > 0) missing.push(...outside)
+    if (missing.length === 0 && ran.length === 0) return skipped(pkg, "lint", "eslint is not installed (run npm ci)")
     const failed = ran.filter((each) => each.red)
     const reasons = [
         ...(missing.length === 0 ? [] : [`LINT_CONFIG_MISSING: no eslint.config.* in the folder of ${listedFiles(missing)} or any folder up to the repository root`]),
@@ -333,6 +340,21 @@ export const lintPackage = async (scope: Scope, target: ScopeTarget, options: Ru
     const output = failed.map((each) => `--- ${each.label}\n${each.output}`).join("\n")
     const red = missing.length > 0 || failed.length > 0
     return { package: pkg.name, step: "lint", command: `eslint --max-warnings=0 --no-warn-ignored over ${String(groups.size)} config(s)`, status: red ? "red" : "green", reason: reasons.join("; "), output }
+}
+
+/**
+ * The lint of a package policy lists in `runtime.compilerLint` (it keeps no ESLint config): `tsc --noEmit --noUnusedLocals
+ * --noUnusedParameters` over every tsconfig the folder holds. A folder with none of them is red, never a pass.
+ */
+const compilerLintPackage = async (scope: Scope, pkg: WorkspacePackage, options: RunOptions): Promise<StepResult> => {
+    const command = "tsc -p <tsconfig> --noEmit --noUnusedLocals --noUnusedParameters"
+    if (tsconfigsOf(pkg.dir).length === 0) return { package: pkg.name, step: "lint", command, status: "red", reason: `LINT_CONFIG_MISSING: ${pkg.relativeDir} is listed in compilerLint but holds no tsconfig*.json`, output: "" }
+    const runs = await typecheckGroup(scope, pkg, pkg.dir, options, ["--noUnusedLocals", "--noUnusedParameters"])
+    const ran = runs.filter((each): each is { readonly label: string; readonly run: ToolRun } => each.run !== undefined)
+    if (ran.length === 0) return skipped(pkg, "lint", "typescript is not installed (run npm ci)")
+    const failed = ran.filter((each) => each.run.exitCode !== 0)
+    const reason = `compiler lint (no ESLint config by policy): ${runs.map((each) => each.label).join(", ")}`
+    return { package: pkg.name, step: "lint", command, status: failed.length > 0 ? "red" : "green", reason, output: failed.map((each) => `--- ${each.label}\n${tail(each.run)}`).join("\n") }
 }
 
 const LISTED_FILES = 5

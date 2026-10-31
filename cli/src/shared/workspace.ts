@@ -30,6 +30,22 @@ const ENTRY_FIELDS = ["main", "module", "types", "typings"] as const
 
 const SKIPPED_DIRECTORIES = new Set(["node_modules", "dist", ".git", ".next", "coverage", ".turbo"])
 
+/**
+ * The tsconfig files a folder holds: its `tsconfig.json`, else every `tsconfig.*.json` (a package that keeps only
+ * `tsconfig.build.json`, `tsconfig.stories.json` and `tsconfig.scripts.json` has no `tsconfig.json`, yet those are its real
+ * configs, each typechecked), sorted.
+ */
+export const tsconfigsOf = (dir: string): string[] => {
+    if (existsSync(join(dir, "tsconfig.json"))) return ["tsconfig.json"]
+    try {
+        return readdirSync(dir).filter((name) => TSCONFIG_VARIANT.test(name)).sort((left, right) => left.localeCompare(right))
+    } catch {
+        return []
+    }
+}
+
+const TSCONFIG_VARIANT = /^tsconfig\.[^.]+(\.[^.]+)*\.json$/
+
 export const ESLINT_CONFIGS = ["eslint.config.ts", "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs"]
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
@@ -92,7 +108,7 @@ const readPackage = (root: string, dir: string): WorkspacePackage | undefined =>
         )],
         dependsOn: [...new Set(DEPENDENCY_FIELDS.flatMap((field) => Object.keys(stringRecord(parsed[field]))))].sort((left, right) => left.localeCompare(right)),
         entries: entriesOf(parsed),
-        hasTsconfig: existsSync(join(dir, "tsconfig.json")),
+        hasTsconfig: tsconfigsOf(dir).length > 0,
         hasEslintConfig: ESLINT_CONFIGS.some((file) => existsSync(join(dir, file))),
         workspaceRoot: workspacePatterns(dir) !== undefined,
     }

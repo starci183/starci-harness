@@ -7,6 +7,7 @@ import { captureGit, currentBranch, git, nulPaths, isAncestor, refExists, reposi
 import { isSealedPath, scanDiff } from "../../shared/secrets.js"
 import type { SecretFinding } from "../../shared/secrets.js"
 import { defineVerb } from "../../shared/verb.js"
+import { isHarnessCheckout, judgeHarnessPush } from "./push-gate.js"
 
 interface PushData {
     readonly remote: string
@@ -72,9 +73,11 @@ export const releasePushVerb = defineVerb({
         for (const { file, shown } of shownFiles) if (shown.exitCode === 0) encrypted.set(file, shown.stdout)
         const { findings } = exceptSecrets(root, scanDiff(diff, files, (file) => encrypted.get(file)), loadPolicy(root))
         if (findings.length > 0) throw new Refusal("PUSH_SECRET_FOUND", `the pushed range adds secret material: ${describeFindings(findings)}`)
+        const judged = isHarnessCheckout(root) ? await judgeHarnessPush(root, head, previous) : undefined
         const commits = previous === null ? Number(await git(root, ["rev-list", "--count", head])) : Number(await git(root, ["rev-list", "--count", `${base}..${head}`]))
         if (!dryRun) await git(root, ["push", remote, `HEAD:refs/heads/${branch}`])
         const data: PushData = { remote, branch, head, previous, commits, pushed: !dryRun, dryRun }
-        return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)})${dryRun ? " (dry run; add --execute)" : ""}; CI is the critic: starci check ci --sha ${head}` }
+        return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)})${dryRun ? " (dry run; add --execute)" : ""}; CI is the critic: starci check ci --sha ${head}${judged === undefined ? "" : `
+${judged}`}` }
     },
 })

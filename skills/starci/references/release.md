@@ -27,7 +27,7 @@ starci release push --execute
 ```
 
 The one way main moves. Without `--execute` it is a dry run: every judgement, no push. It refuses unless the branch is main, the tree is clean, the push is a fast-forward
-and the pushed range holds no secret, then runs `git push` with the hooks. Never push by hand, force or skip
+and the pushed range holds no secret; in the harness repository it also judges the publish plan against the base CI would use (a changed package whose version is on npm, a sibling skew) and the contexts anchors, then runs `git push` with the hooks. Never push by hand, force or skip
 hooks.
 
 ## 3. Read CI

@@ -60,7 +60,10 @@ export type Profile = z.infer<typeof profileSchema>
 
 const qualitySchema = z.object({
     schema: z.literal("starci/quality-policy@1"),
-    runtime: z.object({ stepTimeoutSeconds: z.number().int().positive().max(3600), compositionRules: z.array(z.string().min(1)) }),
+    runtime: z.object({ stepTimeoutSeconds: z.number().int().positive().max(3600), compositionRules: z.array(z.string().min(1)),
+        /** Package folders with no ESLint config by owner ruling, linted by the compiler's unused checks over each of their tsconfigs (core/check/scope.ts compilerLintPackage). */
+        compilerLint: z.array(z.string().min(1)).default([]),
+    }),
     /** Where a workflow task's heavy checks run: `task` in its own verify, `wave` in the workflow's wave verify (harness/wave.ts). */
     verify: z.object({ tier: z.enum(["task", "wave"]) }),
     requireCi: z.array(z.enum(CI_GATED_ACTIONS)),
