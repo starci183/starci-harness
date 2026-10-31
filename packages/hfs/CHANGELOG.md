@@ -7,7 +7,7 @@
 - Added: the ssh gate operation `identity-restore <recipient>` (stdin: the identity; writes only the fixed server identity path, once, for the matching recipient), so the restore workflow is admitted when the CI key is forced through `starci-ssh-gate`; `CI_MEMBER` moves to `sealed-member`.
 - Fixed: R259 `DB_MIGRATION_DESTRUCTIVE` leaves out `SET NOT NULL` and a type change on a column (or table) the same migration created earlier, which touches no existing data, and an entity references a table only by the name its `@Entity`/`@Table` decorator spells: a column property of the same word (`queue`) is no reference to a dropped table `queue`; an entity that spells no name keeps the identifier match.
 - Fixed: `HFS_SCHEDULE_UNDECLARED` judges unparsable SQL only when it calls `cron.schedule`, `cron.unschedule`, `cron.schedule_in_database` or `cron.alter_job`; a statement of another dialect (MySQL session setup) schedules nothing.
-- Changed: the bundled canon pins name hfs 4.16.2, eslint-canon-be 3.11.3, eslint-canon-fe 9.8.2 and eslint-grammar-core and eslint-grammar-offset-pop 0.19.1.
+- Changed: the bundled canon pins name hfs 4.16.2, @starci/grammar 0.19.1, eslint-canon-be 3.11.3, eslint-canon-fe 9.8.2 and eslint-grammar-core and eslint-grammar-offset-pop 0.19.1.
 
 ## 4.16.1 - 2026-10-31
 

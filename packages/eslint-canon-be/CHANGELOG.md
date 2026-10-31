@@ -2,7 +2,7 @@
 
 ## 3.11.3 - 2026-11-01
 
-- Changed: the bundled canon pins name @starci/grammar 0.19.0, eslint-grammar-core and eslint-grammar-offset-pop 0.19.1, eslint-canon-be 3.11.3, eslint-canon-fe 9.8.2, stylelint-canon 2.4.0 and hfs 4.16.2 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm).
+- Changed: the bundled canon pins name @starci/grammar 0.19.1, eslint-grammar-core and eslint-grammar-offset-pop 0.19.1, eslint-canon-be 3.11.3, eslint-canon-fe 9.8.2, stylelint-canon 2.4.0 and hfs 4.16.2 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm).
 - Changed: the bundled hfs `database-migrations` follows hfs 4.16.2 (an alter of a column the migration added is not destructive; an entity names its table by its decorator).
 
 ## 3.11.2 - 2026-10-31

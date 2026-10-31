@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.1 - 2026-11-01
+
+- Changed: moves with its lint family (eslint-grammar-core and eslint-grammar-offset-pop 0.19.1, RELEASE_VERSION_NOT_BUMPED: their bundled canon pins changed); no component changed.
+
 ## 0.19.0 - 2026-10-31
 
 - Added: `FlowGraph layout="orbit"`, the value-sized map. The root sits at the centre; ring two holds its children in sectors weighted by what they hold, ring three their children staggered on two radii, and ring four the fans of the open ring-three nodes, pushed apart and cut at the widest empty arc. Dashed ring guides sit under the nodes. `orbitLayout` is exported as a pure function.
