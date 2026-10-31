@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.23] - 2026-10-31
+
 ### Added
 
 - `starci app stack deploy --ci-run <id>` checks the CI run evidence of the commit before it deploys (`cli/src/core/check/ci-evidence.ts`, ruling app-cicd-auto-deploy) and forwards `--ci-run` to @starci/hfs once the evidence is accepted; `npm test` in cli/ runs the built specs, which the published package leaves out.
@@ -13,6 +15,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ### Changed
 
 - The cohort of 2026-10-31 pins @starci/hfs 4.13.0 (delivery pipeline, committed check cache), the Grammar family 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0 and jest-preset 2.6.0 in contexts/stack/pins.yaml. The CLI keeps @starci/hfs 4.12.2 until npm serves 4.13.0; cli-follow then raises it.
+
+### Fixed
+
+- `starci release affected` orders a package's build after the `file:` and required siblings it needs, builds the siblings whose `dist/` its specs import before it, and still installs the siblings its specs only read before the test step, so a cycle between canons no longer leaves a sibling unbuilt or uninstalled on a clean runner.
 
 ## [1.1.0-alpha.22] - 2026-10-30
 
