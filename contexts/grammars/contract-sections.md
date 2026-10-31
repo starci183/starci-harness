@@ -25,6 +25,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - Menu · `contexts/grammars/contract.md#menu` · 1 KB — A menu is a list of commands behind a trigger.
     - List · `contexts/grammars/contract.md#list` · 1 KB — A list is rows of peers: a `ListBox` when picking is the task, a list card of static rows when rows only report, a data table when columns matter.
     - Alert · `contexts/grammars/contract.md#alert` · 1 KB — An alert is feedback in the page; a toast is the same anatomy in the one region.
+    - Quote · `contexts/grammars/contract.md#quote` · 1 KB — A quote is words taken from a source, drawn as a `<blockquote>` on a tinted ground at the nested inset, one radius below the surface that hosts it.
     - EmptyState · `contexts/grammars/contract.md#emptystate` · 1 KB — An empty state is a region with nothing to show, or whose read failed: one message in the region's place inside the unchanged surface, and one action only when a real next step ...
     - Avatar · `contexts/grammars/contract.md#avatar` · 1 KB — An avatar is an identity mark on the ramp (`sm`, `md`, `lg`, and `control` in a bar), so it matches the controls beside it.
     - Mascot · `contexts/grammars/contract.md#mascot` · 1 KB — A mascot is generated character art on its own size scale, so one character comes out at one size on every screen: square boxes `sm`, `md` and `lg` (Common tokens ...
