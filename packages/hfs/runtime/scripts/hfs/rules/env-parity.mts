@@ -13,7 +13,8 @@
 //       `.starcistacks/<env>/runtime/env/KEYS.md`, and the `environment:`/`env:` entries, `runtimeSecrets`, `secrets`
 //       and `vars[].name` of every `.starcistacks` yaml. A `<KEY>_FILE` name declares `<KEY>`.
 // Findings: ENV_REQUIRED_UNSET a required read sits in neither S nor D; ENV_SEALED_UNREAD a sealed key sits in
-// neither R nor a declared consumer; ENV_DUPLICATE one key in two members of one environment; ENV_PUBLIC_SEALED a NEXT_PUBLIC_* key in
+// neither R nor a declared consumer; ENV_DUPLICATE one app key in two members of one environment (the transport members, the operator's `deploy.remote.sealed` member and
+// `vps-ci`, never reach an app container and may both hold the SSH_GROUP keys, nothing else); ENV_PUBLIC_SEALED a NEXT_PUBLIC_* key in
 // custody; ENV_EXAMPLE_DRIFT a `*.env.example` key nothing reads. The rule judges the app root (`isRoot`): the whole
 // tree `all` is its input, both editions.
 import path from 'node:path';
@@ -21,6 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { envelopeOf } from '../secret-document.mjs';
+import { SSH_GROUP, sshTransportMembers, type StacksDocument } from '../secret-standard.mjs';
+import { memberOfName } from '../../lib/sealed-member.mjs';
 import { found, readText } from './read.mjs';
 import type { Finding, Parsed, Ts } from './rule-types.mjs';
 
@@ -325,25 +328,36 @@ function sealedMemberFinding(key: string, member: Parsed, reads: Parsed, declare
   return null;
 }
 
-function addSealedFindings(sealed: Parsed, reads: Parsed, declared: Parsed, findings: Finding[]) {
+/** The transport members per environment: the `deploy.remote.sealed` member(s) of application-stacks.yaml and `vps-ci`. */
+function transportMembers(repoRoot: string): (environment: string) => Set<string> {
+  const text = readText(repoRoot, '.starcistacks/application-stacks.yaml');
+  let stacks: StacksDocument = {};
+  try { stacks = text === null ? {} : (parseYaml(text) as StacksDocument | null) ?? {}; } catch { /* a malformed stacks yaml is the shape rule's finding, not this one's */ }
+  return (environment: string) => sshTransportMembers(stacks.environments?.[environment]);
+}
+
+function addSealedFindings(sealed: Parsed, reads: Parsed, declared: Parsed, transport: (environment: string) => Set<string>, findings: Finding[]) {
   for (const [key, members] of sealed) {
     for (const member of members) {
       const finding = sealedMemberFinding(key, member, reads, declared);
       if (finding !== null) findings.push(finding);
     }
-    addDuplicateFindings(key, members, findings);
+    addDuplicateFindings(key, members, transport, findings);
   }
 }
 
-function addDuplicateFindings(key: string, members: Parsed, findings: Finding[]) {
+/** One key in two members of one environment, except an SSH_GROUP key held by the two transport members (a classification: those never reach an app). */
+function addDuplicateFindings(key: string, members: Parsed, transport: (environment: string) => Set<string>, findings: Finding[]) {
   const firstByEnvironment = new Map();
   for (const member of members) {
     const environment = member.split('/')[1];
+    const exempt = (file: string) => SSH_GROUP.includes(key) && transport(environment).has(memberOfName(file.split('/').pop()!));
     const first = firstByEnvironment.get(environment);
     if (first === undefined) {
       firstByEnvironment.set(environment, member);
       continue;
     }
+    if (exempt(first) && exempt(member)) continue;
     findings.push(found(ENV_DUPLICATE, member, `${key} is sealed in ${first} and again in ${member}; one key lives in one member per environment`));
   }
 }
@@ -369,7 +383,7 @@ export function envParityFindings({ repoRoot, all = [], isRoot }: { repoRoot: st
   const declared = declaredKeys(repoRoot, all);
   const findings: Finding[] = [];
   addRequiredFindings(reads, sealed, declared, findings);
-  addSealedFindings(sealed, reads, declared, findings);
+  addSealedFindings(sealed, reads, declared, transportMembers(repoRoot), findings);
   addExampleFindings(repoRoot, all, reads, findings);
   return findings;
 }

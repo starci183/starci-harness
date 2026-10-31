@@ -10,9 +10,10 @@
 // A body reads its arguments as $1... ($0 is `starci-op`) and its stdin; it holds no free text.
 import { refusal } from './errors.mjs';
 import { shellQuote } from './remote.mjs';
+import { SERVER_AGE_IDENTITY } from './server-key.mjs';
 
 /** What an argument is: each kind is a closed alphabet, checked by the client (TypeScript) and by the gate (POSIX sh) alike. */
-export type ArgKind = 'base' | 'release' | 'pointer' | 'token' | 'trigger' | 'attempt' | 'seconds';
+export type ArgKind = 'base' | 'release' | 'pointer' | 'token' | 'trigger' | 'attempt' | 'seconds' | 'recipient';
 
 /** One named operation: its arguments by kind, whether it reads stdin, and the sh body that runs with the arguments as $1.... */
 export interface GateOp { readonly name: string; readonly args: readonly ArgKind[]; readonly stdin: boolean; readonly body: string }
@@ -20,6 +21,7 @@ export interface GateOp { readonly name: string; readonly args: readonly ArgKind
 const RELEASE_ID = /^[0-9a-f]{16}$/u;
 const TOKEN = /^[0-9a-f]{32}$/u;
 const ATTEMPT = /^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$/u;
+const RECIPIENT = /^age1[a-z0-9]{58}$/u;
 const BASE = /^\/[A-Za-z0-9._/-]+$/u;
 
 /** The closed alphabet of each argument kind. */
@@ -31,7 +33,15 @@ export const ARG_TESTS: Readonly<Record<ArgKind, (value: string) => boolean>> = 
   trigger: (value) => value === 'ci' || value === 'dispatch' || value === 'urgent',
   attempt: (value) => ATTEMPT.test(value),
   seconds: (value) => /^[0-9]{1,6}$/u.test(value),
+  recipient: (value) => RECIPIENT.test(value),
 });
+
+/**
+ * Writes the deploy server's age identity from stdin (stack-key-restore.yml, `--restore github`): the file is the one fixed path SERVER_AGE_IDENTITY,
+ * never an argument, it is kept only when its public key is the recipient $1, it is owned by root with mode 600, and an existing identity is never overwritten.
+ */
+const INNER_RESTORE = 'PATH="$PATH:/usr/local/bin"; umask 077; f="$1"; r="$2"; d="$(dirname "$f")"; mkdir -p "$d"; t="$(mktemp "$d/.restore.XXXXXX")"; cat > "$t"; if [ "$(age-keygen -y "$t" 2>/dev/null)" != "$r" ]; then rm -f "$t"; echo "the secret is not the identity of $r (or age-keygen is missing); nothing was written" >&2; exit 6; fi; chown root:root "$t"; chmod 600 "$t"; mv "$t" "$f"; age-keygen -y "$f"';
+const IDENTITY_RESTORE = `f=${shellQuote(SERVER_AGE_IDENTITY)}; r="$1"; if [ "$(id -u)" -eq 0 ]; then S=; else S="sudo -n"; fi; if $S test -e "$f"; then cat >/dev/null; echo "the server already holds $f; move it aside first" >&2; exit 3; fi; $S sh -c ${shellQuote(INNER_RESTORE)} sh "$f" "$r"`;
 
 const OWNER_READ = 'if [ -r "$l/owner" ]; then read -r held_token held_trigger held_stamp < "$l/owner"; else held_token=none; held_trigger=unknown; held_stamp=$(stat -c %Y "$l" 2>/dev/null) || held_stamp=0; fi; case "$held_stamp" in \'\'|*[!0-9]*) held_stamp=0;; esac';
 
@@ -43,6 +53,7 @@ const POINTER = 'if [ -L "$1/$2" ]; then basename "$(readlink "$1/$2")"; else pr
  * rename, a lock unrefreshed for $4 seconds is moved aside (one rename wins) and claimed anew; prints `acquired` or `busy <trigger> <age>`.
  */
 export const GATE_OPS: readonly GateOp[] = Object.freeze([
+  { name: 'identity-restore', args: ['recipient'], stdin: true, body: IDENTITY_RESTORE },
   { name: 'pointer', args: ['base', 'pointer'], stdin: false, body: POINTER },
   { name: 'list', args: ['base'], stdin: false, body: `for n in current previous; do if [ -L "$1/$n" ]; then basename "$(readlink "$1/$n")"; else printf '\\n'; fi; done; if [ -d "$1/releases" ]; then ls -1t "$1/releases"; fi` },
   { name: 'read', args: ['base', 'release'], stdin: false, body: `set -e; s="$1/releases/$2"; for f in stack.yaml release.json; do test -r "$s/$f"; base64 < "$s/$f" | tr -d '\\n'; printf '\\n'; done` },
@@ -93,11 +104,16 @@ export function gatedCommand(name: string, args: readonly string[]): string {
 /** The same operation as one command for a key without the gate: the body under `sh -c` with the arguments as positional parameters. */
 export function inlineCommand(name: string, args: readonly string[]): string {
   const op = gateOp(name);
-  return `sh -c ${shellQuote(op.body)} starci-op ${checkedArguments(op, args).map(shellQuote).join(' ')}`;
+  return `${inlinePrefix(name)} ${checkedArguments(op, args).map(shellQuote).join(' ')}`;
+}
+
+/** The command of an operation up to its arguments (`sh -c '<body>' starci-op`): the text a workflow template renders for a key without the gate. */
+export function inlinePrefix(name: string): string {
+  return `sh -c ${shellQuote(gateOp(name).body)} starci-op`;
 }
 
 const VALIDATOR = Object.freeze({
-  base: 'v_base', release: 'v_release', pointer: 'v_pointer', token: 'v_token', trigger: 'v_trigger', attempt: 'v_attempt', seconds: 'v_seconds',
+  base: 'v_base', release: 'v_release', pointer: 'v_pointer', token: 'v_token', trigger: 'v_trigger', attempt: 'v_attempt', seconds: 'v_seconds', recipient: 'v_recipient',
 } satisfies Record<ArgKind, string>);
 
 /** The sh variable that holds the body of an operation. */
@@ -124,6 +140,7 @@ export function gateScript(): string {
     'v_pointer() { case "$1" in current|previous) ;; *) return 1;; esac; }',
     'v_trigger() { case "$1" in ci|dispatch|urgent) ;; *) return 1;; esac; }',
     `v_attempt() { case "$1" in ${digits(8)}T${digits(6)}Z-${digits(8, '[0-9a-f]')}) ;; *) return 1;; esac; v_hex 8 "\${1#*Z-}"; }`,
+    'v_recipient() { case "$1" in age1*) ;; *) return 1;; esac; case "$1" in *[!a-z0-9]*) return 1;; esac; [ "${#1}" -eq 62 ]; }',
     'v_seconds() { case "$1" in \'\'|*[!0-9]*) return 1;; esac; [ "${#1}" -le 6 ]; }',
     ...bodies,
     'cmd=${SSH_ORIGINAL_COMMAND-}',

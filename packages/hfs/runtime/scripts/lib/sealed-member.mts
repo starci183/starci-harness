@@ -9,6 +9,9 @@ import path from 'node:path';
 export const MEMBER_SUFFIX = '.enc.yaml';
 export const LEGACY_SUFFIX = '.enc';
 
+/** The sealed member that holds the CI transport of an environment: its own identity with a forced command, never the operator's SSH member. */
+export const CI_MEMBER = 'vps-ci';
+
 /** A sealed member's file name (either suffix), as a pattern for a name or the tail of a path. */
 export const SEALED_NAME = /\.enc(?:\.yaml)?$/u;
 

@@ -45,6 +45,7 @@ import { readTruths } from '../runtime/scripts/lib/loosening-state.mjs';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 import { bootstrapSection } from '../runtime/scripts/hfs/rules/database-constants.mjs';
 import { SERVER_AGE_IDENTITY } from '../stack/server-key.mjs';
+import { inlinePrefix } from '../stack/ssh-gate.mjs';
 
 export const TEMPLATES_DIR = path.join(import.meta.dirname, '..', 'templates');
 const NODE_MAJOR = 22;
@@ -454,6 +455,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     nodeMajor: String(NODE_MAJOR),
     // The deploy server's age identity the restore workflow writes (stack/server-key.mjs owns the path).
     serverAgeIdentity: SERVER_AGE_IDENTITY,
+    // The operation `identity-restore` of the ssh gate, as one command for a CI key without the gate (stack/ssh-gate.mjs owns the body), a JSON string so the workflow carries it as one YAML scalar.
+    identityRestoreInline: JSON.stringify(inlinePrefix('identity-restore')),
     sonarKey: sonarKey ?? app.project,
     sonarHostLine: sonarHostLine(quality.sonar),
     sonarExclusions: sonarScope(presets).exclusions.join(','),

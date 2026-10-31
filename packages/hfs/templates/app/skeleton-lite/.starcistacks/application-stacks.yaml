@@ -256,12 +256,8 @@ ci:
   secrets:
     - {name: SONAR_TOKEN, scope: repository, purpose: Sonar analysis token provisioned for this app}
     - {name: SOPS_AGE_KEY, scope: environment, environment: production, purpose: Decrypt app members during deployment, optional: true}
-    - {name: VPS_SSH_KEY, scope: environment, environment: production, purpose: Deployment SSH key, optional: true}
-    - {name: VPS_KNOWN_HOSTS, scope: environment, environment: production, purpose: Pinned deployment SSH host keys, optional: true}
   vars:
     - {name: SONAR_HOST_URL, scope: repository, value: "https://sonar.{{project}}.example.invalid", purpose: Documentation endpoint to replace with this app's public Sonar host}
-    - {name: VPS_HOST, scope: environment, environment: production, value: 203.0.113.10, purpose: Documentation deployment address to replace before use, optional: true}
-    - {name: VPS_USER, scope: environment, environment: production, value: deploy, purpose: Documentation deployment user to replace before use, optional: true}
 services:
   sonar:
     provider: sonarqube

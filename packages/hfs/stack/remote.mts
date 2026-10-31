@@ -9,7 +9,7 @@
 // `bash -s` fail with `set: pipefail`). Key material lives in memory and in a private temp directory only; it is never in argv (only the key
 // FILE path is), in a line, in a result or in an error message.
 import fs from 'node:fs';
-import { isLegacyName, memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
+import { CI_MEMBER, isLegacyName, memberFile } from '../runtime/scripts/lib/sealed-member.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import type { DeployConfig, SealedRemote } from './config.mjs';
@@ -257,7 +257,7 @@ function ciHome(ctx: StackContext): string {
 interface CiInputs { key: string; known: string; host: string; user: string }
 
 /** The sealed member that holds the CI transport of an environment: VPS_SSH_KEY (the CI-only deploy key), VPS_KNOWN_HOSTS, VPS_HOST and VPS_USER. */
-export const CI_MEMBER = 'vps-ci';
+export { CI_MEMBER };
 
 /**
  * The CI transport values: the sealed member `vps-ci` of the environment (opened with the server identity the job holds) when it exists, else the

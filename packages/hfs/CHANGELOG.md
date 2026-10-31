@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.16.2 - 2026-10-31
+
+- Fixed: R248 `ENV_DUPLICATE` judges app env only. The operator's SSH member (`deploy.remote.sealed`) and the CI member `vps-ci` are separate identities by design (ruling ci-transport-one-home) and never reach an app container, so the SSH group keys (`SSH_GROUP`, now exported from `secret-standard`) held by exactly those two members of one environment are no duplicate; an app key in two members, or an SSH group key in any third member, stays red.
+- Changed: the CI transport lives in the sealed `vps-ci` alone and GitHub keeps only `SOPS_AGE_KEY`: `stack-key-restore.yml` (both editions) opens the sealed member with the same `stack connect` step as the deploy instead of `VPS_*` environment secrets, and the starters no longer declare `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER` under `ci:`.
+- Added: the ssh gate operation `identity-restore <recipient>` (stdin: the identity; writes only the fixed server identity path, once, for the matching recipient), so the restore workflow is admitted when the CI key is forced through `starci-ssh-gate`; `CI_MEMBER` moves to `sealed-member`.
+- Changed: the bundled canon pins name hfs 4.16.2.
+
 ## 4.16.1 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.19.0, eslint-canon-be 3.11.2, eslint-canon-fe 9.8.1, stylelint-canon 2.4.0 and hfs 4.16.1 (RELEASE_VERSION_NOT_BUMPED: 4.16.0 is on npm).

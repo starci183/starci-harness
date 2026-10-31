@@ -186,11 +186,14 @@ reserved to `--urgent --first-start`. A database that is not empty with no accep
 
 - **Server key.** Each environment's server identity is the `SOPS_AGE_KEY` of its GitHub Environment (PROJECT-STACKS-5);
   only jobs bound to that environment read it. The images and check jobs read no secret beyond the Sonar token.
-- **Transport.** The CI deploy key becomes a sealed member of the environment, `.starcistacks/<env>/secrets/vps-ci.enc.yaml`
-  (`sshKey`, `knownHosts`, the account), opened with the server key the job already holds, so `VPS_SSH_KEY` and
-  `VPS_KNOWN_HOSTS` leave GitHub and the pinned host keys are reviewed in git. It is a key of its own, never the owner's
-  ops key, named by its comment so it can be revoked alone. `StrictHostKeyChecking yes` always; CI never accepts a new
-  host key.
+- **Transport.** The CI transport lives in one place, the sealed member of the environment
+  `.starcistacks/<env>/secrets/vps-ci.enc.yaml` (`VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST`, `VPS_USER`), opened with the server
+  key the job already holds; GitHub keeps only `SOPS_AGE_KEY`, and the pinned host keys are reviewed in git. It is a key of its
+  own and a member of its own, never the operator's `deploy.remote.sealed` member (`vps`) and never the owner's ops key: the two
+  are separate SSH identities by design, and one member would hand the CI key the owner's. Both carry the SSH group keys
+  (`VPS_HOST`, `VPS_USER`), which is no duplicate: transport members never reach an app container, so `ENV_DUPLICATE` judges app
+  env only and exempts exactly those keys in exactly those two members (R248). The CI key is named by its comment so it can be
+  revoked alone. `StrictHostKeyChecking yes` always; CI never accepts a new host key.
 - **Least privilege, honestly.** Access to the Docker socket is root on that host, so the CI key's line in
   `authorized_keys` is `restrict` plus a forced command, the managed `starci-ssh-gate`, that admits only
   `docker system dial-stdio` and the release store's fixed scripts. That narrows what a stolen key can run without a
@@ -298,8 +301,9 @@ Needs WP1 to WP3 published (the workflows call their flags).
 [harness/rules.md](../harness/rules.md) rule 5, [harness/decisions.md](../harness/decisions.md), the ruling set live. The
 migration path, nivo-lite first: bump hfs and the CLI, `app sync --execute` (the new workflows, `db-deploy.yml` and
 `images.yml`'s old form removed); seal the CI deploy key as `vps-ci` and install its `authorized_keys` line with the gate
-(owner-run); set the `production` environment's deployment refs to `v*`; release a no-op patch and watch the first
-automatic deploy; once it is accepted, delete `VPS_SSH_KEY` and `VPS_KNOWN_HOSTS` from the environment. The app-owned
+(owner-run); set the `production` environment's deployment refs to `v*`; the environment keeps `SOPS_AGE_KEY` and no other
+name, so `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER` are deleted from it (the sealed `vps-ci` is the only
+transport, including for `stack-key-restore.yml`); release a no-op patch and watch the first automatic deploy. The app-owned
 `authorize-deploy-key.yml` and `cli-deploy.yml` stay. Then the other apps, one per release.
 
 Integration order: WP1, WP2 and WP3 in parallel; WP4 after they are published; WP5 last, and its knowledge edits can
@@ -315,8 +319,8 @@ Where the packages differ from the design above, or add to it, the code and the 
 - **The brake is a step, not a job condition.** An environment variable is not readable in a job's `if` before the job is bound to the environment, so
   `STARCI_DEPLOY_PAUSED` is read by the first step of the bound deploy job; the later steps wait for it and the job ends green with a notice in the run summary.
 - **The transport is one sealed member.** `.starcistacks/<env>/secrets/vps-ci.enc.yaml` holds `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER`;
-  `stack connect` prefers it over the job's `VPS_*` variables and masks the host, the account and the releases root in the log. `stack-key-restore.yml` keeps
-  its own `VPS_*` environment secrets (it runs when the server identity that opens the member is missing), so deleting them removes the restore path.
+  `stack connect` masks the host, the account and the releases root in the log, and a missing member is refused (`STACK_CONNECT_MISSING`). `stack-key-restore.yml`
+  opens the same member with the environment's `SOPS_AGE_KEY` and writes the identity through the gate's `identity-restore` operation.
 - **Pull requests** run the checks and build the images without pushing (`push: false`); an image with sealed build values is built on release tag runs only.
 - **Public repositories** (nivo-lite is public). GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI
   private key never enter the repository. The CI key is a key of its own on the manager (`restrict`, a forced command, a rotation path owned by the owner, who

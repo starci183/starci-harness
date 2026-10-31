@@ -385,3 +385,43 @@ test('verify sanitizes an unexpected decrypt failure without printing its messag
   assert.match(result.err, /operation failed/);
   privateAbsent(result, [privateMessage]);
 });
+
+// Ruling ci-transport-one-home: an environment has two SSH transports by design, the operator's member named by deploy.remote.sealed and the CI member
+// vps-ci. They never reach an app container, so ENV_DUPLICATE exempts exactly the SSH group keys in exactly those two members of that environment.
+const STACKS_VPS = 'schema: starci/application-stacks@1\nenvironments:\n  production:\n    deploy:\n      remote:\n        sealed: vps\n';
+const TRANSPORT = ['VPS_HOST', 'VPS_USER'];
+const transportFiles = (extra: Record<string, string>) => ({
+  ...BASE,
+  '.starcistacks/application-stacks.yaml': STACKS_VPS,
+  '.starcistacks/production/secrets/vps.enc': sealedDotenv([...TRANSPORT, 'privateKey', 'knownHosts']),
+  '.starcistacks/production/secrets/vps-ci.enc': sealedDotenv([...TRANSPORT, 'VPS_SSH_KEY', 'VPS_KNOWN_HOSTS']),
+  ...extra,
+});
+
+for (const edition of ['lite', 'full']) {
+  test(`the SSH group keys in the sealed operator member and vps-ci are not ENV_DUPLICATE (${edition})`, (t) => {
+    const files = transportFiles({});
+    assert.deepEqual(codes(envFindingsOf(tree(t, files), files, edition), ENV_DUPLICATE), []);
+  });
+
+  test(`an app key in vps and vps-ci, or an SSH group key in a third member, stays ENV_DUPLICATE (${edition})`, (t) => {
+    const appKey = transportFiles({
+      '.starcistacks/production/secrets/vps.enc': sealedDotenv([...TRANSPORT, 'privateKey', 'knownHosts', 'ENGINE_SHARED_SECRET']),
+      '.starcistacks/production/secrets/vps-ci.enc': sealedDotenv([...TRANSPORT, 'VPS_SSH_KEY', 'VPS_KNOWN_HOSTS', 'ENGINE_SHARED_SECRET']),
+    });
+    assert.deepEqual(codes(envFindingsOf(tree(t, appKey), appKey, edition), ENV_DUPLICATE).map((finding) => finding.path), ['.starcistacks/production/secrets/vps-ci.enc']);
+    for (const third of ['app', 'zzz']) {
+      const files = transportFiles({ [`.starcistacks/production/secrets/${third}.enc`]: sealedDotenv(['VPS_HOST']) });
+      const duplicates = codes(envFindingsOf(tree(t, files), files, edition), ENV_DUPLICATE);
+      assert.ok(duplicates.length >= 1 && duplicates.every((finding) => /VPS_HOST/u.test(finding.message)), `${edition} ${third}`);
+      assert.ok(duplicates.some((finding) => finding.path.endsWith(`/${third}.enc`) || finding.path.endsWith('/vps.enc') || finding.path.endsWith('/vps-ci.enc')), `${edition} ${third}`);
+    }
+  });
+
+  test(`the exemption belongs to the member deploy.remote.sealed names, in its own environment (${edition})`, (t) => {
+    const otherName = transportFiles({ '.starcistacks/application-stacks.yaml': STACKS_VPS.replace('sealed: vps', 'sealed: ops') });
+    assert.equal(codes(envFindingsOf(tree(t, otherName), otherName, edition), ENV_DUPLICATE).length, 2);
+    const otherEnvironment = transportFiles({ '.starcistacks/application-stacks.yaml': STACKS_VPS.replace('production', 'staging') });
+    assert.equal(codes(envFindingsOf(tree(t, otherEnvironment), otherEnvironment, edition), ENV_DUPLICATE).length, 2);
+  });
+}

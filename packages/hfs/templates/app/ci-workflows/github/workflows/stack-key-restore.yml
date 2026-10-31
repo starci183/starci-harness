@@ -3,10 +3,9 @@
 # stored it; --restore github dispatches this file). It runs by hand only and writes {{serverAgeIdentity}} on the server when no
 # identity is there and the secret's public key is the recipient input (deploy.remote.serverRecipient), with umask 077 and mode 600,
 # owned by root; it never echoes the identity and never overwrites one.
-# The environment input names the protected GitHub environment of the deploy (required reviewers or main only), which holds:
-#   vars    VPS_HOST, VPS_USER (the swarm manager)
-#   secrets SOPS_AGE_KEY (that environment's server identity, the one its deploy jobs read), VPS_SSH_KEY (CI-only deploy key),
-#           VPS_KNOWN_HOSTS (pinned host keys)
+# The environment input names the protected GitHub environment of the deploy (required reviewers or main only), which holds the secret
+# SOPS_AGE_KEY (that environment's server identity, the one its deploy jobs read). The transport is the sealed member vps-ci of that
+# environment, opened with that identity by the same "stack connect" step the deploy uses: GitHub holds no SSH key, host key, host or account.
 name: restore stack key
 
 on:
@@ -33,26 +32,46 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     timeout-minutes: 10
+    env:
+      STACK_ENVIRONMENT: ${{ inputs.environment }}
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: install SOPS
+        uses: mdgreenwald/mozilla-sops-action@bb2d96a13ef438ad122e5827a57ebd75d6ff118d # v2.1.0
+        with:
+          version: v3.13.2
+      - name: connect to the swarm manager
+        env:
+          XDG_DATA_HOME: ${{ runner.temp }}/starci-data
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: npx --no-install starci app stack connect --env "$STACK_ENVIRONMENT" --execute
       - name: write the identity on the server
         env:
           RECIPIENT: ${{ inputs.recipient }}
           AGE_IDENTITY: ${{ secrets.SOPS_AGE_KEY }}
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
-          VPS_HOST: ${{ vars.VPS_HOST }}
-          VPS_USER: ${{ vars.VPS_USER }}
+          INLINE_RESTORE: {{identityRestoreInline}}
         shell: bash
         run: |
           set -euo pipefail
           [[ "$RECIPIENT" =~ ^age1[a-z0-9]+$ ]] || { echo "recipient must be one public age recipient (age1...)" >&2; exit 1; }
           [ -n "$AGE_IDENTITY" ] || { echo "SOPS_AGE_KEY is not set in this environment" >&2; exit 1; }
           umask 077
-          dir="$(mktemp -d)"
-          trap 'rm -rf "$dir"' EXIT
-          printf '%s\n' "$VPS_SSH_KEY" > "$dir/id"
-          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$dir/known_hosts"
-          # The server writes the identity beside its target, keeps it only when its public key is the recipient, then moves it in.
-          remote="f={{serverAgeIdentity}}; r=$RECIPIENT; "'if [ "$(id -u)" -eq 0 ]; then S=; else S="sudo -n"; fi; if $S test -e "$f"; then cat >/dev/null; echo "the server already holds $f; move it aside first" >&2; exit 3; fi; $S sh -c '"'"'PATH="$PATH:/usr/local/bin"; umask 077; f="$1"; r="$2"; d="$(dirname "$f")"; mkdir -p "$d"; t="$(mktemp "$d/.restore.XXXXXX")"; cat > "$t"; if [ "$(age-keygen -y "$t" 2>/dev/null)" != "$r" ]; then rm -f "$t"; echo "the secret is not the identity of $r (or age-keygen is missing); nothing was written" >&2; exit 6; fi; chown root:root "$t"; chmod 600 "$t"; mv "$t" "$f"; age-keygen -y "$f"'"'"' sh "$f" "$r"'
-          printf '%s\n' "$AGE_IDENTITY" | ssh -T -i "$dir/id" -o IdentitiesOnly=yes -o UserKnownHostsFile="$dir/known_hosts" \
-            -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 "$VPS_USER@$VPS_HOST" "$remote"
+          manager="${DOCKER_HOST#ssh://}"
+          # The operation is the ssh gate's identity-restore (stack/ssh-gate.mjs): the server writes the identity beside its target, keeps it only
+          # when its public key is the recipient, then moves it in. A CI key forced through the gate (STARCI_SSH_GATE=1) names it; a key without the gate runs its body.
+          if [ "${STARCI_SSH_GATE:-}" = 1 ]; then
+            remote="starci-op identity-restore $RECIPIENT"
+          else
+            remote="$INLINE_RESTORE $RECIPIENT"
+          fi
+          printf '%s\n' "$AGE_IDENTITY" | ssh -T "$manager" "$remote"
+      - name: disconnect from the swarm manager
+        if: ${{ always() }}
+        env:
+          XDG_DATA_HOME: ${{ runner.temp }}/starci-data
+        run: npx --no-install starci app stack disconnect --env "$STACK_ENVIRONMENT" --execute

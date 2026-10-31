@@ -16,6 +16,7 @@ import { ALL_CHECK_CODES, checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { deployWorkflowFindings } from '../runtime/scripts/hfs/rules/deploy-workflow.mjs';
 import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.mjs';
 import { renderTargets } from '../sync/index.mjs';
+import { inlinePrefix } from '../stack/ssh-gate.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
 
@@ -295,8 +296,17 @@ test('R251: every managed workflow that opens sealed members is bound to the env
       const restore = parseWorkflow(workflows['.github/workflows/stack-key-restore.yml']!);
       assert.deepEqual(Object.keys(restore.on.workflow_dispatch.inputs), ['environment', 'recipient']);
       assert.equal(restore.jobs.restore.environment, '${{ inputs.environment }}');
-      assert.equal(restore.jobs.restore.steps[0].env.AGE_IDENTITY, '${{ secrets.SOPS_AGE_KEY }}');
+      assert.equal(restore.jobs.restore.steps.find((step: Doc) => step.name === 'write the identity on the server').env.AGE_IDENTITY, '${{ secrets.SOPS_AGE_KEY }}');
       assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml']!, /secrets\[|SOPS_AGE_KEY_/u);
+      // ruling ci-transport-one-home: GitHub keeps only SOPS_AGE_KEY; the restore opens the same sealed transport as the deploy and goes through the ssh gate.
+      assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml']!, /VPS_|secrets\.(?!SOPS_AGE_KEY)/u);
+      const restoreSteps: Doc[] = restore.jobs.restore.steps;
+      const deploySteps: Doc[] = parseWorkflow(workflows['.github/workflows/stack-deploy.yml']!).jobs.deploy.steps;
+      const connect = (steps: Doc[]) => steps.find((step: Doc) => step.name === 'connect to the swarm manager');
+      assert.deepEqual({ env: connect(restoreSteps).env, run: connect(restoreSteps).run }, { env: connect(deploySteps).env, run: connect(deploySteps).run });
+      const write = restoreSteps.find((step: Doc) => step.name === 'write the identity on the server');
+      assert.equal(JSON.parse(JSON.stringify(write.env.INLINE_RESTORE)), inlinePrefix('identity-restore'));
+      assert.match(write.run, /starci-op identity-restore \$RECIPIENT/u);
     }
   }
 });

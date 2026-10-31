@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseYaml } from "../../engine/yaml.mjs";
 import { lsFiles } from "../api/git/ls-files.mjs";
-import { MEMBER_SUFFIX, isLegacyName, memberOfName } from "../lib/sealed-member.mjs";
+import { CI_MEMBER, MEMBER_SUFFIX, isLegacyName, memberOfName } from "../lib/sealed-member.mjs";
 import { configuredRecipients } from "./secret-init.mjs";
 import { type SecretEnvelope, envelopeOf, validateMap } from "./secret-document.mjs";
 import { deleteSealed, fileOf, sealedFiles, writeSecret } from "./secret-store.mjs";
@@ -93,7 +93,17 @@ function declaredKeys(spec: EnvironmentSpec | undefined, member: string, keys: s
 }
 
 /** The keys of the one sealed SSH member `deploy.remote.sealed` names (stack/remote.mjs): the deploy transport reads exactly these. */
-const SSH_GROUP: readonly string[] = Object.freeze(["VPS_HOST", "VPS_USER", "privateKey", "knownHosts"]);
+export const SSH_GROUP: readonly string[] = Object.freeze(["VPS_HOST", "VPS_USER", "privateKey", "knownHosts"]);
+
+/**
+ * The two transport members of an environment (ruling ci-transport-one-home): the operator's member(s) `deploy.remote.sealed` names and
+ * the CI member `vps-ci`, two identities by design, neither of which reaches an app container. Only the SSH_GROUP keys may appear in both.
+ */
+export function sshTransportMembers(spec: EnvironmentSpec | undefined): Set<string> {
+  const sealed = spec?.deploy?.remote?.sealed;
+  const operator = typeof sealed === "string" ? [sealed] : Object.values(sealed ?? {});
+  return new Set([...operator.filter((slug): slug is string => typeof slug === "string"), CI_MEMBER]);
+}
 
 /**
  * True when the stack groups `member` on purpose: every key of it is declared in the environment's `secrets:`, per key (`key` with

@@ -1989,6 +1989,7 @@ ENV_DUPLICATE:
   causes_vi:
     - "Vi phạm luật R248: một khoá chỉ sống trong một member; hai bản sao lệch giá trị là lỗi vận hành chờ xảy ra."
     - "Khoá được di chuyển sang member mới nhưng quên gỡ khỏi member cũ."
+    - "Chỉ các khoá nhóm SSH (`VPS_HOST`, `VPS_USER`, `privateKey`, `knownHosts`) được phép nằm ở cả member `deploy.remote.sealed` lẫn `vps-ci` của cùng môi trường; mọi khoá app khác, hoặc khoá SSH ở member thứ ba, vẫn bị báo."
   nextStep_vi: "Giữ khoá ở đúng một member và gỡ nó khỏi member còn lại (`starci app secret set` rồi chỉnh lại member thừa)."
   owner: op-retry
   kind: check-finding
