@@ -44,11 +44,14 @@ Enforced by: `infra-import-owner` (R90).
 
 A recurring task is, in lite, a tick of `platform/jobs` (BE-JOBS-6), which enqueues one job through the queue outbox
 once per minute for the deployment (the app's scheduler list stays empty); in full, a BullMQ job scheduler the app
-passes as `QueueModule.register({ schedulers })`. The job runs through the same processor as any enqueued job. No cron
-decorator outside the tick scheduler, no `setInterval` and no host crontab.
+passes as `QueueModule.register({ schedulers })`. A schedule owned by a data row, such as one agent's next run, is a
+BullMQ job scheduler keyed by that row, in lite as in full, written with the row and removed with it. The job runs
+through the same processor as any enqueued job. No cron decorator outside the tick scheduler, no `setInterval` and no
+host crontab.
 
 Why: one minute claim in the database or one Redis scheduler fires once for the whole deployment, where cron in a
-replicated process fires once per replica.
+replicated process fires once per replica. A tick walks every row each minute, and a keyed scheduler wakes only what
+is due.
 
 Enforced by: R335, R268, R250 (hfs), `infra-import-owner` (R90).
 
