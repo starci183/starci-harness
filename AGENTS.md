@@ -13,7 +13,9 @@ The tree is too large to hold in context, and a context compaction drops what yo
 or writing a brief, translate the request into English (keep rule ids and names as written), run
 `node cli/dist/main.js contexts search "<question>"` ([contexts/README.md](contexts/README.md) "Two layers of context"),
 open the hit's file and quote its rule id and path. A brief never states "never", "must" or "wait for" without that
-source; a half-remembered rule is how a wrong one spreads to every lane.
+source; a half-remembered rule is how a wrong one spreads to every lane. This holds for every agent host (Claude Code,
+Codex, Devin): it is part of the bootstrap every host reads, not a feature of one runtime
+([contexts/harness/rules.md](contexts/harness/rules.md) rule 7).
 
 Rules that are easy to forget:
 
