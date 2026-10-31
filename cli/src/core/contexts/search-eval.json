@@ -67,7 +67,7 @@
     { "q": "folder for a front-end feature's source files", "expect": ["FE-FOLDER-1", "FE-ARCHITECTURE-1"] },
     { "q": "error and loading files of a route", "expect": ["FE-BOUNDARY-1"] },
     { "q": "dialog or drawer for a long secondary task", "expect": ["contexts/ui/components/dialog-drawer.md#choose"] },
-    { "q": "spacing between related elements", "expect": ["contexts/grammars/common.md#spacing-one-scale-four-relationships", "contexts/ui/presentation.md#space"] },
+    { "q": "spacing between related elements", "expect": ["contexts/grammars/common.md#spacing-one-scale-roles-for-gaps-and-levels-for-insets", "contexts/ui/presentation.md#space"] },
     { "q": "control height of a default button", "expect": ["control-height-40", "contexts/ui/scale.md#the-ramp", "contexts/ui/scale.md#how-each-component-sits-on-the-ramp"] },
     { "q": "one primary action per surface", "expect": ["CTA-1", "ACTION-1", "HIERARCHY-1"] },
     { "q": "how to throw an error in the backend", "expect": ["BE-ERROR-3", "BE-ERROR-1"] },
