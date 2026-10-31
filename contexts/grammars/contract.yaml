@@ -345,15 +345,22 @@ roles:
 
   - id: pane-grid
     ui: ui/components/pane-grid.md
-    renderers: [PaneGrid, Pane]
+    renderers: [PaneGrid, Pane, PaneSection]
     vendorParity: [Drawer]
-    slots: ["Pane children: the app's own elements, placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes"]
-    variants: { surface: [true, false], scroll: [true, false], collapse: [drawer], track: [auto, fill, fill-2, fill-3, compact, standard, wide], breakpoint: [base, medium, wide] }
+    slots: ["Pane children: PaneSection bands (or one nested PaneGrid), placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes", "PaneSection children: the band's content, at the pane inset"]
+    variants:
+      surface: [true, false]
+      scroll: [true, false]
+      collapse: [drawer]
+      inset: { values: [content, flush], chosenBy: app from pane-grid.choose.page }
+      section: { values: [grow, scroll, align, bleed, gap, as], chosenBy: app from pane-grid.choose.band }
+      track: [auto, fill, fill-2, fill-3, compact, standard, wide]
+      breakpoint: [base, medium, wide]
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open]
-    grammarMayChange: ["nothing: the grid, the dividers, the surface ground and the drawer are Common's"]
+    grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
     dna: []
-    lint: []
+    lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: freestyle
     ui: ui/components/freestyle.md
@@ -397,15 +404,16 @@ roles:
     ui: ui/components/page-header.md
     renderers: [Page]
     vendorParity: [breadcrumbs, tabs, separator]
-    slots: ["header: the page-header slots as data (breadcrumbs, title, description, meta, status, mark, actions, tabs); in bleed the breadcrumbs alone", children]
+    slots: ["header: the page-header slots as data (breadcrumbs, title, description, meta, status, mark, actions, tabs); in bleed and panes the breadcrumbs alone", "children: the body; in panes exactly one PaneGrid"]
     variants:
-      chrome: { values: [standard, bleed], chosenBy: app from page-header.choose.head (bleed for an app surface) }
-      header: { values: [none, the page header band, the trail alone (bleed only)], chosenBy: app }
+      chrome: { values: [standard, bleed, panes], chosenBy: app from page-header.choose.head (bleed for an app surface; panes for a tabbed page of panes) }
+      header: { values: [none, the page header band, the trail alone (bleed and panes only)], chosenBy: app }
       measure: { values: [reading, product, full], chosenBy: app, equals: the header's content measure }
     sizes: none
     states: [ready, skeleton (passed to the header)]
     grammarMayChange: [the header band's paint (page-header)]
-    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP, DNA-COMMON-PAGE-BLEED-BODY]
+    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP, DNA-COMMON-PAGE-BLEED-BODY, DNA-COMMON-PAGE-PANES-FLUSH]
+    lint: [starci-grammar/pane-grid-page]
 
   - id: diagram
     ui: ui/components/diagram.md
@@ -1025,6 +1033,14 @@ mustKeep:
         kind: style
         select: '[data-component="Page"][data-grammar-page-chrome="bleed"] > [data-grammar-page-body]'
         checks: [{ metric: padding-inline-start, op: "=", value: 0px }, { metric: padding-inline-end, op: "=", value: 0px }, { metric: overflow-x, op: "=", value: visible }]
+      owner: page-frame
+    - id: DNA-COMMON-PAGE-PANES-FLUSH
+      role: page
+      law: A panes page attaches its pane grid flush under the header band; the page keeps no row gap and no block padding, and its body no gap.
+      measure:
+        kind: style
+        select: '[data-component="Page"][data-grammar-page-chrome="panes"]'
+        checks: [{ metric: row-gap, op: "=", value: 0px }, { metric: padding-block-start, op: "=", value: 0px }, { metric: padding-block-end, op: "=", value: 0px }]
       owner: page-frame
 
     # --- diagram (ruling mermaid-diagram)

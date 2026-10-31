@@ -18,7 +18,8 @@ Choice `page-header.choose.head`: what heads the content. The first row that app
 | auth | a sign-in, sign-up, password or auth callback page, mounted only under the auth route group `(auth)` whose own layout draws the auth frame | no `Page`: the auth frame is the page frame, and the page draws its card into it | lint `starci-grammar/route-page-is-one-page` |
 | segment | the routes of one subject switched by page tabs (an instance's setup, settings, logs), each tab its own route | the segment's `layout` draws the one `Page` of every route under it: its owner, its pure half or its one root block draws `Page` with `header` and `header.tabs` as link tabs (items with `href`), the routed page as its body. Nothing sits beside that `Page`: the head goes into `header`, never a `PageHeader` beside it. The page owners under it draw body content only and no `Page` | lint `starci-grammar/route-page-is-one-page` |
 | page | the top of a route page | exactly one `Page` with `header` (the PageHeader slots as data) and the page's `measure`; the page's content is its children. The page owner draws it, its pure half does, or, when client data builds the header a server owner may not, the one connected block the owner renders as its root does, the owner's content passed as that block's children (one level: a block it relays to does not count). Nothing sits beside the `Page`, no second `Page` sits inside it, and the page owner never draws a `PageHeader` or `PageContainer` of its own; a workbench is such a page; a layout frame draws no page head except the segment `Page` above. A page owner that draws no UI (it only redirects, calls `notFound()` or returns null) draws no `Page` | lint `starci-grammar/route-page-is-one-page`, `starci-grammar/no-hand-rolled-page-header`; `DNA-COMMON-PAGE-HEADER-FIRST`, `DNA-COMMON-PAGE-HEADER-ONE-H1` |
-| app-surface | a chat or a split editor: one joined surface that fills the viewport below the chrome, edge to edge | `Page chrome="bleed"`: no inline gutter, no block padding, no clip, the body fills the region; the surface sits in a `FillViewport` in the body, which keeps the one bottom inset. Its `header` is the trail alone (`{ breadcrumbs }`, no heading band) or, when the page has a heading or tabs, the band (`title` given) | `DNA-COMMON-PAGE-BLEED-BODY` |
+| panes | a tabbed app page whose body is panes (an instance's setup, a dossier browser, a chat) | `Page chrome="panes"`: the header band (with its `tabs` or without) or the trail alone, then exactly one `PaneGrid` attached to the band's separator, full width and to the viewport bottom, with no card, radius or gap. The tab line is the only line between the tabs and the grid; the grid's dividers run its full height. A routed tab renders its own `PaneGrid` inside a `flush` pane of that grid | lint `starci-grammar/pane-grid-page`; `DNA-COMMON-PAGE-PANES-FLUSH` |
+| app-surface | a single editor or canvas that fills the viewport below the chrome, edge to edge | `Page chrome="bleed"`: no inline gutter, no block padding, no clip, the body fills the region; the surface sits in a `FillViewport` in the body, which keeps the one bottom inset. Its `header` is the trail alone (`{ breadcrumbs }`, no heading band) or, when the page has a heading or tabs, the band (`title` given) | `DNA-COMMON-PAGE-BLEED-BODY` |
 | no-band | the top of a route page with nothing to head (a landing hero) | `Page` without `header`: the body starts one region step down | `DNA-COMMON-PAGE-BODY-GAP` |
 | region | a region inside the page, under the page heading | `SectionHeader` at the level the outline needs | judgement |
 | card | one subject's own face | the card's label (`card.choose.role`) | `DNA-COMMON-CARD-LABEL-HEADING` |
@@ -36,8 +37,8 @@ Choice `page-header.choose.slot`: which slot carries a fact about the page. Each
 | views | the page's main area switches between views | `header.tabs` (`tabs.choose.level:page`), never a `Tabs` first in the body | lint `starci-grammar/page-tabs-in-header`; `DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR` |
 
 ## Variants
-`Page`'s `chrome` is the app's, by `page-header.choose.head`: `standard` (the default) or `bleed` for an app surface.
-Nothing else: the band, its inset, its separator and where tabs stand are the grammar's
+`Page`'s `chrome` is the app's, by `page-header.choose.head`: `standard` (the default), `bleed` for an app surface or
+`panes` for a tabbed page whose body is a pane grid. Nothing else: the band, its inset, its separator and where tabs stand are the grammar's
 ([contract](../../grammars/contract.md#pageheader)); `Page`'s `measure` is the one measure of the header content and the
 body, so their edges agree by construction.
 
@@ -55,7 +56,9 @@ and the tab labels stay real (STATE-8); the body's blocks own their own loading.
   step between the band and the body and between its sections, and the clip that keeps the body inside the gutter.
   Layout frames (`WorkspaceShell`, `PrimaryRailLayout`, `PaneGrid`) place regions only and never inset a page.
   A full-bleed multi-pane frame (named areas side by side and stacked, flush, with dividers, each pane optionally on the
-  surface ground, a rail pane becoming a drawer when narrow) is a `PaneGrid`, never a `SurfaceCard` wrapped around the panes.
+  surface ground, a rail pane becoming a drawer when narrow) is a `PaneGrid`, never a `SurfaceCard` wrapped around the
+  panes; with `chrome="panes"` the page measures the grid's fill box itself, attaches the grid under the band's
+  separator and leaves no gap, block padding or radius between the tab line and the grid.
 - **Knowledge decides:** page header vs section header; which slot carries a fact; one commit.
 - **App author decides:** the trail, the heading, the mark, the facts, the commands and the tabs.
 

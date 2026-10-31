@@ -60,15 +60,21 @@ How the three combine:
    Proof: TASTE-4.
 3. **Side contact sets padding.** Each side of a band takes its inset from what it touches: an outer edge takes
    the content clearance, a side facing a separator takes the smaller separator clearance, a side whose child owns
-   the edge adds nothing. Inline sides of peer bands align. The grammar owns the clearances and the flush-band API.
-4. **No duplicate inset.** A container that only groups children with their own boundaries adds none; a list in a
-   panel aligns its row boxes to the panel's content edge and adds no wrapper padding. Lint:
-   `starci-fe/no-list-panel-padding`.
+   the edge adds nothing. Inline sides of peer bands align. The grammar owns the clearances and the flush-band API:
+   a `Pane` publishes its content inset (the content clearance inline on both sides, the separator clearance at the
+   block start, the content clearance at the block end of an outer edge and the separator clearance facing a divider),
+   and a `PaneSection` is the flush band that applies it, so a band placed in a pane carries no padding of its own.
+   Lint: `starci-grammar/no-pane-section-padding`.
+4. **No duplicate inset.** A container that only groups children with their own boundaries adds none. Every box in a
+   panel or pane (a search field, the first tab, a list row and its selected fill, a meter, a chip, a button) starts at
+   the content edge, and the text inside a box keeps the vendor's own padding: a title after an avatar or a value after
+   an icon is the box's anatomy and aligns to nothing outside the box. A list in a panel aligns its row boxes to the
+   panel's content edge and adds no wrapper padding. Lint: `starci-fe/no-list-panel-padding`.
 5. **A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider. Lint:
    `starci-fe/divider-full-bleed`.
 6. **Subordinate content indents at the inline start only**, so the reading measure stays.
 7. **Responsive insets step to the adjacent scale step**, and only on sides the boundary owns; separator-facing
-   sides never step. The page container owns the page's inline inset; routed content owns only its block inset.
+   sides never step, and a pane's content inset is one value at every breakpoint. The page container owns the page's inline inset; routed content owns only its block inset.
 
 ## Type
 

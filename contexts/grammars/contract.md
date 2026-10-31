@@ -247,7 +247,16 @@ none on an outer edge), all in the same border colour and weight as every other 
 `fill`, `fill-2`, `fill-3`, `compact`, `standard`, `wide`), and `areas`, `columns` and `rows` may be given per breakpoint
 (`base`, `medium` from 48rem, `wide` from 70rem), chosen by container query on the grid's own width. Each `Pane` is a
 borderless surface (`surface`) or a plain div, may be its own scroll owner, and may collapse into a drawer where its
-area is not arranged. It only divides the space: the pane's content is the app's (ruling pane-grid).
+area is not arranged. A pane owns its content inset (`inset`: `content`, the default, or `flush` for a nested grid or
+a full-bleed canvas): it never pads itself, so dividers, nested grids and scrollbars stay full-bleed, and it publishes
+the clearance of each side by contact (the content clearance inline on both sides and at an outer block end, the
+separator clearance at the block start and facing a divider) to its `PaneSection` bands. A `PaneSection` is the one
+band of a pane: it pads inline by the pane inset, stacks with the row gap between its siblings, may take the remaining
+height (`grow`), be its own full-bleed scroll owner with the inset inside it (`scroll`), centre a head band (`align`),
+let one horizontal scroller reach both pane edges (`bleed`), and space its own children (`gap`); a pane and a section
+take no class and no style. Inside a pane, a list resolves the panel inset and an unpainted secondary tab track drops its
+track padding, so every box starts at the content edge while the text inside a box keeps the vendor's own padding.
+The grid refuses a child that is not a pane, and a pane holds sections or one nested grid.
 
 ### Freestyle
 
@@ -272,7 +281,10 @@ body in the page measure and gutter. The page is the single owner of the page in
 and the body, and the body's sections, sit a region step apart, and the body clips past its content box so nothing in
 it reaches across the gutter. Layout frames place regions and never inset a page. A page without a band starts its
 body one region step down. A bleed page is an app surface: no gutter, no block padding and no clip, its body filling
-the region, under the band or the trail alone. Skeleton passes to the band; the body's blocks own their loading.
+the region, under the band or the trail alone. A panes page is a tabbed app page whose body is one pane grid: the band
+(with or without tabs) or the trail, then the grid attached to the band's separator with no gap, block padding, radius
+or card, reaching both content edges and the viewport bottom less the grammar's bottom chrome (the page measures the
+fill box itself). Skeleton passes to the band; the body's blocks own their loading.
 
 ### Diagram
 

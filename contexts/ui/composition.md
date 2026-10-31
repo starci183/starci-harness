@@ -238,8 +238,9 @@ bot badge. The family owns renderers, cells and sizes.
 
 ### LAYOUT-1 Which regions exist
 One task with no support is one region. Support the reader consults alongside the task is a rail with a named
-role. Every further region names its task role. A list, detail and info screen is one joined surface with vertical
-dividers; panes touch, and a pane that disappears takes its divider with it. Options that apply to a whole batch
+role. Every further region names its task role. A list, detail and info screen is one `PaneGrid` of `Pane`s, mounted as
+`Page chrome="panes"` on a tabbed app page; panes touch, one divider stands between neighbours, and a pane that
+disappears takes its divider with it. Each pane's content is `PaneSection` bands at the pane's content inset. Options that apply to a whole batch
 and rarely change sit closed in one disclosure card below the main task, its summary saying in words who the result
 is for. In a panel offering several sources, each source sits with its own kind.
 
@@ -265,7 +266,7 @@ width. Order differences across widths are composition only; DOM, reading, focus
 | FE-APP-SHELL-4 | On compact widths the navbar keeps identity, search, notifications and account; a row of the same band height below it holds only the named navigation opener; the drawer opens from the leading edge, holds all groups plus language and theme, traps focus, closes on destination, backdrop or Escape. No tab row, no bottom tab bar. |
 | FE-APP-SHELL-5 | A create action lives on the page whose content it changes, never in the navbar. |
 | FE-APP-SHELL-6 | A collapsed sidebar is an icon rail: one icon-only item per destination, tooltip labels, count badges, persisted per user, settings-type groups at the bottom. |
-| FE-APP-SHELL-7 | A conversation panel: title, nested search, a filter row, then one list sorted by latest message; rows aligned to the panel's content edge; each row shows identity, name, time, last message and unread count; the open row is highlighted. |
+| FE-APP-SHELL-7 | A conversation pane: its bands (`PaneSection`s) are title, search, a filter row, then one list sorted by latest message; every box (the search field, the first filter tab, a row and its highlight) starts at the pane's content edge; each row shows identity, name, time, last message and unread count; the open row is highlighted. |
 
 Lint: `starci-grammar/app-shell-frame`, `navbar-control-size`, `navbar-cluster`, `no-shell-bottom-tabs`,
 `no-navbar-create`. The shell's component and prop names are the grammar contract's

@@ -333,8 +333,20 @@ rulings:
     date: '2026-10-31'
     status: live
     words: "phải xây kiểu grid hiểu không, kiểu bỏ A BC ngang hàng D ở dưới... và cách nhau bởi divider; chuẩn build grid và ghép các element nghiệp vụ của chat, mỗi grid có option surface hoặc k"
-    ruling: "The multi-pane frame is one generic PaneGrid, not a layout with fixed chat-shaped slots: named areas (A B C side by side, D below) laid out flush with a divider between neighbours, columns and rows by track role, the arrangement chosen per breakpoint, and each Pane either a borderless surface or a plain div. It only divides the space; what goes in a cell is the app's business. PaneLayout is removed, not aliased (removedVocabulary). A short inset separator inside a pane's content is the app's own element, not a grammar option."
-    owner: "@starci/grammar src/core/composition/PaneGrid, src/common/styles.css; contexts/grammars/contract.md PaneGrid; contexts/ui/components/pane-grid.md"
+    ruling: "The multi-pane frame is one generic PaneGrid, not a layout with fixed chat-shaped slots: named areas (A B C side by side, D below) laid out flush with a divider between neighbours, columns and rows by track role, the arrangement chosen per breakpoint, and each Pane either a borderless surface or a plain div. The grid divides the space and each Pane owns the content inset of what is placed in it (ruling pane-inset); what the cell shows is the app's. PaneLayout is removed, not aliased (removedVocabulary). A short inset separator inside a pane's content is the app's own element, not a grammar option."
+    owner: "@starci/grammar src/core/composition/PaneGrid, src/core/composition/PaneSection, src/common/styles.css; contexts/grammars/contract.md PaneGrid; contexts/ui/components/pane-grid.md"
+  - id: pane-inset
+    date: '2026-10-31'
+    status: live
+    words: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
+    ruling: "A Pane owns its content inset and every band in it is a PaneSection whose boxes align to that edge: one padding system for everything placed in a PaneGrid, chosen by the Grammar per side by contact, never by the app. A box (a search field, the first tab, a list row and its selected fill, a chip) starts at the pane content edge and the text inside a box keeps the vendor's own padding; a pane and a section take no class, and no padding or margin utility sits on what a section renders."
+    owner: "@starci/grammar src/core/composition/PaneGrid, src/core/composition/PaneSection, src/common/styles.css; lint starci-grammar/pane-grid-children, pane-children, no-pane-section-padding, pane-grid-page and starci-fe/no-hand-built-panes (R345-R349)"
+  - id: page-panes-frame
+    date: '2026-10-31'
+    status: live
+    words: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
+    ruling: "A tabbed app page's PaneGrid attaches flush under the tab line, full width and to the bottom of the viewport, with no card, radius or gap between the tabs and the grid: Page chrome=\"panes\" is that frame, and a card, a joined surface or a FillViewport around panes is not."
+    owner: "@starci/grammar src/core/composition/Page; lint starci-grammar/pane-grid-page and starci-fe/no-hand-built-panes (R348, R349); contexts/ui/components/page-header.md"
   - id: grammar-freestyle-region
     date: '2026-10-31'
     status: live

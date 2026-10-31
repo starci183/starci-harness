@@ -25,8 +25,8 @@ A list is never wrapped in a card (COLLECTION-1), except the `rail` and `step` r
 section header above it.
 
 ## Variants
-Rows are separated by lines (n-1 lines) or by gap, never both (`DNA-COMMON-LIST-SEAMS`). Rows align their boxes to the panel's content edge
-in panels. Per-item commands are `neutral` (CTA-6). Unread rows take the contract's unread weight.
+Rows are separated by lines (n-1 lines) or by gap, never both (`DNA-COMMON-LIST-SEAMS`). Rows align their boxes to the content edge of a panel or a pane
+(the row box and its selected fill start there; the title inside keeps the vendor item padding). Per-item commands are `neutral` (CTA-6). Unread rows take the contract's unread weight.
 
 ## Size
 List row leading slots and option rows sit on the ramp ([../scale.md](../scale.md)); row actions take `sm`.
@@ -38,7 +38,7 @@ empty and failed states are the section's [empty-state](empty-state.md) (STATE-8
 
 ## Owner split
 - **Grammar owns:** row anatomy and order, description line limit, separators, selection fill, table density,
-  skeleton rows, panel alignment.
+  skeleton rows, panel alignment (a `ListBox` in a `Pane` resolves the panel inset itself).
 - **Knowledge decides:** section not card, which row role, selection style, per-item intent, page size.
 - **App author decides:** items, keys, copy, sort and filter facts.
 

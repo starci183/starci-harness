@@ -74,6 +74,6 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | a compact identity beside a name | [identity-mark](identity-mark.md) |
 | show the product's generated character (mascot) art | [mascot](mascot.md) |
 | give the brand its own tinted ground in a split screen (a sign-in brand half) | [backdrop](backdrop.md) |
-| divide a full-bleed area into flush panes with dividers, side by side and stacked (a list, a main column, an info rail) | [pane-grid](pane-grid.md) |
+| divide a full-bleed area into flush panes with dividers, side by side and stacked (a list, a main column, an info rail), and place a pane's content at its one inset; mount a tabbed page of panes | [pane-grid](pane-grid.md) |
 | write one region by hand because no grammar component or composition fits (a last resort, with its reason) | [freestyle](freestyle.md) |
 | draw a diagram: an article's Mermaid source, or nodes and edges the app holds | [diagram](diagram.md) |
