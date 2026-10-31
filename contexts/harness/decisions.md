@@ -225,7 +225,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   the relay's composer answers for (`cli/src/core/check/base-findings.ts`, `cli/src/core/check/relay-baseline.ts`, `judgeAtRelayHead` in
   `cli/src/harness/run-checks.ts`). An opt-in pattern of `hfs.json` is declared by the harness,
   never by a task (`cli/src/harness/hfs-patterns.ts`).
-- **Every seat loads a minimal core and searches the rest (`minimal-core-search`).** The owner's words: "nạp cho op và
+- **Every seat loads a minimal core and searches the rest, so no rule is missed (`minimal-core-search`).** The owner's words: "nạp cho op và
   kernel và sup là tối thiểu + search i" (load the op, the Kernel and the Supervisor minimally, plus search). Each op of
   `ops/ops/` and each coordinator brief of `ops/coordinators/` loads the few pages that seat cannot act without plus an index
   of what exists: the [load order](../README.md#two-layers-of-context), and a generated section index (`*-sections.md`,
@@ -233,6 +233,13 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   stands for in the read trace. Everything else is read on demand, through `starci contexts search` and `starci contexts
   anchor`, as the worker procedure ([ops/ops/README.md](../../ops/ops/README.md)) and each coordinator brief say. A contract
   is measured against its op's context budget once, when it is admitted (`isAdmitted` in `cli/src/harness/tasks.ts`).
+  The owner, 2026-10-31, on rules agents missed: "trò nghĩ cách làm sao tránh miss và nếu miss thì sao" (find how to avoid a
+  miss, and what happens when one occurs), and "hook k có ở codex … đừng đem tính năng claude vào" (Codex has no hooks; bring
+  in no Claude feature). Every agent looks a rule up in several phrasings before it answers, plans or briefs, and a brief
+  cites each constraint ([contexts/README.md](../README.md) "Looking a rule up", hard rule 7), held in the files every host
+  reads (AGENTS.md, this tree), never in one runtime's hooks; a missed rule is recorded as a question of the search eval and
+  hardened where it lives (contexts/README.md "When a rule was missed"; `--also` and the `miss` record in
+  `cli/src/core/contexts/search.ts`).
 - **An Op's attempt is settled before anything of it goes (`op-settle-merge-or-discard`).** The owner, 2026-10-29: "op code
   xong báo về kernel để quyết merge hay không, merge xong mới xóa không để lại partial_work để lần sau chạy lại/xóa" (an Op
   that finishes reports to its Kernel, which decides whether to merge; delete only after the merge, and leave no partial work

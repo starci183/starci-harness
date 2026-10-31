@@ -68,8 +68,9 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
 1. Read exactly the files the brief lists under "Read exactly these files", base then extend, before you change anything.
    They are your op's small fixed core and what the contract adds; everything else is read on demand. A listed file named
    `*-sections.md` indexes the sections of a larger document: open the one the task needs with `starci contexts anchor
-   <anchor>`. Any other question goes to `starci contexts search "<question>" [--scope <scope>]`, asked in English, and you
-   open a hit before you rely on it. Do the task's input inside its context, and write only under its allowPaths. When the brief has a "Prior work"
+   <anchor>`. Any other question goes to `starci contexts search "<question>" --also "<other phrasing>" [--scope <scope>]`,
+   asked in English and in more than one phrasing ([contexts/README.md](../../contexts/README.md) "Looking a rule up"), and
+   you open a hit before you rely on it. Do the task's input inside its context, and write only under its allowPaths. When the brief has a "Prior work"
    section, an earlier attempt of this same work was stopped by the harness, parked on a shared need, or ruled a repair by
    its Kernel, and its one kept patch is yours to continue: start from it, never redo it blindly. Read what
    changed in the contract since and why the last attempt ended, then keep what still holds and fix the rest. The prior

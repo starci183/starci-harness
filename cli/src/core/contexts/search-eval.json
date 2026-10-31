@@ -90,6 +90,12 @@
     { "q": "is the label inside or outside the card", "expect": ["card-label-placement-per-grammar", "DNA-CORE-CARD-LABEL-OUTSIDE", "DNA-OFFSET-POP-CARD-LABEL-OUTSIDE", "contexts/grammars/contract.yaml#roles.card"] },
     { "q": "chip padding", "expect": ["contexts/ui/components/chip.md#size", "contexts/vendor/heroui.md#chip", "contexts/grammars/contract.md#chip"] },
     { "q": "when to use a toast", "expect": ["contexts/ui/components/toast-alert.md#choose", "FE-TOAST"] },
-    { "q": "when to use an empty state", "expect": ["contexts/ui/components/empty-state.md#choose", "contexts/ui/components/empty-state.md#job", "STATE-3"] }
+    { "q": "when to use an empty state", "expect": ["contexts/ui/components/empty-state.md#choose", "contexts/ui/components/empty-state.md#job", "STATE-3"] },
+    { "q": "an app uses a package change before it is on npm", "expect": ["contexts/authority/packages.md#an-app-uses-the-edit-before-npm-serves-it", "CONTRIB-20"], "miss": { "on": "2026-10-31", "what": "a lead and a design agent wrote \"never link a local build, wait for npm\" into briefs from memory", "cause": ["brief-paraphrase", "ranked-low"], "fix": ["contexts/authority/packages.md#an-app-uses-the-edit-before-npm-serves-it", "contexts/README.md#looking-a-rule-up"] } },
+    { "q": "must an app wait for npm before it links a package edit", "expect": ["contexts/authority/packages.md#an-app-uses-the-edit-before-npm-serves-it", "CONTRIB-20"] },
+    { "q": "link a local build of a package into an app", "expect": ["contexts/authority/packages.md#an-app-uses-the-edit-before-npm-serves-it", "cli/README.md#package-sources"] },
+    { "q": "may a PaneGrid hold a wrapper element around its panes", "expect": ["R345", "contexts/ui/components/pane-grid.md#choose"], "miss": { "on": "2026-10-31", "what": "PaneGrid silently dropped a wrapper child an app placed around its panes", "cause": ["no-enforcer"], "fix": ["R345"] } },
+    { "q": "remove a git worktree that holds node_modules junctions", "expect": ["contexts/authority/README.md#worktrees"], "miss": { "on": "2026-10-31", "what": "a worktree removed by hand followed its node_modules junctions and emptied the main install", "cause": ["not-looked-up", "no-enforcer"], "fix": ["contexts/authority/README.md#worktrees"] } },
+    { "q": "what to do before answering after a context compaction", "expect": ["contexts/harness/rules.md#hard-rules", "contexts/README.md#looking-a-rule-up"], "miss": { "on": "2026-10-31", "what": "after a context compaction the lead planned and briefed without the lookup step", "cause": ["not-looked-up", "not-in-core"], "fix": ["contexts/harness/rules.md#hard-rules", "contexts/README.md#looking-a-rule-up"] } }
   ]
 }

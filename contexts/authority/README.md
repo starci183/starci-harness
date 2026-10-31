@@ -38,8 +38,8 @@ verb standard") are how the CLI holds this table where it holds it.
 Every worktree the harness creates is removed by the harness when its work ends, under `inline` and `orca` alike; no role
 removes one by hand or keeps one alive past its owner. Before removal its uncommitted work is preserved as a red verify
 preserves it (a patch and its untracked files, in the project's `preserved/`), then it is reaped: every Orca terminal
-whose worktree it is is closed, its install links are unlinked as links (never a recursive delete through one, never
-`robocopy /MIR`), Orca forgets it, and the processes the harness started in it or that work inside it are ended and seen
+whose worktree it is is closed, its install links (each `node_modules` junction or symlink) are unlinked as links (never
+`git worktree remove` or a recursive delete through one, which empties the install it points at, never `robocopy /MIR`), Orca forgets it, and the processes the harness started in it or that work inside it are ended and seen
 gone (by pid, never by name, never the caller or Orca: `cli/src/harness/reap.ts`); then it is removed and git prunes. An
 Op's worktree waits for its attempt's settle (MERGE, DISCARD, or a KEEP or REPAIR whose one patch is saved first) and goes
 with its branch ([cli/README.md](../../cli/README.md) "Settling an attempt"); any other branch is kept. A folder the host still holds (EBUSY, EPERM) is left busy with its holder

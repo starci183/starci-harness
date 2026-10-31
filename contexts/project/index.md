@@ -5,15 +5,15 @@
 Every file of `contexts/` with its size, the first sentence it opens with, its sections and the ids it names. A Kernel
 reads this index instead of the whole tree, then opens only the files its tasks need and names them in each contract.
 
-- [README.md](../README.md) · 15 KB — Read this file first, in this repository or in any app the harness drives.
+- [README.md](../README.md) · 19 KB — Read this file first, in this repository or in any app the harness drives.
   - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
 - [authority/README.md](../authority/README.md) · 6 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
 - [authority/branch.md](../authority/branch.md) · 2 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 1 KB — CI is the critic.
-- [authority/packages.md](../authority/packages.md) · 2 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
-  - sections: Grammar edits are content only
+- [authority/packages.md](../authority/packages.md) · 3 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
+  - sections: An app uses the edit before npm serves it · Grammar edits are content only
 - [authority/wave.md](../authority/wave.md) · 2 KB — A wave is one scoped round on a merged tree.
   - sections: The scope decision comes first · Reuse and repair
 - [code/README.md](../code/README.md) · 7 KB — How app code is written: shared holds the rules both sides follow, be (NestJS) and fe (Next.js) the rules of one side.
@@ -168,10 +168,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/cli-canonical.md](../harness/cli-canonical.md) · 12 KB — Owner ruling `cli-canonical-2026-10-30` (decisions.md): the flag dictionary and the command tree below are the target surface of both layers, the harness verbs (`starci <group> ...
   - sections: One flag dictionary (every verb, both layers) · The command tree
-- [harness/decisions.md](../harness/decisions.md) · 30 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
+- [harness/decisions.md](../harness/decisions.md) · 31 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
 - [harness/questions.md](../harness/questions.md) · 1 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
-- [harness/rules.md](../harness/rules.md) · 3 KB — These hold for every role and every task.
+- [harness/rules.md](../harness/rules.md) · 4 KB — These hold for every role and every task.
 - [harness/state.md](../harness/state.md) · 4 KB
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 7 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.

@@ -6,6 +6,18 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.28] - 2026-10-31
+
+### Added
+
+- `starci contexts search "<question>" --also "<phrasing>"` (repeatable): each phrasing is ranked and the rankings are fused by reciprocal rank, each hit counting the phrasings that found it (`phrasings` in `--json`, `found by n/m` in text), so a rule written in other words than the request still surfaces.
+- The search eval (`core/contexts/search-eval.json`) records the rules agents missed: a question carrying `miss` (`on`, `what`, `cause` among `not-looked-up`, `ranked-low`, `not-in-core`, `no-enforcer`, `brief-paraphrase`, and the `fix` anchors) is scored with the rest, and `--eval` is red while a fix anchor is not in the index. Four misses of 2026-10-31 are recorded (a brief that told an app to wait for npm, PaneGrid dropping a wrapper child, a worktree removed through its junctions, a lookup forgotten after a compaction), with two more phrasings of the first.
+- Knowledge: contexts/README.md "Looking a rule up" (several phrasings, the area's scope, `--limit 10` when the answer decides, the section index, open then cite; a brief cites each constraint and tells its reader to look up the same way; the brief check) and "When a rule was missed" (record, name the causes, fix each where it lives); hard rule 7, AGENTS.md, the worker procedure, the Kernel and Supervisor briefs, the starci skill and decision `minimal-core-search` point at them.
+
+### Changed
+
+- Knowledge: contexts/authority/packages.md "An app uses the edit before npm serves it" states on its own that a package change is linked into the app with `deps source --local` the moment it is coded and only a deploy waits for npm; contexts/authority/README.md "Worktrees" names the `node_modules` junctions a removal unlinks first. Search eval 95 questions: lexical recall@5 0.937 (MRR 0.749), hybrid 0.968 (MRR 0.797), from 0.933 (0.732) and 0.966 (0.787) on 89.
+
 ## [1.1.0-alpha.27] - 2026-10-31
 
 ### Changed

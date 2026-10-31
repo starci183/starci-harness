@@ -41,9 +41,36 @@ path under its allowPaths, opened at the sections a written file needs and citab
 mid-task goes to `starci contexts search "<question>" [--scope ui,code,...]`, asked in English since the tree is English (a
 question in another language is translated first, keeping rule ids and names as written; the verb refuses it otherwise with
 `SEARCH_QUERY_NOT_ENGLISH`), which ranks the sections of this tree, the op files, `policy/` and the harness documents and
-prints each hit's id, file, line and text. Open the hit's file before you rely on it. A hit marked citable carries a rule or
+prints each hit's id, file, line and text, the way "Looking a rule up" below says. Open the hit's file before you rely on it. A hit marked citable carries a rule or
 decision id; `rulesApplied` may cite it only when that file is among the task's context files (its rule pages included, and
 a section index standing for its source), since the rules-cited check reads ids from those files alone.
+
+### Looking a rule up
+
+A rule an agent breaks is almost always a rule it did not find, so a lookup follows these steps before every answer, plan,
+brief or refusal ([harness/rules.md](harness/rules.md) rule 7), and again after a context compaction or a resumed session,
+which keep nothing that was read:
+
+1. **Several phrasings.** Ask the request in English, then the action it takes ("link a local build", "remove a worktree"),
+   then the artifact or rule id it touches (`PaneGrid`, `node_modules`, `CONTRIB-20`), in one call:
+   `starci contexts search "<request>" --also "<action>" --also "<artifact>"` fuses the rankings and says how many phrasings
+   found each hit. One phrasing ranks one wording; a rule written in other words sits below the top 5.
+2. **The right scope, deeper when it matters.** `--scope harness,decisions` for how the harness works and is changed,
+   `ui,grammars` for a screen, `code,hfs,stack` for code; with `--limit 10` whenever the answer decides a brief, a plan, a
+   constraint or a refusal.
+3. **The area's index.** Read your row of the load order or of "Reading order by task", and the section index
+   (`*-sections.md`) of a document too large to load, so a rule the ranking missed is still in view.
+4. **Open, then cite.** A hit counts once its file is open; cite its id and path. A hit that contradicts what you remembered
+   wins.
+
+A brief, to a worker, an Op or a subagent of any host, states each constraint with its rule id and path and in the rule's own
+words, never from memory, and tells its reader to look up the same way before acting: a subagent knows only its brief.
+Before you send a brief, a plan or an answer, check it:
+
+- every "never", "must", "only" or "wait for" names a rule id and path you opened in this session;
+- the lookup ran in English, in at least two phrasings, and no hit contradicts what you wrote;
+- every constraint names its enforcer (a hard rule's gate, an `R<n>` lint rule of [hfs/rules.yaml](hfs/rules.yaml), a CLI
+  refusal) or is held by review, and this check is that review.
 
 ## Harness
 
@@ -145,6 +172,25 @@ A feedback is absorbed by making the system stricter (CONTRIBUTING.md CONTRIB-7,
 CONTRIB-6). In order of preference it becomes: a grammar API that removes the choice; a lint, gate or threshold; or the
 general rule rewritten in its one place. Each hardening records its ruling in [decisions/rulings.yaml](decisions/rulings.yaml). Every rule therefore has exactly one
 place where a hardening lands: its own section (ui, patterns), its contract role, or its threshold key.
+
+### When a rule was missed
+
+A miss is a brief, plan, answer or change that went against a rule the tree holds. Whoever finds it closes it in one loop,
+in the change that fixes the damage:
+
+1. **Record it** as a question of the search eval (`cli/src/core/contexts/search-eval.json`): the question the agent should
+   have asked, the anchors that answer it, and `miss` with the date, what happened, the causes and the anchors of the fix.
+   `starci contexts search --eval` scores every recorded miss with the rest and is red while an expected or fix anchor is
+   not in the index, so a miss stays measured after it is fixed.
+2. **Name its causes**: `not-looked-up` (no lookup ran, or a compaction dropped the step), `ranked-low` (the lookup ran and
+   the answer sat below the top 5), `not-in-core` (the seat's fixed core lacked a rule it cannot act without),
+   `no-enforcer` (nothing refused the mistake) or `brief-paraphrase` (a brief restated a rule from memory, wrongly).
+3. **Fix each cause where it lives.** `ranked-low`: rewrite the owning section so its heading and opening sentence carry the
+   words the question used, until the eval ranks it in the top 5 (CONTRIB-6); `not-in-core`: promote the rule into the
+   fixed core that seat reads (AGENTS.md for every host, the op's `context.base`, the coordinator brief); `no-enforcer`: a
+   lint rule, an hfs check or a CLI refusal (CONTRIB-10); `not-looked-up` and `brief-paraphrase`: the lookup steps and the
+   brief check of "Looking a rule up", or the brief that left them out. The record is the eval question; the fix is in
+   its owner, never a lessons note (CONTRIB-7).
 
 ## House rules for editing contexts
 

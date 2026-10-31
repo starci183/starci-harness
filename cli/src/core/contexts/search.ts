@@ -22,14 +22,31 @@ const EVAL_RECALL_AT = 5
 // A letter outside ASCII marks a question in another language (Vietnamese diacritics, other scripts); ids and names are ASCII.
 const NON_ENGLISH_LETTER = /(?!\p{ASCII})\p{L}/u
 
+/** Why an agent missed a rule the tree holds (contexts/README.md "When a rule was missed"). */
+const MISS_CAUSES = ["not-looked-up", "ranked-low", "not-in-core", "no-enforcer", "brief-paraphrase"] as const
+
+/**
+ * A recorded miss: when, what went wrong, its causes, and the anchors of the fix that hardened the tree against it (the
+ * rewritten section, the promoted core page, the enforcing rule).
+ */
+const missSchema = z.strictObject({
+    on: z.iso.date(),
+    what: z.string().min(1),
+    cause: z.array(z.enum(MISS_CAUSES)).min(1),
+    fix: z.array(z.string()).min(1),
+})
+
 /**
  * The search eval shipped beside this verb's source: real worker questions with the anchors that answer them, and the
- * recall@5 floor each ranking must hold. A ranking that falls under its floor turns the eval red.
+ * recall@5 floor each ranking must hold. A ranking that falls under its floor turns the eval red. A question carrying `miss`
+ * is the record of a rule an agent missed, scored on every run like the rest.
  */
 const evalSchema = z.object({
     schema: z.literal("starci/contexts-search-eval@2"),
     threshold: z.strictObject({ lexical: z.number().min(0).max(1), hybrid: z.number().min(0).max(1) }),
-    questions: z.array(z.object({ q: z.string(), expect: z.array(z.string()).min(1), scope: z.array(z.enum(SEARCH_SCOPES)).optional() })).min(1),
+    questions: z
+        .array(z.object({ q: z.string(), expect: z.array(z.string()).min(1), scope: z.array(z.enum(SEARCH_SCOPES)).optional(), miss: missSchema.optional() }))
+        .min(1),
 })
 
 type EvalQuestion = z.infer<typeof evalSchema>["questions"][number]
@@ -66,6 +83,8 @@ interface SearchData {
 
 interface EvalResult {
     readonly questions: number
+    /** How many questions record a miss. */
+    readonly misses: number
     readonly unknownIds: readonly string[]
     readonly scores: readonly ModeScore[]
 }
@@ -110,10 +129,10 @@ const runEval = async (index: LoadedIndex, file: string): Promise<EvalResult> =>
     if (!existsSync(file)) throw new Refusal("SEARCH_EVAL_MISSING", `no eval file at ${file}`)
     const parsed = evalSchema.parse(JSON.parse(readFileSync(file, "utf8")))
     const known = new Set(index.file.chunks.flatMap((chunk) => [chunk.anchor, ...chunk.aliases]))
-    const unknownIds = [...new Set(parsed.questions.flatMap((item) => item.expect.filter((id) => !known.has(id))))]
+    const unknownIds = [...new Set(parsed.questions.flatMap((item) => [...item.expect, ...(item.miss?.fix ?? [])].filter((id) => !known.has(id))))]
     const modes = index.vectors === null ? [true] : [true, false]
     const scores = await inOrder(modes, (lexicalOnly) => scoreMode(index, parsed.questions, lexicalOnly, parsed.threshold))
-    return { questions: parsed.questions.length, unknownIds, scores }
+    return { questions: parsed.questions.length, misses: parsed.questions.filter((item) => item.miss !== undefined).length, unknownIds, scores }
 }
 
 /** Recall@5, MRR and the misses of one ranking (BM25 only, or hybrid) over the eval questions, asked one after another. */
@@ -166,6 +185,7 @@ export const contextsSearchVerb = defineVerb({
     flags: {
         question: { kind: "string", positional: true, summary: "the question, a rule id or a few words (none: judge the built index against the files of the tree)" },
         scope: { kind: "string", summary: `comma-separated scopes to search: ${SEARCH_SCOPES.join(", ")}` },
+        also: { kind: "list", summary: "another phrasing of the question (repeat: the action, the artifact or rule id): each is ranked and all are fused, each hit counting the phrasings that found it" },
         limit: { kind: "string", summary: `how many hits to print (default ${String(DEFAULT_LIMIT)})` },
         lexical: { kind: "boolean", summary: "rank by BM25 only, even when the index carries vectors" },
         execute: { kind: "boolean", summary: "with no question: rebuild the index from the harness's own tree, as the build does" },
@@ -175,6 +195,7 @@ export const contextsSearchVerb = defineVerb({
     },
     run: async (context, flags): Promise<VerbResult<BuildData | SearchData>> => {
         const judging = flags.question === undefined && !flags.eval
+        if (flags.also.length > 0 && flags.question === undefined) throw new UsageError("--also adds a phrasing to a question; give the question first")
         if (flags.execute) {
             if (!judging) throw new UsageError("--execute rebuilds the index; it takes no question and no --eval")
             if (flags.cwd !== undefined) throw new UsageError("--execute rebuilds the harness's own index; --cwd only names a tree to compare it with")
@@ -201,18 +222,19 @@ export const contextsSearchVerb = defineVerb({
                 (score) =>
                     `${score.held ? "held" : "SEARCH_RECALL_LOW"} ${score.mode}: recall@5 ${String(score.recallAt5)} (floor ${String(score.threshold)}), MRR ${String(score.mrr)}, ${String(score.misses.length)} miss(es)${score.fallback === undefined ? "" : " (fallback: " + score.fallback + ")"}`,
             )
-            const unknown = result.unknownIds.length === 0 ? "" : `\nexpected ids the index lacks: ${result.unknownIds.join(", ")}`
+            const unknown = result.unknownIds.length === 0 ? "" : `\nexpected or fix ids the index lacks: ${result.unknownIds.join(", ")}`
             const red = unknown !== "" || result.scores.some((score) => !score.held)
-            return { data, message: `${String(result.questions)} question(s), vectors: ${data.embedding}\n${lines.join("\n")}${unknown}`, exitCode: red ? 1 : 0 }
+            return { data, message: `${String(result.questions)} question(s), ${String(result.misses)} of them recorded misses, vectors: ${data.embedding}\n${lines.join("\n")}${unknown}`, exitCode: red ? 1 : 0 }
         }
         if (flags.question === undefined || flags.question.trim() === "") throw new UsageError("contexts search needs a question (or none, to judge the index, or --eval)")
-        if (NON_ENGLISH_LETTER.test(flags.question)) {
+        if ([flags.question, ...flags.also].some((phrasing) => NON_ENGLISH_LETTER.test(phrasing))) {
             throw new Refusal("SEARCH_QUERY_NOT_ENGLISH", "the contexts are English: translate the question to English first and search again, keeping rule ids and names as written")
         }
-        const ranking = await search(index, flags.question, { scopes: parseScopes(flags.scope), limit: parseLimit(flags.limit), lexicalOnly: flags.lexical })
+        const ranking = await search(index, flags.question, { scopes: parseScopes(flags.scope), limit: parseLimit(flags.limit), lexicalOnly: flags.lexical, also: flags.also })
+        const asked = 1 + flags.also.length
         const data: SearchData = { mode: "search", ...describe(index), ranking: ranking.mode, fallback: ranking.fallback, hits: ranking.hits }
         const head = ranking.fallback === undefined ? `${ranking.mode} ranking; cite the anchor, \`starci contexts anchor <anchor>\` resolves it` : `lexical ranking (BM25 only: ${ranking.fallback})`
-        const body = ranking.hits.map((hit, at) => `${String(at + 1)}. ${hit.anchor}${hit.citable ? "" : " (not a rules-cited id)"}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`)
+        const body = ranking.hits.map((hit, at) => `${String(at + 1)}. ${hit.anchor}${hit.citable ? "" : " (not a rules-cited id)"}${asked === 1 ? "" : `  found by ${String(hit.phrasings)}/${String(asked)}`}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`)
         return { data, message: [head, ...(body.length === 0 ? ["no hit"] : body)].join("\n") }
     },
 })

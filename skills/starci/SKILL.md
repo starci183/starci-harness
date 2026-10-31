@@ -34,7 +34,8 @@ workflow, task or debug does not enroll into StarCi.
 - **Edition and runner are independent.** The edition (`lite` or `full`, in the app's `hfs.json`) says what
   the app is. The runner (`orca` or `inline`) says how a workflow runs its tasks and is chosen per workflow.
 - When you delegate or change directory, pass the absolute runtime root, the absolute product repository,
-  the workflow id and the task id. A task opened elsewhere gets them explicitly.
+  the workflow id and the task id. A task opened elsewhere gets them explicitly. A brief you write cites the rule id and
+  path of every constraint it states and tells its reader to look up as `contexts/README.md` "Looking a rule up" says.
 
 Run `starci explain` (or `starci explain <word>`) for the exact flags of a verb. Add `--json` to any
 verb for one `{schema, ok, data}` envelope. Exit 0 is done, 1 is refused or red (nothing moved), 2 is bad

@@ -170,6 +170,8 @@ export interface SearchHit {
     readonly scope: SearchScope
     readonly title: string
     readonly score: number
+    /** How many of the question's phrasings ranked this hit within their fusion depth (1 for a single phrasing). */
+    readonly phrasings: number
     readonly text: string
 }
 
@@ -212,23 +214,44 @@ const queryVector = async (index: LoadedIndex, query: string, lexicalOnly: boole
     return embedderFor(index.file)(query)
 }
 
-/** Ranks the index for a question: hybrid when the index carries vectors and the pinned model loads offline, else BM25. */
+/** One phrasing's ranking: chunk positions by score, and whether vectors took part. */
+interface PhrasingRanking {
+    readonly ranked: readonly { readonly index: number; readonly score: number }[]
+    readonly fallback: string | undefined
+    readonly hybrid: boolean
+}
+
+const rankPhrasing = async (index: LoadedIndex, query: string, allowed: (at: number) => boolean, lexicalOnly: boolean): Promise<PhrasingRanking> => {
+    const lexical = index.lexical.score(query, allowed)
+    const vector = await queryVector(index, query, lexicalOnly)
+    const vectors = index.vectors
+    if (typeof vector === "string" || vectors === null) return { ranked: lexical, fallback: typeof vector === "string" ? vector : undefined, hybrid: false }
+    return { ranked: fuse([lexical, cosineRank(vector, vectors, allowed)], FUSION_DEPTH), fallback: undefined, hybrid: true }
+}
+
+/**
+ * Ranks the index for a question: hybrid when the index carries vectors and the pinned model loads offline, else BM25. Further
+ * phrasings of the same question (`also`) are ranked each and fused with it by reciprocal rank, and each hit counts the
+ * phrasings whose top FUSION_DEPTH held it (`phrasings`), so a rule one wording misses still surfaces.
+ */
 export const search = async (
     index: LoadedIndex,
     query: string,
-    options: { readonly scopes: readonly SearchScope[]; readonly limit: number; readonly lexicalOnly: boolean },
+    options: { readonly scopes: readonly SearchScope[]; readonly limit: number; readonly lexicalOnly: boolean; readonly also?: readonly string[] },
 ): Promise<SearchRanking> => {
     const chunks = index.file.chunks
     const allowed = options.scopes.length === 0 ? () => true : (at: number) => options.scopes.includes(chunks[at]?.scope ?? "harness")
-    const lexical = index.lexical.score(query, allowed)
-    const vector = await queryVector(index, query, options.lexicalOnly)
-    const vectors = index.vectors
-    const ranked = typeof vector === "string" || vectors === null ? lexical : fuse([lexical, cosineRank(vector, vectors, allowed)], FUSION_DEPTH)
+    const phrasings = [query, ...(options.also ?? [])]
+    const rankings = await inOrder(phrasings, (phrasing) => rankPhrasing(index, phrasing, allowed, options.lexicalOnly))
+    const first = rankings[0]
+    const ranked = rankings.length === 1 ? (first?.ranked ?? []) : fuse(rankings.map((item) => item.ranked), FUSION_DEPTH)
     const hits = ranked.slice(0, options.limit).flatMap(({ index: at, score }) => {
         const chunk = chunks[at]
-        return chunk === undefined ? [] : [{ ...chunk, score: Number(score.toFixed(4)) }]
+        if (chunk === undefined) return []
+        const found = rankings.filter((item) => item.ranked.slice(0, FUSION_DEPTH).some((entry) => entry.index === at)).length
+        return [{ ...chunk, score: Number(score.toFixed(4)), phrasings: found }]
     })
-    return typeof vector === "string" || vectors === null ? { mode: "lexical", fallback: typeof vector === "string" ? vector : undefined, hits } : { mode: "hybrid", fallback: undefined, hits }
+    return first?.hybrid === true ? { mode: "hybrid", fallback: undefined, hits } : { mode: "lexical", fallback: first?.fallback, hits }
 }
 
 /** Forgets the loaded index and embedder (the eval loads one per mode). */

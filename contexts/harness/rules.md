@@ -21,11 +21,14 @@ These hold for every role and every task. A rule with a gate names it; the other
    version it raised ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20).
 6. **No examples.** The harness ships no example apps and no `examples/` tree. A behaviour is proved by running the
    built CLI against a scratch repository; a package keeps its own specs.
-7. **Look the rule up; never quote it from memory.** Before an answer, a plan or a brief, translate the request into
-   English and run `starci contexts search "<question>"` ([contexts/README.md](../README.md) "Two layers of context");
-   open the hit's file and cite its rule id and path. A brief's "never", "must" or "wait for" carries that citation. The
-   step is the agent's own, the same for every runtime (Claude, Codex, Devin): it lives in this file and in
-   [AGENTS.md](../../AGENTS.md), never in one runtime's hooks or settings.
+7. **Look the rule up; never quote it from memory.** Before an answer, a plan or a brief, and again after a context
+   compaction, translate the request into English and look it up as [contexts/README.md](../README.md) "Looking a rule up"
+   says (several phrasings through `starci contexts search --also`, the area's scope and index); open the hit's file and
+   cite its rule id and path. A brief's "never", "must" or "wait for" carries that citation, and a subagent's brief tells
+   it to look up the same way. A rule found missed is recorded and hardened as "When a rule was missed" says. The step is
+   the agent's own, the same for every runtime (Claude, Codex, Devin): it lives in this file and in
+   [AGENTS.md](../../AGENTS.md), never in one runtime's hooks or settings. Held by review (the brief check of "Looking a
+   rule up"); `starci contexts search --eval` measures that every recorded miss is found.
 8. **Machine actions are the harness's.** An agent never installs Playwright or browsers, or runs Docker by hand: a
    `uat` worker writes a short Playwright script and calls `starci uat run`, which runs it in the image pinned in
    [ops/uat.yaml](../../ops/uat.yaml) and keeps the playwright package inside that image, never in the product.

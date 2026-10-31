@@ -58,7 +58,9 @@ src/
   writes `dist/contexts-search.json`, embedding it on CPU with the pinned model of `core/contexts/search-embed.ts`
   (optional dependency `@huggingface/transformers`, weights downloaded once into `.runtime/models` and hash-checked;
   `STARCI_SEARCH_MODEL=off` builds BM25 only) for `contexts search`, which fuses BM25 and cosine, falls back to BM25
-  when the model is absent, with no question judges the index (stale exits 1; `--execute` rebuilds it) and measures `--eval` on `core/contexts/search-eval.json`.
+  when the model is absent, fuses the rankings of further phrasings given with `--also`, with no question judges the index (stale exits 1; `--execute`
+  rebuilds it) and measures `--eval` on `core/contexts/search-eval.json`, whose questions carrying `miss` are the record of
+  the rules agents missed ([contexts/README.md](../contexts/README.md) "When a rule was missed").
 - **Host processes** run without a shell (`shared/exec.ts`; npm through the running Node), so no quoting breaks on
   Windows; git goes through `shared/git.ts`.
 

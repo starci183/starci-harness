@@ -6,8 +6,7 @@ fixes that package, never a shim in the app. The edit is a tier 1 branch ([branc
 1. `starci pkg branch <topic>` cuts `pkg/<app>-<topic>` into a worktree under the harness's `.claude/worktrees/`.
 2. Edit and commit there. Bump only the package you changed, with its CHANGELOG entry, in the commit that changes it; a
    package that requires it moves only when it needs the new API.
-3. Build the changed package, the one build a branch takes, so the app can link it: `starci deps source --local --cwd
-   <worktree>/packages` as `pkg branch` prints it.
+3. Build the changed package, the one build a branch takes, and link it into the app (below).
 4. `starci pkg handoff` (`--urgent` when a deploy waits on it: Debug lands it on main first).
 
 The edit's proof is the package's own gates where the edit is: `starci pkg test <package>` runs its typecheck, lint and
@@ -16,8 +15,16 @@ worker's contract carries it as its `package-specs` check, which the harness run
 
 Debug alone merges a package edit branch and pushes harness main; once its handed-off head is on main, the worktree goes
 (the collector of [README.md](README.md) "Worktrees"); CI publishes the bumped version as soon as main is
-green ([ci.md](ci.md)). Nobody asks Debug to publish: a change already on harness main is published by CI and is no handoff at all, and an app that deploys waits until npm serves the version it pins (`starci deps check` says so), working locally meanwhile. Only the edited package is bumped and re-pinned: the app that consumes it pins the new version,
+green ([ci.md](ci.md)). Nobody asks Debug to publish: a change already on harness main is published by CI and is no handoff at all. Only the edited package is bumped and re-pinned: the app that consumes it pins the new version,
 and no other package or app moves.
+
+## An app uses the edit before npm serves it
+
+A package change is usable in the app the moment it is coded, long before it reaches npm: `starci deps source --local --cwd
+<worktree>/packages`, as `pkg branch` prints it, links the built package into the app ([cli/README.md](../../cli/README.md)
+"Package sources"), and the app's checks, verifies and walks run on that local build. Nothing waits for npm but a deploy:
+an app that deploys pins the version once npm serves it (`starci deps check` says so), and CI publishes it as soon as main
+is green ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20).
 
 ## Grammar edits are content only
 

@@ -6,8 +6,9 @@ Runtime root: `{runtimeRoot}`. Launch id: `{launchId}`; routed as `{agent}`/`{mo
 run it from a checkout of the project. Set `STARCI_ROLE=supervisor` (PowerShell: `$env:STARCI_ROLE='supervisor'`). Read
 `{runtimeRoot}/contexts/README.md`, then the two files every row of its load order starts with, first; this brief is your
 operating guide, so the operate row's `skills/starci/SKILL.md` is read only when you need it. That load is your whole fixed core; read everything
-else on demand: `starci contexts search "<question>" [--scope <scope>]` (in English) when a decision needs a rule, a record
-family or a harness mechanism you have not read, opening each hit before you rely on it, and `starci contexts anchor
+else on demand: `starci contexts search "<question>" --also "<other phrasing>" [--scope <scope>]` (in English, as
+`{runtimeRoot}/contexts/README.md` "Looking a rule up" says) when a decision needs a rule, a record family or a harness
+mechanism you have not read, opening each hit before you rely on it and citing it in every brief you write, and `starci contexts anchor
 <anchor>` for a section a `*-sections.md` index or a hit names (`cli/README.md` through `contexts/harness/cli-sections.md`,
 never whole); `starci explain <group>` for a verb's flags.
 
