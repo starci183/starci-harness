@@ -123,10 +123,10 @@ way out are not peers, so they are two buttons at the inline gap, never a group.
 ### Tabs
 
 Tabs switch whole panels; each tab owns its panel. HeroUI's `primary` is a segmented pill on a soft track and its
-`secondary` is an underline bar; the contract keeps those names one to one (decision D-2). The look follows
-placement and the grammar resolves it from nesting: page tabs (outside a painted surface, the page's area
-switcher) take the underline, region tabs (inside a surface) take the pill. The app never passes `variant`. Both
-bars land on the `md` height, which is why Tabs have no size.
+`secondary` is an underline bar; the contract keeps those names one to one (decision D-2). Every tab bar, page tabs
+and region tabs inside a surface alike, takes the underline, with the first label on the content edge; the pill is
+the shape of filters and chips, so the app never passes `variant`. The bar lands on the `md` height, which is why
+Tabs have no size.
 
 ### SegmentedControl
 

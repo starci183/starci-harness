@@ -47,7 +47,12 @@ tokens:
   elevation: [shadow-surface]
   type: [font-sans]                               # body family; sizes and ranks are Common's
   ownedByCommon:                                  # a grammar never sets these
-    spacing: [--grammar-inline-gap, --grammar-row-gap, --grammar-section-gap, --grammar-region-gap, --grammar-page-inset]
+    spacing: [--grammar-identity-gap, --grammar-inline-gap, --grammar-row-gap, --grammar-section-gap, --grammar-region-gap,
+              --grammar-inset, --grammar-inset-nested, --grammar-inset-open, --grammar-page-inset, --grammar-overlay-inset,
+              --grammar-card-padding-inline, --grammar-card-padding-block, --grammar-pane-inset-inline,
+              --grammar-pane-inset-block-start, --grammar-pane-inset-block-end-outer, --grammar-pane-inset-block-end-divider,
+              --grammar-control-padding-inline-sm, --grammar-control-padding-inline-md, --grammar-control-padding-inline-lg,
+              --grammar-control-padding-glyph-sm, --grammar-control-padding-glyph-md, --grammar-control-padding-glyph-lg]
     controlHeight: [--grammar-control-height-sm, --grammar-control-height-md, --grammar-control-height-lg]
     target: [--grammar-target-coarse, --grammar-target-fine]
     mascot: [--grammar-mascot-sm, --grammar-mascot-md, --grammar-mascot-lg, --grammar-mascot-hero-max]
@@ -161,7 +166,7 @@ roles:
     vendorParity: [tabs]
     slots: ["items: label, leading, href", panels]
     variants:
-      variant: { values: [primary, secondary], meaning: { primary: "region tabs: pill segment, inside a painted surface", secondary: "page tabs: underline, outside a painted surface" }, chosenBy: context }
+      variant: { values: [primary, secondary], meaning: { primary: "pill segment: a filter's shape, refused on Tabs in apps", secondary: "underline: every tab bar, page and region alike" }, chosenBy: grammar }
       inset: { values: [page, none], chosenBy: app }
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
@@ -587,8 +592,8 @@ mustKeep:
       followUp: C-3, C-4
     - id: DNA-COMMON-RHYTHM-MONOTONIC
       role: root
-      law: The rhythm tokens are strictly ordered, region gap above section gap above row gap above inline gap.
-      measure: { kind: tokens, metric: [--grammar-region-gap, --grammar-section-gap, --grammar-row-gap, --grammar-inline-gap], op: ">" }
+      law: The rhythm tokens are strictly ordered, region gap above section gap above row gap above inline gap above identity gap.
+      measure: { kind: tokens, metric: [--grammar-region-gap, --grammar-section-gap, --grammar-row-gap, --grammar-inline-gap, --grammar-identity-gap], op: ">" }
       owner: "@starci/grammar src/common/spacing.ts; ui/presentation.md (Space)"
     - id: DNA-COMMON-ONE-TOASTER
       role: alert
@@ -773,15 +778,14 @@ mustKeep:
     # --- tabs, segmented control, fields
     - id: DNA-COMMON-TABS-BY-LAYER
       role: tabs
-      law: Tabs outside a painted surface draw the underline and tabs inside a surface draw the pill.
+      law: Every tab bar draws the underline, on the page and inside a surface alike.
       measure:
         kind: style
         metric: tabs-look
         op: "="
         cases:
-          - { select: '[data-component="Tabs"]:not([data-grammar-nesting="surface"] *)', value: underline }
-          - { select: '[data-grammar-nesting="surface"] [data-component="Tabs"]', value: pill }
-      owner: D-2; UI-9
+          - { select: '[data-component="Tabs"]', value: underline }
+      owner: D-2; spacing-roles
       followUp: C-1
     - id: DNA-COMMON-TABS-INDICATOR
       role: tabs

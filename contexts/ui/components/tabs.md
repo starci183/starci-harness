@@ -25,9 +25,11 @@ two sets of the same level never nest.
 | page | the tabs switch the page's main area under the page header and may reflect the URL; one set per page | page tabs, `header.tabs` of the `Page` (they stand on its band's separator) | `DNA-COMMON-TABS-BY-LAYER`, `DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR`; lint `starci-grammar/page-tabs-in-header`; candidate: at most one page set per page |
 
 ## Variants
-None for the app: placing the tabs is the choice, and the grammar draws page tabs as the underline and region
-tabs as the neutral pill from surface nesting ([contract](../../grammars/contract.md#tabs), UI-9). The pill keeps
-its neutral paint: in the accent-soft chip family it would read as a row of buttons, not a view switch.
+None for the app: placing the tabs is the choice, and the grammar draws every tab bar, page or region, as the
+underline, its labels text on the content edge they share with the title above and the box below
+([contract](../../grammars/contract.md#tabs), [presentation](../presentation.md#space) Text edge). A pill is the
+shape of a filter or a chip, never of a view switch: a filter over a collection is a selectable `TagGroup`. Lint:
+`starci-fe/nested-control-variant` refuses the pill on Tabs.
 
 ## Size
 No size prop: the bar lands on `md` ([../scale.md](../scale.md)). A tab without a leading glyph always shows its

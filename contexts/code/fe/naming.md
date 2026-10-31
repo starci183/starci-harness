@@ -39,11 +39,11 @@ one file.
 ```ts
 import { cn } from "@heroui/react"
 
-/** The form column, capped to the form measure. */
-export const FORM_CLASS_NAME = cn("flex", "max-w-md", "flex-col", "gap-4")
+/** The thread column, capped to its reading measure. */
+export const THREAD_CLASS_NAME = cn("min-w-0", "max-w-4xl")
 
-/** The action row under a form. */
-export const ACTIONS_CLASS_NAME = cn("flex", "flex-wrap", "items-center", "gap-3")
+/** The trailing column of a row, kept from shrinking. */
+export const TRAILING_CLASS_NAME = cn("shrink-0", "self-start")
 ```
 
 Enforced by: R92 (`class-names-in-colocated-file`, `no-inline-class-name`, `cn-arguments-are-single-tokens`); the

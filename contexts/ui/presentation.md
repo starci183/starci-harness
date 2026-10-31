@@ -7,74 +7,169 @@ space, type, paint and room; the values themselves are tokens and roles named by
 
 | The app may | The app must not |
 | --- | --- |
-| set the relationship (gap, inset, measure, overflow) between components it already chose | choose or rebuild a component, its layout or its anatomy |
-| style a page, section, container or content-region boundary it owns | add padding, type or paint inside a grammar component |
+| name the relation between blocks it places, through a role prop (`Stack`/`Cluster` `gap`, `Grid` `kind`, `PaneSection`, `Page` `chrome`) | choose or rebuild a component, its layout or its anatomy |
+| set the measure, column count and order of its own content through the props that carry them | write any spacing value: a padding, margin, gap or space utility, an arbitrary value, a `style` |
 | choose `Text` / `Heading` rank and tone props from the information rank | reach into a component with a selector or a passed class |
-| resolve wrapping, measure and overflow of its own content | write a colour, a px length or an arbitrary value |
+| resolve wrapping and overflow of its own content | write a colour, a px length or an arbitrary value |
 
-Lint: `starci-fe/no-arbitrary-value`, `starci-fe/no-raw-brand-value`, `starci-fe/no-app-surface-paint`,
-`starci-fe/no-grammar-internal-selector`, `starci-fe/class-names-in-colocated-file`.
+Lint: `starci-fe/no-spacing-utility`, `starci-fe/no-arbitrary-value`, `starci-fe/no-raw-brand-value`,
+`starci-fe/no-app-surface-paint`, `starci-fe/no-grammar-internal-selector`, `starci-fe/class-names-in-colocated-file`.
 
 ## Space
 
-Gap, padding and margin share **one closed spacing scale** (contract: spacing steps and the four rhythm tokens).
-Its rule ids are ordinal positions on that scale, not utility numbers. Off-scale and fractional steps do not
-exist for app layout. Lint: `starci-grammar/no-fractional-step`.
+Every distance on a screen is the grammar's. The grammar owns every value (padding, gap, margin) through tokens and
+the anatomy of its components; the app only names the relation between two blocks it placed side by side, because only
+the app knows whether they belong together, and the grammar resolves the name to its step. Lint:
+`starci-fe/no-spacing-utility` in app class strings, `starci/spacing-scale` in grammar stylesheets (R350).
 
-Choice `space.choose.gap`: which gap a relation between two siblings takes. The first row that applies wins; the
-Choose column names the rule id each gap carries.
+### The scale
 
-| Row | When (the relationship) | Choose | Measure |
+One closed scale, and no value outside it: **0 · 4 · 8 · 12 · 24 · 32** (px at 16px to the rem; owner:
+`@starci/grammar src/common/spacing.ts`, the root tokens of `src/common/styles.css`). There is no 16: a container holds
+its content one row step in, and separation beyond that belongs to the parent's gap, never to a larger inset. A
+measured 6 (a meter gap), 3 (a body offset), 20 or a fluid `clamp()` is a second, private scale and is refused. A
+1px or 2px line is a stroke, not a step.
+
+| Step | Role as a gap (`GapRole`) | Token | Rule id |
 | --- | --- | --- | --- |
-| seam | a separator or joined faces already draw the seam (bands of a joined card, rows divided by lines) | GAP-0: no space | `DNA-COMMON-LIST-SEAMS` |
-| identity | two lines read as one identity (title and its qualifier, value and unit) | GAP-1 | candidate: equals the tightest rung |
-| inline | inline companions inside one unit (glyph and label, a badge row, a decision and its way out) | GAP-2, `--grammar-inline-gap` | candidate: computed gap equals the token |
-| row | peers in one row or group, each read on its own (a field and its submit, two filters, row parts) | GAP-3, `--grammar-row-gap` | candidate: computed gap equals the token |
-| section | sibling blocks under one heading (cards of one collection, field groups of one step) | GAP-4, `--grammar-section-gap` | candidate: computed gap equals the token |
-| region | page regions, each with its own heading (summary above history, primary column and rail) | GAP-5, `--grammar-region-gap` | candidate: computed gap equals the token |
-| transition | a named major transition (unrelated halves, spacious landing sections) | GAP-6 | judgement |
+| 0 | seam: a separator or joined faces already divide the two | none | GAP-0 |
+| 4 | identity: two lines read as one cluster (title and qualifier, label and field and help, value and unit) | `--grammar-identity-gap` | GAP-1 |
+| 8 | inline: companions inside one unit (glyph and label, chips of one set, a decision and its way out) | `--grammar-inline-gap` | GAP-2 |
+| 12 | row: peers of one row or group, each read on its own (fields of a form, bands of a pane or card, rows of a rail) | `--grammar-row-gap` | GAP-3 |
+| 24 | section: blocks under one heading (cards of one collection, the groups of a rail) | `--grammar-section-gap` | GAP-4 |
+| 32 | region: page regions with their own heading (summary above history, main and rail, header and body) | `--grammar-region-gap` | GAP-5 |
 
-The tokens stay ordered region > section > row > inline (`DNA-COMMON-RHYTHM-MONOTONIC`).
+GAP-6 (a named major transition) takes the region step: the scale holds nothing above it.
 
-Padding uses the same scale; its ids name the clearance a boundary needs, not a step number:
+Choice `space.choose.gap`: the relation between two siblings picks the role; the first row of the table above that
+applies wins. A flex that holds two relations is two Stacks, one inside the other.
 
-| Id | Clearance | Typical boundary |
+### Four inset levels
+
+An inset steps down one level each time a box sits inside another, and an inner inset is never larger than its parent's.
+
+| Level | Box | Inset (owner token) |
 | --- | --- | --- |
-| PADDING-0 | none: a child or the content already owns the edge | grouping containers, flush bands, lists in panels |
-| PADDING-1 | minimal | a marker over a canvas, focus clearance of a scroll region |
-| PADDING-2 | compact | an auxiliary strip, a compact control bar |
-| PADDING-3 | dense | a nested boundary, a side facing a separator, a metric cell |
-| PADDING-4 | readable content | the boundary that protects readable content; a band's outer edge |
-| PADDING-5 | generous | a deliberately spacious section, a page-level tab frame |
-| PADDING-6 | low-density region | a large empty or waiting region |
-| PADDING-7..9 | responsive, indent, routed block inset | laws 6 and 7 below |
+| 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`); a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
+| 1 surface | a card (dense or holding a form or prose alike), a pane, a band of a joined card | 12 on every side (`--grammar-inset`, `--grammar-card-padding-*`, `--grammar-pane-inset-*`) |
+| 2 box in a surface | a nested card, a notice in a card, a list option, a table cell's block side, a stat cell | 8 (`--grammar-inset-nested`) |
+| 3 control | a button, field, tab, chip, badge | the control's height decides the block padding; inline sm 8, md 12, lg 24, one step less on a glyph's side (`--grammar-control-padding-*`) |
 
-`MARGIN-0..6` are the same steps used as a named placement exception, and `MARGIN-AUTO` centres a capped container.
+The one named exception above its parent's level is a low-density region, an empty state or a drop target, which
+takes 24 on every side (`--grammar-inset-open`, PADDING-6).
 
-How the three combine:
+### Laws
 
-1. **Gap owns the distance between siblings**, padding the distance from an edge to content, margin only a named
-   exception (an absolutely placed marker, a centred capped container via auto margins). Reaching for margin first
-   gives one distance two owners (`DOUBLE_OWNER`).
-2. **Rhythm is monotonic**: region > section > row > inline > identity, and equal peers get equal gaps.
-   Proof: TASTE-4.
-3. **Side contact sets padding.** Each side of a band takes its inset from what it touches: an outer edge takes
-   the content clearance, a side facing a separator takes the smaller separator clearance, a side whose child owns
-   the edge adds nothing. Inline sides of peer bands align. The grammar owns the clearances and the flush-band API:
-   a `Pane` publishes its content inset (the content clearance inline on both sides, the separator clearance at the
-   block start, the content clearance at the block end of an outer edge and the separator clearance facing a divider),
-   and a `PaneSection` is the flush band that applies it, so a band placed in a pane carries no padding of its own.
-   Lint: `starci-grammar/no-pane-section-padding`.
-4. **No duplicate inset.** A container that only groups children with their own boundaries adds none. Every box in a
-   panel or pane (a search field, the first tab, a list row and its selected fill, a meter, a chip, a button) starts at
-   the content edge, and the text inside a box keeps the vendor's own padding: a title after an avatar or a value after
-   an icon is the box's anatomy and aligns to nothing outside the box. A list in a panel aligns its row boxes to the
-   panel's content edge and adds no wrapper padding. Lint: `starci-fe/no-list-panel-padding`.
-5. **A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider. Lint:
-   `starci-fe/divider-full-bleed`.
-6. **Subordinate content indents at the inline start only**, so the reading measure stays.
-7. **Responsive insets step to the adjacent scale step**, and only on sides the boundary owns; separator-facing
-   sides never step, and a pane's content inset is one value at every breakpoint. The page container owns the page's inline inset; routed content owns only its block inset.
+Padding (inline and block chosen apart):
+
+- **P1 Side contact.** Each side of a box takes its inset from what it touches: an outer edge takes its level's inset;
+  a side whose child already owns the edge takes 0. A pane's every side, divider-facing or outer, is the same 12. The
+  grammar owns the flush-band API: a `Pane` publishes its inset and a `PaneSection` applies it, so a band in a pane
+  carries no padding of its own. Lint: `starci-grammar/no-pane-section-padding`.
+- **P2 Inline belongs to the container, block to the item.** Every box in one container starts at the same content
+  edge (a search field, the first tab label, the selected row, a meter, a chip); the text inside a box keeps the box's
+  own padding. Block padding is the density of each band. Lint: `starci-fe/no-list-panel-padding`.
+- **P3 Nesting steps down.** 32/24/12 → 12 → 8: an inner inset is smaller than its parent's, or the inner box reads as a
+  card inside a card. The card's inner text at 12 is the one intentional step between the shared edge and the content.
+- **P4 Closed boxes are symmetric.** A closed box has equal block sides, and its inline and block insets never differ
+  by two steps; extra separation belongs to the parent's gap, never to one side of the box. Reading comfort comes from
+  measure (MEASURE-4), not from a larger inset, so a card holding a form or prose keeps 12.
+- **P5 Controls are measured by height.** Block padding is derived from the size step (32 / 40 / 48), never chosen;
+  inline padding follows the step, one step less on the side a leading or trailing glyph stands on.
+- **P6 Optical anatomy stays inside components.** A large figure or heading keeps its own leading; a one-line row is
+  8 + 24 + 8 = 40 at `md`, and a two-line row keeps 8 and grows by its content.
+- **P7 The 44 target never comes from padding.** On a coarse pointer the grammar extends the hit area (UI-6).
+- **P8 Responsive only at the gutter and the header's top.** Surfaces, panes and divider-facing sides keep one value
+  at every breakpoint. The page container owns the page's inline inset; routed content owns only its block inset.
+
+Gap (row and column chosen apart):
+
+- **G1 Gap owns sibling distance**, never a margin or a child's padding (`DOUBLE_OWNER` otherwise).
+- **G2 Rhythm is monotonic**: region > section > row > inline > identity > seam, and equal peers get equal gaps
+  (`DNA-COMMON-RHYTHM-MONOTONIC`; proof TASTE-4).
+- **G3 One relation per axis.** A wrapping chip or filter set takes inline on both axes (a wrapped line is the same
+  set); a toolbar takes inline inside a group and section between groups; a card grid takes section on both axes; a
+  two-column form takes row on both axes; main and rail take region on both axes when they stack.
+- **G4 Heading to content.** Title and its supporting line: identity. A section header and its content: row. A page
+  header and its body: region, or 0 when the body is a pane grid (`Page chrome="panes"`).
+- **G5 Rows and messages.** Rows divided by lines: seam. A pill list: identity, so two hover fills never touch. Chat
+  bubbles of one sender: identity; a sender change: row; a day divider: section.
+
+Padding and gap together:
+
+- **R1 Inner gap ≤ inset ≤ outer gap** for a closed box: a card's content sits 12 apart inside a 12 inset, and cards
+  of one collection stand a section apart, so each card reads as its own unit.
+- **R2 Touching panes take 0 and a divider; floating cards take section.** The two never mix.
+- **R3 A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider. Lint:
+  `starci-fe/divider-full-bleed`.
+
+Margin:
+
+- **M1 No margin in layout.** Only the grammar writes one, in three named cases: `MARGIN-AUTO` centring a capped
+  container (a form card, a reading measure), an absolutely placed marker (a badge on an avatar), and a vendor part's
+  internal offset kept for parity.
+- **M2 Bleed is an API, never a negative margin**: `PaneSection bleed="inline"` (a horizontal chip row reaching both
+  pane edges, the inset becoming its scroll padding), `SurfaceCard composition="joined"` (bands to the card edge), the
+  artwork band of a painted card.
+
+### Text edge
+
+The page title, the tab labels and the section headings share one text edge with the card or pane box below them:
+page tabs are the underline bar, their first label on the content edge; pills are the shape of filters and chips
+only (a filter over a collection is a selectable `TagGroup`). The card's inner text at 12 is the one intentional step.
+Lint: `starci-fe/nested-control-variant`.
+
+### The table (the grammar's decision per component)
+
+Values in px at the `core` family; each is a token or the anatomy of the component that names it.
+
+| Component | Inline | Block | Column gap | Row gap |
+| --- | --- | --- | --- | --- |
+| Page body | gutter 12 / 24 / 32 | bottom region | main ↔ rail region | region |
+| PageHeader | gutter | top section, bottom 0 over tabs | title ↔ actions region | title ↔ description identity, copy ↔ tabs row |
+| Page tabs (underline) | first label 0, each tab 12 per side | 0 | labels 24 apart | — |
+| Header → body | — | — | — | region, or 0 under `chrome="panes"` |
+| Sidebar rail (collapsed) | 12 | 12 | — | items identity, groups section |
+| Sidebar item | 12 | derived (h 40) | glyph ↔ label row | identity |
+| Dialog, Drawer | 12 | 12 | footer actions inline | header ↔ body ↔ footer row |
+| SurfaceCard (any content) | 12 | 12 | two-column form row | bands row, title ↔ meta identity, fields row |
+| Labelled card | card inset | label top = inset | — | label ↔ content row |
+| Joined card band | card inset | card inset | — | seam |
+| Card grid (`Grid kind="cards"`) | — | — | section | section |
+| Pane (`PaneGrid`) | 12 | 12 on every side | 0 + divider | sections row |
+| Composer | pane inset | pane inset | field ↔ send inline | chips ↔ field inline, field ↔ hint identity |
+| Box in a card (nested card, notice, stat cell) | 8 | 8 | — | identity |
+| ListBox option | 8 | 8 (h 40) | avatar ↔ text row | title ↔ description identity |
+| Table | cells 12 | cells 8 (h 40) | — | seam |
+| Alert, Toast | 12 (8 in a card; the toast's close side 8) | 12 (8 in a card) | glyph ↔ text inline | identity |
+| EmptyNotice, FileDropzone | 24 | 24 | — | row |
+| Chat bubble | 12 | 8 | avatar ↔ bubble inline | identity / row / section by G5 |
+| Meter | 0 | 0 | label ↔ value inline | header ↔ bar identity |
+| Button sm / md / lg | 8 / 12 / 24, glyph side 4 / 8 / 12 | derived (h 32 / 40 / 48) | glyph ↔ label inline | — |
+| Field | 12 | derived (h 40) | glyph ↔ text inline | label ↔ field ↔ help identity |
+| Chip, Tag | vendor 8 | derived | inline in a set | inline when it wraps |
+| Badge | vendor 8 | 0 | dot ↔ text identity | — |
+
+### Padding ids
+
+The `PADDING-*` ids name the clearance a boundary needs, not a step: PADDING-0 none (a child or the content owns the
+edge: grouping containers, flush bands, lists in panels); PADDING-1 minimal (a marker over a canvas, the focus
+clearance of a scroll region); PADDING-2 compact (an auxiliary strip); PADDING-3 the container inset (a card, a pane,
+an overlay, a side facing a separator); PADDING-4 readable content, which takes the same container inset (reading
+comfort is measure); PADDING-5 a page-level tab frame; PADDING-6 a low-density region (the open step); PADDING-7..9
+responsive, indent and routed block inset (P8, and subordinate content indents at the inline start only, so the
+reading measure stays). `MARGIN-0..6` are the same steps used as a named placement exception (M1).
+
+### Who writes what
+
+| Owner | Writes |
+| --- | --- |
+| grammar | every number: the role tokens, the insets of every component, the divider-facing sides, the bleed API, the row and bubble rhythm, and the `data-contract` stamps (`PADDING-*`, `GAP-*`) on each part |
+| app | structure and relation names: `<Stack gap="region \| section \| row \| inline \| identity">`, `<Cluster gap>` (a wrapping set, one role on both axes), `<Grid kind="cards \| form \| main-rail">`, `PaneGrid`/`PaneSection`, `Page chrome`; measure and columns through props; no spacing class |
+| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci/spacing-scale` (grammar stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`, `no-fractional-step`; proof TASTE-4 measures the rhythm on the live page |
+
+An app moves onto role props with `starci app codemod spacing-roles` (dry run by default, a report of every rewrite
+and of every utility left for a person).
 
 ## Type
 
@@ -221,5 +316,5 @@ The default (start-aligned, wrapping) is right far more often than any rule here
 | a control's step | its corner role, glyph, label rank and the row's other controls ([scale.md](scale.md)) |
 | a surface's face | the paired foreground, contrast on composed pixels, the nested controls' treatment |
 | a card's bands | separator count (`budgets.hairlinesPerCard`), side-contact padding, full-bleed dividers |
-| a region's gap | monotonic rhythm against its parent and children |
+| a region's gap | its role (G2: monotonic against its parent and children), R1 against the inset of its box |
 | a region's measure | `min-w-0`, overflow owner, truncation rules of its text |

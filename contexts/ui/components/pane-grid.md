@@ -70,9 +70,9 @@ a padded wrapper is never the outermost element of a band.
 
 ## Size
 It fills its host's block and inline size; the host supplies a definite height, or `Page chrome="panes"` measures it.
-Panes sit with no gap. The content inset is one value at every breakpoint: the inline sides take the content clearance
-(PADDING-4), the block start takes the separator clearance (PADDING-3), and the block end takes the content clearance at
-the grid's outer edge and the separator clearance facing a divider.
+Panes sit with no gap. The content inset is the container inset (PADDING-3) on every side, divider-facing or outer, and
+one value at every breakpoint, so the page gutter at phone width and the pane inset share one edge
+([presentation](../presentation.md#space) P1, P8).
 
 ## States
 A drawer is open or closed (`isOpen`, `onOpenChange`). While it is open its pane renders a second time inside it, under

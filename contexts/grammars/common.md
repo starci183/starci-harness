@@ -29,17 +29,19 @@ to the caller:
   grammar accounts for each id as inherited or grammar-owned with evidence
   (`owner: src/common/conformance.ts`, catalogue generated from [ui](../ui/README.md)).
 
-## Spacing: one scale, four relationships
+## Spacing: one scale, roles for gaps and levels for insets
 
-`COMMON_SPACING_SCALE` is the only scale (`owner: src/common/spacing.ts`); a grammar does not re-space. Its
-rungs are whole and unevenly spaced, so half a rung is off the ladder, not between two. Common publishes the
-rhythm as four relationship tokens plus a page inset, each named for what it separates, not for its size:
-`--grammar-inline-gap`, `--grammar-row-gap`, `--grammar-section-gap` and `--grammar-region-gap` are the relations
-GAP-2 to GAP-5, and `--grammar-page-inset` is the page edge, responsive and owned by `PageContainer`. Which
-relation a gap expresses is the choice `space.choose.gap` in [ui/presentation](../ui/presentation.md#space), with
-the side-contact law for insets; that the tokens stay strictly ordered is `DNA-COMMON-RHYTHM-MONOTONIC`. Because
-the rhythm is a relationship, a denser rhythm changes the four values together in Common, never one of them in a
-grammar.
+`COMMON_SPACING_SCALE` (0 4 8 12 24 32) is the only scale (`owner: src/common/spacing.ts`); a grammar does not
+re-space, and a grammar stylesheet writes no length off it (`starci/spacing-scale`). Common publishes the rhythm as
+five gap roles, each named for the relation it separates, not for its size: `--grammar-identity-gap`,
+`--grammar-inline-gap`, `--grammar-row-gap`, `--grammar-section-gap` and `--grammar-region-gap` are GAP-1 to GAP-5
+(`COMMON_GAP_ROLES`). Insets are levels: `--grammar-inset` for every container, `--grammar-inset-nested` for a box
+inside one, `--grammar-inset-open` for a low-density region, and `--grammar-page-inset` for the page edge, stepped by
+breakpoint and owned by `PageContainer`; the card, pane and overlay tokens read `--grammar-inset`. An app names a
+role on `Stack`, `Cluster` or `Grid` and never a value. Which relation a gap expresses is the choice
+`space.choose.gap` in [ui/presentation](../ui/presentation.md#space), with the laws for insets; that the gap tokens
+stay strictly ordered is `DNA-COMMON-RHYTHM-MONOTONIC`. Because the rhythm is a relationship, a denser rhythm changes
+the values together in Common, never one of them in a grammar.
 
 ## Size and intent
 

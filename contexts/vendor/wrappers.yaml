@@ -13,14 +13,28 @@ wrappers:
   - { file: core/branch/AlertDialog/index.tsx, wraps: [AlertDialog], delegates: { AlertDialog: [CloseTrigger, Trigger] } }
   - { file: core/branch/Calendar/index.tsx, wraps: [Calendar] }
   - { file: core/branch/ComboBox/index.tsx, wraps: [ComboBox, Input, ListBox, Spinner] }
-  - { file: core/branch/DataTable/index.tsx, wraps: [Checkbox, Table], delegates: { Table: [ColumnResizer] } }
+  - { file: core/branch/DataTable/index.tsx, wraps: [Checkbox, Table], delegates: { Table: [ColumnResizer] },
+      overrides: [
+        { kind: style, target: "Table.Column:padding", ruling: spacing-roles, reason: "a header cell takes the container inset inline and the nested step in the block axis, on the spacing scale" },
+        { kind: style, target: "Table.Cell:padding", ruling: spacing-roles, reason: "a cell takes the container inset inline and the nested step in the block axis, a 40px row" } ] }
   - { file: core/branch/DatePicker/index.tsx, wraps: [Calendar, DateField, DatePicker, RangeCalendar] }
   - { file: core/branch/DateRangePicker/index.tsx, wraps: [DateField, DateRangePicker] }
-  - { file: core/branch/Dialog/index.tsx, wraps: [Modal], delegates: { Modal: [CloseTrigger, Trigger] } }
+  - { file: core/branch/Dialog/index.tsx, wraps: [Modal], delegates: { Modal: [CloseTrigger, Trigger] },
+      overrides: [
+        { kind: style, target: "Modal.Container:padding", ruling: spacing-roles, reason: "the backdrop holds the page gutter; the container adds no off-scale inset of its own" },
+        { kind: style, target: "Modal.Dialog:padding", ruling: spacing-roles, reason: "an overlay holds its content at the container inset on every side" },
+        { kind: style, target: "Modal.Body:padding", ruling: spacing-roles, reason: "the body keeps the identity step as focus clearance instead of an off-scale 3px offset" },
+        { kind: style, target: "Modal.Footer:padding", ruling: spacing-roles, reason: "header, body and footer are spaced by the dialog row gap alone" } ] }
   - { file: core/branch/Disclosure/index.tsx, wraps: [Disclosure] }
-  - { file: core/branch/Drawer/index.tsx, wraps: [Drawer], delegates: { Drawer: [CloseTrigger, Trigger] } }
+  - { file: core/branch/Drawer/index.tsx, wraps: [Drawer], delegates: { Drawer: [CloseTrigger, Trigger] },
+      overrides: [
+        { kind: style, target: "Drawer.Dialog:padding", ruling: spacing-roles, reason: "an overlay holds its content at the container inset on every side" },
+        { kind: style, target: "Drawer.Body:padding", ruling: spacing-roles, reason: "the body keeps the identity step as focus clearance instead of an off-scale 3px offset" } ] }
   - { file: core/branch/DropdownMenu/index.tsx, wraps: [Description, Dropdown, Header, Kbd, Label, Separator], delegates: { Dropdown: [Trigger] } }
-  - { file: core/branch/ListBox/index.tsx, wraps: [Description, Header, Label, ListBox, Separator] }
+  - { file: core/branch/ListBox/index.tsx, wraps: [Description, Header, Label, ListBox, Separator],
+      overrides: [
+        { kind: style, target: "ListBox.Item:padding", ruling: spacing-roles, reason: "an option is a box inside a surface: the nested step on every side, a 40px one-line row" },
+        { kind: style, target: "ListBox.Item:gap", ruling: spacing-roles, reason: "the avatar or glyph stands a row step from the text" } ] }
   - { file: core/branch/Popover/index.tsx, wraps: [Popover], delegates: { Popover: [Trigger] } }
   - { file: core/branch/Select/index.tsx, wraps: [Description, Label, ListBox, Select, Spinner],
       overrides: [
@@ -30,10 +44,18 @@ wrappers:
   - { file: core/branch/SurfaceCard/index.tsx, wraps: [Card],
       overrides: [
         { kind: style, target: "Card.Root:shadow", ruling: surfacecard-always-painted, reason: "a card is raised by its shadow on the page and bordered without a shadow when nested" } ] }
-  - { file: core/branch/Tabs/index.tsx, wraps: [Tabs] }
+  - { file: core/branch/Tabs/index.tsx, wraps: [Tabs],
+      overrides: [
+        { kind: style, target: "Tabs.Tab:padding", ruling: spacing-roles, reason: "an underline tab takes the row step per side and the first label stands on the content edge" } ] }
   - { file: core/branch/Tooltip/index.tsx, wraps: [Tooltip], delegates: { Tooltip: [Trigger] } }
-  - { file: core/branch/Toast/index.tsx, wraps: [Alert, Spinner] }
-  - { file: core/composite/Alert/index.tsx, wraps: [Alert, Spinner] }
+  - { file: core/branch/Toast/index.tsx, wraps: [Alert, Spinner],
+      overrides: [
+        { kind: style, target: "Alert.Root:padding", ruling: spacing-roles, reason: "a toast holds its content at the container inset, its close side one step less" },
+        { kind: style, target: "Alert.Root:gap", ruling: spacing-roles, reason: "glyph and copy are an inline pair" } ] }
+  - { file: core/composite/Alert/index.tsx, wraps: [Alert, Spinner],
+      overrides: [
+        { kind: style, target: "Alert.Root:padding", ruling: spacing-roles, reason: "an alert holds its content at the container inset, the nested step inside a card" },
+        { kind: style, target: "Alert.Root:gap", ruling: spacing-roles, reason: "glyph and copy are an inline pair" } ] }
   - { file: core/composite/AvatarGroup/index.tsx, wraps: [Avatar, AvatarGroup],
       overrides: [
         { kind: style, target: "Avatar.Root:block-size", ruling: R318/case-1, reason: "a group identity is one composite at one size, so each grid cell is filled by its member" },
@@ -67,7 +89,9 @@ wrappers:
   - { file: core/primitive/Badge/index.tsx, wraps: [Chip] }
   - { file: core/primitive/Button/index.tsx, wraps: [Button, Link, Spinner],
       overrides: [
-        { kind: style, target: "Link.Root:block-size", ruling: control-height-40, reason: "a link drawn as a button is held at the control height at every breakpoint" } ] }
+        { kind: style, target: "Link.Root:block-size", ruling: control-height-40, reason: "a link drawn as a button is held at the control height at every breakpoint" },
+        { kind: style, target: "Button.Root:padding", ruling: spacing-roles, reason: "inline padding follows the size step (sm 8, md 12, lg 24), one step less on a glyph side" },
+        { kind: style, target: "Link.Root:padding", ruling: spacing-roles, reason: "a link drawn as a button takes the same inline padding as the button of its step" } ] }
   - { file: core/primitive/Checkbox/index.tsx, wraps: [Checkbox] }
   - { file: core/primitive/CloseButton/index.tsx, wraps: [CloseButton] }
   - { file: core/primitive/DateField/index.tsx, wraps: [DateField] }
