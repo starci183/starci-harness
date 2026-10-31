@@ -316,7 +316,21 @@ function catalogRead(state: Parsed, candidate: Parsed, liveCodes: Parsed) {
 }
 
 /** The same rule applies to lite and full. Analyze all tracked consumers before filtering findings to a fast-check scope. */
-export function unusedSymbolFindings({ repoRoot, files, repo = {}, isRoot = false, inScope = () => true, ts: supplied }: { repoRoot: string; files: string[]; repo?: Repo; isRoot?: boolean; inScope?: (file: string) => boolean; ts: Parsed }) {
+type UnusedSymbolInput = { repoRoot: string; files: string[]; repo?: Repo; isRoot?: boolean; inScope?: (file: string) => boolean; ts: Parsed };
+/** A seam for the app check cache: the whole-program analysis of a side is a scoped step keyed on the side, so the cache runs it only when the side changed. */
+export interface UnusedSymbolMemo { run(repoRoot: string, compute: () => Parsed[]): Parsed[] }
+let memo: UnusedSymbolMemo | null = null;
+export function withUnusedSymbolMemo<T>(seam: UnusedSymbolMemo, work: () => T): T {
+  const previous = memo;
+  memo = seam;
+  try { return work(); } finally { memo = previous; }
+}
+
+export function unusedSymbolFindings(input: UnusedSymbolInput) {
+  return memo === null ? computeUnusedSymbols(input) : memo.run(input.repoRoot, () => computeUnusedSymbols(input));
+}
+
+function computeUnusedSymbols({ repoRoot, files, repo = {}, isRoot = false, inScope = () => true, ts: supplied }: { repoRoot: string; files: string[]; repo?: Repo; isRoot?: boolean; inScope?: (file: string) => boolean; ts: Parsed }) {
   const edition = repo.edition ?? 'full';
   if (isRoot || repo.kind === 'runtime' || !['lite', 'full'].includes(edition)) return [];
   const ts = compilerAt(repoRoot, supplied);

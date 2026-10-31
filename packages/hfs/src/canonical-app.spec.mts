@@ -99,7 +99,7 @@ test('check --staged is the pre-commit guard alone', async (t) => {
   const blocked = await run(['check', '--staged'], { cwd: root });
   assert.equal(blocked.code, 1);
   assert.match(blocked.out, /\.env/);
-  for (const flag of [['--json'], ['--fast'], ['--wiring'], ['--base', 'main'], ['--coverage-from', 'x.lcov'], ['--edition', 'lite']]) {
+  for (const flag of [['--json'], ['--full'], ['--wiring'], ['--hfs'], ['--coverage-from', 'x.lcov'], ['--edition', 'lite']]) {
     const refused = await run(['check', '--staged', ...flag], { cwd: root });
     assert.equal(refused.code, 2, flag.join(' '));
     assert.match(refused.err, /^starci app: starci app check --staged is the pre-commit guard alone and takes no /, flag.join(' '));

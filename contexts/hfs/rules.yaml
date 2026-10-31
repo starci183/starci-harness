@@ -2323,6 +2323,16 @@ rules:
     enforcers:
       - {kind: eslint-be, id: entity-extends-base}
 
+  - id: R343
+    code: HFS_CHECK_CACHE_FORGED
+    law: An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (a hard blocker at any count), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings).
+    failureCodes:
+      - HFS_CHECK_CACHE_FORGED
+      - HFS_CHECK_CACHE_STALE
+      - HFS_CHECK_CACHE_MISSING
+    enforcers:
+      - {kind: hfs, id: check-cache}
+
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
 # dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is

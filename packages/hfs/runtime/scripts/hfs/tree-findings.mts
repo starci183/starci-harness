@@ -3,6 +3,8 @@ import { liteStarciworkTreeFindings } from './path-findings.mjs';
 import type { PathFinding } from './path-findings.mjs';
 import type { Resolver } from './slots.mjs';
 
+const CHECK_CACHE_DIR = '.starcistacks/cache';
+
 /** The tree findings of R03: empty directories, ghost siblings, untracked entries outside an ignored slot. */
 export function treeFindings({ repoRoot, resolver, tracked = [], reportedUntracked = new Set() }: { repoRoot: string; resolver: Resolver; tracked?: string[]; reportedUntracked?: Set<string> }): PathFinding[] {
   const inIgnoredSlot = (rel: string): boolean => resolver.classifyPath(`${rel}/.probe`).tracking === 'ignored';
@@ -20,5 +22,6 @@ export function treeFindings({ repoRoot, resolver, tracked = [], reportedUntrack
     const ignored = entry.endsWith('/') ? inIgnoredSlot(bare) : resolver.classifyPath(bare).tracking === 'ignored';
     if (!ignored) findings.push({ code: 'HFS_UNTRACKED_ROOT_ENTRY', level: 'error', path: bare, message: `${entry} is neither tracked nor git-ignored, and no ignored slot owns it` });
   }
-  return findings;
+  // The committed check cache is written by the CLI and committed with the change: before that commit its files are untracked, and a run's own output is no finding.
+  return findings.filter((finding) => !(finding.path === CHECK_CACHE_DIR || String(finding.path).startsWith(`${CHECK_CACHE_DIR}/`)));
 }

@@ -348,3 +348,9 @@ for (const addition of A14_CONTRIBUTIONS) {
   Object.assign(rules, addition.rules)
   Object.assign(recommended, addition.recommended)
 }
+
+// The result cache of `starci app lint` (contexts/project/check-cache.md) reads these two declarations of the installed canon.
+export { crossFileInputs } from "./lib/cross-file-inputs.ts"
+export type { CrossFileInput } from "./lib/cross-file-inputs.ts"
+export { projectGraph } from "./project-graph.ts"
+export type { ProjectGraphFinding, ProjectGraphSnapshot } from "./project-graph.ts"

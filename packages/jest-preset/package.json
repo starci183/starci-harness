@@ -73,6 +73,10 @@
     "./merge": {
       "types": "./dist/merge.d.ts",
       "default": "./dist/merge.js"
+    },
+    "./spec-coverage": {
+      "types": "./dist/spec-coverage.d.ts",
+      "default": "./dist/spec-coverage.js"
     }
   },
   "files": [

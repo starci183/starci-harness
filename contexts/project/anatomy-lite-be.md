@@ -41,6 +41,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `.starciwork/` — **app.starciwork** optional · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
 - `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, HFS_IDENTITY_CUSTODY (no rule)
   - `images/db/Dockerfile` — **app.db.image** required · R05
+  - `cache/` — **app.starcistacks.cache** optional
 - `.sops.yaml` — **app.sops** required
 - `db/` — **app.db** required
   - `migrations/`

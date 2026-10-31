@@ -57,3 +57,29 @@ test('verify proves the merged report with the coverage judgement alone: exit 0 
     assert.equal(await coverageMain(argv, { cwd: '/app', ...bad, prove: ok }), 2, argv.join(' '));
   }
 });
+
+test('--records merges the committed per-spec records of the check cache: the unit-spec records only, app-relative sources, the lcov of the side that holds coverage/', async (t) => {
+  const app = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-coverage-records-'));
+  t.after(() => fs.rmSync(app, { recursive: true, force: true }));
+  const folder = path.join(app, '.starcistacks', 'cache', 'test-coverage', 'be');
+  fs.mkdirSync(folder, { recursive: true });
+  const items = { s: [[1, 0, 1, 9, 1]], f: [], b: [] };
+  const line = (step: string, spec: string, source: string): string => `${JSON.stringify({ data: { sources: { [source]: items } }, findings: [], hash: 'k', path: spec, step })}\n`;
+  fs.writeFileSync(path.join(folder, 'src.jsonl'), line('unit-spec', 'be/src/a.spec.ts', 'be/src/a.service.ts') + line('unit-spec', 'be/src/b.spec.ts', 'be/src/b.service.ts') + line('other', 'be/src/c.spec.ts', 'be/src/c.service.ts'));
+  const seen: Array<{ sources: string[][]; outDir: string; reportRoot: string; recordRoot: string }> = [];
+  const { out, stdout, stderr } = io();
+  const code = await coverageMain(['merge', '--out', 'be/coverage/lcov.info', '--records', '.starcistacks/cache/test-coverage'], {
+    cwd: app, stdout, stderr,
+    mergeSpecs: (records, args) => { seen.push({ sources: records.map((record) => Object.keys(record)), ...args }); },
+  });
+  assert.equal(code, 0, out.stderr);
+  assert.deepEqual(seen, [{ sources: [['be/src/a.service.ts'], ['be/src/b.service.ts']], outDir: path.join(app, 'be', 'coverage'), reportRoot: path.join(app, 'be'), recordRoot: app }]);
+  assert.match(out.stdout, /2 spec record\(s\) -> be\/coverage\/lcov\.info/u);
+  const none = io();
+  assert.equal(await coverageMain(['merge', '--out', 'be/coverage/lcov.info', '--records', 'missing'], { cwd: app, ...none, mergeSpecs: () => undefined }), 2);
+  assert.match(none.out.stderr, /holds no unit coverage yet/u);
+  for (const argv of [['merge', '--out', 'be/coverage/lcov.info', '--records', 'x', 'shards'], ['merge', '--out', 'be/coverage/lcov.info'], ['verify', '--records', 'x', 'lcov.info']]) {
+    const bad = io();
+    assert.equal(await coverageMain(argv, { cwd: app, ...bad, mergeSpecs: () => undefined }), 2, argv.join(' '));
+  }
+});

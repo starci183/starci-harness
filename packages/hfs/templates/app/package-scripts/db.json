@@ -7,4 +7,4 @@
     "db:push": "{{appBinary}} db migrate --db-url-env DATABASE_URL --execute",
     "db:plan": "{{appBinary}} db migrate --db-url-env DATABASE_URL",
     "db:dump": "{{appBinary}} db dump --db-url-env DATABASE_URL --out ../{{project}}-db-backups",
-    "db:lint": "{{appBinary}} check --fast",
+    "db:lint": "{{appBinary}} check --db",

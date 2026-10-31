@@ -76,6 +76,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 | [anatomy.md](anatomy.md) | the tree of an app root and its sides, and what each part is for; its generated slices `anatomy-<edition>-<side>.md` (the app root and one side of one edition) are what a task of that side reads |
 | [index.md](index.md) | generated: every file of `contexts/` with its size, first sentence, sections and ids, which a Kernel reads instead of the whole tree |
 | [lint.md](lint.md) | each canon package and gate: where it applies and what kind of fact it enforces; the facts no machine checks yet |
+| [check-cache.md](check-cache.md) | the committed result cache in `.starcistacks/cache/` (proposed): when a run is full or incremental on a host and in CI, the fingerprint, trust, which step reuses what |
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
 | [work.md](work.md) | the `.starciwork` record families, their state, who writes what, UAT flows and evidence |
 | [lite.md](lite.md) | only what the lite edition does differently (backing services, patterns, infrastructure, deploy targets, CI, Work), each linked to its owner |

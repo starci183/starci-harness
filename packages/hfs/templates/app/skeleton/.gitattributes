@@ -6,3 +6,5 @@
 *.mjs text eol=lf
 .starcistacks/** text eol=lf
 .starcistacks/**/*.enc binary
+# The committed check cache (starci app check): union-merged JSON Lines, never a conflict; hidden from language statistics and review diffs.
+.starcistacks/cache/** text eol=lf merge=union linguist-generated=true

@@ -14,6 +14,21 @@ declare module "*/runtime/scripts/hfs/architecture/surface.mjs" {
     }
     /** Every lint enforcer of the machine. */
     export const LINT_ENFORCERS: readonly LintEnforcer[]
+    /** A finding of the machine: a violation spells its code `ruleId`, a repository finding `code`. */
+    export interface GraphViolation {
+        readonly ruleId?: string
+        readonly code?: string
+        readonly path?: string
+        readonly line?: number
+        readonly column?: number
+        readonly message: string
+        readonly origin?: string
+        readonly check?: string
+    }
+    /** The finding's code. */
+    export function codeOf(finding: GraphViolation): string | undefined
+    /** Whether `finding` belongs to `enforcer`. */
+    export function belongsTo(enforcer: LintEnforcer, finding: GraphViolation): boolean
 }
 
 declare module "*/runtime/scripts/hfs/project-rule.mjs" {
@@ -97,6 +112,9 @@ declare module "*/runtime/scripts/api/git/lib.mjs" {
 }
 
 declare module "*/runtime/scripts/hfs/project-graph.mjs" {
+    import type { GraphViolation } from "*/runtime/scripts/hfs/architecture/surface.mjs"
     /** Forget every cached project graph, so the next rule run reads the disk again. */
     export function resetProjectGraphs(): void
+    /** The lint-surface findings of the repository at `repoRoot`, by repository-relative path (built once per process and cached). */
+    export function projectGraph(input: { repoRoot: string; runtimeRoot: string; injectedTypeScript?: object }): { byFile: Map<string, GraphViolation[]>; files: number }
 }
