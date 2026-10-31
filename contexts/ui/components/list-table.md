@@ -17,9 +17,11 @@ Choice `list-table.choose.role`: which collection carries the rows. The first ro
 | table | records compared across many columns, sorted or bulk-selected | `DataTable`; a row that opens its record takes `href`, a value edited in place takes the column `editor`, a column that may fold on a narrow table takes `priority="low"` | `DNA-COMMON-TABLE-ROW-LINK`, `DNA-COMMON-TABLE-FOLD` |
 | pick | picking one item is the task (a list inside a panel) | `ListBox`; a navigation-like list selects by fill with no check | lint `selection-fill-no-check` |
 | static | lines that only report (status facts, how it works) | `StaticStateRow` | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
+| step | a few choices or facts inside a first-run step card (connect a channel, the rules a workspace starts with) | `SurfaceListCard` of `ListRow`, label outside | judgement |
 | entity | entities with a name, one description line, a few facts and actions | `ListRow` rows in the section's list | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
 
-A list is never wrapped in a card (COLLECTION-1). Title, count, filters and the section's command belong to the
+A list is never wrapped in a card (COLLECTION-1), except the `rail` and `step` rows above: a rail list and the few choices inside a first-run step card are a
+`SurfaceListCard` with the label outside (ruling `step-card-list`). Title, count, filters and the section's command belong to the
 section header above it.
 
 ## Variants
