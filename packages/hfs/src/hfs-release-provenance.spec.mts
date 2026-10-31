@@ -189,3 +189,29 @@ test('release provenance: side scopes, runtime and nested products do not inheri
   fs.writeFileSync(path.join(nested, 'package.json'), JSON.stringify({ version: VERSION }));
   assert.deepEqual(check({ repoRoot: nested, files: ['package.json'] }, 'full'), []);
 });
+
+// The images workflow of the delivery pipeline (ruling app-cicd-auto-deploy) is reusable: it pushes the immutable commit tag from any ref, and the release name is a
+// retag of that digest, after a guard that rejects any ref other than refs/tags/v*.
+const RELEASE_GUARD = { name: 'release tag matches package version', if: '${{ inputs.release }}', run: '[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1\nnode -e "process.exit(0)"' };
+const COMMIT_BUILD = { uses: 'docker/build-push-action@0123456789012345678901234567890123456789', with: { context: '.', tags: '${{ steps.names.outputs.repo }}:sha-${{ github.sha }}', push: '${{ inputs.push && matrix.deployed }}' } };
+const RETAG = { name: 'tag the release', if: '${{ inputs.release && inputs.push && matrix.deployed }}', run: 'docker buildx imagetools create --tag "$REPO:$GITHUB_REF_NAME" "$REPO:sha-$GITHUB_SHA"' };
+const reusableImages = (steps: object[]) => stringify({ name: 'images', on: { workflow_call: { inputs: { push: { type: 'boolean', required: true }, release: { type: 'boolean', required: true } } } }, jobs: { image: { 'runs-on': 'ubuntu-latest', steps } } });
+
+for (const edition of ['lite', 'full']) {
+  test(`HFS_RELEASE_TAG_MISMATCH@${edition}: a reusable images workflow pushes sha-<sha> from any ref and retags the release name only behind the guard`, (t) => {
+    assert.deepEqual(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, COMMIT_BUILD]) }), edition), [], 'the commit tag is immutable and per commit');
+    assert.deepEqual(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, RELEASE_GUARD, COMMIT_BUILD, RETAG]) }), edition), []);
+    assert.deepEqual(codes(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, COMMIT_BUILD, RETAG]) }), edition)), ['HFS_RELEASE_TAG_MISMATCH'], 'a retag with no guard before it');
+    assert.deepEqual(codes(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, RETAG, RELEASE_GUARD, COMMIT_BUILD]) }), edition)), ['HFS_RELEASE_TAG_MISMATCH'], 'a guard after the retag guards nothing');
+    assert.deepEqual(codes(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, RELEASE_GUARD, COMMIT_BUILD, { ...RETAG, if: '${{ matrix.deployed }}' }]) }), edition)), ['HFS_RELEASE_TAG_MISMATCH'], 'the retag runs only on a release');
+    assert.deepEqual(codes(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, { ...RELEASE_GUARD, run: 'echo hello' }, COMMIT_BUILD, RETAG]) }), edition)), ['HFS_RELEASE_TAG_MISMATCH'], 'the guard must reject a ref that is not a release tag');
+  });
+
+  test(`HFS_RELEASE_TAG_MISMATCH@${edition}: a tag that is not the commit tag still needs a release guard, and a mutable tag next to the commit tag fails`, (t) => {
+    const mutable = { ...COMMIT_BUILD, with: { ...COMMIT_BUILD.with, tags: '${{ steps.names.outputs.repo }}:sha-${{ github.sha }}\n${{ steps.names.outputs.repo }}:latest' } };
+    assert.deepEqual(codes(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, mutable]) }), edition)), ['HFS_RELEASE_TAG_MISMATCH']);
+    const branchTag = { ...COMMIT_BUILD, with: { ...COMMIT_BUILD.with, tags: '${{ steps.names.outputs.repo }}:${{ github.ref_name }}' } };
+    assert.deepEqual(codes(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, branchTag]) }), edition)), ['HFS_RELEASE_TAG_MISMATCH'], 'no guard, no release name');
+    assert.deepEqual(check(tree(t, { [IMAGE]: reusableImages([CHECKOUT, { ...branchTag, if: "${{ startsWith(github.ref, 'refs/tags/v') }}" }]) }), edition), []);
+  });
+}

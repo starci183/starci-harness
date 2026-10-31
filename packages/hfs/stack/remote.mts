@@ -17,6 +17,7 @@ import { tool } from './context.mjs';
 import type { RunResult, StackContext } from './context.mjs';
 import { restrictToUser, writePrivate } from './private-file.mjs';
 import { refusal } from './errors.mjs';
+import { openMember as openSealedMember } from './sealed.mjs';
 import { createSshSession, sessionDirectory } from './ssh-session.mjs';
 import type { Argv, RemoteArgv, SshConnection } from './ssh-session.mjs';
 import { assertStackAccount } from './target-binding.mjs';
@@ -255,17 +256,32 @@ function ciHome(ctx: StackContext): string {
 
 interface CiInputs { key: string; known: string; host: string; user: string }
 
-function ciInputs(ctx: StackContext): CiInputs {
-  for (const name of CI_VARIABLES) if (!ctx.env[name]) throw refusal('STACK_CONNECT_MISSING', `${name} is not set`);
+/** The sealed member that holds the CI transport of an environment: VPS_SSH_KEY (the CI-only deploy key), VPS_KNOWN_HOSTS, VPS_HOST and VPS_USER. */
+export const CI_MEMBER = 'vps-ci';
+
+/**
+ * The CI transport values: the sealed member `vps-ci` of the environment (opened with the server identity the job holds) when it exists, else the
+ * variables of the job (the transition, and the owner's own runs). The member keeps the host, the account, the key and the pinned host keys out of
+ * GitHub and of a public log; the pinned host keys are reviewed in git as ciphertext.
+ */
+function ciValues(ctx: StackContext, config: DeployConfig): { values: Record<string, string | undefined>; sealed: boolean } {
+  const present = typeof config.secretsDir === 'string' && fs.existsSync(memberFile(config.secretsDir, CI_MEMBER));
+  if (!present) return { values: ctx.env, sealed: false };
+  const map = openSealedMember(ctx, config, CI_MEMBER);
+  return { values: Object.fromEntries(CI_VARIABLES.map((name) => [name, typeof map[name] === 'string' ? map[name] : undefined])), sealed: true };
+}
+
+function ciInputs(ctx: StackContext, values: Record<string, string | undefined>, sealed: boolean): CiInputs {
+  for (const name of CI_VARIABLES) if (!values[name]) throw refusal('STACK_CONNECT_MISSING', sealed ? `the sealed member ${CI_MEMBER} holds no ${name}` : `${name} is not set and the environment has no sealed member ${CI_MEMBER}`);
   const [host, user] = ['VPS_HOST', 'VPS_USER'].map((name) => {
-    const value = ctx.env[name] as string; // set: every CI variable was checked above
+    const value = values[name] as string; // set: every CI variable was checked above
     if (!ACCOUNT.test(value) || value.startsWith('-')) throw refusal('STACK_CONNECT_INVALID', `${name} must match ${ACCOUNT}`);
     return value;
   }) as [string, string];
-  const key = lfOnly(ctx.env.VPS_SSH_KEY);
+  const key = lfOnly(values.VPS_SSH_KEY);
   if (!key.includes('PRIVATE KEY')) throw refusal('STACK_CONNECT_INVALID', 'VPS_SSH_KEY is not a PEM private key');
   if (!ctx.env.GITHUB_ENV) throw refusal('STACK_CONNECT_NO_GITHUB_ENV', 'GITHUB_ENV is not set');
-  return { key: withNewline(key), known: withNewline(lfOnly(ctx.env.VPS_KNOWN_HOSTS)), host, user };
+  return { key: withNewline(key), known: withNewline(lfOnly(values.VPS_KNOWN_HOSTS)), host, user };
 }
 
 const sshBlock = (alias: string, inputs: CiInputs): string => [
@@ -277,17 +293,22 @@ const sshBlock = (alias: string, inputs: CiInputs): string => [
 /** CI transport: pinned key, known_hosts, ssh config block and DOCKER_HOST=ssh://<alias> in $GITHUB_ENV. */
 export async function connectCi(ctx: StackContext, config: DeployConfig, { execute = false }: { execute?: boolean } = {}): Promise<ActionResult> {
   const dir = ciHome(ctx);
-  const inputs = ciInputs(ctx);
+  const { values, sealed } = ciValues(ctx, config);
+  const inputs = ciInputs(ctx, values, sealed);
   const alias = config.remote.host;
-  const plan = [`${dir}/deploy_key (0600) from VPS_SSH_KEY`, `${dir}/known_hosts (0644) from VPS_KNOWN_HOSTS`, `a Host ${alias} block in ${dir}/config`, `DOCKER_HOST=ssh://${alias} in GITHUB_ENV`];
-  const data = { host: alias, files: ['deploy_key', 'known_hosts', 'config'] };
+  const origin = sealed ? `the sealed member ${CI_MEMBER}` : 'VPS_SSH_KEY';
+  const plan = [`${dir}/deploy_key (0600) from ${origin}`, `${dir}/known_hosts (0644) from ${sealed ? CI_MEMBER : 'VPS_KNOWN_HOSTS'}`, `a Host ${alias} block in ${dir}/config`, `DOCKER_HOST=ssh://${alias} in GITHUB_ENV`];
+  const data = { host: alias, files: ['deploy_key', 'known_hosts', 'config'], sealed };
   if (!execute) return { ok: true, lines: plan.map((item) => `dry run: would write ${item}`), data };
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   writeWithMode(path.join(dir, 'deploy_key'), inputs.key, 0o600);
   writeWithMode(path.join(dir, 'known_hosts'), inputs.known, 0o644);
   fs.appendFileSync(path.join(dir, 'config'), sshBlock(alias, inputs), { mode: 0o600 });
-  fs.appendFileSync(ctx.env.GITHUB_ENV as string,`DOCKER_HOST=ssh://${alias}\n`);
-  return { ok: true, lines: plan.map((item) => `wrote ${item}`), data };
+  fs.appendFileSync(ctx.env.GITHUB_ENV as string,`DOCKER_HOST=ssh://${alias}
+`);
+  // The log of a public repository is public: mask the host, the account and the releases root before any later line can carry them.
+  const masks = sealed ? [inputs.host, inputs.user, config.remote.releasesBase].filter((value): value is string => typeof value === 'string' && value.length >= 4).map((value) => `::add-mask::${value}`) : [];
+  return { ok: true, lines: [...masks, ...plan.map((item) => `wrote ${item}`)], data };
 }
 
 /** CI cleanup: closes the ssh control master (failure ignored) and removes the deploy key. */

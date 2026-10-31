@@ -1,4 +1,5 @@
-// R271: a product release keeps its v<semver> tag, root package version, image tags and database deployment ref together.
+// R271: a product release keeps its v<semver> tag, root package version, image tags and database deployment ref together. The pushed images are named by the
+// commit (sha-<sha>); the release name v<version> is a retag of that digest under a release guard. A migration runs in the stack deploy after the release tag.
 // Ordinary untagged development trees have no release version to compare. Workflow checks still run there in both editions.
 // YAML is parsed, so comments and unrelated jobs cannot supply a guard. Shell guards are deliberately a small, explicit form;
 // opaque helper scripts and computed image metadata cannot prove provenance in this static check.
@@ -143,9 +144,11 @@ function dbJobConstrained(job: Parsed, guarded: Parsed) {
   return constrained;
 }
 
+// The database deploy workflow is retired in a lite app: its migrations are the migrate phase of the stack deploy (starci app stack deploy, tag-gated by
+// stack-deploy.yml). A full app that keeps its own db-deploy.yml, and a lite app that has not synced yet, are still judged here.
 function dbFindings(file: string, workflow: Parsed) {
   const jobs = Object.entries<Parsed>(workflow.jobs ?? {});
-  if (!jobs.length) return [found(HFS_DB_DEPLOY_UNGUARDED, file, `${file} has no verifiable database deploy job; require a release tag before migration`)];
+  if (!jobs.length) return [found(HFS_DB_DEPLOY_UNGUARDED, file, `${file} has no verifiable database deploy job; require a release tag before migration (a lite app's migrations are the migrate phase of the stack deploy: run starci app sync --execute to retire this file)`)];
   const findings = [];
   for (const [name, job] of jobs) {
     if (!job || typeof job !== 'object') continue;
@@ -174,15 +177,41 @@ function imageTagIsRelease(value: Parsed, version: string) {
   });
 }
 
+/** A commit tag: `<repo>:sha-${{ github.sha }}`, immutable and per commit, so any ref may push it. */
+const COMMIT_TAG = /^.+:sha-\$\{\{\s*github\.sha\s*\}\}$/;
+function imageTagsAreCommit(value: Parsed) {
+  if (typeof value !== 'string') return false;
+  const tags = value.split(/[\n,]+/).map((tag) => tag.trim()).filter(Boolean);
+  return tags.length > 0 && tags.every((tag) => COMMIT_TAG.test(tag));
+}
+
+/** The release guard of a reusable images workflow: a step under `if: ${{ inputs.release }}` whose script rejects a ref that is not refs/tags/v*. */
+function inputReleaseGuard(step: Parsed) {
+  if (typeof step.run !== 'string' || step['continue-on-error'] || !/^\$\{\{\s*inputs\.release\s*\}\}$/.test(String(step.if ?? '').trim())) return false;
+  const first = step.run.trim().split(/\r?\n/)[0]!.trim();
+  return /^\[\[\s*["']?\$(?:GITHUB_REF|\{GITHUB_REF\})["']?\s*==\s*refs\/tags\/v\*\s*\]\]\s*\|\|\s*exit\s+[1-9]\d*\s*;?$/.test(first);
+}
+
+/** The release name v<version> is a retag of the commit digest (`imagetools create --tag <repo>:$GITHUB_REF_NAME <repo>:sha-...`): only after the guard, only on a release run. */
+function retagIsGuarded(job: Parsed, step: Parsed) {
+  const steps: Parsed[] = job.steps ?? [];
+  const guard = steps.findIndex(inputReleaseGuard);
+  return guard >= 0 && guard < steps.indexOf(step) && /^\$\{\{\s*inputs\.release\s*&&/.test(String(step.if ?? '').trim());
+}
+
 function imageFindings(file: string, workflow: Parsed, version: string) {
   const findings = [];
   let builds = 0;
   for (const [name, job] of Object.entries<Parsed>(workflow.jobs ?? {})) {
     for (const step of job?.steps ?? []) {
+      if (typeof step.run === 'string' && /\bimagetools\s+create\b/.test(step.run) && !retagIsGuarded(job, step)) {
+        findings.push(found(HFS_RELEASE_TAG_MISMATCH, file, `${file} job ${name} retags an image outside a release guard; put it after a step \`if: \${{ inputs.release }}\` that rejects a ref other than refs/tags/v*, and under \`if: \${{ inputs.release && ... }}\``, { job: name }));
+      }
       if (!(step.uses ?? '').startsWith('docker/build-push-action@')) continue;
       builds += 1;
       const guarded = tagOnlyTrigger(workflow) || refProof(job.if) === RELEASE_REF || refProof(step.if) === RELEASE_REF;
-      if (!guarded || !checkoutPreservesRef(job) || !imageTagIsRelease(step.with?.tags, version)) findings.push(found(HFS_RELEASE_TAG_MISMATCH, file, `${file} job ${name} must build the checked-out release ref and tag every image with v<package.json version> or github.ref_name under a release-tag guard`, { job: name }));
+      // An immutable commit tag (sha-<sha>) is pushed by any ref; a release name must come from the checked-out release ref under a guard.
+      if (!checkoutPreservesRef(job) || !(imageTagsAreCommit(step.with?.tags) || (guarded && imageTagIsRelease(step.with?.tags, version)))) findings.push(found(HFS_RELEASE_TAG_MISMATCH, file, `${file} job ${name} must build the checked-out ref and tag every image with sha-\${{ github.sha }} (the release name v<package.json version> is a guarded retag of that digest), or tag with v<version> or github.ref_name under a release-tag guard`, { job: name }));
     }
   }
   if (!builds) findings.push(found(HFS_RELEASE_TAG_MISMATCH, file, `${file} has no verifiable release image tags; declare docker/build-push-action tags from the release ref`));

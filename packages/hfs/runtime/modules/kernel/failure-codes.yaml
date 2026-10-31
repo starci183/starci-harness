@@ -1764,7 +1764,7 @@ CI_STANDARD:
 CI_TRIGGERS_RELEASE_ONLY:
   title: "Workflow trigger outside R221"
   title_vi: "Workflow có trigger ngoài R221"
-  meaning_vi: "Workflow khai báo trigger ngoài R221: main được phép trong workflow runtime và ci.yml của app; các nhánh, sự kiện và bộ lọc khác phải theo R221."
+  meaning_vi: "Workflow khai báo trigger ngoài R221: main được phép trong workflow runtime và ci.yml của app; pull_request tới main chỉ được phép trong ci.yml, workflow_call dành cho workflow dùng lại; pull_request_target, workflow_run, lịch chạy và các nhánh, sự kiện, bộ lọc khác phải theo R221."
   causes_vi:
     - "Khai báo nhánh, sự kiện hoặc bộ lọc không thuộc R221"
     - "Khai báo nhánh, sự kiện hoặc bộ lọc không thuộc R221"
@@ -3180,7 +3180,7 @@ HFS_APP_LEXICON:
 HFS_APP_WORKFLOW_TRIGGER:
   title: "App workflow trigger outside R251"
   title_vi: "Workflow ứng dụng có sự kiện khởi chạy không hợp lệ"
-  meaning_vi: "Workflow ứng dụng khai báo trigger ngoài R251; ci.yml được chạy trên main và nhánh release candidate, các workflow khác giữ phạm vi trigger của R251."
+  meaning_vi: "Workflow ứng dụng khai báo trigger ngoài R251; ci.yml được chạy trên main, nhánh release candidate và pull_request tới main (quyền chỉ đọc, không gắn environment), images.yml và stack-deploy.yml là workflow dùng lại (workflow_call), các workflow khác giữ phạm vi trigger của R251."
   causes_vi:
     - "Khai báo trigger không thuộc R251"
   nextStep_vi: "Sửa trigger theo R251 và chạy starci app sync --execute."
@@ -3351,7 +3351,7 @@ HFS_DB_DEPLOY_UNGUARDED:
   title_vi: "Triển khai cơ sở dữ liệu chấp nhận ref không phải tag"
   meaning_vi: "Mỗi đường chạy triển khai migration phải từ chối ref không phải tag phát hành trước khi tác động cơ sở dữ liệu."
   causes_vi:
-    - "Workflow db-deploy thiếu chốt kiểm tag hoặc chốt không chặn đường chạy migration theo luật R271."
+    - "Workflow db-deploy thiếu chốt kiểm tag hoặc chốt không chặn đường chạy migration theo luật R271 (app lite không còn db-deploy: migration chạy trong bước migrate của stack deploy)."
   nextStep_vi: "Thêm chốt kiểm ref tag trước mỗi bước triển khai migration, rồi chứng minh ref nhánh bị từ chối."
   owner: op-retry
   kind: check-finding
@@ -4026,7 +4026,7 @@ HFS_README_WORK_POINTER_MISSING:
 HFS_RELEASE_TAG_MISMATCH:
   title: "Product release tag does not match its version or image tag"
   title_vi: "Tag phát hành sản phẩm không khớp phiên bản hoặc tag image"
-  meaning_vi: "Tag phát hành phải có dạng v cộng phiên bản package.json; workflow images.yml phải dùng tag phát hành đó cho image trong lite và full."
+  meaning_vi: "Tag phát hành phải có dạng v cộng phiên bản package.json; workflow images.yml đẩy image với tag bất biến sha-<commit>, còn tên phát hành v<phiên bản> chỉ là retag của digest đó trên lần chạy tag phát hành, sau một chốt kiểm ref."
   causes_vi:
     - "Phiên bản package và tag khác nhau hoặc image dùng tag khác theo luật R271."
   nextStep_vi: "Đồng bộ phiên bản package và tag phát hành, rồi dùng cùng tag trong workflow xây image."

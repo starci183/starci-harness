@@ -53,10 +53,13 @@ function jobShape(doc: Parsed, edition: string, standard: Parsed, say: Parsed) {
   const shape = standard.jobs[edition] ?? standard.jobs.full;
   const ids = jobsOf(doc).map(([id]) => id);
   const out = [];
-  const missing = shape.required.filter((id: string) => !ids.includes(id));
-  const extra = ids.filter((id) => !shape.required.includes(id) && !shape.optional.includes(id));
+  const prefix = String(standard.deployJobPrefix ?? 'deploy-');
+  const deployIds = ids.filter((id) => id.startsWith(prefix));
+  const must: string[] = [...shape.required, ...(shape.pipeline ?? [])];
+  const missing = must.filter((id: string) => !ids.includes(id));
+  const extra = ids.filter((id) => !must.includes(id) && !shape.optional.includes(id) && !deployIds.includes(id));
   const gaps = [missing.length ? 'missing ' + missing.join(', ') : '', extra.length ? 'not in the standard ' + extra.join(', ') : ''].filter(Boolean).join('; ');
-  if (gaps) out.push(say('job-shape', `the jobs must be ${shape.required.join(', ')} (optional ${shape.optional.join(', ')}); ${gaps}`));
+  if (gaps) out.push(say('job-shape', `the jobs must be ${must.join(', ')} (optional ${shape.optional.join(', ')}); ${gaps}`));
   const withStep = (match: Parsed) => jobsOf(doc).filter(([, job]) => stepsOf(job).some((step: Parsed) => match(step))).map(([id]) => id);
   const unit = withStep((step: Parsed) => step.name === 'unit');
   const upload = withStep((step: Parsed) => usesOf(step).startsWith('codecov/codecov-action@'));
@@ -66,6 +69,29 @@ function jobShape(doc: Parsed, edition: string, standard: Parsed, say: Parsed) {
   if (upload.length && upload.join() !== 'coverage') out.push(say('job-shape', `the Codecov upload must be a step of the coverage job alone, not of ${upload.join(', ')}`));
   const oidc = jobsOf(doc).filter(([, job]) => job.permissions?.['id-token'] === 'write').map(([id]) => id);
   if (upload.length && oidc.join() !== 'coverage') out.push(say('job-shape', `only the coverage job holds the OIDC id-token (id-token: write), not ${oidc.join(', ') || 'no job'}`));
+  out.push(...pipelineShape(doc, ids, deployIds, say));
+  return out;
+}
+
+const needsOf = (job: Parsed) => (Array.isArray(job?.needs) ? job.needs.map(String) : typeof job?.needs === 'string' ? [job.needs] : []);
+
+/** The plan, images, verdict and deploy jobs: the verdict judges every other job and always runs, the images are the reusable images.yml, a deploy job calls stack-deploy.yml after the verdict. */
+function pipelineShape(doc: Parsed, ids: readonly string[], deployIds: readonly string[], say: Parsed) {
+  const out = [];
+  const others = ids.filter((id) => id !== 'verdict' && !deployIds.includes(id));
+  const verdict = doc.jobs?.verdict;
+  if (record(verdict)) {
+    const judged = needsOf(verdict);
+    const unjudged = others.filter((id) => !judged.includes(id));
+    if (unjudged.length) out.push(say('job-shape', `the verdict job must need every other job; it does not need ${unjudged.join(', ')}`));
+    if (!/^(?:\$\{\{\s*)?always\(\)/.test(String(verdict.if ?? '').trim())) out.push(say('job-shape', 'the verdict job runs under if: always(), so a skipped or red job reaches it'));
+  }
+  if (record(doc.jobs?.images) && doc.jobs.images.uses !== './.github/workflows/images.yml') out.push(say('job-shape', 'the images job calls the reusable ./.github/workflows/images.yml'));
+  for (const id of deployIds) {
+    const job = doc.jobs[id];
+    if (!needsOf(job).includes('verdict')) out.push(say('job-shape', `job ${id} deploys, so it must need the verdict job`));
+    if (job.uses !== './.github/workflows/stack-deploy.yml') out.push(say('job-shape', `job ${id} deploys through the reusable ./.github/workflows/stack-deploy.yml, never with steps of its own`));
+  }
   return out;
 }
 

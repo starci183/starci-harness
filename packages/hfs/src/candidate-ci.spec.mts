@@ -130,16 +130,18 @@ test('a refused candidate push stops before any wait', async () => {
 
 
 for (const edition of ['lite', 'full']) {
-  test(`${edition}: generated CI judges main, candidates and tags while deployment stays manual and images stay tag-driven`, () => {
+  test(`${edition}: generated CI judges pull requests, main, candidates and tags; images and the deploy are reusable workflows and nothing else starts a run`, () => {
     const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS);
     const workflows = targets.filter(target => target.path.startsWith('.github/workflows/'));
     const ci = workflows.find(target => target.path === '.github/workflows/ci.yml') as RenderedTarget;
     const doc = parseWorkflow(ci.content);
     assert.deepEqual(doc.on.push, { branches: ['main', 'release/candidate-*'], tags: ['v*'] });
+    assert.deepEqual(doc.on.pull_request, { branches: ['main'] });
     for (const target of workflows) {
       const on = parseWorkflow(target.content).on;
-      if (/deploy/.test(target.path)) assert.deepEqual(Object.keys(on), ['workflow_dispatch']);
-      if (/images/.test(target.path)) assert.deepEqual(on.push, { tags: ['v*'] });
+      if (/stack-deploy/.test(target.path)) assert.deepEqual(Object.keys(on).sort(), ['workflow_call', 'workflow_dispatch']);
+      if (/images/.test(target.path)) assert.deepEqual(Object.keys(on), ['workflow_call']);
+      if (/stack-key-restore/.test(target.path)) assert.deepEqual(Object.keys(on), ['workflow_dispatch']);
     }
     const files = workflows.map(target => `packages/hfs/templates/app/ci-workflows/${target.path.slice(1)}`);
     assert.deepEqual(gitTriggerFindings({ files, read: (file: string) => (workflows[files.indexOf(file)] as RenderedTarget).content }), []);
@@ -147,7 +149,27 @@ for (const edition of ['lite', 'full']) {
     const bad = structuredClone(doc);
     bad.on.push.branches = ['feature'];
     assert.ok(gitTriggerFindings({ files: [file], read: () => JSON.stringify(bad) }).length > 0);
-    delete doc.on.push.branches;
-    assert.ok(gitTriggerFindings({ files: [file], read: () => JSON.stringify(doc) }).length > 0);
+    const noBranches = structuredClone(doc);
+    delete noBranches.on.push.branches;
+    assert.ok(gitTriggerFindings({ files: [file], read: () => JSON.stringify(noBranches) }).length > 0);
+  });
+
+  test(`${edition}: a pull request is judged in ci.yml only, to main only, and pull_request_target, workflow_run and schedules never start a run`, () => {
+    const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS);
+    const ci = parseWorkflow((targets.find(target => target.path === '.github/workflows/ci.yml') as RenderedTarget).content);
+    const findings = (file: string, mutate: (on: Record<string, unknown>) => void) => {
+      const doc = structuredClone(ci);
+      mutate(doc.on);
+      return gitTriggerFindings({ files: [file], read: () => JSON.stringify(doc) }).map(finding => finding.message);
+    };
+    const CI = 'packages/hfs/templates/app/ci-workflows/.github/workflows/ci.yml';
+    assert.deepEqual(findings(CI, () => {}), []);
+    assert.match(findings(CI, (on) => { on.pull_request = { branches: ['feature'] }; }).join('\n'), /pull_request\.branches/u);
+    assert.match(findings(CI, (on) => { on.pull_request = { branches: ['main'], paths: ['be/**'] }; }).join('\n'), /pull_request\.paths/u);
+    assert.match(findings(CI, (on) => { on.pull_request = null; }).join('\n'), /pull_request\.branches/u);
+    for (const event of ['pull_request_target', 'workflow_run', 'schedule', 'issue_comment']) {
+      assert.ok(findings(CI, (on) => { on[event] = {}; }).join('\n').includes(`the trigger \`${event}\` is not allowed`), event);
+    }
+    assert.match(findings('.github/workflows/images.yml', (on) => { on.pull_request = { branches: ['main'] }; }).join('\n'), /may start only ci\.yml/u, 'no other workflow runs the code of a pull request');
   });
 }

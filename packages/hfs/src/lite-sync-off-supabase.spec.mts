@@ -51,7 +51,9 @@ test('the managed db scripts, codegen and CI drive the self-hosted database', ()
     assert.ok(scripts.includes(script), script);
   }
   assert.equal(scripts.includes('db:types'), false);
-  assert.ok(String(targetAt('.github/workflows/db-deploy.yml').content).includes('starci app db migrate --db-url-env DATABASE_URL'));
+  // The database deploy workflow is retired: the stack deploy backs up and migrates inside the database container (ruling app-cicd-auto-deploy).
+  assert.equal(byPath.has('.github/workflows/db-deploy.yml'), false);
+  assert.ok(String(targetAt('.github/workflows/stack-deploy.yml').content).includes('starci app stack deploy'));
   assert.equal(String(targetAt('.github/workflows/ci.yml').content).includes('db-types'), false);
   assert.equal(String(targetAt('scripts/codegen.mjs').content).includes('database.types'), false);
   assert.deepEqual(lite.sides.fe.reads, ['be/contracts/']);

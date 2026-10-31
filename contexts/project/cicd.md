@@ -305,6 +305,26 @@ automatic deploy; once it is accepted, delete `VPS_SSH_KEY` and `VPS_KNOWN_HOSTS
 Integration order: WP1, WP2 and WP3 in parallel; WP4 after they are published; WP5 last, and its knowledge edits can
 start with WP4.
 
+## As built by the work packages (integration, 2026-10-31)
+
+Where the packages differ from the design above, or add to it, the code and the rules are the authority:
+
+- **The deploy is called, not owned.** A job that calls a reusable workflow cannot bind a GitHub Environment, so `ci.yml` has one `deploy-<env>` job per
+  environment with `deploy.auto` that passes `with.environment`, and the called `stack-deploy.yml` job binds it (restricted to `v*` tags), reads that
+  environment's `SOPS_AGE_KEY` and opens the transport. R251 judges both halves. The environment URL of a deployment record is not set.
+- **The brake is a step, not a job condition.** An environment variable is not readable in a job's `if` before the job is bound to the environment, so
+  `STARCI_DEPLOY_PAUSED` is read by the first step of the bound deploy job; the later steps wait for it and the job ends green with a notice in the run summary.
+- **The transport is one sealed member.** `.starcistacks/<env>/secrets/vps-ci.enc.yaml` holds `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER`;
+  `stack connect` prefers it over the job's `VPS_*` variables and masks the host, the account and the releases root in the log. `stack-key-restore.yml` keeps
+  its own `VPS_*` environment secrets (it runs when the server identity that opens the member is missing), so deleting them removes the restore path.
+- **Pull requests** run the checks and build the images without pushing (`push: false`); an image with sealed build values is built on release tag runs only.
+- **Public repositories** (nivo-lite is public). GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI
+  private key never enter the repository. The CI key is a key of its own on the manager (`restrict`, a forced command, a rotation path owned by the owner, who
+  also seals it), the log prints no host, address or server path, no secret is baked into an image (build arguments are public values), `main` is protected and
+  the `v*` tags are protected and never moved or deleted, and `pull_request_target` never runs a pull request's code.
+- **Not built yet:** the forced-command gate `starci-ssh-gate` (the release store's scripts are not yet named scripts it could admit), `services.notify`,
+  the `--data-acknowledged` guard of a manual rollback to a release older than an applied contract migration, and the environment URL.
+
 ## Open decisions
 
 | decision | options | recommended |

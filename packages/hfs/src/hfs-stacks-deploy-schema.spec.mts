@@ -40,3 +40,24 @@ test('the deploy config reads one sealed member as the member of all three SSH r
   assert.ok(read({ ops: 'vps', sshKey: 'vps', knownHosts: 'vps' }).problems.some((problem) => /secret migrate/.test(problem.message ?? problem)), 'the three-role object is refused, pointing to the fold');
   assert.ok(read('Not A Name').problems.some((problem) => /deploy\.remote\.sealed/.test(problem.at ?? problem)));
 });
+
+test('deploy.auto, approval and platforms are the delivery keys of an environment, and ci.imageCache the layer cache of the images job', () => {
+  assert.deepEqual(judge('deploy', { auto: true, approval: 'reviewers', platforms: ['linux/amd64', 'linux/arm64'] }), []);
+  assert.notDeepEqual(judge('deploy', { auto: 'yes' }), [], 'auto is a boolean');
+  assert.notDeepEqual(judge('deploy', { approval: 'owner' }), [], 'approval is none or reviewers');
+  assert.notDeepEqual(judge('deploy', { platforms: [] }), [], 'a platform list names at least one');
+  assert.notDeepEqual(judge('deploy', { platforms: ['windows/amd64'] }), [], 'the images are Linux images');
+  assert.deepEqual(judge('ciDeclaration', { imageCache: 'registry' }), []);
+  assert.notDeepEqual(judge('ciDeclaration', { imageCache: 'local' }), [], 'the cache is the Actions cache or the registry');
+});
+
+test('the deploy config normalises auto, approval and platforms with the defaults of the design: manual, no reviewers, linux/amd64', () => {
+  const read = (block: Record<string, unknown>) => normalizeDeploy(block, { project: 'shop', probe: { exists: () => false, services: new Set(), members: new Set() } });
+  const bare = read({});
+  assert.deepEqual(bare.problems, []);
+  assert.deepEqual([bare.config?.auto, bare.config?.approval, bare.config?.platforms], [false, 'none', ['linux/amd64']]);
+  const set = read({ auto: true, approval: 'reviewers', platforms: ['linux/arm64'] });
+  assert.deepEqual([set.config?.auto, set.config?.approval, set.config?.platforms], [true, 'reviewers', ['linux/arm64']]);
+  const problems = read({ auto: 'yes', approval: 'owner', platforms: ['linux/amd64', 'linux/amd64'] }).problems.map((problem) => problem.at);
+  assert.deepEqual(problems.sort(), ['deploy.approval', 'deploy.auto', 'deploy.platforms']);
+});

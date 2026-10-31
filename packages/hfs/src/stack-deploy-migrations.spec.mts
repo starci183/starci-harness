@@ -65,8 +65,9 @@ async function run(t: TestContext, scenario: Scenario = {}) {
   const state = { expand: [...(scenario.expand ?? [])], contract: [...(scenario.contract ?? [])] };
   const previous = scenario.previous ?? PREVIOUS;
   const ok = (name: string) => async () => { order.push(name); return { ok: true, lines: [] }; };
+  const records = recordsDouble();
   const store = {
-    ...recordsDouble(),
+    ...records,
     current: async () => previous, store: ok('store'), accept: ok('accept'),
     fetch: async (_release: unknown, dir: string) => { order.push('fetch'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'stack.yaml'), STACK); },
   };
@@ -121,7 +122,7 @@ async function run(t: TestContext, scenario: Scenario = {}) {
   const config = { stack: 'shop', project: 'shop', repoRoot: root, remote: { serverRecipient: null }, backup: null, ingress: null, tasks: {}, postDeploy: [], ...(scenario.services ? { services: new Set(scenario.services) } : {}) } as unknown as DeployConfig;
   const result = await deployRelease(ctx, config, { sourceSha: 'f'.repeat(40), execute: scenario.execute ?? true, out, skipPublic: scenario.skipPublic, dbUrlEnv: scenario.dbUrlEnv }, deps as unknown as Partial<DeployDeps>);
   const steps = ((result.data?.steps ?? []) as { step: string; ok: boolean }[]).map((entry) => entry.step);
-  return { result, order, steps, root, ctx, config, deps, state };
+  return { result, order, steps, root, ctx, config, deps, state, records };
 }
 
 const AFTER_STORE = (order: string[]) => order.slice(order.indexOf('store') + 1).filter((name) => !['provision', 'edge', 'converge', 'verify', 'prune', 'container', 'post-deploy', 'fetch'].includes(name));
@@ -255,4 +256,15 @@ test('STACK_DEPLOY_DB_SERVICE_UNKNOWN: a database block whose service is not in 
   assert.ok(!order.includes('deploy') && !order.includes('container'));
   assert.equal((await run(t, { services: ['api', 'db'] })).result.ok, true, 'the service is there: the phases run');
   assert.equal((await run(t, { services: ['api'], target: 'external', dbUrlEnv: 'DATABASE_URL' })).result.ok, true, 'an external database needs no stack service');
+});
+
+test('the journal of the attempt records the backup receipt, the expand versions applied and the contract versions applied after the accept', async (t) => {
+  const { result, records } = await run(t, { expand: EXPAND, contract: CONTRACT });
+  assert.equal(result.ok, true, result.lines.join(String.fromCharCode(10)));
+  const [document] = [...records.documents.values()] as { backup: { receiptPath: string } | null; migrations: string[]; phases: { phase: string; verdict: string }[]; outcome: string }[];
+  assert.equal(document?.outcome, 'accepted');
+  assert.equal(document?.backup?.receiptPath, '/var/backups/shop/db/orders-backup.receipt.json', 'the receipt, names and digests only');
+  assert.deepEqual(document?.migrations, [...EXPAND.map((file) => file.slice(0, 14)), '20261103000000'], 'the expand versions first, then the contract versions');
+  const phases = document?.phases.map((phase) => `${phase.phase}:${phase.verdict}`) ?? [];
+  assert.ok(phases.indexOf('migrate:ok') >= 0 && phases.indexOf('migrate:ok') < phases.indexOf('contract:ok'), phases.join(' '));
 });

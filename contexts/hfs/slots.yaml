@@ -1006,14 +1006,17 @@ slots:
   - id: app.ci-db
     profiles:
       - app
-    editionWhy: lite manages its database deploy workflow (starci app db migrate); full owns an optional
-      provider-specific workflow.
+    editionWhy: a lite app migrates in the migrate phase of its stack deploy, so its database deploy workflow is
+      retired (starci app sync --execute removes it); full owns an optional provider-specific workflow.
     path: .github/workflows/db-deploy.yml
     presence: optional
+    litePresence: forbidden
     tracked: tracked
     tier: none
     tests: none
-    liteManagedBy: ci-workflows-lite
+    goesTo: "the stack deploy: starci app stack deploy takes a verified backup, applies the expand migrations
+      before the services update and the contract migrations after the accept (a full app keeps its own optional
+      workflow)"
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: app.ci-stack-deploy

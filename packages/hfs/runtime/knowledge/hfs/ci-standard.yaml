@@ -11,10 +11,18 @@ title: The one StarCi CI standard
 # over the runtime's own workflows) checks every item marked `check: ci-standard`; the other items are owned by the rule or render named in `by`.
 # Apps get the standard only through `starci app sync`: the managed CI files are sync targets, and `starci app sync` (the dry run) / the app check refuse drift.
 
-# The jobs of the managed app CI (job ids, in this order), per edition; `sonar` exists when the Sonar service is enabled.
+# The jobs of the managed app CI (job ids, in this order), per edition; `sonar` exists when the Sonar service is enabled. `plan` decides what a run does,
+# `images` builds the images once per commit beside the checks (a call of the reusable images.yml, so GitHub names its jobs `images / ...`), `verdict` is
+# the one job branch protection requires and the deploy waits for.
+#   required   the jobs a green run has concluded success. The CLI's `stack deploy --ci-run` reads this list from here and asks GitHub for each of them
+#              in the run it is given, so the list names the jobs GitHub reports under their own id; the verdict needs `images`, so it proves them.
+#   pipeline   the jobs the workflow must hold besides those, judged through the verdict
 jobs:
-  full: {required: [fast, lint, test, coverage, build], optional: [sonar]}
-  lite: {required: [fast, lint, test, coverage, build], optional: [db-types, sonar]}
+  full: {required: [plan, fast, lint, test, coverage, build, verdict], pipeline: [images], optional: [sonar]}
+  lite: {required: [plan, fast, lint, test, coverage, build, verdict], pipeline: [images], optional: [db-types, sonar]}
+
+# One job per environment with deploy.auto follows the verdict: its id starts with this prefix and it calls the reusable stack-deploy.yml.
+deployJobPrefix: deploy-
 
 # The per-job settings the managed CI renders when .starcistacks/application-stacks.yaml ci.jobs leaves them out (ci.jobs.<job>.timeoutMinutes,
 # ci.jobs.test.shards). Sized from a real run (NIVO v0.2.3 on the 2-vCPU GitHub runner, 2026-10-18): the be lint with the Sonar import took 11.5 minutes and the
@@ -34,14 +42,29 @@ heap:
 items:
   - id: candidate-trigger
     title: the release CI runs on the release candidate ref
-    requires: "ci.yml runs on push of branches ['main', 'release/candidate-*'] and tags ['v*'] (and workflow_dispatch); the release flows wait for the run of the release sha there"
+    requires: "ci.yml runs on push of branches ['main', 'release/candidate-*'] and tags ['v*'], on pull_request to main and on workflow_dispatch; the release flows wait for the run of the release sha there; pull_request_target, workflow_run and schedules are never triggers"
     covers: [app-ci, runtime]
     by: [R221 CI_TRIGGERS_RELEASE_ONLY, R251 HFS_APP_WORKFLOW_TRIGGER]
   - id: job-shape
-    title: the job shape fast / lint / test / coverage / build / sonar
-    requires: "the managed CI holds exactly the jobs of `jobs` for its edition; the unit run is a step of `test`; the merge, the coverage proof and the Codecov upload are steps of `coverage`, which alone holds the OIDC id-token"
+    title: the job shape plan / fast / lint / test / coverage / build / images / verdict / sonar and the deploy jobs
+    requires: "the managed CI holds exactly the jobs of `jobs` for its edition and one `deploy-<env>` job per environment with deploy.auto; the unit run is a step of `test`; the merge, the coverage proof and the Codecov upload are steps of `coverage`, which alone holds the OIDC id-token; the verdict needs every other job and runs always; a deploy job needs the verdict and calls the reusable stack-deploy.yml, and no other job deploys"
     covers: [app-ci]
     check: ci-standard
+  - id: pull-request-ci
+    title: a pull request runs the checks with no secret and no environment
+    requires: "a workflow that runs on pull_request has read-only workflow permissions, binds no job to an environment and reads no secret outside the jobs the plan skips for a pull request (sonar); it never checks out or runs the code of a pull request under pull_request_target"
+    covers: [app-ci]
+    by: [R221 CI_TRIGGERS_RELEASE_ONLY, R251 HFS_APP_WORKFLOW_TRIGGER]
+  - id: images-once
+    title: the images are built once per commit, in parallel with the checks, and pushed by digest
+    requires: "images.yml is a reusable workflow (workflow_call) that ci.yml calls beside the checks; every pushed image carries the immutable tag sha-<sha> (the release tag v<version> is a retag of that digest), an SBOM and provenance; the deploy takes digests only; no mutable environment tag is deployed; build arguments are public values"
+    covers: [app-ci]
+    by: [R271 HFS_RELEASE_TAG_MISMATCH, R269 HFS_SBOM_MISSING]
+  - id: deploy-brake
+    title: a green release tag deploys by itself, and STARCI_DEPLOY_PAUSED stops it
+    requires: "the deploy of an environment with deploy.auto starts only on a release tag run after the verdict, bound to that GitHub Environment (deployment refs restricted to v* tags); its variable STARCI_DEPLOY_PAUSED=true skips the automatic deploy without a code change; a manual dispatch of stack-deploy.yml ignores the brake"
+    covers: [app-ci]
+    by: [R251 HFS_DEPLOY_WORKFLOW]
   - id: full-history-base-ref
     title: full history and the lint base STARCI_BASE_REF
     requires: "every actions/checkout of the managed CI fetches the full history (fetch-depth: 0), and the lint job writes STARCI_BASE_REF to GITHUB_ENV before it lints"

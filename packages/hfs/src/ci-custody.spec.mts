@@ -84,3 +84,12 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(run(tree(t, { doc, workflows: { 'ci.yml': workflow('secrets.GITHUB_TOKEN') } }), edition), []);
   });
 }
+
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: ${DRIFT_FAILURE} valid - STARCI_DEPLOY_PAUSED, the brake the managed deploy reads, needs no declaration, and every other variable still does`, (t) => {
+    const doc = declaration({ secrets: [], vars: [] });
+    assert.deepEqual(run(tree(t, { doc, workflows: { 'stack-deploy.yml': workflow('vars.STARCI_DEPLOY_PAUSED') } }), edition), []);
+    const found = run(tree(t, { doc, workflows: { 'stack-deploy.yml': workflow('vars.OTHER_FLAG') } }), edition);
+    assert.ok(found.some((finding) => finding.code === DRIFT_FAILURE && finding.message.includes('OTHER_FLAG')));
+  });
+}

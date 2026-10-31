@@ -1,4 +1,5 @@
-// CI_TRIGGERS_RELEASE_ONLY: runtime workflows and app ci.yml may judge main; release candidates, v* tags and manual dispatch retain their scope.
+// CI_TRIGGERS_RELEASE_ONLY: runtime workflows and app ci.yml may judge main; release candidates, v* tags and manual dispatch retain their scope. ci.yml also judges pull requests
+// to main (pull_request only: no secret reaches it; pull_request_target, workflow_run and schedules stay refused); a reusable workflow (workflow_call) has no trigger of its own.
 import { parseWorkflow, workflowFindings } from './workflow-source.mjs';
 import { workflowEventOptions } from '../../lib/workflow-events.mjs';
 import type { Parsed } from '../rules/rule-types.mjs';
@@ -38,9 +39,21 @@ function pushFindings({ ownBranch, config, refuse, release }: { ownBranch: Parse
   return found;
 }
 
-function eventFindings({ event, config, ownBranch, refuse, release }: { event: Parsed; config: Parsed; ownBranch: Parsed; refuse: Parsed; release: Parsed }) {
-  if (event === 'workflow_dispatch') return [];
-  if (event !== 'push') return [refuse(`the trigger \`${event}\` is not allowed: only a push of release tags [${RELEASE_TAGS}], of '${CANDIDATE_BRANCHES}' (and, in runtime workflows or app ci.yml, of branch ${RUNTIME_BRANCH}) and workflow_dispatch may start CI`)];
+/** A pull request to main, in ci.yml only: the checks of a change, with no filter beyond the base branch. */
+function pullRequestFindings({ file, config, refuse }: { file: string; config: Parsed; refuse: Parsed }) {
+  if (!RELEASE_WORKFLOW.test(file)) return [refuse('`pull_request` may start only ci.yml: no other workflow runs the code of a pull request')];
+  const filters = config && typeof config === 'object' && !Array.isArray(config) ? config : {};
+  const found = [];
+  const branches = filters.branches;
+  if (!Array.isArray(branches) || branches.length !== 1 || String(branches[0]) !== RUNTIME_BRANCH) found.push(refuse(`\`pull_request.branches\` must be exactly ['${RUNTIME_BRANCH}']`));
+  for (const other of Object.keys(filters).filter((key) => key !== 'branches')) found.push(refuse(`\`pull_request.${other}\` is not allowed beside the base branch`));
+  return found;
+}
+
+function eventFindings({ file, event, config, ownBranch, refuse, release }: { file: string; event: Parsed; config: Parsed; ownBranch: Parsed; refuse: Parsed; release: Parsed }) {
+  if (event === 'workflow_dispatch' || event === 'workflow_call') return [];
+  if (event === 'pull_request') return pullRequestFindings({ file, config, refuse });
+  if (event !== 'push') return [refuse(`the trigger \`${event}\` is not allowed: only a push of release tags [${RELEASE_TAGS}], of '${CANDIDATE_BRANCHES}' (and, in runtime workflows or app ci.yml, of branch ${RUNTIME_BRANCH}), a pull request to ${RUNTIME_BRANCH} in ci.yml, workflow_call and workflow_dispatch may start CI`)];
   return pushFindings({ ownBranch, config, refuse, release });
 }
 
@@ -55,7 +68,7 @@ function workflowTriggerFindings({ path: file, text }: { path: string; text: str
   const events = workflowEventOptions(on, String);
   const release = !file.startsWith('.github/workflows/') && RELEASE_WORKFLOW.test(file);
   const missingPush = release && !Object.hasOwn(events, 'push') ? [refuse(`the app release workflow must run on a push of '${CANDIDATE_BRANCHES}' and of tags [${RELEASE_TAGS}]`)] : [];
-  return [...missingPush, ...Object.entries(events).flatMap(([event, config]) => eventFindings({ event, config, ownBranch, refuse, release }))];
+  return [...missingPush, ...Object.entries(events).flatMap(([event, config]) => eventFindings({ file, event, config, ownBranch, refuse, release }))];
 }
 
 /** CI_TRIGGERS_RELEASE_ONLY over every tracked workflow (ctx of scripts/hfs/runtime-check.mjs). */

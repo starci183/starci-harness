@@ -1,25 +1,80 @@
 {{header}}
 name: ci
 
-# CI judges main, release candidates and release tags.
+# CI judges pull requests, main, release candidates and release tags, and a green release tag deploys.
+#   pull_request  the checks and the image builds of a change to main, with no secret and no environment (a Dependabot or fork run has none anyway);
+#                 and no run of this workflow executes a pull request's code with a token that can write
+#   main          judged only when no release tag points at the pushed commit (the release push sends main and its tag together; the tag run is the release run)
+#   candidate     release/candidate-<version>: the full run of a release the tag run then reuses
+#   tag v*        the release run: plan, checks and images in parallel, the verdict, then the deploy of every environment with deploy.auto
 on:
   push:
     branches: ["main", "release/candidate-*"]
     tags: ["v*"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# One run per ref: a release tag is never cancelled by another run.
+# One run per ref. A pull request run is replaced by the next push to it; every other run, a release tag above all, is never cancelled.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# The job shape of the StarCi CI standard (knowledge/hfs/ci-standard.yaml): fast, lint per side, the unit run in shards, one coverage merge, build,
-# and sonar. Timeouts and the shard count come from ci.jobs of .starcistacks/application-stacks.yaml (defaults in the standard).
+# The job shape of the StarCi CI standard (knowledge/hfs/ci-standard.yaml): plan, fast, lint per side, the unit run in shards, one coverage merge, build, images,
+# sonar, the verdict and the deploy jobs. Timeouts and the shard count come from ci.jobs of .starcistacks/application-stacks.yaml (defaults in the standard).
+# A job the plan leaves out is never a green one: the verdict job requires every job it needs to be green or, where the plan left it out on purpose, not run.
 jobs:
+  plan:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      checks: ${{ steps.plan.outputs.checks }}
+      images: ${{ steps.plan.outputs.images }}
+      push: ${{ steps.plan.outputs.push }}
+      full: ${{ steps.plan.outputs.full }}
+      release: ${{ steps.plan.outputs.release }}
+      ci_run: ${{ steps.plan.outputs.ci_run }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - name: plan
+        id: plan
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          set -euo pipefail
+          checks=true images=true push=false full=false release=false ci_run="$GITHUB_RUN_ID" note="checks and image builds"
+          if [[ "$EVENT" == push ]]; then
+            full=true push=true
+            if [[ "$REF_TYPE" == tag ]]; then
+              release=true
+              [[ "$GITHUB_REF_NAME" == "v$(node -p "require('./package.json').version")" ]] || { echo "::error::the release tag does not match the package version"; exit 1; }
+              reused=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&event=push&status=success&per_page=100" --jq '[.workflow_runs[] | select(.head_branch | startswith("release/candidate-"))] | first | .id // empty')
+              if [[ -n "$reused" ]]; then checks=false ci_run="$reused" note="release run: the green candidate run $reused judged this commit; images are built and pushed here"; else note="release run: full checks and images"; fi
+            elif [[ "$GITHUB_REF" == refs/heads/release/candidate-* ]]; then
+              note="candidate run: full checks; images are built and pushed under sha-<sha>"
+            elif [[ -n "$(git tag --points-at "$GITHUB_SHA" --list 'v*')" ]]; then
+              checks=false images=false push=false full=false note="deferred: the release tag run of this commit judges it"
+            else
+              images=false push=false full=false note="main without a release tag: checks only"
+            fi
+          fi
+          { echo "checks=$checks"; echo "images=$images"; echo "push=$push"; echo "full=$full"; echo "release=$release"; echo "ci_run=$ci_run"; } >> "$GITHUB_OUTPUT"
+          echo "plan: $note" >> "$GITHUB_STEP_SUMMARY"
+
   fast:
+    needs: plan
+    if: ${{ needs.plan.outputs.checks == 'true' }}
     timeout-minutes: {{timeoutFast}}
     runs-on: ubuntu-latest
     steps:
@@ -34,6 +89,8 @@ jobs:
           NODE_OPTIONS: {{nodeOptions}}
 
   lint:
+    needs: plan
+    if: ${{ needs.plan.outputs.checks == 'true' }}
     timeout-minutes: {{timeoutLint}}
     runs-on: ubuntu-latest
     strategy:
@@ -46,6 +103,8 @@ jobs:
 {{ciLintSteps}}
 
   test:
+    needs: plan
+    if: ${{ needs.plan.outputs.checks == 'true' }}
     timeout-minutes: {{timeoutTest}}
     runs-on: ubuntu-latest
     strategy:
@@ -69,7 +128,7 @@ jobs:
           path: {{shardCoverageReport}}
 
   coverage:
-    needs: test
+    needs: [plan, test]
     timeout-minutes: {{timeoutCoverage}}
     runs-on: ubuntu-latest
     # Codecov OIDC authentication requires a job-scoped identity token.
@@ -96,6 +155,8 @@ jobs:
 {{codecovSteps}}
 
   build:
+    needs: plan
+    if: ${{ needs.plan.outputs.checks == 'true' }}
     timeout-minutes: {{timeoutBuild}}
     runs-on: ubuntu-latest
     steps:
@@ -106,3 +167,44 @@ jobs:
 {{> app/ci-workflows/build-cache-save.yml}}
 
 {{sonarJob}}
+  images:
+    needs: plan
+    if: ${{ needs.plan.outputs.images == 'true' }}
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/images.yml
+    with:
+      push: ${{ needs.plan.outputs.push == 'true' }}
+      release: ${{ needs.plan.outputs.release == 'true' }}
+
+  verdict:
+    needs: [plan, fast, lint, test, coverage, build, images{{verdictSonarNeed}}]
+    if: ${{ always() }}
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: verdict
+        shell: bash
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          CHECKS: ${{ needs.plan.outputs.checks }}
+          IMAGES: ${{ needs.plan.outputs.images }}
+          FULL: ${{ needs.plan.outputs.full }}
+        run: |
+          set -euo pipefail
+          fail=0
+          expect() {
+            got=$(jq -r --arg job "$1" '.[$job].result' <<<"$NEEDS")
+            case "$2" in
+              success) [[ "$got" == success ]] || { echo "::error::job $1 is $got, expected success"; fail=1; } ;;
+              idle) [[ "$got" != success && "$got" != failure && "$got" != cancelled ]] || { echo "::error::job $1 ran ($got) where the plan left it out"; fail=1; } ;;
+            esac
+          }
+          expect plan success
+          if [[ "$CHECKS" == true ]]; then want=success; else want=idle; fi
+          for job in fast lint test coverage build; do expect "$job" "$want"; done
+          if [[ "$IMAGES" == true ]]; then expect images success; else expect images idle; fi{{verdictSonarCheck}}
+          exit "$fail"
+{{ciDeployJobs}}

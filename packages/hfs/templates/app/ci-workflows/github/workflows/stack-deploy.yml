@@ -1,33 +1,70 @@
 {{header}}
-# Deploys the app's Docker Swarm stack. This file only assembles arguments: the logic lives in the verbs connect, build-args, deploy,
-# rollback and disconnect of "starci app stack". It runs by hand only (Actions > deploy stack > Run workflow) from a release tag v*
-# whose version is the package.json version; it has no push or schedule trigger.
-# operation deploy    builds and pushes one image per environments.<env>.deploy.images entry of .starcistacks/application-stacks.yaml,
-#                     then deploys their immutable digests (render, provision, converge, post-deploy tasks, verify, accept; a failure redeploys the previous release)
+# Deploys the app's Docker Swarm stack. This file only assembles arguments: the logic lives in the verbs connect, deploy, rollback and disconnect
+# of "starci app stack". It has two callers:
+#   ci.yml       calls it (workflow_call) once per environment with deploy.auto, after the verdict job, with the digests of the images that run
+#                pushed and the CI run that proves the commit. A green release tag deploys by itself.
+#   by hand      Actions > deploy stack > Run workflow, from a release tag v* whose version is the package.json version.
+# operation deploy    deploys the release of the tag: the immutable digests of its images (the run's, or the registry's sha-<sha> tags when
+#                     dispatched), the CI evidence of the commit, then render, store, pre-pull, migrate (expand), converge, post-deploy, verify, accept
+#                     and the contract migrations; a failure redeploys the previous accepted release
+# operation redeploy  the same, although the accepted release already runs this commit
 # operation rollback  redeploys a stored release; "release" is 16 lowercase hex characters, empty means the previous accepted release
-# The environment input names a protected GitHub environment (required reviewers) that holds:
-#   vars    VPS_HOST, VPS_USER (the swarm manager); a variable named in deploy.passEnv, when the stack interpolates one
+# The environment names a GitHub environment whose deployment refs are restricted to the tags v* and that holds:
+#   vars    STARCI_DEPLOY_PAUSED (true stops the automatic deploy of that environment without a code change; a manual run still works), and a
+#           variable named in deploy.passEnv when the stack interpolates one
 #   secrets SOPS_AGE_KEY (that environment's server identity, stored there by starci app secret server-key --env <env> --backup github --execute;
-#           both jobs are bound to the environment, so they read it and never a repository secret of that name), VPS_SSH_KEY
-#           (CI-only deploy key), VPS_KNOWN_HOSTS (pinned host keys)
-# Nothing else is a secret: images are pushed with the workflow token, which also reads the CI verdict of the tag's commit a production deploy
-# waits for (requireCi deploy.prod). Dispatch inputs reach scripts only through env.
+#           the jobs are bound to the environment, so they read it and never a repository secret of that name)
+# The transport is sealed: the CI deploy key, the pinned host keys and the host are the member vps-ci under .starcistacks/<env>/secrets, opened with
+# the server identity (a key of its own, never the owner's, authorised on the manager with a forced command). Nothing else is a secret: the images
+# are read with the workflow token. Inputs reach scripts only through env. The log of a public repository is public: no step prints a host or a path.
 name: deploy stack
 
 on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment holding the server identity and the sealed custody under .starcistacks
+        required: true
+        type: string
+      operation:
+        description: deploy, redeploy or rollback
+        required: false
+        type: string
+        default: deploy
+      release:
+        description: "Rollback only: release id (16 lowercase hex) to deploy again; empty means the previous accepted release"
+        required: false
+        type: string
+        default: ""
+      images:
+        description: "JSON object, service -> repository@sha256:digest of the images the calling run pushed; empty reads the registry's sha-<sha> tags"
+        required: false
+        type: string
+        default: ""
+      ci_run:
+        description: Id of the CI run that proves the commit; empty finds the green CI run of the commit
+        required: false
+        type: string
+        default: ""
+      auto:
+        description: The automatic deploy of a green release tag (it stops when STARCI_DEPLOY_PAUSED is true)
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       environment:
-        description: Protected environment holding the VPS variables and the sealed custody under .starcistacks
+        description: GitHub environment holding the server identity and the sealed custody under .starcistacks
         required: true
         type: environment
       operation:
-        description: Deploy a new release or roll back to a stored one
+        description: Deploy the release of this tag, deploy it again, or roll back to a stored release
         required: true
         type: choice
         default: deploy
         options:
           - deploy
+          - redeploy
           - rollback
       release:
         description: "Rollback only: release id (16 lowercase hex) to deploy again; empty means the previous accepted release"
@@ -38,69 +75,125 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: stack-${{ inputs.environment }}
-  cancel-in-progress: false
-
 jobs:
-  release:
-    if: ${{ inputs.operation == 'deploy' }}
+  deploy:
+    if: ${{ inputs.operation != 'rollback' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     timeout-minutes: 60
     permissions:
       contents: read
-      packages: write
+      packages: read
       actions: read
+    concurrency:
+      group: stack-${{ inputs.environment }}
+      cancel-in-progress: false
     env:
       STACK_ENVIRONMENT: ${{ inputs.environment }}
     steps:{{stackGuard}}
       - name: require release tag
         shell: bash
         run: '[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1'
+      - name: deploy pause
+        id: pause
+        shell: bash
+        env:
+          AUTO: ${{ inputs.auto }}
+          PAUSED: ${{ vars.STARCI_DEPLOY_PAUSED }}
+        run: |
+          if [[ "$AUTO" == true && "$PAUSED" == true ]]; then
+            echo "paused=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::STARCI_DEPLOY_PAUSED is true for this environment: this release was not deployed"
+            echo "### Deploy paused" >> "$GITHUB_STEP_SUMMARY"
+            echo "STARCI_DEPLOY_PAUSED is true for this environment, so the automatic deploy was skipped. Run this workflow by hand to deploy the release." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "paused=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: ${{ steps.pause.outputs.paused != 'true' }}
       - name: release tag matches package version
+        if: ${{ steps.pause.outputs.paused != 'true' }}
         run: node -e "const version=require('./package.json').version;if(process.env.GITHUB_REF_NAME!=='v'+version)process.exit(1)"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: ${{ steps.pause.outputs.paused != 'true' }}
         with:
           node-version: {{nodeMajor}}
           cache: npm
       - run: npm ci --ignore-scripts
+        if: ${{ steps.pause.outputs.paused != 'true' }}
       - name: install SOPS
+        if: ${{ steps.pause.outputs.paused != 'true' }}
         uses: mdgreenwald/mozilla-sops-action@bb2d96a13ef438ad122e5827a57ebd75d6ff118d # v2.1.0
         with:
           version: v3.13.2
-      - name: image repositories
-        id: names
-        shell: bash
-        run: |
-          owner="${GITHUB_REPOSITORY_OWNER,,}"{{stackNames}}
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        if: ${{ steps.pause.outputs.paused != 'true' }}
       - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        if: ${{ steps.pause.outputs.paused != 'true' }}
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ github.token }}{{stackImageSteps}}
+          password: ${{ github.token }}
+      - name: image digests
+        id: images
+        if: ${{ steps.pause.outputs.paused != 'true' }}
+        shell: bash
+        env:
+          IMAGES: ${{ inputs.images }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          [[ -n "$IMAGES" ]] || IMAGES='{}'
+          while read -r service app; do
+            ref=$(jq -r --arg service "$service" '.[$service] // empty' <<<"$IMAGES")
+            if [[ -z "$ref" ]]; then
+              repo="ghcr.io/${owner}/{{project}}-${app}"
+              digest=$(docker buildx imagetools inspect "$repo:sha-$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
+              ref="${repo}@${digest}"
+            fi
+            [[ "$ref" =~ ^ghcr\.io/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$ ]] || { echo "::error::no immutable image for ${service}"; exit 1; }
+            echo "${service}=${ref}" >> "$GITHUB_OUTPUT"
+          done <<'LIST'
+          {{stackImageList}}
+          LIST
+      - name: CI run of the commit
+        id: ci
+        if: ${{ steps.pause.outputs.paused != 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN: ${{ inputs.ci_run }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$CI_RUN" ]]; then
+            CI_RUN=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&event=push&status=success&per_page=100" --jq '[.workflow_runs[].id] | first // empty')
+          fi
+          [[ "$CI_RUN" =~ ^[1-9][0-9]*$ ]] || { echo "::error::no green CI run of this commit: a release deploys only a commit the CI proved"; exit 1; }
+          echo "run=$CI_RUN" >> "$GITHUB_OUTPUT"
       - name: connect to the swarm manager
+        if: ${{ steps.pause.outputs.paused != 'true' }}
         env:
           XDG_DATA_HOME: ${{ runner.temp }}/starci-data
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
-          VPS_HOST: ${{ vars.VPS_HOST }}
-          VPS_USER: ${{ vars.VPS_USER }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: npx --no-install starci app stack connect --env "$STACK_ENVIRONMENT" --execute
       - name: deploy the release
+        if: ${{ steps.pause.outputs.paused != 'true' }}
+        shell: bash
         env:
           XDG_DATA_HOME: ${{ runner.temp }}/starci-data
           GH_TOKEN: ${{ github.token }}
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}{{stackImageEnv}}{{stackPassEnv}}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          OPERATION: ${{ inputs.operation }}
+          CI_RUN: ${{ steps.ci.outputs.run }}{{stackImageEnv}}{{stackPassEnv}}
         run: |
+          again=()
+          [[ "$OPERATION" != redeploy ]] || again=(--redeploy)
           npx --no-install starci app stack deploy --env "$STACK_ENVIRONMENT" \{{stackImageArgs}}
-            --sha "$GITHUB_SHA" --execute
+            --sha "$GITHUB_SHA" --ci-run "$CI_RUN" "${again[@]}" --execute
       - name: disconnect from the swarm manager
         env:
           XDG_DATA_HOME: ${{ runner.temp }}/starci-data
-        if: ${{ always() }}
+        if: ${{ always() && steps.pause.outputs.paused != 'true' }}
         run: npx --no-install starci app stack disconnect --env "$STACK_ENVIRONMENT" --execute
 
   rollback:
@@ -111,6 +204,9 @@ jobs:
     permissions:
       contents: read
       packages: read
+    concurrency:
+      group: stack-${{ inputs.environment }}
+      cancel-in-progress: false
     env:
       STACK_ENVIRONMENT: ${{ inputs.environment }}
     steps:
@@ -137,10 +233,7 @@ jobs:
       - name: connect to the swarm manager
         env:
           XDG_DATA_HOME: ${{ runner.temp }}/starci-data
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
-          VPS_HOST: ${{ vars.VPS_HOST }}
-          VPS_USER: ${{ vars.VPS_USER }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: npx --no-install starci app stack connect --env "$STACK_ENVIRONMENT" --execute
       - name: redeploy the stored release
         env:

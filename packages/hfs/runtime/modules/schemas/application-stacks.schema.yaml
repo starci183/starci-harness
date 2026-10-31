@@ -288,6 +288,12 @@ $defs:
             enum: [public, private]
       secrets: {type: array, items: {$ref: '#/$defs/ciSecret'}}
       vars: {type: array, items: {$ref: '#/$defs/ciVariable'}}
+      imageCache:
+        description: >-
+          Where the images job keeps its BuildKit layer cache: gha (default, the repository's GitHub Actions cache, one scope per image) or registry (a buildcache tag
+          beside the image in the registry, for images large enough to be evicted from the 10 GB Actions cache).
+        enum: [gha, registry]
+        default: gha
       jobs:
         description: >-
           Per-job settings of the managed CI (the CI standard, knowledge/hfs/ci-standard.yaml defaults): timeoutMinutes per job and the number of unit-run shards.
@@ -598,6 +604,26 @@ $defs:
         description: Host variable names interpolated into the rendered stack (names only).
         type: array
         items: {$ref: '#/$defs/deployKey'}
+      auto:
+        description: >-
+          true: every release tag whose CI is green deploys to this environment by itself, in the order the environments are declared (the owner's yes, given once by this setting;
+          ruling app-cicd-auto-deploy). The variable STARCI_DEPLOY_PAUSED=true on the GitHub Environment stops it without a code change. Default false (a manual dispatch deploys).
+        type: boolean
+        default: false
+      approval:
+        description: >-
+          none (default): the pipeline deploys without a human step. reviewers: the GitHub Environment has required reviewers (a public repository or Enterprise; Free, Pro and Team
+          private repositories cannot set them), which the owner configures on the environment.
+        enum: [none, reviewers]
+        default: none
+      platforms:
+        description: >-
+          The platforms the images are built for. Default [linux/amd64], the architecture of the VPS; add linux/arm64 only when an environment declares a node of that architecture
+          (the build then uses QEMU, and the release record keeps the index digest).
+        type: array
+        uniqueItems: true
+        minItems: 1
+        items: {enum: [linux/amd64, linux/arm64]}
       verify: {$ref: '#/$defs/deployVerify'}
       jobs: {$ref: '#/$defs/deployJobs'}
       tasks: {$ref: '#/$defs/deployTasks'}

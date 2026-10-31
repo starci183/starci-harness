@@ -10,6 +10,8 @@ const DECLARATION = `${STACK_ROOT}/application-stacks.yaml`;
 const named = <T extends { name: unknown }>(entry: T): entry is T & { name: string } => typeof entry.name === 'string' && /^[A-Z][A-Z0-9_]*$/.test(entry.name);
 const identity = (kind: string, name: string) => `${kind}:${name}`;
 const atCi = (section: Parsed) => `${DECLARATION}#ci.${section}`;
+/** The variables the managed workflows themselves read; an app declares none of them. STARCI_DEPLOY_PAUSED is the brake of the automatic deploy, set per GitHub environment by the owner. */
+const MANAGED_VARIABLES = ['STARCI_DEPLOY_PAUSED'];
 
 /** A CI or Dependabot secret must never also live in a sealed app member. */
 function sealedFindings(ci: Parsed, sealed: Parsed) {
@@ -49,7 +51,7 @@ function runtimeFindings(doc: Parsed, ci: Parsed, sealed: Parsed) {
 /** Workflow reads are class-sensitive; legacy lists remain readable, but an absent ci block always signals migration once per name. */
 function workflowFindings(doc: Parsed, declared: Parsed, references: Parsed) {
   const hasCi = doc.ci !== undefined;
-  const allowed = new Set(declared.map(({ kind, name }: { kind: string; name: string }) => identity(kind, name)));
+  const allowed = new Set([...declared.map(({ kind, name }: { kind: string; name: string }) => identity(kind, name)), ...MANAGED_VARIABLES.map((name) => identity('vars', name))]);
   if (hasCi) {
     for (const entry of ciNamesOfServices(doc).filter(named)) {
       const legacy = list(doc.services?.[entry.service]?.ci?.[`${entry.kind}s`]);

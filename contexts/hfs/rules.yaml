@@ -1680,7 +1680,7 @@ rules:
       - {kind: hfs, id: db-queue-cron}
   - id: R259
     code: DB_EXTENSION_ALLOWED
-    law: Database extensions follow the allowlist, migrations write no vault secret or role password, and destructive DDL lives only in contract migrations whose targets are unreferenced.
+    law: Database extensions follow the allowlist, migrations write no vault secret or role password, and destructive DDL lives only in contract migrations whose targets are unreferenced, also by the previous release's sources.
     editions: [lite]
     failureCodes:
       - DB_EXTENSION_ALLOWED
@@ -1800,7 +1800,7 @@ rules:
       - {kind: hfs, id: doc-fresh}
   - id: R271
     code: HFS_RELEASE_TAG_MISMATCH
-    law: A release tag is a v-prefixed semantic version equal to the package version, images publish under it, and database deployment refuses a non-tag ref.
+    law: A release tag is a v-prefixed semantic version equal to the package version, images are pushed under the immutable sha-<sha> tag with the release name as a guarded retag of that digest, and database deployment refuses a non-tag ref.
     failureCodes:
       - HFS_RELEASE_TAG_MISMATCH
       - HFS_DB_DEPLOY_UNGUARDED

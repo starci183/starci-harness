@@ -24,7 +24,6 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `workflows/`
     - `ci.yml` — **app.ci** required · R13, R05, HFS_CI_E2E_AUTOMATIC (no rule)
     - `images.yml` — **app.ci-images** required · R05
-    - `db-deploy.yml` — **app.ci-db** optional · R05
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05
     - `stack-key-restore.yml` — **app.ci-stack-key-restore** optional · R05
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06
@@ -50,7 +49,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `bootstrap.sql` — **app.db.bootstrap** required · R05
 
 Git-ignored: `app.build-output`.
-Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
+Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-db`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### lite · be/
 
