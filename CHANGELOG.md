@@ -14,6 +14,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- Knowledge: contexts/code/be/ai.md BE-AI-1's pool paragraph says how the pool is declared and kept, as @starci/ai-router 0.5.0 builds it: `poolFromEnv` in the custody owner, providers by kind with keys under the canonical `<PREFIX>_API_KEY`, `<PREFIX>_API_KEY_<n>` names and their `_FILE` twins, a key blacklisted for a spent quota or a refused secret in a durable state store, and a 503 with `Retry-After` when a profile has no key left.
 - Knowledge: contexts/code/be/ai.md BE-AI-1, 2, 3 and 6 lock the AI key architecture (ruling be-ai-one-virtual-key): below the ai-router gateway a pool of providers, each with an array of keys, rotated, failed over and blacklisted, the `embed` profile pinned to one model; above it one random virtual key `STARCI_AI_KEY` per app and environment, used by `integrations/ai` and the agent runtime alike, with no admin API and no admin token. R344 `BE_AI_VIRTUAL_KEY` holds it (`@starci/eslint-canon-be` 3.10.0 `ai-virtual-key-name`: `integrations/ai` reads exactly `STARCI_AI_KEY`, the custody owner passes no admin token; the rule catalog of `@starci/hfs` 4.13.2); the pins name the cohort hfs 4.13.2, eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5 (the Grammar moves with its lint family, which the grammar-core spec holds) (this CLI follows to the new hfs once npm serves it).
 
 ### Fixed
