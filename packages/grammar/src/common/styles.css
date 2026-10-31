@@ -4417,6 +4417,45 @@
     .starci-core-chat-bubble-skeleton-body .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
     .starci-core-chat-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap, 0.75rem); }
 
+    /*
+     * Quote: words from a source on a tinted ground at the nested inset, one radius below the host surface (the control radius
+     * under the surface radius). It is not a surface: no shadow, no outline, no action.
+     */
+    .starci-core-quote {
+        display: flex;
+        min-width: 0;
+        margin: 0;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap, 0.25rem);
+        padding: var(--grammar-inset-nested, 0.5rem);
+        border-radius: var(--starci-core-control-radius, 0.75rem);
+        background: var(--surface-secondary, Canvas);
+        color: var(--foreground, CanvasText);
+    }
+
+    .starci-core-quote-source {
+        color: var(--muted, GrayText);
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1rem;
+    }
+
+    .starci-core-quote-words {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    .starci-core-quote-byline {
+        color: var(--muted, GrayText);
+        font-size: 0.75rem;
+        line-height: 1rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .starci-core-quote .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
+
     @media (forced-colors: active) {
         .starci-core-chat-bubble-body { border: 1px solid CanvasText; }
     }

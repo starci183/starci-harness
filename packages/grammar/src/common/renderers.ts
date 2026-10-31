@@ -55,6 +55,7 @@ export { Backdrop, type BackdropProps } from "../core/composite/Backdrop/index.j
 export { Freestyle, type FreestyleProps } from "../core/composite/Freestyle/index.js"
 export { EmptyNotice, type EmptyNoticeArtwork, type EmptyNoticeProps } from "../core/composite/EmptyNotice/index.js"
 export { ChatBubble, ChatBubbleSkeletons, type ChatBubbleProps, type ChatBubbleSide, type ChatBubbleSkeletonsProps } from "../core/composite/ChatBubble/index.js"
+export { Quote, type QuoteProps } from "../core/composite/Quote/index.js"
 export { FillViewport, type FillViewportBottomInset, type FillViewportMinHeight, type FillViewportProps } from "../core/composite/FillViewport/index.js"
 export { HorizontalScrollRegion, type HorizontalScrollRegionProps } from "../core/composite/HorizontalScrollRegion/index.js"
 export { VerticalScrollRegion, type VerticalScrollRegionProps } from "../core/composite/VerticalScrollRegion/index.js"

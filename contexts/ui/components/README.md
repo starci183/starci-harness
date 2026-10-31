@@ -70,6 +70,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | commands that do not deserve a visible button | [menu](menu.md) |
 | several of one kind of thing | [list-table](list-table.md) |
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
+| show words taken from a source (a stored note, a chat line, a template) in a pane, a card or a drawer | [quote](quote.md) |
 | a region with nothing in it yet, or a failed region | [empty-state](empty-state.md) |
 | a compact identity beside a name | [identity-mark](identity-mark.md) |
 | show the product's generated character (mascot) art | [mascot](mascot.md) |

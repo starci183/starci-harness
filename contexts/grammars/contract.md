@@ -208,6 +208,13 @@ paints only the indicator and the title; the surface stays neutral, or takes the
 appearance. A negative tone is announced assertively, everything else politely. A toast with an action, or a
 negative one, stays until dismissed.
 
+### Quote
+
+A quote is words taken from a source, drawn as a `<blockquote>` on a tinted ground at the nested inset, one radius below
+the surface that hosts it. It is not a surface: it has no shadow, no outline and no action, so it stands in a pane, a card
+or a drawer without putting a surface inside a surface. It names its source in one short word and, optionally, where and
+when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a chat bubble).
+
 ### EmptyState
 
 An empty state is a region with nothing to show, or whose read failed: one message in the region's place inside

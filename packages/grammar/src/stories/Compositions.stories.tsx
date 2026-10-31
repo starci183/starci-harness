@@ -1075,6 +1075,20 @@ export const ChatBubble: Story = {
   ),
 };
 
+/** Words from a source on a tinted ground at the nested inset: bare in a pane, inside a card, with a byline, and as its loading geometry. */
+export const Quote: Story = {
+  render: () => (
+    <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '28rem' }}>
+      <G.Quote source="Brain" byline="Chat, 09:41">Table 4 moved to 19:30. The kitchen has the new time.</G.Quote>
+      <G.Quote source="Template">{'Thank you for booking.\nWe hold the table for 15 minutes.'}</G.Quote>
+      <G.SurfaceCard ariaLabel="Reply source">
+        <G.Quote source="Chat" byline="Zalo, 09:12">Can the order for table 4 move to 19:30?</G.Quote>
+      </G.SurfaceCard>
+      <G.Quote isSkeleton />
+    </div>
+  ),
+};
+
 /** A messenger frame: ONE joined surface, columns touching and divided by vertical hairlines; the thread scrolls on the background tone. */
 export const MessengerFrame: Story = {
   render: () => (

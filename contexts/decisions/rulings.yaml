@@ -327,6 +327,11 @@ rulings:
     words: "tên gì chung chung tính chất grammar là cấp ui ux chung chung k bias tính năng hiểu k, ghi vào knowlege đi"
     ruling: "The grammar is a generic UI/UX layer: a component, prop or token name says what it does as a layout or UI role (PaneGrid, SurfaceCard, Rail), never a product feature (chat, customer, order, invoice), so any product can reach for it. The multi-pane frame is PaneGrid; the old chat-named and PaneLayout spellings are removed, not aliased (removedVocabulary)."
     owner: "@starci/grammar src/core/composition/PaneGrid; contexts/grammars/contract.md What a grammar provides; contexts/ui/components/page-header.md Owner split"
+  - id: quote-block
+    date: '2026-11-01'
+    status: live
+    ruling: "Words taken from a source are shown by Quote, a Common composite drawn as a blockquote on a tinted ground at the nested inset, one radius below its host, with no shadow, outline or action. It is not a surface, so it is legal in a pane, a card and a drawer; its name says a role, not a feature (grammar-names-are-generic)."
+    owner: "@starci/grammar src/core/composite/Quote; contexts/ui/components/quote.md"
   - id: pane-grid
     date: '2026-10-31'
     status: live

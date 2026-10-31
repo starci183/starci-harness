@@ -201,6 +201,17 @@ roles:
     grammarMayChange: [tone paint through tokens]
     dna: [DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-STATUSDOT-CHIP-PARITY, DNA-COMMON-STATUSDOT-GAP, DNA-COMMON-DOT-SIZE, DNA-COMMON-DOT-NAMED, DNA-COMMON-ECHO-LIGHT-STOP, DNA-COMMON-ECHO-REDUCED-MOTION, DNA-COMMON-TAG-REMOVE, DNA-COMMON-TAG-REORDER-KEYS]
 
+  - id: quote
+    ui: ui/components/quote.md
+    renderers: [Quote]
+    vendorParity: []
+    slots: [children (the words), source (a short word: Brain, Chat, Template), byline (where and when)]
+    variants: none
+    sizes: none
+    states: [skeleton]
+    grammarMayChange: [ground tint through tokens]
+    dna: []
+
   - id: input
     ui: ui/components/text-field.md
     renderers: [Input, Textarea, SearchField, NumberField, DateField, TimeField, Field, OtpInput, FormGrid]

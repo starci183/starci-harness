@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.0 - 2026-11-01
+
+- Added: `Quote` (`children`, `source`, `byline`, `isSkeleton`; `QuoteProps`): words taken from a source, drawn as a `<blockquote>` on a tinted ground at the nested inset (`--grammar-inset-nested`), one radius below the host surface, with no shadow, outline or action. It is not a surface, so it is legal in a pane, a card and a drawer. Registered in Common, so every family renders it; its contract is the `quote` role of `grammars/contract.yaml` and it wraps no vendor part, so it has no parity entry. Story: Compositions / Quote.
+- Changed: moves with its lint family (eslint-grammar-core and eslint-grammar-offset-pop 0.20.0); no rule changed.
+
 ## 0.19.1 - 2026-11-01
 
 - Changed: moves with its lint family (eslint-grammar-core and eslint-grammar-offset-pop 0.19.1, RELEASE_VERSION_NOT_BUMPED: their bundled canon pins changed); no component changed.

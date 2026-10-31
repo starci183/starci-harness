@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.0 - 2026-11-01
+
+- Changed: moves with `@starci/grammar` 0.20.0 (`Quote`) and requires `@starci/eslint-canon-fe` 9.8.3; the bundled canon pins follow; no rule changed.
+
 ## 0.19.1 - 2026-11-01
 
 - Changed: requires `@starci/eslint-canon-fe` 9.8.2; the bundled canon pins follow hfs 4.16.2; no rule changed.
