@@ -1,6 +1,9 @@
 "use client"
 
-import { useLayoutEffect, useRef, type ReactNode } from "react"
+import type { ReactNode } from "react"
+import { useFillMeasure } from "./useFillMeasure.js"
+
+export { bottomChromeHeight } from "./useFillMeasure.js"
 
 /** The smallest height the region keeps on a short window, so a chat or board never collapses to a sliver. */
 export type FillViewportMinHeight = "none" | "sm" | "md" | "lg"
@@ -18,23 +21,6 @@ export type FillViewportProps = {
 }
 
 /**
- * Height of the Grammar chrome pinned to the bottom edge right now (WorkspaceShell's compact navigation, BottomNav,
- * PinnedActionBar mark themselves `data-grammar-bottom-chrome`): the tallest visible fixed or sticky one in the lower half.
- */
-export const bottomChromeHeight = (): number => {
-    let tallest = 0
-    for (const node of Array.from(document.querySelectorAll<HTMLElement>('[data-grammar-bottom-chrome="true"]'))) {
-        const rect = node.getBoundingClientRect()
-        const position = getComputedStyle(node).position
-        if (rect.height > 0 && (position === "fixed" || position === "sticky") && rect.top >= window.innerHeight / 2) tallest = Math.max(tallest, rect.height)
-    }
-    return Math.round(tallest)
-}
-
-/** Layout effect on the client, plain effect during server rendering (no warning, nothing to measure there). */
-const useIsoLayoutEffect = typeof window === "undefined" ? () => {} : useLayoutEffect
-
-/**
  * Makes its child fill the viewport height left below whatever chrome sits above it (top bar, page header, tabs), and
  * keeps that true when the chrome or the window changes. It measures its own top edge in document coordinates into
  * `--starci-core-fill-top` and any Grammar bottom chrome (a phone navigation bar) into `--starci-core-fill-bottom`; CSS
@@ -43,30 +29,7 @@ const useIsoLayoutEffect = typeof window === "undefined" ? () => {} : useLayoutE
  * PaneGrid).
  */
 export const FillViewport = ({ children, minHeight = "md", bottomInset = "page", label }: FillViewportProps) => {
-    const ref = useRef<HTMLDivElement>(null)
-
-    useIsoLayoutEffect(() => {
-        const node = ref.current
-        if (node === null) return undefined
-        let frame = 0
-        const measure = () => {
-            cancelAnimationFrame(frame)
-            frame = requestAnimationFrame(() => {
-                const top = node.getBoundingClientRect().top + window.scrollY
-                node.style.setProperty("--starci-core-fill-top", `${Math.max(0, Math.round(top))}px`)
-                node.style.setProperty("--starci-core-fill-bottom", `${bottomChromeHeight()}px`)
-            })
-        }
-        measure()
-        window.addEventListener("resize", measure)
-        const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure)
-        observer?.observe(document.body)
-        return () => {
-            cancelAnimationFrame(frame)
-            window.removeEventListener("resize", measure)
-            observer?.disconnect()
-        }
-    }, [])
+    const ref = useFillMeasure()
 
     return (
         <div

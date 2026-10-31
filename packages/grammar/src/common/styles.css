@@ -14,6 +14,17 @@
         --grammar-section-gap: 1rem;
         --grammar-region-gap: 1.5rem;
         --grammar-page-inset: clamp(1rem, 3vw, 2rem);
+        /* Card box padding, one place per axis: SurfaceCard and SurfaceListCard content (PADDING-4). */
+        --grammar-card-padding-inline: 1rem;
+        --grammar-card-padding-block: 1rem;
+        /*
+         * Pane inset, one place per axis. Inline: both pane edges. Block start: the side facing a divider or the page
+         * band. Block end: the grid's outer bottom edge, or a divider below.
+         */
+        --grammar-pane-inset-inline: 1rem;
+        --grammar-pane-inset-block-start: 0.75rem;
+        --grammar-pane-inset-block-end-outer: 1rem;
+        --grammar-pane-inset-block-end-divider: 0.75rem;
         /* The Mascot scale: square boxes sm 96px, md 160px, lg 240px; the hero fills its host's height up to the cap. */
         --grammar-mascot-sm: 6rem;
         --grammar-mascot-md: 10rem;
@@ -491,11 +502,46 @@
         overflow: visible;
     }
 
+    /*
+     * Page chrome="panes": the tabbed app page. The band (or the trail), then exactly one PaneGrid attached to the band
+     * separator: no gap, no block padding, no card, no radius. The body is the measured fill box (useFillMeasure writes
+     * --starci-core-fill-top and --starci-core-fill-bottom), so the grid reaches the viewport bottom less Grammar bottom chrome.
+     */
+    .starci-core-page[data-grammar-page-chrome="panes"] {
+        flex: 1 0 auto;
+        gap: 0;
+        padding-block: 0;
+    }
+
+    .starci-core-page[data-grammar-page-chrome="panes"] > .starci-core-page-body {
+        min-width: 0;
+        gap: 0;
+        overflow: visible;
+    }
+
+    .starci-core-page-panes-fill {
+        display: flex;
+        flex-direction: column;
+        height: calc(100dvh - var(--starci-core-fill-top, 0px) - var(--starci-core-fill-bottom, 0px));
+    }
+
+    .starci-core-page-panes-fill > * { min-height: 0; flex: 1 1 auto; }
+    .starci-core-page-panes-fill[data-grammar-fill-min="sm"] { min-height: 20rem; }
+    .starci-core-page-panes-fill[data-grammar-fill-min="md"] { min-height: 28rem; }
+    .starci-core-page-panes-fill[data-grammar-fill-min="lg"] { min-height: 36rem; }
+
     /* The trail alone stands as the region's own child would: full width, wrapping inside it. */
     .starci-core-page-trail {
         display: flex;
         min-width: 0;
         flex-direction: column;
+    }
+
+    /* Over panes the trail is the band: it ends in the separator the grid attaches to. */
+    .starci-core-page[data-grammar-page-chrome="panes"] > .starci-core-page-trail {
+        padding-block: var(--grammar-pane-inset-block-start, 0.75rem);
+        padding-inline: var(--grammar-page-inset, 1rem);
+        border-block-end: 1px solid var(--separator, var(--starci-core-separator, GrayText));
     }
 
     /*
@@ -1060,7 +1106,8 @@
 
     .starci-core-surface-content {
         min-width: 0;
-        padding: var(--starci-core-surface-inset, 1rem);
+        padding-block: var(--grammar-card-padding-block, 1rem);
+        padding-inline: var(--grammar-card-padding-inline, 1rem);
     }
 
     .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content {
@@ -2775,10 +2822,111 @@
         --starci-core-pane-d: var(--starci-core-pane-d-base);
         --starci-core-pane-i: var(--starci-core-pane-i-base);
         --starci-core-pane-b: var(--starci-core-pane-b-base);
-        display: var(--starci-core-pane-d, block);
+        --starci-core-pane-be: var(--starci-core-pane-be-base);
+        display: var(--starci-core-pane-d, flex);
         flex-direction: column;
         border-inline-start: var(--starci-core-pane-i, 0px) solid var(--separator, var(--starci-core-separator, GrayText));
         border-block-start: var(--starci-core-pane-b, 0px) solid var(--separator, var(--starci-core-separator, GrayText));
+    }
+
+    /*
+     * The pane owns its content inset and publishes it as three custom properties; the pane itself is never padded, so
+     * dividers, nested grids and scrollbars stay full-bleed. Block end faces the grid outer edge or a divider, chosen
+     * per breakpoint in --starci-core-pane-be. The drawer scroll region carries the same attribute.
+     */
+    .starci-core-pane[data-grammar-pane-inset="content"],
+    .starci-core-pane-drawer-scroll[data-grammar-pane-inset="content"] {
+        --starci-core-pane-inset-inline: var(--grammar-pane-inset-inline, 1rem);
+        --starci-core-pane-inset-block-start: var(--grammar-pane-inset-block-start, 0.75rem);
+        --starci-core-pane-inset-block-end: var(--starci-core-pane-be, var(--grammar-pane-inset-block-end-outer, 1rem));
+    }
+
+    .starci-core-pane[data-grammar-pane-inset="flush"] {
+        --starci-core-pane-inset-inline: 0px;
+        --starci-core-pane-inset-block-start: 0px;
+        --starci-core-pane-inset-block-end: 0px;
+    }
+
+    /* The sections of a pane stack with the row gap between them (gap owns sibling distance). */
+    .starci-core-pane-stack {
+        display: flex;
+        min-height: 0;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+    }
+
+    /* A band: padded inline by the pane inset; the first takes the block-start inset, the last the block-end inset. */
+    .starci-core-pane-section {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+        padding-inline: var(--starci-core-pane-inset-inline, 0px);
+    }
+
+    .starci-core-pane-stack > .starci-core-pane-section:first-child {
+        padding-block-start: var(--starci-core-pane-inset-block-start, 0px);
+    }
+
+    .starci-core-pane-stack > .starci-core-pane-section:last-child {
+        padding-block-end: var(--starci-core-pane-inset-block-end, 0px);
+    }
+
+    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] { gap: var(--grammar-inline-gap, 0.5rem); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap, 1rem); }
+
+    .starci-core-pane-section[data-grammar-pane-section-grow="true"] {
+        min-height: 0;
+        flex: 1 1 0%;
+    }
+
+    .starci-core-pane-section[data-grammar-pane-section-align="center"] {
+        justify-content: center;
+    }
+
+    .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-align="center"]:only-child {
+        flex: 1 1 auto;
+    }
+
+    /* The scroll variant: the section is the full-bleed scroller and its content element carries the inset. */
+    .starci-core-pane-section[data-grammar-pane-section-scroll="true"] {
+        display: block;
+        gap: 0;
+        padding: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .starci-core-pane-section-content {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+        padding-inline: var(--starci-core-pane-inset-inline, 0px);
+    }
+
+    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] > .starci-core-pane-section-content { gap: var(--grammar-inline-gap, 0.5rem); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="section"] > .starci-core-pane-section-content { gap: var(--grammar-section-gap, 1rem); }
+
+    .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-section-content {
+        padding-block-start: var(--starci-core-pane-inset-block-start, 0px);
+    }
+
+    .starci-core-pane-stack > .starci-core-pane-section:last-child > .starci-core-pane-section-content {
+        padding-block-end: var(--starci-core-pane-inset-block-end, 0px);
+    }
+
+    /* bleed="inline": the one horizontal scroller reaches both pane edges and takes the inset as its own scroll padding. */
+    .starci-core-pane-section[data-grammar-pane-section-bleed="inline"] {
+        padding-inline: 0;
+    }
+
+    .starci-core-pane-section[data-grammar-pane-section-bleed="inline"] .starci-core-horizontal-scroll-region {
+        padding-inline: var(--starci-core-pane-inset-inline, 0px);
+        scroll-padding-inline: var(--starci-core-pane-inset-inline, 0px);
+        padding-block: 0.25rem;
     }
 
     .starci-core-pane[data-grammar-pane-surface="true"] {
@@ -2874,6 +3022,7 @@
             --starci-core-pane-d: var(--starci-core-pane-d-medium);
             --starci-core-pane-i: var(--starci-core-pane-i-medium);
             --starci-core-pane-b: var(--starci-core-pane-b-medium);
+            --starci-core-pane-be: var(--starci-core-pane-be-medium);
         }
 
         .starci-core-pane-grid-triggers {
@@ -2896,6 +3045,7 @@
             --starci-core-pane-d: var(--starci-core-pane-d-wide);
             --starci-core-pane-i: var(--starci-core-pane-i-wide);
             --starci-core-pane-b: var(--starci-core-pane-b-wide);
+            --starci-core-pane-be: var(--starci-core-pane-be-wide);
         }
 
         .starci-core-pane-grid-triggers {
@@ -3104,8 +3254,8 @@
     .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
         align-self: stretch;
         inline-size: auto !important;
-        margin-inline: calc(-1 * var(--starci-core-surface-inset, 1rem)) !important;
-        margin-block: var(--starci-core-surface-inset, 1rem);
+        margin-inline: calc(-1 * var(--grammar-card-padding-inline, 1rem)) !important;
+        margin-block: var(--grammar-card-padding-block, 1rem);
     }
 
     /* A vertical hairline between touching columns of one joined surface: it fills the row, whatever its height. */

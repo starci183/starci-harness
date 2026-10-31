@@ -409,8 +409,8 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 MarkdownTableFrame, MediaFrame, Rail, SectionHeader, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceCopyGroup, SurfaceListCard, VerticalScrollRegion.
 
-**Compositions (11).** BottomNav, Footer, NavigationFeatureNav, Page, PageContainer, PageHeader,
-PaneGrid, PrimaryRailLayout, Sidebar, TopBar, WorkspaceShell. Storybook pins settings and data-list content
+**Compositions (12).** BottomNav, Footer, NavigationFeatureNav, Page, PageContainer, PageHeader,
+PaneGrid, PaneSection, PrimaryRailLayout, Sidebar, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
 
 `PageHeader` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
@@ -424,6 +424,46 @@ body. The band runs full width; the body sits in the measure and gutter one regi
 from the top without a header), its sections a region step apart, and it clips past its content box so nothing in it
 reaches across the gutter. `isSkeleton` passes to the header. Page is the single owner of the page inset: the layout
 frames (`WorkspaceShell`, `PrimaryRailLayout`, `PaneGrid`) never wrap a page in a `PageContainer`.
+
+`Page chrome="panes"` is the tabbed app page: the header band (with or without `tabs`) or the breadcrumb trail, then
+exactly one `PaneGrid` attached flush to the band's separator, reaching both content edges and the viewport bottom
+(less any Grammar bottom chrome): no gap, no block padding, no card, no radius. Page measures the fill box itself
+(`minHeight`: `sm`, `md` default, `lg`, `none`, the floor on a short window), with the same measuring hook as
+`FillViewport`. The tab line is the only line between tabs and grid.
+
+```tsx
+<Page chrome="panes" header={{ title: "Support agent", tabs }}>
+  <PaneGrid label="Setup" areas={["chat side"]} columns={["fill", "standard"]}>
+    <Pane area="chat"><PaneSection scroll={{ label: "Conversation", role: "log" }}>{bubbles}</PaneSection></Pane>
+    <Pane area="side" surface><PaneSection gap="section">{settings}</PaneSection></Pane>
+  </PaneGrid>
+</Page>
+```
+
+`PaneGrid` lays out named areas flush with one divider between neighbours; every child is a `Pane` (`null`, `false`
+and arrays of Panes are legal; anything else throws `PANE_GRID_CHILD_NOT_PANE` in development). A `Pane` owns its
+content inset (`inset="content"`, default, or `"flush"` for a nested PaneGrid or a full-bleed canvas) and takes no
+`className`: it never pads itself, it publishes the inset to its descendants so dividers and scrollbars stay full-bleed.
+The inline inset is `--grammar-pane-inset-inline` (1rem) on both sides at every breakpoint; the block start is
+`--grammar-pane-inset-block-start` (0.75rem); the block end is `--grammar-pane-inset-block-end-outer` (1rem) when the
+pane touches the grid's bottom edge and `--grammar-pane-inset-block-end-divider` (0.75rem) when it faces a divider.
+A `collapse="drawer"` pane renders its children in the drawer under the same inset.
+
+`PaneSection` is the one band primitive of a pane: every child of a Pane is a `PaneSection` or one nested `PaneGrid`.
+It pads inline by the pane inset; the sections of a pane stack with the row gap between them, the first takes the
+block-start inset and the last the block-end inset. Props: `grow` (takes the remaining height), `scroll`
+(`{ label, role?: "log" | "region", tone?: "surface" | "background", scrollRef? }`: its own full-bleed scroll owner
+with the inset on its content, so the scrollbar sits on the pane edge), `align` (`start` | `center`), `bleed="inline"`
+(the one `HorizontalScrollRegion` in it, such as a chip row, reaches both pane edges and takes the inset as its own
+padding and scroll padding), `gap` (`inline` | `row` | `section`) and `as` (`div` | `header` | `footer`). It takes no
+`className` or `style`, and outside a Pane it throws `PANE_SECTION_OUTSIDE_PANE`. A content Pane that registers no
+PaneSection and no PaneGrid logs `PANE_WITHOUT_SECTION` in development. Boxes align to the content edge; text inside a
+box keeps the vendor's own padding. In a Pane, `ListBox` resolves `inset="panel"` and drops the vendor listbox inline
+padding so the row box and the selected pill start at the edge, and a `Tabs variant="secondary"` track drops its inline
+padding so the first pill does.
+
+Card padding has one place per axis too: `--grammar-card-padding-inline` and `--grammar-card-padding-block` (1rem each)
+pad the content of `SurfaceCard` and its kin.
 
 ```tsx
 <Page measure="reading" header={{ breadcrumbs, title: "Profile", tabs: { label: "Profile", items, selectedKey, onSelect } }}>

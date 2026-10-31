@@ -1,7 +1,10 @@
 import { cn } from "@heroui/react"
-import type { ReactNode } from "react"
+import { isValidElement, type ReactElement, type ReactNode } from "react"
 import { Breadcrumbs } from "../../composite/Breadcrumbs/index.js"
+import { useFillMeasure } from "../../composite/FillViewport/useFillMeasure.js"
+import type { FillViewportMinHeight } from "../../composite/FillViewport/index.js"
 import { PageContainer, type PageContainerProps } from "../../primitive/PageContainer/index.js"
+import { PaneGrid, type PaneGridProps } from "../PaneGrid/index.js"
 import { PageHeader, type PageHeaderBreadcrumbs, type PageHeaderProps } from "../PageHeader/index.js"
 
 /** The page header Page draws: every `PageHeader` prop except the two Page owns, `measure` and `isSkeleton`. */
@@ -20,7 +23,7 @@ export type PageTrailContent = { readonly breadcrumbs: PageHeaderBreadcrumbs } &
  * at the gutter. `bleed`: an app surface (a chat, a split editor) that fills the region edge to edge: no inline gutter, no
  * block padding, no clip, the body grows to the region's height, so a `FillViewport` in it keeps its own bottom inset.
  */
-export type PageChrome = "standard" | "bleed"
+export type PageChrome = "standard" | "bleed" | "panes"
 
 type PageCommonProps = {
     /** The page body. In `standard` it sits inside the page measure and gutter; in `bleed` it fills the region. */
@@ -50,7 +53,21 @@ export type PageBleedProps = PageCommonProps & {
     readonly header?: PageHeaderContent | PageTrailContent
 }
 
-export type PageProps = PageStandardProps | PageBleedProps
+/**
+ * A tabbed app page: the header band (with or without `tabs`) or the trail, then exactly one PaneGrid attached flush to
+ * the band's separator, reaching both content edges and the viewport bottom (less any Grammar bottom chrome): no gap, no
+ * block padding, no card, no radius. Page measures the fill box itself.
+ */
+export type PagePanesProps = PageCommonProps & {
+    readonly chrome: "panes"
+    readonly header?: PageHeaderContent | PageTrailContent
+    /** Floor height of the grid on a short window, as `FillViewport`'s (default `md`). */
+    readonly minHeight?: FillViewportMinHeight
+    /** Exactly one PaneGrid. */
+    readonly children: ReactElement<PaneGridProps>
+}
+
+export type PageProps = PageStandardProps | PageBleedProps | PagePanesProps
 
 /** True when the header is a band: every standard header is, and a bleed header is when it carries the page heading. */
 const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent): header is PageHeaderContent =>
@@ -64,7 +81,12 @@ const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent
  * beside its Page (lint `route-page-is-one-page`). `chrome="bleed"` is the app surface: the body fills the region edge to
  * edge, under the trail alone or under a band.
  */
-export const Page = ({ chrome = "standard", header, children, measure = "product", isSkeleton = false, className }: PageProps) => {
+export const Page = (props: PageProps) => {
+    const { chrome = "standard", header, children, measure = "product", isSkeleton = false, className } = props
+    const fillRef = useFillMeasure()
+    if (props.chrome === "panes" && !(isValidElement(children) && children.type === PaneGrid)) {
+        throw new Error("PAGE_PANES_CHILD_NOT_PANE_GRID")
+    }
     const band = header !== undefined && isBand(chrome, header) ? header : undefined
     const trail = header !== undefined && !isBand(chrome, header) ? header.breadcrumbs : undefined
     return (
@@ -72,7 +94,7 @@ export const Page = ({ chrome = "standard", header, children, measure = "product
             className={cn("starci-core-page", className)}
             data-component="Page"
             data-tier="composition"
-            data-contract={chrome === "bleed" ? "LAYOUT-1" : "MARGIN-5 MEASURE-1"}
+            data-contract={chrome === "panes" ? "LAYOUT-1 BOUNDARY-1 GAP-0" : chrome === "bleed" ? "LAYOUT-1" : "MARGIN-5 MEASURE-1"}
             data-grammar-page-chrome={chrome}
             data-grammar-page-header={band === undefined ? "false" : "true"}
             data-grammar-page-trail={trail === undefined ? "false" : "true"}
@@ -83,7 +105,16 @@ export const Page = ({ chrome = "standard", header, children, measure = "product
                     <Breadcrumbs label={trail.label} items={trail.items} {...(trail.onAction === undefined ? {} : { onAction: trail.onAction })} />
                 </div>
             )}
-            {chrome === "bleed" ? (
+            {chrome === "panes" ? (
+                <div
+                    ref={fillRef}
+                    className="starci-core-page-body starci-core-page-panes-fill"
+                    data-grammar-page-body="true"
+                    data-grammar-fill-min={props.chrome === "panes" ? props.minHeight ?? "md" : "md"}
+                >
+                    {children}
+                </div>
+            ) : chrome === "bleed" ? (
                 <div className="starci-core-page-body" data-grammar-page-body="true">
                     {children}
                 </div>

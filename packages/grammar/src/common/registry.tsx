@@ -1,7 +1,7 @@
 "use client"
 
 import {
-    Backdrop, Badge, Button, Code, ChatBubble, PaneGrid, Pane, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
+    Backdrop, Badge, Button, Code, ChatBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, IncludedMark, Input,
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
@@ -23,7 +23,7 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
     Extensions & { readonly [Name in Extract<keyof Extensions, keyof Common>]: never }
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
-    Backdrop, Badge, Button, Code, ChatBubble, PaneGrid, Pane, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
+    Backdrop, Badge, Button, Code, ChatBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, IncludedMark, Input,
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,

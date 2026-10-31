@@ -32,6 +32,8 @@ export type PaneEdges = {
     readonly inline: boolean
     /** A pane sits above this one: the horizontal divider is drawn on its block-start edge. */
     readonly block: boolean
+    /** What the pane's block-end edge faces: the grid's outer bottom edge, or a divider above another pane. */
+    readonly blockEnd: "outer" | "divider"
 }
 
 export type PaneGridModel = {
@@ -69,22 +71,24 @@ export const buildPaneGridModel = (
         .filter((_, r) => keepRow[r])
         .map((row) => row.filter((_, c) => keepColumn[c]).map((cell) => (collapsed.has(cell) ? emptyCell : cell)))
 
-    const box = new Map<string, { r0: number; c0: number; c1: number }>()
+    const box = new Map<string, { r0: number; r1: number; c0: number; c1: number }>()
     kept.forEach((row, r) => row.forEach((cell, c) => {
         if (cell === emptyCell) return
         const known = box.get(cell)
         box.set(cell, known === undefined
-            ? { r0: r, c0: c, c1: c }
-            : { r0: Math.min(known.r0, r), c0: Math.min(known.c0, c), c1: Math.max(known.c1, c) })
+            ? { r0: r, r1: r, c0: c, c1: c }
+            : { r0: Math.min(known.r0, r), r1: Math.max(known.r1, r), c0: Math.min(known.c0, c), c1: Math.max(known.c1, c) })
     }))
 
     const edges: Record<string, PaneEdges> = {}
-    box.forEach(({ r0, c0, c1 }, name) => {
+    box.forEach(({ r0, r1, c0, c1 }, name) => {
         const left = kept[r0]?.[c0 - 1]
         const above = Array.from({ length: c1 - c0 + 1 }, (_, i) => kept[r0 - 1]?.[c0 + i])
+        const below = Array.from({ length: c1 - c0 + 1 }, (_, i) => kept[r1 + 1]?.[c0 + i])
         edges[name] = {
             inline: left !== undefined && left !== emptyCell,
             block: above.some((cell) => cell !== undefined && cell !== emptyCell),
+            blockEnd: below.some((cell) => cell !== undefined && cell !== emptyCell) ? "divider" : "outer",
         }
     })
 

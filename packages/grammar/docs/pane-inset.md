@@ -1,6 +1,6 @@
 # Pane inset: one padding system for everything placed in a PaneGrid
 
-Status: design, awaiting the owner. Owner's words (2026-10-31): "trò thiết kế hệ thống padding đồng nhất cho grammar chứ
+Status: implemented in grammar 0.17.0. Owner's words (2026-10-31): "trò thiết kế hệ thống padding đồng nhất cho grammar chứ
 mỗi nơi 1 padding trò thấy k" and, for the agent page, "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào
 chứ". This document decides the model, the API, the migration, the enforcement, and ends with three ready-to-paste
 work-package briefs (A grammar, B lint + contexts, C nivo-lite).

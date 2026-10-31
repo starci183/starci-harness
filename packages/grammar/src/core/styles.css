@@ -149,7 +149,7 @@
     .grammar-common-root[data-grammar-family="core"]
         .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-surface-placement="panel"][data-grammar-frame="bounded"]
         > [data-grammar-surface-label] {
-        --starci-core-surface-label-padding: var(--starci-core-surface-inset, 1rem) var(--starci-core-surface-inset, 1rem) 0;
+        --starci-core-surface-label-padding: var(--grammar-card-padding-block, 1rem) var(--grammar-card-padding-inline, 1rem) 0;
     }
 
     .grammar-common-root[data-grammar-family="core"]

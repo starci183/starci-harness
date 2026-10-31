@@ -4,6 +4,7 @@ import { Description as HeroDescription, Header as HeroHeader, Label as HeroLabe
 import type { ComponentPropsWithRef, ReactNode } from "react"
 import { navigationClassName } from "../../navigationClassNames.js"
 import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { usePaneContext } from "../../paneContext.js"
 import { useSurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
@@ -123,7 +124,8 @@ export const ListBox = ({
 }: ListBoxProps) => {
     const presentation = useCollectionItemPresentation()
     const nested = useSurfaceNesting()
-    const resolvedInset = inset ?? (nested ? "panel" : "default")
+    const inPane = usePaneContext() !== undefined
+    const resolvedInset = inset ?? (nested || inPane ? "panel" : "default")
     const allItems = sections === undefined ? items : sections.flatMap((section) => section.items)
     const renderLabel = (item: ListBoxItem) => (
         <HeroLabel data-grammar-item-label="true" style={item.emphasis === "unread" ? { fontWeight: presentation.unreadWeight } : undefined}>
@@ -172,6 +174,7 @@ export const ListBox = ({
         data-loading={String(isLoading)}
         {...(isLoading ? { render: (domProps: ComponentPropsWithRef<"div">) => <div {...domProps} aria-busy="true">{domProps.children}{allItems.length === 0 ? loadingSkeleton(loadingRows) : null}</div> } : {})}
         data-grammar-list-inset={resolvedInset}
+        {...(inPane && resolvedInset === "panel" ? { style: { paddingInline: 0 } } : {})}
         data-grammar-list-size={size}
         data-grammar-list-selection={selectionMode}
         selectionMode={selectionMode}

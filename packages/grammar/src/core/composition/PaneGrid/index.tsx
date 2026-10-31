@@ -5,8 +5,11 @@ import {
     Children,
     createContext,
     isValidElement,
+    useCallback,
     useContext,
+    useEffect,
     useMemo,
+    useRef,
     type ComponentPropsWithoutRef,
     type CSSProperties,
     type ReactElement,
@@ -14,6 +17,7 @@ import {
 } from "react"
 import { VerticalScrollRegion } from "../../composite/VerticalScrollRegion/index.js"
 import { SurfaceNesting } from "../../surfaceContext.js"
+import { PaneContext, usePaneContext, type PaneContextValue, type PaneInset } from "../../paneContext.js"
 import {
     buildResponsivePaneGridModels,
     paneBreakpoints,
@@ -26,6 +30,7 @@ import {
     type PaneTrack,
 } from "./layout.js"
 
+export type { PaneInset } from "../../paneContext.js"
 export type { PaneBreakpoint, PaneByBreakpoint, PaneResponsive, PaneTrack } from "./layout.js"
 
 type CustomProperties = CSSProperties & { readonly [name: `--${string}`]: string | undefined }
@@ -38,8 +43,12 @@ type PaneBaseProps = {
     readonly area: string
     /** `true`: the pane stands on the grammar surface ground (flat: no border, radius or shadow). Default: transparent on the host canvas. */
     readonly surface?: boolean
-    readonly className?: string
-    /** Rendered as given: the pane imposes no padding, layout or structure on it. */
+    /**
+     * `content` (default): the pane publishes the Grammar pane inset to its PaneSections. `flush`: zero inset, for a
+     * nested PaneGrid or a full-bleed canvas.
+     */
+    readonly inset?: PaneInset
+    /** PaneSection elements, or one PaneGrid. */
     readonly children?: ReactNode
 }
 
@@ -81,14 +90,36 @@ type PaneCollapseProps =
 
 export type PaneProps = PaneBaseProps & PaneScrollProps & PaneCollapseProps
 
+const isDevelopment = process.env.NODE_ENV !== "production"
+
+/** A pane's section registry: PaneSection and a nested PaneGrid register on mount; a content pane with none is reported in development. */
+const usePaneRegistry = (area: string, inset: PaneInset, checks: boolean): PaneContextValue => {
+    const count = useRef(0)
+    const register = useCallback(() => {
+        count.current += 1
+        return () => {
+            count.current -= 1
+        }
+    }, [])
+    useEffect(() => {
+        if (isDevelopment && checks && inset === "content" && count.current === 0) {
+            console.error(`PANE_WITHOUT_SECTION: ${area}`)
+        }
+    }, [area, inset, checks])
+    return useMemo(() => ({ area, inset, register }), [area, inset, register])
+}
+
 /**
  * One pane of a PaneGrid, placed by `area`. Panes sit flush; the divider on its start edges is drawn from the grid's
- * layout at each breakpoint, and the pane paints nothing else unless `surface` is set.
+ * layout at each breakpoint, and the pane paints nothing else unless `surface` is set. The pane owns its content inset:
+ * it never pads itself, it publishes the inline and block insets (and whether its block end is the grid's outer edge or
+ * a divider) to its PaneSections, so dividers and scrollbars stay full-bleed. A pane takes no app class.
  */
 export const Pane = (props: PaneProps) => {
-    const { area, surface = false, className, label, scroll = false, children } = props
+    const { area, surface = false, inset = "content", label, scroll = false, children } = props
     const models = useContext(PaneModelsContext)
-    const shown = scroll ? "flex" : "block"
+    const pane = usePaneRegistry(area, inset, true)
+    const shown = "flex"
     const vars: Record<string, string> = {}
     let hasEdge = false
     if (models !== undefined) {
@@ -98,9 +129,13 @@ export const Pane = (props: PaneProps) => {
             vars[`--starci-core-pane-i-${breakpoint}`] = edges?.inline === true ? "1px" : "0px"
             vars[`--starci-core-pane-b-${breakpoint}`] = edges?.block === true ? "1px" : "0px"
             hasEdge = hasEdge || edges?.inline === true || edges?.block === true
+            vars[`--starci-core-pane-be-${breakpoint}`] = edges?.blockEnd === "divider"
+                ? "var(--grammar-pane-inset-block-end-divider, 0.75rem)"
+                : "var(--grammar-pane-inset-block-end-outer, 1rem)"
         }
     }
     const style: CustomProperties = { gridArea: area, ...vars }
+    const stack = <div className="starci-core-pane-stack" data-grammar-pane-stack="true">{children}</div>
     const body = scroll
         ? (
             <VerticalScrollRegion
@@ -109,19 +144,21 @@ export const Pane = (props: PaneProps) => {
                 data-contract="OVERFLOW-4 OVERFLOW-5"
                 isScrollable
             >
-                {children}
+                {stack}
             </VerticalScrollRegion>
         )
-        : children
-    const content = surface ? <SurfaceNesting>{body}</SurfaceNesting> : body
+        : stack
+    const surfaced = surface ? <SurfaceNesting>{body}</SurfaceNesting> : body
+    const content = <PaneContext.Provider value={pane}>{surfaced}</PaneContext.Provider>
     const shared = {
-        className: cn("starci-core-pane", className),
+        className: "starci-core-pane",
         "data-component": "Pane",
         "data-tier": "composition",
         "data-grammar-pane-area": area,
         "data-grammar-pane-surface": surface ? "true" : undefined,
         "data-grammar-pane-scroll": scroll ? "true" : undefined,
-        "data-contract": hasEdge ? "BOUNDARY-1" : undefined,
+        "data-grammar-pane-inset": inset,
+        "data-contract": [hasEdge ? "BOUNDARY-1" : undefined, inset === "content" ? "PADDING-4 PADDING-3" : "PADDING-0"].filter((part) => part !== undefined).join(" "),
         style,
     }
     return label === undefined || scroll
@@ -143,12 +180,21 @@ export type PaneGridProps = Omit<ComponentPropsWithoutRef<"section">, "aria-labe
     readonly columns?: PaneResponsive<ReadonlyArray<PaneTrack>>
     /** Row tracks, top to bottom (also per breakpoint); a missing track is `fill`. */
     readonly rows?: PaneResponsive<ReadonlyArray<PaneTrack>>
-    /** `Pane` elements as direct children. */
+    /** `Pane` elements as direct children (`null`, `false` and arrays of Panes are legal; anything else throws in development). */
     readonly children?: ReactNode
 }
 
 const isPane = (child: ReactNode): child is ReactElement<PaneProps> =>
     isValidElement(child) && child.type === Pane
+
+/** A readable name for a child that is not a Pane, for `PANE_GRID_CHILD_NOT_PANE`. */
+const childTypeName = (child: ReactNode): string => {
+    if (!isValidElement(child)) return typeof child
+    const { type } = child
+    if (typeof type === "string") return type
+    if (typeof type === "function") return type.name === "" ? "component" : type.name
+    return typeof type === "symbol" ? "Fragment" : "component"
+}
 
 /** Whether the area is in the first grid column wherever it appears: its drawer then opens from the start side. */
 const isStartColumn = (models: Models, area: string): boolean =>
@@ -179,7 +225,14 @@ const gridVars = (models: Models, hasTrigger: (breakpoint: PaneBreakpoint) => bo
  */
 export const PaneGrid = (props: PaneGridProps) => {
     const { label, areas, columns, rows, className, children, ...sectionProps } = props
-    const panes = Children.toArray(children).filter(isPane)
+    const flat = Children.toArray(children)
+    const parent = usePaneContext()
+    useEffect(() => parent?.register(), [parent])
+    if (isDevelopment) {
+        const stray = flat.find((child) => !isPane(child))
+        if (stray !== undefined) throw new Error(`PANE_GRID_CHILD_NOT_PANE: ${childTypeName(stray)}`)
+    }
+    const panes = flat.filter(isPane)
     const drawers = panes.filter((pane) => pane.props.collapse === "drawer")
     const collapsedKey = drawers.map((pane) => pane.props.area).join(" ")
     const models = useMemo(
@@ -224,13 +277,22 @@ export const PaneGrid = (props: PaneGridProps) => {
     )
 }
 
+/** The drawer's pane context: the content inset with the block end on the outer edge; nothing to register against. */
+const drawerRegister = () => () => {}
+
 const PaneDrawer = ({ pane, placement, models }: {
     readonly pane: ReactElement<PaneProps>
     readonly placement: "left" | "right"
     readonly models: Models
 }) => {
     const { props } = pane
+    const drawerPane = useMemo<PaneContextValue>(
+        () => ({ area: props.area, inset: "content", register: drawerRegister }),
+        [props.area],
+    )
     if (props.collapse !== "drawer") return null
+    const drawerVars: CustomProperties = { "--starci-core-pane-be": "var(--grammar-pane-inset-block-end-outer, 1rem)" }
+    const drawerHeaderStyle: CSSProperties = { paddingInline: "var(--grammar-pane-inset-inline, 1rem)" }
     const triggerStyle: CustomProperties = {}
     const vars: Record<string, string> = {}
     for (const breakpoint of paneBreakpoints) {
@@ -246,7 +308,7 @@ const PaneDrawer = ({ pane, placement, models }: {
                 <Drawer.Content className="starci-core-pane-drawer-content" placement={placement}>
                     <Drawer.Dialog className="starci-core-pane-drawer-dialog" data-grammar-nesting="surface">
                         <SurfaceNesting>
-                            <Drawer.Header>
+                            <Drawer.Header className="starci-core-pane-drawer-header" style={drawerHeaderStyle}>
                                 <Drawer.Heading>{props.collapseLabel}</Drawer.Heading>
                             </Drawer.Header>
                             <Drawer.CloseTrigger
@@ -260,9 +322,13 @@ const PaneDrawer = ({ pane, placement, models }: {
                                     className="starci-core-pane-drawer-scroll"
                                     data-contract="OVERFLOW-4 OVERFLOW-5"
                                     data-grammar-pane-area={props.area}
+                                    data-grammar-pane-inset="content"
                                     isScrollable
+                                    style={drawerVars}
                                 >
-                                    {props.children}
+                                    <PaneContext.Provider value={drawerPane}>
+                                        <div className="starci-core-pane-stack" data-grammar-pane-stack="true">{props.children}</div>
+                                    </PaneContext.Provider>
                                 </VerticalScrollRegion>
                             </Drawer.Body>
                         </SurfaceNesting>

@@ -3,6 +3,7 @@
 import { Tabs as HeroTabs } from "@heroui/react"
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { HorizontalScrollFrame } from "../../HorizontalScrollFrame.js"
+import { usePaneContext } from "../../paneContext.js"
 import { useSurfaceNesting } from "../../surfaceContext.js"
 import {
     tabContentClassName,
@@ -90,6 +91,7 @@ const useLocationPath = (enabled: boolean): readonly [string | undefined, (path:
 /** Render peer tabs through Core's selected, accessible and responsive treatment. */
 export const Tabs = (props: TabsProps) => {
     const nested = useSurfaceNesting()
+    const inPane = usePaneContext() !== undefined
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
     useEffect(() => setIsClientReady(true), [])
@@ -175,7 +177,7 @@ export const Tabs = (props: TabsProps) => {
         >
             <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => (
                 <HorizontalScrollFrame appearance="tabs" hideScrollBar size={64} scrollPreviousLabel={scrollPreviousLabel} scrollNextLabel={scrollNextLabel}>
-                    <div {...listProps} ref={ref}>{children}</div>
+                    <div {...listProps} ref={ref} style={variant === "secondary" && inPane ? { ...listProps.style, paddingInline: 0 } : listProps.style}>{children}</div>
                 </HorizontalScrollFrame>
             )}>
                 {props.items.map((item) => (

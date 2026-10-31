@@ -12,6 +12,7 @@ import {
   SearchGlyph,
   SettingsGlyph,
   State,
+  PlusGlyph,
   UserGlyph,
   noop,
   rgbaOf,
@@ -625,10 +626,10 @@ export const WorkspaceShell: Story = {
 const PaneGridRows = () => (
   <div data-story-pane-grid="rows" style={{ height: '20rem', display: 'flex' }}>
     <G.PaneGrid label="Four panes" areas={['a b c', 'd d d']} rows={['fill', 'auto']}>
-      <G.Pane area="a" surface><G.Text>A</G.Text></G.Pane>
-      <G.Pane area="b"><G.Text>B</G.Text></G.Pane>
-      <G.Pane area="c" surface><G.Text>C</G.Text></G.Pane>
-      <G.Pane area="d"><G.Text>D spans the row below A, B and C</G.Text></G.Pane>
+      <G.Pane area="a" surface><G.PaneSection><G.Text>A</G.Text></G.PaneSection></G.Pane>
+      <G.Pane area="b"><G.PaneSection><G.Text>B</G.Text></G.PaneSection></G.Pane>
+      <G.Pane area="c" surface><G.PaneSection><G.Text>C</G.Text></G.PaneSection></G.Pane>
+      <G.Pane area="d"><G.PaneSection><G.Text>D spans the row below A, B and C</G.Text></G.PaneSection></G.Pane>
     </G.PaneGrid>
   </div>
 );
@@ -673,10 +674,10 @@ const ResponsiveHost = ({ id, width }: { readonly id: string; readonly width: st
       columns={{ base: ['fill'], medium: ['fill', 'fill-2', 'fill'] }}
       rows={{ base: ['auto', 'fill', 'fill', 'fill'], medium: ['auto', 'fill'] }}
     >
-      <G.Pane area="head" surface><G.Text>Header</G.Text></G.Pane>
-      <G.Pane area="a" surface><G.Text>A</G.Text></G.Pane>
-      <G.Pane area="b"><G.Text>B (twice as wide)</G.Text></G.Pane>
-      <G.Pane area="c" surface><G.Text>C</G.Text></G.Pane>
+      <G.Pane area="head" surface><G.PaneSection><G.Text>Header</G.Text></G.PaneSection></G.Pane>
+      <G.Pane area="a" surface><G.PaneSection><G.Text>A</G.Text></G.PaneSection></G.Pane>
+      <G.Pane area="b"><G.PaneSection><G.Text>B (twice as wide)</G.Text></G.PaneSection></G.Pane>
+      <G.Pane area="c" surface><G.PaneSection><G.Text>C</G.Text></G.PaneSection></G.Pane>
     </G.PaneGrid>
   </div>
 );
@@ -747,20 +748,20 @@ const PaneGridAppDemo = () => {
           isOpen={listOpen}
           onOpenChange={setListOpen}
         >
-          <div style={{ display: 'grid', gap: '0.5rem', padding: '1rem' }}>
+          <G.PaneSection gap="inline">
             {lines.map((line) => <G.Text key={line}>{line}</G.Text>)}
-          </div>
+          </G.PaneSection>
         </G.Pane>
         <G.Pane area="head" surface>
-          <div style={{ padding: '0.75rem 1rem' }}><G.Text weight="semibold">Header</G.Text></div>
+          <G.PaneSection align="center"><G.Text weight="semibold">Header</G.Text></G.PaneSection>
         </G.Pane>
         <G.Pane area="main" scroll label="Main">
-          <div style={{ display: 'grid', gap: '0.5rem', padding: '1rem' }}>
+          <G.PaneSection gap="inline">
             {lines.map((line) => <G.Text key={line}>{line}</G.Text>)}
-          </div>
+          </G.PaneSection>
         </G.Pane>
         <G.Pane area="foot" surface>
-          <div style={{ padding: '0.75rem 1rem' }}><G.Text tone="muted">Footer</G.Text></div>
+          <G.PaneSection align="center"><G.Text tone="muted">Footer</G.Text></G.PaneSection>
         </G.Pane>
         <G.Pane
           area="info"
@@ -773,7 +774,7 @@ const PaneGridAppDemo = () => {
           isOpen={infoOpen}
           onOpenChange={setInfoOpen}
         >
-          <div style={{ padding: '1rem' }}><G.Text>Details</G.Text></div>
+          <G.PaneSection><G.Text>Details</G.Text></G.PaneSection>
         </G.Pane>
       </G.PaneGrid>
     </div>
@@ -812,6 +813,226 @@ export const PaneGridApp: Story = {
       expect(getComputedStyle(head).overflowY).toBe('hidden');
     });
   },
+};
+
+const chipLabels = ['Reply later', 'Assign to me', 'Mark as done', 'Add a note', 'Share', 'Archive'];
+
+/** An Office-like grid: every band is a PaneSection, so every box starts on the pane's content edge. The info pane is a drawer below 48rem. */
+const PaneInsetDemo = () => {
+  const [tab, setTab] = useState('all');
+  const [infoOpen, setInfoOpen] = useState(false);
+  return (
+    <div data-story-pane-grid="inset" style={{ height: '48rem', display: 'flex' }}>
+      <G.PaneGrid
+        label="Office"
+        areas={{ base: ['list', 'thread', 'composer'], medium: ['list thread info', 'list composer info'] }}
+        columns={{ base: ['fill'], medium: ['standard', 'fill', 'standard'] }}
+        rows={{ base: ['fill', 'fill', 'auto'], medium: ['fill', 'auto'] }}
+      >
+        <G.Pane area="list" surface>
+          <G.PaneSection align="center"><G.Text weight="semibold">Chats</G.Text></G.PaneSection>
+          <G.PaneSection><G.SearchField label="Search" isLabelHidden placeholder="Search conversations" clearLabel="Clear search" /></G.PaneSection>
+          <G.PaneSection>
+            <G.Tabs
+              label="Filter"
+              variant="secondary"
+              selectedKey={tab}
+              onSelect={setTab}
+              items={[{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }, { id: 'mine', label: 'Mine' }]}
+            />
+          </G.PaneSection>
+          <G.PaneSection scroll={{ label: 'Conversations' }}>
+            <G.ListBox
+              label="Conversations"
+              selectionIndicator="none"
+              selectionMode="single"
+              defaultSelectedIds={['study-group']}
+              items={[
+                { id: 'study-group', label: 'Study group', description: 'See you at 7' },
+                { id: 'linh', label: 'Linh', description: 'Thanks!' },
+                { id: 'minh', label: 'Minh', description: 'Sent the file' },
+              ]}
+            />
+          </G.PaneSection>
+        </G.Pane>
+        <G.Pane area="thread">
+          <G.PaneSection scroll={{ label: 'Messages', role: 'log', tone: 'background' }}>
+            <G.ChatBubble author="Linh" meta="09:12">Can the order for table 4 move to 19:30?</G.ChatBubble>
+            <G.ChatBubble author="You" meta="09:14" side="outgoing">Yes, I moved it.</G.ChatBubble>
+          </G.PaneSection>
+        </G.Pane>
+        <G.Pane area="composer" surface>
+          <G.PaneSection bleed="inline">
+            <G.HorizontalScrollRegion aria-label="Quick replies" overflow="needed" carets={false}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {chipLabels.map((chip) => <G.Button key={chip} size="sm" variant="secondary" onPress={noop}>{chip}</G.Button>)}
+              </div>
+            </G.HorizontalScrollRegion>
+          </G.PaneSection>
+          <G.PaneSection>
+            <div style={{ display: 'flex', alignItems: 'end', gap: '0.5rem' }}>
+              <G.IconButton source={PlusGlyph} label="Attach" onPress={noop} />
+              <div style={{ flex: 1, minWidth: 0 }}><G.Textarea label="Message" isLabelHidden rows={1} /></div>
+              <G.Button onPress={noop}>Send</G.Button>
+            </div>
+            <G.Text size="sm" tone="muted">Enter sends, Shift+Enter breaks the line</G.Text>
+          </G.PaneSection>
+        </G.Pane>
+        <G.Pane
+          area="info"
+          surface
+          label="Details"
+          collapse="drawer"
+          collapseLabel="Details"
+          openLabel="Show details"
+          closeLabel="Hide details"
+          isOpen={infoOpen}
+          onOpenChange={setInfoOpen}
+        >
+          <G.PaneSection align="center"><G.Text weight="semibold">Study group</G.Text></G.PaneSection>
+          <G.PaneSection gap="section"><G.Text tone="muted">Four members. Created in March.</G.Text></G.PaneSection>
+        </G.Pane>
+      </G.PaneGrid>
+    </div>
+  );
+};
+
+/** The content edge of a pane: its border-box start plus its (start-edge divider) border. */
+const contentLeft = (pane: HTMLElement) => pane.getBoundingClientRect().left + Number.parseFloat(getComputedStyle(pane).borderInlineStartWidth);
+
+/** The first box of a band: the section's first child, or the first child of a scroll section's content. */
+const firstBox = (section: HTMLElement): HTMLElement => {
+  const host = section.dataset['grammarPaneSectionScroll'] === 'true' ? section.firstElementChild : section;
+  const box = host?.firstElementChild;
+  if (!(box instanceof HTMLElement)) throw new Error('the band renders a first box');
+  return box;
+};
+
+const assertPaneInset = async (canvasElement: HTMLElement, isDocked: boolean) => {
+  await waitFor(() => {
+    const grid = canvasElement.querySelector('[data-story-pane-grid="inset"]');
+    if (!(grid instanceof HTMLElement)) throw new Error('the grid renders');
+    const pane = (area: string) => {
+      const node = grid.querySelector<HTMLElement>(`[data-grammar-pane-area="${area}"]`);
+      if (node === null) throw new Error(`pane ${area} renders`);
+      return node;
+    };
+    const sections = (area: string) => Array.from(pane(area).querySelectorAll<HTMLElement>('[data-component="PaneSection"]'));
+    const offset = (area: string, box: HTMLElement) => box.getBoundingClientRect().left - contentLeft(pane(area));
+    const expectEdge = (area: string, box: HTMLElement) => expect(Math.abs(offset(area, box) - 16)).toBeLessThanOrEqual(0.5);
+
+    // Every band of the list pane starts on the content edge: the head, the search box, the tab track and its first pill, the list.
+    const list = sections('list');
+    for (const section of list) expectEdge('list', firstBox(section));
+    const firstTab = pane('list').querySelector<HTMLElement>('[role="tab"]');
+    if (firstTab === null) throw new Error('the filter tabs render');
+    expectEdge('list', firstTab);
+    // The selected option box is at the edge too, not 4px in.
+    const selected = pane('list').querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
+    if (selected === null) throw new Error('a row is selected');
+    expectEdge('list', selected);
+
+    // Thread: the bubbles; composer: the chip row (its first chip), the field row and its first control, the hint.
+    expectEdge('thread', firstBox(sections('thread')[0]!));
+    const composer = sections('composer');
+    const chip = composer[0]?.querySelector<HTMLElement>('.starci-core-horizontal-scroll-region button');
+    if (chip === null || chip === undefined) throw new Error('the chip row renders');
+    expectEdge('composer', chip);
+    const row = firstBox(composer[1]!);
+    expectEdge('composer', row);
+    const attach = row.querySelector<HTMLElement>('button');
+    if (attach === null) throw new Error('the attach button renders');
+    expectEdge('composer', attach);
+    const hint = composer[1]?.lastElementChild;
+    if (!(hint instanceof HTMLElement)) throw new Error('the hint renders');
+    expectEdge('composer', hint);
+
+    // The info pane is docked from 48rem and a drawer below it; its bands share the same edge when docked.
+    expect(grid.querySelector('[data-grammar-pane-area="info"]') !== null).toBe(true);
+    if (isDocked) for (const section of sections('info')) expectEdge('info', firstBox(section));
+    // No inline overflow outside the chip row's own scroller.
+    expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth + 1);
+  }, { timeout: 4000 });
+};
+
+const viewportOptions = {
+  desktop1200: { name: 'Desktop 1200 x 800', styles: { width: '1200px', height: '800px' }, type: 'desktop' },
+  phone375: { name: 'Phone 375 x 812', styles: { width: '375px', height: '812px' }, type: 'mobile' },
+} as const;
+
+/** The pane inset at 1200px: the head, search box, first tab pill, selected row, bubbles, chips, controls and hint all start 16px inside their pane. */
+export const PaneInset: Story = {
+  parameters: { viewport: { options: viewportOptions } },
+  globals: { viewport: { value: 'desktop1200', isRotated: false } },
+  render: () => <PaneInsetDemo />,
+  play: async ({ canvasElement }) => assertPaneInset(canvasElement, true),
+};
+
+/** The same grid at 375px: one column, the inset does not step, the info pane is a drawer. */
+export const PaneInsetPhone: Story = {
+  parameters: { viewport: { options: viewportOptions } },
+  globals: { viewport: { value: 'phone375', isRotated: false } },
+  render: () => <PaneInsetDemo />,
+  play: async ({ canvasElement }) => assertPaneInset(canvasElement, false),
+};
+
+/** A tabbed app page: the header tabs, then one PaneGrid attached flush to the tab line and running to the viewport bottom. */
+const PagePanesDemo = () => (
+  <G.Page
+    chrome="panes"
+    header={{
+      title: 'Support agent',
+      tabs: { label: 'Agent', items: [{ id: 'setup', label: 'Setup', href: globalThis.location.pathname }, { id: 'settings', label: 'Settings', href: '/settings' }] },
+    }}
+  >
+    <G.PaneGrid label="Setup" areas={{ base: ['chat', 'side'], medium: ['chat side'] }} columns={{ base: ['fill'], medium: ['fill', 'standard'] }}>
+      <G.Pane area="chat">
+        <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'background' }}>
+          <G.ChatBubble author="Agent" meta="09:12">How can I help?</G.ChatBubble>
+        </G.PaneSection>
+      </G.Pane>
+      <G.Pane area="side" surface>
+        <G.PaneSection gap="section"><G.Text weight="semibold">Settings</G.Text><G.Text tone="muted">Greeting and tools.</G.Text></G.PaneSection>
+      </G.Pane>
+    </G.PaneGrid>
+  </G.Page>
+);
+
+const assertPagePanes = async (canvasElement: HTMLElement) => {
+  await waitFor(() => {
+    const page = canvasElement.querySelector<HTMLElement>('[data-component="Page"][data-grammar-page-chrome="panes"]');
+    const grid = page?.querySelector<HTMLElement>('[data-component="PaneGrid"]');
+    const separator = page?.querySelector<HTMLElement>('.starci-core-page-header-separator');
+    if (!page || !grid || !separator) throw new Error('the panes Page, its separator and its grid render');
+    // Attached flush under the tab line, no gap; both content edges; the viewport bottom.
+    expect(Math.abs(grid.getBoundingClientRect().top - separator.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
+    expect(Math.abs(grid.getBoundingClientRect().left - page.getBoundingClientRect().left)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(grid.getBoundingClientRect().right - page.getBoundingClientRect().right)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(grid.getBoundingClientRect().bottom - window.innerHeight)).toBeLessThanOrEqual(1);
+    expect(getComputedStyle(page).rowGap).toBe('0px');
+    expect(getComputedStyle(grid).borderTopLeftRadius).toBe('0px');
+    // The first pane's bands start 16px inside it.
+    const chat = grid.querySelector<HTMLElement>('[data-grammar-pane-area="chat"]');
+    const bubble = chat?.querySelector<HTMLElement>('[data-component="ChatBubble"]');
+    if (!chat || !bubble) throw new Error('the chat pane renders');
+    expect(Math.abs(bubble.getBoundingClientRect().left - contentLeft(chat) - 16)).toBeLessThanOrEqual(0.5);
+  }, { timeout: 4000 });
+};
+
+/** Page chrome="panes" at 1200px. */
+export const PagePanes: Story = {
+  parameters: { viewport: { options: viewportOptions } },
+  globals: { viewport: { value: 'desktop1200', isRotated: false } },
+  render: () => <PagePanesDemo />,
+  play: async ({ canvasElement }) => assertPagePanes(canvasElement),
+};
+
+/** Page chrome="panes" at 375px: the grid stacks, still attached to the tab line and the viewport bottom. */
+export const PagePanesPhone: Story = {
+  parameters: { viewport: { options: viewportOptions } },
+  globals: { viewport: { value: 'phone375', isRotated: false } },
+  render: () => <PagePanesDemo />,
+  play: async ({ canvasElement }) => assertPagePanes(canvasElement),
 };
 
 /** One message: incoming on the recessed face, outgoing on the accent-soft pair; actions appear on hover or focus. */
