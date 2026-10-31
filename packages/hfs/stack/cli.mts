@@ -32,6 +32,10 @@ export interface Flags {
   urgent?: boolean;
   'first-start'?: boolean;
   redeploy?: boolean;
+  'data-acknowledged'?: boolean;
+  'print-authorized-keys'?: boolean;
+  'print-gate'?: boolean;
+  'public-key'?: string;
   image?: string[];
   keep?: string[];
   'extra-compose'?: string[];
@@ -62,15 +66,15 @@ type Handler = (ctx: StackContext, config: DeployConfig, options: Record<string,
 /** The actions that drive the docker CLI of the operator machine (pointed at the manager by docker-transport.mjs when the key is sealed). */
 const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollback', 'prune', 'status']);
 
-export const ACTIONS = Object.freeze(['prepare', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept', 'status'] as const);
+export const ACTIONS = Object.freeze(['prepare', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept', 'status', 'ci-key'] as const);
 
 /** One action of `starci app stack`. */
 export type Action = (typeof ACTIONS)[number];
 /** True when `value` names one action of `starci app stack`. */
 export const isAction = (value: unknown): value is Action => (ACTIONS as readonly unknown[]).includes(value);
 
-export const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start', '--redeploy']);
-export const VALUE = new Set(['--env', '--image', '--sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote', '--ci-run']);
+export const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start', '--redeploy', '--data-acknowledged', '--print-authorized-keys', '--print-gate']);
+export const VALUE = new Set(['--env', '--image', '--sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote', '--ci-run', '--public-key']);
 export const REPEAT = new Set(['--image', '--keep', '--extra-compose', '--project']);
 /** `--ssh-cmd` replaces the configured alias for an action whose module (or the Docker transport) reaches the manager over SSH. */
 const SSH: string[] = ['--ssh-cmd'];
@@ -88,7 +92,7 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
   deploy: ['--image', '--sha', '--execute', '--out', '--timeout', '--retry', '--skip-public', '--target-binding', '--urgent', '--reason', '--remote', '--db-url-env', '--backup-out', '--first-start', '--db-service', '--ci-run', '--redeploy', ...SSH],
   converge: ['--since', '--timeout', ...SSH],
   verify: ['--retry', '--skip-public', '--skip-internal', '--target-binding', ...SSH],
-  rollback: ['--release', '--execute', '--timeout', ...SSH],
+  rollback: ['--release', '--execute', '--timeout', '--data-acknowledged', ...SSH],
   prune: ['--keep', '--execute', ...SSH],
   backup: ['--swarm-state', '--execute', ...SSH],
   jobs: ['--execute', ...SSH],
@@ -98,13 +102,14 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
   build: ['--push', '--execute'],
   accept: ['--release', '--execute', '--retry', '--db-url-env', ...SSH],
   status: [...SSH],
+  'ci-key': ['--public-key', '--print-authorized-keys', '--print-gate'],
 });
 
 /** The operands of the actions that take any, as the usage prints them. */
 export const OPERANDS: Readonly<Partial<Record<Action, string>>> = Object.freeze({ jobs: '<action> [<arg>...]', task: '<name> [<arg>...]', ingress: '<action> [<arg>...]' });
 
 /** The read-only actions, whose `--env` defaults to production. Every action with an effect names its environment, so none reaches production by omission. */
-export const READ_ONLY: readonly string[] = Object.freeze(['build-args', 'render', 'verify', 'status']);
+export const READ_ONLY: readonly string[] = Object.freeze(['build-args', 'render', 'verify', 'status', 'ci-key']);
 
 /** Splits argv into { flags, positional }; an unknown flag, a flag of another action or a flag without its value is a refusal. */
 function parseFlags(action: Action, argv: string[]): { flags: Flags; positional: string[] } {
@@ -177,13 +182,14 @@ const OPTIONS: Record<Action, (input: OptionInput) => Record<string, unknown>> =
   }),
   converge: ({ flags }) => ({ since: flags.since, timeoutSeconds: number(flags, 'timeout') }),
   verify: ({ flags }) => ({ retrySeconds: number(flags, 'retry'), skipPublic: flags['skip-public'] === true, skipInternal: flags['skip-internal'] === true }),
-  rollback: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, timeoutSeconds: number(flags, 'timeout') }),
+  rollback: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, timeoutSeconds: number(flags, 'timeout'), dataAcknowledged: flags['data-acknowledged'] === true }),
   prune: ({ flags, cwd }) => ({ keepFiles: (flags.keep ?? []).map((file) => path.resolve(cwd, file)), execute: flags.execute === true }),
   backup: ({ flags }) => ({ swarmState: flags['swarm-state'] === true, execute: flags.execute === true }),
   ingress: ({ flags, positional }) => ({ action: positional[0], execute: flags.execute === true, args: positional.slice(1) }),
   build: ({ flags }) => ({ push: flags.push === true, execute: flags.execute === true }),
   accept: ({ flags }) => ({ release: flags.release ?? null, execute: flags.execute === true, retrySeconds: number(flags, 'retry'), dbUrlEnv: flags['db-url-env'] }),
   status: () => ({}),
+  'ci-key': ({ flags, cwd }) => ({ publicKey: flags['public-key'] ? path.resolve(cwd, flags['public-key']) : null, printAuthorizedKeys: flags['print-authorized-keys'] === true, printGate: flags['print-gate'] === true }),
   retire: ({ flags }) => ({ projects: flags.project ?? [], execute: flags.execute === true }),
   jobs: ({ flags, positional }) => ({ action: positional[0], args: positional.slice(1), execute: flags.execute === true }),
   task: ({ flags, positional }) => ({ name: positional[0], args: positional.slice(1), execute: flags.execute === true }),
@@ -201,6 +207,7 @@ const MODULES: Record<Action, [string, string]> = {
   build: ['./build.mjs', 'buildImages'],
   accept: ['./deploy.mjs', 'acceptRelease'],
   status: ['./status.mjs', 'statusStack'],
+  'ci-key': ['./ci-key.mjs', 'ciKey'],
 };
 
 async function handlerOf(action: Action, importer: (file: string) => Promise<Record<string, unknown>>): Promise<Handler> {

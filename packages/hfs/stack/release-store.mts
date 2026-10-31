@@ -8,7 +8,7 @@ import path from 'node:path';
 import { firstLine, lines as splitLines } from './context.mjs';
 import { isReleaseId } from './digest.mjs';
 import { failure, refusal } from './errors.mjs';
-import { releaseListScript, releasePointerScript } from './remote.mjs';
+import { gatedCommand, inlineCommand } from './ssh-gate.mjs';
 import type { RemoteResult } from './remote.mjs';
 import type { DeployConfig } from './config.mjs';
 
@@ -45,6 +45,8 @@ export interface ReleaseStore {
   unlock(token: string): Promise<boolean>;
   /** The journal of one attempt under /srv/<stack>/deploys. */
   journal(attempt: string): AttemptJournal;
+  /** The newest attempt documents (at most 500), oldest first; a document that is not a JSON object is left out. */
+  journals(): Promise<Record<string, unknown>[]>;
 }
 
 /** A lock nobody refreshed for this long (its holder died without releasing it) is taken over by the next try. Phases refresh it. */
@@ -67,30 +69,18 @@ const checkedAttempt = (attempt: unknown): string => {
   return attempt;
 };
 
-const OWNER_READ = (lock: string): string => `if [ -r "${lock}/owner" ]; then read -r held_token held_trigger held_stamp < "${lock}/owner"; else held_token=none; held_trigger=unknown; held_stamp=$(stat -c %Y "${lock}" 2>/dev/null) || held_stamp=0; fi; case "$held_stamp" in ''|*[!0-9]*) held_stamp=0;; esac`;
-
 /**
- * The remote script of one try at the deploy lock: `mkdir` is the atomic claim, the owner file (token, trigger, epoch) is replaced by rename, a lock
- * unrefreshed for `ttl` seconds is moved aside (one rename wins) and claimed anew. Prints `acquired` or `busy <trigger> <age>`. Composed only from
- * a validated base, token and trigger.
+ * The remote command of one try at the deploy lock (ssh-gate.mts holds the body): `mkdir` is the atomic claim, the owner file (token, trigger, epoch) is
+ * replaced by rename, a lock unrefreshed for `ttl` seconds is moved aside (one rename wins) and claimed anew. Prints `acquired` or `busy <trigger> <age>`.
+ * Composed only from a validated base, token and trigger.
  */
-export const lockAcquireScript = (base: string, token: string, trigger: string, ttl: number = LOCK_TTL_SECONDS): string => {
-  const lock = `${base}/deploy.lock`;
-  return [
-    `b="${base}"; l="${lock}"; now=$(date +%s); mkdir -p "$b" || exit 1`,
-    `claim() { printf '%s %s %s\\n' '${checkedToken(token)}' '${checkedTrigger(trigger)}' "$now" > "$l/owner.new" && mv -f "$l/owner.new" "$l/owner" && echo acquired && exit 0; exit 1; }`,
-    'if mkdir "$l" 2>/dev/null; then claim; fi',
-    OWNER_READ('$l'),
-    `age=$((now - held_stamp)); if [ "$age" -gt ${Math.trunc(ttl)} ]; then if mv "$l" "$l.stale.${token}" 2>/dev/null; then rm -rf "$l.stale.${token}"; if mkdir "$l" 2>/dev/null; then claim; fi; fi; fi`,
-    'case "$held_trigger" in ci|dispatch|urgent) ;; *) held_trigger=unknown;; esac; echo "busy $held_trigger $age"',
-  ].join('; ');
-};
+export const lockAcquireScript = (base: string, token: string, trigger: string, ttl: number = LOCK_TTL_SECONDS): string => inlineCommand('lock-acquire', [base, checkedToken(token), checkedTrigger(trigger), String(Math.trunc(ttl))]);
 
-/** The remote script that marks the lock alive when `token` owns it: prints `held` or `lost`. */
-export const lockRefreshScript = (base: string, token: string): string => `l="${base}/deploy.lock"; now=$(date +%s); if [ -r "$l/owner" ]; then read -r t g s < "$l/owner"; if [ "$t" = '${checkedToken(token)}' ]; then printf '%s %s %s\\n' "$t" "$g" "$now" > "$l/owner.new" && mv -f "$l/owner.new" "$l/owner" && echo held; else echo lost; fi; else echo lost; fi`;
+/** The remote command that marks the lock alive when `token` owns it: prints `held` or `lost`. */
+export const lockRefreshScript = (base: string, token: string): string => inlineCommand('lock-refresh', [base, checkedToken(token)]);
 
-/** The remote script that removes the lock when `token` owns it: prints `released` or `lost`. */
-export const lockReleaseScript = (base: string, token: string): string => `l="${base}/deploy.lock"; if [ -r "$l/owner" ]; then read -r t g s < "$l/owner"; if [ "$t" = '${checkedToken(token)}' ]; then rm -rf "$l" && echo released; else echo lost; fi; else echo lost; fi`;
+/** The remote command that removes the lock when `token` owns it: prints `released` or `lost`. */
+export const lockReleaseScript = (base: string, token: string): string => inlineCommand('lock-release', [base, checkedToken(token)]);
 
 const BASE = /^\/[A-Za-z0-9._/-]+$/u;
 const FILES = ['stack.yaml', 'release.json'];
@@ -105,7 +95,7 @@ const checkedId = (id: unknown): string => {
 
 const checkedBase = (config: Pick<DeployConfig, 'remote' | 'stack'>): string => {
   const base = config.remote?.releasesBase ?? `/srv/${config.stack}`;
-  if (!BASE.test(base) || base.split('/').includes('..')) throw refusal('STACK_RELEASE_BASE', `the releases base ${base} must be an absolute path without ..`);
+  if (!BASE.test(base) || base.includes('..')) throw refusal('STACK_RELEASE_BASE', `the releases base ${base} must be an absolute path without ..`);
   return base;
 };
 
@@ -113,11 +103,12 @@ const checkedBase = (config: Pick<DeployConfig, 'remote' | 'stack'>): string => 
  * The release store of one stack. `ssh` is the runner; the returned API is async:
  *   store(dir, id) accept(id) current() previous() fetch(id, targetDir) list()
  */
-export function createReleaseStore(config: Pick<DeployConfig, 'remote' | 'stack'>, ssh: StoreSsh): ReleaseStore {
+export function createReleaseStore(config: Pick<DeployConfig, 'remote' | 'stack'>, ssh: StoreSsh, options: { gated?: boolean | undefined } = {}): ReleaseStore {
   const base = checkedBase(config);
-  const dirOf = (id: string): string => `${base}/releases/${checkedId(id)}`;
 
-  async function run(command: string, input?: string): Promise<string> {
+  /** Runs the named operation: through the forced-command gate (`starci-op <name> <args>`) when the key has one, else as the same body under `sh -c`. */
+  async function run(name: string, args: readonly string[], input?: string): Promise<string> {
+    const command = options.gated === true ? gatedCommand(name, args) : inlineCommand(name, args);
     const answer = await ssh(lfOnly(command), { input });
     if (answer.status !== 0) throw failure('STACK_RELEASE_SSH', `remote command failed: ${firstLine(answer.stderr)}`);
     return answer.stdout;
@@ -128,15 +119,14 @@ export function createReleaseStore(config: Pick<DeployConfig, 'remote' | 'stack'
   }
 
   async function pointer(name: string): Promise<string> {
-    const out = await run(releasePointerScript(`"${base}"`, name));
+    const out = await run('pointer', [base, name]);
     const id = out.trim();
     return isReleaseId(id) ? id : '';
   }
 
   /** Both files of a stored release as [name, text] pairs, framed as base64 lines. */
   async function readFiles(id: string): Promise<[string, string][]> {
-    const source = dirOf(id);
-    const out = await run(`set -e; for f in stack.yaml release.json; do test -r "${source}/$f"; base64 < "${source}/$f" | tr -d '\\n'; printf '\\n'; done`);
+    const out = await run('read', [base, checkedId(id)]);
     const frames = out.split('\n');
     if (frames.length !== 3 || frames[2] !== '' || frames.slice(0, 2).some((frame) => !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(frame))) throw failure('STACK_RELEASE_SSH', 'invalid release response framing');
     return FILES.map((name, index): [string, string] => [name, Buffer.from(frames[index] as string, 'base64').toString('utf8')]);
@@ -145,15 +135,15 @@ export function createReleaseStore(config: Pick<DeployConfig, 'remote' | 'stack'
   return {
     /** Uploads stack.yaml and release.json of a rendered release as text; read-only afterwards. */
     async store(dir: string, id: string): Promise<void> {
-      const target = dirOf(id);
+      checkedId(id);
       const contents = FILES.map((name): [string, string] => [name, readLocal(dir, name)]);
       const input = contents.map(([, text]) => Buffer.from(text, 'utf8').toString('base64')).join('\n') + '\n';
-      await run(`set -e; d="${target}"; if [ -d "$d" ]; then chmod -R u+w "$d"; else mkdir -p "$d"; fi; IFS= read -r stack; IFS= read -r release; printf '%s' "$stack" | base64 -d > "$d/stack.yaml"; printf '%s' "$release" | base64 -d > "$d/release.json"; chmod 440 "$d/stack.yaml" "$d/release.json"; chmod 550 "$d"`, input);
+      await run('store', [base, checkedId(id)], input);
     },
     /** The release was verified: previous := current, current := id. */
     async accept(id: string): Promise<void> {
       checkedId(id);
-      await run(`set -e; cd "${base}"; test -d "releases/${id}"; if [ -L current ] && [ "$(basename "$(readlink current)")" != "${id}" ]; then ln -sfn "$(readlink current)" previous; fi; ln -sfn "releases/${id}" current.new; mv -Tf current.new current`);
+      await run('accept', [base, id]);
     },
     /** The accepted release id, '' when none. */
     current: () => pointer('current'),
@@ -174,31 +164,42 @@ export function createReleaseStore(config: Pick<DeployConfig, 'remote' | 'stack'
       return { stackYaml: (stack as [string, string])[1], release: record !== null && typeof record === 'object' && !Array.isArray(record) ? record as Record<string, unknown> : {} };
     },
     async tryLock(token: string, trigger: LockTrigger): Promise<LockAttempt> {
-      const answer = (await run(lockAcquireScript(base, token, trigger))).trim();
+      const answer = (await run('lock-acquire', [base, checkedToken(token), checkedTrigger(trigger), String(LOCK_TTL_SECONDS)])).trim();
       if (answer === 'acquired') return { acquired: true };
       const busy = /^busy ([a-z]+) (-?[0-9]+)$/u.exec(answer);
       if (!busy) throw failure('STACK_RELEASE_SSH', 'the deploy lock script answered something else than acquired or busy');
       return { acquired: false, holder: busy[1] as string, ageSeconds: Number(busy[2]) };
     },
-    async refreshLock(token: string): Promise<boolean> { return (await run(lockRefreshScript(base, token))).trim() === 'held'; },
-    async unlock(token: string): Promise<boolean> { return (await run(lockReleaseScript(base, token))).trim() === 'released'; },
+    async refreshLock(token: string): Promise<boolean> { return (await run('lock-refresh', [base, checkedToken(token)])).trim() === 'held'; },
+    async unlock(token: string): Promise<boolean> { return (await run('lock-release', [base, checkedToken(token)])).trim() === 'released'; },
     journal(attempt: string): AttemptJournal {
       const id = checkedAttempt(attempt);
-      const file = `${base}/deploys/${id}.json`;
       const encoded = (value: object): string => `${Buffer.from(JSON.stringify(value), 'utf8').toString('base64')}
 `;
       return {
         async write(document: object): Promise<void> {
-          await run(`set -e; d="${base}/deploys"; mkdir -p "$d"; IFS= read -r doc; printf '%s' "$doc" | base64 -d > "$d/.${id}.tmp"; mv -f "$d/.${id}.tmp" "${file}"`, encoded(document));
+          await run('journal-write', [base, id], encoded(document));
         },
         async index(entry: object): Promise<void> {
-          await run(`set -e; mkdir -p "${base}/deploys"; IFS= read -r line; printf '%s\\n' "$(printf '%s' "$line" | base64 -d)" >> "${base}/deploys.jsonl"`, encoded(entry));
+          await run('journal-index', [base], encoded(entry));
         },
       };
     },
+    /** The attempt documents the journal keeps, oldest first. */
+    async journals(): Promise<Record<string, unknown>[]> {
+      const documents: Record<string, unknown>[] = [];
+      for (const frame of (await run('journal-read', [base])).split('\n')) {
+        if (frame === '') continue;
+        try {
+          const parsed: unknown = JSON.parse(Buffer.from(frame, 'base64').toString('utf8'));
+          if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) documents.push(parsed as Record<string, unknown>);
+        } catch { /* a document that cannot be read is no evidence either way */ }
+      }
+      return documents;
+    },
     /** The stored releases, newest first: [{ id, current, previous }]. */
     async list(): Promise<ReleaseEntry[]> {
-      const response = await run(`${releasePointerScript(`"${base}"`, 'current')}; ${releasePointerScript(`"${base}"`, 'previous')}; ${releaseListScript(`"${base}"`)}`);
+      const response = await run('list', [base]);
       const [current, previous, ...entries] = response.split('\n');
       const now = isReleaseId(current) ? current : '';
       const before = isReleaseId(previous) ? previous : '';

@@ -15,6 +15,7 @@ import type { StackContext } from './context.mjs';
 import { StackError, refusal } from './errors.mjs';
 import type { LockTrigger, ReleaseStore } from './release-store.mjs';
 import type { ActionResult } from './remote.mjs';
+import { notifyOutcome } from './notify.mjs';
 import type { ObservedService } from './status.mjs';
 
 /** What started the attempt: a CI run, a manual dispatch or the owner's urgent deploy. */
@@ -51,10 +52,18 @@ export interface AttemptDocument {
   backup: Record<string, unknown> | null;
   /** Reserved for the migrate and contract phases: the names of the migrations that were applied. */
   migrations: string[];
+  /** The contract migrations this attempt applied (the marker the manual rollback guard reads); empty when it applied none. */
+  contract: string[];
   /** `docker service inspect` snapshots by moment: `converge`, `rollback`, `accept`. */
   observed: Record<string, ObservedService[]>;
   outcome: Outcome;
   error: { code: string; message: string } | null;
+}
+
+/** The facts of a finished attempt that a notification carries: names, digests and codes, never a message text or a value. */
+export interface AttemptSummary {
+  attempt: string; kind: AttemptKind; stack: string; env: string; outcome: Outcome; trigger: Trigger;
+  sourceSha: string | null; tag: string | null; releaseId: string | null; ciUrl: string | null; errorCode: string | null;
 }
 
 /** What an attempt is told about itself when it opens. */
@@ -68,7 +77,7 @@ export interface AttemptMeta {
 }
 
 /** The facts an attempt learns while it runs. */
-export interface Note { releaseId?: string | null; previous?: string | null; backup?: Record<string, unknown> | null; migrations?: string[]; urgent?: { role: string; reason: string; tag?: string | undefined } }
+export interface Note { releaseId?: string | null; previous?: string | null; backup?: Record<string, unknown> | null; migrations?: string[]; contract?: string[]; urgent?: { role: string; reason: string; tag?: string | undefined } }
 
 /** The open record of one attempt. */
 export interface Recorder {
@@ -82,6 +91,8 @@ export interface Recorder {
   phase<T>(name: string, action: () => T | Promise<T>, passed?: (value: T) => boolean): Promise<T>;
   snapshot(moment: string, services: ObservedService[]): void;
   finish(outcome: Outcome, error?: { code: string; message: string } | null): Promise<void>;
+  /** The facts of the attempt as it stands (call after `finish` for a notification). */
+  summary(): AttemptSummary;
 }
 
 const REASON_MAX = 500;
@@ -114,7 +125,7 @@ export async function openAttempt(ctx: StackContext, config: DeployConfig, store
     schema: 'starci/stack-deploy-attempt@1', attempt: id, kind: meta.kind, stack: config.stack, env: config.env, startedAt: isoOf(ctx), endedAt: null,
     trigger: meta.trigger, sourceSha: meta.sourceSha ?? null, tag: facts.tag, ci: facts.ci,
     urgent: meta.urgent ? { role: clean(meta.urgent.role, 40), reason: meta.urgent.reason.slice(0, REASON_MAX), tag: meta.urgent.tag ?? null } : null,
-    releaseId: null, previous: null, phases: [], backup: null, migrations: [], observed: {}, outcome: 'running', error: null,
+    releaseId: null, previous: null, phases: [], backup: null, migrations: [], contract: [], observed: {}, outcome: 'running', error: null,
   };
   const warnings: string[] = [];
   let beat: () => Promise<void> = async () => {};
@@ -135,6 +146,7 @@ export async function openAttempt(ctx: StackContext, config: DeployConfig, store
       if (found.previous !== undefined) document.previous = found.previous;
       if (found.backup !== undefined) document.backup = found.backup;
       if (found.migrations !== undefined) document.migrations = found.migrations;
+      if (found.contract !== undefined) document.contract = found.contract;
       if (found.urgent) document.urgent = { role: clean(found.urgent.role, 40), reason: found.urgent.reason.slice(0, REASON_MAX), tag: found.urgent.tag ?? null };
     },
     async phase<T>(name: string, action: () => T | Promise<T>, passed: (value: T) => boolean = () => true): Promise<T> {
@@ -155,6 +167,10 @@ export async function openAttempt(ctx: StackContext, config: DeployConfig, store
       }
     },
     snapshot(moment, services) { document.observed[moment] = services; },
+    summary: () => ({
+      attempt: id, kind: document.kind, stack: document.stack, env: document.env, outcome: document.outcome, trigger: document.trigger,
+      sourceSha: document.sourceSha, tag: document.tag, releaseId: document.releaseId, ciUrl: document.ci?.url ?? null, errorCode: document.error?.code ?? null,
+    }),
     async finish(outcome, error = null) {
       document.outcome = outcome;
       document.endedAt = isoOf(ctx);
@@ -223,9 +239,11 @@ export async function recordedAttempt(ctx: StackContext, config: DeployConfig, s
     });
     const result = await body(recorder);
     await recorder.finish(outcomeOf(result, meta.kind), result.refused ? { code: result.refused.code, message: result.refused.message.slice(0, 300) } : null);
-    return { ...result, lines: [...result.lines, ...recorder.warnings], data: { ...result.data, attempt: recorder.id } };
+    const notice = await notifyOutcome(ctx, config, recorder.summary());
+    return { ...result, lines: [...result.lines, ...recorder.warnings, ...notice], data: { ...result.data, attempt: recorder.id } };
   } catch (error) {
     await recorder.finish('refused', errorOf(error));
+    await notifyOutcome(ctx, config, recorder.summary());
     throw error;
   } finally {
     if (hold) {

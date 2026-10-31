@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.13.1 - 2026-10-31
+
+The open items of the delivery pipeline (contexts/project/cicd.md, "As built").
+
+- Added: `starci-ssh-gate`, the forced command of the CI SSH key. The release store's remote operations are named scripts with arguments of a closed alphabet (`stack/ssh-gate.mts`); the gate admits `docker system dial-stdio` and `starci-op <name> <args>` and refuses anything else with exit 126, saying nothing about the request. `starci app stack ci-key --env <env>` prints the owner-run install steps, `--print-gate` the gate text and `--public-key <file> --print-authorized-keys` the line (`restrict,command="starci-ssh-gate",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc <key>`). A sealed `vps-ci` member that holds `VPS_GATE: "1"` makes `stack connect` export `STARCI_SSH_GATE=1`, and the deploy, rollback, accept and status verbs then send the operations through the gate; without it they run the same bodies under `sh -c`. Not admitted yet: the post-deploy tasks and the manager backup and test decrypt of a stack database.
+- Added: `deploy.notify` (`webhook: {member, key}`, optional `on`), off unless declared: one JSON webhook message (outcome, environment, stack, commit, tag, release, attempt, CI run URL, failure code) when an attempt ends; the URL is a key of a sealed member, https only, never printed; a failing webhook is a line of the result and never fails the deploy.
+- Added: the journal document of an attempt carries `contract`, the contract migrations it applied, and the release store reads the journal (`journals()`). `stack rollback` refuses `STACK_ROLLBACK_CONTRACT` (dry run too) for a release older than the previous release of an attempt that applied a contract migration, or that the journal never saw once any is recorded, unless `--data-acknowledged`.
+- Changed: the bundled canon pins name hfs 4.13.1 and the lint cohort eslint-canon-be 3.9.4, eslint-canon-fe 9.6.4, eslint-grammar-core and eslint-grammar-offset-pop 0.16.4 (their copies of the pins moved with them).
+- Changed: the release store's lock, pointer, list, read, store, accept and journal commands are the named operations above; a releases base may not contain `..` anywhere.
+
 ## 4.13.0 - 2026-10-31
 
 The delivery pipeline of an app (contexts/project/cicd.md, ruling app-cicd-auto-deploy; owner approval 2026-10-31: every green release tag deploys by itself, STARCI_DEPLOY_PAUSED is the brake, agents deploy, the CI deploy key is sealed, pull requests get CI, contract migrations run after the accept, Sonar judges every full run, images are cached in GitHub Actions and built for amd64 unless declared).

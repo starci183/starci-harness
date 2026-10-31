@@ -42,6 +42,8 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import type { ActionResult, Runner, SshOptions } from './remote.mjs';
 import type { RenderOptions } from './render.mjs';
 import { createReleaseStore } from './release-store.mjs';
+import { contractFinding, enforceContractGuard } from './rollback-guard.mjs';
+import { gateIsOn } from './ssh-gate.mjs';
 import type { ReleaseStore } from './release-store.mjs';
 import { urgentDeploy } from './urgent-floor.mjs';
 import type { DeployData, DeployOutcome, FirstStartStepResult, FloorDeps } from './urgent-floor.mjs';
@@ -77,7 +79,7 @@ export interface DeployOptions {
 }
 
 /** What a rollback takes. */
-export interface RollbackOptions { release?: string | null | undefined; execute?: boolean | undefined; timeoutSeconds?: number | undefined; sshCmd?: string | null | undefined; lockWaitSeconds?: number | undefined }
+export interface RollbackOptions { release?: string | null | undefined; execute?: boolean | undefined; timeoutSeconds?: number | undefined; sshCmd?: string | null | undefined; lockWaitSeconds?: number | undefined; dataAcknowledged?: boolean | undefined }
 
 /** What an accept takes. */
 export interface AcceptOptions { release?: string | null | undefined; execute?: boolean | undefined; retrySeconds?: number | undefined; sshCmd?: string | null | undefined; lockWaitSeconds?: number | undefined; dbUrlEnv?: string | undefined }
@@ -91,7 +93,7 @@ export interface DeployDeps {
   postDeployStack: (ctx: StackContext, config: DeployConfig) => Promise<ActionResult>;
   verifyStack: (ctx: StackContext, config: DeployConfig, options: { retrySeconds?: number | undefined; skipPublic?: boolean; stackFile?: string }) => Promise<ActionResult>;
   pruneStack: (ctx: StackContext, config: DeployConfig, options: { keepFiles: string[]; execute: boolean }) => Promise<ActionResult>;
-  releaseStore: (config: DeployConfig, ssh: Runner) => ReleaseStore;
+  releaseStore: (config: DeployConfig, ssh: Runner, options?: { gated?: boolean | undefined }) => ReleaseStore;
   observedServices: (ctx: StackContext, config: DeployConfig) => ObservedService[];
   ssh: (ctx: StackContext, config: DeployConfig, options: SshOptions) => Runner | Promise<Runner>;
   floor: Partial<FloorDeps>;
@@ -233,7 +235,7 @@ async function openRunner(ctx: StackContext, config: DeployConfig, options: SshO
   return run;
 }
 
-const openStore = async (ctx: StackContext, config: DeployConfig, options: SshOptions, d: DeployDeps, cleanups: Cleanups): Promise<ReleaseStore> => d.releaseStore(config, await openRunner(ctx, config, options, d, cleanups));
+const openStore = async (ctx: StackContext, config: DeployConfig, options: SshOptions, d: DeployDeps, cleanups: Cleanups): Promise<ReleaseStore> => d.releaseStore(config, await openRunner(ctx, config, options, d, cleanups), { gated: gateIsOn(ctx.env) });
 
 /** Redeploys a stored release after a failed deploy: fetch, stack deploy, converge. Returns the lines to print. */
 async function redeployStored(ctx: StackContext, config: DeployConfig, d: DeployDeps, store: ReleaseStore, previous: string, out: string, steps: StepRecord[], rec: Recorder): Promise<{ lines: string[]; ok: boolean }> {
@@ -419,7 +421,7 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
     const contract = phase && !first ? await rec.phase('contract', () => contractPhase(phase), (done) => done.ok) : null;
     if (contract) {
       lines.push(...contract.lines);
-      rec.note({ migrations: [...((data.migrations as { applied?: string[] } | undefined)?.applied ?? []), ...contract.applied] });
+      rec.note({ migrations: [...((data.migrations as { applied?: string[] } | undefined)?.applied ?? []), ...contract.applied], contract: contract.applied });
       steps.push({ step: 'contract', ok: contract.ok });
       data.migrations = { ...(data.migrations as object), contractApplied: contract.applied };
     }
@@ -476,7 +478,7 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
     }
     if (options.urgent !== true) await render();
     const run = await openRunner(ctx, config, options, d, cleanups);
-    const store = d.releaseStore(config, run);
+    const store = d.releaseStore(config, run, { gated: gateIsOn(ctx.env) });
     const meta: AttemptMeta = {
       kind: 'deploy', trigger: triggerOf(options), sourceSha: options.sourceSha, ciRun: options.ciRun,
       urgent: options.urgent === true ? { role: ctx.env.STARCI_ROLE ?? 'unknown', reason: options.reason ?? '' } : undefined,
@@ -517,7 +519,9 @@ export async function rollbackRelease(ctx: StackContext, config: DeployConfig, o
   try {
     const target = release ?? await store.previous();
     if (!target) throw refusal('STACK_ROLLBACK_NO_TARGET', 'no previous accepted release is recorded; name one with --release');
-    if (options.execute !== true) return { ok: true, lines: [`dry run: would redeploy release ${target}`], data: { release: target, executed: false } };
+    // A manual rollback to a release older than an applied contract migration is refused unless the owner acknowledges the data effect.
+    const notice = enforceContractGuard(contractFinding(await store.journals(), target), options.dataAcknowledged === true);
+    if (options.execute !== true) return { ok: true, lines: [...notice, `dry run: would redeploy release ${target}`], data: { release: target, executed: false } };
     return await recordedAttempt(ctx, config, store, { kind: 'rollback', trigger: 'dispatch' }, { waitSeconds: options.lockWaitSeconds }, async (rec) => {
       const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'stack-rollback-'));
       try {
@@ -534,6 +538,7 @@ export async function rollbackRelease(ctx: StackContext, config: DeployConfig, o
           ['verify', () => d.verifyStack(ctx, config, { retrySeconds: 180, stackFile })],
           ['accept', async () => { await acceptObserved(ctx, config, d, store, rec, { out: scratch, releaseId: target }); return { ok: true, lines: [] }; }],
         ], lines, steps, rec);
+        lines.unshift(...notice);
         lines.push(failed ? `rollback to ${target} failed at ${failed}` : `rolled back to release ${target}; a rollback cannot undo data effects`);
         return { ok: !failed, lines, data: { release: target, executed: true, steps } };
       } finally {
@@ -572,7 +577,7 @@ export async function acceptRelease(ctx: StackContext, config: DeployConfig, opt
       await housekeeping(ctx, config, d, store, { previous: previous || null, out }, lines);
       const database = await declaredDatabase(ctx, config);
       const contract = database ? await rec.phase('contract', () => contractPhase({ ctx, config, database, f: { ...FLOOR_DEPS, ...d.floor }, run: null, dbUrlEnv: options.dbUrlEnv }), (done) => done.ok) : null;
-      if (contract) { lines.push(...contract.lines); rec.note({ migrations: contract.applied }); }
+      if (contract) { lines.push(...contract.lines); rec.note({ migrations: contract.applied, contract: contract.applied }); }
       if (contract && !contract.ok) return { ok: false, lines: [...lines, `release ${release} is accepted and serving; its contract migration is red: the owner decides`], data: { release, accepted: true, executed: true, contractFailed: true } };
       return { ok: true, lines, data: { release, accepted: true, executed: true, ...(contract ? { contractApplied: contract.applied } : {}) } };
     });

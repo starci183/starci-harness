@@ -633,6 +633,7 @@ $defs:
         uniqueItems: true
         items: {type: string, pattern: '^[a-z][a-z0-9-]{0,40}$'}
       backup: {$ref: '#/$defs/deployBackup'}
+      notify: {$ref: '#/$defs/deployNotify'}
       registry: {$ref: '#/$defs/deployRegistry'}
       ingress:
         description: The shared host ingress (stack-ingress-config.mjs is the authority for the fields; starci app check R294 judges them).
@@ -850,6 +851,27 @@ $defs:
         type: array
         minItems: 1
         items: {$ref: '#/$defs/deployBackupVolume'}
+  deployNotify:
+    description: >-
+      One webhook message per deploy outcome (accepted, rolled-back, rollback-failed, failed; `refused` only when listed): the outcome, the environment, the commit, the tag, the
+      release and the attempt, as JSON with a `text` and a `content` line so a chat webhook shows it. Off unless declared. The URL is a sealed value of the environment
+      (https only), never written here; a failing webhook is a line of the result and never fails the deploy.
+    type: object
+    additionalProperties: false
+    required: [webhook]
+    properties:
+      webhook:
+        type: object
+        additionalProperties: false
+        required: [member, key]
+        properties:
+          member: {$ref: '#/$defs/deployName'}
+          key: {$ref: '#/$defs/deployKey'}
+      on:
+        type: array
+        uniqueItems: true
+        minItems: 1
+        items: {enum: [accepted, rolled-back, rollback-failed, failed, refused]}
   deployRegistry:
     description: >-
       The image registry and the visibility the app's packages are meant to have. The canon scaffold writes `public`; the value then belongs to the app.

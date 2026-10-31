@@ -29,6 +29,10 @@ export interface VerifyConfig { http: HttpCheck[]; exec: ExecCheck[] }
 export interface JobsConfig { service: string; command: string[] }
 export interface TaskConfig { service: string; command: string[]; timeoutSeconds: number }
 export interface BackupConfig { image: string; keepDays: number; dir: string | null; volumes: Array<{ name: string; volume: string }> }
+/** The outcomes of a deploy attempt a notification can be sent for. */
+export const NOTIFY_OUTCOMES = ['accepted', 'rolled-back', 'rollback-failed', 'failed', 'refused'] as const;
+/** `deploy.notify`: the sealed member and key that hold the webhook URL (https), and the outcomes that are announced. */
+export interface NotifyConfig { webhook: { member: string; key: string }; on: string[] }
 export interface RegistryConfig { host: string; visibility: string }
 
 /** The normalised `deploy` block. */
@@ -52,6 +56,8 @@ export interface DeployConfig {
   tasks: Record<string, TaskConfig>;
   postDeploy: string[];
   backup: BackupConfig | null;
+  /** deploy.notify: one webhook message per deploy outcome; null (off) unless declared. */
+  notify: NotifyConfig | null;
   ingress: IngressConfig | null;
   registry: RegistryConfig;
 }
@@ -76,7 +82,7 @@ const ARGUMENT = /^[A-Za-z0-9_@%+=:,./-]+$/u;
 const UPPER_ENV = KEY;
 
 const FIELDS = {
-  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'ingress', 'registry'],
+  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'notify', 'ingress', 'registry'],
   remote: ['host', 'releasesBase', 'sealed', 'serverRecipient'],
   image: ['app', 'buildArgs'],
   buildArgs: ['values', 'sealed'],
@@ -95,6 +101,8 @@ const FIELDS = {
   backup: ['image', 'keepDays', 'dir', 'volumes'],
   backupVolume: ['name', 'volume'],
   registry: ['host', 'visibility'],
+  notify: ['webhook', 'on'],
+  webhook: ['member', 'key'],
 };
 
 const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
@@ -395,6 +403,20 @@ function backup(c: Collector, block: Block): BackupConfig | null {
   return { image: block.image, keepDays: block.keepDays ?? 14, dir: block.dir ?? null, volumes };
 }
 
+/**
+ * `deploy.notify`: off unless declared. The webhook URL is a sealed value (never in the declaration, the log or the journal); the default announces every
+ * outcome that changed or tried to change the services (accepted, rolled-back, rollback-failed, failed), and `on` narrows or adds `refused`.
+ */
+function notify(c: Collector, block: Block, members: Set<string>): NotifyConfig | null {
+  if (block === undefined) return null;
+  if (!closedFields(c, 'deploy.notify', block, FIELDS.notify)) return null;
+  if (!closedFields(c, 'deploy.notify.webhook', block.webhook, FIELDS.webhook)) return null;
+  memberRef(c, 'deploy.notify.webhook.member', block.webhook.member, members);
+  patternField(c, 'deploy.notify.webhook.key', block.webhook.key, KEY);
+  const on = block.on === undefined ? ['accepted', 'rolled-back', 'rollback-failed', 'failed'] : stringList(c, 'deploy.notify.on', block.on, new RegExp(`^(?:${NOTIFY_OUTCOMES.join('|')})$`, 'u'), { nonEmpty: true });
+  return { webhook: { member: block.webhook.member, key: block.webhook.key }, on };
+}
+
 function ingress(c: Collector, block: Block, probe: DeployProbe): IngressConfig | null {
   if (block === undefined) return null;
   const result = normalizeIngress(block, { probe });
@@ -433,6 +455,7 @@ export function normalizeDeploy(block: Block, { project, probe }: { project: str
     tasks,
     postDeploy: postDeploy(c, block.postDeploy, tasks),
     backup: backup(c, block.backup),
+    notify: notify(c, block.notify, members),
     ingress: ingress(c, block.ingress, probe),
     registry: registry(c, block.registry),
   };

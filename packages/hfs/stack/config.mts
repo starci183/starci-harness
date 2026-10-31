@@ -28,6 +28,8 @@ export interface JobsBlock { service: string; command: string[] }
 export interface TaskEntry { service: string; command: string[]; timeoutSeconds: number }
 export interface BackupVolume { name: string; volume: string }
 export interface BackupBlock { image: string; keepDays: number; dir: string | null; volumes: BackupVolume[] }
+/** The normalised `deploy.notify` block: the sealed webhook URL and the outcomes announced. */
+export interface NotifyBlock { webhook: { member: string; key: string }; on: string[] }
 export interface RegistryBlock { host: string; visibility: string }
 
 export interface IngressLegacy { dir: string; dynamicDir: string; container: string }
@@ -80,6 +82,7 @@ export interface DeployBlock {
   tasks: Record<string, TaskEntry>;
   postDeploy: string[];
   backup: BackupBlock | null;
+  notify: NotifyBlock | null;
   ingress: IngressConfig | null;
   registry: RegistryBlock;
 }

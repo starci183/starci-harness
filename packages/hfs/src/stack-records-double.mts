@@ -3,7 +3,7 @@
 import type { AttemptJournal, LockAttempt, ReleaseStore, StoredRelease } from '../stack/release-store.mjs';
 
 /** The records half of a ReleaseStore, plus what it kept. */
-export interface RecordsDouble extends Pick<ReleaseStore, 'read' | 'tryLock' | 'refreshLock' | 'unlock' | 'journal'> {
+export interface RecordsDouble extends Pick<ReleaseStore, 'read' | 'tryLock' | 'refreshLock' | 'unlock' | 'journal' | 'journals'> {
   /** The latest document of each attempt, as the journal wrote it (a copy at each write). */
   documents: Map<string, Record<string, unknown>>;
   /** Every write of every document, in order: the phase boundaries a cancelled job would have left. */
@@ -22,6 +22,8 @@ export interface RecordsOptions {
   /** The lock is held by another deploy for this many seconds: `tryLock` answers busy until `freeAfterTries` tries have passed. */
   busy?: { holder: string; ageSeconds: number; freeAfterTries?: number } | undefined;
   failJournal?: boolean | undefined;
+  /** The attempt documents the journal already holds (what journals() answers): the evidence of the manual rollback guard. */
+  history?: Record<string, unknown>[] | undefined;
   /** The journal accepts this many document writes and fails every later one (a manager that drops mid-deploy). */
   failJournalAfter?: number | undefined;
 }
@@ -35,6 +37,7 @@ export function recordsDouble(options: RecordsOptions = {}): RecordsDouble {
   let documentWrites = 0;
   const double: RecordsDouble = {
     documents, writes, index, calls, lock: null,
+    journals: async () => options.history ?? [],
     read: async (id) => (options.read ? options.read(id) : { stackYaml: 'services: {}\n', release: {} }),
     tryLock: async (token, trigger): Promise<LockAttempt> => {
       calls.push(`try:${trigger}`);

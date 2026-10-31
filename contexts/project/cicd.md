@@ -146,7 +146,7 @@ release was accepted (the record knows both), unless the owner passes `--data-ac
 
 **Notification.** The deploy job writes the outcome to the run's summary (release id, digests, each phase with its
 verdict and time, rollback) and uploads `release.json` as an artifact. GitHub's own notification of a failed run reaches
-the pusher; an app that declares `services.notify` (a chat webhook as a CI secret) gets one message per deploy outcome.
+the pusher; an app that declares `deploy.notify` (a chat webhook URL in a sealed member, built as `deploy.notify` rather than `services.notify`) gets one message per deploy outcome.
 A red run is a red CI for the harness, which opens the fix (authority/ci.md).
 
 **Strategy.** Rolling, health-gated, `start-first` for stateless services and `stop-first` for a service that mounts a
@@ -322,8 +322,25 @@ Where the packages differ from the design above, or add to it, the code and the 
   private key never enter the repository. The CI key is a key of its own on the manager (`restrict`, a forced command, a rotation path owned by the owner, who
   also seals it), the log prints no host, address or server path, no secret is baked into an image (build arguments are public values), `main` is protected and
   the `v*` tags are protected and never moved or deleted, and `pull_request_target` never runs a pull request's code.
-- **Not built yet:** the forced-command gate `starci-ssh-gate` (the release store's scripts are not yet named scripts it could admit), `services.notify`,
-  the `--data-acknowledged` guard of a manual rollback to a release older than an applied contract migration, and the environment URL.
+- **The gate is built** (`stack/ssh-gate.mts`). The release store's remote operations are named scripts (`pointer`, `list`, `read`, `store`, `accept`,
+  `lock-acquire`, `lock-refresh`, `lock-release`, `journal-write`, `journal-index`, `journal-read`), each with arguments of a closed alphabet. The CI key's
+  line is `restrict,command="starci-ssh-gate",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc <key>`; the gate admits
+  `docker system dial-stdio` and `starci-op <name> <args>` and refuses everything else with exit 126 and no echo. The same bodies run for the owner's key
+  through `sh -c`, so the gate admits no script the store does not run. `starci app stack ci-key --env <env>` prints the owner-run steps,
+  `--print-gate` the gate text and `--public-key <file> --print-authorized-keys` the line. The gate is used only when the sealed `vps-ci` member says
+  `VPS_GATE: "1"` (`connect` then exports `STARCI_SSH_GATE=1`), so the key can be forced after the gate is installed and the switch undone by removing
+  the value. **Still free commands, so not admitted by the gate:** the post-deploy tasks (`task.mts`) and the manager backup and test decrypt of a
+  `database.target: stack` database (`manager-backup.mts`) run `docker exec`-style scripts over ssh; an environment that uses them keeps an ungated key
+  until they are named operations.
+- **Notification is `deploy.notify`, not `services.notify`:** it is per environment (the `services:` catalog is a closed per-repository list of providers).
+  `notify: {webhook: {member, key}, on?: [...]}` names a key of a sealed member holding an https URL; off unless declared; one JSON message (`text`,
+  `content` and the facts as fields: outcome, environment, stack, commit, tag, release, attempt, CI run URL, failure code) after the journal closes, for
+  `accepted`, `rolled-back`, `rollback-failed` and `failed` by default (`refused` only when listed). A failing webhook is a line of the result, never a failed
+  deploy, and the URL is never printed.
+- **The manual rollback guard is built:** each attempt document carries `contract` (the contract migrations that attempt applied). `stack rollback`
+  (also as a dry run) refuses `STACK_ROLLBACK_CONTRACT` for a target older than the previous release of an attempt that applied one, or that the journal never
+  saw once any is recorded, unless `--data-acknowledged`. The workflow's `rollback` dispatch has no such input, so that case runs from the owner's machine.
+- **Not built yet:** the environment URL of a deployment record.
 
 ## Open decisions
 

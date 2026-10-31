@@ -268,7 +268,7 @@ function ciValues(ctx: StackContext, config: DeployConfig): { values: Record<str
   const present = typeof config.secretsDir === 'string' && fs.existsSync(memberFile(config.secretsDir, CI_MEMBER));
   if (!present) return { values: ctx.env, sealed: false };
   const map = openSealedMember(ctx, config, CI_MEMBER);
-  return { values: Object.fromEntries(CI_VARIABLES.map((name) => [name, typeof map[name] === 'string' ? map[name] : undefined])), sealed: true };
+  return { values: Object.fromEntries([...CI_VARIABLES, 'VPS_GATE'].map((name) => [name, typeof map[name] === 'string' ? map[name] : undefined])), sealed: true };
 }
 
 function ciInputs(ctx: StackContext, values: Record<string, string | undefined>, sealed: boolean): CiInputs {
@@ -296,16 +296,17 @@ export async function connectCi(ctx: StackContext, config: DeployConfig, { execu
   const { values, sealed } = ciValues(ctx, config);
   const inputs = ciInputs(ctx, values, sealed);
   const alias = config.remote.host;
+  const gated = values.VPS_GATE === '1';
   const origin = sealed ? `the sealed member ${CI_MEMBER}` : 'VPS_SSH_KEY';
-  const plan = [`${dir}/deploy_key (0600) from ${origin}`, `${dir}/known_hosts (0644) from ${sealed ? CI_MEMBER : 'VPS_KNOWN_HOSTS'}`, `a Host ${alias} block in ${dir}/config`, `DOCKER_HOST=ssh://${alias} in GITHUB_ENV`];
-  const data = { host: alias, files: ['deploy_key', 'known_hosts', 'config'], sealed };
+  const plan = [...(gated ? ['STARCI_SSH_GATE=1 in GITHUB_ENV (the key is forced through starci-ssh-gate)'] : []), `${dir}/deploy_key (0600) from ${origin}`, `${dir}/known_hosts (0644) from ${sealed ? CI_MEMBER : 'VPS_KNOWN_HOSTS'}`, `a Host ${alias} block in ${dir}/config`, `DOCKER_HOST=ssh://${alias} in GITHUB_ENV`];
+  const data = { host: alias, files: ['deploy_key', 'known_hosts', 'config'], sealed, gated };
   if (!execute) return { ok: true, lines: plan.map((item) => `dry run: would write ${item}`), data };
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   writeWithMode(path.join(dir, 'deploy_key'), inputs.key, 0o600);
   writeWithMode(path.join(dir, 'known_hosts'), inputs.known, 0o644);
   fs.appendFileSync(path.join(dir, 'config'), sshBlock(alias, inputs), { mode: 0o600 });
   fs.appendFileSync(ctx.env.GITHUB_ENV as string,`DOCKER_HOST=ssh://${alias}
-`);
+${gated ? 'STARCI_SSH_GATE=1' + String.fromCharCode(10) : ''}`);
   // The log of a public repository is public: mask the host, the account and the releases root before any later line can carry them.
   const masks = sealed ? [inputs.host, inputs.user, config.remote.releasesBase].filter((value): value is string => typeof value === 'string' && value.length >= 4).map((value) => `::add-mask::${value}`) : [];
   return { ok: true, lines: [...masks, ...plan.map((item) => `wrote ${item}`)], data };

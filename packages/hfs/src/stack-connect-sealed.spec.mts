@@ -88,3 +88,13 @@ test('without the sealed member the variables of the job are the transport, as b
   const none = scene(t, { member: null });
   await assert.rejects(() => connectCi(none.ctx, none.config, { execute: true }), (error: Error & { code?: string }) => error.code === 'STACK_CONNECT_MISSING' && /no sealed member vps-ci/u.test(error.message));
 });
+
+test('connect tells the deploy to use the gate only for a vps-ci member that says VPS_GATE=1', async (t) => {
+  const gated = scene(t, { member: { ...SEALED, VPS_GATE: '1' } });
+  const result = await connectCi(gated.ctx, gated.config, { execute: true });
+  assert.equal(result.data?.['gated'], true);
+  assert.equal(fs.readFileSync(gated.githubEnv, 'utf8'), ['DOCKER_HOST=ssh://vps', 'STARCI_SSH_GATE=1', ''].join(String.fromCharCode(10)));
+  const plain = scene(t);
+  assert.equal((await connectCi(plain.ctx, plain.config, { execute: true })).data?.['gated'], false);
+  assert.doesNotMatch(fs.readFileSync(plain.githubEnv, 'utf8'), /STARCI_SSH_GATE/u);
+});

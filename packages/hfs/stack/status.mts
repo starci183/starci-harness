@@ -13,6 +13,7 @@ import type { DeployConfig } from './config.mjs';
 import { lines as splitLines, toolOutput } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { createReleaseStore } from './release-store.mjs';
+import { gateIsOn } from './ssh-gate.mjs';
 import type { ReleaseStore } from './release-store.mjs';
 import type { ActionResult, Runner, SshOptions } from './remote.mjs';
 
@@ -108,7 +109,7 @@ export function compareWithRelease(expected: ExpectedRelease, live: readonly Obs
 /** The collaborators of a status (the specs inject stubs). */
 export interface StatusDeps {
   ssh: (ctx: StackContext, config: DeployConfig, options: SshOptions) => Runner | Promise<Runner>;
-  releaseStore: (config: DeployConfig, ssh: Runner) => ReleaseStore;
+  releaseStore: (config: DeployConfig, ssh: Runner, options?: { gated?: boolean | undefined }) => ReleaseStore;
   observedServices: (ctx: StackContext, config: DeployConfig) => ObservedService[];
 }
 
@@ -125,7 +126,7 @@ export async function statusStack(ctx: StackContext, config: DeployConfig, optio
   const d: StatusDeps = { ...DEFAULT_DEPS, ...deps };
   const run = await d.ssh(ctx, config, { sshCmd: options.sshCmd ?? null });
   try {
-    const store = d.releaseStore(config, run);
+    const store = d.releaseStore(config, run, { gated: gateIsOn(ctx.env) });
     const current = await store.current();
     const live = d.observedServices(ctx, config);
     if (!current) return { ok: true, lines: [`status: ${config.stack} has no accepted release${live.length > 0 ? `; ${live.length} service(s) run in the stack` : ''}`], data: { release: null, sourceSha: null, drift: [], services: live } };
