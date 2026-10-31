@@ -47,21 +47,24 @@ const textsOf = (dir: string): { readonly own: string[]; readonly all: string[] 
 const parentOf = (dir: string): string => (dir.includes("/") ? dir.slice(0, dir.lastIndexOf("/")) : "")
 const baseOf = (dir: string): string => dir.slice(dir.lastIndexOf("/") + 1)
 
-/** The siblings a node needs, by folder, in the two strengths that matter to a build order. */
+/** The siblings a node needs, by folder, in the strengths that matter to a build order. */
 interface Needs {
     /** Siblings it installs or builds against: its `requires` and `file:` dependencies. A build must follow these. */
     readonly hard: ReadonlySet<string>
-    /** Siblings its own files read by relative path (`../<sibling>/`, or path segments `"..", "<sibling>"`), outside its bundled runtime/ copies. */
+    /** Siblings whose built output (`../<sibling>/dist`) its own files import: its build typechecks against them, so they build first. */
+    readonly built: ReadonlySet<string>
+    /** Every sibling its own files read by relative path (`../<sibling>/`, or path segments `"..", "<sibling>"`), outside its bundled runtime/ copies; `built` is a subset. */
     readonly soft: ReadonlySet<string>
 }
 
 /**
  * The siblings a node needs, by folder: the siblings it requires (`dependencies`, `peerDependencies`, the graph `release publish`
  * orders by) and the folders its `file:` dependencies install (`hard`), and the siblings its own files read by relative path
- * (`soft`).
+ * (`soft`), those among them whose `dist/` they import apart (`built`).
  */
 const needsOf = (node: Node, nodes: readonly Node[]): Needs => {
     const hard = new Set<string>()
+    const built = new Set<string>()
     const soft = new Set<string>()
     for (const name of Object.keys(node.pkg.requires)) {
         const sibling = nodes.find((other) => other.pkg.name === name)
@@ -73,22 +76,24 @@ const needsOf = (node: Node, nodes: readonly Node[]): Needs => {
         if (dir === node.pkg.relativeDir || parentOf(dir) !== parentOf(node.pkg.relativeDir)) continue
         const segments = new RegExp(String.raw`["']\.\.["'],\s*(?:["']\.\.["'],\s*)*["']${baseOf(dir)}["']`)
         if (node.own.some((text) => text.includes(`../${baseOf(dir)}/`) || segments.test(text))) soft.add(dir)
+        if (node.own.some((text) => text.includes(`../${baseOf(dir)}/dist`))) built.add(dir)
     }
-    hard.delete(node.pkg.relativeDir)
-    soft.delete(node.pkg.relativeDir)
-    return { hard, soft }
+    for (const set of [hard, built, soft]) set.delete(node.pkg.relativeDir)
+    return { hard, built, soft }
 }
 
 /** Every node `needs` can name, whichever strength: what makes a node affected when a sibling it needs is. */
 const anyNeeds = (needs: Needs): Set<string> => new Set([...needs.hard, ...needs.soft])
 
+type NeedsOf = ReadonlyMap<string, { readonly hard: ReadonlySet<string>; readonly built: ReadonlySet<string>; readonly soft: ReadonlySet<string> }>
+
 /**
- * The edges a build order follows: every hard need, plus each soft need that does not close a cycle. Specs of two siblings may
- * read each other's files while one of them installs and builds against the other (`file:`); the install edge must win, or the
- * dependent builds before the sibling it imports (a cycle broken the wrong way). Soft needs are added in sorted order, so the
- * result is the same on every run.
+ * The edges a build order follows: every hard need; then the needs whose `dist/` a node imports, then the other relative reads,
+ * each only where it closes no cycle. Specs of two siblings may read each other's files while one of them installs and builds
+ * against the other (`file:`) or typechecks against its `dist/`; that edge must win, or the dependent builds before the sibling
+ * it imports (a cycle broken the wrong way). Needs are added in sorted order, so the result is the same on every run.
  */
-export const buildEdges = (needs: ReadonlyMap<string, { readonly hard: ReadonlySet<string>; readonly soft: ReadonlySet<string> }>): Map<string, Set<string>> => {
+export const buildEdges = (needs: NeedsOf): Map<string, Set<string>> => {
     const edges = new Map([...needs].map(([dir, need]) => [dir, new Set(need.hard)]))
     const reaches = (from: string, target: string, seen = new Set<string>()): boolean => {
         if (from === target) return true
@@ -96,16 +101,23 @@ export const buildEdges = (needs: ReadonlyMap<string, { readonly hard: ReadonlyS
         seen.add(from)
         return [...(edges.get(from) ?? [])].some((next) => reaches(next, target, seen))
     }
-    for (const [dir, need] of [...needs].toSorted(([left], [right]) => left.localeCompare(right))) {
-        for (const soft of [...need.soft].toSorted((left, right) => left.localeCompare(right))) {
-            if (!edges.get(dir)?.has(soft) && !reaches(soft, dir)) edges.get(dir)?.add(soft)
+    const sorted = [...needs].toSorted(([left], [right]) => left.localeCompare(right))
+    for (const strength of ["built", "soft"] as const) {
+        for (const [dir, need] of sorted) {
+            for (const sibling of [...need[strength]].toSorted((left, right) => left.localeCompare(right))) {
+                if (!edges.get(dir)?.has(sibling) && !reaches(sibling, dir)) edges.get(dir)?.add(sibling)
+            }
         }
     }
     return edges
 }
 
-/** The nodes `start` needs, transitively, deps first, then `start` itself: the order a CI job installs and builds them. */
-export const buildOrder = (start: string, edges: ReadonlyMap<string, ReadonlySet<string>>): string[] => {
+/**
+ * The nodes `start` needs, transitively, deps first, then `start` itself: the order a CI job installs and builds them. `also`
+ * are siblings `start` reads that could not go before it (the edge would close a cycle): they, and what they need, follow it,
+ * so they are still installed and built before the job's test step runs.
+ */
+export const buildOrder = (start: string, edges: ReadonlyMap<string, ReadonlySet<string>>, also: Iterable<string> = []): string[] => {
     const order: string[] = []
     const visit = (dir: string, path: readonly string[]): void => {
         if (order.includes(dir) || path.includes(dir)) return
@@ -113,6 +125,7 @@ export const buildOrder = (start: string, edges: ReadonlyMap<string, ReadonlySet
         order.push(dir)
     }
     visit(start, [])
+    for (const sibling of [...also].toSorted((a, b) => a.localeCompare(b))) visit(sibling, [])
     return order
 }
 
@@ -169,10 +182,12 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
         }
     }
     const packageOnly = (dirs: ReadonlySet<string>): Set<string> => new Set([...dirs].filter((need) => need.startsWith("packages/")))
-    const packageNeeds = buildEdges(new Map([...needs].map(([dir, needed]) => [dir, { hard: packageOnly(needed.hard), soft: packageOnly(needed.soft) }])))
+    const packageNeeds = new Map([...needs].map(([dir, needed]) => [dir, { hard: packageOnly(needed.hard), built: packageOnly(needed.built), soft: packageOnly(needed.soft) }]))
+    const edges = buildEdges(packageNeeds)
+    const orderOf = (dir: string): string[] => buildOrder(dir, edges, packageNeeds.get(dir)?.soft ?? [])
     const packages = nodes
         .filter((node) => node.pkg.relativeDir.startsWith("packages/") && hit.has(node.pkg.relativeDir))
-        .map((node) => ({ name: node.pkg.name, dir: node.pkg.relativeDir, build: buildOrder(node.pkg.relativeDir, packageNeeds) }))
+        .map((node) => ({ name: node.pkg.name, dir: node.pkg.relativeDir, build: orderOf(node.pkg.relativeDir) }))
     const harness = hit.has("cli")
     const app = hit.has("app")
     const summary = [
@@ -187,7 +202,7 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
         packages,
         harness,
         app,
-        appBuild: buildOrder("app", packageNeeds).filter((dir) => dir !== "app"),
+        appBuild: orderOf("app").filter((dir) => dir !== "app"),
         matrix: { include: packages.map((pkg) => ({ package: pkg.dir, name: pkg.name, build: pkg.build.join(" ") })) },
         summary,
     }

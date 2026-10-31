@@ -4,9 +4,14 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { buildEdges, buildOrder } from "./affected.js"
 
-const need = (hard: readonly string[], soft: readonly string[] = []): { readonly hard: ReadonlySet<string>; readonly soft: ReadonlySet<string> } => ({
+const need = (
+    hard: readonly string[],
+    soft: readonly string[] = [],
+    built: readonly string[] = [],
+): { readonly hard: ReadonlySet<string>; readonly built: ReadonlySet<string>; readonly soft: ReadonlySet<string> } => ({
     hard: new Set(hard),
-    soft: new Set(soft),
+    built: new Set(built),
+    soft: new Set([...soft, ...built]),
 })
 
 void test("a file: sibling is built before its dependent although the sibling's specs read the dependent's files", () => {
@@ -19,9 +24,10 @@ void test("a file: sibling is built before its dependent although the sibling's 
             ["packages/tsconfig", need([])],
         ]),
     )
-    assert.deepEqual(buildOrder("packages/fe", edges), ["packages/tsconfig", "packages/fe"])
     assert.deepEqual(buildOrder("packages/core", edges), ["packages/tsconfig", "packages/fe", "packages/core"])
     assert.deepEqual(buildOrder("packages/pop", edges), ["packages/tsconfig", "packages/fe", "packages/core", "packages/pop"])
+    // fe cannot wait for core, but its specs read core's files: core is still installed and built after fe, before fe's tests.
+    assert.deepEqual(buildOrder("packages/fe", edges, ["packages/core"]), ["packages/tsconfig", "packages/fe", "packages/core"])
 })
 
 void test("a relative read that closes no cycle still orders its sibling first", () => {
@@ -31,6 +37,13 @@ void test("a relative read that closes no cycle still orders its sibling first",
 
 void test("two siblings that only read each other still get one deterministic order", () => {
     const edges = buildEdges(new Map([["packages/a", need([], ["packages/b"])], ["packages/b", need([], ["packages/a"])]]))
-    assert.deepEqual(buildOrder("packages/a", edges), ["packages/b", "packages/a"])
-    assert.deepEqual(buildOrder("packages/b", edges), ["packages/b"])
+    assert.deepEqual(buildOrder("packages/a", edges, ["packages/b"]), ["packages/b", "packages/a"])
+    assert.deepEqual(buildOrder("packages/b", edges, ["packages/a"]), ["packages/b", "packages/a"])
+})
+
+void test("a sibling whose dist a package imports is built before it, the sibling reading the package only follows it", () => {
+    // hfs's build typechecks against canon-be/dist while canon-be's specs read hfs's files.
+    const edges = buildEdges(new Map([["packages/hfs", need([], ["packages/be"], ["packages/be"])], ["packages/be", need([], ["packages/hfs"])]]))
+    assert.deepEqual(buildOrder("packages/hfs", edges, ["packages/be"]), ["packages/be", "packages/hfs"])
+    assert.deepEqual(buildOrder("packages/be", edges, ["packages/hfs"]), ["packages/be", "packages/hfs"])
 })
