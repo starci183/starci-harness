@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.4 - 2026-10-31
+
+- Changed: the bundled canon pins name @starci/hfs 4.13.1 and the lint cohort (eslint-canon-be 3.9.4, eslint-canon-fe 9.6.4, eslint-grammar-core and eslint-grammar-offset-pop 0.16.4); no rule changed.
+
 ## 3.9.3 - 2026-10-31
 
 - Changed: the bundled canon pins name the 0.16.3 cohort (@starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0, jest-preset 2.6.0, hfs 4.13.0); ChatWorkspace and PaneLayout are removed with no alias; PaneGrid and Pane are the one generic pane grid: grammar names are generic.
