@@ -68,6 +68,12 @@ const dbFunctionNameOk = (name: Parsed, bare: Parsed) => typeof name === 'string
  */
 export const dbFunctionsOk = (list: Parsed, { bare = false }: { bare?: boolean } = {}) => list === undefined || (Array.isArray(list) && list.every((entry: Parsed) => isPlainObject(entry) && Object.keys(entry).sort().join() === 'name,reason' && dbFunctionNameOk(entry.name, bare) && typeof entry.reason === 'string' && entry.reason.trim().length > 0) && new Set(list.map((entry: Parsed) => entry.name)).size === list.length);
 
+/**
+ * True for an absent list or a list of {file, reason} SQL pass-through files (R334): `file` is a forward-slash path relative to the
+ * side folder (no leading slash, no `..`), unique, and the reason names whose text the file passes through.
+ */
+export const sqlPassThroughOk = (list: Parsed) => list === undefined || (Array.isArray(list) && list.every((entry: Parsed) => isPlainObject(entry) && Object.keys(entry).sort().join() === 'file,reason' && typeof entry.file === 'string' && /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/.test(entry.file) && !entry.file.split('/').includes('..') && typeof entry.reason === 'string' && entry.reason.trim().length > 0) && new Set(list.map((entry: Parsed) => entry.file)).size === list.length);
+
 /** The shape problems of `m.ruleParams`. */
 export function ruleParamsProblems(m: Parsed): string[] {
   const bad: string[] = [];
@@ -77,7 +83,7 @@ export function ruleParamsProblems(m: Parsed): string[] {
     // common holds the parameters both sides share; a side may restate one of them (a valid value) as an override, nothing else.
     // Edition lite: a side's optional `lite` map overrides keys of the same side (never `lite` itself) when the app declares edition lite.
     if (!sideOk(rp.common, []) || !fileLinesOk(rp.common.fileLines) || !blockOk(rp.common.duplicateBlock)) bad.push('ruleParams.common needs fileLines {soft, hardGrowth} and duplicateBlock {lines >= 2, tokens >= 1}; optional functionLines and featureFiles must be positive integers');
-    if (!sideOk(rp.be, BE_OWN, ['schemaAuthority', 'lite', 'dbFunctions']) || (rp.be.schemaAuthority !== undefined && !SCHEMA_AUTHORITIES.includes(rp.be.schemaAuthority)) || !dbFunctionsOk(rp.be.dbFunctions, { bare: true }) || !liteOk(rp.be.lite, [...BE_OWN, ...SHARED_KEYS, 'schemaAuthority', 'dbFunctions'])) bad.push('ruleParams.be needs infraOwners, eventBus, specDoubles, paramNames, suffixes, bannedSuffixes, contractShape {helper}, unitRoles, logicRoles, thinRoles, patternScenarios, kindPatterns, addKinds and backing (shared parameters live in ruleParams.common, a side may override them); optional: schemaAuthority (' + SCHEMA_AUTHORITIES.join(' | ') + '), dbFunctions ([{name, reason}]: a pg built-in bare, every other function schema.name) and lite (overrides of the same keys)'); else bad.push(...unitRolesProblems(rp.be), ...roleListProblems(rp.be));
+    if (!sideOk(rp.be, BE_OWN, ['schemaAuthority', 'lite', 'dbFunctions', 'sqlPassThrough']) || (rp.be.schemaAuthority !== undefined && !SCHEMA_AUTHORITIES.includes(rp.be.schemaAuthority)) || !dbFunctionsOk(rp.be.dbFunctions, { bare: true }) || !sqlPassThroughOk(rp.be.sqlPassThrough) || !liteOk(rp.be.lite, [...BE_OWN, ...SHARED_KEYS, 'schemaAuthority', 'dbFunctions', 'sqlPassThrough'])) bad.push('ruleParams.be needs infraOwners, eventBus, specDoubles, paramNames, suffixes, bannedSuffixes, contractShape {helper}, unitRoles, logicRoles, thinRoles, patternScenarios, kindPatterns, addKinds and backing (shared parameters live in ruleParams.common, a side may override them); optional: schemaAuthority (' + SCHEMA_AUTHORITIES.join(' | ') + '), dbFunctions ([{name, reason}]: a pg built-in bare, every other function schema.name), sqlPassThrough ([{file, reason}]: a file whose SQL text is not written by the app) and lite (overrides of the same keys)'); else bad.push(...unitRolesProblems(rp.be), ...roleListProblems(rp.be));
     bad.push(...beSpecificProblems(rp.be, m));
     if (rp.fe !== undefined && (!sideOk(rp.fe, [], ['lite']) || !liteOk(rp.fe.lite, SHARED_KEYS))) bad.push('ruleParams.fe may only restate the shared parameters of ruleParams.common, and carry a lite override of them');
     if (!dbParamsOk(rp.db)) bad.push('ruleParams.db may contain only extensions (a list of unique non-empty extension names)');

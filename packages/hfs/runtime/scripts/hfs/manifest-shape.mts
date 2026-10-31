@@ -100,6 +100,12 @@ export interface DbFunction {
   reason: string;
 }
 
+/** A file whose `.query(` passes through SQL text that is not the app's own (ruleParams.be.sqlPassThrough, hfs.json sides.be.sqlPassThrough). */
+export interface SqlPassThrough {
+  file: string;
+  reason: string;
+}
+
 /** The rule parameters of one profile (ruleParams.common merged with ruleParams.<profile>); the keys not named here are parsed manifest data. */
 export interface RuleParams {
   // reason: ruleParams entries are parsed YAML read by key from many rules; the shape validators check them
@@ -110,6 +116,7 @@ export interface RuleParams {
   suffixes?: string[];
   bannedSuffixes?: string[];
   dbFunctions?: DbFunction[];
+  sqlPassThrough?: SqlPassThrough[];
 }
 
 /** ruleParams.be: the back end's own parameters, which the validators of this folder require. */

@@ -39,7 +39,7 @@ import { declarationEdition, editionRuleParams, effectiveSlot, slotInEdition } f
 import { fail } from './slot-errors.mjs';
 import { loadRuleCatalog } from './rule-catalog.mjs';
 import type { RuleCatalog } from './rule-catalog.mjs';
-import type { DbFunction, Parsed, RuleParams, Slot, SlotManifest, SlotTracking } from './manifest-shape.mjs';
+import type { DbFunction, Parsed, RuleParams, Slot, SlotManifest, SlotTracking, SqlPassThrough } from './manifest-shape.mjs';
 import type { ClassifiedPath, OwnerUnit, Scope } from './slot-classify.mjs';
 
 export type { Bindings } from './slot-match.mjs';
@@ -84,6 +84,7 @@ export interface RepoView {
   providers?: readonly string[];
   reads: readonly string[];
   dbFunctions?: readonly DbFunction[];
+  sqlPassThrough?: readonly SqlPassThrough[];
   grammar?: string;
   extraPackages?: readonly { name: string; reason: string }[];
   sides?: Record<Side, RepoView>;
@@ -247,6 +248,7 @@ function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: stri
     providers,
     reads: Object.freeze([...(s.reads ?? [])]),
     dbFunctions: Object.freeze((s.dbFunctions ?? []).map((entry: Parsed) => Object.freeze({ ...entry }))),
+    sqlPassThrough: Object.freeze((s.sqlPassThrough ?? []).map((entry: Parsed) => Object.freeze({ ...entry }))),
     ...(s.grammar === undefined ? {} : { grammar: s.grammar }),
     ...(s.extraPackages === undefined ? {} : { extraPackages: Object.freeze(s.extraPackages.map((entry: Parsed) => Object.freeze({ ...entry }))) }),
     manifestVersion: manifest.version,
@@ -365,8 +367,8 @@ function createScopeResolver(manifest: SlotManifest, repo: RepoView): ScopeResol
     trackingOf,
     /** True only for a path a slot owns and requires to be committed. */
     isTracked: (p: string) => trackingOf(p) === 'tracked',
-    // The app's own database functions (hfs.json sides.be.dbFunctions) join the canon's list (R334).
-    ruleParams: () => withDeclaredDbFunctions(ruleParams(manifest, profile, edition), repo.dbFunctions),
+    // The app's own database functions and SQL pass-through files (hfs.json sides.be.dbFunctions, sides.be.sqlPassThrough) join the canon's lists (R334).
+    ruleParams: () => withDeclaredLists(ruleParams(manifest, profile, edition), repo),
     allowedImports: (tier: string) => manifest.tiers[profile]?.[tier]?.mayImport ?? null,
   });
 }
@@ -389,9 +391,17 @@ export function createSlotResolver(manifest: SlotManifest, repo: RepoView): Reso
   return appResolver(app, root, sides);
 }
 
-/** The rule parameters with the app's declared database functions appended to `dbFunctions` (be only), frozen. */
-const withDeclaredDbFunctions = (params: RuleParams, declared: readonly DbFunction[] = []): RuleParams => (params.dbFunctions === undefined && !declared.length ? params
-  : Object.freeze({ ...params, dbFunctions: Object.freeze([...(params.dbFunctions ?? []), ...declared]) }) as RuleParams);
+/** The rule parameters with the app's declared database functions and SQL pass-through files appended to `dbFunctions` and `sqlPassThrough` (be only), the result frozen. */
+const withDeclaredLists = (params: RuleParams, repo: { dbFunctions?: readonly DbFunction[]; sqlPassThrough?: readonly SqlPassThrough[] }): RuleParams => {
+  const functions = repo.dbFunctions ?? [];
+  const passThrough = repo.sqlPassThrough ?? [];
+  if ((params.dbFunctions === undefined && !functions.length) && (params.sqlPassThrough === undefined && !passThrough.length)) return params;
+  return Object.freeze({
+    ...params,
+    ...(params.dbFunctions === undefined && !functions.length ? {} : { dbFunctions: [...(params.dbFunctions ?? []), ...functions] }),
+    ...(params.sqlPassThrough === undefined && !passThrough.length ? {} : { sqlPassThrough: [...(params.sqlPassThrough ?? []), ...passThrough] }),
+  });
+};
 
 /** The rule parameters of one profile (be: infraOwners, suffixes, bannedSuffixes and the rest over the shared ruleParams.common fileLines and duplicateBlock; fe: common alone or with its overrides; runtime: ruleParams.runtime of a runtime manifest), as a frozen deep copy. Under `edition` lite the `lite` overrides of ruleParams.<profile> merge over the base (the `lite` key itself is never returned). */
 export function ruleParams(manifest: SlotManifest, profile: string, edition = 'full'): RuleParams {

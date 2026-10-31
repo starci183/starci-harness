@@ -82,12 +82,22 @@ export const callDbFunction = <T>(manager: EntityManager, name: string, args: Re
     return manager.query<Array<T>>(`SELECT * FROM "${target.schema}"."${target.name}"(${parameters})`, [...args])
 }
 
-/** Takes a transaction-scoped advisory lock on the 64-bit hash of `key`; it is released when the manager's transaction ends. */
+/** The refusal of a hash answer that is not the number the lock takes. */
+const hashRejected = (key: string): DatabaseError =>
+    new DatabaseError({ code: DatabaseErrorCode.ReturningRowRejected, params: { name: "hashtextextended", key } })
+
+/**
+ * Takes a transaction-scoped advisory lock on the 64-bit hash of `key`; it is released when the manager's transaction ends.
+ * Both steps are `callDbFunction` calls of listed pg built-ins, so no SQL text is written here (R334).
+ */
 export const advisoryXactLock = async (manager: EntityManager, key: string): Promise<void> => {
-    await manager.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [key])
+    const rows = await callDbFunction<Record<string, unknown>>(manager, "hashtextextended", [key, 0])
+    const hash = rows[0]?.["hashtextextended"]
+    if (typeof hash !== "string" && typeof hash !== "number" && typeof hash !== "bigint") throw hashRejected(key)
+    await callDbFunction(manager, "pg_advisory_xact_lock", [hash])
 }
 
 /** Sends one NOTIFY on `channel` with `payload`, delivered when the manager's transaction commits. */
 export const notify = async (manager: EntityManager, channel: string, payload: string): Promise<void> => {
-    await manager.query("SELECT pg_notify($1, $2)", [channel, payload])
+    await callDbFunction(manager, "pg_notify", [channel, payload])
 }

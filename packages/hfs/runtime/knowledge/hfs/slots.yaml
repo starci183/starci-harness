@@ -467,6 +467,10 @@ ruleParams:
       - {name: public.event_bus_bury, reason: "platform/event-bus (add webhook, lite): the move of an exhausted or malformed message to its consumer's dead-letter queue"}
       - {name: public.event_bus_dead_letters, reason: "platform/event-bus (add webhook, lite): the operator read of a consumer's dead-letter queue"}
       - {name: public.event_bus_requeue, reason: "platform/event-bus (add webhook, lite): the operator requeue of one dead letter"}
+    # R334 (lite): the only `.query(` outside platform/database's composer and the test world is the pass-through of a file listed here
+    # (or in hfs.json sides.be.sqlPassThrough), whose SQL text is not the app's own. Paths are relative to the side folder.
+    sqlPassThrough:
+      - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed file's text, run as it is (db/seed.sql); the app writes no SQL there"}
 
     lite:
       schemaAuthority: sql
@@ -2070,7 +2074,7 @@ slots:
         own; use-test-world.ts exports useTestWorld({ modules: [...] }) -> world.db.<connection> (the shared EntityManager) and
         world.fake.<provider> (a network-edge fake of an external SaaS). There is no world.apps (no e2e) and no world.infra
         (no self-hosted service to cut)
-    allows: [global-setup.ts, global-teardown.ts, use-test-world.ts, "fakes/<provider>/server.ts", fakes/]   # jest globalSetup/globalTeardown default-export (Jest API); fakes/<provider>/server.ts is the fake server of a provider, a literal file name BE_SOURCE_FORM reads as its role; plus root files with a role suffix (test-world-files, R47)
+    allows: [global-setup.ts, global-teardown.ts, use-test-world.ts, "fakes/<provider>/server.ts", fakes/, "<name>.sql.ts"]   # jest globalSetup/globalTeardown default-export (Jest API); fakes/<provider>/server.ts is the fake server of a provider, a literal file name BE_SOURCE_FORM reads as its role; plus root files with a role suffix (test-world-files, R47)
     tests: none
     coverage: none
     why: >-

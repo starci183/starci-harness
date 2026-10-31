@@ -5634,12 +5634,12 @@ LITE_DB_MIGRATION:
   kind: check-finding
 
 BE_PERSISTENCE_NO_RAW_SQL:
-  title: "Lite domain, feature or test code runs raw SQL instead of TypeORM entities"
-  title_vi: "Mã domain, feature hoặc test của app lite chạy SQL thô thay vì entity TypeORM"
-  meaning_vi: "File `<path>` gọi `.query(` hoặc dùng template `sql` ngoài hai chủ của SQL thô là platform/database và test world src/tests/world, hoặc gọi callDbFunction với một hàm không có trong ruleParams.be.dbFunctions hay hfs.json sides.be.dbFunctions."
+  title: "Lite TypeScript runs or holds SQL text outside the test world"
+  title_vi: "TypeScript của app lite chạy hoặc chứa văn bản SQL ngoài test world"
+  meaning_vi: "File `<path>` gọi `.query(`, dùng template `sql`, là file `*.sql.ts`, import `sql`/`ident`/`SqlText`/`SqlIdent` ngoài src/tests/world (trừ bộ soạn câu lệnh của platform/database/database.client.ts và file có tên trong ruleParams.be.sqlPassThrough hay hfs.json sides.be.sqlPassThrough), gọi callDbFunction với một hàm không có trong ruleParams.be.dbFunctions hay hfs.json sides.be.dbFunctions, hoặc trong test world viết SQL thô cho điều entity hoặc hàm đã khai báo diễn đạt được (gọi hàm, ghi bảng ứng dụng)."
   causes_vi:
-    - "Vi phạm R334: dữ liệu của app lite, kể cả spec, builder và fixture, đi qua entity TypeORM trên EntityManager (find, save, update, upsert, createQueryBuilder); spec dùng world.db.<connection>."
-  nextStep_vi: "Đọc/ghi bằng entity trên EntityManager hoặc createQueryBuilder với tham số có tên (trong test là world.db.<connection>); hàm database TypeORM không diễn đạt được thì gọi qua callDbFunction với hàm đã khai kèm lý do; điều entity không diễn đạt được trong test (trigger, thăm dò row-level security, hàng đợi pgmq) thì gọi một helper có tên của src/tests/world."
+    - "Vi phạm R334: dữ liệu của app lite, kể cả spec, builder, fixture và test world, đi qua entity TypeORM trên EntityManager (find, save, update, upsert, createQueryBuilder); hàm database đi qua callDbFunction; SQL thô chỉ còn ở test world cho thăm dò (quyền, row-level security, catalog, cron, trigger, bảng pgmq, khóa/lỗi)."
+  nextStep_vi: "Đọc/ghi bằng entity trên EntityManager hoặc createQueryBuilder với tham số có tên (trong test là world.db.<connection>); hàm database thì gọi qua callDbFunction với hàm đã khai kèm lý do; file chỉ chuyển tiếp văn bản SQL không phải của app thì khai trong hfs.json sides.be.sqlPassThrough kèm lý do; thăm dò chỉ test world mới được viết SQL thô."
   owner: op-retry
   kind: check-finding
 
