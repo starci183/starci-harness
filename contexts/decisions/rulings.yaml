@@ -710,6 +710,11 @@ rulings:
     status: live
     ruling: "A few choices or facts inside a first-run step card (connect a channel, the rules a workspace starts with) are a SurfaceListCard of ListRow with the label outside, the `step` row of `list-table.choose.role`, placed before `entity`. This is the second exception to \"a list is never wrapped in a card\" beside the rail list (COLLECTION-1); a list in a page section stays a section list without a card. Owner chose \"SurfaceListCard\" for the step card, 2026-10-31."
     owner: "contexts/ui/components/list-table.md (list-table.choose.role, step); contexts/ui/components/card.md rail-list"
+  - id: flow-graph-orbit
+    date: '2026-10-31'
+    status: live
+    ruling: "FlowGraph layout=\"orbit\" is the value-sized map: bubble nodes (form, mark, caption, diameter, flowGraphDiameter), the info tone, fill and ring for status, isDimmed for a filter, expandedIds and fanLimit for the fan on ring four, a hover and focus tip, and the zoom-fixed text of a bubble. An app never draws its own map with React Flow; a status never rests on colour alone."
+    owner: "@starci/grammar src/core/branch/FlowGraph"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.
