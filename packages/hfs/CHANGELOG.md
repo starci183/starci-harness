@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.15.0 - 2026-10-31
+
+- Added: R345 `FE_PANE_GRID_CHILD_NOT_PANE`, R346 `FE_PANE_CHILD_NOT_SECTION`, R347 `FE_PANE_SECTION_PADDING` and R348 `FE_PANE_GRID_FRAME` (eslint-grammar-core `pane-grid-children`, `pane-children`, `no-pane-section-padding`, `pane-grid-page`) and R349 `FE_HAND_BUILT_PANES` (eslint-canon-fe `no-hand-built-panes`) in the bundled rule catalog.
+- Changed: the bundled canon pins name the cohort hfs 4.15.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.7.0, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.17.0.
+
 ## 4.14.0 - 2026-10-31
 
 - Added: `ruleParams.be.sqlPassThrough` and hfs.json `sides.be.sqlPassThrough` (a list of `{file, reason}`, side-relative forward-slash paths, unique): the files whose `.query(` passes through SQL text that is not the app's own (R334). The shape validators (`manifest-shape`, `rule-params-shape`, `declaration-shape`) accept it on the be side only, the resolver merges the app's list into the canon's like `dbFunctions`, and the canon lists the seed runner `src/modules/platform/database/seed-runner.service.ts`.

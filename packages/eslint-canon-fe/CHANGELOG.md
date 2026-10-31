@@ -1,5 +1,10 @@
 # Changelog
 
+## 9.7.0 - 2026-10-31
+
+- Added: R349 `no-hand-built-panes` (`FE_HAND_BUILT_PANES`, surface rules, slot-free): a multi-pane frame is a `PaneGrid`, so a vertical Grammar `Divider` used as a column seam (among the plain columns of a flex row, or anywhere inside a `SurfaceCard composition="joined"`) and a joined card that holds a flex row of two or more plain columns are refused.
+- Changed: `Pane` and `PaneSection` are surfaces for `no-list-panel-padding` (R318), so wrapper padding around a `ListBox` in a pane is caught in the file. The bundled runtime copies follow @starci/hfs 4.15.0 and the canon pins name the cohort hfs 4.15.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.7.0, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.17.0.
+
 ## 9.6.7 - 2026-10-31
 
 - Changed: the bundled runtime copies follow @starci/hfs 4.14.0 (R334 one style, `ruleParams.be.sqlPassThrough`) and the canon pins name the cohort hfs 4.14.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.6.7, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.6, with @starci/ai-router 0.5.0; no rule changed.

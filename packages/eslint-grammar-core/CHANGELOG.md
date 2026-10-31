@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.0 - 2026-10-31
+
+- Added: the pane laws, `src/pane.ts` (docs/pane.md): R345 `pane-grid-children` (`FE_PANE_GRID_CHILD_NOT_PANE`: a `PaneGrid` child is a literal `Pane`, directly or from a conditional, `&&` or `.map`; a wrapper component, raw element, fragment or variable renders a blank cell), R346 `pane-children` (`FE_PANE_CHILD_NOT_SECTION`: a `Pane` holds `PaneSection`s or one `PaneGrid`, not a raw element or another Grammar component), R347 `no-pane-section-padding` (`FE_PANE_SECTION_PADDING`: no padding or margin utility on the outermost element of a `PaneSection`, same-file component roots and typed imported class constants followed) and R348 `pane-grid-page` (`FE_PANE_GRID_FRAME`: a `PaneGrid` stands in `Page chrome="panes"` or in a `Pane`, never in a `FillViewport`, a card or another page chrome). A Freestyle subtree is exempt. Offset Pop inherits them.
+- Changed: requires @starci/eslint-canon-fe 9.7.0 and follows @starci/grammar 0.17.0 (`Pane` owns its content inset, `PaneSection`, `Page chrome="panes"`); the bundled runtime copies follow @starci/hfs 4.15.0 and the canon pins name the cohort hfs 4.15.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.7.0, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.17.0.
+
 ## 0.16.6 - 2026-10-31
 
 - Changed: requires @starci/eslint-canon-fe 9.6.7; the bundled runtime copies follow @starci/hfs 4.14.0 (R334 one style) and the canon pins name @starci/ai-router 0.5.0 (many providers behind one virtual key, the persisted key blacklist) and the cohort hfs 4.14.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.6.7, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.6; no rule changed.
