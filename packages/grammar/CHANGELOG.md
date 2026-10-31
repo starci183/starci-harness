@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.5 - 2026-10-31
+
+- Changed: no component changed; the version moves with its lint family (eslint-grammar-core and eslint-grammar-offset-pop 0.16.5, which follow @starci/hfs 4.13.2), so the Grammar and its lint packages stay one version. 0.16.4 was never a Grammar version.
+
 ## 0.16.3 - 2026-10-31
 
 - Removed (breaking): `ChatWorkspace` and `PaneLayout` (with `ChatWorkspaceProps`, `PaneLayoutProps`), with no alias; `PaneGrid` replaces them. The grammar is a generic UI/UX layer, so a name states the layout role, never a product feature (owner rulings grammar-names-are-generic and pane-grid). Their hooks go with them: classes `.starci-core-pane-layout*`, attributes `data-grammar-pane-layout*` and the `paneLayout*` class-name exports; the slot props (`conversation`, `conversationLabel`, `composer`, `header`, `rail*`) have no successor, an app places its own pieces in panes. Story Compositions / PaneGrid.

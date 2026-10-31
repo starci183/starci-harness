@@ -8,7 +8,7 @@ schema: starci/stack-pins@1
 pins:
   '@starci/heroicons': {version: 0.3.5, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
-  '@starci/grammar': {version: 0.16.3, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/grammar': {version: 0.16.5, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/eslint-canon-be': {version: 3.10.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
   '@starci/eslint-canon-fe': {version: 9.6.5, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
   '@starci/eslint-grammar-core': {version: 0.16.5, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
