@@ -7,6 +7,22 @@ This checkout is the runtime root: the `starci` CLI is `node cli/dist/main.js` a
 state lives in `.runtime/` here, never in a product repository. When you delegate or change directory, pass this
 checkout's path and the project root on explicitly.
 
+## Look it up before you act
+
+The tree is too large to hold in context, and a context compaction drops what you read earlier. Before answering, planning,
+or writing a brief, translate the request into English (keep rule ids and names as written), run
+`node cli/dist/main.js contexts search "<question>"` ([contexts/README.md](contexts/README.md) "Two layers of context"),
+open the hit's file and quote its rule id and path. A brief never states "never", "must" or "wait for" without that
+source; a half-remembered rule is how a wrong one spreads to every lane.
+
+Rules that are easy to forget:
+
+- A package change is usable in an app the moment it is coded: `starci deps source --local`; only a deploy waits for npm
+  ([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20).
+- Before `git worktree remove`, unlink any `node_modules` junction inside the worktree (`rmdir` on the link itself);
+  removing through a junction empties the target.
+- In a shared checkout, commit only your paths through a temporary index (`GIT_INDEX_FILE`), never the shared index.
+
 ## Environment gotchas
 
 - `ACP_BACKEND=windsurf` leaks into shells spawned from Devin Desktop and makes the `devin` CLI take the Windsurf auth
