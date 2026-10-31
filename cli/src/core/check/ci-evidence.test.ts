@@ -128,7 +128,7 @@ void test("jobs are paged: a run with more than one page of jobs is read to its 
 
 void test("the required jobs come from the CI standard of @starci/hfs, per edition", () => {
     const full = requiredJobsOf("full")
-    assert.deepEqual(full.required, ["fast", "lint", "test", "coverage", "build"])
+    assert.deepEqual(full.required, ["plan", "fast", "lint", "test", "coverage", "build", "verdict"])
     assert.ok(full.optional.includes("sonar"))
     assert.ok(requiredJobsOf("lite").optional.includes("db-types"))
     assert.equal(editionOf("."), "full", "a folder with no hfs.json is judged as full")
