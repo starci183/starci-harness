@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.11.1 - 2026-10-31
+
+- Changed: the bundled canon pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.18.0, eslint-canon-fe 9.8.0, stylelint-canon 2.4.0, hfs 4.16.0 and eslint-canon-be 3.11.1 (RELEASE_VERSION_NOT_BUMPED: 3.11.0 is on npm).
+
 ## 3.11.0 - 2026-10-31
 
 - Changed (breaking for a lite app that kept raw SQL): R334 `no-raw-sql` is one style, no SQL text in lite TypeScript outside the test world. New messages: `query` (a `.query(` outside the world, except the one composer `platform/database/database.client.ts` with its template statements, a file `ruleParams.be.sqlPassThrough` or hfs.json `sides.be.sqlPassThrough` lists with a plain-string argument, and the `*.spec.ts` beside it; `platform/database` loses its blanket exemption), `template` (a `sql` template outside the world), `sqlFile` (a `*.sql.ts` outside the world), `sqlTagImport` (an import of `sql`, `ident`, `SqlText` or `SqlIdent` outside the world; the tag's own module `database.sql.ts` is exempt), `worldCallHelper` (a world `sql` statement that only calls a listed function: it is `callDbFunction`) and `worldTableWrite` (a world statement that writes a `public` or `be_access` table: it goes through the entity or the area's builder). `builder` and `unlisted` are kept; the world keeps raw SQL for probes.

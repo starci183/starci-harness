@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.0 - 2026-10-31
+
+- Changed: moves with `@starci/grammar` 0.18.0 and requires `@starci/eslint-grammar-core` 0.18.0.
+
 ## 0.17.0 - 2026-10-31
 
 - Changed: requires @starci/eslint-grammar-core 0.17.0 and inherits its pane laws (R345 `pane-grid-children`, R346 `pane-children`, R347 `no-pane-section-padding`, R348 `pane-grid-page`; its inheritance spec lints them through the Offset Pop plugin); follows @starci/grammar 0.17.0. The bundled runtime copies follow @starci/hfs 4.15.0 and the canon pins name the cohort hfs 4.15.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.7.0, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.17.0.

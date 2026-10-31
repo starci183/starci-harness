@@ -1,5 +1,10 @@
 # Changelog
 
+## 9.8.0 - 2026-10-31
+
+- Added: `no-spacing-utility` (R350, `FE_SPACING_UTILITY`): no padding, margin, gap or space utility (variants and arbitrary values included) in an app class string; the message names the role prop to use. It ships in the closed counting cohort (`COUNTING` of `src/lib/config.ts`) at warn for this release.
+- Changed: `nested-control-variant` refuses the pill (`variant="secondary"`) on `Tabs` wherever it is set, and no longer refuses `variant="primary"` inside a surface: tabs are the underline bar everywhere.
+
 ## 9.7.0 - 2026-10-31
 
 - Added: R349 `no-hand-built-panes` (`FE_HAND_BUILT_PANES`, surface rules, slot-free): a multi-pane frame is a `PaneGrid`, so a vertical Grammar `Divider` used as a column seam (among the plain columns of a flex row, or anywhere inside a `SurfaceCard composition="joined"`) and a joined card that holds a flex row of two or more plain columns are refused.

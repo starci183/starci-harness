@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0 - 2026-10-31
+
+- Changed (breaking values): one spacing scale, 0 4 8 12 24 32 with no 16 (`COMMON_SPACING_SCALE`; the family scales are Common's). Root tokens by role: gaps `--grammar-identity-gap` 4 (new), `--grammar-inline-gap` 8, `--grammar-row-gap` 12, `--grammar-section-gap` 24, `--grammar-region-gap` 32; insets `--grammar-inset` 12 (new: every container), `--grammar-inset-nested` 8 (new: a box inside a card), `--grammar-inset-open` 24 (new: an empty state or drop target); `--grammar-page-inset` 12, 24 from 48rem, 32 from 70rem (no `clamp`); `--grammar-card-padding-inline`/`-block`, `--grammar-overlay-inset` (new) and the four `--grammar-pane-inset-*` read `--grammar-inset` (12 on every side); `--grammar-control-padding-inline-{sm,md,lg}` 8 / 12 / 24 and `--grammar-control-padding-glyph-*` 4 / 8 / 12 (new).
+- Added: `Stack` (`gap` role, `align`, `measure`, `as`), `Cluster` (one `gap` role on both axes, `wrap`, `align`, `justify`) and `Grid` (`kind="cards"` with `columns?: 2 | 3 | 4` and the section gap on both axes; `kind="form"` renders `FormGrid`; `kind="main-rail"` renders `PrimaryRailLayout`); none takes a class or a style. `COMMON_GAP_ROLES`, `GapRole`, `CommonGapRole`.
+- Changed: every off-scale spacing value of the sheets is on the scale (the 6px meter gap is identity, the dialog and drawer body lose the 3px offset, 2px gaps are identity, forms and dialogs space their bands by the row gap, the empty notice and the drop target take the open step, a nested card and an alert in a card the nested step). `components-spacing.css` restyles the vendor parts' padding and gap in the vendor `components` layer (dialog, drawer, button inline padding with the glyph side, alert, toast, list option, table cells), with no `!important`.
+- Changed: `Tabs` default to the underline bar everywhere (no pill inside a surface); the first label stands on the content edge. `Button` stamps `data-grammar-button-start`/`-end="glyph"`. `Rail inset="content"` is the container inset on every side.
+
 ## 0.17.1 - 2026-10-31
 
 - Fixed: `Page` renders from a server component again. 0.17.0 called the fill measuring hook inside `Page` itself, so every `Page` rendered by a server component failed with "Attempted to call useFillMeasure() from the server". The measured fill box of `chrome="panes"` is now its own client component (`PanesFill`), and `Page` calls no hook.

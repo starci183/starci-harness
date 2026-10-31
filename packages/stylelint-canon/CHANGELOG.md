@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.0 - 2026-10-31
+
+- Added: `starci/spacing-scale` (R350, `FE_SPACING_OFF_SCALE`): a padding, margin, gap or scroll inset, and a custom property carrying one, takes a step of 0 4 8 12 24 32 (a 1px or 2px line passes) and no fluid value; its spec judges every `@starci/grammar` stylesheet. The grammar vocabulary and snapshot are regenerated.
+
 ## 2.3.0 - 2026-10-31
 
 - Added: `crossFileInputs` for the lint result cache of `starci app check` (ruling app-check-cache, `src/lib/cross-file-inputs.ts`): the files each rule reads beyond the linted stylesheet, so a cached result is reused only while they are unchanged; the grammar fixture styles are restated in the canonical form.

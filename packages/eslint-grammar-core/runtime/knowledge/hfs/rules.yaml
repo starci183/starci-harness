@@ -6163,3 +6163,27 @@ rules:
         source: owner
         quote: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
         ruling: "A multi-pane frame is the Grammar's PaneGrid, never columns and a vertical Divider composed by hand inside a card."
+  - id: R350
+    code: "FE_SPACING_UTILITY"
+    law: "Every spacing value is the Grammar's, on its one scale 0 4 8 12 24 32: an app names the relation between the blocks it places through a role prop (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page) and writes no padding, margin, gap or space utility and no arbitrary spacing value in a class string; a Grammar stylesheet writes no spacing length off the scale and no fluid spacing value."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_SPACING_UTILITY", "FE_SPACING_OFF_SCALE"]
+    enforcers:
+      - {kind: eslint-fe, id: no-spacing-utility}
+      - {kind: stylelint, id: spacing-scale}
+    editions: [lite, full]
+    docs: [contexts/ui/presentation.md]
+    templateNa: "A template's own layout is moved onto the role props by starci app codemod spacing-roles; the rule counts at warn for one cohort."
+    proves:
+      - {path: packages/eslint-canon-fe/src/spacing.spec.ts, editions: [lite, full], codes: [FE_SPACING_UTILITY]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/spacing.spec.ts, editions: [lite, full], codes: [FE_SPACING_UTILITY]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/spacing.spec.ts, editions: [lite, full], codes: [FE_SPACING_UTILITY]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "hay full 3 bỏ 4 đi!!! thầy nghĩ nên v"
+        ruling: "One spacing scale with no 16; every container holds its content 12 in, and an app names relations through role props, never spacing utilities."

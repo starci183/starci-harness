@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.16.0 - 2026-10-31
+
+- Added: `starci app codemod spacing-roles [--execute] [--json] [--format json|markdown] [--out <file>]`: a dry run by default; plain flex column and row `div`s whose only spacing is one gap become `Stack` and `Cluster` bound from the file's Grammar import (gap-1 identity, gap-2 inline, gap-3 row, gap-4 section, gap-6 and gap-8 region, gap-8 marked for review); every other spacing utility is reported with its suggested role, and the report counts the utilities by family.
+- Changed: `starci app lint` reports an ESLint warning (a rule of the canon's counting cohort) with severity `warning`, counts them per rule (`counts.warning`, `counting`) and keeps them out of the verdict and the error threshold.
+- Changed: the canon pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.18.0, eslint-canon-fe 9.8.0, stylelint-canon 2.4.0 and hfs 4.16.0; R350 joins the bundled rule catalog.
+
 ## 4.15.0 - 2026-10-31
 
 - Added: R345 `FE_PANE_GRID_CHILD_NOT_PANE`, R346 `FE_PANE_CHILD_NOT_SECTION`, R347 `FE_PANE_SECTION_PADDING` and R348 `FE_PANE_GRID_FRAME` (eslint-grammar-core `pane-grid-children`, `pane-children`, `no-pane-section-padding`, `pane-grid-page`) and R349 `FE_HAND_BUILT_PANES` (eslint-canon-fe `no-hand-built-panes`) in the bundled rule catalog.

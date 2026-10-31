@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.0 - 2026-10-31
+
+- Changed: moves with `@starci/grammar` 0.18.0 and requires `@starci/eslint-canon-fe` 9.8.0.
+
 ## 0.17.0 - 2026-10-31
 
 - Added: the pane laws, `src/pane.ts` (docs/pane.md): R345 `pane-grid-children` (`FE_PANE_GRID_CHILD_NOT_PANE`: a `PaneGrid` child is a literal `Pane`, directly or from a conditional, `&&` or `.map`; a wrapper component, raw element, fragment or variable renders a blank cell), R346 `pane-children` (`FE_PANE_CHILD_NOT_SECTION`: a `Pane` holds `PaneSection`s or one `PaneGrid`, not a raw element or another Grammar component), R347 `no-pane-section-padding` (`FE_PANE_SECTION_PADDING`: no padding or margin utility on the outermost element of a `PaneSection`, same-file component roots and typed imported class constants followed) and R348 `pane-grid-page` (`FE_PANE_GRID_FRAME`: a `PaneGrid` stands in `Page chrome="panes"` or in a `Pane`, never in a `FillViewport`, a card or another page chrome). A Freestyle subtree is exempt. Offset Pop inherits them.
