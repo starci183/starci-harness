@@ -919,7 +919,7 @@ const assertPaneInset = async (canvasElement: HTMLElement, isDocked: boolean) =>
     };
     const sections = (area: string) => Array.from(pane(area).querySelectorAll<HTMLElement>('[data-component="PaneSection"]'));
     const offset = (area: string, box: HTMLElement) => box.getBoundingClientRect().left - contentLeft(pane(area));
-    const expectEdge = (area: string, box: HTMLElement) => expect(Math.abs(offset(area, box) - 16)).toBeLessThanOrEqual(0.5);
+    const expectEdge = (area: string, box: HTMLElement) => expect(Math.abs(offset(area, box) - 12)).toBeLessThanOrEqual(0.5);
 
     // Every band of the list pane starts on the content edge: the head, the search box, the tab track and its first pill, the list.
     const list = sections('list');
@@ -960,7 +960,7 @@ const viewportOptions = {
   phone375: { name: 'Phone 375 x 812', styles: { width: '375px', height: '812px' }, type: 'mobile' },
 } as const;
 
-/** The pane inset at 1200px: the head, search box, first tab pill, selected row, bubbles, chips, controls and hint all start 16px inside their pane. */
+/** The pane inset at 1200px: the head, search box, first tab pill, selected row, bubbles, chips, controls and hint all start 12px inside their pane. */
 export const PaneInset: Story = {
   parameters: { viewport: { options: viewportOptions } },
   globals: { viewport: { value: 'desktop1200', isRotated: false } },
@@ -1011,11 +1011,11 @@ const assertPagePanes = async (canvasElement: HTMLElement) => {
     expect(Math.abs(grid.getBoundingClientRect().bottom - window.innerHeight)).toBeLessThanOrEqual(1);
     expect(getComputedStyle(page).rowGap).toBe('0px');
     expect(getComputedStyle(grid).borderTopLeftRadius).toBe('0px');
-    // The first pane's bands start 16px inside it.
+    // The first pane's bands start 12px inside it.
     const chat = grid.querySelector<HTMLElement>('[data-grammar-pane-area="chat"]');
     const bubble = chat?.querySelector<HTMLElement>('[data-component="ChatBubble"]');
     if (!chat || !bubble) throw new Error('the chat pane renders');
-    expect(Math.abs(bubble.getBoundingClientRect().left - contentLeft(chat) - 16)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(bubble.getBoundingClientRect().left - contentLeft(chat) - 12)).toBeLessThanOrEqual(0.5);
   }, { timeout: 4000 });
 };
 
