@@ -233,13 +233,13 @@ Grammar Tabs default to `nested ? "secondary" : "primary"` and map them *inverte
   (`collection.yaml:9-14`). A card is one subject, divided into bands by rules, never into more cards (COLLECTION-2).
 - A rail holds standalone lists as `SurfaceListCard` stacked at GAP-4 (COLLECTION-1 c7). Multi-value input is a list
   of single `Input`s, never a "one per line" Textarea (c8).
-- Every region resolves to a published composition (`PrimaryRailLayout`, `WorkspaceShell`, `ChatWorkspace`) or to a
+- Every region resolves to a published composition (`PrimaryRailLayout`, `WorkspaceShell`, `PaneGrid`) or to a
   recorded gap. Vendor grid and width arithmetic are refused (LAYOUT-2). There is one owner per scroll axis
   (LAYOUT-3), and a list/detail/info screen is one joined surface with vertical Dividers (LAYOUT-1 c10).
 
 ### 3.7 Responsive
 Breakpoints belong to a named owner, never to a device: `PrimaryRailLayout` container query at 56rem,
-`NavigationFeatureNav` and `ChatWorkspace` at 48rem (RESPONSIVE-2). A form inside a narrow owner stays one column
+`NavigationFeatureNav` and `PaneGrid` at 48rem (RESPONSIVE-2). A form inside a narrow owner stays one column
 whatever the viewport, because a viewport `md:grid-cols-2` misaligns fields inside a drawer (RESPONSIVE-1 c6). Only
 one branch exists at a time.
 

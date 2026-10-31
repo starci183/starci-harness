@@ -323,6 +323,24 @@ rulings:
     words: "sao mà background dc nửa màn thôi thế???"
     ruling: "A WorkspaceShell is at least one viewport tall, so the canvas under a short page runs to the bottom of the screen."
     owner: "@starci/grammar src/common/styles.css .starci-core-workspace-shell"
+  - id: grammar-names-are-generic
+    date: '2026-10-31'
+    status: live
+    words: "tên gì chung chung tính chất grammar là cấp ui ux chung chung k bias tính năng hiểu k, ghi vào knowlege đi"
+    ruling: "The grammar is a generic UI/UX layer: a component, prop or token name says what it does as a layout or UI role (PaneGrid, SurfaceCard, Rail), never a product feature (chat, customer, order, invoice), so any product can reach for it. The multi-pane frame is PaneGrid; the old chat-named and PaneLayout spellings are removed, not aliased (removedVocabulary)."
+    owner: "@starci/grammar src/core/composition/PaneGrid; contexts/grammars/contract.md What a grammar provides; contexts/ui/components/page-header.md Owner split"
+  - id: pane-grid
+    date: '2026-10-31'
+    status: live
+    words: "phải xây kiểu grid hiểu không, kiểu bỏ A BC ngang hàng D ở dưới... và cách nhau bởi divider; chuẩn build grid và ghép các element nghiệp vụ của chat, mỗi grid có option surface hoặc k"
+    ruling: "The multi-pane frame is one generic PaneGrid, not a layout with fixed chat-shaped slots: named areas (A B C side by side, D below) laid out flush with a divider between neighbours, columns and rows by track role, the arrangement chosen per breakpoint, and each Pane either a borderless surface or a plain div. It only divides the space; what goes in a cell is the app's business. PaneLayout is removed, not aliased (removedVocabulary). A short inset separator inside a pane's content is the app's own element, not a grammar option."
+    owner: "@starci/grammar src/core/composition/PaneGrid, src/common/styles.css; contexts/grammars/contract.md PaneGrid; contexts/ui/components/pane-grid.md"
+  - id: grammar-freestyle-region
+    date: '2026-10-31'
+    status: live
+    words: "cái trang này free style đi trò div và làm bth thôi, thêm 1 component Freestyle hoặc tên gì đó tương đương đi trò, ý là cho custom nhưng vẫm bám grammar trừ bất đắc dĩ ntn"
+    ruling: "The grammar has one sanctioned escape hatch, Freestyle: a region that fills its host where the app writes its own plain divs and app CSS (layout, paint, radius, arbitrary values, absolutely positioned art) because no Grammar component fits. It names its reason, adds no paint of its own, and is a last resort: the rest of the page still follows the grammar, and a Grammar component used inside it is judged as before."
+    owner: "@starci/grammar src/core/composite/Freestyle; @starci/eslint-grammar-core src/freestyle.ts (R341) and exemptFreestyle; @starci/eslint-canon-fe src/lib/freestyle.ts; contexts/ui/components/freestyle.md"
   - id: STATE-8/loading-keeps-anatomy
     date: '2026-10-11'
     status: live
@@ -650,6 +668,14 @@ rulings:
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.
 removedVocabulary:
+  - spelling: ChatWorkspace
+    as: grammar composition
+    replacedBy: PaneGrid
+    ruling: "grammar-names-are-generic"
+  - spelling: PaneLayout
+    as: grammar composition
+    replacedBy: PaneGrid
+    ruling: "pane-grid"
   - spelling: starci
     as: grammar family id
     replacedBy: core

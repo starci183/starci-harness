@@ -21,6 +21,7 @@
 import type { TSESTree } from "@typescript-eslint/utils"
 import { isContentFile } from "./comments.ts"
 import { defineRule, type Node, type Recommended, type Rules } from "./lib/rule.ts"
+import { exemptFreestyle } from "./lib/freestyle.ts"
 
 /** A hex colour: 3, 4, 6 or 8 digits, not a longer word and not part of an identifier. */
 const HEX_COLOR = /(?<![\w&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/
@@ -95,7 +96,7 @@ const staticString = (node: Node | null | undefined): string | null => {
 }
 
 /** No raw colour, hex or pixel value outside `brand.css`. */
-export const noRawBrandValue = defineRule({
+export const noRawBrandValue = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "No hex, colour function, named paint colour or px length in TypeScript; tokens only." },
@@ -167,7 +168,7 @@ export const noRawBrandValue = defineRule({
       },
     }
   },
-})
+}))
 
 /** The rules this law contributes to the plugin. */
 export const rules = {

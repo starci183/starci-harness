@@ -1,5 +1,5 @@
 import type { Rule } from "eslint"
-import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
+import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contract.ts"
 import type { ReaderContext } from "./lib/types.ts"
 /**
  * The boundary between product code and `@starci/grammar`.
@@ -62,7 +62,7 @@ const composesGrammar = (context: ReaderContext, file: string): boolean => {
 }
 
 /** No raw structural or text element in app source or in a package that composes the grammar. */
-export const noRawStructuralElement: Rule.RuleModule = defineRule({
+export const noRawStructuralElement: Rule.RuleModule = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "Page structure and text are grammar components, not raw `div`-family HTML; only `fe.package.ui` renderers draw raw tags." },
@@ -83,7 +83,7 @@ export const noRawStructuralElement: Rule.RuleModule = defineRule({
       },
     }
   },
-})
+}))
 
 /** The rules this law contributes to the plugin. */
 export const rules: Record<string, Rule.RuleModule> = {

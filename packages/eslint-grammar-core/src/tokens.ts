@@ -6,7 +6,7 @@ import { classTextVisitors } from "@starci/eslint-canon-fe/lib/class-text.mjs"
 import { hfsOf } from "@starci/eslint-canon-fe/lib/hfs.mjs"
 import type { HfsView } from "@starci/eslint-canon-fe/lib/hfs.mjs"
 import { classOf, isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
-import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
+import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contract.ts"
 import type { Node, ReaderContext } from "./lib/types.ts"
 
 /**
@@ -25,7 +25,7 @@ const LARGE_TEXT = /\btext-(?:xl|2xl|3xl|4xl|5xl)\b/
 const HEAVY_WEIGHT = /\bfont-(?:bold|extrabold|black)\b/
 
 /** A fractional step is off the ladder, not between two rungs. */
-export const noFractionalStep: Rule.RuleModule = defineRule({
+export const noFractionalStep: Rule.RuleModule = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "A measurement takes a whole rung; a fractional step is off the scale." },
@@ -42,7 +42,7 @@ export const noFractionalStep: Rule.RuleModule = defineRule({
       if (hit) context.report({ node, messageId: "fractional", data: { cls: hit[0] } })
     })
   },
-})
+}))
 
 /** Large text plus a heavy weight is a heading, and headings come from the component that owns both. */
 export const noHandRolledHeading: Rule.RuleModule = defineRule({

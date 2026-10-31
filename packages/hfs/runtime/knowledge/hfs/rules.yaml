@@ -5979,3 +5979,26 @@ rules:
         source: owner
         quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); SurfaceListCard takes its depth from the surface context (grammar 0.16.2)."
         ruling: "SurfaceListCard resolves its depth from the surface context like SurfaceCard and SurfaceAccordionCard; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
+  - id: R341
+    code: "FE_FREESTYLE_REASON_MISSING"
+    law: "A Grammar Freestyle region, the one sanctioned place where an app writes its own plain elements and CSS because no Grammar component fits, names its reason: a non-empty string literal saying why. The rules that judge hand-written elements, classes, styles and generated art leave the raw elements of a Freestyle subtree alone; a Grammar component inside it is judged as before. An element with a spread attribute is not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_FREESTYLE_REASON_MISSING"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: freestyle-has-reason}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template writes no Freestyle region; the app adds one only when no Grammar component fits."
+    proves:
+      - packages/eslint-grammar-core/src/freestyle.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/freestyle.spec.ts, editions: [lite, full], codes: [FE_FREESTYLE_REASON_MISSING]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/freestyle.spec.ts, editions: [lite, full], codes: [FE_FREESTYLE_REASON_MISSING]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "cái trang này free style đi trò div và làm bth thôi, thêm 1 component Freestyle hoặc tên gì đó tương đương đi trò, ý là cho custom nhưng vẫm bám grammar trừ bất đắc dĩ ntn"
+        ruling: "The Grammar has one sanctioned escape hatch, Freestyle: a region where the app writes its own plain divs and CSS because no Grammar component fits; it names its reason (the lint requires it), and the rest of the page still follows the Grammar."

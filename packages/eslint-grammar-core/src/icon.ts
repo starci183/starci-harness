@@ -1,5 +1,5 @@
 import type { Rule } from "eslint"
-import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
+import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contract.ts"
 import type { FunctionNode, Node, ReaderContext, SourceView } from "./lib/types.ts"
 /**
  * The rules that hold `icon.md`.
@@ -260,7 +260,7 @@ const inDeclaredBrandMark = (sourceCode: SourceView, node: Node): boolean => {
 }
 
 /** Inline SVG belongs only to an explicitly declared brand mark in a leaf entry. */
-export const noInlineSvgOutsideBrandMarkLeaf: Rule.RuleModule = defineRule({
+export const noInlineSvgOutsideBrandMarkLeaf: Rule.RuleModule = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
     docs: { description: "FE_ICON_INLINE_SVG: inline SVG is drawn only by an exported leaf entry component with a @brand-mark JSDoc declaration.", url: "knowledge/hfs/rules.yaml#R286" },
@@ -282,7 +282,7 @@ export const noInlineSvgOutsideBrandMarkLeaf: Rule.RuleModule = defineRule({
       },
     }
   },
-})
+}))
 
 /** The finding code for the copy-and-glyph law's inline SVG enforcer. */
 Object.assign(why, {

@@ -2308,6 +2308,13 @@ rules:
       - FE_RAISED_SURFACE_IN_SURFACE
     enforcers:
       - {kind: eslint-grammar-core, id: no-raised-surface-in-surface}
+  - id: R341
+    code: FE_FREESTYLE_REASON_MISSING
+    law: A Grammar Freestyle region, the one sanctioned place where an app writes its own plain elements and CSS because no Grammar component fits, names its reason, a non-empty string literal saying why. The rules that judge hand-written elements, classes, styles and generated art leave the raw elements of a Freestyle subtree alone; a Grammar component inside it is judged as before. An element with a spread attribute is not judged.
+    failureCodes:
+      - FE_FREESTYLE_REASON_MISSING
+    enforcers:
+      - {kind: eslint-grammar-core, id: freestyle-has-reason}
 
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

@@ -1,3 +1,4 @@
+import { nextMigrationStamp } from "./migration-stamp.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -181,8 +182,6 @@ const POSTGRES_RESERVED = new Set([
   "with",
 ]);
 
-const timestampOf = (now: () => number) =>
-  new Date(now()).toISOString().replace(/\D/g, "").slice(0, 14);
 const snakeOf = (name: string) => name.replaceAll("-", "_");
 const featureOf = (name: string) => name.replaceAll("_", "-");
 const sqlIdentifierOf = (name: string) =>
@@ -429,13 +428,8 @@ function nextMigration({ root, feature, requestedName, now }: { root: string, fe
       "HFS_ADD_EXISTS",
       `table ${requestedName} already has a migration`,
     );
-  const stamp = timestampOf(now);
   const latest = migrations.at(-1)?.slice(0, 14);
-  if (latest && stamp <= latest)
-    throw new ScaffoldError(
-      "HFS_ADD_MIGRATION_ORDER",
-      `the current UTC timestamp ${stamp} is not later than the latest migration ${latest}; fix the clock or wait for the next second`,
-    );
+  const stamp = nextMigrationStamp(now, latest);
 
   return stamp;
 }

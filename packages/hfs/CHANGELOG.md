@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.12.3 - 2026-10-31
+
+- Changed: the bundled canon pins name @starci/grammar 0.16.3 (the chat-named pane frame is now PaneLayout, no alias: grammar names are generic). R341 FE_FREESTYLE_REASON_MISSING joins the bundled rule catalog.
+- Fixed: two migrations written within one second (an app scaffold followed at once by `add table`, `add webhook`, `add queue`) took the same UTC timestamp and the second was refused with HFS_ADD_MIGRATION_ORDER, which failed the CI package job on a fast runner; the stamp now moves to the second after the latest migration when the latest is at most 5 s ahead of the clock (scaffold/migration-stamp), and a clock that is really behind is still refused. Specs: src/migration-stamp.spec.mts.
+
 ## 4.12.2 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context). R340 FE_RAISED_SURFACE_IN_SURFACE joins the bundled rule catalog.

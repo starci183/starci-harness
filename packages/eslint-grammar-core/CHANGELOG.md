@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.3 - 2026-10-31
+
+- Changed: the peer moves to eslint-canon-fe 9.6.3; the bundled canon pins name @starci/grammar 0.16.3 (the chat-named pane frame is now PaneLayout, no alias: grammar names are generic). The core playbook names PaneLayout in its layout-frame and container lists.
+- Added: starci-grammar/freestyle-has-reason (R341, FE_FREESTYLE_REASON_MISSING): a `<Freestyle>` region names a non-empty string-literal `reason`. no-raw-structural-element, no-fractional-step, generated-art-in-mascot-or-media-frame and no-inline-svg-outside-brand-mark-leaf do not report the raw elements inside a Freestyle subtree (owner ruling grammar-freestyle-region). Specs: src/freestyle.spec.ts.
+
 ## 0.16.2 - 2026-10-31
 
 - Changed: the peer moves to eslint-canon-fe 9.6.2; the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).

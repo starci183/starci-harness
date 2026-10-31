@@ -1,3 +1,4 @@
+import { nextMigrationStamp } from "./migration-stamp.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { render, TEMPLATES_DIR } from "../sync/index.mjs";
@@ -25,8 +26,6 @@ interface Patch {
 const MIGRATION = /^(\d{14})_[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.sql$/;
 const PLACEHOLDER = /@@([A-Za-z][A-Za-z0-9]*)@@/g;
 
-const timestampOf = (now: () => number) =>
-  new Date(now()).toISOString().replace(/\D/g, "").slice(0, 14);
 const upperOf = (name: string) => name.replaceAll("-", "_").toUpperCase();
 const camelOf = (name: string) => {
   const pascal = pascalOf(name);
@@ -233,13 +232,8 @@ export function addLiteWebhookInbox({
       "HFS_ADD_EXISTS",
       `webhook ${provider} already has an inbox migration`,
     );
-  const stamp = timestampOf(now);
   const latest = migrations.at(-1)?.slice(0, 14);
-  if (latest && stamp <= latest)
-    throw new ScaffoldError(
-      "HFS_ADD_MIGRATION_ORDER",
-      `the current UTC timestamp ${stamp} is not later than the latest migration ${latest}; fix the clock or wait for the next second`,
-    );
+  const stamp = nextMigrationStamp(now, latest);
   const renderValues = {
     ...values,
     provider,

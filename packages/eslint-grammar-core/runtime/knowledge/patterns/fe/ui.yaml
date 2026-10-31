@@ -24,7 +24,7 @@ rules:
   - id: FE-UI
     title: Compose the selected Grammar
     kind: mandatory
-    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320, R338, R339, R340]
+    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320, R338, R339, R340, R341]
     requirement: |-
       Components compose the selected Grammar through its published entry and props; application CSS carries
       layout only (css.yaml). A missing visual capability is added to that Grammar before the app consumes it.
@@ -93,5 +93,6 @@ rules:
         - FE_GENERATED_ART_OUTSIDE_FRAME
         - FE_MASCOT_ASSET_SLOT_MISSING
         - FE_RAISED_SURFACE_IN_SURFACE
+        - FE_FREESTYLE_REASON_MISSING
       manual: []
     relatedExamples: [full-app-shell, lite-app-shell]

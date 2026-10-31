@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.3 - 2026-10-31
+
+- Removed (breaking): `ChatWorkspace` and `PaneLayout` (with `ChatWorkspaceProps`, `PaneLayoutProps`), with no alias; `PaneGrid` replaces them. The grammar is a generic UI/UX layer, so a name states the layout role, never a product feature (owner rulings grammar-names-are-generic and pane-grid). Their hooks go with them: classes `.starci-core-pane-layout*`, attributes `data-grammar-pane-layout*` and the `paneLayout*` class-name exports; the slot props (`conversation`, `conversationLabel`, `composer`, `header`, `rail*`) have no successor, an app places its own pieces in panes. Story Compositions / PaneGrid.
+- Added: PaneGrid and Pane, the one generic pane grid (owner ruling pane-grid). `PaneGrid` takes `label`, `areas` (`grid-template-areas` rows such as `["a b c", "d d d"]`), `columns` and `rows` (track roles `auto`, `fill`, `fill-2`, `fill-3`, `compact`, `standard`, `wide` from the Rail widths), each also as an object keyed by breakpoint (`base`, `medium` from 48rem, `wide` from 70rem), chosen by CSS container query on the grid's own width. Panes sit flush; one divider, in the shared separator colour and weight, separates neighbours (n-1, never doubled, none on an outer edge) at every breakpoint. `Pane` takes `area`, `surface` (the flat `--surface` ground with no border, radius or shadow; default transparent), `scroll` (its own VerticalScrollRegion, needs `label`), `label`, and `collapse="drawer"` with `collapseLabel`, `openLabel`, `closeLabel`, `isOpen`, `onOpenChange` (a Drawer opened from a trigger above the grid wherever its area is not arranged, below 48rem for a single `areas`). A pane imposes no padding or structure on its children. Types `PaneGridProps`, `PaneProps`, `PaneTrack`, `PaneBreakpoint`, `PaneResponsive`, `PaneByBreakpoint`. Stories Compositions / Renderers: PaneGrid, PaneGridApp, PaneGridResponsive.
+- Added: Freestyle, the one sanctioned escape hatch: a div that fills its host where the app writes its own plain elements and CSS (layout, paint, radius, arbitrary values, absolutely positioned art) because no Grammar component fits. It takes `children`, `className` and a required `reason` (stamped as `data-grammar-freestyle-reason`; `data-component="Freestyle"`, `data-grammar-freestyle`), adds no paint of its own, and is a last resort (owner ruling grammar-freestyle-region). Story Surfaces / Freestyle.
+
 ## 0.16.2 - 2026-10-31
 
 - Changed: a horizontal Stepper is a track: each step is an equal column with its marker centred over its label, and a connector line joins the markers through their centres (the accent after a completed step, the border colour otherwise); below 30rem every step keeps its equal column so the line stays straight (owner ruling stepper-connector).
@@ -158,7 +164,7 @@
 - Added: `MermaidDiagram` (contract role `diagram`, ruling mermaid-diagram): `source`, `label`, `height` (`sm` 16rem, `md` 24rem, `lg` 32rem, the least canvas box of every state), `errorTitle`, `sourceLabel`, `isSkeleton`, `className`. Mermaid 11.16.0 is an exact dependency, imported on the first diagram; it renders with `theme: "base"`, `securityLevel: "strict"` and colours resolved from the root's semantic tokens, and re-renders when the root's theme changes. A refused source is an `Alert` and the source as a `FencedCodeBlock` in the same frame. Exported types `MermaidDiagramProps`, `MermaidDiagramHeight`.
 - Added: `FlowGraph` node `shape` (`stadium` default, `rect`, `round`, `diamond`, `circle`; type `FlowGraphNodeShape`) and edge `label`, drawn on a surface chip at the edge midpoint and repeated as "source → target: label" in a visually hidden edge list.
 - Added: `Page` (contract role `page`, ruling page-frame): `header` (PageHeader's props as data, type `PageHeaderContent`), `children` (the body), `measure` (`reading`, `product`, `full`), `isSkeleton` (passed to the header), `className`. The band runs full width; the body sits in the measure and gutter one region step below it (or below the top without a header), its sections a region step apart, and clips one gutter step past its content box so nothing reaches across the gutter.
-- Changed (breaking for pages that relied on a frame's inset): `Page` is the single owner of the page inset. No Grammar layout frame wraps a page in `PageContainer` (`WorkspaceShell`, `PrimaryRailLayout` and `ChatWorkspace` never did; `NavigationFeatureNav`'s container is its own bar), and `@starci/eslint-grammar-core` 0.15.4 refuses a page owner that draws `PageHeader` or `PageContainer` itself or anything beside its `Page` (R325), and page tabs outside the header (R324). The fixed bottom-nav offset applies to the outermost `Page`.
+- Changed (breaking for pages that relied on a frame's inset): `Page` is the single owner of the page inset. No Grammar layout frame wraps a page in `PageContainer` (`WorkspaceShell`, `PrimaryRailLayout` and `PaneLayout` never did; `NavigationFeatureNav`'s container is its own bar), and `@starci/eslint-grammar-core` 0.15.4 refuses a page owner that draws `PageHeader` or `PageContainer` itself or anything beside its `Page` (R325), and page tabs outside the header (R324). The fixed bottom-nav offset applies to the outermost `Page`.
 - Added: stories with plays: `Compositions/Renderers` Page, PageWithoutHeader, PageSkeleton; `Navigation & Data` FlowGraphFlowchart, MermaidDiagram. The settings and members page recipes and the app shell demo are drawn with `Page`.
 - Migrate: a page owner's `PageHeader` plus `PageContainer` becomes `<Page header={{ ...headerProps }} measure={measure}>{content}</Page>`; page tabs move to `header.tabs`.
 
@@ -428,7 +434,7 @@ geometry). Closes the gaps an app migrating to it found. Same rules as the 0.9.5
   `aria-busy`; real `items` win and loading beats `emptyContent`.
 - **`ChatBubble isSkeleton`**: the bubble face on its `side` with two Skeleton text lines (a Skeleton circle only if `avatar` is passed); no author, meta, actions or footer; `aria-hidden`.
   `children` is now optional. New helper **`ChatBubbleSkeletons`** (`count` default 3, 1 to 12; `hasAvatar`): a loading thread of alternating incoming and outgoing skeleton bubbles in one
-  `aria-busy` wrapper, for the `conversation` slot of a `ChatWorkspace` (which lays out whatever the app puts there; it owns no bubbles).
+  `aria-busy` wrapper, for the `conversation` slot of a `PaneLayout` (which lays out whatever the app puts there; it owns no bubbles).
 - **Second pass (same release).**
   - `NumberField`, `SearchField`, `SegmentedControl`, `CheckboxGroup`, `Switch` take `isSkeleton`: the label stays real, the control becomes `aria-hidden` Skeleton geometry of the
     loaded size (one-line field 2.5rem with the touch floor; `SegmentedControl` one block, 5rem per option, `fill` stretches it; `CheckboxGroup` keeps every option label real beside a
@@ -758,7 +764,7 @@ prop, default, class or token changed meaning; one renderer is new; 28 renderers
   that emitted none now do (draw-render had to map 15 of them by hook) - PageContainer, SectionHeader, SurfaceCard, SurfaceListCard, SurfaceAccordionCard,
   MediaFrame, SurfaceCopyGroup, RankArtwork, Label, IncludedMark, GrammarRoot, HorizontalScrollRegion,
   VerticalScrollRegion, StaticStateRow, Rail, Subnav, Tabs, Tooltip, MarkdownArticle, FencedCodeBlock,
-  MarkdownTableFrame, PrimaryRailLayout, NavigationFeatureNav, WorkspaceShell, ChatWorkspace, StateMark,
+  MarkdownTableFrame, PrimaryRailLayout, NavigationFeatureNav, WorkspaceShell, PaneLayout, StateMark,
   LeadingNumber and OtpInput (tiers atom / composite / branch / composition by their storage tier). A caller's own
   `data-component` still wins on HorizontalScrollRegion and VerticalScrollRegion (OtpInput uses that).
 
@@ -896,7 +902,7 @@ secondary surface).
 
 ## 0.4.13
 
-Fix only. A live audit measured the conversation region of `ChatWorkspace` - the node stamped
+Fix only. A live audit measured the conversation region of `PaneLayout` - the node stamped
 `MEASURE-7 OVERFLOW-3` and named "Setup message" - rendering `overflow: auto auto` on every
 capture. OVERFLOW-3 promises one scrolling axis and a second axis left clipped or visible on purpose;
 both axes scrolled. This is the defect 0.4.11 repaired on `HorizontalScrollRegion`, on the sibling
@@ -906,7 +912,7 @@ region nobody had measured yet.
 
 - Nothing in the family's sheet named `overflow-x` for this region. The vendor's
   `.scroll-shadow--vertical` sets `overflow-y: auto` alone, and every host class the region wears -
-  `.starci-core-chat-workspace-conversation`, `.starci-core-chat-workspace-overlay-rail`,
+  `.starci-core-pane-layout-conversation`, `.starci-core-pane-layout-overlay-rail`,
   `.starci-core-accordion-scroll-region`, `.starci-core-form-scroll-viewport` - names that same one
   axis or names none at all. Per CSS a non-visible overflow on one axis forces the other from
   `visible` to `auto`, so the region rendered two scrolling axes under a one-axis claim.
@@ -917,7 +923,7 @@ region nobody had measured yet.
 - `VerticalScrollRegion` takes an `overflow?: "always" | "needed"` prop (default `"always"`), stamps
   `data-grammar-overflow` beside `data-grammar-scroll-region="vertical"`, and claims
   `MEASURE-7 OVERFLOW-3` or `MEASURE-7 OVERFLOW-4` accordingly - the shape `HorizontalScrollRegion`
-  already has. `ChatWorkspace` asks for nothing, so its conversation, its inline rail and its overlay
+  already has. `PaneLayout` asks for nothing, so its conversation, its inline rail and its overlay
   rail keep claiming `MEASURE-7 OVERFLOW-3`, as does every other host. A `data-contract` a caller
   passes in is still replaced by the region's own: one claim per node, and the node's own claim.
 - No class, no markup, no JSX and no consumer prop changed. The non-scrollable branch is untouched.
@@ -929,7 +935,7 @@ region nobody had measured yet.
   `data-grammar-overflow="always"` under the single axis claim `OVERFLOW-3`, the shipped sheet
   declares both `overflow-y: auto` and `overflow-x: hidden` for that identity, and `overflow="needed"`
   moves the stamp and the claim together to `OVERFLOW-4`.
-- `src/core/composition/ChatWorkspace/index.spec.tsx` measures the repair where the audit measured
+- `src/core/composition/PaneLayout/index.spec.tsx` measures the repair where the audit measured
   the defect: it renders the workspace under the shipped sheet in jsdom and reads the conversation
   region's COMPUTED overflow per axis, not the class list. Both axes are measured because a sheet
   that names one renders two - reading `overflow-y` alone would have called the old render correct.
@@ -1156,7 +1162,7 @@ Fixes only. Three defects a screenshot audit found on a real surface, all three 
   `[data-grammar-layout-rail="present"]`, so `railWidth` on a layout with no rail can no longer
   reserve a column for a rail that was never passed.
 - The sweep for the same pattern covered every container query in the sheet. `Rail` (18rem),
-  `SurfaceCard`'s label and rows (28rem), the section header (32rem) and `ChatWorkspace` are clean -
+  `SurfaceCard`'s label and rows (28rem), the section header (32rem) and `PaneLayout` are clean -
   their collapses either have no attribute rule competing for the property or already read
   mobile-first. `PrimaryRailLayout` and `WorkspaceShell` were the only two, and both are fixed.
 - `src/core/composition/collapse.spec.tsx` is the guard. It renders every `railWidth` x
@@ -1271,7 +1277,7 @@ move into the package.
 
 - The utility debt is PAID. Every object 0.4.3 recorded as still spelling its layout in Tailwind
   utilities - `MarkdownArticle`, `Rail`, `Subnav`, `SurfaceCard`, `SurfaceListCard`,
-  `SurfaceAccordionCard`, the shared Core class names, `EmptyNotice`, `ChatWorkspace`,
+  `SurfaceAccordionCard`, the shared Core class names, `EmptyNotice`, `PaneLayout`,
   `NavigationFeatureNav`, `Divider`, `IconButton`, `IconTile`, `Icon`, `Input`, `Progress`, `Text`,
   `TextAction` and the shared action recipe - now owns its box in `src/common/styles.css`, selected
   by the data attributes each component already emits. `Label` joined them, because its type scale
@@ -1314,7 +1320,7 @@ Each of these is a utility that emitted nothing, or a shipped rule a utility was
   the outer one, which would split the rule from the claim promising it.
 - `SurfaceCard`'s composition inset claim (`PADDING-4`, or `GAP-0 PADDING-0` when joined) moved from
   the surface shell to the content region, which is the element whose shipped rule draws it.
-- The compact `ChatWorkspace` rail trigger's corner is the published control radius (0.75rem)
+- The compact `PaneLayout` rail trigger's corner is the published control radius (0.75rem)
   rather than `rounded-lg` (0.5rem), and its hover fill and shadow are now shipped.
 - `Rail`'s body carries `flex: 1 1 0%` unconditionally, matching the `flex-1` it used to spell.
 

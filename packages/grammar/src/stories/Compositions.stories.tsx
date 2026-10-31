@@ -14,6 +14,7 @@ import {
   State,
   UserGlyph,
   noop,
+  rgbaOf,
   familyScope,
 } from './fixtures.js';
 
@@ -621,39 +622,196 @@ export const WorkspaceShell: Story = {
   ),
 };
 
-const ChatDemo = () => {
-  const [railOpen, setRailOpen] = useState(false);
+const PaneGridRows = () => (
+  <div data-story-pane-grid="rows" style={{ height: '20rem', display: 'flex' }}>
+    <G.PaneGrid label="Four panes" areas={['a b c', 'd d d']} rows={['fill', 'auto']}>
+      <G.Pane area="a" surface><G.Text>A</G.Text></G.Pane>
+      <G.Pane area="b"><G.Text>B</G.Text></G.Pane>
+      <G.Pane area="c" surface><G.Text>C</G.Text></G.Pane>
+      <G.Pane area="d"><G.Text>D spans the row below A, B and C</G.Text></G.Pane>
+    </G.PaneGrid>
+  </div>
+);
+
+/** Panes laid out by named areas, flush, with one divider between neighbours: A B C side by side, D below. */
+export const PaneGrid: Story = {
+  render: () => <PaneGridRows />,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const pane = (area: string) => {
+        const node = canvasElement.querySelector(`[data-story-pane-grid="rows"] [data-grammar-pane-area="${area}"]`);
+        if (!(node instanceof HTMLElement)) throw new Error(`pane ${area} renders`);
+        return node;
+      };
+      const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(pane);
+      if (a === undefined || b === undefined || c === undefined || d === undefined) throw new Error('four panes render');
+      // n-1 vertical lines between A B C, one horizontal line above D, none doubled.
+      expect(getComputedStyle(a).borderInlineStartWidth).toBe('0px');
+      expect(getComputedStyle(b).borderInlineStartWidth).toBe('1px');
+      expect(getComputedStyle(c).borderInlineStartWidth).toBe('1px');
+      for (const top of [a, b, c]) expect(getComputedStyle(top).borderBlockStartWidth).toBe('0px');
+      expect(getComputedStyle(d).borderBlockStartWidth).toBe('1px');
+      expect(getComputedStyle(d).borderInlineStartWidth).toBe('0px');
+      // Flush: no gap between neighbours, D as wide as the three above.
+      expect(Math.abs(a.getBoundingClientRect().right - b.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(d.getBoundingClientRect().width - (c.getBoundingClientRect().right - a.getBoundingClientRect().left))).toBeLessThanOrEqual(1);
+      // A surface pane stands on the surface ground; a plain pane is transparent.
+      expect(rgbaOf(getComputedStyle(a).backgroundColor)[3]).toBeGreaterThan(0);
+      expect(rgbaOf(getComputedStyle(b).backgroundColor)[3]).toBe(0);
+    });
+  },
+};
+
+const ResponsiveHost = ({ id, width }: { readonly id: string; readonly width: string }) => (
+  <div data-story-pane-grid={id} style={{ height: '16rem', inlineSize: width }}>
+    <G.PaneGrid
+      label={`Responsive ${id}`}
+      areas={{
+        base: ['head', 'a', 'b', 'c'],
+        medium: ['head head head', 'a b c'],
+      }}
+      columns={{ base: ['fill'], medium: ['fill', 'fill-2', 'fill'] }}
+      rows={{ base: ['auto', 'fill', 'fill', 'fill'], medium: ['auto', 'fill'] }}
+    >
+      <G.Pane area="head" surface><G.Text>Header</G.Text></G.Pane>
+      <G.Pane area="a" surface><G.Text>A</G.Text></G.Pane>
+      <G.Pane area="b"><G.Text>B (twice as wide)</G.Text></G.Pane>
+      <G.Pane area="c" surface><G.Text>C</G.Text></G.Pane>
+    </G.PaneGrid>
+  </div>
+);
+
+/** Three columns under a header that stack into one column below 48rem, chosen by CSS on the grid's own width; dividers stay one per touching edge. */
+export const PaneGridResponsive: Story = {
+  render: () => (
+    <div style={{ display: 'grid', gap: '1rem' }}>
+      <ResponsiveHost id="narrow" width="24rem" />
+      <ResponsiveHost id="medium" width="60rem" />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const pane = (id: string, area: string) => {
+        const node = canvasElement.querySelector(`[data-story-pane-grid="${id}"] [data-grammar-pane-area="${area}"]`);
+        if (!(node instanceof HTMLElement)) throw new Error(`pane ${area} renders in ${id}`);
+        return node;
+      };
+      const rect = (id: string, area: string) => pane(id, area).getBoundingClientRect();
+      const width = (id: string, area: string, side: 'Inline' | 'Block') => getComputedStyle(pane(id, area))[`border${side}StartWidth`];
+
+      // Narrow: one column, A above B above C below the header; a horizontal line above each, none vertical, none on the header.
+      expect(Math.abs(rect('narrow', 'a').left - rect('narrow', 'b').left)).toBeLessThanOrEqual(1);
+      expect(rect('narrow', 'b').top).toBeGreaterThanOrEqual(rect('narrow', 'a').bottom - 1);
+      expect(rect('narrow', 'c').top).toBeGreaterThanOrEqual(rect('narrow', 'b').bottom - 1);
+      for (const area of ['a', 'b', 'c']) {
+        expect(width('narrow', area, 'Block')).toBe('1px');
+        expect(width('narrow', area, 'Inline')).toBe('0px');
+      }
+      expect(width('narrow', 'head', 'Block')).toBe('0px');
+
+      // Wide: three columns A | B | C in 1:2:1 under the header; two vertical lines, one horizontal line under the bar, none doubled.
+      expect(Math.abs(rect('medium', 'a').top - rect('medium', 'c').top)).toBeLessThanOrEqual(1);
+      expect(rect('medium', 'b').left).toBeGreaterThanOrEqual(rect('medium', 'a').right - 1);
+      expect(Math.abs(rect('medium', 'b').width / rect('medium', 'a').width - 2)).toBeLessThan(0.1);
+      expect(width('medium', 'a', 'Inline')).toBe('0px');
+      expect(width('medium', 'b', 'Inline')).toBe('1px');
+      expect(width('medium', 'c', 'Inline')).toBe('1px');
+      for (const area of ['a', 'b', 'c']) expect(width('medium', area, 'Block')).toBe('1px');
+      expect(width('medium', 'head', 'Block')).toBe('0px');
+      expect(width('medium', 'head', 'Inline')).toBe('0px');
+    });
+  },
+};
+
+const PaneGridAppDemo = () => {
+  const [listOpen, setListOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const lines = Array.from({ length: 24 }, (_, index) => `Row ${index + 1}`);
   return (
-    <div style={{ height: '36rem', display: 'flex' }}>
-      <G.ChatWorkspace
-        label="Tutor chat"
-        header={<G.Text weight="semibold">Tutor chat</G.Text>}
-        conversationLabel="Messages"
-        conversation={
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
-            <G.SurfaceCard ariaLabel="Tutor message"><G.Text>Try the sentence again with “an”.</G.Text></G.SurfaceCard>
-            <G.SurfaceCard ariaLabel="Your message" isHighlight><G.Text>An hour ago, I finished it.</G.Text></G.SurfaceCard>
+    <div data-story-pane-grid="app" style={{ height: '30rem', display: 'flex' }}>
+      <G.PaneGrid
+        label="Three column workspace"
+        areas={['list head info', 'list main info', 'list foot info']}
+        columns={['standard', 'fill', 'standard']}
+        rows={['auto', 'fill', 'auto']}
+      >
+        <G.Pane
+          area="list"
+          surface
+          scroll
+          label="Items"
+          collapse="drawer"
+          collapseLabel="Items"
+          openLabel="Show items"
+          closeLabel="Hide items"
+          isOpen={listOpen}
+          onOpenChange={setListOpen}
+        >
+          <div style={{ display: 'grid', gap: '0.5rem', padding: '1rem' }}>
+            {lines.map((line) => <G.Text key={line}>{line}</G.Text>)}
           </div>
-        }
-        composer={
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', padding: '1rem' }}>
-            <div style={{ flex: 1 }}><G.Textarea label="Message" isLabelHidden rows={1} placeholder="Write a reply" /></div>
-            <G.Button variant="primary">Send</G.Button>
+        </G.Pane>
+        <G.Pane area="head" surface>
+          <div style={{ padding: '0.75rem 1rem' }}><G.Text weight="semibold">Header</G.Text></div>
+        </G.Pane>
+        <G.Pane area="main" scroll label="Main">
+          <div style={{ display: 'grid', gap: '0.5rem', padding: '1rem' }}>
+            {lines.map((line) => <G.Text key={line}>{line}</G.Text>)}
           </div>
-        }
-        rail={<Placeholder label="Lesson notes" />}
-        railLabel="Lesson notes"
-        railOpenLabel="Show lesson notes"
-        railCloseLabel="Hide lesson notes"
-        isRailOpen={railOpen}
-        onRailOpenChange={setRailOpen}
-      />
+        </G.Pane>
+        <G.Pane area="foot" surface>
+          <div style={{ padding: '0.75rem 1rem' }}><G.Text tone="muted">Footer</G.Text></div>
+        </G.Pane>
+        <G.Pane
+          area="info"
+          surface
+          label="Details"
+          collapse="drawer"
+          collapseLabel="Details"
+          openLabel="Show details"
+          closeLabel="Hide details"
+          isOpen={infoOpen}
+          onOpenChange={setInfoOpen}
+        >
+          <div style={{ padding: '1rem' }}><G.Text>Details</G.Text></div>
+        </G.Pane>
+      </G.PaneGrid>
     </div>
   );
 };
 
-export const ChatWorkspace: Story = {
-  render: () => <ChatDemo />,
+/** A list, a header + main + footer column and an info pane: surface panes, one scroll owner, the same divider under the header as everywhere, and rail panes that become drawers when narrow. */
+export const PaneGridApp: Story = {
+  render: () => <PaneGridAppDemo />,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const pane = (area: string) => {
+        const node = canvasElement.querySelector(`[data-story-pane-grid="app"] [data-grammar-pane-area="${area}"]`);
+        if (!(node instanceof HTMLElement)) throw new Error(`pane ${area} renders`);
+        return node;
+      };
+      const head = pane('head');
+      const main = pane('main');
+      const foot = pane('foot');
+      const info = pane('info');
+      // One ordinary line under the header (drawn by the pane below it) and one above the footer; none on the outer edges.
+      expect(getComputedStyle(main).borderBlockStartWidth).toBe('1px');
+      expect(getComputedStyle(foot).borderBlockStartWidth).toBe('1px');
+      expect(getComputedStyle(head).borderBlockStartWidth).toBe('0px');
+      expect(getComputedStyle(pane('list')).borderInlineStartWidth).toBe('0px');
+      // The header itself draws no bottom edge: the boundary is drawn once.
+      expect(getComputedStyle(head).borderBlockEndWidth).toBe('0px');
+      // The rail panes stand on the surface ground and keep their vertical divider.
+      expect(rgbaOf(getComputedStyle(info).backgroundColor)[3]).toBeGreaterThan(0);
+      expect(getComputedStyle(info).borderInlineStartWidth).toBe('1px');
+      expect(rgbaOf(getComputedStyle(main).backgroundColor)[3]).toBe(0);
+      // The main pane is its own scroll owner and the header and footer never scroll with it.
+      const scroller = main.querySelector('[data-grammar-scroll-region="vertical"]');
+      if (!(scroller instanceof HTMLElement)) throw new Error('main owns a scroll region');
+      expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
+      expect(getComputedStyle(head).overflowY).toBe('hidden');
+    });
+  },
 };
 
 /** One message: incoming on the recessed face, outgoing on the accent-soft pair; actions appear on hover or focus. */

@@ -59,7 +59,7 @@ const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent
 /**
  * One route page: the header band across the region, then the body in the page measure and gutter, one region step
  * below it. Page is the single owner of the page inset and the page's vertical rhythm; layout frames (WorkspaceShell,
- * PrimaryRailLayout, ChatWorkspace) only place regions and never wrap a page in a PageContainer. Page tabs are the
+ * PrimaryRailLayout, PaneGrid) only place regions and never wrap a page in a PageContainer. Page tabs are the
  * header's `tabs`, never a Tabs at the top of the body (lint `page-tabs-in-header`), and a route page renders nothing
  * beside its Page (lint `route-page-is-one-page`). `chrome="bleed"` is the app surface: the body fills the region edge to
  * edge, under the trail alone or under a band.

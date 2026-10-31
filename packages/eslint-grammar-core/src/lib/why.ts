@@ -62,6 +62,11 @@ export const why: Record<string, WhyEntry> = {
     en: "The page or layout owner `<file>` draws something beside its Page, a Page inside another (or inside the Page its tabbed segment's layout draws), a bare PageHeader or PageContainer, or no Page at all (itself, through its pure half, or through the one connected block it renders as its root).",
     fix: "Draw one Page: the band as its header, everything else in its body, the measure as its measure. When client data builds the header, render as the root the one connected block that draws the Page and pass the body as its children. Under a segment layout whose Page carries header.tabs, a page draws its body only; that layout's Page has nothing beside it, its head in its header. A page mounted only under the (auth) route group is framed by that group's layout.",
   },
+  "freestyle-has-reason": {
+    code: "FE_FREESTYLE_REASON_MISSING",
+    en: "A `<Freestyle>` region in `<file>` has no non-empty string `reason`.",
+    fix: "Say why no Grammar component fits: `<Freestyle reason=\"sign-in brand art\">`. If a Grammar component fits, compose it instead.",
+  },
   "no-raised-surface-in-surface": {
     code: "FE_RAISED_SURFACE_IN_SURFACE",
     en: "A Grammar surface in `<file>` forces `depth=\"top\"` inside another surface, raising a surface inside a surface (BOUNDARY-6).",

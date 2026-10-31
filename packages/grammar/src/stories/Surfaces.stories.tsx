@@ -364,6 +364,39 @@ export const Backdrop: Story = {
   },
 };
 
+/**
+ * Freestyle (ruling grammar-freestyle-region): the sanctioned escape hatch. It fills its host, adds no paint of its own,
+ * stamps its reason, and the app's own divs and CSS inside it are the app's.
+ */
+export const Freestyle: Story = {
+  render: () => (
+    <div data-story-freestyle="true" style={{ blockSize: '16rem', inlineSize: '28rem' }}>
+      <G.Freestyle reason="story: hand-placed art">
+        <div style={{ position: 'relative', blockSize: '100%', borderRadius: '1.25rem', background: 'linear-gradient(135deg, #fde68a, #f9a8d4)' }}>
+          <div style={{ position: 'absolute', insetBlockStart: '1rem', insetInlineEnd: '1rem', inlineSize: '5.5rem', blockSize: '5.5rem', borderRadius: '9999px', background: '#ffffffaa' }} />
+        </div>
+      </G.Freestyle>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const host = canvasElement.querySelector('[data-story-freestyle]');
+      const region = host?.querySelector('[data-component="Freestyle"]');
+      if (!(host instanceof HTMLElement) || !(region instanceof HTMLElement)) throw new Error('the freestyle region renders');
+      expect(region.getAttribute('data-grammar-freestyle-reason')).toBe('story: hand-placed art');
+      const style = getComputedStyle(region);
+      // It fills its host and adds no paint of its own.
+      expect(Math.abs(region.getBoundingClientRect().height - host.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+      expect(Math.abs(region.getBoundingClientRect().width - host.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
+      expect(rgbaOf(style.backgroundColor)[3]).toBe(0);
+      expect(style.boxShadow).toBe('none');
+      expect(style.borderTopWidth).toBe('0px');
+      expect(style.borderStartStartRadius).toBe('0px');
+      expect(style.paddingTop).toBe('0px');
+    });
+  },
+};
+
 export const SurfaceListCard: Story = {
   render: () => (
     <Matrix maxWidth={640}>
