@@ -1,4 +1,4 @@
-# Chip, Badge, StatusDot and TagGroup
+# Chip, Badge, StatusDot, ConnectionStatus and TagGroup
 
 Contract: [Chip](../../grammars/contract.md#chip). Vendor: [Chip, Badge, Tag](../../vendor/heroui.md#chip).
 
@@ -9,6 +9,7 @@ Two different jobs share the pill shape, and a status may shrink to its dot:
 | --- | --- | --- |
 | `Badge` (display chip) | label an outcome authority settled, next to the thing it qualifies | no |
 | `StatusDot` | state an entity's status as a dot, with its words beside it or alone with the words as its name | no |
+| `ConnectionStatus` | state whether a live feed (server-sent events, a socket) is live, reconnecting or lost, as a dot and its words in a polite live region | no |
 | selectable `TagGroup` | choose peer filters or categories over a collection; enter structured tags | yes |
 
 ## Choose
@@ -31,6 +32,14 @@ Choice `chip.choose.dot`: how a `StatusDot` without text draws its state.
 | --- | --- | --- | --- |
 | echo | the state is live now (running, recording, online) | `echo` | judgement |
 | static | any settled state | `static` | judgement |
+
+Choice `chip.choose.connection`: the state of a live feed. It is the feed's own, never a server fact the page invents.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| receiving | events arrive | `ConnectionStatus state="live"` | judgement |
+| dropped, retrying | the link broke and a retry runs | `state="reconnecting"`; hide figures that are no longer true (a time remaining) | judgement |
+| down | no retry runs | `state="lost"` with the action that restores it beside it | judgement |
 
 ## Variants
 Tone and emphasis are two axes in the contract. Tone comes from the authority-reported state (ACCENT-5): neutral

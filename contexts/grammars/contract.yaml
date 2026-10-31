@@ -187,9 +187,9 @@ roles:
 
   - id: chip
     ui: ui/components/chip.md
-    renderers: [Badge, StatusDot, TagGroup]
+    renderers: [Badge, StatusDot, ConnectionStatus, TagGroup]
     vendorParity: [chip, tag-group, tag, tooltip]
-    slots: [label, startContent, "aria-label (a dot without text)"]
+    slots: [label, startContent, "aria-label (a dot without text)", "ConnectionStatus: state, label"]
     variants:
       tone: { values: [neutral, accent, success, warning, danger, muted (Badge only)], chosenBy: app from a settled fact }
       emphasis: { values: [soft, muted (no fill, muted ink)], chosenBy: grammar from the tone }
@@ -197,7 +197,7 @@ roles:
       selectable: { values: [TagGroup selection], chosenBy: app }
       reorder: { values: [none, TagGroup onReorder], chosenBy: app }
     sizes: { badge: below the ramp, statusDot: { steps: [sm, md, lg], default: md, equals: the vendor Chip of the same size }, tagGroup: { steps: [sm, md], default: sm } }
-    states: [selected (TagGroup), disabled, echo (StatusDot, off under reduced motion)]
+    states: [selected (TagGroup), disabled, echo (StatusDot, off under reduced motion), live / reconnecting / lost (ConnectionStatus: a polite live region, the words carry the state)]
     grammarMayChange: [tone paint through tokens]
     dna: [DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-STATUSDOT-CHIP-PARITY, DNA-COMMON-STATUSDOT-GAP, DNA-COMMON-DOT-SIZE, DNA-COMMON-DOT-NAMED, DNA-COMMON-ECHO-LIGHT-STOP, DNA-COMMON-ECHO-REDUCED-MOTION, DNA-COMMON-TAG-REMOVE, DNA-COMMON-TAG-REORDER-KEYS]
 
@@ -424,11 +424,13 @@ roles:
     ui: ui/components/diagram.md
     renderers: [MermaidDiagram, FlowGraph]
     vendorParity: [skeleton, alert]
-    slots: ["MermaidDiagram: source, label, errorTitle", "FlowGraph: label, nodes (label, description, tone, size, shape, count, href), edges (source, target, label), headers"]
+    slots: ["MermaidDiagram: source, label, errorTitle", "FlowGraph: label, nodes (label, description, tone, size, shape, form, mark, caption, diameter, fill, ring, isDimmed, count, href), edges (source, target, label), headers, expandedIds, fanLimit"]
     variants:
       height: { values: [sm, md, lg], chosenBy: app from the drawing }
       nodeShape: { values: [stadium, rect, round, diamond, circle], chosenBy: app from the node's meaning }
-      layout: { values: [radial, layered, manual], chosenBy: app }
+      layout: { values: [radial, layered, manual, orbit], chosenBy: app }
+      nodeForm: { values: [label, bubble], chosenBy: app from the node's meaning }
+      nodeFill: { values: [solid, half, soft, outline, hatched], chosenBy: app from the status }
     sizes: none
     states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region), empty (FlowGraph)]
     grammarMayChange: [frame, node and edge paint through tokens]

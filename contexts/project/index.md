@@ -148,7 +148,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: In-flight
 - [decisions/open-core.md](../decisions/open-core.md) · 22 KB — Choices made while writing patterns, hfs, stack and rulings.yaml, each with the alternative and the reason, so the owner can overturn one in one place.
   - sections: Decisions · Contradictions found, with the resolution written · What `policy/` should take (not ported into knowledge) · Shared coding standard (code/shared) · Front-end coding standard (code/fe) · Back-end coding standard (code/be)
-- [decisions/open-grammar.md](../decisions/open-grammar.md) · 16 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
+- [decisions/open-grammar.md](../decisions/open-grammar.md) · 17 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
   - sections: Decisions · offset-pop, designed on the contract · Code follow-ups named by the grammar files · Gaps: choices an app can make two ways · What the contract cannot express yet · Wrappers pin
 - [decisions/open-ui.md](../decisions/open-ui.md) · 9 KB — Choices made while writing `contexts/ui`, each awaiting the owner's feedback.
 - [decisions/rulings.yaml](../decisions/rulings.yaml) · 73 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
@@ -159,7 +159,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
 - [grammars/contract.md](../grammars/contract.md) · 22 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 81 KB — What every grammar implements.
+- [grammars/contract.yaml](../grammars/contract.yaml) · 82 KB — What every grammar implements.
   - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BACKDROP-GROUND, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-COPYFIELD-MASKED and 121 more
 - [grammars/core.md](../grammars/core.md) · 6 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
@@ -219,7 +219,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/chip.md](../ui/components/chip.md) · 4 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/diagram.md](../ui/components/diagram.md) · 3 KB — Contract: Diagram.
+- [ui/components/diagram.md](../ui/components/diagram.md) · 4 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 2 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules

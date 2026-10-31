@@ -1,5 +1,8 @@
 import { ProgressBar, skeletonVariants } from "@heroui/react"
 
+/** The colour of the fill: the meaning of what is measured. `accent` is the default. */
+export type ProgressTone = "accent" | "success" | "warning" | "danger" | "info"
+
 export type ProgressProps = {
     /** What the bar measures. Required because the visible bar has no drawn label. */
     readonly label: string
@@ -12,8 +15,13 @@ export type ProgressProps = {
      * `completed` counts filled segments (current step included); `value` is ignored in this mode.
      */
     readonly steps?: { readonly total: number; readonly completed: number }
-    /** Spoken value in step mode, e.g. "Step 3 of 5"; defaults to "completed / total". */
+    /**
+     * The spoken reading, e.g. "56 of 120 chunks, paused". In step mode it defaults to "completed / total"; on a bar it is
+     * `aria-valuetext`, and without it a screen reader reads the percentage.
+     */
     readonly valueText?: string
+    /** The fill colour, from what the bar measures (a paused job `warning`, a failed one `danger`). Defaults to `accent`. */
+    readonly tone?: ProgressTone
 }
 
 /**
@@ -25,7 +33,7 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
 })
 
 /** Accessible, full-width completion bar with an inert initial-loading shape. */
-export const Progress = ({ label, value = 0, isSkeleton = false, steps, valueText }: ProgressProps) => {
+export const Progress = ({ label, value = 0, isSkeleton = false, steps, valueText, tone = "accent" }: ProgressProps) => {
     if (steps !== undefined && !isSkeleton) {
         const total = Math.max(1, Math.round(steps.total))
         const completed = Math.min(total, Math.max(0, Math.round(steps.completed)))
@@ -41,6 +49,7 @@ export const Progress = ({ label, value = 0, isSkeleton = false, steps, valueTex
                 data-component="Progress"
                 data-loading="false"
                 data-grammar-progress-mode="steps"
+                data-grammar-progress-tone={tone}
                 data-contract="MEASURE-2"
                 className="starci-core-progress"
             >
@@ -76,7 +85,8 @@ export const Progress = ({ label, value = 0, isSkeleton = false, steps, valueTex
             value={value}
             minValue={0}
             maxValue={100}
-            color="accent"
+            {...(valueText === undefined ? {} : { valueLabel: valueText })}
+            data-grammar-progress-tone={tone}
             size="sm"
             // Fluid width matches MEASURE-2 in measure.md `## Scale`/catalog.
             data-contract="MEASURE-2"

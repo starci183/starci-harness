@@ -6,6 +6,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- Knowledge: `contexts/ui/components/diagram.md` and the diagram role of `grammars/contract.yaml` name the FlowGraph `orbit` layout, the bubble form, the status fills and ring (grammar 0.19.0); the API awaits the owner as D-16 of `decisions/open-grammar.md`.
+
 ## [1.1.0-alpha.29] - 2026-10-31
 
 ### Changed

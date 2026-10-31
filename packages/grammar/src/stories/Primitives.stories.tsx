@@ -465,6 +465,13 @@ export const Progress: Story = {
         <G.Progress label="Course progress" value={45} />
         <G.Progress label="Complete" value={100} />
       </State>
+      <State label="Tones and a spoken reading (aria-valuetext)" direction="column">
+        <G.Progress label="Indexing" value={47} valueText="56 of 120 chunks, paused" tone="warning" />
+        <G.Progress label="Indexing" value={100} valueText="120 of 120 chunks" tone="success" />
+        <G.Progress label="Indexing" value={30} valueText="36 of 120 chunks, failed" tone="danger" />
+        <G.Progress label="Indexing" value={60} valueText="72 of 120 chunks" tone="info" />
+        <G.Progress label="Upload steps" steps={{ total: 5, completed: 2 }} valueText="Step 2 of 5, paused" tone="warning" />
+      </State>
       <State label="Indeterminate (pending)" direction="column">
         <G.Progress label="Preparing" />
       </State>
@@ -756,6 +763,28 @@ export const Meter: Story = {
       </State>
     </Matrix>
   ),
+};
+
+export const ConnectionStatus: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Live, reconnecting, lost (polite live regions)">
+        <G.ConnectionStatus state="live" label="Live" />
+        <G.ConnectionStatus state="reconnecting" label="Reconnecting" />
+        <G.ConnectionStatus state="lost" label="Connection lost" />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const states = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="ConnectionStatus"]')];
+    await waitFor(() => {
+      if (states.length !== 3) throw new Error('Three connection states must render');
+      for (const status of states) {
+        if (status.getAttribute('role') !== 'status') throw new Error('A connection status is a status region');
+        if ((status.textContent ?? '').trim() === '') throw new Error('The words carry the state');
+      }
+    });
+  },
 };
 
 export const ProgressCircle: Story = {

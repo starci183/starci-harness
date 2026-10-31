@@ -576,6 +576,140 @@ export const FlowGraphReadableFit: Story = {
   },
 };
 
+type OrbitDossier = { readonly id: string; readonly name: string; readonly fill: G.FlowGraphFill; readonly tone: G.FlowGraphTone; readonly files: ReadonlyArray<string>; readonly isDimmed?: boolean };
+type OrbitCategory = { readonly id: string; readonly name: string; readonly dossiers: ReadonlyArray<OrbitDossier> };
+
+const fileKinds = (count: number): ReadonlyArray<string> => Array.from({ length: count }, (_, index) => ['PDF', 'DOCX', 'XLSX'][index % 3] ?? 'PDF');
+const orbitCategories: ReadonlyArray<OrbitCategory> = [
+  { id: 'legal', name: 'Legal records', dossiers: [
+    { id: 'charter', name: 'Charter', fill: 'solid', tone: 'success', files: fileKinds(12) },
+    { id: 'seal', name: 'Seal decision', fill: 'half', tone: 'warning', files: fileKinds(3) },
+    { id: 'signature', name: 'Digital signature', fill: 'solid', tone: 'success', files: fileKinds(2), isDimmed: true },
+  ] },
+  { id: 'members', name: 'Members and capital', dossiers: [
+    { id: 'register', name: 'Member register', fill: 'soft', tone: 'info', files: fileKinds(1) },
+    { id: 'contribution', name: 'Capital contribution', fill: 'soft', tone: 'info', files: fileKinds(2), isDimmed: true },
+  ] },
+  { id: 'people', name: 'People', dossiers: [
+    { id: 'contracts', name: 'Labour contracts', fill: 'half', tone: 'warning', files: fileKinds(44) },
+    { id: 'rules', name: 'Labour rules', fill: 'soft', tone: 'info', files: fileKinds(2) },
+    { id: 'pay', name: 'Pay policy', fill: 'half', tone: 'warning', files: fileKinds(3), isDimmed: true },
+    { id: 'kpi', name: 'KPI policy', fill: 'half', tone: 'warning', files: fileKinds(6) },
+  ] },
+  { id: 'finance', name: 'Finance', dossiers: [
+    { id: 'budget', name: 'Budget', fill: 'solid', tone: 'success', files: fileKinds(8) },
+    { id: 'ledgers', name: 'Ledgers', fill: 'half', tone: 'warning', files: fileKinds(20) },
+    { id: 'tax', name: 'Tax file', fill: 'soft', tone: 'info', files: fileKinds(4) },
+  ] },
+  { id: 'templates', name: 'Templates', dossiers: [
+    { id: 'blank-decision', name: 'Blank decision', fill: 'hatched', tone: 'muted', files: fileKinds(1) },
+    { id: 'blank-minutes', name: 'Blank minutes', fill: 'hatched', tone: 'muted', files: fileKinds(1) },
+    { id: 'tm-filing', name: 'Trademark filing', fill: 'outline', tone: 'danger', files: fileKinds(1) },
+  ] },
+  { id: 'fundraising', name: 'Fundraising', dossiers: [] },
+];
+const orbitFilesOf = (category: OrbitCategory) => category.dossiers.reduce((sum, dossier) => sum + dossier.files.length, 0);
+const orbitDossierMax = Math.max(...orbitCategories.flatMap((category) => category.dossiers.map((dossier) => dossier.files.length)));
+const orbitCategoryMax = Math.max(...orbitCategories.map(orbitFilesOf));
+
+const orbitNodes: ReadonlyArray<G.FlowGraphNode> = [
+  { id: 'root', label: 'NIVO', description: `${orbitCategories.reduce((sum, category) => sum + category.dossiers.length, 0)} dossiers`, form: 'bubble', mark: 'NIVO', diameter: 96, isRoot: true },
+  ...orbitCategories.flatMap((category, index): ReadonlyArray<G.FlowGraphNode> => {
+    const tally = (fill: G.FlowGraphFill, tone: G.FlowGraphTone): G.FlowGraphRingPart => ({ tone, value: category.dossiers.filter((dossier) => dossier.fill === fill && dossier.tone === tone).length });
+    return [
+      {
+        id: category.id,
+        label: category.name,
+        description: `${category.dossiers.length} dossiers, ${orbitFilesOf(category)} files`,
+        form: 'bubble',
+        mark: String(index + 1).padStart(2, '0'),
+        caption: category.name.split(' ')[0] ?? category.name,
+        diameter: G.flowGraphDiameter(orbitFilesOf(category), orbitCategoryMax, { min: 64, max: 104 }),
+        ring: [tally('solid', 'success'), tally('half', 'warning'), tally('soft', 'info'), tally('outline', 'danger'), tally('hatched', 'muted')],
+        ...(category.dossiers.length === 0 ? { isPlaceholder: true } : {}),
+      },
+      ...category.dossiers.map((dossier, at): G.FlowGraphNode => ({
+        id: dossier.id,
+        label: dossier.name,
+        description: `${dossier.files.length} files`,
+        form: 'bubble',
+        mark: String(index * 10 + at + 1).padStart(2, '0'),
+        diameter: G.flowGraphDiameter(dossier.files.length, orbitDossierMax, { min: 30, max: 92 }),
+        tone: dossier.tone,
+        fill: dossier.fill,
+        ...(dossier.isDimmed === true ? { isDimmed: true } : {}),
+      })),
+      ...category.dossiers.flatMap((dossier) => dossier.files.map((kind, file): G.FlowGraphNode => ({
+        id: `${dossier.id}-file-${file}`,
+        label: `${dossier.name}, file ${file + 1}`,
+        description: kind,
+        form: 'bubble',
+        mark: kind,
+        diameter: 36,
+        tone: 'neutral',
+        fill: 'soft',
+        ...(dossier.isDimmed === true ? { isDimmed: true } : {}),
+      }))),
+    ];
+  }),
+];
+const orbitEdges: ReadonlyArray<G.FlowGraphEdge> = orbitCategories.flatMap((category) => [
+  { id: `root-${category.id}`, source: 'root', target: category.id },
+  ...category.dossiers.flatMap((dossier) => [
+    { id: `${category.id}-${dossier.id}`, source: category.id, target: dossier.id },
+    ...dossier.files.map((_, file) => ({ id: `${dossier.id}-file-${file}`, source: dossier.id, target: `${dossier.id}-file-${file}` })),
+  ]),
+]);
+
+/**
+ * The orbit layout for a value-sized map: bubbles whose area tracks a count, a status ring on each category, status fills on
+ * the dossiers (solid, half, soft, hatched, outline: a status never rests on colour alone), the info tone, filtered-out
+ * dossiers dimmed, the edges from the root to the selected node drawn strong, two open fans on ring four, and a `+n` bubble
+ * where a fan passes the limit. Shown in light and dark.
+ */
+export const FlowGraphOrbit: Story = {
+  name: 'FlowGraph (orbit: bubbles, rings, fans)',
+  render: (_args, { globals }) => (
+    <Matrix maxWidth={1100}>
+      {THEMES.map((theme) => (
+        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
+          <State label={`${theme}: the Charter dossier open, Labour contracts passes the fan limit`} direction="column">
+            <div data-story-theme={theme}>
+              <G.FlowGraph
+                label={`Dossier map (${theme})`}
+                nodes={orbitNodes}
+                edges={orbitEdges}
+                layout="orbit"
+                fit="contain"
+                height="40rem"
+                fanLimit={10}
+                defaultExpandedIds={['charter', 'contracts']}
+                selectedId="charter"
+              />
+            </div>
+          </State>
+        </G.GrammarRoot>
+      ))}
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const graphs = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="FlowGraph"]')];
+    await waitFor(() => {
+      if (graphs.length !== THEMES.length) throw new Error('One orbit graph per theme must render');
+      for (const graph of graphs) {
+        if (graph.dataset.grammarFlowLayout !== 'orbit') throw new Error('The graph must use the orbit layout');
+        if (graph.querySelectorAll('[data-form="bubble"]').length === 0) throw new Error('Bubbles must render');
+        if (graph.querySelector('[data-ring="true"]') === null) throw new Error('A status ring must render');
+        if (graph.querySelector('[data-dimmed="true"]') === null) throw new Error('A dimmed node must render');
+        if (graph.querySelector('[data-grammar-flow-node^="grammar-flow-more-"]') === null) throw new Error('A fan past the limit must end in a +n bubble');
+        if (graph.querySelector('[data-grammar-flow-node="charter-file-0"]') === null) throw new Error('An open node must show its fan');
+        if (graph.querySelector('[data-grammar-flow-node="ledgers-file-0"]') !== null) throw new Error('A closed node must hide its fan');
+        if (graph.querySelector('.starci-core-flow-graph-edge-strong') === null) throw new Error('The selected path must draw strong');
+      }
+    }, { timeout: 4000 });
+  },
+};
+
 export const ClientNavigation: Story = {
   name: 'Client navigation (memory router)',
   render: (_, { globals }) => (
@@ -827,6 +961,37 @@ export const Stepper: Story = {
       </State>
     </Matrix>
   ),
+};
+
+/** The dense stepper of a list row, with a paused step: the circle is dashed, so the state is a form as well as a colour. */
+export const StepperDense: Story = {
+  name: 'Stepper (dense, paused)',
+  render: () => (
+    <Matrix maxWidth={640}>
+      <State label="Dense, one row of steps with a paused step" direction="column">
+        <G.Stepper
+          label="Indexing steps"
+          size="dense"
+          steps={[{ id: 'upload', label: 'Uploaded' }, { id: 'read', label: 'Reading', state: 'paused' }, { id: 'split', label: 'Splitting' }, { id: 'ready', label: 'Ready' }]}
+          currentStepId="read"
+          stateLabel={(state) => (state === 'paused' ? 'paused' : undefined)}
+        />
+      </State>
+      <State label="Dense, vertical" direction="column">
+        <G.Stepper label="Indexing steps (vertical)" size="dense" orientation="vertical" steps={[{ id: 'a', label: 'Uploaded' }, { id: 'b', label: 'Reading' }, { id: 'c', label: 'Ready' }]} currentStepId="b" />
+      </State>
+      <State label="Default size, for comparison" direction="column">
+        <G.Stepper label="Indexing steps (default)" steps={[{ id: 'a', label: 'Uploaded' }, { id: 'b', label: 'Reading', state: 'paused' }, { id: 'c', label: 'Ready' }]} currentStepId="b" />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const dense = canvasElement.querySelector<HTMLElement>('[data-grammar-stepper-size="dense"] [data-grammar-step-marker]');
+      if (dense === null || Math.round(dense.getBoundingClientRect().width) !== 20) throw new Error('A dense marker is 20px');
+      if (canvasElement.querySelector('[data-grammar-step-state="paused"]') === null) throw new Error('A paused step must render');
+    });
+  },
 };
 
 const TREATMENTS: ReadonlyArray<G.SurfaceCardTreatment> = ['surface', 'soft', 'ink'];

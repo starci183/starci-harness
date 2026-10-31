@@ -3708,7 +3708,13 @@
         transition: background-color var(--starci-core-motion-duration, 150ms) cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .starci-core-progress-step[data-grammar-progress-step="done"] { background: var(--accent, Highlight); }
+    .starci-core-progress-step[data-grammar-progress-step="done"] { background: var(--starci-progress-fill, var(--accent, Highlight)); }
+
+    /* The tone of the fill: the bar's fill variable (the vendor reads it) and the steps' done colour. */
+    .starci-core-progress[data-grammar-progress-tone="success"] { --progress-bar-fill: var(--success, CanvasText); --starci-progress-fill: var(--success, CanvasText); }
+    .starci-core-progress[data-grammar-progress-tone="warning"] { --progress-bar-fill: var(--warning, CanvasText); --starci-progress-fill: var(--warning, CanvasText); }
+    .starci-core-progress[data-grammar-progress-tone="danger"] { --progress-bar-fill: var(--danger, CanvasText); --starci-progress-fill: var(--danger, CanvasText); }
+    .starci-core-progress[data-grammar-progress-tone="info"] { --progress-bar-fill: var(--info, CanvasText); --starci-progress-fill: var(--info, CanvasText); }
 
     @media (prefers-reduced-motion: reduce) {
         .starci-core-progress-step { transition: none; }
@@ -4151,6 +4157,19 @@
     .starci-core-status-dot-chip > .starci-core-status-dot-mark {
         margin-inline-end: var(--grammar-identity-gap, 0.25rem);
     }
+
+    /* ConnectionStatus: the dot and its words on one line, in the muted small type of a row annotation. */
+    .starci-core-connection-status {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap, 0.5rem);
+        color: var(--muted, GrayText);
+        font-size: 0.75rem;
+        line-height: 1.25;
+        white-space: nowrap;
+    }
+
+    .starci-core-connection-status[data-grammar-connection-state="lost"] { color: var(--danger-soft-foreground, var(--danger, CanvasText)); }
 
     .starci-core-status-dot-label {
         display: inline-block;

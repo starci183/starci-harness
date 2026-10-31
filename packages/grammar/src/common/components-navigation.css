@@ -303,6 +303,26 @@
         color: var(--danger-soft-foreground, var(--danger, CanvasText));
     }
 
+    /* A paused step: a dashed circle in the warning ink, so the state is a form as well as a colour. */
+    .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker {
+        border-style: dashed;
+        border-color: var(--warning, Mark);
+        color: var(--warning-soft-foreground, var(--warning, CanvasText));
+    }
+
+    /* Dense (a list row): a 20px marker, 12px type, no copy padding, and the connector re-aimed at the smaller circle. */
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-body { padding: 0; gap: var(--grammar-identity-gap, 0.25rem); }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker { width: 1.25rem; height: 1.25rem; border-width: 1.5px; font-size: 0.75rem; }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-copy { padding-block-start: 0; gap: 0; }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-label { font-size: 0.75rem; }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-description { font-size: 0.75rem; }
+    .starci-core-stepper[data-grammar-stepper-size="dense"][data-grammar-stepper-orientation="horizontal"] .starci-core-step:not(:last-child)::after {
+        inset-block-start: calc(0.625rem - 1px);
+        inset-inline-start: calc(50% + 1rem);
+        inset-inline-end: calc(-50% + 1rem);
+    }
+    .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-control { min-block-size: 0; }
+
     /* Loading stepper (knowledge STATE-8): a static Skeleton circle for the mark, labels stay real. */
     .starci-core-step-skeleton-marker { border: 0; background: transparent; }
     .starci-core-step-skeleton-label { display: block; inline-size: 5rem; }
@@ -1819,12 +1839,103 @@
 
     .starci-core-flow-graph-node[data-size="sm"] { padding: var(--grammar-identity-gap, 0.25rem) var(--grammar-inset-nested, 0.5rem); font-size: 0.75rem; }
     .starci-core-flow-graph-node[data-size="lg"] { padding: var(--grammar-inset, 0.75rem) var(--grammar-section-gap, 1.5rem); font-size: 1rem; font-weight: 600; }
-    .starci-core-flow-graph-node[data-tone="accent"] { --starci-flow-tint: var(--accent-soft, transparent); --starci-flow-ink: var(--accent-soft-foreground, CanvasText); }
-    .starci-core-flow-graph-node[data-tone="success"] { --starci-flow-tint: var(--success-soft, transparent); --starci-flow-ink: var(--success-soft-foreground, CanvasText); }
-    .starci-core-flow-graph-node[data-tone="warning"] { --starci-flow-tint: var(--warning-soft, transparent); --starci-flow-ink: var(--warning-soft-foreground, CanvasText); }
-    .starci-core-flow-graph-node[data-tone="danger"] { --starci-flow-tint: var(--danger-soft, transparent); --starci-flow-ink: var(--danger-soft-foreground, CanvasText); }
-    .starci-core-flow-graph-node[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted, GrayText); }
+    /* A tone gives four values: its tint, its ink over the tint, its full colour (`base`) and the ink over the full colour. */
+    .starci-core-flow-graph-node[data-tone="neutral"] { --starci-flow-base: var(--muted, GrayText); --starci-flow-on-base: var(--surface, Canvas); }
+    .starci-core-flow-graph-node[data-tone="accent"] { --starci-flow-tint: var(--accent-soft, transparent); --starci-flow-ink: var(--accent-soft-foreground, CanvasText); --starci-flow-base: var(--accent, Highlight); --starci-flow-on-base: var(--accent-foreground, HighlightText); }
+    .starci-core-flow-graph-node[data-tone="success"] { --starci-flow-tint: var(--success-soft, transparent); --starci-flow-ink: var(--success-soft-foreground, CanvasText); --starci-flow-base: var(--success, CanvasText); --starci-flow-on-base: var(--success-foreground, Canvas); }
+    .starci-core-flow-graph-node[data-tone="warning"] { --starci-flow-tint: var(--warning-soft, transparent); --starci-flow-ink: var(--warning-soft-foreground, CanvasText); --starci-flow-base: var(--warning, CanvasText); --starci-flow-on-base: var(--warning-foreground, Canvas); }
+    .starci-core-flow-graph-node[data-tone="danger"] { --starci-flow-tint: var(--danger-soft, transparent); --starci-flow-ink: var(--danger-soft-foreground, CanvasText); --starci-flow-base: var(--danger, CanvasText); --starci-flow-on-base: var(--danger-foreground, Canvas); }
+    .starci-core-flow-graph-node[data-tone="info"] { --starci-flow-tint: color-mix(in oklab, var(--info, CanvasText) 15%, transparent); --starci-flow-ink: color-mix(in oklab, var(--info, CanvasText) 70%, var(--foreground, CanvasText) 30%); --starci-flow-base: var(--info, CanvasText); --starci-flow-on-base: var(--info-foreground, Canvas); }
+    .starci-core-flow-graph-node[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted, GrayText); --starci-flow-base: color-mix(in oklab, var(--muted, GrayText) 55%, transparent); --starci-flow-on-base: var(--surface, Canvas); }
     .starci-core-flow-graph-node[data-placeholder="true"] { border-style: dashed; }
+
+    /*
+     * Bubbles (`form="bubble"`): a disc whose width is the node's `diameter`, carrying a short mark and a caption; its name
+     * shows in the tip. The text keeps one screen size: it is the 12px floor divided by the viewport zoom, which the figure
+     * publishes as `--starci-flow-zoom`, and it drops out when the zoom leaves no room for it (caption under 0.42, mark under 0.5).
+     */
+    .starci-core-flow-graph-node[data-form="bubble"] {
+        box-sizing: border-box;
+        inline-size: var(--starci-flow-diameter, 3rem);
+        block-size: var(--starci-flow-diameter, 3rem);
+        max-inline-size: none;
+        padding: 0;
+        justify-content: center;
+        border: 2px solid var(--starci-flow-base, var(--separator, CanvasText));
+        border-radius: 50%;
+        background-image: linear-gradient(var(--starci-flow-tint), var(--starci-flow-tint));
+        color: var(--starci-flow-ink);
+        font-variant-numeric: tabular-nums;
+        transition: opacity 0.2s ease;
+    }
+    .starci-core-flow-graph-disc {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        align-content: center;
+        border-radius: 50%;
+        overflow: hidden;
+        text-align: center;
+        font-size: calc(0.75rem / var(--starci-flow-zoom, 1));
+        font-weight: 600;
+        line-height: 1.2;
+    }
+    .starci-core-flow-graph-mark,
+    .starci-core-flow-graph-caption { display: block; max-inline-size: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; }
+    .starci-core-flow-graph-caption { font-weight: 500; }
+    .starci-core-flow-graph[data-grammar-flow-mark="off"] .starci-core-flow-graph-mark,
+    .starci-core-flow-graph[data-grammar-flow-caption="off"] .starci-core-flow-graph-caption { display: none; }
+    .starci-core-flow-graph-node[data-form="bubble"][data-root="true"] { --starci-flow-base: var(--foreground, CanvasText); --starci-flow-on-base: var(--surface, Canvas); }
+
+    /* A status never rests on colour alone: the fill is its form. */
+    .starci-core-flow-graph-node[data-fill="solid"] { background-color: var(--starci-flow-base, var(--foreground, CanvasText)); background-image: none; color: var(--starci-flow-on-base, var(--surface, Canvas)); }
+    .starci-core-flow-graph-node[data-fill="half"] { background-image: linear-gradient(to top, color-mix(in oklab, var(--starci-flow-base, var(--foreground, CanvasText)) 42%, transparent) 50%, var(--starci-flow-tint) 50%); }
+    .starci-core-flow-graph-node[data-fill="outline"] { border-style: dashed; background-image: none; color: var(--starci-flow-base, var(--foreground, CanvasText)); }
+    .starci-core-flow-graph-node[data-fill="hatched"] { border-style: dotted; background-image: repeating-linear-gradient(135deg, var(--starci-flow-tint) 0 3px, transparent 3px 6px); }
+
+    /* A status ring: the conic arcs fill the disc and the inner disc, on the surface, leaves a band of them. */
+    .starci-core-flow-graph-node[data-ring="true"] { border-color: transparent; background-color: transparent; background-image: var(--starci-flow-ring); }
+    .starci-core-flow-graph-node[data-ring="true"] > .starci-core-flow-graph-disc,
+    .starci-core-flow-graph-node[data-ring="true"] > .starci-core-flow-graph-link > .starci-core-flow-graph-disc {
+        inset: 7px;
+        background: var(--surface, Canvas);
+        color: var(--foreground, CanvasText);
+        box-shadow: var(--surface-shadow, none);
+    }
+
+    /* A filtered-out node stays in place and in the tab order. */
+    .starci-core-flow-graph-node[data-dimmed="true"] { opacity: 0.16; }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-dimmed { opacity: 0.2; }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-strong .react-flow__edge-path { stroke: var(--foreground, CanvasText); stroke-width: 2; }
+    .starci-core-flow-graph-node[data-form="bubble"][data-grammar-selected="true"] { outline: 3px solid var(--accent, Highlight); outline-offset: 3px; }
+    .starci-core-flow-graph-node[data-expandable="true"] { cursor: pointer; }
+
+    /* The orbit's dashed ring guides sit under the nodes and take no pointer. */
+    .starci-core-flow-graph .starci-core-flow-graph-guide-node { pointer-events: none; }
+    .starci-core-flow-graph-guide { display: block; pointer-events: none; }
+    .starci-core-flow-graph-guide circle { fill: none; stroke: var(--separator, CanvasText); stroke-width: 1; stroke-dasharray: 2 6; }
+
+    /* The tip names a bubble on hover and focus, painted from the Tooltip's tokens. */
+    .starci-core-flow-graph-tip {
+        position: absolute;
+        z-index: 8;
+        display: flex;
+        flex-direction: column;
+        max-inline-size: 16rem;
+        padding: var(--grammar-inset-nested, 0.5rem);
+        border-radius: min(32px, var(--radius-xl, 1rem));
+        background: var(--overlay, Canvas);
+        box-shadow: var(--overlay-shadow, none);
+        color: var(--overlay-foreground, CanvasText);
+        font-size: 0.75rem;
+        line-height: 1.4;
+        pointer-events: none;
+        transform: translate(-50%, calc(-100% - var(--grammar-inline-gap, 0.5rem)));
+    }
+    .starci-core-flow-graph-tip[data-placement="bottom"] { transform: translate(-50%, var(--grammar-inline-gap, 0.5rem)); }
+    .starci-core-flow-graph-tip-label { font-weight: 600; }
+    .starci-core-flow-graph-tip-description { color: var(--muted, GrayText); }
 
     /*
      * Node shapes (the flowchart outlines). `stadium` is the default pill above. A diamond cannot carry a CSS border, so
@@ -1945,6 +2056,7 @@
 
     @media (prefers-reduced-motion: reduce) {
         .starci-core-flow-graph .react-flow__edge.animated path { animation: none; }
+        .starci-core-flow-graph-node[data-form="bubble"] { transition: none; }
     }
 
     @media (forced-colors: active) {

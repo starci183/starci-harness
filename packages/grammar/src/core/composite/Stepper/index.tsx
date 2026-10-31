@@ -5,7 +5,10 @@ import { moveFocusBetweenPeers } from "../../navigationKeys.js"
 import { navigationClassName } from "../../navigationClassNames.js"
 import { Skeleton } from "../../primitive/Skeleton/index.js"
 
-export type StepperStepState = "complete" | "current" | "upcoming" | "error"
+/** `paused` is a step that stopped for a reason outside the flow (out of credit, waiting on the owner) and resumes by itself. */
+export type StepperStepState = "complete" | "current" | "upcoming" | "error" | "paused"
+/** `dense` is the compact step for a list row: a 20px marker and 12px type. */
+export type StepperSize = "md" | "dense"
 
 export type StepperStep = {
     readonly id: string
@@ -22,6 +25,8 @@ export type StepperProps = {
     readonly steps: ReadonlyArray<StepperStep>
     readonly currentStepId: string
     readonly orientation?: "horizontal" | "vertical"
+    /** `dense` fits the stepper inside a list row. Defaults to `md`. */
+    readonly size?: StepperSize
     /** Present only when the reader may jump between steps; each step then becomes a button. */
     readonly onStepSelect?: (id: string) => void
     /** App-owned assistive text per state, e.g. "completed". Omitted states are announced by position only. */
@@ -58,6 +63,7 @@ export const Stepper = ({
     steps,
     currentStepId,
     orientation = "horizontal",
+    size = "md",
     onStepSelect,
     stateLabel,
     renderMarker,
@@ -72,6 +78,7 @@ export const Stepper = ({
         data-tier="composite"
         data-loading="true"
         data-grammar-stepper-orientation={orientation}
+        data-grammar-stepper-size={size}
         data-grammar-stepper-interactive="false"
     >
         <ol className="starci-core-stepper-list" data-contract="HIERARCHY-3 STATE-8">
@@ -94,6 +101,7 @@ export const Stepper = ({
         data-component="Stepper"
         data-tier="composite"
         data-grammar-stepper-orientation={orientation}
+        data-grammar-stepper-size={size}
         data-grammar-stepper-interactive={onStepSelect === undefined ? "false" : "true"}
     >
         <ol

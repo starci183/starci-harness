@@ -2,7 +2,7 @@
 
 ## 3.11.1 - 2026-10-31
 
-- Changed: the bundled canon pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.18.0, eslint-canon-fe 9.8.0, stylelint-canon 2.4.0, hfs 4.16.0 and eslint-canon-be 3.11.1 (RELEASE_VERSION_NOT_BUMPED: 3.11.0 is on npm).
+- Changed: the bundled canon pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.19.0, eslint-canon-fe 9.8.0, stylelint-canon 2.4.0, hfs 4.16.0 and eslint-canon-be 3.11.1 (RELEASE_VERSION_NOT_BUMPED: 3.11.0 is on npm).
 
 ## 3.11.0 - 2026-10-31
 

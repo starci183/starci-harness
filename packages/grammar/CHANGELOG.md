@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.19.0 - 2026-10-31
+
+- Added: `FlowGraph layout="orbit"`, the value-sized map. The root sits at the centre; ring two holds its children in sectors weighted by what they hold, ring three their children staggered on two radii, and ring four the fans of the open ring-three nodes, pushed apart and cut at the widest empty arc. Dashed ring guides sit under the nodes. `orbitLayout` is exported as a pure function.
+- Added: nodes that open and close: `expandedIds`, `defaultExpandedIds`, `onExpandedChange`. A node's children past ring three show only while it is open; `fanLimit` (default 30) folds the rest of a fan into a `+n` bubble that selects the parent. Enter, Space and click select the node and toggle it; an openable node is a button that reports `aria-expanded`.
+- Added: node `form: "bubble"` with `mark` (cut to 4 characters), `caption`, `diameter` (24 to 128 graph units) and the exported `flowGraphDiameter(value, max, range?)`, a square-root scale so the disc's area tracks the value. A bubble's `label` is its name for hover and screen readers; its text keeps one screen size through `--starci-flow-zoom` and drops out under zoom 0.42 (caption) and 0.5 (mark).
+- Added: status that does not rest on colour alone: `fill` (`solid`, `half`, `soft`, `outline`, `hatched`) beside `tone`, and `ring`, a conic ring of `{ tone, value }` arcs round an inner disc.
+- Added: `FlowGraphTone` `info`, painted from `--info`.
+- Added: one tip on hover and focus of a bubble (the label, then the description), hidden on pan and zoom and on blur, in the Tooltip's tokens. `isDimmed` draws a filtered-out node faint (it keeps its place and stays focusable) and its edges dim with it. In `orbit` the edges from the root to the selected node draw strong and a selected bubble draws an outline. The screen-reader list follows the nodes that draw.
+- Added: `Stepper` `size="dense"` (a 20px marker and 12px type, for a list row; `data-grammar-stepper-size`) and the `paused` step state (a dashed circle in the warning ink; `StepperSize`).
+- Added: `Progress` `tone` (`accent` default, `success`, `warning`, `danger`, `info`; `ProgressTone`, `data-grammar-progress-tone`) and `valueText` on a bar, the spoken reading (`aria-valuetext`) such as "56 of 120 chunks, paused"; before, only step mode had one.
+- Added: `ConnectionStatus` (`state`: `live`, `reconnecting`, `lost`; `label`): a dot and its words in a polite live region, the dot echoing while live or reconnecting and still when lost. Registered in Common; its contract is the `chip` role of `grammars/contract.yaml` and it wraps no vendor part, so it has no parity entry.
+- Changed: a `readable` fit with only bubbles has no label text to keep at 12px and fits like `contain`. Existing `radial`, `layered` and `manual` graphs render unchanged.
+- Changed: the Grammar moves with its lint family (eslint-grammar-core and eslint-grammar-offset-pop 0.19.0, which follow the same Grammar). Stories: Navigation & Data / FlowGraph (orbit: bubbles, rings, fans) in light and dark.
+
 ## 0.18.0 - 2026-10-31
 
 - Changed (breaking values): one spacing scale, 0 4 8 12 24 32 with no 16 (`COMMON_SPACING_SCALE`; the family scales are Common's). Root tokens by role: gaps `--grammar-identity-gap` 4 (new), `--grammar-inline-gap` 8, `--grammar-row-gap` 12, `--grammar-section-gap` 24, `--grammar-region-gap` 32; insets `--grammar-inset` 12 (new: every container), `--grammar-inset-nested` 8 (new: a box inside a card), `--grammar-inset-open` 24 (new: an empty state or drop target); `--grammar-page-inset` 12, 24 from 48rem, 32 from 70rem (no `clamp`); `--grammar-card-padding-inline`/`-block`, `--grammar-overlay-inset` (new) and the four `--grammar-pane-inset-*` read `--grammar-inset` (12 on every side); `--grammar-control-padding-inline-{sm,md,lg}` 8 / 12 / 24 and `--grammar-control-padding-glyph-*` 4 / 8 / 12 (new).
