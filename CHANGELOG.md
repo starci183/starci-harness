@@ -14,6 +14,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- The CLI requires @starci/hfs@4.13.0, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 - The cohort of 2026-10-31 pins @starci/hfs 4.13.0 (delivery pipeline, committed check cache), the Grammar family 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0 and jest-preset 2.6.0 in contexts/stack/pins.yaml. The CLI keeps @starci/hfs 4.12.2 until npm serves 4.13.0; cli-follow then raises it.
 
 ### Fixed
