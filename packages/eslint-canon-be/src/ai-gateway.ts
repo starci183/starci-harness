@@ -16,10 +16,8 @@
  *     missing key (the library falls back to `OPENAI_API_KEY`) are refused. The constructor is found by its import, never
  *     by its spelling.
  *   - `ai-virtual-key-name` holds the one client key of the gateway: inside `integrations/ai` every `<env>.secret(...)` names
- *     exactly `STARCI_AI_KEY` (`VIRTUAL_KEY_VARIABLE`), the virtual key the gateway mounts from the sealed `ai` member; anywhere
- *     a retired name (`RETIRED_KEY_VARIABLES`: the per-caller `AI_API_KEY` and `OPENCLAW_AI_KEY`, the admin
- *     `AI_ROUTER_ADMIN_TOKEN`, and their `_FILE` twins) is refused in the spellings `provider-key-custody` judges; and the
- *     custody owner hands the gateway no `adminToken`, since the gateway exposes no admin API.
+ *     exactly `STARCI_AI_KEY` (`VIRTUAL_KEY_VARIABLE`) as a literal, the virtual key the gateway mounts from the sealed `ai`
+ *     member; and the custody owner hands the gateway no `adminToken`, since the gateway exposes no admin API.
  *
  * Which owner may import LangChain, `openai` or another provider SDK at all is the infrastructure table of the slot
  * manifest (`ruleParams.be.infraOwners`, judged by `infra-import-owner`, R90).
@@ -69,11 +67,6 @@ export const VIRTUAL_KEY_VARIABLE = "STARCI_AI_KEY"
 
 /** The owner id of the app's LangChain integration, whose config reads the virtual key. */
 const AI_INTEGRATION = "integrations/ai"
-
-/** Key names the one virtual key replaced: the per-caller keys of the api and the agent runtime, and the gateway's admin token. */
-export const RETIRED_KEY_VARIABLES: readonly string[] = Object.freeze(["AI_API_KEY", "OPENCLAW_AI_KEY", "AI_ROUTER_ADMIN_TOKEN"])
-
-const RETIRED_KEYS = new Set(RETIRED_KEY_VARIABLES.flatMap((name) => [name, `${name}_FILE`]))
 
 /** The LangChain provider package whose clients are judged, and the clients code may build from it. */
 const LANGCHAIN_OPENAI = "@langchain/openai"
@@ -200,37 +193,23 @@ export const aiClientThroughGateway: RuleModule = {
 const secretArgumentOf = (node: TSESTree.CallExpression): Node | null =>
     node.callee.type === "MemberExpression" && !node.callee.computed && keyName(node.callee.property) === "secret" ? (node.arguments[0] ?? null) : null
 
-/** The gateway's one client key is `STARCI_AI_KEY`; the per-caller and admin names it replaced are named nowhere. */
+/** The gateway's one client key is `STARCI_AI_KEY`, read by `integrations/ai`; the gateway gets no admin token. */
 export const aiVirtualKeyName: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "`integrations/ai` reads exactly `STARCI_AI_KEY` as its secret, no file names a retired AI key (AI_API_KEY, OPENCLAW_AI_KEY, AI_ROUTER_ADMIN_TOKEN), and the gateway gets no admin token." },
+        docs: { description: "`integrations/ai` reads exactly `STARCI_AI_KEY` as its secret, and the gateway's custody owner passes no admin token." },
         schema: [],
         messages: {
             name: "`integrations/ai` reads one secret, the gateway's virtual key `STARCI_AI_KEY` (`env.secret(\"STARCI_AI_KEY\")`); `{{name}}` is not it. Every client of the gateway, this integration and the agent runtime alike, uses that one key.",
             dynamic: "`integrations/ai` names its secret as the literal `\"STARCI_AI_KEY\"`, so the one virtual key the gateway mounts is visible here.",
-            retired: "`{{name}}` is a retired AI key name: the app has one virtual key, `STARCI_AI_KEY`, used by the api and the agent runtime, and the gateway has no admin token (a key is rotated by resealing the `ai` member and deploying).",
-            adminToken: "The ai-router gateway exposes no admin API: pass no `adminToken`. The one virtual key `STARCI_AI_KEY` is mounted from the sealed `ai` member (`mountedKeys`).",
+            adminToken: "The ai-router gateway exposes no admin API: pass no `adminToken`. The one virtual key `STARCI_AI_KEY` is mounted from the sealed `ai` member (`mountedKeys`) and rotated by resealing it and deploying.",
         },
     },
     create(context) {
         const owner = ownerIdOf(context, context.filename)
-        const judge = (node: Node, name: string | null) => {
-            if (name !== null && RETIRED_KEYS.has(name)) context.report({ node, messageId: "retired", data: { name } })
-        }
         return {
-            Literal(node) {
-                judge(node, staticText(node))
-            },
-            TemplateLiteral(node) {
-                judge(node, staticText(node))
-            },
-            MemberExpression(node) {
-                if (!node.computed) judge(node.property, keyName(node.property))
-            },
             Property(node) {
                 if (node.computed || node.key.type !== "Identifier") return
-                judge(node.key, node.key.name)
                 if (owner === GATEWAY_CUSTODY && node.key.name === "adminToken") context.report({ node: node.key, messageId: "adminToken" })
             },
             CallExpression(node) {
@@ -239,7 +218,7 @@ export const aiVirtualKeyName: RuleModule = {
                 if (argument === null) return
                 const name = staticText(argument)
                 if (name === null) context.report({ node: argument, messageId: "dynamic" })
-                else if (name !== VIRTUAL_KEY_VARIABLE && !RETIRED_KEYS.has(name)) context.report({ node: argument, messageId: "name", data: { name } })
+                else if (name !== VIRTUAL_KEY_VARIABLE) context.report({ node: argument, messageId: "name", data: { name } })
             },
         }
     },

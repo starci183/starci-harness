@@ -3134,16 +3134,6 @@ HFS_AGE_KEY_CUSTODY:
   owner: owner
   kind: check-finding
 
-HFS_AI_RETIRED_KEY:
-  title: "A tracked app file names a retired AI key"
-  title_vi: "Tệp của app vẫn ghi tên khoá AI đã bỏ"
-  meaning_vi: "`<path>` ghi `AI_API_KEY`, `OPENCLAW_AI_KEY` hoặc `AI_ROUTER_ADMIN_TOKEN`. Gateway ai-router của app chỉ có một khoá ảo `STARCI_AI_KEY` (niêm phong trong member `ai`, dùng chung cho api và agent runtime) và không có admin token."
-  causes_vi:
-    - "Vi phạm luật R344: stack, env example, entrypoint hoặc tài liệu còn tên khoá theo từng caller hoặc admin token cũ."
-  nextStep_vi: "Đổi tên thành `STARCI_AI_KEY` (cấp từ member `ai`), xoá admin token; không đọc và không in giá trị khoá."
-  owner: op-retry
-  kind: check-finding
-
 HFS_ALIAS_REEXPORT:
   title: "A declaration re-exported under a second name"
   title_vi: "Xuất lại một khai báo dưới tên thứ hai"

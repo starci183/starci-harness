@@ -9,7 +9,7 @@ import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { canonRuleTester } from "../fixtures/rule-tester.ts"
 import { at, fixtureHfs, typedTester } from "../fixtures/typed/tester.ts"
-import { aiClientThroughGateway, aiVirtualKeyName, PROVIDER_KEY_VARIABLES, providerKeyCustody, RETIRED_KEY_VARIABLES, rules, VIRTUAL_KEY_VARIABLE } from "./ai-gateway.ts"
+import { aiClientThroughGateway, aiVirtualKeyName, PROVIDER_KEY_VARIABLES, providerKeyCustody, rules, VIRTUAL_KEY_VARIABLE } from "./ai-gateway.ts"
 import { infraImportOwner } from "./infra-owner.ts"
 
 const tester = canonRuleTester({
@@ -34,7 +34,6 @@ test("the law publishes its two rules under their names", () => {
     assert.equal(rules["ai-client-through-gateway"], aiClientThroughGateway)
     assert.equal(rules["ai-virtual-key-name"], aiVirtualKeyName)
     assert.equal(VIRTUAL_KEY_VARIABLE, "STARCI_AI_KEY")
-    assert.deepEqual([...RETIRED_KEY_VARIABLES], ["AI_API_KEY", "OPENCLAW_AI_KEY", "AI_ROUTER_ADMIN_TOKEN"])
     assert.ok(PROVIDER_KEY_VARIABLES.includes("OPENROUTER_API_KEY") && PROVIDER_KEY_VARIABLES.includes("OPENAI_API_KEY"))
 })
 
@@ -62,7 +61,7 @@ test("provider-key-custody: only the gateway's custody owner names a provider ke
     })
 })
 
-test("ai-virtual-key-name: integrations/ai reads STARCI_AI_KEY, no file names a retired key, the gateway gets no admin token", () => {
+test("ai-virtual-key-name: integrations/ai reads STARCI_AI_KEY and the gateway gets no admin token", () => {
     const parse = (body: string) => `export const parse = (env: { secret(key: string): unknown; url(key: string): string; has(key: string): boolean }) => (${body})`
     tester.run("ai-virtual-key-name", aiVirtualKeyName, {
         valid: [
@@ -73,21 +72,13 @@ test("ai-virtual-key-name: integrations/ai reads STARCI_AI_KEY, no file names a 
             { filename: CUSTODY, code: `export const gateway = { keysPath: "keys.sqlite", mountedKeys: [] }` },
             // a secret of another integration is not the virtual key
             { filename: OTHER, code: parse(`{ key: env.secret("PAYOS_API_KEY") }`) },
-            // a name that only contains a retired one is not it
-            { filename: DOMAIN, code: `export const names = ["OPENAI_API_KEY", "STARCI_AI_KEY", "MY_AI_API_KEY_LABEL"]` },
             { filename: DOMAIN, code: `export const config = { adminToken: "x" }` },
         ],
         invalid: [
             { filename: AI_CONFIG, code: parse(`{ key: env.secret("AI_GATEWAY_KEY") }`), errors: [{ messageId: "name", data: { name: "AI_GATEWAY_KEY" } }] },
-            { filename: AI_CONFIG, code: parse(`{ key: env.secret("AI_API_KEY") }`), errors: [{ messageId: "retired" }] },
             { filename: AI_CONFIG, code: `const NAME = "STARCI_AI_KEY"
 ${parse("{ key: env.secret(NAME) }")}`, errors: [{ messageId: "dynamic" }] },
-            { filename: CUSTODY, code: parse(`{ admin: env.secret("AI_ROUTER_ADMIN_TOKEN") }`), errors: [{ messageId: "retired" }] },
             { filename: CUSTODY, code: `export const gateway = (token: string) => ({ keysPath: "keys.sqlite", adminToken: token })`, errors: [{ messageId: "adminToken" }] },
-            { filename: DOMAIN, code: "export const key = `OPENCLAW_AI_KEY_FILE`", errors: [{ messageId: "retired" }] },
-            { filename: CONFIG, code: `export const read = () => process.env.AI_API_KEY`, errors: [{ messageId: "retired" }] },
-            { filename: WORLD, code: `export const values = { OPENCLAW_AI_KEY: "sk-starci-test" }`, errors: [{ messageId: "retired" }] },
-            { filename: AI_SPEC, code: `export const env = { AI_ROUTER_ADMIN_TOKEN: "x" }`, errors: [{ messageId: "retired" }] },
         ],
     })
 })

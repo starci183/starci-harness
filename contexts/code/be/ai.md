@@ -45,8 +45,8 @@ accounts or providers, or keys with their own caps: keys of one provider account
 breaker state and the key store live in the hosting process, so the api that hosts the gateway runs one replica, or
 the gateway moves to a service of its own before the api scales out.
 
-Enforced by: `provider-key-custody` (R326), `ai-virtual-key-name` (R344: the virtual key is `STARCI_AI_KEY`, the
-retired per-caller and admin names are refused in code and in every tracked app file), `infra-import-owner` (R90:
+Enforced by: `provider-key-custody` (R326), `ai-virtual-key-name` (R344: `integrations/ai` reads exactly `STARCI_AI_KEY`,
+and the custody owner passes no admin token), `infra-import-owner` (R90:
 `@starci/ai-router` in the custody owner, every provider SDK and `openai` nowhere); the embed pin is review only.
 
 ## BE-AI-2 Choose: a code chain or the agent runtime
@@ -143,5 +143,4 @@ runs the app's use case. The app neither embeds the runtime nor calls back into 
 
 Why: every effect an agent has then passes the checks a human's request passes, and is attributable after the fact.
 
-Enforced by: R302 (hfs `mcp-tools-snapshot`) for the catalog, R344 (hfs `ai-retired-key`: no per-runtime key name in a stack file); the
-runtime's other credentials and tool routing are review only.
+Enforced by: R302 (hfs `mcp-tools-snapshot`) for the catalog; the runtime's credentials and tool routing are review only.
