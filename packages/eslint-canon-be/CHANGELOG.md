@@ -2,9 +2,10 @@
 
 ## 3.9.3 - 2026-10-31
 
-- Changed: the bundled canon pins name @starci/grammar 0.16.3 (the chat-named pane frame is now PaneLayout, no alias: grammar names are generic).
+- Changed: the bundled canon pins name the 0.16.3 cohort (@starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0, jest-preset 2.6.0, hfs 4.13.0); ChatWorkspace and PaneLayout are removed with no alias; PaneGrid and Pane are the one generic pane grid: grammar names are generic.
 - Added: `entity-extends-base` (R342 `BE_ENTITY_EXTENDS_BASE`, `src/entity-base.ts`, BE-PERSISTENCE-3, ruling entity-base), both editions: an `@Entity` class that declares a database-set `created_at` or `updated_at` itself (`@CreateDateColumn`, `@UpdateDateColumn`, or a `@Column` on those names, or on `createdAt` / `updatedAt`, with `insert: false`, `update: false` or a `default`) and, beside both, the generated uuid `id` is refused; the finding names `UuidAbstractEntity` or `AbstractEntity` of `@modules/platform/database` as the base to extend. A timestamp the application sets (a plain `@Column`) and the base file `platform/database/abstract.entity.ts` are not judged. Spec: `src/entity-base.spec.ts`.
-- Changed: the bundled rule catalog adds R342 and the failure codes add `BE_ENTITY_EXTENDS_BASE`; the bundled canon pins name eslint-canon-be 3.9.3 and hfs 4.12.3.
+- Changed: the bundled rule catalog adds R342 and the failure codes add `BE_ENTITY_EXTENDS_BASE`.
+- Added: the lint result cache of `starci app check` (ruling app-check-cache): `crossFileInputs`, the files and folders each rule reads beyond the linted file (git-history inputs; third-party-owner walks the integrations only for integration files; an fs-audit spec proves every rule declares what it reads), and the `projectGraph` export the cache keys a file's lint record on.
 
 ## 3.9.2 - 2026-10-31
 

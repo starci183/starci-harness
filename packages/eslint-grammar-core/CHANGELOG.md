@@ -2,12 +2,12 @@
 
 ## 0.16.3 - 2026-10-31
 
-- Changed: the peer moves to eslint-canon-fe 9.6.3; the bundled canon pins name @starci/grammar 0.16.3 (the chat-named pane frame is now PaneLayout, no alias: grammar names are generic). The core playbook names PaneLayout in its layout-frame and container lists.
+- Changed: the peer moves to eslint-canon-fe 9.6.3; the bundled canon pins name the 0.16.3 cohort (@starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0, jest-preset 2.6.0, hfs 4.13.0); ChatWorkspace and PaneLayout are removed with no alias; PaneGrid and Pane are the one generic pane grid: grammar names are generic. The core playbook names PaneGrid in its layout-frame and container lists.
 - Added: starci-grammar/freestyle-has-reason (R341, FE_FREESTYLE_REASON_MISSING): a `<Freestyle>` region names a non-empty string-literal `reason`. no-raw-structural-element, no-fractional-step, generated-art-in-mascot-or-media-frame and no-inline-svg-outside-brand-mark-leaf do not report the raw elements inside a Freestyle subtree (owner ruling grammar-freestyle-region). Specs: src/freestyle.spec.ts.
+- Added: `crossFileInputs` for the lint result cache of `starci app check` (ruling app-check-cache): the files each grammar rule reads beyond the linted file.
 
 ## 0.16.2 - 2026-10-31
 
-- Changed: the bundled canon pins name eslint-canon-be 3.9.3 and hfs 4.12.3 (R342 `BE_ENTITY_EXTENDS_BASE` joins the bundled rule catalog). No rule of this package changed; the bundled `rules.yaml` states R342.
 - Changed: the peer moves to eslint-canon-fe 9.6.2; the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).
 - Added: starci-grammar/no-raised-surface-in-surface (R340, FE_RAISED_SURFACE_IN_SURFACE): a depth="top" forced on a SurfaceListCard that a SurfaceCard, SurfaceListCard or SurfaceAccordionCard of the same file encloses is a finding (BOUNDARY-6, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); the Grammar resolves a nested surface's depth from the surface context. Specs: src/surface-depth.spec.ts.
 

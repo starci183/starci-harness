@@ -2,11 +2,11 @@
 
 ## 0.16.3 - 2026-10-31
 
-- Changed: the peer moves to eslint-grammar-core 0.16.3 (R341 freestyle-has-reason); the bundled canon pins name @starci/grammar 0.16.3 (the chat-named pane frame is now PaneLayout, no alias: grammar names are generic).
+- Changed: the peer moves to eslint-grammar-core 0.16.3 (R341 freestyle-has-reason); the bundled canon pins name the 0.16.3 cohort (@starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0, jest-preset 2.6.0, hfs 4.13.0); ChatWorkspace and PaneLayout are removed with no alias; PaneGrid and Pane are the one generic pane grid: grammar names are generic.
+- Added: `crossFileInputs` for the lint result cache of `starci app check`: the offset-pop rules inherit the core declarations.
 
 ## 0.16.2 - 2026-10-31
 
-- Changed: the bundled canon pins name eslint-canon-be 3.9.3 and hfs 4.12.3 (R342 `BE_ENTITY_EXTENDS_BASE` is a back-end rule). No rule of this package changed.
 - Changed: the peer moves to eslint-grammar-core 0.16.2; the bundled canon pins name @starci/grammar 0.16.2 (the horizontal Stepper connector line; SurfaceListCard takes its depth from the surface context).
 - Changed: inherits starci-grammar/no-raised-surface-in-surface of eslint-grammar-core 0.16.2 (R340).
 

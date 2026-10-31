@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.0 - 2026-10-31
+
+- Added: `crossFileInputs` for the lint result cache of `starci app check` (ruling app-check-cache, `src/lib/cross-file-inputs.ts`): the files each rule reads beyond the linted stylesheet, so a cached result is reused only while they are unchanged; the grammar fixture styles are restated in the canonical form.
+
 ## 2.2.1 - 2026-10-28
 
 - Fixed: the built declarations name `.js`, not the `.ts` sources (2.2.0's `dist/**/*.d.ts` named `.ts` files a consumer tsc cannot read); released with the release C pins.
