@@ -3,6 +3,7 @@
 ## 9.6.5 - 2026-10-31
 
 - Changed: the bundled runtime copies follow @starci/hfs 4.13.2 (R344 on the `be.integrations` slot) and the canon pins name hfs 4.13.2, eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5; no rule changed.
+- Changed: the bundled canon pins name @starci/ai-router 0.5.0 (many providers behind one virtual key, the persisted key blacklist); no rule changed.
 
 ## 9.6.4 - 2026-10-31
 
