@@ -10,7 +10,7 @@ import { argSet, argValue, FORWARDED, leadingOperands, runHfs, withoutArg } from
  * executed production deploy of built images waits for a green CI when policy/quality.yaml lists deploy.prod in requireCi, or,
  * with --urgent, for the commit's urgent record to stand in. `--ci-run <run>` (the CI deploy, inside the run that is still in progress, or on the run
  * a reused candidate verdict names) replaces that lookup: the CLI itself reads the run's jobs from GitHub and accepts only when every job the CI
- * standard requires concluded success for the exact `--sha`; the flag is the CLI's alone and never reaches @starci/hfs.
+ * standard requires concluded success for the exact `--sha`. Only after that judgement is the id forwarded: @starci/hfs takes `--ci-run` as a journal label (the attempt is a CI one and names the run), never as evidence.
  */
 export const appStackVerb = defineVerb({
     path: ["app", "stack"],
@@ -26,8 +26,7 @@ export const appStackVerb = defineVerb({
         const sha = argValue(args, "sha")
         const deploy = leadingOperands(args)[0] === "deploy"
         const ciRun = argValue(args, "ci-run")
-        const forwarded = withoutArg(args, "ci-run")
-        if (forwarded.length !== args.length) {
+        if (withoutArg(args, "ci-run").length !== args.length) {
             if (!deploy) throw new Refusal("CI_RUN_USAGE", "--ci-run belongs to `stack deploy`: it names the CI run that proves the commit being deployed")
             if (ciRun === undefined || ciRun === "" || ciRun.startsWith("-")) throw new Refusal("CI_RUN_USAGE", "--ci-run takes the id of the GitHub Actions run to judge")
             if (argSet(args, "urgent")) throw new Refusal("CI_RUN_USAGE", "--ci-run and --urgent exclude each other: an urgent deploy stands on its urgent record, a CI deploy on its run")
@@ -40,6 +39,6 @@ export const appStackVerb = defineVerb({
             const accepted = await requireCiGreen(context, await repositoryRoot(context.cwd), "deploy.prod", sha, { urgent: argSet(args, "urgent") })
             if (accepted !== undefined) context.progress(`deploy.prod: ${accepted.verdict === "urgent" ? accepted.detail : `CI of ${accepted.sha.slice(0, 9)} is green`}`)
         }
-        return runHfs(context, "stack", forwarded, true, undefined, { role: callerRole() ?? "owner" })
+        return runHfs(context, "stack", args, true, undefined, { role: callerRole() ?? "owner" })
     },
 })
