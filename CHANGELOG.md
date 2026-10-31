@@ -6,6 +6,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.24] - 2026-10-31
+
+### Added
+
+- Knowledge: `list-table.choose.role` gains the `step` row (a few choices or facts inside a first-run step card are a `SurfaceListCard` of `ListRow`, label outside), placed before `entity`, and ruling `step-card-list` records it as the second exception to "a list is never wrapped in a card" beside the rail list.
+- Knowledge: contexts/project/cicd.md "As built" records the `starci-ssh-gate` forced command, `deploy.notify` and the `--data-acknowledged` guard of a manual rollback, which ship in @starci/hfs 4.13.1 (the pins name it; this CLI follows to it once npm serves it).
+
 ## [1.1.0-alpha.23] - 2026-10-31
 
 ### Added
