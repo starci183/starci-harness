@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.16.3 - 2026-11-01
+
+- Changed: the bundled canon pins name hfs 4.16.3, @starci/grammar 0.20.0, eslint-canon-be 3.11.4, eslint-canon-fe 9.8.3 and eslint-grammar-core and eslint-grammar-offset-pop 0.20.0 (RELEASE_VERSION_NOT_BUMPED: 4.16.2 is on npm).
+
 ## 4.16.2 - 2026-10-31
 
 - Fixed: R248 `ENV_DUPLICATE` judges app env only. The operator's SSH member (`deploy.remote.sealed`) and the CI member `vps-ci` are separate identities by design (ruling ci-transport-one-home) and never reach an app container, so the SSH group keys (`SSH_GROUP`, now exported from `secret-standard`) held by exactly those two members of one environment are no duplicate; an app key in two members, or an SSH group key in any third member, stays red.
