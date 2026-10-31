@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.6 - 2026-10-31
+
+- Changed: no component changed; the version moves with its lint family (eslint-grammar-core and eslint-grammar-offset-pop 0.16.6, which follow @starci/hfs 4.14.0), so the Grammar and its lint packages stay one version.
+
 ## 0.16.5 - 2026-10-31
 
 - Changed: no component changed; the version moves with its lint family (eslint-grammar-core and eslint-grammar-offset-pop 0.16.5, which follow @starci/hfs 4.13.2), so the Grammar and its lint packages stay one version. 0.16.4 was never a Grammar version.

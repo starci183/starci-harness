@@ -6,6 +6,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.26] - 2026-10-31
+
+### Changed
+
+- Knowledge: R334 `BE_PERSISTENCE_NO_RAW_SQL` is one style (ruling no-raw-sql-one-style): lite TypeScript holds no SQL text outside the test world. A table goes through its entity, anything else is a listed database function called through `callDbFunction`, `platform/database/database.client.ts` alone composes the call statement and LISTEN (`advisoryXactLock` and `notify` are `callDbFunction` calls of pg built-ins), and the only other `.query(` is the pass-through of a file listed in `ruleParams.be.sqlPassThrough` (the canon lists the seed runner) or hfs.json `sides.be.sqlPassThrough` with a reason. The test world keeps raw SQL for probes only; plain CRUD and application function calls there go through entities and `callDbFunction`. contexts: persistence.md BE-PERSISTENCE-4, test.md BE-TEST-1, rules R334 and R68, ruling `no-raw-sql-one-style` (narrows `lite-test-sql-owner`), lite.md, slots (`ruleParams.be.sqlPassThrough`, `be.tests.world` allows `<name>.sql.ts`). Packages: `@starci/eslint-canon-be` 3.11.0 (`query`, `template`, `sqlFile`, `sqlTagImport`, `worldCallHelper`, `worldTableWrite`), `@starci/hfs` 4.14.0 (the `sqlPassThrough` key and its shape checks, the skeleton's `database.client.ts`), `@starci/eslint-canon-fe` 9.6.7, `@starci/grammar`, `@starci/eslint-grammar-core` and `@starci/eslint-grammar-offset-pop` 0.16.6 (bundled copies and pins follow). This CLI follows to the new hfs once npm serves it.
+
 ## [1.1.0-alpha.25] - 2026-10-31
 
 ### Changed

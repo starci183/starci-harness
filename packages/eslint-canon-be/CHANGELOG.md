@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.11.0 - 2026-10-31
+
+- Changed (breaking for a lite app that kept raw SQL): R334 `no-raw-sql` is one style, no SQL text in lite TypeScript outside the test world. New messages: `query` (a `.query(` outside the world, except the one composer `platform/database/database.client.ts` with its template statements, a file `ruleParams.be.sqlPassThrough` or hfs.json `sides.be.sqlPassThrough` lists with a plain-string argument, and the `*.spec.ts` beside it; `platform/database` loses its blanket exemption), `template` (a `sql` template outside the world), `sqlFile` (a `*.sql.ts` outside the world), `sqlTagImport` (an import of `sql`, `ident`, `SqlText` or `SqlIdent` outside the world; the tag's own module `database.sql.ts` is exempt), `worldCallHelper` (a world `sql` statement that only calls a listed function: it is `callDbFunction`) and `worldTableWrite` (a world statement that writes a `public` or `be_access` table: it goes through the entity or the area's builder). `builder` and `unlisted` are kept; the world keeps raw SQL for probes.
+- Changed: the R68 text names the call and LISTEN statements of `database.client.ts`; `HfsRuleParams` carries `sqlPassThrough`.
+- Changed: the bundled runtime copies follow @starci/hfs 4.14.0 (R334 law, `ruleParams.be.sqlPassThrough` with the seed runner, the world allows `<name>.sql.ts`) and the canon pins name the cohort hfs 4.14.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.6.7, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.6.
+
 ## 3.10.1 - 2026-10-31
 
 - Changed: the bundled canon pins name @starci/ai-router 0.5.0 (many providers behind one virtual key, the persisted key blacklist) and the cohort that carries them: hfs 4.13.3, eslint-canon-be 3.10.1, eslint-canon-fe 9.6.6, eslint-grammar-core and eslint-grammar-offset-pop 0.16.6; no rule changed.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.14.0 - 2026-10-31
+
+- Added: `ruleParams.be.sqlPassThrough` and hfs.json `sides.be.sqlPassThrough` (a list of `{file, reason}`, side-relative forward-slash paths, unique): the files whose `.query(` passes through SQL text that is not the app's own (R334). The shape validators (`manifest-shape`, `rule-params-shape`, `declaration-shape`) accept it on the be side only, the resolver merges the app's list into the canon's like `dbFunctions`, and the canon lists the seed runner `src/modules/platform/database/seed-runner.service.ts`.
+- Changed: R334 `BE_PERSISTENCE_NO_RAW_SQL` is one style: lite TypeScript holds no SQL text outside the test world (entities, or a listed function through `callDbFunction`; the world keeps raw SQL for probes only), the failure code text follows, R68 names the call and LISTEN statements, and the `be.tests.world` slot allows `<name>.sql.ts`.
+- Changed: the lite skeleton's `platform/database/database.client.ts` writes no literal `.query(` but the call template: `advisoryXactLock` is `callDbFunction` of `hashtextextended(key, 0)` then `pg_advisory_xact_lock(hash)`, and `notify` is `callDbFunction` of `pg_notify`; its spec follows.
+- Changed: the bundled canon pins name the cohort hfs 4.14.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.6.7, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.6.
+
 ## 4.13.3 - 2026-10-31
 
 - Changed: the canon pins name @starci/ai-router 0.5.0 (many providers behind one virtual key, the persisted key blacklist) and the cohort that carries them: hfs 4.13.3, eslint-canon-be 3.10.1, eslint-canon-fe 9.6.6, eslint-grammar-core and eslint-grammar-offset-pop 0.16.6; no rule changed.

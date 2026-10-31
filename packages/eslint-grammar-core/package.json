@@ -41,7 +41,7 @@
     "node": ">=22"
   },
   "peerDependencies": {
-    "@starci/eslint-canon-fe": "9.6.6",
+    "@starci/eslint-canon-fe": "9.6.7",
     "eslint": ">=9",
     "typescript": ">=5.9"
   },
