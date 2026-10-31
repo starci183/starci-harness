@@ -6,6 +6,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.30] - 2026-10-31
+
+### Changed
+
+- The CLI requires @starci/hfs@4.16.1, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
+
 ### Changed
 
 - Knowledge: `contexts/ui/components/diagram.md` and the diagram role of `grammars/contract.yaml` name the FlowGraph `orbit` layout, the bubble form, the status fills and ring (grammar 0.19.0); the API awaits the owner as D-16 of `decisions/open-grammar.md`.
