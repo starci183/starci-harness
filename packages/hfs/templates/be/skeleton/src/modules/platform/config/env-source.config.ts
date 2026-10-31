@@ -60,7 +60,8 @@ export class EnvSource {
     optionalDomain(key: string): string | undefined {
         const value = this.optional(key)?.toLowerCase()
         if (value === undefined) return undefined
-        if (!BARE_DOMAIN_PATTERN.test(value)) throw new ConfigError({ code: ConfigErrorCode.KeyInvalid, params: { key } })
+        if (!BARE_DOMAIN_PATTERN.test(value))
+            throw new ConfigError({ code: ConfigErrorCode.KeyInvalid, params: { key } })
         return value
     }
 

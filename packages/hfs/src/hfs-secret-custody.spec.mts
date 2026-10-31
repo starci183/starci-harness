@@ -67,6 +67,35 @@ const CANON = [
   "src/modules/platform/http-security/webhook-signature.service.ts",
 ];
 
+// An app formats its sources with @starci/prettier-config before every commit (HFS_FORMAT) and HFS_CANON_COPY_DRIFT pins the
+// canon copies to the template bytes: a template Prettier would rewrite leaves the app no commit that satisfies both.
+const STARCI_PRETTIER = {
+  printWidth: 120,
+  tabWidth: 4,
+  useTabs: false,
+  semi: false,
+  singleQuote: false,
+  trailingComma: "all",
+  bracketSpacing: true,
+  arrowParens: "always",
+  endOfLine: "auto",
+} as const;
+
+test("HFS_CANON_COPY_DRIFT: every canon-copy template is already in the form the scaffold's Prettier config writes", async () => {
+  const shared = path.resolve(import.meta.dirname, "../../prettier-config/src/index.ts");
+  if (fs.existsSync(shared)) {
+    const source = fs.readFileSync(shared, "utf8");
+    for (const [key, value] of Object.entries(STARCI_PRETTIER))
+      assert.ok(source.includes(`${key}: ${JSON.stringify(value)}`), `@starci/prettier-config sets ${key}: ${JSON.stringify(value)}`);
+  }
+  const prettier = await import("prettier");
+  for (const rel of CANON) {
+    const file = path.join(TEMPLATE, rel);
+    const text = fs.readFileSync(file, "utf8");
+    assert.equal(await prettier.format(text, { ...STARCI_PRETTIER, filepath: file }), text, `${rel} is Prettier-stable`);
+  }
+});
+
 test("assigned-secret flags the required names and unquoted values, never config names, references or stand-ins", () => {
   const flagged = [
     'DB_PASSWORD = "hunter2hunter2hunter2"',
