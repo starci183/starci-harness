@@ -2,7 +2,7 @@
 
 ## 0.19.0 - 2026-10-31
 
-- Changed: moves with `@starci/grammar` 0.19.0 (FlowGraph `orbit`); no rule changed.
+- Changed: moves with `@starci/grammar` 0.19.0 (FlowGraph `orbit`) and requires `@starci/eslint-canon-fe` 9.8.1; no rule changed.
 
 ## 0.18.0 - 2026-10-31
 

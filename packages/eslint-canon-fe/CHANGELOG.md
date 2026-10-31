@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.8.1 - 2026-10-31
+
+- Changed: the bundled canon pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.19.0, eslint-canon-be 3.11.2, eslint-canon-fe 9.8.1, stylelint-canon 2.4.0 and hfs 4.16.1 (RELEASE_VERSION_NOT_BUMPED: 9.8.0 is on npm).
+
 ## 9.8.0 - 2026-10-31
 
 - Added: `no-spacing-utility` (R350, `FE_SPACING_UTILITY`): no padding, margin, gap or space utility (variants and arbitrary values included) in an app class string; the message names the role prop to use. It ships in the closed counting cohort (`COUNTING` of `src/lib/config.ts`) at warn for this release.
