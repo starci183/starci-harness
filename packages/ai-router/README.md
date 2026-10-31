@@ -1,6 +1,9 @@
 # @starci/ai-router
 
-A router for OpenAI-compatible calls across a pool of keys, models and providers, usable three ways over one engine:
+A router for OpenAI-compatible calls across many providers, each with an array of keys, behind one virtual key per app.
+It load-balances below (Anthropic, OpenRouter, Qwen, DeepSeek, OpenAI, Gemini, Groq and any OpenAI-compatible endpoint),
+blacklists a key whose quota is spent or whose secret is refused, and exposes one OpenAI-compatible API above. It is
+usable three ways over one engine:
 
 - **as a gateway service** (`run.js serve`): an OpenAI-compatible HTTP endpoint (`/v1/chat/completions`, streaming
   included, `/v1/embeddings`, `/v1/models`) with its own virtual API keys, per-key quotas and usage accounting, so any
@@ -9,15 +12,19 @@ A router for OpenAI-compatible calls across a pool of keys, models and providers
   and `embeddings`; `AiRouterGatewayModule` hosts the gateway in the same process;
 - **as a plain Node library**: `createRouter(config)` from `@starci/ai-router/gateway`, with no Nest at all.
 
-The router picks a healthy key for each attempt, backs off what is failing, honours rate limits, retries on a different
-key or provider, falls back to another model when you allow it, and tells you what it did without ever exposing a key or
-a prompt.
+The router picks a healthy key for each attempt, backs off what is failing, honours rate limits, blacklists a key whose
+quota or credit is spent until its window ends (or its secret changes), retries on a different key or provider, falls
+back across providers and models by profile, keeps embeddings on one model, and tells you what it did without ever
+exposing a key or a prompt. [docs/design.md](docs/design.md) is the design: the provider matrix, the error
+classification per provider, the blacklist lifecycle, profiles and key scopes, the Anthropic adapter and the env naming.
 
 - ESM, typed, Node 20 or newer (the durable key store needs Node 22.13 or newer for `node:sqlite`). One runtime
   dependency, `yaml`, for the config file. `@nestjs/common`, `@nestjs/core` (11 or 12) and `reflect-metadata` are
   optional peer dependencies: the root entry needs them, `@starci/ai-router/gateway`, `@starci/ai-router/cli` and the `run.js` process entry do not.
-- OpenAI chat-completions and embeddings shapes in and out, so any OpenAI-compatible endpoint (OpenAI, Azure OpenAI
-  behind a compatible gateway, OpenRouter, Groq, Together, DeepSeek, vLLM, Ollama, LiteLLM...) is a provider.
+- OpenAI chat-completions and embeddings shapes in and out. A provider's `kind` sets its protocol, auth header, default
+  base URL and error classification: `anthropic` (the Messages API, through a protocol adapter for chat, streaming,
+  tools and JSON), `openrouter`, `qwen` (DashScope compatible mode), `deepseek`, `openai`, `gemini` (its OpenAI
+  endpoint), `groq`, and `openai-compatible` (the default: Ollama, vLLM, Together, LiteLLM...).
 - Keys are references (an environment variable name or a resolver function), read at each attempt and named by alias
   everywhere else.
 
@@ -34,6 +41,55 @@ call, or as a Nest capability with a testing module to prove your use of it.
 npm install @starci/ai-router                                          # the gateway and plain Node
 npm install @starci/ai-router @nestjs/common @nestjs/core reflect-metadata  # in a Nest app
 ```
+
+## Many providers below, one virtual key above
+
+An app declares every provider it may use, each with its models; `poolFromEnv` keeps the ones whose keys the
+environment holds (`<PREFIX>_API_KEY`, `<PREFIX>_API_KEY_2`, ..., their `_FILE` twins, or a `<PREFIX>_API_KEYS` list)
+and cuts every profile down to what they serve. Clients send `model: "work"` or `model: "embed"` with the app's one
+virtual key, `STARCI_AI_KEY`.
+
+```ts
+import { AiRouterGatewayModule, AiRouterModule, openSqliteKeyStore, openSqliteStateStore, poolFromEnv, virtualKeyFromEnv } from "@starci/ai-router"
+
+AiRouterModule.registerAsync({
+    isGlobal: true,
+    useFactory: async () =>
+        poolFromEnv({
+            providers: [
+                { kind: "anthropic", models: [{ id: "claude-sonnet-5-5", cost: { input: 3, output: 15 } }] },
+                { kind: "openrouter", models: [{ id: "anthropic/claude-sonnet-5-5" }, { id: "openai/text-embedding-3-small", identity: "text-embedding-3-small", dimensions: 1536, capabilities: ["embeddings"] }] },
+                { kind: "deepseek", models: [{ id: "deepseek-v4-pro" }] },
+                { kind: "qwen", models: [{ id: "qwen3.8-max" }] },
+                { kind: "openai", models: [{ id: "text-embedding-3-small", dimensions: 1536, capabilities: ["embeddings"] }] },
+            ],
+            profiles: {
+                // Tiers in order; a list is one tier sharing its load by weight.
+                work: { candidates: [[{ provider: "anthropic", model: "claude-sonnet-5-5", weight: 3 }, { provider: "openrouter", model: "anthropic/claude-sonnet-5-5" }], { provider: "deepseek", model: "deepseek-v4-pro" }, { provider: "qwen", model: "qwen3.8-max" }] },
+                // Pinned: keys and providers rotate, the model (and its vector space) never changes.
+                embed: { pinned: true, candidates: [[{ provider: "openai", model: "text-embedding-3-small" }, { provider: "openrouter", model: "openai/text-embedding-3-small" }]] },
+            },
+            // Durable: a blacklisted key stays out across a restart.
+            store: await openSqliteStateStore("/data/ai-router-state.sqlite"),
+        }),
+})
+AiRouterGatewayModule.registerAsync({
+    useFactory: async () => ({ keys: await openSqliteKeyStore("/data/keys.sqlite"), mountedKeys: [await virtualKeyFromEnv({ label: "app", quota: { costPerMonth: 50 } })], listen: true }),
+})
+```
+
+| env variable | meaning |
+|---|---|
+| `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `DASHSCOPE_API_KEY` (Qwen), `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY` | the first key of each provider, alias `<kind>-1` |
+| `<PREFIX>_API_KEY_2` ... `<PREFIX>_API_KEY_<n>` | more keys, aliases `<kind>-<n>`; gaps allowed, no upper bound |
+| `<PREFIX>_API_KEY_FILE`, `<PREFIX>_API_KEY_<n>_FILE` | a key mounted as a file (its first line) |
+| `<PREFIX>_API_KEYS` | several keys in one variable, split at commas and whitespace |
+| `<PREFIX>_BASE_URL` | another endpoint: a Qwen region or workspace host, an Ollama host |
+| `STARCI_AI_KEY` (or `STARCI_AI_KEY_FILE`) | the app's virtual key, `sk-starci-<label>-...`, bound to `work` and `embed` |
+
+A virtual key carries the profiles it may call and, optionally, an allowlist of exact model ids (`models`, empty by
+default). A model it names that is neither is refused 403 `model_not_allowed`, never remapped; `/v1/models` lists only
+what it may call; its quotas count every call whatever the model. See [key scopes](docs/design.md#key-scopes).
 
 ## Run it as a gateway
 
@@ -61,9 +117,14 @@ gateway:
   adminToken: { env: AI_ROUTER_ADMIN_TOKEN }   # absent: the admin API is off
   keyStore: { type: sqlite, path: /data/keys.sqlite }   # or { type: memory }; a relative path is from this file
   maxBodyBytes: 4194304          # default 4 MiB
+stateStore: { type: sqlite, path: /data/state.sqlite }  # breakers and blacklists survive a restart; default memory
 providers:
+  - id: anthropic
+    kind: anthropic              # base URL, x-api-key auth and the Messages adapter come with the kind
+    keysFromEnv: ANTHROPIC       # ANTHROPIC_API_KEY, ANTHROPIC_API_KEY_2, ... and their _FILE twins
+    models: [{ id: claude-sonnet-5-5, aliases: [smart] }]
   - id: openai
-    baseUrl: https://api.openai.com/v1
+    kind: openai
     keys:
       - { alias: team-a, env: OPENAI_KEY_A }
       - { alias: team-b, file: /run/secrets/openai_key_b, maxConcurrency: 8 }
@@ -110,8 +171,9 @@ Errors are OpenAI error objects, `{ "error": { "message", "type", "param", "code
 | 413 | `request_too_large` | a body past `maxBodyBytes` |
 | 429 | `requests_per_minute_exceeded`, `tokens_per_day_exceeded`, `cost_per_day_exceeded`, `cost_per_month_exceeded` | the key's quota, with `Retry-After` |
 | 4xx | `upstream_invalid_request` | the provider refused the request (its status and message, e.g. a context-length error) |
-| 502 | `upstream_error`, `pool_auth_failed` | every attempt failed upstream, or no upstream key was accepted |
+| 502 | `upstream_error` | every attempt failed upstream |
 | 503 | `pool_unavailable`, `pool_rate_limited` | no lane can serve it, or every key is rate limited (`Retry-After` when known) |
+| 503 | `pool_quota_exhausted`, `pool_auth_failed` | every key that could serve is blacklisted: its quota or credit spent, or its secret refused (`Retry-After` until the first returns, else 300) |
 | 504 | `pool_timeout` | the policy's deadline passed |
 
 ### Virtual keys
@@ -405,10 +467,10 @@ the options the same way (`AiRouterModuleOptions<"strict">`) to keep the two in 
 | `chat(request, options?)` | sends a chat-completions request; resolves to the OpenAI completion plus `routing` |
 | `stream(request, options?)` | returns an async iterable of OpenAI chunks, with `requestId`; see [Streaming](#streaming) |
 | `embeddings(request, options?)` | sends an embeddings request; resolves to the OpenAI response plus `routing` |
-| `health()` | reads every breaker, disabled key, headroom and latency EWMA |
+| `health()` | reads every breaker, blacklisted key (reason and until), headroom, budget spend and latency EWMA |
 | `stats()` | this process's counters: requests, attempts, failures by class, tokens and cost per lane |
-| `on(event, handler)` | subscribes to `attempt`, `request`, `breaker` or `key-disabled` until shutdown; returns the unsubscribe function |
-| `reset(target?)` | closes breakers, re-enables keys and clears headroom for everything, one provider or one key |
+| `on(event, handler)` | subscribes to `attempt`, `request`, `breaker`, `key-disabled` or `key-restored` until shutdown; returns the unsubscribe function |
+| `reset(target?)` | closes breakers, lifts blacklists and clears headroom for everything, one provider or one key |
 | `catalog()` | the pool's profiles (resolved model and fallbacks) and models (ids, aliases, providers), with no key |
 
 `options` is `{ profile?, policy?, signal?, requestId?, headers? }`. `requestId` (generated when absent) is sent as
@@ -447,19 +509,23 @@ A named registration provides no default instance; `@InjectAiRouterService()` wi
 | field | meaning | default |
 |---|---|---|
 | `providers[].id` | a name, unique, without `/` | required |
-| `providers[].baseUrl` | the URL the OpenAI paths hang from (`.../v1`) | required |
-| `providers[].headers` | extra headers for every request (an `authorization` here is ignored) | none |
+| `providers[].kind` | `anthropic`, `openrouter`, `qwen`, `deepseek`, `openai`, `gemini`, `groq` or `openai-compatible`: protocol, auth header, default base URL, embeddings support and error classification ([provider matrix](docs/design.md#provider-matrix)) | `openai-compatible` |
+| `providers[].baseUrl` | the URL the API paths hang from (`.../v1`) | the kind's; required for `openai-compatible` |
+| `providers[].headers` | extra headers for every request (the auth header, `authorization` or `x-api-key`, is ignored here) | none |
 | `providers[].weight` | multiplies the round-robin share of every lane of the provider | 1 |
 | `providers[].maxConcurrency` | in-flight requests across the provider's keys, in this process | unbounded |
-| `providers[].keys[]` | `{ alias, env }` or `{ alias, resolve }`, plus `weight`, `maxConcurrency` | at least one |
-| `providers[].models[]` | `{ id, aliases?, contextWindow?, cost?, capabilities?, weight? }` | at least one |
+| `providers[].defaultMaxTokens` | the `max_tokens` sent to Anthropic, which requires one, when a request sets none | 4096 |
+| `providers[].budget` | `{ costPerDay?, costPerMonth? }` in the models' cost unit; past it the provider is out until the next UTC day or month | none |
+| `providers[].keys[]` | `{ alias, env }` or `{ alias, resolve }`, plus `weight`, `maxConcurrency` (`keysFromEnv` builds them) | at least one |
+| `providers[].models[]` | `{ id, aliases?, contextWindow?, cost?, capabilities?, weight?, identity?, dimensions? }` | at least one |
 | `defaults` | the policy every call starts from | none |
 | `profiles` | named policies a call selects with `{ profile }` | none |
 | `resilience.keyBreaker` | `{ failureThreshold, cooldownMs, maxCooldownMs }` per key | 3, 15000, 300000 |
 | `resilience.providerBreaker` | the same per provider, fed by all its keys | 8, 30000, 300000 |
 | `resilience.backoff` | `{ baseMs, factor, maxMs }` between attempts after a transient failure | 100, 2, 5000 |
-| `resilience.authDisableMs` | how long a 401/403 key stays out; `null` until `reset()` | `null` |
+| `resilience.authDisableMs` | how long a key whose secret was refused stays out; `null` until its secret changes or `reset()` | `null` |
 | `resilience.rateLimitCooldownMs` | a 429's cooldown when it has no `retry-after` | 10000 |
+| `resilience.quotaBlacklistMs` | how long a key whose quota is spent stays out when the provider names no window | 21600000 (6 h) |
 | `selection.latencyTolerance`, `latencySlackMs` | how far above the best latency EWMA a lane still ties | 1.5, 50 |
 | `selection.ewmaAlpha` | the weight of the newest latency sample | 0.3 |
 | `selection.lowHeadroom` | remaining requests at or below which a lane is used only when nothing else is | 1 |
@@ -471,7 +537,9 @@ A named registration provides no default instance; `@InjectAiRouterService()` wi
 A model's `id` is the name sent to the provider; a caller may name it by `id` or any alias, and an alias shared by
 several providers makes them interchangeable for that call. `cost` is per one million tokens, `input` and `output`, in
 whatever unit you budget in. `capabilities` defaults to `chat`, `streaming`, `tools` and `json`; an embeddings model
-declares `["embeddings"]`.
+declares `["embeddings"]` (refused on a kind with no embeddings API: `anthropic`, `deepseek`, `groq`). `identity` names
+one model served under different ids (`openai/text-embedding-3-small` at OpenRouter is `text-embedding-3-small`), and
+`dimensions` the vector length an embeddings model answers: a response of another length fails the attempt.
 
 ## Policies
 
@@ -490,6 +558,11 @@ defaults'.
 | `budget.maxCost` | a model whose worst-case cost for this request is higher is no candidate | none |
 | `providers` | restrict the call to these provider ids | all |
 | `require` | capabilities needed beyond those the request implies | none |
+| `candidates` | in place of `model` and `fallbacks`: ordered tiers of `{ model, provider?, weight? }`; a tier that is a list shares its load by weight; `allowFallback: false` keeps the first tier | none |
+| `pinned` | a profile whose candidates are all one model `identity` and `dimensions` (refused at startup otherwise); a call cannot name another model | `false` |
+
+A call's own `model` wins over a profile's candidates, except on a pinned profile. An embeddings call always stays on
+the model identity of its first lane: another model is another vector space.
 
 The request implies its own needs: `tools` needs `tools`, a non-text `response_format` needs `json`, `stream()` needs
 `streaming`, `embeddings()` needs `embeddings`. A model is also no candidate when its `contextWindow` is smaller than
@@ -520,10 +593,11 @@ waits for it rather than failing. When none will be, it fails at once with the c
 
 | what happened | class | effect | retried |
 |---|---|---|---|
-| 429, or a rate/quota error object | `rate_limit` | the lane (key and model) cools down until `retry-after` / `retry-after-ms`, else `rateLimitCooldownMs` | yes, at once, on another lane |
-| 401, 403, an auth error object | `auth` | the key is disabled (`authDisableMs`, default until `reset()`); `key-disabled` event | yes, at once, on another key |
-| a resolver that returns nothing or throws, an unset env var | `auth` | the key is disabled with reason `missing`; nothing is sent | yes |
-| 408, 409, 425, 5xx | `transient` | counts toward the key's and the provider's breakers; a `retry-after` also cools the lane | yes, after backoff |
+| 429, or a rate error object | `rate_limit` | the lane (key and model) cools down until `retry-after` / `retry-after-ms`, else `rateLimitCooldownMs` | yes, at once, on another lane |
+| 402, or a quota, credit or billing code or message (`insufficient_quota`, `billing_error`, `Arrearage`, ...; per provider in [the classification table](docs/design.md#error-classification)) | `quota` | the key is blacklisted until the provider's window ends (a monthly cap, a daily free tier), else `quotaBlacklistMs`, or until its secret changes; `key-disabled` event with the provider's `code` | yes, at once, on another key |
+| 401, 403, an auth error object | `auth` | the key is blacklisted until its secret changes (or `authDisableMs`); `key-disabled` event | yes, at once, on another key |
+| a resolver that returns nothing or throws, an unset env var | `auth` | the key is blacklisted with reason `missing` until a secret is set; nothing is sent | yes |
+| 408, 409, 425, 498, 5xx (Anthropic's 529) | `transient` | counts toward the key's and the provider's breakers; a `retry-after` also cools the lane | yes, after backoff |
 | connection failure | `network` | as transient | yes, after backoff |
 | attempt timeout | `timeout` | as transient | yes, after backoff |
 | broken or malformed stream before the first token | `stream` (or the streamed error's class) | as transient | yes, after backoff |
@@ -538,8 +612,13 @@ A successful probe closes it; a failed one reopens it with the cooldown doubled,
 invalid requests and cancellations never count against a breaker.
 
 Backoff after a transient failure is `min(maxMs, baseMs * factor^(n-1))` scaled by a random factor in `[0.5, 1)`, and
-the next attempt goes to a different lane by the tiers above. Rate and auth failures belong to one key, so the next key
-is tried without waiting.
+the next attempt goes to a different lane by the tiers above. Rate, quota and auth failures belong to one key, so the
+next key is tried without waiting.
+
+A blacklisted key keeps a 64-bit fingerprint of the secret it was refused with (never the secret): each pick resolves
+its secret again, and a new one (a rotated variable, a re-sealed file) lifts the blacklist at once with a
+`key-restored` event. When every key that could serve is blacklisted and none returns before the deadline, the call
+fails at once with class `quota` or `auth`, naming the keys, with `retryAt` at the earliest return.
 
 ## Streaming
 
@@ -581,7 +660,8 @@ AiRouterModule.register({
 | `attempt` | every attempt | `requestId`, `operation`, `attempt`, `provider`, `key` alias, `model`, `latencyMs`, `outcome`, `errorClass`, `status`, `usage`, `cost` |
 | `request` | every call, once | `requestId`, `operation`, `outcome`, `attempts`, `latencyMs`, the answering lane or the `errorClass` |
 | `breaker` | a breaker changes state | `scope` (`key` or `provider`), `provider`, `key`, `from`, `to` |
-| `key-disabled` | a key is disabled | `provider`, `key`, `reason` (`auth` or `missing`), `until` (null: until `reset()`) |
+| `key-disabled` | a key is blacklisted | `provider`, `key`, `reason` (`auth`, `missing` or `quota`), `until` (null: until its secret changes or `reset()`), `code` (the provider's error code, when it sent one) |
+| `key-restored` | a blacklisted key's secret changed | `provider`, `key`, `was` (the reason it was out), `reason` (`secret_changed`) |
 
 Events never carry message content unless `telemetry.includeContent` is `true`; then `attempt` events add `content`
 with the request body and, for `chat` and `embeddings`, the response. A handler that throws is isolated from the call.
@@ -589,13 +669,19 @@ The module itself logs nothing.
 
 ## Sharing state between processes
 
-Breakers, disabled keys and headroom live in the `store` option; the default keeps them in memory. Several processes
-(or several registrations) share them through one store: an adapter implements the exported `StateStore` type (`get`,
-`set`, `delete`, `keys(prefix)`, and an atomic `lease(key, ttlMs)` / `release(key)` pair for the half-open probe).
-Methods may return values or promises. Records are plain JSON (`HealthRecord`); a Redis adapter is a `GET`/`SET`, a
-`SCAN` and a `SET NX PX` lease. In-flight counts, latency EWMAs and round-robin positions stay per process. Updates
-are read-modify-write, so two processes failing at the same instant may count one failure between them: breakers are a
-health signal, not a ledger.
+Breakers, blacklisted keys, headroom and budgets live in the `store` option; the default keeps them in memory, so a
+restart forgets which keys are dead and tries them again. Two durable stores ship:
+
+- `openSqliteStateStore(path)` (`node:sqlite`, Node 22.13 or newer): one file, which processes on one host may share
+  (it may be the key store's file); `stateStore: { type: sqlite, path }` in the config file.
+- `redisStateStore(client)`: every gateway process of an app sees the same blacklist; `client` is five commands
+  (`get`, `set`, `setIfAbsent` as `SET NX PX`, `del`, `keys`), a few lines over node-redis or ioredis.
+
+Another adapter implements the exported `StateStore` type (`get`, `set`, `delete`, `keys(prefix)`, and an atomic
+`lease(key, ttlMs)` / `release(key)` pair for the half-open probe), parsing what it stored with `toHealthRecord` or
+`parseHealthRecord`. Methods may return values or promises. In-flight counts, latency EWMAs and round-robin positions
+stay per process. Updates are read-modify-write, so two processes failing at the same instant may count one failure
+between them: breakers are a health signal, not a ledger.
 
 ## Testing
 
@@ -629,19 +715,25 @@ const reply = await app.get(AiRouterService).chat({ model: "m", messages: [{ rol
 await app.close()
 ```
 
-A reply may set `status`, `headers`, `latencyMs`, `error: "network"`, `text`, `usage`, `embedding`, a raw `body`, and
-`stream: { chunks, delayMs, failAfter, failWith: "network" | "error-event", stallAfter, stallMs, includeUsage }`.
-Everything is deterministic except the latencies you script.
+A reply may set `status`, `headers`, `latencyMs`, `error: "network"`, `text`, `toolCalls` (`{ id, name, arguments,
+argumentChunks? }`), `usage`, `embedding`, a raw `body`, and `stream: { chunks, delayMs, failAfter, failWith: "network" |
+"error-event", stallAfter, stallMs, includeUsage }`. A request to `/messages` (an `anthropic` provider) is answered in
+the Anthropic shape, unary and SSE, and its key is read from `x-api-key`. `PROVIDER_ERRORS[kind][case]` holds each
+provider's real error answers (`rate_limited`, `quota_exhausted`, `invalid_key`, `overloaded`, `bad_request`, and a
+provider's second shapes such as `anthropic.spend_cap` or `openrouter.free_daily`), to script with
+`fake.on({ key }, PROVIDER_ERRORS.anthropic.quota_exhausted)`. Everything is deterministic except the latencies you
+script.
 
 ## Security notes
 
 - A key is given as an environment variable name or a resolver; the package never needs a literal in configuration.
-  It is read at each attempt (so rotation needs no restart) and is sent only in the `authorization` header to its own
-  provider's `baseUrl`.
+  It is read at each attempt (so rotation needs no restart) and is sent only in its provider's auth header
+  (`authorization`, or `x-api-key` for Anthropic) to that provider's base URL.
+- A blacklist record keeps a 64-bit fingerprint of the refused secret to notice a new one, never the secret.
 - Keys are never logged, never put in events, errors, `health()` or `stats()`; every surface names them by alias. An
   error body that echoes the key has it replaced by `[redacted]`.
 - Prompts and responses are not in events unless you set `telemetry.includeContent`.
-- `headers` in a provider or a call cannot override `authorization`.
+- `headers` in a provider or a call cannot override the auth header.
 - The fake provider records the key values your tests send in `fake.calls`; it is a test double, use test values.
 - The gateway never forwards a client's `Authorization` upstream, never answers with `routing` (the key alias), and keeps
   virtual keys as SHA-256 hashes; the admin token is compared in constant time.
@@ -654,14 +746,15 @@ app it is also a module you call directly, and `AiRouterGatewayModule` serves th
 **Can I use it outside Nest?** Yes: through the gateway over HTTP from any language, or in Node with `createRouter` and
 `createGateway` from `@starci/ai-router/gateway`, which loads no Nest code.
 
-**Does it work with providers that are not OpenAI-compatible?** Only through a compatible gateway; the wire format is
-the OpenAI chat-completions and embeddings API.
+**Does it work with providers that are not OpenAI-compatible?** Anthropic, through its own protocol adapter (`kind:
+anthropic`: chat, streaming, tools, structured output). Callers always speak OpenAI chat-completions and embeddings.
 
 **Why did my call wait instead of failing?** A lane was going to be usable before the deadline (a `retry-after`, a
 breaker cooldown, a concurrency slot). Lower `deadlineMs` to fail sooner.
 
 **Why is a key never used again?** It answered 401/403, or its resolver returned nothing, and `authDisableMs` is `null`
-by default. Fix the key and call `service.reset({ provider, key })`, or set `authDisableMs`.
+by default; or its quota is spent until its window ends (`health()` shows `disabledReason` and `disabledUntil`). Give
+it a new secret (it comes back at the next pick) or call `service.reset({ provider, key })`.
 
 **How do I keep calls on one model?** `allowFallback: false` in the policy or a profile. `providers: [...]` keeps them
 on chosen providers.

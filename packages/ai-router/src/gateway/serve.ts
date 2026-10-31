@@ -1,4 +1,6 @@
 import { createRouter } from "../router.ts"
+import { openSqliteStateStore } from "../state-stores.ts"
+import type { ClosableStateStore } from "../state-stores.ts"
 import type { FetchLike } from "../types.ts"
 import { loadGatewayConfig, readSecret } from "./config-file.ts"
 import type { KeyStoreConfig } from "./config-file.ts"
@@ -34,8 +36,10 @@ export interface ServingGateway {
 
 /** Loads a config file, builds the router and the key store, and listens: the whole `ai-router serve`. */
 export async function serveGateway(options: ServeOptions): Promise<ServingGateway> {
-    const file = await loadGatewayConfig(options.config)
-    const router = createRouter(options.fetch === undefined ? file.pool : { ...file.pool, fetch: options.fetch })
+    const file = await loadGatewayConfig(options.config, options.env)
+    // A durable state store keeps blacklisted keys out across a restart; memory is the router's own default.
+    const state: ClosableStateStore | undefined = file.stateStore.type === "sqlite" ? await openSqliteStateStore(file.stateStore.path) : undefined
+    const router = createRouter({ ...file.pool, ...(state === undefined ? {} : { store: state }), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) })
     const keys = await openKeyStore(file.gateway.keyStore)
     const admin = file.gateway.adminToken
     const gateway = createGateway(router, {
@@ -52,11 +56,13 @@ export async function serveGateway(options: ServeOptions): Promise<ServingGatewa
             async close() {
                 await gateway.close()
                 await keys.close?.()
+                state?.close()
             },
         }
     } catch (error) {
         await gateway.close()
         await keys.close?.()
+        state?.close()
         throw error
     }
 }

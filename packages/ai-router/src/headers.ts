@@ -37,10 +37,14 @@ function resetAt(headers: Headers, names: readonly string[], now: number): numbe
         const raw = headers.get(name)
         if (raw === null) continue
         const plain = Number(raw.trim())
-        // A plain number past 1e9 is an epoch in seconds (x-ratelimit-reset of some providers); smaller is a delta.
+        // A plain number past 1e12 is an epoch in milliseconds (OpenRouter), past 1e9 one in seconds; smaller is a delta.
+        if (Number.isFinite(plain) && plain > 1e12) return plain
         if (Number.isFinite(plain) && plain > 1e9) return plain * 1000
         const ms = parseDuration(raw)
         if (ms !== null) return now + ms
+        // Anthropic's anthropic-ratelimit-*-reset is an RFC 3339 time.
+        const date = /^\d{4}-\d{2}-\d{2}T/.test(raw.trim()) ? Date.parse(raw.trim()) : Number.NaN
+        if (!Number.isNaN(date)) return date
     }
     return 0
 }
@@ -57,13 +61,13 @@ export function retryAt(headers: Headers, now: number): number {
     return Number.isNaN(date) ? 0 : date
 }
 
-/** Reads the `x-ratelimit-*`, `ratelimit-*` and `retry-after` headers of a response. */
+/** Reads the `x-ratelimit-*` (OpenAI, Groq, OpenRouter), `anthropic-ratelimit-*`, `ratelimit-*` and `retry-after` headers of a response. */
 export function readRateLimit(headers: Headers, now: number): RateLimitInfo {
     return {
-        remainingRequests: count(headers, ["x-ratelimit-remaining-requests", "x-ratelimit-remaining", "ratelimit-remaining"]),
-        requestsResetAt: resetAt(headers, ["x-ratelimit-reset-requests", "x-ratelimit-reset", "ratelimit-reset"], now),
-        remainingTokens: count(headers, ["x-ratelimit-remaining-tokens"]),
-        tokensResetAt: resetAt(headers, ["x-ratelimit-reset-tokens"], now),
+        remainingRequests: count(headers, ["x-ratelimit-remaining-requests", "anthropic-ratelimit-requests-remaining", "x-ratelimit-remaining", "ratelimit-remaining"]),
+        requestsResetAt: resetAt(headers, ["x-ratelimit-reset-requests", "anthropic-ratelimit-requests-reset", "x-ratelimit-reset", "ratelimit-reset"], now),
+        remainingTokens: count(headers, ["x-ratelimit-remaining-tokens", "anthropic-ratelimit-tokens-remaining"]),
+        tokensResetAt: resetAt(headers, ["x-ratelimit-reset-tokens", "anthropic-ratelimit-tokens-reset"], now),
         retryAt: retryAt(headers, now),
     }
 }

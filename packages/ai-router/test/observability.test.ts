@@ -54,7 +54,7 @@ describe("telemetry", () => {
 
     test("an error message never carries the key value a provider echoed", async () => {
         const { router, fake } = setup([provider("a", ["k1"], [{ id: "m1" }])])
-        fake.on({}, { status: 400, body: { error: { message: "invalid api key sk-a-k1" } } })
+        fake.on({}, { status: 400, body: { error: { message: "the request echoed sk-a-k1 back" } } })
         await assert.rejects(router.chat(ask()), (error: unknown) => {
             assert.ok(error instanceof AiRouterError)
             assert.ok(!error.message.includes("sk-a-k1"), error.message)

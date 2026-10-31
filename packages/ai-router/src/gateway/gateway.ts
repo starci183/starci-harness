@@ -92,6 +92,13 @@ function secondsUntil(at: number, now: number): number {
     return Math.max(1, Math.ceil((at - now) / 1000))
 }
 
+/** The Retry-After of a pool whose keys are all blacklisted: until the earliest returns, else this many seconds. */
+export const BLACKLISTED_RETRY_AFTER_S = 300
+
+function retryAfterOf(error: AiRouterError, now: number): number {
+    return error.retryAt === undefined ? BLACKLISTED_RETRY_AFTER_S : secondsUntil(error.retryAt, now)
+}
+
 /** Maps a router failure to the status a client can act on; the message is the router's, which never holds a key value. */
 function fromRouterError(error: unknown, now: number): GatewayError {
     if (!(error instanceof AiRouterError)) return new GatewayError(502, "upstream_error", "the pool failed to answer")
@@ -107,12 +114,16 @@ function fromRouterError(error: unknown, now: number): GatewayError {
             return new GatewayError(503, "pool_unavailable", `no model of the pool can serve this request: ${error.message}`, retry)
         case "rate_limit":
             return new GatewayError(503, "pool_rate_limited", `every key of the pool is rate limited: ${error.message}`, retry)
+        case "quota":
+            // Every key that could serve is blacklisted for a spent quota or budget: come back when the first one returns.
+            return new GatewayError(503, "pool_quota_exhausted", `every upstream key for this request has exhausted its quota or credit: ${error.message}`, { retryAfter: retryAfterOf(error, now) })
         case "deadline":
             return new GatewayError(504, "pool_timeout", error.message)
         case "cancelled":
             return new GatewayError(499, "cancelled", error.message)
         case "auth":
-            return new GatewayError(502, "pool_auth_failed", "no upstream key of the pool was accepted")
+            // Every key is refused or unset, until an operator seals a new secret: the client can only come back later.
+            return new GatewayError(503, "pool_auth_failed", "no upstream key of the pool is accepted: each is blacklisted until its secret changes", { retryAfter: retryAfterOf(error, now) })
         case "transient":
         case "timeout":
         case "network":
@@ -256,15 +267,20 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
     function target(key: StoredKey, name: unknown, operation: "chat" | "embeddings"): Target {
         if (typeof name !== "string" || name === "") throw new GatewayError(400, "missing_model", "model is required: a profile name or a model id")
         const pinned: ModelPolicy = key.allowFallback ? {} : { allowFallback: false }
-        if (catalog.profiles.some((profile) => profile.name === name)) {
+        const needs = operation === "embeddings" ? "embeddings" : "chat"
+        const profile = catalog.profiles.find((entry) => entry.name === name)
+        if (profile !== undefined) {
             if (!allows(key.profiles, name)) throw new GatewayError(403, "model_not_allowed", `this key may not call profile "${name}"`)
+            if (profile.serves.length > 0 && !profile.serves.includes(needs)) throw new GatewayError(400, "model_not_supported", `the profile "${name}" does not serve ${operation}`)
             return { options: { profile: name, ...(key.allowFallback ? {} : { policy: pinned }) }, dropModel: true }
         }
         const model = modelNamed(catalog, name)
         if (model === undefined) throw new GatewayError(404, "model_not_found", `the model "${name}" does not exist`)
+        // A model the key's allowlist does not name is refused, never remapped to a profile.
         if (!modelAllowed(key, model)) throw new GatewayError(403, "model_not_allowed", `this key may not call model "${name}"`)
-        const needs = operation === "embeddings" ? "embeddings" : "chat"
         if (!model.capabilities.includes(needs)) throw new GatewayError(400, "model_not_supported", `the model "${name}" does not serve ${operation}`)
+        // An embeddings call never falls back: another model is another vector space.
+        if (operation === "embeddings") return { options: { policy: { model: name, allowFallback: false } }, dropModel: false }
         // A direct call falls back only to the pool's default fallbacks this key may call itself.
         const fallbacks = catalog.defaults.fallbacks.filter((fallback) => {
             const entry = modelNamed(catalog, fallback)

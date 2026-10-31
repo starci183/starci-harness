@@ -30,6 +30,7 @@ export class AiRouterService<Profiles extends string = string> implements AiRout
         if (handlers.attempt !== undefined) this.on("attempt", handlers.attempt)
         if (handlers.breaker !== undefined) this.on("breaker", handlers.breaker)
         if (handlers["key-disabled"] !== undefined) this.on("key-disabled", handlers["key-disabled"])
+        if (handlers["key-restored"] !== undefined) this.on("key-restored", handlers["key-restored"])
         if (handlers.request !== undefined) this.on("request", handlers.request)
     }
 
@@ -53,7 +54,7 @@ export class AiRouterService<Profiles extends string = string> implements AiRout
         return this.router.embeddings(request, this.#options(options))
     }
 
-    /** Reads every breaker, disabled key and headroom from the store. */
+    /** Reads every breaker, blacklisted key, headroom and budget from the store. */
     health(): Promise<HealthSnapshot> {
         return this.router.health()
     }
@@ -74,7 +75,7 @@ export class AiRouterService<Profiles extends string = string> implements AiRout
         return release
     }
 
-    /** Closes breakers, re-enables keys and clears headroom for the target (everything by default). */
+    /** Closes breakers, lifts blacklists and clears headroom for the target (everything by default). */
     reset(target?: ResetTarget): Promise<void> {
         return this.router.reset(target)
     }

@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises"
 import { dirname, extname, resolve } from "node:path"
 import { parse as parseYaml } from "yaml"
 import { AiRouterError } from "../errors.ts"
+import { keysFromEnv } from "../env.ts"
+import { PROVIDER_PRESETS } from "../providers.ts"
 import type { KeyConfig, PoolConfig } from "../types.ts"
 
 /** A secret named by reference: an environment variable or a file (a mounted Docker or Kubernetes secret), never its value. */
@@ -9,6 +11,9 @@ export type SecretRef = { readonly env: string } | { readonly file: string }
 
 /** Where the gateway keeps virtual keys: in memory (lost on restart) or in a SQLite file. */
 export type KeyStoreConfig = { readonly type: "memory" } | { readonly type: "sqlite"; readonly path: string }
+
+/** Where the pool keeps breakers, blacklists, headroom and budgets: in memory (a restart forgets them) or in a SQLite file. */
+export type StateStoreConfig = KeyStoreConfig
 
 /** The `gateway` section of a config file, with every default applied and paths resolved from the file's folder. */
 export interface GatewaySettings {
@@ -23,6 +28,8 @@ export interface GatewaySettings {
 export interface GatewayFileConfig {
     readonly pool: PoolConfig
     readonly gateway: GatewaySettings
+    /** The pool's state store; `serveGateway` opens it and hands it to the router. */
+    readonly stateStore: StateStoreConfig
 }
 
 type Schema =
@@ -34,9 +41,11 @@ type Schema =
     | { readonly list: Schema }
     | { readonly map: Schema }
     | { readonly fields: Readonly<Record<string, Schema>>; readonly required?: readonly string[] }
+    | { readonly anyOf: readonly Schema[] }
 
 const CAPABILITIES: Schema = { list: { enum: ["chat", "streaming", "tools", "json", "embeddings", "vision"] } }
 const BREAKER: Schema = { fields: { failureThreshold: "number", cooldownMs: "number", maxCooldownMs: "number" } }
+const CANDIDATE: Schema = { fields: { model: "string", provider: "string", weight: "number" }, required: ["model"] }
 const POLICY: Schema = {
     fields: {
         model: "string",
@@ -48,9 +57,12 @@ const POLICY: Schema = {
         budget: { fields: { maxCost: "number" } },
         providers: { list: "string" },
         require: CAPABILITIES,
+        candidates: { list: { anyOf: [CANDIDATE, { list: CANDIDATE }] } },
+        pinned: "boolean",
     },
 }
 const SECRET: Schema = { fields: { env: "string", file: "string" } }
+const STORE: Schema = { fields: { type: { enum: ["memory", "sqlite"] }, path: "string" }, required: ["type"] }
 const FILE: Schema = {
     fields: {
         gateway: {
@@ -61,14 +73,18 @@ const FILE: Schema = {
                 host: "string",
                 maxBodyBytes: "number",
                 adminToken: SECRET,
-                keyStore: { fields: { type: { enum: ["memory", "sqlite"] }, path: "string" }, required: ["type"] },
+                keyStore: STORE,
             },
         },
         providers: {
             list: {
                 fields: {
                     id: "string",
+                    kind: { enum: Object.keys(PROVIDER_PRESETS) },
                     baseUrl: "string",
+                    defaultMaxTokens: "number",
+                    budget: { fields: { costPerDay: "number", costPerMonth: "number" } },
+                    keysFromEnv: "string",
                     headers: { map: "string" },
                     weight: "number",
                     maxConcurrency: "number",
@@ -82,12 +98,14 @@ const FILE: Schema = {
                                 cost: { fields: { input: "number", output: "number" }, required: ["input", "output"] },
                                 capabilities: CAPABILITIES,
                                 weight: "number",
+                                identity: "string",
+                                dimensions: "number",
                             },
                             required: ["id"],
                         },
                     },
                 },
-                required: ["id", "baseUrl", "keys", "models"],
+                required: ["id", "models"],
             },
         },
         defaults: POLICY,
@@ -99,11 +117,13 @@ const FILE: Schema = {
                 backoff: { fields: { baseMs: "number", factor: "number", maxMs: "number" } },
                 authDisableMs: "number|null",
                 rateLimitCooldownMs: "number",
+                quotaBlacklistMs: "number",
             },
         },
         selection: { fields: { latencyTolerance: "number", latencySlackMs: "number", ewmaAlpha: "number", lowHeadroom: "number" } },
         telemetry: { fields: { includeContent: "boolean" } },
         storeNamespace: "string",
+        stateStore: STORE,
     },
     required: ["providers"],
 }
@@ -133,6 +153,18 @@ function check(value: unknown, schema: Schema, where: string): void {
     if (schema === "boolean") {
         if (typeof value !== "boolean") throw configError(`${where} must be true or false`)
         return
+    }
+    if ("anyOf" in schema) {
+        const errors: string[] = []
+        for (const option of schema.anyOf) {
+            try {
+                check(value, option, where)
+                return
+            } catch (error) {
+                errors.push(error instanceof Error ? error.message : String(error))
+            }
+        }
+        throw configError(errors[0] ?? `${where} matches no allowed shape`)
     }
     if ("enum" in schema) {
         if (typeof value !== "string" || !schema.enum.includes(value)) throw configError(`${where} must be one of ${schema.enum.join(", ")}`)
@@ -186,9 +218,10 @@ export async function readSecret(ref: SecretRef, env: NodeJS.ProcessEnv = proces
 /**
  * Validates a parsed config file and turns it into a pool and gateway settings. Upstream keys stay references: `env`
  * keys go to the router as they are, `file` keys become resolvers that read the file at each attempt (rotation needs
- * no restart). A field that would hold a secret's value, or a provider header that would carry one, is refused.
+ * no restart); `keysFromEnv: PREFIX` finds the canonical `PREFIX_API_KEY`, `_2`, ... variables in `env` (src/env.ts).
+ * A field that would hold a secret's value, or a provider header that would carry one, is refused.
  */
-export function parseGatewayConfig(raw: unknown, base: string = process.cwd()): GatewayFileConfig {
+export function parseGatewayConfig(raw: unknown, base: string = process.cwd(), env: NodeJS.ProcessEnv = process.env): GatewayFileConfig {
     check(raw, FILE, "config")
     const file = raw as Record<string, unknown> & { providers: Record<string, unknown>[]; gateway?: Record<string, unknown> }
     const providers = file.providers.map((provider, index) => {
@@ -196,7 +229,11 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd()): 
         for (const name of Object.keys(isRecord(provider.headers) ? provider.headers : {})) {
             if (SECRET_HEADER.test(name)) throw configError(`${where}.headers.${name} would carry a secret in the config file; give keys under keys[] by reference`)
         }
-        const keys = (provider.keys as Record<string, unknown>[]).map((key, at): KeyConfig => {
+        const listed = Array.isArray(provider.keys) ? provider.keys.filter(isRecord) : []
+        const prefix = typeof provider.keysFromEnv === "string" ? provider.keysFromEnv : undefined
+        if (prefix === undefined && listed.length === 0) throw configError(`${where} needs keys or keysFromEnv`)
+        const fromEnv = prefix === undefined ? [] : keysFromEnv(prefix, String(provider.id), env)
+        const declared = listed.map((key, at): KeyConfig => {
             const ref = secretRef({ env: key.env, file: key.file }, `${where}.keys[${String(at)}]`, base)
             const common = {
                 alias: key.alias as string,
@@ -205,7 +242,8 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd()): 
             }
             return "env" in ref ? { ...common, env: ref.env } : { ...common, resolve: () => readSecret(ref) }
         })
-        return { ...provider, keys }
+        const rest = Object.fromEntries(Object.entries(provider).filter(([field]) => field !== "keysFromEnv"))
+        return { ...rest, keys: [...declared, ...fromEnv] }
     })
     const gateway = file.gateway ?? {}
     const store = (gateway.keyStore ?? { type: "memory" }) as { type: "memory" | "sqlite"; path?: string }
@@ -222,7 +260,10 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd()): 
     if (!Number.isInteger(maxBodyBytes) || maxBodyBytes <= 0) throw configError("config.gateway.maxBodyBytes must be a positive integer")
     const pool: Record<string, unknown> = { ...file, providers }
     delete pool.gateway
+    delete pool.stateStore
+    const state = storeOf(file.stateStore, "config.stateStore", base)
     return {
+        stateStore: state,
         pool: pool as unknown as PoolConfig,
         gateway: {
             port,
@@ -234,8 +275,15 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd()): 
     }
 }
 
+/** A store setting with its path resolved from the config file's folder; memory when absent. */
+function storeOf(value: unknown, where: string, base: string): StateStoreConfig {
+    if (!isRecord(value) || value.type !== "sqlite") return { type: "memory" }
+    if (typeof value.path !== "string") throw configError(`${where}.path is required for a sqlite store`)
+    return { type: "sqlite", path: value.path === ":memory:" ? ":memory:" : resolve(base, value.path) }
+}
+
 /** Reads a YAML or JSON config file (by extension; anything but `.json` is read as YAML) and parses it. */
-export async function loadGatewayConfig(path: string): Promise<GatewayFileConfig> {
+export async function loadGatewayConfig(path: string, env: NodeJS.ProcessEnv = process.env): Promise<GatewayFileConfig> {
     const full = resolve(path)
     let text: string
     try {
@@ -249,5 +297,5 @@ export async function loadGatewayConfig(path: string): Promise<GatewayFileConfig
     } catch (error) {
         throw configError(`the config file ${full} does not parse: ${error instanceof Error ? error.message : "unknown error"}`)
     }
-    return parseGatewayConfig(raw, dirname(full))
+    return parseGatewayConfig(raw, dirname(full), env)
 }

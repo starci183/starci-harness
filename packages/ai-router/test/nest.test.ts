@@ -248,7 +248,8 @@ describe("AiRouterTestingModule", () => {
 
 describe("the package entries", () => {
     test("the gateway entry exports the Nest-free router, gateway and key stores", () => {
-        const names = ["AiRouterError", "KEY_STORE_SCHEMA", "KeyAdmin", "KeyAdminError", "MemoryKeyStore", "MountedKeyError", "createGateway", "createRouter", "loadGatewayConfig", "openKeyStore", "openSqliteKeyStore", "parseGatewayConfig", "serveGateway"]
+        const names = ["AiRouterError", "KEY_STORE_SCHEMA", "KeyAdmin", "KeyAdminError", "MemoryKeyStore", "MountedKeyError", "createGateway", "createRouter", "loadGatewayConfig", "openKeyStore", "openSqliteKeyStore", "parseGatewayConfig", "serveGateway",
+            "EMPTY_RECORD", "MemoryStateStore", "PROVIDER_PRESETS", "STATE_STORE_SCHEMA", "classifyFailure", "keysFromEnv", "openSqliteStateStore", "parseHealthRecord", "poolFromEnv", "providersFromEnv", "readProviderError", "redisStateStore", "toHealthRecord", "virtualKeyFromEnv"]
         assert.deepEqual(Object.keys(gateway).sort(), names.sort())
     })
 
@@ -262,6 +263,6 @@ describe("the package entries", () => {
     })
 
     test("the testing entry exports the fake provider and the testing module", () => {
-        assert.deepEqual(Object.keys(testing).sort(), ["AiRouterTestingModule", "createFakeProvider"])
+        assert.deepEqual(Object.keys(testing).sort(), ["AiRouterTestingModule", "PROVIDER_ERRORS", "createFakeProvider"])
     })
 })

@@ -95,7 +95,7 @@ describe("keys", () => {
         fake.on({ key: "sk-a-k1" }, { status: 401 }, {})
         const disabled = record(router, "key-disabled")
         await router.chat(ask())
-        assert.deepEqual(disabled, [{ type: "key-disabled", provider: "a", key: "k1", reason: "auth", until: null }])
+        assert.deepEqual(disabled, [{ type: "key-disabled", provider: "a", key: "k1", reason: "auth", until: null, code: "fake_error" }])
         const before = fake.calls.length
         for (let index = 0; index < 4; index++) await router.chat(ask())
         assert.ok(fake.calls.slice(before).every((call) => call.key === "sk-a-k2"))
@@ -158,11 +158,12 @@ describe("keys", () => {
         assert.equal(fake.calls[0]?.key, "sk-from-env")
     })
 
-    test("every key disabled fails fast with the last class", async () => {
+    test("every key blacklisted fails fast with the blacklist reason", async () => {
         const { router, fake } = setup(oneProvider())
         fake.on({}, { status: 401 })
         await assert.rejects(router.chat(ask()), routerError("auth"))
-        await assert.rejects(router.chat(ask()), routerError("no_candidate"))
+        // Nothing is sent: every key is out until its secret changes, and the call says so.
+        await assert.rejects(router.chat(ask()), (error: unknown) => routerError("auth")(error) && error instanceof AiRouterError && error.message.includes("blacklisted") && error.retryAt === undefined)
         assert.equal(fake.calls.length, 2)
     })
 })

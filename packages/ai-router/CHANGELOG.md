@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.5.0 - 2026-10-31
+
+Many providers below, each with an array of keys, behind one virtual key per app above; a key whose quota is spent or
+whose secret is refused is blacklisted. [docs/design.md](docs/design.md) holds the provider matrix (read from each
+provider's docs on 2026-10-31), the classification table, the blacklist lifecycle, profiles and key scopes, the
+Anthropic adapter and the env naming.
+
+- Added: provider kinds, `ProviderConfig.kind` (`anthropic`, `openrouter`, `qwen`, `deepseek`, `openai`, `gemini`, `groq`, `openai-compatible`), each with its default base URL, auth header, embeddings support and error classification (`PROVIDER_PRESETS`); `baseUrl` is optional for a kind that has one.
+- Added: the Anthropic Messages adapter: OpenAI chat-completions in, `/v1/messages` with `x-api-key` and `anthropic-version` out, and back, for chat, SSE streaming (text and `tool_use` deltas, finish reason, usage, error events, a stream cut before `message_stop`), tools and `tool_choice`, tool results, images, `json_schema` as structured output, cache tokens in usage; `defaultMaxTokens` for the `max_tokens` Anthropic requires. Anthropic `anthropic-ratelimit-*` headers (RFC 3339 resets) and OpenRouter's epoch-millisecond `X-RateLimit-Reset` feed headroom.
+- Added: the error class `quota` and per-provider classification (`classifyFailure`, `readProviderError`) of every error shape the providers document: OpenAI, Anthropic, OpenRouter (402 by `limit_source`, errors in a 200 body and mid-stream), DashScope codes, DeepSeek, Gemini (object or list, per-minute vs per-day), Groq (498, daily requests).
+- Added: the key blacklist. A spent quota blacklists the key until the provider's window ends (next UTC month for Anthropic's spend cap and OpenAI's monthly limits, next Pacific midnight for Gemini's daily quota, next UTC midnight for OpenRouter's free daily cap, Groq's request reset), else `resilience.quotaBlacklistMs` (default 6 hours); a refused or missing secret until the secret changes. A 64-bit fingerprint of the refused secret is kept (never the secret), and a new secret lifts the blacklist at the next pick with the new `key-restored` event. `key-disabled` carries the provider's `code`; `KeyHealth.disabledUntil`.
+- Added: when every key that could serve is blacklisted (or its provider past its budget), the call fails at once with class `quota` or `auth`, naming the keys, with `retryAt` at the earliest return; the gateway answers 503 `pool_quota_exhausted` or 503 `pool_auth_failed` with `Retry-After` (300 seconds when no return is known).
+- Added: durable state stores, so a restart does not hammer dead keys: `openSqliteStateStore(path)` and `redisStateStore(client)` over a five-command `RedisLike`; `stateStore: { type: sqlite, path }` in the config file; `toHealthRecord` and `parseHealthRecord` for an adapter; `MemoryStateStore` and `EMPTY_RECORD` are exported again.
+- Added: profile candidates, `ModelPolicy.candidates`: ordered tiers of `{ model, provider?, weight? }`, a tier that is a list sharing its load by weight; `pinned` profiles whose candidates must be one model `identity` and `dimensions` (`ModelConfig.identity`, `ModelConfig.dimensions`), which a call cannot override; an embeddings vector of another length fails its lane; every embeddings call stays on one model identity, and the gateway gives a direct embeddings model no fallback. `CatalogProfile.pinned` and `serves`; a profile on the wrong route is 400 `model_not_supported`.
+- Added: provider budgets, `ProviderConfig.budget` (`costPerDay`, `costPerMonth`), kept in the store; `ProviderHealth.spend` and `kind`.
+- Added: config from env: `poolFromEnv`, `providersFromEnv` and `keysFromEnv` read `<PREFIX>_API_KEY`, `_2` ... `_<n>`, their `_FILE` twins, a `<PREFIX>_API_KEYS` list and `<PREFIX>_BASE_URL` (prefixes ANTHROPIC, OPENROUTER, DASHSCOPE, DEEPSEEK, OPENAI, GEMINI, GROQ) as references read at each attempt, keep the providers that have keys and cut every profile to what they serve; `virtualKeyFromEnv` mounts the app's `STARCI_AI_KEY` (or `STARCI_AI_KEY_FILE`); `keysFromEnv: <PREFIX>` on a config-file provider.
+- Added: the fake provider answers `/messages` in the Anthropic shape (unary and SSE), reads `x-api-key`, scripts `toolCalls`, and `PROVIDER_ERRORS` (from `@starci/ai-router/testing`) holds each provider's real error answers.
+- Fixed: a provider or call header differing from the router's own only in case (`Anthropic-Version`) is one header, not two.
+
+### Migration from 0.4
+
+- A 0.4 pool routes as before: `kind` defaults to `openai-compatible`, whose classification is 0.4's plus `quota` for 402 and the quota codes.
+- `ErrorClass` has `quota`: a spent quota was a `rate_limit` with a 10-second cooldown and is now a blacklist; a `switch` over `errorClass` adds the case.
+- When every key is blacklisted the router fails with `quota` or `auth`, no longer `no_candidate`, and the gateway answers 503 where `pool_auth_failed` was 502.
+- A key refused for its secret comes back when the secret changes, without `reset()`; a missing secret when it is set.
+- `KeyDisabledEvent.reason` adds `quota`, the event may carry `code`; `KeyHealth` adds `disabledUntil`, `ProviderHealth` `kind` (and `spend`), `CatalogProfile` `pinned` and `serves`, `RouterEvents` `key-restored`, `HealthRecord` its blacklist and budget fields (records 0.4 stored read with them empty).
+- Embeddings never fall back to another model identity.
+- Apps replace a hand-rolled `<PROVIDER>_API_KEY` plus `_2` ... `_9` list with `poolFromEnv`, keep `STARCI_AI_KEY` as their one virtual key (`virtualKeyFromEnv`), pass no admin token, and pass a durable `store`.
+
 ## 0.4.1 - 2026-10-30
 
 - Changed: the lint configuration is TypeScript (eslint.config.ts, loaded through jiti 2.7.0, an exact devDependency) and typechecked with the package; no runtime change.

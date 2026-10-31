@@ -1,7 +1,7 @@
 {
   "name": "@starci/ai-router",
-  "version": "0.4.1",
-  "description": "A router for OpenAI-compatible calls across a pool of keys, models and providers: an OpenAI-compatible gateway with virtual keys, quotas and usage (the ai-router bin), a NestJS module (AiRouterModule, AiRouterService, AiRouterGatewayModule), and createRouter for plain Node, with health-aware selection, circuit breakers, rate-limit awareness, failover, model fallback and redacted telemetry.",
+  "version": "0.5.0",
+  "description": "A router for OpenAI-compatible calls across many providers (Anthropic through a protocol adapter, OpenRouter, Qwen, DeepSeek, OpenAI, Gemini, Groq and any OpenAI-compatible endpoint), each with an array of keys, behind one virtual key: an OpenAI-compatible gateway with virtual keys, quotas and usage, a NestJS module (AiRouterModule, AiRouterService, AiRouterGatewayModule), and createRouter for plain Node, with health-aware selection, a persisted key blacklist for spent quotas and refused secrets, circuit breakers, rate-limit awareness, failover across providers and models by profile, pinned embeddings, config from env and redacted telemetry.",
   "keywords": [
     "ai",
     "llm",
@@ -18,7 +18,15 @@
     "gateway",
     "proxy",
     "virtual-keys",
-    "langchain"
+    "langchain",
+    "anthropic",
+    "claude",
+    "openrouter",
+    "qwen",
+    "deepseek",
+    "gemini",
+    "quota",
+    "blacklist"
   ],
   "license": "MIT",
   "author": "starci183",
@@ -56,6 +64,7 @@
   },
   "files": [
     "dist",
+    "docs",
     "LICENSE",
     "README.md",
     "CHANGELOG.md"
