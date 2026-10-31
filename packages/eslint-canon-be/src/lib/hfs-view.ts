@@ -98,6 +98,8 @@ export interface HfsRuleParams {
     readonly thinRoles?: readonly string[]
     /** The database functions `callDbFunction` of platform/database may call, each with its reason (`ruleParams.be.dbFunctions` plus hfs.json `sides.be.dbFunctions`). */
     readonly dbFunctions?: readonly { readonly name: string; readonly reason: string }[]
+    /** The files whose `.query(` passes through SQL text that is not the app's own, side-relative with a reason (`ruleParams.be.sqlPassThrough` plus hfs.json `sides.be.sqlPassThrough`). */
+    readonly sqlPassThrough?: readonly { readonly file: string; readonly reason: string }[]
 }
 
 /** The frozen view of one side of an app. */

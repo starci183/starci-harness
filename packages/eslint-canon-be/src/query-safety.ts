@@ -11,7 +11,7 @@
  *   tag is called only in a persistence `<name>.sql.ts`.
  * - `no-query-builder` (R36) - no `createQueryBuilder(` call.
  * - `no-interpolated-sql` (R68 `BE_SQL_INTERPOLATED`) - a substitution inside the `sql` tag is a `SqlIdent`; a `.query(`
- *   string built by template or concatenation is refused. One file is the owner R334 names for the lite function-call statement,
+ *   string built by template or concatenation is refused. One file is the owner R334 names for the lite call and LISTEN statements,
  *   `platform/database/database.client.ts` of a lite app: there a `.query(` template may substitute only the checked parts its own
  *   validator brands (`DbFunctionPart`, `DbParameterList` declared in that file); any other substitution, a `+` and the same
  *   template in any other file stay refused.
