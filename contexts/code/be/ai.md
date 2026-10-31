@@ -23,11 +23,17 @@ The app hosts the gateway in process: `integrations/ai-gateway` registers `AiRou
 `ai-gateway.config.ts` reads them as `Secret` (BE-CONFIG-3, sealed by BE-CONFIG-4) and hands them to the pool through
 `resolve`.
 
-Below the gateway sits a pool: one or more providers, each with an array of keys, which the router rotates, fails over
-and blacklists when a key is exhausted (owner: `@starci/ai-router`). The upstream key variables (`OPENROUTER_API_KEY`
-and the rest of the canon's list) are named only in the custody owner. The `embed` profile is pinned to one embedding
-model and never falls back to a different model: its keys may rotate, its model may not, because a second model writes
-vectors of another dimension and space. The `work` profile may fall back across models and providers.
+Below the gateway sits a pool, declared once in the custody owner with `poolFromEnv` over its env (owner:
+`@starci/ai-router docs/design.md`): providers by kind (`anthropic`, `openrouter`, `qwen`, `deepseek`, `openai`,
+`gemini`, `groq`, `openai-compatible`), each with an array of keys under the canonical names (`<PREFIX>_API_KEY`,
+`<PREFIX>_API_KEY_<n>`, their `_FILE` twins), which the router rotates and fails over. The upstream key variables
+(`OPENROUTER_API_KEY` and the rest of the canon's list) are named only in the custody owner. A key whose quota or credit
+is spent, or whose secret is refused, is blacklisted until its quota window ends or its secret changes, in a durable
+state store (`openSqliteStateStore`, or `redisStateStore` when several processes serve), so a restart never retries a
+dead key; when every key a profile could use is blacklisted, the gateway answers 503 with `Retry-After`. The `embed`
+profile is pinned to one embedding model identity and never falls back to a different model: its keys and providers
+may rotate, its model may not, because a second model writes vectors of another dimension and space. The `work`
+profile may fall back across models and providers.
 
 Above the gateway there is exactly one virtual key per app and environment, `STARCI_AI_KEY` (`sk-starci-<app>-<48
 hex>`, generated at random and sealed in the `ai` member next to the upstream key). The gateway mounts it from that
