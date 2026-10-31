@@ -10,6 +10,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- The CLI requires @starci/hfs@4.15.0, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 - Knowledge: one padding system for everything placed in a `PaneGrid` (rulings pane-inset and page-panes-frame): a `Pane` owns its content inset and every band in it is a `PaneSection` whose boxes align to that edge, and a tabbed app page whose body is panes is `Page chrome="panes"`, the grid attached flush under the tab line. `ui/components/pane-grid.md` (Job, Choose `pane-grid.choose.page` and `pane-grid.choose.band`, Variants, Owner split), `ui/presentation.md` Space laws 3, 4 and 7, `ui/composition.md` LAYOUT-1 and FE-APP-SHELL-7, `ui/components/page-header.md`, `ui/components/list-table.md`, `grammars/contract.md` and `contract.yaml` (PaneGrid, PaneSection, Page chrome `panes`, `DNA-COMMON-PAGE-PANES-FLUSH`). R345 to R349 (`FE_PANE_GRID_CHILD_NOT_PANE`, `FE_PANE_CHILD_NOT_SECTION`, `FE_PANE_SECTION_PADDING`, `FE_PANE_GRID_FRAME`, `FE_HAND_BUILT_PANES`) join the rule catalog; the stack pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.17.0, eslint-canon-fe 9.7.0 and hfs 4.15.0, which the CLI follows once npm serves them.
 ## [1.1.0-alpha.26] - 2026-10-31
 
