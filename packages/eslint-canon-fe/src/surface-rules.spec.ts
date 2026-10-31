@@ -3,6 +3,8 @@
 // proves: FE_NESTED_VARIANT@full
 // proves: FE_LIST_PANEL_PADDING@lite
 // proves: FE_LIST_PANEL_PADDING@full
+// proves: FE_HAND_BUILT_PANES@lite
+// proves: FE_HAND_BUILT_PANES@full
 // proves: FE_GRAMMAR_LAYOUT_ONLY@lite
 // proves: FE_GRAMMAR_LAYOUT_ONLY@full
 import assert from "node:assert/strict"
@@ -12,7 +14,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { nestedControlVariant, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
+import { nestedControlVariant, noHandBuiltPanes, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
 import { why } from "./lib/why.ts"
 import { eslintRule } from "./lib/eslint-boundary.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
@@ -29,6 +31,7 @@ test("surface rules are published at error with their canon finding codes", () =
   assert.equal(why["nested-control-variant"].code, "FE_NESTED_VARIANT")
   assert.equal(why["no-list-panel-padding"].code, "FE_LIST_PANEL_PADDING")
   assert.equal(why["no-app-surface-paint"].code, "FE_GRAMMAR_LAYOUT_ONLY")
+  assert.equal(why["no-hand-built-panes"].code, "FE_HAND_BUILT_PANES")
 })
 
 for (const edition of ["lite", "full"]) {
@@ -274,3 +277,62 @@ test("typed app lint follows imported colocated class declarations for panel pad
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+const panes = 'import { Divider, Button, Page, Pane, PaneGrid, PaneSection, Region, ListBox, SurfaceCard } from "@starci/grammar/core"; '
+const seam = { messageId: "seam" }
+const joined = { messageId: "joined" }
+
+test("Pane and PaneSection are surfaces: wrapper padding around a ListBox in a pane is caught in the file", () => {
+  assert.doesNotThrow(() => tester().run("no-list-panel-padding", noListPanelPadding, {
+    valid: [
+      panes + 'const A = () => <Pane area="list"><PaneSection grow><ListBox inset="panel" /></PaneSection></Pane>',
+      panes + 'const A = () => <Pane area="list"><PaneSection><div className="flex gap-2"><ListBox /></div></PaneSection></Pane>',
+    ],
+    invalid: [
+      { code: panes + 'const A = () => <Pane area="list"><PaneSection grow><div className="px-4"><ListBox /></div></PaneSection></Pane>', errors: [padding] },
+      { code: panes + 'const A = () => <Pane area="list"><div className="px-4"><ListBox /></div></Pane>', errors: [padding] },
+    ],
+  }))
+})
+
+for (const edition of ["lite", "full"]) {
+  test(`${edition}: a multi-pane frame is a PaneGrid, not a vertical divider between columns or columns in a joined card`, () => {
+    assert.doesNotThrow(() => tester().run("no-hand-built-panes", noHandBuiltPanes, {
+      valid: [
+        // a PaneGrid draws its own dividers
+        panes + 'const A = () => <Page chrome="panes"><PaneGrid areas={{ base: ["rail main"] }}><Pane area="rail" /><Pane area="main" /></PaneGrid></Page>',
+        // a short separator between controls of a toolbar is the app's own element
+        panes + 'const A = () => <div className="flex items-center gap-2"><Button intent="neutral" /><Divider orientation="vertical" /><Button intent="neutral" /></div>',
+        // a horizontal divider stacks bands; a joined card stacks bands
+        panes + 'const A = () => <SurfaceCard composition="joined" label="Run"><Divider /><div className="flex flex-col"><div /><div /></div></SurfaceCard>',
+        panes + 'const A = () => <SurfaceCard composition="joined" label="Run"><div className="flex items-center gap-2"><Button intent="neutral" /></div></SurfaceCard>',
+        // a stack of blocks is not a row of columns, whatever it holds
+        panes + 'const A = () => <div className="flex flex-col"><div /><div><Divider orientation="vertical" /></div></div>',
+        // a column row in a plain card, not a joined one
+        panes + 'const A = () => <SurfaceCard label="Run"><div className="flex"><div /><div /></div></SurfaceCard>',
+        // a vertical divider that is not the Grammar's
+        'import { Divider } from "other-kit"; const A = () => <SurfaceCard composition="joined"><div className="flex"><div /><Divider orientation="vertical" /><div /></div></SurfaceCard>',
+        // a computed orientation is not judged
+        panes + 'const A = ({ orientation }) => <div className="flex"><div /><Divider orientation={orientation} /><div /></div>',
+        // a row whose classes are no flex row
+        panes + 'const A = () => <div className="block"><div /><Divider orientation="vertical" /><div /></div>',
+      ],
+      invalid: [
+        // AgentInstanceFrame: a joined card, a flex row (column below lg, row from lg), a rail, a vertical divider in a wrapper, a main column
+        { code: panes + 'const FRAME = cn("flex", "h-full", "min-h-0", "flex-col", "lg:flex-row"); const A = () => <SurfaceCard composition="joined" height="fill"><div className={FRAME}><div className="flex lg:w-72">{rail}</div><div className="max-lg:block lg:hidden"><Divider semantics="presentation" /></div><div className="hidden shrink-0 lg:flex"><Divider orientation="vertical" semantics="presentation" /></div><div className="flex flex-1">{body}</div></div></SurfaceCard>', errors: [joined] },
+        // AgentSetupPage: the same split, in the tab body, without the card
+        { code: panes + 'const SPLIT = "flex min-h-0 min-w-0 flex-1 flex-col xl:flex-row"; const A = () => <div className={SPLIT} data-bleed><div className="flex min-w-0 flex-col">{chat}</div><div className="xl:hidden"><Divider semantics="presentation" /></div><div className="hidden shrink-0 xl:flex"><Divider orientation="vertical" semantics="presentation" /></div><div className="min-w-0 xl:w-104">{side}</div></div>', errors: [seam] },
+        // a divider directly between two columns
+        { code: panes + 'const A = () => <div className="flex"><div /><Divider orientation="vertical" /><div /></div>', errors: [seam] },
+        { code: panes + 'const A = () => <div className="flex"><aside /><Divider orientation={"vertical"} /><Region label="Main" /></div>', errors: [seam] },
+        // AgentChat: a joined card around an aside rail, an optional drawer rail and the Region column
+        { code: panes + 'const FRAME = cn("flex", "h-full", "min-h-0", "min-w-0"); const A = () => <SurfaceCard composition="joined" height="fill"><div className={FRAME}><aside aria-label="rail">{rail}</aside>{open ? <aside>{rail}</aside> : null}<Region className="flex flex-1 flex-col" label="Chat">{main}</Region></div></SurfaceCard>', errors: [joined] },
+        // ChatbotInboxPanel: a joined card around three panes in a relative flex row, one nested joined card in a pane
+        { code: panes + 'const INBOX = "relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden"; const A = () => <SurfaceCard composition="joined" height="fill"><div className={INBOX}><div className="w-full md:w-80">{list}</div><div className="min-w-0 flex-1">{thread}</div>{side ? <div className="absolute inset-0 xl:static"><SurfaceCard composition="joined" height="fill">{info}</SurfaceCard></div> : null}</div></SurfaceCard>', errors: [joined] },
+        // a vertical divider anywhere in a joined card with no column row of its own
+        { code: panes + 'const A = () => <SurfaceCard composition="joined"><Region label="a" /><Divider orientation="vertical" /><Region label="b" /></SurfaceCard>', errors: [seam] },
+        { code: panes + 'const A = () => <SurfaceCard composition="joined"><Region label="a" /><Divider orientation="vertical" /></SurfaceCard>', errors: [seam] },
+      ],
+    }))
+  })
+}

@@ -12,6 +12,7 @@ import { rules as mascotRules } from "./mascot.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as pageRules } from "./page.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
+import { rules as paneRules } from "./pane.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
 import { rules as tokensRules } from "./tokens.ts"
@@ -42,6 +43,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "menu-entries", rules: menuEntriesRules },
   { law: "page", rules: pageRules },
   { law: "page-header", rules: pageHeaderRules },
+  { law: "pane", rules: paneRules },
   { law: "status-colors", rules: statusColorsRules },
   { law: "surface-depth", rules: surfaceDepthRules },
   { law: "tokens", rules: tokensRules },

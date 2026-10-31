@@ -19,7 +19,7 @@ Family helpers and the generated runtime closure belong to this package.
 
 The rule IDs remain stable when their namespace moves. Laws cover the fixed app shell and navbar,
 Grammar-owned structural elements, glyphs and icon sizes, destructive menu entries, status inks,
-chip labels that start uppercase, generated art rendered through `Mascot` or `MediaFrame` with every `Mascot` naming its asset slot, the page head composed by `PageHeader`, the route page as one `Page` with its tabs in the header, heading and token scales, vendor ownership and slot-status composition, and a surface nested in another surface left subordinate (no forced `depth="top"`), and a Freestyle region that names its reason (its raw elements are exempt from the paint and raw-element laws). Each rule's metadata cites
+chip labels that start uppercase, generated art rendered through `Mascot` or `MediaFrame` with every `Mascot` naming its asset slot, the page head composed by `PageHeader`, the pane grid (a `PaneGrid` of `Pane`s, a `Pane` of `PaneSection`s that carry no padding of their own, mounted as `Page chrome="panes"`), the route page as one `Page` with its tabs in the header, heading and token scales, vendor ownership and slot-status composition, and a surface nested in another surface left subordinate (no forced `depth="top"`), and a Freestyle region that names its reason (its raw elements are exempt from the paint and raw-element laws). Each rule's metadata cites
 its behavioral knowledge source and the governing ownership test. The R318 surface composition
 rules (nested control variants, panel-list alignment, layout-only CSS) stay in the universal canon.
 

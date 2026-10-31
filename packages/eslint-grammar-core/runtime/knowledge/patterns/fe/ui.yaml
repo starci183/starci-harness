@@ -24,7 +24,7 @@ rules:
   - id: FE-UI
     title: Compose the selected Grammar
     kind: mandatory
-    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320, R338, R339, R340, R341]
+    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320, R338, R339, R340, R341, R345, R346, R347, R348, R349]
     requirement: |-
       Components compose the selected Grammar through its published entry and props; application CSS carries
       layout only (css.yaml). A missing visual capability is added to that Grammar before the app consumes it.
@@ -68,6 +68,15 @@ rules:
           screen), passing the asset slot it was requested under (assetSlot, and assetSha256 once delivered); a scene
           or illustration is framed by MediaFrame. Generated art under /images/ never renders through a bare Image or
           img (R338, R339).
+      - id: case-5
+        date: "2026-10-31"
+        source: owner
+        when: A screen places content in a PaneGrid
+        write: |-
+          Compose a PaneGrid of Pane elements (never a wrapper component), give each Pane PaneSection bands (never a raw
+          element or a padded wrapper), and mount a tabbed app page's grid as Page chrome="panes"; the Pane publishes one
+          content inset and the sections apply it (R345, R346, R347, R348). A multi-pane frame is never columns with a
+          vertical Divider inside a card (R349).
     verification:
       automated:
         - FE_VENDOR_BOUNDARY
@@ -94,5 +103,10 @@ rules:
         - FE_MASCOT_ASSET_SLOT_MISSING
         - FE_RAISED_SURFACE_IN_SURFACE
         - FE_FREESTYLE_REASON_MISSING
+        - FE_PANE_GRID_CHILD_NOT_PANE
+        - FE_PANE_CHILD_NOT_SECTION
+        - FE_PANE_SECTION_PADDING
+        - FE_PANE_GRID_FRAME
+        - FE_HAND_BUILT_PANES
       manual: []
     relatedExamples: [full-app-shell, lite-app-shell]

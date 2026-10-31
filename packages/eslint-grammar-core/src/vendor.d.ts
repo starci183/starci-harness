@@ -44,6 +44,20 @@ declare module "@starci/eslint-canon-fe/lib/bindings.mjs" {
   export function functionOf(context: ReaderContext, node: Node | null | undefined): FunctionNode | null
 }
 
+declare module "@starci/eslint-canon-fe/lib/typed-class-values.mjs" {
+  type Node = import("@typescript-eslint/types").TSESTree.Node
+  type ReaderContext = import("./lib/types.ts").ReaderContext
+
+  /** One text found for a node of the linted file. */
+  export interface TypedString {
+    readonly node: Node
+    readonly text: string
+  }
+
+  /** The class strings an imported or aliased constant declares, read through the type program; empty when the program is unavailable. */
+  export function typedClassStrings(context: ReaderContext, node: Node, mode: string): TypedString[]
+}
+
 declare module "@starci/eslint-canon-fe/lib/hfs.mjs" {
   type ReaderContext = import("./lib/types.ts").ReaderContext
 

@@ -121,7 +121,7 @@ export const SLOT_FREE_RULES = Object.freeze([
   "no-native-anchor", "no-inline-parameter-type", "no-hand-rolled-polling", "no-copy-in-call", "no-alert", "no-failure-collapse",
   "outcome-kinds-exhaustive", "no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import",
   "prefer-export-from", "no-unused-prop-types", "media-has-caption", "max-params",
-  "nested-control-variant", "no-list-panel-padding", "no-app-surface-paint", "divider-full-bleed", "control-height", "selection-fill-no-check", "no-grammar-shim",
+  "nested-control-variant", "no-list-panel-padding", "no-hand-built-panes", "no-app-surface-paint", "divider-full-bleed", "control-height", "selection-fill-no-check", "no-grammar-shim",
   "button-intent-required", "button-no-variant", "destructive-confirm-in-dialog", "single-commit-per-render", "no-commit-in-collection-item",
 ])
 

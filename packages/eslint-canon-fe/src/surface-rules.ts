@@ -1,4 +1,4 @@
-/** Grammar owns surface nesting and the single content edge of a panel list (ANATOMY-2, PADDING-0). */
+/** Grammar owns surface nesting, the single content edge of a panel list (ANATOMY-2, PADDING-0) and the column seams of a pane frame (PaneGrid). */
 import { attributeValue, stringOf, walk } from "./lib/ast.ts"
 import { functionOf, importOf, isFn, patternPath, unwrap, variableOf } from "./lib/bindings.ts"
 import { typedClassStrings, typedPropertyStrings } from "./lib/typed-class-values.ts"
@@ -28,7 +28,7 @@ const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const SURFACES = new Set<string | undefined>([
   "SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard", "Sidebar",
   "Dialog", "Drawer", "AlertDialog", "Popover",
-  "WorkspaceShell", "TopBar", "NavigationFeatureNav",
+  "WorkspaceShell", "TopBar", "NavigationFeatureNav", "Pane", "PaneSection",
 ])
 const FIELDS = new Set<string | undefined>([
   "Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField",
@@ -458,8 +458,113 @@ export const dividerFullBleed = defineRule({
   },
 })
 
+/** True for a plain element (`div`), as opposed to a component. */
+const rawElement = (opening: TSESTree.JSXOpeningElement): boolean => opening.name.type === "JSXIdentifier" && /^[a-z]/.test(opening.name.name)
+
+/** The elements one JSX child can render, through fragments, conditionals and `&&`; anything else renders none this rule can name. */
+const elementsOfChild = (child: Node | null | undefined): TSESTree.JSXElement[] => {
+  if (!child) return []
+  if (child.type === "JSXElement") return [child]
+  if (child.type === "JSXFragment") return child.children.flatMap((entry) => elementsOfChild(entry))
+  if (child.type === "JSXExpressionContainer") return elementsOfChild(child.expression)
+  if (child.type === "ConditionalExpression") return [...elementsOfChild(child.consequent), ...elementsOfChild(child.alternate)]
+  if (child.type === "LogicalExpression") return child.operator === "&&" ? elementsOfChild(child.right) : [...elementsOfChild(child.left), ...elementsOfChild(child.right)]
+  return []
+}
+
+/** The children that render: whitespace-only text and empty expressions are left out. */
+const renderedChildren = (element: TSESTree.JSXElement): TSESTree.JSXChild[] =>
+  element.children.filter((child) => child.type === "JSXText" ? child.value.trim() !== "" : child.type !== "JSXExpressionContainer" || child.expression.type !== "JSXEmptyExpression")
+
+/** A column of a hand-built split: a plain block element (`div`, `aside`) or a Grammar `Region`. */
+const isColumn = (context: AnyContext, element: TSESTree.JSXElement): boolean =>
+  rawElement(element.openingElement) || grammarName(context, element.openingElement.name)?.[0] === "Region"
+
+/** How a plain element lays out its children, read from its authored classes: `row`, `stack` (a column), `none` (not flex or grid), or `unknown` (no static class). */
+const flowOf = (context: AnyContext, opening: TSESTree.JSXOpeningElement): "row" | "stack" | "none" | "unknown" => {
+  const texts = opening.attributes.flatMap((entry) => ["className", "class"].flatMap((name) => propStrings(context, entry, name).map((value) => value.text)))
+  if (texts.length === 0) return "unknown"
+  const tokens = texts.flatMap((text) => text.split(/\s+/)).filter((token) => token !== "")
+  if (!tokens.some((token) => /^(?:flex|inline-flex|grid|inline-grid)$/.test(token.slice(token.lastIndexOf(":") + 1)))) return "none"
+  const column = tokens.some((token) => token === "flex-col" || token === "flex-col-reverse")
+  const row = tokens.some((token) => /(?:^|:)flex-row(?:-reverse)?$/.test(token))
+  return column && !row ? "stack" : "row"
+}
+
+/** True when the opening element is a vertical Grammar Divider or Separator. */
+const verticalDivider = (context: AnyContext, opening: TSESTree.JSXOpeningElement): boolean => {
+  const name = grammarName(context, opening.name)
+  if (name?.length !== 1 || !isOneOf(["Divider", "Separator"], name[0])) return false
+  return opening.attributes.some((entry) => propStrings(context, entry, "orientation", "variant").some((value) => value.text === "vertical"))
+}
+
+/** True when the opening element is a Grammar SurfaceCard composed `joined`. */
+const joinedCard = (context: AnyContext, opening: TSESTree.JSXOpeningElement): boolean => {
+  const name = grammarName(context, opening.name)
+  return name?.length === 1 && name[0] === "SurfaceCard" && opening.attributes.some((entry) => propStrings(context, entry, "composition", "variant").some((value) => value.text === "joined"))
+}
+
+/** The columns a plain flex row holds side by side, or none when the element is not a row of two or more. */
+const rowColumns = (context: AnyContext, element: TSESTree.JSXElement): TSESTree.JSXElement[] => {
+  if (!rawElement(element.openingElement) || flowOf(context, element.openingElement) !== "row") return []
+  const columns = renderedChildren(element).flatMap((child) => elementsOfChild(child)).filter((child) => isColumn(context, child))
+  return columns.length >= 2 ? columns : []
+}
+
+/** The joined card element a node stands in, in this file, or null. */
+const enclosingJoinedCard = (context: AnyContext, node: Node): TSESTree.JSXElement | null => {
+  for (let current: Node | undefined = node.parent; current; current = current.parent) {
+    if (current.type === "JSXElement" && joinedCard(context, current.openingElement)) return current
+  }
+  return null
+}
+
+/** True when a joined card holds a plain row of columns as one of its own children: a pane frame drawn by hand. */
+const holdsColumnRow = (context: AnyContext, card: TSESTree.JSXElement): boolean =>
+  renderedChildren(card).flatMap((child) => elementsOfChild(child)).some((child) => rowColumns(context, child).length > 0)
+
+/** True when a vertical divider stands between plain columns of one flex row: directly, or inside a wrapper element that holds only it. */
+const isColumnSeam = (context: AnyContext, divider: TSESTree.JSXElement): boolean => {
+  let unit: TSESTree.JSXElement = divider
+  const wrapper = divider.parent
+  if (wrapper.type === "JSXElement" && rawElement(wrapper.openingElement) && renderedChildren(wrapper).length === 1) unit = wrapper
+  const container = unit.parent
+  if (container.type !== "JSXElement" || !rawElement(container.openingElement)) return false
+  if (!["row", "unknown"].includes(flowOf(context, container.openingElement))) return false
+  return renderedChildren(container).flatMap((child) => elementsOfChild(child)).some((sibling) => sibling !== unit && isColumn(context, sibling))
+}
+
+/** A multi-pane frame is a PaneGrid: a vertical divider between columns, or columns inside a joined card, is a pane frame drawn by hand. */
+export const noHandBuiltPanes = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "PaneGrid owns the columns of a multi-pane frame and the dividers between them." },
+    schema: [],
+    messages: {
+      seam: "FE_HAND_BUILT_PANES: a vertical Divider between columns draws a pane seam by hand, so the divider, the column widths and the collapse below medium are this file's to keep in step. Compose the columns as `Pane`s of a `PaneGrid` (areas per breakpoint, `collapse=\"drawer\"` for a side pane), which draws the dividers itself.",
+      joined: "FE_HAND_BUILT_PANES: this joined SurfaceCard holds a flex row of columns, a pane frame drawn by hand inside a card. `joined` stacks bands divided by horizontal separators; side-by-side panes are a `PaneGrid` of `Pane`s, which a tabbed app page mounts as `Page chrome=\"panes\"`.",
+    },
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
+        const element = node.parent
+        if (element.type !== "JSXElement") return
+        if (joinedCard(context, node)) {
+          if (holdsColumnRow(context, element)) context.report({ node, messageId: "joined" })
+          return
+        }
+        if (!verticalDivider(context, node)) return
+        const card = enclosingJoinedCard(context, node)
+        if (card !== null && holdsColumnRow(context, card)) return
+        if (card !== null || isColumnSeam(context, element)) context.report({ node, messageId: "seam" })
+      },
+    }
+  },
+})
+
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
+export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

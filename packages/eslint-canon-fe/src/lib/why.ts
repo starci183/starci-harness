@@ -34,6 +34,11 @@ export const why = {
     en: "`<file>` insets a horizontal Grammar divider with wrapper padding.",
     fix: "Move horizontal padding to the sibling content bands so the divider reaches both surface edges.",
   },
+  "no-hand-built-panes": {
+    code: "FE_HAND_BUILT_PANES",
+    en: "`<file>` draws a multi-pane frame by hand: a vertical Divider between columns of a flex row, or a flex row of columns inside a joined SurfaceCard.",
+    fix: "Compose the columns as Panes of a PaneGrid (areas per breakpoint, collapse=\"drawer\" for a side pane), mounted as Page chrome=\"panes\" on a tabbed app page.",
+  },
   "button-intent-required": {
     code: "FE_BUTTON_INTENT_REQUIRED",
     en: "`<file>` renders a Button or IconButton without the command's intent.",

@@ -30,6 +30,33 @@ test("Offset Pop inherited status rule rejects a solid status text tone and acce
   assert.equal(invalid[0]?.severity, 2)
 })
 
+const PANE_RULES = ["pane-grid-children", "pane-children", "no-pane-section-padding", "pane-grid-page"]
+
+const lintPanes = (code: string): Linter.LintMessage[] => new Linter().verify(code, [{
+  files: ["**/*.tsx"],
+  languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
+  plugins: { "starci-grammar": plugin },
+  settings: { starci: { hfs: { slotOf: () => "fe.components", tierOf: () => "components", classify: () => ({ status: "owned", slot: "fe.components", kind: "blocks" }) } } },
+  rules: Object.fromEntries(PANE_RULES.map((name) => [`starci-grammar/${name}`, "error"])),
+}], { filename: "apps/web/src/components/blocks/Category/component.tsx" })
+
+test("Offset Pop inherits the pane laws: a wrapper in a PaneGrid, a raw child of a Pane, section padding and a grid in a card are findings", () => {
+  for (const name of PANE_RULES) assert.ok(name in rules, name)
+  const imports = 'import { FillViewport, Pane, PaneGrid, PaneSection } from "@starci/grammar/offset-pop"; import { CategoryPane } from "./CategoryPane"; '
+  assert.deepEqual(lintPanes(imports + 'const A = () => <PaneGrid areas={{ base: ["a"] }}><Pane area="a"><PaneSection><span /></PaneSection></Pane></PaneGrid>'), [])
+  const invalid = [
+    ["pane-grid-children", 'const A = () => <PaneGrid areas={{ base: ["a"] }}><CategoryPane area="a" /></PaneGrid>'],
+    ["pane-children", 'const A = () => <Pane area="a"><div className="px-4" /></Pane>'],
+    ["no-pane-section-padding", 'const A = () => <PaneSection><div className="px-4 pt-3" /></PaneSection>'],
+    ["pane-grid-page", 'const A = () => <FillViewport><PaneGrid areas={{ base: ["a"] }} /></FillViewport>'],
+  ] as const
+  for (const [name, code] of invalid) {
+    const found = lintPanes(imports + code)
+    assert.equal(found.length, 1, name)
+    assert.equal(found[0]?.ruleId, `starci-grammar/${name}`)
+  }
+})
+
 /** The factory's input with the family id widened to a string, for the views the factory must refuse. */
 type FactoryInput = Parameters<typeof offsetPopGrammarConfig>[0]
 type RefusedInput = { readonly hfs: Omit<FactoryInput["hfs"], "grammar"> & { readonly grammar: string } }

@@ -6048,3 +6048,118 @@ rules:
         source: owner
         quote: "Xóa ai api key và openclaw ai key chỉnh thành starci ai key là key ảo"
         ruling: "Per app and environment the ai member holds the upstream provider keys and one random virtual key STARCI_AI_KEY that the gateway mounts and every client uses; the gateway has no admin API (ruling be-ai-one-virtual-key)."
+  - id: R345
+    code: "FE_PANE_GRID_CHILD_NOT_PANE"
+    law: "A child of a Grammar PaneGrid is a literal Pane element, written directly or returned by a conditional (`cond ? <Pane/> : null`, `cond && <Pane/>`) or a `.map`; a wrapper component, a raw element, a fragment or a variable is refused, because PaneGrid places each child by the area of a Pane and drops the rest, leaving its cell blank. A Freestyle subtree leaves the raw elements inside it alone."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PANE_GRID_CHILD_NOT_PANE"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-grid-children}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no pane grid; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_CHILD_NOT_PANE]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_CHILD_NOT_PANE]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_CHILD_NOT_PANE]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
+        ruling: "A Pane owns its content inset and every band in it is a PaneSection; a PaneGrid holds Panes only, so the lint refuses a wrapper component that the grid would drop."
+  - id: R346
+    code: "FE_PANE_CHILD_NOT_SECTION"
+    law: "A Grammar Pane holds PaneSection elements or one nested PaneGrid; a raw element, or a Grammar component other than PaneSection, PaneGrid and Freestyle, placed directly in a Pane skips the inset the pane publishes to its bands. A project component is judged in its own file, and a Freestyle subtree leaves its raw elements alone."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PANE_CHILD_NOT_SECTION"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-children}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no pane grid; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_CHILD_NOT_SECTION]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_CHILD_NOT_SECTION]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_CHILD_NOT_SECTION]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
+        ruling: "A Pane owns its content inset and every band in it is a PaneSection whose boxes align to that edge, so the lint refuses a band hand-built in a pane."
+  - id: R347
+    code: "FE_PANE_SECTION_PADDING"
+    law: "The outermost element a Grammar PaneSection renders, and the root of a same-file component returned as its child, carries no padding or margin utility (`p-*`, `px-*`, `py-*`, `ps/pe/pt/pb/pl/pr-*`, `m-*`, `mx/my/ms/me/mt/mb/ml/mr-*`, their negative forms, or an arbitrary padding or margin property; zero and auto values place or reset and are not one), because the Pane owns the content inset and the section applies it. A Freestyle subtree leaves its raw elements alone."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PANE_SECTION_PADDING"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-pane-section-padding}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no pane grid; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_SECTION_PADDING]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_SECTION_PADDING]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_SECTION_PADDING]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
+        ruling: "One padding system for everything placed in a PaneGrid: the Pane publishes the inset and the PaneSection applies it, so no band adds its own."
+  - id: R348
+    code: "FE_PANE_GRID_FRAME"
+    law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"` or stands inside a Pane; a PaneGrid drawn in a FillViewport, a SurfaceCard, SurfaceListCard or SurfaceAccordionCard, a Page of another chrome, or wrapped inside `Page chrome=\"panes\"` re-decides the frame and the bottom edge that Page owns. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PANE_GRID_FRAME"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-grid-page}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no pane grid; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_FRAME]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_FRAME]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_FRAME]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
+        ruling: "A tabbed app page's PaneGrid attaches flush under the tab line, full width and to the bottom, with no card, radius or gap: Page chrome=\"panes\"."
+  - id: R349
+    code: "FE_HAND_BUILT_PANES"
+    law: "A multi-pane frame is a Grammar PaneGrid of Panes, which draws the dividers between panes; a vertical Divider used as a column seam (among the plain columns of a flex row, or anywhere inside a SurfaceCard composition=\"joined\") and a joined SurfaceCard that holds a flex row of two or more plain columns are a pane frame drawn by hand and are refused. A short vertical separator between controls and a row whose classes cannot be read in the file are not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_HAND_BUILT_PANES"]
+    enforcers:
+      - {kind: eslint-fe, id: no-hand-built-panes}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no multi-pane frame; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HAND_BUILT_PANES]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HAND_BUILT_PANES]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HAND_BUILT_PANES]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
+        ruling: "A multi-pane frame is the Grammar's PaneGrid, never columns and a vertical Divider composed by hand inside a card."

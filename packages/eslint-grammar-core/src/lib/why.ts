@@ -57,6 +57,21 @@ export const why: Record<string, WhyEntry> = {
     en: "A page tab bar in `<file>` is a Tabs at the top of the Page body or right after a PageHeader, outside the header band.",
     fix: "Pass the tabs as Page header.tabs (or PageHeader tabs): { label, items, selectedKey, onSelect }, or link tabs whose items carry an href each.",
   },
+  "pane-children": {
+    code: "FE_PANE_CHILD_NOT_SECTION",
+    en: "A raw element or a Grammar component other than PaneSection and PaneGrid is placed straight in a `Pane` in `<file>`, skipping the inset the pane publishes.",
+    fix: "Wrap it in a `<PaneSection>` (grow, scroll, align or bleed as the band needs), or make the pane's one child a nested `<PaneGrid>`.",
+  },
+  "pane-grid-children": {
+    code: "FE_PANE_GRID_CHILD_NOT_PANE",
+    en: "A child of `PaneGrid` in `<file>` is not a `Pane` element (a wrapper component, a fragment or a variable), so its cell renders blank.",
+    fix: "Write `<Pane area=\"...\">` as the child (directly, or from `cond ? <Pane/> : null`, `cond && <Pane/>` or a `.map`), and move the wrapper's content into the Pane's PaneSections.",
+  },
+  "pane-grid-page": {
+    code: "FE_PANE_GRID_FRAME",
+    en: "A `PaneGrid` in `<file>` is drawn in a FillViewport, a card or a page chrome other than `panes`, or is wrapped inside `Page chrome=\"panes\"`.",
+    fix: "Make the grid the one child of `<Page chrome=\"panes\">` (or the one child of a `Pane`, nested) and drop the FillViewport or card around it.",
+  },
   "route-page-is-one-page": {
     code: "FE_ROUTE_PAGE_OUTSIDE_PAGE",
     en: "The page or layout owner `<file>` draws something beside its Page, a Page inside another (or inside the Page its tabbed segment's layout draws), a bare PageHeader or PageContainer, or no Page at all (itself, through its pure half, or through the one connected block it renders as its root).",
@@ -66,6 +81,11 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_FREESTYLE_REASON_MISSING",
     en: "A `<Freestyle>` region in `<file>` has no non-empty string `reason`.",
     fix: "Say why no Grammar component fits: `<Freestyle reason=\"sign-in brand art\">`. If a Grammar component fits, compose it instead.",
+  },
+  "no-pane-section-padding": {
+    code: "FE_PANE_SECTION_PADDING",
+    en: "The outermost element a `PaneSection` renders in `<file>` carries a padding or margin utility, a second inset beside the one the pane publishes.",
+    fix: "Remove the utility: PaneSection pads inline by the pane inset and spaces its own children by `gap`; use `bleed=\"inline\"` for a scroller that reaches the pane edges.",
   },
   "no-raised-surface-in-surface": {
     code: "FE_RAISED_SURFACE_IN_SURFACE",

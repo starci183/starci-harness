@@ -2339,6 +2339,41 @@ rules:
       - BE_AI_VIRTUAL_KEY
     enforcers:
       - {kind: eslint-be, id: ai-virtual-key-name}
+  - id: R345
+    code: FE_PANE_GRID_CHILD_NOT_PANE
+    law: "A child of a Grammar PaneGrid is a literal Pane element, written directly or returned by a conditional (`cond ? <Pane/> : null`, `cond && <Pane/>`) or a `.map`; a wrapper component, a raw element, a fragment or a variable is refused, because PaneGrid places each child by the area of a Pane and drops the rest, leaving its cell blank. A Freestyle subtree leaves the raw elements inside it alone."
+    failureCodes:
+      - FE_PANE_GRID_CHILD_NOT_PANE
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-grid-children}
+  - id: R346
+    code: FE_PANE_CHILD_NOT_SECTION
+    law: "A Grammar Pane holds PaneSection elements or one nested PaneGrid; a raw element, or a Grammar component other than PaneSection, PaneGrid and Freestyle, placed directly in a Pane skips the inset the pane publishes to its bands. A project component is judged in its own file, and a Freestyle subtree leaves its raw elements alone."
+    failureCodes:
+      - FE_PANE_CHILD_NOT_SECTION
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-children}
+  - id: R347
+    code: FE_PANE_SECTION_PADDING
+    law: "The outermost element a Grammar PaneSection renders, and the root of a same-file component returned as its child, carries no padding or margin utility (`p-*`, `px-*`, `py-*`, `ps/pe/pt/pb/pl/pr-*`, `m-*`, `mx/my/ms/me/mt/mb/ml/mr-*`, their negative forms, or an arbitrary padding or margin property; zero and auto values place or reset and are not one), because the Pane owns the content inset and the section applies it. A Freestyle subtree leaves its raw elements alone."
+    failureCodes:
+      - FE_PANE_SECTION_PADDING
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-pane-section-padding}
+  - id: R348
+    code: FE_PANE_GRID_FRAME
+    law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"` or stands inside a Pane; a PaneGrid drawn in a FillViewport, a SurfaceCard, SurfaceListCard or SurfaceAccordionCard, a Page of another chrome, or wrapped inside `Page chrome=\"panes\"` re-decides the frame and the bottom edge that Page owns. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
+    failureCodes:
+      - FE_PANE_GRID_FRAME
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-grid-page}
+  - id: R349
+    code: FE_HAND_BUILT_PANES
+    law: "A multi-pane frame is a Grammar PaneGrid of Panes, which draws the dividers between panes; a vertical Divider used as a column seam (among the plain columns of a flex row, or anywhere inside a SurfaceCard composition=\"joined\") and a joined SurfaceCard that holds a flex row of two or more plain columns are a pane frame drawn by hand and are refused. A short vertical separator between controls and a row whose classes cannot be read in the file are not judged."
+    failureCodes:
+      - FE_HAND_BUILT_PANES
+    enforcers:
+      - {kind: eslint-fe, id: no-hand-built-panes}
 
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
