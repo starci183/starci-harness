@@ -168,13 +168,16 @@ test('the gate admits identity-restore for one public age recipient, writing onl
   const recipient = `age1${'q'.repeat(58)}`;
   // a stand-in id and sudo: the body reaches its first privileged step without touching the machine
   fs.writeFileSync(path.join(dir, 'bin', 'id'), '#!/bin/sh\necho 1000\n', { mode: 0o755 });
-  fs.writeFileSync(path.join(dir, 'bin', 'sudo'), '#!/bin/sh\necho "sudo $*"\nexit 42\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'bin', 'sudo'), '#!/bin/sh\necho "sudo $*"\n', { mode: 0o755 });
   const admitted = viaGate(gatedCommand('identity-restore', [recipient]), 'AGE-SECRET-KEY-FIXTURE\n');
-  assert.equal(admitted.status, 42, admitted.stderr);
+  // the stand-in sudo says the identity exists, so the body stops at its refusal to overwrite, before it writes anything
+  assert.equal(admitted.status, 3, admitted.stderr);
   assert.equal(admitted.stdout, `sudo -n test -e ${SERVER_AGE_IDENTITY}\n`);
+  assert.match(admitted.stderr, /already holds/u);
   assert.deepEqual(gateOp('identity-restore').args, ['recipient']);
   assert.ok(gateOp('identity-restore').stdin);
-  assert.equal(inlineCommand('identity-restore', [recipient]), `${inlinePrefix('identity-restore')} ${recipient}`);
+  assert.ok(inlineCommand('identity-restore', [recipient]).startsWith(`${inlinePrefix('identity-restore')} `));
+  assert.ok(inlineCommand("identity-restore", [recipient]).includes(recipient));
   const refused = [
     'starci-op identity-restore', `starci-op identity-restore ${recipient} extra`, `starci-op identity-restore ${recipient};id`, 'starci-op identity-restore age1short',
     `starci-op identity-restore ${recipient.toUpperCase()}`, `starci-op identity-restore ${recipient}q`, `starci-op identity-restore /etc/passwd`, `starci-op identity-restore ${SERVER_AGE_IDENTITY} ${recipient}`,

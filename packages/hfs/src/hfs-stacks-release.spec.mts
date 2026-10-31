@@ -405,6 +405,19 @@ for (const edition of ['lite', 'full']) {
     });
   });
 
+  test('HFS_SCHEDULE_UNDECLARED@' + edition + ': SQL of another dialect schedules nothing, unparsable SQL that calls cron.schedule stays undeclared', () => {
+    withFixture(edition, (value: Fixture) => {
+      const quote = String.fromCodePoint(96);
+      const query = (text: string) => 'db.query(' + quote + text + quote + ');';
+      writeTracked(value, 'be/src/modules/domain/session/customer-sessions.client.ts', query("SET @@session.sql_mode = CONCAT(@@sql_mode, ',ANSI_QUOTES')") + '\n' + query('CREATE TABLE IF NOT EXISTS sessions (id INT AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'));
+      assert.deepEqual(scheduleIssues(value), []);
+    });
+    withFixture(edition, (value: Fixture) => {
+      writeTracked(value, 'be/src/modules/jobs/register.ts', "db.query(\"SELECT cron.schedule('report', '0 3 * * *', 'select 1') ENGINE=InnoDB AUTO_INCREMENT\");");
+      assert.equal(scheduleIssues(value).length, 1);
+    });
+  });
+
   test('HFS_SCHEDULE_UNDECLARED@' + edition + ': comments, inert literals, tests, archive and ordinary data do not declare schedules', () => {
     withFixture(edition, (value: Fixture) => {
       writeTracked(value, 'be/src/modules/jobs/ordinary.ts', "// queue.upsertJobScheduler('report', {every: 1});\nconst text = \"cron.schedule('report', '* * * * *', 'select 1')\"; const record = {id: 'report', schedule: 'event-date'};");

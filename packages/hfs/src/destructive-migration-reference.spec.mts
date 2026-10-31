@@ -204,3 +204,41 @@ test('a later additive migration cannot excuse data loss in an expansion migrati
   assert.equal(findings[0].path, 'db/migrations/20261101000907_remove-origin.sql');
   assert.equal(findings[0].object, 'public.transactions.origin');
 });
+
+const NONE = '-- nothing contracted here\n';
+const EXPAND = 'db/migrations/20261109100225_jobs-run-id.sql';
+const expand = (t: TestContext, text: string, earlier: Record<string, string> = {}) => judge(t, NONE, {}, { [EXPAND]: text, ...earlier });
+
+test('SET NOT NULL on a column the same migration added earlier is not destructive', (t) => {
+  assert.deepEqual(expand(t, 'alter table public.jobs add column job_id uuid;\nupdate public.jobs set job_id = id;\nalter table public.jobs alter column job_id set not null;\n'), []);
+  assert.deepEqual(expand(t, 'alter table public.jobs add column if not exists job_id uuid, alter column job_id set not null;\n'), []);
+  assert.deepEqual(expand(t, 'create table public.runs (id uuid primary key, note text);\nalter table public.runs alter column note set not null;\n'), []);
+});
+
+test('SET NOT NULL or a type change on a column an earlier migration added, or one this migration did not add, stays destructive', (t) => {
+  const pre = expand(t, 'alter table public.jobs alter column job_id set not null;\n');
+  assert.equal(pre.length, 1);
+  assert.equal(pre[0].object, 'public.jobs.job_id');
+  const earlier = expand(t, 'alter table public.jobs alter column job_id set not null;\n', { 'db/migrations/20261109100000_jobs-add.sql': 'alter table public.jobs add column job_id uuid;\n' });
+  assert.equal(earlier.length, 1);
+  const otherColumn = expand(t, 'alter table public.jobs add column job_id uuid;\nalter table public.jobs alter column owner_id set not null;\nalter table public.runs alter column job_id set not null;\n');
+  assert.deepEqual(otherColumn.map((finding: { object?: string }) => finding.object).sort(), ['public.jobs.owner_id', 'public.runs.job_id']);
+  const dropped = expand(t, 'alter table public.jobs add column job_id uuid;\nalter table public.jobs drop column job_id;\n');
+  assert.equal(dropped.length, 1);
+});
+
+const DROP_QUEUE = 'drop table public.queue;\n';
+const entity = (decorator: string) => `import { Column, Entity } from "typeorm";\n\n${decorator}\nexport class JobOutbox {\n  @Column() queue!: string;\n}\n`;
+
+test('a column named like a dropped table is no reference to that table, a table name an entity spells is', (t) => {
+  const path = 'be/src/modules/jobs/job-outbox.entity.ts';
+  assert.deepEqual(judge(t, DROP_QUEUE, { [path]: entity('@Entity("job_outbox")') }), []);
+  assert.deepEqual(judge(t, DROP_QUEUE, { [path]: entity('@Entity({ schema: "public", name: "job_outbox" })') }), []);
+  for (const decorator of ['@Entity("queue")', '@Entity({ name: "queue" })', '@Entity("public.queue")']) {
+    const findings = judge(t, DROP_QUEUE, { [path]: entity(decorator) });
+    assert.equal(findings.length, 1, decorator);
+    assert.equal(findings[0].reference, path);
+  }
+  // an entity that spells no table name keeps the conservative identifier match
+  assert.equal(judge(t, DROP_QUEUE, { [path]: entity('@Entity()') }).length, 1);
+});

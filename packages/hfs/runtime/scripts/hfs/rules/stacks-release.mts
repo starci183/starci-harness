@@ -238,12 +238,22 @@ function executableExpression(expression: Parsed) {
   return `SELECT ${query}`;
 }
 
+const PG_CRON_CALL = /\bcron\s*\.\s*(?:schedule|unschedule|schedule_in_database|alter_job)\b/i;
+
+/**
+ * SQL Postgres cannot parse is judged only when it names a pg_cron call: a statement of another dialect (MySQL session setup, say) schedules nothing, so
+ * it is no unknown job, while unparsable text that does call cron.schedule stays an undeclared job nobody can read.
+ */
+function unparsedSchedule(text: string, file: string) {
+  return PG_CRON_CALL.test(text) ? [{ id: null, cadence: null, at: file }] : [];
+}
+
 function doSqlObservations(statement: Parsed, file: string) {
   const body = statement.args?.find((arg: Parsed) => arg.DefElem?.defname === 'as')?.DefElem?.arg?.String?.sval;
   if (!present(body)) return [];
   let tree;
   try { tree = pg!.parsePlPgSQLSync("DO '" + body.replaceAll("'", "''") + "';"); }
-  catch { return [{ id: null, cadence: null, at: file }]; }
+  catch { return unparsedSchedule(body, file); }
   const observations: Parsed[] = [];
   walkSql(tree, (value: Parsed) => {
     const expression = value.PLpgSQL_expr;
@@ -254,7 +264,7 @@ function doSqlObservations(statement: Parsed, file: string) {
 
 function sqlObservations(text: string, file: string) {
   const tree = parseSql(text);
-  if (!tree) return [{ id: null, cadence: null, at: file }];
+  if (!tree) return unparsedSchedule(text, file);
   const observations: Parsed[] = [];
   walkSql(tree, (value: Parsed) => {
     if (value.DoStmt) observations.push(...doSqlObservations(value.DoStmt, file));
@@ -320,7 +330,7 @@ function templateObservations(node: Parsed, file: string) {
   if (parseSql(nulls)) return sqlObservations(nulls, file);
   const named = spell(DYNAMIC);
   const tree = parseSql(named);
-  if (!tree) return [{ id: null, cadence: null, at: file }];
+  if (!tree) return unparsedSchedule(named, file);
   let dynamicCall = false;
   walkSql(tree, (value: Parsed) => {
     if (value.FuncCall && (value.FuncCall.funcname ?? []).some((part: Parsed) => part.String?.sval === DYNAMIC)) dynamicCall = true;

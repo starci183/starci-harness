@@ -299,7 +299,7 @@ test('R251: every managed workflow that opens sealed members is bound to the env
       assert.equal(restore.jobs.restore.steps.find((step: Doc) => step.name === 'write the identity on the server').env.AGE_IDENTITY, '${{ secrets.SOPS_AGE_KEY }}');
       assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml']!, /secrets\[|SOPS_AGE_KEY_/u);
       // ruling ci-transport-one-home: GitHub keeps only SOPS_AGE_KEY; the restore opens the same sealed transport as the deploy and goes through the ssh gate.
-      assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml']!, /VPS_|secrets\.(?!SOPS_AGE_KEY)/u);
+      assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml']!, /VPS_|secrets\.(?!SOPS_AGE_KEY)/u);
       const restoreSteps: Doc[] = restore.jobs.restore.steps;
       const deploySteps: Doc[] = parseWorkflow(workflows['.github/workflows/stack-deploy.yml']!).jobs.deploy.steps;
       const connect = (steps: Doc[]) => steps.find((step: Doc) => step.name === 'connect to the swarm manager');

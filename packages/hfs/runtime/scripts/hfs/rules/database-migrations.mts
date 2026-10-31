@@ -336,7 +336,7 @@ function columnAlterObject(tokens: Parsed, index: number, table: Parsed, line: s
   const defaultSet = tokens.some((token: Parsed, at: Parsed) => sqlWord(token, 'alter') && sqlName(tokens[at + 1 + Number(sqlWord(tokens[at + 1], 'column'))]) === column.leaf
     && sqlWord(tokens[at + 2 + Number(sqlWord(tokens[at + 1], 'column'))], 'set') && sqlWord(tokens[at + 3 + Number(sqlWord(tokens[at + 1], 'column'))], 'default'));
   if (!type && !(notNull && !defaultSet)) return null;
-  return { name: `${table.name}.${column.name}`, leaf: column.leaf, table: table.leaf, kind: 'column', line };
+  return { name: `${table.name}.${column.name}`, leaf: column.leaf, table: table.leaf, kind: 'column', alters: true, line };
 }
 
 function alteredColumn(table: Parsed, column: Parsed, line: Parsed) {
@@ -428,11 +428,29 @@ function globalConstraintNames(statement: Parsed) {
   return names;
 }
 
+const ENTITY_DECORATORS = new Set(['Entity', 'Table', 'ViewEntity']);
+
+/** Adds the table names a class decorator `@Entity(...)`, `@Table(...)` or `@ViewEntity(...)` spells to `tables`; true when such a decorator spells none. */
+function noteEntityTables(ts: Ts, decorator: Parsed, tables: Set<string>) {
+  const call = decorator.expression;
+  const callee = ts.isCallExpression(call) ? call.expression : call;
+  if (!ts.isIdentifier(callee) || !ENTITY_DECORATORS.has(callee.text)) return false;
+  const before = tables.size;
+  const collect = (node: Parsed) => {
+    if (ts.isStringLiteralLike(node)) for (const part of [node.text, node.text.split('.').at(-1)!]) tables.add(part);
+    ts.forEachChild(node, collect);
+  };
+  if (ts.isCallExpression(call)) for (const argument of call.arguments) collect(argument);
+  return tables.size === before;
+}
+
 function sourceNameScopes(ts: Ts, text: string, file: string) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const checker = lexicalChecker(ts, source);
   const scopes: Parsed[] = [];
   const entityNames = /\.entity\.[cm]?tsx?$/.test(file) ? new Set() : null;
+  const entityTables = new Set<string>();
+  let implicitTable = false;
   const addSql = (sql: Parsed) => {
     for (const statement of databaseSqlStatements(databaseSqlTokens(sql))) {
       const names = new Set(statement.filter((token) => sqlName(token) !== null).map((token) => token.v));
@@ -448,10 +466,14 @@ function sourceNameScopes(ts: Ts, text: string, file: string) {
     const sql = sourceSqlText(ts, node, checker);
     if (sql !== null) addSql(sql);
     if (entityNames && ts.isIdentifier(node)) entityNames.add(node.text);
+    if (entityNames && ts.isDecorator(node)) implicitTable = noteEntityTables(ts, node, entityTables) || implicitTable;
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return entityNames ? [{ names: entityNames, constraints: entityNames, globalConstraints: new Set() }] : scopes;
+  // An entity names its table by the string of its @Entity/@Table decorator; a column property of the same word (`queue`) is no table reference.
+  // An entity that names none (or has no such decorator) keeps the conservative identifier match.
+  const tables = entityTables.size > 0 && !implicitTable ? entityTables : undefined;
+  return entityNames ? [{ names: entityNames, tables, constraints: entityNames, globalConstraints: new Set() }] : scopes;
 }
 
 /**
@@ -460,10 +482,11 @@ function sourceNameScopes(ts: Ts, text: string, file: string) {
  * SQL constraints require explicit constraint names, while entities retain their table/decorator association.
  * Other object kinds match their leaf name conservatively.
  */
-const referencesObject = (scopes: Parsed, object: Parsed) => scopes.some(({ names, constraints, globalConstraints }: { names: Set<string>; constraints: Parsed; globalConstraints: Parsed }) =>
+const referencesObject = (scopes: Parsed, object: Parsed) => scopes.some(({ names, tables, constraints, globalConstraints }: { names: Set<string>; tables?: Set<string>; constraints: Parsed; globalConstraints: Parsed }) =>
   (object.kind === 'constraint' && globalConstraints.has(object.leaf))
-  || ((object.kind === 'constraint' ? constraints : names).has(object.leaf)
-    && (!['column', 'constraint'].includes(object.kind) || !object.table || names.has(object.table))));
+  || (object.kind === 'table' && tables !== undefined ? tables.has(object.leaf)
+    : (object.kind === 'constraint' ? constraints : names).has(object.leaf)
+      && (!['column', 'constraint'].includes(object.kind) || !object.table || (tables ?? names).has(object.table))));
 
 function destructiveObjectFinding(file: string, object: Parsed, contract: Parsed, references: Parsed) {
   const reference = references.find(({ scopes }: { scopes: Parsed }) => referencesObject(scopes, object));
@@ -474,10 +497,46 @@ function destructiveObjectFinding(file: string, object: Parsed, contract: Parsed
     { line: object.line, object: object.name, ...(reference ? { reference: reference.file } : {}) });
 }
 
+/** The `<table leaf>.<column leaf>` keys an ALTER TABLE ... ADD COLUMN statement adds, and `<table leaf>.*` for a CREATE TABLE. */
+function addedColumns(statement: Parsed) {
+  const added: string[] = [];
+  for (let index = 0; index < statement.length - 1; index += 1) {
+    if (sqlWord(statement[index], 'create')) {
+      const at = skipWords(statement, index + 1, ['temp', 'temporary', 'unlogged']);
+      const created = sqlWord(statement[at], 'table') ? nameAt(statement, skipWords(statement, at + 1, ['if', 'not', 'exists'])) : null;
+      if (created) added.push(`${created.leaf}.*`);
+    }
+    if (!(sqlWord(statement[index], 'alter') && sqlWord(statement[index + 1], 'table'))) continue;
+    const table = nameAt(statement, skipWords(statement, index + 2, ['if', 'exists', 'only']));
+    if (!table) continue;
+    const body = statement.slice(table.next);
+    body.forEach((token: Parsed, at: number) => {
+      if (!sqlWord(token, 'add')) return;
+      const start = skipWords(body, at + 1, ['column', 'if', 'not', 'exists']);
+      if (['constraint', 'primary', 'foreign', 'unique', 'check', 'exclude'].some((word) => sqlWord(body[start], word))) return;
+      const column = nameAt(body, start);
+      if (column) added.push(`${table.leaf}.${column.leaf}`);
+    });
+  }
+  return added;
+}
+
+/** An ALTER of a column (SET NOT NULL, TYPE) the same migration added earlier changes no existing data: it is not destructive. */
+const alterOfNewColumn = (object: Parsed, added: Set<string>) => object.alters === true && (added.has(`${object.table}.${object.leaf}`) || added.has(`${object.table}.*`));
+
+/** The destructive objects of one migration's SQL, in order, leaving out the alters of columns and tables the migration created itself. */
+function migrationDestructiveObjects(text: string) {
+  const added = new Set<string>();
+  return databaseSqlStatements(databaseExecutableTokens(text)).flatMap((statement: Parsed) => {
+    for (const key of addedColumns(statement)) added.add(key);
+    return destructiveObjects(statement).filter((object: Parsed) => !alterOfNewColumn(object, added));
+  });
+}
+
 function destructiveFileFindings(file: string, text: string, references: Parsed) {
   const contract = /_contract_[a-z0-9]+(?:[-_][a-z0-9]+)*\.sql$/.test(file);
   const seen = new Set();
-  const objects = databaseSqlStatements(databaseExecutableTokens(text)).flatMap(destructiveObjects);
+  const objects = migrationDestructiveObjects(text);
   return objects.flatMap((object) => {
     const key = `${object.line}:${object.kind}:${object.name}`;
     if (seen.has(key)) return [];
@@ -521,7 +580,7 @@ export async function contractReleaseFindings({ repoRoot, migrations, git }: { r
   return fresh.flatMap((file: string) => {
     const text = readText(repoRoot, file);
     if (text === null) return [];
-    return databaseSqlStatements(databaseExecutableTokens(text)).flatMap(destructiveObjects).flatMap((object: Parsed) => {
+    return migrationDestructiveObjects(text).flatMap((object: Parsed) => {
       const reference = references.find(({ scopes }: { scopes: Parsed }) => referencesObject(scopes, object));
       return reference ? [found(DB_MIGRATION_DESTRUCTIVE, file, `${file}:${object.line} destroys ${object.name}, which the previous release ${release} still references in ${reference.file}; the contract migration runs right after the accept while that release is the rollback target: ship the code change in one release and this contract migration in the next`,
         { line: object.line, object: object.name, release, reference: reference.file })] : [];

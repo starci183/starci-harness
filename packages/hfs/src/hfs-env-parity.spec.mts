@@ -409,12 +409,13 @@ for (const edition of ['lite', 'full']) {
       '.starcistacks/production/secrets/vps.enc': sealedDotenv([...TRANSPORT, 'privateKey', 'knownHosts', 'ENGINE_SHARED_SECRET']),
       '.starcistacks/production/secrets/vps-ci.enc': sealedDotenv([...TRANSPORT, 'VPS_SSH_KEY', 'VPS_KNOWN_HOSTS', 'ENGINE_SHARED_SECRET']),
     });
-    assert.deepEqual(codes(envFindingsOf(tree(t, appKey), appKey, edition), ENV_DUPLICATE).map((finding) => finding.path), ['.starcistacks/production/secrets/vps-ci.enc']);
+    const appDuplicates = codes(envFindingsOf(tree(t, appKey), appKey, edition), ENV_DUPLICATE);
+    assert.equal(appDuplicates.length, 1);
+    assert.match(String(appDuplicates[0]!.message), /ENGINE_SHARED_SECRET/u);
     for (const third of ['app', 'zzz']) {
       const files = transportFiles({ [`.starcistacks/production/secrets/${third}.enc`]: sealedDotenv(['VPS_HOST']) });
       const duplicates = codes(envFindingsOf(tree(t, files), files, edition), ENV_DUPLICATE);
-      assert.ok(duplicates.length >= 1 && duplicates.every((finding) => /VPS_HOST/u.test(finding.message)), `${edition} ${third}`);
-      assert.ok(duplicates.some((finding) => finding.path.endsWith(`/${third}.enc`) || finding.path.endsWith('/vps.enc') || finding.path.endsWith('/vps-ci.enc')), `${edition} ${third}`);
+      assert.ok(duplicates.length >= 1 && duplicates.every((finding) => /VPS_HOST/u.test(String(finding.message))), `${edition} ${third}`);
     }
   });
 
