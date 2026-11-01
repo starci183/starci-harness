@@ -636,3 +636,23 @@ test('the write index answers exactly what the per-member tree scan answered', (
     assert.ok(!index.has(members.find(member => (member.name as ts.PropertyName).getText() === 'r') as ts.ClassElement));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('a recursive function that spreads its own parameter ends the value walk at the first repeated node', t => {
+  assert.deepEqual(findings(t, 'full', {
+    'be/src/policy.ts': `
+      export type Condition = { readonly all: readonly Condition[] } | { readonly any: readonly Condition[] } | { readonly value: number; readonly op: string };
+      export const reset = (term: Condition, from: number, op: string): Condition => {
+        if ('all' in term) return { all: term.all.map((member) => reset(member, from, op)) };
+        if ('any' in term) return { any: term.any.map((member) => reset(member, from, op)) };
+        return 'value' in term && term.value === from ? { ...term, op } : term;
+      };
+    `,
+    'fe/src/view.ts': `
+      import { reset, type Condition } from '../../be/src/policy';
+      export function row(condition: Condition, t: (key: string) => string) {
+        const next = reset(condition, 1, 'lt');
+        t(\`k_\${'any' in next ? next.any.length : 0}\`);
+      }
+    `,
+  }, { workbench: { k_0: 'Zero' } }), []);
+});

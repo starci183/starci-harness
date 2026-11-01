@@ -215,7 +215,7 @@ const readonlyDeclaration = (ts: Ts, symbol: Parsed, name: string) => {
  * of that property in every object literal the program types by that declaration, in a typed table of constants. Any owner type that is not
  * such a declaration, or a literal whose property comes from an unknown source, leaves the read unresolved.
  */
-function typedPropertyValues(state: Parsed, node: Parsed) {
+function typedPropertyValues(state: Parsed, node: Parsed, seen: Parsed) {
   const { ts, checker } = state;
   const owner = checker.getNonNullableType(checker.getTypeAtLocation(node.expression));
   const owners = owner.isUnion() ? owner.types : [owner];
@@ -225,7 +225,7 @@ function typedPropertyValues(state: Parsed, node: Parsed) {
     const literals = symbol ? literalsByType(state).get(symbol) : null;
     if (!literals?.length || !readonlyDeclaration(ts, symbol, node.name.text)) return [];
     for (const literal of literals) {
-      const property = ownerProperty(state, literal, node.name.text, new Set(), valuesOf);
+      const property = ownerProperty(state, literal, node.name.text, seen, valuesOf);
       if (property === null) return [];
       values.push(...property.values);
     }
@@ -257,7 +257,7 @@ export function valuesOf(state: Parsed, expression: Parsed, visited = new Set())
     // Reading a property of null or undefined throws, so a nullish branch of the owner holds no value of the property.
     const owners = valuesOf(state, node.expression, seen).filter((owner: Parsed) => !isNullish(ts, owner));
     const known = resolveAll(state, propertiesOf(state, owners, node.name.text, seen, valuesOf), seen);
-    return narrowed(known.length ? known : resolveAll(state, typedPropertyValues(state, node), seen));
+    return narrowed(known.length ? known : resolveAll(state, typedPropertyValues(state, node, seen), seen));
   }
   if (ts.isElementAccessExpression(node)) return orLeaf(resolveAll(state, tableValues(state, node, seen), seen));
   if (!ts.isIdentifier(node)) return [node];
