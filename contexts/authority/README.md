@@ -36,8 +36,10 @@ verb standard") are how the CLI holds this table where it holds it.
 ## Worktrees
 
 Every worktree the harness creates is removed by the harness when its work ends, under `inline` and `orca` alike; no role
-removes one by hand or keeps one alive past its owner. Before removal its uncommitted work is preserved as a red verify
-preserves it (a patch and its untracked files, in the project's `preserved/`), then it is reaped: every Orca terminal
+removes one by hand or keeps one alive past its owner. Before removal the collector preserves its binary tracked and index
+patches, tracked working bytes, untracked and ignored files by opaque copies, file and link metadata, and a durable HEAD ref in the project's
+`preserved/` (`cli/src/harness/worktree-preserve.ts`); reproducible install and compiler/test cache folders are excluded by
+that owner. A failed copy or a changed checkout refuses removal. It is then reaped: every Orca terminal
 whose worktree it is is closed, its install links (each `node_modules` junction or symlink) are unlinked as links (never
 `git worktree remove` or a recursive delete through one, which empties the install it points at, never `robocopy /MIR`), Orca forgets it, and the processes the harness started in it or that work inside it are ended and seen
 gone (by pid, never by name, never the caller or Orca: `cli/src/harness/reap.ts`); then it is removed and git prunes. An
@@ -57,7 +59,13 @@ tickets it for Debug at the cap (`cli/src/harness/worktree-busy.ts`).
 
 The collector `starci worktree gc --execute` (run by every `supervisor tick`, and by `supervisor accept`, `reject` and a workflow step
 of an ended workflow) finds every harness worktree whose owner ended, every orphan no ledger row owns, every busy one due again
-and every one a retired project still holds, and removes it as above; without `--execute` it lists them (`cli/src/harness/worktree-gc.ts`).
+and every one a retired project of the same canonical Git common directory still holds, and removes it as above; without
+`--execute` it lists them (`cli/src/harness/worktree-gc.ts`). Package handoffs and busy records are scoped to that repository.
+Repeated `--path <directory>` exclusively selects reviewed legacy linked worktrees of that repository: it sweeps nothing
+else, keeps their named branches and HEAD refs, and refuses the primary checkout, the caller's checkout, a foreign or
+unlisted path, live workers, and live or ambiguous process holders. The liveness inventory and snapshot are checked again
+before removal; `--now` bypasses no scope, preservation or liveness guard. No selected path is removed when the initial
+selection contains a blocked path. Ignored custody and configuration copies remain local and are never printed.
 
 ## Not enforced yet
 

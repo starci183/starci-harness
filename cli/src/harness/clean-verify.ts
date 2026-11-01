@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { basename, join, posix, resolve } from "node:path"
+import { basename, isAbsolute, join, posix, relative, resolve } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { captureNpm, captureTool, EXIT_TIMEOUT, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
-import { captureGit, git, nulPaths, resolveSha } from "../shared/git.js"
+import { captureGit, git, mainCheckout, nulPaths, resolveSha, samePath } from "../shared/git.js"
 import { evidenceTail } from "../shared/output.js"
 import { locateTree } from "../shared/tree.js"
 import { describeSecrets, scanSecrets } from "../core/check/secrets-scan.js"
@@ -336,9 +336,14 @@ const verifierPid = (dir: string): number | undefined => {
 }
 
 /** Removes this repository's clean-verify checkouts whose verifier is gone (a killed verify leaves its worktree); returns them. */
-export const pruneVerifyWorktrees = async (root: string): Promise<string[]> => {
+export const pruneVerifyWorktrees = async (root: string, repositoryOnly = false): Promise<string[]> => {
     const listing = await captureGit(["worktree", "list", "--porcelain"], root)
-    const dirs = [...listing.stdout.matchAll(/^worktree (.+)$/gm)].map((match) => (match[1] ?? "").trim()).filter((dir) => basename(dir).startsWith(VERIFY_PREFIX))
+    const main = await mainCheckout(root)
+    const dirs = [...listing.stdout.matchAll(/^worktree (.+)$/gm)].map((match) => (match[1] ?? "").trim()).filter((dir) => {
+        const caller = relative(dir, process.cwd())
+        const containsCaller = caller === "" || (!caller.startsWith("..") && !isAbsolute(caller))
+        return basename(dir).startsWith(VERIFY_PREFIX) && !samePath(dir, main) && !containsCaller
+    })
     const gone = (dir: string): boolean => {
         const pid = verifierPid(dir)
         return pid === undefined || (pid !== process.pid && !pidAlive(pid))
@@ -346,6 +351,8 @@ export const pruneVerifyWorktrees = async (root: string): Promise<string[]> => {
     const pruned = dirs.filter(gone)
     await inOrder(pruned, (dir) => removeWorktree(root, dir))
     await captureGit(["worktree", "prune"], root)
+    // A repository-scoped collector cannot attribute unlisted host-wide temporary folders to this repository.
+    if (repositoryOnly) return pruned
     // A folder git no longer lists (its removal failed half-way, EBUSY) is left behind in the checkouts folder, or in the system
     // temp folder where earlier builds made checkouts; once its verifier is gone it is removed too, every link in it unlinked first.
     const listed = new Set(dirs.map((dir) => resolve(dir).toLowerCase()))

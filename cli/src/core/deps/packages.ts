@@ -403,8 +403,8 @@ export interface HealedRecord {
 }
 
 /**
- * Heals the local record of every project the host registry lists (`healRecord`): `worktree gc` runs it once it removed a
- * package edit worktree, so no project keeps naming a folder that is gone. A project whose repository is gone, or whose record is unreadable, is skipped.
+ * Heals the local record of every project the host registry lists (`healRecord`); a project whose repository is gone or whose
+ * record is unreadable is skipped. Repository-scoped collection heals only its own record; source resolution heals each caller.
  */
 export const healRecords = (): HealedRecord[] =>
     readMachine((db) => db.prepare("SELECT repo_root FROM ledgers").all(), [])

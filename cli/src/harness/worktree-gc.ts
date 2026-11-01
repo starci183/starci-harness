@@ -1,16 +1,18 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs"
-import { basename, dirname, join, relative, sep } from "node:path"
-import { captureGit, git, isAncestor, mainCheckout, nulPaths, samePath } from "../shared/git.js"
-import { describeHealed, healRecords } from "../core/deps/packages.js"
+import { existsSync, readdirSync, realpathSync, statSync } from "node:fs"
+import { basename, join, relative, resolve, sep } from "node:path"
+import { captureGit, git, gitCommonDir, isAncestor, mainCheckout, samePath } from "../shared/git.js"
+import { describeHealed, healRecord } from "../core/deps/packages.js"
 import { pruneVerifyWorktrees } from "./clean-verify.js"
 import { opWorktreeOf, removeOpWorktree, removeTracked } from "./land.js"
-import { now, openExistingLedger, openMachine, projectDir } from "./ledger.js"
+import { openExistingLedger, openMachine, projectDir } from "./ledger.js"
 import { readMachine } from "./machine.js"
 import { pruneUnkeptPrior, settlePending } from "./prior.js"
 import { inOrder } from "./sequential.js"
 import { getTask, isTerminal, lastEvent, listTasks, recordEvent } from "./tasks.js"
 import { busyDue, busyRecordOf, openBusyRecords } from "./worktree-busy.js"
 import { getWorkflow } from "./workflow.js"
+import { listProcesses, type HostProcess } from "./process-table.js"
+import { preserveCheckout } from "./worktree-preserve.js"
 
 /** The kinds of worktree the harness makes, each removed when its owner's work ends. */
 export type WorktreeKind = "op" | "workflow" | "worker" | "package" | "orphan"
@@ -27,6 +29,8 @@ export interface GcEntry {
     readonly detail: string
     /** True when the folder was left busy (something holds it) for a later gc to retry with backoff (harness/worktree-busy.ts). */
     readonly busy?: boolean
+    /** A selected path failed a scope or liveness guard; no removal is attempted. */
+    readonly blocked?: boolean
 }
 
 const ENDED_WORKFLOW = new Set(["done", "stopped"])
@@ -76,7 +80,8 @@ const judge = (root: string, entry: Listed, stateWorktrees: string): Omit<GcEntr
         }
         const machine = openMachine()
         try {
-            const worker = machine.prepare("SELECT id, ended_at, ended_by FROM supervisor_workers WHERE id = ?").get(first)
+            const workers = machine.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'supervisor_workers'").get()
+            const worker = workers === undefined ? undefined : machine.prepare("SELECT id, ended_at, ended_by FROM supervisor_workers WHERE id = ?").get(first)
             if (worker !== undefined) {
                 const ended = worker.ended_at !== null
                 return { path: entry.path, kind: "worker", owner: first, due: ended, reason: ended ? `worker ${first} was ${String(worker.ended_by ?? "ended")}` : `worker ${first} is live` }
@@ -90,28 +95,13 @@ const judge = (root: string, entry: Listed, stateWorktrees: string): Omit<GcEntr
     }
 }
 
-/**
- * Saves a worktree's uncommitted work as a red verify does: a binary patch of its tracked changes against HEAD and copies of
- * its untracked files (ignored ones aside), into `preserved/gc-<name>` of the project's state folder. Null when it is clean.
- */
-const preserveCheckout = async (root: string, path: string): Promise<string | null> => {
-    // A folder without its .git is no checkout of its own: git run there would read whatever repository encloses it.
-    if (!existsSync(join(path, ".git"))) return null
-    const tracked = nulPaths(await git(path, ["diff", "--name-only", "-z", "HEAD"]).catch(() => ""))
-    const untracked = nulPaths(await git(path, ["ls-files", "--others", "--exclude-standard", "-z"]).catch(() => ""))
-    if (tracked.length === 0 && untracked.length === 0) return null
-    let dir = join(projectDir(root), "preserved", `gc-${basename(path)}`)
-    for (let n = 2; existsSync(dir); n += 1) dir = join(projectDir(root), "preserved", `gc-${basename(path)}.${String(n)}`)
-    mkdirSync(dir, { recursive: true })
-    if (tracked.length > 0) await git(path, ["diff", "--binary", `--output=${join(dir, "changes.patch")}`, "HEAD"])
-    for (const file of untracked) {
-        const from = join(path, file)
-        if (!existsSync(from) || !statSync(from).isFile()) continue
-        mkdirSync(dirname(join(dir, "untracked", file)), { recursive: true })
-        copyFileSync(from, join(dir, "untracked", file))
+/** Canonical Git identity, including when a caller reaches a repository through a directory link. */
+export const sameRepository = async (left: string, right: string): Promise<boolean> => {
+    try {
+        return samePath(realpathSync(await gitCommonDir(left)), realpathSync(await gitCommonDir(right)))
+    } catch {
+        return false
     }
-    writeFileSync(join(dir, "manifest.json"), `${JSON.stringify({ worktree: path, head: await git(path, ["rev-parse", "HEAD"]), tracked, untracked, at: now() }, null, 2)}\n`)
-    return dir
 }
 
 /**
@@ -165,6 +155,7 @@ const reported = (entry: Collected): GcEntry => ({
     removed: entry.removed,
     detail: entry.detail,
     ...(entry.busy === undefined ? {} : { busy: entry.busy }),
+    ...(entry.blocked === undefined ? {} : { blocked: entry.blocked }),
 })
 
 /**
@@ -202,8 +193,8 @@ const busyLeftovers = (root: string, judged: readonly GcEntry[], now: boolean): 
 
 const WORKTREE_KINDS: readonly WorktreeKind[] = ["op", "workflow", "worker", "package", "orphan"]
 
-/** The package edit worktrees of the host (`pkg branch`) whose handed-off head is on the harness's main: Debug landed them. */
-const landedPackages = async (): Promise<GcEntry[]> => {
+/** The package edit worktrees of this Git repository whose handed-off head is on main. */
+const landedPackages = async (root: string): Promise<GcEntry[]> => {
     const machine = openMachine()
     let rows: Record<string, unknown>[]
     try {
@@ -214,7 +205,7 @@ const landedPackages = async (): Promise<GcEntry[]> => {
     const found = await inOrder(rows, async (row): Promise<GcEntry | undefined> => {
         const harness = String(row.harness)
         const worktree = String(row.worktree)
-        if (!existsSync(worktree)) return undefined
+        if (!existsSync(worktree) || !(await sameRepository(root, harness)) || !(await sameRepository(root, worktree))) return undefined
         const landed = await isAncestor(harness, String(row.head), "main")
         return { path: worktree, kind: "package", owner: String(row.branch), due: landed, reason: landed ? `${String(row.branch)} is on main` : `${String(row.branch)} is not landed yet`, preserved: null, removed: false, detail: "" }
     })
@@ -233,21 +224,22 @@ export const retireWorktrees = async (root: string): Promise<GcEntry[]> => {
         const owned = judge(root, entry, stateWorktrees)
         const kind = owned?.kind ?? "orphan"
         const owner = owned?.owner ?? null
-        const preserved = await preserveCheckout(root, entry.path)
+        const snapshot = await preserveCheckout(root, entry.path)
+        await snapshot?.verify()
         const removal = await removeWorktree(root, { path: entry.path, kind, owner }, true, root)
-        return { path: entry.path, kind, owner, due: true, reason: "its project is retired", preserved, ...removal }
+        return { path: entry.path, kind, owner, due: true, reason: "its project is retired", preserved: snapshot?.directory ?? null, ...removal }
     })
 }
 
 /**
- * The harness worktrees still left for every retired project of the host (a project retired before `project retire` removed
+ * The harness worktrees still left for a retired project of this Git repository (a project retired before `project retire` removed
  * them, or whose removal was refused): no tick reaches a retired ledger, so each collector run removes them as `project retire`
  * does. `dryRun` lists them and changes nothing.
  */
-const retiredLeftovers = async (dryRun: boolean): Promise<GcEntry[]> => {
+const retiredLeftovers = async (root: string, dryRun: boolean): Promise<GcEntry[]> => {
     const repos = readMachine((db) => db.prepare("SELECT repo_root FROM ledgers WHERE state = 'retired'").all(), []).map((row) => String(row.repo_root))
     const found = await inOrder(repos, async (repo): Promise<GcEntry[]> => {
-        if (!existsSync(join(repo, ".git"))) return []
+        if (!existsSync(join(repo, ".git")) || !(await sameRepository(root, repo))) return []
         const stateWorktrees = join(projectDir(repo), "worktrees")
         const listed = await listWorktrees(repo).catch((): Listed[] => [])
         const left = listed.filter((entry) => inside(stateWorktrees, entry.path) !== undefined)
@@ -260,6 +252,76 @@ const retiredLeftovers = async (dryRun: boolean): Promise<GcEntry[]> => {
     return found.flat()
 }
 
+/** Explicit legacy paths are an exclusive selection; caller identifies the directory invoking the verb. */
+export interface GcSelection {
+    readonly paths?: readonly string[]
+    readonly caller?: string
+}
+
+const canonical = (path: string): string => realpathSync(resolve(path))
+const contains = (folder: string, path: string): boolean => samePath(folder, path) || inside(folder, path) !== undefined
+
+/** A live holder blocks collection; process arguments are inspected internally and are never included in the result. */
+export const processBlockReason = (path: string, processes: readonly HostProcess[], callerPid = process.pid): string | undefined => {
+    const table = new Map(processes.map((one) => [one.pid, one]))
+    const own = new Set<number>([callerPid])
+    let at = table.get(callerPid)
+    while (at !== undefined && !own.has(at.ppid)) {
+        own.add(at.ppid)
+        at = table.get(at.ppid)
+    }
+    const spelling = (value: string): string => value.replaceAll("\\", "/").toLowerCase()
+    const holder = processes.find((one) => {
+        if (own.has(one.pid)) return false
+        if (one.cwd !== null) {
+            try {
+                if (contains(path, existsSync(one.cwd) ? canonical(one.cwd) : resolve(one.cwd))) return true
+            } catch {
+                return true
+            }
+        }
+        return spelling(one.commandLine).includes(spelling(path))
+    })
+    return holder === undefined ? undefined : `live or ambiguous holder pid ${String(holder.pid)}; finish its work before collecting`
+}
+
+const liveWorkerReason = (path: string): string | undefined => {
+    const machine = openMachine()
+    try {
+        if (machine.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'supervisor_workers'").get() === undefined) return undefined
+        const worker = machine.prepare("SELECT id, worktree FROM supervisor_workers WHERE ended_at IS NULL").all().find((row) => {
+            const directory = String(row.worktree)
+            const actual = existsSync(directory) ? canonical(directory) : resolve(directory)
+            return contains(path, actual) || contains(actual, path)
+        })
+        return worker === undefined ? undefined : `worker ${String(worker.id)} is live`
+    } finally {
+        machine.close()
+    }
+}
+
+const selectedPaths = async (root: string, listed: readonly Listed[], known: readonly Collected[], selection: GcSelection): Promise<Collected[]> => {
+    const main = canonical(await mainCheckout(root))
+    const callers = [canonical(process.cwd()), canonical(selection.caller ?? process.cwd())]
+    const processes = await listProcesses(true)
+    return inOrder([...new Set(selection.paths ?? [])], async (requested): Promise<Collected> => {
+        const path = resolve(selection.caller ?? process.cwd(), requested)
+        const base: Collected = { path, kind: "orphan", owner: null, due: false, reason: "", preserved: null, removed: false, detail: "" }
+        const blocked = (reason: string): Collected => ({ ...base, reason, blocked: true })
+        if (!existsSync(path)) return blocked("selected path does not exist")
+        const actual = canonical(path)
+        if (samePath(main, actual)) return blocked("the primary checkout is protected")
+        if (callers.some((caller) => contains(actual, caller))) return blocked("the caller's checkout is protected")
+        const entry = listed.find((one) => existsSync(one.path) && samePath(canonical(one.path), actual))
+        if (entry === undefined || !(await sameRepository(root, actual))) return blocked("selected path is not a listed linked worktree of this repository")
+        const owner = known.find((one) => samePath(one.path, entry.path))
+        if (owner !== undefined && !owner.due) return blocked(owner.reason)
+        const held = liveWorkerReason(actual) ?? (typeof processes === "string" ? "process inventory unavailable; liveness cannot be proved" : processBlockReason(actual, processes))
+        if (held !== undefined) return blocked(held)
+        return { ...(owner ?? base), path: entry.path, due: true, reason: "explicitly selected linked worktree; preserve its work and references before removal" }
+    })
+}
+
 /**
  * The worktree collector: every worktree the harness made for a repository is judged by its owner (an Op's task settled, a
  * workflow done or stopped with its Kernel closed, a Supervisor's worker accepted or rejected, a package edit landed on main)
@@ -269,7 +331,7 @@ const retiredLeftovers = async (dryRun: boolean): Promise<GcEntry[]> => {
  * removed, git prunes and Orca drops it; branches stay, so nothing committed is lost. A folder still held names its holder and is
  * retried with backoff, or at once with `now`. `dryRun` judges and changes nothing.
  */
-export const worktreeGc = async (root: string, dryRun: boolean, now = false): Promise<GcEntry[]> => {
+export const worktreeGc = async (root: string, dryRun: boolean, now = false, selection: GcSelection = {}): Promise<GcEntry[]> => {
     const stateWorktrees = join(projectDir(root), "worktrees")
     const listed = await listWorktrees(root)
     const owned = [
@@ -278,16 +340,25 @@ export const worktreeGc = async (root: string, dryRun: boolean, now = false): Pr
             return one === undefined ? [] : [{ ...one, preserved: null, removed: false, detail: "" }]
         }),
         ...unlistedOpLeftovers(root, listed),
-        ...(await landedPackages()),
+        ...(await landedPackages(root)),
     ]
     const remnants = remnantsUnder(root, listed, now).filter((remnant) => !owned.some((entry) => samePath(entry.path, remnant.path)))
     const known: Collected[] = [...owned, ...remnants]
-    const judged: Collected[] = [...known, ...busyLeftovers(root, known, now)]
-    const verify = dryRun ? [] : (await pruneVerifyWorktrees(root)).map((path): GcEntry => ({ path, kind: "orphan", owner: null, due: true, reason: "a clean-verify checkout whose verifier is gone", preserved: null, removed: true, detail: "pruned" }))
-    const retired = await retiredLeftovers(dryRun)
+    const candidates: Collected[] = [...known, ...busyLeftovers(root, known, now)]
+    const scoped = await inOrder(candidates, async (entry): Promise<Collected[]> => {
+        const repo = entry.repo ?? (existsSync(join(entry.path, ".git")) ? entry.path : root)
+        const pathOwned = existsSync(join(entry.path, ".git")) ? await sameRepository(root, entry.path) : inside(stateWorktrees, entry.path) !== undefined
+        return pathOwned && (await sameRepository(root, repo)) ? [entry] : []
+    })
+    const explicit = (selection.paths?.length ?? 0) > 0
+    const judged = explicit ? await selectedPaths(root, listed, scoped.flat(), selection) : scoped.flat()
+    // Explicit selection has no incidental sweep, prior pruning, or local-record writes outside those paths.
+    const verify = dryRun || explicit ? [] : (await pruneVerifyWorktrees(root, true)).map((path): GcEntry => ({ path, kind: "orphan", owner: null, due: true, reason: "a clean-verify checkout whose verifier is gone", preserved: null, removed: true, detail: "pruned" }))
+    const retired = explicit ? [] : await retiredLeftovers(root, dryRun)
     if (dryRun) return [...judged.map(reported), ...retired]
+    if (explicit && judged.some((entry) => entry.blocked === true)) return judged.map(reported)
     // The prior-work store keeps one patch per key, of a kept kind only; each other row is dropped with a prior-dropped event.
-    pruneUnkeptPrior(root)
+    if (!explicit) pruneUnkeptPrior(root)
     const done = await inOrder(judged, async (collected): Promise<GcEntry> => {
         const { repo, remnant } = collected
         const entry = reported(collected)
@@ -302,25 +373,34 @@ export const worktreeGc = async (root: string, dryRun: boolean, now = false): Pr
             }
         })()
         if (busy !== undefined && !now && !busyDue(busy) && existsSync(entry.path)) return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}${busy.holders === "" ? "" : `; ${busy.holders}`}); retried from ${busy.nextAt}` }
-        const preserved = await preserveCheckout(root, entry.path)
+        if (explicit) {
+            const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
+            if (fresh?.blocked === true) return reported(fresh)
+        }
+        const snapshot = await preserveCheckout(root, entry.path)
+        await snapshot?.verify()
+        if (explicit) {
+            const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
+            if (fresh?.blocked === true) return { ...reported(fresh), preserved: snapshot?.directory ?? null }
+            await snapshot?.verify()
+        }
         const removal =
-            entry.kind === "op" && entry.owner !== null
+            !explicit && entry.kind === "op" && entry.owner !== null
                 ? await removeOpWorktree(root, entry.owner, now).then((made) => (made === undefined ? removeWorktree(root, entry, true, repo, false, now) : { removed: made.removed, busy: made.busy === true, detail: made.detail }))
                 : await removeWorktree(root, entry, entry.kind !== "package" && remnant !== true, repo, remnant === true, now)
         const db = openExistingLedger(root)
         if (db !== undefined) {
             try {
-                recordEvent(db, "worktree-gc", entry.owner, { path: entry.path, kind: entry.kind, reason: entry.reason, preserved, ...removal })
+                recordEvent(db, "worktree-gc", entry.owner, { path: entry.path, kind: entry.kind, reason: entry.reason, preserved: snapshot?.directory ?? null, ...removal })
             } finally {
                 db.close()
             }
         }
-        return { ...entry, preserved, ...removal }
+        return { ...entry, preserved: snapshot?.directory ?? null, ...removal }
     })
-    // A removed package edit worktree may be the folder a project's local package record names: every record is healed to the
-    // harness's own packages/ (core/deps/packages.ts healRecord), so no install, sync or launch meets the vanished folder.
-    const healed = done.some((entry) => entry.kind === "package" && entry.removed) ? healRecords() : []
-    const note = healed.map((one) => `${one.repo}: ${one.healed.map(describeHealed).join("; ")}`).join("; ")
+    // Heal this repository's local record; other projects heal their own records when they next resolve package sources.
+    const healed = done.some((entry) => entry.kind === "package" && entry.removed) ? healRecord(root).healed : []
+    const note = healed.map(describeHealed).join("; ")
     const noted = note === "" ? done : done.map((entry) => (entry.kind === "package" && entry.removed ? { ...entry, detail: `${entry.detail}; local package records healed: ${note}` } : entry))
     return [...noted, ...verify, ...retired]
 }
