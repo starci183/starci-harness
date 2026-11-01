@@ -6,6 +6,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- A committed `package-lock.json`, `npm-shrinkwrap.json` or `.npmrc` that names a registry on this machine (a `resolved` URL on localhost, 127.0.0.1, `*.localhost`, `[::1]`) is refused `DEPS_LOCAL_REGISTRY_COMMITTED` by `deps check`, `release push`, `release cut` and an executed `app release`, in an app or the harness alike. Every npm question those gates and `release publish` ask (`npm view`, `npm pack`, `npm publish`) is pinned to registry.npmjs.org, so a `@starci:registry` set in the environment or a user npmrc can no longer make an unpublished pin look installable.
+
 ## [1.1.0-alpha.37] - 2026-11-02
 
 - `starci dna check` measures a scoped count inside the grammar root it scopes (a Tabs, a PageHeader, a Toaster counted 0 for every scope that is not the root itself), names a menu popover through the `aria-label` of the trigger it points at, and reads a size as the box the layout gives, not the one a press scale paints. `contexts anatomy` refuses a removed spelling marked `shipped: true` in rulings.yaml anywhere in `packages/hfs/runtime`.

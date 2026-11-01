@@ -7,6 +7,7 @@ import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
 import { locateTree } from "../../shared/tree.js"
+import { judgeLocalRegistry, NPMJS_FLAGS } from "./local-refs.js"
 import { committedPins, installsOf, LOCAL_MARKER, manifestFiles } from "./packages.js"
 import type { Install, Pin } from "./packages.js"
 
@@ -39,7 +40,7 @@ const fromRegistry = (spec: string): boolean => !/^(?:[a-z][\w+.-]*:|\.|\/|~\/)/
 /** Whether `name@spec` has a published version; DEPS_REGISTRY_UNREACHABLE when npm cannot say, since an unknown is never a yes. */
 const published = async (root: string, name: string, spec: string): Promise<boolean> => {
     if (!fromRegistry(spec)) return false
-    const run = await captureNpm(["view", `${name}@${spec}`, "version", "--json"], root)
+    const run = await captureNpm(["view", `${name}@${spec}`, "version", "--json", ...NPMJS_FLAGS], root)
     if (run.exitCode === 0) return run.stdout.trim() !== ""
     if (/E404|ETARGET|No match found/.test(`${run.stdout}\n${run.stderr}`)) return false
     throw new Refusal("DEPS_REGISTRY_UNREACHABLE", `npm view ${name}@${spec} failed, so the pin cannot be called installable: ${run.stderr.trim().split("\n").slice(-3).join(" ")}`)
@@ -94,7 +95,7 @@ const packSchema = z.array(z.object({ filename: z.string() })).min(1)
 const differingFiles = async (root: string, install: Install, version: string): Promise<string[]> => {
     const scratch = mkdtempSync(join(tmpdir(), "starci-deps-"))
     try {
-        const run = await captureNpm(["pack", `${install.name}@${version}`, "--pack-destination", scratch, "--json"], root)
+        const run = await captureNpm(["pack", `${install.name}@${version}`, "--pack-destination", scratch, "--json", ...NPMJS_FLAGS], root)
         let raw: unknown
         try {
             raw = JSON.parse(run.stdout)
@@ -135,10 +136,13 @@ const aheadOf = async (root: string, install: Install, version: string): Promise
  * `@starci` package to a spec npm cannot install (no published version matches, or a path or protocol), since CI would
  * fail to install it; and DEPS_LOCAL_AHEAD when a local copy (`starci deps source --local`) runs code no published version
  * holds: its version is not on npm, or it is and the copy's files differ from that version's tarball (the build stamp aside).
+ * A lockfile or .npmrc committed at `revision` that names a registry on this machine (a `deps publish-local` install) is
+ * DEPS_LOCAL_REGISTRY_COMMITTED, in any repository, and every npm question here is pinned to the public registry (`NPMJS_FLAGS`).
  * Local mode alone never refuses: its record and copies are never committed. Outside a StarCi app (the harness itself,
  * whose packages the release plan judges) it judges nothing.
  */
 export const judgePush = async (root: string, revision = "HEAD"): Promise<PushJudgement> => {
+    await judgeLocalRegistry(root, revision)
     const tree = locateTree(root).tree
     if (tree !== "lite" && tree !== "full") return { app: false, revision, pins: [], local: [], notes: ["not a StarCi app (no app hfs.json): nothing to judge"] }
     const pins = await committedPins(root, revision)
