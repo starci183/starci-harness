@@ -120,7 +120,7 @@ export const BareMarks: Story = {
                 { id: 'd', label: 'Done' },
               ]}
             />
-            <G.ConnectionStatus state="lost" label="Connection lost" />
+            <G.Badge isDot tone="danger">Connection lost</G.Badge>
           </State>
         </G.GrammarRoot>
       ))}

@@ -112,7 +112,7 @@ const PageHeaderDemo = ({ withTabs }: { readonly withTabs: boolean }) => {
         title="Main account"
         titleId="page-header-story-title"
         mark={<G.Avatar name="Sepay" shape="rounded" isDecorative />}
-        status={<><G.StatusDot tone="success">Connected</G.StatusDot><G.Badge tone="warning">Test mode · not posted</G.Badge></>}
+        status={<><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode · not posted</G.Badge></>}
         meta="Bank transfer · ****6789"
         description="Payments arrive by webhook and are matched to invoices."
         actions={<><G.Button intent="neutral" onPress={noop}>Switch to live</G.Button><G.Button intent="destructive" onPress={noop}>Disconnect</G.Button></>}

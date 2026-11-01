@@ -140,56 +140,39 @@ export const Badge: Story = {
   ),
 };
 
-const DOT_SIZES = ['sm', 'md', 'lg'] as const;
 const DOT_TONES = ['neutral', 'accent', 'success', 'warning', 'danger'] as const;
-const PADDING_SIDES = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'] as const;
 
 export const StatusDot: Story = {
   render: () => (
     <Matrix>
-      <State label="With text, beside HeroUI Chip at each size" direction="column">
-        {DOT_SIZES.map((size) => (
-          <div key={size} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ width: '2rem' }}>{size}</span>
-            <G.StatusDot size={size} tone="success">online</G.StatusDot>
-            <HeroChip size={size} color="success" variant="soft">Online</HeroChip>
-          </div>
-        ))}
-      </State>
-      <State label="With text, tones">
-        {DOT_TONES.map((tone) => <G.StatusDot key={tone} tone={tone}>{tone}</G.StatusDot>)}
-      </State>
       <State label="Echo (dot with an expanding ring)">
         {DOT_TONES.map((tone) => <G.StatusDot key={tone} tone={tone} echo aria-label={`Live, ${tone}`} />)}
       </State>
       <State label="Static (dot only)">
         {DOT_TONES.map((tone) => <G.StatusDot key={tone} tone={tone} aria-label={`Status, ${tone}`} />)}
       </State>
+      <State label="Badge isDot: the status with its words, beside HeroUI Chip">
+        <G.Badge isDot tone="success">online</G.Badge>
+        <HeroChip size="sm" color="success" variant="soft">Online</HeroChip>
+      </State>
+      <State label="Badge isDot isLive: a live feed (polite live region)">
+        <G.Badge isDot isLive tone="success">Live</G.Badge>
+        <G.Badge isDot isLive tone="warning">Reconnecting</G.Badge>
+        <G.Badge isDot tone="danger">Connection lost</G.Badge>
+      </State>
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      for (const size of DOT_SIZES) {
-        const dot = canvasElement.querySelector(`.starci-core-status-dot-chip[data-size="${size}"]`);
-        const chip = dot?.nextElementSibling;
-        if (!(dot instanceof HTMLElement) || !(chip instanceof HTMLElement)) throw new Error(`${size}: StatusDot and Chip must both render`);
-        const dotStyle = getComputedStyle(dot);
-        const chipStyle = getComputedStyle(chip);
-        for (const side of PADDING_SIDES) {
-          // The sm chip pads 8px inline (HeroUI's sm Chip pads 4px), so a status word clears the pill edge.
-          const expected = size === 'sm' && (side === 'paddingLeft' || side === 'paddingRight') ? '8px' : chipStyle[side];
-          if (dotStyle[side] !== expected) throw new Error(`${size}: ${side} ${dotStyle[side]} differs from ${expected}`);
-        }
-        if (dot.getBoundingClientRect().height !== chip.getBoundingClientRect().height) throw new Error(`${size}: height ${dot.getBoundingClientRect().height} differs from Chip ${chip.getBoundingClientRect().height}`);
-        const label = dot.querySelector('.starci-core-status-dot-label');
-        if (!label || !/^\p{Lu}/u.test(label.textContent ?? '')) throw new Error(`${size}: the label's first letter must be uppercase`);
-        const mark = dot.querySelector('.starci-core-status-dot-mark');
-        if (!(mark instanceof HTMLElement) || !(label instanceof HTMLElement)) throw new Error(`${size}: dot and label must render`);
-        const gap = label.getBoundingClientRect().left - mark.getBoundingClientRect().right;
-        if (Math.abs(gap - 4) > 0.5) throw new Error(`${size}: dot-to-text gap is ${gap}px, expected 4px`);
-      }
       for (const dot of canvasElement.querySelectorAll('[data-component="StatusDot"][data-variant="echo"], [data-component="StatusDot"][data-variant="static"]')) {
-        if (!dot.getAttribute('aria-label')) throw new Error('A dot-only StatusDot needs an aria-label');
+        if (!dot.getAttribute('aria-label')) throw new Error('A StatusDot needs an aria-label');
+      }
+      const live = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-badge-live="true"]')];
+      if (live.length !== 2) throw new Error('Two live badges must render');
+      for (const badge of live) {
+        if (badge.getAttribute('role') !== 'status') throw new Error('A live badge is a status region');
+        if ((badge.textContent ?? '').trim() === '') throw new Error('The words carry the state');
+        if (!/^[A-Z]/.test(badge.querySelector('.starci-core-badge-dot-label')?.textContent ?? '')) throw new Error("The label's first letter must be uppercase");
       }
     });
   },
@@ -421,18 +404,6 @@ export const IconTile: Story = {
   ),
 };
 
-export const IncludedMark: Story = {
-  render: () => (
-    <Matrix>
-      <State label="Decorative and labelled">
-        <G.IncludedMark />
-        <G.IncludedMark label="Included" />
-        <G.Text startContent={<G.IncludedMark />}>Offline access</G.Text>
-      </State>
-    </Matrix>
-  ),
-};
-
 export const Label: Story = {
   render: () => (
     <Matrix>
@@ -477,19 +448,6 @@ export const Progress: Story = {
       </State>
       <State label="Skeleton" direction="column">
         <G.Progress label="Loading" isSkeleton />
-      </State>
-    </Matrix>
-  ),
-};
-
-export const RankArtwork: Story = {
-  render: () => (
-    <Matrix>
-      <State label="Kinds">
-        <G.RankArtwork kind="first" label="First place" width={48} height={48} />
-        <G.RankArtwork kind="second" label="Second place" width={48} height={48} />
-        <G.RankArtwork kind="third" label="Third place" width={48} height={48} />
-        <G.RankArtwork kind="cup" label="Trophy" width={48} height={48} />
       </State>
     </Matrix>
   ),
@@ -763,28 +721,6 @@ export const Meter: Story = {
       </State>
     </Matrix>
   ),
-};
-
-export const ConnectionStatus: Story = {
-  render: () => (
-    <Matrix>
-      <State label="Live, reconnecting, lost (polite live regions)">
-        <G.ConnectionStatus state="live" label="Live" />
-        <G.ConnectionStatus state="reconnecting" label="Reconnecting" />
-        <G.ConnectionStatus state="lost" label="Connection lost" />
-      </State>
-    </Matrix>
-  ),
-  play: async ({ canvasElement }) => {
-    const states = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="ConnectionStatus"]')];
-    await waitFor(() => {
-      if (states.length !== 3) throw new Error('Three connection states must render');
-      for (const status of states) {
-        if (status.getAttribute('role') !== 'status') throw new Error('A connection status is a status region');
-        if ((status.textContent ?? '').trim() === '') throw new Error('The words carry the state');
-      }
-    });
-  },
 };
 
 export const ProgressCircle: Story = {

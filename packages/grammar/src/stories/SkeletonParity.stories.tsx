@@ -221,11 +221,6 @@ const status = (): ReadonlyArray<Pair> => [
         ready: <G.Badge tone="success" isDot>Online</G.Badge>,
         loading: <G.Badge tone="success" isDot isSkeleton>Online</G.Badge>,
     },
-    ...(["sm", "md", "lg"] as const).map((size) => ({
-        id: `status-dot-text-${size}`,
-        ready: <G.StatusDot tone="warning" size={size}>Degraded</G.StatusDot>,
-        loading: <G.StatusDot tone="warning" size={size} isSkeleton>Degraded</G.StatusDot>,
-    })),
     {
         id: "status-dot-only",
         ready: <G.StatusDot tone="success" aria-label="Online" />,
@@ -283,7 +278,7 @@ const pageHeader = (withTabs: boolean, isSkeleton: boolean) => (
         breadcrumbs={{ label: "Breadcrumb", items: [{ id: "connections", label: "Connections", href: "#connections" }, { id: "main", label: "Main account" }] }}
         title="Main account"
         mark={<G.Avatar name="Sepay" shape="rounded" isDecorative />}
-        status={<><G.StatusDot tone="success">Connected</G.StatusDot><G.Badge tone="warning">Test mode</G.Badge></>}
+        status={<><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode</G.Badge></>}
         meta="Bank transfer · ****6789"
         actions={<G.Button intent="neutral" onPress={noop}>Disconnect</G.Button>}
         {...(withTabs ? { tabs: { label: "Connection", selectedKey: "test", items: [{ id: "overview", label: "Overview" }, { id: "test", label: "Test" }] } } : {})}

@@ -325,46 +325,6 @@ export const AccentCorner: Story = {
 };
 
 /**
- * The brand backdrop (ruling backdrop): the brand half of a sign-in split, the tint full-bleed with no card anatomy, the
- * copy at the top and a hero Mascot filling the rest, one corner at the accent radius.
- */
-export const Backdrop: Story = {
-  render: (_, { globals }) => (
-    <G.GrammarRoot {...familyScope(globals)} data-story-backdrop="true" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', blockSize: '36rem' }}>
-      <G.Backdrop
-        accentCorner="end-end"
-        artwork={<G.Mascot src={turtleUrl} size="hero" visibility="always" loading="eager" assetSlot="story.backdrop-mascot" />}
-      >
-        <G.Heading level={1}>Nivo</G.Heading>
-        <G.Text tone="muted">Renewals that turn into cash.</G.Text>
-      </G.Backdrop>
-      <div style={{ padding: '2rem' }}>
-        <G.Text>The task half.</G.Text>
-      </div>
-    </G.GrammarRoot>
-  ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const root = canvasElement.querySelector('[data-story-backdrop]');
-      const backdrop = root?.querySelector('[data-component="Backdrop"]');
-      if (!(root instanceof HTMLElement) || !(backdrop instanceof HTMLElement)) throw new Error('the backdrop renders');
-      const style = getComputedStyle(backdrop);
-      expect(rgbaOf(style.backgroundColor)).toEqual(rgbaOf(getComputedStyle(root).getPropertyValue('--accent-soft')));
-      expect(style.borderTopWidth).toBe('0px');
-      expect(style.boxShadow).toBe('none');
-      expect(style.borderStartStartRadius).toBe('0px');
-      const accent = `${parseFloat(getComputedStyle(root).getPropertyValue('--grammar-accent-corner')) * parseFloat(getComputedStyle(document.documentElement).fontSize)}px`;
-      expect(style.borderEndEndRadius).toBe(accent);
-      // It fills its host, and the hero Mascot takes the height the copy leaves.
-      expect(Math.abs(backdrop.getBoundingClientRect().height - root.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
-      const mascot = backdrop.querySelector('.starci-core-backdrop-artwork [data-component="Mascot"]');
-      if (!(mascot instanceof HTMLElement)) throw new Error('the hero Mascot renders in the artwork slot');
-      expect(mascot.getBoundingClientRect().height).toBeGreaterThan(backdrop.getBoundingClientRect().height / 3);
-    });
-  },
-};
-
-/**
  * Freestyle (ruling grammar-freestyle-region): the sanctioned escape hatch. It fills its host, adds no paint of its own,
  * stamps its reason, and the app's own divs and CSS inside it are the app's.
  */
@@ -561,27 +521,6 @@ export const SurfaceAccordionCard: Story = {
       </State>
       <State label="Unpainted disclosure inherits its parent's surface" direction="column">
         <G.SurfaceCard label="Course details"><SingleAccordionDemo frame="unpainted" /></G.SurfaceCard>
-      </State>
-    </Matrix>
-  ),
-};
-
-export const SurfaceCopyGroup: Story = {
-  render: () => (
-    <Matrix maxWidth={480}>
-      <State label="Compact and comfortable" direction="column">
-        <G.SurfaceCard ariaLabel="Compact copy">
-          <G.SurfaceCopyGroup density="compact">
-            <G.Heading level={3}>Compact rhythm</G.Heading>
-            <G.Text tone="muted">Title and explanation sit 0.5rem apart.</G.Text>
-          </G.SurfaceCopyGroup>
-        </G.SurfaceCard>
-        <G.SurfaceCard ariaLabel="Comfortable copy">
-          <G.SurfaceCopyGroup density="comfortable">
-            <G.Heading level={3}>Comfortable rhythm</G.Heading>
-            <G.Text tone="muted">A looser pairing for longer copy.</G.Text>
-          </G.SurfaceCopyGroup>
-        </G.SurfaceCard>
       </State>
     </Matrix>
   ),
