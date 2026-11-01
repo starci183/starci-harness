@@ -14,7 +14,7 @@ export const NPMJS_FLAGS: readonly string[] = [`--registry=${NPMJS_REGISTRY}`, `
 
 /** Whether a host names this machine or a container's view of it: a registry there is never reachable from CI or production. */
 export const isLoopbackHost = (host: string): boolean => {
-    const name = host.toLowerCase().replace(/^\[|\]$/g, "")
+    const name = host.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "")
     return name === "localhost" || name.endsWith(".localhost") || name === "host.docker.internal" || name === "0.0.0.0" || name === "::1" || name === "::" || /^127(?:\.\d{1,3}){3}$/.test(name)
 }
 
@@ -35,7 +35,12 @@ export interface LocalReference {
 
 const LOCKFILE = /^(?:package-lock|npm-shrinkwrap)\.json$/
 const RESOLVED = /"resolved"\s*:\s*("(?:[^"\\]|\\.)*")/g
-const NPMRC_REGISTRY = /^\s*(?:@[\w.-]+:)?registry\s*=\s*(\S+)/i
+const NPMRC_REGISTRY = /^\s*(?:@[\w.-]+:)?registry\s*=\s*(?:("(?:[^"\\]|\\.)*")|'([^']*)'|([^;\s#]+))/i
+
+const registryAddress = (url: string): string => {
+    const parsed = new URL(url.replace(/^\/\//, "http://"))
+    return `${parsed.protocol}//${parsed.host}`
+}
 
 const jsonString = (text: string | undefined): string | undefined => {
     if (text === undefined) return undefined
@@ -45,6 +50,11 @@ const jsonString = (text: string | undefined): string | undefined => {
     } catch {
         return undefined
     }
+}
+
+const npmrcRegistry = (line: string): string | undefined => {
+    const match = NPMRC_REGISTRY.exec(line)
+    return jsonString(match?.[1]) ?? match?.[2] ?? match?.[3]
 }
 
 const resolvedCandidates = (text: string): { readonly url: string | undefined; readonly line: number }[] => {
@@ -63,7 +73,7 @@ export const localReferences = (file: string, text: string): LocalReference[] =>
     const candidates = LOCKFILE.test(base)
         ? resolvedCandidates(text)
         : base === ".npmrc"
-            ? text.split("\n").map((raw, index) => ({ url: NPMRC_REGISTRY.exec(raw)?.[1], line: index + 1 }))
+            ? text.split("\n").map((raw, index) => ({ url: npmrcRegistry(raw), line: index + 1 }))
             : []
     return candidates.flatMap(({ url, line }): LocalReference[] => {
         const host = url === undefined ? undefined : hostOf(url.replace(/^\/\//, "http://"))
@@ -83,7 +93,7 @@ export const judgeLocalRegistry = async (root: string, revision: string): Promis
     const found: LocalReference[] = []
     for (const file of files) found.push(...localReferences(file, await git(root, ["show", `${revision}:${file}`])))
     if (found.length === 0) return
-    const listed = found.slice(0, 5).map((one) => `${one.file}:${String(one.line)} ${one.url}`).join("; ")
+    const listed = found.slice(0, 5).map((one) => `${one.file}:${String(one.line)} ${registryAddress(one.url)}`).join("; ")
     const more = found.length > 5 ? ` and ${String(found.length - 5)} more` : ""
     throw new Refusal("DEPS_LOCAL_REGISTRY_COMMITTED", `committed files point npm at this machine: ${listed}${more}. CI cannot install from it. Restore the lockfile (git checkout -- package-lock.json, or starci deps source --npm), pin a version npm serves, and commit that`)
 }
