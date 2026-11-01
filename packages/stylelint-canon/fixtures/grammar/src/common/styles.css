@@ -4157,7 +4157,7 @@
     /* Until the width is measured the row is held at its height and hidden, so the server render and the first paint never jump. */
     .starci-core-filter-button-group[data-grammar-filter-fit="pending"] .starci-core-filter-button-row { visibility: hidden; }
     .starci-core-filter-button-toggles { display: flex; flex-wrap: nowrap; gap: 0.5rem; min-width: 0; }
-    .starci-core-filter-button { flex: none; gap: var(--grammar-identity-gap); white-space: nowrap; }
+    .starci-core-filter-button { flex: none; gap: 0.5rem; white-space: nowrap; }
     .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: 0.8; }
     /* The rest takes the surface; selected is the accent soft pair (ruling status-soft-pair-on-background). */
     .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { background: var(--surface); color: var(--surface-foreground); }
