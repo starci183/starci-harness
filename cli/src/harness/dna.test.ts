@@ -52,8 +52,9 @@ void test("a contract list of token names becomes the metrics of a tokens law", 
 void test("the public interaction then is loaded as after without a thenable key", () => {
     const pending = loadDnaContract().entries.find((entry) => entry.id === "DNA-COMMON-PENDING-KEEPS-BOX")?.variants[0]
     assert.ok(pending)
-    assert.deepEqual(pending.after?.metrics, ["width", "height", "name"])
-    assert.deepEqual(pending.after?.value, { before: true })
+    assert.ok(pending.after)
+    assert.deepEqual(pending.after.metrics, ["width", "height", "name"])
+    assert.deepEqual(pending.after.value, { before: true })
     assert.equal(Object.hasOwn(pending, "then"), false)
 })
 
