@@ -16,7 +16,7 @@ export const DragItemStates: Story = {
                 <G.DragItem isInvalid onDragStart={noop}><G.Button intent="neutral">Invalid placement</G.Button></G.DragItem>
                 <G.DragItem isDashed onDragStart={noop}><G.Button intent="neutral">Drop target</G.Button></G.DragItem>
                 <G.DragItem isDisabled><G.Button intent="neutral" isDisabled>Locked lesson</G.Button></G.DragItem>
-                <G.DragItem leadingColor="#7547ff" onDragStart={noop}><G.Button intent="neutral">With a category colour</G.Button></G.DragItem>
+                <G.DragItem tone="accent" onDragStart={noop}><G.Button intent="neutral">With a tone</G.Button></G.DragItem>
             </State>
         </Matrix>
     ),
