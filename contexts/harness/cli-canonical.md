@@ -70,7 +70,7 @@ longer drift.
 | verb | canonical actions | changes |
 |---|---|---|
 | scaffold | `scaffold <name> [--cwd] [--edition]` | `--into` -> `--cwd`; FIX the closing hint "next: starci npm ci" -> "next: npm ci" (main.mjs:416, scaffold/app.mjs:602; no `npm` group exists) |
-| add | `add <noun> <name>` with nouns api, webhook, realtime, saga, job, reactor, queue, projection, cli, table, app, block, composite, branch, leaf, page, layout, overlay, **service, spec, image** | FOLD `app new service|spec|image` into `app add` (both generate into an existing app and never overwrite); options a noun does not take are refused, not ignored |
+| add | `add <noun> <name>` with nouns api, webhook, realtime, saga, job, reactor, queue, projection, cli, table, app, block, frame, composite, branch, leaf, page, layout, overlay, **service, spec, image** | FOLD `app new service|spec|image` into `app add` (both generate into an existing app and never overwrite); options a noun does not take are refused, not ignored |
 | upgrade | `upgrade [--execute]` | dry by default (today `--plan` is the dry flag and the default applies); FIX unreachable `--edition` refusal |
 | sync | `sync [--execute]` | `--check` = the default dry run (exit 1 on drift), `--write` -> `--execute`; FOLD `app sonar` (one block of one managed file) into it |
 | check | `check [--full] [--hfs] [--format] [--db] [--secrets] [--wiring] [--types] [--lint] [--test] [--sonar] [--staged] [--coverage-from] [--json]` | FOLD `app hygiene` into `app check --staged` (the pre-commit guard); gate per hfs 4.11.22: pass under 20 error findings with no hard blocker |

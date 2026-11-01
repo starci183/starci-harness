@@ -22,7 +22,7 @@ A page, layout, overlay or block is split: the connected `X(props: XProps)` in `
 `XBase(props: XBaseProps)` in `component.tsx`, where `XBaseProps` is `{ shape?, props, on? }`. `props` holds atoms
 (strings, numbers, booleans, arrays and plain objects of them, one `DataSlot<T>` per read, the resolved labels, and for
 feature composition a named `render` callback that takes data), `on` holds actions whose arguments are atoms, a layout
-alone also takes `children`, and the pure half calls no hook of the world. Only its sibling `index.tsx` imports
+alone also takes `children`, as does a frame (the tier whose job it is), and the pure half calls no hook of the world. Only its sibling `index.tsx` imports
 `component.tsx`, which never re-exports `XBase`, so only `X` leaves the folder.
 
 The unit is drawn on three axes, and none stands in for another:
@@ -67,7 +67,7 @@ Enforced by: R92 (`connected-block-has-presentational-twin`), R55 (`use-client-o
 
 ## FE-FUNCTION-4 A lower tier takes narrow resolved fields
 
-A composite, branch or leaf has no twin and takes the flat fields it draws (`label`, `items`, `isSkeleton`,
+A frame, composite, branch or leaf has no twin and takes the flat fields it draws (`label`, `items`, `isSkeleton`,
 `onRetry`, and `shape` for a composite with shapes), already resolved by its block; it never resolves copy, reads data
 or chooses between a component and its resting copy, and a leaf hands `isSkeleton` to the grammar component it draws.
 

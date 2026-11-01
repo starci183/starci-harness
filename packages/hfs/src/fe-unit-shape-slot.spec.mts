@@ -28,7 +28,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGES = path.join(HERE, '..', '..');
 const SKELETON_API = path.join(HERE, '..', 'templates', 'fe', 'skeleton', 'apps', '__app__', 'src', 'modules', 'api');
 const SHAPES = ['prepared', 'sent', 'returned'];
-const UNITS = ['composite:term-value', 'branch:disclosure', 'leaf:status-label'];
+const UNITS = ['frame:page-body', 'composite:term-value', 'branch:disclosure', 'leaf:status-label'];
 /** The route and overlay owners, added after the block they compose: [noun, name, options]. */
 const OWNERS: [string, string, AddOptions][] = [
   ['page', 'handoffs', { blocks: 'sign-in-form' }],
@@ -188,7 +188,7 @@ test('the units added to a scaffolded full app pass the starci-fe canon and the 
   fs.appendFileSync(path.join(app, 'src', 'hooks', 'swr', 'index.ts'), 'export { useQueryHandoffSwr } from "./useQueryHandoffSwr"\n');
   const created = addUnits(root);
   // Two fe apps and the shared ui package: the vocabulary tiers, SlotView among them, are the package's (R91).
-  for (const unit of ['composites/SlotView', 'composites/TermValue', 'branches/Disclosure', 'leaves/StatusLabel']) {
+  for (const unit of ['frames/PageBody', 'composites/SlotView', 'composites/TermValue', 'branches/Disclosure', 'leaves/StatusLabel']) {
     assert.ok(created.includes(`fe/packages/demo-ui/src/${unit}/index.tsx`), `${unit} is written to the shared ui package`);
   }
   assert.match(fs.readFileSync(path.join(root, 'fe', 'packages', 'demo-ui', 'src', 'index.ts'), 'utf8'), /export \{ SlotView \} from "\.\/composites\/SlotView"/);

@@ -18,7 +18,7 @@ Which directory and which file a piece of front-end code gets. The paths are the
 ## FE-FOLDER-1 Every source file sits in its tier folder
 
 All product source is `fe/apps/<app>/src/` with `app/` (route files, `[locale]/providers.tsx`, `globals.css`),
-`features/{pages,layouts,overlays}/<Name>/`, `components/{blocks,composites,branches,leaves}/<Name>/`, `hooks/`,
+`features/{pages,layouts,overlays}/<Name>/`, `components/{blocks,frames,composites,branches,leaves}/<Name>/`, `hooks/`,
 `redux/` and `modules/<capability>/`; only the framework-pinned files (front matter) sit beside them, and the request
 interceptor is `proxy.ts`, never `middleware.ts`.
 
@@ -33,7 +33,7 @@ Enforced by: R01 (`slot-undeclared`), R91 (`frontend-source-layout`, `route-tree
 ## FE-FOLDER-2 A unit folder holds `index.tsx`, an optional `component.tsx` and an optional `classNames.ts`
 
 A connected block, page, layout or overlay keeps the two halves of [function.md](function.md) FE-FUNCTION-2, `X` in
-`index.tsx` and `XBase` with its `XBaseProps` in `component.tsx`; a composite, branch or leaf is `index.tsx` alone; `classNames.ts` exists when the unit
+`index.tsx` and `XBase` with its `XBaseProps` in `component.tsx`; a frame, composite, branch or leaf is `index.tsx` alone; `classNames.ts` exists when the unit
 writes layout classes; nothing else lives in the folder, and each file stays within its slot budget.
 
 Why: stable basenames make both halves findable without opening a file, and a helper in a component folder is

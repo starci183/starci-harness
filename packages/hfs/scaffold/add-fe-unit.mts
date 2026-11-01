@@ -1,18 +1,18 @@
-// starci app add <block|composite|branch|leaf> <name> - one front-end unit, already in the shape-slot pattern.
+// starci app add <block|frame|composite|branch|leaf> <name> - one front-end unit, already in the shape-slot pattern.
 //
 // The bodies are templates/fe/units/<tier>/; this module only fills them and places them (contexts/code/fe function.md
 // FE-FUNCTION-2..4 and FE-FUNCTION-7, README.md FE-ERROR-1).
 //
 //   starci app add block handoff-block                                  HandoffBlock: one read folded into a DataSlot, no shape
 //   starci app add block handoff-block --shapes prepared,sent,returned  plus HANDOFF_BLOCK_SHAPES, HandoffBlockShape and an exhaustive switch
-//   starci app add composite term-value | branch disclosure | leaf status-label
+//   starci app add frame page-body | composite term-value | branch disclosure | leaf status-label
 //
 // A block reads `useQuery<Read>Swr` of hooks/swr (`--read`, default: the block name without its `Block` suffix; `add table --fe`
 // writes that hook). A block with shapes takes its shape from the read's `status` (the placeholder's own while the read loads), so
 // the read names its shape in that field. The first block of an app also writes the app's one copy of the status owners
 // (FE-ERROR-1): DataSlot and SlotLabels in modules/types, slotOfSwr/mapSlot/loadingSlot in hooks/slot/slot.shared.ts,
 // useSlotLabels, the SlotView composite and the shared `status` namespace of every catalog. Nothing that exists is overwritten.
-// A composite, branch or leaf, SlotView among them, is vocabulary that knows no feature: in a front end of two or more apps with
+// A frame, composite, branch or leaf, SlotView among them, is vocabulary that knows no feature: in a front end of two or more apps with
 // the shared ui package (slot fe.package.ui) it lives in that package and its barrel, DataSlot and SlotLabels are declared beside
 // SlotView there and modules/types re-exports them (R91 `monorepo-tier-belongs-to-its-side`); else it lives in the app's components.
 // A shape that names a data status is refused by the lint (R92 `no-data-status-shape`), which owns that word list.
@@ -35,7 +35,7 @@ interface Place {
   readonly ui: { readonly relative: string; readonly name: string } | null;
 }
 
-/** The options of `add block|composite|branch|leaf`. */
+/** The options of `add block|frame|composite|branch|leaf`. */
 export interface FeUnitOptions {
   readonly app?: string | undefined;
   readonly shapes?: string | readonly string[] | false | undefined;
@@ -59,7 +59,7 @@ interface StatusCopy {
 const UNITS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates', 'fe', 'units');
 
 /** The nouns this module answers, and the components layer each one writes into. */
-export const FE_UNIT_LAYERS = Object.freeze({ block: 'blocks', composite: 'composites', branch: 'branches', leaf: 'leaves' });
+export const FE_UNIT_LAYERS = Object.freeze({ block: 'blocks', frame: 'frames', composite: 'composites', branch: 'branches', leaf: 'leaves' });
 
 /** The shared status copy of FE-ERROR-1, by catalog locale; any other locale takes the English sentences. */
 const STATUS_COPY: Readonly<Record<string, StatusCopy>> & { readonly en: StatusCopy } = Object.freeze({
@@ -290,7 +290,7 @@ function addBlock({ created, place, names, options }: { created: string[], place
   addCatalogKeys(created, place, { nameCamel: names.nameCamel, title: humanOf(names.Name), shapes });
 }
 
-/** Writes one composite, branch or leaf: into the shared ui package and its barrel, or into the app's components. */
+/** Writes one frame, composite, branch or leaf: into the shared ui package and its barrel, or into the app's components. */
 function addVocabulary({ created, place, noun, Name }: { created: string[], place: Place, noun: Exclude<keyof typeof FE_UNIT_LAYERS, 'block'>, Name: string }): void {
   const layer = FE_UNIT_LAYERS[noun];
   const body = fill(`${noun}/index.tsx.tpl`, { Name });

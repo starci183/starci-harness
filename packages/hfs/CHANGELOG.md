@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added: the `frames` component tier for apps (grammar audit 2026-11, decision 9): slot `fe.components` layers are `blocks, frames, composites, branches, leaves`, the architecture machine and the world check know it, and `starci app add frame <name>` writes one. The grammar package folders are `leaf`, `branch`, `composite` and `frame`.
+
 ## 4.16.5 - 2026-11-01
 
 - Added: R354 `FE_HEADING_ABOVE_CARD` (eslint-canon-fe `no-heading-above-card`).

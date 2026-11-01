@@ -64,7 +64,7 @@
 //                                            exactly that kind's file tree, generated FROM the files: tree of its pattern topic (knowledge/patterns/be) with the
 //                                            one template body of each entry (templates/be/patterns), plus the platform capabilities it needs when they are missing;
 //                                            it registers the patterns and the trigger kind in hfs.json (sides.be.patterns, sides.be.kinds). Never overwrites a file (scaffold/add.mjs). In a lite app a noun whose slots lite does not have refuses: `add <noun>: full edition only`.
-//   starci app add <block|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
+//   starci app add <block|frame|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
 //   starci app add <page|layout> <route> [--blocks a,b] [--tabs a,b (page)] | overlay <name> --kind modal|drawer [--form]   a route page, segment layout
 //                                            or overlay owner (scaffold/add-fe-page.mjs, add-fe-layout.mjs, add-fe-overlay.mjs).
 //                                            one front-end unit in the shape-slot pattern from templates/fe/units (scaffold/add-fe-unit.mjs); the
@@ -180,7 +180,7 @@ const PARSED: Record<string, ParsedVerb> = {
   add: {
     run: addMain, ...ADD_FLAGS, list: ['--inject'],
     forms: [
-      { operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|composite|branch|leaf|page|overlay|layout> <name>', only: ADD_FLAGS },
+      { operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|frame|composite|branch|leaf|page|overlay|layout> <name>', only: ADD_FLAGS },
       { operands: 'service <dir> <name>', only: { list: ['--inject'] } },
       { operands: 'spec <file>.service.ts', flags: [] },
       { operands: 'image', flags: [] },

@@ -55,7 +55,7 @@ const PRODUCT_TIERS = new Set<string | null>(["route", "feature", "components", 
 /** Product source: a file of a product tier. */
 export const isProductSource = (context: AnyContext): boolean => PRODUCT_TIERS.has(tierOfFile(context))
 
-/** A file of a component tier: slot `fe.components` or `fe.package.ui`, inside one of its layer folders (blocks, composites, branches, leaves). */
+/** A file of a component tier: slot `fe.components` or `fe.package.ui`, inside one of its layer folders (blocks, frames, composites, branches, leaves). */
 export const isComponentFile = (context: AnyContext): boolean => inSlot(context, "fe.components", "fe.package.ui") && kindOfFile(context) !== null
 
 /** True when the given file (an absolute or repo-relative name, e.g. where an import resolves to) sits in a component layer of slot `fe.components` or `fe.package.ui`. */

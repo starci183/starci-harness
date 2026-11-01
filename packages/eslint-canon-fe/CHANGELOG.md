@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added: `frames` joins the component tiers (`components/frames/<Name>`, `meta.shape = 'frame'`); a frame is a lower tier for the world check (it owns no data, session or navigation).
+
 ## 9.8.5 - 2026-11-01
 
 - Added: `no-heading-above-card` (R354, `FE_HEADING_ABOVE_CARD`): a `SectionHeader` directly above a single card, or a card whose `ariaLabel` repeats the header title, is refused; several cards under one header stay legal.

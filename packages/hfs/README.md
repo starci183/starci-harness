@@ -10,7 +10,7 @@ Every command runs at the app root. A side is judged with its folder as the root
 ```sh
 starci app scaffold <name> [--edition full|lite] [--cwd <dir>]
 starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app> <name> [--fe] [--no-types] [options] [--cwd <dir>]
-starci app add <block|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
+starci app add <block|frame|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
 starci app add <page|layout> <route> [--blocks a,b] [--tabs a,b] [--app <fe app>] [--cwd <dir>]
 starci app add overlay <name> --kind modal|drawer [--form] [--app <fe app>] [--cwd <dir>]
 starci app add service <dir> <name> [--inject <binding>...] [--cwd <dir>]

@@ -239,6 +239,7 @@ test("FILE-7: the source marker and owning tier agree", () => {
   tester.run("source-tier-marker-matches-folder", sourceTierMarkerMatchesFolder, {
     valid: [
       { filename: at(`${R}/branches/ModalBranch/index.tsx`), code: "export const meta = { shape: 'branch' } as const" },
+      { filename: at(`${R}/frames/ShellFrame/index.tsx`), code: "export const meta = { shape: 'frame' } as const" },
       { filename: at(`${F}/overlays/auth/SignInOverlay/component.tsx`), code: "export const meta = { shape: 'overlay' } as const" },
       { filename: at(`${F}/pages/Home/index.tsx`), code: "export const meta = { shape: 'page' } as const" },
       { filename: at("packages/nivo-ui/src/leaves/Badge/index.tsx"), code: "export const meta = { shape: 'leaf' } as const" },

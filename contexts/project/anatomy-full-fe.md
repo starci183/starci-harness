@@ -71,7 +71,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
     - `{proxy.ts,instrumentation.ts,instrumentation-client.ts,sentry.server.config.ts,sentry.edge.config.ts}` — **fe.source-root-pinned** optional · [fe/architecture](../code/fe/architecture.md) · R54
     - `features/{pages,layouts,overlays}/<name>/` — **fe.feature** required · [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R57, R58, FE_SIZE_BUDGET (no rule)
     - `components/`
-      - `{blocks,composites,branches,leaves}/<name>/` — **fe.components** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R92, R58, R62, R55
+      - `{blocks,frames,composites,branches,leaves}/<name>/` — **fe.components** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R92, R58, R62, R55
       - `providers/<name>/` — **fe.components.providers** optional · [fe/data](../code/fe/data.md), [fe/form](../code/fe/form.md), [fe/realtime](../code/fe/realtime.md) · R55
     - `hooks/`
       - `<domain>/` — **fe.hooks** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md) · R56, FE_DATA_FRESHNESS (no rule)

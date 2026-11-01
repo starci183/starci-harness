@@ -196,7 +196,7 @@ tiers:
     feature:      {mayImport: [feature, components, hooks, foundation, modules, package], mayImportKinds: {feature: {from: [pages, layouts], to: [overlays]}}} # pages and layouts compose overlays and blocks; data goes through hooks/swr
     # A component never reaches data: config, routes, i18n and types are foundation; every other module and the api
     # transport are reached through a hook (owner decision 2026-09-29).
-    components:   {mayImport: [components, hooks, foundation, package], lowerLayerOnly: true} # blocks, composites, branches, leaves
+    components:   {mayImport: [components, hooks, foundation, package], lowerLayerOnly: true} # blocks, frames, composites, branches, leaves
     # Across domains a hook is imported only through the other domain's public index (hooks/<domain>/index.ts), never deep.
     hooks:        {mayImport: [hooks, foundation, modules, transport, package], mayImportSlots: {transport: {from: [fe.hooks.swr]}}} # only hooks/swr imports an operation
     foundation:   {mayImport: [foundation, package], acyclic: true}               # modules/{config,i18n,routes,types}
@@ -2227,12 +2227,12 @@ slots:
   - id: fe.components
     since: 3.1.0
     profiles: [fe]
-    path: "apps/<app>/src/components/{blocks,composites,branches,leaves}/<name>/"
+    path: "apps/<app>/src/components/{blocks,frames,composites,branches,leaves}/<name>/"
     presence: optional
     tracked: tracked
     tier: components
     owner: true
-    layers: [blocks, composites, branches, leaves]   # a layer imports only the layers after it
+    layers: [blocks, frames, composites, branches, leaves]   # a layer imports only the layers after it
     requires: [index.tsx]
     allows: [index.tsx, component.tsx, classNames.ts]
     roles: {entry: index.tsx, drawing: component.tsx, styles: classNames.ts}   # the connected entry, the pure drawing half and the styling declarations of a component owner
@@ -2575,12 +2575,12 @@ slots:
     tracked: tracked
     tier: package
     owner: true
-    kinds: [composites, branches, leaves]   # the layer folders under src/ (a package owns no blocks)
+    kinds: [frames, composites, branches, leaves]   # the layer folders under src/ (a package owns no blocks)
     roles: {entry: index.tsx, drawing: component.tsx, styles: classNames.ts}
     requires: [package.json, src/index.ts, tsconfig.json]
     tests: none
     budget: {component.tsx: 300, index.tsx: 200, dataHooks: 6, useState: 6}
-    why: built to dist with explicit named exports; only composites, branches and leaves; no unused export; no colour literal
+    why: built to dist with explicit named exports; only frames, composites, branches and leaves; no unused export; no colour literal
     rules: [FE_PACKAGE_SHAPE, HFS_UNUSED_EXPORT, FE_STYLE_TOKEN_ONLY]
   - id: fe.package.api
     since: 3.1.0

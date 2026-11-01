@@ -93,7 +93,7 @@ const FE_OWNERS: Readonly<Record<string, (input: { repoRoot: string, name: strin
 /**
  * Generates the tree of one noun in the app at `repoRoot` (the folder of hfs.json).
  *
- * @param {{ repoRoot: string, noun: string, name: string, options?: object, now?: () => number }} input - The app root, the noun (job, reactor, queue, projection, ..., or a front-end unit: block, composite, branch, leaf, page, overlay, layout), the instance name and the options the noun needs.
+ * @param {{ repoRoot: string, noun: string, name: string, options?: object, now?: () => number }} input - The app root, the noun (job, reactor, queue, projection, ..., or a front-end unit: block, frame, composite, branch, leaf, page, overlay, layout), the instance name and the options the noun needs.
  * @returns {{ created: Array<string>, registered: { patterns: Array<string>, kinds: Array<string> } }} The files written (app-root relative) and what hfs.json gained.
  */
 export function addKind({ repoRoot, noun, name, options = {}, now = Date.now }: { repoRoot: string, noun: string, name: string, options?: AddOptions, now?: () => number }): AddResult {

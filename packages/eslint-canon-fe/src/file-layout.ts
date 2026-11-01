@@ -241,7 +241,7 @@ export const monorepoTierBelongsToItsSide = defineRule({
     type: "problem",
     docs: {
       description:
-        "With two or more apps, the shared package holds leaves, composites and branches; blocks, overlays, layouts and pages belong to the app that owns the feature.",
+        "With two or more apps, the shared package holds leaves, branches, composites and frames; blocks, overlays, layouts and pages belong to the app that owns the feature.",
     },
     schema: [],
     messages: {
@@ -338,6 +338,7 @@ export const sourceTierMarkerMatchesFolder = defineRule({
       blocks: "block",
       branches: "branch",
       composites: "composite",
+      frames: "frame",
       layouts: "layout",
       leaves: "leaf",
       overlays: "overlay",

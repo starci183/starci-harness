@@ -43,7 +43,7 @@ react-router the same tiers map like this:
 | `useQuery<X>Swr` + `slotOfSwr`       | TanStack Query hooks in `hooks/query` folded by `slotOfQuery` (`hooks/slot/slot.shared.ts`)                         |
 | next-intl catalog `messages/<l>.json`| `modules/i18n/labels.ts`, the one typed copy owner (Vietnamese only); templates use `{name}` tokens                |
 
-Imports point down only: `app` → `features/{pages,layouts}` → `components/blocks` → `components/composites`
+Imports point down only: `app` → `features/{pages,layouts}` → `components/blocks` → `components/frames` (none yet) → `components/composites`
 (`SlotView`, `DecisionBody`, `ListEditor`, `ConfigField`) → `components/leaves` (`StatusWord`, `KeyList`); hooks reach
 `modules/api` only through `hooks/query`.
 

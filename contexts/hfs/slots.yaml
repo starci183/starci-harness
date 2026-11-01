@@ -3228,13 +3228,14 @@ slots:
   - id: fe.components
     profiles:
       - fe
-    path: apps/<app>/src/components/{blocks,composites,branches,leaves}/<name>/
+    path: apps/<app>/src/components/{blocks,frames,composites,branches,leaves}/<name>/
     presence: optional
     tracked: tracked
     tier: components
     owner: true
     layers:
       - blocks
+      - frames
       - composites
       - branches
       - leaves

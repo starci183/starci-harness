@@ -5,7 +5,7 @@ import { WorldRenderAnalysis } from './frontend-world-render.mjs';
 const WORLD_NAVIGATION_CALLS = new Set(['useParams', 'usePathname', 'useRouter', 'useSearchParams', 'useSelectedLayoutSegment', 'useSelectedLayoutSegments']);
 const WORLD_INTL_CALLS = new Set(['useLocale', 'useMessages', 'useNow', 'useTimeZone', 'useTranslations']);
 const WORLD_SWR_CALLS = new Set(['default', 'useSWR', 'useSWRConfig', 'useSWRImmutable', 'useSWRMutation']);
-const LOWER_COMPONENT_TIERS = new Set(['composites', 'branches', 'leaves']);
+const LOWER_COMPONENT_TIERS = new Set(['frames', 'composites', 'branches', 'leaves']);
 function selectedSymbol(ts, checker, expression) {
     const selected = unwrapExpression(ts, expression);
     if (!selected)
