@@ -22,7 +22,10 @@ const useIsoLayoutEffect = typeof window === "undefined" ? () => {} : useLayoutE
 /**
  * The one measurer of a fill box, of Page `chrome="bleed"` and `chrome="panes"`: it measures the returned ref's top
  * edge in document coordinates into `--starci-core-fill-top` and any Grammar bottom chrome into
- * `--starci-core-fill-bottom`, and re-measures on window resize and body size changes. CSS does the rest.
+ * `--starci-core-fill-bottom`, and re-measures on window resize, body size changes, any size change of the bands drawn above it
+ * (the page header and its tabs settle after the first paint, when the web font arrives, with no change to the body) and when the
+ * fonts are ready. Measuring once would leave the fill top at the height the header had before its font loaded, so two runs of
+ * one screen would lay out a few pixels apart. CSS does the rest.
  */
 export const useFillMeasure = (): RefObject<HTMLDivElement | null> => {
     const ref = useRef<HTMLDivElement>(null)
@@ -42,6 +45,8 @@ export const useFillMeasure = (): RefObject<HTMLDivElement | null> => {
         window.addEventListener("resize", measure)
         const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure)
         observer?.observe(document.body)
+        for (let band = node.previousElementSibling; band !== null; band = band.previousElementSibling) observer?.observe(band)
+        void document.fonts?.ready.then(measure)
         return () => {
             cancelAnimationFrame(frame)
             window.removeEventListener("resize", measure)
