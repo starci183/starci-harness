@@ -2,6 +2,7 @@
 
 ## 9.8.5 - 2026-11-01
 
+- Added: `no-fill-command-in-header` (R352, `FE_COMMAND_FILLS_HEADER`): a Grammar `Button` with `width="fill"` in the `actions` of a `PageHeader` or the `labelEnd` of a `SurfaceCard` or `SurfaceListCard` is refused (a page or pane command hugs its label).
 - Added: `no-table-in-card` (R351, `FE_TABLE_IN_CARD`): a Grammar `DataTable` enclosed by a `SurfaceCard`, or rendered by a component of the same file that a `SurfaceCard` encloses, is refused; plain rows are a `SurfaceListCard` with the note in its `footer`. It is a slot-free surface law at error, with no inline exemption.
 - Changed: the bundled canon pins name @starci/grammar 0.20.2, eslint-grammar-core and eslint-grammar-offset-pop 0.20.2, eslint-canon-be 3.11.6, eslint-canon-fe 9.8.5, stylelint-canon 2.4.0 and hfs 4.16.5 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm). One rule law changes (above).
 

@@ -44,7 +44,7 @@ variants on layer-aware fields and the pill (`variant="secondary"`) on Tabs, whi
 within the nearest painted surface, a `Pane` or a `PaneSection` included (`FE_LIST_PANEL_PADDING`),
 `no-hand-built-panes` refuses a multi-pane frame drawn by hand, a vertical divider as a column seam or
 columns inside a joined card, where `PaneGrid` owns both (`FE_HAND_BUILT_PANES`), and
-`no-table-in-card` refuses a `DataTable` inside a `SurfaceCard`, where a `SurfaceListCard` with its note in `footer` holds plain rows (`FE_TABLE_IN_CARD`). The R65 budget law's
+`no-fill-command-in-header` refuses a `width="fill"` Button in a page or card header slot (`FE_COMMAND_FILLS_HEADER`), and `no-table-in-card` refuses a `DataTable` inside a `SurfaceCard`, where a `SurfaceListCard` with its note in `footer` holds plain rows (`FE_TABLE_IN_CARD`). The R65 budget law's
 `no-app-relative-clock` leaves live relative time and countdowns to Grammar's shared clock.
 
 The spacing law (R350) leaves every distance to Grammar: `no-spacing-utility` refuses a padding, margin, gap

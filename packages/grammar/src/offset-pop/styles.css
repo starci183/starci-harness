@@ -118,6 +118,9 @@
         --info-soft: var(--offset-pop-accent-soft);
         --info-soft-foreground: var(--offset-pop-accent-text);
         --link: var(--offset-pop-accent-text);
+        /* Light theme only (owner choice "1. Pastel"): the pastel tones are 1.3 to 3.7:1 as bare text, so a bare mark wears the soft foreground. The dark theme resets the hooks to the tone itself. */
+        --starci-core-mark-danger: var(--danger-soft-foreground);
+        --starci-core-mark-warning: var(--warning-soft-foreground);
 
         color: var(--foreground);
         background: var(--background);
@@ -146,6 +149,8 @@
         --offset-pop-info-foreground: #1c1524;
         --offset-pop-accent-text: #ff7ab8;
         --offset-pop-accent-soft: #3b2936;
+        --starci-core-mark-danger: initial;
+        --starci-core-mark-warning: initial;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Heading"][data-scale="display"] {
@@ -262,6 +267,17 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="nested"],
+    /* The reader's own message is the family's pink with its ink; inline content keeps the ink, over the family's own accent text rules. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
+        color: inherit;
+    }
+
+    /* The seam between two bands of a joined card is the family's outline width, the same line the stat strip draws between its cells. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
+        height: var(--offset-pop-outline-width);
+        min-height: var(--offset-pop-outline-width);
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="nested"] {
         box-shadow: none;
         background: var(--surface-secondary);
@@ -470,6 +486,8 @@
             --offset-pop-info-foreground: #1c1524;
             --offset-pop-accent-text: #ff7ab8;
             --offset-pop-accent-soft: #3b2936;
+            --starci-core-mark-danger: initial;
+            --starci-core-mark-warning: initial;
         }
     }
 

@@ -616,8 +616,54 @@ export const noTableInCard = defineRule({
   },
 })
 
+/** The header slots whose command hugs its label: `PageHeader` `actions` and the `labelEnd` of a card or a list card. */
+const HEADER_SLOTS = new Map<string, readonly string[]>([
+  ["PageHeader", ["actions"]],
+  ["SurfaceCard", ["labelEnd"]],
+  ["SurfaceListCard", ["labelEnd"]],
+])
+
+/** True when the Button's own opening element sets `width="fill"`. */
+const fillsWidth = (context: AnyContext, opening: TSESTree.JSXOpeningElement): boolean =>
+  opening.attributes.some((entry) => propStrings(context, entry, "width", "variant").some((value) => value.text === "fill"))
+
+/** The header slot (`PageHeader actions`, `labelEnd`) a node is written in, or null. */
+const headerSlotOf = (context: AnyContext, node: Node): string | null => {
+  for (let current: Node | undefined = node.parent; current; current = current.parent) {
+    if (current.type !== "JSXAttribute" || current.name.type !== "JSXIdentifier") continue
+    const owner = current.parent
+    if (owner.type !== "JSXOpeningElement") continue
+    const name = grammarName(context, owner.name)
+    if (name?.length === 1 && name[0] !== undefined && HEADER_SLOTS.get(name[0])?.includes(current.name.name) === true) return `${name[0]} ${current.name.name}`
+  }
+  return null
+}
+
+/** A page or pane command hugs its label and sits at the end of its header row: a Button in a header slot is never `width="fill"`. */
+export const noFillCommandInHeader = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "A command in a page or card header hugs its label." },
+    schema: [],
+    messages: {
+      fill:
+        "FE_COMMAND_FILLS_HEADER: this Button is `width=\"fill\"` in {{slot}}. A page or pane command hugs its label and sits at the end of its header row; `width=\"fill\"` is for a form submit, an auth panel and a phone action bar (`PinnedActionBar`). Drop `width`.",
+    },
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
+        const name = grammarName(context, node.name)
+        if (name?.length !== 1 || name[0] !== "Button" || !fillsWidth(context, node)) return
+        const slot = headerSlotOf(context, node)
+        if (slot !== null) context.report({ node, messageId: "fill", data: { slot } })
+      },
+    }
+  },
+})
+
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
+export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

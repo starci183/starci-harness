@@ -4194,7 +4194,7 @@
         white-space: nowrap;
     }
 
-    .starci-core-connection-status[data-grammar-connection-state="lost"] { color: var(--danger-soft-foreground, var(--danger, CanvasText)); }
+    .starci-core-connection-status[data-grammar-connection-state="lost"] { color: var(--starci-core-mark-danger, var(--danger, CanvasText)); }
 
     .starci-core-status-dot-label {
         display: inline-block;
@@ -4359,20 +4359,33 @@
         padding: 0.5rem 0.75rem;
         border-radius: 1rem;
         border-start-start-radius: 0.25rem;
-        background: var(--surface-secondary, Canvas);
-        color: var(--foreground, CanvasText);
+        background: var(--surface, Canvas);
+        color: var(--surface-foreground, CanvasText);
         font-size: 0.875rem;
         line-height: 1.25rem;
         overflow-wrap: anywhere;
         white-space: pre-wrap;
     }
 
+    /*
+     * The reader's own message is the brand fill with its foreground (owner ruling chat-primary-and-surface): the other party's
+     * message is the surface. Everything inline inherits the bubble's foreground, so a link, a mention (Text tone accent), code
+     * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
+     */
     .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body {
         border-start-start-radius: 1rem;
         border-start-end-radius: 0.25rem;
-        background: var(--accent-soft, Highlight);
-        color: var(--accent-soft-foreground, HighlightText);
+        background: var(--accent, Highlight);
+        color: var(--accent-foreground, HighlightText);
     }
+
+    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, code, kbd, mark, [data-component="Code"], [data-component="Kbd"], [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Markdown"]) {
+        color: inherit;
+    }
+
+    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, [data-component="Link"]) { text-decoration: underline; }
+    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body [data-component="Text"][data-tone="muted"] { opacity: 0.85; }
+    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground, HighlightText) 16%, transparent); }
 
     .starci-core-chat-bubble[data-grammar-bubble-highlight="true"] .starci-core-chat-bubble-body {
         outline: 2px solid var(--focus, Highlight);

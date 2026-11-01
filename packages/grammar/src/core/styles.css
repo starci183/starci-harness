@@ -19,13 +19,13 @@
         --starci-core-muted: oklch(52% 0.003 354.13);
         --starci-core-border: oklch(90% 0.0015 354.13);
         --starci-core-separator: oklch(92% 0.0015 354.13);
-        --starci-core-success: oklch(73.29% 0.1941 162.85);
+        --starci-core-success: oklch(62.8% 0.1941 162.85);
         --starci-core-success-foreground: oklch(21.03% 0.0059 162.85);
-        --starci-core-warning: oklch(78.19% 0.159 84.37);
+        --starci-core-warning: oklch(67% 0.159 84.37);
         --starci-core-warning-foreground: oklch(21.03% 0.0059 84.37);
         --starci-core-danger: oklch(55% 0.2 37.78);
         --starci-core-danger-foreground: oklch(99.11% 0 0);
-        --starci-core-info: oklch(72% 0.17 250);
+        --starci-core-info: oklch(66.8% 0.17 250);
         --starci-core-info-foreground: oklch(21.03% 0.0059 250);
         --starci-core-accent-text: #6a3cf2;
         --starci-core-accent-soft: oklch(95.5% 0.03 287);

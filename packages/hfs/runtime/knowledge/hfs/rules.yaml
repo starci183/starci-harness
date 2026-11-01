@@ -6231,3 +6231,26 @@ rules:
         source: owner
         quote: "quá phức tạp mới nhét bảng vào card"
         ruling: "Plain rows are a SurfaceListCard with a bottom note in its footer; a DataTable is not put in a SurfaceCard."
+  - id: R352
+    code: "FE_COMMAND_FILLS_HEADER"
+    law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a PageHeader or the labelEnd of a SurfaceCard or SurfaceListCard is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_COMMAND_FILLS_HEADER"]
+    enforcers:
+      - {kind: eslint-fe, id: no-fill-command-in-header}
+    editions: [lite, full]
+    docs: [contexts/ui/components/button.md]
+    templateNa: "A template draws no header command with a fill width."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_COMMAND_FILLS_HEADER]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_COMMAND_FILLS_HEADER]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_COMMAND_FILLS_HEADER]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "(owner order relayed by the coordinator, 2026-11-01) a page or pane command hugs its label and sits at the end of its header row; Button width=fill is only for a form submit, an auth panel, or a phone action bar"
+        ruling: "A header command is never width fill; fill is for a form submit, an auth panel and a phone action bar."

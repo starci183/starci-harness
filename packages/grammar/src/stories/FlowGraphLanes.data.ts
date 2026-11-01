@@ -1,0 +1,90 @@
+import type { FlowGraphEdge, FlowGraphLayerHeader, FlowGraphNode } from '../core/branch/FlowGraph/types.js';
+
+/** A small agent: a customer message, one condition with three branches (Chatbot sized, 9 nodes). */
+export const chatbotNodes: ReadonlyArray<FlowGraphNode> = [
+  { id: 'msg', label: 'Customer message', description: 'Zalo OA', kind: 'trigger' },
+  { id: 'intent', label: 'What do they want?', kind: 'condition' },
+  { id: 'order', label: 'Look up the order', description: 'Sales sheet', kind: 'execute', tone: 'info' },
+  { id: 'faq', label: 'Search the brain', description: 'Read only', kind: 'execute', tone: 'success' },
+  { id: 'staff', label: 'Hand to staff', description: 'Dinh approves', kind: 'execute', tone: 'warning' },
+  { id: 'status', label: 'Reply with the status', kind: 'output' },
+  { id: 'answer', label: 'Reply with the answer', kind: 'output' },
+  { id: 'notify', label: 'Notify the shop owner', description: 'Telegram', kind: 'output' },
+  { id: 'log', label: 'Log the chat', description: 'Brain', kind: 'output' },
+];
+export const chatbotEdges: ReadonlyArray<FlowGraphEdge> = [
+  { id: 'e1', source: 'msg', target: 'intent' },
+  { id: 'e2', source: 'intent', target: 'order', label: 'Order' },
+  { id: 'e3', source: 'intent', target: 'faq', label: 'Question' },
+  { id: 'e4', source: 'intent', target: 'staff', label: 'Other' },
+  { id: 'e5', source: 'order', target: 'status' },
+  { id: 'e6', source: 'faq', target: 'answer' },
+  { id: 'e7', source: 'staff', target: 'notify' },
+  { id: 'e8', source: 'notify', target: 'log' },
+];
+export const chatbotHeaders: ReadonlyArray<FlowGraphLayerHeader> = [
+  { label: 'When', at: 0 },
+  { label: 'Decide', at: 1 },
+  { label: 'Do', at: 2 },
+  { label: 'Result', at: 3 },
+  { label: 'Follow up', at: 4 },
+];
+
+/** A sales agent of 24 nodes: three triggers, conditions that fork, and an end on every path. */
+export const salesNodes: ReadonlyArray<FlowGraphNode> = [
+  { id: 'web', label: 'New web lead', description: 'Website form', kind: 'trigger' },
+  { id: 'zalo', label: 'Zalo message', description: 'Zalo OA', kind: 'trigger' },
+  { id: 'call', label: 'Missed call', description: 'Phone line', kind: 'trigger' },
+  { id: 'budget', label: 'Budget over 20M?', kind: 'condition' },
+  { id: 'enrich', label: 'Enrich the contact', description: 'Drive', kind: 'execute', tone: 'info' },
+  { id: 'read', label: 'Read the chat', description: 'Brain', kind: 'execute', tone: 'success' },
+  { id: 'callback', label: 'Create a call-back', description: 'Telegram', kind: 'execute', tone: 'warning' },
+  { id: 'senior', label: 'Assign to a senior', description: 'Nam approves', kind: 'execute', tone: 'info' },
+  { id: 'brochure', label: 'Send the brochure', description: 'Zalo OA', kind: 'execute', tone: 'success' },
+  { id: 'want', label: 'Wants a quote?', kind: 'condition' },
+  { id: 'task', label: 'Add the task', description: 'Telegram', kind: 'execute', tone: 'warning' },
+  { id: 'quote', label: 'Draft the quote', description: 'Drive', kind: 'execute', tone: 'info' },
+  { id: 'faq', label: 'Answer the question', description: 'Brain', kind: 'execute', tone: 'success' },
+  { id: 'big', label: 'Over 50M?', kind: 'condition' },
+  { id: 'meet', label: 'Book a meeting', description: 'Calendar', kind: 'output' },
+  { id: 'deal', label: 'Open a deal', kind: 'output' },
+  { id: 'nurture', label: 'Add to the nurture list', kind: 'output' },
+  { id: 'approve', label: 'Wait for approval', description: 'Nam, 4 hours', kind: 'execute', tone: 'warning' },
+  { id: 'send', label: 'Send the quote', description: 'Zalo OA', kind: 'output' },
+  { id: 'reply', label: 'Reply to the customer', kind: 'output' },
+  { id: 'owner', label: 'Notify the owner', description: 'Telegram', kind: 'output' },
+  { id: 'log', label: 'Log the lead', description: 'Brain', kind: 'output' },
+  { id: 'won', label: 'Mark as won', kind: 'output' },
+  { id: 'lost', label: 'Mark as lost', kind: 'output' },
+];
+export const salesEdges: ReadonlyArray<FlowGraphEdge> = [
+  { id: 's1', source: 'web', target: 'budget' },
+  { id: 's2', source: 'web', target: 'enrich' },
+  { id: 's3', source: 'zalo', target: 'read' },
+  { id: 's4', source: 'call', target: 'callback' },
+  { id: 's5', source: 'budget', target: 'senior', label: 'Yes' },
+  { id: 's6', source: 'budget', target: 'brochure', label: 'No' },
+  { id: 's7', source: 'read', target: 'want' },
+  { id: 's8', source: 'enrich', target: 'big' },
+  { id: 's9', source: 'callback', target: 'task' },
+  { id: 's10', source: 'want', target: 'quote', label: 'Quote' },
+  { id: 's11', source: 'want', target: 'faq', label: 'Question' },
+  { id: 's12', source: 'big', target: 'meet', label: 'Yes' },
+  { id: 's13', source: 'big', target: 'deal', label: 'No' },
+  { id: 's14', source: 'senior', target: 'approve' },
+  { id: 's15', source: 'brochure', target: 'nurture' },
+  { id: 's16', source: 'quote', target: 'send' },
+  { id: 's17', source: 'faq', target: 'reply' },
+  { id: 's18', source: 'task', target: 'owner' },
+  { id: 's19', source: 'meet', target: 'log' },
+  { id: 's20', source: 'approve', target: 'won' },
+  { id: 's21', source: 'deal', target: 'lost' },
+];
+export const salesHeaders: ReadonlyArray<FlowGraphLayerHeader> = [
+  { label: 'When', at: 0 },
+  { label: 'Decide', at: 1 },
+  { label: 'Do', at: 2 },
+  { label: 'Check', at: 3 },
+  { label: 'Result', at: 4 },
+  { label: 'Close', at: 5 },
+];

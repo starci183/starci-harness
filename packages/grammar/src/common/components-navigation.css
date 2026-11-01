@@ -298,16 +298,17 @@
         color: var(--accent-soft-foreground, var(--accent, Highlight));
     }
 
+    /* A bare mark wears the tone itself (ruling status-soft-pair-on-background); Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger, Mark);
-        color: var(--danger-soft-foreground, var(--danger, CanvasText));
+        color: var(--starci-core-mark-danger, var(--danger, CanvasText));
     }
 
     /* A paused step: a dashed circle in the warning ink, so the state is a form as well as a colour. */
     .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker {
         border-style: dashed;
         border-color: var(--warning, Mark);
-        color: var(--warning-soft-foreground, var(--warning, CanvasText));
+        color: var(--starci-core-mark-warning, var(--warning, CanvasText));
     }
 
     /* Dense (a list row): a 20px marker, 12px type, no copy padding, and the connector re-aimed at the smaller circle. */
@@ -1771,6 +1772,90 @@
         background: transparent;
     }
 
+    /*
+     * React Flow stamps its root with a colour-mode class (`light` or `dark`), and HeroUI scopes a theme to that class, so inside the
+     * graph every theme variable came back as HeroUI's own light value whatever theme the Grammar root is in (a white node on a dark
+     * canvas). The graph takes the Grammar root's values back.
+     */
+    .starci-core-flow-graph .react-flow.light,
+    .starci-core-flow-graph .react-flow.dark {
+        --background: inherit;
+        --foreground: inherit;
+        --surface: inherit;
+        --surface-secondary: inherit;
+        --muted: inherit;
+        --border: inherit;
+        --separator: inherit;
+        --accent: inherit;
+        --accent-foreground: inherit;
+        --success: inherit;
+        --success-foreground: inherit;
+        --warning: inherit;
+        --warning-foreground: inherit;
+        --danger: inherit;
+        --danger-foreground: inherit;
+        --info: inherit;
+        --info-foreground: inherit;
+        --backdrop: inherit;
+        --surface-shadow: inherit;
+        --overlay-shadow: inherit;
+        --field-shadow: inherit;
+        --focus: inherit;
+        --link: inherit;
+        --surface-foreground: inherit;
+        --surface-secondary-foreground: inherit;
+        --surface-tertiary: inherit;
+        --surface-tertiary-foreground: inherit;
+        --overlay: inherit;
+        --overlay-foreground: inherit;
+        --default: inherit;
+        --default-foreground: inherit;
+        --segment: inherit;
+        --segment-foreground: inherit;
+        --field-background: inherit;
+        --field-foreground: inherit;
+        --field-placeholder: inherit;
+        --field-border: inherit;
+        --scrollbar-thumb: inherit;
+        --scrollbar-track: inherit;
+        --scrollbar-color: inherit;
+        --surface-hover: inherit;
+        --default-hover: inherit;
+        --accent-hover: inherit;
+        --success-hover: inherit;
+        --warning-hover: inherit;
+        --danger-hover: inherit;
+        --field-hover: inherit;
+        --field-focus: inherit;
+        --field-border-hover: inherit;
+        --field-border-focus: inherit;
+        --default-soft: inherit;
+        --default-soft-foreground: inherit;
+        --default-soft-hover: inherit;
+        --accent-soft: inherit;
+        --accent-soft-foreground: inherit;
+        --accent-soft-hover: inherit;
+        --success-soft: inherit;
+        --success-soft-foreground: inherit;
+        --success-soft-hover: inherit;
+        --warning-soft: inherit;
+        --warning-soft-foreground: inherit;
+        --warning-soft-hover: inherit;
+        --danger-soft: inherit;
+        --danger-soft-foreground: inherit;
+        --danger-soft-hover: inherit;
+        --info-soft: inherit;
+        --info-soft-foreground: inherit;
+        --info-soft-hover: inherit;
+        --background-secondary: inherit;
+        --background-tertiary: inherit;
+        --background-inverse: inherit;
+        --separator-secondary: inherit;
+        --separator-tertiary: inherit;
+        --border-secondary: inherit;
+        --border-tertiary: inherit;
+    }
+
     .starci-core-flow-graph .react-flow__container { position: absolute; inline-size: 100%; block-size: 100%; inset-block-start: 0; inset-inline-start: 0; }
     .starci-core-flow-graph .react-flow__pane { z-index: 1; touch-action: none; }
     .starci-core-flow-graph[data-grammar-flow-interactive="true"] .react-flow__pane.draggable { cursor: grab; }
@@ -2014,6 +2099,36 @@
     }
 
     /* Edge labels: a small chip at the edge midpoint, the surface under foreground ink so the label reads over any edge. */
+    /*
+     * The lanes layout (branch lanes): every node is one width, its words wrap at the body size, and the tone follows the node kind
+     * through the soft pair (tint and soft foreground; the trigger is the neutral surface). An edge is a clear stroke in the muted ink with
+     * an arrowhead, and a branch label sits on the page background so no line runs through its text. A column header is sentence case.
+     */
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-node {
+        inline-size: 8rem;
+        max-inline-size: none;
+        align-items: flex-start;
+        border-radius: 0.75rem;
+        box-sizing: border-box;
+    }
+    /* An edge leaves the right edge of its node and enters the left edge of the next one, so the arrowhead is seen. */
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-handle.react-flow__handle-left { inset-inline-start: 0; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-handle.react-flow__handle-right { inset-inline-start: 100%; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-copy { inline-size: 100%; gap: 0.125rem; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-label { overflow: visible; font-weight: 500; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-description { overflow: visible; color: inherit; opacity: 0.8; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow { --xy-edge-stroke: var(--muted, GrayText); --xy-edge-stroke-width: 1.75; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__edge-textbg { fill: var(--surface, Canvas); stroke: none; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__edge-text { fill: var(--muted, GrayText); font-size: 0.75rem; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__arrowhead polyline { stroke: var(--muted, GrayText); fill: var(--muted, GrayText); }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-header {
+        color: var(--muted, GrayText);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        letter-spacing: 0;
+        text-transform: none;
+    }
+
     .starci-core-flow-graph .react-flow__edge-textwrapper { pointer-events: none; }
     .starci-core-flow-graph .react-flow__edge-textbg { fill: var(--surface, Canvas); stroke: var(--separator, CanvasText); stroke-width: 1px; }
     .starci-core-flow-graph .react-flow__edge-text { fill: var(--foreground, CanvasText); font-size: 0.75rem; }

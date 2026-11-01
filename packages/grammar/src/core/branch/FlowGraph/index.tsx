@@ -1,14 +1,19 @@
 "use client"
 
 import {
+    BaseEdge,
     Background,
     Controls,
+    getSmoothStepPath,
     Handle,
+    MarkerType,
     Position,
     ReactFlow,
     useReactFlow,
     useStore,
     type Edge,
+    type EdgeProps,
+    type EdgeTypes,
     type Node,
     type NodeProps,
     type NodeTypes,
@@ -18,19 +23,25 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProper
 import { Skeleton } from "../../primitive/Skeleton/index.js"
 import {
     FLOW_GRAPH_NODE_MAX_WIDTH,
+    LANES_COLUMN_STEP,
+    LANES_HEADER_ROOM,
     flowGraphBubbleDiameter,
     flowGraphRoot,
     layerCoordinate,
     layeredPositions,
     layeredStepPosition,
+    lanesLayout,
+    lanesNaturalHeight,
+    lanesStepPosition,
     orbitLayout,
     radialPositions,
+    type LanesLayout,
     type OrbitLayout,
 } from "./layout.js"
 import type { FlowGraphDirection, FlowGraphEdge, FlowGraphFill, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphRingPart, FlowGraphTone } from "./types.js"
 
-export { flowGraphDiameter, layeredPositions, orbitLayout, radialPositions } from "./layout.js"
-export type { FlowGraphDirection, FlowGraphEdge, FlowGraphFill, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphNodeForm, FlowGraphNodeShape, FlowGraphNodeSize, FlowGraphRingPart, FlowGraphTone } from "./types.js"
+export { flowGraphDiameter, lanesLayout, layeredPositions, orbitLayout, radialPositions } from "./layout.js"
+export type { FlowGraphDirection, FlowGraphEdge, FlowGraphFill, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphNodeForm, FlowGraphNodeKind, FlowGraphNodeShape, FlowGraphNodeSize, FlowGraphRingPart, FlowGraphTone } from "./types.js"
 
 export type FlowGraphProps = {
     /** Names the graph for assistive technology, e.g. "Second brain". */
@@ -61,6 +72,10 @@ export type FlowGraphProps = {
     /** Zoom buttons. Defaults to on while the graph is interactive. */
     readonly showControls?: boolean
     /**
+     * `lanes` is the branch map of a workflow: a column per stage and one row per branch of a condition, so each path reads left
+     * to right on one line; its edges are orthogonal with rounded corners and an arrowhead, a branch label sits on its own edge, and
+     * the node `kind` sets the tone (trigger neutral, condition warning, execute its tone, output accent). Its canvas is as tall as
+     * the graph unless `height` is given.
      * `radial` places the nodes on rings round the root; `layered` puts a DAG in layers along `direction`; `manual` uses each
      * node's `position`; `orbit` is the value-sized map of bubbles (see `expandedIds`). Defaults to `radial`, or to `layered`
      * when a `direction` is given.
@@ -133,6 +148,16 @@ const ringGradient = (ring: ReadonlyArray<FlowGraphRingPart>): string | undefine
     return `conic-gradient(${stops.join(", ")})`
 }
 
+/** The tone a node kind draws in a `lanes` graph: an execute node keeps its own tone (info by default). */
+const toneOf = (node: FlowGraphNode): FlowGraphTone => {
+    if (node.isPlaceholder === true) return "muted"
+    if (node.kind === "trigger") return "neutral"
+    if (node.kind === "condition") return "warning"
+    if (node.kind === "output") return "accent"
+    if (node.kind === "execute") return node.tone ?? "info"
+    return node.tone ?? "neutral"
+}
+
 const fillOf = (node: FlowGraphNode): FlowGraphFill | undefined => node.fill ?? (node.form === "bubble" ? "soft" : undefined)
 
 type HeaderData = {
@@ -186,7 +211,8 @@ const FlowGraphNodeView = memo(({ data }: NodeProps<Node<NodeData>>) => {
             data-root={graphNode.isRoot === true ? "true" : undefined}
             data-shape={graphNode.shape ?? "stadium"}
             data-size={graphNode.size ?? "md"}
-            data-tone={graphNode.isPlaceholder === true ? "muted" : graphNode.tone ?? "neutral"}
+            data-kind={graphNode.kind}
+            data-tone={toneOf(graphNode)}
             style={nodeStyle}
         >
             <Handle className="starci-core-flow-graph-handle" isConnectable={false} position={sides.target} type="target" />
@@ -212,11 +238,34 @@ const FlowGraphGuideView = memo(({ data }: NodeProps<Node<GuideData>>) => (
 ))
 FlowGraphGuideView.displayName = "FlowGraphGuideView"
 
+/** A lanes edge: orthogonal with rounded corners, an arrowhead, and its label on its own last run, where the page background hides the line behind the words. */
+const LANE_RADIUS = 14
+const LANE_LABEL_PADDING: [number, number] = [6, 3]
+const FlowGraphLaneEdge = memo(({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, label, data }: EdgeProps) => {
+    const share: unknown = data?.["stepPosition"]
+    const stepPosition = typeof share === "number" ? share : 0.5
+    const [path] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: LANE_RADIUS, stepPosition })
+    const turnX = sourceX + (targetX - sourceX) * stepPosition
+    const labelX = turnX + (targetX - turnX) * 0.62
+    return (
+        <BaseEdge
+            path={path}
+            {...(markerEnd === undefined ? {} : { markerEnd })}
+            {...(label === undefined ? {} : { label, labelX, labelY: targetY, labelShowBg: true, labelBgPadding: LANE_LABEL_PADDING, labelBgBorderRadius: 4 })}
+        />
+    )
+})
+FlowGraphLaneEdge.displayName = "FlowGraphLaneEdge"
+
+const EDGE_TYPES: EdgeTypes = { flowGraphLane: FlowGraphLaneEdge }
 const EDGE_LABEL_PADDING: [number, number] = [6, 2]
 const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView, flowGraphGuide: FlowGraphGuideView }
 const HEADER_OFFSET = 70
 const HEADER_SIDE_GAP = 24
 const FIT_OPTIONS = { padding: 0.2, duration: 0 } as const
+/** A lanes graph is laid out to fill its canvas, so its fit keeps a small margin and never magnifies. */
+const LANES_FIT_OPTIONS = { padding: 0.04, duration: 0 } as const
+const LANES_MAX_ZOOM = 1
 
 const MAX_ZOOM = 2
 
@@ -250,12 +299,16 @@ const ZoomMirror = ({ onZoom }: { readonly onZoom: (zoom: number) => void }) => 
  * changes. Under a readable zoom, a fit that would go below it asks the canvas to grow to the graph's aspect at the
  * canvas width first, then fits with the readable zoom as the floor.
  */
-const Refit = ({ signature, readableZoom, onGrow }: {
+const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart }: {
     readonly signature: string
+    readonly fitOptions: typeof FIT_OPTIONS | typeof LANES_FIT_OPTIONS
+    readonly maxZoom: number
+    /** A graph wider than its canvas at the readable zoom starts at its first column instead of its middle. */
+    readonly anchorStart: boolean
     readonly readableZoom: number | null
     readonly onGrow: (height: number) => void
 }) => {
-    const { fitView, getNodes, getNodesBounds } = useReactFlow()
+    const { fitView, getNodes, getNodesBounds, setViewport } = useReactFlow()
     // React Flow's useNodesInitialized waits for every node's handle bounds, and a layer header has no handles, so it
     // never turned true for a graph with headers and the re-fit never ran. Ready means every node has been measured.
     const isReady = useStore((state) => state.nodeLookup.size > 0 && [...state.nodeLookup.values()].every((node) => (node.measured.width ?? 0) > 0))
@@ -264,14 +317,18 @@ const Refit = ({ signature, readableZoom, onGrow }: {
     useEffect(() => {
         if (!isReady || width === 0 || height === 0) return
         if (readableZoom === null) {
-            void fitView(FIT_OPTIONS)
+            void fitView(fitOptions)
             return
         }
         const bounds = getNodesBounds(getNodes())
         if (bounds.width === 0 || bounds.height === 0) return
-        const pad = 1 + 2 * FIT_OPTIONS.padding
-        const zoomAtWidth = Math.min(width / (bounds.width * pad), MAX_ZOOM)
+        const pad = 1 + 2 * fitOptions.padding
+        const zoomAtWidth = Math.min(width / (bounds.width * pad), maxZoom)
         const fitZoom = Math.min(zoomAtWidth, height / (bounds.height * pad))
+        if (anchorStart && fitZoom < readableZoom) {
+            void setViewport({ x: 16 - bounds.x * readableZoom, y: 16 - bounds.y * readableZoom, zoom: readableZoom }, { duration: 0 })
+            return
+        }
         if (fitZoom < readableZoom) {
             const needed = Math.ceil(bounds.height * pad * Math.max(readableZoom, zoomAtWidth))
             if (needed > height + 1) {
@@ -279,8 +336,8 @@ const Refit = ({ signature, readableZoom, onGrow }: {
                 return
             }
         }
-        void fitView({ ...FIT_OPTIONS, minZoom: readableZoom })
-    }, [fitView, getNodes, getNodesBounds, isReady, signature, readableZoom, width, height, onGrow])
+        void fitView({ ...fitOptions, minZoom: readableZoom })
+    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart])
     return null
 }
 
@@ -347,7 +404,7 @@ export const FlowGraph = ({
     defaultExpandedIds,
     onExpandedChange,
     fanLimit = DEFAULT_FAN_LIMIT,
-    height = "md",
+    height,
     fit = "readable",
     isInteractive = true,
     showControls,
@@ -376,7 +433,7 @@ export const FlowGraph = ({
     }
 
     const layout: FlowGraphLayout = layoutProp ?? (direction === undefined ? "radial" : "layered")
-    const flowDirection: FlowGraphDirection | undefined = direction ?? (layout === "layered" ? "TB" : undefined)
+    const flowDirection: FlowGraphDirection | undefined = layout === "lanes" ? "LR" : direction ?? (layout === "layered" ? "TB" : undefined)
     const orbit = useMemo<OrbitLayout | null>(
         () => layout === "orbit" ? orbitLayout(nodes, edges, { expanded, fanLimit }) : null,
         [layout, nodes, edges, expanded, fanLimit],
@@ -402,12 +459,14 @@ export const FlowGraph = ({
     const dimmedIds = useMemo(() => new Set(shownNodes.filter((node) => node.isDimmed === true).map((node) => node.id)), [shownNodes])
     const pathIds = useMemo(() => pathTo(currentId, orbit), [currentId, orbit])
 
+    const lanes = useMemo<LanesLayout | null>(() => layout === "lanes" ? lanesLayout(nodes, edges) : null, [layout, nodes, edges])
     const layered = useMemo(() => layout === "layered" ? layeredPositions(nodes, edges, flowDirection ?? "TB") : null, [layout, nodes, edges, flowDirection])
     const positions = useMemo(() => {
         if (layout === "radial") return radialPositions(nodes, edges)
         if (orbit !== null) return orbit.positions
+        if (lanes !== null) return lanes.positions
         return layered?.positions ?? null
-    }, [layout, nodes, edges, layered, orbit])
+    }, [layout, nodes, edges, layered, orbit, lanes])
     const rootId = flowGraphRoot(nodes)?.id
     const flowNodes = useMemo<Array<Node<NodeData>>>(() => shownNodes.map((graphNode) => {
         const isExpandable = orbit?.expandable.has(graphNode.id) === true
@@ -460,13 +519,16 @@ export const FlowGraph = ({
         const points = nodes.map((node) => positions?.get(node.id) ?? node.position ?? { x: 0, y: 0 })
         const minX = Math.min(...points.map((point) => point.x))
         const minY = Math.min(...points.map((point) => point.y))
-        return headers.map((header, index) => {
-            const along = layout === "layered" ? layerCoordinate(header.at, flowDirection) : header.at
-            return {
+        const held = lanes === null ? null : new Set(nodes.map((node) => lanes.columns.get(node.id)))
+        return headers.flatMap((header, index) => {
+            // A column header shows only over a column that holds a node.
+            if (held !== null && !held.has(header.at)) return []
+            const along = layout === "lanes" ? header.at * LANES_COLUMN_STEP : layout === "layered" ? layerCoordinate(header.at, flowDirection) : header.at
+            return [{
                 id: `grammar-flow-header-${index}`,
                 type: "flowGraphHeader",
                 // A TB lane header ends a gap before the widest node can start, so a long title never runs under a node.
-                position: flowDirection === "LR" ? { x: along, y: minY - HEADER_OFFSET } : { x: minX - FLOW_GRAPH_NODE_MAX_WIDTH / 2 - HEADER_SIDE_GAP, y: along },
+                position: flowDirection === "LR" ? { x: along, y: minY - (layout === "lanes" ? LANES_HEADER_ROOM : HEADER_OFFSET) } : { x: minX - FLOW_GRAPH_NODE_MAX_WIDTH / 2 - HEADER_SIDE_GAP, y: along },
                 ...(flowDirection === "LR" ? {} : { origin: [1, 0.5] as [number, number] }),
                 data: { label: header.label, direction: flowDirection },
                 draggable: false,
@@ -474,9 +536,9 @@ export const FlowGraph = ({
                 selectable: false,
                 focusable: false,
                 ariaHidden: true,
-            }
+            }]
         })
-    }, [headers, flowDirection, nodes, positions, layout])
+    }, [headers, flowDirection, nodes, positions, layout, lanes])
     const allNodes = useMemo<Array<Node<NodeData> | Node<HeaderData> | Node<GuideData>>>(() => [...guideNodes, ...headerNodes, ...flowNodes], [guideNodes, headerNodes, flowNodes])
     const flowEdges = useMemo<Array<Edge>>(() => shownEdges.map((edge) => {
         // A layered edge that skips layers turns in a gap, never inside a skipped layer (see layeredStepPosition).
@@ -492,7 +554,11 @@ export const FlowGraph = ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: layout === "radial" || layout === "orbit" ? "straight" : "smoothstep",
+        type: layout === "radial" || layout === "orbit" ? "straight" : layout === "lanes" ? "flowGraphLane" : "smoothstep",
+        ...(lanes === null ? {} : {
+            data: { stepPosition: lanesStepPosition((lanes.columns.get(edge.target) ?? 0) - (lanes.columns.get(edge.source) ?? 0), lanes.forks.get(edge.source) ?? 0) },
+            markerEnd: { type: MarkerType.ArrowClosed, width: 24, height: 24, color: "var(--muted, GrayText)" },
+        }),
         ...(stepPosition === undefined ? {} : { pathOptions: { stepPosition } }),
         className: classes,
         // The label sits on its own chip at the midpoint; its paint is the grammar's (`.react-flow__edge-text*` in the sheet).
@@ -501,7 +567,7 @@ export const FlowGraph = ({
         selectable: false,
         animated: false,
         }
-    }), [shownEdges, layout, layered, flowDirection, dimmedIds, pathIds])
+    }), [shownEdges, layout, layered, lanes, flowDirection, dimmedIds, pathIds])
     const edgeLabels = useMemo(() => labelledEdges(shownNodes, shownEdges), [shownNodes, shownEdges])
     const signature = `${layout}:${flowDirection ?? ""}:${headerNodes.length}:${shownNodes.map((node) => node.id).join("|")}`
 
@@ -556,7 +622,10 @@ export const FlowGraph = ({
     }
     const onFocus = (event: FocusEvent<HTMLElement>) => showTip(event.target instanceof Element ? event.target.closest(".react-flow__node") : null)
 
-    const customHeight = height === "sm" || height === "md" || height === "lg" ? undefined : typeof height === "number" ? `${height}px` : height
+    const naturalHeight = lanes === null ? null : lanesNaturalHeight(lanes, headerNodes.length > 0)
+    const customHeight = height === undefined && naturalHeight !== null ? `${naturalHeight}px` : height === undefined || height === "sm" || height === "md" || height === "lg" ? undefined : typeof height === "number" ? `${height}px` : height
+    const fitOptions = layout === "lanes" ? LANES_FIT_OPTIONS : FIT_OPTIONS
+    const maxZoom = layout === "lanes" ? LANES_MAX_ZOOM : MAX_ZOOM
     const controls = showControls ?? isInteractive
     // The readable fit grows the canvas for one graph; a new set of nodes or layout starts again from `height`.
     const readableZoom = fit === "readable" && shownNodes.length > 0 ? readableZoomFor(shownNodes) : null
@@ -564,7 +633,7 @@ export const FlowGraph = ({
     const grownHeight = growth !== null && growth.signature === signature ? growth.height : null
     const onGrow = useCallback((next: number) => setGrowth({ signature, height: next }), [signature])
     // A grown canvas is taller than the screen may be: the wheel scrolls the page, the zoom buttons still zoom.
-    const wheelZooms = isInteractive && grownHeight === null
+    const wheelZooms = isInteractive && grownHeight === null && layout !== "lanes"
     const hasBubbles = shownNodes.some((node) => node.form === "bubble")
     const style: CSSProperties | undefined = customHeight === undefined && grownHeight === null && !hasBubbles ? undefined : {
         ...(customHeight === undefined ? {} : { "--starci-flow-height": customHeight }),
@@ -581,7 +650,7 @@ export const FlowGraph = ({
             data-contract="FOCUS-2 STATE-1 STATE-3"
             data-grammar-flow-caption={hasBubbles && zoom < CAPTION_ZOOM ? "off" : undefined}
             data-grammar-flow-direction={flowDirection}
-            data-grammar-flow-height={customHeight === undefined ? height : "custom"}
+            data-grammar-flow-height={customHeight === undefined ? height ?? "md" : "custom"}
             data-grammar-flow-interactive={isInteractive ? "true" : "false"}
             data-grammar-flow-layout={layout}
             data-grammar-flow-fit={fit}
@@ -603,12 +672,13 @@ export const FlowGraph = ({
                 <>
                     <div className="starci-core-flow-graph-canvas">
                         <ReactFlow
+                            edgeTypes={EDGE_TYPES}
                             edges={flowEdges}
                             edgesFocusable={false}
                             elementsSelectable
                             fitView
-                            fitViewOptions={FIT_OPTIONS}
-                            maxZoom={MAX_ZOOM}
+                            fitViewOptions={fitOptions}
+                            maxZoom={maxZoom}
                             minZoom={0.2}
                             nodeOrigin={[0.5, 0.5]}
                             nodeTypes={NODE_TYPES}
@@ -631,7 +701,7 @@ export const FlowGraph = ({
                         >
                             <Background className="starci-core-flow-graph-background" gap={1000} size={0} />
                             {controls ? <Controls aria-label={`${label}: zoom`} className="starci-core-flow-graph-controls" showInteractive={false} /> : null}
-                            <Refit signature={signature} readableZoom={readableZoom} onGrow={onGrow} />
+                            <Refit anchorStart={layout === "lanes"} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
                             {hasBubbles ? <ZoomMirror onZoom={setZoom} /> : null}
                         </ReactFlow>
                     </div>

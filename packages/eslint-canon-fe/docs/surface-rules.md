@@ -103,3 +103,21 @@ const Rules = () => (
 )
 ```
 
+## `starci-fe/no-fill-command-in-header`
+
+Finding code: `FE_COMMAND_FILLS_HEADER` (R352). A page or pane command hugs its label and sits at the end of its header row: a Grammar `Button` with `width="fill"` written in the `actions` of a `PageHeader` or in the `labelEnd` of a `SurfaceCard` or `SurfaceListCard` is refused. `width="fill"` is for a form submit, an auth panel and a phone action bar (`PinnedActionBar`); the rule judges the header slots only, since a form, an auth panel and a phone action bar are not decidable from the file.
+
+Invalid:
+
+```tsx
+import { PageHeader, Button } from "@starci/grammar/core"
+const Head = () => <PageHeader title="Agents" actions={<Button intent="commit" width="fill">Add agent</Button>} />
+```
+
+Valid:
+
+```tsx
+import { PageHeader, Button } from "@starci/grammar/core"
+const Head = () => <PageHeader title="Agents" actions={<Button intent="commit">Add agent</Button>} />
+```
+

@@ -21,6 +21,10 @@ import type { Node } from "./lib/types.ts"
  *   enclosing element of the same file sets `bg-x-soft`. A mark with no tint behind it takes `text-x`. A constant, an array in
  *   a constant or a `classes` entry is not judged for this finding, since the element that wears it is not in view.
  *
+ * OFFSET POP. The family's light-theme tones are pastel fills (1.3 to 1.5:1 as bare text), and the owner chose to keep them
+ * ("1. Pastel"): a bare mark wears the soft foreground there. When the selected Grammar is `offset-pop` the ALONE finding is
+ * not reported; the ON A TINT finding still is.
+ *
  * WHAT IT LEAVES ALONE: a bare solid tone (`text-success` with no `bg-success-soft` on the element), the soft pair on its tint, a
  * solid fill with its own ink (`bg-success text-success-foreground`), a solid border, ring or outline (`border-danger`,
  * `ring-warning`: a boundary is not text), and a class that only shares a prefix (`text-successful`).
@@ -150,6 +154,16 @@ const enclosingTints = (attribute: Node): Set<string> => {
   return tones
 }
 
+/** The Grammar the app selected (`settings.starci.hfs.grammar`), or null when the settings carry none. */
+const grammarOf = (settings: Rule.RuleContext["settings"]): string | null => {
+  const starci: unknown = settings?.["starci"]
+  if (typeof starci !== "object" || starci === null) return null
+  const hfs: unknown = Reflect.get(starci, "hfs")
+  if (typeof hfs !== "object" || hfs === null) return null
+  const grammar: unknown = Reflect.get(hfs, "grammar")
+  return typeof grammar === "string" ? grammar : null
+}
+
 /** Content on a tone's tint wears the soft foreground; a mark with no tint behind it wears the tone. */
 export const statusTextUsesSoftForeground: Rule.RuleModule = defineRule({
   meta: {
@@ -165,6 +179,8 @@ export const statusTextUsesSoftForeground: Rule.RuleModule = defineRule({
   },
   create(context) {
     // A `classes` entry inside a constant is reached twice (as part of the constant, and as the entry): one finding per string.
+    // Offset Pop's light theme draws a bare mark with the soft foreground (owner choice "1. Pastel"), so the lone soft foreground is not judged there.
+    const aloneJudged = grammarOf(context.settings) !== "offset-pop"
     const seen = new Set<Node>()
     const fresh = (strings: Iterable<StringNode>): StringNode[] => [...strings].filter(({ node }) => !seen.has(node) && seen.add(node))
     const reportOnTint = (strings: StringNode[], tints: Set<string>): void => {
@@ -182,6 +198,7 @@ export const statusTextUsesSoftForeground: Rule.RuleModule = defineRule({
         const strings = fresh(stringNodes(attributeValue(node)))
         const own = tintsOf(strings)
         reportOnTint(strings, own)
+        if (!aloneJudged) return
         const enclosing = enclosingTints(node)
         for (const { node: stringNode, text } of strings) {
           for (const { token, family, tone } of softTextClasses(text)) {

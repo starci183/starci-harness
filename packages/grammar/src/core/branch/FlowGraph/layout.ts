@@ -68,15 +68,8 @@ export const FLOW_GRAPH_LANE_GAP = { TB: FLOW_GRAPH_NODE_MAX_WIDTH + 24, LR: 90 
 /** The coordinate of layer `index` along the layer axis (y for `TB`, x for `LR`). */
 export const layerCoordinate = (index: number, direction: FlowGraphDirection): number => index * FLOW_GRAPH_LAYER_GAP[direction]
 
-/**
- * Layered positions for a DAG: a node sits in the layer after its deepest predecessor (longest path), the nodes of a
- * layer are spread evenly across the other axis in input order. Edges that close a cycle are ignored.
- */
-export const layeredPositions = (
-    nodes: ReadonlyArray<FlowGraphNode>,
-    edges: ReadonlyArray<FlowGraphEdge>,
-    direction: FlowGraphDirection,
-): { readonly positions: ReadonlyMap<string, FlowGraphPoint>, readonly layers: ReadonlyMap<string, number> } => {
+/** The layer of every node: one after its deepest predecessor (longest path). Edges that close a cycle are ignored. */
+export const layerOf = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<FlowGraphEdge>): ReadonlyMap<string, number> => {
     const known = new Set(nodes.map((node) => node.id))
     const layers = new Map<string, number>(nodes.map((node) => [node.id, 0]))
     const usable = edges.filter((edge) => known.has(edge.source) && known.has(edge.target) && edge.source !== edge.target)
@@ -92,6 +85,19 @@ export const layeredPositions = (
         }
         if (!changed) break
     }
+    return layers
+}
+
+/**
+ * Layered positions for a DAG: a node sits in the layer after its deepest predecessor (longest path), the nodes of a
+ * layer are spread evenly across the other axis in input order. Edges that close a cycle are ignored.
+ */
+export const layeredPositions = (
+    nodes: ReadonlyArray<FlowGraphNode>,
+    edges: ReadonlyArray<FlowGraphEdge>,
+    direction: FlowGraphDirection,
+): { readonly positions: ReadonlyMap<string, FlowGraphPoint>, readonly layers: ReadonlyMap<string, number> } => {
+    const layers = layerOf(nodes, edges)
     const byLayer = new Map<number, string[]>()
     for (const node of nodes) {
         const layer = layers.get(node.id) ?? 0
@@ -377,3 +383,104 @@ export const orbitLayout = (
     if (stray.length > 0) outer += 90
     return { positions, parents, visible, expandable, more, radii, extent: outer + ORBIT_GUIDE_MARGIN }
 }
+
+/** The `lanes` layout, in graph units: every node is one width, a column is a step, a row is a step. */
+export const LANES_NODE_WIDTH = 128
+export const LANES_NODE_HEIGHT = 68
+export const LANES_COLUMN_STEP = 232
+export const LANES_ROW_STEP = 84
+/** Where an edge leaves its source column, from the node's right edge: every branch of a node forks from that one point. */
+export const LANES_FORK_FIRST = 14
+/** Each further node of a column that forks moves its fork point this far right, so two trunks never share a vertical line. */
+export const LANES_FORK_STEP = 12
+/** The room above the first row for the column headers, and the margin around the graph. */
+export const LANES_HEADER_ROOM = 44
+
+export type LanesLayout = {
+    readonly positions: ReadonlyMap<string, FlowGraphPoint>
+    /** The column of every node. */
+    readonly columns: ReadonlyMap<string, number>
+    /** The row of every node: row 0 is the main path, each branch after the first child of a node takes the next free row. */
+    readonly rows: ReadonlyMap<string, number>
+    readonly rowCount: number
+    readonly columnCount: number
+    /** For a node that forks (it has a child in another row), the order of its fork point among the forking nodes of its column, top first. */
+    readonly forks: ReadonlyMap<string, number>
+}
+
+/**
+ * Branch lanes: a node sits in the column after its deepest predecessor, and a path reads left to right on one row. The first
+ * child of a node keeps its row, and every further child (a branch of a condition) takes the nearest row below that is free
+ * for the whole run from the source's column to its own, so no line crosses a node and no row stays empty between branches.
+ * A node with several parents follows the first one. Edges that close a cycle are ignored.
+ */
+export const lanesLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<FlowGraphEdge>): LanesLayout => {
+    const columns = layerOf(nodes, edges)
+    const known = new Set(nodes.map((node) => node.id))
+    const incoming = new Map<string, string[]>()
+    for (const edge of edges) {
+        if (!known.has(edge.source) || !known.has(edge.target) || edge.source === edge.target) continue
+        if ((columns.get(edge.source) ?? 0) >= (columns.get(edge.target) ?? 0)) continue
+        incoming.set(edge.target, [...(incoming.get(edge.target) ?? []), edge.source])
+    }
+    const order = [...nodes].sort((a, b) => (columns.get(a.id) ?? 0) - (columns.get(b.id) ?? 0))
+    const rows = new Map<string, number>()
+    const taken = new Set<string>()
+    const cell = (column: number, row: number) => `${column}:${row}`
+    const isFree = (row: number, from: number, to: number) => {
+        for (let column = from; column <= to; column += 1) if (taken.has(cell(column, row))) return false
+        return true
+    }
+    for (const node of order) {
+        const column = columns.get(node.id) ?? 0
+        const parent = (incoming.get(node.id) ?? [])[0]
+        const parentRow = parent === undefined ? undefined : rows.get(parent)
+        const parentColumn = parent === undefined ? column : (columns.get(parent) ?? 0)
+        let row = parentRow ?? 0
+        // The run along the target's row from the column after the source to this one must be free.
+        while (!isFree(row, parent === undefined ? column : parentColumn + 1, column)) row += 1
+        // A node that starts a path (no parent) takes the first free row of its column.
+        rows.set(node.id, row)
+        taken.add(cell(column, row))
+    }
+    const positions = new Map<string, FlowGraphPoint>()
+    for (const node of nodes) positions.set(node.id, { x: (columns.get(node.id) ?? 0) * LANES_COLUMN_STEP, y: (rows.get(node.id) ?? 0) * LANES_ROW_STEP })
+    const forks = new Map<string, number>()
+    const perColumn = new Map<number, number>()
+    const children = new Map<string, string[]>()
+    for (const [target, sources] of incoming) {
+        const first = sources[0]
+        if (first !== undefined) children.set(first, [...(children.get(first) ?? []), target])
+    }
+    const forking = nodes
+        .filter((node) => (children.get(node.id) ?? []).some((child) => rows.get(child) !== rows.get(node.id)))
+        .sort((a, b) => (rows.get(a.id) ?? 0) - (rows.get(b.id) ?? 0))
+    for (const node of forking) {
+        const column = columns.get(node.id) ?? 0
+        const k = perColumn.get(column) ?? 0
+        forks.set(node.id, k)
+        perColumn.set(column, k + 1)
+    }
+    return {
+        forks,
+        positions,
+        columns,
+        rows,
+        rowCount: Math.max(0, ...rows.values()) + 1,
+        columnCount: Math.max(0, ...columns.values()) + 1,
+    }
+}
+
+/**
+ * Where a lanes edge turns, as React Flow's smoothstep `stepPosition`: a fixed distance after the source's right edge, whatever the
+ * span, so the branches of one node fork from one point and then run along their own row through the columns they skip; `fork` is
+ * the node's place among the forking nodes of its column, which keeps their trunks apart.
+ */
+export const lanesStepPosition = (span: number, fork: number): number => {
+    const distance = Math.max(span, 1) * LANES_COLUMN_STEP - LANES_NODE_WIDTH
+    return (LANES_FORK_FIRST + fork * LANES_FORK_STEP) / distance
+}
+
+/** The canvas height that holds a lanes graph at zoom 1, headers and margin included. */
+export const lanesNaturalHeight = (layout: LanesLayout, hasHeaders: boolean): number =>
+    (layout.rowCount - 1) * LANES_ROW_STEP + LANES_NODE_HEIGHT + (hasHeaders ? LANES_HEADER_ROOM : 0) + 48

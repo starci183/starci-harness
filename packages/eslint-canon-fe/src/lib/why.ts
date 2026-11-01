@@ -44,6 +44,11 @@ export const why = {
     en: "`<file>` draws a multi-pane frame by hand: a vertical Divider between columns of a flex row, or a flex row of columns inside a joined SurfaceCard.",
     fix: "Compose the columns as Panes of a PaneGrid (areas per breakpoint, collapse=\"drawer\" for a side pane), mounted as Page chrome=\"panes\" on a tabbed app page.",
   },
+  "no-fill-command-in-header": {
+    code: "FE_COMMAND_FILLS_HEADER",
+    en: "`<file>` stretches a command in a page or card header (`PageHeader actions`, `labelEnd`) with `width=\"fill\"`.",
+    fix: "A page or pane command hugs its label and sits at the end of its header row: drop `width`. `width=\"fill\"` is for a form submit, an auth panel and a phone action bar.",
+  },
   "no-table-in-card": {
     code: "FE_TABLE_IN_CARD",
     en: "`<file>` puts a DataTable inside a SurfaceCard (directly, or in a component of the file that a SurfaceCard encloses).",

@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { Skeleton } from "../../primitive/Skeleton/index.js"
 
-/** `incoming`: someone else wrote it (start side, recessed face). `outgoing`: the reader's own message (end side, accent-soft face). */
+/** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
 export type ChatBubbleSide = "incoming" | "outgoing"
 
 export type ChatBubbleProps = {
@@ -40,7 +40,7 @@ export type ChatBubbleProps = {
 /**
  * One chat message. The app owns the thread (order, grouping, day dividers with `Divider label`, scroll with
  * `VerticalScrollRegion`); this owns the anatomy of a single message: avatar column, author line, the bubble face and its
- * actions. Faces follow SURFACE-3 (incoming, recessed) and SURFACE-4 (outgoing, the raised accent-soft pair); the corner on
+ * actions. Faces follow SURFACE-2 (incoming, the surface pair) and the brand fill (outgoing, the accent pair; inline content inherits its foreground); the corner on
  * the author's side tightens to point at the avatar (RADIUS-6).
  */
 export const ChatBubble = ({

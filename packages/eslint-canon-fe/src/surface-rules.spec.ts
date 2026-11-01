@@ -5,6 +5,8 @@
 // proves: FE_LIST_PANEL_PADDING@full
 // proves: FE_HAND_BUILT_PANES@lite
 // proves: FE_HAND_BUILT_PANES@full
+// proves: FE_COMMAND_FILLS_HEADER@lite
+// proves: FE_COMMAND_FILLS_HEADER@full
 // proves: FE_TABLE_IN_CARD@lite
 // proves: FE_TABLE_IN_CARD@full
 // proves: FE_GRAMMAR_LAYOUT_ONLY@lite
@@ -16,7 +18,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { nestedControlVariant, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
+import { nestedControlVariant, noFillCommandInHeader, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
 import { why } from "./lib/why.ts"
 import { eslintRule } from "./lib/eslint-boundary.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
@@ -35,6 +37,7 @@ test("surface rules are published at error with their canon finding codes", () =
   assert.equal(why["no-app-surface-paint"].code, "FE_GRAMMAR_LAYOUT_ONLY")
   assert.equal(why["no-hand-built-panes"].code, "FE_HAND_BUILT_PANES")
   assert.equal(why["no-table-in-card"].code, "FE_TABLE_IN_CARD")
+  assert.equal(why["no-fill-command-in-header"].code, "FE_COMMAND_FILLS_HEADER")
 })
 
 for (const edition of ["lite", "full"]) {
@@ -361,6 +364,28 @@ for (const edition of ["lite", "full"]) {
       // a component that renders itself terminates
       valid: [tables + 'const R = () => <div><R /><DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} /></div>'],
       invalid: [],
+    }))
+  })
+}
+
+for (const edition of ["lite", "full"]) {
+  test(`${edition}: a command in a page or card header hugs its label`, () => {
+    const head = 'import { PageHeader, SurfaceCard, SurfaceListCard, Button, Form } from "@starci/grammar/core"; '
+    const fill = { messageId: "fill" }
+    assert.doesNotThrow(() => tester().run("no-fill-command-in-header", noFillCommandInHeader, {
+      valid: [
+        head + 'const A = () => <PageHeader title="a" actions={<Button intent="commit">Add</Button>} />',
+        head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button intent="neutral" width="content">Edit</Button>} />',
+        // a fill button in a form, a card body or a phone action bar is not a header command
+        head + 'const A = () => <Form><Button intent="commit" width="fill" type="submit">Save</Button></Form>',
+        head + 'const A = () => <SurfaceCard label="a"><Button intent="commit" width="fill">Continue</Button></SurfaceCard>',
+        'import { Button } from "other-kit"; const A = () => <PageHeader title="a" actions={<Button width="fill" />} />',
+      ],
+      invalid: [
+        { code: head + 'const A = () => <PageHeader title="a" actions={<Button intent="commit" width="fill">Add</Button>} />', errors: [fill] },
+        { code: head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button intent="neutral" width="fill">Edit</Button>} />', errors: [fill] },
+        { code: head + 'const A = () => <SurfaceListCard label="a" labelEnd={<div><Button width={"fill"}>Add</Button></div>} />', errors: [fill] },
+      ],
     }))
   })
 }

@@ -84,6 +84,20 @@ test("softTextClasses and softBackgroundTones read the soft pair with variants a
   assert.deepEqual(softBackgroundTones("bg-success text-success-soft-foreground bg-accent-soft bg-success-soft-foreground"), [])
 })
 
+test("offset-pop: the lone soft foreground is not judged, the solid tone on a tint still is", () => {
+  const settings = { starci: { hfs: { grammar: "offset-pop" } } }
+  new RuleTester({
+    languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
+    settings,
+  }).run("status-text-uses-soft-foreground", statusTextUsesSoftForeground, {
+    valid: [
+      { filename: FILE, code: 'const E = () => <span className="text-success-soft-foreground" />' },
+      { filename: FILE, code: 'const E = () => <span className="text-success" />' },
+    ],
+    invalid: [{ filename: FILE, code: 'const E = () => <span className="bg-success-soft text-success" />', errors: [onTint] }],
+  })
+})
+
 test("status-text-uses-soft-foreground", () => {
   tester.run("status-text-uses-soft-foreground", statusTextUsesSoftForeground, {
     valid: [

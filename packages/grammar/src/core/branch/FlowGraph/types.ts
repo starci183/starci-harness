@@ -10,7 +10,12 @@ export type FlowGraphNodeShape = "stadium" | "rect" | "round" | "diamond" | "cir
  * `radial` rings the nodes round the root, `layered` puts a DAG in layers, `manual` uses each node's `position`, and `orbit`
  * is the value-sized map: the root at the centre, then sectors, a staggered ring and the fans of open nodes.
  */
-export type FlowGraphLayout = "radial" | "manual" | "layered" | "orbit"
+export type FlowGraphLayout = "radial" | "manual" | "layered" | "orbit" | "lanes"
+/**
+ * What a node of a `lanes` graph is, which sets its tone: a `trigger` starts the work (neutral), a `condition` forks it (warning), an
+ * `execute` does a step (the node's `tone`, info by default) and an `output` ends a path (accent).
+ */
+export type FlowGraphNodeKind = "trigger" | "condition" | "execute" | "output"
 /** How a node draws: a `label` pill that carries its words, or a `bubble` disc that carries a short `mark` and is named on hover. */
 export type FlowGraphNodeForm = "label" | "bubble"
 /**
@@ -31,6 +36,8 @@ export type FlowGraphNode = {
     readonly label: string
     readonly description?: string
     readonly tone?: FlowGraphTone
+    /** `lanes` only: what the node is; it sets the tone (see {@link FlowGraphNodeKind}). An `execute` node keeps its own `tone`. */
+    readonly kind?: FlowGraphNodeKind
     readonly size?: FlowGraphNodeSize
     /** The node outline. Defaults to `stadium`. */
     readonly shape?: FlowGraphNodeShape
