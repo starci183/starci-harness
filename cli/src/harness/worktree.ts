@@ -1,7 +1,7 @@
 import { chmodSync, cpSync, existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { isAbsolute, join, relative, resolve } from "node:path"
 import { Refusal } from "../shared/errors.js"
-import { captureNpm } from "../shared/exec.js"
+import { captureNpm, captureTool } from "../shared/exec.js"
 import { withHeavySlot } from "./heavy.js"
 import { captureGit, mainCheckout } from "../shared/git.js"
 
@@ -36,6 +36,47 @@ const GIT_HOOKS: ReadonlySet<string> = new Set([
     "fsmonitor-watchman", "p4-changelist", "p4-prepare-changelist", "p4-post-changelist", "p4-pre-submit", "post-index-change",
 ])
 
+/** The generated hooks folder husky installs into when nothing else names one. */
+const HUSKY_FOLDER = ".husky/_"
+
+/** True when the checkout declares husky: a tracked `.husky` folder holding a hook, or a `prepare` script that runs husky. */
+export const declaresHusky = (checkout: string): boolean => {
+    try {
+        const manifest = JSON.parse(readFileSync(join(checkout, "package.json"), "utf8")) as { scripts?: Record<string, unknown> }
+        const prepare = manifest.scripts?.prepare
+        if (typeof prepare === "string" && /\bhusky\b/.test(prepare)) return true
+    } catch {
+        // No readable manifest: the hooks folder alone decides.
+    }
+    const folder = join(checkout, ".husky")
+    return existsSync(folder) && readdirSync(folder).some((name) => GIT_HOOKS.has(name))
+}
+
+/**
+ * The hooks folder a checkout must carry, relative to it: the one `core.hooksPath` names, else husky's generated folder when the
+ * checkout declares husky. An unset setting would otherwise leave every commit of the worktree without its gate, and say nothing.
+ */
+export const requiredHooksPath = async (checkout: string): Promise<string | undefined> => (await declaredHooksPath(checkout)) ?? (declaresHusky(checkout) ? HUSKY_FOLDER : undefined)
+
+/**
+ * Installs husky into a worktree from the main checkout's own copy (`node <main>/node_modules/husky/bin.js`, run in the worktree: it
+ * writes `.husky/_` there and sets `core.hooksPath`), for a worktree with no `node_modules` of its own where `npm run prepare` cannot
+ * find husky. Returns false when the main checkout has no husky or the install failed.
+ */
+const installHuskyFromMain = async (root: string, worktree: string): Promise<boolean> => {
+    try {
+        const home = join(await mainCheckout(root), "node_modules", "husky")
+        const manifest = JSON.parse(readFileSync(join(home, "package.json"), "utf8")) as { version?: string; bin?: string | Record<string, string> }
+        const bin = typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.husky
+        if (bin === undefined) return false
+        const major = Number.parseInt(manifest.version ?? "0", 10)
+        const run = await captureTool(process.execPath, [join(home, bin), ...(major >= 9 ? [] : ["install"])], worktree, { timeoutMs: 60_000 })
+        return run.exitCode === 0
+    } catch {
+        return false
+    }
+}
+
 /**
  * The hooks of a folder git skips on this host: a hook file without the owner's execute bit, which git on Linux and macOS
  * ignores with only a hint. Git for Windows runs a hook whatever its mode, so none is skipped there.
@@ -50,16 +91,20 @@ const skippedHooks = (folder: string): string[] => {
 /**
  * Gives a fresh worktree the hooks its product declares, ready to run. A generated, gitignored hooks folder
  * (`core.hooksPath=.husky/_`) is not in a new `git worktree add`, so the product's commit gate would silently never run there.
- * The product's own installer (its `prepare` script) is preferred; failing that the folder is copied from the main checkout
- * (real files, never a junction or a symlink). A hook either way gets the execute bit git needs to run it (a hook written by a
- * script that set no mode is otherwise skipped). Returns the hooks folder, or undefined when the repository declares none.
- * Whether it now exists and runs is judged by assertWorktreeHooks, so a failed install never passes as a gate.
+ * A product that declares husky gets it installed even when `core.hooksPath` was never set. The product's own installer (its
+ * `prepare` script) is preferred; a worktree without `node_modules` cannot run it, so husky of the main checkout installs there
+ * next; failing both the folder is copied from the main checkout (real files, never a junction or a symlink). A hook either way gets
+ * the execute bit git needs to run it (a hook written by a script that set no mode is otherwise skipped). Returns the hooks folder,
+ * or undefined when the repository declares none. Whether it now exists and runs is judged by assertWorktreeHooks, so a failed
+ * install never passes as a gate.
  */
 export const materialiseHooks = async (root: string, worktree: string): Promise<string | undefined> => {
-    const hooks = await declaredHooksPath(root)
+    const hooks = (await declaredHooksPath(root)) ?? (declaresHusky(worktree) ? HUSKY_FOLDER : undefined)
     if (hooks === undefined) return hooks
     const folder = join(worktree, hooks)
+    const hooksPathSet = async (): Promise<boolean> => (await declaredHooksPath(worktree)) !== undefined
     if (!existsSync(folder) && declaresPrepare(worktree)) await withHeavySlot("build", "npm run prepare", worktree, { timeoutMs: 120_000 }, (held) => captureNpm(["run", "--silent", "prepare"], worktree, held.options)).catch(() => undefined)
+    if ((!existsSync(folder) || !(await hooksPathSet())) && declaresHusky(worktree)) await installHuskyFromMain(root, worktree)
     if (!existsSync(folder)) {
         const source = join(await mainCheckout(root), hooks)
         if (existsSync(source)) cpSync(source, folder, { recursive: true, dereference: true })
@@ -69,17 +114,19 @@ export const materialiseHooks = async (root: string, worktree: string): Promise<
 }
 
 /**
- * Refuses WORKTREE_HOOKS_MISSING when the repository declares a hooks folder the worktree lacks, or holds a hook git would skip
- * there: either way its commits would skip the product's own gate.
+ * Refuses WORKTREE_HOOKS_MISSING when the repository declares a hooks folder the worktree lacks, declares husky without setting
+ * `core.hooksPath` to it, or holds a hook git would skip there: either way its commits would skip the product's own gate.
  */
 export const assertWorktreeHooks = async (worktree: string): Promise<void> => {
-    const hooks = await declaredHooksPath(worktree)
+    const declared = await declaredHooksPath(worktree)
+    const hooks = declared ?? (declaresHusky(worktree) ? HUSKY_FOLDER : undefined)
     if (hooks === undefined) return
     const folder = join(worktree, hooks)
     const missing = existsSync(folder) ? skippedHooks(folder).map((hook) => `${join(folder, hook)} is not executable`) : [`${folder} does not exist`]
+    if (declared === undefined) missing.push("core.hooksPath is not set, so git never looks there")
     if (missing.length === 0) return
     throw new Refusal(
         "WORKTREE_HOOKS_MISSING",
-        `core.hooksPath is ${hooks} but ${missing.join(", ")}, so commits in ${worktree} would skip the product's pre-commit gate; run the product's installer (its prepare script) there, or copy ${hooks} from the main checkout with its modes, then retry`,
+        `the product's hooks are ${hooks} but ${missing.join(", ")}, so commits in ${worktree} would skip the product's pre-commit gate; run the product's installer (its prepare script, or husky of the main checkout) there, or copy ${hooks} from the main checkout with its modes, then retry`,
     )
 }

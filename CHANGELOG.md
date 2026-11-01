@@ -6,6 +6,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- A workflow worktree of a product that declares husky (a tracked `.husky` hook or a `prepare` that runs husky) gets husky installed even when `core.hooksPath` was never set: without `node_modules` of its own the worktree installs it from the main checkout's husky, and `assertWorktreeHooks` refuses WORKTREE_HOOKS_MISSING when the setting is still absent, so the product's pre-commit gate never silently skips (harvest item 5).
+
 ## [1.1.0-alpha.35] - 2026-11-01
 
 ### Changed
