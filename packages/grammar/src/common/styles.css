@@ -156,6 +156,9 @@
         --danger-soft: color-mix(in oklab, var(--danger) 15%, transparent);
         --danger-soft-foreground: color-mix(in oklab, var(--danger) 65%, var(--foreground) 35%);
         --danger-soft-hover: color-mix(in oklab, var(--danger) 20%, transparent);
+        --info-soft: color-mix(in oklab, var(--info) 15%, transparent);
+        --info-soft-foreground: color-mix(in oklab, var(--info) 70%, var(--foreground) 30%);
+        --info-soft-hover: color-mix(in oklab, var(--info) 20%, transparent);
         --background-secondary: color-mix(in oklab, var(--background) 96%, var(--foreground) 4%);
         --background-tertiary: color-mix(in oklab, var(--background) 92%, var(--foreground) 8%);
         --background-inverse: var(--foreground);
@@ -214,6 +217,8 @@
         --warning-soft-foreground: color-mix(in oklab, var(--warning) 70%, var(--foreground) 30%);
         --danger-soft: color-mix(in oklab, var(--danger) 16%, transparent);
         --danger-soft-foreground: color-mix(in oklab, var(--danger) 70%, var(--foreground) 30%);
+        --info-soft: color-mix(in oklab, var(--info) 16%, transparent);
+        --info-soft-foreground: color-mix(in oklab, var(--info) 70%, var(--foreground) 30%);
     }
 
     @media (prefers-color-scheme: dark) {
@@ -248,6 +253,8 @@
             --warning-soft-foreground: color-mix(in oklab, var(--warning) 70%, var(--foreground) 30%);
             --danger-soft: color-mix(in oklab, var(--danger) 16%, transparent);
             --danger-soft-foreground: color-mix(in oklab, var(--danger) 70%, var(--foreground) 30%);
+            --info-soft: color-mix(in oklab, var(--info) 16%, transparent);
+            --info-soft-foreground: color-mix(in oklab, var(--info) 70%, var(--foreground) 30%);
         }
     }
 
@@ -1255,6 +1262,7 @@
         --success-soft-foreground: color-mix(in oklab, var(--success, CanvasText) 8%, var(--grammar-ink-band-foreground));
         --warning-soft-foreground: color-mix(in oklab, var(--warning, CanvasText) 8%, var(--grammar-ink-band-foreground));
         --danger-soft-foreground: color-mix(in oklab, var(--danger, CanvasText) 8%, var(--grammar-ink-band-foreground));
+        --info-soft-foreground: color-mix(in oklab, var(--info, CanvasText) 8%, var(--grammar-ink-band-foreground));
         --accent-soft-foreground: var(--grammar-ink-band-foreground);
         --accent-soft: var(--grammar-ink-band-plate);
     }
@@ -1516,10 +1524,22 @@
         box-shadow: var(--starci-core-verdict-edge, none);
     }
 
+    /* The footer of a surface list is a small muted line under the card, the full width of the list. */
     .starci-core-surface-footer {
         display: flex;
+        width: 100%;
         min-width: 0;
         align-items: center;
+        color: var(--muted, var(--starci-core-muted, GrayText));
+        font-size: 0.75rem;
+        line-height: 1rem;
+    }
+
+    /* A Text the app puts in the footer is the same line, not a second size: it takes the footer's size, leading and ink. */
+    .starci-core-surface-footer .starci-core-text[data-component="Text"] {
+        color: inherit;
+        font-size: inherit;
+        line-height: inherit;
     }
 
     .starci-core-tabs-frame {

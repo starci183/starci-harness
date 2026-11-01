@@ -1253,7 +1253,7 @@ rules:
       - {path: packages/hfs/src/hfs-i18n-catalog-coverage.spec.mjs, editions: [lite, full]}
   - id: R61
     code: "FE_STYLE_TOKEN_ONLY"
-    law: "Application CSS uses the selected Grammar tokens for layout and the declared brand owner for brand values; every source declaration resolves. Status foregrounds reach 3:1 against their tinted surface and page background in each theme, body text reaches 4.5:1, and an insufficiently contrasting solid tone is never text. The selected Grammar owns the concrete token pairs, typography, scale and visual values."
+    law: "Application CSS uses the selected Grammar tokens for layout and the declared brand owner for brand values; every source declaration resolves. Status foregrounds reach 3:1 against their tinted surface and page background in each theme, body text reaches 4.5:1, content on a tone background uses the tone's soft pair and a mark with no background of the tone uses the tone itself. The selected Grammar owns the concrete token pairs, typography, scale and visual values."
     docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP, packages/stylelint/README.md, packages/eslint/fe/docs/brand-values.md, docs/source-process.md#the-test-ladder, knowledge/hfs/rules.yaml#R225]
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]

@@ -41,9 +41,10 @@ family that publishes the shared HeroUI surface and field API: `nested-control-v
 variants on layer-aware fields and the pill (`variant="secondary"`) on Tabs, which are the underline bar (`FE_NESTED_VARIANT`),
 `no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`) and
 `no-list-panel-padding` refuses horizontal padding wrappers around Grammar lists and section captions
-within the nearest painted surface, a `Pane` or a `PaneSection` included (`FE_LIST_PANEL_PADDING`), and
+within the nearest painted surface, a `Pane` or a `PaneSection` included (`FE_LIST_PANEL_PADDING`),
 `no-hand-built-panes` refuses a multi-pane frame drawn by hand, a vertical divider as a column seam or
-columns inside a joined card, where `PaneGrid` owns both (`FE_HAND_BUILT_PANES`). The R65 budget law's
+columns inside a joined card, where `PaneGrid` owns both (`FE_HAND_BUILT_PANES`), and
+`no-table-in-card` refuses a `DataTable` inside a `SurfaceCard`, where a `SurfaceListCard` with its note in `footer` holds plain rows (`FE_TABLE_IN_CARD`). The R65 budget law's
 `no-app-relative-clock` leaves live relative time and countdowns to Grammar's shared clock.
 
 The spacing law (R350) leaves every distance to Grammar: `no-spacing-utility` refuses a padding, margin, gap

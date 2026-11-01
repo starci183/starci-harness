@@ -211,10 +211,12 @@ Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](p
 | TONE-2 | muted | a line that recedes because something beside it carries the meaning; every lowest-rank line; heading level 4 |
 | TONE-3 | accent | one short span whose emphasis is already decided; never a paragraph, never repeated across peers |
 
-Status is never a tone choice: success, warning, danger and information belong to the owners that carry them. A
-bare status glyph or title uses the tone's soft foreground (measured at `contrast.statusSoft`), never a darkened
-solid tone. Lint: `starci-grammar/status-text-uses-soft-foreground`. When a pair fails contrast, the app changes
-the surface, never the token.
+Status is never a tone choice: success, warning, danger and information belong to the owners that carry them. For a
+status tone x, content that sits on a background of the tone uses the pair x-soft and x-soft-foreground, and a mark that
+stands alone, with no background of the tone behind it, uses x itself (a solid fill takes x-foreground). A bare mark is
+measured at `contrast.statusSoft` as a glyph or title and at `contrast.text` as body text, and no app darkens the tone:
+a tone that misses its floor is changed in the grammar's token. Lint: `starci-grammar/status-text-uses-soft-foreground`.
+When a pair fails contrast, the app changes the surface, never the token.
 
 ## Paint
 

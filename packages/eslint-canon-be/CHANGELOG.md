@@ -2,6 +2,7 @@
 
 ## 3.11.6 - 2026-11-01
 
+- Changed: the bundled rule catalog states the R61 status law as the owner's pair rule.
 - Changed: the bundled canon pins name @starci/grammar 0.20.2, eslint-grammar-core and eslint-grammar-offset-pop 0.20.2, eslint-canon-be 3.11.6, eslint-canon-fe 9.8.5, stylelint-canon 2.4.0 and hfs 4.16.5 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm). No rule changes.
 
 ## 3.11.5 - 2026-11-01

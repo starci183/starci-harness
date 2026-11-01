@@ -2,7 +2,8 @@
 
 ## 0.20.2 - 2026-11-01
 
-- Changed: moves with `@starci/grammar` 0.20.2 (the stat strip's dividers) and requires `@starci/eslint-grammar-core` 0.20.2; the bundled canon pins follow; no rule changed.
+- Changed: inherits the changed `status-text-uses-soft-foreground` of `@starci/eslint-grammar-core` and the Offset Pop information soft pair of `@starci/grammar`.
+- Changed: moves with `@starci/grammar` 0.20.2 (the stat strip's dividers) and requires `@starci/eslint-grammar-core` 0.20.2; the bundled canon pins follow; the status rule changes (below).
 
 ## 0.20.1 - 2026-11-01
 
@@ -179,7 +180,7 @@
 
 ## 0.15.5 - 2026-10-28
 
-- Changed: versioned together with Grammar 0.15.5; `@starci/eslint-grammar-core` 0.15.5 is the peer dependency, and the bundled canon pins name the Grammar family 0.15.5. No rule changes.
+- Changed: versioned together with Grammar 0.15.5; `@starci/eslint-grammar-core` 0.15.5 is the peer dependency, and the bundled canon pins name the Grammar family 0.15.5. One rule law changes (above).
 
 ## 0.15.4 - 2026-10-28
 

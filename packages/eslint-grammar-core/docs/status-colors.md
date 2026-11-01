@@ -1,34 +1,41 @@
-# Status colours: text and icons take the soft pair
+# Status colors: content on a tone background takes the soft pair, a lone mark takes the tone
 
-Law module: `status-colors.ts`. Catalogue: R61 FE_STYLE_TOKEN_ONLY (the class-name half of the soft-pair contrast obligation; the brand layer's own contrast is `starci/status-contrast` of @starci/stylelint-canon).
+Law module: `status-colors.ts`. Catalogue: R61 FE_STYLE_TOKEN_ONLY (the class-name half of the status-pair contrast obligation; the brand layer's own contrast is `starci/status-contrast` of @starci/stylelint-canon).
 
-A status tone has two faces. The solid tone (`--success`) is a fill, with `--success-foreground` ink on it. A status shown as text or as an icon takes the soft pair, the way a HeroUI flat Chip does: `--success-soft-foreground` ink, on `--success-soft` when it sits on a tint. The soft pair is what the brand layer is checked to make readable (3:1 on the tint and on the page); the solid tone reads 3.8:1 or worse on white, so as a text colour it fails. The tones are the grammar's status tones (`success`, `warning`, `danger`, `info`), read from `lib/status-tones.generated.ts`, which is generated from the grammar with the stylelint vocabulary.
+A status tone `x` (`success`, `warning`, `danger`, `info`, read from `lib/status-tones.generated.ts`, which is generated from the grammar with the stylelint vocabulary) paints in two ways. Content that sits on a background of the tone uses the pair `x-soft` and `x-soft-foreground`, the way a HeroUI flat Chip does. A mark that stands alone, with no background of the tone behind it, uses `x` itself. A solid fill takes `x-foreground`. The owner's words: "TEXT TRÊN BG THÌ X-SOFT VÀ X-SOFT-FOREGROUND, CÒN NẾU X ĐỘC LẬP THÌ ĐỂ X LUN" (ruling `status-soft-pair-on-background`).
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 
 ## `starci-grammar/status-text-uses-soft-foreground`
 
-No class that paints text, an icon or a text decoration with a solid status tone: `text-<tone>`, `fill-<tone>`, `stroke-<tone>`, `decoration-<tone>` (with any variant, opacity or `!`), read from `className`/`class`, from `cn()`/`clsx()` arguments, conditionals, arrays, constants and `classes` entries.
+Two findings, both read from `className`/`class`, from `cn()`/`clsx()` arguments, conditionals, arrays, constants and `classes` entries, with any variant, opacity or `!`:
+
+- **on a tint** (message `onTint`): a class string that sets `bg-<tone>-soft` and also paints text, an icon or a text decoration with the solid tone of the same tone: `text-<tone>`, `fill-<tone>`, `stroke-<tone>`, `decoration-<tone>`. The content on the tint takes `text-<tone>-soft-foreground`.
+- **alone** (message `alone`): `text-<tone>-soft-foreground` (or `fill-`, `stroke-`, `decoration-`) in the `className` of an element when neither that element nor an element that encloses it in the same file sets `bg-<tone>-soft`. A mark with no tint behind it takes `text-<tone>`. A constant, an array in a constant or a `classes` entry is not judged for this finding, since the element that wears it is not in view; a component that receives its tint from another file is judged where the tint is written.
+
+A bare solid tone (`text-success` with no `bg-success-soft` on the element), the pair on its tint, a solid fill with its own ink, a solid border, ring or outline, and a tone beside a tint of another tone are not findings.
 
 **Invalid** (`src/components/leaves/StatusText/index.tsx`)
 
 ```tsx
-<span className="text-success" />
-<svg className={cn("size-4", ok && "fill-danger")} />
+<span className="bg-success-soft text-success" />
+<span className="text-danger-soft-foreground" />
 ```
 
 **Valid** (`src/components/leaves/StatusText/index.tsx`)
 
 ```tsx
 <span className="bg-success-soft text-success-soft-foreground" />
+<span className="text-success" />
+<div className="bg-danger-soft"><span className="text-danger-soft-foreground" /></div>
 <button className="bg-success text-success-foreground" />
 <div className="border-danger ring-2 ring-warning" />
 ```
 
 **Finding code:** `FE_STYLE_TOKEN_ONLY`
 
-**Why:** `<file>` colours text or an icon with a solid status tone (`<what>`, for example `text-success`). A solid tone is a background colour; used as a text colour it reads below 4.5:1 on the page background.
+**Why:** `<file>` colours status content against the owner's pair rule (`<what>`): content on a `bg-<tone>-soft` tint paints with the solid tone, or a mark with no tint behind it paints with the soft foreground.
 
-**Fix:** Change to the soft pair: `text-<tone>-soft-foreground` (with `bg-<tone>-soft` if it sits on a light background); solid tones are used only with `bg-<tone>` and `text-<tone>-foreground`.
+**Fix:** Content on a background of the tone takes the pair: `bg-<tone>-soft` with `text-<tone>-soft-foreground`. A mark that stands alone, with no background of the tone, takes the tone itself: `text-<tone>`. A solid fill takes `bg-<tone>` with `text-<tone>-foreground`.
 
 Rule ownership: [FE-RULE-OWNERSHIP](../../../contexts/code/fe/README.md#the-placement-test-fe-rule-ownership).

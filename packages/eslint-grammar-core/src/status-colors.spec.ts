@@ -3,15 +3,16 @@
  *
  *   node --test src/status-colors.spec.ts
  *
- * The violating cases are the shapes a solid tone hides in: a plain className, a `cn()` call, a conditional, a variant
- * prefix, an opacity suffix, a hoisted constant and a `classes` entry. The passing cases are the soft pair, the solid
- * fill with its own ink, and every neighbour that shares a prefix with a finding.
+ * The rule is the owner's pair rule: content on a `bg-<tone>-soft` tint takes the soft foreground, a mark with no tint behind
+ * it takes the tone. The violating cases are the shapes the wrong pair hides in: a plain className, a `cn()` call, a conditional,
+ * a variant prefix, an opacity suffix, a hoisted constant, a `classes` entry and a tint on an enclosing element. The passing
+ * cases are the pair on its tint, the bare tone, the solid fill with its own ink, and every neighbour that shares a prefix.
  */
 import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { solidTextClasses, rules, statusTextUsesSoftForeground } from "./status-colors.ts"
+import { solidTextClasses, softTextClasses, softBackgroundTones, rules, statusTextUsesSoftForeground } from "./status-colors.ts"
 import { STATUS_TONES } from "./lib/status-tones.generated.ts"
 // proves: FE_STYLE_TOKEN_ONLY@lite
 // proves: FE_STYLE_TOKEN_ONLY@full
@@ -22,19 +23,26 @@ const tester = new RuleTester({
 })
 
 const FILE = "src/components/leaves/StatusText/index.tsx"
-const solid = { messageId: "solid" }
+const onTint = { messageId: "onTint" }
+const alone = { messageId: "alone" }
 
 for (const lite of [false, true]) {
   const edition = lite ? "lite" : "full"
-  test(`FE_STYLE_TOKEN_ONLY: ${edition} status ink uses the family soft pair`, () => {
+  test(`FE_STYLE_TOKEN_ONLY: ${edition} status ink follows the pair rule`, () => {
     const hfs = fixtureHfs(undefined, { lite })
     assert.equal(hfs.edition, edition)
     new RuleTester({
       languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
       settings: { starci: { hfs } },
     }).run("status-text-uses-soft-foreground", statusTextUsesSoftForeground, {
-      valid: [{ filename: FILE, code: 'const E = () => <span className="text-success-soft-foreground" />' }],
-      invalid: [{ filename: FILE, code: 'const E = () => <span className="text-success" />', errors: [solid] }],
+      valid: [
+        { filename: FILE, code: 'const E = () => <span className="bg-success-soft text-success-soft-foreground" />' },
+        { filename: FILE, code: 'const E = () => <span className="text-success" />' },
+      ],
+      invalid: [
+        { filename: FILE, code: 'const E = () => <span className="bg-success-soft text-success" />', errors: [onTint] },
+        { filename: FILE, code: 'const E = () => <span className="text-success-soft-foreground" />', errors: [alone] },
+      ],
     })
   })
 }
@@ -64,48 +72,87 @@ test("solidTextClasses reads variants, opacity, important and every painting fam
   assert.deepEqual(found("[&:hover]:bg-success"), [])
 })
 
+test("softTextClasses and softBackgroundTones read the soft pair with variants and opacity, and nothing else", () => {
+  const soft = (text: string): string[] => softTextClasses(text).map((entry) => entry.token)
+  assert.deepEqual(soft("text-success-soft-foreground dark:fill-danger-soft-foreground/60 !stroke-info-soft-foreground"), [
+    "text-success-soft-foreground",
+    "dark:fill-danger-soft-foreground/60",
+    "!stroke-info-soft-foreground",
+  ])
+  assert.deepEqual(soft("text-success text-accent-soft-foreground text-success-foreground bg-success-soft text-successful-soft-foreground"), [])
+  assert.deepEqual(softBackgroundTones("bg-success-soft hover:bg-danger-soft-hover bg-warning-soft/50 !bg-info-soft"), ["success", "danger", "warning", "info"])
+  assert.deepEqual(softBackgroundTones("bg-success text-success-soft-foreground bg-accent-soft bg-success-soft-foreground"), [])
+})
+
 test("status-text-uses-soft-foreground", () => {
   tester.run("status-text-uses-soft-foreground", statusTextUsesSoftForeground, {
     valid: [
-      // the soft pair, alone and on its tint
-      { filename: FILE, code: 'const E = () => <span className="text-success-soft-foreground" />' },
+      // the soft pair on its tint
       { filename: FILE, code: 'const E = () => <span className="bg-success-soft text-success-soft-foreground px-2" />' },
-      { filename: FILE, code: 'const E = () => <svg className="fill-danger-soft-foreground stroke-warning-soft-foreground" />' },
+      { filename: FILE, code: 'const E = () => <svg className="bg-danger-soft fill-danger-soft-foreground stroke-danger-soft-foreground" />' },
+      // a mark that stands alone takes the tone itself
+      { filename: FILE, code: 'const E = () => <span className="text-success" />' },
+      { filename: FILE, code: 'const E = () => <svg className="fill-danger stroke-warning size-4" />' },
+      { filename: FILE, code: 'const E = () => <a className="underline decoration-info" />' },
+      { filename: FILE, code: 'const E = () => <p className="md:hover:text-success dark:text-danger/60 [&>svg]:fill-info" />' },
+      // a tone beside a tint of ANOTHER tone is its own mark
+      { filename: FILE, code: 'const E = () => <span className="bg-success-soft text-danger" />' },
+      // the soft foreground on the tint an enclosing element sets
+      { filename: FILE, code: 'const E = () => <div className="bg-success-soft"><span className="text-success-soft-foreground" /></div>' },
+      { filename: FILE, code: 'const E = () => <div className={cn("p-2", ok && "bg-danger-soft")}><p><b className="text-danger-soft-foreground" /></p></div>' },
       // a solid button: the tone as the fill, its own ink on it
       { filename: FILE, code: 'const E = () => <button className="bg-success text-success-foreground hover:bg-success-hover" />' },
       // a boundary is not text
       { filename: FILE, code: 'const E = () => <div className="border-danger ring-2 ring-warning outline-info bg-info/10" />' },
       // neighbours that share a prefix
       { filename: FILE, code: 'const E = () => <p className="text-successful text-foreground text-muted text-accent-soft-foreground" />' },
-      // conditionals and cn() with only soft classes
-      { filename: FILE, code: 'const E = ({ ok }) => <p className={cn("text-sm", ok ? "text-success-soft-foreground" : "text-danger-soft-foreground")} />' },
+      // conditionals and cn() that keep each tone on its own side
+      { filename: FILE, code: 'const E = ({ ok }) => <p className={cn("text-sm", ok ? "text-success" : "text-danger")} />' },
+      // a constant or classes entry is not judged for the soft foreground: the element that wears it is not in view
+      { filename: FILE, code: 'const TONE = "text-success-soft-foreground"' },
+      { filename: FILE, code: 'const C = { x: { classes: ["flex", "text-warning-soft-foreground"] } }' },
       // strings that are not class strings
-      { filename: FILE, code: 'const E = () => <p title="text-success" data-id="fill-danger">{"text-success"}</p>' },
+      { filename: FILE, code: 'const E = () => <p title="text-success" data-id="bg-success-soft fill-danger">{"text-success"}</p>' },
     ],
     invalid: [
-      { filename: FILE, code: 'const E = () => <span className="text-success" />', errors: [solid] },
-      { filename: FILE, code: 'const E = () => <span class="text-danger font-medium" />', errors: [solid] },
-      { filename: FILE, code: 'const E = () => <svg className="fill-warning size-4" />', errors: [solid] },
-      { filename: FILE, code: 'const E = () => <svg className="stroke-info" />', errors: [solid] },
-      { filename: FILE, code: 'const E = () => <a className="underline decoration-danger" />', errors: [solid] },
+      // solid text on its own tint
+      { filename: FILE, code: 'const E = () => <span className="bg-success-soft text-success" />', errors: [onTint] },
+      { filename: FILE, code: 'const E = () => <span class="bg-danger-soft text-danger font-medium" />', errors: [onTint] },
+      { filename: FILE, code: 'const E = () => <svg className="bg-warning-soft fill-warning size-4" />', errors: [onTint] },
+      { filename: FILE, code: 'const E = () => <svg className="bg-info-soft stroke-info" />', errors: [onTint] },
+      { filename: FILE, code: 'const E = () => <a className="bg-danger-soft underline decoration-danger" />', errors: [onTint] },
       // variants and opacity do not launder the tone: one finding per class token
-      { filename: FILE, code: 'const E = () => <p className="md:hover:text-success dark:text-danger/60 [&>svg]:fill-info" />', errors: [solid, solid, solid] },
+      { filename: FILE, code: 'const E = () => <p className="bg-success-soft md:hover:text-success dark:text-success/60 [&>svg]:fill-success" />', errors: [onTint, onTint, onTint] },
+      // the tint may be a hover or an opacity variant
+      { filename: FILE, code: 'const E = () => <p className="hover:bg-success-soft/50 text-success" />', errors: [onTint] },
       // through cn(), a conditional and a logical expression
-      { filename: FILE, code: 'const E = ({ ok }) => <p className={cn("text-sm", ok ? "text-success" : "text-danger-soft-foreground")} />', errors: [solid] },
-      { filename: FILE, code: 'const E = ({ bad }) => <p className={bad && "text-danger"} />', errors: [solid] },
-      { filename: FILE, code: 'const E = ({ bad }) => <p className={clsx({ "text-warning": bad })} />', errors: [solid] },
-      { filename: FILE, code: "const E = () => <p className={`text-info ${x}`} />", errors: [solid] },
+      { filename: FILE, code: 'const E = ({ ok }) => <p className={cn("bg-success-soft", ok ? "text-success" : "text-danger")} />', errors: [onTint] },
+      { filename: FILE, code: 'const E = ({ bad }) => <p className={clsx("bg-danger-soft", bad && "text-danger")} />', errors: [onTint] },
+      { filename: FILE, code: 'const E = ({ bad }) => <p className={clsx("bg-warning-soft", { "text-warning": bad })} />', errors: [onTint] },
+      { filename: FILE, code: "const E = () => <p className={`bg-info-soft text-info ${x}`} />", errors: [onTint] },
       // the shapes that hide from a JSX-only reader: a constant, an array, a classes entry
-      { filename: FILE, code: 'const OK = "inline-flex text-success"', errors: [solid] },
-      { filename: FILE, code: 'const TONES = { ok: "text-success", bad: ["text-danger", "font-medium"] }', errors: [solid, solid] },
-      { filename: FILE, code: 'const C = { x: { classes: ["flex", "text-warning"] } }', errors: [solid] },
-      // the hover mix of the solid tone is still the solid tone
-      { filename: FILE, code: 'const E = () => <p className="text-success-hover" />', errors: [solid] },
-      // the message names the class to use instead
+      { filename: FILE, code: 'const OK = "inline-flex bg-success-soft text-success"', errors: [onTint] },
+      { filename: FILE, code: 'const TONES = { ok: ["bg-success-soft", "text-success"] }', errors: [onTint] },
+      { filename: FILE, code: 'const C = { x: { classes: ["flex", "bg-warning-soft", "text-warning"] } }', errors: [onTint] },
+      // the soft foreground with no tint of its tone behind it
+      { filename: FILE, code: 'const E = () => <span className="text-success-soft-foreground" />', errors: [alone] },
+      { filename: FILE, code: 'const E = () => <svg className="fill-danger-soft-foreground stroke-warning-soft-foreground" />', errors: [alone, alone] },
+      { filename: FILE, code: 'const E = () => <div className="bg-danger-soft"><span className="text-success-soft-foreground" /></div>', errors: [alone] },
+      { filename: FILE, code: 'const E = ({ ok }) => <p className={cn("text-sm", ok ? "text-success-soft-foreground" : "text-danger")} />', errors: [alone] },
+      { filename: FILE, code: 'const E = () => <p className="md:text-info-soft-foreground/70" />', errors: [alone] },
+      // a tint on a sibling or a child is not behind the mark
+      { filename: FILE, code: 'const E = () => <div><i className="bg-success-soft" /><span className="text-success-soft-foreground" /></div>', errors: [alone] },
+      { filename: FILE, code: 'const E = () => <span className="text-success-soft-foreground"><i className="bg-success-soft" /></span>', errors: [alone] },
+      // the messages name the pair or the tone to use
       {
         filename: FILE,
-        code: 'const E = () => <span className="text-success" />',
-        errors: [{ message: /`text-success` paints text or an icon with the solid `success` tone.*`text-success-soft-foreground`.*`bg-success-soft`/ }],
+        code: 'const E = () => <span className="bg-success-soft text-success" />',
+        errors: [{ message: /`text-success` paints text or an icon with the solid `success` tone on a `bg-success-soft` tint.*`text-success-soft-foreground` on `bg-success-soft`/ }],
+      },
+      {
+        filename: FILE,
+        code: 'const E = () => <span className="text-success-soft-foreground" />',
+        errors: [{ message: /no `bg-success-soft` is behind it.*takes the tone itself: `text-success`/ }],
       },
     ],
   })

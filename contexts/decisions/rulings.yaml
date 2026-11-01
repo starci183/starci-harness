@@ -97,11 +97,13 @@ rulings:
     status: live
     ruling: "An identity tile is neutral and spends no accent."
     owner: "contexts/ui/composition.md ACCENT-2"
-  - id: status-tones-follow-heroui
-    date: '2026-09-30'
+  - id: status-soft-pair-on-background
+    date: '2026-11-01'
     status: live
-    ruling: "A status tone has a solid pair and a soft pair as HeroUI defines them; the soft foreground on its tint is accepted at the lower contrast floor, a bare status glyph takes the soft foreground, and body and interactive text keep the full floor."
-    owner: "contexts/ui/proof/thresholds.yaml; contexts/ui/presentation.md (Paint)"
+    ruling: "A status tone x (success, warning, danger, info) paints content one of two ways. Content that sits on a background of the tone (a tint, a tinted tile, a tinted band) uses the pair x-soft and x-soft-foreground; a mark that stands alone, with no background of the tone behind it (a bare glyph, a required asterisk, a count, a title on the page or on a neutral surface), uses x itself. A solid fill takes x-foreground. The soft pair on its tint is accepted at the lower contrast floor and body and interactive text keep the full floor; a bare x is judged at `contrast.statusSoft` as a glyph or title and at `contrast.text` as body text, and a tone value that does not reach its floor is changed in the grammar's token, never darkened by an app."
+    words: "TEXT TRÊN BG THÌ X-SOFT VÀ X-SOFT-FOREGROUND, CÒN NẾU X ĐỘC LẬP THÌ ĐỂ X LUN"
+    owner: "contexts/ui/proof/thresholds.yaml; contexts/ui/presentation.md (Tone); lint starci-grammar/status-text-uses-soft-foreground"
+    absorbs: [status-tones-follow-heroui]
   - id: secondary-input-contrast-accepted
     date: '2026-09-27'
     status: live
@@ -724,7 +726,7 @@ rulings:
     date: '2026-11-01'
     status: live
     ruling: "A bounded task list, a fixed set the reader works through as one group (the items an agent setup needs, required steps) with no search, filter or paging, is one SurfaceListCard of ListRow with the label outside, on a page or in a pane, the `task` row of `list-table.choose.role`. A list that grows, searches, filters or pages stays bare rows in its section (COLLECTION-1); a comparison across columns stays a DataTable. The owner's words on the agent setup items: \"ủa cái này phải là surface list card cho các mục chứ\"; bare rows passed the rule and the mockup and still did not read as one block. On the permissions table the owner added: \"quá phức tạp mới nhét bảng vào card\", plain rows are a SurfaceListCard with a bottom note in its footer."
-    owner: "contexts/ui/composition.md COLLECTION-1; contexts/ui/components/list-table.md (list-table.choose.role, task); contexts/ui/components/card.md (card.choose.role, task-list)"
+    owner: "contexts/ui/composition.md COLLECTION-1; contexts/ui/components/list-table.md (list-table.choose.role, task); contexts/ui/components/card.md (card.choose.role, task-list); contexts/hfs/rules.yaml R351"
   - id: flow-graph-orbit
     date: '2026-10-31'
     status: live

@@ -74,3 +74,32 @@ const Frame = () => (
   </Page>
 )
 ```
+
+## `starci-fe/no-table-in-card`
+
+Finding code: `FE_TABLE_IN_CARD` (R351). A `DataTable` is not placed in a `SurfaceCard`. Plain rows with a few facts are a `SurfaceListCard` of `ListRow` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with no card around it. The rule reads the file: a Grammar `DataTable` enclosed by a Grammar `SurfaceCard` element is a finding, and so is a `DataTable` rendered by a component of the same file (a declaration, a variable's function, a `memo` or `forwardRef` wrapper, followed through other components of the file) that a `SurfaceCard` encloses. A card in another file that renders a table component is judged where the card is written. There is no inline exemption; a table the owner rules complex enough to sit in a card is named in this rule.
+
+Invalid:
+
+```tsx
+import { SurfaceCard, DataTable } from "@starci/grammar/core"
+const Rules = () => (
+  <SurfaceCard label="Rules" headingLevel={2}>
+    <Text>{description}</Text>
+    <DataTable label="Rules" columns={columns} rows={rows} renderCell={renderCell} emptyContent={null} />
+    <Text>{footnote}</Text>
+  </SurfaceCard>
+)
+```
+
+Valid:
+
+```tsx
+import { SurfaceListCard, ListRow } from "@starci/grammar/core"
+const Rules = () => (
+  <SurfaceListCard label="Rules" footer={footnote}>
+    {rules.map((rule) => <ListRow key={rule.id} title={rule.title} description={rule.summary} />)}
+  </SurfaceListCard>
+)
+```
+

@@ -563,8 +563,61 @@ export const noHandBuiltPanes = defineRule({
   },
 })
 
+/** The capitalised same-file component a node renders inside (a declaration, a variable's function, or a wrapped one), or null. */
+const componentNameOf = (node: Node): string | null => {
+  for (let current: Node | undefined = node.parent; current; current = current.parent) {
+    if (current.type === "FunctionDeclaration") {
+      if (current.id !== null && /^[A-Z]/.test(current.id.name)) return current.id.name
+      continue
+    }
+    if (current.type !== "ArrowFunctionExpression" && current.type !== "FunctionExpression") continue
+    const holder = current.parent.type === "CallExpression" ? current.parent.parent : current.parent
+    if (holder.type === "VariableDeclarator" && holder.id.type === "Identifier" && /^[A-Z]/.test(holder.id.name)) return holder.id.name
+  }
+  return null
+}
+
+/** True when a SurfaceCard element encloses the node, or a component of this file that renders the node is itself rendered inside one. */
+const standsInCard = (context: AnyContext, node: Node, seen: Set<string>): boolean => {
+  for (let current: Node | undefined = node.parent; current; current = current.parent) {
+    if (current.type !== "JSXElement") continue
+    const name = grammarName(context, current.openingElement.name)
+    if (name?.length === 1 && name[0] === "SurfaceCard") return true
+  }
+  const component = componentNameOf(node)
+  if (component === null || seen.has(component)) return false
+  seen.add(component)
+  const usages: Node[] = []
+  walk(context.sourceCode, context.sourceCode.ast, (visited) => {
+    if (visited.type === "JSXOpeningElement" && visited.name.type === "JSXIdentifier" && visited.name.name === component) usages.push(visited)
+  })
+  return usages.some((usage) => standsInCard(context, usage, seen))
+}
+
+/** A table is not placed in a SurfaceCard: plain rows are a SurfaceListCard with the note in its footer. */
+export const noTableInCard = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "A DataTable is not placed inside a SurfaceCard." },
+    schema: [],
+    messages: {
+      table:
+        "FE_TABLE_IN_CARD: this DataTable stands inside a SurfaceCard (here or in the component that renders it). Plain rows with a few facts are a `SurfaceListCard` of `ListRow` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with its label outside, with no card around it.",
+    },
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
+        const name = grammarName(context, node.name)
+        if (name?.length !== 1 || name[0] !== "DataTable") return
+        if (standsInCard(context, node, new Set())) context.report({ node, messageId: "table" })
+      },
+    }
+  },
+})
+
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
+export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

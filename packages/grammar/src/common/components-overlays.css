@@ -8,29 +8,45 @@
  */
 @layer starci-grammar-common {
     /* ---------------------------------------------------------------- shared overlay tone */
+    /*
+     * A tone x gives three values: x itself (a fill, or a mark that stands alone), and the pair x-soft and x-soft-foreground
+     * for content that sits on a background of the tone (owner ruling status-soft-pair-on-background).
+     */
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog) {
         --starci-core-overlay-tone: var(--muted, GrayText);
+        --starci-core-overlay-soft: var(--default-soft, transparent);
+        --starci-core-overlay-soft-foreground: var(--default-soft-foreground, CanvasText);
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
         --starci-core-overlay-tone: var(--info, var(--accent, Highlight));
+        --starci-core-overlay-soft: var(--info-soft, var(--default-soft, transparent));
+        --starci-core-overlay-soft-foreground: var(--info-soft-foreground, CanvasText);
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="affirmative"] {
         --starci-core-overlay-tone: var(--success, CanvasText);
+        --starci-core-overlay-soft: var(--success-soft, var(--default-soft, transparent));
+        --starci-core-overlay-soft-foreground: var(--success-soft-foreground, CanvasText);
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="cautionary"] {
         --starci-core-overlay-tone: var(--warning, CanvasText);
+        --starci-core-overlay-soft: var(--warning-soft, var(--default-soft, transparent));
+        --starci-core-overlay-soft-foreground: var(--warning-soft-foreground, CanvasText);
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="negative"] {
         --starci-core-overlay-tone: var(--danger, CanvasText);
+        --starci-core-overlay-soft: var(--danger-soft, var(--default-soft, transparent));
+        --starci-core-overlay-soft-foreground: var(--danger-soft-foreground, CanvasText);
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="pending"],
     .starci-core-meter[data-grammar-tone="neutral"] {
         --starci-core-overlay-tone: var(--accent, Highlight);
+        --starci-core-overlay-soft: var(--accent-soft, var(--default-soft, transparent));
+        --starci-core-overlay-soft-foreground: var(--accent-soft-foreground, CanvasText);
     }
 
     /* ---------------------------------------------------------------- modal backdrop */
@@ -176,8 +192,8 @@
         align-items: center;
         justify-content: center;
         width: 2.5rem;
-        background: color-mix(in srgb, var(--starci-core-overlay-tone) 16%, transparent);
-        color: var(--starci-core-overlay-tone);
+        background: var(--starci-core-overlay-soft);
+        color: var(--starci-core-overlay-soft-foreground);
     }
 
     .starci-core-alert-dialog-icon > svg {

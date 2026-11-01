@@ -2,7 +2,9 @@
 
 ## 0.20.2 - 2026-11-01
 
-- Changed: moves with `@starci/grammar` 0.20.2 (the stat strip's dividers) and requires `@starci/eslint-canon-fe` 9.8.5; the bundled canon pins follow; no rule changed.
+- Changed: `status-text-uses-soft-foreground` follows the owner's pair rule. It refuses a solid tone painted as text on a `bg-<tone>-soft` tint of the same element (message `onTint`: use `text-<tone>-soft-foreground`) and the soft foreground with no `bg-<tone>-soft` behind it on its element or on an enclosing element of the file (message `alone`: use `text-<tone>`). A bare `text-<tone>`, which the rule refused before, is no longer a finding. Constants and `classes` entries are judged for the first finding only.
+- Changed: the bundled rule catalog carries R351 and the new R61 law text.
+- Changed: moves with `@starci/grammar` 0.20.2 (the stat strip's dividers) and requires `@starci/eslint-canon-fe` 9.8.5; the bundled canon pins follow; the status rule changes (below).
 
 ## 0.20.1 - 2026-11-01
 
@@ -224,7 +226,7 @@
 
 - Changed: versioned together with Grammar 0.14.0; the bundled canon pins name the 0.14.0 Grammar family.
 - Added: `starci-grammar/chip-label-starts-uppercase` (R322 `FE_CHIP_LABEL_CASE`): a literal `StatusDot` or `Badge` label starts with an uppercase letter, Vietnamese included; the fix uppercases it in place.
-- Changed: `@starci/eslint-canon-fe` 9.3.0 is the peer dependency; the bundled canon pins name `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`) in place of the retired `@starci/cli`, the one command line a product installs for `starci app`, and follow hfs 4.9.0, canon-fe 9.3.0 and canon-be 3.5.0. No rule changes.
+- Changed: `@starci/eslint-canon-fe` 9.3.0 is the peer dependency; the bundled canon pins name `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`) in place of the retired `@starci/cli`, the one command line a product installs for `starci app`, and follow hfs 4.9.0, canon-fe 9.3.0 and canon-be 3.5.0. One rule law changes (above).
 
 ## 0.13.0 - 2026-10-27
 

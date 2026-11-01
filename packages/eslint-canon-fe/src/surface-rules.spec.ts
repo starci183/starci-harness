@@ -5,6 +5,8 @@
 // proves: FE_LIST_PANEL_PADDING@full
 // proves: FE_HAND_BUILT_PANES@lite
 // proves: FE_HAND_BUILT_PANES@full
+// proves: FE_TABLE_IN_CARD@lite
+// proves: FE_TABLE_IN_CARD@full
 // proves: FE_GRAMMAR_LAYOUT_ONLY@lite
 // proves: FE_GRAMMAR_LAYOUT_ONLY@full
 import assert from "node:assert/strict"
@@ -14,7 +16,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { nestedControlVariant, noHandBuiltPanes, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
+import { nestedControlVariant, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
 import { why } from "./lib/why.ts"
 import { eslintRule } from "./lib/eslint-boundary.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
@@ -32,6 +34,7 @@ test("surface rules are published at error with their canon finding codes", () =
   assert.equal(why["no-list-panel-padding"].code, "FE_LIST_PANEL_PADDING")
   assert.equal(why["no-app-surface-paint"].code, "FE_GRAMMAR_LAYOUT_ONLY")
   assert.equal(why["no-hand-built-panes"].code, "FE_HAND_BUILT_PANES")
+  assert.equal(why["no-table-in-card"].code, "FE_TABLE_IN_CARD")
 })
 
 for (const edition of ["lite", "full"]) {
@@ -321,6 +324,43 @@ for (const edition of ["lite", "full"]) {
         { code: panes + 'const A = () => <SurfaceCard composition="joined"><Region label="a" /><Divider orientation="vertical" /><Region label="b" /></SurfaceCard>', errors: [seam] },
         { code: panes + 'const A = () => <SurfaceCard composition="joined"><Region label="a" /><Divider orientation="vertical" /></SurfaceCard>', errors: [seam] },
       ],
+    }))
+  })
+}
+
+for (const edition of ["lite", "full"]) {
+  test(`${edition}: a DataTable is not placed in a SurfaceCard, here or through a component of the file`, () => {
+    const tables = 'import { SurfaceCard, SurfaceListCard, DataTable } from "@starci/grammar/core"; '
+    const table = { messageId: "table" }
+    assert.doesNotThrow(() => tester().run("no-table-in-card", noTableInCard, {
+      valid: [
+        // a table in its section, with no card around it
+        tables + 'const A = () => <section><DataTable label="Members" columns={c} rows={r} renderCell={f} emptyContent={null} /></section>',
+        // plain rows are a list card, the table is not inside a card
+        tables + 'const A = () => <SurfaceListCard label="Rules" footer="Locked">{rows}</SurfaceListCard>',
+        // a table in a component no card renders
+        tables + 'const T = () => <DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} />; const A = () => <section><T /></section>',
+        // a table that is not the Grammar's
+        'import { SurfaceCard } from "@starci/grammar/core"; import { DataTable } from "other-kit"; const A = () => <SurfaceCard label="a"><DataTable /></SurfaceCard>',
+        // a card beside the table, not around it
+        tables + 'const A = () => <section><SurfaceCard label="a">x</SurfaceCard><DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} /></section>',
+      ],
+      invalid: [
+        // PermissionRules: the table between two lines of text in a card
+        { code: tables + 'const A = () => <SurfaceCard label="Rules" headingLevel={2}><p>a</p><DataTable label="Rules" columns={c} rows={r} renderCell={f} emptyContent={null} /><p>b</p></SurfaceCard>', errors: [table] },
+        // inside a render prop of the card's child
+        { code: tables + 'const A = () => <SurfaceCard label="a"><Slot>{(rows) => <DataTable label="a" columns={c} rows={rows} renderCell={f} emptyContent={null} />}</Slot></SurfaceCard>', errors: [table] },
+        // BrainAgentView: the table is a component of the file that the card renders
+        { code: tables + 'const Matrix = () => <DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} />; export const A = () => <SurfaceCard label="a"><div><Matrix /></div></SurfaceCard>', errors: [table] },
+        { code: tables + 'function Matrix() { return <DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} /> } const Inner = () => <Matrix />; export const A = () => <SurfaceCard label="a"><Inner /></SurfaceCard>', errors: [table] },
+        // through a namespace import and a wrapped component
+        { code: 'import * as G from "@starci/grammar/core"; const M = memo(() => <G.DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} />); export const A = () => <G.SurfaceCard label="a"><M /></G.SurfaceCard>', errors: [table] },
+      ],
+    }))
+    assert.doesNotThrow(() => tester().run("no-table-in-card", noTableInCard, {
+      // a component that renders itself terminates
+      valid: [tables + 'const R = () => <div><R /><DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} /></div>'],
+      invalid: [],
     }))
   })
 }

@@ -53,7 +53,7 @@ the line it sits in. A selectable tag is a control: `sm` in filter rows,
 `md` beside `md` controls, and its target meets the floor ([../scale.md](../scale.md)).
 
 ## States
-A badge has no hover or press. A badge with a status glyph uses the soft foreground (presentation "Tone"). A dot
+A badge has no hover or press. A badge, which carries its tone tint, takes the tone's soft foreground on it, and a status glyph with no tint behind it takes the tone itself (presentation "Tone"). A dot
 alone shows its name in a tooltip on hover and focus; its echo stops under reduced motion.
 
 ## Owner split

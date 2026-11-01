@@ -19,14 +19,14 @@ test("Offset Pop shares the authoritative Common checks and finding metadata", (
   assert.equal(plugin.rules, rules)
 })
 
-test("Offset Pop inherited status rule rejects a solid status text tone and accepts the soft foreground", () => {
+test("Offset Pop inherited status rule takes the soft pair on a tint and the tone itself alone", () => {
   const imports = 'import { Text } from "@starci/grammar/offset-pop"; '
-  const valid = lintStatus(imports + 'const Panel = () => <Text className="text-success-soft-foreground">Saved</Text>')
-  assert.deepEqual(valid, [])
-  const invalid = lintStatus(imports + 'const Panel = () => <Text className="text-success">Saved</Text>')
+  assert.deepEqual(lintStatus(imports + 'const Panel = () => <Text className="bg-success-soft text-success-soft-foreground">Saved</Text>'), [])
+  assert.deepEqual(lintStatus(imports + 'const Panel = () => <Text className="text-success">Saved</Text>'), [])
+  const invalid = lintStatus(imports + 'const Panel = () => <Text className="bg-success-soft text-success">Saved</Text>')
   assert.equal(invalid.length, 1)
   assert.equal(invalid[0]?.ruleId, "starci-grammar/status-text-uses-soft-foreground")
-  assert.equal(invalid[0]?.messageId, "solid")
+  assert.equal(invalid[0]?.messageId, "onTint")
   assert.equal(invalid[0]?.severity, 2)
 })
 

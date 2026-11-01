@@ -139,7 +139,8 @@ test("the family config reports a concrete status-tone violation through its pub
     rules: { "starci-grammar/status-text-uses-soft-foreground": block.rules?.["starci-grammar/status-text-uses-soft-foreground"] },
   }
   const source = (tone: string): string => `import { Text } from "@starci/grammar/common"; const view = <Text className="${tone}">Saved</Text>`
-  assert.deepEqual(linter.verify(source("text-success-soft-foreground"), [config], { filename: "panel.tsx" }), [])
-  const findings = linter.verify(source("text-success"), [config], { filename: "panel.tsx" })
+  assert.deepEqual(linter.verify(source("bg-success-soft text-success-soft-foreground"), [config], { filename: "panel.tsx" }), [])
+  assert.deepEqual(linter.verify(source("text-success"), [config], { filename: "panel.tsx" }), [])
+  const findings = linter.verify(source("bg-success-soft text-success"), [config], { filename: "panel.tsx" })
   assert.deepEqual(findings.map(({ ruleId, severity }) => ({ ruleId, severity })), [{ ruleId: "starci-grammar/status-text-uses-soft-foreground", severity: 2 }])
 })

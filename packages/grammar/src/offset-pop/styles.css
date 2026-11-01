@@ -114,6 +114,9 @@
          */
         --accent-soft: var(--offset-pop-accent-soft);
         --accent-soft-foreground: var(--offset-pop-accent-text);
+        /* The family's information tone is the blush itself, so its soft pair is the accent soft pair (a mix of the blush into the ink reads 2.5:1 on its tint). */
+        --info-soft: var(--offset-pop-accent-soft);
+        --info-soft-foreground: var(--offset-pop-accent-text);
         --link: var(--offset-pop-accent-text);
 
         color: var(--foreground);

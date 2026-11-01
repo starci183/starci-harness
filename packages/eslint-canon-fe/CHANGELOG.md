@@ -2,7 +2,8 @@
 
 ## 9.8.5 - 2026-11-01
 
-- Changed: the bundled canon pins name @starci/grammar 0.20.2, eslint-grammar-core and eslint-grammar-offset-pop 0.20.2, eslint-canon-be 3.11.6, eslint-canon-fe 9.8.5, stylelint-canon 2.4.0 and hfs 4.16.5 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm). No rule changes.
+- Added: `no-table-in-card` (R351, `FE_TABLE_IN_CARD`): a Grammar `DataTable` enclosed by a `SurfaceCard`, or rendered by a component of the same file that a `SurfaceCard` encloses, is refused; plain rows are a `SurfaceListCard` with the note in its `footer`. It is a slot-free surface law at error, with no inline exemption.
+- Changed: the bundled canon pins name @starci/grammar 0.20.2, eslint-grammar-core and eslint-grammar-offset-pop 0.20.2, eslint-canon-be 3.11.6, eslint-canon-fe 9.8.5, stylelint-canon 2.4.0 and hfs 4.16.5 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm). One rule law changes (above).
 
 ## 9.8.4 - 2026-11-01
 
@@ -33,7 +34,7 @@
 
 ## 9.6.7 - 2026-10-31
 
-- Changed: the bundled runtime copies follow @starci/hfs 4.14.0 (R334 one style, `ruleParams.be.sqlPassThrough`) and the canon pins name the cohort hfs 4.14.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.6.7, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.6, with @starci/ai-router 0.5.0; no rule changed.
+- Changed: the bundled runtime copies follow @starci/hfs 4.14.0 (R334 one style, `ruleParams.be.sqlPassThrough`) and the canon pins name the cohort hfs 4.14.0, eslint-canon-be 3.11.0, eslint-canon-fe 9.6.7, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.6, with @starci/ai-router 0.5.0; the status rule changes (below).
 
 ## 9.6.6 - 2026-10-31
 

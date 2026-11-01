@@ -44,6 +44,11 @@ export const why = {
     en: "`<file>` draws a multi-pane frame by hand: a vertical Divider between columns of a flex row, or a flex row of columns inside a joined SurfaceCard.",
     fix: "Compose the columns as Panes of a PaneGrid (areas per breakpoint, collapse=\"drawer\" for a side pane), mounted as Page chrome=\"panes\" on a tabbed app page.",
   },
+  "no-table-in-card": {
+    code: "FE_TABLE_IN_CARD",
+    en: "`<file>` puts a DataTable inside a SurfaceCard (directly, or in a component of the file that a SurfaceCard encloses).",
+    fix: "Plain rows with a few facts are a SurfaceListCard of ListRow with the label outside and the note in its footer; a comparison table sits in its section with no card around it.",
+  },
   "button-intent-required": {
     code: "FE_BUTTON_INTENT_REQUIRED",
     en: "`<file>` renders a Button or IconButton without the command's intent.",

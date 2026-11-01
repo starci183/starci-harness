@@ -2,24 +2,28 @@ import type { Rule } from "eslint"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Node } from "./lib/types.ts"
 /**
- * The rule that holds `status-colors.md` (HFS R61 `FE_STYLE_TOKEN_ONLY`, the class-name half of the soft-pair contrast
+ * The rule that holds `status-colors.md` (HFS R61 `FE_STYLE_TOKEN_ONLY`, the class-name half of the status-pair contrast
  * obligation; the brand layer's own contrast belongs to `@starci/stylelint-canon` `starci/status-contrast`).
  *
- * A STATUS TONE HAS TWO FACES. The SOLID tone (`--success`) is a fill: a button, a bar, a badge dot's disc, with
- * `--success-foreground` ink on it. A status shown as TEXT or as an ICON uses the SOFT pair, the way a HeroUI flat Chip
- * does: `--success-soft-foreground` ink, on `--success-soft` when it sits on a tint. The brand layer is checked to
- * make that ink readable (3:1 on the tint and on the page); the solid tone is only the mid-luminance hue of the brand
- * and reads 3.8:1 or worse on white, so as a text colour it fails the contrast the soft pair was built to give.
+ * A STATUS TONE x PAINTS IN TWO WAYS (owner ruling `status-soft-pair-on-background`). Content that sits ON A BACKGROUND OF THE
+ * TONE uses the pair `x-soft` and `x-soft-foreground`, the way a HeroUI flat Chip does. A mark that STANDS ALONE, with no
+ * background of the tone behind it, uses `x` itself. A solid fill takes `x-foreground`.
  *
  * WHAT IT READS. Every static class string a component writes: the `className` / `class` attribute of an element (through
- * `cn()`, `clsx()`, conditionals, arrays, template text), and a string in a constant or in a `classes` entry. The tones
- * are the grammar's `STATUS_TONES` (`lib/status-tones.generated.ts`, generated from the grammar with the stylelint
- * vocabulary), never a list typed here. A class is a finding when it paints text, an icon or a text decoration with a solid
- * tone (`text-success`, `fill-danger`, `stroke-warning`, `decoration-info`, with any variant and opacity).
+ * `cn()`, `clsx()`, conditionals, arrays, template text), and a string in a constant or in a `classes` entry. The tones are the
+ * grammar's `STATUS_TONES` (`lib/status-tones.generated.ts`, generated from the grammar with the stylelint vocabulary), never a
+ * list typed here. Two findings:
  *
- * WHAT IT LEAVES ALONE: the soft pair (`text-success-soft-foreground`, `bg-success-soft`), a solid fill with its own ink
- * (`bg-success text-success-foreground`), a solid border, ring or outline (`border-danger`, `ring-warning`: a
- * boundary is not text), and a class that only shares a prefix (`text-successful`).
+ * - ON A TINT: a class string that sets `bg-x-soft` and also paints text, an icon or a text decoration with the solid tone
+ *   (`text-x`, `fill-x`, `stroke-x`, `decoration-x`, with any variant and opacity). The content on the tint takes
+ *   `text-x-soft-foreground`.
+ * - ALONE: the soft foreground (`text-x-soft-foreground`) in the `className` of an element when neither that element nor an
+ *   enclosing element of the same file sets `bg-x-soft`. A mark with no tint behind it takes `text-x`. A constant, an array in
+ *   a constant or a `classes` entry is not judged for this finding, since the element that wears it is not in view.
+ *
+ * WHAT IT LEAVES ALONE: a bare solid tone (`text-success` with no `bg-success-soft` on the element), the soft pair on its tint, a
+ * solid fill with its own ink (`bg-success text-success-foreground`), a solid border, ring or outline (`border-danger`,
+ * `ring-warning`: a boundary is not text), and a class that only shares a prefix (`text-successful`).
  */
 
 import { attributeValue } from "@starci/eslint-canon-fe/lib/ast.mjs"
@@ -28,8 +32,17 @@ import { STATUS_TONES } from "./lib/status-tones.generated.ts"
 /** The utility families that paint text, an icon or a text decoration. */
 const TEXT_PAINT = ["text", "fill", "stroke", "decoration"]
 
+/** An optional opacity suffix: `/60` or `/[.4]`. */
+const OPACITY = "(?:/(?:\\d+|\\[[^\\]]*\\]))?"
+
 /** `text-success`, `text-success/60`, `text-success-hover`, with an optional `!` and any variants before it. */
-const SOLID_TEXT = new RegExp(`^!?(${TEXT_PAINT.join("|")})-(${STATUS_TONES.join("|")})(?:-hover)?(?:/(?:\\d+|\\[[^\\]]*\\]))?$`)
+const SOLID_TEXT = new RegExp(`^!?(${TEXT_PAINT.join("|")})-(${STATUS_TONES.join("|")})(?:-hover)?${OPACITY}$`)
+
+/** `text-success-soft-foreground`, with an optional `!`, opacity and any variants before it. */
+const SOFT_TEXT = new RegExp(`^!?(${TEXT_PAINT.join("|")})-(${STATUS_TONES.join("|")})-soft-foreground${OPACITY}$`)
+
+/** `bg-success-soft`, `bg-success-soft-hover`, with an optional `!`, opacity and any variants before it. */
+const SOFT_BACKGROUND = new RegExp(`^!?bg-(${STATUS_TONES.join("|")})-soft(?:-hover)?${OPACITY}$`)
 
 /** The class after its variants: `md:hover:text-success` and `[&>svg]:text-success` both end at `text-success`. */
 const utilityOf = (token: string): string => {
@@ -43,20 +56,40 @@ const utilityOf = (token: string): string => {
   return token.slice(cut + 1)
 }
 
-/** Every solid-tone text class in one class string, as `{ token, family, tone }`. */
-export const solidTextClasses = (text: string): { token: string; family: string; tone: string }[] =>
+type PaintedClass = { token: string; family: string; tone: string }
+
+/** Every class of one class string that the pattern reads, as `{ token, family, tone }`. */
+const paintedClasses = (text: string, pattern: RegExp): PaintedClass[] =>
   text
     .split(/\s+/)
     .filter(Boolean)
     .flatMap((token) => {
-      const match = SOLID_TEXT.exec(utilityOf(token))
+      const match = pattern.exec(utilityOf(token))
       const family = match?.[1]
       const tone = match?.[2]
       return family !== undefined && tone !== undefined ? [{ token, family, tone }] : []
     })
 
+/** Every solid-tone text class in one class string. */
+export const solidTextClasses = (text: string): PaintedClass[] => paintedClasses(text, SOLID_TEXT)
+
+/** Every soft-foreground text class in one class string. */
+export const softTextClasses = (text: string): PaintedClass[] => paintedClasses(text, SOFT_TEXT)
+
+/** The tones whose soft tint a class string sets as a background. */
+export const softBackgroundTones = (text: string): string[] =>
+  text
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((token) => {
+      const tone = SOFT_BACKGROUND.exec(utilityOf(token))?.[1]
+      return tone === undefined ? [] : [tone]
+    })
+
+type StringNode = { node: Node; text: string }
+
 /** The string nodes inside an expression that builds a class string: literals, template text, keys, and everything a call, array or condition carries. */
-function* stringNodes(node: Node | null | undefined): Generator<{ node: Node; text: string }> {
+function* stringNodes(node: Node | null | undefined): Generator<StringNode> {
   if (!node || typeof node.type !== "string") return
   switch (node.type) {
     case "Literal":
@@ -98,30 +131,63 @@ function* stringNodes(node: Node | null | undefined): Generator<{ node: Node; te
   }
 }
 
-/** Text or an icon painted with a solid status tone is not readable at the contrast the soft pair was built for. */
+/** The tones whose soft tint some string of the list sets as a background. */
+const tintsOf = (strings: StringNode[]): Set<string> => new Set(strings.flatMap(({ text }) => softBackgroundTones(text)))
+
+/** True for the `className` and `class` attributes of an element. */
+const isClassAttribute = (node: Node): boolean => node.type === "JSXAttribute" && node.name.type === "JSXIdentifier" && (node.name.name === "className" || node.name.name === "class")
+
+/** The tones whose tint an element enclosing the attribute's own element sets in its `className`, in the same file. */
+const enclosingTints = (attribute: Node): Set<string> => {
+  const tones = new Set<string>()
+  for (let current: Node | null | undefined = attribute.parent?.parent?.parent; current !== undefined && current !== null; current = current.parent) {
+    if (current.type !== "JSXElement") continue
+    for (const candidate of current.openingElement.attributes) {
+      if (candidate.type !== "JSXAttribute" || !isClassAttribute(candidate)) continue
+      for (const tone of tintsOf([...stringNodes(attributeValue(candidate))])) tones.add(tone)
+    }
+  }
+  return tones
+}
+
+/** Content on a tone's tint wears the soft foreground; a mark with no tint behind it wears the tone. */
 export const statusTextUsesSoftForeground: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "Status text and icons take the soft foreground of the tone, never the solid tone." },
+    docs: { description: "Status content on a tone background takes the soft pair; a status mark with no background of the tone takes the tone itself." },
     schema: [],
     messages: {
-      solid:
-        "`{{token}}` paints text or an icon with the solid `{{tone}}` tone, which is a fill and reads under 4.5:1 on the page (3.8:1 on white for a mid-luminance brand). A status shown as text or an icon takes the soft pair: `{{family}}-{{tone}}-soft-foreground`, on `bg-{{tone}}-soft` when it sits on a tint. The solid tone is for a fill with `text-{{tone}}-foreground` on it.",
+      onTint:
+        "`{{token}}` paints text or an icon with the solid `{{tone}}` tone on a `bg-{{tone}}-soft` tint. Content that sits on a background of the tone takes the pair: `{{family}}-{{tone}}-soft-foreground` on `bg-{{tone}}-soft`.",
+      alone:
+        "`{{token}}` paints a status mark with the soft foreground, but no `bg-{{tone}}-soft` is behind it on this element or on an element that encloses it in this file. A mark that stands alone, with no background of the tone, takes the tone itself: `{{family}}-{{tone}}`. Put it on a `bg-{{tone}}-soft` tint to keep the soft pair.",
     },
   },
   create(context) {
     // A `classes` entry inside a constant is reached twice (as part of the constant, and as the entry): one finding per string.
     const seen = new Set<Node>()
-    const check = (root: Node | null | undefined): void => {
-      for (const { node, text } of stringNodes(root)) {
-        if (seen.has(node)) continue
-        seen.add(node)
-        for (const { token, family, tone } of solidTextClasses(text)) context.report({ node, messageId: "solid", data: { token, family, tone } })
+    const fresh = (strings: Iterable<StringNode>): StringNode[] => [...strings].filter(({ node }) => !seen.has(node) && seen.add(node))
+    const reportOnTint = (strings: StringNode[], tints: Set<string>): void => {
+      for (const { node, text } of strings) {
+        for (const { token, family, tone } of solidTextClasses(text)) if (tints.has(tone)) context.report({ node, messageId: "onTint", data: { token, family, tone } })
       }
+    }
+    const check = (root: Node | null | undefined): void => {
+      const strings = fresh(stringNodes(root))
+      reportOnTint(strings, tintsOf(strings))
     }
     return {
       JSXAttribute(node) {
-        if (node.name.type === "JSXIdentifier" && (node.name.name === "className" || node.name.name === "class")) check(attributeValue(node))
+        if (!isClassAttribute(node)) return
+        const strings = fresh(stringNodes(attributeValue(node)))
+        const own = tintsOf(strings)
+        reportOnTint(strings, own)
+        const enclosing = enclosingTints(node)
+        for (const { node: stringNode, text } of strings) {
+          for (const { token, family, tone } of softTextClasses(text)) {
+            if (!own.has(tone) && !enclosing.has(tone)) context.report({ node: stringNode, messageId: "alone", data: { token, family, tone } })
+          }
+        }
       },
       VariableDeclarator(node) {
         check(node.init)
