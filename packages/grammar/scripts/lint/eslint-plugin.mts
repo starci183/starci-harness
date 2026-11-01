@@ -195,6 +195,7 @@ export const propBudget: Rule.RuleModule = {
         const budget = PROP_BUDGET[tier]
         return {
             Program(program) {
+                if (!isAst(program)) return
                 const found = reachableProps(program, name)
                 if (found === null || budget === undefined) return
                 const props = new Set<string>()

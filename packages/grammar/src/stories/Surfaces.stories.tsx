@@ -719,3 +719,48 @@ export const VerticalScrollRegion: Story = {
   ),
 };
 
+
+/** Two sources disagree on one fact: the question is the section's title, each quote names its source, the answers are a decision group. */
+export const Contradiction: Story = {
+  render: () => (
+    <div style={{ maxWidth: '48rem' }}>
+      <G.Section title="Is the starting capital 300 or 285 million?" description="Two sources give a different figure.">
+        <G.Stack gap="row">
+          <G.Cluster gap="row">
+            <G.Quote source="Contract" byline="Page 2, signed 4 March" text={'The founders contribute a starting capital of 300 million.'} />
+            <G.Quote source="Chat" byline="Zalo, 09:12" text={'We transferred 285 million, the rest comes after the licence.'} />
+          </G.Cluster>
+          <G.Cluster gap="inline" justify="end">
+            <G.Button intent="dismiss" onPress={noop}>Ask later</G.Button>
+            <G.Button intent="alternative" onPress={noop}>It is 285 million</G.Button>
+            <G.Button intent="commit" onPress={noop}>It is 300 million</G.Button>
+          </G.Cluster>
+        </G.Stack>
+      </G.Section>
+    </div>
+  ),
+};
+
+/** Something waits on a person's yes: what it is in the label, who and why in a description list, the commit named for the act. */
+export const NeedsApproval: Story = {
+  render: () => (
+    <div style={{ maxWidth: '32rem' }}>
+      <G.SurfaceCard label="Send the quotation to the customer">
+        <G.Stack gap="row">
+          <G.DescriptionList
+            items={[
+              { id: 'who', term: 'Asked by', description: 'Linh, sales' },
+              { id: 'why', term: 'Why', description: 'The customer asked for the new price before Friday.' },
+              { id: 'what', term: 'Amount', description: '48,000,000' },
+            ]}
+          />
+          <G.Cluster gap="inline" justify="end">
+            <G.Button intent="dismiss" onPress={noop}>Not now</G.Button>
+            <G.Button intent="alternative" onPress={noop}>Ask for changes</G.Button>
+            <G.Button intent="commit" onPress={noop}>Approve and send</G.Button>
+          </G.Cluster>
+        </G.Stack>
+      </G.SurfaceCard>
+    </div>
+  ),
+};

@@ -717,6 +717,11 @@
     /* A skeleton root that keeps its content as a measured placeholder (Button, Badge, StatusDot) paints none of it. */
     :is(.starci-core-button, [data-component="Badge"], [data-component="StatusDot"])[data-loading="true"] > * { visibility: hidden; }
 
+    /* A button skeleton takes the corner of the button it stands for: the vendor's own, which the shimmer class would otherwise replace with its small corner. */
+    .starci-core-button[data-loading="true"] {
+        border-radius: calc(var(--radius) * 3);
+    }
+
     .starci-core-skeleton[data-grammar-skeleton-line="last"] {
         width: 60%;
     }

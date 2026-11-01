@@ -67,7 +67,6 @@ Each is closed by an API that removes the choice (preferred), a lint rule, or on
 | G-16 | Mixed glyph sizes in one region | lint: one glyph step per region |
 | G-17 | Alert `appearance` surface or soft | API: resolve `soft` inside a band, `surface` on the canvas |
 | G-21 | A skeleton's shape is drawn by an app, or by a frame that cannot derive it from its items (`ListBox` loading rows are label and description only, a thread is counted bubbles) | API: `ListBox`, `Section`, `PaneSection`, `MessageBubble` and `Timeline` take `isSkeleton` and derive the row shape from the item fields they draw, or from one `loadingShape` of the real first item; an app passes no count and draws no skeleton (the [loading table](../ui/loading.md)) |
-| G-22 | A situation of [situations](../ui/situations.md) has no story, so no reference picture: a contradiction between two sources, needs approval | stories in `Surfaces` or `Compositions/Renderers`, and their baselines taken in the CI image |
 
 ## What the contract cannot express yet
 

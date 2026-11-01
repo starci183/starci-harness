@@ -10,7 +10,7 @@ looks right (ruling `situation-tables`). The Choose tables of [components](compo
 A story is a Storybook id (`<title>--<export>`, lowercased) and names the baseline picture `core-light-<id>.png` under
 [packages/grammar/proof/baselines](../../packages/grammar/proof/README.md), so a row's reference image is its story. A baseline
 detects change and approves no look; the owner's eye does ([proof](proof.md#who-holds-each-proof)). A cell that says
-`none yet` is a gap listed in [open-grammar](../decisions/open-grammar.md) G-22, not a judgement.
+`none yet` is a gap to close with a story, not a judgement.
 
 ## The situations
 
@@ -32,8 +32,8 @@ comes from the structure.
 | Empty | `EmptyNotice`: one line and its one action; the region keeps its place and the box collapses | line to action row 12, region inset 24 | `surfaces--empty-notice` | type: `empty` required on a list; `DNA-COMMON-EMPTY-ONE-ACTION` | [empty-state](components/empty-state.md) `empty-state.choose.cause:empty` |
 | Not ready (needs setup before it works) | the state in plain words on a `Badge`, and the one next step as the item's action; a region that cannot work is an `EmptyNotice` with that action | inline 8 | `surfaces--empty-notice` | R322 chip label case; CTA-1; review | [empty-state](components/empty-state.md) `empty-state.choose.cause:not-ready` |
 | A long process with stages (read, index, extract, review) | `Stepper` with its stages | row 12 | `navigation-data--stepper` | type: stages are typed data | [list-table](components/list-table.md) `list-table.choose.role:process` |
-| A contradiction between two sources | `Section` whose title is the question, two `Quote`s side by side, the answers as a decision group | row 12 | none yet | review; `Quote` is not a surface | [quote](components/quote.md) `quote.choose.host:contradiction` |
-| Needs approval (what, who, why, a named action) | `SurfaceCard` labelled with what, a `DescriptionList` of who and why, a decision group whose commit is named for the act | row 12 | none yet | R319 one commit per view; CTA-5 group order | [action-group](components/action-group.md) `action-group.choose.kind:approval` |
+| A contradiction between two sources | `Section` whose title is the question, two `Quote`s side by side, the answers as a decision group | row 12 | `surfaces--contradiction` | review; `Quote` is not a surface | [quote](components/quote.md) `quote.choose.host:contradiction` |
+| Needs approval (what, who, why, a named action) | `SurfaceCard` labelled with what, a `DescriptionList` of who and why, a decision group whose commit is named for the act | row 12 | `surfaces--needs-approval` | R319 one commit per view; CTA-5 group order | [action-group](components/action-group.md) `action-group.choose.kind:approval` |
 | Chat | `MessageBubble` in a thread the app keeps: mine `side="outgoing"` on the accent, theirs on the surface | one sender identity 4, a sender change row 12, a day divider section 24 | `compositions-renderers--message-bubble` | type: `side`; ruling `message-bubble-primary-and-surface`; the approved picture | [message-bubble](components/message-bubble.md) `message-bubble.choose.side` |
 | One route | `Page` with its `header` as data | region 32 between header and body | `compositions-renderers--page` | R323 to R325 | [page-header](components/page-header.md) `page-header.choose.head` |
 | A form | `Form` of `Grid kind="form"` fields, one commit | field rows 12 | `forms--form` | R319; `DNA-COMMON-FIELD-ROW-CONTROL-LINE` | [text-field](components/text-field.md) `text-field.choose.columns` |

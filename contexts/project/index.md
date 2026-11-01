@@ -151,8 +151,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [decisions/open-grammar.md](../decisions/open-grammar.md) · 15 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
   - sections: Decisions · offset-pop, designed on the contract · Code follow-ups named by the grammar files · Gaps: choices an app can make two ways · What the contract cannot express yet
 - [decisions/open-ui.md](../decisions/open-ui.md) · 9 KB — Choices made while writing `contexts/ui`, each awaiting the owner's feedback.
-- [decisions/rulings.yaml](../decisions/rulings.yaml) · 94 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
-  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, accent-corner, agent-avatar-initials-bot-badge, agent-keyed-schedules, alert-white-surface, app-check-cache, app-cicd-auto-deploy and 128 more
+- [decisions/rulings.yaml](../decisions/rulings.yaml) · 95 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
+  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, accent-corner, agent-avatar-initials-bot-badge, agent-keyed-schedules, alert-white-surface, app-check-cache, app-cicd-auto-deploy and 129 more
 - [grammars/README.md](../grammars/README.md) · 14 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
@@ -249,7 +249,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/tabs.md](../ui/components/tabs.md) · 3 KB — Contract: Tabs.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/text-field.md](../ui/components/text-field.md) · 3 KB — Contract: Input, CopyField.
+- [ui/components/text-field.md](../ui/components/text-field.md) · 4 KB — Contract: Input, CopyField.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/text.md](../ui/components/text.md) · 2 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
   - sections: Job · Choose · States · Owner split · Rules

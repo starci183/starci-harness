@@ -553,6 +553,7 @@ mustKeep:
           - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="md"] [data-grammar-field-control="true"]', value: 40px }
           - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="sm"] [data-grammar-field-control="true"]', value: 32px }
       owner: control-height-40
+      followUp: D-3
     - id: DNA-COMMON-TABS-BAR-MD
       role: tabs
       law: A tab bar, pill or underline, lands on the md height without a size prop.
@@ -1097,8 +1098,8 @@ mustKeep:
       followUp: G-20
     - id: DNA-CORE-BUTTON-PILL
       role: button
-      law: Every button and its skeleton is a pill, its corner at least half its height.
-      measure: { kind: style, select: ':is([data-component="Button"],[data-component="IconButton"])', metric: radius, op: ">=", value: { self: height, times: 0.5 } }
+      law: Every button and its skeleton is a pill, its corner at least half its height; the members of a ButtonGroup keep their square inner corners (DNA-COMMON-BUTTONGROUP-INNER-CORNERS).
+      measure: { kind: style, select: ':is([data-component="Button"],[data-component="IconButton"]):not([data-slot="button-group"] *)', metric: radius, op: ">=", value: { self: height, times: 0.5 } }
       owner: buttons-pill
     - id: DNA-CORE-ACCENT-TEXT
       role: root
