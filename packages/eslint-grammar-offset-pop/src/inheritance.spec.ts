@@ -42,13 +42,13 @@ const lintPanes = (code: string): Linter.LintMessage[] => new Linter().verify(co
 
 test("Offset Pop inherits the pane laws: a wrapper in a PaneGrid, a raw child of a Pane, section padding and a grid in a card are findings", () => {
   for (const name of PANE_RULES) assert.ok(name in rules, name)
-  const imports = 'import { FillViewport, Pane, PaneGrid, PaneSection } from "@starci/grammar/offset-pop"; import { CategoryPane } from "./CategoryPane"; '
+  const imports = 'import { Page, Pane, PaneGrid, PaneSection } from "@starci/grammar/offset-pop"; import { CategoryPane } from "./CategoryPane"; '
   assert.deepEqual(lintPanes(imports + 'const A = () => <PaneGrid areas={{ base: ["a"] }}><Pane area="a"><PaneSection><span /></PaneSection></Pane></PaneGrid>'), [])
   const invalid = [
     ["pane-grid-children", 'const A = () => <PaneGrid areas={{ base: ["a"] }}><CategoryPane area="a" /></PaneGrid>'],
     ["pane-children", 'const A = () => <Pane area="a"><div className="px-4" /></Pane>'],
     ["no-pane-section-padding", 'const A = () => <PaneSection><div className="px-4 pt-3" /></PaneSection>'],
-    ["pane-grid-page", 'const A = () => <FillViewport><PaneGrid areas={{ base: ["a"] }} /></FillViewport>'],
+    ["pane-grid-page", 'const A = () => <Page><PaneGrid areas={{ base: ["a"] }} /></Page>'],
   ] as const
   for (const [name, code] of invalid) {
     const found = lintPanes(imports + code)

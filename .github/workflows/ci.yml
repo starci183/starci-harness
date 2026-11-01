@@ -198,9 +198,15 @@ jobs:
       - name: Install the Grammar
         working-directory: packages/grammar
         run: npm ci --no-audit --no-fund
+      - name: Build the Grammar
+        working-directory: packages/grammar
+        run: npm run build
       - name: Theme proof
         working-directory: packages/grammar
-        run: npm run prove-theme
+        run: |
+          STARCI_BROWSER="$(find /ms-playwright -type f \( -name chrome -o -name headless_shell \) | head -1)"
+          export STARCI_BROWSER
+          npm run prove-theme
 
   # The CLI and the trees it reads (cli/, contexts/, ops/, policy/, or a package the CLI requires changed).
   harness:

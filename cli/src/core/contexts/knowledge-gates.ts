@@ -28,7 +28,7 @@ const walk = (dir: string, accept: (name: string) => boolean, skip: (path: strin
 
 /** The knowledge that states what is true now. Decisions are history (they say what was removed, and why) and `project/` is generated. */
 const livingKnowledge = (knowledge: string): string[] =>
-    walk(knowledge, (name) => /\.(?:md|yaml)$/.test(name), (path) => /[\\/](?:decisions|project)$/.test(path) || /search-eval\.json$/.test(path))
+    walk(knowledge, (name) => /\.(?:md|yaml)$/.test(name), (path) => /[\\/](?:decisions|project)$/.test(path) || path.endsWith("search-eval.json"))
 
 /**
  * R-doc: every rule of hfs/rules.yaml has a doc, a page of the living knowledge that names it by id. A rule nobody explains is a
@@ -37,7 +37,7 @@ const livingKnowledge = (knowledge: string): string[] =>
  */
 export const judgeRuleDocs = (knowledge: string): KnowledgeFinding[] => {
     const catalog = object(parse(read(join(knowledge, "hfs", "rules.yaml"))))
-    const ids = list(catalog["rules"]).map((rule) => text(object(rule)["id"])).filter((id) => id !== "")
+    const ids = list(catalog.rules).map((rule) => text(object(rule).id)).filter((id) => id !== "")
     const pages = livingKnowledge(knowledge).filter((path) => path.endsWith(".md")).map(read)
     const named = new Set<string>()
     for (const page of pages) for (const match of page.matchAll(/\bR\d{2,3}\b/g)) named.add(match[0])
@@ -53,7 +53,7 @@ const code = (token: string): RegExp => new RegExp("(?:`" + token.replace(/[.*+?
  */
 export const judgeRemovedVocabulary = (knowledge: string): KnowledgeFinding[] => {
     const rulings = object(parse(read(join(knowledge, "decisions", "rulings.yaml"))))
-    const spellings = list(rulings["removedVocabulary"]).map((entry) => text(object(entry)["spelling"])).filter((spelling) => /^[A-Za-z][\w.@/-]*$/.test(spelling) && /[A-Z]/.test(spelling))
+    const spellings = list(rulings.removedVocabulary).map((entry) => text(object(entry).spelling)).filter((spelling) => /^[A-Za-z][\w.@/-]*$/.test(spelling) && /[A-Z]/.test(spelling))
     const found: KnowledgeFinding[] = []
     for (const path of livingKnowledge(knowledge)) {
         const lines = read(path).split("\n")
@@ -76,7 +76,7 @@ export const judgeShippedVocabulary = (knowledge: string): KnowledgeFinding[] =>
     const runtime = join(knowledge, "..", "packages", "hfs", "runtime")
     if (!existsSync(runtime)) return []
     const rulings = object(parse(read(join(knowledge, "decisions", "rulings.yaml"))))
-    const spellings = list(rulings["removedVocabulary"]).map(object).filter((entry) => entry["shipped"] === true).map((entry) => text(entry["spelling"])).filter((spelling) => /^[A-Za-z][\w.@/-]*$/.test(spelling) && /[A-Z]/.test(spelling))
+    const spellings = list(rulings.removedVocabulary).map(object).filter((entry) => entry.shipped === true).map((entry) => text(entry.spelling)).filter((spelling) => /^[A-Za-z][\w.@/-]*$/.test(spelling) && /[A-Z]/.test(spelling))
     const found: KnowledgeFinding[] = []
     for (const path of walk(runtime, (name) => /\.(?:md|yaml|json|mts|ts)$/.test(name))) {
         const lines = read(path).split("\n")
@@ -120,8 +120,8 @@ export const judgeVendorWrappers = (knowledge: string, grammarSource: string): K
     const file = join(knowledge, "vendor", "wrappers.yaml")
     if (!existsSync(file) || !existsSync(grammarSource)) return []
     const raw = read(file)
-    const rows = list(object(parse(raw))["wrappers"]).map(object)
-    const rulings = list(object(parse(read(join(knowledge, "decisions", "rulings.yaml"))))["rulings"]).map(object)
+    const rows = list(object(parse(raw)).wrappers).map(object)
+    const rulings = list(object(parse(read(join(knowledge, "decisions", "rulings.yaml")))).rulings).map(object)
     const found: KnowledgeFinding[] = []
     const imported = new Map<string, Set<string>>()
     for (const path of walk(grammarSource, (name) => /\.tsx?$/.test(name) && !/\.(?:stories|spec)\./.test(name))) {
@@ -130,32 +130,32 @@ export const judgeVendorWrappers = (knowledge: string, grammarSource: string): K
     }
     const declared = new Set<string>()
     for (const row of rows) {
-        const rowFile = text(row["file"])
+        const rowFile = text(row.file)
         declared.add(rowFile)
         const actual = imported.get(rowFile)
-        const wrapsNothing = list(row["wraps"]).length === 0
+        const wrapsNothing = list(row.wraps).length === 0
         if (actual === undefined && wrapsNothing && existsSync(join(grammarSource, rowFile))) continue
         if (actual === undefined) {
             found.push({ kind: "wrapper-stale", subject: rowFile, detail: `${rowFile} is a row of vendor/wrappers.yaml and ${existsSync(join(grammarSource, rowFile)) ? "imports no HeroUI component" : "does not exist"}: remove the row` })
             continue
         }
-        const wraps = new Set(list(row["wraps"]).map(text))
+        const wraps = new Set(list(row.wraps).map(text))
         const missing = [...actual].filter((name) => !wraps.has(name))
         const extra = [...wraps].filter((name) => !actual.has(name))
         if (missing.length > 0 || extra.length > 0) {
-            found.push({ kind: "wrapper-wraps-drift", subject: rowFile, detail: `${rowFile} wraps ${[...actual].sort().join(", ")}; the row says ${[...wraps].sort().join(", ")}` })
+            found.push({ kind: "wrapper-wraps-drift", subject: rowFile, detail: `${rowFile} wraps ${[...actual].sort((left, right) => left.localeCompare(right)).join(", ")}; the row says ${[...wraps].sort((left, right) => left.localeCompare(right)).join(", ")}` })
         }
-        for (const override of list(row["overrides"]).map(object)) {
-            const ruling = text(override["ruling"])
-            if (!rulings.some((entry) => text(entry["id"]) === ruling)) found.push({ kind: "wrapper-ruling-unknown", subject: rowFile, detail: `an override of ${rowFile} cites ruling ${ruling}, which rulings.yaml does not hold` })
+        for (const override of list(row.overrides).map(object)) {
+            const ruling = text(override.ruling)
+            if (!rulings.some((entry) => text(entry.id) === ruling)) found.push({ kind: "wrapper-ruling-unknown", subject: rowFile, detail: `an override of ${rowFile} cites ruling ${ruling}, which rulings.yaml does not hold` })
         }
     }
     for (const [path, names] of imported) {
-        if (!declared.has(path)) found.push({ kind: "wrapper-undeclared", subject: path, detail: `${path} imports ${[...names].sort().join(", ")} from @heroui/react and has no row in vendor/wrappers.yaml` })
+        if (!declared.has(path)) found.push({ kind: "wrapper-undeclared", subject: path, detail: `${path} imports ${[...names].sort((left, right) => left.localeCompare(right)).join(", ")} from @heroui/react and has no row in vendor/wrappers.yaml` })
     }
     const pins = rulings.flatMap((ruling) => {
-        const pinned = object(ruling["pins"])["contexts/vendor/wrappers.yaml"]
-        return typeof pinned === "string" ? [{ id: text(ruling["id"]), digest: pinned }] : []
+        const pinned = object(ruling.pins)["contexts/vendor/wrappers.yaml"]
+        return typeof pinned === "string" ? [{ id: text(ruling.id), digest: pinned }] : []
     })
     const live = pins.at(-1)
     if (live === undefined) found.push({ kind: "wrapper-pin-drift", subject: "contexts/vendor/wrappers.yaml", detail: "no ruling of rulings.yaml pins the digest of vendor/wrappers.yaml" })

@@ -13,10 +13,10 @@ const put = (root: string, path: string, content: string): void => {
 
 const sandbox = (): { root: string; knowledge: string; source: string; done: () => void } => {
     const root = mkdtempSync(join(tmpdir(), "knowledge-gates-"))
-    return { root, knowledge: join(root, "contexts"), source: join(root, "src"), done: () => rmSync(root, { recursive: true, force: true }) }
+    return { root, knowledge: join(root, "contexts"), source: join(root, "src"), done: () => { rmSync(root, { recursive: true, force: true }); } }
 }
 
-test("a rule no living page names has no doc; decisions and the generated project folder do not count", () => {
+void test("a rule no living page names has no doc; decisions and the generated project folder do not count", () => {
     const { root, knowledge, done } = sandbox()
     try {
         put(root, "contexts/hfs/rules.yaml", "rules:\n  - id: R100\n  - id: R101\n  - id: R102\n")
@@ -29,13 +29,13 @@ test("a rule no living page names has no doc; decisions and the generated projec
     }
 })
 
-test("a removed spelling written as code in living knowledge is refused, prose and decisions are not", () => {
+void test("a removed spelling written as code in living knowledge is refused, prose and decisions are not", () => {
     const { root, knowledge, done } = sandbox()
     try {
         put(root, "contexts/decisions/rulings.yaml", "removedVocabulary:\n  - spelling: Backdrop\n  - spelling: StatusDot with text\n  - spelling: List\n")
         put(root, "contexts/ui/card.md", "Use a `Backdrop` here.\nThe backdrop of a dialog.\nA <List> of rows.\nPlain List word.\n")
         put(root, "contexts/decisions/history.md", "`Backdrop` was removed.\n")
-        const found = judgeRemovedVocabulary(knowledge).map((finding) => `${finding.subject}:${finding.detail.split(" ")[0]}`)
+        const found = judgeRemovedVocabulary(knowledge).map((finding) => `${finding.subject}:${finding.detail.split(" ")[0] ?? ""}`)
         assert.deepEqual(found, ["Backdrop:ui/card.md:1", "List:ui/card.md:3"])
     } finally {
         done()
@@ -49,14 +49,14 @@ void test("a removed spelling marked shipped is refused anywhere in packages/hfs
         put(root, "packages/hfs/runtime/knowledge/grammars/core/playbook.yaml", "  - component: SurfaceListCard\n  - component: PrimaryRailLayout\n  - component: SurfaceListCardLike\n")
         put(root, "packages/hfs/runtime/scripts/draw.mts", "const C = new Set(['SurfaceCard', 'SurfaceListCard'])\n")
         put(root, "packages/hfs/codemod/a.mts", "SurfaceListCard\n")
-        const found = judgeShippedVocabulary(knowledge).map((finding) => `${finding.subject}:${finding.detail.split(" ")[0]}`)
+        const found = judgeShippedVocabulary(knowledge).map((finding) => `${finding.subject}:${finding.detail.split(" ")[0] ?? ""}`)
         assert.deepEqual(found.sort((a, b) => a.localeCompare(b)), ["SurfaceListCard:../packages/hfs/runtime/knowledge/grammars/core/playbook.yaml:1", "SurfaceListCard:../packages/hfs/runtime/scripts/draw.mts:1"])
     } finally {
         done()
     }
 })
 
-test("vendor wrappers: a stale row, an undeclared file, a wraps drift, an unknown ruling and a drifted pin are found", () => {
+void test("vendor wrappers: a stale row, an undeclared file, a wraps drift, an unknown ruling and a drifted pin are found", () => {
     const { root, knowledge, source, done } = sandbox()
     try {
         put(root, "src/core/A/index.tsx", 'import { Modal, cn } from "@heroui/react"\n')
@@ -73,7 +73,7 @@ test("vendor wrappers: a stale row, an undeclared file, a wraps drift, an unknow
         ].join("\n")
         put(root, "contexts/vendor/wrappers.yaml", wrappers)
         put(root, "contexts/decisions/rulings.yaml", "rulings:\n  - id: pinned\n    pins:\n      contexts/vendor/wrappers.yaml: " + "0".repeat(64) + "\n")
-        const kinds = judgeVendorWrappers(knowledge, source).map((finding) => `${finding.kind}:${finding.subject}`).sort()
+        const kinds = judgeVendorWrappers(knowledge, source).map((finding) => `${finding.kind}:${finding.subject}`).sort((left, right) => left.localeCompare(right))
         assert.deepEqual(kinds, [
             "wrapper-pin-drift:contexts/vendor/wrappers.yaml",
             "wrapper-ruling-unknown:core/A/index.tsx",
