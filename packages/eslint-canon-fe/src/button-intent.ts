@@ -53,7 +53,7 @@ const memberName = (node: TSESTree.MemberExpression): string | null => (node.com
 const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const BUTTONS = new Set<string | null>(["Button", "IconButton"])
 const DIALOGS = new Set<string | null>(["AlertDialog", "ConfirmDialog"])
-const ITEMS = new Set<string | null>(["ListBox.Item", "GridList.Item", "Table.Row", "TableRow"])
+const ITEMS = new Set<string | null>(["ListBox.Item", "GridList.Item", "Table.Row", "ListRow"])
 
 /** The consuming TypeScript program exposes literal intents and spread properties without executing app code. */
 const typedInfo = (context: AnyContext, node: Node | null | undefined, key?: string): TypedInfo | null => {

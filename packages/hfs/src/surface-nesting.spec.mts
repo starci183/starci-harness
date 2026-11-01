@@ -29,7 +29,7 @@ function program(sources: Record<string, string>): { graph: HfsGraph; context: {
 }
 
 const kinds = (sources: Record<string, string>): string[] => checkSurfaceNesting(program(sources)).violations.map((v) => `${String(v['kind'])}@${String(v.path)}`).sort();
-const G = "import { SurfaceCard, SurfaceListCard, DataTable, Dialog, Pane, PaneGrid, Page, Grid, Section, Heading } from '@starci/grammar/core';\n";
+const G = "import { SurfaceCard, DataTable, Dialog, Pane, PaneGrid, Page, Grid, Section, Heading } from '@starci/grammar/core';\n";
 
 test('a card drawn in a card across files is found at the inner card, with the file of each', () => {
   const result = checkSurfaceNesting(program({
@@ -51,7 +51,7 @@ test('a component that never places children does not draw them, and a card besi
 test('imports resolve through a barrel with a star re-export, and children through the props object', () => {
   assert.deepEqual(kinds({
     'a/Shell/index.tsx': `${G}export const Shell = (props) => <SurfaceCard label="Outer">{props.children}</SurfaceCard>;`,
-    'a/Inner/Inner.tsx': `${G}export const Inner = () => <SurfaceListCard label="Inner" />;`,
+    'a/Inner/Inner.tsx': `${G}export const Inner = () => <SurfaceCard label="Inner" />;`,
     'a/Inner/index.tsx': `export * from './Inner';`,
     'a/Screen.tsx': `${G}import { Shell } from './Shell';\nimport { Inner } from './Inner';\nexport const Screen = () => <Shell><Inner /></Shell>;`,
   }), ['card-in-card@a/Inner/Inner.tsx']);

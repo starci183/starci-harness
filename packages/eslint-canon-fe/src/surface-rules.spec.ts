@@ -42,7 +42,6 @@ test("surface rules are published at error with their canon finding codes", () =
 })
 
 for (const edition of ["lite", "full"]) {
-for (const edition of ["lite", "full"]) {
   test(`layout-only ${edition}: valid layout passes and invalid raw surface paint is refused`, () => {
   assert.doesNotThrow(() => tester().run("no-app-surface-paint", noAppSurfacePaint, {
     valid: [

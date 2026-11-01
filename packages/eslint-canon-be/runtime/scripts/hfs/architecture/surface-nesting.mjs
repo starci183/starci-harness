@@ -19,7 +19,7 @@ export const SURFACE_NESTING_RULE_IDS = ['FE_SURFACE_NESTING'];
 const RULE = 'FE_SURFACE_NESTING';
 /** The grammar vocabulary this check reads, in one place so a rename in the grammar is one edit here. */
 export const SURFACE_VOCABULARY = Object.freeze({
-    cards: new Set(['SurfaceCard', 'SurfaceListCard', 'SurfaceAccordionCard']),
+    cards: new Set(['SurfaceCard']),
     overlays: new Set(['Dialog', 'Drawer', 'AlertDialog', 'Popover']),
     tables: new Set(['DataTable']),
     headings: new Set(['Heading']),

@@ -70,3 +70,5 @@ every component by what it draws and every `children` by what its caller handed 
 in a card, in `Pane surface` or in an overlay; a `DataTable` in a card; a `PaneGrid` outside `Page chrome="panes"`; a `Section`
 or `Heading` whose only content is one card; a labelled card repeated in a `Grid`. R359 (`starci-grammar/one-highlight-per-render`)
 keeps one `isHighlight` in a render.
+
+R355 (`starci-grammar/surface-card-kind`) and R366 (`starci-grammar/no-label-in-grid`) judge the card by its `kind` in one file: what a `body` card may hold, and that a labelled card repeated in a `Grid` is a tile.
