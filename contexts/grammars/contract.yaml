@@ -418,11 +418,11 @@ roles:
     ui: ui/components/list-table.md
     renderers: [Section]
     vendorParity: []                              # no HeroUI part: a Common frame
-    slots: ["title (the heading and the landmark name)", headingLevel, "filter (a FilterButtonGroup)", "items (kind list: the typed rows of a list card)", "children (kind body)", "actions (the page command, at the end of the head row)"]
+    slots: ["title (the heading and the landmark name)", headingLevel, "filter (a FilterButtonGroup)", "items (kind list: the typed rows of a list card)", "children (kind body)", "actions (the page command, at the end of the head row)", "empty and error (ErrorData: message, description, action) beside it, kind list"]
     variants:
       kind: { values: [body, list], chosenBy: app from list-table.choose.role (list when the rows search, filter or page) }
     sizes: none
-    states: [ready, skeleton, empty (kind list: required)]
+    states: [ready, loading (isLoading), error (the error slot), empty (kind list: required)]
     grammarMayChange: [heading weight]
     dna: []
     lint: [starci-fe/no-heading-above-card]

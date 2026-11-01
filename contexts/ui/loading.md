@@ -73,7 +73,7 @@ A skeleton equals the ready box: the shape comes from the same fields the ready 
 R367: `starci-fe/no-swr-default-array` (a hook that folds a read to `[]` returns that read's `isLoading`),
 `no-foreign-slot-status` (a slot never copies another slot's loading or error; build it from every read it draws with the one
 `slotOfReads` helper of hooks/slot), `no-validating-as-loading`, `no-placeholder-object` and `no-hand-skeleton` (an app draws no
-`Skeleton`, `ChatBubbleSkeletons` or `MessageBubbleSkeletons`; the plugin requests every published rule at error). The older
+`Skeleton` or a hand-drawn bubble skeleton; the plugin requests every published rule at error). The older
 LOADING-1 to LOADING-5 laws (`no-resting-twin-component`, `no-placeholder-prop`, `no-resting-branch-at-call-site`) stand beside
 them. The codemod `starci app codemod loading-states` renames `isSkeleton` to `isLoading`, drops `loadingRows`, rewrites the old
 slot literals, and reports with a code what it cannot rewrite.

@@ -307,7 +307,7 @@ starts its body one region step down. A bleed page is an app surface: no gutter,
 the region, under the band or the trail alone. A panes page (`chrome="panes"`) is a tabbed app page whose body is one pane grid:
 the band (with or without tabs) or the trail, then the grid attached to the band's separator with no gap, block padding, radius
 or card, reaching both content edges and the viewport bottom less the grammar's bottom chrome (the page measures the fill box
-itself). Skeleton passes to the band; the body's blocks own their loading.
+itself). `isLoading` passes to the band; the body's blocks own their loading.
 
 ### Section
 
