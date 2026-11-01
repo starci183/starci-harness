@@ -3,6 +3,7 @@ import type { ComponentPropsWithRef } from "react"
 import type { PresentationState } from "../../../common/state.js"
 import { vendorStatusFor } from "../../overlayScope.js"
 import { Skeleton } from "../Skeleton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /**
  * How many equal parts a segmented meter draws: a discrete count such as "2 of 3 capabilities".
@@ -10,7 +11,7 @@ import { Skeleton } from "../Skeleton/index.js"
  */
 export type MeterSegments = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
 
-export type MeterProps = {
+export type MeterProps = NoChildren & {
     /** What the gauge measures. Visible by default and wired as the meter's accessible name. */
     readonly label: string
     readonly value: number

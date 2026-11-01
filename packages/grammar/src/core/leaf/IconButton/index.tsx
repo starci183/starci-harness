@@ -4,6 +4,7 @@ import { Button as HeroButton, Link as HeroLink, buttonVariants, cn, skeletonVar
 import { Icon, type IconSource } from "../Icon/index.js"
 import { useButtonIntentVariant, type ButtonIntent, type ButtonIntentProps } from "../../buttonIntent.js"
 import { DismissGlyph } from "./dismissGlyph.js"
+import type { NoChildren } from "../../tier.js"
 
 /**
  * The plate an icon-only action wears comes from its `intent` and the placement it sits in (`useButtonIntentVariant`), never from
@@ -22,7 +23,7 @@ type IconButtonGlyph =
         readonly source: IconSource
     }
 
-export type IconButtonProps = {
+export type IconButtonProps = NoChildren & {
     /** Required accessible name for the glyph-only action. */
     readonly label: string
     /** `md` is the one control height (2.5rem, 40px: the default), `sm` (2rem) is for a control nested in an item or a dense toolbar, `lg` (3rem) is the landing hero step. */

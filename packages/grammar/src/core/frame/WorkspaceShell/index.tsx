@@ -99,7 +99,6 @@ export type WorkspaceShellProps = (ShellOwnedMain | CallerOwnedMain) & (WithNavi
     readonly primaryId?: string
     readonly floatingLayer?: ReactNode
     readonly align?: "start" | "stretch"
-    readonly className?: string
 }
 
 /** Shared product workspace anatomy; connected apps supply every route and business slot. */
@@ -118,7 +117,7 @@ export const WorkspaceShell = (props: WorkspaceShellProps) => {
     const rail = hasRail ? <div className={workspaceShellRailClassName} data-grammar-workspace-rail-region="true"><Rail inset={props.railInset ?? "none"} isLabelHidden={props.isRailLabelHidden ?? true} label={props.railLabel} mode={props.railMode ?? "flow"} width={props.railWidth ?? "standard"}>{props.rail}</Rail></div> : null
     const leadingRule = railPosition === "leading" ? <div aria-hidden="true" className={workspaceShellLeadingRuleClassName} data-contract="BOUNDARY-4" data-grammar-workspace-leading-rule="true" /> : null
 
-    return <div className={cn(workspaceShellClassName, props.className)} data-contract="FE-APP-SHELL-1" data-grammar-workspace-viewport={props.viewport ?? "flow"} data-grammar-workspace-floating={hasFloatingLayer ? "present" : "absent"} data-grammar-workspace-shell="true" data-component="WorkspaceShell" data-tier="frame">
+    return <div className={workspaceShellClassName} data-contract="FE-APP-SHELL-1" data-grammar-workspace-viewport={props.viewport ?? "flow"} data-grammar-workspace-floating={hasFloatingLayer ? "present" : "absent"} data-grammar-workspace-shell="true" data-component="WorkspaceShell" data-tier="frame">
         {hasHeader ? (resolveWorkspaceHeaderLandmark(props.header, props.headerLandmark) === "slot"
             ? <div className={workspaceShellHeaderClassName} data-contract="MARGIN-5" data-grammar-workspace-header="true" data-grammar-workspace-header-landmark="slot"><ButtonPlacementProvider placement="chrome" navbar><SurfaceNesting>{props.header}</SurfaceNesting></ButtonPlacementProvider></div>
             : <header className={workspaceShellHeaderClassName} data-contract="MARGIN-5" data-grammar-workspace-header="true" data-grammar-workspace-header-landmark="shell"><ButtonPlacementProvider placement="chrome" navbar><SurfaceNesting>{props.header}</SurfaceNesting></ButtonPlacementProvider></header>) : null}

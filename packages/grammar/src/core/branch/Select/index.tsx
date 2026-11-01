@@ -22,6 +22,7 @@ import {
     vendorFieldProps,
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** One choice in a list-backed control. `label` is plain text because it is also the typeahead value. */
 export type ListOption = {
@@ -33,7 +34,7 @@ export type ListOption = {
     readonly isDisabled?: boolean
 }
 
-export type SelectProps = FieldControlProps & {
+export type SelectProps = NoChildren & FieldControlProps & {
     readonly options: ReadonlyArray<ListOption>
     readonly placeholder?: string
     readonly value?: string | null

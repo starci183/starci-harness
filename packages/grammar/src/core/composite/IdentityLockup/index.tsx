@@ -1,9 +1,10 @@
 "use client"
 
 import { Avatar, type AvatarShape } from "../../leaf/Avatar/index.js"
-import { PlainPressable } from "../../leaf/PlainPressable/index.js"
+import { PlainPressable } from "../../PlainPressable.js"
+import type { NoChildren } from "../../tier.js"
 
-export type IdentityLockupProps = {
+export type IdentityLockupProps = NoChildren & {
     /** The workspace or brand name: the first line, and the mark's initials when there is no image. */
     readonly title: string
     /** The muted second line, e.g. the viewer's role. */

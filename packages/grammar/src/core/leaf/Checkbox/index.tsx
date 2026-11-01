@@ -13,8 +13,9 @@ import {
     vendorFieldProps,
     type FieldControlProps,
 } from "../Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type CheckboxProps = Omit<FieldControlProps, "isLabelHidden"> & {
+export type CheckboxProps = NoChildren & Omit<FieldControlProps, "isLabelHidden"> & {
     /** The value submitted, and the value a CheckboxGroup collects. */
     readonly value?: string
     readonly isSelected?: boolean

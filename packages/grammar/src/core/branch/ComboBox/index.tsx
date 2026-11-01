@@ -21,8 +21,9 @@ import {
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
 import { ListOptions, type ListOption } from "../Select/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type ComboBoxProps = FieldControlProps & {
+export type ComboBoxProps = NoChildren & FieldControlProps & {
     readonly id?: string
     readonly options: ReadonlyArray<ListOption>
     readonly placeholder?: string

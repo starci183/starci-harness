@@ -8,7 +8,7 @@ import { Disclosure } from "../core/branch/Disclosure/index.js"
 import { BubbleMap } from "../core/branch/BubbleMap/index.js"
 import { FlowGraph } from "../core/branch/FlowGraph/index.js"
 import { ListBox } from "../core/branch/ListBox/index.js"
-import { MermaidDiagram } from "../core/composite/MermaidDiagram/index.js"
+import { MermaidDiagram } from "../core/frame/MermaidDiagram/index.js"
 import { AvatarButton } from "../core/leaf/AvatarButton/index.js"
 import { AvatarGroup } from "../core/composite/AvatarGroup/index.js"
 import { IdentityLockup } from "../core/composite/IdentityLockup/index.js"
@@ -22,7 +22,6 @@ import { TopBar } from "../core/composite/TopBar/index.js"
 import { Avatar } from "../core/leaf/Avatar/index.js"
 import { Image } from "../core/leaf/Image/index.js"
 import { Link } from "../core/leaf/Link/index.js"
-import { PlainPressable } from "../core/leaf/PlainPressable/index.js"
 import { Rating } from "../core/branch/Rating/index.js"
 import { Video } from "../core/leaf/Video/index.js"
 
@@ -33,12 +32,11 @@ export { DragItem, type DragItemProps, type DragItemTone } from "../core/branch/
 export { Disclosure, type DisclosureProps } from "../core/branch/Disclosure/index.js"
 export { BubbleMap, bubbleDiameter, bubbleMapLayout, type BubbleMapEdge, type BubbleMapFill, type BubbleMapNode, type BubbleMapNodeForm, type BubbleMapProps, type BubbleMapRingPart } from "../core/branch/BubbleMap/index.js"
 export { FlowGraph, lanesLayout, layeredPositions, radialPositions, type FlowGraphDirection, type FlowGraphEdge, type FlowGraphHeight, type FlowGraphLayerHeader, type FlowGraphLayout, type FlowGraphNode, type FlowGraphNodeShape, type FlowGraphNodeSize, type FlowGraphProps, type FlowGraphTone } from "../core/branch/FlowGraph/index.js"
-export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps } from "../core/composite/MermaidDiagram/index.js"
+export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps } from "../core/frame/MermaidDiagram/index.js"
 export { ListBox, type ListBoxItem, type ListBoxSection, type ListBoxProps, type ListBoxSize } from "../core/branch/ListBox/index.js"
 export type { ItemDescriptionLines } from "../core/collectionItem.js"
 export { AvatarButton, type AvatarButtonProps } from "../core/leaf/AvatarButton/index.js"
 export { IdentityLockup, type IdentityLockupProps } from "../core/composite/IdentityLockup/index.js"
-export { PlainPressable, type PlainPressableProps, type PlainPressableShape } from "../core/leaf/PlainPressable/index.js"
 export { AvatarGroup, type AvatarGroupItem, type AvatarGroupProps } from "../core/composite/AvatarGroup/index.js"
 export type { BreadcrumbItem } from "../core/composite/Breadcrumbs/index.js"
 export { DescriptionList, type DescriptionListItem, type DescriptionListLayout, type DescriptionListProps } from "../core/composite/DescriptionList/index.js"
@@ -57,5 +55,5 @@ export { Video, type VideoCaptionsTrack, type VideoProps } from "../core/leaf/Vi
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
     Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, DataTable, DescriptionList,
-    BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, MermaidDiagram, Pagination, PlainPressable, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
+    BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

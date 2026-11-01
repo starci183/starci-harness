@@ -3,7 +3,7 @@
 import { Accordion as HeroAccordion, type Key } from "@heroui/react"
 import { useState, type ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
-import { navigationClassName } from "../../navigationClassNames.js"
+import type { NoChildren } from "../../tier.js"
 
 export type AccordionItem = {
     readonly id: string
@@ -12,7 +12,7 @@ export type AccordionItem = {
     readonly isDisabled?: boolean
 }
 
-export type AccordionProps = {
+export type AccordionProps = NoChildren & {
     /** Names the group of sections for assistive technology. */
     readonly label: string
     readonly items: ReadonlyArray<AccordionItem>
@@ -23,7 +23,6 @@ export type AccordionProps = {
     /** Single-open (default) closes the previous section when another opens. */
     readonly allowsMultipleExpanded?: boolean
     readonly headingLevel?: 2 | 3 | 4 | 5 | 6
-    readonly className?: string
 }
 
 /*
@@ -47,7 +46,6 @@ export const Accordion = ({
     onExpandedChange,
     allowsMultipleExpanded = false,
     headingLevel = 3,
-    className,
 }: AccordionProps) => {
     const [uncontrolled, setUncontrolled] = useState<ReadonlyArray<string>>(defaultExpandedIds)
     const expanded = expandedIds ?? uncontrolled
@@ -55,7 +53,7 @@ export const Accordion = ({
     return (
         <div
             aria-label={label}
-            className={navigationClassName("starci-core-generic-accordion", className)}
+            className="starci-core-generic-accordion"
             data-component="Accordion"
             data-tier="branch"
             data-contract="FOCUS-2"

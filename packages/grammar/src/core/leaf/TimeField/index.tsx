@@ -12,8 +12,9 @@ import {
     type FieldControlProps,
 } from "../Field/index.js"
 import { DateFieldBox, DateSegments } from "../DateField/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type TimeFieldProps = FieldControlProps & {
+export type TimeFieldProps = NoChildren & FieldControlProps & {
     readonly value?: TimeValue | null
     readonly defaultValue?: TimeValue | null
     readonly onValueChange?: (value: TimeValue | null) => void

@@ -1,11 +1,12 @@
 import { Skeleton as HeroSkeleton, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
+import type { NoChildren } from "../../tier.js"
 
 export type SkeletonShape = "text" | "rect" | "circle"
 export type SkeletonRatio = "square" | "landscape" | "wide"
 export type SkeletonSize = "sm" | "md" | "lg"
 
-export type SkeletonProps = {
+export type SkeletonProps = NoChildren & {
     readonly shape?: SkeletonShape
     /** `text` only: how many lines the unresolved copy will take (1-12). The last line is shorter. */
     readonly lines?: number

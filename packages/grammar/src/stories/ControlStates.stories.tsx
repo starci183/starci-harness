@@ -251,12 +251,12 @@ export const FieldStates: Story = {
                 {
                     control: "Field",
                     states: {
-                        Default: <G.Field label="Account id">{nativeInput}</G.Field>,
-                        WithHint: <G.Field label="Account id" description="Shown on invoices.">{nativeInput}</G.Field>,
-                        Required: <G.Field label="Account id" isRequired>{nativeInput}</G.Field>,
-                        Error: <G.Field label="Account id" errorMessage="Use 8 digits.">{nativeInput}</G.Field>,
-                        Disabled: <G.Field label="Account id" isDisabled>{nativeInput}</G.Field>,
-                        Loading: <G.Field label="Account id" description="Shown on invoices." isSkeleton>{nativeInput}</G.Field>,
+                        Default: <G.Field label="Account id" control={nativeInput} />,
+                        WithHint: <G.Field label="Account id" description="Shown on invoices." control={nativeInput} />,
+                        Required: <G.Field label="Account id" isRequired control={nativeInput} />,
+                        Error: <G.Field label="Account id" errorMessage="Use 8 digits." control={nativeInput} />,
+                        Disabled: <G.Field label="Account id" isDisabled control={nativeInput} />,
+                        Loading: <G.Field label="Account id" description="Shown on invoices." isSkeleton control={nativeInput} />,
                     },
                 },
             ]}

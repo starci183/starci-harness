@@ -3,8 +3,8 @@
 import { Checkbox as HeroCheckbox, Table as HeroTable, type Selection, type SortDescriptor } from "@heroui/react"
 import { useEffect, useRef, useState, type CSSProperties, type DragEventHandler, type KeyboardEvent, type MouseEvent, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { navigationClassName } from "../../navigationClassNames.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
+import type { NoChildren } from "../../tier.js"
 
 export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
     readonly id: string
@@ -47,7 +47,7 @@ export type DataTableCellInteraction = {
     readonly onDrop?: DragEventHandler<HTMLDivElement>
 }
 
-export type DataTableProps<Row extends DataTableRow> = {
+export type DataTableProps<Row extends DataTableRow> = NoChildren & {
     /** Names the table, e.g. "Invoices". */
     readonly label: string
     readonly columns: ReadonlyArray<DataTableColumn<Row>>
@@ -83,7 +83,6 @@ export type DataTableProps<Row extends DataTableRow> = {
     readonly onRowAction?: (id: string) => void
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
-    readonly className?: string
 }
 
 /** The vendor row part filters aria-hidden out of its props, so the skeleton rows take it by ref (knowledge STATE-8). */
@@ -207,7 +206,6 @@ export const DataTable = <Row extends DataTableRow>({
     maxBlockSize,
     onRowAction,
     collapseBelow = DEFAULT_COLLAPSE_BELOW,
-    className,
 }: DataTableProps<Row>) => {
     const scrollRef = useRef<HTMLDivElement>(null)
     const [width, setWidth] = useState<number | null>(null)
@@ -258,7 +256,7 @@ export const DataTable = <Row extends DataTableRow>({
     return (
         <HeroTable
             aria-busy={isLoading || undefined}
-            className={navigationClassName("starci-core-data-table", className)}
+            className="starci-core-data-table"
             data-component="DataTable"
             data-tier="branch"
             data-grammar-table-state={state}

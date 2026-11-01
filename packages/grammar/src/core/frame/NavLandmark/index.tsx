@@ -1,10 +1,9 @@
-import { cn } from "@heroui/react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
 
 /** `bar` clusters the links in a roomy top bar; `scrolling` keeps one tight row that scrolls sideways when narrow. */
 export type NavLandmarkLayout = "bar" | "scrolling"
 
-export type NavLandmarkProps = Omit<ComponentPropsWithoutRef<"nav">, "aria-label" | "aria-labelledby" | "children" | "role"> & {
+export type NavLandmarkProps = Omit<ComponentPropsWithoutRef<"nav">, "aria-label" | "aria-labelledby" | "children" | "className" | "role"> & {
     /** The landmark's accessible name, so a screen reader can tell this navigation from another. */
     readonly label: string
     /** How the links are laid out. */
@@ -18,12 +17,12 @@ export type NavLandmarkProps = Omit<ComponentPropsWithoutRef<"nav">, "aria-label
  * Use `TopBar` (its `navigation` and `subnavigation`) or `Page` (its `header.breadcrumbs`) when the navigation has its own anatomy.
  */
 export const NavLandmark = (props: NavLandmarkProps) => {
-    const { label, layout, className, children, ...rest } = props
+    const { label, layout, children, ...rest } = props
     return (
         <nav
             {...rest}
             aria-label={label}
-            className={cn("starci-core-nav-landmark", className)}
+            className={"starci-core-nav-landmark"}
             data-component="NavLandmark"
             data-contract={layout === "bar" ? "GAP-4" : "GAP-1"}
             data-grammar-nav-layout={layout}

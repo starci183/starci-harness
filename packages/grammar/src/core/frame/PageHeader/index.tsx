@@ -1,9 +1,8 @@
-import { cn } from "@heroui/react"
 import type { ReactNode } from "react"
 import { Tabs, type TabsProps } from "../../branch/Tabs/index.js"
 import { Breadcrumbs, type BreadcrumbItem } from "../../composite/Breadcrumbs/index.js"
 import { Divider } from "../../leaf/Divider/index.js"
-import { PageContainer, type PageContainerProps } from "../PageContainer/index.js"
+import { PageContainerPart, type PageContainerProps } from "../PageContainer/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 
 /** The trail above the page heading: the `Breadcrumbs` the header draws in its first row. */
@@ -47,8 +46,6 @@ export type PageHeaderProps = {
      * (a crumb whose label is unknown takes its own `isSkeleton`); the root is `aria-busy`.
      */
     readonly isSkeleton?: boolean
-    /** Layout only: the band's placement in the app's layout. */
-    readonly className?: string
 }
 
 /** One slot, real or as its measured placeholder. */
@@ -76,10 +73,9 @@ export const PageHeader = ({
     tabs,
     measure = "product",
     isSkeleton = false,
-    className,
 }: PageHeaderProps) => (
     <div
-        className={cn("starci-core-page-header", className)}
+        className="starci-core-page-header"
         data-component="PageHeader"
         data-tier="frame"
         data-contract={isSkeleton ? "MARGIN-5 STATE-8" : "MARGIN-5"}
@@ -87,7 +83,7 @@ export const PageHeader = ({
         data-grammar-page-header-tabs={tabs === undefined ? "false" : "true"}
         {...(isSkeleton ? { "data-grammar-skeleton": "true", "data-loading": "true", "aria-busy": true } : {})}
     >
-        <PageContainer className="starci-core-page-header-body" data-contract="GAP-3 PADDING-5" measure={measure}>
+        <PageContainerPart className="starci-core-page-header-body" data-contract="GAP-3 PADDING-5" measure={measure}>
             {breadcrumbs === undefined ? null : (
                 <Breadcrumbs
                     label={breadcrumbs.label}
@@ -121,7 +117,7 @@ export const PageHeader = ({
                     <Tabs {...tabs} inset="none" />
                 </div>
             )}
-        </PageContainer>
+        </PageContainerPart>
         <div className="starci-core-page-header-separator" data-grammar-page-header-separator="true">
             <Divider semantics="presentation" />
         </div>

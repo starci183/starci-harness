@@ -2,7 +2,7 @@
 
 import { Button as HeroButton } from "@heroui/react"
 import type { ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
+import { navigationClassName } from "./navigationClassNames.js"
 
 export type PlainPressableShape = "rounded" | "circle"
 
@@ -32,9 +32,9 @@ export type PlainPressableProps = {
  * workspace lockup, or an avatar, that opens a menu or goes somewhere. Name it with `aria-label` when the content has no text.
  * Contract: A11Y-2 (a named control), FOCUS-1 (a visible ring), MOTION-2 (reduced motion removes the zoom, never the control).
  */
+/** Not part of the public API: an internal of IdentityLockup and AvatarButton, outside the tier ladder. */
 export const PlainPressable = ({ children, "aria-label": ariaLabel, onPress, isDisabled = false, shape = "rounded", size, className }: PlainPressableProps) => (
     <HeroButton
-        data-tier="leaf"
         data-component="PlainPressable"
         data-contract="A11Y-2 FOCUS-1 MOTION-2"
         data-grammar-pressable-shape={shape}

@@ -3,7 +3,7 @@
 import { Avatar as HeroAvatar, AvatarGroup as HeroAvatarGroup } from "@heroui/react"
 import type { ReactNode } from "react"
 import { Avatar, AvatarAgentBadge, AvatarInitialsImage, avatarA11yProps, avatarParts, vendorAvatarSize, type AvatarKind, type AvatarSize } from "../../leaf/Avatar/index.js"
-import { navigationClassName } from "../../navigationClassNames.js"
+import type { NoChildren } from "../../tier.js"
 
 export type AvatarGroupItem = {
     readonly id: string
@@ -16,7 +16,7 @@ export type AvatarGroupItem = {
     readonly fallback?: ReactNode
 }
 
-export type AvatarGroupProps = {
+export type AvatarGroupProps = NoChildren & {
     /** Names the group, e.g. who is in a space. */
     readonly label: string
     readonly items: ReadonlyArray<AvatarGroupItem>
@@ -27,7 +27,6 @@ export type AvatarGroupProps = {
     readonly size?: AvatarSize
     /** App-owned accessible text for hidden members in either layout, e.g. "3 more people". Grid digits show the total. */
     readonly overflowLabel: (hiddenCount: number) => string
-    readonly className?: string
 }
 
 /**
@@ -36,7 +35,7 @@ export type AvatarGroupProps = {
  * With five or more members, the fourth grid cell shows the total member count beside three avatars.
  * Contract: each avatar and count A11Y-2 (named once, fallback initials and overflow digits silent).
  */
-export const AvatarGroup = ({ label, items, layout = "row", max = 4, size = "md", overflowLabel, className }: AvatarGroupProps) => {
+export const AvatarGroup = ({ label, items, layout = "row", max = 4, size = "md", overflowLabel }: AvatarGroupProps) => {
     const capacity = layout === "grid" ? (items.length > 4 ? 3 : 4) : Math.max(0, max)
     const visible = items.slice(0, capacity)
     const hidden = items.length - visible.length
@@ -44,7 +43,7 @@ export const AvatarGroup = ({ label, items, layout = "row", max = 4, size = "md"
         <AvatarAgentBadge kind={visible.some((item) => item.kind === "agent") ? "agent" : "person"} size={size} renderedScale={visible.length > 1 || hidden > 0 ? 0.5 : 1}>
         <HeroAvatar
             aria-label={label}
-            className={navigationClassName("starci-core-avatar starci-core-avatar-group", className)}
+            className="starci-core-avatar starci-core-avatar-group"
             data-component="AvatarGroup"
             data-contract="COLLECTION-3 A11Y-2"
             data-tier="composite"
@@ -84,7 +83,7 @@ export const AvatarGroup = ({ label, items, layout = "row", max = 4, size = "md"
     return (
         <HeroAvatarGroup
             aria-label={label}
-            className={navigationClassName("starci-core-avatar-group", className)}
+            className="starci-core-avatar-group"
             data-component="AvatarGroup"
             data-tier="composite"
             data-grammar-avatar-layout="row"

@@ -1,9 +1,9 @@
 "use client"
 
 import { Calendar as HeroCalendar, type DateValue } from "@heroui/react"
-import { navigationClassName } from "../../navigationClassNames.js"
+import type { NoChildren } from "../../tier.js"
 
-export type CalendarProps = {
+export type CalendarProps = NoChildren & {
     /** Names the calendar, e.g. "Delivery date". */
     readonly label: string
     /** Controlled selected date. Omit for uncontrolled use with `defaultValue`. */
@@ -18,7 +18,6 @@ export type CalendarProps = {
     /** App-owned accessible names of the month navigation buttons. */
     readonly previousLabel: string
     readonly nextLabel: string
-    readonly className?: string
 }
 
 /*
@@ -45,11 +44,10 @@ export const Calendar = ({
     isReadOnly = false,
     previousLabel,
     nextLabel,
-    className,
 }: CalendarProps) => (
     <HeroCalendar
         aria-label={label}
-        className={navigationClassName("starci-core-calendar", className)}
+        className="starci-core-calendar"
         data-component="Calendar"
         data-contract="STATE-1"
         data-tier="branch"

@@ -1,6 +1,6 @@
 "use client"
 
-import { cn, Drawer } from "@heroui/react"
+import { Drawer } from "@heroui/react"
 import {
     Children,
     createContext,
@@ -15,7 +15,7 @@ import {
     type ReactElement,
     type ReactNode,
 } from "react"
-import { VerticalScrollRegion } from "../VerticalScrollRegion/index.js"
+import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { PaneContext, usePaneContext, type PaneContextValue, type PaneInset } from "../../paneContext.js"
 import {
@@ -138,14 +138,14 @@ export const Pane = (props: PaneProps) => {
     const stack = <div className="starci-core-pane-stack" data-grammar-pane-stack="true">{children}</div>
     const body = scroll
         ? (
-            <VerticalScrollRegion
+            <VerticalScrollRegionPart
                 aria-label={label}
                 className="starci-core-pane-scroll"
                 data-contract="OVERFLOW-4 OVERFLOW-5"
                 isScrollable
             >
                 {stack}
-            </VerticalScrollRegion>
+            </VerticalScrollRegionPart>
         )
         : stack
     const surfaced = surface ? <SurfaceNesting host="pane">{body}</SurfaceNesting> : body
@@ -166,7 +166,7 @@ export const Pane = (props: PaneProps) => {
         : <section {...shared} aria-label={label}>{content}</section>
 }
 
-export type PaneGridProps = Omit<ComponentPropsWithoutRef<"section">, "aria-label" | "children"> & {
+export type PaneGridProps = Omit<ComponentPropsWithoutRef<"section">, "aria-label" | "children" | "className"> & {
     /** Accessible name for the whole grid landmark. */
     readonly label: string
     /**
@@ -224,7 +224,7 @@ const gridVars = (models: Models, hasTrigger: (breakpoint: PaneBreakpoint) => bo
  * the app composes its own pieces into the panes. While a drawer is open its pane renders a second time inside it.
  */
 export const PaneGrid = (props: PaneGridProps) => {
-    const { label, areas, columns, rows, className, children, ...sectionProps } = props
+    const { label, areas, columns, rows, children, ...sectionProps } = props
     const flat = Children.toArray(children)
     const parent = usePaneContext()
     useEffect(() => parent?.register(), [parent])
@@ -251,7 +251,7 @@ export const PaneGrid = (props: PaneGridProps) => {
         <section
             {...sectionProps}
             aria-label={label}
-            className={cn("starci-core-pane-grid", className)}
+            className={"starci-core-pane-grid"}
             data-component="PaneGrid"
             data-tier="frame"
             data-grammar-pane-grid="true"
@@ -317,7 +317,7 @@ const PaneDrawer = ({ pane, placement, models }: {
                                 data-contract="SURFACE-2 TONE-1"
                             />
                             <Drawer.Body className="starci-core-pane-drawer-body" data-contract="OVERFLOW-2 PADDING-0">
-                                <VerticalScrollRegion
+                                <VerticalScrollRegionPart
                                     aria-label={props.collapseLabel}
                                     className="starci-core-pane-drawer-scroll"
                                     data-contract="OVERFLOW-4 OVERFLOW-5"
@@ -329,7 +329,7 @@ const PaneDrawer = ({ pane, placement, models }: {
                                     <PaneContext.Provider value={drawerPane}>
                                         <div className="starci-core-pane-stack" data-grammar-pane-stack="true">{props.children}</div>
                                     </PaneContext.Provider>
-                                </VerticalScrollRegion>
+                                </VerticalScrollRegionPart>
                             </Drawer.Body>
                         </SurfaceNesting>
                     </Drawer.Dialog>

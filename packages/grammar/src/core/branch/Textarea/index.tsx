@@ -14,6 +14,7 @@ import {
     vendorFieldProps,
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** One person or agent the reader can mention. `label` is what is inserted after the trigger. */
 export type TextareaMentionOption = {
@@ -37,7 +38,7 @@ export type TextareaMentions = {
     readonly onSelect?: (option: TextareaMentionOption) => void
 }
 
-export type TextareaProps = FieldControlProps & {
+export type TextareaProps = NoChildren & FieldControlProps & {
     readonly id?: string
     readonly placeholder?: string
     readonly value?: string

@@ -2,8 +2,9 @@
 
 import { useId, useState, type ReactNode } from "react"
 import { fieldStateAttributes, StaticFieldError, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type FileDropzoneProps = FieldControlProps & {
+export type FileDropzoneProps = NoChildren & FieldControlProps & {
     readonly id?: string
     /** Native `accept` list, e.g. `image/*,.pdf`. A hint to the picker, not a security check. */
     readonly accept?: string

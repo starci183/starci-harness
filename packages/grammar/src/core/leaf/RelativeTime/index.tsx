@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react"
 import { Text, type TextTone } from "../Text/index.js"
 import { getClockSnapshot, getServerClockSnapshot, subscribeClock } from "./clock.js"
+import type { NoChildren } from "../../tier.js"
 
 export type RelativeTimeMode = "relative" | "countdown"
 export type RelativeTimeFormat = "relative" | "digital"
@@ -23,7 +24,7 @@ type RelativeTimeBaseProps = {
     readonly tone?: TextTone
 }
 
-export type RelativeTimeProps = RelativeTimeBaseProps & ({
+export type RelativeTimeProps = NoChildren & RelativeTimeBaseProps & ({
     readonly mode?: "relative"
     readonly format?: never
 } | {

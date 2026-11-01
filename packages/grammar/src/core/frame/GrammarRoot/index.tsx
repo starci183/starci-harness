@@ -1,12 +1,11 @@
 "use client"
 
-import { cn } from "@heroui/react"
 import type { ComponentPropsWithoutRef } from "react"
 import { RouterProvider } from "react-aria-components"
 import { ButtonIntentFamilyProvider } from "../../buttonIntent.js"
 import { CollectionItemFamilyProvider } from "../../collectionItem.js"
 
-export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "color"> & {
+export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "className" | "color"> & {
     /**
      * The mode is the app's: `.dark` on `html`, as HeroUI reads it. A root that switched the mode itself would shadow
      * the app's tokens, so this prop sets nothing.
@@ -31,13 +30,13 @@ export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "color"> & 
  * Contract: COLOR-5 - the root declares no theme token: an app's HeroUI tokens, on `:root`, `.light` and `.dark`,
  * reach every part, and a family's defaults are its optional `theme.css`.
  */
-export const GrammarRoot = ({ className, theme: _theme, navigate, useHref, ...props }: GrammarRootProps) => {
+export const GrammarRoot = ({ theme: _theme, navigate, useHref, ...props }: GrammarRootProps) => {
     const root = (
     <ButtonIntentFamilyProvider family={props["data-grammar-family"]}>
     <CollectionItemFamilyProvider family={props["data-grammar-family"]}>
     <div
         {...props}
-        className={cn("grammar-common-root", className)}
+        className={"grammar-common-root"}
         data-contract="COLOR-5"
         data-grammar="common"
         data-component="GrammarRoot"

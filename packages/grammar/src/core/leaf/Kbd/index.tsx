@@ -1,4 +1,5 @@
 import { Kbd as HeroKbd } from "@heroui/react"
+import type { NoChildren } from "../../tier.js"
 
 /** Named keys drawn as their platform symbol, with the spelled-out name as the abbreviation title. */
 export const KBD_NAMED_KEYS = [
@@ -8,7 +9,7 @@ export const KBD_NAMED_KEYS = [
 
 export type KbdNamedKey = (typeof KBD_NAMED_KEYS)[number]
 
-export type KbdProps = {
+export type KbdProps = NoChildren & {
     /**
      * The chord, in press order. A named key (`command`, `shift`, `enter`...) renders its symbol inside
      * an `<abbr>` whose title spells the key; any other string (`K`, `F6`) renders verbatim.

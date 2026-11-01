@@ -1,9 +1,10 @@
 import { ProgressBar, skeletonVariants } from "@heroui/react"
+import type { NoChildren } from "../../tier.js"
 
 /** The colour of the fill: the meaning of what is measured. `accent` is the default. */
 export type ProgressTone = "accent" | "success" | "warning" | "danger" | "info"
 
-export type ProgressProps = {
+export type ProgressProps = NoChildren & {
     /** What the bar measures. Required because the visible bar has no drawn label. */
     readonly label: string
     /** Completion from 0 to 100. Validation remains with the resolving application. */

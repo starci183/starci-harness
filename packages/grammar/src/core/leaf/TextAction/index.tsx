@@ -5,7 +5,7 @@ import { useRef, type ReactNode } from "react"
 import { getActionClassName, type ActionAppearance, type ActionTextSize } from "../actionStyles.js"
 
 export type TextActionProps = {
-    readonly children: ReactNode
+    readonly children: string
     readonly startContent?: ReactNode
     readonly endContent?: ReactNode
     readonly appearance?: ActionAppearance

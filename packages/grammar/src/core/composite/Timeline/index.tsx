@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { assertPresentationState, type PresentationState } from "../../../common/state.js"
-import { navigationClassName } from "../../navigationClassNames.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type TimelineItem = {
     readonly id: string
@@ -22,11 +22,10 @@ export type TimelineItem = {
     readonly marker?: ReactNode
 }
 
-export type TimelineProps = {
+export type TimelineProps = NoChildren & {
     /** Names the list, e.g. "Order history". */
     readonly label: string
     readonly items: ReadonlyArray<TimelineItem>
-    readonly className?: string
     /**
      * The history is loading (knowledge STATE-8). With no `items` it draws `loadingRows` skeleton entries (a static marker, a title line,
      * a time line and a description line, `aria-hidden`) in the same named list, which is `aria-busy`; real `items` win.
@@ -41,12 +40,12 @@ export type TimelineProps = {
  * presentation states and `data-grammar-current`; the connector line is drawn by the stylesheet.
  * Contract: list HIERARCHY-3, entry STATE-1 TRUTH-1 (closed presentation states, neutral default), marker A11Y-2.
  */
-export const Timeline = ({ label, items, className, isLoading = false, loadingRows = 3 }: TimelineProps) => (
+export const Timeline = ({ label, items, isLoading = false, loadingRows = 3 }: TimelineProps) => (
     <ol
         aria-label={label}
         data-loading={String(isLoading)}
         {...(isLoading ? { "aria-busy": true } : {})}
-        className={navigationClassName("starci-core-timeline", className)}
+        className="starci-core-timeline"
         data-component="Timeline"
         data-contract="HIERARCHY-3"
         data-tier="composite"

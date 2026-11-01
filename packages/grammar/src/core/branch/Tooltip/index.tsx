@@ -3,47 +3,31 @@
 import { Tooltip as HeroTooltip } from "@heroui/react"
 import type { ReactElement, ReactNode } from "react"
 import { useOverlayContainer } from "../../overlayScope.js"
-import { tooltipContentClassName } from "./classNames.js"
+import type { NoChildren } from "../../tier.js"
+import { tooltipContentClassName } from "../../tooltipClassName.js"
 
 /** Where the tooltip sits relative to its trigger. */
 export type TooltipPlacement = "top" | "bottom"
 
 /** Props for {@link Tooltip}. */
-export type TooltipProps = {
+export type TooltipProps = NoChildren & {
     /** The already-resolved words shown on hover or focus. */
-    readonly content: ReactNode
+    readonly content: string
     /**
-     * One React Aria-compatible focusable control, such as a Grammar Button or IconButton.
-     * Native elements and custom controls must participate in React Aria's trigger context;
-     * merely having a tabIndex does not register hover/focus events with the tooltip.
+     * One React Aria-compatible focusable control, such as a Grammar Button or IconButton. A native element or a custom control
+     * must take part in React Aria's trigger context; merely having a tabIndex does not register hover or focus with the tooltip.
+     * A disabled Button explains itself through `disabledReason`, so no tooltip wraps it.
      */
-    readonly children: ReactElement
+    readonly trigger: ReactElement
     readonly placement?: TooltipPlacement
-    /**
-     * Marks `children` as a control that cannot take hover or focus itself, such as a disabled Button.
-     * The tooltip then wraps it in the vendor `Tooltip.Trigger`, a focusable element that carries the hover and
-     * keyboard-focus events, so the words still appear for a control the platform skips.
-     */
-    readonly isDisabledTrigger?: boolean
-    /** Id of an element that always holds the words, so assistive technology reads them without opening the tooltip. */
-    readonly triggerDescribedBy?: string
 }
 
 /** Hover/focus annotation with HeroUI's positioning, dismissal and accessible trigger relationship. */
-export const Tooltip = ({ content, children, placement = "top", isDisabledTrigger = false, triggerDescribedBy }: TooltipProps) => {
+export const Tooltip = ({ content, trigger, placement = "top" }: TooltipProps) => {
     const { anchor, container } = useOverlayContainer("Tooltip")
     return (
         <HeroTooltip>
-            {isDisabledTrigger ? (
-                <HeroTooltip.Trigger
-                    className="starci-core-tooltip-disabled-trigger"
-                    data-grammar-tooltip-disabled-trigger="true"
-                    role="group"
-                    {...(triggerDescribedBy === undefined ? {} : { "aria-describedby": triggerDescribedBy })}
-                >
-                    {children}
-                </HeroTooltip.Trigger>
-            ) : children}
+            {trigger}
             {anchor}
             {container === null ? null : (
                 <HeroTooltip.Content

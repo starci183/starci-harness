@@ -1,9 +1,10 @@
 import { Spinner as HeroSpinner } from "@heroui/react"
+import type { NoChildren } from "../../tier.js"
 
 export type SpinnerSize = "sm" | "md" | "lg"
 export type SpinnerTone = "accent" | "current"
 
-export type SpinnerProps = {
+export type SpinnerProps = NoChildren & {
     /** What is loading. Announced through `role="status"`; there is no silent spinner. */
     readonly label: string
     readonly size?: SpinnerSize

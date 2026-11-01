@@ -18,11 +18,12 @@ import { CAPTION_ZOOM, FIT_OPTIONS, MARK_ZOOM, MAX_ZOOM, Refit, ZoomMirror, labe
 import type { FlowGraphHeight, FlowGraphTone } from "../FlowGraph/types.js"
 import { bubbleMapLayout, bubbleNodeDiameter, type BubbleMapLayout } from "./layout.js"
 import type { BubbleMapEdge, BubbleMapFill, BubbleMapNode, BubbleMapRingPart } from "./types.js"
+import type { NoChildren } from "../../tier.js"
 
 export { bubbleDiameter, bubbleMapLayout } from "./layout.js"
 export type { BubbleMapEdge, BubbleMapFill, BubbleMapNode, BubbleMapNodeForm, BubbleMapRingPart } from "./types.js"
 
-export type BubbleMapProps = {
+export type BubbleMapProps = NoChildren & {
     /** Names the map for assistive technology, e.g. "Second brain". */
     readonly label: string
     readonly nodes: ReadonlyArray<BubbleMapNode>

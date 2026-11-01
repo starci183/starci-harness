@@ -2,12 +2,12 @@
 
 import { Description as HeroDescription, Header as HeroHeader, Label as HeroLabel, ListBox as HeroListBox, Separator as HeroSeparator, type Selection } from "@heroui/react"
 import type { ComponentPropsWithRef, ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { usePaneContext } from "../../paneContext.js"
 import { useSurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import type { ItemDescriptionLines } from "../../collectionItem.js"
+import type { NoChildren } from "../../tier.js"
 
 /** The leading identity slot is 32, 40 or 48px; HeroUI retains the row's own padding and radius. */
 export type ListBoxSize = "sm" | "md" | "lg"
@@ -65,7 +65,7 @@ const loadingSkeleton = (rows: number) => (
     </div>
 )
 
-export type ListBoxProps = ListBoxContent & {
+export type ListBoxProps = NoChildren & ListBoxContent & {
     /** Names the list, e.g. "Members". */
     readonly label: string
     /** The panel list box shares the field and tabs edge; its content keeps HeroUI's list and item padding. */
@@ -95,7 +95,6 @@ export type ListBoxProps = ListBoxContent & {
     readonly isLoading?: boolean
     /** How many skeleton options a loading list draws (default 3, 1 to 12). */
     readonly loadingRows?: number
-    readonly className?: string
 }
 
 /**
@@ -120,7 +119,6 @@ export const ListBox = ({
     emptyContent,
     isLoading = false,
     loadingRows = 3,
-    className,
 }: ListBoxProps) => {
     const nested = useSurfaceNesting()
     const inPane = usePaneContext() !== undefined
@@ -165,7 +163,7 @@ export const ListBox = ({
     return (
     <HeroListBox
         aria-label={label}
-        className={navigationClassName("starci-core-list-box", className)}
+        className="starci-core-list-box"
         data-component="ListBox"
         data-contract="FOCUS-2 STATE-1 PADDING-0"
         data-tier="branch"

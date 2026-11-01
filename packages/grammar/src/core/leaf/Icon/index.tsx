@@ -1,5 +1,6 @@
 import { skeletonVariants } from "@heroui/react"
 import type { ComponentType, SVGProps } from "react"
+import type { NoChildren } from "../../tier.js"
 
 export type IconUsage = "heading" | "leading" | "chip"
 /**
@@ -26,7 +27,7 @@ export type IconSource =
     | ((props: IconSourceProps) => unknown)
     | (new (props: IconSourceProps) => unknown)
 
-export type IconProps = {
+export type IconProps = NoChildren & {
     /** App-owned glyph identity. Grammar owns only its usage geometry and accessibility. */
     readonly source: IconSource
     readonly usage?: IconUsage

@@ -2,8 +2,8 @@
 
 import { Breadcrumbs as HeroBreadcrumbs } from "@heroui/react"
 import type { ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type BreadcrumbItem = {
     readonly id: string
@@ -18,7 +18,7 @@ export type BreadcrumbItem = {
     readonly isSkeleton?: true
 }
 
-export type BreadcrumbsProps = {
+export type BreadcrumbsProps = NoChildren & {
     /** Names the trail landmark, e.g. "Breadcrumb". */
     readonly label: string
     readonly items: ReadonlyArray<BreadcrumbItem>
@@ -26,7 +26,6 @@ export type BreadcrumbsProps = {
     readonly separator?: ReactNode
     /** Same-document navigation for router-owned trails. */
     readonly onAction?: (id: string) => void
-    readonly className?: string
 }
 
 /**
@@ -36,10 +35,10 @@ export type BreadcrumbsProps = {
  * keeps one line and scrolls instead of wrapping, and long ancestor labels truncate.
  * Contract: nav LAYOUT-3 OVERFLOW-3 (owns its inline scroll), item ACTION-3 (link vs current), leading A11Y-2.
  */
-export const Breadcrumbs = ({ label, items, separator, onAction, className }: BreadcrumbsProps) => (
+export const Breadcrumbs = ({ label, items, separator, onAction }: BreadcrumbsProps) => (
     <nav
         aria-label={label}
-        className={navigationClassName("starci-core-breadcrumbs", className)}
+        className="starci-core-breadcrumbs"
         data-component="Breadcrumbs"
         data-contract="LAYOUT-3 OVERFLOW-3"
         data-tier="composite"

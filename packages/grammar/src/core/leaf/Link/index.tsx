@@ -2,12 +2,11 @@
 
 import { Link as HeroLink } from "@heroui/react"
 import type { ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
 
 export type LinkKind = "internal" | "external"
 
 export type LinkProps = {
-    readonly children: ReactNode
+    readonly children: string
     readonly href: string
     /** `external` leaves the app in a new browsing context with `noopener noreferrer`. */
     readonly kind?: LinkKind
@@ -22,7 +21,6 @@ export type LinkProps = {
     readonly isDisabled?: boolean
     /** Runs alongside navigation. It cannot cancel the destination. */
     readonly onFollow?: () => void
-    readonly className?: string
 }
 
 /**
@@ -43,13 +41,12 @@ export const Link = ({
     externalIcon,
     isDisabled = false,
     onFollow,
-    className,
 }: LinkProps) => {
     const external = kind === "external"
     return (
         <HeroLink
             aria-current={isCurrent ? "page" : undefined}
-            className={navigationClassName("starci-core-link", className)}
+            className="starci-core-link"
             data-component="Link"
             data-contract="ACTION-3 FOCUS-1"
             data-tier="leaf"

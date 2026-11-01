@@ -1,12 +1,13 @@
 "use client"
 
 import type { DragEventHandler, ReactNode } from "react"
+import type { NoChildren } from "../../tier.js"
 
 export type DragItemTone = "neutral" | "accent" | "success" | "warning" | "danger"
 
-export type DragItemProps = {
-    /** Include a published control that provides the same operation without dragging. */
-    readonly children: ReactNode
+export type DragItemProps = NoChildren & {
+    /** What the item holds. Include a published control that provides the same operation without dragging. */
+    readonly body: ReactNode
     readonly isDisabled?: boolean
     readonly onDragStart?: DragEventHandler<HTMLDivElement>
     readonly onDragEnd?: DragEventHandler<HTMLDivElement>
@@ -19,7 +20,7 @@ export type DragItemProps = {
 }
 
 /** A native drag source with Grammar-owned state hooks; its child control supplies keyboard operation. */
-export const DragItem = ({ children, isDisabled = false, onDragStart, onDragEnd, isSelected = false, isInvalid = false, isDashed = false, tone }: DragItemProps) => (
+export const DragItem = ({ body, isDisabled = false, onDragStart, onDragEnd, isSelected = false, isInvalid = false, isDashed = false, tone }: DragItemProps) => (
     <div
         className="starci-core-drag-item"
         data-component="DragItem"
@@ -32,6 +33,6 @@ export const DragItem = ({ children, isDisabled = false, onDragStart, onDragEnd,
         {...(isDisabled || onDragStart === undefined ? {} : { onDragStart })}
         {...(isDisabled || onDragEnd === undefined ? {} : { onDragEnd })}
     >
-        {children}
+        {body}
     </div>
 )

@@ -112,7 +112,7 @@ wrappers:
         { kind: style, target: "Meter.Track:background", ruling: meter-segments-h1, reason: "the segmented track is transparent so its equal segments read as separate" },
         { kind: style, target: "Meter.Track:radius", ruling: meter-segments-h1, reason: "the segments are equal pills and take the track radius" } ] }
   - { file: core/leaf/NumberField/index.tsx, wraps: [NumberField] }
-  - { file: core/leaf/PlainPressable/index.tsx, wraps: [Button] }
+  - { file: core/PlainPressable.tsx, wraps: [Button] }
   - { file: core/leaf/Progress/index.tsx, wraps: [ProgressBar] }
   - { file: core/leaf/ProgressCircle/index.tsx, wraps: [ProgressCircle] }
   - { file: core/branch/Rating/index.tsx, wraps: [],

@@ -2,9 +2,10 @@
 
 import type { ReactNode } from "react"
 import { Avatar, avatarAccessibleName, type AvatarKind, type AvatarSize } from "../Avatar/index.js"
-import { PlainPressable } from "../PlainPressable/index.js"
+import { PlainPressable } from "../../PlainPressable.js"
+import type { NoChildren } from "../../tier.js"
 
-export type AvatarButtonProps = {
+export type AvatarButtonProps = NoChildren & {
     /** The person or entity; it names the button. */
     readonly name: string
     readonly src?: string

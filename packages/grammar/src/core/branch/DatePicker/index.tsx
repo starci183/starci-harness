@@ -18,8 +18,9 @@ import {
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
 import { DateSegments, type DateGranularity } from "../../leaf/DateField/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type DatePickerProps = FieldControlProps & {
+export type DatePickerProps = NoChildren & FieldControlProps & {
     readonly value?: DateValue | null
     readonly defaultValue?: DateValue | null
     readonly onValueChange?: (value: DateValue | null) => void

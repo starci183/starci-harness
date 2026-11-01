@@ -1,7 +1,7 @@
 "use client"
 
 import { createElement, useEffect, type ReactNode, type Ref } from "react"
-import { VerticalScrollRegion } from "../VerticalScrollRegion/index.js"
+import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { usePaneContext } from "../../paneContext.js"
 
 export type PaneSectionProps = {
@@ -47,7 +47,7 @@ export const PaneSection = ({ children, grow = false, scroll, align = "start", b
         return createElement(as, { ...shared, className: "starci-core-pane-section", "data-contract": contract }, children)
     }
     return (
-        <VerticalScrollRegion
+        <VerticalScrollRegionPart
             {...shared}
             aria-label={scroll.label}
             className="starci-core-pane-section"
@@ -58,6 +58,6 @@ export const PaneSection = ({ children, grow = false, scroll, align = "start", b
             {...(scroll.scrollRef === undefined ? {} : { ref: scroll.scrollRef })}
         >
             {createElement(as, { className: "starci-core-pane-section-content", "data-contract": contract }, children)}
-        </VerticalScrollRegion>
+        </VerticalScrollRegionPart>
     )
 }

@@ -3,11 +3,12 @@
 import { Slider as HeroSlider } from "@heroui/react"
 import { useId, useState } from "react"
 import { FieldLabel, StaticFieldError, fieldStateAttributes, isFieldInvalid, type FieldControlProps } from "../Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** One value, or one value per thumb for a range. */
 export type SliderValue = number | ReadonlyArray<number>
 
-export type SliderProps = FieldControlProps & {
+export type SliderProps = NoChildren & FieldControlProps & {
     readonly value?: SliderValue
     readonly defaultValue?: SliderValue
     /** Every change while dragging or stepping. */

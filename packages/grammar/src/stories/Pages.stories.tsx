@@ -169,7 +169,7 @@ const DataListPage = () => {
                 placement="right"
                 title="Filter members"
                 closeLabel="Close filters"
-                trigger={<G.Button intent="alternative" startContent={<G.Icon source={FilterGlyph} usage="leading" />}>Filters{roles.length === 0 ? '' : ` (${roles.length})`}</G.Button>}
+                trigger={<G.Button intent="alternative" startContent={<G.Icon source={FilterGlyph} usage="leading" />}>{`Filters${roles.length === 0 ? '' : ` (${roles.length})`}`}</G.Button>}
                 footer={(close) => (
                   <>
                     <G.Button intent="neutral" onPress={() => { setRoles([]); setPage(1); }}>Clear</G.Button>

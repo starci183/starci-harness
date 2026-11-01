@@ -1,8 +1,9 @@
 import { ProgressCircle as HeroProgressCircle } from "@heroui/react"
+import type { NoChildren } from "../../tier.js"
 
 export type ProgressCircleSize = "sm" | "md" | "lg"
 
-export type ProgressCircleProps = {
+export type ProgressCircleProps = NoChildren & {
     /** What the ring measures. Required: the ring draws no label of its own. */
     readonly label: string
     /** Completion from 0 to 100. Ignored while indeterminate. */

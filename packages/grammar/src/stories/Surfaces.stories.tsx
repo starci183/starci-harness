@@ -241,9 +241,7 @@ export const AccentCorner: Story = {
           </G.SurfaceCard>
         </State>
         <State label="media frame, accentCorner start-end" direction="column">
-          <G.MediaFrame accentCorner="start-end" assetSlot="story.accent-corner" aspect="square">
-            <img alt="" src={turtleUrl} />
-          </G.MediaFrame>
+          <G.MediaFrame accentCorner="start-end" assetSlot="story.accent-corner" aspect="square" media={<img alt="" src={turtleUrl} />} />
         </State>
       </G.GrammarRoot>
     </Matrix>
@@ -626,23 +624,17 @@ export const MediaFrame: Story = {
     <Matrix maxWidth={640}>
       <State label="Framed with caption">
         <div style={{ width: 320 }}>
-          <G.MediaFrame caption="Figure 1. Placeholder artwork.">
-            <img src={placeholderImage('Framed')} alt="Placeholder artwork" />
-          </G.MediaFrame>
+          <G.MediaFrame caption="Figure 1. Placeholder artwork." media={<img src={placeholderImage('Framed')} alt="Placeholder artwork" />} />
         </div>
       </State>
       <State label="Plain, square, contain">
         <div style={{ width: 200 }}>
-          <G.MediaFrame treatment="plain" aspect="square" fit="contain">
-            <img src={placeholderImage('Plain', 160)} alt="Plain placeholder artwork" />
-          </G.MediaFrame>
+          <G.MediaFrame treatment="plain" aspect="square" fit="contain" media={<img src={placeholderImage('Plain', 160)} alt="Plain placeholder artwork" />} />
         </div>
       </State>
       <State label="Asset slot (data-asset-slot / -sha256 / -prompt)">
         <div style={{ width: 200 }}>
-          <G.MediaFrame treatment="plain" assetSlot="story.hero" assetSha256="0000" assetPrompt="Placeholder until interface.asset delivers the art">
-            <img src={placeholderImage('Slot', 200)} alt="" />
-          </G.MediaFrame>
+          <G.MediaFrame treatment="plain" assetSlot="story.hero" assetSha256="0000" assetPrompt="Placeholder until interface.asset delivers the art" media={<img src={placeholderImage('Slot', 200)} alt="" />} />
         </div>
       </State>
     </Matrix>
@@ -669,7 +661,7 @@ export const FencedCodeBlock: Story = {
   render: () => (
     <Matrix maxWidth={640}>
       <State label="Authored code with language and action" direction="column">
-        <G.FencedCodeBlock language="tsx" code={'import { CoreGrammarRoot } from "@starci/grammar/core"\n\nexport const App = () => <CoreGrammarRoot>…</CoreGrammarRoot>'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
+        <G.FencedCodeBlock language="tsx" code={'import { CoreGrammarRoot } from "../common/index.js"\n\nexport const App = () => <CoreGrammarRoot>…</CoreGrammarRoot>'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
       </State>
       <State label="Rendered children" direction="column">
         <G.FencedCodeBlock language="sh"><code>npm install @starci/grammar</code></G.FencedCodeBlock>

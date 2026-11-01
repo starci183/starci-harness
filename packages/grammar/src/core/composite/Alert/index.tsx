@@ -9,6 +9,7 @@ import type { ButtonIntentProps } from "../../buttonIntent.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type AlertUrgency = "polite" | "assertive"
 /**
@@ -57,7 +58,7 @@ type Permanent = {
     readonly onDismiss?: never
 }
 
-export type AlertProps = AlertBase & (Dismissible | Permanent)
+export type AlertProps = NoChildren & AlertBase & (Dismissible | Permanent)
 
 /**
  * The action Button variant an Alert tone takes, as HeroUI v3's own Alert examples pair them: the accent

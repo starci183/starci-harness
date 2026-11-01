@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from "react"
 import { Link, type LinkKind } from "../../leaf/Link/index.js"
-import { navigationClassName } from "../../navigationClassNames.js"
+import type { NoChildren } from "../../tier.js"
 
 export type FooterLink = {
     readonly id: string
@@ -18,7 +18,7 @@ export type FooterLinkGroup = {
     readonly links: ReadonlyArray<FooterLink>
 }
 
-export type FooterProps = {
+export type FooterProps = NoChildren & {
     /** Names the footer's link landmark, e.g. "Footer". Required when `groups` are present. */
     readonly label?: string
     /** App-owned identity and short statement. */
@@ -28,8 +28,6 @@ export type FooterProps = {
     readonly legal?: ReactNode
     /** App-owned assistive hint for external links, e.g. that they open a new tab. */
     readonly externalHint?: string
-    readonly children?: ReactNode
-    readonly className?: string
 }
 
 /**
@@ -38,15 +36,15 @@ export type FooterProps = {
  * row. Links are Common `Link`s, so the current page keeps `aria-current="page"`.
  * Contract: directory HIERARCHY-3 (reflow keeps source order), link list A11Y-4 CTA-2 (named list of destinations).
  */
-export const Footer = ({ label, brand, groups = [], legal, externalHint, children, className }: FooterProps) => {
+export const Footer = ({ label, brand, groups = [], legal, externalHint }: FooterProps) => {
     const idPrefix = useId()
     return (
         <footer
-            className={navigationClassName("starci-core-footer", className)}
+            className="starci-core-footer"
             data-component="Footer"
             data-tier="composite"
         >
-            {brand === undefined && groups.length === 0 && children === undefined ? null : (
+            {brand === undefined && groups.length === 0 ? null : (
                 <div className="starci-core-footer-main">
                     {brand === undefined ? null : <div className="starci-core-footer-brand" data-grammar-footer-brand="true">{brand}</div>}
                     {groups.length === 0 ? null : (
@@ -76,7 +74,6 @@ export const Footer = ({ label, brand, groups = [], legal, externalHint, childre
                             })}
                         </nav>
                     )}
-                    {children}
                 </div>
             )}
             {legal === undefined ? null : <div className="starci-core-footer-legal" data-grammar-footer-legal="true">{legal}</div>}

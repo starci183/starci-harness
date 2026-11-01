@@ -39,18 +39,18 @@ export const Disclosure: Story = {
   render: () => (
     <Matrix maxWidth={560}>
       <State label="Collapsed" direction="column">
-        <G.Disclosure title="Advanced options">Retention, exports and audit settings.</G.Disclosure>
+        <G.Disclosure title="Advanced options" body={"Retention, exports and audit settings."} />
       </State>
       <State label="Expanded" direction="column">
-        <G.Disclosure title="What is included?" defaultExpanded>Every lesson, offline access and certificates.</G.Disclosure>
+        <G.Disclosure title="What is included?" defaultExpanded body={"Every lesson, offline access and certificates."} />
       </State>
       <State label="With a summary (closed, open, long)" direction="column">
-        <G.Disclosure title="Filters" summary="3 active">Status, owner and date.</G.Disclosure>
-        <G.Disclosure title="Filters" summary="3 active" defaultExpanded>Status, owner and date.</G.Disclosure>
-        <G.Disclosure title="Links" summary="https://example.com/a-very-long-link-that-must-truncate-on-one-line-and-never-wrap">Body.</G.Disclosure>
+        <G.Disclosure title="Filters" summary="3 active" body={"Status, owner and date."} />
+        <G.Disclosure title="Filters" summary="3 active" defaultExpanded body={"Status, owner and date."} />
+        <G.Disclosure title="Links" summary="https://example.com/a-very-long-link-that-must-truncate-on-one-line-and-never-wrap" body={"Body."} />
       </State>
       <State label="Disabled" direction="column">
-        <G.Disclosure title="Locked section" isDisabled>Hidden.</G.Disclosure>
+        <G.Disclosure title="Locked section" isDisabled body={"Hidden."} />
       </State>
     </Matrix>
   ),

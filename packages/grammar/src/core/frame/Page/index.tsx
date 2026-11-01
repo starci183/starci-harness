@@ -1,13 +1,12 @@
-import { cn } from "@heroui/react"
 import { isValidElement, type ReactElement, type ReactNode } from "react"
 import { Breadcrumbs } from "../../composite/Breadcrumbs/index.js"
-import { PageContainer, type PageContainerProps } from "../PageContainer/index.js"
+import { PageContainerPart, type PageContainerProps } from "../PageContainer/index.js"
 import { PaneGrid, type PaneGridProps } from "../PaneGrid/index.js"
 import { FillBox } from "./FillBox.js"
 import { PageHeader, type PageHeaderBreadcrumbs, type PageHeaderProps } from "../PageHeader/index.js"
 
 /** The page header Page draws: every `PageHeader` prop except the two Page owns, `measure` and `isSkeleton`. */
-export type PageHeaderContent = Omit<PageHeaderProps, "measure" | "isSkeleton" | "className">
+export type PageHeaderContent = Omit<PageHeaderProps, "measure" | "isSkeleton">
 
 /**
  * A bleed page's trail without a band: the breadcrumbs alone, no heading and no other slot. A header that carries a
@@ -35,8 +34,6 @@ type PageCommonProps = {
     readonly measure?: PageContainerProps["measure"]
     /** Unresolved page subject (STATE-8): passed to the header, which keeps its slots' boxes. The body owns its own loading. */
     readonly isSkeleton?: boolean
-    /** Layout only: the page's placement in the app's layout region. */
-    readonly className?: string
 }
 
 /** A standard page: its header, when given, is the band with its heading. */
@@ -88,7 +85,7 @@ const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent
  * edge, under the trail alone or under a band.
  */
 export const Page = (props: PageProps) => {
-    const { chrome = "standard", header, children, measure = "product", isSkeleton = false, className } = props
+    const { chrome = "standard", header, children, measure = "product", isSkeleton = false } = props
     if (props.chrome === "panes" && !(isValidElement(children) && children.type === PaneGrid)) {
         throw new Error("PAGE_PANES_CHILD_NOT_PANE_GRID")
     }
@@ -96,7 +93,7 @@ export const Page = (props: PageProps) => {
     const trail = header !== undefined && !isBand(chrome, header) ? header.breadcrumbs : undefined
     return (
         <div
-            className={cn("starci-core-page", className)}
+            className={"starci-core-page"}
             data-component="Page"
             data-tier="frame"
             data-contract={chrome === "panes" ? "LAYOUT-1 BOUNDARY-1 GAP-0" : chrome === "bleed" ? "LAYOUT-1" : "MARGIN-5 MEASURE-1"}
@@ -113,9 +110,9 @@ export const Page = (props: PageProps) => {
             {props.chrome === "panes" || props.chrome === "bleed" ? (
                 <FillBox minHeight={props.minHeight ?? "md"}>{children}</FillBox>
             ) : (
-                <PageContainer className="starci-core-page-body" data-grammar-page-body="true" measure={measure}>
+                <PageContainerPart className="starci-core-page-body" data-grammar-page-body="true" measure={measure}>
                     {children}
-                </PageContainer>
+                </PageContainerPart>
             )}
         </div>
     )

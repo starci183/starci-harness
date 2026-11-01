@@ -1,11 +1,12 @@
 import { cn, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
 import { Icon, type IconSource } from "../Icon/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type IconTileTone = "neutral" | "accent" | "success" | "warning" | "danger"
 export type IconTileSize = "sm" | "md"
 
-export type IconTileProps = {
+export type IconTileProps = NoChildren & {
     /** Fallback glyph selected by the app's semantic icon map. */
     readonly source: IconSource
     /** Optional app-owned artwork replaces the fallback glyph without changing plate geometry. */

@@ -12,8 +12,9 @@ import {
     vendorFieldProps,
     type FieldControlProps,
 } from "../Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type NumberFieldProps = FieldControlProps & {
+export type NumberFieldProps = NoChildren & FieldControlProps & {
     readonly id?: string
     readonly placeholder?: string
     readonly value?: number

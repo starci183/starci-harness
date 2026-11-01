@@ -1,9 +1,10 @@
 "use client"
 
-import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, buttonVariants, skeletonVariants } from "@heroui/react"
+import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, Tooltip as HeroTooltip, buttonVariants, skeletonVariants } from "@heroui/react"
 import { useId, type ReactNode } from "react"
-import { Tooltip } from "../../branch/Tooltip/index.js"
 import { useButtonIntentVariant, type ButtonIntentProps } from "../../buttonIntent.js"
+import { useOverlayContainer } from "../../overlayScope.js"
+import { tooltipContentClassName } from "../../tooltipClassName.js"
 
 /**
  * The vendor's own Button variants, one to one (HeroUI v3 `buttonVariants`: primary, secondary, tertiary,
@@ -17,7 +18,7 @@ export type ButtonWidth = "content" | "fill"
 
 type ButtonBase = {
     /** The visible action label. It remains present while the action is pending. */
-    readonly children: ReactNode
+    readonly children: string
     readonly size?: ButtonSize
     /** Decorative or explanatory content before the label. Product icon identity stays with the app. */
     readonly startContent?: ReactNode
@@ -114,10 +115,39 @@ export const Button = (props: ButtonProps) => {
     return (
         <>
             <span id={reasonId} hidden>{reason}</span>
-            <Tooltip content={reason} isDisabledTrigger triggerDescribedBy={reasonId}>
-                {control}
-            </Tooltip>
+            <DisabledReason reason={reason} reasonId={reasonId}>{control}</DisabledReason>
         </>
+    )
+}
+
+/**
+ * The words a disabled Button gives for being unavailable, on hover and keyboard focus. The platform skips a disabled control,
+ * so the vendor trigger around it carries the events. A leaf uses the vendor part, never the grammar Tooltip (a branch).
+ */
+const DisabledReason = ({ reason, reasonId, children }: { readonly reason: string; readonly reasonId: string; readonly children: ReactNode }) => {
+    const { anchor, container } = useOverlayContainer("Tooltip")
+    return (
+        <HeroTooltip>
+            <HeroTooltip.Trigger
+                className="starci-core-tooltip-disabled-trigger"
+                data-grammar-tooltip-disabled-trigger="true"
+                role="group"
+                aria-describedby={reasonId}
+            >
+                {children}
+            </HeroTooltip.Trigger>
+            {anchor}
+            {container === null ? null : (
+                <HeroTooltip.Content
+                    UNSTABLE_portalContainer={container}
+                    placement="top"
+                    className={tooltipContentClassName}
+                    data-grammar-tooltip-content="true"
+                >
+                    {reason}
+                </HeroTooltip.Content>
+            )}
+        </HeroTooltip>
     )
 }
 

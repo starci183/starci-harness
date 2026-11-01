@@ -1,11 +1,10 @@
 import { Typography, cn, skeletonVariants } from "@heroui/react"
-import type { ReactNode } from "react"
 
 export type HeadingLevel = 1 | 2 | 3 | 4
 export type HeadingScale = "standard" | "display"
 
 export type HeadingProps = {
-    readonly children: ReactNode
+    readonly children: string
     /** Outline semantics and the standard visual recipe move together. */
     readonly level?: HeadingLevel
     /** Display changes emphasis without changing the document outline. */

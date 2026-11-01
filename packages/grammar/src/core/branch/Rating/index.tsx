@@ -1,9 +1,9 @@
 "use client"
 
 import { useId, useState, type ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
+import type { NoChildren } from "../../tier.js"
 
-export type RatingProps = {
+export type RatingProps = NoChildren & {
     /** Names what is being rated. */
     readonly label: string
     /** Controlled value; 0 means unrated. Read-only ratings may be fractional (halves are drawn). */
@@ -19,7 +19,6 @@ export type RatingProps = {
     readonly icon?: ReactNode
     /** Form field name for the native radio set. */
     readonly name?: string
-    readonly className?: string
 }
 
 const StarGlyph = () => (
@@ -50,7 +49,6 @@ export const Rating = ({
     valueLabel,
     icon,
     name,
-    className,
 }: RatingProps) => {
     const [uncontrolled, setUncontrolled] = useState(defaultValue)
     const [preview, setPreview] = useState<number | null>(null)
@@ -63,7 +61,7 @@ export const Rating = ({
         return (
             <span
                 aria-label={`${label}: ${valueLabel(current, max)}`}
-                className={navigationClassName("starci-core-rating", className)}
+                className="starci-core-rating"
                 data-component="Rating"
                 data-tier="branch"
                 data-contract="A11Y-3"
@@ -86,7 +84,7 @@ export const Rating = ({
         <span
             aria-disabled={isDisabled || undefined}
             aria-label={label}
-            className={navigationClassName("starci-core-rating", className)}
+            className="starci-core-rating"
             data-component="Rating"
             data-tier="branch"
             data-contract="A11Y-3 FOCUS-2 STATE-1"

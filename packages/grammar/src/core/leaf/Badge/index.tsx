@@ -5,7 +5,7 @@ import { StatusDotMark } from "../StatusDot/index.js"
 export type BadgeTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted"
 
 type BadgeBase = {
-    readonly children?: ReactNode
+    readonly children?: string
     /** App-owned status glyph or artwork. */
     readonly startContent?: ReactNode
     /** `muted` is the quiet tone: no fill, muted ink. */

@@ -8,8 +8,9 @@ import {
     pressableFieldPlaceholderClassName,
     pressableFieldShortcutClassName,
 } from "./classNames.js"
+import type { NoChildren } from "../../tier.js"
 
-export type PressableFieldProps = {
+export type PressableFieldProps = NoChildren & {
     /** Accessible name of the control; the placeholder is decoration, not a name. */
     readonly label: string
     /** Placeholder-style copy that says what pressing the field will let the reader do. */

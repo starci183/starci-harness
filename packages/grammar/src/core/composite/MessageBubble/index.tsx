@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
 export type MessageBubbleSide = "incoming" | "outgoing"
@@ -9,7 +10,7 @@ export type MessageBubbleSide = "incoming" | "outgoing"
 type MessageBubbleMessage = {
     readonly isSkeleton?: false
     /** The message body. Plain text keeps its line breaks. */
-    readonly children: ReactNode
+    readonly body: ReactNode
     readonly side?: MessageBubbleSide
     /** Who wrote it, shown above the body. Omit on consecutive messages from the same author. */
     readonly author?: ReactNode
@@ -58,7 +59,7 @@ type MessageBubbleSkeletonThread = {
     readonly side?: never
 }
 
-export type MessageBubbleProps = MessageBubbleMessage | MessageBubbleSkeleton | MessageBubbleSkeletonThread
+export type MessageBubbleProps = NoChildren & (MessageBubbleMessage | MessageBubbleSkeleton | MessageBubbleSkeletonThread)
 
 const SKELETON_CONTRACT = "SURFACE-3 SURFACE-4 RADIUS-6 STATE-8"
 const THREAD_MAX = 12
@@ -103,7 +104,7 @@ export const MessageBubble = (props: MessageBubbleProps) => {
         }
         return <SkeletonBubble side={props.side ?? "incoming"} hasAvatar={props.hasAvatar === true} />
     }
-    const { children, side = "incoming", author, avatar, meta, status, actions, footer, isHighlight = false, id } = props
+    const { body, side = "incoming", author, avatar, meta, status, actions, footer, isHighlight = false, id } = props
     const hasHead = author != null || meta != null || status != null
     return (
         <div
@@ -125,7 +126,7 @@ export const MessageBubble = (props: MessageBubbleProps) => {
                         {meta == null ? null : <span className="starci-core-message-bubble-meta">{meta}</span>}
                     </div>
                 ) : null}
-                <div className="starci-core-message-bubble-body">{children}</div>
+                <div className="starci-core-message-bubble-body">{body}</div>
                 {footer == null ? null : <div className="starci-core-message-bubble-footer">{footer}</div>}
                 {actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar"><ButtonPlacementProvider placement="chrome">{actions}</ButtonPlacementProvider></div>}
             </div>

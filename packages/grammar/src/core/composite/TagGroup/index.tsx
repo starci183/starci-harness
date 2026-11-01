@@ -3,7 +3,7 @@
 import { Tag as HeroTag, TagGroup as HeroTagGroup } from "@heroui/react"
 import { useEffect, useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import { FieldSkeletonScope } from "../../leaf/Field/index.js"
-import { navigationClassName } from "../../navigationClassNames.js"
+import type { NoChildren } from "../../tier.js"
 
 export type TagGroupItem = {
     readonly id: string
@@ -49,14 +49,13 @@ type TagGroupReorder = {
     readonly reorderAnnouncement?: undefined
 }
 
-export type TagGroupProps = TagGroupRemoval & TagGroupReorder & {
+export type TagGroupProps = NoChildren & TagGroupRemoval & TagGroupReorder & {
     /** Names the set of tags/chips, e.g. "Filters". */
     readonly label: string
     readonly items: ReadonlyArray<TagGroupItem>
     /** Shown when no items remain. */
     readonly emptyContent?: ReactNode
     readonly size?: "sm" | "md" | "lg"
-    readonly className?: string
     /**
      * Unresolved tags (knowledge STATE-8): the same tags at the same size, inert, each painted as a Skeleton with its
      * label laid out unseen, so the group keeps its ready box (skeleton parity); the root is `aria-busy`.
@@ -105,7 +104,6 @@ const TagGroupControl = ({
     reorderAnnouncement,
     emptyContent,
     size = "md",
-    className,
 }: TagGroupProps) => {
     const rootRef = useRef<HTMLDivElement>(null)
     const instructionsId = useId()
@@ -198,7 +196,7 @@ const TagGroupControl = ({
     <HeroTagGroup
         aria-label={label}
         {...(reorderable ? { "data-grammar-tag-reorderable": "true" } : {})}
-        className={navigationClassName("starci-core-tag-group", className)}
+        className="starci-core-tag-group"
         data-component="TagGroup"
         data-contract="STATE-1"
         data-tier="composite"

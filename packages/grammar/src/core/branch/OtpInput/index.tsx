@@ -3,10 +3,11 @@
 import { useCallback, useId, useRef } from "react"
 import { InputOTP, Label as HeroLabel, REGEXP_ONLY_DIGITS } from "@heroui/react"
 import { horizontalScrollRegionClassName } from "../../classNames.js"
-import { HorizontalScrollRegion } from "../../frame/HorizontalScrollRegion/index.js"
+import { HorizontalScrollFrame } from "../../HorizontalScrollFrame.js"
 import { useFieldVariant } from "../../surfaceContext.js"
+import type { NoChildren } from "../../tier.js"
 
-export type OtpInputProps = {
+export type OtpInputProps = NoChildren & {
     readonly id: string
     readonly name: string
     /**
@@ -49,12 +50,16 @@ export const OtpInput = (props: OtpInputProps) => {
 
     const labelId = props.label === undefined ? props.labelledBy : generatedLabelId
     const control = (
-        <HorizontalScrollRegion
+        <HorizontalScrollFrame
             ref={regionRef}
             className={horizontalScrollRegionClassName}
-            data-contract="PADDING-1 OVERFLOW-3 OVERFLOW-5"
+            data-contract="PADDING-1 MEASURE-3 OVERFLOW-3 OVERFLOW-5"
+            data-grammar-overflow="always"
             data-grammar-variant={variant}
-            isFocusable={false}
+            hideScrollBar
+            orientation="horizontal"
+            scrollPreviousLabel="Scroll left"
+            scrollNextLabel="Scroll right"
             {...(props.label === undefined ? { "data-component": "OtpInput", "data-tier": "branch" } : {})}
             {...(labelId === undefined ? {} : { role: "group", "aria-labelledby": labelId })}
         >
@@ -80,7 +85,7 @@ export const OtpInput = (props: OtpInputProps) => {
                     ))}
                 </InputOTP.Group>
             </InputOTP>
-        </HorizontalScrollRegion>
+        </HorizontalScrollFrame>
     )
 
     if (props.label === undefined) return control

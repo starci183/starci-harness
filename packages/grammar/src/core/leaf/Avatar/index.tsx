@@ -8,6 +8,7 @@ import { useMemo, type CSSProperties, type ReactNode } from "react"
 import { STARCI_CORE_DNA } from "../../dna.js"
 import { navigationClassName } from "../../navigationClassNames.js"
 import { Skeleton } from "../Skeleton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** `control` follows the shared 2.5rem (40px) control height. */
 export type AvatarSize = "sm" | "md" | "lg" | "control"
@@ -17,7 +18,7 @@ export type AvatarShape = "circle" | "square" | "rounded"
 /** The control size is drawn by the sheet over vendor `lg`. */
 export const vendorAvatarSize = (size: AvatarSize): "sm" | "md" | "lg" => size === "control" ? "lg" : size
 
-export type AvatarProps = {
+export type AvatarProps = NoChildren & {
     /** Free-text person or entity name; agents follow the same initials rule. */
     readonly name: string
     readonly src?: string
@@ -31,7 +32,6 @@ export type AvatarProps = {
     readonly shape?: AvatarShape
     readonly isDecorative?: boolean
     readonly isCurrent?: boolean
-    readonly className?: string
     /** Unresolved identity: an unnamed Skeleton; the owner carries aria-busy (STATE-8). */
     readonly isSkeleton?: boolean
 }
@@ -111,17 +111,17 @@ export const AvatarAgentBadge = ({ children, kind, size, renderedScale = 1, clas
 )
 
 /** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
-export const Avatar = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, className, isSkeleton = false }: AvatarProps) => {
-    const avatarClassName = navigationClassName("starci-core-avatar", kind === "agent" ? undefined : className)
+export const Avatar = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, isSkeleton = false }: AvatarProps) => {
+    const avatarClassName = "starci-core-avatar"
     if (isSkeleton) return (
-        <span aria-hidden="true" className={navigationClassName("starci-core-avatar starci-core-avatar-skeleton", className)}
+        <span aria-hidden="true" className={"starci-core-avatar starci-core-avatar-skeleton"}
             data-component="Avatar" data-contract="STATE-8" data-tier="leaf" data-grammar-avatar-size={size}
             data-grammar-avatar-shape={shape} data-grammar-current="false" data-grammar-skeleton="true">
             <Skeleton shape="circle" size={vendorAvatarSize(size)} />
         </span>
     )
     return (
-        <AvatarAgentBadge kind={kind} size={size} {...(className === undefined ? {} : { className })}>
+        <AvatarAgentBadge kind={kind} size={size}>
             <HeroAvatar {...avatarA11yProps(name, isDecorative, kind)} className={avatarClassName}
                 data-component="Avatar" data-contract="A11Y-2" data-tier="leaf" data-grammar-avatar-size={size}
                 data-grammar-avatar-shape={shape} data-grammar-avatar-kind={kind} data-grammar-current={isCurrent ? "true" : "false"}

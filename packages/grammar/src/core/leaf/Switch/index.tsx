@@ -11,10 +11,11 @@ import {
     vendorFieldProps,
     type FieldControlProps,
 } from "../Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type SwitchSize = "md" | "lg" | "control"
 
-export type SwitchProps = FieldControlProps & {
+export type SwitchProps = NoChildren & FieldControlProps & {
     readonly value?: string
     readonly isSelected?: boolean
     readonly defaultSelected?: boolean

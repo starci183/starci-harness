@@ -11,12 +11,12 @@ export const DragItemStates: Story = {
     render: () => (
         <Matrix maxWidth={420}>
             <State label="Resting, selected, invalid, dashed, disabled" direction="column">
-                <G.DragItem onDragStart={noop}><G.Button intent="neutral">Move lesson up</G.Button></G.DragItem>
-                <G.DragItem isSelected onDragStart={noop}><G.Button intent="neutral">Selected lesson</G.Button></G.DragItem>
-                <G.DragItem isInvalid onDragStart={noop}><G.Button intent="neutral">Invalid placement</G.Button></G.DragItem>
-                <G.DragItem isDashed onDragStart={noop}><G.Button intent="neutral">Drop target</G.Button></G.DragItem>
-                <G.DragItem isDisabled><G.Button intent="neutral" isDisabled>Locked lesson</G.Button></G.DragItem>
-                <G.DragItem tone="accent" onDragStart={noop}><G.Button intent="neutral">With a tone</G.Button></G.DragItem>
+                <G.DragItem onDragStart={noop} body={<G.Button intent="neutral">Move lesson up</G.Button>} />
+                <G.DragItem isSelected onDragStart={noop} body={<G.Button intent="neutral">Selected lesson</G.Button>} />
+                <G.DragItem isInvalid onDragStart={noop} body={<G.Button intent="neutral">Invalid placement</G.Button>} />
+                <G.DragItem isDashed onDragStart={noop} body={<G.Button intent="neutral">Drop target</G.Button>} />
+                <G.DragItem isDisabled body={<G.Button intent="neutral" isDisabled>Locked lesson</G.Button>} />
+                <G.DragItem tone="accent" onDragStart={noop} body={<G.Button intent="neutral">With a tone</G.Button>} />
             </State>
         </Matrix>
     ),
@@ -27,7 +27,7 @@ export const VideoPoster: Story = {
     render: () => (
         <Matrix maxWidth={480}>
             <State label="Poster, no captions" direction="column">
-                <G.MediaFrame aspect="landscape"><G.Video src="" title="Lesson preview" poster={placeholderImage("Preview")} captions={null} /></G.MediaFrame>
+                <G.MediaFrame aspect="landscape" media={<G.Video src="" title="Lesson preview" poster={placeholderImage("Preview")} captions={null} />} />
             </State>
         </Matrix>
     ),

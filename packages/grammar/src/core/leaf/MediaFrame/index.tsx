@@ -1,17 +1,17 @@
-import { cn } from "@heroui/react"
 import type { ReactNode } from "react"
 import { assetSlotAttributes, type AssetSlotProps } from "../Image/assetSlot.js"
-import type { AccentCorner } from "../../frame/SurfaceCard/classNames.js"
+import type { AccentCorner } from "../../accentCorner.js"
+import type { NoChildren } from "../../tier.js"
 
-export type MediaFrameProps = AssetSlotProps & {
-    readonly children: ReactNode
+export type MediaFrameProps = NoChildren & AssetSlotProps & {
+    /** The image, video or illustration the frame holds. */
+    readonly media: ReactNode
     readonly caption?: ReactNode
     readonly aspect?: "landscape" | "portrait" | "square" | "auto"
     readonly fit?: "cover" | "contain"
     readonly treatment?: "framed" | "plain"
     /** One logical corner of the viewport at the Common accent radius (`--grammar-accent-corner`), as on SurfaceCard. */
     readonly accentCorner?: AccentCorner
-    readonly className?: string
 }
 
 /**
@@ -19,17 +19,16 @@ export type MediaFrameProps = AssetSlotProps & {
  * Asset purpose and generation authority stay with the consuming product workflow.
  */
 export const MediaFrame = ({
-    children,
+    media,
     caption,
     aspect = "landscape",
     fit = "cover",
     treatment = "framed",
     accentCorner,
-    className,
     ...assetSlot
 }: MediaFrameProps) => (
     <figure
-        className={cn("starci-core-media-frame", className)}
+        className="starci-core-media-frame"
         data-component="MediaFrame"
         data-tier="leaf"
         {...assetSlotAttributes(assetSlot)}
@@ -43,7 +42,7 @@ export const MediaFrame = ({
             data-contract={treatment === "plain" ? "OVERFLOW-2 SURFACE-1" : "OVERFLOW-2 BOUNDARY-5 SURFACE-3"}
             data-grammar-accent-corner={accentCorner}
             data-grammar-media="true"
-        >{children}</div>
+        >{media}</div>
         {caption === undefined ? null : <figcaption className="starci-core-media-caption" data-contract="FLOW-3">{caption}</figcaption>}
     </figure>
 )

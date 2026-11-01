@@ -36,11 +36,12 @@ import {
     type LanesLayout,
 } from "./layout.js"
 import type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphTone } from "./types.js"
+import type { NoChildren } from "../../tier.js"
 
 export { lanesLayout, layeredPositions, radialPositions } from "./layout.js"
 export type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphNodeKind, FlowGraphNodeShape, FlowGraphNodeSize, FlowGraphTone } from "./types.js"
 
-export type FlowGraphProps = {
+export type FlowGraphProps = NoChildren & {
     /** Names the graph for assistive technology, e.g. "Second brain". */
     readonly label: string
     readonly nodes: ReadonlyArray<FlowGraphNode>
@@ -87,7 +88,6 @@ export type FlowGraphProps = {
     readonly emptyLabel?: string
     /** Unresolved graph (knowledge STATE-8): the frame at its height with a Skeleton block, no React Flow mounted, `aria-busy`. */
     readonly isLoading?: boolean
-    readonly className?: string
 }
 
 type NodeData = {
@@ -207,7 +207,6 @@ export const FlowGraph = ({
     headers,
     emptyLabel = "Nothing to show yet.",
     isLoading = false,
-    className,
 }: FlowGraphProps) => {
     const [ownSelectedId, setOwnSelectedId] = useState<string | null>(null)
     const currentId = selectedId === undefined ? ownSelectedId : selectedId
@@ -337,7 +336,7 @@ export const FlowGraph = ({
     return (
         <figure
             aria-label={label}
-            className={["starci-core-flow-graph", className].filter(Boolean).join(" ")}
+            className="starci-core-flow-graph"
             data-component="FlowGraph"
             data-contract="FOCUS-2 STATE-1 STATE-3"
             data-grammar-flow-direction={flowDirection}

@@ -56,7 +56,7 @@ export const MarkdownArticle = (props: MarkdownArticleProps) => (
         className={markdownArticleClassName}
         data-grammar-markdown-measure={props.measure ?? "reading"}
         data-component="MarkdownArticle"
-        data-tier="composite"
+        data-tier="frame"
     >
         {props.children}
     </div>
@@ -71,7 +71,7 @@ export const FencedCodeBlock = (props: FencedCodeBlockProps) => {
         <div
             className={fencedCodeBlockClassName}
             data-component="FencedCodeBlock"
-            data-tier="composite"
+            data-tier="frame"
             data-contract="OVERFLOW-4"
             {...(isSkeleton ? { "data-loading": "true", "aria-busy": true } : {})}
         >
@@ -91,7 +91,7 @@ export const MarkdownTableFrame = (props: MarkdownTableFrameProps) => (
     <div
         className={markdownTableFrameClassName}
         data-component="MarkdownTableFrame"
-        data-tier="composite"
+        data-tier="frame"
         data-contract="OVERFLOW-4"
         {...scrollFrameProps(props.label)}
     >

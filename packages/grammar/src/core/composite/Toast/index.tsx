@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent }
 import type { PresentationState } from "../../../common/state.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type ToastAction = {
     readonly label: string
@@ -88,7 +89,7 @@ export const createToastQueue = (): ToastQueue => {
 /** The shared app-wide queue a `Toaster` reads when no `queue` prop is given. */
 export const toastQueue: ToastQueue = createToastQueue()
 
-export type ToastProps = {
+export type ToastProps = NoChildren & {
     readonly toast: ToastRecord
     readonly dismissLabel: string
     readonly onDismiss: () => void

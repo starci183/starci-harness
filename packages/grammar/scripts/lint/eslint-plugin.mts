@@ -46,4 +46,102 @@ export const noLiteralLook: Rule.RuleModule = {
     },
 }
 
-export default { rules: { "no-literal-look": noLiteralLook } }
+/** An ESTree-shaped node, read without the TypeScript-ESTree types, which this package does not install. */
+type Ast = { readonly type: string; readonly [key: string]: unknown }
+const isAst = (value: unknown): value is Ast => typeof value === "object" && value !== null && "type" in value && typeof value.type === "string"
+const nameOf = (value: unknown): string | undefined => (isAst(value) && value.type === "Identifier" && typeof value.name === "string" ? value.name : undefined)
+const isPosition = (value: unknown): value is { readonly line: number; readonly column: number } =>
+    typeof value === "object" && value !== null && "line" in value && typeof value.line === "number" && "column" in value && typeof value.column === "number"
+const isRange = (value: unknown): value is readonly [number, number] => Array.isArray(value) && value.length === 2 && typeof value[0] === "number" && typeof value[1] === "number"
+
+const COMPONENT_FILE = /[\\/]src[\\/]core[\\/](leaf|branch|composite|frame)[\\/]([A-Za-z0-9]+)[\\/]index\.tsx$/
+/** The one component whose content is inline (a sentence holds Code, Link and Kbd); the app lint `text-inline-only` refuses a block in it. */
+const INLINE_CONTENT = new Set(["Text"])
+/** The one hole, with a stated reason (R341). */
+const CLASS_NAME_HOLE = new Set(["Freestyle"])
+/** Types of a part the component receives, not props it takes: an icon source's own props. */
+const RECEIVED = new Set(["ComponentType", "ElementType", "FunctionComponent"])
+const RECEIVED_SHAPE = new Set(["TSFunctionType", "TSConstructorType"])
+const PASSTHROUGH = /Component(?:Props|PropsWithoutRef)<|HTMLAttributes</
+
+/** Every node under `node`, `node` first. */
+const subtree = (node: Ast, found: Ast[] = []): Ast[] => {
+    found.push(node)
+    if (RECEIVED_SHAPE.has(node.type) || (node.type === "TSTypeReference" && RECEIVED.has(nameOf(node.typeName) ?? ""))) return found
+    for (const [key, value] of Object.entries(node)) {
+        if (key === "parent" || key === "loc" || key === "range") continue
+        if (Array.isArray(value)) value.forEach((item) => { if (isAst(item)) subtree(item, found) })
+        else if (isAst(value)) subtree(value, found)
+    }
+    return found
+}
+
+/**
+ * The tier binding of a component's props (the ladder leaf, branch, composite, frame; `NoChildren` and `LabelChild` of `src/core/tier.ts`).
+ * A frame owns a region and takes `children`. A leaf takes at most its text label (`children: string` or `LabelChild`). A branch or a
+ * composite takes none (`NoChildren`), so nested JSX under it fails to compile for every caller. No component takes `className`, bar
+ * `Freestyle`; a props type that passes an element's attributes through omits it. The rule reads the `<Name>Props` of the component
+ * folder and the local types it names.
+ */
+export const tierProps: Rule.RuleModule = {
+    meta: { type: "problem", schema: [], docs: { description: "A component's props follow its tier: children and className." } },
+    create(context) {
+        const match = COMPONENT_FILE.exec(context.filename)
+        if (match === null) return {}
+        const tier = match[1]
+        const name = match[2] ?? ""
+        const declarations = new Map<string, Ast>()
+        const report = (node: Ast, message: string): void => {
+            const loc: unknown = node.loc
+            const start = typeof loc === "object" && loc !== null && "start" in loc ? loc.start : undefined
+            const end = typeof loc === "object" && loc !== null && "end" in loc ? loc.end : undefined
+            if (isPosition(start) && isPosition(end)) context.report({ loc: { start, end }, message })
+        }
+        const textOf = (node: Ast): string => (isRange(node.range) ? context.sourceCode.text.slice(node.range[0], node.range[1]) : "")
+        return {
+            Program(program) {
+                for (const statement of program.body) {
+                    const inner: unknown = statement.type === "ExportNamedDeclaration" ? statement.declaration : statement
+                    if (isAst(inner) && (inner.type === "TSTypeAliasDeclaration" || inner.type === "TSInterfaceDeclaration")) {
+                        const id = nameOf(inner.id)
+                        if (id !== undefined) declarations.set(id, inner)
+                    }
+                }
+                const root = declarations.get(`${name}Props`)
+                if (root === undefined) return
+                const reachable = new Map<string, Ast>([[`${name}Props`, root]])
+                const queue = [root]
+                for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+                    for (const node of subtree(next)) {
+                        const referenced = node.type === "TSTypeReference" ? nameOf(node.typeName) : undefined
+                        const target = referenced === undefined ? undefined : declarations.get(referenced)
+                        if (referenced !== undefined && target !== undefined && !reachable.has(referenced)) {
+                            reachable.set(referenced, target)
+                            queue.push(target)
+                        }
+                    }
+                }
+                const text = [...reachable.values()].map(textOf).join("\n")
+                for (const declaration of reachable.values()) {
+                    for (const node of subtree(declaration)) {
+                        if (node.type !== "TSPropertySignature") continue
+                        const key = nameOf(node.key)
+                        if (key === "className" && !CLASS_NAME_HOLE.has(name)) report(node, `${name} takes no className: a role prop or the structure decides the look.`)
+                        if (key !== "children" || tier === "frame" || INLINE_CONTENT.has(name)) continue
+                        const annotation = isAst(node.typeAnnotation) && isAst(node.typeAnnotation.typeAnnotation) ? node.typeAnnotation.typeAnnotation.type : ""
+                        const allowed = tier === "leaf" ? ["TSStringKeyword", "TSNeverKeyword"] : ["TSNeverKeyword"]
+                        if (!allowed.includes(annotation)) report(node, tier === "leaf" ? "A leaf takes its text label as `children: string`, never a node." : `A ${tier} takes no children: name the slot for its role.`)
+                    }
+                }
+                if (PASSTHROUGH.test(text) && !text.includes('"className"') && !CLASS_NAME_HOLE.has(name)) report(root, `${name}Props passes an element's attributes through: omit "className".`)
+                if (tier === "frame" || INLINE_CONTENT.has(name)) return
+                const labelled = tier === "leaf" && /children[?]?: string/.test(text)
+                if (!text.includes("NoChildren") && !text.includes("LabelChild") && !labelled) {
+                    report(root, `${name}Props must include ${tier === "leaf" ? "NoChildren, LabelChild or children: string" : "NoChildren"} (src/core/tier.ts), so nested JSX does not compile.`)
+                }
+            },
+        }
+    },
+}
+
+export default { rules: { "no-literal-look": noLiteralLook, "tier-props": tierProps } }

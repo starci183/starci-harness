@@ -10,12 +10,13 @@ import {
     Label as HeroLabel,
     TextField as HeroTextField,
 } from "@heroui/react"
+import type { NoChildren } from "../../tier.js"
 
 export type InputKind = "email" | "tel" | "password" | "newPassword" | "code" | "text"
 
 type InputIcon = ComponentType<{ readonly className?: string }>
 
-export type InputProps = {
+export type InputProps = NoChildren & {
     readonly id: string
     readonly name: string
     readonly label: ReactNode

@@ -3,6 +3,7 @@
 import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, type Key } from "@heroui/react"
 import { useId, useState, type ReactNode } from "react"
 import { fieldStateAttributes, StaticFieldError, FieldSkeletonScope, loadingFieldProps, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type SegmentOption = {
     readonly value: string
@@ -14,7 +15,7 @@ export type SegmentOption = {
 
 export type SegmentedControlSize = "sm" | "md"
 
-export type SegmentedControlProps = FieldControlProps & {
+export type SegmentedControlProps = NoChildren & FieldControlProps & {
     readonly options: ReadonlyArray<SegmentOption>
     readonly value?: string
     readonly defaultValue?: string

@@ -13,8 +13,9 @@ import {
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
 import type { ChoiceOption, ChoiceOrientation } from "../CheckboxGroup/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type RadioGroupProps = FieldControlProps & {
+export type RadioGroupProps = NoChildren & FieldControlProps & {
     readonly options: ReadonlyArray<ChoiceOption>
     readonly value?: string | null
     readonly defaultValue?: string | null

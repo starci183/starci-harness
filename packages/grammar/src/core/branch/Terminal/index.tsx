@@ -2,8 +2,9 @@
 
 import { useEffect, useId, useRef } from "react"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type TerminalProps = {
+export type TerminalProps = NoChildren & {
     /** The log, oldest first. Each entry is one line. */
     readonly lines: ReadonlyArray<string>
     /** A caption above the log; it also names the log region. */

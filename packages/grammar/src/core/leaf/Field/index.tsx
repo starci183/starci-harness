@@ -8,6 +8,7 @@ import {
 import { FieldErrorContext } from "react-aria-components/FieldError"
 import { useCallback, useId, useState, type ReactNode } from "react"
 import type { PresentationState } from "../../../common/state.js"
+import type { NoChildren } from "../../tier.js"
 
 /**
  * The one field contract every Grammar form control shares.
@@ -192,11 +193,11 @@ export type FieldControlAttributes = {
     readonly readOnly?: true
 }
 
-export type FieldProps = FieldControlProps & {
+export type FieldProps = NoChildren & FieldControlProps & {
     /** Control id. Generated when omitted. */
     readonly id?: string
     /** Renders the control with the attributes that bind it to this field's label, guidance and error. */
-    readonly children: (control: FieldControlAttributes) => ReactNode
+    readonly control: (attributes: FieldControlAttributes) => ReactNode
     /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control box painted as a Skeleton. */
     readonly isSkeleton?: boolean
 }
@@ -222,7 +223,7 @@ const FieldControl = ({
     isDisabled,
     isReadOnly,
     name,
-    children,
+    control,
 }: FieldProps) => {
     const generated = useId()
     const id = idProp ?? `field${generated.replaceAll(":", "")}`
@@ -249,7 +250,7 @@ const FieldControl = ({
                 {isRequired === true ? <span aria-hidden="true" className="starci-core-field-required">*</span> : null}
             </label>
             <div className="starci-core-field-control" data-grammar-field-control="true">
-                {children({
+                {control({
                     id,
                     ...(name === undefined ? {} : { name }),
                     ...(describedBy === "" ? {} : { "aria-describedby": describedBy }),

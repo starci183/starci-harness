@@ -1,6 +1,6 @@
-import { navigationClassName } from "../../navigationClassNames.js"
 import { Image } from "../Image/index.js"
 import { assetSlotAttributes, type AssetSlotProps } from "../Image/assetSlot.js"
+import type { NoChildren } from "../../tier.js"
 
 /** The mascot size scale: three square boxes and the hero that fills its container's height up to a cap. */
 export type MascotSize = "sm" | "md" | "lg" | "hero"
@@ -16,7 +16,7 @@ export const MASCOT_SIZE_TOKENS = Object.freeze({
     hero: "--grammar-mascot-hero-max",
 } as const)
 
-export type MascotProps = AssetSlotProps & {
+export type MascotProps = NoChildren & AssetSlotProps & {
     readonly src: string
     /**
      * Decorative by default: `""` hides the mascot from assistive technology. A non-empty alt makes it meaningful and
@@ -29,7 +29,6 @@ export type MascotProps = AssetSlotProps & {
     readonly loading?: "lazy" | "eager"
     /** A hero only: keep it below the lg breakpoint (`always`, stepped down to the lg box) instead of hiding it. */
     readonly visibility?: MascotVisibility
-    readonly className?: string
 }
 
 /**
@@ -48,11 +47,10 @@ export const Mascot = ({
     size = "md",
     loading = "lazy",
     visibility = "wide",
-    className,
     ...assetSlot
 }: MascotProps) => (
     <span
-        className={navigationClassName("starci-core-mascot", className)}
+        className="starci-core-mascot"
         data-component="Mascot"
         data-tier="leaf"
         data-contract="A11Y-2"

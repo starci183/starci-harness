@@ -17,7 +17,7 @@ export type VerticalScrollRegionOverflow = "always" | "needed"
  */
 export type VerticalScrollRegionTone = "surface" | "background"
 
-export type VerticalScrollRegionProps = Omit<ComponentProps<"div">, "children"> & {
+export type VerticalScrollRegionProps = Omit<ComponentProps<"div">, "children" | "className"> & {
     readonly children: ReactNode
     readonly isScrollable: boolean
     /**
@@ -56,8 +56,14 @@ export const scrollRegionFocusProps = (
     return { tabIndex: props.tabIndex ?? 0, ...(role === undefined ? {} : { role }) }
 }
 
-/** Use HeroUI's Vertical ScrollShadow without making consumers own its DOM contract. */
-export const VerticalScrollRegion = (props: VerticalScrollRegionProps) => {
+/**
+ * What a Grammar frame passes when it draws a scroll region inside its own anatomy: the public props and the class and style
+ * its stylesheet names. An app never sees them; `VerticalScrollRegion` takes neither.
+ */
+export type VerticalScrollRegionPartProps = VerticalScrollRegionProps & { readonly className?: string | undefined }
+
+/** The region as a frame's own part, with the class and style its stylesheet names. */
+export const VerticalScrollRegionPart = (props: VerticalScrollRegionPartProps) => {
     const { children, isScrollable, as: Element = "div", isFocusable = true, hideScrollBar = true, overflow = "always", tone = "surface", ...regionProps } = props
     const toneProps = tone === "background" ? { "data-grammar-scroll-region-tone": "background" } : {}
     const contract = overflow === "needed" ? "MEASURE-7 OVERFLOW-4" : "MEASURE-7 OVERFLOW-3"
@@ -65,3 +71,6 @@ export const VerticalScrollRegion = (props: VerticalScrollRegionProps) => {
         ? <ScrollShadow data-component="VerticalScrollRegion" data-tier="frame" {...regionProps} {...toneProps} {...scrollRegionFocusProps(regionProps, isFocusable)} data-contract={contract} data-grammar-overflow={overflow} data-grammar-scroll-region="vertical" hideScrollBar={hideScrollBar} orientation="vertical">{children}</ScrollShadow>
         : createElement(Element, { "data-component": "VerticalScrollRegion", "data-tier": "frame", ...regionProps, ...toneProps }, children)
 }
+
+/** Use HeroUI's Vertical ScrollShadow without making consumers own its DOM contract. */
+export const VerticalScrollRegion = (props: VerticalScrollRegionProps) => <VerticalScrollRegionPart {...props} />

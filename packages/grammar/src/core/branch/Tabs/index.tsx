@@ -9,6 +9,7 @@ import {
     tabsClassName,
     tabsFrameClassName,
 } from "./classNames.js"
+import type { NoChildren } from "../../tier.js"
 
 /** One stable peer destination rendered by the Core tab object. */
 export type TabItem = {
@@ -28,7 +29,7 @@ export type TabItem = {
  * controls. Controlled tabs pass `selectedKey` and `onSelect`; link tabs pass an `href` on every item and the selected
  * tab is the one whose `href` matches the current path (the exact path, else the longest `href` the path lies under).
  */
-export type TabsProps = {
+export type TabsProps = NoChildren & {
     readonly label: string
     /** The selected tab. Required for controlled tabs; link tabs derive it from the current path when it is omitted. */
     readonly selectedKey?: string

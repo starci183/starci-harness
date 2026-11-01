@@ -1,15 +1,16 @@
 "use client"
 
 import { useEffect, useId, useRef, useState, type RefObject } from "react"
-import { Alert } from "../Alert/index.js"
+import { Alert } from "../../composite/Alert/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { FencedCodeBlock } from "../MarkdownArticle/index.js"
 import { resolveMermaidTheme, type MermaidThemeVariables } from "./theme.js"
+import type { NoChildren } from "../../tier.js"
 
 /** The canvas box every state reserves: `sm` 16rem, `md` 24rem, `lg` 32rem (the FlowGraph heights). */
 export type MermaidDiagramHeight = "sm" | "md" | "lg"
 
-export type MermaidDiagramProps = {
+export type MermaidDiagramProps = NoChildren & {
     /** The Mermaid text, as written in the article's fence (without the fence itself). */
     readonly source: string
     /** Names the diagram for assistive technology, e.g. "Request flow". The drawing is one image with this name. */
@@ -25,8 +26,6 @@ export type MermaidDiagramProps = {
     readonly sourceLabel?: string
     /** Unresolved source (STATE-8): the frame at its height with a Skeleton block, Mermaid not loaded, `aria-busy`. */
     readonly isSkeleton?: boolean
-    /** Layout only. */
-    readonly className?: string
 }
 
 type Drawing =
@@ -124,7 +123,6 @@ export const MermaidDiagram = ({
     errorTitle = "This diagram could not be drawn.",
     sourceLabel,
     isSkeleton = false,
-    className,
 }: MermaidDiagramProps) => {
     const frame = useRef<HTMLElement | null>(null)
     const canvas = useRef<HTMLDivElement | null>(null)
@@ -154,12 +152,12 @@ export const MermaidDiagram = ({
     return (
         <figure
             ref={frame}
-            className={["starci-core-mermaid-diagram", className].filter(Boolean).join(" ")}
+            className="starci-core-mermaid-diagram"
             data-component="MermaidDiagram"
             data-contract={state === "ready" ? "OVERFLOW-4" : "OVERFLOW-4 STATE-8"}
             data-grammar-mermaid-height={height}
             data-grammar-mermaid-state={state}
-            data-tier="composite"
+            data-tier="frame"
             aria-label={label}
             {...(state === "loading" ? { "aria-busy": true, "data-loading": "true" } : {})}
         >

@@ -5,6 +5,7 @@ import type { ButtonIntent } from "../../buttonIntent.js"
 import { Button } from "../../leaf/Button/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** One member of the group: a `Button` with its label, or an `IconButton` when it has a `source`. */
 export type ButtonGroupAction = {
@@ -19,7 +20,7 @@ export type ButtonGroupAction = {
     readonly isDisabled?: boolean
 }
 
-export type ButtonGroupProps = {
+export type ButtonGroupProps = NoChildren & {
     /** Names the group (`role="group"`) for assistive technology. */
     readonly label: string
     /** The members as data. They join visually and keep their own names and tab stops. */

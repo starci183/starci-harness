@@ -2,11 +2,11 @@
 
 import { Pagination as HeroPagination } from "@heroui/react"
 import type { ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
+import type { NoChildren } from "../../tier.js"
 
 export type PaginationToken = number | "start-ellipsis" | "end-ellipsis"
 
-export type PaginationProps = {
+export type PaginationProps = NoChildren & {
     /** Names the pagination landmark, e.g. "Results pages". */
     readonly label: string
     /** 1-based current page. */
@@ -21,7 +21,6 @@ export type PaginationProps = {
     readonly pageLabel: (page: number) => string
     /** Optional app-owned summary, e.g. "21-30 of 94". */
     readonly summary?: ReactNode
-    readonly className?: string
 }
 
 const range = (from: number, to: number) => Array.from({ length: Math.max(0, to - from + 1) }, (_, index) => from + index)
@@ -65,14 +64,13 @@ export const Pagination = ({
     nextLabel,
     pageLabel,
     summary,
-    className,
 }: PaginationProps) => {
     const tokens = paginationTokens(page, pageCount, siblingCount)
     const last = Math.max(1, pageCount)
     return (
         <HeroPagination
             aria-label={label}
-            className={navigationClassName("starci-core-pagination", className)}
+            className="starci-core-pagination"
             data-component="Pagination"
             data-tier="composite"
         >

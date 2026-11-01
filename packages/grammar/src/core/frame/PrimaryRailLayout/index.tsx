@@ -1,4 +1,3 @@
-import { cn } from "@heroui/react"
 import type { ReactNode } from "react"
 
 export type PrimaryRailLayoutProps = {
@@ -17,7 +16,6 @@ export type PrimaryRailLayoutProps = {
      * (before it, e.g. a module switcher or a filter list). Reading order collapses by `collapsedOrder` either way.
      */
     readonly railPosition?: "leading" | "trailing"
-    readonly className?: string
 }
 
 /**
@@ -31,9 +29,8 @@ export const PrimaryRailLayout = ({
     align = "start",
     collapsedOrder = "primary-first",
     railPosition = "trailing",
-    className,
 }: PrimaryRailLayoutProps) => (
-    <div className={cn("starci-core-primary-rail-container", className)} data-component="PrimaryRailLayout" data-tier="frame">
+    <div className="starci-core-primary-rail-container" data-component="PrimaryRailLayout" data-tier="frame">
         <div
             className="starci-core-primary-rail-layout"
             data-contract="GAP-5"

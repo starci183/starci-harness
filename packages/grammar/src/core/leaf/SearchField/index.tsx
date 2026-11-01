@@ -13,8 +13,9 @@ import {
     vendorFieldProps,
     type FieldControlProps,
 } from "../Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
-export type SearchFieldProps = FieldControlProps & {
+export type SearchFieldProps = NoChildren & FieldControlProps & {
     readonly id?: string
     readonly placeholder?: string
     readonly value?: string

@@ -2,12 +2,13 @@
 
 import { Disclosure as HeroDisclosure } from "@heroui/react"
 import { useId, useState, type ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
+import type { NoChildren } from "../../tier.js"
 
-export type DisclosureProps = {
+export type DisclosureProps = NoChildren & {
     /** The always-visible trigger text. */
     readonly title: ReactNode
-    readonly children: ReactNode
+    /** What the section shows when open. */
+    readonly body: ReactNode
     /**
      * Muted one-line text at the trailing end of the trigger row (truncated with an ellipsis), visible closed and open: a
      * count, a current value, a status. It is the trigger's accessible DESCRIPTION (`aria-describedby`), not part of its name.
@@ -20,7 +21,6 @@ export type DisclosureProps = {
     readonly isDisabled?: boolean
     /** Heading level of the trigger's heading element. */
     readonly headingLevel?: 2 | 3 | 4 | 5 | 6
-    readonly className?: string
 }
 
 /*
@@ -37,14 +37,13 @@ export type DisclosureProps = {
  */
 export const Disclosure = ({
     title,
-    children,
+    body,
     summary,
     isExpanded,
     defaultExpanded = false,
     onExpandedChange,
     isDisabled = false,
     headingLevel = 3,
-    className,
 }: DisclosureProps) => {
     const [uncontrolled, setUncontrolled] = useState(defaultExpanded)
     const expanded = isExpanded ?? uncontrolled
@@ -52,7 +51,7 @@ export const Disclosure = ({
     const hasSummary = summary !== undefined && summary !== null && summary !== false && summary !== ""
     return (
         <HeroDisclosure
-            className={navigationClassName("starci-core-disclosure", className)}
+            className="starci-core-disclosure"
             data-component="Disclosure"
             data-tier="branch"
             data-contract="STATE-7"
@@ -72,7 +71,7 @@ export const Disclosure = ({
                 </HeroDisclosure.Trigger>
             </HeroDisclosure.Heading>
             <HeroDisclosure.Content className="starci-core-disclosure-panel" data-grammar-disclosure-panel="true">
-                <HeroDisclosure.Body className="starci-core-disclosure-body">{children}</HeroDisclosure.Body>
+                <HeroDisclosure.Body className="starci-core-disclosure-body">{body}</HeroDisclosure.Body>
             </HeroDisclosure.Content>
         </HeroDisclosure>
     )

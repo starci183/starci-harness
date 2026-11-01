@@ -442,15 +442,11 @@ export const Tooltip: Story = {
     <Matrix>
       <State label="Top (revealed on focus)">
         <div style={{ paddingTop: '2.5rem' }}>
-          <G.Tooltip content="Search everything" placement="top">
-            <G.Button intent="alternative">Search</G.Button>
-          </G.Tooltip>
+          <G.Tooltip content="Search everything" placement="top" trigger={<G.Button intent="alternative">Search</G.Button>} />
         </div>
       </State>
       <State label="Bottom">
-        <G.Tooltip content="Open settings" placement="bottom">
-          <G.IconButton source={SettingsGlyph} label="Settings" />
-        </G.Tooltip>
+        <G.Tooltip content="Open settings" placement="bottom" trigger={<G.IconButton source={SettingsGlyph} label="Settings" />} />
       </State>
     </Matrix>
   ),

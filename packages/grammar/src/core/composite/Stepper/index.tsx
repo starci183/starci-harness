@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
-import { navigationClassName } from "../../navigationClassNames.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** `paused` is a step that stopped for a reason outside the flow (out of credit, waiting on the owner) and resumes by itself. */
 export type StepperStepState = "complete" | "current" | "upcoming" | "error" | "paused"
@@ -19,7 +19,7 @@ export type StepperStep = {
     readonly isDisabled?: boolean
 }
 
-export type StepperProps = {
+export type StepperProps = NoChildren & {
     /** Names the progress landmark, e.g. "Checkout progress". */
     readonly label: string
     readonly steps: ReadonlyArray<StepperStep>
@@ -33,7 +33,6 @@ export type StepperProps = {
     readonly stateLabel?: (state: StepperStepState) => string | undefined
     /** App-owned marker; defaults to the 1-based step number. */
     readonly renderMarker?: (step: StepperStep, index: number, state: StepperStepState) => ReactNode
-    readonly className?: string
     /**
      * The flow is loading (knowledge STATE-8): step labels stay real text when given (an empty label draws a Skeleton text line), each
      * marker becomes a static Skeleton circle, descriptions are not drawn, no step is current or a button, and the landmark is `aria-busy`.
@@ -67,13 +66,12 @@ export const Stepper = ({
     onStepSelect,
     stateLabel,
     renderMarker,
-    className,
     isLoading = false,
 }: StepperProps) => isLoading ? (
     <nav
         aria-label={label}
         aria-busy="true"
-        className={navigationClassName("starci-core-stepper", className)}
+        className="starci-core-stepper"
         data-component="Stepper"
         data-tier="composite"
         data-loading="true"
@@ -97,7 +95,7 @@ export const Stepper = ({
 ) : (
     <nav
         aria-label={label}
-        className={navigationClassName("starci-core-stepper", className)}
+        className="starci-core-stepper"
         data-component="Stepper"
         data-tier="composite"
         data-grammar-stepper-orientation={orientation}

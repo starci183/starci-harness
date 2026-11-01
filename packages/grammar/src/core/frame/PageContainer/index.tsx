@@ -1,14 +1,18 @@
 import { cn } from "@heroui/react"
 import type { ComponentPropsWithoutRef } from "react"
 
-export type PageContainerProps = ComponentPropsWithoutRef<"div"> & {
+export type PageContainerProps = Omit<ComponentPropsWithoutRef<"div">, "className"> & {
     readonly measure?: "reading" | "product" | "full"
     /** Additional rule ids a composing branch already knows apply to this same element. */
     readonly ["data-contract"]?: string
 }
 
 /** Centred responsive page inset using the packaged StarCi measure scale. */
-export const PageContainer = ({ className, measure = "product", ...props }: PageContainerProps) => {
+/** What Page and PageHeader pass when they draw the container inside their own anatomy. */
+export type PageContainerPartProps = PageContainerProps & { readonly className?: string | undefined }
+
+/** Centred responsive page inset using the packaged StarCi measure scale. */
+export const PageContainerPart = ({ className, measure = "product", ...props }: PageContainerPartProps) => {
     const { "data-contract": composedContract, ...rest } = props
     return (
         <div
@@ -21,3 +25,6 @@ export const PageContainer = ({ className, measure = "product", ...props }: Page
         />
     )
 }
+
+/** Centred responsive page inset using the packaged StarCi measure scale. */
+export const PageContainer = (props: PageContainerProps) => <PageContainerPart {...props} />

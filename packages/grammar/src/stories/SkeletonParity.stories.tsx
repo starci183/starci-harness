@@ -350,7 +350,7 @@ const rows = (): ReadonlyArray<Pair> => [
     },
     {
         id: "message-bubble",
-        ready: <G.MessageBubble side="incoming">Two short lines of a message that wraps once in the bubble.</G.MessageBubble>,
+        ready: <G.MessageBubble side="incoming" body={"Two short lines of a message that wraps once in the bubble."} />,
         loading: <G.MessageBubble side="incoming" isSkeleton />,
         width: "28rem",
     },
@@ -493,8 +493,8 @@ const forms = (): ReadonlyArray<Pair> => [
     },
     {
         id: "field",
-        ready: <G.Field label="Account id" description="Shown on invoices.">{(control) => <input {...control} style={{ boxSizing: "border-box", width: "100%", height: "2.5rem" }} />}</G.Field>,
-        loading: <G.Field label="Account id" description="Shown on invoices." isSkeleton>{(control) => <input {...control} />}</G.Field>,
+        ready: <G.Field label="Account id" description="Shown on invoices." control={(control) => <input {...control} style={{ boxSizing: "border-box", width: "100%", height: "2.5rem" }} />} />,
+        loading: <G.Field label="Account id" description="Shown on invoices." isSkeleton control={(control) => <input {...control} />} />,
     },
     ...(["md", "lg", "control"] as const).map((size) => ({
         id: `switch-${size}`,

@@ -20,6 +20,7 @@ import {
     sidebarSectionLabelClassName,
     sidebarToggleClassName,
 } from "./classNames.js"
+import type { NoChildren } from "../../tier.js"
 
 export type SidebarItem = {
     readonly id: string
@@ -49,7 +50,7 @@ export type SidebarGroup = {
     readonly items: ReadonlyArray<SidebarItem>
 }
 
-export type SidebarProps = {
+export type SidebarProps = NoChildren & {
     readonly label: string
     readonly groups: ReadonlyArray<SidebarGroup>
     readonly selectedKey?: string

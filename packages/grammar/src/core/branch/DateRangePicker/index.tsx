@@ -18,10 +18,11 @@ import {
 } from "../../leaf/Field/index.js"
 import { DateSegments, type DateGranularity } from "../../leaf/DateField/index.js"
 import { PickerRangeCalendar } from "../DatePicker/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type DateRangeValue = RangeValue<DateValue>
 
-export type DateRangePickerProps = Omit<FieldControlProps, "name"> & {
+export type DateRangePickerProps = NoChildren & Omit<FieldControlProps, "name"> & {
     readonly value?: DateRangeValue | null
     readonly defaultValue?: DateRangeValue | null
     readonly onValueChange?: (value: DateRangeValue | null) => void

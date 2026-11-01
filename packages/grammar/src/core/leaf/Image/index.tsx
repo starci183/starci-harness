@@ -1,15 +1,15 @@
 "use client"
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
 import { assetSlotAttributes, type AssetSlotProps } from "./assetSlot.js"
+import type { NoChildren } from "../../tier.js"
 
 export type { AssetSlotProps } from "./assetSlot.js"
 
 export type ImageAspect = "square" | "landscape" | "portrait" | "wide" | "auto"
 export type ImageLoadState = "loading" | "loaded" | "error"
 
-export type ImageProps = AssetSlotProps & {
+export type ImageProps = NoChildren & AssetSlotProps & {
     readonly src: string
     /** Required. Pass "" only for a purely decorative image. */
     readonly alt: string
@@ -30,7 +30,6 @@ export type ImageProps = AssetSlotProps & {
      * (a mascot or logo with an alpha channel) that must sit directly on its surface.
      */
     readonly plate?: "default" | "none"
-    readonly className?: string
 }
 
 /**
@@ -54,7 +53,6 @@ export const Image = ({
     height,
     onLoadStateChange,
     plate = "default",
-    className,
     ...assetSlot
 }: ImageProps) => {
     const [state, setState] = useState<ImageLoadState>("loading")
@@ -73,7 +71,7 @@ export const Image = ({
     const showFallback = state === "error" && fallback !== undefined
     return (
         <span
-            className={navigationClassName("starci-core-image", className)}
+            className="starci-core-image"
             data-component="Image"
             data-tier="leaf"
             data-grammar-image-aspect={aspect}

@@ -2,9 +2,9 @@
 
 import { Button as HeroButton } from "@heroui/react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
+import type { NoChildren } from "../../tier.js"
 
 export type TopBarMenu = {
     readonly icon: ReactNode
@@ -25,7 +25,7 @@ export type TopBarMenu = {
 type WithSubnavigation = { readonly subnavigation: ReactNode; readonly subnavigationLabel: string }
 type WithoutSubnavigation = { readonly subnavigation?: undefined; readonly subnavigationLabel?: never }
 
-export type TopBarProps = Omit<ComponentPropsWithoutRef<"header">, "children" | "title"> & (WithSubnavigation | WithoutSubnavigation) & {
+export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, "children" | "className" | "title"> & (WithSubnavigation | WithoutSubnavigation) & {
     /** App-owned identity (logo, product name) - usually a link home. */
     readonly brand: ReactNode
     /** Primary destinations shown inline at wide widths (e.g. a `<nav>` of `Link`s). */
@@ -46,12 +46,12 @@ export type TopBarProps = Omit<ComponentPropsWithoutRef<"header">, "children" | 
  * `header` slot, the shell yields (its wrapper becomes a plain `div`) so the banner is never nested.
  * Contract: menu trigger A11Y-2 STATE-7 (named glyph button, app-owned aria-expanded).
  */
-export const TopBar = ({ brand, navigation, actions, menu, subnavigation, subnavigationLabel, position = "sticky", className, ...headerProps }: TopBarProps) => (
+export const TopBar = ({ brand, navigation, actions, menu, subnavigation, subnavigationLabel, position = "sticky", ...headerProps }: TopBarProps) => (
     <ButtonPlacementProvider placement="chrome" navbar>
     <SurfaceNesting>
     <header
         {...headerProps}
-        className={navigationClassName("starci-core-top-bar", className)}
+        className={"starci-core-top-bar"}
         data-component="TopBar"
         data-tier="composite"
         data-grammar-top-bar-position={position}

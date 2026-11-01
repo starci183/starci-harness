@@ -7,6 +7,7 @@ import { SearchField } from "../../leaf/SearchField/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ListBox } from "../../branch/ListBox/index.js"
 import { Popover } from "../../frame/Popover/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type FilterOption = {
     readonly value: string
@@ -16,7 +17,7 @@ export type FilterOption = {
     readonly isDisabled?: boolean
 }
 
-export type FilterButtonGroupProps = {
+export type FilterButtonGroupProps = NoChildren & {
     /** Names the group for assistive technology, e.g. "Provider". Hidden from sight unless `isLabelVisible`. */
     readonly label: string
     readonly isLabelVisible?: boolean

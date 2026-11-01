@@ -6,7 +6,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import { useOverlayContainer } from "../../overlayScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { FieldSkeletonScope, StaticFieldError, fieldStateAttributes, fieldVariantAttributes } from "../../leaf/Field/index.js"
-import { tooltipContentClassName } from "../Tooltip/classNames.js"
+import { tooltipContentClassName } from "../../tooltipClassName.js"
+import type { NoChildren } from "../../tier.js"
 
 type CopyFieldBase = {
     /** The visible accessible name of the value. */
@@ -45,7 +46,7 @@ export type CopyFieldMaskedProps = CopyFieldBase & {
     readonly onCopy: () => string | Promise<string>
 }
 
-export type CopyFieldProps = CopyFieldPlainProps | CopyFieldMaskedProps
+export type CopyFieldProps = NoChildren & (CopyFieldPlainProps | CopyFieldMaskedProps)
 
 /** The copy action's life: at rest, waiting for `onCopy` or the clipboard, confirmed for a moment, or refused. */
 export type CopyFieldState = "idle" | "pending" | "copied" | "failed"

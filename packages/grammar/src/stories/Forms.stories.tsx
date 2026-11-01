@@ -132,22 +132,14 @@ export const Field: Story = {
   render: () => (
     <Matrix maxWidth={formColumn}>
       <State label="Default with description" direction="column">
-        <G.Field label="Nickname" description="Shown to other people." name="nickname">
-          {(control) => <input {...control} placeholder="nickname" />}
-        </G.Field>
+        <G.Field label="Nickname" description="Shown to other people." name="nickname" control={(control) => <input {...control} placeholder="nickname" />} />
       </State>
       <State label="Required and invalid" direction="column">
-        <G.Field label="Nickname" isRequired isInvalid errorMessage="Choose a longer nickname." name="nick-invalid">
-          {(control) => <input {...control} defaultValue="a" />}
-        </G.Field>
+        <G.Field label="Nickname" isRequired isInvalid errorMessage="Choose a longer nickname." name="nick-invalid" control={(control) => <input {...control} defaultValue="a" />} />
       </State>
       <State label="Disabled and read-only" direction="column">
-        <G.Field label="Plan" isDisabled>
-          {(control) => <select {...control}><option>Starter</option></select>}
-        </G.Field>
-        <G.Field label="Account id" isReadOnly>
-          {(control) => <input {...control} defaultValue="acct-0042" />}
-        </G.Field>
+        <G.Field label="Plan" isDisabled control={(control) => <select {...control}><option>Starter</option></select>} />
+        <G.Field label="Account id" isReadOnly control={(control) => <input {...control} defaultValue="acct-0042" />} />
       </State>
     </Matrix>
   ),

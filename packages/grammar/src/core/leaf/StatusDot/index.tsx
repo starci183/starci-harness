@@ -2,13 +2,14 @@
 
 import { Tooltip as HeroTooltip, skeletonVariants } from "@heroui/react"
 import { useOverlayContainer } from "../../overlayScope.js"
-import { tooltipContentClassName } from "../../branch/Tooltip/classNames.js"
+import { tooltipContentClassName } from "../../tooltipClassName.js"
+import type { NoChildren } from "../../tier.js"
 
 export type StatusDotTone = "neutral" | "accent" | "success" | "warning" | "danger"
 /** The same three sizes as HeroUI Chip, which the dot's hit area follows. */
 export type StatusDotSize = "sm" | "md" | "lg"
 
-export type StatusDotProps = {
+export type StatusDotProps = NoChildren & {
     readonly tone?: StatusDotTone
     readonly size?: StatusDotSize
     /** Required: the status in words, also shown in a Tooltip on hover and focus. A status with words beside it is `Badge isDot`. */

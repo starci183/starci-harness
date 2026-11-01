@@ -25,6 +25,7 @@ export default defineConfig(
         rules: {
             "@typescript-eslint/ban-ts-comment": "error",
             "starci-grammar/no-literal-look": "error",
+            "starci-grammar/tier-props": "error",
         },
     },
 )

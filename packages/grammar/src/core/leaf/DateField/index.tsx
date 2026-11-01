@@ -13,10 +13,11 @@ import {
     type FieldControlProps,
     type FieldVariant,
 } from "../Field/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type DateGranularity = "day" | "hour" | "minute" | "second"
 
-export type DateFieldProps = FieldControlProps & {
+export type DateFieldProps = NoChildren & FieldControlProps & {
     readonly value?: DateValue | null
     readonly defaultValue?: DateValue | null
     readonly onValueChange?: (value: DateValue | null) => void

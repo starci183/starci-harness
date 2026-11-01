@@ -1,9 +1,8 @@
-import type { ReactNode } from "react"
 import { SkeletonPlaceholder } from "../Skeleton/index.js"
 
 export type CodeProps = {
     /** The literal: an identifier, a path, a command, a value. */
-    readonly children: ReactNode
+    readonly children: string
     /** Unresolved literal (knowledge STATE-8): the same plate, its text laid out unseen under a shimmer (skeleton parity). */
     readonly isSkeleton?: boolean
 }

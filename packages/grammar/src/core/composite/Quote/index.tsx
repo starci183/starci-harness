@@ -1,9 +1,9 @@
-import type { ReactNode } from "react"
+import type { NoChildren } from "../../tier.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 
-export type QuoteProps = {
+export type QuoteProps = NoChildren & {
     /** The quoted words. Plain text keeps its line breaks. Ignored (and optional) while `isSkeleton`. */
-    readonly children?: ReactNode
+    readonly text?: string
     /** A short word naming where the words come from, e.g. "Brain", "Chat", "Template". Drawn above the words. */
     readonly source?: string
     /** Where and when the words were said, muted under them, e.g. "Zalo, 09:41". */
@@ -21,7 +21,7 @@ export type QuoteProps = {
  * drawer without nesting a surface in a surface. Use it to show what was said or stored, never an outcome (that is `Alert`).
  * Contract: INSET-NESTED by `--grammar-inset-nested`, STATE-8 by `isSkeleton`.
  */
-export const Quote = ({ children, source, byline, isSkeleton = false }: QuoteProps) => {
+export const Quote = ({ text, source, byline, isSkeleton = false }: QuoteProps) => {
     if (isSkeleton) {
         return (
             <blockquote
@@ -44,7 +44,7 @@ export const Quote = ({ children, source, byline, isSkeleton = false }: QuotePro
             data-tier="composite"
         >
             {source == null ? null : <span className="starci-core-quote-source">{source}</span>}
-            <span className="starci-core-quote-words">{children}</span>
+            <span className="starci-core-quote-words">{text}</span>
             {byline == null ? null : <span className="starci-core-quote-byline">{byline}</span>}
         </blockquote>
     )

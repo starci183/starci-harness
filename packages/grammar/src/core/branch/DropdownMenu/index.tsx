@@ -4,6 +4,7 @@ import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../
 import { overlayOpenProps, useOverlayContainer, type OverlayOpenState } from "../../overlayScope.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { kbdChordContent } from "../../leaf/Kbd/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type DropdownMenuItemTone = "neutral" | "danger"
 
@@ -58,7 +59,7 @@ export type DropdownMenuEntry = DropdownMenuItem | DropdownMenuSection
 
 export type DropdownMenuPlacement = "bottom start" | "bottom end" | "top start" | "top end"
 
-export type DropdownMenuProps = OverlayOpenState & {
+export type DropdownMenuProps = NoChildren & OverlayOpenState & {
     /**
      * A Common `Button`/`IconButton` (any React Aria pressable) that opens the menu. It also NAMES the
      * menu (`aria-labelledby`, the WAI-ARIA menu-button pattern), so give an icon trigger its label.

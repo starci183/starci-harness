@@ -4,6 +4,7 @@ import { IconTile } from "../../leaf/IconTile/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { Mascot, type MascotProps } from "../../leaf/Mascot/index.js"
 import { Text } from "../../leaf/Text/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /**
  * The art of a first-run notice: generated character art drawn through `Mascot` at the `md` step (the support row of
@@ -27,7 +28,7 @@ type EmptyNoticeMark =
         readonly artwork: EmptyNoticeArtwork
     }
 
-export type EmptyNoticeProps = EmptyNoticeMark & {
+export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & {
     readonly message: string
     readonly description?: string
     readonly actionLabel?: string

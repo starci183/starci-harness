@@ -1,5 +1,6 @@
 import { Separator } from "@heroui/react"
 import { Text } from "../Text/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /**
  * How an unlabelled hairline is exposed. `separator` is a thematic break a screen reader announces
@@ -28,7 +29,7 @@ type UnlabelledDivider = {
     readonly orientation?: DividerOrientation
 }
 
-export type DividerProps = LabelledDivider | UnlabelledDivider
+export type DividerProps = NoChildren & (LabelledDivider | UnlabelledDivider)
 
 /**
  * A labelled alternative boundary ("or") with intrinsic separator semantics, or - without a label - the

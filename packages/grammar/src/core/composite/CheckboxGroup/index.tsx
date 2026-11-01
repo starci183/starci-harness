@@ -14,6 +14,7 @@ import {
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
 import { CheckboxItem } from "../../leaf/Checkbox/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** One option in a choice group. */
 export type ChoiceOption = {
@@ -25,7 +26,7 @@ export type ChoiceOption = {
 
 export type ChoiceOrientation = "vertical" | "horizontal"
 
-export type CheckboxGroupProps = FieldControlProps & {
+export type CheckboxGroupProps = NoChildren & FieldControlProps & {
     readonly options: ReadonlyArray<ChoiceOption>
     readonly value?: ReadonlyArray<string>
     readonly defaultValue?: ReadonlyArray<string>
