@@ -720,6 +720,11 @@ rulings:
     status: live
     ruling: "A few choices or facts inside a first-run step card (connect a channel, the rules a workspace starts with) are a SurfaceListCard of ListRow with the label outside, the `step` row of `list-table.choose.role`, placed before `entity`. This is the second exception to \"a list is never wrapped in a card\" beside the rail list (COLLECTION-1); a list in a page section stays a section list without a card. Owner chose \"SurfaceListCard\" for the step card, 2026-10-31."
     owner: "contexts/ui/components/list-table.md (list-table.choose.role, step); contexts/ui/components/card.md rail-list"
+  - id: task-list-card
+    date: '2026-11-01'
+    status: live
+    ruling: "A bounded task list, a fixed set the reader works through as one group (the items an agent setup needs, required steps) with no search, filter or paging, is one SurfaceListCard of ListRow with the label outside, on a page or in a pane, the `task` row of `list-table.choose.role`. A list that grows, searches, filters or pages stays bare rows in its section (COLLECTION-1); a comparison across columns stays a DataTable. The owner's words on the agent setup items: \"ủa cái này phải là surface list card cho các mục chứ\"; bare rows passed the rule and the mockup and still did not read as one block."
+    owner: "contexts/ui/composition.md COLLECTION-1; contexts/ui/components/list-table.md (list-table.choose.role, task); contexts/ui/components/card.md (card.choose.role, task-list)"
   - id: flow-graph-orbit
     date: '2026-10-31'
     status: live

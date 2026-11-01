@@ -218,7 +218,9 @@ durable owner. Transient confirmations are toasts; see [components/toast-alert.m
 
 ### COLLECTION-1 A list of entities is a section, never a card
 Three or more of one kind sit in a page section under its own heading; title, count, filter and section action
-belong to that heading region. No card encloses the rows. A published collection container is used where one
+belong to that heading region. No card encloses the rows. The exception is a bounded task list, a fixed set the reader
+works through as one group (the items a setup needs, required steps) with no search, filter or paging: it is one
+`SurfaceListCard` with its label outside (ruling `task-list-card`). A published collection container is used where one
 exists (see [components/list-table.md](components/list-table.md)); none existing is a grammar gap, never a
 substitute card. Several values of one kind entered by the user are one single-value field per row with its own
 remove action and an "add another" command, never a "one per line" textarea.

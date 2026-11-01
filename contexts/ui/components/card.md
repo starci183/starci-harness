@@ -11,6 +11,7 @@ Choice `card.choose.role`: what presents the subject. The first row that applies
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
+| task-list | a bounded set the reader works through as one group, with no search, filter or paging | `SurfaceListCard`: label outside, rows inside (`list-table.choose.role:task`) | judgement |
 | collection | three or more entities of one kind on a page | not a card: a section with a list (`list-table.choose.role`) | candidate: no card holds three or more sibling cards |
 | rail-list | a standalone list in a rail (choices, suggestions, how it works) | `SurfaceListCard`: label outside, rows inside | `DNA-COMMON-LISTCARD-LABEL-OUTSIDE` |
 | disclosure | one summary that reveals a rarely changed region | `SurfaceAccordionCard`, closed by default | judgement |
