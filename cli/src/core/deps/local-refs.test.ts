@@ -22,6 +22,26 @@ void test("a lockfile resolved to a local registry is found, one resolved to npm
     assert.equal(localReferences("package-lock.json", lock("file:../grammar")).length, 0)
 })
 
+void test("every resolved URL is judged in a compact lockfile, including JSON-escaped URLs", () => {
+    const first = "http://localhost:4873/@starci/grammar/-/grammar-0.21.0.tgz"
+    const second = "http://127.0.0.1:4873/@starci/hfs/-/hfs-4.16.5.tgz"
+    const compact = JSON.stringify({ packages: {
+        "node_modules/react": { resolved: "https://registry.npmjs.org/react/-/react-19.0.0.tgz" },
+        "node_modules/@starci/grammar": { resolved: first },
+        "node_modules/@starci/hfs": { resolved: second },
+    } }).replace("localhost", "local\\u0068ost")
+    assert.deepEqual(localReferences("package-lock.json", compact), [
+        { file: "package-lock.json", line: 1, url: first },
+        { file: "package-lock.json", line: 1, url: second },
+    ])
+    assert.equal(localReferences("package-lock.json", compact).length, 2)
+})
+
+void test("a resolved value split from its key keeps the key's diagnostic line", () => {
+    const text = '{\n  "resolved":\n    "http:\\/\\/localhost:4873/pkg.tgz"\n}\n'
+    assert.deepEqual(localReferences("npm-shrinkwrap.json", text), [{ file: "npm-shrinkwrap.json", line: 2, url: "http://localhost:4873/pkg.tgz" }])
+})
+
 void test("an .npmrc registry on this machine is found, scoped or not", () => {
     assert.equal(localReferences(".npmrc", "@starci:registry=http://127.0.0.1:4873/\n").length, 1)
     assert.equal(localReferences("fe/.npmrc", "registry = http://localhost:4873/\n").length, 1)

@@ -34,18 +34,40 @@ export interface LocalReference {
 }
 
 const LOCKFILE = /^(?:package-lock|npm-shrinkwrap)\.json$/
-const RESOLVED = /"resolved"\s*:\s*"([^"]+)"/
+const RESOLVED = /"resolved"\s*:\s*("(?:[^"\\]|\\.)*")/g
 const NPMRC_REGISTRY = /^\s*(?:@[\w.-]+:)?registry\s*=\s*(\S+)/i
+
+const jsonString = (text: string | undefined): string | undefined => {
+    if (text === undefined) return undefined
+    try {
+        const value: unknown = JSON.parse(text)
+        return typeof value === "string" ? value : undefined
+    } catch {
+        return undefined
+    }
+}
+
+const resolvedCandidates = (text: string): { readonly url: string | undefined; readonly line: number }[] => {
+    let offset = 0
+    let line = 1
+    return [...text.matchAll(RESOLVED)].map((match) => {
+        line += text.slice(offset, match.index).split("\n").length - 1
+        offset = match.index
+        return { url: jsonString(match[1]), line }
+    })
+}
 
 /** The lines of one committed file that name a loopback registry: a lockfile's `resolved` URL, or a `registry` setting of an `.npmrc`. */
 export const localReferences = (file: string, text: string): LocalReference[] => {
     const base = posix.basename(file)
-    const pattern = LOCKFILE.test(base) ? RESOLVED : base === ".npmrc" ? NPMRC_REGISTRY : undefined
-    if (pattern === undefined) return []
-    return text.split("\n").flatMap((raw, index): LocalReference[] => {
-        const url = pattern.exec(raw)?.[1]
+    const candidates = LOCKFILE.test(base)
+        ? resolvedCandidates(text)
+        : base === ".npmrc"
+            ? text.split("\n").map((raw, index) => ({ url: NPMRC_REGISTRY.exec(raw)?.[1], line: index + 1 }))
+            : []
+    return candidates.flatMap(({ url, line }): LocalReference[] => {
         const host = url === undefined ? undefined : hostOf(url.replace(/^\/\//, "http://"))
-        return url !== undefined && host !== undefined && isLoopbackHost(host) ? [{ file, line: index + 1, url }] : []
+        return url !== undefined && host !== undefined && isLoopbackHost(host) ? [{ file, line, url }] : []
     })
 }
 

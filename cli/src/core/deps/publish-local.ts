@@ -74,7 +74,7 @@ export const depsPublishLocalVerb = defineVerb({
     flags: {
         execute: { kind: "boolean", summary: "start or reuse the registry container, build and publish (default: print the plan only)" },
         package: { kind: "list", summary: "only this package (its folder or name), repeatable; its build prerequisites are built, not published" },
-        force: { kind: "boolean", summary: "unpublish a version already in the local registry and publish it again (an app that locked the old one reinstalls it)" },
+        force: { kind: "boolean", summary: "replace a version in the local registry; existing app locks and npm caches retain the old tarball (prefer a new version)" },
         port: { kind: "string", summary: `the port on 127.0.0.1 (default ${String(DEFAULT_PORT)})` },
         cwd: { kind: "string", summary: "the harness checkout to build and publish (default: the checkout of the working directory)" },
     },
@@ -88,6 +88,8 @@ export const depsPublishLocalVerb = defineVerb({
         if (chosen.length === 0) throw new Refusal("RELEASE_PACKAGE_UNKNOWN", `no publishable package matches ${flags.package.join(", ") || "this checkout"}`)
         // The release plan's own judgement against npm (never the local registry): a sibling requirement that skews, and a package whose shipped files changed under a version npm has.
         const npm = await judgePlan(root, all, "")
+        // A stopped registry can already hold these versions; plan only once its storage is readable for an executed run.
+        if (flags.execute) await ensureRegistry(port, root)
         const state = await registryStatus(port, root)
         const live = state === "running" && (await registryAnswers(port))
         const warnings: string[] = []
@@ -108,7 +110,6 @@ export const depsPublishLocalVerb = defineVerb({
         let installNpmrc: string | undefined
         if (flags.execute) {
             if (due.length === 0) context.progress("nothing to publish")
-            await ensureRegistry(port, root)
             const files = writeNpmrcs(port)
             installNpmrc = files.install
             const plan = await affectedBy(root, undefined, undefined)
@@ -141,6 +142,8 @@ export const depsPublishLocalVerb = defineVerb({
             "install in an app (this one command; nothing is written to the app's .npmrc or committed):",
             `  npm install @starci/<package>@<version> ${installFlags(port).join(" ")}`,
             ...(installNpmrc === undefined ? [] : [`  or NPM_CONFIG_USERCONFIG=${installNpmrc} npm install`]),
+            "when switching from deps source --local, first run deps source --npm in the app to clear its recorded overlay, then install from this registry",
+            ...(flags.force ? ["--force changes tarball integrity: existing locks and caches retain the old build. Prefer a new version; verify a replacement in a fresh scratch app with no prior lockfile/node_modules and a fresh npm --cache folder"] : []),
             "back to npm: git checkout -- package.json package-lock.json, then starci deps source --npm; a lockfile naming 127.0.0.1 is refused DEPS_LOCAL_REGISTRY_COMMITTED",
         ]
         return { data, message: [table, summary, ...warnings.map((warning) => `warning: ${warning}`), ...install].join("\n") }

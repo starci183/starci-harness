@@ -28,7 +28,7 @@ is green ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20).
 
 ### Or install it like npm
 
-When the app should install the edit instead of receiving a copy, `starci deps publish-local --execute` (`--cwd <worktree>`) builds the packages and publishes the versions npm lacks to a registry on 127.0.0.1, and the app runs `npm install @starci/<package>@<version> --@starci:registry=http://127.0.0.1:4873/ --replace-registry-host=never` with the pin raised ([cli/README.md](../../cli/README.md) "A local registry"). It is no publication ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20): the lockfile it writes is restored before a commit, and `DEPS_LOCAL_REGISTRY_COMMITTED` refuses a push that keeps it.
+When the app should install the edit instead of receiving a copy, `starci deps publish-local --execute` (`--cwd <worktree>`) builds the packages and publishes the versions npm lacks to a registry on 127.0.0.1. An app in `deps source --local` mode first runs `deps source --npm` to clear its recorded overlay, then runs `npm install @starci/<package>@<version> --@starci:registry=http://127.0.0.1:4873/ --replace-registry-host=never` with the pin raised ([cli/README.md](../../cli/README.md) "A local registry"). It is no publication ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20): the lockfile it writes is restored before a commit, and `DEPS_LOCAL_REGISTRY_COMMITTED` refuses a push that keeps it.
 
 ## Grammar edits are content only
 
