@@ -6,6 +6,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.35] - 2026-11-01
+
+### Changed
+
+- The CLI requires @starci/hfs@4.16.5, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
+
 ## [1.1.0-alpha.34] - 2026-11-01
 
 ### Changed
