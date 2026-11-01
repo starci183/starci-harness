@@ -2967,8 +2967,14 @@
     .starci-core-cluster[data-grammar-justify="end"] { justify-content: flex-end; }
     .starci-core-cluster[data-grammar-justify="between"] { justify-content: space-between; }
 
+    /* A heading over a grid of cards sits 12 above it, further than the siblings are from each other. */
+    .starci-core-section:has(> .starci-core-grid[data-grammar-grid-kind="cards"]) {
+        gap: var(--grammar-row-gap);
+    }
+
     .starci-core-grid[data-grammar-grid-kind="cards"] {
-        --starci-core-grid-gap: var(--grammar-section-gap);
+        /* Tiles are siblings: 8 between them, closer than the 12 the heading above holds. */
+        --starci-core-grid-gap: var(--grammar-inline-gap);
         --starci-core-grid-min: 16rem;
         display: grid;
         min-width: 0;
