@@ -13,9 +13,10 @@ import { IconButton } from "../../leaf/IconButton/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { EllipsisHorizontalIcon } from "@heroicons/react/16/solid"
+import type { NoChildren } from "../../tier.js"
 import type { BadgeData, ItemAction, ItemLeading, ListRowData } from "../../surfaceCardData.js"
 
-export type ListRowProps = {
+export type ListRowProps = NoChildren & {
     readonly row: ListRowData
     /**
      * Draw the row as inert geometry while its content is unresolved (knowledge STATE-8): the title becomes a Skeleton

@@ -741,8 +741,8 @@ const PaneInsetDemo = () => {
         </G.Pane>
         <G.Pane area="thread">
           <G.PaneSection scroll={{ label: 'Messages', role: 'log', tone: 'background' }}>
-            <G.MessageBubble author="Linh" meta="09:12">Can the order for table 4 move to 19:30?</G.MessageBubble>
-            <G.MessageBubble author="You" meta="09:14" side="outgoing">Yes, I moved it.</G.MessageBubble>
+            <G.MessageBubble author="Linh" meta="09:12" body={"Can the order for table 4 move to 19:30?"} />
+            <G.MessageBubble author="You" meta="09:14" side="outgoing" body={"Yes, I moved it."} />
           </G.PaneSection>
         </G.Pane>
         <G.Pane area="composer" surface>
@@ -872,7 +872,7 @@ const PagePanesDemo = () => (
     <G.PaneGrid label="Setup" areas={{ base: ['chat', 'side'], medium: ['chat side'] }} columns={{ base: ['fill'], medium: ['fill', 'standard'] }}>
       <G.Pane area="chat">
         <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'background' }}>
-          <G.MessageBubble author="Agent" meta="09:12">How can I help?</G.MessageBubble>
+          <G.MessageBubble author="Agent" meta="09:12" body={"How can I help?"} />
         </G.PaneSection>
       </G.Pane>
       <G.Pane area="side" surface>
@@ -929,30 +929,21 @@ export const MessageBubble: Story = {
         avatar={<G.Avatar name="Linh" size="sm" />}
         actions={
           <>
-            <G.Tooltip content="Copy"><G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} /></G.Tooltip>
-            <G.Tooltip content="Reply"><G.IconButton intent="neutral" source={BellGlyph} label="Reply" onPress={noop} /></G.Tooltip>
+            <G.Tooltip content="Copy" trigger={<G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} />} />
+            <G.Tooltip content="Reply" trigger={<G.IconButton intent="neutral" source={BellGlyph} label="Reply" onPress={noop} />} />
           </>
-        }
-      >
-        Can the order for table 4 move to 19:30?
-      </G.MessageBubble>
+        } body={"Can the order for table 4 move to 19:30?"} />
       <G.MessageBubble
         side="outgoing"
         meta="09:13"
-        actions={<G.Tooltip content="Copy"><G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} /></G.Tooltip>}
-      >
-        Yes, moved. The kitchen has the new time.
-      </G.MessageBubble>
+        actions={<G.Tooltip content="Copy" trigger={<G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} />} />} body={"Yes, moved. The kitchen has the new time."} />
       <G.MessageBubble
         author="Assistant"
         status={<G.Badge>AI</G.Badge>}
         meta="09:13"
         avatar={<G.IconTile source={BellGlyph} size="sm" />}
         isHighlight
-        footer={<G.Button intent="alternative" size="sm" onPress={noop}>Approve draft</G.Button>}
-      >
-        {'Draft reply ready.\nIt keeps the original price.'}
-      </G.MessageBubble>
+        footer={<G.Button intent="alternative" size="sm" onPress={noop}>Approve draft</G.Button>} body={'Draft reply ready.\nIt keeps the original price.'} />
       <G.MessageBubble isSkeleton side="outgoing" />
       <G.MessageBubble isSkeleton rows={3} />
     </div>
@@ -963,10 +954,10 @@ export const MessageBubble: Story = {
 export const Quote: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '28rem' }}>
-      <G.Quote source="Brain" byline="Chat, 09:41">Table 4 moved to 19:30. The kitchen has the new time.</G.Quote>
-      <G.Quote source="Template">{'Thank you for booking.\nWe hold the table for 15 minutes.'}</G.Quote>
+      <G.Quote source="Brain" byline="Chat, 09:41" text={"Table 4 moved to 19:30. The kitchen has the new time."} />
+      <G.Quote source="Template" text={'Thank you for booking.\nWe hold the table for 15 minutes.'} />
       <G.SurfaceCard ariaLabel="Reply source">
-        <G.Quote source="Chat" byline="Zalo, 09:12">Can the order for table 4 move to 19:30?</G.Quote>
+        <G.Quote source="Chat" byline="Zalo, 09:12" text={"Can the order for table 4 move to 19:30?"} />
       </G.SurfaceCard>
       <G.Quote isSkeleton />
     </div>

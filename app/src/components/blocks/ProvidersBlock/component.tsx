@@ -87,8 +87,7 @@ const ProviderDetail = ({ provider, locale, isSkeleton }: { readonly provider: P
 export const ProvidersBlockBase = (props: ProvidersBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-            {(providers, isSkeleton) => (
+        <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(providers, isSkeleton) => (
                 <SurfaceCard
                     kind="list"
                     label={labels.title}
@@ -103,7 +102,6 @@ export const ProvidersBlockBase = (props: ProvidersBlockBaseProps) => {
                         detail: <ProviderDetail provider={provider} locale={labels.locale} isSkeleton={isSkeleton} />,
                     }))}
                 />
-            )}
-        </SlotView>
+            )} />
     )
 }

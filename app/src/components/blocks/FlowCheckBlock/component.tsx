@@ -35,8 +35,7 @@ const CHECK_PLACEHOLDER: FlowCheckView = { flow: [], problems: [], problemsTitle
 export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SlotView slot={props.props.check} placeholder={CHECK_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
-            {(check, isSkeleton) => {
+        <SlotView slot={props.props.check} placeholder={CHECK_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(check, isSkeleton) => {
                 const flow: Band = {
                     kind: "body",
                     children:
@@ -77,7 +76,6 @@ export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
                         }
                     />
                 )
-            }}
-        </SlotView>
+            }} />
     )
 }

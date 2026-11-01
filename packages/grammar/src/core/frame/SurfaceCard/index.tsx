@@ -17,7 +17,7 @@ import type {
     TileMark,
     WholeCardAction,
 } from "../../surfaceCardData.js"
-import { VerticalScrollRegion } from "../VerticalScrollRegion/index.js"
+import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../leaf/Label/index.js"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Badge } from "../../leaf/Badge/index.js"
@@ -278,7 +278,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                     <div className={tileClassName} data-grammar-tile="true">
                         <TileMarkView mark={props.mark} isSkeleton={isSkeleton} />
                         <span className="starci-core-tile-copy" data-contract="GAP-1">
-                            <Label as={`h${headingLevel}`} id={headingId}>{isSkeleton ? <SkeletonPlaceholder>{props.name}</SkeletonPlaceholder> : props.name}</Label>
+                            <Label as={`h${headingLevel}`} id={headingId} isSkeleton={isSkeleton}>{props.name}</Label>
                             {props.description === undefined ? null : (
                                 <span className="starci-core-tile-description" data-contract="TONE-2 FONT-2">{isSkeleton ? <SkeletonPlaceholder>{props.description}</SkeletonPlaceholder> : props.description}</span>
                             )}
@@ -336,14 +336,14 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                     {artwork}
                 </div>
             ) : null}
-            <VerticalScrollRegion
+            <VerticalScrollRegionPart
                 className={getSurfaceContentClassName(measure, false)}
                 data-contract={flush ? "GAP-0 PADDING-0" : "PADDING-4"}
                 data-grammar-surface-content="true"
                 isScrollable={false}
             >
                 {face}
-            </VerticalScrollRegion>
+            </VerticalScrollRegionPart>
             {action}
         </Card.Content>
     )

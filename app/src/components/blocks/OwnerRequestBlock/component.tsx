@@ -67,8 +67,7 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
     return (
         <div className="app-stack">
             <SurfaceCard label={labels.card} headingLevel={2}>
-                <SlotView slot={props.props.projects} placeholder={PROJECTS_PLACEHOLDER} labels={labels.projectsSlot} onRetry={props.on.retryProjects}>
-                    {(projects, isSkeleton) => (
+                <SlotView slot={props.props.projects} placeholder={PROJECTS_PLACEHOLDER} labels={labels.projectsSlot} onRetry={props.on.retryProjects} render={(projects, isSkeleton) => (
                         <div className="app-stack">
                             <Select
                                 label={labels.project}
@@ -99,11 +98,9 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
                                 </Text>
                             </div>
                         </div>
-                    )}
-                </SlotView>
+                    )} />
             </SurfaceCard>
-            <SlotView slot={props.props.requests} placeholder={REQUESTS_PLACEHOLDER} labels={labels.requestsSlot} onRetry={props.on.retryRequests}>
-                {(requests, isSkeleton) => (
+            <SlotView slot={props.props.requests} placeholder={REQUESTS_PLACEHOLDER} labels={labels.requestsSlot} onRetry={props.on.retryRequests} render={(requests, isSkeleton) => (
                     <SurfaceCard
                         kind="list"
                         label={labels.list}
@@ -117,8 +114,7 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
                             badges: [{ label: request.status.label, tone: request.status.tone }],
                         }))}
                     />
-                )}
-            </SlotView>
+                )} />
         </div>
     )
 }

@@ -48,7 +48,7 @@ export type {
     ListData, ListRowData, TileMark, WholeCardAction,
 } from "../core/surfaceCardData.js"
 export type { AccentCorner, SurfaceCardMotif, SurfaceCardTreatment } from "../core/frame/SurfaceCard/classNames.js"
-export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/composite/MarkdownArticle/index.js"
+export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"
 export { Tabs, type TabItem, type TabsProps } from "../core/branch/Tabs/index.js"
 export { Tooltip, type TooltipPlacement, type TooltipProps } from "../core/branch/Tooltip/index.js"
 export { formCompactSurfaceClassName, formFieldClassName, formPageClassName, formScreenReaderLabelClassName, formScrollViewportClassName, formSurfaceClassName, horizontalScrollRegionClassName } from "../core/classNames.js"

@@ -43,8 +43,7 @@ const ROUTE_PLACEHOLDER: TaskRouteView = {
 export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
     const { labels, fact } = props.props
     return (
-        <SlotView slot={props.props.route} placeholder={ROUTE_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
-            {(route, isSkeleton) => (
+        <SlotView slot={props.props.route} placeholder={ROUTE_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(route, isSkeleton) => (
                 <SurfaceCard
                     kind="bands"
                     label={labels.title}
@@ -81,7 +80,6 @@ export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
                         },
                     ]}
                 />
-            )}
-        </SlotView>
+            )} />
     )
 }

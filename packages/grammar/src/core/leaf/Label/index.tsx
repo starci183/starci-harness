@@ -9,9 +9,12 @@ export type SurfaceHeadingLevel = 2 | 3 | 4 | 5 | 6
 
 /** The default rank of a surface name. */
 export const DEFAULT_SURFACE_HEADING_LEVEL: SurfaceHeadingLevel = 3
+import { SkeletonPlaceholder } from "../Skeleton/index.js"
 import { getLabelClassName, getLabelContract } from "./classNames.js"
 
 export type LabelProps = {
+    /** Unresolved name: the words are laid out unseen under a Skeleton, so the label keeps its ready box. */
+    readonly isSkeleton?: boolean
     readonly id?: string
     readonly children: string
     readonly depth?: "top" | "nested"
@@ -20,7 +23,7 @@ export type LabelProps = {
 }
 
 /** Names a bounded surface region without claiming document-outline heading rank. */
-export const Label = ({ id, children, depth = "top", as = "span" }: LabelProps) => {
+export const Label = ({ id, children, depth = "top", as = "span", isSkeleton = false }: LabelProps) => {
     const shared = {
         id,
         className: getLabelClassName(),
@@ -31,5 +34,5 @@ export const Label = ({ id, children, depth = "top", as = "span" }: LabelProps) 
         "data-contract": getLabelContract(depth),
     } as const
 
-    return createElement(as, shared, children)
+    return createElement(as, shared, isSkeleton ? createElement(SkeletonPlaceholder, null, children) : children)
 }
