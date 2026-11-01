@@ -1,4 +1,4 @@
-import { Button, Form, Input, SectionHeader, Text } from "@starci/grammar/common"
+import { Button, Form, Input, Section, Text } from "@starci/grammar/common"
 
 /** Copy, the pending flag, the first error message and the action supplied by the connected sign-in block. */
 export interface SignInFormBaseProps {
@@ -17,8 +17,7 @@ export interface SignInFormBaseProps {
 
 /** Draws the sign-in form without reading navigation, copy or database state. */
 export const SignInFormBase = (props: SignInFormBaseProps) => (
-    <>
-        <SectionHeader title={props.props.title} level={2} />
+    <Section title={props.props.title}>
         <Form label={props.props.title} isPending={props.props.pending} onSubmit={props.on.submit}>
             <Input id="sign-in-email" name="email" label={props.props.emailLabel} kind="email" isRequired />
             <Input id="sign-in-password" name="password" label={props.props.passwordLabel} kind="password" isRequired />
@@ -27,5 +26,5 @@ export const SignInFormBase = (props: SignInFormBaseProps) => (
                 {props.props.submitLabel}
             </Button>
         </Form>
-    </>
+    </Section>
 )

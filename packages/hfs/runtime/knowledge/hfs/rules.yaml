@@ -6279,7 +6279,7 @@ rules:
         ruling: "A filter over a collection is a FilterButtonGroup of sm toggle buttons; the TagGroup has no selection."
   - id: R354
     code: "FE_HEADING_ABOVE_CARD"
-    law: "A card has a label by design, so a hand heading above it is wrong: a SectionHeader directly followed, in the same parent, by one SurfaceCard, SurfaceListCard or SurfaceAccordionCard, and a card whose ariaLabel is the header title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one header stay legal."
+    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard, SurfaceListCard or SurfaceAccordionCard, and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_HEADING_ABOVE_CARD"]
@@ -6299,4 +6299,4 @@ rules:
         date: "2026-11-01"
         source: owner
         quote: "bản thân card đã có label, vốn là mục đích thiết kế"
-        ruling: "A card carries its own title, count, action and note; a SectionHeader above a single card is refused."
+        ruling: "A card carries its own title, count, action and note; a Section around a single card is refused."

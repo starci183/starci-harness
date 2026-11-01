@@ -1,4 +1,4 @@
-import { Badge, Button, DescriptionList, EmptyNotice, ListRow, Region, SectionHeader, SurfaceListCard, Text, type PresentationState } from "@starci/grammar/core"
+import { Badge, Button, DescriptionList, EmptyNotice, ListRow, Section, SurfaceListCard, Text, type PresentationState } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 import { StatusWord } from "../../leaves/StatusWord"
@@ -79,68 +79,65 @@ const GRAPH_PLACEHOLDER: WorkflowGraphView = {
 export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <Region label={labels.title}>
-            <div className="app-stack">
-                <SectionHeader level={2} title={labels.title} />
-                <SlotView slot={props.props.graph} placeholder={GRAPH_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
-                    {(graph, isSkeleton) => (
-                        <div className="app-stack">
-                            <DescriptionList
-                                layout="stat-strip"
-                                isDivided
-                                isLoading={isSkeleton}
-                                items={[
-                                    { id: "live", term: labels.statLive, description: graph.stats.live, unit: graph.stats.cap },
-                                    { id: "queued", term: labels.statQueued, description: graph.stats.queued },
-                                    { id: "waves", term: labels.statWaves, description: graph.stats.waves },
-                                    { id: "done", term: labels.statDone, description: graph.stats.done, unit: graph.stats.total },
-                                ]}
-                            />
-                            <ul className="app-row app-plain-list" aria-label={labels.legend}>
-                                {labels.legendEntries.map((entry) => (
-                                    <li key={entry.label}>
-                                        <Badge isDot tone={entry.tone}>
-                                            {entry.label}
-                                        </Badge>
-                                    </li>
-                                ))}
-                                <li>
-                                    <Text as="span" size="xs" tone="muted">
-                                        {labels.legendSide}
-                                    </Text>
+        <Section title={labels.title}>
+            <SlotView slot={props.props.graph} placeholder={GRAPH_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
+                {(graph, isSkeleton) => (
+                    <div className="app-stack">
+                        <DescriptionList
+                            layout="stat-strip"
+                            isDivided
+                            isLoading={isSkeleton}
+                            items={[
+                                { id: "live", term: labels.statLive, description: graph.stats.live, unit: graph.stats.cap },
+                                { id: "queued", term: labels.statQueued, description: graph.stats.queued },
+                                { id: "waves", term: labels.statWaves, description: graph.stats.waves },
+                                { id: "done", term: labels.statDone, description: graph.stats.done, unit: graph.stats.total },
+                            ]}
+                        />
+                        <ul className="app-row app-plain-list" aria-label={labels.legend}>
+                            {labels.legendEntries.map((entry) => (
+                                <li key={entry.label}>
+                                    <Badge isDot tone={entry.tone}>
+                                        {entry.label}
+                                    </Badge>
                                 </li>
-                            </ul>
-                            {graph.waves.length === 0 ? (
-                                <EmptyNotice message={labels.empty} />
-                            ) : (
-                                <div className="app-grid">
-                                    {graph.waves.map((wave) => (
-                                        <SurfaceListCard key={wave.id} label={wave.label} headingLevel={3}>
-                                            {wave.cells.map((cell) => (
-                                                <ListRow
-                                                    key={cell.id}
-                                                    isSkeleton={isSkeleton}
-                                                    state={cell.presentation}
-                                                    title={cell.title}
-                                                    description={cell.description}
-                                                    badges={<StatusWord status={cell.state} isSkeleton={isSkeleton} />}
-                                                    actions={
-                                                        cell.taskHref === null ? undefined : (
-                                                            <Button intent="neutral" size="sm" href={cell.taskHref} isSkeleton={isSkeleton}>
-                                                                {labels.openTask}
-                                                            </Button>
-                                                        )
-                                                    }
-                                                />
-                                            ))}
-                                        </SurfaceListCard>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </SlotView>
-            </div>
-        </Region>
+                            ))}
+                            <li>
+                                <Text as="span" size="xs" tone="muted">
+                                    {labels.legendSide}
+                                </Text>
+                            </li>
+                        </ul>
+                        {graph.waves.length === 0 ? (
+                            <EmptyNotice message={labels.empty} />
+                        ) : (
+                            <div className="app-grid">
+                                {graph.waves.map((wave) => (
+                                    <SurfaceListCard key={wave.id} label={wave.label} headingLevel={3}>
+                                        {wave.cells.map((cell) => (
+                                            <ListRow
+                                                key={cell.id}
+                                                isSkeleton={isSkeleton}
+                                                state={cell.presentation}
+                                                title={cell.title}
+                                                description={cell.description}
+                                                badges={<StatusWord status={cell.state} isSkeleton={isSkeleton} />}
+                                                actions={
+                                                    cell.taskHref === null ? undefined : (
+                                                        <Button intent="neutral" size="sm" href={cell.taskHref} isSkeleton={isSkeleton}>
+                                                            {labels.openTask}
+                                                        </Button>
+                                                    )
+                                                }
+                                            />
+                                        ))}
+                                    </SurfaceListCard>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </SlotView>
+        </Section>
     )
 }

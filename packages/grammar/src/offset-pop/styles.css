@@ -52,15 +52,6 @@
         color: var(--muted);
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Text"][data-tone="accent"] {
-        color: var(--accent-soft-foreground);
-    }
-
-    /* Common paints these two with the fill accent itself; the family routes their TEXT to the text-safe one. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-section-header] .starci-core-section-eyebrow {
-        color: var(--accent-soft-foreground);
-    }
-
     /* The current tab keeps its pink underline (non-text, a decision mark); only the label reads the text-safe accent. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TextAction"][data-appearance="tab"][data-current="true"] {
         border-block-end-color: var(--accent);
@@ -173,11 +164,6 @@
         border-color: var(--foreground);
         color: var(--grammar-ink-band-foreground);
         background: var(--grammar-ink-band);
-    }
-
-    /* On the ink band the eyebrow is the band's muted ink, not the text-safe pink (which is tuned for the canvas). */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-treatment="ink"] [data-grammar-section-header] .starci-core-section-eyebrow {
-        color: var(--grammar-ink-band-muted);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-label] {

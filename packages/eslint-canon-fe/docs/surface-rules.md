@@ -141,17 +141,16 @@ const Filter = () => <FilterButtonGroup label="Team" options={options} value={te
 
 ## `starci-fe/no-heading-above-card`
 
-Finding code: `FE_HEADING_ABOVE_CARD` (R354). A card has a label by design (ruling `card-carries-its-own-label`), so a hand heading above it is wrong. A Grammar `SectionHeader` directly followed, in the same parent, by one `SurfaceCard`, `SurfaceListCard` or `SurfaceAccordionCard` is refused, and so is a card whose `ariaLabel` is the header's `title`. Several cards under one header stay legal, and a header followed by anything else is not judged. The fix moves the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`.
+Finding code: `FE_HEADING_ABOVE_CARD` (R354). A card has a label by design (ruling `card-carries-its-own-label`), so a heading over it is wrong. A Grammar `Section` (not `kind="list"`) whose only child is one `SurfaceCard`, `SurfaceListCard` or `SurfaceAccordionCard` is refused, and so is a card whose `ariaLabel` is the `Section`'s `title`. Several cards under one `Section` stay legal, and a `Section` holding anything else is not judged. The fix moves the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`.
 
 Invalid:
 
 ```tsx
-import { SectionHeader, SurfaceListCard } from "@starci/grammar/core"
+import { Section, SurfaceListCard } from "@starci/grammar/core"
 const Rules = () => (
-  <section>
-    <SectionHeader title="Rules" count={3} action={add} />
+  <Section title="Rules" count={3} action={add}>
     <SurfaceListCard ariaLabel="Rules">{rows}</SurfaceListCard>
-  </section>
+  </Section>
 )
 ```
 

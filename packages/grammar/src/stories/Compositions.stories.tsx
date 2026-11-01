@@ -342,7 +342,7 @@ export const Footer: Story = {
   render: () => (
     <G.Footer
       label="Site"
-      brand={<G.Text weight="semibold">Studio</G.Text>}
+      brand={<G.Text isStrong>Studio</G.Text>}
       externalHint="(opens in a new tab)"
       groups={[
         { id: 'product', label: 'Product', links: [{ id: 'features', label: 'Features', href: '#features', isCurrent: true }, { id: 'pricing', label: 'Pricing', href: '#pricing' }] },
@@ -405,7 +405,7 @@ const SidebarDemo = ({ initialCollapsed }: { readonly initialCollapsed: boolean 
         collapseLabel="Collapse sidebar"
         expandLabel="Expand sidebar"
         toggleSource={MenuGlyph}
-        header={<G.Text weight="semibold">Studio</G.Text>}
+        header={<G.Text isStrong>Studio</G.Text>}
         footer={<G.Avatar name="Alex Morgan" size="sm" />}
       />
     </div>
@@ -462,10 +462,9 @@ const FixedShellDemo = ({ defaultOpen = false }: { readonly defaultOpen?: boolea
       primaryLabel="Lessons"
       primary={
         <G.Page>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem 0' }}>
-            <G.SectionHeader title="Lessons" description="The navigation and this region scroll on their own." level={1} />
-            <Placeholder label="Primary" height={900} headingLevel={2} />
-          </div>
+          <G.Section title="Lessons" description="The navigation and this region scroll on their own.">
+            <Placeholder label="Primary" height={900} headingLevel={3} />
+          </G.Section>
         </G.Page>
       }
     />
@@ -503,11 +502,9 @@ export const WorkspaceShell: Story = {
       primaryLabel="Lessons"
       primary={
         <G.Page>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem 0' }}>
-            <G.SectionHeader title="Lessons" description="Everything in this workspace." level={1} />
-            {/* The page title is an h1, so the first card under it names itself at rank 2. */}
-            <Placeholder label="Primary" height={240} headingLevel={2} />
-          </div>
+          <G.Section title="Lessons" description="Everything in this workspace.">
+            <Placeholder label="Primary" height={240} headingLevel={3} />
+          </G.Section>
         </G.Page>
       }
     />
@@ -644,7 +641,7 @@ const PaneGridAppDemo = () => {
           </G.PaneSection>
         </G.Pane>
         <G.Pane area="head" surface>
-          <G.PaneSection align="center"><G.Text weight="semibold">Header</G.Text></G.PaneSection>
+          <G.PaneSection align="center"><G.Text isStrong>Header</G.Text></G.PaneSection>
         </G.Pane>
         <G.Pane area="main" scroll label="Main">
           <G.PaneSection gap="inline">
@@ -721,7 +718,7 @@ const PaneInsetDemo = () => {
         rows={{ base: ['fill', 'fill', 'auto'], medium: ['fill', 'auto'] }}
       >
         <G.Pane area="list" surface>
-          <G.PaneSection align="center"><G.Text weight="semibold">Chats</G.Text></G.PaneSection>
+          <G.PaneSection align="center"><G.Text isStrong>Chats</G.Text></G.PaneSection>
           <G.PaneSection><G.SearchField label="Search" isLabelHidden placeholder="Search conversations" clearLabel="Clear search" /></G.PaneSection>
           <G.PaneSection>
             <G.Tabs
@@ -780,7 +777,7 @@ const PaneInsetDemo = () => {
           isOpen={infoOpen}
           onOpenChange={setInfoOpen}
         >
-          <G.PaneSection align="center"><G.Text weight="semibold">Study group</G.Text></G.PaneSection>
+          <G.PaneSection align="center"><G.Text isStrong>Study group</G.Text></G.PaneSection>
           <G.PaneSection gap="section"><G.Text tone="muted">Four members. Created in March.</G.Text></G.PaneSection>
         </G.Pane>
       </G.PaneGrid>
@@ -883,7 +880,7 @@ const PagePanesDemo = () => (
         </G.PaneSection>
       </G.Pane>
       <G.Pane area="side" surface>
-        <G.PaneSection gap="section"><G.Text weight="semibold">Settings</G.Text><G.Text tone="muted">Greeting and tools.</G.Text></G.PaneSection>
+        <G.PaneSection gap="section"><G.Text isStrong>Settings</G.Text><G.Text tone="muted">Greeting and tools.</G.Text></G.PaneSection>
       </G.Pane>
     </G.PaneGrid>
   </G.Page>
@@ -1000,7 +997,7 @@ export const MessengerFrame: Story = {
           </div>
           <G.Divider orientation="vertical" semantics="presentation" />
           <div style={{ display: 'flex', minWidth: 0, flex: 1, flexDirection: 'column' }}>
-            <div style={{ padding: '1rem' }}><G.Text weight="semibold">Study group</G.Text></div>
+            <div style={{ padding: '1rem' }}><G.Text isStrong>Study group</G.Text></div>
             <G.Divider semantics="presentation" />
             <G.VerticalScrollRegion isScrollable tone="background" aria-label="Messages" style={{ flex: 1, minHeight: 0, padding: '1rem' }}>
               <G.MessageBubble author="Linh" meta="09:12" actions={<G.Tooltip content="Copy"><G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} /></G.Tooltip>}>

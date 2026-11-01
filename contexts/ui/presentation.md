@@ -183,7 +183,7 @@ weights):
 | FONT-2 | supporting reading: a full supporting line | `Text` small size |
 | FONT-3 | ordinary reading | `Text` default size |
 | FONT-4 | page heading: one per document | `Heading` level 1 |
-| FONT-5 | leading value: the principal figure of a region | `Text` leading-value size, text semantics |
+| FONT-5 | leading value: the principal figure of a region | `DescriptionList` stat-strip value, text semantics |
 | FONT-6 | display: a landing introduction | `Heading` display treatment, outline unchanged |
 
 - A heading's level is its document position and sets its size together, so tag and size never drift; levels stop

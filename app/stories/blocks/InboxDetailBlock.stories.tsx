@@ -27,7 +27,6 @@ const meta = {
             refusal: null,
             ruled: { option: "BE + FE một workflow, FE chờ code BE", note: INBOX.noNote },
             labels: {
-                detail: INBOX.detail,
                 body: INBOX.body,
                 ruling: INBOX.ruling,
                 note: INBOX.note,

@@ -735,7 +735,7 @@ rulings:
   - id: card-carries-its-own-label
     date: '2026-11-01'
     status: live
-    ruling: "A card already has a label, which is the purpose of its design: the title is its label, the count its fact, the action its labelEnd and the note its footer, so a SectionHeader directly above a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard is a hand heading and is refused, as is a card whose ariaLabel repeats the header's title; several cards under one header stay legal. SurfaceCard takes a footer, the same bottom note as SurfaceListCard. The owner's words: \"bản thân card đã có label, vốn là mục đích thiết kế\"."
+    ruling: "A card already has a label, which is the purpose of its design: the title is its label, the count its fact, the action its labelEnd and the note its footer, so a Section whose only child is a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard is a heading over one card and is refused, as is a card whose ariaLabel repeats the Section's title; several cards under one Section stay legal. SurfaceCard takes a footer, the same bottom note as SurfaceListCard. The owner's words: \"bản thân card đã có label, vốn là mục đích thiết kế\"."
     owner: "contexts/ui/components/card.md; contexts/hfs/rules.yaml R354; @starci/grammar src/core/frame/SurfaceCard"
   - id: flow-graph-lanes
     date: '2026-11-01'
@@ -757,6 +757,12 @@ rulings:
     status: live
     ruling: "A schedule owned by a data row, such as one agent's next run, is a BullMQ job scheduler keyed by that row, in lite as in full. A customer chat turn locks per conversation and background or scheduled work locks per agent: one conversation never has two turns overlapping, and several customers of one agent are answered in parallel."
     owner: "contexts/code/be/queues.md (BE-QUEUES-3)"
+
+  - id: section-is-the-heading
+    date: '2026-11-01'
+    status: live
+    ruling: "A heading comes from the frame that owns what it heads, never from a free component: Section is a named region whose title is its heading and its landmark name (SectionHeader and Region are gone), a card heads itself with its label, and Heading is for prose and the landing rank. A long list that searches or filters is Section kind=\"list\" of rows with a FilterButtonGroup in its filter slot, its head, filter and rows one section step (24) apart; a short list to work through is a list card. The section's one page command hugs its label at the end of its head row. Text has one stronger weight, isStrong, for a value or a term inside a line: a strong block Text that heads a group is a heading wearing a weight and is refused by review until the lint of the whole-program lane lands. The placement providers CollectionItem, ItemActions and ToolbarActions are gone: item and chrome placement come from the structure."
+    owner: "@starci/grammar src/core/frame/Section; contexts/ui/components/card.md; packages/hfs/codemod/section-frame.mts"
 
   - id: grammar-literal-lint
     date: '2026-11-01'
@@ -806,6 +812,58 @@ removedVocabulary:
   - spelling: ChatBubbleSkeletons
     as: grammar component
     replacedBy: MessageBubble isSkeleton rows
+    ruling: "grammar-names-are-generic"
+  - spelling: SectionHeader
+    as: grammar component
+    replacedBy: Section, whose title is the heading
+    ruling: "grammar-names-are-generic"
+  - spelling: Region
+    as: grammar component
+    replacedBy: Section
+    ruling: "grammar-names-are-generic"
+  - spelling: List
+    as: grammar component
+    replacedBy: Section kind="list" for a long list, a list card for a short one
+    ruling: "grammar-names-are-generic"
+  - spelling: ListItem
+    as: grammar component
+    replacedBy: an item of Section kind="list"
+    ruling: "grammar-names-are-generic"
+  - spelling: LeadingNumber
+    as: grammar component
+    replacedBy: the position field of a Section row
+    ruling: "grammar-names-are-generic"
+  - spelling: CollectionItem
+    as: grammar component
+    replacedBy: nothing, item placement comes from the structure
+    ruling: "grammar-names-are-generic"
+  - spelling: ItemActions
+    as: grammar component
+    replacedBy: nothing, item placement comes from the structure
+    ruling: "grammar-names-are-generic"
+  - spelling: ToolbarActions
+    as: grammar component
+    replacedBy: nothing, chrome placement comes from the structure
+    ruling: "grammar-names-are-generic"
+  - spelling: Label
+    as: grammar component
+    replacedBy: the label of a card or a field, or the title of a Section
+    ruling: "grammar-names-are-generic"
+  - spelling: Text weight
+    as: grammar prop
+    replacedBy: Text isStrong
+    ruling: "grammar-names-are-generic"
+  - spelling: Text size metric-lead
+    as: grammar prop value
+    replacedBy: a figure of DescriptionList layout stat-strip
+    ruling: "grammar-names-are-generic"
+  - spelling: Text tone accent
+    as: grammar prop value
+    replacedBy: Text isStrong for a mention, Link for a destination
+    ruling: "grammar-names-are-generic"
+  - spelling: Text parentEmphasis
+    as: grammar prop
+    replacedBy: nothing
     ruling: "grammar-names-are-generic"
   - spelling: ChatWorkspace
     as: grammar composition

@@ -2,9 +2,8 @@ import { skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
 
 export type TextAs = "div" | "p" | "span"
-export type TextTone = "default" | "muted" | "accent"
-export type TextSize = "xs" | "sm" | "md" | "metric-lead"
-export type TextWeight = "normal" | "medium" | "semibold"
+export type TextTone = "default" | "muted"
+export type TextSize = "xs" | "sm" | "md"
 export type TextLive = "off" | "polite" | "assertive"
 export type TextOverflow = "wrap" | "truncate" | "clamp-2"
 
@@ -17,7 +16,8 @@ export type TextProps = {
     readonly startContent?: ReactNode
     readonly size?: TextSize
     readonly tone?: TextTone
-    readonly weight?: TextWeight
+    /** One stronger weight for a value or a term inside a line (never a title: a title comes from the frame that owns it). */
+    readonly isStrong?: boolean
     /** Announce the complete copy through aria-live without changing its text element or typography. */
     readonly live?: TextLive
     /**
@@ -32,15 +32,13 @@ export type TextProps = {
     readonly tabular?: boolean
     readonly isSkeleton?: boolean
     readonly isSuperseded?: boolean
-    /** Opt into the shared selected-parent accent treatment. */
-    readonly parentEmphasis?: "accent-soft"
 }
 
 /**
  * Copy geometry and paint are SHIPPED.
  *
- * `.starci-core-text` in `src/common/styles.css` reads the `data-size`, `data-tone`, `data-weight`,
- * `data-start-content`, `data-superseded`, `data-parent-emphasis` and `data-loading` attributes this
+ * `.starci-core-text` in `src/common/styles.css` reads the `data-size`, `data-tone`, `data-strong`,
+ * `data-start-content`, `data-superseded` and `data-loading` attributes this
  * element already emits, so a consumer gets the scale without scanning this package with Tailwind.
  */
 const TEXT_CLASS_NAME = "starci-core-text"
@@ -49,13 +47,11 @@ const FONT_RULE_BY_SIZE: Record<TextSize, string> = {
     xs: "FONT-1",
     sm: "FONT-2",
     md: "FONT-3",
-    "metric-lead": "FONT-5",
 }
 
 const TONE_RULE_BY_RESOLVED_TONE: Record<TextTone, string> = {
     default: "TONE-1",
     muted: "TONE-2",
-    accent: "TONE-3",
 }
 
 /**
@@ -64,9 +60,8 @@ const TONE_RULE_BY_RESOLVED_TONE: Record<TextTone, string> = {
  * resolved tone (forced `muted` at `size="xs"`) selects the exact row in
  * tone.md `## Scale` (TONE-1/2/3). the 0.5rem inline gap fires only while `startContent`
  * is shown, matching the `Text` with `startContent` row in gap.md's
- * "Gaps Common already owns" table (GAP-2). Weight classes (`font-medium`,
- * `font-semibold`) and the `parentEmphasis` accent-soft variant carry no rule
- * id here and stay unclaimed.
+ * "Gaps Common already owns" table (GAP-2). The strong weight carries no rule
+ * id here and stays unclaimed.
  */
 const getTextContract = (size: TextSize, resolvedTone: TextTone, showsStartContent: boolean) => {
     const ids = [FONT_RULE_BY_SIZE[size], TONE_RULE_BY_RESOLVED_TONE[resolvedTone]]
@@ -97,14 +92,13 @@ export const Text = ({
     startContent,
     size = "md",
     tone,
-    weight = "normal",
+    isStrong = false,
     live = "off",
     overflow,
     mono = false,
     tabular = false,
     isSkeleton = false,
     isSuperseded = false,
-    parentEmphasis,
 }: TextProps) => {
     const resolvedTone = size === "xs" ? "muted" : tone ?? "default"
     const showsStartContent = startContent != null
@@ -116,10 +110,9 @@ export const Text = ({
             data-component="Text"
             data-size={size}
             data-tone={resolvedTone}
-            data-weight={weight}
+            data-strong={isStrong ? "true" : undefined}
             data-start-content={showsStartContent ? "true" : "false"}
             data-superseded={isSuperseded ? "true" : "false"}
-            data-parent-emphasis={parentEmphasis}
             data-live={live}
             data-overflow={overflow}
             data-mono={mono ? "true" : undefined}

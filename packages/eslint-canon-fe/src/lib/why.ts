@@ -56,7 +56,7 @@ export const why = {
   },
   "no-heading-above-card": {
     code: "FE_HEADING_ABOVE_CARD",
-    en: "`<file>` puts a SectionHeader directly above a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard, or gives the card an ariaLabel that repeats the header's title.",
+    en: "`<file>` wraps a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard in a Section, or gives the card an ariaLabel that repeats the Section's title.",
     fix: "A card has a label by design: move the title to the card's label, the count to fact, the action to labelEnd and the note to footer.",
   },
   "no-table-in-card": {

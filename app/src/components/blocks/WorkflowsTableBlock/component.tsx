@@ -70,7 +70,7 @@ const Cell = ({ row, columnId }: { readonly row: WorkflowRowView; readonly colum
         case "workflow":
             return (
                 <div className="app-pair">
-                    <Text size="sm" weight="medium" mono>
+                    <Text size="sm" isStrong mono>
                         {row.workflow}
                     </Text>
                     <Text size="xs" tone="muted" overflow="truncate">

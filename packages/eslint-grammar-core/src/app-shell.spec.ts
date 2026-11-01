@@ -51,7 +51,7 @@ for (const lite of [false, true]) {
         { filename: FILE, code: 'const view = <WorkspaceShell viewport="fixed" navigation={<Sidebar />} compactHeader={<Drawer placement="left"><Sidebar presentation="drawer" /></Drawer>} />' },
         { filename: FILE, code: 'const attrs = { viewport: "fixed", navigation: <Sidebar />, navigationVisibility: "wide", compactHeader: <Drawer placement="left"><Sidebar presentation="drawer" /></Drawer> } as const; const view = <WorkspaceShell {...attrs} />' },
         { filename: FILE, code: 'const visibility = "wide"; const Opener = () => <Drawer placement="left"><Sidebar presentation="drawer" /></Drawer>; const view = <WorkspaceShell viewport="fixed" navigation={<Sidebar />} navigationVisibility={compact ? visibility : "wide"} compactHeader={<Opener />} />' },
-        { filename: FILE, code: 'const view = <div><Region /></div>' },
+        { filename: FILE, code: 'const view = <div><Section /></div>' },
         { filename: PAGE, code: 'const Article = () => <nav><NavigationList /></nav>' },
         { filename: PAGE, code: 'const SiteShell = () => <WorkspaceShell viewport="flow" header={<TopBar brand={<TextAction />} />} />' },
         { filename: PAGE, code: 'export const Navbar = () => <TopBar brand={<IdentityLockup size="control" />} />' },

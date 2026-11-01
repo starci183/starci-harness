@@ -3,9 +3,9 @@
 import {
     Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
-    Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
+    ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
-    Progress, Quote, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot,
+    Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StaticStateRow, StatusDot,
     Stack, Cluster, Grid,
     SurfaceAccordionCard, SurfaceCard, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
@@ -26,9 +26,9 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
     Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
-    Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
+    ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
-    Progress, Quote, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot,
+    Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StaticStateRow, StatusDot,
     Stack, Cluster, Grid,
     SurfaceAccordionCard, SurfaceCard, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,

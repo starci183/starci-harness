@@ -19,10 +19,10 @@ Choice `list-table.choose.role`: which collection carries the rows. The first ro
 | static | lines that only report (status facts, how it works) | `StaticStateRow` | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
 | step | a few choices or facts inside a first-run step card (connect a channel, the rules a workspace starts with) | `SurfaceListCard` of `ListRow`, label outside | judgement |
 | task | a bounded set the reader works through as one group (the items a setup needs, required steps), with no search, filter or paging | `SurfaceListCard` of `ListRow`, label outside | judgement |
-| entity | entities with a name, one description line, a few facts and actions | `ListRow` rows in the section's list | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
+| entity | entities with a name, one description line, a few facts and actions | `Section kind="list"` with `items`, a `FilterButtonGroup` in its `filter` slot when the list narrows (ruling `section-is-the-heading`) | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
 
 A list is never wrapped in a card (COLLECTION-1), except the `rail`, `step` and `task` rows above: a rail list, the few choices inside a first-run step card and a
-bounded task list are a `SurfaceListCard` with the label outside (rulings `step-card-list`, `task-list-card`). A list that grows, searches, filters or pages stays bare rows in its section. A `DataTable` is never placed in a `SurfaceCard` (R351); a table enters a card only when the data is truly complex, and the owner names that case in the rule. Plain rows with few facts are a `SurfaceListCard` with its note in `footer`. Title, count, filters and the section's command belong to the
+bounded task list are a `SurfaceListCard` with the label outside (rulings `step-card-list`, `task-list-card`). A list that grows, searches, filters or pages is `Section kind="list"`: the title is the section's heading, and its head, filter and rows stand one section step apart. A `DataTable` is never placed in a `SurfaceCard` (R351); a table enters a card only when the data is truly complex, and the owner names that case in the rule. Plain rows with few facts are a `SurfaceListCard` with its note in `footer`. Title, count, filters and the section's command belong to the
 section header above it.
 
 ## Variants

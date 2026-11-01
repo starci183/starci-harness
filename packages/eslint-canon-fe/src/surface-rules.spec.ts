@@ -278,7 +278,7 @@ test("typed app lint follows imported colocated class declarations for panel pad
   }
 })
 
-const panes = 'import { Divider, Button, Page, Pane, PaneGrid, PaneSection, Region, ListBox, SurfaceCard } from "@starci/grammar/core"; '
+const panes = 'import { Divider, Button, Page, Pane, PaneGrid, PaneSection, Section, ListBox, SurfaceCard } from "@starci/grammar/core"; '
 const seam = { messageId: "seam" }
 const joined = { messageId: "joined" }
 
@@ -324,14 +324,14 @@ for (const edition of ["lite", "full"]) {
         { code: panes + 'const SPLIT = "flex min-h-0 min-w-0 flex-1 flex-col xl:flex-row"; const A = () => <div className={SPLIT} data-bleed><div className="flex min-w-0 flex-col">{chat}</div><div className="xl:hidden"><Divider semantics="presentation" /></div><div className="hidden shrink-0 xl:flex"><Divider orientation="vertical" semantics="presentation" /></div><div className="min-w-0 xl:w-104">{side}</div></div>', errors: [seam] },
         // a divider directly between two columns
         { code: panes + 'const A = () => <div className="flex"><div /><Divider orientation="vertical" /><div /></div>', errors: [seam] },
-        { code: panes + 'const A = () => <div className="flex"><aside /><Divider orientation={"vertical"} /><Region label="Main" /></div>', errors: [seam] },
-        // AgentChat: a joined card around an aside rail, an optional drawer rail and the Region column
-        { code: panes + 'const FRAME = cn("flex", "h-full", "min-h-0", "min-w-0"); const A = () => <SurfaceCard composition="joined" height="fill"><div className={FRAME}><aside aria-label="rail">{rail}</aside>{open ? <aside>{rail}</aside> : null}<Region className="flex flex-1 flex-col" label="Chat">{main}</Region></div></SurfaceCard>', errors: [joined] },
+        { code: panes + 'const A = () => <div className="flex"><aside /><Divider orientation={"vertical"} /><Section label="Main" /></div>', errors: [seam] },
+        // AgentChat: a joined card around an aside rail, an optional drawer rail and the Section column
+        { code: panes + 'const FRAME = cn("flex", "h-full", "min-h-0", "min-w-0"); const A = () => <SurfaceCard composition="joined" height="fill"><div className={FRAME}><aside aria-label="rail">{rail}</aside>{open ? <aside>{rail}</aside> : null}<Section className="flex flex-1 flex-col" label="Chat">{main}</Section></div></SurfaceCard>', errors: [joined] },
         // ChatbotInboxPanel: a joined card around three panes in a relative flex row, one nested joined card in a pane
         { code: panes + 'const INBOX = "relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden"; const A = () => <SurfaceCard composition="joined" height="fill"><div className={INBOX}><div className="w-full md:w-80">{list}</div><div className="min-w-0 flex-1">{thread}</div>{side ? <div className="absolute inset-0 xl:static"><SurfaceCard composition="joined" height="fill">{info}</SurfaceCard></div> : null}</div></SurfaceCard>', errors: [joined] },
         // a vertical divider anywhere in a joined card with no column row of its own
-        { code: panes + 'const A = () => <SurfaceCard composition="joined"><Region label="a" /><Divider orientation="vertical" /><Region label="b" /></SurfaceCard>', errors: [seam] },
-        { code: panes + 'const A = () => <SurfaceCard composition="joined"><Region label="a" /><Divider orientation="vertical" /></SurfaceCard>', errors: [seam] },
+        { code: panes + 'const A = () => <SurfaceCard composition="joined"><Section label="a" /><Divider orientation="vertical" /><Section label="b" /></SurfaceCard>', errors: [seam] },
+        { code: panes + 'const A = () => <SurfaceCard composition="joined"><Section label="a" /><Divider orientation="vertical" /></SurfaceCard>', errors: [seam] },
       ],
     }))
   })
@@ -415,30 +415,32 @@ for (const edition of ["lite", "full"]) {
 }
 
 for (const edition of ["lite", "full"]) {
-  test(`${edition}: a card has its own label, a SectionHeader above a single card is refused`, () => {
-    const head = 'import { SectionHeader, SurfaceCard, SurfaceListCard, SurfaceAccordionCard, Text } from "@starci/grammar/core"; '
+  test(`${edition}: a card has its own label, a Section around a single card is refused`, () => {
+    const head = 'import { Section, SurfaceCard, SurfaceListCard, SurfaceAccordionCard, Text } from "@starci/grammar/core"; '
     const header = { messageId: "header" }
     const name = { messageId: "name" }
     assert.doesNotThrow(() => tester().run("no-heading-above-card", noHeadingAboveCard, {
       valid: [
         // the card carries the title
         head + 'const A = () => <div><SurfaceCard label="Rules" fact="3" labelEnd={<b />}>x</SurfaceCard></div>',
-        // several cards under one header stay legal
-        head + 'const A = () => <section><SectionHeader title="Team" /><SurfaceCard label="a">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></section>',
-        // a header above something that is not a card
-        head + 'const A = () => <section><SectionHeader title="Team" /><Text>hello</Text></section>',
-        // the card names itself differently from the header
-        head + 'const A = () => <section><SectionHeader title="Team" /><SurfaceCard ariaLabel="Members">x</SurfaceCard><SurfaceCard ariaLabel="Roles">y</SurfaceCard></section>',
-        // a header with other content between it and the card
-        head + 'const A = () => <section><SectionHeader title="Team" /><Text>note</Text><SurfaceCard label="a">x</SurfaceCard></section>',
-        'import { SectionHeader } from "other-kit"; import { SurfaceCard } from "@starci/grammar/core"; const A = () => <section><SectionHeader title="a" /><SurfaceCard label="a">x</SurfaceCard></section>',
+        // several cards under one Section stay legal
+        head + 'const A = () => <Section title="Team"><SurfaceCard label="a">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></Section>',
+        // a Section around something that is not a card
+        head + 'const A = () => <Section title="Team"><Text>hello</Text></Section>',
+        // the cards name themselves differently from the Section
+        head + 'const A = () => <Section title="Team"><SurfaceCard ariaLabel="Members">x</SurfaceCard><SurfaceCard ariaLabel="Roles">y</SurfaceCard></Section>',
+        // a Section with other content beside its card
+        head + 'const A = () => <Section title="Team"><Text>note</Text><SurfaceCard label="a">x</SurfaceCard></Section>',
+        // a list Section holds rows, not cards
+        head + 'const A = () => <Section kind="list" title="Team" items={items} empty={null} />',
+        'import { Section } from "other-kit"; import { SurfaceCard } from "@starci/grammar/core"; const A = () => <Section title="a"><SurfaceCard label="a">x</SurfaceCard></Section>',
       ],
       invalid: [
-        { code: head + 'const A = () => <section><SectionHeader title="Rules" /><SurfaceCard label="Rules">x</SurfaceCard></section>', errors: [header] },
-        { code: head + 'const A = () => <section><SectionHeader title={t("rules")} action={<b />} /><SurfaceListCard ariaLabel={t("rules")}>x</SurfaceListCard></section>', errors: [header, name] },
-        { code: head + 'const A = () => <><SectionHeader title="Rules" /><SurfaceAccordionCard ariaLabel="Other">x</SurfaceAccordionCard></>', errors: [header] },
+        { code: head + 'const A = () => <Section title="Rules"><SurfaceCard label="Rules">x</SurfaceCard></Section>', errors: [header] },
+        { code: head + 'const A = () => <Section title={t("rules")} action={<b />}><SurfaceListCard ariaLabel={t("rules")}>x</SurfaceListCard></Section>', errors: [header, name] },
+        { code: head + 'const A = () => <Section title="Rules"><SurfaceAccordionCard ariaLabel="Other">x</SurfaceAccordionCard></Section>', errors: [header] },
         // a repeated name is refused even under several cards
-        { code: head + 'const A = () => <section><SectionHeader title="Rules" /><SurfaceCard ariaLabel="Rules">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></section>', errors: [name] },
+        { code: head + 'const A = () => <Section title="Rules"><SurfaceCard ariaLabel="Rules">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></Section>', errors: [name] },
       ],
     }))
   })

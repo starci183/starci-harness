@@ -10,7 +10,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
 - Composition · `contexts/ui/composition.md#composition` · 1 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
   - 1. Hierarchy · `contexts/ui/composition.md#1-hierarchy` · 1 KB
     - HIERARCHY-1 Rank comes from the job · `HIERARCHY-1` · 1 KB
-    - HIERARCHY-2 One anchor per region · `HIERARCHY-2` · 1 KB — Each region has exactly one strongest semantic anchor (`SectionHeader`, `Heading` or a labelled surface).
+    - HIERARCHY-2 One anchor per region · `HIERARCHY-2` · 1 KB — Each region has exactly one strongest semantic anchor (a `Section` title, a `Heading` or a labelled surface).
     - HIERARCHY-3 Reading order is task order · `HIERARCHY-3` · 1 KB — DOM, reading and focus order run prerequisite, decision, consequence, support.
     - HIERARCHY-4 Fact, measurement and outcome are three ranks · `HIERARCHY-4` · 1 KB — A neutral fact is plain text.
     - HIERARCHY-5 Rank survives reflow, loading and lost colour · `HIERARCHY-5` · 1 KB — Heading order and the anchor count are the same at every width; a skeleton carries the role of the content it stands for; every rank still resolves with colour removed or in ...

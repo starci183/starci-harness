@@ -30,7 +30,7 @@ Three ideas hold the whole layer together:
 | feels important but matches no role | name the job in the spec first; no type utility stands in for a rank |
 
 ### HIERARCHY-2 One anchor per region
-Each region has exactly one strongest semantic anchor (`SectionHeader`, `Heading` or a labelled surface). A status
+Each region has exactly one strongest semantic anchor (a `Section` title, a `Heading` or a labelled surface). A status
 ranks below the name it qualifies. Peer regions settle their anchors independently.
 
 ### HIERARCHY-3 Reading order is task order

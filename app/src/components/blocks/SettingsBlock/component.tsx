@@ -189,7 +189,7 @@ const ModelsPanel = (props: PanelProps) => {
                     loadingRows={props.group.tiers.length}
                     renderCell={(tier) => (
                         <span className="app-pair">
-                            <Text as="span" size="sm" weight="medium">
+                            <Text as="span" size="sm" isStrong>
                                 {tier.name}
                             </Text>
                             {tier.description === null ? null : (
@@ -268,7 +268,7 @@ const PendingChanges = (props: SettingsBlockBaseProps) => {
                                 <Text as="span" size="sm" tone="muted">
                                     →
                                 </Text>
-                                <Text as="span" size="sm" weight="medium">
+                                <Text as="span" size="sm" isStrong>
                                     {change.after}
                                 </Text>
                                 {change.refused === null ? null : <Badge tone="danger">{change.refused}</Badge>}

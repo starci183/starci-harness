@@ -114,7 +114,7 @@ const onePhase = (group: string, phase: Phase, pairs: () => ReadonlyArray<Pair>)
 /* ------------------------------------------------------------------ typography */
 
 const typography = (): ReadonlyArray<Pair> => [
-    ...(["xs", "sm", "md", "metric-lead"] as const).map((size) => ({
+    ...(["xs", "sm", "md"] as const).map((size) => ({
         id: `text-${size}`,
         ready: <G.Text size={size}>Quarterly revenue</G.Text>,
         loading: <G.Text size={size} isSkeleton>Quarterly revenue</G.Text>,
@@ -310,9 +310,9 @@ const rows = (): ReadonlyArray<Pair> => [
         width: "28rem",
     },
     {
-        id: "section-header",
-        ready: <G.SectionHeader eyebrow="Course" title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>} level={2} />,
-        loading: <G.SectionHeader eyebrow="Course" title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>} level={2} isSkeleton />,
+        id: "section",
+        ready: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>}><G.Text>Everything the course covers.</G.Text></G.Section>,
+        loading: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>} isSkeleton><G.Text isSkeleton>Everything the course covers.</G.Text></G.Section>,
         width: "32rem",
     },
     {
@@ -347,7 +347,7 @@ const rows = (): ReadonlyArray<Pair> => [
     },
 ]
 
-/** ListRow, SectionHeader, the Page header, DescriptionList and MessageBubble. */
+/** ListRow, Section, the Page header, DescriptionList and MessageBubble. */
 export const Rows: Story = sideBySide(rows)
 export const RowsReady: Story = onePhase("grammar-rows", "ready", rows)
 export const RowsLoading: Story = onePhase("grammar-rows", "loading", rows)

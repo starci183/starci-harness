@@ -88,10 +88,10 @@
 
     /*
      * The accent is a FILL, and on its tint it is `--accent-soft-foreground` (the pair rule). Where a part paints the
-     * accent as TEXT on the page (a link, the current tab, the section eyebrow), that
+     * accent as TEXT on the page (a link, the current tab), that
      * element reads the soft foreground in place of the fill, so each rule reads `--accent` unchanged.
      */
-    :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-section-eyebrow) {
+    :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"]) {
         --accent: var(--accent-soft-foreground);
     }
 
@@ -158,13 +158,24 @@
         width: 100%;
     }
 
+    /* A section is blocks under one heading: its head, its filter and its body stand one section step apart (GAP-4). */
+    .starci-core-section {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-section-gap);
+        margin: 0;
+        padding: 0;
+    }
+
+    /* The head row: the copy and the page command are companions of one unit (GAP-2); the command hugs its label. */
     .starci-core-section-header {
         display: flex;
         min-width: 0;
         flex-wrap: wrap;
         align-items: flex-end;
         justify-content: space-between;
-        gap: var(--grammar-region-gap);
+        gap: var(--grammar-inline-gap);
     }
 
     /* The copy keeps a readable basis, so a narrow header wraps its action below instead of crushing the copy. */
@@ -173,7 +184,7 @@
         min-width: 0;
         flex: 1 1 min(100%, 20rem);
         flex-direction: column;
-        gap: 0.5rem;
+        gap: var(--grammar-identity-gap);
     }
 
     .starci-core-section-title {
@@ -194,15 +205,6 @@
         line-height: var(--grammar-leading-lg);
     }
 
-    .starci-core-section-eyebrow {
-        color: var(--accent);
-        font-size: var(--grammar-text-xs);
-        font-weight: var(--grammar-weight-semibold);
-        letter-spacing: var(--grammar-tracking-wider);
-        line-height: var(--grammar-leading-md);
-        text-transform: uppercase;
-    }
-
     .starci-core-section-description,
     .starci-core-media-caption {
         color: var(--muted);
@@ -212,7 +214,18 @@
     }
 
     .starci-core-section-action {
+        display: flex;
         flex: none;
+        align-items: center;
+    }
+
+    /* The filter row of a list section: the peers that narrow the list sit side by side (GAP-2). */
+    .starci-core-section-filter {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
     }
 
     /* The section count (0.6.0): "(n)" in the title's line, muted and at the regular weight. */
@@ -1044,11 +1057,6 @@
         --info-soft-foreground: color-mix(in oklab, var(--info, var(--accent)) 8%, var(--grammar-ink-band-foreground));
         --accent-soft-foreground: var(--grammar-ink-band-foreground);
         --accent-soft: var(--grammar-ink-band-plate);
-    }
-
-    /* The eyebrow is accent text elsewhere; on the accent ground it takes the band's muted ink. */
-    .starci-core-surface[data-grammar-surface-treatment="ink"] .starci-core-section-eyebrow {
-        color: var(--grammar-ink-band-muted);
     }
 
     /* Content paints above the decorative zone; the zone never takes a pointer or a focus. */
@@ -1942,17 +1950,10 @@
     }
 
     @container starci-core-primary-rail (max-width: 32rem) {
-        /*
-         * Collapsed to a column, the header stays a region boundary, not a tighter internal
-         * rhythm - `PrimaryRailLayout` and `WorkspaceShell` both hold `--grammar-region-gap`
-         * across every collapse tier and only ever change track/area, never the gap itself. The
-         * stamped `data-contract="GAP-5"` on this root must stay true here too, so this rule may
-         * change direction and alignment but not the gap value.
-         */
+        /* Collapsed to a column, the head keeps its inline gap and the command hugs its label at the start. */
         .starci-core-section-header {
             align-items: flex-start;
             flex-direction: column;
-            gap: var(--grammar-region-gap);
         }
     }
 
@@ -2969,11 +2970,6 @@
         );
     }
 
-    /* Region, List, ListItem: semantic page structure that draws nothing of its own. */
-    .starci-core-region[data-grammar-region-spacing="spaced"] {
-        padding-block-end: 2rem;
-    }
-
     .starci-core-nav-landmark {
         display: flex;
         align-items: center;
@@ -3452,21 +3448,11 @@
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-text[data-size="metric-lead"] {
-        font-size: var(--grammar-text-4xl);
-        line-height: var(--grammar-leading-2xl);
-    }
-
     .starci-core-text[data-tone="muted"] {
         color: var(--muted);
     }
 
-    .starci-core-text[data-tone="accent"] {
-        color: var(--accent-soft-foreground);
-    }
-
-    .starci-core-text[data-weight="medium"] { font-weight: var(--grammar-weight-medium); }
-    .starci-core-text[data-weight="semibold"] { font-weight: var(--grammar-weight-semibold); }
+    .starci-core-text[data-strong="true"] { font-weight: var(--grammar-weight-semibold); }
 
     .starci-core-text[data-start-content="true"] {
         display: inline-flex;
@@ -3476,10 +3462,6 @@
 
     .starci-core-text[data-superseded="true"] {
         text-decoration-line: line-through;
-    }
-
-    :where(.group)[data-selected="true"] .starci-core-text[data-parent-emphasis="accent-soft"] {
-        color: var(--accent-soft-foreground);
     }
 
     /* Authored overflow behaviour: wrap is the resting answer, the other two are opted into. */
@@ -3529,7 +3511,7 @@
 
     .starci-core-text[data-size="xs"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 2.5rem; }
     .starci-core-text[data-size="sm"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 3rem; }
-    .starci-core-text:is([data-size="md"], [data-size="metric-lead"]) > .starci-core-text-skeleton[data-empty="true"] { inline-size: 10rem; }
+    .starci-core-text[data-size="md"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 10rem; }
 
     /* --- Text action: one recipe, eight appearances, selected by data attributes. --- */
     /*
@@ -4079,29 +4061,16 @@
 }
 
 /*
- * Element resets of the semantic structure primitives (0.9.4). They live in Tailwind's `base` layer, which a host declares before
- * `utilities`, so a className the app passes for layout (`flex`, `gap-3`, `py-3`, `grid`) wins over them; without one, the default
- * shape is unchanged. A host without Tailwind simply gets a `base` layer.
+ * Element reset of a list section's rows. It lives in Tailwind's `base` layer, which a host declares before `utilities`; the rows
+ * carry the look, the list keeps its semantics.
  */
 @layer base {
-    .starci-core-semantic-list {
+    .starci-core-section-list {
         display: flex;
         flex-direction: column;
         gap: 0;
         margin: 0;
         padding: 0;
         list-style: none;
-    }
-
-    .starci-core-semantic-list-item {
-        display: block;
-        min-width: 0;
-        margin: 0;
-        padding: 0;
-    }
-
-    .starci-core-region {
-        display: block;
-        min-width: 0;
     }
 }

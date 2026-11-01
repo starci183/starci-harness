@@ -8,7 +8,7 @@ import { isNode } from "./types.ts"
 const GRAMMAR_SOURCE = /^@starci\/grammar(?:\/|$)/
 /** Grammar controls whose visible hit target belongs to the navbar band's size contract. */
 const BAR_CONTROLS = new Set(["Button", "IconButton", "Switch", "AvatarButton", "PlainPressable", "IdentityLockup", "SearchField", "Input", "TextField", "Select", "TextAction"])
-const BAR_WRAPPERS = new Set(["GrammarRoot", "WorkspaceShell", "TopBar", "NavigationFeatureNav", "Region", "PageContainer", "NavLandmark", "Form", "Fieldset", "Field", "ButtonGroup", "DropdownMenu", "Popover", "Drawer", "Tooltip"])
+const BAR_WRAPPERS = new Set(["GrammarRoot", "WorkspaceShell", "TopBar", "NavigationFeatureNav", "Section", "PageContainer", "NavLandmark", "Form", "Fieldset", "Field", "ButtonGroup", "DropdownMenu", "Popover", "Drawer", "Tooltip"])
 const ACTION_PROPS = ["onPress", "onClick", "onAction", "onValueChange", "onSelectionChange", "onSelectedChange", "onChange", "onInputChange"]
 const INTERACTION_PROPS = new Set(["label", "value", "defaultValue", "selectedKey", "selectedKeys", "selectionMode", "href", ...ACTION_PROPS])
 

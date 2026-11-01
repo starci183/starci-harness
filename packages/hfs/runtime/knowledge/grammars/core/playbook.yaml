@@ -996,9 +996,6 @@ presentation:
           element: root, size="md"
           rule: FONT-3
         - component: Text
-          element: root, size="metric-lead"
-          rule: FONT-5
-        - component: Text
           element: root, size="sm"
           rule: FONT-2
         - component: Text
@@ -1029,11 +1026,14 @@ presentation:
           Weight is a second axis, not a position on the size scale. Its public set is closed.
           | Prop | Rendered | Use for |
           | --- | --- | --- |
-          | `weight="normal"` | `font-normal`, the default | Reading copy and ordinary facts |
-          | `weight="medium"` | `font-medium` | A compact label, or a title above its own description |
-          | `weight="semibold"` | `font-semibold` | A fact that must be found first within its region |
+          | Where | Rendered | Use for |
+          | --- | --- | --- |
+          | `Text`, no prop | `font-normal`, the default | Reading copy and ordinary facts |
+          | `Heading` levels 3 and 4, and labels | `font-medium` | A compact label, or a title above its own description |
+          | `Text isStrong` | `font-semibold` | A value or a term that must be found first inside its line |
           Weight refines a rank the application has already chosen. It never manufactures a new hierarchy
-          level, and it never substitutes for a heading. `Heading` applies its own weight per level and takes
+          level, and it never substitutes for a heading: a group is headed by its `Section` title or its
+          card label, never by a strong `Text`. `Heading` applies its own weight per level and takes
           no weight prop.
           Bold beyond `semibold` has no public prop. Treat an intent that needs it as a gap rather than writing
           a class.
@@ -1089,8 +1089,8 @@ presentation:
         cases:
           - id: case-1
             when: The single leading metric or short value that is the main fact of its region
-            owner: "`Text`"
-            render: '`<Text size="metric-lead" weight="semibold">84%</Text>`'
+            owner: "`DescriptionList` layout=\"stat-strip\""
+            render: '`<DescriptionList layout="stat-strip" items={[{ id: "rate", term: "Resolved", description: "84%" }]} />`'
         notThisRule: sentences, decoration, or imitating a heading. It creates no heading semantics.
       - rule: FONT-6
         title: "`text-4xl` / `leading-tight`"

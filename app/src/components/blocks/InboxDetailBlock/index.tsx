@@ -101,7 +101,6 @@ export const InboxDetailBlock = (props: InboxDetailBlockProps) => {
                 refusal: refusal !== null && refusal.key === key ? refusal.notice : null,
                 ruled: { option: optionTitle(ruled?.option ?? null), note: ruled === undefined || ruled.note === "" ? INBOX.noNote : ruled.note },
                 labels: {
-                    detail: INBOX.detail,
                     body: INBOX.body,
                     ruling: INBOX.ruling,
                     note: INBOX.note,

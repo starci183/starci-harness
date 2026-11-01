@@ -266,21 +266,6 @@ export const Divider: Story = {
   ),
 };
 
-export const Region: Story = {
-  render: () => (
-    <Matrix maxWidth={480}>
-      <State label="Named by its own heading, with room below" direction="column">
-        <G.Region id="region-story" labelledBy="region-story-title" spacing="spaced">
-          <G.SectionHeader id="region-story-title" title="Sharing" level={2} />
-        </G.Region>
-      </State>
-      <State label="Section landmark" direction="column">
-        <G.Region label="Privacy"><G.Text>A section landmark with no card around it.</G.Text></G.Region>
-      </State>
-    </Matrix>
-  ),
-};
-
 export const NavLandmark: Story = {
   render: () => (
     <Matrix maxWidth={480}>
@@ -289,29 +274,6 @@ export const NavLandmark: Story = {
       </State>
       <State label="Scrolling" direction="column">
         <G.NavLandmark label="Sections" layout="scrolling"><G.Link href="#a">Overview</G.Link><G.Link href="#b">Details</G.Link></G.NavLandmark>
-      </State>
-    </Matrix>
-  ),
-};
-
-export const List: Story = {
-  render: () => (
-    <Matrix maxWidth={480}>
-      <State label="Unordered" direction="column">
-        <G.List label="Members"><G.ListItem>Ada</G.ListItem><G.ListItem>Grace</G.ListItem></G.List>
-      </State>
-      <State label="Ordered" direction="column">
-        <G.List as="ol" label="Steps"><G.ListItem>First</G.ListItem><G.ListItem>Second</G.ListItem></G.List>
-      </State>
-    </Matrix>
-  ),
-};
-
-export const ListItem: Story = {
-  render: () => (
-    <Matrix maxWidth={480}>
-      <State label="One row of a List" direction="column">
-        <G.List label="Members"><G.ListItem>Ada</G.ListItem></G.List>
       </State>
     </Matrix>
   ),
@@ -409,30 +371,6 @@ export const IconTile: Story = {
   ),
 };
 
-export const Label: Story = {
-  render: () => (
-    <Matrix>
-      <State label="Depths" direction="column">
-        <G.Label>Top-level label</G.Label>
-        <G.Label depth="nested">Nested label</G.Label>
-        <G.Label as="h3">Label as heading</G.Label>
-      </State>
-    </Matrix>
-  ),
-};
-
-export const LeadingNumber: Story = {
-  render: () => (
-    <Matrix>
-      <State label="Positions">
-        <G.LeadingNumber position={1} />
-        <G.LeadingNumber position={2} />
-        <G.LeadingNumber position={12} />
-      </State>
-    </Matrix>
-  ),
-};
-
 export const Progress: Story = {
   render: () => (
     <Matrix maxWidth={420}>
@@ -479,13 +417,11 @@ export const Text: Story = {
       <State label="Tones" direction="column">
         <G.Text>Default body text.</G.Text>
         <G.Text tone="muted">Muted supporting text.</G.Text>
-        <G.Text tone="accent">Accent text.</G.Text>
       </State>
-      <State label="Sizes and weights" direction="column">
+      <State label="Sizes and the strong weight" direction="column">
         <G.Text size="xs">Extra small</G.Text>
-        <G.Text size="sm" weight="medium">Small medium</G.Text>
-        <G.Text size="md" weight="semibold">Medium semibold</G.Text>
-        <G.Text size="metric-lead" weight="semibold">1,284</G.Text>
+        <G.Text size="sm" isStrong>Small strong</G.Text>
+        <G.Text size="md" isStrong>Medium strong</G.Text>
       </State>
       <State label="Monospace, tabular figures and inline code" direction="column">
         <G.Text mono>0f3a9c1 · packages/grammar/src</G.Text>
@@ -737,7 +673,7 @@ export const GrammarRoot: Story = {
         <State label="Nested explicit themes in the toolbar family (the outer root comes from the toolbar)">
           {(['light', 'dark', 'system'] as const).map((theme) => (
             <G.GrammarRoot key={theme} theme={theme} {...scope} style={{ padding: '1rem', borderRadius: '0.75rem', minWidth: 160 }}>
-              <G.Text weight="semibold">{theme} scope</G.Text>
+              <G.Text isStrong>{theme} scope</G.Text>
               <G.Text tone="muted" size="sm">Tokens resolve here.</G.Text>
               <div style={{ marginTop: '0.5rem' }}><G.Button size="sm">Action</G.Button></div>
             </G.GrammarRoot>

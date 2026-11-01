@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Code, DescriptionList, Heading, RadioGroup, SurfaceCard, Text, Textarea } from "@starci/grammar/core"
+import { Alert, Badge, Button, Code, DescriptionList, RadioGroup, SurfaceCard, Text, Textarea } from "@starci/grammar/core"
 import type { DataSlot, ResultNotice, SlotLabels, ToneLabel } from "../../../modules/types"
 import { DecisionBody } from "../../composites/DecisionBody"
 import { SlotView } from "../../composites/SlotView"
@@ -19,7 +19,6 @@ export interface DecisionView {
 
 /** Copy the connected block resolves. */
 export interface InboxDetailBlockLabels {
-    readonly detail: string
     readonly body: string
     readonly ruling: string
     readonly note: string
@@ -56,9 +55,9 @@ export interface InboxDetailBlockBaseProps {
 }
 
 const DECISION_PLACEHOLDER: DecisionView = {
-    kind: { label: "", tone: "neutral" },
+    kind: { label: " ", tone: "neutral" },
     raised: "",
-    title: "",
+    title: " ",
     paragraphs: ["", ""],
     // The radio group has no skeleton flag: its options rest with blank labels, so the form keeps its height.
     options: ["o0", "o1", "o2"].map((value) => ({ value, label: " " })),
@@ -137,39 +136,35 @@ const RuledSummary = (props: PartProps) => {
 export const InboxDetailBlockBase = (props: InboxDetailBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SurfaceCard ariaLabel={labels.detail}>
-            <SlotView slot={props.props.decision} placeholder={DECISION_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                {(decision, isSkeleton) => {
-                    let action
-                    switch (props.shape) {
-                        case "ruling":
-                            action = <RulingForm {...props} decision={decision} isSkeleton={isSkeleton} />
-                            break
-                        case "ruled":
-                            action = <RuledSummary {...props} decision={decision} isSkeleton={isSkeleton} />
-                            break
-                    }
-                    return (
+        <SlotView slot={props.props.decision} placeholder={DECISION_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
+            {(decision, isSkeleton) => {
+                let action
+                switch (props.shape) {
+                    case "ruling":
+                        action = <RulingForm {...props} decision={decision} isSkeleton={isSkeleton} />
+                        break
+                    case "ruled":
+                        action = <RuledSummary {...props} decision={decision} isSkeleton={isSkeleton} />
+                        break
+                }
+                return (
+                    <SurfaceCard
+                        label={decision.title}
+                        headingLevel={2}
+                        {...(decision.raised === "" ? {} : { fact: decision.raised })}
+                        labelEnd={
+                            <Badge tone={decision.kind.tone} isSkeleton={isSkeleton}>
+                                {decision.kind.label}
+                            </Badge>
+                        }
+                    >
                         <div className="app-stack">
-                            <div className="app-pair">
-                                <span className="app-row">
-                                    <Badge tone={decision.kind.tone} isSkeleton={isSkeleton}>
-                                        {decision.kind.label}
-                                    </Badge>
-                                    <Text as="span" size="sm" tone="muted" isSkeleton={isSkeleton}>
-                                        {decision.raised}
-                                    </Text>
-                                </span>
-                                <Heading level={2} isSkeleton={isSkeleton}>
-                                    {decision.title}
-                                </Heading>
-                            </div>
                             <DecisionBody label={labels.body} paragraphs={decision.paragraphs} isSkeleton={isSkeleton} />
                             {action}
                         </div>
-                    )
-                }}
-            </SlotView>
-        </SurfaceCard>
+                    </SurfaceCard>
+                )
+            }}
+        </SlotView>
     )
 }

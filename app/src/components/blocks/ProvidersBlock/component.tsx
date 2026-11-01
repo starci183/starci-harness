@@ -1,5 +1,4 @@
-import { Meter, Region, RelativeTime, SectionHeader, SurfaceCard, Text, type PresentationState } from "@starci/grammar/core"
-import { useId } from "react"
+import { Meter, RelativeTime, Section, SurfaceCard, Text, type PresentationState } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 import { StatusWord } from "../../leaves/StatusWord"
@@ -89,21 +88,17 @@ const ProviderCard = ({ provider, locale, isSkeleton }: { readonly provider: Pro
 /** Pure half: each provider's circuit, quota windows, peak usage and running seats against its cap. */
 export const ProvidersBlockBase = (props: ProvidersBlockBaseProps) => {
     const { labels } = props.props
-    const heading = useId()
     return (
-        <Region labelledBy={heading}>
-            <div className="app-stack">
-                <SectionHeader id={heading} level={2} title={labels.title} description={labels.fact} />
-                <div className="app-grid">
-                    <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                        {(providers, isSkeleton) =>
-                            providers.map((provider) => (
-                                <ProviderCard key={provider.id} provider={provider} locale={labels.locale} isSkeleton={isSkeleton} />
-                            ))
-                        }
-                    </SlotView>
-                </div>
+        <Section title={labels.title} description={labels.fact}>
+            <div className="app-grid">
+                <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
+                    {(providers, isSkeleton) =>
+                        providers.map((provider) => (
+                            <ProviderCard key={provider.id} provider={provider} locale={labels.locale} isSkeleton={isSkeleton} />
+                        ))
+                    }
+                </SlotView>
             </div>
-        </Region>
+        </Section>
     )
 }

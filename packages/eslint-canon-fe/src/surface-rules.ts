@@ -476,9 +476,9 @@ const elementsOfChild = (child: Node | null | undefined): TSESTree.JSXElement[] 
 const renderedChildren = (element: TSESTree.JSXElement): TSESTree.JSXChild[] =>
   element.children.filter((child) => child.type === "JSXText" ? child.value.trim() !== "" : child.type !== "JSXExpressionContainer" || child.expression.type !== "JSXEmptyExpression")
 
-/** A column of a hand-built split: a plain block element (`div`, `aside`) or a Grammar `Region`. */
+/** A column of a hand-built split: a plain block element (`div`, `aside`) or a Grammar `Section`. */
 const isColumn = (context: AnyContext, element: TSESTree.JSXElement): boolean =>
-  rawElement(element.openingElement) || grammarName(context, element.openingElement.name)?.[0] === "Region"
+  rawElement(element.openingElement) || grammarName(context, element.openingElement.name)?.[0] === "Section"
 
 /** How a plain element lays out its children, read from its authored classes: `row`, `stack` (a column), `none` (not flex or grid), or `unknown` (no static class). */
 const flowOf = (context: AnyContext, opening: TSESTree.JSXOpeningElement): "row" | "stack" | "none" | "unknown" => {
@@ -709,45 +709,38 @@ const propText = (context: AnyContext, opening: TSESTree.JSXOpeningElement, name
 const meaningfulChildren = (parent: TSESTree.JSXElement | TSESTree.JSXFragment): TSESTree.JSXChild[] =>
   parent.children.filter((child) => !(child.type === "JSXText" && child.value.trim() === "") && !(child.type === "JSXExpressionContainer" && child.expression.type === "JSXEmptyExpression"))
 
-/** A card has a label by design: a SectionHeader above it is a hand heading. */
+/** A card has a label by design: a Section holding one card is a hand heading over that card. */
 export const noHeadingAboveCard = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "A SectionHeader directly above a single card is a hand heading: the card has a label." },
+    docs: { description: "A Section that holds a single card is a hand heading: the card has a label." },
     schema: [],
     messages: {
       header:
-        "FE_HEADING_ABOVE_CARD: this SectionHeader is directly followed by a single card, and a card has a label by design. Move the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`. Several cards under one header stay legal.",
+        "FE_HEADING_ABOVE_CARD: this Section holds a single card, and a card has a label by design. Drop the Section: move its title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`. Several cards under one Section stay legal.",
       name:
-        "FE_HEADING_ABOVE_CARD: this card's `ariaLabel` repeats the title of the SectionHeader above it. Give the card that title as its `label` (count in `fact`, action in `labelEnd`, note in `footer`) and drop the header.",
+        "FE_HEADING_ABOVE_CARD: this card's `ariaLabel` repeats the title of the Section around it. Give the card that title as its `label` (count in `fact`, action in `labelEnd`, note in `footer`) and drop the Section.",
     },
   },
   create(context) {
-    const check = (parent: TSESTree.JSXElement | TSESTree.JSXFragment): void => {
-      const children = meaningfulChildren(parent)
-      children.forEach((child, index) => {
-        if (child.type !== "JSXElement") return
-        const header = grammarName(context, child.openingElement.name)
-        if (header?.length !== 1 || header[0] !== "SectionHeader") return
-        const cards: TSESTree.JSXElement[] = []
-        for (let next = index + 1; next < children.length; next += 1) {
-          const sibling = children[next]
-          if (sibling === undefined || sibling.type !== "JSXElement") break
-          const name = grammarName(context, sibling.openingElement.name)
-          if (name?.length !== 1 || name[0] === undefined || !LABELLED_CARDS.has(name[0])) break
-          cards.push(sibling)
-        }
-        if (cards.length === 1) context.report({ node: child.openingElement, messageId: "header" })
-        const title = propText(context, child.openingElement, "title")
+    return {
+      JSXElement(element) {
+        const section = grammarName(context, element.openingElement.name)
+        if (section?.length !== 1 || section[0] !== "Section") return
+        if (propText(context, element.openingElement, "kind") === "list") return
+        const children = meaningfulChildren(element)
+        const cards = children.filter((child): child is TSESTree.JSXElement => {
+          if (child.type !== "JSXElement") return false
+          const name = grammarName(context, child.openingElement.name)
+          return name?.length === 1 && name[0] !== undefined && LABELLED_CARDS.has(name[0])
+        })
+        if (cards.length === 1 && children.length === 1) context.report({ node: element.openingElement, messageId: "header" })
+        const title = propText(context, element.openingElement, "title")
         if (title === null) return
         for (const card of cards) {
           if (propText(context, card.openingElement, "ariaLabel") === title) context.report({ node: card.openingElement, messageId: "name" })
         }
-      })
-    }
-    return {
-      JSXElement: check,
-      JSXFragment: check,
+      },
     }
   },
 })

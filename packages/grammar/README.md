@@ -38,10 +38,8 @@ step means entry. The type permits `step` only for destructive intent. The famil
 mapping derives the variant. Explicit `variant` remains available to Grammar internals and stories.
 The [generated button props catalog](docs/button-intent-props.generated.md) lists the published values.
 
-Collection rows supply item placement automatically. Wrap a custom repeated card in
-`CollectionItem`, or its action slot in `ItemActions`; both preserve the existing DOM. A repeated
-next action resolves to secondary. `ToolbarActions` supplies chrome placement for custom persistent
-toolbars without adding markup. Bars and panel headers supply chrome placement; neutral commands
+Collection rows supply item placement automatically; a repeated
+next action resolves to secondary. Bars and panel headers supply chrome placement; neutral commands
 are ghost there, while navbar icon actions stay tertiary. The default decision placement makes a
 neutral command outline. Dialogs and drawers restore decision placement inside their surfaces.
 
@@ -224,8 +222,8 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Leaves (26).** Avatar, Badge, Button, Divider, GrammarRoot, Heading, Icon,
-IconButton, IconTile, Image, Kbd, Label, LeadingNumber, Link, Mascot, Meter, PlainPressable,
+**Leaves (24).** Avatar, Badge, Button, Divider, GrammarRoot, Heading, Icon,
+IconButton, IconTile, Image, Kbd, Link, Mascot, Meter, PlainPressable,
 Progress, ProgressCircle, RelativeTime, Skeleton, Spinner, StateMark, StatusDot, Text, TextAction.
 
 `Mascot` renders generated character art at one size scale: `size` `sm` (96px), `md` (160px, the default) or `lg`
@@ -416,7 +414,7 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 ```
 
 **Surfaces (14).** EmptyNotice, FencedCodeBlock, HorizontalScrollRegion, MarkdownArticle,
-MarkdownTableFrame, MediaFrame, Rail, SectionHeader, StaticStateRow, SurfaceAccordionCard,
+MarkdownTableFrame, MediaFrame, Rail, Section, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceListCard, VerticalScrollRegion.
 
 **Compositions (10).** Cluster, Footer, Grid, Page, PaneGrid, PaneSection, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
@@ -598,7 +596,7 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
 - **Structure.** One banner per page, owned by the app bar: `TopBar`
   in `WorkspaceShell`'s `header` slot makes the shell's wrapper a plain `div`
   (`headerLandmark="slot"`, automatic for it; pass it for an app-owned `<header>`), and
-  `SectionHeader` is never a `<header>`. Surface names (`SurfaceCard`, `SurfaceListCard`,
+  a `Section` head is never a `<header>`. Surface names (`SurfaceCard`, `SurfaceListCard`,
   `SurfaceAccordionCard`) default to `h3`; pass `headingLevel` (2-6) so the outline never skips a
   level. `SurfaceListCard`'s collection is the list (`<ul>`, or `role="list"` when scrolling), so
   its rows are `<li>`; use `empty` for an empty-state notice. Every scroll owner that holds

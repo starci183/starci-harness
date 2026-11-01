@@ -55,7 +55,7 @@ const dnaPlanOptions = [
 const FloatingAndPanelPage = () => (
   <div data-story-dna-page="true" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 20rem', gap: '1.5rem', alignItems: 'stretch', minHeight: '34rem' }}>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
-      <G.SectionHeader title="Weekly review" description="A floating card among other content, with a nested card inside." level={2} />
+      <G.Section title="Weekly review" description="A floating card among other content, with a nested card inside.">
       <div data-story-dna="floating">
         <G.SurfaceCard label="This week" fact="3 lessons">
           <G.Text>Keep the streak going with one short lesson a day.</G.Text>
@@ -74,6 +74,7 @@ const FloatingAndPanelPage = () => (
           </div>
         </G.SurfaceCard>
       </div>
+      </G.Section>
     </div>
     <div data-story-dna="panel" style={{ display: 'flex', minWidth: 0 }}>
       <G.SurfaceCard label="Group info" placement="panel" height="fill">
@@ -211,7 +212,8 @@ export const SurfaceCard: Story = {
           artwork={<G.Image src={placeholderImage('Art', 20)} alt="" fit="contain" loading="eager" assetSlot="story.overview-art" />}
         >
           <div style={{ padding: '1.5rem', maxWidth: '30rem' }}>
-            <G.SectionHeader eyebrow="Overview" title="Workspace Support" description="Owner Alex Morgan · Team plan" />
+            <G.Text isStrong>Workspace Support</G.Text>
+            <G.Text tone="muted">Owner Alex Morgan · Team plan</G.Text>
           </div>
           <G.Divider semantics="presentation" />
           <div style={{ padding: '1.5rem' }}>
@@ -227,7 +229,8 @@ export const SurfaceCard: Story = {
           </div>
         </G.SurfaceCard>
         <G.SurfaceCard ariaLabel="Ink band, motif only" treatment="ink" motif="orbit">
-          <G.SectionHeader title="Motif without artwork" description="The orbit stays in the artwork zone, never behind the copy." />
+          <G.Text isStrong>Motif without artwork</G.Text>
+          <G.Text tone="muted">The orbit stays in the artwork zone, never behind the copy.</G.Text>
         </G.SurfaceCard>
       </State>
     </Matrix>
@@ -250,9 +253,10 @@ export const SoftSurfaceCard: Story = {
               treatment="soft"
               artwork={<G.Mascot src={turtleUrl} size="md" loading="eager" assetSlot="story.welcome-mascot" />}
             >
-              <G.SectionHeader eyebrow="Getting started" title="Set up your workspace" description="Three short steps, about two minutes." />
+              <G.Text isStrong>Set up your workspace</G.Text>
+              <G.Text tone="muted">Three short steps, about two minutes.</G.Text>
               <G.Text tone="muted">You can change everything later in settings.</G.Text>
-              <G.Text tone="accent">Step 1 of 3</G.Text>
+              <G.Text isStrong>Step 1 of 3</G.Text>
               <G.Button intent="commit">Start setup</G.Button>
             </G.SurfaceCard>
           </State>
@@ -564,20 +568,46 @@ export const EmptyNotice: Story = {
   },
 };
 
-export const SectionHeader: Story = {
+export const Section: Story = {
   render: () => (
     <Matrix maxWidth={720}>
-      <State label="Section header with eyebrow and action" direction="column">
-        <G.SectionHeader eyebrow="Course" title="Grammar basics" description="Twelve short lessons." action={<G.Button intent="alternative" size="sm">Share</G.Button>} level={2} />
+      <State label="Region with count, trailing source meta and one page command" direction="column">
+        <G.Section title="Installations" count={2} meta="Inventoried at 10:00, 26 Sep 2026 (GMT+7)" description="Twelve short lessons." action={<G.Button intent="alternative" size="sm">Share</G.Button>}>
+          <G.SurfaceCard label="Grammar basics" headingLevel={3}><G.Text>Everything the course covers.</G.Text></G.SurfaceCard>
+        </G.Section>
       </State>
-      <State label="Context intro" direction="column">
-        <G.SectionHeader composition="context-intro" title="Welcome back" description="Pick up where you left off." level={2} />
+      <State label="Long list with a filter row: Section of rows, section spacing" direction="column">
+        <G.Section
+          kind="list"
+          title="Customers"
+          count={4}
+          filter={<G.FilterButtonGroup label="Plan" options={[{ value: "all", label: "All" }, { value: "team", label: "Team" }, { value: "solo", label: "Solo" }]} defaultValue="all" />}
+          items={[
+            { id: "ada", title: "Ada Lovelace", description: "Team plan", badges: <G.Badge tone="success">Active</G.Badge>, actions: <G.Button intent="neutral" size="sm">Open</G.Button> },
+            { id: "grace", title: "Grace Hopper", description: "Solo plan" },
+            { id: "alan", title: "Alan Turing", description: "Team plan", badges: <G.Badge tone="warning">Overdue</G.Badge> },
+            { id: "edsger", title: "Edsger Dijkstra", description: "Solo plan", detail: <G.Alert tone="negative" title="Card expired" description="Ask for a new one." /> },
+          ]}
+          empty={<G.EmptyNotice message="No customers match." />}
+        />
       </State>
-      <State label="Count and trailing source meta" direction="column">
-        <G.SectionHeader title="Installations" count={2} meta="Inventoried at 10:00, 26 Sep 2026 (GMT+7)" level={2} />
+      <State label="Ordered list" direction="column">
+        <G.Section
+          kind="list"
+          title="Setup"
+          headingLevel={3}
+          items={[
+            { id: "one", position: 1, title: "Connect a provider" },
+            { id: "two", position: 2, title: "Invite the team", description: "They get an email." },
+          ]}
+          empty={<G.EmptyNotice message="Nothing to do." />}
+        />
+      </State>
+      <State label="Empty list" direction="column">
+        <G.Section kind="list" title="Customers" items={[]} empty={<G.EmptyNotice message="No customers yet." />} />
       </State>
       <State label="Loading (isSkeleton)" direction="column">
-        <G.SectionHeader eyebrow="Course" title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button intent="alternative" size="sm">Share</G.Button>} level={2} isSkeleton />
+        <G.Section kind="list" title="Customers" description="Everyone on a plan." meta="Updated now" action={<G.Button intent="alternative" size="sm">Share</G.Button>} items={[]} empty={null} loadingRows={3} isSkeleton />
       </State>
     </Matrix>
   ),

@@ -138,10 +138,10 @@ export const MessageBubbles: Story = {
         <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-chat-theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: both sides`} direction="column">
             <G.MessageBubble author="Linh" meta="09:12">
-              <G.Text tone="accent">@You</G.Text> can the order for table 4 move to 19:30? See <G.Link href="#menu">the booking sheet</G.Link> and <G.Code>T4-1930</G.Code>.
+              <G.Text as="span" isStrong>@You</G.Text> can the order for table 4 move to 19:30? See <G.Link href="#menu">the booking sheet</G.Link> and <G.Code>T4-1930</G.Code>.
             </G.MessageBubble>
             <G.MessageBubble author="You" meta="09:14" side="outgoing" status={<G.Badge tone="neutral">Sent</G.Badge>}>
-              <G.Text tone="accent">@Linh</G.Text> yes, moved it. Details in <G.Link href="#sheet">the sheet</G.Link>, ref <G.Code>T4-1930</G.Code>. <G.Text tone="muted">Seen 09:15</G.Text>
+              <G.Text as="span" isStrong>@Linh</G.Text> yes, moved it. Details in <G.Link href="#sheet">the sheet</G.Link>, ref <G.Code>T4-1930</G.Code>. <G.Text tone="muted">Seen 09:15</G.Text>
             </G.MessageBubble>
             <G.MessageBubble author="Linh" meta="09:20" isHighlight>{longMessage}</G.MessageBubble>
             <G.MessageBubble author="You" meta="09:21" side="outgoing" isHighlight>{longMessage}</G.MessageBubble>

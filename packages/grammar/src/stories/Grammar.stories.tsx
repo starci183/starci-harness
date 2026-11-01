@@ -6,7 +6,6 @@ import {
   EmptyNotice,
   Heading,
   Input,
-  Label,
   Page,
   TopBar,
   SurfaceCard,
@@ -196,7 +195,6 @@ export const Leaves: Story = {
           <Text>Default body text.</Text>
           <Text tone="muted">Muted supporting text.</Text>
           <Text><Link href="#">Link</Link> beside copy.</Text>
-          <Label>Label leaf</Label>
           <Badge>Badge</Badge>
         </div>
       </div>

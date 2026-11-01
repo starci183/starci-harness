@@ -51,7 +51,7 @@ export const OFFSET_POP_FAMILY_EVIDENCE = {
     "SURFACE-3": ["A nested frame or shell paints `--surface-secondary`, drops the shadow, and keeps `--surface-foreground` (the same ink as `--foreground`)."],
     "SURFACE-4": ["`--accent-soft` binds the secondary surface and `--accent-soft-foreground` the text-safe `--offset-pop-accent-text` (5.09:1 light, 5.61:1 dark)."],
     "TONE-2": ["`Text tone=\"muted\"` reads `--muted` (#675f6c light, #c8bdca dark), at least 4.75:1 on every family surface."],
-    "TONE-3": ["`Text tone=\"accent\"`, the SectionHeader eyebrow, the current tab label, a selected menu item and a selected ListBox option, Select/ComboBox option or DataTable row (on the `--accent-soft` fill) read `--offset-pop-accent-text`, never the fill pink."],
+    "TONE-3": ["the current tab label, a selected menu item and a selected ListBox option, Select/ComboBox option or DataTable row (on the `--accent-soft` fill) read `--offset-pop-accent-text`, never the fill pink."],
     "TRUTH-1": ["The inset state stripe is drawn only on rows whose state is not neutral (`:not([data-grammar-state=\"neutral\"])`), and toast and meter tones map each named outcome to its own semantic colour; no neutral tone is painted as success or danger."],
 } as const satisfies Readonly<Record<string, ReadonlyArray<string>>>
 

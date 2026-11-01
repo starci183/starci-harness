@@ -40,9 +40,9 @@ A painted treatment rebinds the surface pair on its ground, so the grammar child
 (`DNA-COMMON-TREATMENT-TEXT-CONTRAST`); the app never paints a card's ground itself (`starci-fe/no-app-surface-paint`).
 
 A card carries its own title, count, action and note: the title is its `label`, the count its `fact`, the action its `labelEnd`
-and the note its `footer` (`SurfaceCard`, `SurfaceListCard`). A `SectionHeader` directly above a single card is a hand heading and
+and the note its `footer` (`SurfaceCard`, `SurfaceListCard`). A `Section` around a single card is a heading over one card and
 is refused (R354, ruling `card-carries-its-own-label`), as is a card whose `ariaLabel` repeats that title; several cards under one
-header stay legal.
+`Section` stay legal.
 
 ## Variants
 The face is the grammar's. Depth is resolved from context: a top-level card is raised, a nested card subordinate

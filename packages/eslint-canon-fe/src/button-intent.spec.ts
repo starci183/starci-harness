@@ -26,7 +26,7 @@ import { canonTester } from "../fixtures/typed/tester.ts"
 /** The canon entry of a rule name, looked up by its published name. */
 const whyOf = (name: string) => new Map(Object.entries(why)).get(name)
 
-const grammar = 'import { Button, IconButton, AlertDialog, ConfirmDialog, CollectionItem, ItemActions, ListItem, ListBox, Table, GridList, DataTable } from "@starci/grammar/core"; '
+const grammar = 'import { Button, IconButton, AlertDialog, ConfirmDialog, ListRow, ListBox, Table, GridList, DataTable } from "@starci/grammar/core"; '
 const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } }))
 const fixture = (code: string, messageId: string, count = 1) => ({ code: grammar + code, errors: Array.from({ length: count }, () => ({ messageId })) })
 
@@ -154,26 +154,24 @@ for (const edition of ["lite", "full"]) {
     tester().run("no-commit-in-collection-item", rules["no-commit-in-collection-item"], {
       valid: [
         grammar + 'const Page=()=> rows.map(row => <Button key={row.id} intent="alternative" />)',
-        grammar + 'const Page=()=> <><CollectionItem><Button intent="neutral" /></CollectionItem><Button intent="commit" /></>',
+        grammar + 'const Page=()=> <><ListRow><Button intent="neutral" /></ListRow><Button intent="commit" /></>',
         grammar + 'const Page=()=> <Button intent="commit" />',
         grammar + 'const Page=()=> rows.map(row => <Row onPress={()=>save(row)} />)',
       ],
       invalid: [
         fixture('const Page=()=> rows.map(row => <Button key={row.id} intent="commit" />)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const Page=()=> rows.map(row => <SlotView>{() => <Button intent="commit" />}</SlotView>)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <CollectionItem><SlotView>{() => <Button intent="commit" />}</SlotView></CollectionItem>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> <ListRow><SlotView>{() => <Button intent="commit" />}</SlotView></ListRow>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const Page=()=> rows["map"](row => <Button key={row.id} intent="commit" />)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const renderRow=(row)=> <Button key={row.id} intent="commit" />; const Page=()=> rows.map(renderRow)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const Page=()=> rows.map(row => { if(row.ready) return <Button intent="commit" />; return null })', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <CollectionItem><Button intent="commit" /></CollectionItem>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <ItemActions><IconButton intent="commit" /></ItemActions>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> <ListItem><Button intent="commit" /></ListItem>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> <ListRow><Button intent="commit" /></ListRow>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const Page=()=> <DataTable renderCell={(row)=> <Button intent="commit" />} />', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const renderCell=(row)=> <Button intent="commit" />; const Page=()=> <DataTable renderCell={renderCell} />', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const Page=()=> <ListBox.Item><Button intent="commit" /></ListBox.Item>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const Page=()=> <Table.Row><Button intent="commit" /></Table.Row>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
         fixture('const Page=()=> <GridList.Item><Button intent="commit" /></GridList.Item>', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
-        fixture('const Page=()=> rows.map(row => <CollectionItem><Button intent="commit" /></CollectionItem>)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
+        fixture('const Page=()=> rows.map(row => <ListRow><Button intent="commit" /></ListRow>)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
       ],
     })
   

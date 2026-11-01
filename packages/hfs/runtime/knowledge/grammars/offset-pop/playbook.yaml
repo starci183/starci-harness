@@ -69,8 +69,8 @@ shapes:
       Keep: which sections exist and which one is the next step. Never crosses over: layout grid, card
       chrome, or a section that would need a renderer the family does not publish.
     composition:
-      - renderer: SectionHeader
-        role: The greeting or section title; its eyebrow reads `accentText`, never the pink
+      - renderer: Section
+        role: The greeting or section title
       - renderer: SurfaceCard
         role: |
           One top-level sticker for the next step (`isHighlight` on that card only), holding the title

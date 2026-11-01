@@ -328,7 +328,6 @@ export const INBOX = {
     count: (waiting: number) => `${waiting} quyết định đang chờ`,
     list: "Quyết định đang chờ",
     listCard: "Danh sách quyết định",
-    detail: "Chi tiết quyết định",
     loading: "Đang tải quyết định",
     loadError: "Không tải được danh sách quyết định",
     empty: "Không có quyết định nào đang chờ",
