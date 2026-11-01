@@ -591,9 +591,9 @@ export const Section: Story = {
           count={4}
           filter={<G.FilterButtonGroup label="Plan" options={[{ value: "all", label: "All" }, { value: "team", label: "Team" }, { value: "solo", label: "Solo" }]} defaultValue="all" />}
           items={[
-            { id: "ada", title: "Ada Lovelace", description: "Team plan", badges: <G.Badge tone="success">Active</G.Badge>, actions: <G.Button intent="neutral" size="sm">Open</G.Button> },
+            { id: "ada", title: "Ada Lovelace", description: "Team plan", badges: [{ label: "Active", tone: "success" }], action: { label: "Open", press: noop } },
             { id: "grace", title: "Grace Hopper", description: "Solo plan" },
-            { id: "alan", title: "Alan Turing", description: "Team plan", badges: <G.Badge tone="warning">Overdue</G.Badge> },
+            { id: "alan", title: "Alan Turing", description: "Team plan", badges: [{ label: "Overdue", tone: "warning" }] },
             { id: "edsger", title: "Edsger Dijkstra", description: "Solo plan", detail: <G.Alert tone="negative" title="Card expired" description="Ask for a new one." /> },
           ]}
           empty={<G.EmptyNotice message="No customers match." />}
@@ -605,8 +605,8 @@ export const Section: Story = {
           title="Setup"
           headingLevel={3}
           items={[
-            { id: "one", position: 1, title: "Connect a provider" },
-            { id: "two", position: 2, title: "Invite the team", description: "They get an email." },
+            { id: "one", leading: { position: 1 }, title: "Connect a provider" },
+            { id: "two", leading: { position: 2 }, title: "Invite the team", description: "They get an email." },
           ]}
           empty={<G.EmptyNotice message="Nothing to do." />}
         />

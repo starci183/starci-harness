@@ -10,14 +10,14 @@ import type { Context, Node } from "./lib/types.ts"
  *
  * R355. A card of the default `body` kind holds copy and controls. It does not hold the things a kind draws for it: a
  * hand-built list (`ul`, `ol`, `li`), a divider, a `SectionHeader` or a `Heading` standing as a second title (the card has a
- * `label`), and a `Section` around one card is a second frame around one subject. Rows are `kind="list"`, key figures
+ * `label`),. Rows are `kind="list"`, key figures
  * `kind="figures"`, faces divided by seams `kind="bands"`.
  *
  * R366. A card with a `label` heads a section; a peer you recognise and open is a `kind="tile"` and names itself inside. A
  * labelled card repeated in a `Grid kind="cards"` (two or more, or one written in a `.map`) is a tile drawn with the wrong
  * anatomy.
  *
- * WHAT THEY READ. The direct children of one JSX element named `SurfaceCard`, `Section` or `Grid` imported from
+ * WHAT THEY READ. The direct children of one JSX element named `SurfaceCard` or `Grid` imported from
  * `@starci/grammar` (or `G.SurfaceCard`); a child is read through `cond && <x/>`, `cond ? <x/> : <y/>` and `items.map(() =>
  * <x/>)`. A project component placed in a card is judged in its own file.
  *
@@ -116,13 +116,12 @@ const HAND_COMPONENTS = new Map<string, string>([
 export const surfaceCardKind: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R355: a SurfaceCard of the body kind holds no hand list, no Divider and no SectionHeader or Heading; a Section never wraps one card." },
+    docs: { description: "R355: a SurfaceCard of the body kind holds no hand list, no Divider and no SectionHeader or Heading." },
     schema: [],
     messages: {
       list: "`<{{element}}>` is a hand-built list in a `body` card. Rows are `<SurfaceCard kind=\"list\" items={...} empty={...} />`, and the card draws every row the same way.",
       divider: "A `Divider` in a card is refused: the card draws its own seams. Faces divided by a line are `<SurfaceCard kind=\"bands\" bands={[...]} />`.",
       title: "`<{{element}}>` stands as a second title inside a card. The card has a `label` (and `fact`, `labelEnd`, `footer`); a sub-section of one subject is a band with its own `label` in `kind=\"bands\"`.",
-      section: "A `Section` around one `SurfaceCard` frames one subject twice. The card carries its own label; use the card alone, or a `Section` of rows for a long list with search or filter.",
     },
   },
   create(context) {
@@ -143,11 +142,6 @@ export const surfaceCardKind: Rule.RuleModule = defineRule({
             if (rule === "divider") context.report({ node: child, messageId: "divider" })
             else if (rule === "title") context.report({ node: child, messageId: "title", data: { element: childComponent ?? "" } })
           }
-        }
-        if (component === "Section") {
-          const children = childElements(element)
-          const only = children.length === 1 ? children[0] : undefined
-          if (only !== undefined && grammarComponent(context, only.node.openingElement) === "SurfaceCard") context.report({ node: opening, messageId: "section" })
         }
       },
     }

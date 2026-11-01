@@ -1,6 +1,6 @@
 /**
- * Twin tests for the card laws: R355 (a body card holds no hand list, Divider or second title; a Section never wraps one
- * card) and R366 (a labelled card is not repeated in a card grid).
+ * Twin tests for the card laws: R355 (a body card holds no hand list, Divider or second title) and R366 (a labelled
+ * card is not repeated in a card grid).
  *
  *   node --test src/surface-card.spec.ts
  */
@@ -21,7 +21,7 @@ test("the law publishes two rules and both are errors", () => {
   })
 })
 
-test("R355: a body card holds no hand list, no Divider, no second title; a Section never wraps one card", () => {
+test("R355: a body card holds no hand list, no Divider, no second title", () => {
   slotTester().run("surface-card-kind", surfaceCardKind, {
     valid: [
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><Text>One line.</Text></SurfaceCard>" },
@@ -29,8 +29,6 @@ test("R355: a body card holds no hand list, no Divider, no second title; a Secti
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"list\" label=\"Run\" items={[]} empty={null} />" },
       // a hand list or heading deeper inside is judged where it is not a direct child
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><div><ul><li>x</li></ul></div></SurfaceCard>" },
-      // a Section of several things
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <Section><SurfaceCard label=\"a\" /><SurfaceCard label=\"b\" /></Section>" },
       // another source's card
       { filename: BLOCK, code: "import { SurfaceCard } from \"other-kit\"\nexport const A = () => <SurfaceCard><ul><li>x</li></ul></SurfaceCard>" },
       { filename: SCRIPT, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><ul><li>x</li></ul></SurfaceCard>" },
@@ -41,7 +39,6 @@ test("R355: a body card holds no hand list, no Divider, no second title; a Secti
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><Text>a</Text><Divider /><Text>b</Text></SurfaceCard>", errors: [{ messageId: "divider" }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SectionHeader title=\"Steps\" /></SurfaceCard>", errors: [{ messageId: "title" }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><Heading level={3}>Steps</Heading></SurfaceCard>", errors: [{ messageId: "title" }] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <Section><SurfaceCard label=\"a\" /></Section>", errors: [{ messageId: "section" }] },
     ],
   })
 })

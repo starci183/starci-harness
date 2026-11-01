@@ -1,23 +1,12 @@
 import { useId, type ReactNode } from "react"
-import { LeadingNumber } from "../../LeadingNumber.js"
-import { ListRow, type ListRowProps } from "../../composite/ListRow/index.js"
+import { ListRow } from "../../composite/ListRow/index.js"
+import type { ListRowData } from "../../surfaceCardData.js"
 import { SectionHead, type SectionHeadProps } from "./head.js"
 
 export type { SectionHeadingLevel, SectionHeadProps } from "./head.js"
 
-type SectionRowMark =
-    | { readonly leading?: ReactNode; readonly position?: undefined }
-    /** One-based place in an ordered sequence, drawn as the quiet `1.` before the row; the list becomes an `ol`. */
-    | { readonly leading?: undefined; readonly position: number }
-
-/** One row of a list section: the same fields a list card's row has, from data. */
-export type SectionRow = SectionRowMark & Pick<ListRowProps, "badges" | "actions" | "state"> & {
-    readonly id: string
-    readonly title: string
-    readonly description?: string
-    /** Content that belongs to this row and sits under its copy (an `Alert` about this row, revealed values). */
-    readonly detail?: ReactNode
-}
+/** One row of a list section: the same data a list card's row has, drawn by the same row. */
+export type SectionRow = ListRowData
 
 type RegionSection = {
     readonly kind?: "region"
@@ -41,25 +30,13 @@ export type SectionProps = SectionHeadProps & (RegionSection | ListSection)
 const listRows = (props: ListSection, isSkeleton: boolean) => {
     if (isSkeleton) {
         const count = props.loadingRows ?? 3
-        return Array.from({ length: count }, (_, index) => <ListRow key={index} title=" " description=" " isSkeleton />)
+        return Array.from({ length: count }, (_, index) => <ListRow key={index} row={{ id: String(index), title: " ", description: " " }} isSkeleton />)
     }
-    return props.items.map(({ id, title, description, detail, position, leading, badges, actions, state }) => (
-        <ListRow
-            key={id}
-            title={title}
-            description={description}
-            leading={position === undefined ? leading : <LeadingNumber position={position} />}
-            badges={badges}
-            actions={actions}
-            {...(state === undefined ? {} : { state })}
-        >
-            {detail}
-        </ListRow>
-    ))
+    return props.items.map((row) => <ListRow key={row.id} row={row} />)
 }
 
 const ListBody = ({ list, isSkeleton }: { readonly list: ListSection; readonly isSkeleton: boolean }) => {
-    const ordered = list.items.length > 0 && list.items.every((item) => item.position !== undefined)
+    const ordered = list.items.length > 0 && list.items.every((item) => item.leading?.position !== undefined)
     const Rows = ordered ? "ol" : "ul"
     return (
         <>

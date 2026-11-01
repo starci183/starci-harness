@@ -104,8 +104,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "surface-card-kind": {
     code: "FE_SURFACE_CARD_KIND",
-    en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, a SectionHeader or Heading as a second title, or a `Section` wraps one card.",
-    fix: "Rows are `kind=\"list\"`, key figures `kind=\"figures\"`, faces divided by seams `kind=\"bands\"`; the card's title is its `label`. A `Section` is for a long list with search or filter, never around one card.",
+    en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, a SectionHeader or Heading as a second title.",
+    fix: "Rows are `kind=\"list\"`, key figures `kind=\"figures\"`, faces divided by seams `kind=\"bands\"`; the card's title is its `label`.",
   },
   "status-text-uses-soft-foreground": {
     code: "FE_STYLE_TOKEN_ONLY",
