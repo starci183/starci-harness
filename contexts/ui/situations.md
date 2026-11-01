@@ -73,6 +73,6 @@ from the structure, the gap is [open-grammar](../decisions/open-grammar.md) G-21
 |---|---|
 | Gap, margin and padding by component and by relation | [presentation](presentation.md#space), "The table" |
 | Which tier may do what | [contributing](../grammars/contributing.md#which-tier) |
-| Card kinds and where the label sits | [card](components/card.md) `card.choose.kind` |
+| Card kinds and where the label sits | [card](components/card.md) `card.choose.role` and `card.choose.label` |
 | What behind a mark picks its colour token | [presentation](presentation.md#type) `tone.choose.pair` |
 | Filter, empty, not ready, approval, chat | the Choose anchors in the table above |

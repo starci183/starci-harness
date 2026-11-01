@@ -230,7 +230,7 @@ rulings:
   - id: page-frame
     date: '2026-10-29'
     status: live
-    ruling: "A route page is one Grammar Page: the header band full width, the body always inside the page measure and gutter one region step below it, nothing in the body escaping the gutter; Page is the single owner of the page inset and the page rhythm, layout frames are pure layout and never wrap a page in a container; page tabs are the header's tabs. An app surface (a chat, a split editor) is a Page with chrome bleed: no inline gutter, no block padding and no clip, the body filling the region so what it holds fills it; its header is optional, and when given it is the band (a title) or the breadcrumbs alone, the title optional only in bleed. A route draws exactly one Page, drawn by its page owner, by the owner's pure half, or by the one connected block the owner renders as its root (one level), where client data builds the header a server owner may not; siblings beside it or a second Page stay refused. A route segment layout whose owner, its pure half or its one root block draws a Page with its header and header.tabs as link tabs is the one Page of every route under it: those page owners draw body content only, need no Page and are refused one; the layout's Page has nothing beside it, so a PageHeader beside it moves into its header. A page owner that draws no UI (it only redirects, refuses with notFound or returns null) needs no Page, nor does a page mounted only under the auth route group (auth), whose layout draws the auth frame that is its page frame; workbench pages are ordinary pages."
+    ruling: "A route page is one Grammar Page: the header band full width, the body always inside the page measure and gutter one region step below it, nothing in the body escaping the gutter; Page is the single owner of the page inset and the page rhythm, layout frames are pure layout and never wrap a page in a container; page tabs are the header's tabs. An app surface (a chat, a split editor) is a Page with chrome bleed: no inline gutter, no block padding and no clip, the body filling the region so what it holds fills it; its header is optional, and when given it is the band (a title) or the breadcrumbs alone, the title optional only in bleed. A route draws exactly one Page, drawn by its page owner, by the owner's pure half, or by the one connected block the owner renders as its root (one level), where client data builds the header a server owner may not; siblings beside it or a second Page stay refused. A route segment layout whose owner, its pure half or its one root block draws a Page with its header and header.tabs as link tabs is the one Page of every route under it: those page owners draw body content only, need no Page and are refused one; the layout's Page has nothing beside it, so a hand-drawn head beside it moves into its header. A page owner that draws no UI (it only redirects, refuses with notFound or returns null) needs no Page, nor does a page mounted only under the auth route group (auth), whose layout draws the auth frame that is its page frame; workbench pages are ordinary pages."
     owner: "contexts/ui/components/page-header.md; contexts/grammars/contract.yaml page; contexts/hfs/rules.yaml R324, R325"
   - id: mermaid-diagram
     date: '2026-10-28'
@@ -355,7 +355,7 @@ rulings:
     date: '2026-10-31'
     status: live
     words: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
-    ruling: "A tabbed app page's PaneGrid attaches flush under the tab line, full width and to the bottom of the viewport, with no card, radius or gap between the tabs and the grid: Page chrome=\"panes\" is that frame, and a card, a joined surface or a FillViewport around panes is not."
+    ruling: "A tabbed app page's PaneGrid attaches flush under the tab line, full width and to the bottom of the viewport, with no card, radius or gap between the tabs and the grid: Page chrome=\"panes\" is that frame, and a card, a joined surface or a fill box around panes is not."
     owner: "@starci/grammar src/core/frame/Page; lint starci-grammar/pane-grid-page and starci-fe/no-hand-built-panes (R348, R349); contexts/ui/components/page-header.md"
   - id: spacing-roles
     date: '2026-10-31'
@@ -745,7 +745,7 @@ rulings:
   - id: card-carries-its-own-label
     date: '2026-11-01'
     status: live
-    ruling: "A card already has a label, which is the purpose of its design: the title is its label, the count its fact, the action its labelEnd and the note its footer, so a Section whose only child is a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard is a heading over one card and is refused, as is a card whose ariaLabel repeats the Section's title; several cards under one Section stay legal. SurfaceCard takes a footer, the same bottom note as SurfaceListCard. The owner's words: \"bản thân card đã có label, vốn là mục đích thiết kế\"."
+    ruling: "A card already has a label, which is the purpose of its design: the title is its label, the count its fact, the action its labelEnd and the note its footer, so a Section whose only child is a single SurfaceCard is a heading over one card and is refused, as is a card whose ariaLabel repeats the Section's title; several cards under one Section stay legal. SurfaceCard takes a footer, the bottom note. The owner's words: \"bản thân card đã có label, vốn là mục đích thiết kế\"."
     owner: "contexts/ui/components/card.md; contexts/hfs/rules.yaml R354; @starci/grammar src/core/frame/SurfaceCard"
   - id: flow-graph-lanes
     date: '2026-11-01'
@@ -755,7 +755,7 @@ rulings:
   - id: header-command-hugs-label
     date: '2026-11-01'
     status: live
-    ruling: "A page or pane command hugs its label and sits at the end of its header row; Button width=\"fill\" is only for a form submit, an auth panel, or a phone action bar. The lint refuses width fill in a PageHeader actions or a card labelEnd; the other three places are not decidable from a file."
+    ruling: "A page or pane command hugs its label and sits at the end of its header row; Button width=\"fill\" is only for a form submit, an auth panel, or a phone action bar. The lint refuses width fill in the actions of a Page header or a card labelEnd; the other three places are not decidable from a file."
     owner: "contexts/ui/components/button.md (button.choose.width); contexts/hfs/rules.yaml R352"
   - id: flow-graph-orbit
     date: '2026-10-31'
