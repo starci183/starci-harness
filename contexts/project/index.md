@@ -143,7 +143,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [code/shared/typing.md](../code/shared/typing.md) · 4 KB — How strict the compiler is and which spellings tell it something it cannot check.
   - sections: SHARED-TYPING-1 The repository tsconfig extends the canon preset and adds only paths · SHARED-TYPING-2 No type escape; untrusted values are `unknown` and narrowed · SHARED-TYPING-3 Arrays are `Array<T>` or `ReadonlyArray<T>` · SHARED-TYPING-4 The type-aware rules hold on both sides
 - [decisions/README.md](../decisions/README.md) · 1 KB
-- [decisions/grammar-audit-2026-11.md](../decisions/grammar-audit-2026-11.md) · 102 KB — Status: approved by the owner, 2026-11-01; part 10 holds his decisions and overrides anything above it.
+- [decisions/grammar-audit-2026-11.md](../decisions/grammar-audit-2026-11.md) · 99 KB — Status: approved by the owner, 2026-11-01; part 10 holds his decisions and overrides anything above it.
   - sections: 0. The audit in one page · 1. Method and limits · 2. The root failure · 3. The one card · 4. The tier binding · 5. Every public component · 6. Rules · 7. The standard · 8. Theming · 9. The refactor plan · 10. The owner's decisions · Appendix A. Theming violations · Appendix B. Tier violations
   - ids: E.1, E.2, E.3, JS-side, one-file, string
 - [decisions/legacy-retirement.md](../decisions/legacy-retirement.md) · 35 KB — The owner ordered three things: every package under `packages/` is TypeScript source built to JavaScript, the legacy runtime at `D:/Repositories/starci-academy-backend/.claude` ...
@@ -156,7 +156,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [decisions/open-ui.md](../decisions/open-ui.md) · 9 KB — Choices made while writing `contexts/ui`, each awaiting the owner's feedback.
 - [decisions/rulings.yaml](../decisions/rulings.yaml) · 88 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
   - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, accent-corner, agent-avatar-initials-bot-badge, agent-keyed-schedules, alert-white-surface, app-check-cache, app-cicd-auto-deploy and 122 more
-- [grammars/README.md](../grammars/README.md) · 10 KB — A grammar is the visual language an app's UI is drawn in.
+- [grammars/README.md](../grammars/README.md) · 11 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Reading order for an author · Where feedback lands
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes

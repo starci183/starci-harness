@@ -79,7 +79,7 @@ rulings:
     ruling: "SurfaceCard is the one card, a discriminated union on kind: body (default), figures, list, accordion, bands and tile. SurfaceListCard, SurfaceAccordionCard, StaticStateRow, ListRow as a public export and DescriptionList stat-strip are gone; a row is an item of kind=list. A card never stands inside another surface (a card, Pane surface, Dialog, Drawer, AlertDialog or Popover): development throws, R340 and R356 refuse it. A body card holds no hand list, Divider or second title (R355); a labelled card repeated in a Grid of cards is a tile (R366)."
     owner: "@starci/grammar src/core/frame/SurfaceCard, src/core/composite/ListRow, src/core/surfaceContext.tsx; contexts/grammars/contract.yaml roles.card; lint starci-grammar/surface-card-kind, no-label-in-grid, no-raised-surface-in-surface; starci app codemod surface-card-kinds"
     pins:
-      contexts/vendor/wrappers.yaml: 98f66a47b077548e837e015c67d5afe50745eb792b6c3133434183b61ce8c695
+      contexts/vendor/wrappers.yaml: b06fb3ced21a5ccd0090c086aac0cefac8a843f29fbb0fd0622e86fd9d943bf8
   - id: R318/case-1
     date: '2026-10-25'
     status: live

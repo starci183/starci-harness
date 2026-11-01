@@ -480,10 +480,10 @@ rules:
     witness:
       - {path: packages/eslint/be/legacy-owner-graph.a16.spec.mjs, editions: [lite, full]}
     templateNa: "Tier and package direction are constraints on cross-owner import graphs; no dedicated cross-owner graph scaffold is generated."
-    law: "The tier direction matrix; a shared package never imports an app. Front-end page and layout owners may import overlay entries; every other cross-owner feature-to-feature edge is forbidden, including layout-to-page and overlay-to-overlay. Components never import overlays. The one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`."
+    law: "The tier direction matrix; a shared package never imports an app. Front-end page and layout owners may import overlay entries; every other cross-owner feature-to-feature edge is forbidden, including layout-to-page and overlay-to-overlay. Components never import overlays. The one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`. A component library's tiers (`tiers.grammar`: leaf, branch, composite, frame) import nothing above themselves, and its `data-tier` stamp is its folder."
     kinds: [lint, design]
     gates: [settle, land, ci]
-    failureCodes: ["BE_TIER_DIRECTION", "FE_TIER_DIRECTION", "ARCH_PACKAGE_IMPORTS_APP"]
+    failureCodes: ["BE_TIER_DIRECTION", "FE_TIER_DIRECTION", "FE_GRAMMAR_TIER_DIRECTION", "FE_GRAMMAR_TIER_STAMP", "ARCH_PACKAGE_IMPORTS_APP"]
     enforcers:
       - {kind: eslint-be, id: tier-direction}
       - {kind: eslint-fe, id: tier-direction}
@@ -5983,36 +5983,6 @@ rules:
         source: owner
         quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); SurfaceListCard takes its depth from the surface context (grammar 0.16.2)."
         ruling: "SurfaceListCard resolves its depth from the surface context like SurfaceCard and SurfaceAccordionCard; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
-  - id: R355
-    code: "FE_SURFACE_CARD_KIND"
-    law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind holds no raw ul, ol, li or dl, no Divider, and no SectionHeader or Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice."
-    kinds: [lint]
-    gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_SURFACE_CARD_KIND"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: surface-card-kind}
-    editions: [lite, full]
-    proves:
-      - packages/eslint-grammar-core/src/surface-card.spec.ts
-    exemplifiedBy:
-      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_SURFACE_CARD_KIND]}
-    witness:
-      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_SURFACE_CARD_KIND]}
-  - id: R366
-    code: "FE_LABEL_IN_GRID"
-    law: "A SurfaceCard with a label repeated in a Grid kind=cards is a tile drawn with the wrong anatomy: a peer you recognise and open names itself inside (SurfaceCard kind=tile), and peers compared by a fact are one kind=list card."
-    kinds: [lint]
-    gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_LABEL_IN_GRID"]
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-label-in-grid}
-    editions: [lite, full]
-    proves:
-      - packages/eslint-grammar-core/src/surface-card.spec.ts
-    exemplifiedBy:
-      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
-    witness:
-      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
   - id: R341
     code: "FE_FREESTYLE_REASON_MISSING"
     law: "A Grammar Freestyle region, the one sanctioned place where an app writes its own plain elements and CSS because no Grammar component fits, names its reason: a non-empty string literal saying why. The rules that judge hand-written elements, classes, styles and generated art leave the raw elements of a Freestyle subtree alone; a Grammar component inside it is judged as before. An element with a spread attribute is not judged."
@@ -6335,6 +6305,21 @@ rules:
         source: owner
         quote: "bản thân card đã có label, vốn là mục đích thiết kế"
         ruling: "A card carries its own title, count, action and note; a Section around a single card is refused."
+  - id: R355
+    code: "FE_SURFACE_CARD_KIND"
+    law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind holds no raw ul, ol, li or dl, no Divider, and no SectionHeader or Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_SURFACE_CARD_KIND"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: surface-card-kind}
+    editions: [lite, full]
+    proves:
+      - packages/eslint-grammar-core/src/surface-card.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_SURFACE_CARD_KIND]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_SURFACE_CARD_KIND]}
   - id: R356
     code: "FE_SURFACE_NESTING"
     law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable is not drawn inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading holds more than one card, and a labelled card is not repeated in a Grid: the render graph replaces every component by what it draws and every children by what its caller handed it."
@@ -6427,6 +6412,44 @@ rules:
         source: owner
         quote: "One accent fill per render."
         ruling: "When two things are highlighted neither is."
+  - id: R361
+    code: "FE_RENDER_PROP_ACROSS_SERVER"
+    law: "A function is not handed from a server file to a client component: React serialises props across that line and a function is not serialisable; pass data, or move the callback into the client branch that owns the interaction."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_RENDER_PROP_ACROSS_SERVER"]
+    enforcers:
+      - {kind: machine, id: render-prop-across-server, at: scripts/hfs/architecture/render-prop-across-server.mjs}
+    editions: [lite, full]
+    docs: [contexts/code/fe/function.md]
+    templateNa: "A template hands no function across the server line."
+    proves:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    witness:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "a block takes data"
+        ruling: "A render callback is for a client branch; a block takes data and renders it itself."
+  - id: R366
+    code: "FE_LABEL_IN_GRID"
+    law: "A SurfaceCard with a label repeated in a Grid kind=cards is a tile drawn with the wrong anatomy: a peer you recognise and open names itself inside (SurfaceCard kind=tile), and peers compared by a fact are one kind=list card."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_LABEL_IN_GRID"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-label-in-grid}
+    editions: [lite, full]
+    proves:
+      - packages/eslint-grammar-core/src/surface-card.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
   - id: R367
     code: "FE_SWR_DEFAULT_ARRAY"
     law: "A loading state is drawn from the page's own reads: a hook folds a read to [] only while it also returns that read's isLoading, a slot takes its loading and error from the reads it draws and never from another slot, a background refresh (isValidating) never drives a loading flag or a status, a placeholder is not the ready data with its lists emptied, and an app draws no skeleton by hand once the Grammar owns the loading shape (written as `no-hand-skeleton`, published with that Grammar change)."
@@ -6453,26 +6476,3 @@ rules:
         source: owner
         quote: "The skeleton is the ready structure with its data missing; it is drawn from isLoading alone and from the reads the region shows."
         ruling: "Several reads feed one frame: loading is any read loading with no data; a key change reloads only the region keyed by it; a refresh keeps the content."
-  - id: R361
-    code: "FE_RENDER_PROP_ACROSS_SERVER"
-    law: "A function is not handed from a server file to a client component: React serialises props across that line and a function is not serialisable; pass data, or move the callback into the client branch that owns the interaction."
-    kinds: [lint]
-    gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_RENDER_PROP_ACROSS_SERVER"]
-    enforcers:
-      - {kind: machine, id: render-prop-across-server, at: scripts/hfs/architecture/render-prop-across-server.mjs}
-    editions: [lite, full]
-    docs: [contexts/code/fe/function.md]
-    templateNa: "A template hands no function across the server line."
-    proves:
-      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
-    exemplifiedBy:
-      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
-    witness:
-      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "a block takes data"
-        ruling: "A render callback is for a client branch; a block takes data and renders it itself."

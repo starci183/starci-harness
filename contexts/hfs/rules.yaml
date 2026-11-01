@@ -2420,18 +2420,6 @@ rules:
     enforcers:
       - {kind: eslint-grammar-core, id: surface-card-kind}
 
-  - id: R366
-    code: FE_LABEL_IN_GRID
-    law: "A card with a label heads a section and draws the label outside its material; a peer you recognise and open names itself inside, beside its mark (ruling card-label-by-kind). A SurfaceCard with a label repeated in a Grid kind=cards (two or more as direct children, or one written in a .map) is refused: it is a tile (SurfaceCard kind=tile with name, mark, description, badge and action), or, when the peers are compared by a fact, one kind=list card."
-    failureCodes:
-      - FE_LABEL_IN_GRID
-    enforcers:
-      - {kind: eslint-grammar-core, id: no-label-in-grid}
-
-# Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
-# (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
-# dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is
-# red (ANATOMY_PENDING_UNRULED) and one that holds no open gap is red (ANATOMY_PENDING_STALE), so this list only shrinks.
   - id: R356
     code: FE_SURFACE_NESTING
     law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable not inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading never holds just one card, and a labelled card is not repeated in a Grid."
@@ -2460,6 +2448,25 @@ rules:
       - FE_ONE_HIGHLIGHT
     enforcers:
       - {kind: eslint-grammar-core, id: one-highlight-per-render}
+  - id: R361
+    code: FE_RENDER_PROP_ACROSS_SERVER
+    law: "A function is not handed from a server file to a client component; pass data, or move the callback into the client branch that owns the interaction."
+    failureCodes:
+      - FE_RENDER_PROP_ACROSS_SERVER
+    enforcers:
+      - {kind: machine, id: render-prop-across-server}
+  - id: R366
+    code: FE_LABEL_IN_GRID
+    law: "A card with a label heads a section and draws the label outside its material; a peer you recognise and open names itself inside, beside its mark (ruling card-label-by-kind). A SurfaceCard with a label repeated in a Grid kind=cards (two or more as direct children, or one written in a .map) is refused: it is a tile (SurfaceCard kind=tile with name, mark, description, badge and action), or, when the peers are compared by a fact, one kind=list card."
+    failureCodes:
+      - FE_LABEL_IN_GRID
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-label-in-grid}
+
+# Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
+# (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
+# dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is
+# red (ANATOMY_PENDING_UNRULED) and one that holds no open gap is red (ANATOMY_PENDING_STALE), so this list only shrinks.
   - id: R367
     code: FE_SWR_DEFAULT_ARRAY
     law: "A loading state is drawn from the page's own reads: a read folded to [] also returns its isLoading, a slot never takes another slot's loading or error, a background refresh never drives a loading flag, a placeholder is not the ready data emptied, and an app draws no skeleton by hand once the Grammar owns the loading shape."
@@ -2473,13 +2480,6 @@ rules:
       - {kind: eslint-fe, id: no-foreign-slot-status}
       - {kind: eslint-fe, id: no-validating-as-loading}
       - {kind: eslint-fe, id: no-placeholder-object}
-  - id: R361
-    code: FE_RENDER_PROP_ACROSS_SERVER
-    law: "A function is not handed from a server file to a client component; pass data, or move the callback into the client branch that owns the interaction."
-    failureCodes:
-      - FE_RENDER_PROP_ACROSS_SERVER
-    enforcers:
-      - {kind: machine, id: render-prop-across-server}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

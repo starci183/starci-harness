@@ -35,7 +35,7 @@ wrappers:
       overrides: [
         { kind: style, target: "ListBox.Item:padding", ruling: spacing-roles, reason: "an option is a box inside a surface: the nested step on every side, a 40px one-line row" },
         { kind: style, target: "ListBox.Item:gap", ruling: spacing-roles, reason: "the avatar or glyph stands a row step from the text" } ] }
-  - { file: core/frame/Popover/index.tsx, wraps: [Popover], delegates: { Popover: [Trigger] } }
+  - { file: core/PopoverPart.tsx, wraps: [Popover], delegates: { Popover: [Trigger] } }
   - { file: core/branch/Select/index.tsx, wraps: [Description, Label, ListBox, Select, Spinner],
       overrides: [
         { kind: style, target: "Select.Trigger:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
@@ -86,7 +86,7 @@ wrappers:
         { kind: style, target: "Avatar.Fallback:font", ruling: avatar-default-dicebear-initials, reason: "initials stay readable in a group cell, so the fallback text scales with the cell" },
         { kind: style, target: "Avatar.Root:background", ruling: grammar-menu-drawer-live-time, reason: "an avatar in the current navigation item takes the item's exclusive mark" } ] }
   - { file: core/leaf/Badge/index.tsx, wraps: [Chip] }
-  - { file: core/leaf/Button/index.tsx, wraps: [Button, Link, Spinner],
+  - { file: core/leaf/Button/index.tsx, wraps: [Button, Link, Spinner, Tooltip],
       overrides: [
         { kind: style, target: "Link.Root:block-size", ruling: control-height-40, reason: "a link drawn as a button is held at the control height at every breakpoint" },
         { kind: style, target: "Button.Root:padding", ruling: spacing-roles, reason: "inline padding follows the size step (sm 8, md 12, lg 24), one step less on a glyph side" },
