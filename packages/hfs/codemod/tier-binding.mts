@@ -125,7 +125,7 @@ function onePass({ ts, text, file }: { ts: Ts; text: string; file: string }): { 
         else { flag(element, 'CHILD_NOT_TEXT', `${name} \`${toProp.prop}\` is a string: the child is not plain text, move it by hand`, name); return; }
       } else if (only !== undefined && ts.isJsxExpression(only) && only.expression !== undefined) value = `{${only.expression.getText(source)}}`;
       else if (only !== undefined && ts.isJsxText(only)) value = `{${JSON.stringify(jsxText(only.getText(source)))}}`;
-      else value = `{<>${element.children.map(child => child.getText(source)).join('')}</>}`;
+      else value = `{<>${element.children.map(child => source.text.slice(child.pos, child.end)).join('')}</>}`;
       if (only !== undefined && (ts.isJsxElement(only) || ts.isJsxSelfClosingElement(only) || ts.isJsxFragment(only))) value = `{${only.getText(source)}}`;
       const head = opening.getText(source).replace(/>$/, '').trimEnd();
       const replacement = `${head} ${toProp.prop}=${value} />`;

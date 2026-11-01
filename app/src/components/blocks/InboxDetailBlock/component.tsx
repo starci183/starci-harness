@@ -136,8 +136,7 @@ const RuledSummary = (props: PartProps) => {
 export const InboxDetailBlockBase = (props: InboxDetailBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SlotView slot={props.props.decision} placeholder={DECISION_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-            {(decision, isSkeleton) => {
+        <SlotView slot={props.props.decision} placeholder={DECISION_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(decision, isSkeleton) => {
                 let action
                 switch (props.shape) {
                     case "ruling":
@@ -164,7 +163,6 @@ export const InboxDetailBlockBase = (props: InboxDetailBlockBaseProps) => {
                         </div>
                     </SurfaceCard>
                 )
-            }}
-        </SlotView>
+            }} />
     )
 }

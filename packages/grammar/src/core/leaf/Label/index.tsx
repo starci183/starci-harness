@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from "react"
+import { createElement } from "react"
 
 /**
  * The document-outline rank a surface's visible name takes. Surfaces default to `3` (a card under
@@ -13,7 +13,7 @@ import { getLabelClassName, getLabelContract } from "./classNames.js"
 
 export type LabelProps = {
     readonly id?: string
-    readonly children: ReactNode
+    readonly children: string
     readonly depth?: "top" | "nested"
     /** A surface branch may promote its visible name into the document outline at any rank. */
     readonly as?: "span" | "h2" | "h3" | "h4" | "h5" | "h6"

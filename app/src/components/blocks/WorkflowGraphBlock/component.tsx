@@ -79,8 +79,7 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
     const { labels } = props.props
     return (
         <Section title={labels.title}>
-            <SlotView slot={props.props.graph} placeholder={GRAPH_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
-                {(graph, isSkeleton) => (
+            <SlotView slot={props.props.graph} placeholder={GRAPH_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(graph, isSkeleton) => (
                     <div className="app-stack">
                         <SurfaceCard
                             kind="figures"
@@ -132,8 +131,7 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
                             </div>
                         )}
                     </div>
-                )}
-            </SlotView>
+                )} />
         </Section>
     )
 }
