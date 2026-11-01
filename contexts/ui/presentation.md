@@ -117,7 +117,6 @@ Margin:
 The page title, the tab labels and the section headings share one text edge with the card or pane box below them:
 every tab bar is the underline bar, its first label on the content edge; a filter over a collection is a
 `FilterButtonGroup`, never a tab bar. The card's inner text at 12 is the one intentional step.
-Lint: `starci-fe/nested-control-variant`.
 
 ### The table (the grammar's decision per component)
 
@@ -192,7 +191,7 @@ weights):
 
 - A heading's level is its document position and sets its size together, so tag and size never drift; levels stop
   at four, because a fifth means the page nested deeper than a reader holds. Lint:
-  `starci-grammar/no-heading-tag-outside-heading-component`, `starci-grammar/no-hand-rolled-heading`.
+  `starci-grammar/no-raw-structural-element`, `starci-grammar/no-text-heading` (R358).
 - **Weight refines a rank, never creates one**; structure must hold with weight and colour removed.
 - Body copy is never shrunk to fit a container; the layout is repaired instead.
 
@@ -250,8 +249,7 @@ Soft faces are translucent, so contrast is measured on the composed pixels, neve
 **The layer chain** holds on every screen: page background, then an owning surface, then its nested controls.
 Grouped content stands in a surface; only page-level marks (a brand lockup, the page heading) sit on the
 background. A form is one unit: its fields and its actions stand in the same surface. Controls in a surface take the
-grammar's treatment, resolved from context; the app never passes a field variant. Lint:
-`starci-fe/nested-control-variant`.
+grammar's treatment, resolved from context; the app never passes a field variant (the prop types have none).
 
 ### Boundary
 `separator` draws a line **between** things; `border` outlines **one** thing.

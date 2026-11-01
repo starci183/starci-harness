@@ -171,10 +171,6 @@ shapes:
           Both opener paths default visibility to wide; an explicit visibility also resolves to wide.
           Under viewport="fixed",
           navigationTrack defaults to intrinsic so a collapsed sidebar leaves no empty track.
-      - renderer: NavigationFeatureNav
-        role: |
-          The navbar may use this renderer or the WorkspaceShell header with TopBar. Its family CSS
-          supplies sticky top placement, a 4rem band, a solid surface and a full-width bottom separator.
       - renderer: Sidebar
         role: |
           Desktop navigation uses the expanded or collapsed rail; the left mobile Drawer composes
@@ -614,9 +610,6 @@ presentation:
         - component: HorizontalScrollRegion
           element: root
           rule: PADDING-1
-        - component: NavigationFeatureNav
-          element: primary
-          rule: PADDING-3
         - component: OtpInput
           element: root
           rule: PADDING-1

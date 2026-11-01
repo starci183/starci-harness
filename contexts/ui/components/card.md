@@ -33,7 +33,7 @@ Choice `card.choose.highlight`: whether a card claims the next step.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| highlight | peers share the view and this card is the task's next step | `isHighlight` on this card only | `DNA-COMMON-ONE-HIGHLIGHT` |
+| highlight | peers share the view and this card is the task's next step | `isHighlight` on this card only | `DNA-COMMON-ONE-HIGHLIGHT`; lint `starci-grammar/one-highlight-per-render` (R359) |
 | plain | every other card | no highlight | judgement |
 
 Choice `card.choose.treatment`: which face the card wears. The first row that applies wins.
@@ -55,7 +55,7 @@ stay legal.
 ## Variants
 The face is the grammar's, and the card has one depth, raised. A surface never stands inside another surface: a card in a
 card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused by a development throw and R340
-(`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`). What sits in a surface is a box at the nested inset (a notice, a `Quote`, a
+(`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); across files the render graph refuses it too (R356). What sits in a surface is a box at the nested inset (a notice, a `Quote`, a
 stat cell), not a card. A decorative slab belongs to the bands card's first face, edge to edge (SURFACE-6, ruling
 `band-is-first-face`).
 

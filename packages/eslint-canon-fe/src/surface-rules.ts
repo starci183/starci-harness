@@ -25,7 +25,7 @@ const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const SURFACES = new Set<string | undefined>([
   "SurfaceCard", "Sidebar",
   "Dialog", "Drawer", "AlertDialog", "Popover",
-  "WorkspaceShell", "TopBar", "NavigationFeatureNav", "Pane", "PaneSection",
+  "WorkspaceShell", "TopBar", "Pane", "PaneSection",
 ])
 const CLASS_BUILDERS = new Set(["cn", "clsx", "classNames", "cva", "tv"])
 

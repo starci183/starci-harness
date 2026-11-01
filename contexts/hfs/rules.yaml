@@ -2359,7 +2359,7 @@ rules:
       - {kind: eslint-grammar-core, id: no-pane-section-padding}
   - id: R348
     code: FE_PANE_GRID_FRAME
-    law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"` or stands inside a Pane; a PaneGrid drawn in a FillViewport, a SurfaceCard, SurfaceListCard or SurfaceAccordionCard, a Page of another chrome, or wrapped inside `Page chrome=\"panes\"` re-decides the frame and the bottom edge that Page owns. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
+    law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"` or stands inside a Pane; a PaneGrid drawn in a SurfaceCard of any kind, a Page of another chrome, or wrapped inside `Page chrome=\"panes\"` re-decides the frame and the bottom edge that Page owns. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
     failureCodes:
       - FE_PANE_GRID_FRAME
     enforcers:
@@ -2384,7 +2384,7 @@ rules:
 
   - id: R351
     code: FE_TABLE_IN_CARD
-    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a SurfaceListCard with the label outside and the note in its footer, and a table that belongs to a card is an owner decision named in this rule. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
+    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a SurfaceCard kind=list with the label outside and the note in its footer, and a table that belongs to a card is an owner decision named in this rule. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
     failureCodes:
       - FE_TABLE_IN_CARD
     enforcers:
@@ -2392,7 +2392,7 @@ rules:
 
   - id: R352
     code: FE_COMMAND_FILLS_HEADER
-    law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a PageHeader or the labelEnd of a SurfaceCard or SurfaceListCard is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
+    law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a Page header or the labelEnd of a SurfaceCard is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
     failureCodes:
       - FE_COMMAND_FILLS_HEADER
     enforcers:
@@ -2416,7 +2416,7 @@ rules:
 
   - id: R355
     code: FE_SURFACE_CARD_KIND
-    law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind (the default) holds no raw ul, ol, li or dl, no Divider, and no SectionHeader or Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice. Rows are kind=list, key figures kind=figures, faces divided by seams kind=bands; the card's title is its label."
+    law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind (the default) holds no raw ul, ol, li or dl, no Divider, and no Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice. Rows are kind=list, key figures kind=figures, faces divided by seams kind=bands; the card's title is its label."
     failureCodes:
       - FE_SURFACE_CARD_KIND
     enforcers:

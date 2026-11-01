@@ -16,7 +16,7 @@ Six laws decide every addition; each names what holds it.
 | 2 A fact in, a look out | a prop states a fact, no prop chooses a look, and a default needs no prop | the prop rules below; types |
 | 3 Data before slots, slots before children | a typed field first, then a named slot, `children` only on a frame | tier table; `NoChildren` and `LabelChild` |
 | 4 Wrong composition fails in order | it does not compile, then does not lint, then does not render | types, the R-numbered rules, a development throw, DNA laws |
-| 5 The app owns its paint, the grammar its structure | neither reaches into the other (ruling `app-owns-theme`) | [theme](#paint), `starci/brand-layer-shape` |
+| 5 The app owns its paint, the grammar its structure | neither reaches into the other (ruling `app-owns-theme`) | [theme](#paint), `starci/theme-layer-shape` |
 | 6 A claim names its enforcer | CONTRIB-8, and every enforcer runs | [who holds each proof](../ui/proof.md#who-holds-each-proof) |
 
 ## The question to ask first
@@ -53,10 +53,10 @@ Choice `tier.choose.component`: which tier a component belongs to. The first row
 
 | Row | When | Tier | State | May import | Props | `children` | Held by |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| frame | it owns a region: tracks, an inset, a scroll, a ground, or an overlay; it adds no content of its own | frame | layout or a portal | everything below | role props | yes: this is the tier's job | tier-props lint; `tiers.grammar` import check |
-| composite | it draws a fixed anatomy from fields | composite | none beyond a branch's | branches, leaves, lower composites | typed data, `on*`, at most 3 `ReactNode` slots each named for its role | never: `NoChildren` | tier-props lint; the same import check |
-| branch | it holds its own interaction state and reads no data | branch | `useState` for open, selected or draft | leaves, branches | typed data (`items`, `options`), `on*`, named slots | never: `NoChildren` | tier-state and tier-props lint |
-| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isSkeleton` | a string or none: `LabelChild` | tier-state and tier-props lint |
+| frame | it owns a region: tracks, an inset, a scroll, a ground, or an overlay; it adds no content of its own | frame | layout or a portal | everything below | role props | yes: this is the tier's job | `starci-grammar/tier-props`; imports by R26 `FE_GRAMMAR_TIER_DIRECTION`, the folder stamp by `FE_GRAMMAR_TIER_STAMP` |
+| composite | it draws a fixed anatomy from fields | composite | none beyond a branch's | branches, leaves, lower composites | typed data, `on*`, at most 3 `ReactNode` slots each named for its role | never: `NoChildren` | `starci-grammar/tier-props`; the same R26 checks |
+| branch | it holds its own interaction state and reads no data | branch | `useState` for open, selected or draft | leaves, branches | typed data (`items`, `options`), `on*`, named slots | never: `NoChildren` | `starci-grammar/tier-props`; state is review until a `tier-state` lint exists |
+| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isSkeleton` | a string or none: `LabelChild` | `starci-grammar/tier-props`; state is review until a `tier-state` lint exists |
 | block | an app world: it reads data through hooks (apps only) | block | the app's hooks | composites and below, never a block | `{ shape?, props, on? }` | never | `starci-fe/tier-children`; R26 |
 
 A prop type extends `NoChildren` (`{ children?: never }`) or `LabelChild` (`{ children?: string }`) in a tier that takes no
@@ -65,10 +65,10 @@ ruling. Each exception has its reason and its holder; no other exists.
 
 | Exception | Reason | Held by |
 | --- | --- | --- |
-| `Text` inline content | a sentence holds `Code`, `Link`, `Kbd` | lint `text-inline-only` refuses a block component in it |
+| `Text` inline content | a sentence holds `Code`, `Link`, `Kbd` | R357 `text-inline-only` refuses a block component in it |
 | `Freestyle` `className` | the one sanctioned hole, with a stated reason | R341 |
 | `Tooltip` behind a leaf | `disabledReason` needs one; the leaf uses the vendor part | the import check sees no upward edge |
-| `DataTable` `render` per column | a cell draws from row data; a client branch | lint: no function prop from a server file |
+| `DataTable` `render` per column | a cell draws from row data; a client branch | R361: no function prop from a server file |
 | Vendor field props over budget | parity forwards them | the budget counts own props only |
 
 Import the vendor part rather than climb. A frame is the only tier that takes `children`, and a `Dialog` or `Drawer` body is a
@@ -77,7 +77,7 @@ frame's, so overlays need no exception.
 ## Props
 
 - **Data before slots, slots before children.** A typed field if the content has a shape, a named slot if it does not, `children` only on a frame.
-- **A budget, counted by lint.** Leaf 8, branch 12, composite 12 with at most 3 `ReactNode` slots, frame 10. Vendor props forwarded for
+- **A budget, held by review until a `prop-budget` lint exists.** Leaf 8, branch 12, composite 12 with at most 3 `ReactNode` slots, frame 10. Vendor props forwarded for
   parity do not count. Over budget means two components.
 - **No look props.** No `variant`, `className`, `style`, colour, radius or size in pixels. A look is resolved from intent, context or kind.
 - **Illegal states do not compile.** Use a discriminated union, and make a field required when the look depends on it, as `empty` on a list.

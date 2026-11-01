@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Removed: `NavigationFeatureNav` from the surface names and the bundled Core playbook (the component is gone; `TopBar` takes `subnavigation`).
+- Changed: the bundled rule catalog words the laws of R348, R351, R352 and R355 for the one card (no SurfaceListCard, SectionHeader or PageHeader).
 - Added: `text-inline-only` (R357, `FE_TEXT_BLOCK`), `no-text-heading` (R358, `FE_TEXT_HEADING`) and `one-highlight-per-render` (R359, `FE_ONE_HIGHLIGHT`).
 - Removed: `no-off-scale-glyph-size` (subsumed by `no-icon-size-class`), `no-decorative-icon-in-metric-cell` (named a component that does not exist), and `no-hand-rolled-heading` with `no-heading-tag-outside-heading-component` (one rule for headings: `no-raw-structural-element`).
 - Changed: the app-shell laws and the pane laws stop naming `NavigationFeatureNav`, `BottomNav`, `FillViewport` and `Region`; the specs run from a worktree (`fixtures/canon-fe-source.mjs` resolves `@starci/eslint-canon-fe` to the sibling source, because `install-links=true` copies the package before its `dist/` is built).

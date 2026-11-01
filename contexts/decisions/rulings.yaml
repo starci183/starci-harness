@@ -72,7 +72,7 @@ rulings:
     status: live
     words: "bản thân app phải set được không dựa grammar"
     ruling: "The structure of a screen comes out the same in every app; its paint is the app's. An app sets HeroUI's tokens in its own CSS, on :root, .light and .dark, and every part of the grammar follows; it writes no grammar-private name and may set nothing and take the family's default. A family publishes its default palette as an optional theme.css of HeroUI tokens, never as a declaration on the grammar root. The mode is the app's class on html. A tone x on its own tint wears x-soft and x-soft-foreground and a mark alone wears x, whatever the values. No gate and no rule judges the contrast of an app's chosen colours: a family's defaults are proved in the package's own stories and block nothing in an app. Avatar initial colours stay as identity art, not a theming violation."
-    owner: "@starci/grammar src/core/theme.css, src/offset-pop/theme.css, src/common/styles.css; contexts/grammars/README.md (Theming); lint starci/brand-layer-shape"
+    owner: "@starci/grammar src/core/theme.css, src/offset-pop/theme.css, src/common/styles.css; contexts/grammars/README.md (Theming); lint starci/theme-layer-shape"
     absorbs: [status-contrast]
   - id: card-grid-gap
     date: '2026-11-01'
