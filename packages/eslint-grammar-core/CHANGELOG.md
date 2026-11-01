@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.21.3 - 2026-11-02
+
+- Changed: requires canon FE 9.9.3 and follows the coherent Grammar 0.21.3 API/pin cohort.
+
 ## 0.21.2 - 2026-11-02
 
 - Changed: bundled pins follow Grammar 0.21.2 with disabled tab items and its coherent canon cohort; existing runtime checks are unchanged.

@@ -256,7 +256,7 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Leaves (25).** Avatar, Badge, Button, ColorSwatch, Divider, GrammarRoot, Heading, Icon,
+**Leaves (25).** Avatar, Badge, Button, CalendarDay, ColorSwatch, Divider, GrammarRoot, Heading, Icon,
 IconButton, IconTile, Image, Kbd, Link, Mascot, Meter,
 Progress, ProgressCircle, RelativeTime, Skeleton, Spinner, StateMark, StatusDot, Text, TextAction.
 
@@ -368,7 +368,7 @@ requires, restyles what the vendor decides, or replaces a vendor default, unless
 and `Select` are HeroUI's own list-box items (a `Label`, a `Description`, the item indicator at the end of the row).
 
 **Navigation & Data (16).** Accordion, AvatarGroup, Calendar, DataTable,
-BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, Pagination, Stepper, Tabs, TagGroup, Timeline.
+BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
 
 `DataTable.getCellInteraction(row, columnId)` optionally supplies `onAction`, `onDragOver`,
 `onDragLeave` and `onDrop`. Cells remain semantic
@@ -466,6 +466,10 @@ that heading. The headless form has no head controls. Media tiles use `TilePoste
 plain `facts`, one or up to three badges and typed overflow commands; a whole-card action excludes inner controls.
 `ButtonGroup` borrows the vendor size and forwards each action's `isPending`; group `isLoading` is unresolved geometry.
 `IconButton.isPending` has the same native busy and duplicate-activation semantics as Button.
+`MessageStatus` belongs in the existing message footer: receipt facts (`sent`, `delivered`, `seen`, with typed readers)
+or transport outcomes (`queued`, `sent`, `failed`, `unknown`), with a localized visible label. `MessageBubble` gains no
+status props. `CalendarDay` is the passive date heading of a calendar region: a vendor date-only value, full localized
+label and authoritative `isToday`; it owns native time/current-date semantics without selecting a date.
 
 The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a

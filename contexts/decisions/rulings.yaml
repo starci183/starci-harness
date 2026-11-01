@@ -79,11 +79,28 @@ rulings:
     status: live
     ruling: "The cards and tiles of one Grid kind=\"cards\" stand the inline step (8) apart on both axes, and the grid sits the row step (12) under its title, because siblings sit closer than their heading. This replaces the section step (24) for a card grid."
     owner: "contexts/ui/presentation.md (Space); contexts/ui/situations.md; @starci/grammar src/core/frame/Grid"
+  - id: native-peer-action-state
+    date: '2026-11-02'
+    status: live
+    ruling: "Peer action groups retain the vendor's fused corners and size in ready, pending and loading states. Only the initiating member owns pending; unresolved group content is inert loading geometry. IconButton delegates its busy spinner to the native vendor parts and preserves its accessible name and duplicate-activation guard. Standalone corner rules do not override joined group members."
+    owner: "contexts/grammars/contract.yaml roles.button-group; contexts/ui/components/action-group.md; contexts/vendor/wrappers.yaml; packages/grammar/src/core/composite/ButtonGroup; packages/grammar/src/core/leaf/IconButton"
+    pins:
+      contexts/vendor/wrappers.yaml: 8207d82c2356b16a674fc855f1c44939e6b45da5a62b05662c8a081933d9b38d
   - id: entry-task-frame
     date: '2026-11-02'
     status: live
     ruling: "One full-height entry task is an EntryFrame: equal context and task panes on desktop, compact identity over the bounded centred form on mobile, tools at the top trailing edge and supporting navigation below. The app owns artwork and copy inside named slots; the Grammar owns every track, bound and responsive transition. The form measure is 24rem and the desktop split begins at 64rem, with no app look props."
     owner: "contexts/ui/components/entry-frame.md; contexts/grammars/contract.yaml roles.entry-frame; packages/grammar/src/core/frame/EntryFrame; packages/grammar/src/common/entry-frame.css"
+  - id: message-status-facts
+    date: '2026-11-02'
+    status: live
+    ruling: "A message's delivery acknowledgement and transport outcome are typed MessageStatus facts, rendered in the message's existing footer. The Bubble API gains no status flags. Receipt marks, read people, localized status text and polite announcements belong to that one composite; app text never chooses accent or status paint to imitate it."
+    owner: "contexts/grammars/contract.yaml roles.message-status; contexts/ui/components/message-bubble.md; packages/grammar/src/core/composite/MessageStatus"
+  - id: passive-calendar-day
+    date: '2026-11-02'
+    status: live
+    ruling: "A passive calendar-region date is CalendarDay: a vendor-owned date-only value, a full localized name and the authoritative current-date fact. It draws a native time element and aria-current=date for today; only that semantic fact receives the current-date emphasis. Date selection and scheduler cell actions keep their existing owners."
+    owner: "contexts/grammars/contract.yaml roles.calendar-day; contexts/ui/components/calendar-day.md; packages/grammar/src/core/leaf/CalendarDay"
   - id: semantic-region-relations
     date: '2026-11-02'
     status: live
@@ -100,8 +117,6 @@ rulings:
     words: "Owner decisions of the grammar audit: kind=panes stays out; surface in surface is banned totally, dialogs and drawers included; a list is a card by default and a long list with search or filter is a Section; label by kind, a tile inside and a section card outside; tables do not go in cards unless truly complex."
     ruling: "SurfaceCard is the one card, a discriminated union on kind: body (default), figures, list, accordion, bands and tile. SurfaceListCard, SurfaceAccordionCard, StaticStateRow, ListRow as a public export and DescriptionList stat-strip are gone; a row is an item of kind=list. A card never stands inside another surface (a card, Pane surface, Dialog, Drawer, AlertDialog or Popover): development throws, R340 and R356 refuse it. A body card holds no hand list, Divider or second title (R355); a labelled card repeated in a Grid of cards is a tile (R366)."
     owner: "@starci/grammar src/core/frame/SurfaceCard, src/core/composite/ListRow, src/core/surfaceContext.tsx; contexts/grammars/contract.yaml roles.card; lint starci-grammar/surface-card-kind, no-label-in-grid, no-raised-surface-in-surface; starci app codemod surface-card-kinds"
-    pins:
-      contexts/vendor/wrappers.yaml: 02a6ab5b0c6f7b4144eaa43f524b14d1cbfbd2ab536515f4fbb7691dd7c4d6c0
   - id: R318/case-1
     date: '2026-10-25'
     status: live
@@ -789,7 +804,7 @@ rulings:
   - id: section-is-the-heading
     date: '2026-11-01'
     status: live
-    ruling: "A heading comes from the frame that owns what it heads, never from a free component: Section is a named region whose title is its heading and its landmark name (SectionHeader and Region are gone), a card heads itself with its label, and Heading is for prose and the landing rank. A long list that searches or filters is Section kind=\"list\" of rows with a FilterButtonGroup in its filter slot, its head, filter and rows one section step (24) apart; a short list to work through is a list card. The section's one page command hugs its label at the end of its head row. Text has one stronger weight, isStrong, for a value or a term inside a line: a strong block Text that heads a group is a heading wearing a weight and is refused by review until the lint of the whole-program lane lands. The placement providers CollectionItem, ItemActions and ToolbarActions are gone: item and chrome placement come from the structure."
+    ruling: "A heading comes from the frame that owns what it heads, never from a free component: a titled Section is a named region whose title is its heading and its landmark name (SectionHeader and Region are gone), a card heads itself with its label, and Heading is for prose and the landing rank. A figures strip inside an already-headed surface is Section kind=\"figures\" with ariaLabel, no second heading and no head controls; its alternative titled form owns its heading. A long list that searches or filters is Section kind=\"list\" of rows with a FilterButtonGroup in its filter slot, its head, filter and rows one section step (24) apart; a short list to work through is a list card. The section's one page command hugs its label at the end of its head row. Text has one stronger weight, isStrong, for a value or a term inside a line: a strong block Text that heads a group is a heading wearing a weight and is refused by review until the lint of the whole-program lane lands. The placement providers CollectionItem, ItemActions and ToolbarActions are gone: item and chrome placement come from the structure."
     owner: "@starci/grammar src/core/frame/Section; contexts/ui/components/card.md; packages/hfs/codemod/section-frame.mts"
 
   - id: grammar-literal-lint

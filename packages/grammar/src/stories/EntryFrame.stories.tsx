@@ -31,8 +31,8 @@ const EntryDemo = ({ state = 'ready', long = false }: { readonly state?: 'ready'
         <G.Text tone="muted">{long ? 'Use the address your organisation invited so the right workspace and access remain connected.' : 'Use your workspace email to continue.'}</G.Text>
       </G.Stack>
       {state === 'error' ? <G.Alert title="We could not complete sign-in" description="Check your connection, then try again." tone="negative" /> : null}
-      <G.Input label="Email address" kind="email" isLoading={state === 'loading'} />
-      <G.Input label="Password" kind="password" isLoading={state === 'loading'} />
+      <G.Input id="entry-email" name="email" label="Email address" kind="email" isLoading={state === 'loading'} />
+      <G.Input id="entry-password" name="password" label="Password" kind="password" isLoading={state === 'loading'} />
       <G.Button intent="commit" width="fill" isLoading={state === 'loading'}>Continue</G.Button>
     </G.Stack>
   </G.EntryFrame>

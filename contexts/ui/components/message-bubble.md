@@ -18,6 +18,16 @@ Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a l
 all inherit the bubble's foreground, so they read on either face; a link keeps its underline. Anything that is not the message's own
 words (an attachment, an approval card, a reaction row) goes in `footer`, outside the bubble face.
 
+Choice `message-status.choose.fact`: which authority-owned message fact the footer reports.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| receipt | an actual send, delivery or read acknowledgement is known | `MessageStatus kind="receipt"`, state `sent`, `delivered` or `seen`; typed readers belong only to seen | type: receipt states and reader placement; visible localized label |
+| transport | the transport reports its current send outcome | `MessageStatus kind="transport"`, state `queued`, `sent`, `failed` or `unknown` | type: transport states; visible localized label |
+
+Both forms occupy the existing footer slot. The Bubble gains no receipt props, and ordinary Text does not pick a
+paint to imitate the semantic owner. Read people retain their names and localized overflow copy.
+
 ## Variants
 None. `side` is whose message it is, not a style.
 

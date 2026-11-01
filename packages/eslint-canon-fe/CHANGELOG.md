@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 9.9.3 - 2026-11-02
+
+- Changed: bundled canonical pins follow the consolidated Grammar 0.21.3 preservation API cohort; runtime rules are unchanged.
+
 ## 9.9.2 - 2026-11-02
 
 - Changed: bundled pins follow Grammar 0.21.2 with disabled tab items and its coherent canon cohort; existing runtime checks are unchanged.

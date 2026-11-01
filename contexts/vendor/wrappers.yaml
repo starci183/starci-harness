@@ -101,7 +101,7 @@ wrappers:
   - { file: core/leaf/Divider/index.tsx, wraps: [Separator] }
   - { file: core/leaf/Field/index.tsx, wraps: [Description, FieldError, Label] }
   - { file: core/leaf/Heading/index.tsx, wraps: [Typography] }
-  - { file: core/leaf/IconButton/index.tsx, wraps: [Button, Link] }
+  - { file: core/leaf/IconButton/index.tsx, wraps: [Button, Link, Spinner] }
   - { file: core/HorizontalScrollFrame.tsx, wraps: [ScrollShadow] }
   - { file: core/branch/CopyField/index.tsx, wraps: [InputGroup, Label, Tooltip] }
   - { file: core/leaf/StatusDot/index.tsx, wraps: [Tooltip] }

@@ -310,6 +310,11 @@ when the words were said. It reports no outcome (that is an alert) and carries n
 
 ### MessageBubble
 
+Message receipts and transport outcomes use `MessageStatus` in the existing footer slot, without widening the bubble's
+props. Its `kind="receipt"` has `sent`, `delivered` and `seen` facts, with typed readers only for `seen`;
+`kind="transport"` has `queued`, `sent`, `failed` and `unknown`. Localized `label` remains visible beside native
+marks; readers retain accessible names and localized overflow copy. Its announcement is polite and atomic.
+
 A message bubble is one message of a conversation; every conversation is `MessageBubble`s in a thread the app keeps, and no screen draws its own
 bubble. The reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`),
 the other party's is the surface with its foreground, and inline content (a link, a mention, code, a muted line) inherits the
@@ -338,6 +343,13 @@ with no loading plate; below 48rem a square step drops one step, and a hero is a
 it. It is decorative unless its `alt` names it. It carries the asset-slot props of `Image` and `MediaFrame`, so the
 render is tied to the request that generated it; generated art reaches the page only through `Mascot` or a
 `MediaFrame` (lint R338, R339). The scale is Common's: a grammar changes nothing about it.
+
+### CalendarDay
+
+`CalendarDay` is a passive calendar-region heading, not a date-selection control. Its vendor-owned date-only `value`
+provides the day number and `<time dateTime>` value; the app supplies the full localized `label` and authoritative
+`isToday`. Only that current date receives `aria-current="date"` and the current-date emphasis. The app's cell actions
+remain separate; the leaf selects nothing and adds no scheduler behavior.
 
 ### PaneGrid
 
@@ -383,7 +395,7 @@ itself). `isLoading` passes to the band; the body's blocks own their loading.
 
 ### Section
 
-A section is a named region whose title is its heading and its landmark name; no free heading exists (ruling
+A titled section is a named region whose title is its heading and its landmark name; no free heading exists (ruling
 `section-is-the-heading`). `kind="list"` holds rows of the same typed items a list card holds, with a `filter` slot for a
 `FilterButtonGroup`; it is the unpainted list owner within an existing surface and the list owner for search, filters or
 paging on the canvas. Its head, filter and content stand one section step (24) apart, and its page command hugs its label at

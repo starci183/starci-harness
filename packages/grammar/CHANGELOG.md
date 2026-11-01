@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.21.3 - 2026-11-02
+
+- Added: EntryFrame; semantic Grid sections, pair and featured roles; centred wrapped Cluster items; headless or titled unpainted Section figures reusing FigureCells; native ButtonGroup loading, member pending and borrowed size; IconButton pending; typed media tiles; MessageStatus footer semantics; passive CalendarDay. Existing DOM order, form measures, native joined corners and content geometry stay with their owning roles.
+
 ## 0.21.2 - 2026-11-02
 
 - Added: `TabItem.isDisabled` forwards to the vendor tab so locked choices keep their labels and native tab accessibility while refusing mouse and keyboard selection. Stories cover disabled focus, selection and keyboard skipping.

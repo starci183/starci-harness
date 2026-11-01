@@ -410,6 +410,31 @@ roles:
     dna: []
     lint: [starci-grammar/freestyle-has-reason]
 
+  - id: message-status
+    ui: ui/components/message-bubble.md
+    renderers: [MessageStatus]
+    vendorParity: []
+    slots: ["label: localized visible status", "readers: typed people with localized overflow and more labels, only for seen receipts"]
+    variants:
+      kind: { values: [receipt, transport], chosenBy: the authority that reports the message fact }
+      receipt: { values: [sent, delivered, seen], chosenBy: actual delivery or read acknowledgement }
+      transport: { values: [queued, sent, failed, unknown], chosenBy: actual transport outcome }
+    sizes: shared metadata ramp
+    states: [polite atomic status announcement]
+    grammarMayChange: [semantic marks and status paint through tokens]
+    dna: []
+
+  - id: calendar-day
+    ui: ui/components/calendar-day.md
+    renderers: [CalendarDay]
+    vendorParity: []
+    slots: ["value: vendor-owned date-only CalendarDayValue", "label: full localized date", "isToday: authoritative current calendar date"]
+    variants: {}
+    sizes: shared metadata ramp
+    states: [ordinary date, current date with aria-current date]
+    grammarMayChange: [current-date emphasis through tokens]
+    dna: []
+
   - id: cluster
     ui: ui/composition.md
     renderers: [Cluster]

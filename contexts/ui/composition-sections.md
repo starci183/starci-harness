@@ -43,7 +43,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - COLLECTION-1 The host surface and list scope pick its owner · `COLLECTION-1` · 1 KB — Rows of one kind first reuse the surface that owns their region.
     - COLLECTION-2 A card is one subject · `COLLECTION-2` · 1 KB — A card presents one entity or one summary of one subject.
     - COLLECTION-3 A group identity shows its members · `COLLECTION-3` · 1 KB — A group or conversation identity is one composite of its members' identities, distinguishable from one person's, with a count when members overflow; the composite carries the ...
-  - 6. Layout · `contexts/ui/composition.md#6-layout` · 1 KB — Choice `grid.choose.content`: which track owner carries the content.
+  - 6. Layout · `contexts/ui/composition.md#6-layout` · 2 KB — Choice `grid.choose.content`: which track owner carries the content.
     - LAYOUT-1 Which regions exist · `LAYOUT-1` · 1 KB — One task with no support is one region.
     - LAYOUT-2 Every region's owner is a published composition · `LAYOUT-2` · 1 KB — Tracks, slots and bounds belong to a published composition (`WorkspaceShell`, `Page`, `Grid kind="main-rail"`, `PaneGrid`); the spec names only its props.
     - LAYOUT-3 One owner per region and per scroll axis · `LAYOUT-3` · 1 KB — Each region has one composition owner.

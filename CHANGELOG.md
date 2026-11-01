@@ -6,6 +6,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.40] - 2026-11-02
+
+- Bundled knowledge documents the consolidated Grammar preservation roles, headless figure ownership and native pending/message/date semantics.
+
 ## [1.1.0-alpha.39] - 2026-11-02
 
 ### Fixed
