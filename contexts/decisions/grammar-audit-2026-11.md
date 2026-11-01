@@ -629,7 +629,7 @@ Counts; every line is in [Appendix A](#appendix-a-theming-violations).
 
 ## 9. The refactor plan
 
-Runs only after the owner approves. Up to 10 Sonnet lanes. One cohort: all grammar lanes land before one version, `0.21.0`, and nothing publishes until lane 10 closes. Apps use it through `starci deps source --local` (CONTRIB-20). Normal commit rules; no loosening.
+Up to 10 Sonnet lanes, each landing alone (part 10). Each lane raises the package version and changelog in its own commit (CONTRIB-20). Normal commit rules; no loosening.
 
 Order: **1, 2, 3** in sequence, then **4, 5, 6, 7** in parallel, then **8**, then **9, 10**. Each lane has its own worktree. Lanes 4 to 7 touch separate folders and rebase over `renderers*.ts`.
 
@@ -670,8 +670,9 @@ Approved 2026-11-01. These override anything above them.
 10. **Offset Pop's bare-mark exception stays** as a family default.
 11. **No gate judges an app's colours.**
 
-Running rule: an up-to-date public API stays until migration finishes, so demo work is not blocked. Grammar lanes add the new API and keep
-the old exports working, marked `@deprecated`; removal comes after nivo-lite has migrated and the retake at 1920 and 390 shows nothing broke.
+Running rule, the owner's: architecture comes before the demo. Each lane migrates and deletes in the same lane and lands alone: the harness
+through `release push` after green, nivo-lite main after the hook and a full `app check`, CI green before the next lane. Screens at 1920 and 390
+are retaken per lane. No gate is bypassed, and no deploy tag goes out without the owner's word.
 
 ## Appendix A. Theming violations
 
