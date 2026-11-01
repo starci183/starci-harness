@@ -401,12 +401,12 @@ roles:
 
   - id: page-header
     ui: ui/components/page-header.md
-    renderers: [PageHeader]
+    renderers: [Page]
     vendorParity: [breadcrumbs, tabs, separator]
     slots: ["breadcrumbs: label, items", title, description, meta, status, mark, actions, "tabs: label, items, selectedKey"]
     variants:
       tabs: { values: [none, page tabs on the separator], chosenBy: app from tabs.choose.level:page }
-      measure: { values: [reading, product, full], chosenBy: app, equals: the PageContainer of the content below }
+      measure: { values: [reading, product, full], chosenBy: app, equals: the body of the Page below the band }
     sizes: none; controls in actions keep the ramp, a tab bar lands on md
     states: [ready, skeleton]
     grammarMayChange: [band paint, separator paint and weight, title weight]
