@@ -140,6 +140,12 @@ Host processes run without a shell through `cli/src/shared/exec.ts`; git goes th
 4-space indent, no semicolons, double quotes, a one-line JSDoc on every export, comments only where they carry a rule.
 No new dependency without a reason the owner accepts. Line endings are LF (`.gitattributes`).
 
+### CONTRIB-21 A Grammar component earns its place
+
+A component or prop enters `@starci/grammar` only through [contexts/grammars/contributing.md](contexts/grammars/contributing.md): the
+question first, then tier, budget, types, lint, knowledge, render proof in both families and modes at real widths, and the look reviewed by a
+person. Held by review until the tier checks land.
+
 ## CONTRIB-15 Removed vocabulary
 
 These legacy terms do not reappear in source, data or documents. The list is held by review; the legacy runtime's

@@ -61,11 +61,12 @@ rulings:
     status: live
     ruling: "One control height, the vendor md (40px), is the default of every standalone control; only sm (a control nested in an item or a dense toolbar) and lg (a landing hero call to action) exist besides it; controls of one row share one height. The values are the grammar's."
     owner: "contexts/ui/scale.md; '@starci/grammar src/common (control height tokens)'; lint control-height (R320)"
-  - id: card-label-placement-per-grammar
-    date: '2026-10-28'
+  - id: card-label-by-kind
+    date: '2026-11-01'
     status: live
-    ruling: "Whether a labelled card's label sits inside or outside the painted material is each grammar's decision; core (starci) puts it outside, an unpainted row above the card, only when the card floats inside the content; a card that is a docked panel of the layout keeps its title inside as its header; offset-pop keeps it outside. Core is HeroUI shaped like the Claude app: full-bleed dividers, surface in surface allowed (nested is unraised), 40px controls. The owner's words: label inside or outside is decided per grammar; outside is relative, only when the card floats in the content. The inside version came from a legacy WIP commit (57e5851e5) without a ruling."
-    owner: "contexts/grammars/contract.yaml (DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE); contexts/grammars/core.md; @starci/grammar src/core/styles.css"
+    ruling: "Where a card's name sits follows the card's kind, in every grammar, and no app or family chooses it. A card that heads a section (one subject with its own title: a list, an accordion, figures, a body that stands alone) carries its label outside the material, as an unpainted row above it. A tile, one of several peers repeated in a grid, carries its name inside, beside its logo or mark, and has no outside label. A docked region is a Pane, not a card, so a card has no panel placement. Each family paints the name; none moves it. The owner's words, relayed: label position depends on the card kind; a tile repeated in a grid carries its name inside with its logo; label outside fits only a card that heads a section."
+    owner: "contexts/grammars/contract.md Card; contexts/grammars/contract.yaml (DNA-COMMON-CARD-LABEL-ABOVE, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE); contexts/grammars/core.md; contexts/ui/components/card.md card.choose.role; contexts/decisions/open-grammar.md G-20"
+    absorbs: [card-label-placement-per-grammar]
   - id: surfacecard-always-painted
     date: '2026-10-25'
     status: live

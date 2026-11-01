@@ -115,9 +115,10 @@ roles:
     ui: ui/components/card.md
     renderers: [SurfaceCard, SurfaceListCard, SurfaceAccordionCard]
     vendorParity: [card, accordion]
-    slots: [label, fact, labelEnd, content, footer, wholeAction, "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
+    slots: ["label (a card that heads a section: outside the material)", "name and mark (a tile: inside the material, no outside label)", fact, labelEnd, content, footer, wholeAction, "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
     variants:
       composition: { values: [single, joined], chosenBy: app }
+      labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }
       measure: { values: [content, form, formCompact], chosenBy: app }
       depth: { values: [top, nested], chosenBy: context }
       highlight: { values: [false, true], chosenBy: app, limit: one per view }
@@ -128,7 +129,7 @@ roles:
         rebinds: "a painted treatment rebinds the whole surface pair (surface, foreground, muted, separator, border, the text accents) on its ground, so every child paints a pair that holds"
     sizes: none
     states: [neutral, pending, PresentationState]
-    grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, label placement inside or outside the material, the ink ground and its inks]
+    grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, the label's paint, the ink ground and its inks]
     dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-LISTCARD-LABEL-OUTSIDE, DNA-COMMON-LISTCARD-LABEL-UNPAINTED, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-EDGE-NESTED, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-POCKET, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE]
     lint: [starci-grammar/no-raised-surface-in-surface]
 
@@ -652,7 +653,7 @@ mustKeep:
       owner: surfacecard-always-painted; src/core/surfaceContext.tsx
     - id: DNA-COMMON-CARD-LABEL-ABOVE
       role: card
-      law: A card's label row sits above the card's content frame, never beside it; whether it sits inside or outside the painted material is each grammar's decision (ruling card-label-placement-per-grammar).
+      law: A card's label row sits above the card's content frame, never beside it; a card that heads a section carries it outside the painted material and a tile carries its name inside, with its mark (ruling card-label-by-kind).
       measure: { kind: relation, select: '[data-component="SurfaceCard"] > [data-grammar-surface-label]', metric: bottom, op: "<=", ref: { within: '[data-component="SurfaceCard"]', select: '[data-grammar-surface-content]', metric: top } }
       owner: contract roles.card
     - id: DNA-COMMON-CARD-LABEL-HEADING
@@ -1107,7 +1108,7 @@ mustKeep:
       owner: surfacecard-always-painted
     - id: DNA-CORE-CARD-LABEL-OUTSIDE
       role: card
-      law: A labelled card floating in the content flow carries its label as an unpainted row above the card, outside the material; a card that is a docked panel of the layout carries its title inside, as its header (ruling card-label-placement-per-grammar). Measured on floating cards; the panel case is measured once the grammar exposes its placement signal.
+      law: A card that heads a section carries its label as an unpainted row above the card, outside the material; a tile carries its name inside, beside its mark (ruling card-label-by-kind). Measured on labelled cards; the tile case is measured once the grammar exposes the kind.
       measure:
         kind: style
         op: "="
@@ -1115,6 +1116,7 @@ mustKeep:
           - { select: '[data-component="SurfaceCard"][data-grammar-surface-labelled="true"]', metric: background-color, value: "rgba(0, 0, 0, 0)" }
           - { select: '[data-component="SurfaceCard"][data-grammar-surface-labelled="true"] > [data-grammar-frame="bounded"]', metric: background-color, value: { token: --surface } }
       owner: grammars/core.md
+      followUp: G-20
     - id: DNA-CORE-BUTTON-PILL
       role: button
       law: Every button and its skeleton is a pill, its corner at least half its height.
@@ -1175,9 +1177,10 @@ mustKeep:
       owner: O-1
     - id: DNA-OFFSET-POP-CARD-LABEL-OUTSIDE
       role: card
-      law: A card's label sits on the page above the sticker, outside the painted box.
+      law: A card that heads a section carries its label on the page above the sticker, outside the painted box; a tile carries its name inside (ruling card-label-by-kind).
       measure: { kind: relation, select: '[data-component="SurfaceCard"] > [data-grammar-surface-label]', metric: bottom, op: "<=", ref: { within: '[data-component="SurfaceCard"]', select: '[data-slot="card-content"]', metric: top } }
       owner: grammars/offset-pop.md
+      followUp: G-20
     - id: DNA-OFFSET-POP-BUTTON-STICKER
       role: button
       law: Every button wears the ink outline and an unblurred offset shadow.

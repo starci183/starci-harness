@@ -26,13 +26,13 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
   Surfaces take the larger surface radius. A Button drawn with the control corner is a defect.
 - **Calm motion.** One short duration with a decelerating curve; no meaning rides on motion.
 - **Almost no component CSS.** Beyond token bindings the sheet has one scoped rule: the accent re-declared as
-  `accentText` where Common paints it as text. A labelled card keeps Common's label row outside the material.
+  `accentText` where Common paints it as text. A card keeps the name where its kind puts it (ruling `card-label-by-kind`).
 
 ## How core fills the contract
 
 | Role | core |
 |---|---|
-| Card | White material; top depth shadow without border, nested depth border without shadow (ruling `surfacecard-always-painted`); surface radius; a card floating in content carries its label outside the material, above it; a docked panel carries its title inside as its header (ruling `card-label-placement-per-grammar`); a nested surface is unraised, border without shadow; dividers run full-bleed; `soft` is the `accentSoft` lavender under the default foreground, `ink` the violet accent with white or black text read from its lightness |
+| Card | White material; top depth shadow without border, nested depth border without shadow (ruling `surfacecard-always-painted`); surface radius; a card that heads a section carries its label outside the material, above it; a tile carries its name inside with its mark (ruling `card-label-by-kind`); a nested surface is unraised, border without shadow; dividers run full-bleed; `soft` is the `accentSoft` lavender under the default foreground, `ink` the violet accent with white or black text read from its lightness |
 | Button | Vendor variants through the tokens: commit is the violet fill with white text, alternative the neutral fill with accent text; pill corner; vendor press |
 | ButtonGroup | Vendor arrangement unchanged |
 | Tabs | Underline: accent indicator, current label in `accentText`. Pill: the vendor's soft track and white selected segment with the surface shadow |

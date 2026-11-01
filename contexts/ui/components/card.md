@@ -18,7 +18,8 @@ Choice `card.choose.role`: what presents the subject. The first row that applies
 | figures | a row of key figures | one default card holding a stat strip (DISCIPLINE-2): touching cells at the nested inset, lines between cells and rows, a Meter as a second joined band | candidate: stat cells at most `budgets.ribbonCells` |
 | whole | the whole card is one destination or command | `SurfaceCard` with its whole action (STATE-5) | judgement |
 | kinds | several kinds of content about one subject | one joined `SurfaceCard`, its bands divided by separators, never inner cards | candidate: separators per card at most `budgets.hairlinesPerCard` |
-| entity | one entity or one summary of one subject | `SurfaceCard` | judgement |
+| tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | a tile: its name inside with its logo or mark, no outside label (ruling `card-label-by-kind`) | candidate: no labelled card repeated in a `Grid` |
+| entity | one entity or one summary of one subject, heading its section | `SurfaceCard`: label outside | judgement |
 
 Choice `card.choose.highlight`: whether a card claims the next step.
 

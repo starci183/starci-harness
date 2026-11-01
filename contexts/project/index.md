@@ -143,6 +143,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [code/shared/typing.md](../code/shared/typing.md) · 4 KB — How strict the compiler is and which spellings tell it something it cannot check.
   - sections: SHARED-TYPING-1 The repository tsconfig extends the canon preset and adds only paths · SHARED-TYPING-2 No type escape; untrusted values are `unknown` and narrowed · SHARED-TYPING-3 Arrays are `Array<T>` or `ReadonlyArray<T>` · SHARED-TYPING-4 The type-aware rules hold on both sides
 - [decisions/README.md](../decisions/README.md) · 1 KB
+- [decisions/grammar-audit-2026-11.md](../decisions/grammar-audit-2026-11.md) · 102 KB — Status: proposal, awaiting the owner.
+  - sections: 0. The audit in one page · 1. Method and limits · 2. The root failure · 3. The one card · 4. The tier binding · 5. Every public component · 6. Rules · 7. The standard · 8. Theming · 9. The refactor plan · 10. For the owner · Appendix A. Theming violations · Appendix B. Tier violations
+  - ids: E.1, E.2, E.3, JS-side, one-file, string
 - [decisions/legacy-retirement.md](../decisions/legacy-retirement.md) · 35 KB — The owner ordered three things: every package under `packages/` is TypeScript source built to JavaScript, the legacy runtime at `D:/Repositories/starci-academy-backend/.claude` ...
   - sections: 1. Context map · 2. Missing context worth moving · 3. Package TypeScript plan · 4. Retirement checklist
   - ids: In-flight
@@ -161,6 +164,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
 - [grammars/contract.yaml](../grammars/contract.yaml) · 81 KB — What every grammar implements.
   - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM and 121 more
+- [grammars/contributing.md](../grammars/contributing.md) · 7 KB — How a component enters `@starci/grammar`, or a prop enters a component.
+  - sections: The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Skeleton parity · What ships with it · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 6 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 7 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
@@ -213,7 +218,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/button.md](../ui/components/button.md) · 5 KB — Contract: Button.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/card.md](../ui/components/card.md) · 4 KB — Contract: Card.
+- [ui/components/card.md](../ui/components/card.md) · 5 KB — Contract: Card.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/chip.md](../ui/components/chip.md) · 5 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules

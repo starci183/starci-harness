@@ -80,6 +80,7 @@ The package stores Common's renderers under `src/core/**` today; that path is st
 | File | Holds | Read when |
 |---|---|---|
 | [contract.md](contract.md), [contract.yaml](contract.yaml) | What every grammar provides, per role: slots, variants, sizes, states, what a grammar may change; `mustKeep`, the DNA laws with their measurements, per scope (`common`, `core`, `offset-pop`) | always, before the grammar file |
+| [contributing.md](contributing.md) | How a component or prop enters the grammar: the question to ask, tier, naming, props budget, composition, a11y, skeleton parity, proof and review | before adding to the package |
 | [common.md](common.md) | The shared layer's reasoning: context over props, spacing, one root, idioms, playbook shapes | composing any screen |
 | [core.md](core.md), [offset-pop.md](offset-pop.md) | How each grammar fills the contract and why: material, departures, lint | the app's grammar only |
 

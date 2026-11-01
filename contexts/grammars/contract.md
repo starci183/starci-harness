@@ -100,8 +100,14 @@ tint, `accentSoft`, under the default foreground) or `ink` (the brand ink, the s
 carry the decorative artwork slot, `ink` also the motif. A painted treatment rebinds the whole surface pair on its
 ground (surface, foreground, muted, separator, border and the accent and tone text tokens), because a child that
 paints its own circle or ring from the surface token and its text from a foreground token stays legible only while
-both move together. A grammar decides the material (fill, edge, radius, the ink and its inks) and whether the label
-sits inside the material; the slots, the treatments' grounds and the depth logic are the same everywhere.
+both move together. A grammar decides the material (fill, edge, radius, the ink and its inks); the slots, the treatments' grounds and the
+depth logic are the same everywhere.
+
+Where the name sits follows the card's kind, in every grammar (ruling `card-label-by-kind`). A card that heads a section
+carries its label outside the material, an unpainted row above it, because the label names what follows. A tile, one of
+several peers repeated in a grid, carries its name inside, beside its logo or mark, because the tile is the thing named and
+an outside label would float away from it. A docked region is a `Pane`, never a card. No prop moves the name, and a family
+paints it but never moves it.
 
 A row of key figures is one card holding a stat strip (`DescriptionList layout="stat-strip"`): touching cells (gap 0), each a box in the card at the nested inset (8), divided by lines, not gaps - a vertical line between the cells of a row and a horizontal line between rows, running to the strip's edge and never on its outer edge. The strip answers its own width (container query, no script): one row from 40rem, 2 x 2 from 18rem, one column below, a last odd cell spanning its row, with the right line at every wrap. In a default card it bleeds to the card edge; in a `joined` card it is a band and a `Divider` is the seam to the next band (a Meter band, say). Its skeleton keeps the same cells and lines. The line colour is the family's separator (`--separator`, ink in Offset Pop), so dark mode follows the tokens.
 
