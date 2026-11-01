@@ -14,7 +14,8 @@ import { checkFunctionSubject, functionSubjectExports, keyOf as literalKey, valu
 /**
  * R48 `unit-spec-providers` (BE_SPEC_QUALITY), the unit test standard's rule 3: the unit spec of a service builds its
  * subject with `Test.createTestingModule({ providers: [...] })`, and that providers array EQUALS the constructor
- * dependencies of the service under test: the service class first, then one provider for each constructor parameter.
+ * dependencies of the service under test: the service class first, then one provider for each required constructor parameter.
+ * A parameter decorated by `Optional()` imported from `@nestjs/common` may be omitted to exercise its absent-provider branch.
  *
  * The service under test is the sibling `<name>.service.ts` of every `<name>.service.spec.ts` under src/ or apps/ (a spec is
  * outside the production program, so it is read from disk). A parameter decorated with a custom `Inject<Thing>()` provides
@@ -102,22 +103,28 @@ function serviceClassFor(ts: TypeScriptApi, rel: string, serviceRel: string, ser
 
 function checkDependencies(kit: MachineKit, rel: string, service: ServiceUnderTest, serviceFile: GraphFile, list: ArrayLiteralExpression, provided: ProvidedItem[], report: Report): void {
   const { serviceName, serviceClass } = service;
+  const checker = kit.checkerOf(serviceFile.sourceFile);
   const dependencies = constructorDependencies(kit, serviceFile, serviceClass);
-  const expected: string[] = [];
+  const expected: { name: string; optional: boolean }[] = [];
   for (const dependency of dependencies) {
     if (dependency.kind === 'unresolved') {
       report(list, `${rel}: a constructor dependency of ${serviceName.name} cannot be resolved to a token (${dependency.reason}), so its provider cannot be checked; inject it through an exported Inject<Thing>() decorator or a class type.`);
       continue;
     }
-    expected.push(dependency.name);
+    const optional = kit.decorators(dependency.parameter).some(decorator => {
+      const expression = decorator.expression;
+      return kit.ts.isCallExpression(expression) && expression.arguments.length === 0
+        && kit.isImportOf(checker, expression.expression, 'Optional', '@nestjs/common');
+    });
+    expected.push({ name: dependency.name, optional });
   }
   const remaining = [...expected];
   for (const item of provided.slice(1)) {
-    const index = remaining.indexOf(item.name);
+    const index = remaining.findIndex(dependency => dependency.name === item.name);
     if (index === -1) report(item.node, `${rel}: ${item.name} is provided but is not a constructor dependency of ${serviceName.name}; a unit spec provides exactly what the constructor needs.`);
     else remaining.splice(index, 1);
   }
-  for (const name of remaining) report(list, `${rel}: ${name} is a constructor dependency of ${serviceName.name} but is not provided; add \`{ provide: ${name}, useValue: double }\` (or the class itself) to the providers.`);
+  for (const dependency of remaining.filter(item => !item.optional)) report(list, `${rel}: ${dependency.name} is a constructor dependency of ${serviceName.name} but is not provided; add \`{ provide: ${dependency.name}, useValue: double }\` (or the class itself) to the providers.`);
 }
 
 interface TestingModuleInput {
