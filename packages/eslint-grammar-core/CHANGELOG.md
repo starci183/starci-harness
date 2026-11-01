@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.21.2 - 2026-11-02
+
+- Changed: bundled pins follow Grammar 0.21.2 with disabled tab items and its coherent canon cohort; existing runtime checks are unchanged.
+
 ## 0.21.1 - 2026-11-02
 
 - Changed: synchronized the Grammar 0.21.1 API and canon cohort pins; bundled cross-file checks distinguish semantic week regions from labelled peer-card grids.
