@@ -2,14 +2,18 @@
 // checkout's own copy when the worktree has no node_modules, and a worktree that still lacks it is refused. Real git, a fixture husky
 // whose bin writes the folder and sets core.hooksPath the way husky 9 does; built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
-import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
+import { captureGitSync } from "../shared/git.js"
 import { assertWorktreeHooks, declaresHusky, materialiseHooks, requiredHooksPath } from "./worktree.js"
 
-const git = (cwd: string, ...args: string[]): string => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t.t", "-c", "commit.gpgsign=false", ...args], { cwd, encoding: "utf8", windowsHide: true }).trim()
+const git = (cwd: string, ...args: string[]): string => {
+    const run = captureGitSync(["-c", "user.name=t", "-c", "user.email=t@t.t", "-c", "commit.gpgsign=false", ...args], cwd)
+    assert.equal(run.exitCode, 0, run.stderr)
+    return run.stdout.trim()
+}
 
 const HUSKY_BIN = [
     'const fs = require("node:fs")',

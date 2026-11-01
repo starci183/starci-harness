@@ -1,15 +1,26 @@
 // The DNA gate's contract reader and its judge, run on the contract this harness ships and on fixtures; no browser is started.
 // Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { runInNewContext } from "node:vm"
+import ts from "typescript"
 import { judgePart, loadDnaContract, thresholdValue } from "./dna.js"
 import type { DnaPart } from "./dna.js"
 
 const part = (partial: Partial<DnaPart> & Pick<DnaPart, "op" | "measured" | "expected">): DnaPart => ({ metric: "m", pattern: false, tolerance: 0.5, ...partial })
+
+const interactionContract = (t: { after: (fn: () => void) => void }, measure: string): string => {
+    const folder = mkdtempSync(join(tmpdir(), "starci-dna-interaction-"))
+    t.after(() => { rmSync(folder, { recursive: true, force: true }) })
+    mkdirSync(join(folder, "grammars"), { recursive: true })
+    mkdirSync(join(folder, "ui", "proof"), { recursive: true })
+    writeFileSync(join(folder, "ui", "proof", "thresholds.yaml"), "schema: x\n")
+    const file = join(folder, "grammars", "contract.yaml")
+    writeFileSync(file, `grammars: [core]\nmustKeep:\n  common:\n    - id: DNA-COMMON-INTERACTION\n      role: button\n      law: A press preserves width.\n      measure: ${measure}\n      owner: fixture\n`)
+    return file
+}
 
 void test("the shipped contract loads: every group, every kind, every value form", () => {
     const contract = loadDnaContract()
@@ -38,6 +49,22 @@ void test("a contract list of token names becomes the metrics of a tokens law", 
     assert.ok(tokens?.metrics.every((name) => name.startsWith("--")))
 })
 
+void test("the public interaction then is loaded as after without a thenable key", () => {
+    const pending = loadDnaContract().entries.find((entry) => entry.id === "DNA-COMMON-PENDING-KEEPS-BOX")?.variants[0]
+    assert.ok(pending)
+    assert.deepEqual(pending.after?.metrics, ["width", "height", "name"])
+    assert.deepEqual(pending.after?.value, { before: true })
+    assert.equal(Object.hasOwn(pending, "then"), false)
+})
+
+void test("an interaction refuses the internal after name in a public contract", (t) => {
+    const postcondition = "{ metric: width, op: '=', value: 40 }"
+    for (const extra of [`after: ${postcondition}`, `then: ${postcondition}, after: ${postcondition}`]) {
+        const file = interactionContract(t, `{ kind: interaction, select: button, act: [click], ${extra} }`)
+        assert.throws(() => loadDnaContract(file), (error: unknown) => error instanceof Error && /unrecognized.*after/i.test(error.message))
+    }
+})
+
 void test("a mustKeep group that names no grammar is refused", () => {
     const folder = mkdtempSync(join(tmpdir(), "starci-dna-contract-"))
     mkdirSync(join(folder, "grammars"), { recursive: true })
@@ -62,10 +89,14 @@ void test("judgePart compares numbers with their unit, text blank-normalised, an
     assert.ok(!judgePart(part({ op: "=", measured: [], expected: [[1]] })).ok, "nothing measured is never a pass")
 })
 
-void test("judgePart is one self-contained function, because the page runs its source", () => {
-    // Run in a context that holds nothing of this module: a helper outside the function would be undefined there.
-    // The result is built in the other context, so its prototype is not this one's: compare it as data.
-    const verdict = (given: DnaPart): unknown => JSON.parse(JSON.stringify(runInNewContext(`(${judgePart.toString()})(${JSON.stringify(given)})`)))
-    assert.deepEqual(verdict(part({ op: ">=", measured: [44], expected: [[44]] })), { ok: true, want: ">= 44" })
-    assert.deepEqual(verdict(part({ op: "=", measured: ["a"], expected: [["b"]] })), { ok: false, want: '= "b"' })
+void test("judgePart is one self-contained function, because the page runs its source", (t) => {
+    const folder = mkdtempSync(join(tmpdir(), "starci-dna-standalone-"))
+    t.after(() => { rmSync(folder, { recursive: true, force: true }) })
+    const file = join(folder, "judge.mjs")
+    // Check the serialized function with no module bindings or ambient Node globals, without executing source text.
+    writeFileSync(file, judgePart.toString())
+    const program = ts.createProgram([file], { allowJs: true, checkJs: true, noEmit: true, target: ts.ScriptTarget.ES2024, types: [], skipLibCheck: true })
+    assert.deepEqual(ts.getPreEmitDiagnostics(program).map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")), [])
+    assert.deepEqual(judgePart(part({ op: ">=", measured: [44], expected: [[44]] })), { ok: true, want: ">= 44" })
+    assert.deepEqual(judgePart(part({ op: "=", measured: ["a"], expected: [["b"]] })), { ok: false, want: '= "b"' })
 })
