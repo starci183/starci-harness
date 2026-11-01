@@ -22,7 +22,7 @@ Choice `list-table.choose.role`: which collection carries the rows. The first ro
 | entity | entities with a name, one description line, a few facts and actions | `ListRow` rows in the section's list | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
 
 A list is never wrapped in a card (COLLECTION-1), except the `rail`, `step` and `task` rows above: a rail list, the few choices inside a first-run step card and a
-bounded task list are a `SurfaceListCard` with the label outside (rulings `step-card-list`, `task-list-card`). A list that grows, searches, filters or pages stays bare rows in its section. Title, count, filters and the section's command belong to the
+bounded task list are a `SurfaceListCard` with the label outside (rulings `step-card-list`, `task-list-card`). A list that grows, searches, filters or pages stays bare rows in its section. A table enters a card only when the data is truly complex; plain rows with few facts are a `SurfaceListCard` with its note in `footer`, never a `SurfaceCard` holding a `DataTable` between two lines of text. Title, count, filters and the section's command belong to the
 section header above it.
 
 ## Variants
