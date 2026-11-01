@@ -12,11 +12,15 @@
       "node"
     ],
     "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true
   },
   "include": [
     "scripts/*.mts",
+    "scripts/lint/*.mts",
+    "eslint.config.mjs",
+    "stylelint.config.mjs",
     "capture-refs.mts",
     "svg-shot.mts",
     "shoot.cts"

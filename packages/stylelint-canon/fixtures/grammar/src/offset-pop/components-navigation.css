@@ -8,7 +8,7 @@
     /* Link: ink text with a pink underline; current is a pink-underlined ink label. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Link"] {
         color: var(--foreground);
-        font-weight: 700;
+        font-weight: var(--grammar-weight-bold);
         text-decoration-color: var(--accent);
         text-decoration-thickness: var(--offset-pop-outline-width);
     }
@@ -26,13 +26,13 @@
 
     /* Breadcrumbs: ink ancestors, pink-marked current page. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Breadcrumbs"] [data-grammar-breadcrumb] {
-        font-weight: 700;
+        font-weight: var(--grammar-weight-bold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Breadcrumbs"] [data-grammar-breadcrumb][data-grammar-current="true"] {
         padding-inline: 0.5rem;
         border: var(--offset-pop-outline-width) solid var(--foreground);
-        border-radius: 999px;
+        border-radius: var(--offset-pop-pill-radius);
         background: var(--accent-soft);
         color: var(--foreground);
     }
@@ -44,7 +44,7 @@
         border-radius: var(--offset-pop-control-radius);
         background: var(--surface);
         color: var(--foreground);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Pagination"] [data-grammar-current="true"] {
@@ -62,7 +62,7 @@
         border: var(--offset-pop-outline-width) solid var(--border);
         background: var(--surface);
         color: var(--foreground);
-        font-weight: 900;
+        font-weight: var(--grammar-weight-black);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-state="complete"] [data-grammar-step-marker] {
@@ -73,7 +73,7 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-state="current"] [data-grammar-step-marker] {
         background: var(--accent);
         color: var(--accent-foreground);
-        box-shadow: 0.125rem 0.1875rem 0 var(--offset-pop-shadow-ink, var(--foreground));
+        box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-state="error"] [data-grammar-step-marker] {
@@ -82,7 +82,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Stepper"] [data-grammar-step-label] {
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /* TopBar: ink rule under a canvas bar. */
@@ -102,13 +102,13 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="PageHeader"] .starci-core-page-header-title {
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TopBar"] [data-grammar-top-bar-trigger] {
         border: var(--offset-pop-outline-width) solid var(--foreground);
         border-radius: var(--offset-pop-control-radius);
-        box-shadow: 0.125rem 0.1875rem 0 var(--offset-pop-shadow-ink, var(--foreground));
+        box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TopBar"] [data-grammar-top-bar-trigger][aria-expanded="true"] {
@@ -134,7 +134,7 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="BottomNav"] [data-grammar-bottom-nav-item] {
         min-block-size: 4rem;
         color: var(--foreground);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="BottomNav"] [data-grammar-bottom-nav-item] > [aria-hidden="true"] {
@@ -147,7 +147,7 @@
         border-color: var(--foreground);
         background: var(--accent);
         color: var(--accent-foreground);
-        box-shadow: 0.125rem 0.1875rem 0 var(--offset-pop-shadow-ink, var(--foreground));
+        box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="BottomNav"] [data-grammar-bottom-nav-badge] {
@@ -162,8 +162,8 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Footer"] [data-grammar-footer-group] > p {
-        font-weight: 900;
-        letter-spacing: -.01em;
+        font-weight: var(--grammar-weight-black);
+        letter-spacing: var(--grammar-tracking-snug);
     }
 
     /* Avatar / AvatarGroup: ink-ringed faces; the current identity gets a pink ring. A loading avatar has no ring: its
@@ -173,14 +173,14 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Avatar"][data-grammar-current="true"] {
-        box-shadow: 0 0 0 var(--offset-pop-outline-width) var(--accent), 0.125rem 0.1875rem 0 var(--offset-pop-outline-width) var(--offset-pop-shadow-ink, var(--foreground));
+        box-shadow: 0 0 0 var(--offset-pop-outline-width) var(--accent), var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-outline-width) var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="AvatarGroup"] [data-grammar-avatar-count] {
         border: var(--offset-pop-outline-width) solid var(--foreground);
         background: var(--warning);
         color: var(--foreground);
-        font-weight: 900;
+        font-weight: var(--grammar-weight-black);
     }
 
     /* Tabs variant="secondary": one outlined unit with the family's hard offset, the selected tab a pink pill (the SegmentedControl treatment). */
@@ -192,7 +192,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Tabs"][data-grammar-tabs-variant="secondary"] .tabs__tab {
         color: var(--foreground);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Tabs"][data-grammar-tabs-variant="secondary"] .tabs__tab[data-selected="true"] {
@@ -211,10 +211,10 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TagGroup"] [data-grammar-tag] {
         border: var(--offset-pop-outline-width) solid var(--foreground);
-        border-radius: 999px;
+        border-radius: var(--offset-pop-pill-radius);
         background: var(--surface);
         color: var(--foreground);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /* Forced colours: the current/selected decision stays visible without the pink fill. */

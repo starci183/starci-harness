@@ -36,18 +36,18 @@ export type MermaidThemeVariables = {
     readonly signalTextColor: string
 }
 
-/** Token, then the system colour used when the token resolves to nothing. */
+/** The HeroUI token each diagram colour reads. */
 const TOKENS = {
-    surface: ["--surface", "Canvas"],
-    surfaceSecondary: ["--surface-secondary", "Canvas"],
-    foreground: ["--foreground", "CanvasText"],
-    muted: ["--muted", "GrayText"],
-    border: ["--border", "CanvasText"],
-    separator: ["--separator", "GrayText"],
-    accentSoft: ["--accent-soft", "Canvas"],
-    accentSoftForeground: ["--accent-soft-foreground", "CanvasText"],
-    accent: ["--accent", "Highlight"],
-    warningSoft: ["--warning-soft", "Canvas"],
+    surface: "--surface",
+    surfaceSecondary: "--surface-secondary",
+    foreground: "--foreground",
+    muted: "--muted",
+    border: "--border",
+    separator: "--separator",
+    accentSoft: "--accent-soft",
+    accentSoftForeground: "--accent-soft-foreground",
+    accent: "--accent",
+    warningSoft: "--warning-soft",
 } as const
 
 type TokenName = keyof typeof TOKENS
@@ -62,15 +62,14 @@ const resolveTokens = (anchor: HTMLElement): Record<TokenName, string> => {
     anchor.append(probe)
     const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true })
     const resolved = {} as Record<TokenName, string>
-    for (const [name, [token, fallback]] of Object.entries(TOKENS) as Array<[TokenName, readonly [string, string]]>) {
-        probe.style.color = `var(${token}, ${fallback})`
+    for (const [name, token] of Object.entries(TOKENS) as Array<[TokenName, string]>) {
+        probe.style.color = `var(${token})`
         const color = getComputedStyle(probe).color
         if (context === null) {
             resolved[name] = color
             continue
         }
         context.clearRect(0, 0, 1, 1)
-        context.fillStyle = "#000000"
         context.fillStyle = color
         context.fillRect(0, 0, 1, 1)
         const [red = 0, green = 0, blue = 0] = context.getImageData(0, 0, 1, 1).data
@@ -78,6 +77,17 @@ const resolveTokens = (anchor: HTMLElement): Record<TokenName, string> => {
     }
     probe.remove()
     return resolved
+}
+
+/** The body text size of the grammar's type ramp (`--grammar-text-md`) in px, which is the unit Mermaid takes. */
+const resolveTextSize = (anchor: HTMLElement): string => {
+    const probe = document.createElement("span")
+    probe.setAttribute("aria-hidden", "true")
+    probe.style.cssText = "position:absolute;visibility:hidden;font-size:var(--grammar-text-md)"
+    anchor.append(probe)
+    const size = getComputedStyle(probe).fontSize
+    probe.remove()
+    return size
 }
 
 /** Relative luminance of a `#rrggbb` colour, for Mermaid's dark-mode switch. */
@@ -97,7 +107,7 @@ export const resolveMermaidTheme = (anchor: HTMLElement): MermaidThemeVariables 
     return {
         darkMode: luminance(token.surface) < 0.5,
         fontFamily: getComputedStyle(anchor).fontFamily,
-        fontSize: "14px",
+        fontSize: resolveTextSize(anchor),
         background: token.surface,
         primaryColor: token.surfaceSecondary,
         primaryTextColor: token.foreground,

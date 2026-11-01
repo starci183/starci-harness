@@ -763,6 +763,12 @@ rulings:
     ruling: "A schedule owned by a data row, such as one agent's next run, is a BullMQ job scheduler keyed by that row, in lite as in full. A customer chat turn locks per conversation and background or scheduled work locks per agent: one conversation never has two turns overlapping, and several customers of one agent are answered in parallel."
     owner: "contexts/code/be/queues.md (BE-QUEUES-3)"
 
+  - id: grammar-literal-lint
+    date: '2026-11-01'
+    status: live
+    ruling: "The Grammar package keeps one lint config, the gate of literals: ESLint over its components and Stylelint over its stylesheets refuse a hardcoded colour, radius, type size, shadow geometry, motion or opacity, a literal var() fallback, a utility class that decides a look, and a spacing value off the scale. Every value is a token or a step of a ramp in src/common/ramps.css. It runs in the package's own `npm test`, so CI judges every grammar change. This is the one exception to no-grammar-tests: the Grammar still adds no spec suite or test helper."
+    owner: "packages/grammar/eslint.config.mjs and stylelint.config.mjs (rules in scripts/lint/)"
+
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.
 removedVocabulary:

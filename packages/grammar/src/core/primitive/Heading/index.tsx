@@ -14,15 +14,7 @@ export type HeadingProps = {
     readonly isVisuallyHidden?: boolean
 }
 
-const LEVEL_CLASS_NAMES = {
-    1: "text-xl font-semibold tracking-tight",
-    2: "text-base font-semibold",
-    3: "text-sm font-medium",
-    4: "text-xs font-medium text-muted",
-} as const
-
-const DISPLAY_CLASS_NAME = "text-4xl font-semibold leading-tight tracking-tight"
-/** font.md Scale: FONT-4/FONT-3/FONT-2/FONT-1 for level 1..4; level 4 also matches tone.md TONE-2 via its `text-muted`. */
+/** font.md Scale: FONT-4/FONT-3/FONT-2/FONT-1 for level 1..4; level 4 also matches tone.md TONE-2 (muted). The look is the stylesheet's, keyed on `data-level` and `data-scale`. */
 const FONT_RULE_BY_LEVEL = {
     1: "FONT-4",
     2: "FONT-3",
@@ -57,7 +49,6 @@ export const Heading = ({
         }
         level={level}
         className={cn(
-            scale === "display" ? DISPLAY_CLASS_NAME : LEVEL_CLASS_NAMES[level],
             isSkeleton ? SKELETON_CLASS_NAME : undefined,
             isVisuallyHidden ? "sr-only" : undefined,
         ) ?? ""}

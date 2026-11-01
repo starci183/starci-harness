@@ -69,7 +69,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   tránh thủ tục rườm rà ... vừa chậm vừa block cpu/ram như lint, tests, typescript"; "contexts/<quyền> ghi rõ code nhánh
   không tests".
 - **No grammar tests (`no-grammar-tests`).** A Grammar edit is content only (component, CSS, props, a story for a new
-  state), proved by `typecheck` and `build`, with no specs and no local plays or DNA run, bumping and re-pinning only `@starci/grammar`
+  state), proved by `typecheck`, the literal lint (ruling `grammar-literal-lint`) and `build`, with no specs and no local plays or DNA run, bumping and re-pinning only `@starci/grammar`
   ([contexts/authority/packages.md](../authority/packages.md), `packages/grammar/package.json` `test`). Owner, 2026-10-12,
   restated 2026-10-28: "ghi rõ grammar sửa chỉ sửa nội dung".
 - **Scope before check (`scope-before-check`).** A wave writes its scope decision (diff, changed files, reach, exact

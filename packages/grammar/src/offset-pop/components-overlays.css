@@ -86,8 +86,8 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Drawer"] :is(h1, h2, h3),
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Popover"] :is(h1, h2, h3) {
         color: var(--foreground);
-        font-weight: 900;
-        letter-spacing: -.03em;
+        font-weight: var(--grammar-weight-black);
+        letter-spacing: var(--grammar-tracking-tight);
     }
 
     /* ---------------------------------------------------------------- pink decision accent */
@@ -107,7 +107,7 @@
 
     /* ---------------------------------------------------------------- menu */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-menu-item] {
-        font-weight: 700;
+        font-weight: var(--grammar-weight-bold);
     }
 
     /* The soft pink fill is theme-aware (blush-pink in light, plum in dark), so one rule reads in every theme. */
@@ -152,8 +152,8 @@
         border-radius: var(--offset-pop-control-radius);
         color: var(--foreground);
         background: color-mix(in srgb, var(--offset-pop-tone-color) 38%, var(--surface));
-        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink, var(--foreground));
-        font-weight: 600;
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
+        font-weight: var(--grammar-weight-semibold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Alert"] [data-slot="alert-root"],
@@ -174,16 +174,16 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"][data-pressed] {
-        transform: translate(1px, 1px);
+        transform: translate(var(--grammar-hairline), var(--grammar-hairline));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Kbd"] {
         border: var(--offset-pop-outline-width) solid var(--border);
-        border-radius: 0.5rem;
+        border-radius: var(--offset-pop-radius-md);
         color: var(--foreground);
         background: var(--surface);
-        box-shadow: 0 2px 0 var(--offset-pop-shadow-ink, var(--foreground));
-        font-weight: 800;
+        box-shadow: 0 var(--offset-pop-outline-width) 0 var(--offset-pop-shadow-ink, var(--foreground));
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /* ---------------------------------------------------------------- loading and measurement */
@@ -244,7 +244,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Meter"] [data-slot="label"] {
         color: var(--foreground);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /* ---------------------------------------------------------------- motion, theme, contrast */

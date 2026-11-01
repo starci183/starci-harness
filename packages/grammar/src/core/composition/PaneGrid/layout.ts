@@ -15,9 +15,9 @@ const trackCss: Readonly<Record<PaneTrack, string>> = {
     fill: "minmax(0, 1fr)",
     "fill-2": "minmax(0, 2fr)",
     "fill-3": "minmax(0, 3fr)",
-    compact: "minmax(14rem, var(--starci-core-rail-compact, 16rem))",
-    standard: "minmax(16rem, var(--starci-core-rail-standard, 20rem))",
-    wide: "minmax(20rem, var(--starci-core-rail-wide, 24rem))",
+    compact: "minmax(var(--starci-core-rail-compact-min), var(--starci-core-rail-compact))",
+    standard: "minmax(var(--starci-core-rail-standard-min), var(--starci-core-rail-standard))",
+    wide: "minmax(var(--starci-core-rail-wide-min), var(--starci-core-rail-wide))",
 }
 
 export const trackToCss = (track: PaneTrack): string => trackCss[track]

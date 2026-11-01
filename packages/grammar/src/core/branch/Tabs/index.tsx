@@ -163,7 +163,7 @@ export const Tabs = (props: TabsProps) => {
     // HeroUI names those looks secondary and primary respectively.
     const vendorVariant = variant === "secondary" ? "primary" : "secondary"
     const frameContract = inset === "page" ? "PADDING-5" : undefined
-    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="pending" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} style={{ minHeight: "3rem" }} />
+    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="pending" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} />
 
     return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="ready" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} data-grammar-tab-labels={props.labelVisibility ?? "responsive"}>
         <HeroTabs

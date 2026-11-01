@@ -26,14 +26,14 @@
         min-width: 0;
         flex-direction: column;
         align-items: stretch;
-        gap: var(--starci-core-field-gap, 0.5rem) !important;
+        gap: var(--starci-core-field-gap) !important;
     }
 
     .starci-core-field-label {
         color: var(--foreground);
-        font-size: 0.875rem;
-        font-weight: 600;
-        line-height: 1.25;
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-tight);
         overflow-wrap: anywhere;
     }
 
@@ -45,15 +45,15 @@
     .starci-core-field-description {
         margin: 0;
         color: var(--muted);
-        font-size: 0.75rem;
-        line-height: 1.4;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-snug);
         overflow-wrap: anywhere;
     }
 
     .starci-core-field-error {
-        font-size: 0.75rem;
-        font-weight: 600;
-        line-height: 1.4;
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-snug);
         overflow-wrap: anywhere;
     }
 
@@ -73,7 +73,7 @@
         flex-shrink: 0;
         margin-inline-start: auto;
         color: var(--muted);
-        font-size: 0.75rem;
+        font-size: var(--grammar-text-xs);
         font-variant-numeric: tabular-nums;
     }
 
@@ -95,16 +95,16 @@
     .starci-core-field-control > :where(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), select, textarea) {
         width: 100%;
         min-width: 0;
-        min-height: var(--starci-core-field-min-height, 2.5rem);
-        border: var(--field-border-width, 1px) solid var(--field-border);
-        border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
+        min-height: var(--starci-core-field-min-height);
+        border: var(--field-border-width) solid var(--field-border);
+        border-radius: var(--field-radius);
         padding: 0.5rem 0.75rem;
         box-sizing: border-box;
         background: var(--field-background);
         color: var(--field-foreground);
         box-shadow: var(--field-shadow);
         font: inherit;
-        font-size: 0.875rem;
+        font-size: var(--grammar-text-md);
     }
 
     .starci-core-field-control > :where(input, select, textarea):focus-visible {
@@ -113,7 +113,7 @@
     }
 
     .starci-core-field-control > :where(input, select, textarea):disabled {
-        opacity: 0.5;
+        opacity: var(--disabled-opacity);
         cursor: default;
     }
 
@@ -125,7 +125,7 @@
     .starci-core-textarea-control {
         width: 100%;
         min-width: 0;
-        min-height: var(--starci-core-control-min-size, 2.5rem);
+        min-height: var(--starci-core-control-min-size);
         resize: vertical;
     }
 
@@ -148,7 +148,7 @@
 
     /* A control box whose rounded part is inside it (a ComboBox or SegmentedControl group, a Field control slot) takes the field radius. */
     .starci-core-field-skeleton-scope [data-grammar-field-control="true"]:is(.starci-core-combo-box-group, .starci-core-segmented-control-group, .starci-core-field-control) {
-        border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
+        border-radius: var(--field-radius);
     }
 
     .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options), [data-grammar-choice-control], [data-grammar-tag-id]) > * { visibility: hidden; }
@@ -161,7 +161,26 @@
         visibility: visible;
         background-image: linear-gradient(to right, transparent, var(--surface-tertiary), transparent);
         translate: -100%;
-        animation: skeleton 2s linear infinite;
+        animation: skeleton var(--grammar-loop-skeleton) var(--grammar-loop-easing) infinite;
+    }
+
+    /* HeroUI's `--skeleton-animation` (shimmer, pulse or none) is the app's choice; the field skeleton's sweep follows it. */
+    @container style(--skeleton-animation: none) {
+        .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options, textarea), [data-grammar-choice-control], [data-grammar-tag-id])::after {
+            animation: none;
+            content: none;
+        }
+    }
+
+    @container style(--skeleton-animation: pulse) {
+        @media (prefers-reduced-motion: no-preference) {
+            .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options, textarea), [data-grammar-choice-control], [data-grammar-tag-id])::after {
+                translate: none;
+                background-image: none;
+                background-color: var(--surface-tertiary);
+                animation: starci-core-pulse var(--grammar-loop-pulse) var(--grammar-loop-pulse-easing) infinite;
+            }
+        }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -205,7 +224,7 @@
     .starci-core-number-field-group,
     .starci-core-date-group,
     .starci-core-copy-field-group {
-        min-block-size: var(--starci-core-field-min-height, 2.5rem);
+        min-block-size: var(--starci-core-field-min-height);
     }
 
     /*
@@ -228,8 +247,8 @@
         align-self: stretch;
         padding-inline: 0.75rem 0.25rem;
         overflow: hidden;
-        font-size: 0.875rem;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
         white-space: pre;
         cursor: text;
         user-select: text;
@@ -248,7 +267,7 @@
     }
 
     .starci-core-copy-field-group:has(.starci-core-copy-field-value:focus-visible) {
-        box-shadow: 0 0 0 2px var(--focus);
+        box-shadow: 0 0 0 var(--grammar-ring-width) var(--focus);
     }
 
     .starci-core-copy-field-tooltip {
@@ -278,7 +297,7 @@
         inline-size: 100%;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
         container-type: inline-size;
     }
 
@@ -287,7 +306,7 @@
         min-width: 0;
         grid-template-columns: minmax(0, 1fr);
         grid-auto-rows: auto;
-        gap: 0 var(--grammar-row-gap, 0.75rem);
+        gap: 0 var(--grammar-row-gap);
         align-items: start;
     }
 
@@ -302,7 +321,7 @@
     }
 
     :is(.starci-core-form-grid-row > [data-component]:not(:first-child), .starci-core-form-grid-row > .starci-core-field-skeleton-scope:not(:first-child) > [data-component]) {
-        margin-block-start: var(--grammar-row-gap, 0.75rem);
+        margin-block-start: var(--grammar-row-gap);
     }
 
     :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is([data-slot="label"], [data-grammar-field-label]) {
@@ -311,17 +330,17 @@
 
     :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is([data-grammar-field-control="true"], [data-grammar-input-control="true"]) {
         grid-row: 2;
-        margin-block-start: var(--starci-core-field-gap, 0.5rem);
+        margin-block-start: var(--starci-core-field-gap);
     }
 
     :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > [data-grammar-field-description] {
         grid-row: 3;
-        margin-block-start: var(--starci-core-field-gap, 0.5rem);
+        margin-block-start: var(--starci-core-field-gap);
     }
 
     :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is(.starci-core-field-error, [data-slot="error-message"], [data-slot="field-error"]) {
         grid-row: 4;
-        margin-block-start: var(--starci-core-field-gap, 0.5rem);
+        margin-block-start: var(--starci-core-field-gap);
     }
 
     @container (min-width: 32rem) {
@@ -336,7 +355,7 @@
 
     /* Owner 2026-10-25: Select has the same 2.5rem field height as Input. */
     .starci-core-select-trigger {
-        min-block-size: var(--starci-core-field-min-height, 2.5rem);
+        min-block-size: var(--starci-core-field-min-height);
     }
 
     /*
@@ -352,7 +371,7 @@
     }
 
     .starci-core-combo-box-group:focus-within {
-        box-shadow: 0 0 0 2px var(--focus);
+        box-shadow: 0 0 0 var(--grammar-ring-width) var(--focus);
     }
 
     @media (forced-colors: active) {
@@ -398,7 +417,7 @@
     .starci-core-list-empty {
         padding: 0.5rem 0.75rem;
         color: var(--muted);
-        font-size: 0.875rem;
+        font-size: var(--grammar-text-md);
     }
 
     /* --- Choices: Checkbox, Radio, Switch --- */
@@ -426,7 +445,7 @@
 
     [data-grammar-orientation="horizontal"] > .starci-core-choice-group-options {
         flex-flow: row wrap;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     /*
@@ -438,7 +457,7 @@
      * the track: 100% - thumb - inset.
      */
     [data-component="Switch"][data-grammar-switch-size="control"] {
-        --grammar-switch-height: var(--starci-core-control-min-size, 2.5rem);
+        --grammar-switch-height: var(--starci-core-control-min-size);
         --grammar-switch-width: 4.5rem;
         --grammar-switch-thumb: calc(var(--grammar-switch-height) - 0.5rem);
     }
@@ -529,7 +548,7 @@
      * (h-11, then md:h-10). `md` and `lg` stay HeroUI's own.
      */
     [data-component="SegmentedControl"][data-grammar-segmented-size="control"] .starci-core-segment {
-        block-size: var(--starci-core-control-min-size, 2.75rem) !important;
+        block-size: var(--starci-core-control-min-size) !important;
     }
 
     /* --- ButtonGroup --- */
@@ -550,7 +569,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
         margin: 0;
         border: 0;
         padding: 0;
@@ -571,7 +590,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     .starci-core-fieldset-actions {
@@ -579,14 +598,14 @@
         min-width: 0;
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-form {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     /* --- FileDropzone: a native file input stretched over the drop target --- */
@@ -598,14 +617,14 @@
         align-items: center;
         justify-content: center;
         border: 2px dashed var(--border);
-        border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
-        padding: var(--grammar-inset-open, 1.5rem);
+        border-radius: var(--field-radius);
+        padding: var(--grammar-inset-open);
         background: var(--field-background);
         color: var(--muted);
         text-align: center;
         transition:
-            border-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1)),
-            background-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+            border-color var(--starci-core-motion-duration) var(--starci-core-motion-easing),
+            background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-file-dropzone-input {
@@ -627,7 +646,7 @@
         flex-direction: column;
         align-items: center;
         gap: 0.5rem;
-        font-size: 0.875rem;
+        font-size: var(--grammar-text-md);
         pointer-events: none;
     }
 
@@ -651,14 +670,14 @@
     }
 
     .starci-core-file-dropzone[data-grammar-disabled="true"] .starci-core-file-dropzone-target {
-        opacity: 0.5;
+        opacity: var(--disabled-opacity);
     }
 
     .starci-core-file-dropzone-files {
         margin: 0;
-        padding-inline-start: var(--grammar-section-gap, 1.5rem);
+        padding-inline-start: var(--grammar-section-gap);
         color: var(--foreground);
-        font-size: 0.875rem;
+        font-size: var(--grammar-text-md);
         overflow-wrap: anywhere;
     }
 
@@ -682,7 +701,7 @@
         .starci-core-list-option,
         .starci-core-button-group > *,
         .starci-core-field-control > :where(input:not([type="checkbox"], [type="radio"], [type="range"]), select) {
-            min-block-size: var(--starci-core-control-min-size, 2.5rem);
+            min-block-size: var(--starci-core-control-min-size);
         }
 
         .starci-core-number-field-step,
@@ -691,16 +710,16 @@
         .starci-core-date-trigger,
         .starci-core-calendar-nav,
         .starci-core-calendar-cell {
-            min-inline-size: var(--starci-core-control-min-size, 2.5rem);
-            min-block-size: var(--starci-core-control-min-size, 2.5rem);
+            min-inline-size: var(--starci-core-control-min-size);
+            min-block-size: var(--starci-core-control-min-size);
         }
 
         .starci-core-slider-thumb::after {
             position: absolute;
             inset-block-start: 50%;
             inset-inline-start: 50%;
-            width: var(--starci-core-control-min-size, 2.5rem);
-            height: var(--starci-core-control-min-size, 2.5rem);
+            width: var(--starci-core-control-min-size);
+            height: var(--starci-core-control-min-size);
             translate: -50% -50%;
             content: "";
         }

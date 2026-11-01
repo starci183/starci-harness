@@ -98,7 +98,7 @@ export const StatusDotChip = ({ tone, size, children, component = "StatusDot", e
 const DotOnly = ({ tone, size, echo, label }: { readonly tone: StatusDotTone; readonly size: StatusDotSize; readonly echo: boolean; readonly label: string }) => {
     const { anchor, container } = useOverlayContainer("Tooltip")
     return (
-        <HeroTooltip delay={0}>
+        <HeroTooltip>
             <HeroTooltip.Trigger
                 role="img"
                 aria-label={label}

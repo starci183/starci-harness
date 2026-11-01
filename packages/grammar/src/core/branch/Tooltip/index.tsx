@@ -33,7 +33,7 @@ export type TooltipProps = {
 export const Tooltip = ({ content, children, placement = "top", isDisabledTrigger = false, triggerDescribedBy }: TooltipProps) => {
     const { anchor, container } = useOverlayContainer("Tooltip")
     return (
-        <HeroTooltip delay={0}>
+        <HeroTooltip>
             {isDisabledTrigger ? (
                 <HeroTooltip.Trigger
                     className="starci-core-tooltip-disabled-trigger"
@@ -73,7 +73,7 @@ type AnchoredTooltipProps = {
 export const AnchoredTooltip = ({ id, target, content, isOpen }: AnchoredTooltipProps) => {
     const { anchor, container } = useOverlayContainer("Tooltip")
     return (
-        <HeroTooltip isOpen={isOpen && target !== null} delay={0}>
+        <HeroTooltip isOpen={isOpen && target !== null}>
             {anchor}
             {container === null ? null : (
                 <HeroTooltip.Content

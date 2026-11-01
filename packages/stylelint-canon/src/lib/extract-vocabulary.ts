@@ -18,6 +18,7 @@ export const FAMILY_PREFIXES: readonly string[] = ["--grammar-", "--starci-core-
 /** The grammar CSS the vocabulary is read from, relative to the grammar package. */
 export const GRAMMAR_CSS: readonly string[] = [
   "common/styles.css",
+  "common/ramps.css",
   "common/components-forms.css",
   "common/components-navigation.css",
   "common/components-overlays.css",

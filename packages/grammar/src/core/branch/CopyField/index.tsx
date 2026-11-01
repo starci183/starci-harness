@@ -172,7 +172,7 @@ const CopyFieldControl = (props: CopyFieldProps) => {
                 {...(isDisabled ? { isDisabled: true } : {})}
                 {...(failed ? { isInvalid: true } : {})}
             >
-                <HeroTooltip delay={0} isDisabled={!showsTooltip}>
+                <HeroTooltip isDisabled={!showsTooltip}>
                     <HeroTooltip.Trigger
                         role="textbox"
                         aria-readonly="true"

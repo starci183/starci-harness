@@ -7,18 +7,11 @@
      * What stays here is geometry and motion, which HeroUI has no token for, derived from the app's `--radius`.
      */
     .grammar-common-root[data-grammar-family="core"] {
-        --starci-core-page-measure: 80rem;
-        --starci-core-reading-measure: 72ch;
         --starci-core-page-inset: var(--grammar-page-inset);
         --starci-core-region-gap: var(--grammar-region-gap);
         --starci-core-section-gap: var(--grammar-section-gap);
         --starci-core-inline-gap: var(--grammar-inline-gap);
         --starci-core-row-gap: var(--grammar-row-gap);
-        --starci-core-surface-radius: calc(var(--radius) * 4 / 3);
-        --starci-core-control-radius: var(--radius);
-        --starci-core-pill-radius: 999px;
-        --starci-core-motion-duration: 180ms;
-        --starci-core-motion-easing: cubic-bezier(0.2, 0, 0, 1);
 
         min-width: 0;
         background: var(--background);
@@ -42,7 +35,7 @@
     .grammar-common-root[data-grammar-family="core"]
         .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-surface-placement="panel"][data-grammar-frame="bounded"]
         > [data-grammar-surface-label] {
-        --starci-core-surface-label-padding: var(--grammar-card-padding-block, 0.75rem) var(--grammar-card-padding-inline, 0.75rem) 0;
+        --starci-core-surface-label-padding: var(--grammar-card-padding-block) var(--grammar-card-padding-inline) 0;
     }
 
     .grammar-common-root[data-grammar-family="core"]

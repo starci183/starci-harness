@@ -57,17 +57,17 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: var(--grammar-page-inset, 0.75rem);
+        padding: var(--grammar-page-inset);
         background: color-mix(in srgb, var(--foreground) 40%, transparent);
         overscroll-behavior: contain;
     }
 
     .starci-core-overlay-backdrop[data-entering] {
-        animation: starci-core-overlay-fade var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        animation: starci-core-overlay-fade var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-overlay-backdrop[data-exiting] {
-        animation: starci-core-overlay-fade var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1)) reverse;
+        animation: starci-core-overlay-fade var(--starci-core-motion-duration) var(--starci-core-motion-easing) reverse;
     }
 
     @keyframes starci-core-overlay-fade {
@@ -79,7 +79,7 @@
     @keyframes starci-core-overlay-rise {
         from {
             opacity: 0;
-            transform: translateY(0.5rem) scale(0.98);
+            transform: translateY(var(--grammar-motion-travel)) scale(0.98);
         }
     }
 
@@ -113,7 +113,7 @@
     }
 
     .starci-core-dialog-container[data-entering] {
-        animation: starci-core-overlay-rise var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        animation: starci-core-overlay-rise var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-dialog,
@@ -122,7 +122,7 @@
         min-width: 0;
         flex: 1;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
         overflow: hidden;
         color: var(--surface-foreground);
     }
@@ -134,7 +134,7 @@
         flex-direction: row !important;
         align-items: flex-start !important;
         justify-content: space-between !important;
-        gap: var(--grammar-row-gap, 0.75rem) !important;
+        gap: var(--grammar-row-gap) !important;
     }
 
     .starci-core-overlay-header > .starci-core-close-button {
@@ -158,8 +158,8 @@
     .starci-core-overlay-description {
         margin: 0;
         color: var(--muted);
-        font-size: 0.875rem;
-        line-height: 1.5;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-normal);
     }
 
     .starci-core-overlay-body {
@@ -173,7 +173,7 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: flex-end;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     [data-grammar-overlay-action] {
@@ -272,24 +272,24 @@
     .starci-core-drawer-handle > [data-slot="drawer-handle-bar"] {
         width: 2.5rem;
         height: 0.3125rem;
-        border-radius: 999px;
+        border-radius: var(--grammar-radius-pill);
         background: color-mix(in srgb, var(--muted) 55%, transparent);
     }
 
     .starci-core-drawer-content[data-entering][data-placement="right"] {
-        animation: starci-core-drawer-from-end var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        animation: starci-core-drawer-from-end var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-drawer-content[data-entering][data-placement="left"] {
-        animation: starci-core-drawer-from-start var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        animation: starci-core-drawer-from-start var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-drawer-content[data-entering][data-placement="bottom"] {
-        animation: starci-core-drawer-from-bottom var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        animation: starci-core-drawer-from-bottom var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-drawer-content[data-entering][data-placement="top"] {
-        animation: starci-core-drawer-from-top var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        animation: starci-core-drawer-from-top var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     @keyframes starci-core-drawer-from-end {
@@ -325,15 +325,15 @@
     }
 
     .starci-core-popover[data-entering] {
-        animation: starci-core-overlay-fade var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        animation: starci-core-overlay-fade var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-popover-dialog {
         display: flex;
         flex-direction: column;
-        gap: var(--grammar-inline-gap, 0.5rem);
-        font-size: 0.875rem;
-        line-height: 1.5;
+        gap: var(--grammar-inline-gap);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-normal);
     }
 
     /* The body is one flex item of the dialog stack; long content wraps inside the 20rem surface. */
@@ -409,25 +409,25 @@
         position: fixed;
         z-index: 60;
         display: flex;
-        width: min(24rem, calc(100vw - 2 * var(--grammar-page-inset, 0.75rem)));
+        width: min(24rem, calc(100vw - 2 * var(--grammar-page-inset)));
         flex-direction: column;
         pointer-events: none;
     }
 
     .starci-core-toaster:is([data-placement="top-start"], [data-placement="top"], [data-placement="top-end"]) {
-        top: var(--grammar-page-inset, 0.75rem);
+        top: var(--grammar-page-inset);
     }
 
     .starci-core-toaster:is([data-placement="bottom-start"], [data-placement="bottom"], [data-placement="bottom-end"]) {
-        bottom: max(var(--grammar-page-inset, 0.75rem), env(safe-area-inset-bottom));
+        bottom: max(var(--grammar-page-inset), env(safe-area-inset-bottom));
     }
 
     .starci-core-toaster:is([data-placement="top-start"], [data-placement="bottom-start"]) {
-        inset-inline-start: var(--grammar-page-inset, 0.75rem);
+        inset-inline-start: var(--grammar-page-inset);
     }
 
     .starci-core-toaster:is([data-placement="top-end"], [data-placement="bottom-end"]) {
-        inset-inline-end: var(--grammar-page-inset, 0.75rem);
+        inset-inline-end: var(--grammar-page-inset);
     }
 
     .starci-core-toaster:is([data-placement="top"], [data-placement="bottom"]) {
@@ -438,7 +438,7 @@
     .starci-core-toaster-list {
         display: flex;
         flex-direction: column;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
         margin: 0;
         padding: 0;
         list-style: none;
@@ -457,24 +457,24 @@
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto auto;
         align-items: start;
-        border-radius: var(--starci-core-surface-radius, 1rem);
+        border-radius: var(--starci-core-surface-radius);
         background: var(--surface);
         color: var(--surface-foreground);
         box-shadow: var(--surface-shadow);
-        animation: starci-core-overlay-rise var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        animation: starci-core-overlay-rise var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-toast-indicator {
         display: inline-flex;
-        margin-block-start: var(--grammar-identity-gap, 0.25rem);
+        margin-block-start: var(--grammar-identity-gap);
         color: var(--starci-core-overlay-tone);
     }
 
     .starci-core-toast-indicator[data-grammar-toast-indicator] {
         width: 0.625rem;
         height: 0.625rem;
-        margin-block-start: var(--grammar-identity-gap, 0.25rem);
-        border-radius: 999px;
+        margin-block-start: var(--grammar-identity-gap);
+        border-radius: var(--grammar-radius-pill);
         background: var(--starci-core-overlay-tone);
     }
 
@@ -482,23 +482,23 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-identity-gap, 0.25rem);
+        gap: var(--grammar-identity-gap);
         align-self: center;
     }
 
     .starci-core-toast-title {
         margin: 0;
-        font-size: 0.875rem;
-        font-weight: 600;
-        line-height: 1.4;
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-snug);
         overflow-wrap: anywhere;
     }
 
     .starci-core-toast-description {
         margin: 0;
         color: var(--muted);
-        font-size: 0.8125rem;
-        line-height: 1.45;
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-snug);
     }
 
     .starci-core-toast-action {
@@ -507,7 +507,7 @@
 
     @media (max-width: 40rem) {
         .starci-core-toaster {
-            inset-inline: var(--grammar-page-inset, 0.75rem);
+            inset-inline: var(--grammar-page-inset);
             width: auto;
             margin-inline: 0;
         }
@@ -565,7 +565,7 @@
 
     /* A loading Alert (skeleton parity): the glyph keeps its place as a round Skeleton tint. */
     .starci-core-alert[data-loading="true"] .starci-core-alert-indicator {
-        border-radius: 999px;
+        border-radius: var(--grammar-radius-pill);
         background: color-mix(in oklab, var(--surface-tertiary) 70%, transparent);
     }
 
@@ -583,7 +583,7 @@
         display: inline-flex;
         flex: none;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
         margin-inline-start: auto;
     }
 
@@ -593,12 +593,12 @@
         flex: none;
         align-items: center;
         justify-content: center;
-        width: var(--starci-core-control-min-size, 2.5rem);
-        height: var(--starci-core-control-min-size, 2.5rem);
+        width: var(--starci-core-control-min-size);
+        height: var(--starci-core-control-min-size);
         margin: -0.5rem -0.5rem 0 0;
         padding: 0;
         border: 0;
-        border-radius: 999px;
+        border-radius: var(--grammar-radius-pill);
         background: transparent;
         color: var(--muted);
         cursor: pointer;
@@ -627,7 +627,7 @@
 
     .starci-core-close-button[data-disabled] {
         cursor: not-allowed;
-        opacity: 0.5;
+        opacity: var(--disabled-opacity);
     }
 
     /* ---------------------------------------------------------------- kbd */
@@ -636,7 +636,7 @@
         min-width: 1.5rem;
         align-items: center;
         justify-content: center;
-        gap: var(--grammar-identity-gap, 0.25rem);
+        gap: var(--grammar-identity-gap);
         border: 1px solid var(--border);
         white-space: nowrap;
     }
@@ -671,7 +671,7 @@
     .starci-core-spinner > svg {
         width: 100%;
         height: 100%;
-        animation: starci-core-spin 0.8s linear infinite;
+        animation: starci-core-spin var(--grammar-loop-spin-fast) var(--grammar-loop-easing) infinite;
     }
 
     @keyframes starci-core-spin {
@@ -682,7 +682,7 @@
 
     @keyframes starci-core-pulse {
         50% {
-            opacity: 0.4;
+            opacity: var(--disabled-opacity);
         }
     }
 
@@ -707,8 +707,8 @@
 
     .starci-core-skeleton-group > .starci-core-skeleton {
         width: 100%;
-        height: var(--starci-core-skeleton-line, 0.875em);
-        margin-block: calc((1lh - var(--starci-core-skeleton-line, 0.875em)) / 2);
+        height: var(--starci-core-skeleton-line);
+        margin-block: calc((1lh - var(--starci-core-skeleton-line)) / 2);
     }
 
     /*
@@ -726,7 +726,34 @@
 
     .starci-core-skeleton-placeholder > * { visibility: hidden; }
     .starci-core-skeleton-placeholder[data-shape="block"] { display: inline-flex; }
-    .starci-core-skeleton-placeholder[data-shape="circle"] { display: inline-flex; border-radius: 999px; }
+    .starci-core-skeleton-placeholder[data-shape="circle"] { display: inline-flex; border-radius: var(--grammar-radius-pill); }
+    .starci-core-skeleton[data-shape="circle"] { border-radius: var(--grammar-radius-pill); }
+
+    /*
+     * HeroUI's `--skeleton-animation` (shimmer, pulse or none) is the app's choice. Its own Skeleton reads the token in script;
+     * every skeleton the grammar draws from the shimmer class follows it here, in the stylesheet, so a static class agrees.
+     */
+    @container style(--skeleton-animation: none) {
+        .skeleton--shimmer::before,
+        .skeleton--shimmer::after {
+            animation: none !important;
+            content: none !important;
+        }
+    }
+
+    @container style(--skeleton-animation: pulse) {
+        @media (prefers-reduced-motion: no-preference) {
+            .skeleton--shimmer {
+                animation: starci-core-pulse var(--grammar-loop-pulse) var(--grammar-loop-pulse-easing) infinite;
+            }
+        }
+
+        .skeleton--shimmer::before,
+        .skeleton--shimmer::after {
+            animation: none !important;
+            content: none !important;
+        }
+    }
     .starci-core-skeleton-placeholder[data-shape="region"] { display: block; }
     .starci-core-skeleton-placeholder[data-shape="text"]:empty { inline-size: min(100%, 8rem); block-size: 1lh; }
 
@@ -796,11 +823,11 @@
 
     .starci-core-progress-circle [data-slot="progress-circle-fill-circle"] {
         stroke: currentColor;
-        transition: stroke-dashoffset var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        transition: stroke-dashoffset var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-progress-circle[data-indeterminate="true"] svg {
-        animation: starci-core-spin 1s linear infinite;
+        animation: starci-core-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite;
     }
 
     /* ---------------------------------------------------------------- meter */
@@ -809,7 +836,7 @@
         width: 100%;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-identity-gap, 0.25rem);
+        gap: var(--grammar-identity-gap);
     }
 
     .starci-core-meter-header {
@@ -817,13 +844,13 @@
         min-width: 0;
         align-items: baseline;
         justify-content: space-between;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-meter-label {
         color: var(--foreground);
-        font-size: 0.875rem;
-        font-weight: 500;
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
     }
 
     .starci-core-meter-output {
@@ -843,7 +870,7 @@
     }
 
     /* Loading meter (knowledge STATE-8, `isSkeleton`): the label stays real, the bar is a static Skeleton bar of the track height. */
-    .starci-core-meter-skeleton-bar { display: block; block-size: 0.5rem; overflow: hidden; border-radius: 999px; }
+    .starci-core-meter-skeleton-bar { display: block; block-size: 0.5rem; overflow: hidden; border-radius: var(--grammar-radius-pill); }
 
     /* `size="sm"`: the thin track is HeroUI's own `.meter--sm` (h-1); only the loading bar, which is ours, follows it. */
     .starci-core-meter-skeleton[data-size="sm"] .starci-core-meter-skeleton-bar { block-size: 0.25rem; }
@@ -868,7 +895,7 @@
         overflow: visible !important;
         height: 0.25rem !important;
         gap: 0.25rem;
-        border-radius: 999px;
+        border-radius: var(--grammar-radius-pill);
         background: transparent !important;
     }
 
@@ -904,7 +931,7 @@
         /* Busy stays perceivable without rotation: a slow opacity pulse replaces the spin. */
         .starci-core-spinner > svg,
         .starci-core-progress-circle[data-indeterminate="true"] svg {
-            animation: starci-core-pulse 1.6s ease-in-out infinite;
+            animation: starci-core-pulse var(--grammar-loop-pulse) var(--grammar-loop-pulse-easing) infinite;
         }
     }
 

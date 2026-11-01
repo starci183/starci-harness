@@ -1,0 +1,156 @@
+/*
+ * THE RAMPS. The one place a type size, a corner, a stroke, a duration, an opacity or a part's geometry has a number.
+ * Every component rule reads one of these by name and holds no literal (`scripts/lint/stylelint-plugin.mts`,
+ * `starci-grammar/no-literal`); a family overrides a ramp step on its own root, never inside a component rule.
+ * Spacing is not here: it is the scale 0 4 8 12 24 32 in `styles.css`. Colour is not here either: the app sets
+ * HeroUI's tokens and every rule reads them; the few colours that are art (the rank medals) are `--grammar-art-*`.
+ */
+@layer starci-grammar-common {
+    .grammar-common-root {
+        /* TYPE. Sizes in rem, named by step; the leading beside a size is the rem step of the same name or a ratio. */
+        --grammar-text-2xs: 0.6875rem;
+        --grammar-text-xs: 0.75rem;
+        --grammar-text-sm: 0.8125rem;
+        --grammar-text-md: 0.875rem;
+        --grammar-text-lg: 1rem;
+        --grammar-text-xl: 1.125rem;
+        --grammar-text-2xl: 1.25rem;
+        --grammar-text-3xl: 1.5rem;
+        --grammar-text-4xl: 1.875rem;
+        --grammar-text-5xl: 2.25rem;
+        /* Inline code and counts follow the size of the text around them. */
+        --grammar-text-relative: 0.875em;
+        --grammar-leading-xs: 1rem;
+        --grammar-leading-sm: 1.125rem;
+        --grammar-leading-md: 1.25rem;
+        --grammar-leading-lg: 1.5rem;
+        --grammar-leading-xl: 1.75rem;
+        --grammar-leading-2xl: 2.25rem;
+        --grammar-leading-none: 1;
+        --grammar-leading-display: 0.96;
+        --grammar-leading-tight: 1.25;
+        --grammar-leading-snug: 1.4;
+        --grammar-leading-normal: 1.5;
+        --grammar-leading-relaxed: 1.65;
+        --grammar-weight-regular: 400;
+        --grammar-weight-medium: 500;
+        --grammar-weight-semibold: 600;
+        --grammar-weight-bold: 700;
+        --grammar-weight-extrabold: 800;
+        --grammar-weight-black: 900;
+        --grammar-tracking-display: -0.045em;
+        --grammar-tracking-tight: -0.025em;
+        --grammar-tracking-snug: -0.015em;
+        --grammar-tracking-wide: 0.04em;
+        --grammar-tracking-wider: 0.08em;
+
+        /*
+         * CORNERS. Steps of the app's `--radius` (HeroUI's token), so a theme that rounds its controls rounds the grammar's
+         * parts with it. md is the control, lg the surface; xl is HeroUI's field radius.
+         */
+        --grammar-radius-2xs: calc(var(--radius) / 6);
+        --grammar-radius-xs: calc(var(--radius) / 3);
+        --grammar-radius-sm: calc(var(--radius) / 2);
+        --grammar-radius-md: var(--radius);
+        --grammar-radius-lg: calc(var(--radius) * 4 / 3);
+        --grammar-radius-xl: calc(var(--radius) * 3 / 2);
+        --grammar-radius-pill: 999px;
+        --grammar-radius-round: 50%;
+        --starci-core-control-radius: var(--grammar-radius-md);
+        --starci-core-surface-radius: var(--grammar-radius-lg);
+        --starci-core-pill-radius: var(--grammar-radius-pill);
+
+        /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
+        --grammar-hairline: 1px;
+        --grammar-stroke-fine: 1.5px;
+        --grammar-ring-width: 2px;
+        --grammar-shadow-lift: 0 var(--grammar-hairline) 2px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+
+        /* The distance an overlay rises or a part slides in from. */
+        --grammar-motion-travel: 0.5rem;
+
+        /* OPACITY. A disabled part is HeroUI's `--disabled-opacity`; these are the other three steps a part uses. */
+        --grammar-opacity-hover: 0.7;
+        --grammar-opacity-secondary: 0.8;
+        --grammar-opacity-dimmed: 0.2;
+
+        /* MOTION. One duration and one easing for a state change; loops have a cycle of their own. */
+        --starci-core-motion-duration: 180ms;
+        --starci-core-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+        --grammar-loop-skeleton: 2s;
+        --grammar-loop-spin: 1s;
+        --grammar-loop-spin-fast: 0.8s;
+        --grammar-loop-pulse: 1.6s;
+        --grammar-loop-orbit: 3s;
+        --grammar-loop-easing: linear;
+        --grammar-loop-pulse-easing: ease-in-out;
+        --grammar-loop-echo-easing: ease-out;
+
+        /* The ink band reads its text from the band's lightness: above the pivot the ink is dark, below it light. */
+        --grammar-ink-band-pivot: 0.62;
+
+        /* GEOMETRY of the parts: sizes, measures and layers that have no HeroUI token. Spacing is in styles.css. */
+        --starci-core-control-min-size: 2.5rem;
+        --starci-core-field-min-height: var(--starci-core-control-min-size);
+        --grammar-touch-size: 2.75rem;
+        --starci-core-field-gap: var(--grammar-inline-gap);
+        --starci-core-copy-gap: var(--grammar-identity-gap);
+        --starci-core-row-gap-compact: var(--grammar-inline-gap);
+        --starci-core-rail-gap-compact: var(--grammar-row-gap);
+        --starci-core-workspace-floating-inset: var(--grammar-inset);
+        --starci-core-page-measure: 80rem;
+        --starci-core-reading-measure: 72ch;
+        --starci-core-form-measure: 30rem;
+        --starci-core-form-compact-measure: 28rem;
+        --starci-core-rail-compact-min: 14rem;
+        --starci-core-rail-standard-min: 16rem;
+        --starci-core-rail-wide-min: 20rem;
+        --starci-core-tabs-pending-height: 3rem;
+        --starci-core-rail-compact: 16rem;
+        --starci-core-rail-standard: 20rem;
+        --starci-core-rail-wide: 24rem;
+        --starci-core-rail-collapsed: 4rem;
+        --starci-core-sidebar-width: 16rem;
+        --starci-core-sidebar-collapsed-width: 4rem;
+        --starci-core-workspace-navigation-width: 18rem;
+        --starci-core-workspace-floating-max: 22rem;
+        --starci-core-workspace-leading-seam: 2rem;
+        --starci-core-data-table-max-block-size: 24rem;
+        --starci-core-contained-max-height: calc(100dvh - 3rem);
+        --starci-core-band-height: 0rem;
+        --starci-core-band-subnav-height: 0rem;
+        --starci-core-band-offset: 5.5rem;
+        --starci-core-subnav-rest: 4rem;
+        --starci-core-skeleton-line: var(--grammar-text-relative);
+        --starci-core-fill-top: 0px;
+        --starci-core-fill-bottom: 0px;
+        --starci-core-pane-b: 0px;
+        --starci-core-pane-i: 0px;
+        --starci-core-pane-inset-inline: 0px;
+        --starci-core-pane-inset-block-start: 0px;
+        --starci-core-pane-inset-block-end: 0px;
+        --starci-core-bottom-nav-count: 4;
+        --starci-core-top-bar-z: 40;
+        --starci-core-navbar-z: 50;
+        --starci-core-subnav-z: 40;
+        --starci-core-bottom-nav-z: 40;
+        --starci-core-workspace-floating-z: 40;
+        --starci-flow-diameter: 3rem;
+        --starci-flow-height: 24rem;
+        --starci-flow-zoom: 1;
+        --avatar-size: var(--starci-core-control-min-size);
+
+        /* ART. Fixed colours of the rank medals: art that no theme restyles, named once so no component carries a hex. */
+        --grammar-art-blue: #0074ba;
+        --grammar-art-sky: #00a6ed;
+        --grammar-art-orange: #ffb02e;
+        --grammar-art-brown: #6d4534;
+        --grammar-art-yellow: #fcd53f;
+        --grammar-art-steel: #636363;
+        --grammar-art-silver: #bebebe;
+        --grammar-art-pearl: #e6e6e6;
+        --grammar-art-bronze: #d3883e;
+        --grammar-art-copper: #f3ad61;
+        --grammar-art-umber: #402a32;
+    }
+}

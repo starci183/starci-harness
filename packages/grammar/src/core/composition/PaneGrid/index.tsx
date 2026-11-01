@@ -126,12 +126,12 @@ export const Pane = (props: PaneProps) => {
         for (const breakpoint of paneBreakpoints) {
             const edges: PaneEdges | undefined = models[breakpoint].edges[area]
             vars[`--starci-core-pane-d-${breakpoint}`] = edges === undefined ? "none" : shown
-            vars[`--starci-core-pane-i-${breakpoint}`] = edges?.inline === true ? "1px" : "0px"
-            vars[`--starci-core-pane-b-${breakpoint}`] = edges?.block === true ? "1px" : "0px"
+            vars[`--starci-core-pane-i-${breakpoint}`] = edges?.inline === true ? "var(--grammar-hairline)" : "0px"
+            vars[`--starci-core-pane-b-${breakpoint}`] = edges?.block === true ? "var(--grammar-hairline)" : "0px"
             hasEdge = hasEdge || edges?.inline === true || edges?.block === true
             vars[`--starci-core-pane-be-${breakpoint}`] = edges?.blockEnd === "divider"
-                ? "var(--grammar-pane-inset-block-end-divider, 0.75rem)"
-                : "var(--grammar-pane-inset-block-end-outer, 1rem)"
+                ? "var(--grammar-pane-inset-block-end-divider)"
+                : "var(--grammar-pane-inset-block-end-outer)"
         }
     }
     const style: CustomProperties = { gridArea: area, ...vars }
@@ -291,8 +291,8 @@ const PaneDrawer = ({ pane, placement, models }: {
         [props.area],
     )
     if (props.collapse !== "drawer") return null
-    const drawerVars: CustomProperties = { "--starci-core-pane-be": "var(--grammar-pane-inset-block-end-outer, 1rem)" }
-    const drawerHeaderStyle: CSSProperties = { paddingInline: "var(--grammar-pane-inset-inline, 1rem)" }
+    const drawerVars: CustomProperties = { "--starci-core-pane-be": "var(--grammar-pane-inset-block-end-outer)" }
+    const drawerHeaderStyle: CSSProperties = { paddingInline: "var(--grammar-pane-inset-inline)" }
     const triggerStyle: CustomProperties = {}
     const vars: Record<string, string> = {}
     for (const breakpoint of paneBreakpoints) {

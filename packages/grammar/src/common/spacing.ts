@@ -11,6 +11,16 @@ export const COMMON_SPACING_SCALE = Object.freeze({
     8: "2rem",
 } as const)
 
+/** The same steps in px at a 16px rem, for the places that draw in canvas units (a graph edge, an SVG label). */
+export const COMMON_SPACING_PX = Object.freeze({
+    0: 0,
+    1: 4,
+    2: 8,
+    3: 12,
+    6: 24,
+    8: 32,
+} as const)
+
 export type CommonSpacingStep = keyof typeof COMMON_SPACING_SCALE
 export type CommonSpacingValue = (typeof COMMON_SPACING_SCALE)[CommonSpacingStep]
 

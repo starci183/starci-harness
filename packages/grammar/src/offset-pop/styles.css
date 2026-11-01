@@ -15,6 +15,10 @@
         --offset-pop-outline-width: 2px;
         --offset-pop-shadow-x: 0.25rem;
         --offset-pop-shadow-y: 0.5rem;
+        --offset-pop-shadow-sm-x: 0.125rem;
+        --offset-pop-shadow-sm-y: 0.1875rem;
+        --offset-pop-radius-xs: calc(var(--radius) / 4);
+        --offset-pop-radius-md: calc(var(--radius) / 2);
         --offset-pop-page-measure: 80rem;
         --offset-pop-reading-measure: 72ch;
         --offset-pop-page-inset: var(--grammar-page-inset);
@@ -38,9 +42,9 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Heading"][data-scale="display"] {
         color: var(--foreground);
-        font-weight: 900;
-        letter-spacing: -.045em;
-        line-height: .96;
+        font-weight: var(--grammar-weight-black);
+        letter-spacing: var(--grammar-tracking-display);
+        line-height: var(--grammar-leading-display);
         text-wrap: balance;
     }
 
@@ -66,8 +70,8 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"] {
         border: var(--offset-pop-outline-width) solid var(--border);
         border-radius: var(--radius);
-        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink, var(--foreground));
-        font-weight: 800;
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /* A disabled Button's tooltip wrapper carries its focus ring in the family's button radius. */
@@ -79,18 +83,18 @@
         border: var(--offset-pop-outline-width) solid var(--border);
         border-radius: var(--offset-pop-pill-radius);
         color: var(--foreground);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /* StatusDot with text: a pill in ink. No outline, so its padding and height stay the HeroUI Chip's. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="StatusDot"][data-variant="text"] {
         border-radius: var(--offset-pop-pill-radius);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /* The status dot takes an ink ring so it reads on the cream canvas. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-status-dot-mark {
-        box-shadow: 0 0 0 1px var(--foreground);
+        box-shadow: 0 0 0 var(--grammar-hairline) var(--foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Badge"][data-tone="muted"] {
@@ -99,7 +103,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Code"] {
         border: 1px solid var(--foreground);
-        border-radius: 0.5rem;
+        border-radius: var(--offset-pop-radius-md);
         background: var(--accent-soft);
         color: var(--foreground);
     }
@@ -184,8 +188,8 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-label] {
         color: var(--foreground);
-        font-weight: 800;
-        letter-spacing: -.015em;
+        font-weight: var(--grammar-weight-extrabold);
+        letter-spacing: var(--grammar-tracking-snug);
     }
 
     /*
@@ -231,12 +235,12 @@
     /* IconButton "danger-soft" (a destructive row action): the danger tint plate wears the family's ink outline and a small hard offset, pressed flat. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger-soft"] {
         border: var(--offset-pop-outline-width) solid var(--border);
-        box-shadow: 0.125rem 0.125rem 0 var(--offset-pop-shadow-ink, var(--foreground));
+        box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger-soft"]:active:not([disabled]) {
         box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
-        transform: translate(0.125rem, 0.125rem);
+        transform: translate(var(--offset-pop-shadow-sm-x), var(--offset-pop-shadow-sm-x));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-navigation-feature-nav] {
@@ -257,7 +261,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"]:active:not([disabled]) {
         box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
-        transform: translate(0.25rem, 0.25rem);
+        transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
     }
 
     /*
@@ -272,12 +276,12 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"]:has([data-grammar-whole-action]:active) {
-        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink, var(--foreground));
-        transform: translate(0.25rem, 0.25rem);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
+        transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="nested"]:has([data-grammar-whole-action]:active) {
-        transform: translateY(0.25rem);
+        transform: translateY(var(--offset-pop-shadow-x));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-state="affirmative"] {
@@ -297,7 +301,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row][data-grammar-state]:not([data-grammar-state="neutral"]) {
-        box-shadow: inset 0.25rem 0 0 var(--offset-pop-state-color, transparent);
+        box-shadow: inset var(--offset-pop-shadow-x) 0 0 var(--offset-pop-state-color, transparent);
     }
 
     /*

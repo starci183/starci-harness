@@ -21,6 +21,7 @@ import {
 import { Link as RouterLink } from "react-aria-components"
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent } from "react"
 import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { COMMON_SPACING_PX } from "../../../common/spacing.js"
 import {
     FLOW_GRAPH_NODE_MAX_WIDTH,
     LANES_COLUMN_STEP,
@@ -123,15 +124,15 @@ type GuideData = {
 /** The longest mark a bubble draws, in characters. */
 const MARK_LENGTH = 4
 
-/** The token each ring arc and bubble tone paints from, with the fallback the sheet uses outside a root. */
+/** The token each ring arc and bubble tone paints from. */
 const TONE_PAINT: Record<FlowGraphTone, string> = {
-    neutral: "var(--muted, GrayText)",
-    accent: "var(--accent, Highlight)",
-    success: "var(--success, CanvasText)",
-    warning: "var(--warning, CanvasText)",
-    danger: "var(--danger, CanvasText)",
-    info: "var(--info, CanvasText)",
-    muted: "color-mix(in oklab, var(--muted, GrayText) 55%, transparent)",
+    neutral: "var(--muted)",
+    accent: "var(--accent)",
+    success: "var(--success)",
+    warning: "var(--warning)",
+    danger: "var(--danger)",
+    info: "var(--info)",
+    muted: "color-mix(in oklab, var(--muted) 55%, transparent)",
 }
 
 /** A conic gradient of the ring arcs, clockwise from the top; undefined when the arcs hold nothing. */
@@ -239,8 +240,9 @@ const FlowGraphGuideView = memo(({ data }: NodeProps<Node<GuideData>>) => (
 FlowGraphGuideView.displayName = "FlowGraphGuideView"
 
 /** A lanes edge: orthogonal with rounded corners, an arrowhead, and its label on its own last run, where the page background hides the line behind the words. */
-const LANE_RADIUS = 14
-const LANE_LABEL_PADDING: [number, number] = [6, 3]
+const LANE_RADIUS = COMMON_SPACING_PX[3]
+const LANE_LABEL_PADDING: [number, number] = [COMMON_SPACING_PX[2], COMMON_SPACING_PX[1]]
+const LABEL_RADIUS = COMMON_SPACING_PX[1]
 const FlowGraphLaneEdge = memo(({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, label, data }: EdgeProps) => {
     const share: unknown = data?.["stepPosition"]
     const stepPosition = typeof share === "number" ? share : 0.5
@@ -251,17 +253,17 @@ const FlowGraphLaneEdge = memo(({ sourceX, sourceY, targetX, targetY, sourcePosi
         <BaseEdge
             path={path}
             {...(markerEnd === undefined ? {} : { markerEnd })}
-            {...(label === undefined ? {} : { label, labelX, labelY: targetY, labelShowBg: true, labelBgPadding: LANE_LABEL_PADDING, labelBgBorderRadius: 4 })}
+            {...(label === undefined ? {} : { label, labelX, labelY: targetY, labelShowBg: true, labelBgPadding: LANE_LABEL_PADDING, labelBgBorderRadius: LABEL_RADIUS })}
         />
     )
 })
 FlowGraphLaneEdge.displayName = "FlowGraphLaneEdge"
 
 const EDGE_TYPES: EdgeTypes = { flowGraphLane: FlowGraphLaneEdge }
-const EDGE_LABEL_PADDING: [number, number] = [6, 2]
+const EDGE_LABEL_PADDING: [number, number] = [COMMON_SPACING_PX[2], COMMON_SPACING_PX[1]]
 const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView, flowGraphGuide: FlowGraphGuideView }
 const HEADER_OFFSET = 70
-const HEADER_SIDE_GAP = 24
+const HEADER_SIDE_GAP = COMMON_SPACING_PX[6]
 const FIT_OPTIONS = { padding: 0.2, duration: 0 } as const
 /** A lanes graph is laid out to fill its canvas, so its fit keeps a small margin and never magnifies. */
 const LANES_FIT_OPTIONS = { padding: 0.04, duration: 0 } as const
@@ -557,12 +559,12 @@ export const FlowGraph = ({
         type: layout === "radial" || layout === "orbit" ? "straight" : layout === "lanes" ? "flowGraphLane" : "smoothstep",
         ...(lanes === null ? {} : {
             data: { stepPosition: lanesStepPosition((lanes.columns.get(edge.target) ?? 0) - (lanes.columns.get(edge.source) ?? 0), lanes.forks.get(edge.source) ?? 0) },
-            markerEnd: { type: MarkerType.ArrowClosed, width: 24, height: 24, color: "var(--muted, GrayText)" },
+            markerEnd: { type: MarkerType.ArrowClosed, width: COMMON_SPACING_PX[6], height: COMMON_SPACING_PX[6], color: "var(--muted)" },
         }),
         ...(stepPosition === undefined ? {} : { pathOptions: { stepPosition } }),
         className: classes,
         // The label sits on its own chip at the midpoint; its paint is the grammar's (`.react-flow__edge-text*` in the sheet).
-        ...(edge.label === undefined || edge.label === "" ? {} : { label: edge.label, labelShowBg: true, labelBgPadding: EDGE_LABEL_PADDING, labelBgBorderRadius: 4 }),
+        ...(edge.label === undefined || edge.label === "" ? {} : { label: edge.label, labelShowBg: true, labelBgPadding: EDGE_LABEL_PADDING, labelBgBorderRadius: LABEL_RADIUS }),
         focusable: false,
         selectable: false,
         animated: false,

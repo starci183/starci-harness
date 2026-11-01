@@ -7,7 +7,7 @@ import { Skeleton } from "../../primitive/Skeleton/index.js"
 import { usePaneContext } from "../../paneContext.js"
 import { useSurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
-import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
+import type { ItemDescriptionLines } from "../../collectionItem.js"
 
 /** The leading identity slot is 32, 40 or 48px; HeroUI retains the row's own padding and radius. */
 export type ListBoxSize = "sm" | "md" | "lg"
@@ -122,13 +122,12 @@ export const ListBox = ({
     loadingRows = 3,
     className,
 }: ListBoxProps) => {
-    const presentation = useCollectionItemPresentation()
     const nested = useSurfaceNesting()
     const inPane = usePaneContext() !== undefined
     const resolvedInset = inset ?? (nested || inPane ? "panel" : "default")
     const allItems = sections === undefined ? items : sections.flatMap((section) => section.items)
     const renderLabel = (item: ListBoxItem) => (
-        <HeroLabel data-grammar-item-label="true" style={item.emphasis === "unread" ? { fontWeight: presentation.unreadWeight } : undefined}>
+        <HeroLabel data-grammar-item-label="true">
             {item.labelLeading === undefined ? null : (
                 <><span aria-hidden="true" data-grammar-list-leading="label" data-contract="A11Y-2">{item.labelLeading}</span>{" "}</>
             )}
@@ -155,7 +154,6 @@ export const ListBox = ({
                     <HeroDescription
                         data-grammar-item-description="true"
                         data-grammar-description-lines={item.descriptionLines ?? descriptionLines}
-                        style={item.emphasis === "unread" ? { fontWeight: presentation.unreadWeight } : undefined}
                     >{item.description}</HeroDescription>
                 </div>
             )}

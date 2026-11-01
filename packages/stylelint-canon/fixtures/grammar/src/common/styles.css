@@ -1,5 +1,6 @@
 /* Common owns only universal structure/scales. Families supply material DNA. */
 @layer starci-grammar-theme, starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
+@import "./ramps.css";
 @import "./components-forms.css";
 @import "./components-surface-controls.css";
 @import "./components-overlays.css";
@@ -143,14 +144,14 @@
     }
 
     .starci-core-page-container {
-        width: min(100%, var(--starci-core-page-measure, 80rem));
+        width: min(100%, var(--starci-core-page-measure));
         min-width: 0;
         margin-inline: auto;
-        padding-inline: var(--grammar-page-inset, 0.75rem);
+        padding-inline: var(--grammar-page-inset);
     }
 
     .starci-core-page-container[data-grammar-page-measure="reading"] {
-        width: min(100%, var(--starci-core-reading-measure, 72ch));
+        width: min(100%, var(--starci-core-reading-measure));
     }
 
     .starci-core-page-container[data-grammar-page-measure="full"] {
@@ -163,7 +164,7 @@
         flex-wrap: wrap;
         align-items: flex-end;
         justify-content: space-between;
-        gap: var(--grammar-region-gap, 2rem);
+        gap: var(--grammar-region-gap);
     }
 
     /* The copy keeps a readable basis, so a narrow header wraps its action below instead of crushing the copy. */
@@ -181,32 +182,32 @@
         color: var(--foreground);
         /* The type scale (knowledge/ui/presentation/font.yaml): the page title is FONT-4 (20/28), a section title
            FONT-3 (16/24); both 600 - the public weights are 400/500/600. */
-        font-size: 1.25rem;
-        font-weight: 600;
-        line-height: 1.75rem;
+        font-size: var(--grammar-text-2xl);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-xl);
         overflow-wrap: anywhere;
         text-wrap: balance;
     }
 
     :is(h2, h3, h4, h5, h6).starci-core-section-title {
-        font-size: 1rem;
-        line-height: 1.5rem;
+        font-size: var(--grammar-text-lg);
+        line-height: var(--grammar-leading-lg);
     }
 
     .starci-core-section-eyebrow {
         color: var(--accent);
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-semibold);
+        letter-spacing: var(--grammar-tracking-wider);
+        line-height: var(--grammar-leading-md);
         text-transform: uppercase;
     }
 
     .starci-core-section-description,
     .starci-core-media-caption {
         color: var(--muted);
-        font-size: 0.875rem;
-        line-height: 1.5;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-normal);
         overflow-wrap: anywhere;
     }
 
@@ -217,7 +218,7 @@
     /* The section count (0.6.0): "(n)" in the title's line, muted and at the regular weight. */
     .starci-core-section-count {
         color: var(--muted);
-        font-weight: 400;
+        font-weight: var(--grammar-weight-regular);
         font-variant-numeric: tabular-nums;
     }
 
@@ -226,8 +227,8 @@
         min-width: 0;
         flex: 0 1 auto;
         color: var(--muted);
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
         overflow-wrap: anywhere;
     }
 
@@ -241,7 +242,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        margin-block-end: var(--grammar-region-gap, 2rem);
+        margin-block-end: var(--grammar-region-gap);
         background: var(--surface);
         color: var(--surface-foreground);
     }
@@ -249,8 +250,8 @@
     .starci-core-page-header-body {
         display: flex;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
-        padding-block: var(--grammar-section-gap, 1.5rem);
+        gap: var(--grammar-row-gap);
+        padding-block: var(--grammar-section-gap);
     }
 
     .starci-core-page-header[data-grammar-page-header-tabs="true"] .starci-core-page-header-body {
@@ -264,7 +265,7 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: var(--grammar-row-gap, 0.75rem) var(--grammar-region-gap, 2rem);
+        gap: var(--grammar-row-gap) var(--grammar-region-gap);
     }
 
     .starci-core-page-header-lead {
@@ -272,7 +273,7 @@
         min-width: 0;
         flex: 1 1 min(100%, 20rem);
         align-items: center;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     .starci-core-page-header-mark {
@@ -295,7 +296,7 @@
         min-width: 0;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-page-header-actions {
@@ -305,16 +306,16 @@
     .starci-core-page-header-meta {
         min-width: 0;
         color: var(--muted);
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
         overflow-wrap: anywhere;
     }
 
     .starci-core-page-header-description {
         min-width: 0;
         color: var(--muted);
-        font-size: 0.875rem;
-        line-height: 1.5;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-normal);
         overflow-wrap: anywhere;
     }
 
@@ -351,8 +352,8 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 2rem);
-        padding-block-end: var(--grammar-region-gap, 2rem);
+        gap: var(--grammar-region-gap);
+        padding-block-end: var(--grammar-region-gap);
     }
 
     .starci-core-page > .starci-core-page-header {
@@ -360,13 +361,13 @@
     }
 
     .starci-core-page[data-grammar-page-header="false"] {
-        padding-block-start: var(--grammar-region-gap, 2rem);
+        padding-block-start: var(--grammar-region-gap);
     }
 
     .starci-core-page-body {
         display: flex;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 2rem);
+        gap: var(--grammar-region-gap);
         overflow: clip;
         overflow-clip-margin: content-box 0.75rem;
     }
@@ -395,7 +396,7 @@
      */
     .starci-core-page[data-grammar-page-chrome="panes"] {
         /* The gutter column starts at the pane content edge: the title, the first tab and the pane content share the container inset (ruling spacing-roles). */
-        --grammar-page-inset: var(--grammar-inset, 0.75rem);
+        --grammar-page-inset: var(--grammar-inset);
         flex: 1 0 auto;
         gap: 0;
         padding-block: 0;
@@ -410,7 +411,7 @@
     .starci-core-page-panes-fill {
         display: flex;
         flex-direction: column;
-        height: calc(100dvh - var(--starci-core-fill-top, 0px) - var(--starci-core-fill-bottom, 0px));
+        height: calc(100dvh - var(--starci-core-fill-top) - var(--starci-core-fill-bottom));
     }
 
     .starci-core-page-panes-fill > * { min-height: 0; flex: 1 1 auto; }
@@ -427,8 +428,8 @@
 
     /* Over panes the trail is the band: it ends in the separator the grid attaches to. */
     .starci-core-page[data-grammar-page-chrome="panes"] > .starci-core-page-trail {
-        padding-block: var(--grammar-pane-inset-block-start, 0.75rem);
-        padding-inline: var(--grammar-page-inset, 0.75rem);
+        padding-block: var(--grammar-pane-inset-block-start);
+        padding-inline: var(--grammar-page-inset);
         border-block-end: 1px solid var(--separator);
     }
 
@@ -505,7 +506,7 @@
         min-width: 0;
         overflow: hidden;
         border: 1px solid var(--border);
-        border-radius: var(--starci-core-surface-radius, 1rem);
+        border-radius: var(--starci-core-surface-radius);
         background: var(--surface-secondary);
     }
 
@@ -552,7 +553,7 @@
         display: grid;
         min-width: 0;
         grid-template-columns: minmax(0, 1fr);
-        gap: var(--grammar-region-gap, 2rem);
+        gap: var(--grammar-region-gap);
     }
 
     .starci-core-primary-rail-layout[data-grammar-layout-align="start"] { align-items: start; }
@@ -578,7 +579,7 @@
     .starci-core-form-page {
         display: flex;
         min-height: 100dvh;
-        padding: var(--grammar-section-gap, 1.5rem) var(--grammar-page-inset, 0.75rem);
+        padding: var(--grammar-section-gap) var(--grammar-page-inset);
         align-items: center;
         justify-content: center;
         overflow: hidden;
@@ -592,14 +593,14 @@
 
     .starci-core-form-surface {
         display: flex;
-        width: min(100%, var(--starci-core-form-measure, 30rem));
+        width: min(100%, var(--starci-core-form-measure));
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     .starci-core-form-surface--compact {
-        width: min(100%, var(--starci-core-form-compact-measure, 28rem));
+        width: min(100%, var(--starci-core-form-compact-measure));
     }
 
     .starci-core-form-surface > .card,
@@ -618,7 +619,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--starci-core-field-gap, 0.5rem);
+        gap: var(--starci-core-field-gap);
     }
 
     .starci-core-form-label--screen-reader {
@@ -646,12 +647,12 @@
         display: flex;
         width: 100%;
         min-width: 0;
-        height: var(--starci-core-control-min-size, 2.5rem);
+        height: var(--starci-core-control-min-size);
         align-items: center;
         justify-content: space-between;
         gap: 0.5rem;
-        border: var(--field-border-width, 1px) solid var(--field-border);
-        border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
+        border: var(--field-border-width) solid var(--field-border);
+        border-radius: var(--field-radius);
         padding-inline: 0.75rem;
         background: var(--field-background);
         color: var(--field-foreground);
@@ -660,8 +661,8 @@
         text-align: start;
         cursor: pointer;
         transition:
-            background-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1)),
-            border-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+            background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing),
+            border-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
         -webkit-appearance: none;
         appearance: none;
     }
@@ -678,7 +679,7 @@
 
     .starci-core-pressable-field:disabled,
     .starci-core-pressable-field[data-disabled="true"] {
-        opacity: 0.5;
+        opacity: var(--disabled-opacity);
         cursor: default;
     }
 
@@ -692,7 +693,7 @@
     .starci-core-pressable-field-placeholder {
         min-width: 0;
         overflow: hidden;
-        font-size: 0.875rem;
+        font-size: var(--grammar-text-md);
         color: var(--field-placeholder);
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -701,13 +702,13 @@
     .starci-core-pressable-field-shortcut {
         flex-shrink: 0;
         border: 1px solid var(--border);
-        border-radius: var(--radius-sm, calc(var(--radius, 0.5rem) * 0.75));
+        border-radius: var(--grammar-radius-sm);
         padding: 0.25rem;
         background: var(--surface-secondary);
         color: var(--muted);
         font-family: inherit;
-        font-size: 0.75rem;
-        line-height: 1;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-none);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -757,10 +758,10 @@
         --button-bg-pressed: transparent;
         --button-fg: var(--foreground);
         transform: none;
-        transition: opacity 150ms var(--ease-smooth);
+        transition: opacity var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
     @media (hover: hover) {
-        .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon-button:hover { opacity: 0.7; }
+        .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon-button:hover { opacity: var(--grammar-opacity-hover); }
     }
     @media (prefers-reduced-motion: reduce) {
         .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon-button { transition: none; }
@@ -803,7 +804,7 @@
 
     @media (min-width: 40rem) {
         .starci-core-form-page {
-            padding-block: var(--grammar-region-gap, 2rem);
+            padding-block: var(--grammar-region-gap);
         }
 
         .starci-core-form-scroll-viewport {
@@ -826,7 +827,7 @@
         min-width: 0;
         width: 100%;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     .starci-core-surface-label {
@@ -834,7 +835,7 @@
         min-width: 0;
         align-items: baseline;
         justify-content: space-between;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-surface-label > :first-child {
@@ -859,30 +860,30 @@
         margin: 0;
         /* A label names what follows it: full foreground, never the muted tone a vendor body passes down (TONE). */
         color: var(--foreground);
-        font-size: 0.875rem;
-        font-weight: 600;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-label[data-grammar-label-depth="nested"] {
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
     }
 
     .starci-core-surface {
         position: relative;
         min-width: 0;
         overflow: hidden;
-        border-radius: var(--starci-core-surface-radius, 1rem);
+        border-radius: var(--starci-core-surface-radius);
         background: var(--surface);
         color: var(--surface-foreground);
     }
 
     /* The accent corner: one logical corner of a surface or a media viewport at the Common accent radius. */
-    [data-grammar-accent-corner="start-start"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-start-start-radius: var(--grammar-accent-corner, 2.5rem); }
-    [data-grammar-accent-corner="start-end"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-start-end-radius: var(--grammar-accent-corner, 2.5rem); }
-    [data-grammar-accent-corner="end-start"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-end-start-radius: var(--grammar-accent-corner, 2.5rem); }
-    [data-grammar-accent-corner="end-end"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-end-end-radius: var(--grammar-accent-corner, 2.5rem); }
+    [data-grammar-accent-corner="start-start"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-start-start-radius: var(--grammar-accent-corner); }
+    [data-grammar-accent-corner="start-end"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-start-end-radius: var(--grammar-accent-corner); }
+    [data-grammar-accent-corner="end-start"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-end-start-radius: var(--grammar-accent-corner); }
+    [data-grammar-accent-corner="end-end"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-end-end-radius: var(--grammar-accent-corner); }
 
     /*
      * The brand backdrop: the brand's light tint, full-bleed in its host, with no card anatomy (no border, shadow or card
@@ -909,8 +910,8 @@
         min-block-size: 100%;
         block-size: 100%;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 2rem);
-        padding: var(--grammar-page-inset, 2rem);
+        gap: var(--grammar-region-gap);
+        padding: var(--grammar-page-inset);
         overflow: hidden;
         background: var(--accent-soft);
         color: var(--foreground);
@@ -920,7 +921,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     .starci-core-backdrop-artwork {
@@ -946,7 +947,7 @@
     }
 
     .starci-core-surface-highlight {
-        border-radius: var(--starci-core-surface-radius, 1rem);
+        border-radius: var(--starci-core-surface-radius);
         overflow: visible;
     }
 
@@ -965,14 +966,14 @@
             transparent 100%
         );
         -webkit-mask:
-            linear-gradient(#000 0 0) content-box,
-            linear-gradient(#000 0 0);
+            linear-gradient(currentColor 0 0) content-box,
+            linear-gradient(currentColor 0 0);
         -webkit-mask-composite: xor;
         mask:
-            linear-gradient(#000 0 0) content-box,
-            linear-gradient(#000 0 0);
+            linear-gradient(currentColor 0 0) content-box,
+            linear-gradient(currentColor 0 0);
         mask-composite: exclude;
-        animation: starci-core-highlight-spin 3s linear infinite;
+        animation: starci-core-highlight-spin var(--grammar-loop-orbit) var(--grammar-loop-easing) infinite;
         pointer-events: none;
     }
 
@@ -994,13 +995,13 @@
 
     .starci-core-surface-content {
         min-width: 0;
-        padding-block: var(--grammar-card-padding-block, 0.75rem);
-        padding-inline: var(--grammar-card-padding-inline, 0.75rem);
+        padding-block: var(--grammar-card-padding-block);
+        padding-inline: var(--grammar-card-padding-inline);
     }
 
     /* A box inside a card (a nested card, a stat cell, a notice) is one level in: the nested step on every side. */
     .starci-core-surface[data-grammar-surface-depth="nested"]:not([data-grammar-surface-composition="joined"], .starci-core-frameless-surface) > .starci-core-surface-content {
-        padding: var(--grammar-inset-nested, 0.5rem);
+        padding: var(--grammar-inset-nested);
     }
 
     .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content {
@@ -1210,7 +1211,7 @@
     }
 
     [data-grammar-scroll="contained"] {
-        max-height: var(--starci-core-contained-max-height, calc(100dvh - 3rem));
+        max-height: var(--starci-core-contained-max-height);
         overflow: hidden;
     }
 
@@ -1238,7 +1239,7 @@
     }
 
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface {
-        transition: background-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, ease-out);
+        transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:hover),
@@ -1266,7 +1267,7 @@
     }
 
     [data-grammar-state="unavailable"] [data-grammar-state-mark] {
-        opacity: var(--starci-core-disabled-opacity, 0.55);
+        opacity: var(--starci-core-disabled-opacity);
     }
 
     [data-grammar-state="pending"] {
@@ -1276,12 +1277,12 @@
     .starci-core-leading-number {
         display: inline-block;
         flex: none;
-        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+        font-family: var(--font-mono);
         min-width: 1.25rem;
         color: var(--muted);
-        font-size: 0.875rem;
+        font-size: var(--grammar-text-md);
         font-variant-numeric: tabular-nums;
-        line-height: 1.25rem;
+        line-height: var(--grammar-leading-md);
         text-align: end;
         white-space: nowrap;
     }
@@ -1366,8 +1367,8 @@
         min-width: 0;
         align-items: center;
         color: var(--muted);
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
     }
 
     /* A Text the app puts in the footer is the same line, not a second size: it takes the footer's size, leading and ink. */
@@ -1380,6 +1381,10 @@
     .starci-core-tabs-frame {
         width: 100%;
         min-width: 0;
+    }
+
+    .starci-core-tabs-frame[data-grammar-tabs-client="pending"] {
+        min-height: var(--starci-core-tabs-pending-height);
     }
 
     .starci-core-tabs-frame,
@@ -1416,7 +1421,7 @@
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__tab {
-        padding-inline: var(--starci-core-tab-padding-start, var(--grammar-inset, 0.75rem)) var(--grammar-inset, 0.75rem) !important;
+        padding-inline: var(--starci-core-tab-padding-start, var(--grammar-inset)) var(--grammar-inset) !important;
         padding-block-end: 0 !important;
     }
 
@@ -1443,7 +1448,7 @@
         display: flex;
         min-width: 0;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-tab-label {
@@ -1460,8 +1465,8 @@
         min-width: 0;
         margin: 0;
         align-items: flex-start;
-        gap: var(--grammar-row-gap, 0.75rem);
-        padding: var(--starci-core-row-inset, var(--grammar-inset, 0.75rem));
+        gap: var(--grammar-row-gap);
+        padding: var(--starci-core-row-inset, var(--grammar-inset));
     }
 
     .starci-core-static-row + .starci-core-static-row {
@@ -1476,8 +1481,8 @@
     .starci-core-list-row {
         flex-wrap: wrap;
         align-items: center;
-        column-gap: var(--grammar-row-gap, 0.75rem);
-        row-gap: var(--grammar-row-gap, 0.75rem);
+        column-gap: var(--grammar-row-gap);
+        row-gap: var(--grammar-row-gap);
     }
 
     .starci-core-list-row-leading {
@@ -1492,7 +1497,7 @@
         /* Collapsed (flex) row: the copy keeps at least 12rem before the actions wrap under it (0.9.4). */
         flex: 1 1 12rem;
         flex-direction: column;
-        gap: var(--starci-core-copy-gap, 0.25rem);
+        gap: var(--starci-core-copy-gap);
     }
 
     .starci-core-list-row-title {
@@ -1500,12 +1505,12 @@
         min-width: 0;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-list-row-name {
         min-width: 0;
-        font-weight: 600;
+        font-weight: var(--grammar-weight-semibold);
         overflow-wrap: anywhere;
     }
 
@@ -1513,14 +1518,14 @@
         display: inline-flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-list-row-description {
         min-width: 0;
         color: var(--muted);
-        font-size: 0.875rem;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
     }
 
@@ -1530,7 +1535,7 @@
         flex: 0 1 auto;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     /* Skeleton row (knowledge STATE-8): the copy lines take a share of the row, the action keeps a button footprint. */
@@ -1544,7 +1549,7 @@
         min-width: 0;
         flex: 1 1 100%;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     @container starci-core-surface (min-width: 28.001rem) {
@@ -1610,7 +1615,7 @@
     .starci-core-accordion-body {
         width: 100% !important;
         min-width: 0;
-        padding: 0 var(--grammar-inset, 0.75rem) var(--grammar-inset, 0.75rem) var(--grammar-section-gap, 1.5rem) !important;
+        padding: 0 var(--grammar-inset) var(--grammar-inset) var(--grammar-section-gap) !important;
         color: var(--foreground);
     }
 
@@ -1627,7 +1632,7 @@
         width: 100% !important;
         min-width: 0;
         min-height: 44px;
-        padding: var(--starci-core-row-inset, var(--grammar-inset, 0.75rem)) !important;
+        padding: var(--starci-core-row-inset, var(--grammar-inset)) !important;
         border: 0;
         background: transparent;
         box-shadow: none;
@@ -1677,10 +1682,10 @@
         width: 100%;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
         color: inherit;
-        font-size: 0.875rem;
-        line-height: 1.65;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-relaxed);
         overflow-wrap: anywhere;
     }
 
@@ -1698,16 +1703,16 @@
     }
 
     .starci-core-markdown-article :where(h1, h2, h3, h4) {
-        margin: var(--grammar-section-gap, 1.5rem) 0 var(--grammar-inline-gap, 0.5rem);
+        margin: var(--grammar-section-gap) 0 var(--grammar-inline-gap);
         color: inherit;
-        font-weight: 600;
-        line-height: 1.3;
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-tight);
     }
 
-    .starci-core-markdown-article h1 { font-size: 1.5rem; }
-    .starci-core-markdown-article h2 { font-size: 1.25rem; }
-    .starci-core-markdown-article h3 { font-size: 1.125rem; }
-    .starci-core-markdown-article h4 { font-size: 1rem; }
+    .starci-core-markdown-article h1 { font-size: var(--grammar-text-3xl); }
+    .starci-core-markdown-article h2 { font-size: var(--grammar-text-2xl); }
+    .starci-core-markdown-article h3 { font-size: var(--grammar-text-xl); }
+    .starci-core-markdown-article h4 { font-size: var(--grammar-text-lg); }
 
     .starci-core-markdown-article :where(p, ul, ol, blockquote, pre, table) {
         margin: 0;
@@ -1720,21 +1725,24 @@
     .starci-core-markdown-article ul { list-style: disc; }
     .starci-core-markdown-article ol { list-style: decimal; }
 
-    .starci-core-markdown-article strong { font-weight: 600; }
+    .starci-core-markdown-article strong { font-weight: var(--grammar-weight-semibold); }
     .starci-core-markdown-article em { font-style: italic; }
 
     .starci-core-markdown-article li + li {
-        margin-top: var(--grammar-identity-gap, 0.25rem);
+        margin-top: var(--grammar-identity-gap);
     }
 
     .starci-core-markdown-article :not(pre) > code {
         display: inline;
-        padding: 0 var(--grammar-identity-gap, 0.25rem);
+        padding: 0 var(--grammar-identity-gap);
         border: 1px solid var(--border);
-        border-radius: 999px;
+        border-radius: var(--grammar-radius-pill);
         background: var(--muted-surface, color-mix(in oklab, var(--foreground) 7%, var(--background)));
         color: inherit;
-        font: 500 0.875rem/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-family: var(--font-mono);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-snug);
         white-space: break-spaces;
     }
 
@@ -1742,10 +1750,10 @@
     .starci-core-fenced-code-block pre {
         max-width: 100%;
         margin: 0;
-        padding: var(--grammar-inset, 0.75rem);
+        padding: var(--grammar-inset);
         overflow-x: auto;
         border: 1px solid var(--border);
-        border-radius: 0.75rem;
+        border-radius: var(--grammar-radius-md);
         background: var(--code-surface, color-mix(in oklab, var(--foreground) 6%, var(--background)));
         color: inherit;
         overscroll-behavior-inline: contain;
@@ -1757,14 +1765,17 @@
         border: 0;
         background: transparent;
         color: inherit;
-        font: 400 0.875rem/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-family: var(--font-mono);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-relaxed);
         white-space: pre;
     }
 
     .starci-core-fenced-code-block {
         width: 100%;
         min-width: 0;
-        margin: 0 0 var(--grammar-row-gap, 0.75rem);
+        margin: 0 0 var(--grammar-row-gap);
         overflow: auto;
     }
 
@@ -1792,7 +1803,7 @@
         min-width: 0;
         overflow-x: auto;
         border: 1px solid var(--border);
-        border-radius: 0.75rem;
+        border-radius: var(--grammar-radius-md);
         background: var(--code-surface, color-mix(in oklab, var(--foreground) 6%, var(--background)));
         overscroll-behavior-inline: contain;
     }
@@ -1800,14 +1811,14 @@
     [data-grammar-fenced-code-highlight="true"] pre {
         width: max-content;
         min-width: 100%;
-        padding: var(--grammar-inset, 0.75rem);
+        padding: var(--grammar-inset);
         border: 0;
         border-radius: 0;
         background: transparent !important;
     }
 
     .starci-core-markdown-article blockquote {
-        padding-inline-start: var(--grammar-inset, 0.75rem);
+        padding-inline-start: var(--grammar-inset);
         border-inline-start: 3px solid var(--border);
         color: var(--muted);
     }
@@ -1828,28 +1839,28 @@
     .starci-core-markdown-table-frame {
         min-width: 0;
         border: 1px solid var(--border);
-        border-radius: 0.75rem;
+        border-radius: var(--grammar-radius-md);
         background: var(--code-surface, color-mix(in oklab, var(--foreground) 4%, var(--background)));
         box-shadow: none;
     }
 
     .starci-core-markdown-article hr {
         width: 100%;
-        margin: var(--grammar-row-gap, 0.75rem) 0;
+        margin: var(--grammar-row-gap) 0;
         border: 0;
         border-top: 1px solid var(--separator);
     }
 
     .starci-core-markdown-article :where(th, td) {
         min-width: 8rem;
-        padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
+        padding: var(--grammar-inset-nested) var(--grammar-inset);
         border-bottom: 1px solid var(--separator);
         text-align: start;
         vertical-align: top;
     }
 
     .starci-core-markdown-article a {
-        color: var(--link, LinkText);
+        color: var(--link);
         text-decoration: underline;
         text-underline-offset: 0.15em;
     }
@@ -1859,7 +1870,7 @@
         min-width: 0;
         flex: 1;
         flex-direction: column;
-        gap: var(--starci-core-copy-gap, 0.25rem);
+        gap: var(--starci-core-copy-gap);
     }
 
     .starci-core-static-row-copy > :last-child:not(:first-child) {
@@ -1881,19 +1892,19 @@
     }
 
     .starci-core-rail[data-grammar-rail-width="compact"] {
-        max-width: var(--starci-core-rail-compact, 16rem);
+        max-width: var(--starci-core-rail-compact);
     }
 
     .starci-core-rail[data-grammar-collapse="collapsed"] {
-        max-width: var(--starci-core-rail-collapsed, 4rem);
+        max-width: var(--starci-core-rail-collapsed);
     }
 
     .starci-core-rail[data-grammar-rail-width="standard"] {
-        max-width: var(--starci-core-rail-standard, 20rem);
+        max-width: var(--starci-core-rail-standard);
     }
 
     .starci-core-rail[data-grammar-rail-width="wide"] {
-        max-width: var(--starci-core-rail-wide, 24rem);
+        max-width: var(--starci-core-rail-wide);
     }
 
     /*
@@ -1907,14 +1918,14 @@
     .starci-core-rail-frame {
         display: flex;
         min-width: 0;
-        max-height: calc(100dvh - var(--starci-core-rail-offset, var(--starci-core-band-offset, 5.5rem)) - 1.5rem);
+        max-height: calc(100dvh - var(--starci-core-rail-offset, var(--starci-core-band-offset)) - 1.5rem);
         flex-direction: column;
-        gap: var(--starci-core-rail-gap, var(--grammar-row-gap, 0.75rem));
+        gap: var(--starci-core-rail-gap, var(--grammar-row-gap));
     }
 
     .starci-core-rail[data-grammar-rail-mode="sticky"] .starci-core-rail-frame {
         position: sticky;
-        top: var(--starci-core-rail-offset, var(--starci-core-band-offset, 5.5rem));
+        top: var(--starci-core-rail-offset, var(--starci-core-band-offset));
     }
 
     .starci-core-rail-body {
@@ -1927,7 +1938,7 @@
 
     /* Grammar-owned content inset, selected by the attribute the branch already emits. */
     .starci-core-rail-body[data-grammar-rail-inset="content"] {
-        padding: var(--grammar-inset, 0.75rem);
+        padding: var(--grammar-inset);
     }
 
     .starci-core-rail[data-grammar-rail-height="fill"],
@@ -1964,13 +1975,13 @@
         }
 
         .starci-core-static-row {
-            gap: var(--starci-core-row-gap-compact, 0.5rem);
+            gap: var(--starci-core-row-gap-compact);
         }
     }
 
     @container starci-core-rail (max-width: 18rem) {
         .starci-core-rail-frame {
-            gap: var(--starci-core-rail-gap-compact, 0.75rem);
+            gap: var(--starci-core-rail-gap-compact);
         }
     }
 
@@ -1998,7 +2009,7 @@
         .starci-core-section-header {
             align-items: flex-start;
             flex-direction: column;
-            gap: var(--grammar-region-gap, 2rem);
+            gap: var(--grammar-region-gap);
         }
     }
 
@@ -2029,14 +2040,14 @@
 
     .starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-position="sticky"] {
         position: sticky;
-        z-index: var(--starci-core-navbar-z, 50);
+        z-index: var(--starci-core-navbar-z);
         top: 0;
     }
 
     /* The Grammar root publishes the sticky band offset, including its separator and optional feature layer. */
     .grammar-common-root:has(.starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-position="sticky"]),
     .grammar-common-root:has(.starci-core-subnav[data-grammar-subnav-position="sticky"]) {
-        --starci-core-band-offset: calc(var(--starci-core-band-height, 0rem) + var(--starci-core-band-subnav-height, 0rem));
+        --starci-core-band-offset: calc(var(--starci-core-band-height) + var(--starci-core-band-subnav-height));
     }
 
     .grammar-common-root:has(.starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-position="sticky"]) {
@@ -2059,8 +2070,8 @@
         min-height: calc(4rem - 1px);
         grid-template-columns: minmax(0, 1fr) auto auto !important;
         align-items: center;
-        gap: var(--grammar-row-gap, 0.75rem);
-        padding-block: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-row-gap);
+        padding-block: var(--grammar-inline-gap);
     }
 
     .starci-core-navigation-feature-nav-primary.starci-core-page-container {
@@ -2104,15 +2115,15 @@
         display: flex;
         align-items: center;
         justify-content: end;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     /* Navbar controls share one exact height; the feature layer keeps its own tab geometry. */
     .starci-core-navigation-feature-nav-actions :where(button, [role="button"], a[href]),
     .starci-core-navigation-feature-nav-navigation :where(button, [role="button"], a[href]),
     .starci-core-navigation-feature-nav-compact-navigation :where(button, [role="button"], a[href]) {
-        min-inline-size: var(--starci-core-control-min-size, 2.5rem);
-        min-block-size: var(--starci-core-control-min-size, 2.5rem);
+        min-inline-size: var(--starci-core-control-min-size);
+        min-block-size: var(--starci-core-control-min-size);
     }
 
     /*
@@ -2123,7 +2134,7 @@
      * touch target.
      */
     .starci-core-navigation-feature-nav-identity .starci-core-text-action[data-appearance="plain"] {
-        min-block-size: var(--starci-core-control-min-size, 2.5rem);
+        min-block-size: var(--starci-core-control-min-size);
     }
 
     .starci-core-navigation-feature-nav-feature {
@@ -2157,7 +2168,7 @@
         min-height: 3.25rem;
         align-items: center;
         justify-content: space-between;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
         padding-inline: 0.75rem;
         border-bottom: 1px solid var(--separator);
         background: var(--background);
@@ -2166,9 +2177,9 @@
 
     .starci-core-subnav[data-grammar-subnav-position="sticky"] {
         position: sticky;
-        z-index: var(--starci-core-subnav-z, 40);
+        z-index: var(--starci-core-subnav-z);
         /* The band's own published height, so a stacked Subnav needs no consumer calc. */
-        top: var(--starci-core-subnav-offset, var(--starci-core-band-height, 4rem));
+        top: var(--starci-core-subnav-offset, max(var(--starci-core-band-height), var(--starci-core-subnav-rest)));
         backface-visibility: hidden;
         transform: translateZ(0);
         will-change: transform;
@@ -2178,7 +2189,7 @@
         display: flex;
         min-width: 0;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-subnav-leading,
@@ -2191,7 +2202,7 @@
         min-width: 0;
         overflow: hidden;
         align-items: center;
-        font-weight: 600;
+        font-weight: var(--grammar-weight-semibold);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -2204,8 +2215,8 @@
      */
     .starci-core-subnav-toggle {
         display: inline-flex;
-        width: var(--starci-core-control-min-size, 2.5rem) !important;
-        height: var(--starci-core-control-min-size, 2.5rem) !important;
+        width: var(--starci-core-control-min-size) !important;
+        height: var(--starci-core-control-min-size) !important;
         align-items: center;
         justify-content: center;
         border-radius: 0 !important;
@@ -2227,8 +2238,8 @@
      */
     @media (pointer: coarse), (max-width: 40rem) {
         .starci-core-subnav-toggle {
-            min-inline-size: var(--starci-core-control-min-size, 2.5rem);
-            min-block-size: var(--starci-core-control-min-size, 2.5rem);
+            min-inline-size: var(--starci-core-control-min-size);
+            min-block-size: var(--starci-core-control-min-size);
         }
     }
 
@@ -2274,7 +2285,7 @@
 
     .starci-core-workspace-shell-header {
         min-width: 0;
-        margin-block-end: var(--grammar-region-gap, 2rem);
+        margin-block-end: var(--grammar-region-gap);
     }
 
     .starci-core-workspace-shell-compact-header,
@@ -2296,13 +2307,13 @@
      *   > 72rem        a navigation AND a rail stand beside the primary at the same time
      */
     .starci-core-workspace-shell-layout {
-        --starci-core-workspace-navigation-track: minmax(14rem, var(--starci-core-workspace-navigation-width, 18rem));
-        --starci-core-workspace-rail-track: minmax(16rem, var(--starci-core-rail-standard, 20rem));
+        --starci-core-workspace-navigation-track: minmax(14rem, var(--starci-core-workspace-navigation-width));
+        --starci-core-workspace-rail-track: minmax(16rem, var(--starci-core-rail-standard));
         display: grid;
         min-width: 0;
         grid-template-areas: "navigation" "primary" "rail";
         grid-template-columns: minmax(0, 1fr);
-        gap: var(--grammar-region-gap, 2rem);
+        gap: var(--grammar-region-gap);
     }
 
     .starci-core-workspace-shell-layout[data-grammar-workspace-navigation-track="intrinsic"] {
@@ -2379,7 +2390,7 @@
         }
 
         .starci-core-workspace-shell-layout[data-grammar-workspace-rail-position="leading"] .starci-core-workspace-shell-primary {
-            padding-inline-start: var(--starci-core-workspace-leading-seam, 2rem);
+            padding-inline-start: var(--starci-core-workspace-leading-seam);
         }
     }
 
@@ -2394,11 +2405,11 @@
     }
 
     .starci-core-workspace-shell-layout[data-grammar-workspace-rail-width="compact"] {
-        --starci-core-workspace-rail-track: minmax(14rem, var(--starci-core-rail-compact, 16rem));
+        --starci-core-workspace-rail-track: minmax(14rem, var(--starci-core-rail-compact));
     }
 
     .starci-core-workspace-shell-layout[data-grammar-workspace-rail-width="wide"] {
-        --starci-core-workspace-rail-track: minmax(20rem, var(--starci-core-rail-wide, 24rem));
+        --starci-core-workspace-rail-track: minmax(20rem, var(--starci-core-rail-wide));
     }
 
     .starci-core-workspace-shell-layout[data-grammar-workspace-align="start"] { align-items: start; }
@@ -2417,7 +2428,7 @@
     .starci-core-workspace-shell-primary {
         display: flex;
         flex-direction: column;
-        gap: var(--grammar-region-gap, 2rem);
+        gap: var(--grammar-region-gap);
         outline: none;
     }
 
@@ -2439,7 +2450,7 @@
 
     .starci-core-workspace-shell[data-grammar-workspace-viewport="fixed"] > .starci-core-workspace-shell-header {
         position: sticky;
-        z-index: var(--starci-core-top-bar-z, 40);
+        z-index: var(--starci-core-top-bar-z);
         top: 0;
         margin-block-end: 0;
     }
@@ -2450,7 +2461,7 @@
         block-size: 4rem;
         align-items: center;
         padding-block: 0.5rem;
-        padding-inline: var(--grammar-page-inset, 0.75rem);
+        padding-inline: var(--grammar-page-inset);
         border-block-end: 1px solid var(--separator);
         background: var(--surface);
     }
@@ -2489,8 +2500,8 @@
         block-size: 4rem;
         min-block-size: 4rem;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
-        padding-inline: var(--grammar-page-inset, 0.75rem);
+        gap: var(--grammar-inline-gap);
+        padding-inline: var(--grammar-page-inset);
         padding-block: 0.5rem;
         border-block-end: 1px solid var(--separator);
         background: var(--surface);
@@ -2503,18 +2514,18 @@
     .starci-core-workspace-shell-opener-title {
         min-width: 0;
         overflow: hidden;
-        font-weight: 600;
+        font-weight: var(--grammar-weight-semibold);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
     .starci-core-workspace-shell-floating-layer {
         position: fixed;
-        z-index: var(--starci-core-workspace-floating-z, 40);
-        inset-inline-end: var(--starci-core-workspace-floating-inset, 1rem);
-        inset-block-end: max(var(--starci-core-workspace-floating-inset, 1rem), env(safe-area-inset-bottom));
-        max-inline-size: min(var(--starci-core-workspace-floating-max, 22rem), calc(100vw - 2 * var(--starci-core-workspace-floating-inset, 1rem)));
-        max-block-size: calc(100dvh - 2 * var(--starci-core-workspace-floating-inset, 1rem));
+        z-index: var(--starci-core-workspace-floating-z);
+        inset-inline-end: var(--starci-core-workspace-floating-inset);
+        inset-block-end: max(var(--starci-core-workspace-floating-inset), env(safe-area-inset-bottom));
+        max-inline-size: min(var(--starci-core-workspace-floating-max), calc(100vw - 2 * var(--starci-core-workspace-floating-inset)));
+        max-block-size: calc(100dvh - 2 * var(--starci-core-workspace-floating-inset));
         overflow: auto;
         overscroll-behavior: contain;
     }
@@ -2547,14 +2558,14 @@
     }
 
     .starci-core-sidebar[data-presentation="rail"] {
-        width: var(--starci-core-sidebar-width, 16rem);
+        width: var(--starci-core-sidebar-width);
         height: 100%;
         border-inline-end: 1px solid var(--separator);
-        transition: width var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        transition: width var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-sidebar[data-presentation="rail"][data-collapsed="true"] {
-        width: var(--starci-core-sidebar-collapsed-width, 4rem);
+        width: var(--starci-core-sidebar-collapsed-width);
     }
 
     .starci-core-sidebar-toggle {
@@ -2586,8 +2597,8 @@
 
     .starci-core-sidebar[data-collapsed="true"] .starci-core-sidebar-list {
         align-items: center;
-        gap: var(--grammar-section-gap, 1.5rem);
-        padding: var(--grammar-inset, 0.75rem) !important;
+        gap: var(--grammar-section-gap);
+        padding: var(--grammar-inset) !important;
     }
 
     .starci-core-sidebar-section {
@@ -2608,8 +2619,8 @@
     .starci-core-sidebar-section-label {
         padding-inline: 0.5rem;
         padding-block: 0.75rem 0.25rem !important;
-        font-size: 0.75rem;
-        font-weight: 500;
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
         color: var(--muted);
     }
 
@@ -2632,18 +2643,18 @@
         min-width: 0;
         align-items: center;
         gap: 0.75rem;
-        border-radius: var(--radius-xl, calc(var(--radius, 0.5rem) * 1.5)) !important;
+        border-radius: var(--grammar-radius-xl) !important;
         color: var(--foreground);
         cursor: pointer;
         outline: none;
     }
 
     .starci-core-sidebar[data-collapsed="true"] .starci-core-sidebar-item {
-        width: var(--starci-core-control-min-size, 2.5rem) !important;
-        height: var(--starci-core-control-min-size, 2.5rem);
+        width: var(--starci-core-control-min-size) !important;
+        height: var(--starci-core-control-min-size);
         justify-content: center !important;
         gap: 0 !important;
-        border-radius: var(--starci-core-pill-radius, 999px) !important;
+        border-radius: var(--starci-core-pill-radius) !important;
     }
 
     .starci-core-sidebar-item[data-hovered="true"] {
@@ -2657,11 +2668,11 @@
     }
 
     .starci-core-sidebar-item[data-focus-visible="true"] {
-        box-shadow: 0 0 0 2px var(--accent);
+        box-shadow: 0 0 0 var(--grammar-ring-width) var(--accent);
     }
 
     .starci-core-sidebar-item[data-disabled="true"] {
-        opacity: 0.5;
+        opacity: var(--disabled-opacity);
         cursor: default;
     }
 
@@ -2669,8 +2680,8 @@
         min-width: 0;
         flex: 1 1 0%;
         overflow: hidden;
-        font-size: 0.875rem;
-        font-weight: 500;
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -2733,8 +2744,8 @@
         --starci-core-pane-be: var(--starci-core-pane-be-base);
         display: var(--starci-core-pane-d, flex);
         flex-direction: column;
-        border-inline-start: var(--starci-core-pane-i, 0px) solid var(--separator);
-        border-block-start: var(--starci-core-pane-b, 0px) solid var(--separator);
+        border-inline-start: var(--starci-core-pane-i) solid var(--separator);
+        border-block-start: var(--starci-core-pane-b) solid var(--separator);
     }
 
     /*
@@ -2744,9 +2755,9 @@
      */
     .starci-core-pane[data-grammar-pane-inset="content"],
     .starci-core-pane-drawer-scroll[data-grammar-pane-inset="content"] {
-        --starci-core-pane-inset-inline: var(--grammar-pane-inset-inline, 0.75rem);
-        --starci-core-pane-inset-block-start: var(--grammar-pane-inset-block-start, 0.75rem);
-        --starci-core-pane-inset-block-end: var(--starci-core-pane-be, var(--grammar-pane-inset-block-end-outer, 0.75rem));
+        --starci-core-pane-inset-inline: var(--grammar-pane-inset-inline);
+        --starci-core-pane-inset-block-start: var(--grammar-pane-inset-block-start);
+        --starci-core-pane-inset-block-end: var(--starci-core-pane-be, var(--grammar-pane-inset-block-end-outer));
     }
 
     .starci-core-pane[data-grammar-pane-inset="flush"] {
@@ -2762,7 +2773,7 @@
         min-width: 0;
         flex: 1;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
+        gap: var(--grammar-row-gap);
     }
 
     /* A band: padded inline by the pane inset; the first takes the block-start inset, the last the block-end inset. */
@@ -2770,20 +2781,20 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
-        padding-inline: var(--starci-core-pane-inset-inline, 0px);
+        gap: var(--grammar-row-gap);
+        padding-inline: var(--starci-core-pane-inset-inline);
     }
 
     .starci-core-pane-stack > .starci-core-pane-section:first-child {
-        padding-block-start: var(--starci-core-pane-inset-block-start, 0px);
+        padding-block-start: var(--starci-core-pane-inset-block-start);
     }
 
     .starci-core-pane-stack > .starci-core-pane-section:last-child {
-        padding-block-end: var(--starci-core-pane-inset-block-end, 0px);
+        padding-block-end: var(--starci-core-pane-inset-block-end);
     }
 
-    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] { gap: var(--grammar-inline-gap, 0.5rem); }
-    .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap, 1.5rem); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] { gap: var(--grammar-inline-gap); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap); }
 
     .starci-core-pane-section[data-grammar-pane-section-grow="true"] {
         min-height: 0;
@@ -2811,19 +2822,19 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap, 0.75rem);
-        padding-inline: var(--starci-core-pane-inset-inline, 0px);
+        gap: var(--grammar-row-gap);
+        padding-inline: var(--starci-core-pane-inset-inline);
     }
 
-    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] > .starci-core-pane-section-content { gap: var(--grammar-inline-gap, 0.5rem); }
-    .starci-core-pane-section[data-grammar-pane-section-gap="section"] > .starci-core-pane-section-content { gap: var(--grammar-section-gap, 1.5rem); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] > .starci-core-pane-section-content { gap: var(--grammar-inline-gap); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="section"] > .starci-core-pane-section-content { gap: var(--grammar-section-gap); }
 
     .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-section-content {
-        padding-block-start: var(--starci-core-pane-inset-block-start, 0px);
+        padding-block-start: var(--starci-core-pane-inset-block-start);
     }
 
     .starci-core-pane-stack > .starci-core-pane-section:last-child > .starci-core-pane-section-content {
-        padding-block-end: var(--starci-core-pane-inset-block-end, 0px);
+        padding-block-end: var(--starci-core-pane-inset-block-end);
     }
 
     /* bleed="inline": the one horizontal scroller reaches both pane edges and takes the inset as its own scroll padding. */
@@ -2832,8 +2843,8 @@
     }
 
     .starci-core-pane-section[data-grammar-pane-section-bleed="inline"] .starci-core-horizontal-scroll-region {
-        padding-inline: var(--starci-core-pane-inset-inline, 0px);
-        scroll-padding-inline: var(--starci-core-pane-inset-inline, 0px);
+        padding-inline: var(--starci-core-pane-inset-inline);
+        scroll-padding-inline: var(--starci-core-pane-inset-inline);
         padding-block: 0.25rem;
     }
 
@@ -2863,24 +2874,24 @@
         flex: none;
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: var(--grammar-inline-gap, 0.5rem);
-        padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
+        gap: var(--grammar-inline-gap);
+        padding: var(--grammar-inset-nested) var(--grammar-inset);
         border-bottom: 1px solid var(--separator);
     }
 
     .starci-core-pane-trigger {
         display: var(--starci-core-pane-trigger-base, inline-flex);
-        min-width: var(--starci-core-control-min-size, 2.5rem);
-        min-height: var(--starci-core-control-min-size, 2.5rem);
+        min-width: var(--starci-core-control-min-size);
+        min-height: var(--starci-core-control-min-size);
         align-items: center;
         justify-content: center;
         padding-inline: 0.75rem;
         border: 1px solid var(--separator);
-        border-radius: var(--starci-core-control-radius, 0.75rem);
+        border-radius: var(--starci-core-control-radius);
         background: var(--surface);
         color: var(--foreground);
-        font-size: 0.875rem;
-        font-weight: 500;
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
     }
 
     .starci-core-pane-drawer-content {
@@ -2914,7 +2925,7 @@
         width: 2.5rem !important;
         height: 2.5rem !important;
         border: 1px solid var(--separator) !important;
-        border-radius: 999px !important;
+        border-radius: var(--grammar-radius-pill) !important;
         background: var(--surface) !important;
         color: var(--foreground) !important;
     }
@@ -3029,10 +3040,10 @@
             min-width: 0;
             align-items: center;
             justify-content: space-between;
-            gap: var(--grammar-inline-gap, 0.5rem);
+            gap: var(--grammar-inline-gap);
             border-block-start: 1px solid var(--separator);
             background: var(--background);
-            padding: var(--grammar-inset, 0.75rem);
+            padding: var(--grammar-inset);
         }
     }
 
@@ -3080,7 +3091,7 @@
         width: 100% !important;
         min-width: 0;
         flex-direction: column !important;
-        gap: var(--grammar-row-gap, 0.75rem) !important;
+        gap: var(--grammar-row-gap) !important;
         padding: 0 !important;
     }
 
@@ -3092,12 +3103,12 @@
      * column (knowledge MEASURE-4 case-3: a cap plus `mx-auto`, never a left-aligned cap).
      */
     .starci-core-surface-card.starci-core-form-surface {
-        width: min(100%, var(--starci-core-form-measure, 30rem)) !important;
+        width: min(100%, var(--starci-core-form-measure)) !important;
         margin-inline: auto;
     }
 
     .starci-core-surface-card.starci-core-form-surface--compact {
-        width: min(100%, var(--starci-core-form-compact-measure, 28rem)) !important;
+        width: min(100%, var(--starci-core-form-compact-measure)) !important;
     }
 
     /*
@@ -3121,13 +3132,13 @@
     /* --- Surface list --- */
     .starci-core-surface-fact {
         color: var(--muted);
-        font-size: 0.875rem;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-surface-fact[data-grammar-surface-depth="nested"] {
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
     }
 
     /* --- Empty notice --- */
@@ -3136,8 +3147,8 @@
         min-width: 0;
         flex-direction: column;
         align-items: center;
-        gap: var(--grammar-row-gap, 0.75rem);
-        padding: var(--grammar-inset-open, 1.5rem);
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-inset-open);
         text-align: center;
     }
 
@@ -3162,8 +3173,8 @@
     .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
         align-self: stretch;
         inline-size: auto !important;
-        margin-inline: calc(-1 * var(--grammar-card-padding-inline, 0.75rem)) !important;
-        margin-block: var(--grammar-card-padding-block, 0.75rem);
+        margin-inline: calc(-1 * var(--grammar-card-padding-inline)) !important;
+        margin-block: var(--grammar-card-padding-block);
     }
 
     /* In a joined card the divider is the seam between two bands: it touches both and the card's edges, with no inset of its own. */
@@ -3206,23 +3217,23 @@
         flex-wrap: nowrap;
     }
 
-    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="identity"] { gap: var(--grammar-identity-gap, 0.25rem); }
-    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="inline"] { gap: var(--grammar-inline-gap, 0.5rem); }
-    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="row"] { gap: var(--grammar-row-gap, 0.75rem); }
-    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="section"] { gap: var(--grammar-section-gap, 1.5rem); }
-    .starci-core-stack[data-grammar-gap="region"] { gap: var(--grammar-region-gap, 2rem); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="identity"] { gap: var(--grammar-identity-gap); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="inline"] { gap: var(--grammar-inline-gap); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="row"] { gap: var(--grammar-row-gap); }
+    :is(.starci-core-stack, .starci-core-cluster)[data-grammar-gap="section"] { gap: var(--grammar-section-gap); }
+    .starci-core-stack[data-grammar-gap="region"] { gap: var(--grammar-region-gap); }
 
     .starci-core-stack[data-grammar-align="start"] { align-items: flex-start; }
     .starci-core-stack[data-grammar-align="center"] { align-items: center; }
     .starci-core-stack[data-grammar-align="end"] { align-items: flex-end; }
 
     .starci-core-stack[data-grammar-measure="reading"] {
-        width: min(100%, var(--starci-core-reading-measure, 72ch));
+        width: min(100%, var(--starci-core-reading-measure));
         margin-inline: auto;
     }
 
     .starci-core-stack[data-grammar-measure="form"] {
-        width: min(100%, var(--starci-core-form-measure, 30rem));
+        width: min(100%, var(--starci-core-form-measure));
         margin-inline: auto;
     }
 
@@ -3234,7 +3245,7 @@
     .starci-core-cluster[data-grammar-justify="between"] { justify-content: space-between; }
 
     .starci-core-grid[data-grammar-grid-kind="cards"] {
-        --starci-core-grid-gap: var(--grammar-section-gap, 1.5rem);
+        --starci-core-grid-gap: var(--grammar-section-gap);
         --starci-core-grid-min: 16rem;
         display: grid;
         min-width: 0;
@@ -3265,12 +3276,12 @@
     .starci-core-nav-landmark {
         display: flex;
         align-items: center;
-        font-size: 0.875rem;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-nav-landmark[data-grammar-nav-layout="bar"] {
-        gap: var(--grammar-section-gap, 1.5rem);
+        gap: var(--grammar-section-gap);
     }
 
     .starci-core-nav-landmark[data-grammar-nav-layout="scrolling"] {
@@ -3289,7 +3300,7 @@
      * the vendor Button's radius, so the ring follows the button's shape instead of drawing a square round a pill.
      */
     .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"]) {
-        border-radius: calc(var(--radius) * 3);
+        border-radius: calc(var(--grammar-radius-md) * 3);
     }
 
     .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"][data-width="fill"]) {
@@ -3305,7 +3316,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        padding: var(--grammar-inset, 0.75rem) var(--grammar-inset, 0.75rem) calc(var(--grammar-inset, 0.75rem) + env(safe-area-inset-bottom, 0px));
+        padding: var(--grammar-inset) var(--grammar-inset) calc(var(--grammar-inset) + env(safe-area-inset-bottom, 0px));
         border-block-start: 1px solid var(--separator);
         background: var(--surface);
         color: var(--surface-foreground);
@@ -3369,7 +3380,7 @@
     .starci-core-icon-skeleton {
         display: inline-block;
         flex: none;
-        border-radius: var(--starci-core-pill-radius, 999px) !important;
+        border-radius: var(--starci-core-pill-radius) !important;
     }
 
     /* --- Icon button: a HeroUI `Button` worn as a circle. --- */
@@ -3381,12 +3392,12 @@
      */
     .starci-core-icon-button[data-size="md"],
     .starci-core-icon-button[data-size="control"] {
-        inline-size: var(--starci-core-control-min-size, 2.5rem) !important;
-        min-inline-size: var(--starci-core-control-min-size, 2.5rem) !important;
-        max-inline-size: var(--starci-core-control-min-size, 2.5rem) !important;
-        block-size: var(--starci-core-control-min-size, 2.5rem) !important;
-        min-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
-        max-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        inline-size: var(--starci-core-control-min-size) !important;
+        min-inline-size: var(--starci-core-control-min-size) !important;
+        max-inline-size: var(--starci-core-control-min-size) !important;
+        block-size: var(--starci-core-control-min-size) !important;
+        min-block-size: var(--starci-core-control-min-size) !important;
+        max-block-size: var(--starci-core-control-min-size) !important;
     }
 
     .starci-core-icon-button[data-size="sm"] {
@@ -3398,8 +3409,8 @@
 
     .starci-core-button[data-size="md"]:not([data-width="fill"]),
     .starci-core-button[data-size="control"]:not([data-width="fill"]) {
-        block-size: var(--starci-core-control-min-size, 2.5rem) !important;
-        min-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        block-size: var(--starci-core-control-min-size) !important;
+        min-block-size: var(--starci-core-control-min-size) !important;
     }
 
     .starci-core-button[data-size="sm"]:not([data-width="fill"]) {
@@ -3419,7 +3430,7 @@
      */
     .starci-core-button[data-width="fill"]:is([data-size="md"], [data-size="control"]) {
         block-size: auto !important;
-        min-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        min-block-size: var(--starci-core-control-min-size) !important;
         padding-block: 0.5rem;
     }
 
@@ -3437,18 +3448,18 @@
 
     /* The chrome avatar (`control`) is drawn here over the vendor `lg` box: the shared control height. */
     [data-component="Avatar"][data-grammar-avatar-size="control"] {
-        --avatar-size: var(--starci-core-control-min-size, 2.5rem);
-        inline-size: var(--starci-core-control-min-size, 2.5rem);
-        block-size: var(--starci-core-control-min-size, 2.5rem);
+        --avatar-size: var(--starci-core-control-min-size);
+        inline-size: var(--starci-core-control-min-size);
+        block-size: var(--starci-core-control-min-size);
     }
 
     .starci-core-text-action[data-size="control"] {
-        font-size: 0.875rem;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-icon-button {
-        border-radius: var(--starci-core-pill-radius, 999px) !important;
+        border-radius: var(--starci-core-pill-radius) !important;
     }
 
     .starci-core-icon-button[data-size="lg"] {
@@ -3494,14 +3505,14 @@
         align-items: center;
         justify-content: center;
         padding-inline: 0.25rem;
-        border-radius: var(--starci-core-pill-radius, 999px);
+        border-radius: var(--starci-core-pill-radius);
         background: var(--accent);
         color: var(--accent-foreground);
-        box-shadow: 0 0 0 2px var(--background);
-        font-size: 0.6875rem;
-        font-weight: 600;
+        box-shadow: 0 0 0 var(--grammar-ring-width) var(--background);
+        font-size: var(--grammar-text-2xs);
+        font-weight: var(--grammar-weight-semibold);
         font-variant-numeric: tabular-nums;
-        line-height: 1;
+        line-height: var(--grammar-leading-none);
         pointer-events: none;
     }
 
@@ -3517,13 +3528,13 @@
     .starci-core-icon-tile[data-size="sm"] {
         width: 2rem;
         height: 2rem;
-        border-radius: var(--radius-lg, var(--radius, 0.5rem));
+        border-radius: var(--radius-lg, var(--radius));
     }
 
     .starci-core-icon-tile[data-size="md"] {
         width: 2.5rem;
         height: 2.5rem;
-        border-radius: var(--radius-xl, calc(var(--radius, 0.5rem) * 1.5));
+        border-radius: var(--grammar-radius-xl);
     }
 
     /* A tone pair is painted only when the plate draws its own glyph. */
@@ -3563,9 +3574,9 @@
     .starci-core-progress-step {
         display: block;
         height: 0.25rem;
-        border-radius: var(--radius-xs, 0.125rem);
+        border-radius: var(--grammar-radius-2xs);
         background: var(--default);
-        transition: background-color var(--starci-core-motion-duration, 150ms) cubic-bezier(0.4, 0, 0.2, 1);
+        transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-progress-step[data-grammar-progress-step="done"] { background: var(--starci-progress-fill, var(--accent)); }
@@ -3634,8 +3645,8 @@
 
     .starci-core-input-actions .starci-core-input-reveal {
         min-height: 1.75rem;
-        padding-inline: var(--grammar-identity-gap, 0.25rem);
-        border-radius: var(--radius-sm, calc(var(--radius, 0.5rem) * 0.5));
+        padding-inline: var(--grammar-identity-gap);
+        border-radius: var(--grammar-radius-sm);
     }
 
     .starci-core-input-actions .starci-core-input-reveal:not(:disabled):hover {
@@ -3672,7 +3683,7 @@
     }
 
     .starci-core-input-reveal-label {
-        font-size: 0.75rem;
+        font-size: var(--grammar-text-xs);
     }
 
     /* --- Heading: the FONT rank each level stamps, drawn from the family's own sheet. --- */
@@ -3695,58 +3706,59 @@
      * declaration that a later family layer can still own.
      */
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="1"] {
-        font-size: 1.25rem !important;
-        font-weight: 600 !important;
-        letter-spacing: -0.025em !important;
-        line-height: 1.75rem !important;
+        font-size: var(--grammar-text-2xl) !important;
+        font-weight: var(--grammar-weight-semibold) !important;
+        letter-spacing: var(--grammar-tracking-tight) !important;
+        line-height: var(--grammar-leading-xl) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="2"] {
-        font-size: 1rem !important;
-        font-weight: 600 !important;
-        line-height: 1.5rem !important;
+        font-size: var(--grammar-text-lg) !important;
+        font-weight: var(--grammar-weight-semibold) !important;
+        line-height: var(--grammar-leading-lg) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="3"] {
-        font-size: 0.875rem !important;
-        font-weight: 500 !important;
-        line-height: 1.25rem !important;
+        font-size: var(--grammar-text-md) !important;
+        font-weight: var(--grammar-weight-medium) !important;
+        line-height: var(--grammar-leading-md) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="4"] {
-        font-size: 0.75rem !important;
-        font-weight: 500 !important;
-        line-height: 1rem !important;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs) !important;
+        font-weight: var(--grammar-weight-medium) !important;
+        line-height: var(--grammar-leading-xs) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="display"] {
-        font-size: 2.25rem !important;
-        font-weight: 600;
-        letter-spacing: -0.025em;
-        line-height: 1.25;
+        font-size: var(--grammar-text-5xl) !important;
+        font-weight: var(--grammar-weight-semibold);
+        letter-spacing: var(--grammar-tracking-tight);
+        line-height: var(--grammar-leading-tight);
     }
 
     /* --- Text: one resolved line of copy, drawn from the attributes it already emits. --- */
     .starci-core-text {
         color: var(--foreground);
-        font-size: 1rem;
-        font-weight: 400;
-        line-height: 1.5rem;
+        font-size: var(--grammar-text-lg);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-lg);
     }
 
     .starci-core-text[data-size="xs"] {
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
     }
 
     .starci-core-text[data-size="sm"] {
-        font-size: 0.875rem;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-text[data-size="metric-lead"] {
-        font-size: 1.875rem;
-        line-height: 2.25rem;
+        font-size: var(--grammar-text-4xl);
+        line-height: var(--grammar-leading-2xl);
     }
 
     .starci-core-text[data-tone="muted"] {
@@ -3757,8 +3769,8 @@
         color: var(--accent-soft-foreground);
     }
 
-    .starci-core-text[data-weight="medium"] { font-weight: 500; }
-    .starci-core-text[data-weight="semibold"] { font-weight: 600; }
+    .starci-core-text[data-weight="medium"] { font-weight: var(--grammar-weight-medium); }
+    .starci-core-text[data-weight="semibold"] { font-weight: var(--grammar-weight-semibold); }
 
     .starci-core-text[data-start-content="true"] {
         display: inline-flex;
@@ -3813,7 +3825,7 @@
         display: inline-block;
         max-inline-size: 100%;
         vertical-align: top;
-        border-radius: var(--radius, 0.25rem);
+        border-radius: var(--radius);
     }
 
     .starci-core-text[data-overflow="clamp-2"] > .starci-core-text-skeleton { max-block-size: 2lh; }
@@ -3839,7 +3851,7 @@
         display: inline-flex;
         width: fit-content;
         min-width: 0;
-        min-block-size: var(--starci-core-control-min-size, 2.5rem);
+        min-block-size: var(--starci-core-control-min-size);
         flex: none;
         align-items: center;
         gap: 0.5rem;
@@ -3848,22 +3860,22 @@
     }
 
     .starci-core-text-action:disabled {
-        opacity: 0.5;
+        opacity: var(--disabled-opacity);
         cursor: default;
     }
 
-    .starci-core-text-action[data-size="xs"] { font-size: 0.75rem; line-height: 1rem; }
-    .starci-core-text-action[data-size="sm"] { font-size: 0.875rem; line-height: 1.25rem; }
-    .starci-core-text-action[data-size="md"] { font-size: 1rem; line-height: 1.5rem; }
+    .starci-core-text-action[data-size="xs"] { font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    .starci-core-text-action[data-size="sm"] { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-md); }
+    .starci-core-text-action[data-size="md"] { font-size: var(--grammar-text-lg); line-height: var(--grammar-leading-lg); }
 
     .starci-core-text-action[data-appearance="inline"] {
         color: var(--foreground);
-        font-weight: 500;
+        font-weight: var(--grammar-weight-medium);
     }
 
     .starci-core-text-action[data-appearance="muted"] {
         color: var(--muted);
-        font-weight: 500;
+        font-weight: var(--grammar-weight-medium);
     }
 
     .starci-core-text-action[data-appearance="inline"]:hover,
@@ -3876,10 +3888,10 @@
     }
 
     .starci-core-text-action[data-appearance="choice"] {
-        border-radius: var(--starci-core-pill-radius, 999px);
+        border-radius: var(--starci-core-pill-radius);
         padding: 0.25rem 0.5rem;
         color: var(--foreground);
-        font-weight: 500;
+        font-weight: var(--grammar-weight-medium);
     }
 
     /*
@@ -3892,14 +3904,14 @@
      * so 44px fits with headroom and `--starci-core-band-height` is untouched.
      */
     .starci-core-text-action[data-appearance="route"] {
-        border-radius: var(--starci-core-pill-radius, 999px);
+        border-radius: var(--starci-core-pill-radius);
         padding: 0.5rem 0.75rem;
-        min-block-size: var(--starci-core-control-min-size, 2.5rem);
+        min-block-size: var(--starci-core-control-min-size);
         color: var(--muted);
     }
 
     .starci-core-text-action[data-appearance="section"] {
-        border-radius: var(--radius-xl, calc(var(--radius, 0.5rem) * 1.5));
+        border-radius: var(--grammar-radius-xl);
         padding: 0.5rem 0.75rem;
         color: var(--foreground);
     }
@@ -3918,7 +3930,7 @@
     .starci-core-text-action[data-appearance="tab"][data-current="true"] {
         border-block-end-color: var(--accent);
         color: var(--accent);
-        font-weight: 600;
+        font-weight: var(--grammar-weight-semibold);
     }
 
     .starci-core-text-action[data-appearance="choice"][data-current="true"],
@@ -3930,12 +3942,12 @@
 
     .starci-core-text-action[data-appearance="route"][data-current="true"],
     .starci-core-text-action[data-appearance="section"][data-current="true"] {
-        font-weight: 600;
+        font-weight: var(--grammar-weight-semibold);
     }
 
     .starci-core-text-action[data-appearance="disclosure"] {
         color: var(--accent-soft-foreground);
-        font-weight: 600;
+        font-weight: var(--grammar-weight-semibold);
     }
 
     .starci-core-text-action[data-appearance="plain"] {
@@ -3953,7 +3965,7 @@
         user-select: none;
     }
 
-    .starci-core-text-action-resting { border-radius: var(--radius, 0.25rem); }
+    .starci-core-text-action-resting { border-radius: var(--radius); }
     .starci-core-text-action-placeholder { display: contents; visibility: hidden; }
 
     /*
@@ -3971,9 +3983,9 @@
 
     /* --- PaneGrid: the compact drawer trigger's resting paint. --- */
     .starci-core-pane-trigger {
-        box-shadow: 0 1px 2px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+        box-shadow: var(--grammar-shadow-lift);
         outline: none;
-        transition: background-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+        transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     .starci-core-pane-trigger:hover {
@@ -4003,7 +4015,7 @@
         width: var(--starci-core-status-dot-size);
         height: var(--starci-core-status-dot-size);
         flex: none;
-        border-radius: 999px;
+        border-radius: var(--grammar-radius-pill);
         background: var(--starci-core-status-dot-color);
         /* The tone's light stop: the tone eased toward the surface. */
         --starci-core-status-dot-light: color-mix(in oklab, var(--starci-core-status-dot-color) 40%, var(--surface));
@@ -4015,17 +4027,17 @@
     .starci-core-status-dot-mark[data-tone="danger"] { --starci-core-status-dot-color: var(--danger); }
 
     .starci-core-status-dot-chip > .starci-core-status-dot-mark {
-        margin-inline-end: var(--grammar-identity-gap, 0.25rem);
+        margin-inline-end: var(--grammar-identity-gap);
     }
 
     /* ConnectionStatus: the dot and its words on one line, in the muted small type of a row annotation. */
     .starci-core-connection-status {
         display: inline-flex;
         align-items: center;
-        gap: var(--grammar-inline-gap, 0.5rem);
+        gap: var(--grammar-inline-gap);
         color: var(--muted);
-        font-size: 0.75rem;
-        line-height: 1.25;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-tight);
         white-space: nowrap;
     }
 
@@ -4045,7 +4057,7 @@
         align-items: center;
         justify-content: center;
         padding: 0.25rem;
-        border-radius: 999px;
+        border-radius: var(--grammar-radius-pill);
     }
 
     /* The echo is a ring outside the dot (a box-shadow, no fill), so the dot keeps its full tone under it. */
@@ -4053,9 +4065,9 @@
         position: absolute;
         inset: 0;
         border-radius: inherit;
-        box-shadow: 0 0 0 1.5px var(--starci-core-status-dot-light);
+        box-shadow: 0 0 0 var(--grammar-stroke-fine) var(--starci-core-status-dot-light);
         content: "";
-        animation: starci-core-status-dot-echo 1.6s ease-out infinite;
+        animation: starci-core-status-dot-echo var(--grammar-loop-pulse) var(--grammar-loop-echo-easing) infinite;
     }
 
     @keyframes starci-core-status-dot-echo {
@@ -4083,13 +4095,13 @@
     .starci-core-badge-muted {
         display: inline-flex;
         align-items: center;
-        gap: var(--grammar-identity-gap, 0.25rem);
+        gap: var(--grammar-identity-gap);
         color: var(--muted);
     }
 
     /* Text: monospace and tabular figures, opted into. */
     .starci-core-text[data-mono="true"] {
-        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+        font-family: var(--font-mono);
     }
 
     .starci-core-text[data-tabular="true"] {
@@ -4099,11 +4111,11 @@
     /* Code: inline code on a soft plate, the size of the line around it. */
     .starci-core-code {
         padding: 0.125em 0.375em;
-        border-radius: 0.375rem;
+        border-radius: var(--grammar-radius-sm);
         background: var(--default);
         color: var(--foreground);
-        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
-        font-size: 0.875em;
+        font-family: var(--font-mono);
+        font-size: var(--grammar-text-relative);
         overflow-wrap: anywhere;
     }
 
@@ -4117,7 +4129,7 @@
         min-width: 0;
         flex-direction: column;
         overflow: hidden;
-        border-radius: 0.75rem;
+        border-radius: var(--grammar-radius-md);
         background: var(--terminal-background, var(--foreground));
         color: var(--terminal-foreground, var(--background));
     }
@@ -4126,8 +4138,8 @@
         padding: 0.5rem 0.75rem;
         border-block-end: 1px solid color-mix(in srgb, var(--terminal-foreground, var(--background)) 14%, transparent);
         color: var(--terminal-title-foreground, var(--terminal-foreground, var(--background)));
-        font-size: 0.75rem;
-        font-weight: 500;
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
     }
 
     .starci-core-terminal-log {
@@ -4135,9 +4147,9 @@
         min-height: 4rem;
         overflow: auto;
         padding: 0.5rem 0.75rem;
-        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
-        font-size: 0.8125rem;
-        line-height: 1.25rem;
+        font-family: var(--font-mono);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-terminal-log:focus-visible {
@@ -4158,7 +4170,7 @@
     .starci-core-filter-button-group[data-grammar-filter-fit="pending"] .starci-core-filter-button-row { visibility: hidden; }
     .starci-core-filter-button-toggles { display: flex; flex-wrap: nowrap; gap: 0.5rem; min-width: 0; }
     .starci-core-filter-button { flex: none; gap: 0.5rem; white-space: nowrap; }
-    .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: 0.8; }
+    .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: var(--grammar-opacity-secondary); }
     /* The rest takes the surface; selected is the accent soft pair (ruling status-soft-pair-on-background). */
     .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { background: var(--surface); color: var(--surface-foreground); }
     .starci-core-filter-button[data-selected="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
@@ -4166,7 +4178,7 @@
     .starci-core-filter-button-skeleton { display: inline-block; inline-size: 5rem; block-size: 2rem; }
     .starci-core-filter-button-panel { display: flex; min-width: 16rem; flex-direction: column; gap: 0.5rem; }
     .starci-core-filter-button-list { max-block-size: 16rem; overflow-y: auto; }
-    .starci-core-filter-button-empty { display: block; padding: 0.75rem; color: var(--muted); font-size: 0.875rem; }
+    .starci-core-filter-button-empty { display: block; padding: 0.75rem; color: var(--muted); font-size: var(--grammar-text-md); }
 
     /* --- ChatBubble: one message; the thread, grouping and scroll belong to the app. --- */
     .starci-core-chat-bubble {
@@ -4198,23 +4210,23 @@
         flex-wrap: wrap;
         align-items: center;
         gap: 0.5rem;
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
     }
 
-    .starci-core-chat-bubble-author { font-weight: 600; color: var(--foreground); }
+    .starci-core-chat-bubble-author { font-weight: var(--grammar-weight-semibold); color: var(--foreground); }
     .starci-core-chat-bubble-meta { color: var(--muted); font-variant-numeric: tabular-nums; }
 
     .starci-core-chat-bubble-body {
         min-width: 0;
         max-width: 100%;
         padding: 0.5rem 0.75rem;
-        border-radius: 1rem;
-        border-start-start-radius: 0.25rem;
+        border-radius: var(--grammar-radius-lg);
+        border-start-start-radius: var(--grammar-radius-xs);
         background: var(--surface);
         color: var(--surface-foreground);
-        font-size: 0.875rem;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
         white-space: pre-wrap;
     }
@@ -4225,8 +4237,8 @@
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */
     .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body {
-        border-start-start-radius: 1rem;
-        border-start-end-radius: 0.25rem;
+        border-start-start-radius: var(--grammar-radius-lg);
+        border-start-end-radius: var(--grammar-radius-xs);
         background: var(--accent);
         color: var(--accent-foreground);
     }
@@ -4236,7 +4248,7 @@
     }
 
     .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, [data-component="Link"]) { text-decoration: underline; }
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body [data-component="Text"][data-tone="muted"] { opacity: 0.85; }
+    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body [data-component="Text"][data-tone="muted"] { opacity: var(--grammar-opacity-secondary); }
     .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground) 16%, transparent); }
 
     .starci-core-chat-bubble[data-grammar-bubble-highlight="true"] .starci-core-chat-bubble-body {
@@ -4260,9 +4272,9 @@
     .starci-core-chat-bubble-actions {
         display: flex;
         align-items: center;
-        gap: var(--grammar-identity-gap, 0.25rem);
+        gap: var(--grammar-identity-gap);
         opacity: 0;
-        transition: opacity var(--starci-core-motion-duration, 150ms) cubic-bezier(0.4, 0, 0.2, 1);
+        transition: opacity var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
     @media (hover: hover) {
@@ -4271,9 +4283,9 @@
             z-index: 1;
             inset-block-start: 50%;
             transform: translateY(-50%);
-            padding: var(--grammar-identity-gap, 0.25rem);
+            padding: var(--grammar-identity-gap);
             border: 1px solid var(--border);
-            border-radius: 0.75rem;
+            border-radius: var(--grammar-radius-md);
             background: var(--surface);
             box-shadow: var(--surface-shadow);
             pointer-events: none;
@@ -4305,7 +4317,7 @@
     /* Loading bubble (knowledge STATE-8): the face on its side with two Skeleton lines; a thread alternates sides. */
     .starci-core-chat-bubble-skeleton-body { inline-size: min(18rem, 70vw); white-space: normal; }
     .starci-core-chat-bubble-skeleton-body .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
-    .starci-core-chat-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap, 0.75rem); }
+    .starci-core-chat-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
 
     /*
      * Quote: words from a source on a tinted ground at the nested inset, one radius below the host surface (the control radius
@@ -4316,31 +4328,31 @@
         min-width: 0;
         margin: 0;
         flex-direction: column;
-        gap: var(--grammar-identity-gap, 0.25rem);
-        padding: var(--grammar-inset-nested, 0.5rem);
-        border-radius: var(--starci-core-control-radius, 0.75rem);
+        gap: var(--grammar-identity-gap);
+        padding: var(--grammar-inset-nested);
+        border-radius: var(--starci-core-control-radius);
         background: var(--surface-secondary);
         color: var(--foreground);
     }
 
     .starci-core-quote-source {
         color: var(--muted);
-        font-size: 0.75rem;
-        font-weight: 600;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-xs);
     }
 
     .starci-core-quote-words {
-        font-size: 0.875rem;
-        line-height: 1.25rem;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
         white-space: pre-wrap;
     }
 
     .starci-core-quote-byline {
         color: var(--muted);
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
         font-variant-numeric: tabular-nums;
     }
 
@@ -4356,7 +4368,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        height: calc(100dvh - var(--starci-core-fill-top, 0px) - var(--starci-core-fill-bottom, 0px) - var(--starci-core-fill-inset));
+        height: calc(100dvh - var(--starci-core-fill-top) - var(--starci-core-fill-bottom) - var(--starci-core-fill-inset));
     }
 
     .starci-core-fill-viewport > * { min-height: 0; flex: 1 1 auto; }
@@ -4379,7 +4391,7 @@
         overflow-y: auto;
         list-style: none;
         border: 1px solid var(--border);
-        border-radius: var(--radius-lg, var(--radius, 0.5rem));
+        border-radius: var(--radius-lg, var(--radius));
         background: var(--overlay);
         color: var(--overlay-foreground);
         box-shadow: var(--overlay-shadow);
@@ -4389,15 +4401,15 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-identity-gap, 0.25rem);
+        gap: var(--grammar-identity-gap);
         padding: 0.5rem 0.75rem;
-        border-radius: var(--radius, 0.5rem);
+        border-radius: var(--radius);
         cursor: pointer;
     }
 
     .starci-core-mention-option[data-grammar-mention-active="true"] { background: var(--default); }
-    .starci-core-mention-label { font-size: 0.875rem; font-weight: 500; }
-    .starci-core-mention-description { font-size: 0.75rem; color: var(--muted); }
+    .starci-core-mention-label { font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-medium); }
+    .starci-core-mention-description { font-size: var(--grammar-text-xs); color: var(--muted); }
 }
 
 /*

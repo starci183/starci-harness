@@ -1,9 +1,9 @@
 @layer starci-grammar-common {
     /* The vendor Avatar shell supplies the exact single-avatar dimensions, including the control size. */
     .starci-core-avatar-group[data-grammar-avatar-layout="grid"] {
-        --starci-avatar-group-text-size: calc(var(--avatar-size, 2.5rem) / 4);
+        --starci-avatar-group-text-size: calc(var(--avatar-size) / 4);
         overflow: hidden;
-        border-radius: 50%;
+        border-radius: var(--grammar-radius-round);
     }
 
     .starci-core-avatar-group-grid {
@@ -78,7 +78,7 @@
         background: var(--surface-secondary);
         color: var(--foreground);
         font-size: var(--starci-avatar-group-text-size);
-        font-weight: 600;
-        line-height: 1;
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-none);
     }
 }

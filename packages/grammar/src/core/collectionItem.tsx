@@ -9,7 +9,6 @@ export type ItemDescriptionLines = 1 | 2 | 3 | "wrap"
 
 type CollectionItemPresentation = {
     readonly descriptionLines: Exclude<ItemDescriptionLines, "wrap">
-    readonly unreadWeight: number
 }
 
 const CollectionItemContext = createContext<CollectionItemPresentation>(STARCI_CORE_DNA.collectionItem)
@@ -21,5 +20,5 @@ export const CollectionItemFamilyProvider = ({ family, children }: { readonly fa
     </CollectionItemContext.Provider>
 )
 
-/** Shared collection renderers read their preview limits and unread weight from the active DNA. */
+/** Shared collection renderers read their preview limits from the active DNA. */
 export const useCollectionItemPresentation = (): CollectionItemPresentation => useContext(CollectionItemContext)

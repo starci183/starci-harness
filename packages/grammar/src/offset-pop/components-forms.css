@@ -20,13 +20,13 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-field-label] {
         color: var(--foreground);
-        font-weight: 800;
-        letter-spacing: -.01em;
+        font-weight: var(--grammar-weight-extrabold);
+        letter-spacing: var(--grammar-tracking-snug);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-field-error] {
         color: var(--offset-pop-error);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /*
@@ -42,7 +42,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field-count][data-grammar-invalid="true"] {
         color: var(--offset-pop-error);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     /* --- The field box: ink outline, surface paint, control radius --- */
@@ -136,12 +136,12 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Checkbox"] [data-grammar-choice-control="checkbox"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CheckboxGroup"] [data-grammar-choice-control="checkbox"] {
-        border-radius: 0.25rem;
+        border-radius: var(--offset-pop-radius-xs);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="RadioGroup"] [data-grammar-choice-control="radio"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Switch"] [data-grammar-choice-control="switch"] {
-        border-radius: 999px;
+        border-radius: var(--offset-pop-pill-radius);
     }
 
     /* Checked / selected / on: the pink decision accent. */
@@ -194,7 +194,7 @@
         color: var(--foreground);
         background: transparent;
         box-shadow: none;
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option] + [data-grammar-option] {
@@ -249,18 +249,18 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"][data-grammar-disabled="true"] {
         box-shadow: none;
-        opacity: .56;
+        opacity: var(--disabled-opacity);
     }
 
     /* --- Slider: outlined track, pink fill, offset-shadow thumb --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"] [data-grammar-field-control="true"] {
         border: var(--offset-pop-outline-width) solid var(--foreground);
-        border-radius: 999px;
+        border-radius: var(--offset-pop-pill-radius);
         background: var(--field-background);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"] [data-grammar-slider-fill] {
-        border-radius: 999px;
+        border-radius: var(--offset-pop-pill-radius);
         background: var(--accent);
     }
 
@@ -315,14 +315,14 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-option][data-selected="true"] {
         background: var(--accent-soft);
         color: var(--accent-soft-foreground);
-        font-weight: 800;
-        box-shadow: inset 0.25rem 0 0 var(--accent);
+        font-weight: var(--grammar-weight-extrabold);
+        box-shadow: inset var(--offset-pop-shadow-x) 0 0 var(--accent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-calendar-cell][data-selected="true"] {
         color: var(--accent-foreground);
         background: var(--accent);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-calendar-cell][data-focus-visible="true"] {
@@ -336,7 +336,7 @@
         border-radius: var(--offset-pop-surface-radius);
         color: var(--foreground);
         background: var(--field-background);
-        font-weight: 700;
+        font-weight: var(--grammar-weight-bold);
         transition:
             transform var(--offset-pop-transition),
             box-shadow var(--offset-pop-transition),
@@ -362,13 +362,13 @@
     /* --- Fieldset and Form --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Fieldset"] [data-grammar-fieldset-legend] {
         color: var(--foreground);
-        font-weight: 900;
-        letter-spacing: -.015em;
+        font-weight: var(--grammar-weight-black);
+        letter-spacing: var(--grammar-tracking-snug);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Fieldset"][data-grammar-invalid="true"] [data-grammar-field-error] {
         color: var(--offset-pop-error);
-        font-weight: 800;
+        font-weight: var(--grammar-weight-extrabold);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Form"][data-grammar-pending="true"] {

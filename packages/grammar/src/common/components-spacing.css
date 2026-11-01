@@ -15,7 +15,7 @@
 
     .starci-core-dialog-container > .starci-core-dialog,
     .starci-core-drawer-content .starci-core-drawer {
-        padding: var(--grammar-overlay-inset, 0.75rem);
+        padding: var(--grammar-overlay-inset);
     }
 
     :is(.starci-core-dialog, .starci-core-drawer) > .starci-core-overlay-header ~ .starci-core-overlay-body,
@@ -25,73 +25,73 @@
 
     /* The body is the scroll owner: it keeps the identity step inline as focus clearance, drawn back over the inset. */
     :is(.starci-core-dialog, .starci-core-drawer) > .starci-core-overlay-header ~ .starci-core-overlay-body {
-        margin-inline: calc(-1 * var(--grammar-identity-gap, 0.25rem));
-        padding: 0 var(--grammar-identity-gap, 0.25rem);
+        margin-inline: calc(-1 * var(--grammar-identity-gap));
+        padding: 0 var(--grammar-identity-gap);
     }
 
     /* Buttons: the inline padding of the size step, one step less on the side a glyph stands on. */
     .starci-core-button[data-size="sm"] {
-        padding-inline: var(--grammar-control-padding-inline-sm, 0.5rem);
+        padding-inline: var(--grammar-control-padding-inline-sm);
     }
 
     .starci-core-button:is([data-size="md"], [data-size="control"]) {
-        padding-inline: var(--grammar-control-padding-inline-md, 0.75rem);
+        padding-inline: var(--grammar-control-padding-inline-md);
     }
 
     .starci-core-button[data-size="lg"] {
-        padding-inline: var(--grammar-control-padding-inline-lg, 1.5rem);
+        padding-inline: var(--grammar-control-padding-inline-lg);
     }
 
     .starci-core-button[data-size="sm"][data-grammar-button-start="glyph"] {
-        padding-inline-start: var(--grammar-control-padding-glyph-sm, 0.25rem);
+        padding-inline-start: var(--grammar-control-padding-glyph-sm);
     }
 
     .starci-core-button[data-size="sm"][data-grammar-button-end="glyph"] {
-        padding-inline-end: var(--grammar-control-padding-glyph-sm, 0.25rem);
+        padding-inline-end: var(--grammar-control-padding-glyph-sm);
     }
 
     .starci-core-button:is([data-size="md"], [data-size="control"])[data-grammar-button-start="glyph"] {
-        padding-inline-start: var(--grammar-control-padding-glyph-md, 0.5rem);
+        padding-inline-start: var(--grammar-control-padding-glyph-md);
     }
 
     .starci-core-button:is([data-size="md"], [data-size="control"])[data-grammar-button-end="glyph"] {
-        padding-inline-end: var(--grammar-control-padding-glyph-md, 0.5rem);
+        padding-inline-end: var(--grammar-control-padding-glyph-md);
     }
 
     .starci-core-button[data-size="lg"][data-grammar-button-start="glyph"] {
-        padding-inline-start: var(--grammar-control-padding-glyph-lg, 0.75rem);
+        padding-inline-start: var(--grammar-control-padding-glyph-lg);
     }
 
     .starci-core-button[data-size="lg"][data-grammar-button-end="glyph"] {
-        padding-inline-end: var(--grammar-control-padding-glyph-lg, 0.75rem);
+        padding-inline-end: var(--grammar-control-padding-glyph-lg);
     }
 
     /* Alert and toast: a box inside a surface, the container inset on every side, glyph and copy an inline pair. */
     .starci-core-alert[data-component="Alert"],
     .starci-core-toast[data-component="Toast"] {
-        gap: var(--grammar-inline-gap, 0.5rem);
-        padding: var(--grammar-inset, 0.75rem);
+        gap: var(--grammar-inline-gap);
+        padding: var(--grammar-inset);
     }
 
     /* An alert inside a card is one level in: the nested step on every side. */
     .starci-core-surface-content .starci-core-alert[data-component="Alert"] {
-        padding: var(--grammar-inset-nested, 0.5rem);
+        padding: var(--grammar-inset-nested);
     }
 
     /* The toast's end side holds its close action, which carries its own room: the nested step. */
     .starci-core-toast[data-component="Toast"] {
-        padding-inline-end: var(--grammar-inset-nested, 0.5rem);
+        padding-inline-end: var(--grammar-inset-nested);
     }
 
     /* List option: the nested inset on every side (a one-line row is 8 + 24 + 8 = 40), the avatar a row step from the text. */
     .starci-core-list-box .starci-core-list-box-item {
-        gap: var(--grammar-row-gap, 0.75rem);
-        padding: var(--grammar-inset-nested, 0.5rem);
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-inset-nested);
     }
 
     /* Table: the container inset inline, the nested step in the block axis (a 40px row). */
     .starci-core-data-table .starci-core-data-table-column,
     .starci-core-data-table .starci-core-data-table-cell {
-        padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
+        padding: var(--grammar-inset-nested) var(--grammar-inset);
     }
 }
