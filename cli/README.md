@@ -549,7 +549,7 @@ before its launch (`seat start`), a clean verify's or a wave's and a walk's over
 `harness/install-cache.ts`, which `uat run` calls through `prepareWorkspace` for each install its checkout holds), a work
 tree's after its own `npm ci` (`deps source --sync`). Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
 the harness's own `packages/` folder of that name, or dropped to npm when the harness has none, with a `deps-local-healed`
-event, so a vanished folder never fails a launch, a sync or a verify; `worktree gc` heals every project's record once it
+event, so a vanished folder never fails a launch, a sync or a verify; `worktree gc` heals this repository's record once it
 removed a package edit worktree. `--local` takes `packages/` of the harness's main checkout unless `--cwd` names another
 folder. The push gate is `judgePush` (`core/deps/push-gate.ts`), run by `deps check` (the app pre-push hook of
 `@starci/hfs`), `release push`, `release cut` and an executed `app release`. A package is fixed on a package edit branch
@@ -557,7 +557,9 @@ folder. The push gate is `judgePush` (`core/deps/push-gate.ts`), run by `deps ch
 (`core/pkg/test.ts`) runs the package's typecheck and lint scripts its `test` does not run already, then `npm test`, in
 `packages/<name>` of the newest package edit worktree of the app that changes it, each under a heavy-command slot, and
 is the `package-specs` check preset, `pkg handoff` records it in the host store's `package_handoffs` for Debug, and `release push` and `release publish` refuse it to every role but
-debug and owner (`PKG_EDIT_PUSH_REFUSED`).
+debug and owner (`PKG_EDIT_PUSH_REFUSED`). A package build or missing-dependency install refuses
+`DEPS_INSTALL_LINKED` before npm changes a `node_modules` junction or symlink (`core/deps/packages.ts`):
+materialize a private install, or unlink the link itself and install that checkout's lockfile, preserving its shared target.
 
 #### A local registry
 
