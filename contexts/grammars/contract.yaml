@@ -19,8 +19,8 @@ package:
 
 root:
   component: GrammarRoot                          # the only Common renderer a grammar replaces
-  stamps: { data-grammar-family: "<id>", data-grammar-theme: [system, light, dark] }
-  themes: [light, dark-explicit, dark-system, forced-colors, reduced-motion]
+  stamps: { data-grammar-family: "<id>" }       # the root declares no theme token and stamps no mode: the app sets HeroUI tokens, `.dark` on html
+  themes: [light, dark, forced-colors, reduced-motion]
   overlays: portal into the nearest root           # Common mechanics; a grammar never re-portals
   navigation: navigate and useHref props mount the vendor RouterProvider; every Grammar href navigates through it
   toaster: one, rendered in place inside the root
@@ -1170,7 +1170,7 @@ mustKeep:
       measure:
         kind: style
         select: '[data-grammar-page-header-separator] > [data-component="Divider"]'
-        checks: [{ metric: height, op: "=", value: { token: --offset-pop-outline-width } }, { metric: background-color, op: "=", value: { token: --offset-pop-ink } }]
+        checks: [{ metric: height, op: "=", value: { token: --offset-pop-outline-width } }, { metric: background-color, op: "=", value: { token: --foreground } }]
       owner: page-header-band; grammars/offset-pop.md
     - id: DNA-OFFSET-POP-STICKER
       role: card
@@ -1211,12 +1211,12 @@ mustKeep:
     - id: DNA-OFFSET-POP-PINK-NEVER-TEXT
       role: root
       law: Pink is a fill and a ring, never a text colour.
-      measure: { kind: count, select: '*:not(:empty)', where: { metric: color, op: "=", value: { token: --offset-pop-pink } }, op: "=", value: 0 }
+      measure: { kind: count, select: '*:not(:empty)', where: { metric: color, op: "=", value: { token: --accent } }, op: "=", value: 0 }
       owner: O-2
     - id: DNA-OFFSET-POP-INK-ON-PINK
       role: button
       law: Text on a pink fill is ink.
-      measure: { kind: style, select: '*', where: { metric: background-color, op: "=", value: { token: --offset-pop-pink } }, metric: color, op: "=", value: { token: --offset-pop-ink } }
+      measure: { kind: style, select: '*', where: { metric: background-color, op: "=", value: { token: --accent } }, metric: color, op: "=", value: { token: --foreground } }
       owner: O-2
     - id: DNA-OFFSET-POP-PRESS-TRAVEL
       role: button
@@ -1240,7 +1240,7 @@ mustKeep:
     - id: DNA-OFFSET-POP-ALERT-SOFT
       role: alert
       law: A soft Alert is its tone's palette fill with ink text.
-      measure: { kind: style, select: '[data-component="Alert"][data-grammar-appearance="soft"]', metric: color, op: "=", value: { token: --offset-pop-ink } }
+      measure: { kind: style, select: '[data-component="Alert"][data-grammar-appearance="soft"]', metric: color, op: "=", value: { token: --foreground } }
       owner: O-10
       followUp: O-10
     - id: DNA-OFFSET-POP-PARITY-CUSTOM

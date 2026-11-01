@@ -89,7 +89,7 @@ import { Button, GrammarRoot, PageContainer, SurfaceCard } from "@starci/grammar
 import "@starci/grammar/common/styles.css"
 
 export const App = () => (
-  <GrammarRoot theme="system">
+  <GrammarRoot>
     <PageContainer>
       <SurfaceCard label="Welcome"><Button intent="commit">Start</Button></SurfaceCard>
     </PageContainer>
@@ -102,9 +102,10 @@ export const App = () => (
 ```tsx
 import { CoreGrammarRoot, PageContainer, PrimaryRailLayout, SurfaceCard } from "@starci/grammar/core"
 import "@starci/grammar/core/styles.css"
+import "@starci/grammar/core/theme.css" // optional: Core's default palette; skip it to use your own
 
 export const ProductSurface = () => (
-  <CoreGrammarRoot theme="system">
+  <CoreGrammarRoot>
     <PageContainer>
       <PrimaryRailLayout
         primary={<SurfaceCard ariaLabel="Main">…</SurfaceCard>}
@@ -126,9 +127,10 @@ at nested depth.
 ```tsx
 import { Button, OffsetPopGrammarRoot, SurfaceCard, Toaster } from "@starci/grammar/offset-pop"
 import "@starci/grammar/offset-pop/styles.css"
+import "@starci/grammar/offset-pop/theme.css" // optional: the pastel default palette; skip it to use your own
 
 export const App = () => (
-  <OffsetPopGrammarRoot theme="system">
+  <OffsetPopGrammarRoot>
     <SurfaceCard label="Today"><Button variant="primary">Play</Button></SurfaceCard>
     <Toaster label="Notifications" dismissLabel="Dismiss" />
   </OffsetPopGrammarRoot>
@@ -137,7 +139,7 @@ export const App = () => (
 
 Offset Pop is a playful family and stays product-neutral. Its signature is an ink outline, a hard
 offset shadow and a pink decision accent. Text that uses the accent is drawn in a text-safe accent
-(`--offset-pop-accent-text`). Reduced motion removes every transform. The DNA is
+(`--accent-soft-foreground`). Reduced motion removes every transform. The DNA is
 `OFFSET_POP_DNA`, which has the same keys as Core's plus two groups: `offset` (`x`, `y`,
 `outlineWidth`, `ink`, `shadowInk`) and `palette` (`pink`, `blush`, `yellow`, `mint`,
 `critical`). It also exports `OFFSET_POP_SPACING_SCALE`, `OFFSET_POP_TOKEN_NAMES`,
@@ -199,7 +201,7 @@ Overlays follow the same rule. `Dialog`, `AlertDialog`, `Drawer`, `Popover`, `Dr
 the list and calendar popovers of `Select`, `ComboBox`, `DatePicker` and `DateRangePicker` portal
 into the **nearest** `.grammar-common-root`, not into `document.body`
 (`resolveOverlayContainer`, `GRAMMAR_ROOT_SELECTOR`). Because of this, family selectors, tokens,
-`data-grammar-theme` and the forced-colours mapping still reach the overlay surface. Two things
+and the forced-colours mapping still reach the overlay surface. Two things
 follow for apps:
 
 - Render overlay triggers inside the family root. An overlay opened from outside every root falls
@@ -559,22 +561,25 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
 
 ## Theming
 
-- **Tokens.** Each family writes its DNA as CSS custom properties on its root: `--starci-core-*`
-  or `--offset-pop-*`. It feeds those into the Common semantic variables that
-  renderers read: `--accent`, `--accent-foreground`, `--focus`, `--background`, `--surface`,
-  `--surface-secondary`, `--foreground`, `--muted`, `--border`, `--separator`, the status
-  colours and their foregrounds, radii and shadow. Core also publishes a tertiary face under its own
-  name, `--starci-surface-tertiary` (with `--starci-surface-tertiary-foreground`), fed by the knob
-  `--starci-core-surface-tertiary`; HeroUI's `--surface-tertiary` is left to Common and is never
-  re-bound by the family. To adjust a family, override its tokens on the
-  root, for example `<CoreGrammarRoot style={{ "--starci-core-accent": "#2f6bff" }}>`. The
-  `*_TOKEN_NAMES` / `*_TOKEN_DEFAULTS` exports are the supported list. The DNA generator measures
-  their packaged values; callers own their token overrides.
+- **The app owns the theme.** An app sets HeroUI's own tokens in its CSS, on `:root`, `.light` and `.dark`
+  (`--accent`, `--accent-foreground`, `--focus`, `--background`, `--surface`, `--surface-secondary`,
+  `--foreground`, `--muted`, `--border`, `--separator`, the status colours and their foregrounds,
+  `--radius`, `--surface-shadow`, `--scrollbar`, ...), and every part follows, in both families. It writes no grammar
+  name. No stylesheet here declares a HeroUI token on the grammar root, so an app's `:root` value is never shadowed;
+  HeroUI derives the `*-soft` and `*-hover` tokens from the app's values, and `--info` with its pairs, which HeroUI
+  lacks, falls back to `--accent`. A part that paints the accent as text on the page reads `--accent-soft-foreground`.
+- **Default palettes.** `@starci/grammar/core/theme.css` and `@starci/grammar/offset-pop/theme.css` are each
+  family's default theme as HeroUI tokens (`:root, .light` and `.dark`), in the first layer
+  (`starci-grammar-theme`). They are optional: import one after `@heroui/styles` and write your own tokens after it, or
+  skip it. Offset Pop's signature is geometry (outline width, the hard offset, radii) and `--offset-pop-shadow-ink`, the
+  colour of the offset, which reads `--foreground` when unset. `*_TOKEN_NAMES` / `*_TOKEN_DEFAULTS` list the same tokens
+  and are deprecated. `scripts/prove-theme.mts` renders a test app that sets HeroUI tokens only and checks that every
+  part follows, by computed style in a headless Chromium (`npm run prove-theme` after `npm run build`).
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.
-- **Dark.** `theme` on any root takes `"light"`, `"dark"` or `"system"` (the default), which sets
-  `data-grammar-theme`. `system` follows `prefers-color-scheme`. The dark palette is scoped to the
-  root, so a dark island can sit inside a light page.
+- **Dark.** The mode is the app's: `.dark` (or `data-theme="dark"`) on `html`, as HeroUI reads it. The roots take no
+  `theme` (the prop is deprecated and sets nothing), because a mode switch inside a root would shadow the app's
+  tokens again.
 - **Forced colours.** Under `forced-colors: active` each family maps its surfaces, outlines,
   selection and focus onto system colours. Current and selected decisions remain visible through
   an edge or outline, not a fill.

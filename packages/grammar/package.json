@@ -55,6 +55,7 @@
   "scripts": {
     "build": "node scripts/clean.mts && tsc -p tsconfig.build.json && node scripts/copy-css.mts && node scripts/build-stamp.mts",
     "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json",
+    "prove-theme": "node scripts/prove-theme.mts",
     "test": "npm run typecheck && npm run build",
     "pack:check": "npm run build && npm pack --dry-run",
     "prepack": "npm run typecheck && npm run build",

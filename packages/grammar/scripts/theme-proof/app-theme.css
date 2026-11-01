@@ -1,0 +1,61 @@
+/*
+ * The test app's theme: HeroUI's tokens and nothing else. No grammar name appears here, and the colours are
+ * deliberately unlike either family's defaults, so a part that kept a family colour shows.
+ */
+:root {
+    --background: rgb(240 248 255);
+    --foreground: rgb(16 32 48);
+    --surface: rgb(255 250 240);
+    --surface-secondary: rgb(250 235 215);
+    --surface-tertiary: rgb(245 222 179);
+    --muted: rgb(70 90 110);
+    --border: rgb(30 120 90);
+    --separator: rgb(30 120 90);
+    --accent: rgb(10 20 200);
+    --accent-foreground: rgb(255 255 224);
+    --accent-soft: rgb(220 224 255);
+    --accent-soft-foreground: rgb(8 16 150);
+    --focus: rgb(200 0 100);
+    --success: rgb(0 128 0);
+    --success-foreground: rgb(255 255 255);
+    --warning: rgb(210 140 0);
+    --warning-foreground: rgb(20 20 20);
+    --danger: rgb(190 20 20);
+    --danger-foreground: rgb(255 255 255);
+    --default: rgb(228 232 240);
+    --default-foreground: rgb(16 32 48);
+    --field-background: rgb(255 255 245);
+    --field-foreground: rgb(16 32 48);
+    --field-placeholder: rgb(100 110 120);
+    --scrollbar: rgb(200 60 0);
+    --scrollbar-track: rgb(250 235 215);
+}
+
+.dark {
+    --background: rgb(8 24 16);
+    --foreground: rgb(235 250 240);
+    --surface: rgb(16 40 28);
+    --surface-secondary: rgb(24 56 40);
+    --surface-tertiary: rgb(32 72 52);
+    --muted: rgb(160 190 175);
+    --border: rgb(120 200 160);
+    --separator: rgb(120 200 160);
+    --accent: rgb(255 180 40);
+    --accent-foreground: rgb(30 20 0);
+    --accent-soft: rgb(60 44 10);
+    --accent-soft-foreground: rgb(255 210 120);
+    --focus: rgb(120 220 255);
+    --success: rgb(80 220 120);
+    --success-foreground: rgb(0 30 10);
+    --warning: rgb(255 200 60);
+    --warning-foreground: rgb(30 20 0);
+    --danger: rgb(255 110 110);
+    --danger-foreground: rgb(40 0 0);
+    --default: rgb(30 60 45);
+    --default-foreground: rgb(235 250 240);
+    --field-background: rgb(12 32 22);
+    --field-foreground: rgb(235 250 240);
+    --field-placeholder: rgb(130 160 145);
+    --scrollbar: rgb(255 120 40);
+    --scrollbar-track: rgb(16 40 28);
+}
