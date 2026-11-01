@@ -116,6 +116,24 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Composition for a business shape | [common](common.md#playbook-shapes) | product facts, copy and region order from the spec |
 | Checks on app code | `@starci/eslint-grammar-<id>` (Grammar API) and `@starci/eslint-canon-fe` (universal) | nothing |
 
+## Theming
+
+An app sets HeroUI's tokens in its own CSS and every part of the grammar follows it (ruling `app-owns-theme`). It writes no grammar-private
+name and may set nothing and take a family's default. Choice `theme.choose.owner`: who sets a value.
+
+| Row | Value | Owner | Where |
+|---|---|---|---|
+| palette | every colour role of the contract `tokens.colour`, light and dark | the app, else the family's default | `:root`, `.light`, `.dark` in the app's CSS, else `@starci/grammar/<family>/theme.css` (optional, first layer) |
+| mode | light or dark | the app | `.dark` on `html`; `GrammarRoot` sets none |
+| status pair | `x`, `x-soft`, `x-soft-foreground`, `x-foreground` of each tone | the app, else the family | derived from the accent unless set; read by name (`tone.choose.pair` in [presentation](../ui/presentation.md#type)) |
+| radius and field radius | `--radius`, `--field-radius` | the app, else the family | corner roles derive from them by `calc` |
+| type family | `--font-sans`, `--font-mono` | the app | sizes, weights and tracking are Common's ramp (`src/common/ramps.css`) |
+| motion, opacity, scrollbar | `--disabled-opacity`, `--tooltip-delay`, `--skeleton-animation`, `--scrollbar*` | the app, else HeroUI's | honoured by the grammar; durations are a Common token |
+| spacing, control height, target, rhythm | `--grammar-*` | Common | never an app's and never a family's |
+| avatar initials | the seed palette | the grammar | identity art, not a theming violation (ruling `avatar-initial-colours`) |
+
+No gate judges an app's colours; a family's defaults are proved in the package's own stories (`prove-theme`, [proof](../ui/proof.md#who-holds-each-proof)).
+
 ## Reading order for an author
 
 1. Resolve the grammar from the app; verify the installed `@starci/grammar` version and exports.

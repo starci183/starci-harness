@@ -6,6 +6,19 @@ answers is a row of [situations](../ui/situations.md); a component that has no r
 
 The default answer is no. Every component is a choice each later author has to make, and a wrong choice is what the owner corrects.
 
+## The laws
+
+Six laws decide every addition; each names what holds it.
+
+| Law | Says | Held by |
+|---|---|---|
+| 1 One job, one component | if two components could carry a job, one goes, in the same change | the question below; `situations.md` has one component per row |
+| 2 A fact in, a look out | a prop states a fact, no prop chooses a look, and a default needs no prop | the prop rules below; types |
+| 3 Data before slots, slots before children | a typed field first, then a named slot, `children` only on a frame | tier table; `NoChildren` and `LabelChild` |
+| 4 Wrong composition fails in order | it does not compile, then does not lint, then does not render | types, the R-numbered rules, a development throw, DNA laws |
+| 5 The app owns its paint, the grammar its structure | neither reaches into the other (ruling `app-owns-theme`) | [theme](#paint), `starci/brand-layer-shape` |
+| 6 A claim names its enforcer | CONTRIB-8, and every enforcer runs | [who holds each proof](../ui/proof.md#who-holds-each-proof) |
+
 ## The question to ask first
 
 Before writing anything, answer these in order. Stop at the first that settles it.
@@ -113,7 +126,7 @@ All of it, in one change.
 | Version and changelog | `packages/grammar`, CONTRIB-20 |
 | A codemod when it replaces something | `packages/hfs`, `starci app codemod` |
 
-Rewrite what it changes rather than adding beside it (CONTRIB-6). Delete what it replaces in the same change (law 1).
+Rewrite what it changes rather than adding beside it (CONTRIB-6). Delete what it replaces in the same change (law 1 above).
 
 ## Render proof
 
