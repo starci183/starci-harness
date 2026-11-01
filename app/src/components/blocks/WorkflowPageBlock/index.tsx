@@ -12,7 +12,7 @@ import { WorkflowPageBlockBase, type StopMode, type WorkflowHeaderShape, type Wo
 export interface WorkflowPageBlockProps {
     readonly project: string
     readonly workflow: string
-    readonly children: ReactNode
+    readonly body: ReactNode
 }
 
 /** Which header a status draws: stopping, stopped and done all offer nothing but the record. */
@@ -118,9 +118,6 @@ export const WorkflowPageBlock = (props: WorkflowPageBlockProps) => {
                     const outcome = await run(stopMode)
                     return outcome.ok ? null : outcome.message
                 },
-            }}
-        >
-            {props.children}
-        </WorkflowPageBlockBase>
+            }} body={props.body} />
     )
 }

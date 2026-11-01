@@ -19,9 +19,7 @@ export interface InboxPageBaseProps {
 export const InboxPageBase = (props: InboxPageBaseProps) => {
     const { selectedKey, lastSent } = props.props
     return (
-        <InboxPageBlock>
-            {lastSent === null ? null : <Alert key={lastSent.n} tone="affirmative" title={lastSent.title} description={lastSent.description} />}
-            <Grid
+        <InboxPageBlock body={<>{lastSent === null ? null : <Alert key={lastSent.n} tone="affirmative" title={lastSent.title} description={lastSent.description} />}<Grid
                 kind="main-rail"
                 primary={<InboxDetailBlock selectedKey={selectedKey} onSent={props.on.sent} />}
                 rail={
@@ -33,7 +31,6 @@ export const InboxPageBase = (props: InboxPageBaseProps) => {
                 railPosition="leading"
                 railWidth="wide"
                 collapsedOrder="rail-first"
-            />
-        </InboxPageBlock>
+            /></>} />
     )
 }

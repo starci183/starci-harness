@@ -132,8 +132,7 @@ export const WorkflowsTableBlockBase = (props: WorkflowsTableBlockBaseProps) => 
     ]
     return (
         <SurfaceCard label={labels.title} headingLevel={2} fact={labels.fact}>
-            <SlotView slot={props.props.rows} placeholder={ROWS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                {(rows, isSkeleton) => (
+            <SlotView slot={props.props.rows} placeholder={ROWS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(rows, isSkeleton) => (
                     <DataTable<WorkflowRowView>
                         label={labels.title}
                         columns={columns}
@@ -145,8 +144,7 @@ export const WorkflowsTableBlockBase = (props: WorkflowsTableBlockBaseProps) => 
                         loadingRows={rows.length}
                         collapseBelow={COLLAPSE_BELOW}
                     />
-                )}
-            </SlotView>
+                )} />
         </SurfaceCard>
     )
 }

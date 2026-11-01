@@ -6,7 +6,7 @@ import { Button } from "../../leaf/Button/index.js"
 import { SearchField } from "../../leaf/SearchField/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ListBox } from "../../branch/ListBox/index.js"
-import { Popover } from "../../frame/Popover/index.js"
+import { PopoverPart } from "../../PopoverPart.js"
 import type { NoChildren } from "../../tier.js"
 
 export type FilterOption = {
@@ -199,7 +199,7 @@ export const FilterButtonGroup = ({
                     })}
                 </HeroToggleButtonGroup>
                 {hidden.length === 0 ? null : (
-                    <Popover
+                    <PopoverPart
                         isOpen={isOpen}
                         onOpenChange={(next) => {
                             setIsOpen(next)
@@ -244,7 +244,7 @@ export const FilterButtonGroup = ({
                                 />
                             </div>
                         </div>
-                    </Popover>
+                    </PopoverPart>
                 )}
             </div>
             <div aria-hidden="true" className="starci-core-filter-button-probe" inert ref={measureRef}>

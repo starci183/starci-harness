@@ -41,9 +41,20 @@ function checkTriggerKinds(m: Parsed, bad: string[]) {
 function checkProfileMaps(m: Parsed, bad: string[]) {
   for (const key of ['appKinds', 'tiers']) {
     if (!isPlainObject(m[key])) { bad.push(`${key} must be a map with be and fe`); continue; }
-    for (const extra of Object.keys(m[key])) if (!isSide(extra)) bad.push(`${key}.${extra} is not a profile`);
+    for (const extra of Object.keys(m[key])) if (!isSide(extra) && !(key === 'tiers' && extra === COMPONENT_LIBRARY)) bad.push(`${key}.${extra} is not a profile`);
     for (const profile of PROFILES) if (!(profile in m[key])) bad.push(`${key}.${profile} is missing`);
   }
+}
+
+/** The tier matrix of a component library (packages/grammar), beside the be and fe profiles: tiers.grammar. */
+const COMPONENT_LIBRARY = 'grammar';
+
+function checkComponentLibraryTiers(m: Parsed, bad: string[]) {
+  const tiers = m.tiers?.[COMPONENT_LIBRARY];
+  if (tiers === undefined) return;
+  bad.push(...tierMapProblems(COMPONENT_LIBRARY, tiers));
+  if (!isPlainObject(tiers)) return;
+  for (const [tier, def] of Object.entries(tiers)) for (const target of (def as Parsed)?.mayImport ?? []) if (!(target in tiers)) bad.push(`tiers.${COMPONENT_LIBRARY}.${tier}.mayImport names ${target}, which is not a ${COMPONENT_LIBRARY} tier`);
 }
 
 function checkAppKindAndTierShapes(m: Parsed, bad: string[]) {
@@ -54,6 +65,7 @@ function checkAppKindAndTierShapes(m: Parsed, bad: string[]) {
     if (tiers === undefined) continue;
     bad.push(...tierMapProblems(profile, tiers));
   }
+  checkComponentLibraryTiers(m, bad);
 }
 
 function checkSlotShapes(m: Parsed, bad: string[]) {

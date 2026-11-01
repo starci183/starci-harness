@@ -7,7 +7,7 @@ const meta = {
     title: "OverviewPageBlock",
     component: OverviewPageBlockBase,
     args: {
-        children: null,
+        body: null,
         props: {
             counts: ready("3 dự án · 3 workflow đang hoạt động · 7 Op đang chạy"),
             labels: {

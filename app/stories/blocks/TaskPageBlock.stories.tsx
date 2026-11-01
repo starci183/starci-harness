@@ -7,7 +7,7 @@ const meta = {
     title: "TaskPageBlock",
     component: TaskPageBlockBase,
     args: {
-        children: null,
+        body: null,
         props: {
             task: "t-b2c41e07",
             header: ready({

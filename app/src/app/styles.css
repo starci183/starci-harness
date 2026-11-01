@@ -22,7 +22,8 @@ body,
     margin: 0;
 }
 
-.app-root {
+/* The Grammar root is the one child of #root; it fills the viewport. */
+#root > .grammar-common-root {
     min-height: 100%;
 }
 
@@ -94,7 +95,7 @@ body,
     align-items: start;
 }
 
-.app-sidebar-island {
+.app-sidebar-island > .grammar-common-root {
     height: 100%;
     display: flex;
     flex-direction: column;

@@ -11,6 +11,7 @@ import {
   propsFieldsReadonly,
   publicComponentSignature,
   rules,
+  tierChildren,
 } from "./props-and-slots.ts"
 
 const tester = slotTester()
@@ -19,6 +20,9 @@ const COMPONENT = at("apps/web/src/components/branches/SurfaceCard/index.tsx")
 const PACKAGE_BRANCH = at("packages/nivo-ui/src/branches/SurfaceCard/index.tsx")
 const NOT_A_COMPONENT = at("apps/web/src/modules/components/SurfaceCard.tsx")
 const FEED = at("apps/web/src/components/blocks/Feed/index.tsx")
+const FRAME = at("apps/web/src/components/frames/Card/index.tsx")
+const LEAF = at("apps/web/src/components/leaves/Tag/index.tsx")
+const COMPOSITE = at("apps/web/src/components/composites/Row/index.tsx")
 
 test("every exported rule has the ESLint rule shape", () => {
   for (const [name, rule] of Object.entries(rules)) assert.ok(rule?.meta && rule.create, `${name} is not a rule`)
@@ -57,10 +61,23 @@ test("exported React components use one props parameter with the matching type",
   }))
 })
 
-test("ordinary children are allowed in component props", () => {
-  assert.doesNotThrow(() => tester.run("public-component-signature", publicComponentSignature, {
-    valid: [{ filename: COMPONENT, code: "export const ModalBranch = (props: ModalBranchProps) => <section>{props.children}</section>" }],
-    invalid: [],
+test("only a frame takes children", () => {
+  assert.doesNotThrow(() => tester.run("tier-children", tierChildren, {
+    valid: [
+      { filename: FRAME, code: "type CardProps = { readonly children: ReactNode }" },
+      { filename: LEAF, code: "type TagProps = { readonly children: string }" },
+      { filename: LEAF, code: "type TagProps = { readonly children?: never }" },
+      { filename: COMPOSITE, code: "type RowProps = { readonly children?: never; readonly body: ReactNode }" },
+      { filename: COMPOSITE, code: "type RowProps = { readonly body: ReactNode }" },
+      { filename: NOT_A_COMPONENT, code: "type RowProps = { readonly children: ReactNode }" },
+    ],
+    invalid: [
+      { filename: COMPOSITE, code: "type RowProps = { readonly children: ReactNode }", errors: [{ messageId: "none" }] },
+      { filename: COMPONENT, code: "type CardProps = { readonly children?: ReactNode }", errors: [{ messageId: "none" }] },
+      { filename: FEED, code: "type FeedProps = { readonly children: ReactNode }", errors: [{ messageId: "none" }] },
+      { filename: LEAF, code: "type TagProps = { readonly children: ReactNode }", errors: [{ messageId: "leaf" }] },
+      { filename: COMPOSITE, code: "type RowProps = PropsWithChildren<{ readonly label: string }>", errors: [{ messageId: "withChildren" }] },
+    ],
   }))
 })
 

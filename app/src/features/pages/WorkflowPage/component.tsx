@@ -12,12 +12,9 @@ export interface WorkflowPageBaseProps {
 export const WorkflowPageBase = (props: WorkflowPageBaseProps) => {
     const { project, workflow } = props.props
     return (
-        <WorkflowPageBlock project={project} workflow={workflow}>
-            <WorkflowGraphBlock project={project} workflow={workflow} />
-            <div className="app-grid-2">
+        <WorkflowPageBlock project={project} workflow={workflow} body={<><WorkflowGraphBlock project={project} workflow={workflow} /><div className="app-grid-2">
                 <FlowCheckBlock project={project} workflow={workflow} />
                 <SeatsBlock project={project} workflow={workflow} />
-            </div>
-        </WorkflowPageBlock>
+            </div></>} />
     )
 }

@@ -217,6 +217,25 @@ tiers:
     package:
       mayImport:
         - package
+  grammar:
+    leaf:
+      mayImport:
+        - leaf
+    branch:
+      mayImport:
+        - leaf
+        - branch
+    composite:
+      mayImport:
+        - leaf
+        - branch
+        - composite
+    frame:
+      mayImport:
+        - leaf
+        - branch
+        - composite
+        - frame
 crossOwner: every import across owners targets the owner's public entry (index.ts or index.tsx);
   never export *.
 crossApp: apps never import each other; shared code is a packages/<pkg> slot.

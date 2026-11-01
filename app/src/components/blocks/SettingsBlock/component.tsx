@@ -14,7 +14,7 @@ import {
 } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 import { ConfigField, type ConfigFieldView, type ConfigValue, type EffortOption } from "../../composites/ConfigField"
-import { ListEditor, type ListEditorView, type ListEditorWords } from "../../composites/ListEditor"
+import { ListEditor, type ListEditorView, type ListEditorWords } from "../../branches/ListEditor"
 import { SlotView } from "../../composites/SlotView"
 
 /** One routing tier: its members and its effort, each present only when the config names it. */
@@ -299,8 +299,7 @@ export const SettingsBlockBase = (props: SettingsBlockBaseProps) => {
     const { labels, summary, pending, update } = props.props
     return (
         <div className="app-page-stack">
-            <SlotView slot={props.props.settings} placeholder={SETTINGS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                {(settings, isSkeleton) => (
+            <SlotView slot={props.props.settings} placeholder={SETTINGS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(settings, isSkeleton) => (
                     <div className="app-stack">
                         {settings.tabs.length === 0 ? null : (
                             <Tabs
@@ -318,8 +317,7 @@ export const SettingsBlockBase = (props: SettingsBlockBaseProps) => {
                             <GroupPanel {...props} group={settings.active} isSkeleton={isSkeleton} />
                         </div>
                     </div>
-                )}
-            </SlotView>
+                )} />
             <SurfaceCard label={update.title} headingLevel={2}>
                 <span className="app-row">
                     {update.version === null ? null : <Text as="span">{update.version}</Text>}

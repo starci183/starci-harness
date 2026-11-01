@@ -5,9 +5,5 @@ import { WorkflowsTableBlock } from "../../../components/blocks/WorkflowsTableBl
 
 /** Screen 1 · Tổng quan: the Page with its header band, then providers' quota, every workflow and the latest harness events; each region reads alone. */
 export const OverviewPage = () => (
-    <OverviewPageBlock>
-        <ProvidersBlock />
-        <WorkflowsTableBlock />
-        <EventsBlock />
-    </OverviewPageBlock>
+    <OverviewPageBlock body={<><ProvidersBlock /><WorkflowsTableBlock /><EventsBlock /></>} />
 )

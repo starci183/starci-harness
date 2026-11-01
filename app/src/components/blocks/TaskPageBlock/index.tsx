@@ -11,7 +11,7 @@ import { TaskPageBlockBase, type TaskHeaderView } from "./component"
 export interface TaskPageBlockProps {
     readonly project: string
     readonly task: string
-    readonly children: ReactNode
+    readonly body: ReactNode
 }
 
 const toView = (task: TaskDetail): TaskHeaderView => {
@@ -40,9 +40,6 @@ export const TaskPageBlock = (props: TaskPageBlockProps) => {
                     slot: slotLabels(TASK.notFound, TASK.notFoundHint(props.project, props.task)),
                 },
             }}
-            on={{ retry: () => void query.refetch() }}
-        >
-            {props.children}
-        </TaskPageBlockBase>
+            on={{ retry: () => void query.refetch() }} body={props.body} />
     )
 }

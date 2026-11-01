@@ -7,7 +7,7 @@ import { OverviewPageBlockBase } from "./component"
 
 /** Input of OverviewPageBlock: the page body. */
 export interface OverviewPageBlockProps {
-    readonly children: ReactNode
+    readonly body: ReactNode
 }
 
 /** The overview's Page: its header counts come from the overview read. */
@@ -25,9 +25,6 @@ export const OverviewPageBlock = (props: OverviewPageBlockProps) => {
                     slot: slotLabels(OVERVIEW.loadError),
                 },
             }}
-            on={{ retry: () => void query.refetch() }}
-        >
-            {props.children}
-        </OverviewPageBlockBase>
+            on={{ retry: () => void query.refetch() }} body={props.body} />
     )
 }

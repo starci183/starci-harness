@@ -15,8 +15,7 @@ export interface TaskPageBaseProps {
 export const TaskPageBase = (props: TaskPageBaseProps) => {
     const { project, task } = props.props
     return (
-        <TaskPageBlock project={project} task={task}>
-            <Grid
+        <TaskPageBlock project={project} task={task} body={<Grid
                 kind="main-rail"
                 railWidth="wide"
                 primary={
@@ -32,7 +31,6 @@ export const TaskPageBase = (props: TaskPageBaseProps) => {
                         <TaskAttemptsBlock project={project} task={task} />
                     </div>
                 }
-            />
-        </TaskPageBlock>
+            />} />
     )
 }

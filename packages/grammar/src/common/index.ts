@@ -10,3 +10,4 @@ export {
     type GrammarFamilyContract,
     type GrammarFamilyStyles,
 } from "./registry.js"
+export type { LabelChild, NoChildren } from "../core/tier.js"

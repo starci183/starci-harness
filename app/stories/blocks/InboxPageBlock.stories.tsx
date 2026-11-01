@@ -7,7 +7,7 @@ const meta = {
     title: "InboxPageBlock",
     component: InboxPageBlockBase,
     args: {
-        children: null,
+        body: null,
         props: { count: ready(2), labels: { title: INBOX.title, description: INBOX.description, count: INBOX.count, slot: slotLabels(INBOX.empty) } },
         on: { retry: noop },
     },

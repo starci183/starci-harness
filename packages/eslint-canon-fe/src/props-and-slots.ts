@@ -299,6 +299,42 @@ export const propsFieldsReadonly = defineRule({
   },
 })
 
+/**
+ * Children belong to frames. A frame owns a region and draws what its caller places in it; a leaf's only child is its text label; a
+ * block, a composite and a branch draw a fixed anatomy from fields and named slots, so nested JSX under them is a type error for every
+ * caller (`children?: never`). The tier is the layer folder of the unit (FE-FUNCTION-2).
+ */
+export const tierChildren = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "Only a frame takes children; a leaf takes its text label; blocks, composites and branches take none." },
+    schema: [],
+    messages: {
+      none: "A {{layer}} unit takes no children: name the slot for its role, or move the unit to components/frames when its job is to host content.",
+      leaf: "A leaf takes its text label as children: string, never a node: name the slot for the node, or move the unit to components/frames.",
+      withChildren: "PropsWithChildren gives a {{layer}} unit nested JSX: declare children?: never, or children: string for a leaf.",
+    },
+  },
+  create(context) {
+    if (!isComponentFile(context)) return {}
+    const layer = kindOfFile(context)
+    if (layer === null || layer === "frames") return {}
+    const text = layer === "leaves"
+    return {
+      TSPropertySignature(node) {
+        if (propertyName(node) !== "children") return
+        const type = node.typeAnnotation?.typeAnnotation
+        if (type?.type === "TSNeverKeyword" || (text && type?.type === "TSStringKeyword")) return
+        context.report({ node, messageId: text ? "leaf" : "none", data: { layer: layer.replace(/s$/, "") } })
+      },
+      TSTypeReference(node) {
+        const name = node.typeName.type === "Identifier" ? node.typeName.name : node.typeName.type === "TSQualifiedName" ? node.typeName.right.name : null
+        if (name === "PropsWithChildren") context.report({ node, messageId: "withChildren", data: { layer: layer.replace(/s$/, "") } })
+      },
+    }
+  },
+})
+
 export const rules: Rules = {
   "no-inline-parameter-type": noInlineParameterType,
   "props-fields-readonly": propsFieldsReadonly,
@@ -307,6 +343,7 @@ export const rules: Rules = {
   "no-public-classname-prop": noPublicClassNameProp,
   "no-public-frame-css-props": noPublicFrameCssProps,
   "no-css-door-type-laundering": noCssDoorTypeLaundering,
+  "tier-children": tierChildren,
 }
 
 /** All rules in this law are mechanical errors once adopted. */

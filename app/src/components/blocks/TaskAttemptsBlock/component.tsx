@@ -35,8 +35,7 @@ export const TaskAttemptsBlockBase = (props: TaskAttemptsBlockBaseProps) => {
     const { labels } = props.props
     return (
         <SurfaceCard label={labels.title} headingLevel={2}>
-            <SlotView slot={props.props.attempts} placeholder={ATTEMPTS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                {(attempts, isSkeleton) => (
+            <SlotView slot={props.props.attempts} placeholder={ATTEMPTS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(attempts, isSkeleton) => (
                     <Timeline
                         label={labels.list}
                         items={
@@ -55,8 +54,7 @@ export const TaskAttemptsBlockBase = (props: TaskAttemptsBlockBaseProps) => {
                         isLoading={isSkeleton}
                         loadingRows={attempts.length}
                     />
-                )}
-            </SlotView>
+                )} />
         </SurfaceCard>
     )
 }

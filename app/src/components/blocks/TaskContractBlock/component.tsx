@@ -40,8 +40,7 @@ export const TaskContractBlockBase = (props: TaskContractBlockBaseProps) => {
     const { labels } = props.props
     return (
         <SurfaceCard label={labels.title} headingLevel={2}>
-            <SlotView slot={props.props.contract} placeholder={CONTRACT_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
-                {(contract, isSkeleton) => (
+            <SlotView slot={props.props.contract} placeholder={CONTRACT_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(contract, isSkeleton) => (
                     <div className="app-stack">
                         <Text isSkeleton={isSkeleton}>{contract.summary}</Text>
                         <TagGroup
@@ -64,8 +63,7 @@ export const TaskContractBlockBase = (props: TaskContractBlockBaseProps) => {
                             ]}
                         />
                     </div>
-                )}
-            </SlotView>
+                )} />
         </SurfaceCard>
     )
 }

@@ -22,9 +22,7 @@ export const TaskTerminalBlockBase = (props: TaskTerminalBlockBaseProps) => {
     return (
         <SurfaceCard label={labels.title} headingLevel={2} {...(fact === "" ? {} : { fact })}>
             {/* The Grammar terminal has no skeleton flag: while waiting it draws the placeholder's blank lines in its own frame. */}
-            <SlotView slot={props.props.lines} placeholder={LINES_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                {(lines) => <Terminal lines={lines} label={labels.title} />}
-            </SlotView>
+            <SlotView slot={props.props.lines} placeholder={LINES_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(lines) => <Terminal lines={lines} label={labels.title} />} />
         </SurfaceCard>
     )
 }

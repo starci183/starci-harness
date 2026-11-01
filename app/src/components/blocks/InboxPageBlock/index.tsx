@@ -7,7 +7,7 @@ import { InboxPageBlockBase } from "./component"
 
 /** Input of InboxPageBlock: the page body. */
 export interface InboxPageBlockProps {
-    readonly children: ReactNode
+    readonly body: ReactNode
 }
 
 /** The inbox Page, its header carrying the count. */
@@ -20,9 +20,6 @@ export const InboxPageBlock = (props: InboxPageBlockProps) => {
                 count: mapSlot(slotOfQuery(query), (decisions: readonly Decision[]) => decisions.length),
                 labels: { title: INBOX.title, description: INBOX.description, count: INBOX.count, slot: slotLabels(INBOX.empty) },
             }}
-            on={{ retry: () => void query.refetch() }}
-        >
-            {props.children}
-        </InboxPageBlockBase>
+            on={{ retry: () => void query.refetch() }} body={props.body} />
     )
 }

@@ -34,8 +34,7 @@ export const EventsBlockBase = (props: EventsBlockBaseProps) => {
     const { labels } = props.props
     return (
         <SurfaceCard label={labels.title} headingLevel={2}>
-            <SlotView slot={props.props.events} placeholder={EVENTS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                {(events, isSkeleton) => (
+            <SlotView slot={props.props.events} placeholder={EVENTS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(events, isSkeleton) => (
                     <Timeline
                         label={labels.title}
                         items={isSkeleton ? [] : events.map((event) => ({
@@ -49,8 +48,7 @@ export const EventsBlockBase = (props: EventsBlockBaseProps) => {
                         isLoading={isSkeleton}
                         loadingRows={events.length}
                     />
-                )}
-            </SlotView>
+                )} />
         </SurfaceCard>
     )
 }

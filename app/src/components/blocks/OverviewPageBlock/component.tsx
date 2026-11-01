@@ -21,7 +21,7 @@ export interface OverviewPageBlockBaseProps {
     }
     readonly on: { readonly retry: () => void }
     /** The page body, below the header. */
-    readonly children: ReactNode
+    readonly body: ReactNode
 }
 
 const COUNTS_PLACEHOLDER = " "
@@ -39,9 +39,7 @@ export const OverviewPageBlockBase = (props: OverviewPageBlockBaseProps) => {
             header={{
                 title: labels.title,
                 description: (
-                    <SlotView slot={counts} placeholder={COUNTS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry}>
-                        {(line) => line}
-                    </SlotView>
+                    <SlotView slot={counts} placeholder={COUNTS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry} render={(line) => line} />
                 ),
                 actions: (
                     <Button
@@ -55,7 +53,7 @@ export const OverviewPageBlockBase = (props: OverviewPageBlockBaseProps) => {
                 ),
             }}
         >
-            {props.children}
+            {props.body}
         </Page>
     )
 }

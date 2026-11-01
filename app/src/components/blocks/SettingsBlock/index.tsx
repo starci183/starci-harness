@@ -6,7 +6,7 @@ import { useAppVersion } from "../../../hooks/ui"
 import type { DataSlot } from "../../../modules/types"
 import { CONFIG_GROUPS, EFFORT_OPTIONS, SETTINGS, TIER, configFieldLabel } from "../../../modules/i18n"
 import type { ConfigFieldView, ConfigValue } from "../../composites/ConfigField"
-import type { ListEditorView } from "../../composites/ListEditor"
+import type { ListEditorView } from "../../branches/ListEditor"
 import { SettingsBlockBase, type LaneView, type PendingView, type SettingsGroupView, type SettingsView, type TierView } from "./component"
 
 interface Group {

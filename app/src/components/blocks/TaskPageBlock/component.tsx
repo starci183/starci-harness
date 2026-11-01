@@ -23,7 +23,7 @@ export interface TaskPageBlockBaseProps {
     }
     readonly on: { readonly retry: () => void }
     /** The page body, below the header. */
-    readonly children: ReactNode
+    readonly body: ReactNode
 }
 
 const HEADER_PLACEHOLDER: TaskHeaderView = {
@@ -48,12 +48,10 @@ export const TaskPageBlockBase = (props: TaskPageBlockBaseProps) => {
             frame={(notice) => (
                 <Page measure="full">
                     {notice}
-                    {props.children}
+                    {props.body}
                 </Page>
             )}
-            onRetry={props.on.retry}
-        >
-            {(header, isSkeleton) => (
+            onRetry={props.on.retry} render={(header, isSkeleton) => (
                 <Page
                     measure="full"
                     isSkeleton={isSkeleton}
@@ -70,9 +68,8 @@ export const TaskPageBlockBase = (props: TaskPageBlockBaseProps) => {
                         ...(header.elapsed === null ? {} : { meta: header.elapsed }),
                     }}
                 >
-                    {props.children}
+                    {props.body}
                 </Page>
-            )}
-        </SlotView>
+            )} />
     )
 }

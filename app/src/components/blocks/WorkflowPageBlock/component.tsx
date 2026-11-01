@@ -49,7 +49,7 @@ export interface WorkflowPageBlockLabels {
 /** Complete input of WorkflowPageBlockBase. */
 export interface WorkflowPageBlockBaseProps {
     /** The page body, below the header and its notices. */
-    readonly children: ReactNode
+    readonly body: ReactNode
     readonly shape: WorkflowHeaderShape
     readonly props: {
         readonly header: DataSlot<WorkflowHeaderView>
@@ -187,12 +187,10 @@ export const WorkflowPageBlockBase = (props: WorkflowPageBlockBaseProps) => {
                 <Page measure="full">
                     {notice}
                     {resultNotice}
-                    {props.children}
+                    {props.body}
                 </Page>
             )}
-            onRetry={props.on.retry}
-        >
-            {(header, isSkeleton) => (
+            onRetry={props.on.retry} render={(header, isSkeleton) => (
                 <Page
                     measure="full"
                     isSkeleton={isSkeleton}
@@ -213,9 +211,8 @@ export const WorkflowPageBlockBase = (props: WorkflowPageBlockBaseProps) => {
                 >
                     {header.reason === null ? null : <Alert tone="cautionary" title={labels.reason} description={header.reason} />}
                     {resultNotice}
-                    {props.children}
+                    {props.body}
                 </Page>
-            )}
-        </SlotView>
+            )} />
     )
 }

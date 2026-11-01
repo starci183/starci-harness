@@ -12,7 +12,7 @@ const meta = {
     title: "WorkflowPageBlock",
     component: WorkflowPageBlockBase,
     args: {
-        children: null,
+        body: null,
         shape: "running",
         props: {
             header: header("running"),

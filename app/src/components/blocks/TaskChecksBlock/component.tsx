@@ -69,8 +69,7 @@ export const TaskChecksBlockBase = (props: TaskChecksBlockBaseProps) => {
     ]
     return (
         <SurfaceCard label={labels.title} headingLevel={2}>
-            <SlotView slot={props.props.checks} placeholder={CHECKS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                {(checks, isSkeleton) => (
+            <SlotView slot={props.props.checks} placeholder={CHECKS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(checks, isSkeleton) => (
                     <DataTable<CheckView>
                         label={labels.table}
                         columns={columns}
@@ -81,8 +80,7 @@ export const TaskChecksBlockBase = (props: TaskChecksBlockBaseProps) => {
                         isLoading={isSkeleton}
                         loadingRows={checks.length}
                     />
-                )}
-            </SlotView>
+                )} />
         </SurfaceCard>
     )
 }

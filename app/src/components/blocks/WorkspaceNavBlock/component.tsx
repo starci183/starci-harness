@@ -83,24 +83,24 @@ export const WorkspaceNavBlockBase = (props: WorkspaceNavBlockBaseProps) => {
     ]
     return (
         // The sidebar is its own Grammar root in the page's theme, so the brand can give it its light warm tokens.
-        <CoreGrammarRoot className="app-sidebar-island">
-            <Sidebar
-                label={labels.landmark}
-                presentation={props.props.presentation}
-                groups={groups}
-                selectedKey={props.props.selectedKey}
-                header={<IdentityLockup title={labels.product} {...(props.props.version === null ? {} : { subtitle: props.props.version })} logoSrc={props.props.logoSrc} onPress={props.on.home} />}
-                footer={
-                    <SlotView slot={props.props.status} placeholder={STATUS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry}>
-                        {(status, isSkeleton) => (
-                            <Text size="xs" tone="muted" live="polite" isSkeleton={isSkeleton}>
-                                {status}
-                            </Text>
-                        )}
-                    </SlotView>
-                }
-                onAction={props.on.select}
-            />
-        </CoreGrammarRoot>
+        <div className="app-sidebar-island">
+            <CoreGrammarRoot>
+                <Sidebar
+                    label={labels.landmark}
+                    presentation={props.props.presentation}
+                    groups={groups}
+                    selectedKey={props.props.selectedKey}
+                    header={<IdentityLockup title={labels.product} {...(props.props.version === null ? {} : { subtitle: props.props.version })} logoSrc={props.props.logoSrc} onPress={props.on.home} />}
+                    footer={
+                        <SlotView slot={props.props.status} placeholder={STATUS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry} render={(status, isSkeleton) => (
+                                <Text size="xs" tone="muted" live="polite" isSkeleton={isSkeleton}>
+                                    {status}
+                                </Text>
+                            )} />
+                    }
+                    onAction={props.on.select}
+                />
+            </CoreGrammarRoot>
+        </div>
     )
 }

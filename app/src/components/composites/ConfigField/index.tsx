@@ -1,6 +1,6 @@
 import { Checkbox, Code, Input, NumberField, Select, Textarea } from "@starci/grammar/core"
 import type { ReactNode } from "react"
-import { ListEditor, type ListEditorView, type ListEditorWords } from "../ListEditor"
+import { ListEditor, type ListEditorView, type ListEditorWords } from "../../branches/ListEditor"
 
 /** What every field view carries: its key, its words and its refusal. */
 interface FieldBase {

@@ -17,7 +17,7 @@ export interface InboxPageBlockBaseProps {
     }
     readonly on: { readonly retry: () => void }
     /** The page body, below the header. */
-    readonly children: ReactNode
+    readonly body: ReactNode
 }
 
 /**
@@ -34,13 +34,11 @@ export const InboxPageBlockBase = (props: InboxPageBlockBaseProps) => {
                 title: labels.title,
                 description: labels.description,
                 meta: (
-                    <SlotView slot={count} placeholder={0} labels={labels.slot} forbidden="hide" onRetry={props.on.retry} isEmpty={() => false}>
-                        {(waiting) => labels.count(waiting)}
-                    </SlotView>
+                    <SlotView slot={count} placeholder={0} labels={labels.slot} forbidden="hide" onRetry={props.on.retry} isEmpty={() => false} render={(waiting) => labels.count(waiting)} />
                 ),
             }}
         >
-            {props.children}
+            {props.body}
         </Page>
     )
 }

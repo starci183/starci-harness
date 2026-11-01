@@ -210,6 +210,13 @@ tiers:
     modules:      {mayImport: [foundation, modules, transport, package], acyclic: true}
     transport:    {mayImport: [foundation, modules, package]}                     # modules/api: the one fetch
     package:      {mayImport: [package]}
+  # A component library (packages/grammar): src/core/<tier>/<Name>/ and the data-tier stamp equal the tier folder. A tier imports nothing
+  # above itself (GRAMMAR_TIER_DIRECTION); a shared untiered module under src/core is followed, so one hop of indirection hides nothing.
+  grammar:
+    leaf:         {mayImport: [leaf]}                                             # one element or one vendor part
+    branch:       {mayImport: [leaf, branch]}                                     # a leaf plus its own interaction state
+    composite:    {mayImport: [leaf, branch, composite]}                          # a fixed arrangement of lower tiers
+    frame:        {mayImport: [leaf, branch, composite, frame]}                   # owns a region; the one tier that takes children
 crossOwner: every import across owners targets the owner's public entry (index.ts or index.tsx); never export *.
 crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 

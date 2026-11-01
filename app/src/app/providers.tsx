@@ -109,7 +109,7 @@ export const Providers = () => {
     return (
         // React Aria names its own controls (steppers, date parts) in the app's locale.
         <I18nProvider locale={LOCALE}>
-            <CoreGrammarRoot className="app-root" navigate={(path) => void navigate(path)} useHref={useHref}>
+            <CoreGrammarRoot navigate={(path) => void navigate(path)} useHref={useHref}>
                 <ConnectionProvider>
                     <SessionGate />
                 </ConnectionProvider>
