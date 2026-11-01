@@ -90,8 +90,8 @@ reads alike. House: the indicator and the option check sit at the end.
 
 Root, Header, Title, Description, Content, Footer. The variant is a surface level (`default`, `secondary`,
 `tertiary`, `transparent`), not an emphasis; padding, a small gap and the surface shadow; the corner is capped so
-large radii do not balloon. No size. House: the card's edge follows depth (shadow on the page, border when
-nested) and a joined card divides by bands.
+large radii do not balloon. No size. House: the card has one depth, raised by its shadow on the page, because a surface never
+stands inside another, and a bands card divides by the seams its shell draws.
 
 ## Modal
 
@@ -139,7 +139,7 @@ bar avatar is `control` size, and a group identity is one composite at one size.
 
 ## Small members
 
-Spinner `sm` to `xl`, 16 to 40px; CloseButton and Kbd 24px; Checkbox control 16px; Pagination links one step under Button; ProgressBar and Meter tracks thin; Label small, Description
+Spinner `sm` to `xl`, 16 to 40px; the vendor's CloseButton and Kbd 24px (the grammar wraps no CloseButton: a dismiss is `IconButton intent="dismiss"`); Checkbox control 16px; Pagination links one step under Button; ProgressBar and Meter tracks thin; Label small, Description
 and errors extra small and muted.
 
 ## How sizes align

@@ -14,16 +14,19 @@ WHEN to use it; a grammar file ([core](core.md), [offset-pop](offset-pop.md)) sa
 - **Names that describe the UI role.** A component, prop or token name says what it does as a layout or UI role
   (`PaneGrid`, `SurfaceCard`, `Rail`), never a product feature (chat, customer, order, invoice), so any product
   can reach for it. The grammar is a generic UI/UX layer (ruling `grammar-names-are-generic`).
-- **The token roles, bound or declared.** The HeroUI semantic variables are the interface between Common's
-  anatomy and a grammar's material. A grammar binds each one or declares that it keeps HeroUI's default; an
-  unbound role silently takes the host theme, which is how a grammar ends up with two accents.
-  Spacing and control heights are Common's tokens and never a grammar's: a grammar that re-spaced or resized
-  would change layout, and layout is the same in every grammar.
+- **The token roles, read from HeroUI and set by the app.** The HeroUI semantic variables are the interface between
+  Common's anatomy and the paint. The structure is the same in every app, the paint is the app's (ruling
+  `app-owns-theme`): an app sets HeroUI's tokens in its own CSS and every part follows, and a grammar declares no token
+  on its root, so no host value loses to the family. A grammar publishes its default palette as an optional `theme.css` of
+  HeroUI tokens (`DNA-COMMON-TOKENS-BOUND` reads it with the app's) and writes no private colour name. Spacing and control
+  heights are Common's tokens and never a grammar's: a grammar that re-spaced or resized would change layout, and layout
+  is the same in every grammar.
 - **A DNA module of one shape.** The same keys in every grammar make grammars comparable and let a generator
-  read any of them. Colour is per theme because dark is its own palette, not an inversion. `accentText` exists
-  because a fill colour that reads well behind text rarely reads well as text; `accentSoft` is the tint both
-  `accentText` and `muted` stay legible on. Elevation names its two layers because depth decides the edge.
-  Intent, arrangement and the item defaults are Common's, so they are not in a grammar's DNA.
+  read any of them; they name the family's defaults, which an app may replace. Colour is per theme because dark is
+  its own palette, not an inversion. The key `accentText` is the token `--accent-soft-foreground`: the accent painted as
+  text, because a fill colour that reads well behind text rarely reads well as text, and the accent alone stays `--accent`.
+  `accentSoft` is the tint both `accentText` and `muted` stay legible on. Intent, arrangement and the item defaults are
+  Common's, so they are not in a grammar's DNA.
 - **A lint factory**, even when it only re-exports Common's checks: a grammar without one would give its apps
   zero grammar rules without anyone noticing.
 - **Conformance**: every universal rule id is inherited or carries family evidence that names the mechanism.
@@ -92,16 +95,19 @@ Each heading is one role of [contract.yaml](contract.yaml) `roles`.
 
 ### Card
 
-Card is one subject on its own surface. Its edge comes from depth, not from a choice: the top layer is raised, a
-layer inside another surface is subordinate, and never both raised. `joined` stacks full-bleed bands divided by
-separators instead of nesting cards; `measure` caps a form card's width so the page does not. Highlight is a claim
+Card is one subject on its own surface, and a surface never stands inside another (a card, a `Pane surface`, a `Dialog`,
+`Drawer`, `AlertDialog` or `Popover`): the card has one depth, raised, and no nested edge exists. Its body is a
+compiler-checked `kind`: `body` (the default, the app's children), `figures`, `list`, `accordion`, `bands` and `tile`. A
+list needs its `items` and an `empty` state, `wholeAction` exists only where the card holds no inner control, and `bands`
+stacks full-bleed faces (any number of `body`, `figures` and `media`, then at most one collection, last) divided by the n-1
+seams the shell draws instead of nesting cards or a `Divider`; `measure` caps a form card's width so the page does not. Highlight is a claim
 that this card is the next step, so one per view. `treatment` is the face: `surface`, `soft` (the brand's light
 tint, `accentSoft`, under the default foreground) or `ink` (the brand ink, the signature band); `soft` and `ink`
 carry the decorative artwork slot, `ink` also the motif. A painted treatment rebinds the whole surface pair on its
 ground (surface, foreground, muted, separator, border and the accent and tone text tokens), because a child that
 paints its own circle or ring from the surface token and its text from a foreground token stays legible only while
-both move together. A grammar decides the material (fill, edge, radius, the ink and its inks); the slots, the treatments' grounds and the
-depth logic are the same everywhere.
+both move together. A grammar decides the material (fill, edge, radius, the ink and its inks); the slots, the kinds, the
+treatments' grounds and the refusal of nesting are the same everywhere.
 
 Where the name sits follows the card's kind, in every grammar (ruling `card-label-by-kind`). A card that heads a section
 carries its label outside the material, an unpainted row above it, because the label names what follows. A tile, one of
@@ -109,7 +115,9 @@ several peers repeated in a grid, carries its name inside, beside its logo or ma
 an outside label would float away from it. A docked region is a `Pane`, never a card. No prop moves the name, and a family
 paints it but never moves it.
 
-A row of key figures is one card holding a stat strip (`DescriptionList layout="stat-strip"`): touching cells (gap 0), each a box in the card at the nested inset (8), divided by lines, not gaps - a vertical line between the cells of a row and a horizontal line between rows, running to the strip's edge and never on its outer edge. The strip answers its own width (container query, no script): one row from 40rem, 2 x 2 from 18rem, one column below, a last odd cell spanning its row, with the right line at every wrap. In a default card it bleeds to the card edge; in a `joined` card it is a band and a `Divider` is the seam to the next band (a Meter band, say). Its skeleton keeps the same cells and lines. The line colour is the family's separator (`--separator`, ink in Offset Pop), so dark mode follows the tokens.
+A row of key figures is `kind="figures"`: touching cells (gap 0), each a box in the card at the nested inset (8), divided by lines, not gaps - a vertical line between the cells of a row and a horizontal line between rows, running to the strip's edge and never on its outer edge. The strip answers its own width (container query, no script): one row from 40rem, 2 x 2 from 18rem, one column below, a last odd cell spanning its row, with the right line at every wrap. In a `bands` card it is a face and the shell's seam divides it from the next face (a Meter face, say). Its skeleton keeps the same cells and lines. The line colour is the family's separator (`--separator`, ink in Offset Pop), so dark mode follows the tokens.
+
+A tile (`kind="tile"`) is one peer repeated in a `Grid kind="cards"`: its `name` and `mark` inside, an optional description and badge, its status and one action at the bottom; the compiler refuses a `label`, `fact` or `labelEnd` on it.
 
 ### Button
 
@@ -132,9 +140,9 @@ way out are not peers, so they are two buttons at the inline gap, never a group.
 
 Tabs switch whole panels; each tab owns its panel. HeroUI's `primary` is a segmented pill on a soft track and its
 `secondary` is an underline bar; the contract keeps those names one to one (decision D-2). Every tab bar, page tabs
-and region tabs inside a surface alike, takes the underline, with the first label on the content edge; the pill is
-the shape of filters and chips, so the app never passes `variant`. The bar lands on the `md` height, which is why
-Tabs have no size.
+and region tabs inside a surface alike, takes the underline, with the first label on the content edge, so Tabs have no
+look to pass. A filter over a collection is a `FilterButtonGroup`, never a tab bar. The bar lands on the `md` height,
+which is why Tabs have no size.
 
 ### SegmentedControl
 
@@ -158,9 +166,10 @@ tinted text, never as a filled button-like shape; its `muted` tone drops the fil
 
 `StatusDot` is a status drawn as a dot alone, static or `echo`, named by its `aria-label`; the dot and its size token are shared with `Badge isDot`, the status with its words, whose `isLive` makes it the state of a live feed.
 
-When peers are picked from, the chip is a `TagGroup` tag, interactive and keyboard reachable, on the ramp at `sm`
-(the default: filter rows are dense) or `md` when its row holds `md` controls; a reorderable group moves tags by
-drag and by Alt+arrow keys and announces each move.
+A `TagGroup` holds values the user entered, to remove or to reorder, and has no selection: its tag is interactive and
+keyboard reachable on the ramp at `sm` (the default: tag rows are dense) or `md` when its row holds `md` controls, and a
+reorderable group moves tags by drag and by Alt+arrow keys and announces each move. Peer values that filter a collection
+are a `FilterButtonGroup`.
 
 ### Input
 
@@ -205,8 +214,8 @@ selection mark sits on, the leading glyph size) is the grammar's to declare.
 
 ### List
 
-A list is rows of peers: a `ListBox` when picking is the task, a list card of static rows when rows only report,
-a data table when columns matter. n rows have n-1 seams, separators are full bleed, and rows and captions share
+A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a bounded list reports,
+`Section kind="list"` when a list searches, filters or pages, a data table when columns matter. n rows have n-1 seams, separators are full bleed, and rows and captions share
 one content edge. A static row's description is one line, because the row is scanned; an option's description in
 a `ListBox` wraps, because it is read before picking, and a list clamps it only by `descriptionLines`. A table row
 with `href` is one link to its record; a column with `editor` hosts its field in the cell; `low`-priority columns
@@ -284,31 +293,33 @@ CSS because no Grammar component fits (a sign-in brand art, say). It adds no pai
 (stamped as `data-grammar-freestyle-reason`), and is a last resort: the rest of the page stays on the grammar, and a
 Grammar component inside it keeps its contract (ruling grammar-freestyle-region).
 
-### PageHeader
-
-The page header is the top of one page: the trail, the page heading (the document's one h1) with the subject's mark,
-status chips and summary, the page's commands, and the page tabs. It is a band, not a card: a surface across the
-primary region, whose content sits in a `PageContainer` of the page's measure so header and content share their edges,
-and which ends in its own full-width separator, drawn with or without tabs. Page tabs stand on that separator and the
-selected underline lies over it, so the tabs read as the switch of everything below. A grammar decides the band's
-paint and the separator's weight; the slots, the inset, the separator and where tabs stand are the same everywhere.
-
 ### Page
 
-A page is one route's frame: the page header band (PageHeader's slots, given as data) across the region, then the
-body in the page measure and gutter. The page is the single owner of the page inset and the vertical rhythm: the band
-and the body, and the body's sections, sit a region step apart, and the body clips past its content box so nothing in
-it reaches across the gutter. Layout frames place regions and never inset a page. A page without a band starts its
-body one region step down. A bleed page is an app surface: no gutter, no block padding and no clip, its body filling
-the region, under the band or the trail alone. A panes page is a tabbed app page whose body is one pane grid: the band
-(with or without tabs) or the trail, then the grid attached to the band's separator with no gap, block padding, radius
-or card, reaching both content edges and the viewport bottom less the grammar's bottom chrome (the page measures the
-fill box itself). Skeleton passes to the band; the body's blocks own their loading.
+A page is one route's frame, and its `header` is data: the trail, the page heading (the document's one h1) with the subject's mark,
+status chips and summary, the page's commands, and the page tabs. The header is a band, not a card: a surface across the
+primary region, whose content shares the page's measure so header and body share their edges, and which ends in its own
+full-width separator, drawn with or without tabs. Page tabs stand on that separator and the selected underline lies over it,
+so the tabs read as the switch of everything below. A grammar decides the band's paint and the separator's weight; the slots,
+the inset, the separator and where tabs stand are the same everywhere. The page is the single owner of the page inset and the
+vertical rhythm: the band and the body, and the body's sections, sit a region step apart, and the body clips past its content
+box so nothing in it reaches across the gutter. Layout frames place regions and never inset a page. A page without a band
+starts its body one region step down. A bleed page is an app surface: no gutter, no block padding and no clip, its body filling
+the region, under the band or the trail alone. A panes page (`chrome="panes"`) is a tabbed app page whose body is one pane grid:
+the band (with or without tabs) or the trail, then the grid attached to the band's separator with no gap, block padding, radius
+or card, reaching both content edges and the viewport bottom less the grammar's bottom chrome (the page measures the fill box
+itself). Skeleton passes to the band; the body's blocks own their loading.
+
+### Section
+
+A section is a named region whose title is its heading and its landmark name; no free heading exists (ruling
+`section-is-the-heading`). `kind="list"` holds rows of the same typed items a list card holds, with a `filter` slot for a
+`FilterButtonGroup`; its head, filter and content stand one section step (24) apart, and its page command hugs its label at
+the end of the head row. A card heads itself with its `label`, so a section around one card is refused.
 
 ### Diagram
 
 A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source in the grammar's
-tokens, `FlowGraph` draws nodes and edges the app holds (flowchart shapes, edge labels, layered or radial layout). A
+tokens, `FlowGraph` draws nodes and edges the app holds (flowchart shapes, edge labels, layered, radial, manual or lanes layout), and `BubbleMap` draws value-sized bubbles. A
 diagram is one named image in a frame that reserves its height in every state: the loading skeleton keeps that box,
 and a source the renderer refuses stays in the region as code under an error. A labelled edge is also spoken in the
 graph's text list. A grammar decides the frame and the paint; the reserved box and the error carrier are the same

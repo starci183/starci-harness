@@ -194,7 +194,10 @@ focusable or announced; several disclosures each bind their own value.
 ### STATE-8 Loading and failure keep the page's anatomy
 The loading view is the resolved view's own tree with the data missing: same layout owners, same cards, real text
 for everything known without data; only unresolved content becomes inert geometry. Build it by rendering the page
-component in skeleton mode, never a separate generic layout. A collection shows `budgets.skeletonRows` rows unless
+component in skeleton mode, never a separate generic layout, and let the grammar frame derive the geometry from its own
+structure: an app draws no skeleton, no fake item list and no row shape. A skeleton means a first load with no data;
+content stays through a refresh; empty appears only after loading ends; an error never reads as empty. The
+[loading table](situations.md#loading) decides each state. A collection draws `budgets.skeletonRows` rows unless
 its size is known. A failed region fails in place (its `EmptyNotice` with a safe retry, or a soft negative
 `Alert`); a failed route keeps its chrome and puts one negative `Alert` where the first region would be. Each route
 ships its own loading and error views. Lint: `starci-fe/no-resting-twin-component`,
@@ -216,19 +219,23 @@ durable owner. Transient confirmations are toasts; see [components/toast-alert.m
 
 ## 5. Collection
 
-### COLLECTION-1 A list of entities is a section, never a card
-Three or more of one kind sit in a page section under its own heading; title, count, filter and section action
-belong to that heading region. No card encloses the rows. The exception is a bounded task list, a fixed set the reader
-works through as one group (the items a setup needs, required steps) with no search, filter or paging: it is one
-`SurfaceListCard` with its label outside (ruling `task-list-card`). A published collection container is used where one
-exists (see [components/list-table.md](components/list-table.md)); none existing is a grammar gap, never a
-substitute card. Several values of one kind entered by the user are one single-value field per row with its own
-remove action and an "add another" command, never a "one per line" textarea.
+### COLLECTION-1 A list is a card; a list that searches, filters or pages is a section
+Rows of one kind are one `SurfaceCard kind="list"` with its label outside, whether the reader works through them as one
+group (the items a setup needs, required steps, a rail's choices) or reads a short list. A list that searches, filters or
+pages, or has no bound, is a `Section kind="list"` of the same rows under its own title, a `FilterButtonGroup` in its
+filter slot when it narrows, and its page command at the end of its head row. The props decide, so no judgement is left:
+a list with a search, a filter or paging is a section, every other is a card (rulings `task-list-card`,
+`section-is-the-heading`). A published container is used where one exists (see
+[components/list-table.md](components/list-table.md)); none existing is a grammar gap, never a substitute card. Several
+values of one kind entered by the user are one single-value field per row with its own remove action and an "add another"
+command, never a "one per line" textarea.
 
 ### COLLECTION-2 A card is one subject
 A card presents one entity or one summary of one subject. Several kinds of content of that subject are bands of
-the same card divided by separators, never inner cards. Comparison is equal rows in one section, not equal cards
-that each repeat a heading. See [components/card.md](components/card.md).
+the same card (`kind="bands"`), divided by the seams the shell draws, never inner cards and never a `Divider`. Comparing
+a fact across peers is rows, in a list card or a section; recognising and opening a peer is a tile (`kind="tile"`), several
+of which stand in a `Grid kind="cards"`. Equal labelled cards that each repeat a heading are neither. A surface never
+stands inside another surface. See [components/card.md](components/card.md).
 
 ### COLLECTION-3 A group identity shows its members
 A group or conversation identity is one composite of its members' identities, distinguishable from one person's,
@@ -247,7 +254,7 @@ and rarely change sit closed in one disclosure card below the main task, its sum
 is for. In a panel offering several sources, each source sits with its own kind.
 
 ### LAYOUT-2 Every region's owner is a published composition
-Tracks, slots and bounds belong to a published composition (shell, primary-rail layout, chat workspace); the spec
+Tracks, slots and bounds belong to a published composition (`WorkspaceShell`, `Page`, `Grid kind="main-rail"`, `PaneGrid`); the spec
 names only its props. No vendor grid and no width arithmetic owns a region; a missing composition is a gap. A family
 may replace a region's renderer, never its role or its number of owners.
 
@@ -259,7 +266,7 @@ task. Content wider than its column has exactly one horizontal scroll region; th
 Sticky, fixed, drawer and floating regions use their composition's contract and return to flow below its narrow
 width. Order differences across widths are composition only; DOM, reading, focus and action order never change.
 
-### FE-APP-SHELL-1..7 App chrome
+### FE-APP-SHELL-1..6 App chrome
 | Id | Rule |
 | --- | --- |
 | FE-APP-SHELL-1 | One shell owns the frame: a fixed viewport, a persistent navbar with one full-width separator, an optional sidebar; sidebar and main scroll independently; the document never scrolls; regions sit flush. Inline navigation shows on wide viewports only, with a leading drawer below them. |
@@ -268,7 +275,6 @@ width. Order differences across widths are composition only; DOM, reading, focus
 | FE-APP-SHELL-4 | On compact widths the navbar keeps identity, search, notifications and account; a row of the same band height below it holds only the named navigation opener; the drawer opens from the leading edge, holds all groups plus language and theme, traps focus, closes on destination, backdrop or Escape. No tab row, no bottom tab bar. |
 | FE-APP-SHELL-5 | A create action lives on the page whose content it changes, never in the navbar. |
 | FE-APP-SHELL-6 | A collapsed sidebar is an icon rail: one icon-only item per destination, tooltip labels, count badges, persisted per user, settings-type groups at the bottom. |
-| FE-APP-SHELL-7 | A conversation pane: its bands (`PaneSection`s) are title, search, a filter row, then one list sorted by latest message; every box (the search field, the first filter tab, a row and its highlight) starts at the pane's content edge; each row shows identity, name, time, last message and unread count; the open row is highlighted. |
 
 Lint: `starci-grammar/app-shell-frame`, `navbar-control-size`, `navbar-cluster`, `no-shell-bottom-tabs`,
 `no-navbar-create`. The shell's component and prop names are the grammar contract's

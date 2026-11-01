@@ -10,12 +10,26 @@ node's evidence bundle.
 Composition commits the intent; proof measures the outcome. Where a criterion tests a composition rule it cites
 that rule and the shared threshold key instead of restating it.
 
+## Who holds each proof
+
+A claim names its enforcer (CONTRIB-8). Four things prove a look, and only the owner's eye approves it.
+
+| Proof | Holds | Runs | Never |
+| --- | --- | --- | --- |
+| Type and lint | a wrong composition: illegal children and props, the R-numbered rules of [hfs/rules.yaml](../hfs/rules.yaml) | on every check of an app and of the package | judges how a legal tree looks |
+| `starci dna check --storybook` | the static laws of [contract.yaml](../grammars/contract.yaml) `mustKeep` (`DNA-*`): a box, a style, a relation, a count measured on the rendered DOM of a built Storybook | on demand against `packages/grammar/storybook-static`; CI does not run it yet | judges taste or an app's colours |
+| `npm run prove-theme` | that a foreign set of HeroUI tokens, and nothing else, repaints every part (ruling `app-owns-theme`) | CI job `grammar-proof` | judges a palette |
+| `npm run prove-render` | a picture per story, both families, light and dark, at 1920 and 390, scale 2, against `packages/grammar/proof/baselines` | CI job `grammar-proof` | approves a look: it reports "changed", and only `proof/approved.json` (the chat renderer) is approved |
+| The owner's eye | every new or changed baseline, and the scored lenses TASTE and UX below | at review | is replaced by a green check |
+
+An id below that no row holds by machine is the owner's eye or a UAT run: it says so in its Instrument or Key column.
+
 ## Lenses and verdicts
 
 | Lens | Kind | Criteria | Instrument |
 | --- | --- | --- | --- |
 | Accessibility | gating | A11Y-1..4 | computed tree, measured render |
-| Contrast | gating | COLOR-3, COLOR-5 | composed pixels, every theme and state |
+| Contrast | gating | COLOR-3, COLOR-5 | composed pixels of a family's default theme in the package's stories, every theme and state; never an app's chosen colours |
 | Focus | gating | FOCUS-1..5 | active element trace |
 | Motion | gating | MOTION-1..4 | normal and reduced-motion capture pair |
 | Render truth | gating | TRUTH-1..4 | claims inventoried and traced to authority |
@@ -24,8 +38,7 @@ that rule and the shared threshold key instead of restating it.
 | Anatomy source | provenance | ANATOMY-1..5 | reference renders of the installed grammar |
 | Brand | provenance | BRAND-1..3 | capture pixels against the brand record |
 
-**Verdict arithmetic** (stated once; the verdict rules A11Y-5, CONTRAST-1, FOCUS-6, MOTION-5, TRUTH-5, TASTE-13 and
-UX-12 apply it to their lens):
+**Verdict arithmetic** (stated once; every lens below applies it):
 
 - A **gating** lens passes only when every criterion passes, at every declared state, theme and viewport. There is
   no mean and no tolerance. A criterion with no observation makes the lens `blocked`, never pass and never fail.
@@ -86,10 +99,13 @@ creative preference.
 
 ## Contrast (gating)
 
+The app owns its colours (ruling `app-owns-theme`), so no gate judges the contrast of values an app sets. COLOR-5 is the
+family's duty to its own defaults, measured in the package's stories; COLOR-3 is structure and holds in any theme.
+
 | Id | Criterion | Falsified by |
 | --- | --- | --- |
 | COLOR-3 | command (button) vs destination (anchor, identifiable at rest), selection (state attribute plus a non-colour change) and focus (an outline distinct from selection) stay distinguishable with colour removed; non-text indicators meet `contrast.nonText` | an underline only on hover; focus and selection sharing one fill |
-| COLOR-5 | text meets `contrast.text` (large text `contrast.largeText`), soft status pairs and bare status glyphs `contrast.statusSoft`, required boundaries `contrast.nonText`, measured on composed pixels in every theme, in forced colours, and in every state | a token judged without its composed background; one theme measured for all |
+| COLOR-5 | a family's default theme: text meets `contrast.text` (large text `contrast.largeText`), soft status pairs and bare status glyphs `contrast.statusSoft`, required boundaries `contrast.nonText`, measured on composed pixels in every theme, in forced colours, and in every state | a token judged without its composed background; one theme measured for all |
 
 A nested field's fill against its surface is recorded, not scored: the field is carried by its fill, label and
 focus outline, and the outline meets `contrast.nonText`.
@@ -134,10 +150,10 @@ Gate set: `verdict.gates.taste`. Each criterion's numbers are under its threshol
 | TASTE-4 | vertical rhythm is monotonic (region > section > row), equal peers equal, gaps on the closed scale, order kept at every viewport | — |
 | TASTE-5 | colour economy: commits per view (CTA-1), accent area (ACCENT-6), status hues only for real outcomes, warnings visibly distinct, badges per entity (DISCIPLINE-1) | `budgets.commitPerView`, `budgets.accentArea`, `budgets.badgesPerEntity` |
 | TASTE-6 | type: sizes and weights per region and per view; running text measure; no orphan word in headings; same rank renders the same; lead figures per DISCIPLINE-2 | `type.region`, `type.view`, `type.measureChars` |
-| TASTE-7 | shape: one family of corner roles; card depth; equal peers equal elevation; inner corners nest; hairlines per card | `budgets.cardDepth`, `budgets.hairlinesPerCard` |
+| TASTE-7 | shape: one family of corner roles; equal peers equal elevation; inner corners nest; hairlines per card | `budgets.hairlinesPerCard` |
 | TASTE-8 | imagery earns its place: decorative images per view; one signature moment (DISCIPLINE-3); an image is never the band's only justification nor the focal point unless it is the job | `budgets.decorativeImages`, `budgets.signatureMoments` |
 | TASTE-9 | density fits the surface class, measured against representative volume, reproducible by a second reader; achieved by grouping, never by shrinking targets | `density.<class>`, `density.reproducibility` |
-| TASTE-10 | designed states: loading keeps the anatomy, empty carries title, line and action, error fails in place, nothing jumps when content arrives | — |
+| TASTE-10 | designed states: loading keeps the anatomy, empty carries title, line and action, error fails in place, nothing jumps when content arrives; each state is decided by the loading table of [situations.md](situations.md#loading) | — |
 | TASTE-11 | touch and feedback: targets per A11Y-4; hover, focus and rest visibly distinct with no layout shift; pending visible on the initiator | `target.*` |
 | TASTE-12 | reference match: the direction names reference standards by class, and a reader would sort the surface into that class; `n/a` when the delivery composed nothing | — |
 
@@ -167,10 +183,10 @@ A direction's regions trace to reality: `direction = real render (anatomy) + bra
 | Id | Criterion |
 | --- | --- |
 | ANATOMY-1 | a region named after a component matches that component's reference render of the installed package; when they disagree on containment the render wins; without a render the claim is unproven |
-| ANATOMY-2 | the layer chain holds: background, surface, nested controls; a form is one unit on one surface; nested surfaces take depth from their parent ([presentation.md](presentation.md) "The layer chain") |
+| ANATOMY-2 | the layer chain holds: background, one surface, its controls; a form is one unit on one surface; no surface stands in another ([presentation.md](presentation.md) "The layer chain") |
 | ANATOMY-3 | composition is the only place a direction invents, inside a declared app-owned region; every drawn control is wired or marked as a route that does not exist yet |
 | ANATOMY-4 | each direction asset records the reference renders and brand revision that produced it; a grammar release marks dependent directions stale |
 | ANATOMY-5 | a direction prompt spells containment literally, names the part models get wrong, and grants freedom as two explicit lists (may, may not) |
 | BRAND-1 | the commit's fill and the danger colour match the brand record's tokens in that theme; the brand's primary appears; no record means unproven |
 | BRAND-2 | the mascot appears only in a declared artwork slot on a surface the brand allows, as a new generation in the masters' style, never the masters' bytes |
-| BRAND-3 | every material saturated colour resolves to a brand token or the grammar palette, within tolerance; a deliberate extra colour is declared in the brand record first |
+| BRAND-3 | every material saturated colour is a HeroUI token the app set or the family's default, never a literal (`starci-fe/no-raw-brand-value`, stylelint `raw-brand-value`); the colours themselves are the app's and are judged by no gate |

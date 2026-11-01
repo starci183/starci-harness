@@ -43,12 +43,11 @@ Choice `chip.choose.connection`: the state of a live feed. It is the feed's own,
 
 ## Variants
 Tone and emphasis are two axes in the contract. Tone comes from the authority-reported state (ACCENT-5): neutral
-by default, a status tone only for a real state, never accent for identity. A selectable tag reads as a secondary
-control with a visible border; the selected one takes the selection treatment. A selected filter spends accent,
-a view switch does not ([tabs](tabs.md)).
+by default, a status tone only for a real state, never accent for identity. A tag is a control with a visible border and
+no selection. A selected filter spends accent, a view switch does not ([tabs](tabs.md)).
 
 ## Size
-A badge is below the ramp, sized to the text line it annotates; a `Badge isDot` takes the Chip `sm` step. A selectable tag is a control: `sm` in filter rows,
+A badge is below the ramp, sized to the text line it annotates; a `Badge isDot` takes the Chip `sm` step. A tag is a control: `sm` in dense rows,
 `md` beside `md` controls, and its target meets the floor ([../scale.md](../scale.md)).
 
 ## States

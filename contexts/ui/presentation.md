@@ -51,8 +51,8 @@ An inset steps down one level each time a box sits inside another, and an inner 
 | Level | Box | Inset (owner token) |
 | --- | --- | --- |
 | 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`), except on `Page chrome="panes"`, where the header takes 12 at every width so the gutter column starts at the pane content edge; a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
-| 1 surface | a card (dense or holding a form or prose alike), a pane, a band of a joined card | 12 on every side (`--grammar-inset`, `--grammar-card-padding-*`, `--grammar-pane-inset-*`) |
-| 2 box in a surface | a nested card, a notice in a card, a list option, a table cell's block side, a stat cell | 8 (`--grammar-inset-nested`) |
+| 1 surface | a card (dense or holding a form or prose alike), a pane, a face of a bands card | 12 on every side (`--grammar-inset`, `--grammar-card-padding-*`, `--grammar-pane-inset-*`) |
+| 2 box in a surface | a notice in a card, a `Quote`, a list option, a table cell's block side, a stat cell (never a card: a surface does not stand in a surface) | 8 (`--grammar-inset-nested`) |
 | 3 control | a button, field, tab, chip, badge | the control's height decides the block padding; inline sm 8, md 12, lg 24, one step less on a glyph's side (`--grammar-control-padding-*`) |
 
 The one named exception above its parent's level is a low-density region, an empty state or a drop target, which
@@ -70,7 +70,7 @@ Padding (inline and block chosen apart):
   edge (a search field, the first tab label, the selected row, a meter, a chip); the text inside a box keeps the box's
   own padding. Block padding is the density of each band. Lint: `starci-fe/no-list-panel-padding`.
 - **P3 Nesting steps down.** 32/24/12 → 12 → 8: an inner inset is smaller than its parent's, or the inner box reads as a
-  card inside a card. The card's inner text at 12 is the one intentional step between the shared edge and the content.
+  surface inside a surface. The card's inner text at 12 is the one intentional step between the shared edge and the content.
 - **P4 Closed boxes are symmetric.** A closed box has equal block sides, and its inline and block insets never differ
   by two steps; extra separation belongs to the parent's gap, never to one side of the box. Reading comfort comes from
   measure (MEASURE-4), not from a larger inset, so a card holding a form or prose keeps 12.
@@ -109,47 +109,51 @@ Margin:
   container (a form card, a reading measure), an absolutely placed marker (a badge on an avatar), and a vendor part's
   internal offset kept for parity.
 - **M2 Bleed is an API, never a negative margin**: `PaneSection bleed="inline"` (a horizontal chip row reaching both
-  pane edges, the inset becoming its scroll padding), `SurfaceCard composition="joined"` (bands to the card edge), the
+  pane edges, the inset becoming its scroll padding), `SurfaceCard kind="bands"` (faces to the card edge), the
   artwork band of a painted card.
 
 ### Text edge
 
 The page title, the tab labels and the section headings share one text edge with the card or pane box below them:
-page tabs are the underline bar, their first label on the content edge; pills are the shape of filters and chips
-only (a filter over a collection is a `FilterButtonGroup`). The card's inner text at 12 is the one intentional step.
-The type has no `variant`.
+every tab bar is the underline bar, its first label on the content edge; a filter over a collection is a
+`FilterButtonGroup`, never a tab bar. The card's inner text at 12 is the one intentional step.
+Lint: `starci-fe/nested-control-variant`.
 
 ### The table (the grammar's decision per component)
 
-Values in px at the `core` family; each is a token or the anatomy of the component that names it.
+Choice `space.choose.component`: who decides the distance of a situation, and what the author writes. Values in px at the `core`
+family; each is a token or the anatomy of the component that names it. The last column is everything the author writes for
+the spacing of that row: a role prop or nothing, never a gap, margin, padding or px.
 
-| Component | Inline | Block | Column gap | Row gap |
+| Situation | Gap | Padding | Margin | The author writes |
 | --- | --- | --- | --- | --- |
-| Page body | gutter 12 / 24 / 32 | bottom region | main ↔ rail region | region |
-| PageHeader | gutter, 12 under `chrome="panes"` | top section, bottom 0 over tabs | title ↔ actions region | title ↔ description identity, copy ↔ tabs row |
-| Page tabs (underline) | first label 0, each tab 12 per side | 0 | labels 24 apart | — |
-| Header → body | — | — | — | region, or 0 under `chrome="panes"` |
-| Sidebar rail (collapsed) | 12 | 12 | — | items identity, groups section |
-| Sidebar item | 12 | derived (h 40) | glyph ↔ label row | identity |
-| Dialog, Drawer | 12 | 12 | footer actions inline | header ↔ body ↔ footer row |
-| SurfaceCard (any content) | 12 | 12 | two-column form row | bands row, title ↔ meta identity, fields row |
-| Labelled card | card inset | label top = inset | — | label ↔ content row |
-| Joined card band | card inset | card inset | — | seam |
-| Card grid (`Grid kind="cards"`) | — | — | section | section |
-| Pane (`PaneGrid`) | 12 | 12 on every side | 0 + divider | sections row |
-| Composer | pane inset | pane inset | field ↔ send inline | chips ↔ field inline, field ↔ hint identity |
-| Box in a card (nested card, notice, stat cell) | 8 | 8 | — | identity |
-| Stat strip (`DescriptionList layout="stat-strip"`) | cell 8 | cell 8 | 0 + a line between cells | 0 + a line between rows; label ↔ figure ↔ meta identity |
-| ListBox option | 8 | 8 (h 40) | avatar ↔ text row | title ↔ description identity |
-| Table | cells 12 | cells 8 (h 40) | — | seam |
-| Alert, Toast | 12 (8 in a card; the toast's close side 8) | 12 (8 in a card) | glyph ↔ text inline | identity |
-| EmptyNotice, FileDropzone | 24 | 24 | — | row |
-| Chat bubble | 12 | 8 | avatar ↔ bubble inline | identity / row / section by G5 |
-| Meter | 0 | 0 | label ↔ value inline | header ↔ bar identity |
-| Button sm / md / lg | 8 / 12 / 24, glyph side 4 / 8 / 12 | derived (h 32 / 40 / 48) | glyph ↔ label inline | — |
-| Field | 12 | derived (h 40) | glyph ↔ text inline | label ↔ field ↔ help identity |
-| Chip, Tag | vendor 8 | derived | inline in a set | inline when it wraps |
-| Badge | vendor 8 | 0 | dot ↔ text identity | — |
+| Page body | main and rail region; header to body region (0 under `chrome="panes"`) | gutter 12 / 24 / 32 | none | `Page` `chrome`, `Grid kind="main-rail"` |
+| Page header | title to description identity, copy to tabs row | gutter, 12 under `chrome="panes"`; top section, bottom 0 over tabs | none | `header` data |
+| Page tabs (underline) | labels 24 apart | first label 0, 12 per side | none | `header.tabs` |
+| Sidebar item and rail | items identity, groups section | item 12 by derived 40; collapsed rail 12 | none | `groups` data |
+| `Section` | head, filter and content one section step (24) apart; title to count identity | none: the section adds none | none | `title`, `kind` |
+| `SurfaceCard`, any kind | bands row; label to card row; label to fact inline; title to meta identity; seams between faces 0 | 12 on every side; a face of a bands card the same, so a seam runs full-bleed | none | `kind`, `label`, `fact`, `footer` |
+| `kind="list"` rows | rows divided by lines (n-1, seam 0) or by gap, never both | row 8 block, the content inset inline (a 40 row for one line) | none | `items` |
+| `kind="figures"` | cells touching (0) with a line between cells and rows; label to figure to meta identity | cell 8 | none | `items` |
+| `kind="tile"` | mark to name inline; status and action at the bottom row | 12 | none | `name`, `mark`, `badge`, `action` |
+| Card grid (`Grid kind="cards"`) | section on both axes | none | none | `kind` |
+| Pane (`PaneGrid`) | 0 and a divider; sections row | 12 on every side | none | `areas`, `columns`, `rows` |
+| Dialog, Drawer | header, body and footer row; footer actions inline | 12 | none | `title`, `body`, `footer` |
+| Box in a surface (a notice, a `Quote`, a stat cell) | identity | 8 | none | the component |
+| `ListBox` option | avatar to text row; title to description identity | 8 (h 40) | none | `items` |
+| Table | seam | cells 12 inline, 8 block (h 40) | none | `columns`, `rows` |
+| `Alert`, `Toast` | glyph to text inline; identity | 12 (8 in a surface); the toast's close side 8 | none | `title`, `description`, `action` |
+| `EmptyNotice`, `FileDropzone` | line to action row | 24 on every side | none | `title`, `action` |
+| `MessageBubble` | avatar to bubble inline; one sender identity, a sender change row, a day divider section (G5) | 12 inline, 8 block | none | the thread's order |
+| `Meter` | label to value inline; header to bar identity | 0 | none | `value` |
+| `Button` sm / md / lg | glyph to label inline | 8 / 12 / 24, glyph side 4 / 8 / 12 (h 32 / 40 / 48) | none | `size` at most |
+| Field | label to field to help identity | 12 (h 40) | none | `label`, `description` |
+| `Chip`, `Tag` | inline in a set; inline when it wraps | vendor 8, derived block | none | the set |
+| `Badge` | dot to text identity | vendor 8, block 0 | none | `children` |
+| A wrapping set | one role on both axes (G3) | none | none | `Cluster gap` |
+| A stack of blocks | one role between neighbours | none | none | `Stack gap` |
+
+A margin appears nowhere in the author's column: M1 names the three cases the grammar writes one itself.
 
 ### Padding ids
 
@@ -167,7 +171,7 @@ reading measure stays). `MARGIN-0..6` are the same steps used as a named placeme
 | --- | --- |
 | grammar | every number: the role tokens, the insets of every component, the divider-facing sides, the bleed API, the row and bubble rhythm, and the `data-contract` stamps (`PADDING-*`, `GAP-*`) on each part |
 | app | structure and relation names: `<Stack gap="region \| section \| row \| inline \| identity">`, `<Cluster gap>` (a wrapping set, one role on both axes), `<Grid kind="cards \| form \| main-rail">`, `PaneGrid`/`PaneSection`, `Page chrome`; measure and columns through props; no spacing class |
-| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci/spacing-scale` (grammar stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`, `no-fractional-step`; proof TASTE-4 measures the rhythm on the live page |
+| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci/spacing-scale` (grammar stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`; proof TASTE-4 measures the rhythm on the live page |
 
 An app moves onto role props with `starci app codemod spacing-roles` (dry run by default, a report of every rewrite
 and of every utility left for a person).
@@ -188,7 +192,7 @@ weights):
 
 - A heading's level is its document position and sets its size together, so tag and size never drift; levels stop
   at four, because a fifth means the page nested deeper than a reader holds. Lint:
-  `starci-grammar/no-raw-structural-element` (a heading tag), `starci-grammar/no-text-heading` (R358).
+  `starci-grammar/no-heading-tag-outside-heading-component`, `starci-grammar/no-hand-rolled-heading`.
 - **Weight refines a rank, never creates one**; structure must hold with weight and colour removed.
 - Body copy is never shrunk to fit a container; the layout is repaired instead.
 
@@ -211,12 +215,21 @@ Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](p
 | TONE-2 | muted | a line that recedes because something beside it carries the meaning; every lowest-rank line; heading level 4 |
 | TONE-3 | accent | one short span whose emphasis is already decided; never a paragraph, never repeated across peers |
 
-Status is never a tone choice: success, warning, danger and information belong to the owners that carry them. For a
-status tone x, content that sits on a background of the tone uses the pair x-soft and x-soft-foreground, and a mark that
-stands alone, with no background of the tone behind it, uses x itself (a solid fill takes x-foreground). A bare mark is
-measured at `contrast.statusSoft` as a glyph or title and at `contrast.text` as body text, and no app darkens the tone:
-a tone that misses its floor is changed in the grammar's token. Offset Pop's light theme is the one named exception: its pastel tones are kept and a bare mark there wears the soft foreground. Lint: `starci-grammar/status-text-uses-soft-foreground`.
-When a pair fails contrast, the app changes the surface, never the token.
+Status is never a tone choice: success, warning, danger and information belong to the owners that carry them. What sits
+behind a mark picks its colour token, by name, in every theme (ruling `status-soft-pair-on-background`).
+
+Choice `tone.choose.pair`: which token a status tone x paints with. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| on-tint | the content sits on a background of the tone: a tint, a tinted tile, a tinted band | the pair `x-soft` (the ground) with `x-soft-foreground` (the content) | lint `starci-grammar/status-text-uses-soft-foreground`; story `status-pair--bare-marks` |
+| solid | the content sits on a solid fill of the tone | the fill `x` with `x-foreground` | judgement |
+| alone | a mark stands alone: no background of the tone behind it (a bare glyph, a count, a title on the page or on a neutral surface) | `x` itself | lint `starci-grammar/status-text-uses-soft-foreground` |
+| accent | the accent painted as text, on the page or on its tint | `--accent` alone; on its tint `--accent-soft-foreground` | judgement |
+
+The app sets the values of `x`, `x-soft` and `x-foreground` in its own CSS (ruling `app-owns-theme`) and no gate judges them;
+a family's default tones are proved at `contrast.statusSoft` and `contrast.text` in the package's stories. Offset Pop's light
+theme is the one named exception: its pastel tones are kept and a bare mark there wears the soft foreground.
 
 ## Paint
 
@@ -236,8 +249,9 @@ Soft faces are translucent, so contrast is measured on the composed pixels, neve
 
 **The layer chain** holds on every screen: page background, then an owning surface, then its nested controls.
 Grouped content stands in a surface; only page-level marks (a brand lockup, the page heading) sit on the
-background. A form is one unit: its fields and its actions stand in the same surface. Nested controls take the
-grammar's nested treatment, resolved from context; the app never passes a static field variant (the prop types have no `variant`).
+background. A form is one unit: its fields and its actions stand in the same surface. Controls in a surface take the
+grammar's treatment, resolved from context; the app never passes a field variant. Lint:
+`starci-fe/nested-control-variant`.
 
 ### Boundary
 `separator` draws a line **between** things; `border` outlines **one** thing.
@@ -248,10 +262,10 @@ grammar's nested treatment, resolved from context; the app never passes a static
 | BOUNDARY-2 | per-row trailing lines | the last row drops its line: a set of n rows has n-1 lines |
 | BOUNDARY-3 | one parent declaration for a uniform set | no row can miss or add a line |
 | BOUNDARY-4 | inline-axis seams | exist only at the width where the columns exist |
-| BOUNDARY-5 | an outline | belongs to a grammar object (nested card, media frame, code block) |
-| BOUNDARY-6 | elevation by depth | a top-level card is raised; a nested card is subordinate; never both raised |
+| BOUNDARY-5 | an outline | belongs to a grammar object (media frame, code block, a quote's ground) |
+| BOUNDARY-6 | elevation | a card is raised and has one depth; a surface never stands inside another, so no nested edge exists |
 
-Elevation per depth is the grammar's (contract: surface depth treatments).
+Elevation is the family's (contract: the card's edge).
 
 ### Radius
 A corner follows the **level** of the box, and the ramp moves as one body when a grammar changes its base radius.
@@ -316,7 +330,7 @@ The default (start-aligned, wrapping) is right far more often than any rule here
 | When you change | Check |
 | --- | --- |
 | a control's step | its corner role, glyph, label rank and the row's other controls ([scale.md](scale.md)) |
-| a surface's face | the paired foreground, contrast on composed pixels, the nested controls' treatment |
+| a surface's face | the paired foreground, contrast on composed pixels, the controls' treatment |
 | a card's bands | separator count (`budgets.hairlinesPerCard`), side-contact padding, full-bleed dividers |
 | a region's gap | its role (G2: monotonic against its parent and children), R1 against the inset of its box |
 | a region's measure | `min-w-0`, overflow owner, truncation rules of its text |

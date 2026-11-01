@@ -3,8 +3,8 @@
 A grammar is the visual language an app's UI is drawn in. It is code first: the `@starci/grammar` package
 publishes the components, their props and anatomy, the tokens and their values. This folder holds what code
 cannot say: the contract every grammar implements, why each grammar looks the way it does, and how to compose
-with it. Two apps built from the same package and the same knowledge must come out the same; a choice they could
-make differently is a gap, listed in [open-grammar](../decisions/open-grammar.md) until an API, a lint rule or
+with it. Two apps built from the same package and the same knowledge must come out the same in structure, and paint is each app's own
+(ruling `app-owns-theme`); a structural choice they could make differently is a gap, listed in [open-grammar](../decisions/open-grammar.md) until an API, a lint rule or
 one rule here removes it.
 
 Read by: an agent drawing or implementing UI, a grammar author, an auditor judging a render. Gates read
@@ -18,7 +18,7 @@ what a gate measures.
 
 | Layer | Who decides | What it decides | Owner | Proof |
 |---|---|---|---|---|
-| 1. Grammar and gates | the package and the DNA gate | constraints: what holds on every render of the grammar, whatever was chosen | `@starci/grammar` code; the laws and their measures in [contract.yaml](contract.yaml) `mustKeep` | the DNA gate measures the render; pass or fail, no judgement |
+| 1. Grammar and gates | the package, its types and lint, and the DNA gate | constraints: what holds on every render of the grammar, whatever was chosen | `@starci/grammar` code; the laws and their measures in [contract.yaml](contract.yaml) `mustKeep` | the compiler and lint refuse a wrong tree; `starci dna check` measures the rendered stories; render baselines detect change; pass or fail, no judgement ([who holds each proof](../ui/proof.md#who-holds-each-proof)) |
 | 2. The choice | the LLM drawing or implementing the screen | which component, which variant-deciding fact (intent, step, placement-free facts), which spacing step | the Choose sections of [ui/components](../ui/components/README.md), [ui/scale](../ui/scale.md) and [ui/presentation](../ui/presentation.md) | the record cites the choice anchor and the row it took |
 | 3. Taste | a reviewer of a different model than the author | whether the whole reads well: hierarchy, balance, density, voice | [ui/proof](../ui/proof.md) scored lenses | the review verdict; a rejection names the rule that was missing |
 
@@ -26,9 +26,9 @@ what a gate measures.
 (a selector, a metric, an expected value). Examples: an `md` control is 40px tall
 (`DNA-COMMON-CONTROL-MD`); a horizontal divider has inline inset 0px inside its surface
 (`DNA-COMMON-DIVIDER-FULL-BLEED`); a Badge with its dot has the height of the HeroUI soft Chip of the
-same size (`DNA-COMMON-STATUSDOT-CHIP-PARITY`); no raised surface sits inside a surface
-(`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); a list card's label sits above its shell
-(`DNA-COMMON-LISTCARD-LABEL-OUTSIDE`); in `offset-pop` pink is never a text colour
+same size (`DNA-COMMON-BADGE-DOT-CHIP-PARITY`); no surface sits inside a surface
+(`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); a card's label row sits above its content frame
+(`DNA-COMMON-CARD-LABEL-ABOVE`); in `offset-pop` pink is never a text colour
 (`DNA-OFFSET-POP-PINK-NEVER-TEXT`). A law nobody can measure is not layer 1: it is a choice rule or taste.
 
 **Layer 2 is a choice, read from a table and cited.** The LLM reads the Choose table that owns the decision,
@@ -59,12 +59,13 @@ HeroUI (anatomy, behaviour, a11y, default paint)                     ../vendor/
    ▼
 Common   renderers, anatomy, spacing, size ladder, intent map, root and portal mechanics; no colour
    │ every grammar implements contract.yaml over Common
-   ├── core        strict HeroUI parity: tokens and theme bindings, a few scoped rules
-   └── offset-pop  custom parity: tokens plus its own component sheets
+   ├── core        strict HeroUI parity: a default palette (theme.css), a few scoped rules
+   └── offset-pop  custom parity: a default palette (theme.css) plus its own component sheets
 ```
 
-- **Common is the base, not a grammar.** It supplies every renderer over HeroUI and assigns no colour: a page
-  with only Common's sheet is unpainted, by design.
+- **Common is the base, not a grammar.** It supplies every renderer over HeroUI and assigns no colour, not even a
+  literal fallback: the paint is the HeroUI tokens an app sets or a family's `theme.css`, and a page with neither shows
+  HeroUI's own defaults.
 - **A grammar is a scope, not a subclass.** It replaces only `GrammarRoot`, which stamps
   `data-grammar-family="<id>"`, and ships one stylesheet whose rules sit in its layer under that attribute. Its
   types cannot change a Common prop (`owner: @starci/grammar src/common/registry.tsx`). Grammars are siblings;
@@ -99,14 +100,16 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 |---|---|---|
 | Component set, props, closed values | `src/common/registry.tsx` and each props type; per role in [contract.yaml](contract.yaml) `roles` | which role the job needs ([ui/components](../ui/README.md)) |
 | Anatomy, roles, keyboard, focus | HeroUI through Common's wrappers; [vendor/parity.yaml](../vendor/parity.yaml) | nothing |
-| Colour, radius, shadow, motion | `src/<id>/dna.ts` and `src/<id>/styles.css`, shaped by contract `tokens` and `dna` | nothing (brand tokens: gap G-14) |
+| Colour | the app's HeroUI tokens on `:root`, `.light`, `.dark`; a family's optional `src/<id>/theme.css` is the default | the whole palette, in its own CSS, by HeroUI's names only; the mode is its class on `html` |
+| Radius, shadow, motion | `src/<id>/dna.ts` and `src/<id>/styles.css`, shaped by contract `tokens` and `dna`; type, corner and stroke ramps in `src/common/ramps.css` | nothing |
 | Spacing scale and rhythm | `src/common/spacing.ts` | which relationship a gap expresses ([ui/presentation](../ui/presentation.md)) |
 | Control heights | Common tokens `--grammar-control-height-*`, contract `sizes`, ruling `control-height-40` | `sm` or `lg` by [ui/scale](../ui/scale.md) (gap G-6); `control` never |
 | Hit area and target floor | Common tokens `--grammar-target-*`, contract `sizes.target` | nothing |
 | Corners | contract `tokens.corner` roles, values from the grammar's base radius | the corner role of an app-owned box ([ui/presentation](../ui/presentation.md)) |
 | Button variant | contract `intent`; resolver `src/core/buttonIntent.tsx` | `intent`, and `step` for a destructive command |
 | Placement, bar control size | the composing Grammar component | nothing |
-| Field, Tabs and Select look; card depth | surface nesting context `src/core/surfaceContext.tsx` | nothing (gaps G-2, G-3) |
+| Field, Tabs and Select look | the surface they stand on, read from context | nothing |
+| Surface nesting | none: a surface never stands inside another, refused by the types, lint and a development throw | nothing |
 | Root, overlay portal, toast region | `GrammarRoot`, `src/core/overlayScope.tsx`, `Toaster` | mount one root and one `Toaster` (placement: gap G-11) |
 | Glyph set and sizes | Grammar `Icon`, DNA arrangement; grammar lint | which meaning to show (gap G-16) |
 | Type ranks | `Text` and `Heading` props | the rank by job ([ui/presentation](../ui/presentation.md)); weight (gap G-12) |

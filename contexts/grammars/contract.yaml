@@ -33,8 +33,8 @@ registry:
   conformance: every ui rule id is inherited or carries family evidence naming the mechanism
 
 tokens:
-  # Bound by the grammar on its root (HeroUI semantic variables). A role left unbound falls to HeroUI's default
-  # and must be declared as such in the grammar's dna.
+  # HeroUI semantic variables, read by every component and set by the app (ruling app-owns-theme). A grammar declares none
+  # on its root; its default palette is the optional theme.css of HeroUI tokens, and a role neither sets is HeroUI's own.
   colour: [background, foreground, surface, surface-foreground, surface-secondary, surface-secondary-foreground,
            surface-tertiary, default, default-foreground, muted, border, separator,
            accent, accent-foreground, accent-soft, accent-soft-foreground, link, focus,
@@ -166,7 +166,7 @@ roles:
     vendorParity: [tabs]
     slots: ["items: label, leading, href", panels]
     variants:
-      variant: { values: [primary, secondary], meaning: { primary: "pill segment: a filter's shape, refused on Tabs in apps", secondary: "underline: every tab bar, page and region alike" }, chosenBy: grammar }
+      look: { values: [underline], meaning: "every tab bar, page and region alike; a filter over a collection is a FilterButtonGroup, never a tab bar", chosenBy: grammar }
       inset: { values: [page, none], chosenBy: app }
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
@@ -205,7 +205,7 @@ roles:
       badgeDot: { values: [dot, live], chosenBy: app, meaning: "Badge isDot is a status with its words; isLive makes it a live feed (the dot echoes, a polite live region)" }
       reorder: { values: [none, TagGroup onReorder], chosenBy: app }
     sizes: { badge: below the ramp, statusDot: { steps: [sm, md, lg], default: md }, badgeDot: { steps: [sm], equals: the vendor Chip of the same size }, tagGroup: { steps: [sm, md], default: sm } }
-    states: [selected (TagGroup), disabled, echo (StatusDot, off under reduced motion), live (Badge isDot isLive: a polite live region, the words carry the state)]
+    states: [disabled, echo (StatusDot, off under reduced motion), live (Badge isDot isLive: a polite live region, the words carry the state)]
     grammarMayChange: [tone paint through tokens]
     dna: [DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-DOT-SIZE, DNA-COMMON-DOT-NAMED, DNA-COMMON-ECHO-LIGHT-STOP, DNA-COMMON-ECHO-REDUCED-MOTION, DNA-COMMON-TAG-REMOVE, DNA-COMMON-TAG-REORDER-KEYS]
 
@@ -398,33 +398,34 @@ roles:
     grammarMayChange: [bar and sidebar paint]
     dna: [DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-NO-BOTTOM-TABS, DNA-COMMON-ONE-SHELL, DNA-COMMON-ONE-SCROLL-OWNER]
 
-  - id: page-header
-    ui: ui/components/page-header.md
-    renderers: [Page]
-    vendorParity: [breadcrumbs, tabs, separator]
-    slots: ["breadcrumbs: label, items", title, description, meta, status, mark, actions, "tabs: label, items, selectedKey"]
-    variants:
-      tabs: { values: [none, page tabs on the separator], chosenBy: app from tabs.choose.level:page }
-      measure: { values: [reading, product, full], chosenBy: app, equals: the body of the Page below the band }
-    sizes: none; controls in actions keep the ramp, a tab bar lands on md
-    states: [ready, skeleton]
-    grammarMayChange: [band paint, separator paint and weight, title weight]
-    dna: [DNA-COMMON-PAGE-HEADER-BAND, DNA-COMMON-PAGE-HEADER-INSET, DNA-COMMON-PAGE-HEADER-ONE-H1, DNA-COMMON-PAGE-HEADER-SEPARATOR, DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR, DNA-CORE-PAGE-HEADER-HAIRLINE, DNA-OFFSET-POP-PAGE-HEADER-INK-RULE]
-
   - id: page
     ui: ui/components/page-header.md
     renderers: [Page]
     vendorParity: [breadcrumbs, tabs, separator]
-    slots: ["header: the page-header slots as data (breadcrumbs, title, description, meta, status, mark, actions, tabs); in bleed and panes the breadcrumbs alone", "children: the body; in panes exactly one PaneGrid"]
+    slots: ["header: the page header as data (breadcrumbs, title, description, meta, status, mark, actions, tabs); in bleed and panes the breadcrumbs alone", "children: the body; in panes exactly one PaneGrid"]
     variants:
       chrome: { values: [standard, bleed, panes], chosenBy: app from page-header.choose.head (bleed for an app surface; panes for a tabbed page of panes) }
       header: { values: [none, the page header band, the trail alone (bleed and panes only)], chosenBy: app }
+      tabs: { values: [none, page tabs on the separator], chosenBy: app from tabs.choose.level:page }
       measure: { values: [reading, product, full], chosenBy: app, equals: the header's content measure }
-    sizes: none
-    states: [ready, skeleton (passed to the header)]
-    grammarMayChange: [the header band's paint (page-header)]
-    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP, DNA-COMMON-PAGE-BLEED-BODY, DNA-COMMON-PAGE-PANES-FLUSH]
+    sizes: none; controls in the header actions keep the ramp, a tab bar lands on md
+    states: [ready, skeleton (passed to the header band)]
+    grammarMayChange: [the header band's paint, separator paint and weight, title weight]
+    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP, DNA-COMMON-PAGE-BLEED-BODY, DNA-COMMON-PAGE-PANES-FLUSH, DNA-COMMON-PAGE-HEADER-BAND, DNA-COMMON-PAGE-HEADER-INSET, DNA-COMMON-PAGE-HEADER-ONE-H1, DNA-COMMON-PAGE-HEADER-SEPARATOR, DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR, DNA-CORE-PAGE-HEADER-HAIRLINE, DNA-OFFSET-POP-PAGE-HEADER-INK-RULE]
     lint: [starci-grammar/pane-grid-page]
+
+  - id: section
+    ui: ui/components/list-table.md
+    renderers: [Section]
+    vendorParity: []                              # no HeroUI part: a Common frame
+    slots: ["title (the heading and the landmark name)", headingLevel, "filter (a FilterButtonGroup)", "items (kind list: the typed rows of a list card)", "children (kind body)", "actions (the page command, at the end of the head row)"]
+    variants:
+      kind: { values: [body, list], chosenBy: app from list-table.choose.role (list when the rows search, filter or page) }
+    sizes: none
+    states: [ready, skeleton, empty (kind list: required)]
+    grammarMayChange: [heading weight]
+    dna: []
+    lint: [starci-fe/no-heading-above-card]
 
   - id: diagram
     ui: ui/components/diagram.md
@@ -594,7 +595,7 @@ mustKeep:
     # --- root, tokens and rhythm
     - id: DNA-COMMON-TOKENS-BOUND
       role: root
-      law: Every contract colour role resolves on the grammar root; none falls through to the host theme.
+      law: Every contract colour role resolves to a value, the app's own or the family's default theme.css; none is left undefined.
       measure: { kind: tokens, metric: { contract: tokens.colour }, op: set }
       owner: contract tokens
       followUp: C-3, C-4
@@ -960,12 +961,12 @@ mustKeep:
 
     # --- page header (ruling page-header-band)
     - id: DNA-COMMON-PAGE-HEADER-BAND
-      role: page-header
+      role: page
       law: The page header is a band painted with the surface over the page background.
       measure: { kind: style, select: '[data-component="PageHeader"]', metric: background-color, op: "=", value: { token: --surface } }
       owner: page-header-band
     - id: DNA-COMMON-PAGE-HEADER-INSET
-      role: page-header
+      role: page
       law: The band's content is inset by the page inset inline and the region step at the top, so its edges are the page content's edges.
       measure:
         kind: style
@@ -973,17 +974,17 @@ mustKeep:
         checks: [{ metric: padding-inline-start, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-inline-end, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-block-start, op: "=", value: { token: --grammar-region-gap } }]
       owner: page-header-band
     - id: DNA-COMMON-PAGE-HEADER-ONE-H1
-      role: page-header
+      role: page
       law: The page header holds exactly one heading, the page's h1.
       measure: { kind: count, scope: '[data-component="PageHeader"]', select: ':is(h1, h2, h3, h4, h5, h6)', op: "=", value: 1 }
       owner: page-header-band; ui/presentation.md FONT-4
     - id: DNA-COMMON-PAGE-HEADER-SEPARATOR
-      role: page-header
+      role: page
       law: The band ends in its own separator, which runs the band's full width at its bottom edge, with or without tabs.
       measure: { kind: relation, select: '[data-grammar-page-header-separator] > [data-component="Divider"]', metric: [left, right, bottom], op: "=", ref: { within: '[data-component="PageHeader"]', select: self, metric: [left, right, bottom] } }
       owner: page-header-band
     - id: DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR
-      role: page-header
+      role: page
       law: Page tabs in the header stand on its separator; the selected tab's underline lies over it.
       measure: { kind: relation, select: '[data-component="PageHeader"] [role="tab"][aria-selected="true"] .tabs__indicator', metric: bottom, op: "=", ref: { within: '[data-component="PageHeader"]', select: '[data-grammar-page-header-separator] > [data-component="Divider"]', metric: bottom } }
       owner: page-header-band; tabs.choose.level:page
@@ -1067,7 +1068,7 @@ mustKeep:
       owner: mermaid-diagram
   core:
     - id: DNA-CORE-PAGE-HEADER-HAIRLINE
-      role: page-header
+      role: page
       law: The page header's separator is a 1px hairline in the separator token.
       measure:
         kind: style
@@ -1127,7 +1128,7 @@ mustKeep:
 
   offset-pop:
     - id: DNA-OFFSET-POP-PAGE-HEADER-INK-RULE
-      role: page-header
+      role: page
       law: The page header closes on the ink rule at the outline width, the rule under the TopBar.
       measure:
         kind: style

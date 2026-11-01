@@ -30,7 +30,7 @@ rulings:
   - id: same-app-from-same-inputs
     date: '2026-10-27'
     status: live
-    ruling: "Every app is built from the grammar package plus knowledge and comes out the same; a visual choice an app could make two ways is a gap closed in the grammar or in ui, never left to the app."
+    ruling: "Every app is built from the grammar package plus knowledge and comes out the same in structure: which component, which spacing role, which anatomy. A structural choice an app could make two ways is a gap closed in the grammar or in ui, never left to the app. Paint is the other half and is the app's (ruling app-owns-theme)."
     owner: "contexts/README.md; code/fe/README.md"
   - id: two-grammars
     date: '2026-10-27'
@@ -54,7 +54,7 @@ rulings:
   - id: heroui-defaults-first
     date: '2026-09-27'
     status: live
-    ruling: "HeroUI and grammar defaults come first; the canvas stays the vendor background, and a brand departure is a declared brand token, never a local repaint."
+    ruling: "HeroUI's anatomy, behaviour and tokens come first: a grammar component reads HeroUI's tokens and keeps the vendor's defaults unless a recorded ruling names the repaint. An app departs from a family's default by setting HeroUI's tokens in its own CSS, never by repainting a component locally (ruling app-owns-theme)."
     owner: "contexts/ui/presentation.md (Paint)"
   - id: control-height-40
     date: '2026-10-26'
@@ -67,6 +67,13 @@ rulings:
     ruling: "Where a card's name sits follows the card's kind, in every grammar, and no app or family chooses it. A card that heads a section (one subject with its own title: a list, an accordion, figures, a body that stands alone) carries its label outside the material, as an unpainted row above it. A tile, one of several peers repeated in a grid, carries its name inside, beside its logo or mark, and has no outside label. A docked region is a Pane, not a card, so a card has no panel placement. Each family paints the name; none moves it. The owner's words, relayed: label position depends on the card kind; a tile repeated in a grid carries its name inside with its logo; label outside fits only a card that heads a section."
     owner: "contexts/grammars/contract.md Card; contexts/grammars/contract.yaml (DNA-COMMON-CARD-LABEL-ABOVE, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE); contexts/grammars/core.md; contexts/ui/components/card.md card.choose.role; contexts/decisions/open-grammar.md G-20"
     absorbs: [card-label-placement-per-grammar]
+  - id: app-owns-theme
+    date: '2026-11-01'
+    status: live
+    words: "bản thân app phải set được không dựa grammar"
+    ruling: "The structure of a screen comes out the same in every app; its paint is the app's. An app sets HeroUI's tokens in its own CSS, on :root, .light and .dark, and every part of the grammar follows; it writes no grammar-private name and may set nothing and take the family's default. A family publishes its default palette as an optional theme.css of HeroUI tokens, never as a declaration on the grammar root. The mode is the app's class on html. A tone x on its own tint wears x-soft and x-soft-foreground and a mark alone wears x, whatever the values. No gate and no rule judges the contrast of an app's chosen colours: a family's defaults are proved in the package's own stories and block nothing in an app. Avatar initial colours stay as identity art, not a theming violation."
+    owner: "@starci/grammar src/core/theme.css, src/offset-pop/theme.css, src/common/styles.css; contexts/grammars/README.md (Theming); lint starci/brand-layer-shape"
+    absorbs: [status-contrast]
   - id: surfacecard-always-painted
     date: '2026-10-25'
     status: live
@@ -109,7 +116,7 @@ rulings:
   - id: status-soft-pair-on-background
     date: '2026-11-01'
     status: live
-    ruling: "A status tone x (success, warning, danger, info) paints content one of two ways. Content that sits on a background of the tone (a tint, a tinted tile, a tinted band) uses the pair x-soft and x-soft-foreground; a mark that stands alone, with no background of the tone behind it (a bare glyph, a required asterisk, a count, a title on the page or on a neutral surface), uses x itself. A solid fill takes x-foreground. The soft pair on its tint is accepted at the lower contrast floor and body and interactive text keep the full floor; a bare x is judged at `contrast.statusSoft` as a glyph or title and at `contrast.text` as body text, and a tone value that does not reach its floor is changed in the grammar's token, never darkened by an app. Core's light tones are set so a bare mark reaches 3:1 on the surface (success oklch(62.8% 0.1941 162.85), warning oklch(67% 0.159 84.37), info oklch(66.8% 0.17 250)). Named exception: on Offset Pop's light theme only, a bare status mark wears the soft foreground, because the owner kept the pastel tones (\"1. Pastel\") and a bare success, warning or info there measures 1.30 to 1.46:1; Offset Pop's dark theme keeps bare x, and the lint reports no lone soft foreground for Offset Pop."
+    ruling: "A status tone x (success, warning, danger, info) paints content one of two ways. Content that sits on a background of the tone (a tint, a tinted tile, a tinted band) uses the pair x-soft and x-soft-foreground; a mark that stands alone, with no background of the tone behind it (a bare glyph, a required asterisk, a count, a title on the page or on a neutral surface), uses x itself. A solid fill takes x-foreground. The soft pair on its tint is accepted at the lower contrast floor and body and interactive text keep the full floor; a family's own default tones are proved in the package's stories at `contrast.statusSoft` as a glyph or title and at `contrast.text` as body text, and no gate judges the colours an app sets (ruling app-owns-theme). Core's light tones are set so a bare mark reaches 3:1 on the surface (success oklch(62.8% 0.1941 162.85), warning oklch(67% 0.159 84.37), info oklch(66.8% 0.17 250)). Named exception: on Offset Pop's light theme only, a bare status mark wears the soft foreground, because the owner kept the pastel tones (\"1. Pastel\") and a bare success, warning or info there measures 1.30 to 1.46:1; Offset Pop's dark theme keeps bare x, and the lint reports no lone soft foreground for Offset Pop."
     words: "TEXT TRÊN BG THÌ X-SOFT VÀ X-SOFT-FOREGROUND, CÒN NẾU X ĐỘC LẬP THÌ ĐỂ X LUN"
     owner: "contexts/ui/proof/thresholds.yaml; contexts/ui/presentation.md (Tone); lint starci-grammar/status-text-uses-soft-foreground"
     absorbs: [status-tones-follow-heroui]
@@ -148,11 +155,6 @@ rulings:
     status: live
     ruling: "Navigation-like single-select rows show selection and hover by fill, without a check indicator, while the selected state stays available to assistive technology."
     owner: "contexts/ui/components/list-table.md"
-  - id: joined-multi-pane
-    date: '2026-10-26'
-    status: live
-    ruling: "List, detail and information panes form one joined surface separated by vertical dividers, with no gap showing the page background; an absent pane removes its divider."
-    owner: "contexts/ui/composition.md LAYOUT-1"
   - id: scroll-region-background-tone
     date: '2026-10-26'
     status: live
@@ -161,8 +163,8 @@ rulings:
   - id: hover-actions-floating-toolbar
     date: '2026-10-26'
     status: live
-    ruling: "Message actions use the grammar's floating toolbar beside the bubble, tooltip-named icon buttons that never overlap its text."
-    owner: "contexts/ui/composition.md (Action)"
+    ruling: "The actions of an item that show on hover and focus use the grammar's floating toolbar beside the item, tooltip-named icon buttons that never overlap its text; a MessageBubble draws its own."
+    owner: "contexts/ui/components/message-bubble.md"
   - id: divider-full-bleed
     date: '2026-10-26'
     status: live
@@ -223,12 +225,12 @@ rulings:
   - id: page-header-band
     date: '2026-10-28'
     status: live
-    ruling: "A page is headed by Grammar's PageHeader: a surface band across the primary region whose content shares the page content's edges, ending in its own full-width separator with or without tabs, page tabs standing on it; an app never composes Breadcrumbs and SectionHeader into a page head."
-    owner: "contexts/ui/components/page-header.md; contexts/grammars/contract.yaml page-header; contexts/hfs/rules.yaml R323"
+    ruling: "A page is headed by the header of Grammar's Page: a surface band across the primary region whose content shares the page content's edges, ending in its own full-width separator with or without tabs, page tabs standing on it; an app never composes a trail and a heading into a page head by hand."
+    owner: "contexts/ui/components/page-header.md; contexts/grammars/contract.yaml page; contexts/hfs/rules.yaml R323"
   - id: page-frame
     date: '2026-10-29'
     status: live
-    ruling: "A route page is one Grammar Page: the header band full width, the body always inside the page measure and gutter one region step below it, nothing in the body escaping the gutter; Page is the single owner of the page inset and the page rhythm, layout frames are pure layout and never wrap a page in PageContainer; page tabs are the header's tabs. An app surface (a chat, a split editor) is a Page with chrome bleed: no inline gutter, no block padding and no clip, the body filling the region so a FillViewport in it keeps its one bottom inset; its header is optional, and when given it is the band (a title) or the breadcrumbs alone, the title optional only in bleed. A route draws exactly one Page, drawn by its page owner, by the owner's pure half, or by the one connected block the owner renders as its root (one level), where client data builds the header a server owner may not; siblings beside it or a second Page stay refused. A route segment layout whose owner, its pure half or its one root block draws a Page with its header and header.tabs as link tabs is the one Page of every route under it: those page owners draw body content only, need no Page and are refused one; the layout's Page has nothing beside it, so a PageHeader beside it moves into its header. A page owner that draws no UI (it only redirects, refuses with notFound or returns null) needs no Page, nor does a page mounted only under the auth route group (auth), whose layout draws the auth frame that is its page frame; workbench pages are ordinary pages."
+    ruling: "A route page is one Grammar Page: the header band full width, the body always inside the page measure and gutter one region step below it, nothing in the body escaping the gutter; Page is the single owner of the page inset and the page rhythm, layout frames are pure layout and never wrap a page in a container; page tabs are the header's tabs. An app surface (a chat, a split editor) is a Page with chrome bleed: no inline gutter, no block padding and no clip, the body filling the region so what it holds fills it; its header is optional, and when given it is the band (a title) or the breadcrumbs alone, the title optional only in bleed. A route draws exactly one Page, drawn by its page owner, by the owner's pure half, or by the one connected block the owner renders as its root (one level), where client data builds the header a server owner may not; siblings beside it or a second Page stay refused. A route segment layout whose owner, its pure half or its one root block draws a Page with its header and header.tabs as link tabs is the one Page of every route under it: those page owners draw body content only, need no Page and are refused one; the layout's Page has nothing beside it, so a PageHeader beside it moves into its header. A page owner that draws no UI (it only redirects, refuses with notFound or returns null) needs no Page, nor does a page mounted only under the auth route group (auth), whose layout draws the auth frame that is its page frame; workbench pages are ordinary pages."
     owner: "contexts/ui/components/page-header.md; contexts/grammars/contract.yaml page; contexts/hfs/rules.yaml R324, R325"
   - id: mermaid-diagram
     date: '2026-10-28'
@@ -238,7 +240,7 @@ rulings:
   - id: field-anatomy-order
     date: '2026-10-28'
     status: live
-    ruling: "Every field draws HeroUI's order, label, control, description, error, with the description under the control; a group keeps HeroUI's group order. Fields that pair sit in Grammar's FormGrid, whose rows align on the control line whatever a neighbour carries, its columns from its own width."
+    ruling: "Every field draws HeroUI's order, label, control, description, error, with the description under the control; a group keeps HeroUI's group order. Fields that pair sit in Grammar's `Grid kind="form"`, whose rows align on the control line whatever a neighbour carries, its columns from its own width."
     owner: "contexts/grammars/contract.md input; contexts/grammars/contract.yaml DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE; contexts/ui/components/text-field.md"
   - id: copy-field
     date: '2026-10-28'
@@ -279,7 +281,7 @@ rulings:
   - id: empty-region-keeps-drawing
     date: '2026-10-11'
     status: live
-    ruling: "An empty region still renders what is known inside its joined card, with the empty notice as the card's last band, never a loose notice on the canvas."
+    ruling: "An empty region still renders what is known inside its bands card, with the empty notice as the card's last band, never a loose notice on the canvas."
     owner: "contexts/ui/composition.md FEEDBACK-2"
   - id: one-accent-mass
     date: '2026-10-11'
@@ -375,7 +377,7 @@ rulings:
   - id: band-is-first-face
     date: '2026-10-11'
     status: live
-    ruling: "An artwork band is a joined card's first face, edge to edge and clipped by the card's radius, never inset inside a padded card."
+    ruling: "An artwork band is a bands card's first face, edge to edge and clipped by the card's radius, never inset inside a padded card."
     owner: "contexts/ui/presentation.md (Surface)"
   - id: dna-only-composition
     date: '2026-09-27'
@@ -721,12 +723,12 @@ rulings:
   - id: step-card-list
     date: '2026-10-31'
     status: live
-    ruling: "A few choices or facts inside a first-run step card (connect a channel, the rules a workspace starts with) are a SurfaceListCard of ListRow with the label outside, the `step` row of `list-table.choose.role`, placed before `entity`. This is the second exception to \"a list is never wrapped in a card\" beside the rail list (COLLECTION-1); a list in a page section stays a section list without a card. Owner chose \"SurfaceListCard\" for the step card, 2026-10-31."
-    owner: "contexts/ui/components/list-table.md (list-table.choose.role, step); contexts/ui/components/card.md rail-list"
+    ruling: "A few choices or facts inside a first-run step card (connect a channel, the rules a workspace starts with) are a list card with the label outside, the `task` row of `list-table.choose.role`: a list is a card by default and a section only when it searches, filters or pages (COLLECTION-1). Owner chose the list card for the step card, 2026-10-31."
+    owner: "contexts/ui/components/list-table.md (list-table.choose.role, task); contexts/ui/components/card.md task-list"
   - id: task-list-card
     date: '2026-11-01'
     status: live
-    ruling: "A bounded task list, a fixed set the reader works through as one group (the items an agent setup needs, required steps) with no search, filter or paging, is one SurfaceListCard of ListRow with the label outside, on a page or in a pane, the `task` row of `list-table.choose.role`. A list that grows, searches, filters or pages stays bare rows in its section (COLLECTION-1); a comparison across columns stays a DataTable. The owner's words on the agent setup items: \"ủa cái này phải là surface list card cho các mục chứ\"; bare rows passed the rule and the mockup and still did not read as one block. On the permissions table the owner added: \"quá phức tạp mới nhét bảng vào card\", plain rows are a SurfaceListCard with a bottom note in its footer."
+    ruling: "A bounded task list, a fixed set the reader works through as one group (the items an agent setup needs, required steps) with no search, filter or paging, is one list card (SurfaceCard kind=\"list\") with the label outside, on a page or in a pane, the `task` row of `list-table.choose.role`. A list that grows, searches, filters or pages is a Section kind=\"list\" (COLLECTION-1); a comparison across columns stays a DataTable. The owner's words on the agent setup items: \"ủa cái này phải là surface list card cho các mục chứ\"; bare rows passed the rule and the mockup and still did not read as one block. On the permissions table the owner added: \"quá phức tạp mới nhét bảng vào card\", plain rows are a list card with a bottom note in its footer."
     owner: "contexts/ui/composition.md COLLECTION-1; contexts/ui/components/list-table.md (list-table.choose.role, task); contexts/ui/components/card.md (card.choose.role, task-list); contexts/hfs/rules.yaml R351"
   - id: message-bubble-primary-and-surface
     date: '2026-11-01'
@@ -797,7 +799,7 @@ removedVocabulary:
     ruling: "grammar-names-are-generic"
   - spelling: SurfaceCopyGroup
     as: grammar component
-    replacedBy: Stack gap="inline" or gap="row"
+    replacedBy: Stack gap="identity"
     ruling: "grammar-names-are-generic"
   - spelling: IncludedMark
     as: grammar component

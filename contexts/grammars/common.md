@@ -1,12 +1,13 @@
 # Common
 
 Common is the layer every grammar is drawn over. It owns every renderer, prop and anatomy, the spacing rhythm,
-the size ladder, the presentation states, the intent map and the root mechanics, and it owns no colour.
+the size ladder, the presentation states, the intent map and the root mechanics, and it owns no colour: the paint is the HeroUI
+tokens an app sets, or a family's optional `theme.css` (ruling `app-owns-theme`).
 A grammar changes paint inside its scope and nothing else ([contract](contract.md)), so everything in this
 file holds in every grammar.
 
 Owner of the code: `@starci/grammar src/common/**` (registry, spacing, state, the Common sheets) and the
-renderers it re-exports from `src/core/**`, whose physical path is internal storage.
+renderers it re-exports from `src/core/<tier>`, whose folder is the tier (leaf, branch, composite, frame).
 
 ## Anatomy: wrap HeroUI once, never redraw it
 
@@ -14,13 +15,12 @@ Each renderer is a HeroUI component (or a composition of them) with its parts, r
 [vendor/parity.yaml](../vendor/parity.yaml) lists what must stay. Common adds three things the vendor leaves
 to the caller:
 
-- **Context instead of props.** A painted surface (`SurfaceCard`, `SurfaceListCard`, a painted
-  `SurfaceAccordionCard`, `Sidebar`, `Dialog`, `AlertDialog`, `Drawer`, `Popover`) opens a nesting context.
-  Fields, choice controls and `Tabs` read it to pick their look, the way HeroUI's own `secondary` field exists
-  for a field inside a surface: on the canvas a field is a filled box, inside a surface it would vanish into
-  the same white, so it takes the neutral fill. The surface derives its own depth from the same context: the
-  top layer is raised, a nested layer is subordinate, never both raised
-  (`owner: src/core/surfaceContext.tsx`). The app omits these props; lint refuses a static one.
+- **Context instead of props.** A painted surface (`SurfaceCard`, `Sidebar`, `Dialog`, `AlertDialog`, `Drawer`,
+  `Popover`) opens a surface context. Fields, choice controls and `Tabs` read it to pick their look, the way HeroUI's
+  own `secondary` field exists for a field inside a surface: on the canvas a field is a filled box, inside a surface it
+  would vanish into the same white, so it takes the neutral fill. The same context refuses a surface inside a surface: a
+  card in a card, in `Pane surface` or in an overlay throws in development (`owner: src/core/surfaceContext.tsx`). The app
+  omits these props; lint refuses a static one.
 - **Typed meaning instead of looks.** A command declares `intent`, a destination is an `href`, a status is a
   `PresentationState` (`neutral`, `informative`, `affirmative`, `cautionary`, `negative`, `pending`,
   `unavailable`; `owner: src/common/state.ts`). A state paints a fact authority already settled; it never
@@ -37,7 +37,7 @@ five gap roles, each named for the relation it separates, not for its size: `--g
 `--grammar-inline-gap`, `--grammar-row-gap`, `--grammar-section-gap` and `--grammar-region-gap` are GAP-1 to GAP-5
 (`COMMON_GAP_ROLES`). Insets are levels: `--grammar-inset` for every container, `--grammar-inset-nested` for a box
 inside one, `--grammar-inset-open` for a low-density region, and `--grammar-page-inset` for the page edge, stepped by
-breakpoint and owned by `PageContainer`; the card, pane and overlay tokens read `--grammar-inset`. An app names a
+breakpoint and owned by `Page`; the card, pane and overlay tokens read `--grammar-inset`. An app names a
 role on `Stack`, `Cluster` or `Grid` and never a value. Which relation a gap expresses is the choice
 `space.choose.gap` in [ui/presentation](../ui/presentation.md#space), with the laws for insets; that the gap tokens
 stay strictly ordered is `DNA-COMMON-RHYTHM-MONOTONIC`. Because the rhythm is a relationship, a denser rhythm changes
@@ -57,7 +57,7 @@ they keep the grammar's tokens, theme and forced-colours mapping; a trigger outs
 overlay in `<body>`. Mount exactly one `Toaster`, inside the root; it renders in place with one polite and one
 assertive live region, so a second one duplicates every announcement. The root also owns client-side
 navigation: it takes the app router's `navigate` and `useHref` once and mounts the vendor `RouterProvider`, so every
-Grammar `href` (a `Link`, a `Button`, a `Breadcrumbs` item, a `ListBox` or `Menu` item, a `DataTable` row, a
+Grammar `href` (a `Link`, a `Button`, a `Page` breadcrumb, a `ListBox` or `Menu` item, a `DataTable` row, a
 `FlowGraph` node) navigates inside the app without a reload; the app mounts no router provider of its own. This is
 the only statement of these rules; grammar files and lint cite it.
 
@@ -69,13 +69,13 @@ relationship is a different shape.
 
 | Idiom | When | Composition |
 |---|---|---|
-| Joined bands | One heading holds several kinds of content | One `SurfaceCard` with joined composition; full-bleed bands divided by separators, never inner cards. Insets follow side contact (gap G-7) |
+| Bands | One heading holds several kinds of content | One `SurfaceCard kind="bands"`; full-bleed faces divided by the shell's seams, never inner cards or a `Divider`. Insets follow side contact |
 | Neutral summary band | A card states a measure before its evidence | The first band on the secondary surface; it is a summary, never a verdict. It takes a state colour only for a proven outcome |
 | Bottom action band | A card has one way onward | One action in the last band against the bottom edge; at most one per card |
 | Art is a band | Generated imagery belongs to a surface | Its own full-bleed band, the asset's ratio kept, no inset frame; decorative art is `aria-hidden` |
 | Title and one supporting line | A row, cell or surface names a thing | Title, then one muted qualifying line, stacked at the tightest gap by `Stack gap="identity"` |
 | Pending is the same tree | Data is loading | The finished tree at rest: same card, bands and row count, skeleton on every owner, never a spinner; an action that must not fire yet is disabled, not removed |
-| One highlighted card | Peers share a view and one is the next step | `isHighlight` on that one card only; the peers keep the same props, so the difference reads as rank (gap G-9) |
+| One highlighted card | Peers share a view and one is the next step | `isHighlight` on that one card only; the peers keep the same props, so the difference reads as rank |
 | Single-column form | A step asks for input | `Form`, fields in one column, the status sentence, one commit; secondary ways onward follow as text actions, never a second commit |
 
 ## Playbook shapes
@@ -94,16 +94,16 @@ from all three is asked, not invented.
 
 | Shape | Composition |
 |---|---|
-| Single-offer decision page | Explanation in the primary column as joined bands (summary band, art band, title-and-line rows); the decision card highlighted in the rail of `Grid kind="main-rail"` with the bottom action band; pending as the same tree |
-| Multi-section overview | One joined card per section; a summary band where a section states a measure; a bottom action band where it leads on; one highlighted section (the next step) per page |
+| Single-offer decision page | Explanation in the primary column as bands (summary band, art band, title-and-line rows); the decision card highlighted in the rail of `Grid kind="main-rail"` with the bottom action band; pending as the same tree |
+| Multi-section overview | One bands card per section; a summary band where a section states a measure; a bottom action band where it leads on; one highlighted section (the next step) per page |
 | Sign-in | Surface header as title and line; one single-column form per step, one commit each; the way to the other journey last, as a text action |
 | Settings or profile form | `Form` (server refusals in `validationErrors` by field name) around one `Fieldset` per named group; each field carries its own label, description and error, and short fields that pair sit in a `Grid kind="form"` so a row aligns on its controls; a value the product holds is a `CopyField`; a switch applies immediately, a checkbox submits with the form; one commit after the last group |
 | Destructive confirmation | Entry button `intent="destructive"`; `AlertDialog` naming the consequence, dismiss first and focused, confirm last; a reversible action is not confirmed: act, then offer undo in a toast |
-| Secondary task | `Drawer` (side on wide layouts, bottom on a phone) or `Dialog` when the task is short and must block the page; one overlay at a time (gap G-10) |
+| Secondary task | `Drawer` (side on wide layouts, bottom on a phone) or `Dialog` when the task is short and must block the page; one overlay at a time |
 | App shell | One root; `WorkspaceShell` owns the frame, the bar and the mobile drawer; bar controls share one height; one `Toaster` last in the root; the shell's meaning is in [ui](../ui/README.md) and its checks in the grammar lint |
 | One question per screen | Progress from a real count; the prompt as the heading; the answer choices as the control itself (radio group, checkbox group or segmented control), each choice a full-width row; one commit at the bottom, disabled until a choice exists so nothing moves; the outcome as an Alert in place above the action; an optional explanation in a bottom drawer. A wrong answer is an outcome, never a field error |
 | Result | One highlighted card with the display heading, the score and its facts as real labelled values, one commit onward and a quieter way to review; an earned reward announced politely as a toast |
-| Browse and pick | A labelled search field; filters as a selectable tag group; a list box when picking is the task, a list card when rows only report; pagination; pending keeps the list shape |
+| Browse and pick | A labelled search field; filters as a `FilterButtonGroup`; a list box when picking is the task, a list card or a `Section kind="list"` when rows only report; pagination; pending keeps the list shape |
 | Data status of a region | Loading, forbidden, failed and empty (a signed-out viewer never reaches a region: the session gate redirects) render through the product's one status view in that region's place, inside the unchanged surface; the recipe belongs to [code/fe](../code/fe/README.md) |
 
 A grammar file lists only the shapes it composes differently.

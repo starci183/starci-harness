@@ -27,9 +27,8 @@ two sets of the same level never nest.
 ## Variants
 None for the app: placing the tabs is the choice, and the grammar draws every tab bar, page or region, as the
 underline, its labels text on the content edge they share with the title above and the box below
-([contract](../../grammars/contract.md#tabs), [presentation](../presentation.md#space) Text edge). A pill is the
-shape of a filter or a chip, never of a view switch: a filter over a collection is a `FilterButtonGroup`. The type has no
-`variant`, so the pill cannot be asked for.
+([contract](../../grammars/contract.md#tabs), [presentation](../presentation.md#space) Text edge).
+A filter over a collection is a `FilterButtonGroup`, and `Tabs` takes no `variant` to pass.
 
 ## Size
 No size prop: the bar lands on `md` ([../scale.md](../scale.md)). A tab without a leading glyph always shows its

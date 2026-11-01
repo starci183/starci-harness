@@ -1,6 +1,8 @@
 # Every numeric threshold of contexts/ui, as data. Prose cites a key; gates and briefs read the value here.
 # One key per number: a composition rule and the proof criterion that measures it share the key.
 # Units: count, pct (of the named area), px (CSS px at the observed root size), ratio (contrast x:1), ms, chars, steps.
+# The contrast keys are a family's duty to its own default theme, read by the DNA laws and the package's stories; no key
+# judges the colours an app sets (ruling app-owns-theme).
 schema: starci/ui-thresholds@1
 surfaceClasses: [console, form, landing, catalog, reader]
 
@@ -15,7 +17,6 @@ budgets:
   linesUnderTitle: {supporting: 1, meta: 1, unit: count, rules: [DISCIPLINE-1]}
   ribbonCells: {max: 4, unit: count, rules: [DISCIPLINE-2]}
   skeletonRows: {default: 3, unit: count, rules: [STATE-8]}
-  cardDepth: {max: 2, unit: levels, rules: [COLLECTION-2, TASTE-7]}
   decorativeImages: {max: 1, unit: count, per: view, rules: [TASTE-8]}
   signatureMoments: {max: 1, unit: count, per: page, rules: [DISCIPLINE-3, TASTE-8]}
 
@@ -71,7 +72,6 @@ motion:
   flashesPerSecond: {max: 3, rules: [MOTION-4]}
 
 verdict:
-  scale: [1, 5]
   shipMean: 4
   gates:
     taste: [TASTE-1, TASTE-2, TASTE-5, TASTE-8, TASTE-12]
@@ -79,7 +79,6 @@ verdict:
 
 calibration:
   tolerance: 1
-  lenses: {taste: TASTE-13, ux: UX-12}
   anchors:
     - file: anchor-low.html
       bands: {taste: [1, 2], ux: [1, 2]}

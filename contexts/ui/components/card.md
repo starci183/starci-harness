@@ -7,19 +7,27 @@ Present **one subject** as one bounded object with its own face (COLLECTION-2).
 
 ## Choose
 
-Choice `card.choose.role`: what presents the subject. The first row that applies wins.
+Choice `card.choose.role`: what presents the subject, which is the card's `kind` (a compiler-checked union, so a wrong body
+for a kind does not compile). The first row that applies wins.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| task-list | a bounded set the reader works through as one group, with no search, filter or paging | `SurfaceCard kind="list"`: label outside, rows inside (`list-table.choose.role:task`) | judgement |
-| collection | three or more entities of one kind on a page | not a card: a section with a list (`list-table.choose.role`) | candidate: no card holds three or more sibling cards |
-| rail-list | a standalone list in a rail (choices, suggestions, how it works) | `SurfaceCard kind="list"`: label outside, rows inside | `DNA-COMMON-LISTCARD-LABEL-OUTSIDE` |
-| disclosure | one summary that reveals a rarely changed region | `SurfaceCard kind="accordion"`, closed by default | judgement |
-| figures | a row of key figures | `SurfaceCard kind="figures"` (DISCIPLINE-2): touching cells, lines between cells and rows; a Meter is a second band of `kind="bands"` | candidate: stat cells at most `budgets.ribbonCells` |
-| whole | the whole card is one destination or command | `SurfaceCard` with its whole action (STATE-5) | judgement |
-| kinds | several kinds of content about one subject | `SurfaceCard kind="bands"`, its faces divided by seams the shell draws, never inner cards or a `Divider` | candidate: separators per card at most `budgets.hairlinesPerCard` |
-| tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | a tile: its name inside with its logo or mark, no outside label (ruling `card-label-by-kind`) | candidate: no labelled card repeated in a `Grid` |
-| entity | one entity or one summary of one subject, heading its section | `SurfaceCard`: label outside | judgement |
+| task-list | rows of one kind the reader works through or scans as one group, bounded and with no search, filter or paging: a setup's items, required steps, a rail's choices, the few facts of a first-run step | `SurfaceCard kind="list"`: label outside, `items`, a required `empty`, a `footer` for the note | type: a list needs `items` and `empty`; R355 |
+| collection | rows that search, filter or page, or have no bound | not a card: `Section kind="list"` (`list-table.choose.role:entity`) | R355 refuses a `Section` around one card |
+| disclosure | one summary that reveals a rarely changed region | `kind="accordion"`, closed by default | judgement |
+| figures | a row of key figures | `kind="figures"` (DISCIPLINE-2): touching cells with lines between cells and rows | type: typed figures; candidate: cells at most `budgets.ribbonCells` |
+| whole | the whole card is one destination or command | `wholeAction`, present only where the card holds no inner control (STATE-5) | type: a nested interactive does not compile |
+| kinds | several kinds of content about one subject | `kind="bands"`: `body`, `figures` and `media` faces, then at most one collection, last; the shell draws the seams, never inner cards or a `Divider` | type; R355; candidate: separators at most `budgets.hairlinesPerCard` |
+| tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | `kind="tile"`: its name inside with its logo or mark, a status and one action at the bottom, in `Grid kind="cards"` | type: a tile has no `label`; R366 |
+| entity | one entity or one summary of one subject, heading its section | `SurfaceCard` of the default `body` kind: label outside | judgement |
+
+Choice `card.choose.label`: where the card's name sits. The kind decides, in both families (ruling `card-label-by-kind`).
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| section | the card heads a section: `body`, `list`, `accordion`, `figures`, `bands` | `label` as an unpainted row above the material, `fact` the count, `labelEnd` the action, `footer` the note | `DNA-COMMON-CARD-LABEL-ABOVE`, `DNA-CORE-CARD-LABEL-OUTSIDE`, `DNA-OFFSET-POP-CARD-LABEL-OUTSIDE`; R354 |
+| tile | the card is one peer in a grid | `name` and `mark` inside, no label, fact, labelEnd or ariaLabel title | type; R366 |
+| docked | the region is docked in a layout | not a card: a `Pane` | R345 to R349 |
 
 Choice `card.choose.highlight`: whether a card claims the next step.
 
@@ -40,35 +48,32 @@ A painted treatment rebinds the surface pair on its ground, so the grammar child
 (`DNA-COMMON-TREATMENT-TEXT-CONTRAST`); the app never paints a card's ground itself (`starci-fe/no-app-surface-paint`).
 
 A card carries its own title, count, action and note: the title is its `label`, the count its `fact`, the action its `labelEnd`
-and the note its `footer` (`SurfaceCard`). A `Section` around a single card is a heading over one card and
-is refused (R354, ruling `card-carries-its-own-label`), as is a card whose `ariaLabel` repeats that title; several cards under one
-`Section` stay legal.
+and the note its `footer`. A `Section` whose only child is one card is a heading over one card and is refused (R354, ruling
+`card-carries-its-own-label`), as is a card whose `ariaLabel` repeats the section's title; several cards under one `Section`
+stay legal.
 
 ## Variants
-The face is the grammar's. Depth is resolved from context: a top-level card is raised, a nested card subordinate
-(`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`). A decorative slab belongs to the joined card's first face, edge to
-edge (SURFACE-6).
+The face is the grammar's, and the card has one depth, raised. A surface never stands inside another surface: a card in a
+card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused by a development throw and R340
+(`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`). What sits in a surface is a box at the nested inset (a notice, a `Quote`, a
+stat cell), not a card. A decorative slab belongs to the bands card's first face, edge to edge (SURFACE-6, ruling
+`band-is-first-face`).
 
 ## Size
 No size. Width follows measure rules; a form card caps itself with the surface's form measure (MEASURE-4).
 
 ## States
-Loading renders the same card in skeleton mode; a failed card fails in place (STATE-8).
+`isSkeleton` renders the same card from its own fields: a list draws `loadingRows` rows from the same row, figures and a
+tile keep their cells, the label stays real text (STATE-8, the [loading table](../situations.md#loading)). A failed card
+fails in place.
 
 ## Owner split
-- **Grammar owns:** face, corner (one accent corner through `accentCorner`, ruling accent-corner), elevation by depth, inset, band and joined composition, highlight, form measure.
-- **Knowledge decides:** card vs section, bands vs inner cards, hairline budget, nesting depth.
+- **Grammar owns:** face, corner (one accent corner through `accentCorner`, ruling accent-corner), elevation, inset, the
+  drawing of every kind, bands and seams, highlight, form measure.
+- **Knowledge decides:** which kind, list card vs section, bands vs inner cards, hairline budget.
 - **App author decides:** the subject, its content, the label.
 
 ## Rules
-COLLECTION-1, COLLECTION-2, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..6, SURFACE-2..6. Lint:
-`starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340). Proof: TASTE-7 (`budgets.cardDepth`).
-
-## Across files
-R356 (`FE_SURFACE_NESTING`, the render graph of the architecture machine) closes the one-file card laws across files. It replaces
-every component by what it draws and every `children` by what its caller handed it, then reports at the inner element: a card
-in a card, in `Pane surface` or in an overlay; a `DataTable` in a card; a `PaneGrid` outside `Page chrome="panes"`; a `Section`
-or `Heading` whose only content is one card; a labelled card repeated in a `Grid`. R359 (`starci-grammar/one-highlight-per-render`)
-keeps one `isHighlight` in a render.
-
-R355 (`starci-grammar/surface-card-kind`) and R366 (`starci-grammar/no-label-in-grid`) judge the card by its `kind` in one file: what a `body` card may hold, and that a labelled card repeated in a `Grid` is a tile.
+COLLECTION-1, COLLECTION-2, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..4, SURFACE-2..6. Lint:
+`starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340),
+`surface-card-kind` (R355), `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354). Proof: TASTE-7.
