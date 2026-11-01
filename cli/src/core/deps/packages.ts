@@ -183,24 +183,24 @@ const installStale = (folder: string): boolean => {
     return existsSync(lock) && statSync(lock).mtimeMs > statSync(installed).mtimeMs
 }
 
-/** A reinstall owns its node_modules: npm must never empty the shared folder a junction or symlink points at. */
-const assertBuildInstallUnlinked = (folder: string): void => {
+/** An install owns its node_modules: npm must never mutate the shared folder a junction or symlink points at. */
+const assertInstallUnlinked = (folder: string): void => {
     const modules = join(folder, "node_modules")
     if (lstatSync(modules, { throwIfNoEntry: false })?.isSymbolicLink() !== true) return
     throw new Refusal(
-        "DEPS_BUILD_INSTALL_LINKED",
-        `${modules} is a junction or symlink and its install is missing or stale; npm will not run through it. Materialize a private node_modules for this checkout, or unlink only the link itself and install this checkout's lockfile before retrying; keep the shared target intact`,
+        "DEPS_INSTALL_LINKED",
+        `${modules} is a junction or symlink; npm will not install dependencies through it because that would mutate the shared target. Materialize a private node_modules for this checkout, or unlink only the link itself and install this checkout's lockfile before retrying; keep the shared target intact`,
     )
 }
 
-/** Builds a package, installing missing or stale private dependencies; refuses DEPS_BUILD_INSTALL_LINKED before reinstalling a linked install. */
+/** Builds a package, installing missing or stale private dependencies; refuses DEPS_INSTALL_LINKED before reinstalling a linked install. */
 export const buildPackage = async (pkg: LocalPackage): Promise<void> => {
     if (!pkg.builds) return
     if (installStale(pkg.folder)) {
-        assertBuildInstallUnlinked(pkg.folder)
+        assertInstallUnlinked(pkg.folder)
         const args = existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"]
         const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => {
-            assertBuildInstallUnlinked(pkg.folder)
+            assertInstallUnlinked(pkg.folder)
             return captureNpm(args, pkg.folder, held.options)
         })
         if (install.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm install in ${pkg.folder} failed:\n${tail(install.stdout, install.stderr)}`)
@@ -241,7 +241,7 @@ const resolvable = (dependency: string, dir: string, root: string): boolean => {
  * Installs, without saving (`npm install --no-save`: neither package.json nor package-lock.json is written), the
  * dependencies the local packages declare that the app has not installed, at the spec each package asks for; a newer
  * local Grammar may need a library its published version did not. It runs before the copies, since npm's reify puts every
- * `@starci` package back to its locked version. Returns the specs it installed.
+ * `@starci` package back to its locked version. Refuses DEPS_INSTALL_LINKED before mutating a linked install; returns the specs it installed.
  */
 export const installMissing = async (root: string, packages: readonly LocalPackage[]): Promise<string[]> => {
     const specs = new Map<string, string>()
@@ -253,7 +253,11 @@ export const installMissing = async (root: string, packages: readonly LocalPacka
     }
     const wanted = [...specs.values()].sort((left, right) => left.localeCompare(right))
     if (wanted.length === 0) return []
-    const run = await withHeavySlot("install", "npm install --no-save", root, {}, (held) => captureNpm(["install", "--no-save", "--no-audit", "--no-fund", ...wanted], root, held.options))
+    assertInstallUnlinked(root)
+    const run = await withHeavySlot("install", "npm install --no-save", root, {}, (held) => {
+        assertInstallUnlinked(root)
+        return captureNpm(["install", "--no-save", "--no-audit", "--no-fund", ...wanted], root, held.options)
+    })
     if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm install --no-save ${wanted.join(" ")} in ${root} failed:\n${tail(run.stdout, run.stderr)}`)
     return wanted
 }
