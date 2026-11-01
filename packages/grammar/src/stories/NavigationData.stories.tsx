@@ -1197,6 +1197,35 @@ const RenamingTabs = () => {
   );
 };
 
+const DisabledTabsDemo = ({ mode }: { readonly mode: 'one' | 'all' | 'links' }) => {
+  const [selected, setSelected] = useState('overview');
+  const panelId = `story-disabled-tabs-${mode}-panel`;
+  const items = tabItems.map((item) => ({
+    ...item,
+    isDisabled: mode === 'all' || item.id === 'lessons',
+    ...(mode === 'links' ? { href: `#story-disabled-tabs-${mode}-${item.id}` } : {}),
+  }));
+  return (
+    <div>
+      <G.Tabs label={`Disabled tabs (${mode})`} items={items} selectedKey={selected} onSelect={setSelected} panelId={panelId} labelVisibility="always" />
+      <div role="tabpanel" id={panelId} aria-label={`Disabled tabs (${mode})`}>
+        <G.Text>{items.find((item) => item.id === selected)?.label} panel</G.Text>
+      </div>
+    </div>
+  );
+};
+
+export const TabsDisabled: Story = {
+  name: 'Tabs (disabled items and links)',
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="One unavailable tab: arrow keys skip Lessons" direction="column"><DisabledTabsDemo mode="one" /></State>
+      <State label="All tabs locked: the selected panel stays visible" direction="column"><DisabledTabsDemo mode="all" /></State>
+      <State label="Link tabs: Lessons cannot navigate" direction="column"><DisabledTabsDemo mode="links" /></State>
+    </Matrix>
+  ),
+};
+
 export const TabsLabelChange: Story = {
   name: 'Tabs (selected label changes)',
   render: () => <Matrix><State label="The underline follows the new label width at once" direction="column"><RenamingTabs /></State></Matrix>,

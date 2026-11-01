@@ -189,7 +189,7 @@ roles:
     ui: ui/components/tabs.md
     renderers: [Tabs]
     vendorParity: [tabs]
-    slots: ["items: label, leading, href", panels]
+    slots: ["items: label, leading, href, isDisabled", panels]
     variants:
       look: { values: [underline], meaning: "every tab bar, page and region alike; a filter over a collection is a FilterButtonGroup, never a tab bar", chosenBy: grammar }
       inset: { values: [page, none], chosenBy: app }

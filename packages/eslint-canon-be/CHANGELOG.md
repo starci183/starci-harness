@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.11.9 - 2026-11-02
+
+- Changed: bundled pins follow Grammar 0.21.2 with disabled tab items and its coherent canon cohort; existing runtime checks are unchanged.
+
 ## 3.11.8 - 2026-11-02
 
 - Fixed: Nest injection unit contracts accept an absent provider only when the constructor binding carries the real `@nestjs/common` `Optional()` decorator; bundled cross-file surface checks match the semantic peer-card grid owner. Updated the coherent Grammar and canon pins.

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 4.17.2 - 2026-11-02
+
+- Changed: bundled pins follow Grammar 0.21.2 with disabled tab items and its coherent canon cohort; existing runtime checks are unchanged.
+
 ## 4.17.1 - 2026-11-02
 
 - Fixed: unit provider contracts recognize the real Nest `Optional()` injection decorator through direct, aliased and namespace imports; TypeScript optional parameters and unrelated decorator names still require their providers.

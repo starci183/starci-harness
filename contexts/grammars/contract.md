@@ -144,6 +144,10 @@ and region tabs inside a surface alike, takes the underline, with the first labe
 look to pass. A filter over a collection is a `FilterButtonGroup`, never a tab bar. The bar lands on the `md` height,
 which is why Tabs have no size.
 
+Each item accepts `isDisabled`, forwarded to HeroUI's tab: unavailable tabs retain the vendor's disabled semantics,
+are skipped by keyboard traversal and cannot select or navigate their `href`. The controlled `selectedKey` still
+owns the visible panel, including when every item is temporarily disabled.
+
 ### SegmentedControl
 
 A segmented control is one value inside a form or a toolbar (period, audience, density), not navigation. Its

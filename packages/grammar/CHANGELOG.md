@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.21.2 - 2026-11-02
+
+- Added: `TabItem.isDisabled` forwards to the vendor tab so locked choices keep their labels and native tab accessibility while refusing mouse and keyboard selection. Stories cover disabled focus, selection and keyboard skipping.
+
 ## 0.21.1 - 2026-11-02
 
 - Added: `Link` can carry structured `media` from `ImageProps` with a required accessible destination `label`, mutually exclusive with text children. Native navigation, external-tab safety, focus, disabled state and Image loading/fallback stay with their existing owners. The new media destination keeps transparent logo shapes unclipped.

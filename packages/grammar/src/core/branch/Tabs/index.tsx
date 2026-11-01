@@ -16,6 +16,8 @@ export type TabItem = {
     readonly id: string
     readonly label: string
     readonly leading?: ReactNode
+    /** Whether this tab is unavailable for selection or link navigation. */
+    readonly isDisabled?: boolean
     /**
      * The route this tab opens. A tab with `href` is a link tab: it renders an anchor, navigates through the
      * `GrammarRoot` router (`navigate`, `useHref`) or the browser, and needs no `onSelect`, so a server page can pass
@@ -173,6 +175,7 @@ export const Tabs = (props: TabsProps) => {
                     <HeroTabs.Tab
                         key={item.id}
                         id={item.id}
+                        isDisabled={item.isDisabled ?? false}
                         {...(item.href === undefined ? {} : { href: item.href })}
                         aria-label={item.label}
                         data-contract="PADDING-3"
