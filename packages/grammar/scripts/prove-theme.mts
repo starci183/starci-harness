@@ -1,15 +1,16 @@
-import { execFileSync } from "node:child_process"
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { chromium, type Browser } from "@playwright/test"
 import { createElement, type ComponentType, type ReactNode } from "react"
 
 /**
  * Proves that an app sets its own theme: a test app that sets HeroUI's tokens and nothing else (`theme-proof/app-theme.css`)
  * renders the built grammar in both families and both modes, and every part follows, measured by computed style in a
- * headless Chromium (no dev server). A second scenario renders each family on its own `theme.css` defaults, and a third
- * overrides one token over those defaults. Run after `npm run build`: `node scripts/prove-theme.mts [--browser <path>]`.
+ * headless Chromium managed by Playwright (no dev server). A second scenario renders each family on its own `theme.css`
+ * defaults, and a third overrides one token over those defaults. Run after `npm run build`:
+ * `node scripts/prove-theme.mts [--browser <path>]`.
  */
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -119,27 +120,28 @@ const markup = async (family: Family): Promise<string> => {
     )
 }
 
-/** Runs in the page: the colour a part paints against the colour its token resolves to on that part's root. */
-const script = (family: Family): string => `
-const probes = ${JSON.stringify(PROBES.map((probe) => ({ ...probe, token: probe.familyToken?.[family] ?? probe.token })))};
-const root = document.querySelector('.grammar-common-root');
-const used = (token, property) => {
-    const el = document.createElement('i');
-    el.style.setProperty(property, 'var(' + token + ')');
-    root.appendChild(el);
-    const value = getComputedStyle(el).getPropertyValue(property).trim();
-    el.remove();
-    return value;
-};
-const rows = probes.map((probe) => {
-    const el = document.querySelector(probe.selector);
-    if (!el) return { name: probe.name, missing: true };
-    const actual = getComputedStyle(el).getPropertyValue(probe.property).trim();
-    const expected = probe.property === 'scrollbar-color' ? used(probe.token, 'color') + ' ' + used('--scrollbar-track', 'color') : used(probe.token, probe.property);
-    return { name: probe.name, actual, expected, token: probe.token, part: el.tagName.toLowerCase() + '.' + String(el.className).replace(/ /g, '.') };
-});
-document.getElementById('proof').textContent = JSON.stringify({ rows });
-`
+/** Runs after the page and its stylesheets load; returns the measured colours without waiting for Chromium to exit. */
+const measure = (probes: readonly Probe[]): readonly Row[] => {
+    const root = document.querySelector(".grammar-common-root")
+    if (root === null) throw new Error("the page has no Grammar root")
+    const missingSheets = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].filter((link) => link.sheet === null)
+    if (missingSheets.length > 0) throw new Error(`stylesheets did not load: ${missingSheets.map((link) => link.href).join(", ")}`)
+    const used = (token: string, property: string): string => {
+        const el = document.createElement("i")
+        el.style.setProperty(property, `var(${token})`)
+        root.appendChild(el)
+        const value = getComputedStyle(el).getPropertyValue(property).trim()
+        el.remove()
+        return value
+    }
+    return probes.map((probe) => {
+        const el = document.querySelector(probe.selector)
+        if (el === null) return { name: probe.name, missing: true }
+        const actual = getComputedStyle(el).getPropertyValue(probe.property).trim()
+        const expected = probe.property === "scrollbar-color" ? `${used(probe.token, "color")} ${used("--scrollbar-track", "color")}` : used(probe.token, probe.property)
+        return { name: probe.name, actual, expected, token: probe.token, part: `${el.tagName.toLowerCase()}.${String(el.className).replaceAll(" ", ".")}` }
+    })
+}
 
 const url = (path: string): string => pathToFileURL(path).href
 
@@ -150,46 +152,56 @@ const page = (family: Family, scenario: Scenario, mode: "light" | "dark", body: 
 ${scenario === "app" ? `<link rel="stylesheet" href="${url(join(work, "app-theme.css"))}">` : `<link rel="stylesheet" href="${url(join(root, "dist", family, "theme.css"))}">`}
 <style>*, *::before, *::after { transition: none !important; animation: none !important; }</style>
 ${scenario === "override" ? "<style>:root { --accent: rgb(10 20 200); --accent-foreground: rgb(255 255 224); }</style>" : ""}
-</head><body>${body}<pre id="proof"></pre><script>${script(family)}</script></body></html>`
+</head><body>${body}</body></html>`
 
-const decode = (text: string): string => text.replaceAll("&quot;", '"').replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&")
-
-// Chrome refuses to start as root (the CI container) without this; the pages are the proof's own files.
-const sandbox = process.getuid?.() === 0 ? ["--no-sandbox"] : []
+const TIMEOUT_MS = 30_000
 const work = mkdtempSync(join(tmpdir(), "theme-proof-"))
-const lines: string[] = []
+let engine: Browser | undefined
 let failures = 0
 try {
-    mkdirSync(join(work, "profile"))
     copyFileSync(join(here, "theme-proof", "app-theme.css"), join(work, "app-theme.css"))
+    engine = await chromium.launch({ executablePath: browser, headless: true, chromiumSandbox: process.getuid?.() !== 0, timeout: TIMEOUT_MS })
+    const context = await engine.newContext()
+    const rendered = await context.newPage()
+    rendered.setDefaultTimeout(TIMEOUT_MS)
+    rendered.setDefaultNavigationTimeout(TIMEOUT_MS)
     for (const family of ["core", "offset-pop"] as const) {
         const body = await markup(family)
         for (const scenario of ["app", "default", "override"] as const) {
             for (const mode of ["light", "dark"] as const) {
                 const file = join(work, `${family}-${scenario}-${mode}.html`)
                 writeFileSync(file, page(family, scenario, mode, body, work))
-                const dom = execFileSync(browser, ["--headless=new", ...sandbox, "--disable-gpu", "--no-first-run", `--user-data-dir=${join(work, "profile")}`, "--virtual-time-budget=3000", "--dump-dom", url(file)], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })
-                const found = /<pre id="proof">([\s\S]*?)<\/pre>/.exec(dom)?.[1]
-                if (found === undefined || found === "") throw new Error(`${family} ${scenario} ${mode}: the page produced no result`)
-                const rows = (JSON.parse(decode(found)) as { rows: Row[] }).rows
+                const label = `${family} ${scenario} ${mode}`
+                console.log(`theme proof: measuring ${label}`)
+                let rows: readonly Row[]
+                try {
+                    await rendered.goto(url(file), { waitUntil: "load" })
+                    rows = await rendered.evaluate(measure, PROBES.map((probe) => ({ ...probe, token: probe.familyToken?.[family] ?? probe.token })))
+                } catch (error) {
+                    throw new Error(`theme proof: ${label} could not be measured (${file})`, { cause: error })
+                }
                 for (const row of rows) {
-                    const label = `${family} ${scenario} ${mode} ${row.name}`
+                    const part = `${label} ${row.name}`
                     // The override scenario changes the accent only: the other parts stay on the family defaults.
                     const compared = scenario !== "override" || row.token === "--accent" || row.token === "--accent-foreground"
                     if (row.missing === true || row.actual === undefined || row.expected === undefined) {
                         failures += 1
-                        lines.push(`FAIL ${label}: the part is not on the page`)
+                        console.log(`FAIL ${part}: the part is not on the page`)
                     } else if (compared && row.actual !== row.expected) {
                         failures += 1
-                        lines.push(`FAIL ${label}: ${row.part ?? "the part"} painted ${row.actual}, ${row.token ?? "the token"} is ${row.expected}`)
-                    } else lines.push(`ok   ${label}: ${row.actual}`)
+                        console.log(`FAIL ${part}: ${row.part ?? "the part"} painted ${row.actual}, ${row.token ?? "the token"} is ${row.expected}`)
+                    } else console.log(`ok   ${part}: ${row.actual}`)
                 }
             }
         }
     }
+    await context.close()
 } finally {
-    rmSync(work, { recursive: true, force: true })
+    try {
+        await engine?.close()
+    } finally {
+        rmSync(work, { recursive: true, force: true })
+    }
 }
-console.log(lines.join("\n"))
 console.log(failures === 0 ? "theme proof: every part follows the theme" : `theme proof: ${failures} part(s) did not follow`)
 process.exitCode = failures === 0 ? 0 : 1
