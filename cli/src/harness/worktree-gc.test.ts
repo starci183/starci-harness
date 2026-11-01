@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import test from "node:test"
@@ -9,7 +9,7 @@ import { pidAlive, startDetached } from "../shared/exec.js"
 import { unlinkCheckoutLinks } from "./install-cache.js"
 import { openMachine, projectDir } from "./ledger.js"
 import { processBlockReason, sameRepository, worktreeGc } from "./worktree-gc.js"
-import { preserveCheckout } from "./worktree-preserve.js"
+import { inspectRemnant, preserveCheckout, quarantineRemnant } from "./worktree-preserve.js"
 import type { HostProcess } from "./process-table.js"
 
 const git = (cwd: string, ...args: string[]): string => {
@@ -215,4 +215,173 @@ void test("unlisted existing remnants and nested repositories refuse deletion un
     writeFileSync(join(path, "nested/.git"), "fixture metadata pointer\n")
     await assert.rejects(preserveCheckout(a, path), /nested checkout/)
     assert.ok(existsSync(path))
+})
+
+void test("explicit project remnants quarantine every regular byte and unlink dependency links without entering their targets", async (t) => {
+    const { base, a } = fixture(t)
+    const path = join(projectDir(a), "worktrees", "legacy-remnant")
+    mkdirSync(join(path, "node_modules", "local-package"), { recursive: true })
+    mkdirSync(join(path, "coverage"))
+    writeFileSync(join(path, "local.config"), Buffer.from([0, 255, 23, 0]))
+    writeFileSync(join(path, "node_modules/local-package/unique.js"), "unknown ownership must retain these install bytes\n")
+    writeFileSync(join(path, "coverage/opaque.dat"), Buffer.from([200, 0, 40, 0]))
+    const external = join(base, "remnant-external")
+    mkdirSync(external)
+    writeFileSync(join(external, "sentinel.txt"), "external bytes stay\n")
+    symlinkSync(external, join(path, "node_modules/shared"), process.platform === "win32" ? "junction" : "dir")
+    mkdirSync(join(path, "a/b/c/d/e"), { recursive: true })
+    symlinkSync(external, join(path, "a/b/c/d/e/node_modules"), process.platform === "win32" ? "junction" : "dir")
+    symlinkSync(external, join(path, "reference"), process.platform === "win32" ? "junction" : "dir")
+    const linkTarget = readlinkSync(join(path, "node_modules/shared"))
+    const refs = git(a, "show-ref")
+    const plan = await worktreeGc(a, true, false, { paths: [path], caller: a })
+    assert.equal(plan[0]?.due, true)
+    assert.equal(plan[0]?.removed, false)
+    assert.equal(existsSync(join(projectDir(a), "preserved")), false)
+    await assert.rejects(worktreeGc(a, false, true), /lacks Git metadata/)
+    assert.ok(existsSync(path), "automatic collection does not quarantine an unreviewed remnant")
+    const done = await worktreeGc(a, false, false, { paths: [path], caller: a })
+    const result = done[0]
+    assert.ok(result)
+    assert.equal(result.quarantine, "complete", result.detail)
+    assert.equal(result.removed, true)
+    const preserved = result.preserved
+    assert.ok(preserved)
+    const checkout = join(preserved, "checkout")
+    assert.equal(existsSync(path), false)
+    assert.deepEqual(readFileSync(join(checkout, "local.config")), Buffer.from([0, 255, 23, 0]))
+    assert.equal(readFileSync(join(checkout, "node_modules/local-package/unique.js"), "utf8"), "unknown ownership must retain these install bytes\n")
+    assert.deepEqual(readFileSync(join(checkout, "coverage/opaque.dat")), Buffer.from([200, 0, 40, 0]))
+    assert.equal(lstatSync(join(checkout, "node_modules/shared"), { throwIfNoEntry: false }), undefined)
+    assert.equal(lstatSync(join(checkout, "a/b/c/d/e/node_modules"), { throwIfNoEntry: false }), undefined)
+    assert.ok(lstatSync(join(checkout, "reference")).isSymbolicLink(), "non-dependency links remain opaque custody")
+    assert.equal(readFileSync(join(external, "sentinel.txt"), "utf8"), "external bytes stay\n")
+    assert.equal(git(a, "show-ref"), refs, "a Git-less remnant receives no guessed HEAD or reference")
+    const manifest: unknown = JSON.parse(readFileSync(join(preserved, "manifest.json"), "utf8"))
+    assert.ok(typeof manifest === "object" && manifest !== null && "state" in manifest && "metadata" in manifest)
+    assert.equal(manifest.state, "complete")
+    const metadata = manifest.metadata
+    assert.ok(typeof metadata === "object" && metadata !== null && "links" in metadata && Array.isArray(metadata.links))
+    assert.ok(metadata.links.some((link: unknown) => typeof link === "object" && link !== null && "path" in link && "target" in link && link.path === "node_modules/shared" && link.target === linkTarget))
+})
+
+void test("remnant scope rejects foreign, outside, nested and linked roots before moving any selected folder", async (t) => {
+    const { base, a, b } = fixture(t)
+    const worktrees = join(projectDir(a), "worktrees")
+    const valid = join(worktrees, "valid-remnant")
+    const foreign = join(projectDir(b), "worktrees", "foreign-remnant")
+    const outside = join(base, "outside-remnant")
+    const nested = join(worktrees, "container", "nested-remnant")
+    const containsGit = join(worktrees, "nested-git-remnant")
+    for (const path of [valid, foreign, outside, nested, join(containsGit, "node_modules", "vendored")]) {
+        mkdirSync(path, { recursive: true })
+        writeFileSync(join(path, "local.config"), "retain this scratch file\n")
+    }
+    writeFileSync(join(containsGit, "node_modules/vendored/.git"), "fixture metadata pointer\n")
+    const alias = join(worktrees, "linked-root")
+    symlinkSync(outside, alias, process.platform === "win32" ? "junction" : "dir")
+    const done = await worktreeGc(a, false, true, { paths: [valid, foreign, outside, nested, containsGit, alias], caller: a })
+    assert.equal(done.length, 6)
+    assert.equal(done[0]?.blocked, undefined)
+    assert.ok(done.slice(1).every((entry) => entry.blocked === true))
+    assert.ok(done.every((entry) => !entry.removed))
+    assert.ok(existsSync(valid), "a blocked initial selection moves none of its otherwise valid paths")
+    assert.ok(lstatSync(alias).isSymbolicLink())
+    assert.equal(readFileSync(join(outside, "local.config"), "utf8"), "retain this scratch file\n")
+    assert.equal(existsSync(join(projectDir(a), "preserved")), false)
+})
+
+void test("remnant custody refuses a changed file before the atomic rename", async (t) => {
+    const { a } = fixture(t)
+    const path = join(projectDir(a), "worktrees", "changing-remnant")
+    mkdirSync(path, { recursive: true })
+    const file = join(path, "local.config")
+    writeFileSync(file, "first bytes\n")
+    let checks = 0
+    await assert.rejects(quarantineRemnant(a, path, () => {
+        checks += 1
+        if (checks === 2) {
+            writeFileSync(file, "other bytes\n")
+            utimesSync(file, new Date(), new Date(Date.now() + 60_000))
+        }
+        return Promise.resolve()
+    }), /changed before quarantine/)
+    assert.equal(readFileSync(file, "utf8"), "other bytes\n")
+    assert.ok(existsSync(path))
+})
+
+void test("remnant custody refuses a moved source and does not collect the folder replacing it", async (t) => {
+    const { a } = fixture(t)
+    const path = join(projectDir(a), "worktrees", "replaced-remnant")
+    const moved = join(projectDir(a), "worktrees", "moved-remnant")
+    mkdirSync(path, { recursive: true })
+    writeFileSync(join(path, "local.config"), "original bytes\n")
+    let checks = 0
+    await assert.rejects(quarantineRemnant(a, path, () => {
+        checks += 1
+        if (checks === 2) {
+            renameSync(path, moved)
+            mkdirSync(path)
+            writeFileSync(join(path, "local.config"), "replacement bytes\n")
+        }
+        return Promise.resolve()
+    }), /changed before quarantine/)
+    assert.equal(readFileSync(join(moved, "local.config"), "utf8"), "original bytes\n")
+    assert.equal(readFileSync(join(path, "local.config"), "utf8"), "replacement bytes\n")
+})
+
+void test("a project state worktrees alias cannot establish remnant provenance", (t) => {
+    const { base, a } = fixture(t)
+    const outside = join(base, "aliased-state")
+    mkdirSync(join(outside, "remnant"), { recursive: true })
+    symlinkSync(outside, join(projectDir(a), "worktrees"), process.platform === "win32" ? "junction" : "dir")
+    assert.throws(() => inspectRemnant(a, join(projectDir(a), "worktrees/remnant")), /canonical real directories/)
+    assert.ok(existsSync(join(outside, "remnant")))
+})
+
+void test("a remnant's root dependency junction is unlinked while its target and all real files stay", async (t) => {
+    const { base, a } = fixture(t)
+    const path = join(projectDir(a), "worktrees", "linked-install-remnant")
+    const external = join(base, "root-install-target")
+    mkdirSync(path, { recursive: true })
+    mkdirSync(external)
+    writeFileSync(join(path, "local.config"), "real remnant bytes\n")
+    writeFileSync(join(external, "sentinel.txt"), "external install bytes\n")
+    symlinkSync(external, join(path, "node_modules"), process.platform === "win32" ? "junction" : "dir")
+    const custody = await quarantineRemnant(a, path, () => Promise.resolve())
+    assert.equal(custody.quarantine, "complete", custody.detail)
+    assert.equal(custody.removed, true)
+    assert.equal(lstatSync(join(custody.directory, "checkout/node_modules"), { throwIfNoEntry: false }), undefined)
+    assert.equal(readFileSync(join(custody.directory, "checkout/local.config"), "utf8"), "real remnant bytes\n")
+    assert.equal(readFileSync(join(external, "sentinel.txt"), "utf8"), "external install bytes\n")
+})
+
+void test("a live worker blocks an explicitly selected remnant even with now", async (t) => {
+    const { a } = fixture(t)
+    const path = join(projectDir(a), "worktrees", "live-remnant")
+    mkdirSync(path, { recursive: true })
+    writeFileSync(join(path, "local.config"), "live worker bytes\n")
+    const machine = openMachine()
+    machine.exec("CREATE TABLE IF NOT EXISTS supervisor_workers (id TEXT, worktree TEXT, ended_at TEXT)")
+    machine.prepare("INSERT INTO supervisor_workers (id,worktree,ended_at) VALUES (?,?,NULL)").run("live-remnant-worker", path)
+    machine.close()
+    const result = (await worktreeGc(a, false, true, { paths: [path], caller: a }))[0]
+    assert.ok(result)
+    assert.equal(result.blocked, true)
+    assert.match(result.reason, /worker live-remnant-worker is live/)
+    assert.equal(readFileSync(join(path, "local.config"), "utf8"), "live worker bytes\n")
+})
+
+void test("retired project collection refuses Git-less remnants until explicit custody review", async (t) => {
+    const { a } = fixture(t)
+    const path = join(projectDir(a), "worktrees", "retired-remnant")
+    mkdirSync(path, { recursive: true })
+    writeFileSync(join(path, "local.config"), "retain retired bytes\n")
+    const old = new Date(Date.now() - 60 * 60_000)
+    utimesSync(path, old, old)
+    const machine = openMachine()
+    machine.prepare("UPDATE ledgers SET state = 'retired' WHERE repo_root = ?").run(a)
+    machine.close()
+    await assert.rejects(worktreeGc(a, false), /lacks Git metadata/)
+    assert.equal(readFileSync(join(path, "local.config"), "utf8"), "retain retired bytes\n")
 })
