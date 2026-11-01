@@ -41,7 +41,6 @@ The unit is drawn on three axes, and none stands in for another:
 |---|---|---|---|
 | page, layout, overlay | yes, the arrangement it approves | none: it reads no data and composes the blocks that do | its route's boundary; `notFound()` in the page owner |
 | block | yes | one `DataSlot<T>` per read it owns | each slot's, through `SlotView`; its writes' through the toast runner or a field |
-| frame | none: it owns a region and draws the tiers below from its role props | none: it receives resolved fields and `isSkeleton` | none |
 | composite | may take `shape` beside its flat fields (FE-FUNCTION-4) | none: it receives an item and `isSkeleton` from its block's `SlotView` | a resolved field error it is handed |
 | frame | none | none | none |
 | branch | none: only intrinsic interaction (open, expanded) in its own `useState` | none | none |

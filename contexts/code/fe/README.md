@@ -38,10 +38,12 @@ for a secondary one (`"hide"`); empty shows the region's empty sentence. The cop
 namespace through `useSlotLabels`. A signed-out viewer never reaches a region: the proxy and the session gate send them
 to sign-in. A missing resource behind a route is `notFound()` in the page owner, never a region status.
 
-Loading is skeleton parity, end to end: `slot.isLoading` makes `SlotView` call `render(placeholder, true)`, so the
-loading tree is the ready tree drawn from a `placeholder` value of the same shape, with the same boxes. `isSkeleton` is
-passed down to every leaf, and each leaf draws the grammar's skeleton in its own box 
-([ui composition](../../ui/composition.md) STATE-8). The one allowed `isSkeleton` branch hides a part that cannot be drawn
+Loading is skeleton parity, end to end: a first load with no data (`slot.isLoading`) makes `SlotView` call `render(placeholder, true)`,
+so the loading tree is the ready tree drawn with the same boxes, and `isSkeleton` is passed down to every frame and leaf, which
+draw the grammar's skeleton from their own structure ([ui composition](../../ui/composition.md) STATE-8). An app draws no
+skeleton and no item list of fake data, a revalidation (`isValidating`) never makes a slot loading, several reads feeding one
+frame reach it as one status that is loading while any read has no data, and a failed read is `isError`, never an empty array
+(the [loading table](../../ui/situations.md#loading)). The one allowed `isSkeleton` branch hides a part that cannot be drawn
 without real data (`{isSkeleton ? null : <OrderDisclosure ... />}`); a part that only waits (a button, a field) takes
 its flag and rests as itself, and no branch picks between two different elements. A pure block never branches on a
 status flag, and nothing draws a page-level loading view except the route's `*LoadingPage` ([boundaries.md](boundaries.md)

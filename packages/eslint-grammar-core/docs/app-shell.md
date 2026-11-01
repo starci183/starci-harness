@@ -8,16 +8,16 @@ or a shell owner combining a bar and sidebar. It rejects hand-written app-frame 
 workspace shells without the fixed viewport. Generic flow-based site chrome stays in its own scope.
 `no-shell-bottom-tabs` rejects bottom navigation components and the shell's `compactNavigation` slot.
 
-The `navbar-cluster` rule reads the visible `TopBar` or `NavigationFeatureNav` actions in source order:
+The `navbar-cluster` rule reads the visible `TopBar` actions in source order:
 tertiary Language `IconButton` triggering `DropdownMenu`, theme `Switch`, notification `IconButton`
 triggering `Popover`, account `AvatarButton` triggering `DropdownMenu`. It follows
 local JSX constants and components, constant object members, imported Grammar aliases, and namespace imports. Translated
 labels may be dynamic; icon sources identify language and notifications. Menu contents and popover
 content belong to their overlays and are outside the bar's control sequence. Conditional render
-branches are checked separately. Grammar `TopBar` and `NavigationFeatureNav` compositions are app
+branches are checked separately. Grammar `TopBar` compositions are app
 bars by default. A proven `WorkspaceShell viewport="flow"` with no workspace/sidebar evidence owns
 generic site chrome. A shell hosting an imported navbar delegates only after its owned public
-export and rendered Base chain prove a `TopBar` or `NavigationFeatureNav` in every alternative.
+export and rendered Base chain prove a `TopBar` in every alternative.
 Workspace exports resolve back to source. Raw or unknown imported headers are red; the actual
 bar's own actions are checked where composed. Each lint source snapshot has fresh dependency proofs.
 
