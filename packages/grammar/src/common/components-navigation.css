@@ -2094,7 +2094,7 @@
     /* An edge leaves the right edge of its node and enters the left edge of the next one, so the arrowhead is seen. */
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-handle.react-flow__handle-left { inset-inline-start: 0; }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-handle.react-flow__handle-right { inset-inline-start: 100%; }
-    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-copy { inline-size: 100%; gap: 0.125rem; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-copy { inline-size: 100%; gap: 0.25rem; }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-label { overflow: visible; font-weight: 500; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-description { overflow: visible; color: inherit; opacity: 0.8; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow { --xy-edge-stroke: var(--muted, GrayText); --xy-edge-stroke-width: 1.75; }
