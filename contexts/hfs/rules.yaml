@@ -2401,6 +2401,14 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-fill-command-in-header}
 
+  - id: R353
+    code: FE_TAG_GROUP_SELECTION
+    law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list)."
+    failureCodes:
+      - FE_TAG_GROUP_SELECTION
+    enforcers:
+      - {kind: eslint-fe, id: no-selectable-tag-group}
+
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
 # dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is

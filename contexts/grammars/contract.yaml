@@ -173,6 +173,14 @@ roles:
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
     dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING]
 
+  - id: filter-button-group
+    ui: ui/components/chip.md
+    renderers: [FilterButtonGroup]
+    vendorParity: [toggle-button-group, toggle-button]
+    slots: [options]
+    states: [selected, focus-visible, disabled]
+    grammarMayChange: [selected paint (the accent soft pair), the overflow button and its list]
+
   - id: segmented-control
     ui: ui/components/segmented-control.md
     renderers: [SegmentedControl]
@@ -194,7 +202,6 @@ roles:
       tone: { values: [neutral, accent, success, warning, danger, muted (Badge only)], chosenBy: app from a settled fact }
       emphasis: { values: [soft, muted (no fill, muted ink)], chosenBy: grammar from the tone }
       statusDot: { values: [text, echo, static], chosenBy: app }
-      selectable: { values: [TagGroup selection], chosenBy: app }
       reorder: { values: [none, TagGroup onReorder], chosenBy: app }
     sizes: { badge: below the ramp, statusDot: { steps: [sm, md, lg], default: md, equals: the vendor Chip of the same size }, tagGroup: { steps: [sm, md], default: sm } }
     states: [selected (TagGroup), disabled, echo (StatusDot, off under reduced motion), live / reconnecting / lost (ConnectionStatus: a polite live region, the words carry the state)]

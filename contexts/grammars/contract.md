@@ -136,6 +136,14 @@ A segmented control is one value inside a form or a toolbar (period, audience, d
 selected segment takes the soft accent with an accent border, the paint of selection rather than of a command. It
 publishes `sm` and `md`, default `md`.
 
+### FilterButtonGroup
+
+A filter button group is peer values that filter a collection which stays in place: `sm` toggle buttons on one row (a radio
+group to assistive technology), one selected, an optional count per option. It never wraps: the fit is measured from the real
+width, the options that do not fit go behind a "+n" button that opens a search list, and a chosen hidden option takes its place
+in the row, so the selection is always seen. The first option stays. Selected paints the soft accent pair; the rest take the
+surface. It replaces the selectable tag group, which no longer has a selection.
+
 ### Chip
 
 A chip is a label, not a target, on two axes: tone (which settled fact) and emphasis. Its label starts with an

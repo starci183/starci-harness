@@ -13,7 +13,7 @@ Choice `tabs.choose.role`: what the peer choice changes. Four roles switch or ch
 | --- | --- | --- | --- |
 | panels | the choice swaps whole panels of content | `Tabs`, then `tabs.choose.level` | `DNA-COMMON-TABS-OWN-PANEL` |
 | value | the choice sets one value of a form or toolbar (audience, period, density); nothing is swapped out | `segmented-control.choose.role` | `DNA-COMMON-SEGMENTED-RADIO` |
-| filter | the choice narrows a collection that stays in place, single or multiple | selectable `TagGroup` (`chip.choose.role:filter`) | judgement |
+| filter | the choice narrows a collection that stays in place | `FilterButtonGroup` (`chip.choose.role:filter`) | judgement |
 | nav-item | the choice picks one item of a navigation-like list | `ListBox` selecting by fill with no check (`list-table.choose.role:pick`) | lint `selection-fill-no-check` |
 
 Choice `tabs.choose.level`: page tabs or region tabs. A set nested inside another set's panel is region tabs;
@@ -28,7 +28,7 @@ two sets of the same level never nest.
 None for the app: placing the tabs is the choice, and the grammar draws every tab bar, page or region, as the
 underline, its labels text on the content edge they share with the title above and the box below
 ([contract](../../grammars/contract.md#tabs), [presentation](../presentation.md#space) Text edge). A pill is the
-shape of a filter or a chip, never of a view switch: a filter over a collection is a selectable `TagGroup`. Lint:
+shape of a filter or a chip, never of a view switch: a filter over a collection is a `FilterButtonGroup`. Lint:
 `starci-fe/nested-control-variant` refuses the pill on Tabs.
 
 ## Size

@@ -116,7 +116,7 @@ Margin:
 
 The page title, the tab labels and the section headings share one text edge with the card or pane box below them:
 page tabs are the underline bar, their first label on the content edge; pills are the shape of filters and chips
-only (a filter over a collection is a selectable `TagGroup`). The card's inner text at 12 is the one intentional step.
+only (a filter over a collection is a `FilterButtonGroup`). The card's inner text at 12 is the one intentional step.
 Lint: `starci-fe/nested-control-variant`.
 
 ### The table (the grammar's decision per component)

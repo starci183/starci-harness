@@ -13,7 +13,7 @@ Choice `select.choose.role`: which list control picks the value. Reached from
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | action | the entries are actions, not values | `menu.choose.placement` | judgement |
-| multi-visible | several values, and every option fits on screen | selectable `TagGroup` | judgement |
+| multi-visible | several values, and every option fits on screen | `CheckboxGroup` | judgement |
 | multi | several values from a longer list | a multi-select | judgement |
 | combo | a long or searchable list, or free entry with suggestions | `ComboBox` | judgement |
 | select | six or more known options, one value | `Select` | candidate: a `Select` lists at least six options |

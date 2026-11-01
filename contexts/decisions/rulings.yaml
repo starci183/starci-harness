@@ -732,6 +732,11 @@ rulings:
     status: live
     ruling: "In a chat the reader's own message is the brand fill with its foreground (--accent and --accent-foreground; the contract has no --primary) and the other party's message is the surface with its foreground; inline content in an outgoing bubble (a link, a mention, code, a muted line) inherits the bubble's foreground so it stays readable on the solid fill. Every chat is ChatBubble: no screen draws its own bubble. Offset Pop follows its own accent and surface pair. The owner decided on chat: \"chốt vậy đi\" (my message uses the primary fill with its foreground, the other party uses surface)."
     owner: "contexts/ui/components/chat.md; @starci/grammar src/core/composite/ChatBubble"
+  - id: filter-button-group
+    date: '2026-11-01'
+    status: live
+    ruling: "Peer values that filter a collection in place are a FilterButtonGroup: one row of sm toggle buttons (the vendor ToggleButton group, single selection, never empty), an optional count per option, selected on the soft accent pair and the rest on the surface; it never wraps, and the options that do not fit go behind a \"+n\" button that opens a search list (matching without tone marks), a chosen hidden option taking the place of the last visible one. The selectable TagGroup is removed from the filter role everywhere and TagGroup has no selection: it stays for values the user entered, with remove or reorder. The owner's words: \"sao cái này không phải cụm button... button size xs kiểu nhóm button\"; the owner then set the size to sm, not xs."
+    owner: "contexts/ui/components/chip.md (chip.choose.role, filter); @starci/grammar src/core/composite/FilterButtonGroup; contexts/hfs/rules.yaml R353"
   - id: flow-graph-lanes
     date: '2026-11-01'
     status: live

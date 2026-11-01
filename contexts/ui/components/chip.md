@@ -10,7 +10,8 @@ Two different jobs share the pill shape, and a status may shrink to its dot:
 | `Badge` (display chip) | label an outcome authority settled, next to the thing it qualifies | no |
 | `StatusDot` | state an entity's status as a dot, with its words beside it or alone with the words as its name | no |
 | `ConnectionStatus` | state whether a live feed (server-sent events, a socket) is live, reconnecting or lost, as a dot and its words in a polite live region | no |
-| selectable `TagGroup` | choose peer filters or categories over a collection; enter structured tags | yes |
+| `TagGroup` | values the user entered, to remove or to order (it has no selection) | yes |
+| `FilterButtonGroup` | peer values that filter a collection that stays in place: one row of `sm` toggle buttons, the rest behind a "+n" search list | yes |
 
 ## Choose
 
@@ -19,7 +20,7 @@ Choice `chip.choose.role`: what carries the label or the pick. The first row tha
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | value | one value is chosen in a form | not a chip: `segmented-control.choose.role` | judgement |
-| filter | peer values filter a collection that stays in place | selectable `TagGroup` | judgement |
+| filter | peer values filter a collection that stays in place | `FilterButtonGroup`: a group of `sm` toggle buttons on one row, one selected, an option count when the app has it, the options that do not fit behind a "+n" button with a search list (R353 refuses a selection on `TagGroup`) | judgement |
 | entered | values the user entered, to remove or order | `TagGroup` tags with their remove action, and `onReorder` when order matters | `DNA-COMMON-TAG-REMOVE`, `DNA-COMMON-TAG-REORDER-KEYS` |
 | dot | a status with no room or need for words beside it (a row marker, presence, a live process) | `StatusDot` without text, named by `aria-label`; never a `Badge` without text | `DNA-COMMON-DOT-NAMED` |
 | state | an entity's operational state that authority reports (active, failed, pending review) | `Badge` in that state's tone, or `StatusDot` with its text | candidate: toned labels per entity at most `budgets.badgesPerEntity` |

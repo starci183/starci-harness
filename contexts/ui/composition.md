@@ -105,7 +105,7 @@ next step of the page's one job. Every other next step on that view is `neutral`
 `EmptyNotice` owns the command as the commit and the header omits it; once content exists the header owns it.
 Equal-consequence peers get no commit at all: no paint breaks a tie. A landing may repeat its one conversion
 command once, never in the same viewport (`budgets.commitPerView`).
-Peer choices are not buttons: choosing among values is `Tabs`, `SegmentedControl`, a selectable `TagGroup` or a
+Peer choices are not buttons: choosing among values is `Tabs`, `SegmentedControl`, a `FilterButtonGroup` or a
 `ListBox`, chosen by [components/tabs.md](components/tabs.md), and no commit sits among them.
 Lint: `starci-fe/single-commit-per-render`, `starci-fe/no-commit-in-collection-item`.
 

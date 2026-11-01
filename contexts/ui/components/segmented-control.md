@@ -15,7 +15,7 @@ applies wins.
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | panels | the choice swaps whole panels | `tabs.choose.role:panels` | judgement |
-| filter | the choice filters a collection, possibly several values at once | selectable `TagGroup` (`chip.choose.role:filter`) | judgement |
+| filter | the choice filters a collection that stays in place | `FilterButtonGroup` (`chip.choose.role:filter`) | judgement |
 | switch | the value is on or off of one setting | `Switch` | judgement |
 | radio | each option needs a sentence of explanation | `RadioGroup` | judgement |
 | list | six or more options, or labels too long for one segment | `select.choose.role` | candidate: a `SegmentedControl` holds 2 to 5 segments |

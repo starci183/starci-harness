@@ -58,7 +58,7 @@ calendar days and the stepper and clear glyphs of fields. Proof: A11Y-4, TASTE-1
 | Select, ComboBox trigger | `md` only | `md` | a field: same reason |
 | SegmentedControl | `sm`, `md` | `md` | a control row; `sm` in a dense toolbar |
 | Tabs | none: the bar is `md` | `md` | a tab bar aligns with the controls beside it; region tabs' pill track and page tabs' bar both land on `md` |
-| selectable TagGroup (filter chips) | `sm`, `md` | `sm` | filter rows are dense; `md` when the row also holds `md` controls |
+| FilterButtonGroup (filter buttons) | `sm` | `sm` | filter rows are dense: one row of `sm` toggle buttons (32px, the vendor ToggleButton `sm`) |
 | Switch, Checkbox, Radio | the row (label included) is the target | `md` row | the glyph is small, the labelled row is what is pressed |
 | ListBox and Menu rows | `sm`, `md`, `lg` leading slot | `md` | the step sizes the row's leading identity (glyph, avatar); the row height is that slot plus the vendor row inset, so the leading mark and the row stay aligned |
 | Avatar | `sm`, `md`, `lg`, `control` | `md` | the identity ramp is the control ramp, so an avatar in a bar or a row matches the controls beside it |
