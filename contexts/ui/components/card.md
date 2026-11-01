@@ -14,7 +14,7 @@ Choice `card.choose.role`: what presents the subject. The first row that applies
 | collection | three or more entities of one kind on a page | not a card: a section with a list (`list-table.choose.role`) | candidate: no card holds three or more sibling cards |
 | rail-list | a standalone list in a rail (choices, suggestions, how it works) | `SurfaceListCard`: label outside, rows inside | `DNA-COMMON-LISTCARD-LABEL-OUTSIDE` |
 | disclosure | one summary that reveals a rarely changed region | `SurfaceAccordionCard`, closed by default | judgement |
-| figures | a row of key figures | one default card holding a stat strip (DISCIPLINE-2) | candidate: stat cells at most `budgets.ribbonCells` |
+| figures | a row of key figures | one default card holding a stat strip (DISCIPLINE-2): touching cells at the nested inset, lines between cells and rows, a Meter as a second joined band | candidate: stat cells at most `budgets.ribbonCells` |
 | whole | the whole card is one destination or command | `SurfaceCard` with its whole action (STATE-5) | judgement |
 | kinds | several kinds of content about one subject | one joined `SurfaceCard`, its bands divided by separators, never inner cards | candidate: separators per card at most `budgets.hairlinesPerCard` |
 | entity | one entity or one summary of one subject | `SurfaceCard` | judgement |

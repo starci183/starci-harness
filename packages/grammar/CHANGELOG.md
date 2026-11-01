@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.2 - 2026-11-01
+
+- Fixed: `DescriptionList layout="stat-strip"` drew no dividers (none at all below 48rem, a column gap with an inset rule above it). The cells now touch (gap 0), each inset by the nested step (8), and a line runs between the cells of a row and between rows, at every wrap, to the strip's edge and never on its outer edge (each cell draws its start and top edges as box-shadows; the strip clips the outer ones), so an odd last cell is divided correctly. The strip answers its own width through a container query, with no script: one row from 40rem, 2 x 2 from 18rem, one column below; it follows the viewport no longer. In a default card it bleeds to the card edge, in a `SurfaceCard composition="joined"` it is a band. Line colour is `--separator` (Offset Pop: the ink outline), so dark mode follows the tokens; loading keeps the same cells and lines.
+- Fixed: a `Divider` between the bands of a `joined` card is a seam (no margin of its own) instead of keeping the card inset above and below it.
+- Stories: Navigation & Data / StatStripDividers (four widths, an odd last cell, a joined card with a Meter band, loading, light and dark).
+
 ## 0.20.1 - 2026-11-01
 
 - Changed: moves with its lint family (eslint-grammar-core and eslint-grammar-offset-pop 0.20.1, RELEASE_VERSION_NOT_BUMPED: their bundled canon pins changed); no component changed.

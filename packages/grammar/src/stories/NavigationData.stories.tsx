@@ -304,7 +304,7 @@ export const DescriptionList: Story = {
       <State label="Stacked" direction="column">
         <G.DescriptionList layout="stacked" items={[{ id: 'owner', term: 'Owner', description: 'Alex Morgan' }, { id: 'created', term: 'Created', description: '2 March 2026' }]} />
       </State>
-      <State label="Stat strip (one row at 48rem and wider, 2 x 2 below)" direction="column">
+      <State label="Stat strip (one row from 40rem of its own width, 2 x 2 from 18rem, one column below)" direction="column">
         <G.DescriptionList
           layout="stat-strip"
           items={[
@@ -315,6 +315,65 @@ export const DescriptionList: Story = {
           ]}
         />
       </State>
+    </Matrix>
+  ),
+};
+
+const stripItems: ReadonlyArray<G.DescriptionListStatItem> = [
+  { id: 'lessons', icon: BookGlyph, term: 'Lessons', description: '12', unit: 'done', meta: 'This month' },
+  { id: 'streak', icon: HomeGlyph, term: 'Streak', description: '9', unit: 'days', meta: 'Best 14' },
+  { id: 'score', term: 'Score', description: '86%', meta: 'Last quiz' },
+  { id: 'time', term: 'Time', description: '4.5', unit: 'h', meta: '7 days' },
+];
+
+/**
+ * The stat strip's lines at every wrap, in light and dark: touching cells, a vertical line between the cells of a row and
+ * a horizontal line between rows, none on the outer edge; four cells in a row, 2 x 2, one column, and an odd last cell.
+ * The strip answers its own width, so each frame below is one width of the same component.
+ */
+export const StatStripDividers: Story = {
+  render: (_, { globals }) => (
+    <Matrix maxWidth={720}>
+      {(['light', 'dark'] as const).map((theme) => (
+        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-strip-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
+          {([
+            ['Wide: four cells in a row', 672, stripItems],
+            ['Narrow: 2 x 2', 400, stripItems],
+            ['Narrow: one column', 240, stripItems],
+            ['Narrow, odd last cell: 2 + 1', 400, stripItems.slice(0, 3)],
+          ] as const).map(([label, width, items]) => (
+            <State key={label} label={`${theme}: ${label}`} direction="column">
+              <div style={{ width, maxWidth: '100%' }}>
+                <G.SurfaceCard ariaLabel={label}>
+                  <G.DescriptionList layout="stat-strip" items={items} />
+                </G.SurfaceCard>
+              </div>
+            </State>
+          ))}
+          <State label={`${theme}: joined card, the strip as a band with a Meter band below`} direction="column">
+            <div style={{ width: 672, maxWidth: '100%' }}>
+              <G.SurfaceCard ariaLabel="Usage" composition="joined">
+                <G.DescriptionList layout="stat-strip" items={stripItems} />
+                <G.Divider semantics="presentation" />
+                <div style={{ padding: 'var(--grammar-inset, 0.75rem)' }}>
+                  <G.Meter label="Storage" value={64} valueLabel="6.4 of 10 GB" />
+                </div>
+              </G.SurfaceCard>
+            </div>
+          </State>
+          <State label={`${theme}: joined card, loading keeps the same frame`} direction="column">
+            <div style={{ width: 672, maxWidth: '100%' }}>
+              <G.SurfaceCard ariaLabel="Usage, loading" composition="joined">
+                <G.DescriptionList isLoading layout="stat-strip" items={stripItems} />
+                <G.Divider semantics="presentation" />
+                <div style={{ padding: 'var(--grammar-inset, 0.75rem)' }}>
+                  <G.Meter label="Storage" value={64} isSkeleton />
+                </div>
+              </G.SurfaceCard>
+            </div>
+          </State>
+        </G.GrammarRoot>
+      ))}
     </Matrix>
   ),
 };

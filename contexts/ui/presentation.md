@@ -139,6 +139,7 @@ Values in px at the `core` family; each is a token or the anatomy of the compone
 | Pane (`PaneGrid`) | 12 | 12 on every side | 0 + divider | sections row |
 | Composer | pane inset | pane inset | field ↔ send inline | chips ↔ field inline, field ↔ hint identity |
 | Box in a card (nested card, notice, stat cell) | 8 | 8 | — | identity |
+| Stat strip (`DescriptionList layout="stat-strip"`) | cell 8 | cell 8 | 0 + a line between cells | 0 + a line between rows; label ↔ figure ↔ meta identity |
 | ListBox option | 8 | 8 (h 40) | avatar ↔ text row | title ↔ description identity |
 | Table | cells 12 | cells 8 (h 40) | — | seam |
 | Alert, Toast | 12 (8 in a card; the toast's close side 8) | 12 (8 in a card) | glyph ↔ text inline | identity |

@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.16.5 - 2026-11-01
+
+- Changed: the bundled canon pins name @starci/grammar 0.20.2, eslint-grammar-core and eslint-grammar-offset-pop 0.20.2, eslint-canon-be 3.11.6, eslint-canon-fe 9.8.5, stylelint-canon 2.4.0 and hfs 4.16.5 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm). No behaviour change.
+
 ## 4.16.4 - 2026-11-01
 
 - Fixed: the unused-symbol value resolver no longer overflows the call stack on a recursive function that spreads its own parameter (`{ ...term, op }` in a `reset(term)` that maps itself over `term.all`): the typed-property lookup carries the resolver's visited set instead of starting a fresh one, so the cycle ends at the first repeated node (`starci app check` crashed with "Maximum call stack size exceeded" in the hfs structure step).

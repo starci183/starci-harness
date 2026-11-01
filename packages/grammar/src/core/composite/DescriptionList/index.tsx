@@ -34,15 +34,18 @@ type PairLayout = {
 
 type StatStripLayout = {
     /**
-     * `stat-strip` lays 2-4 key figures side by side: one row of equal cells at 48rem and wider, with a
-     * hairline between cells when divided; a 2 x 2 grid below.
+     * `stat-strip` lays 2-4 key figures as touching cells (gap 0, each inset by the nested step) and answers the
+     * strip's own width, not the viewport's: one row from 40rem, 2 x 2 from 18rem, one column below, a last odd cell
+     * spanning its row. When divided, a line runs between the cells of a row and between rows, at every wrap, to the
+     * strip's edge and never on its outer edge. In a default card it bleeds to the card edge; in a
+     * `SurfaceCard composition="joined"` it is a band, and a `Divider` seams it to the next band.
      */
     readonly layout: "stat-strip"
     readonly items: ReadonlyArray<DescriptionListStatItem>
 }
 
 export type DescriptionListProps = (PairLayout | StatStripLayout) & {
-    /** Draw a separator between pairs (between cells, for `stat-strip`). */
+    /** Draw a separator between pairs (a line between touching cells, for `stat-strip`). */
     readonly isDivided?: boolean
     /**
      * Unresolved values (knowledge STATE-8): every `term` stays real text; each `description` (and a stat item meta) is

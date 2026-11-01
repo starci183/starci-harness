@@ -272,13 +272,16 @@
     }
 
     /*
-     * A stat strip divides its cells on the inline axis, in the same ink line. Common draws that edge only at
-     * 48rem and wider (its border style); the family re-inks its width and colour, so no width query is added.
+     * A stat strip draws its lines between touching cells (Common's box-shadow edges), in the same ink line: the family
+     * re-inks the width and colour of those edges and removes the stacked list's block-start border, so no width query is added.
      */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="DescriptionList"][data-grammar-description-layout="stat-strip"] [data-grammar-description-pair] {
+        --starci-core-strip-line-width: var(--offset-pop-outline-width);
+        --starci-core-strip-line-color: var(--offset-pop-ink);
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="DescriptionList"][data-grammar-description-layout="stat-strip"][data-grammar-description-divided="true"] [data-grammar-description-pair] + [data-grammar-description-pair] {
         border-block-start: 0;
-        border-inline-start-width: var(--offset-pop-outline-width);
-        border-inline-start-color: var(--offset-pop-ink);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="DescriptionList"] dt {

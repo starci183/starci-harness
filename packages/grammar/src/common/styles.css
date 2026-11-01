@@ -3311,6 +3311,11 @@
         margin-block: var(--grammar-card-padding-block, 0.75rem);
     }
 
+    /* In a joined card the divider is the seam between two bands: it touches both and the card's edges, with no inset of its own. */
+    .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
+        margin: 0 !important;
+    }
+
     /* A vertical hairline between touching columns of one joined surface: it fills the row, whatever its height. */
     .starci-core-divider-bare[data-grammar-divider-orientation="vertical"] {
         align-self: stretch;
