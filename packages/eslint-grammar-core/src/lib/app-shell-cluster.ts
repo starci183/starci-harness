@@ -15,7 +15,7 @@ const controlsOf = (context: ReaderContext, expression: Resolved | null | undefi
   const branches: Node[] = []
   let ownsBar = false
   visitVisible(context, expression, (opening, name, ancestors) => {
-    if (shellHeader && name !== null && ["TopBar", "NavigationFeatureNav"].includes(name)) { ownsBar = true; return false }
+    if (shellHeader && name !== null && ["TopBar"].includes(name)) { ownsBar = true; return false }
     if (!isBarControl(context, opening, name)) return
     const role = clusterRole(context, opening, name)
     controls.push(controlSignature(context, opening, name, role, ancestors))

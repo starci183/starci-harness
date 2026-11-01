@@ -5469,7 +5469,6 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NESTED_VARIANT", "FE_LIST_PANEL_PADDING", "FE_GRAMMAR_LAYOUT_ONLY", "FE_DIVIDER_FULL_BLEED"]
     enforcers:
-      - {kind: eslint-fe, id: nested-control-variant}
       - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
       - {kind: eslint-fe, id: divider-full-bleed}
@@ -5480,15 +5479,15 @@ rules:
     templateNa: "Product composition is proved by the FE canon's Grammar import and surface fixtures; a template cannot choose product slots or lists."
     proves:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     exemplifiedBy:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     witness:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     cases:
       - id: case-1
@@ -5502,10 +5501,9 @@ rules:
     law: "An app Button or IconButton declares an intent and never a variant; Grammar resolves the variant from intent and placement (CTA-6). A destructive confirm lives in a confirmation dialog, a render holds at most one commit, and a collection item holds none."
     kinds: [codemod, lint, design]
     gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_BUTTON_INTENT", "FE_BUTTON_INTENT_REQUIRED", "FE_BUTTON_NO_VARIANT", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
+    failureCodes: ["FE_BUTTON_INTENT", "FE_BUTTON_INTENT_REQUIRED", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
     enforcers:
       - {kind: eslint-fe, id: button-intent-required}
-      - {kind: eslint-fe, id: button-no-variant}
       - {kind: eslint-fe, id: destructive-confirm-in-dialog}
       - {kind: eslint-fe, id: single-commit-per-render}
       - {kind: eslint-fe, id: no-commit-in-collection-item}
@@ -5514,11 +5512,11 @@ rules:
       - knowledge/ui/composition/cta.yaml
       - docs/code-pattern-enforcement.md#r319-button-intent
     proves:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     exemplifiedBy:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     witness:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     templateNa: "The intent of an action comes from the product decision in the .starciwork specification; a template cannot choose it."
     cases:
       - id: case-1

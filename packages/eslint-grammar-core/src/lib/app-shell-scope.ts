@@ -73,7 +73,7 @@ export const appBarOpenings = (context: ReaderContext): Set<TSESTree.JSXOpeningE
 /** Grammar bars are app bars unless an explicit generic flow shell establishes site-chrome ownership. */
 export const isAppBar = (context: ReaderContext, opening: TSESTree.JSXOpeningElement): boolean => {
   const barName = grammarName(context, opening)
-  if (barName !== "TopBar" && barName !== "NavigationFeatureNav") return false
+  if (barName !== "TopBar") return false
   for (let current: Node | undefined = opening.parent; current; current = current.parent) {
     if (current.type !== "JSXElement") continue
     const shell = current.openingElement

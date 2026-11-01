@@ -69,7 +69,7 @@ rules:
           Applications compose the published surface and control and omit the field variant, allowing
           the Grammar to resolve their layer; they do not reproduce surface paint or force a static
           variant. Controls whose anatomy does not vary by layer keep their published treatment. The
-          universal FE canon reports a static field variant as FE_NESTED_VARIANT (R318); rendered
+          field `variant` is not in the prop types, so a static variant does not compile; rendered
           treatment is checked through DRAW_NESTED_VARIANT, recognising painted Grammar surface stamps.
           The family's own recipe defines its props, values and supported anatomy
         elements:

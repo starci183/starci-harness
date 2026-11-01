@@ -97,7 +97,7 @@ The facts give the intent by the decision table `button.choose.intent`
 grammar from the surrounding composition, never declared by the app; the intent x placement -> variant map and
 its logic are the grammar contract's
 ([../grammars/contract.md](../grammars/contract.md#intent-x-placement---variant)).
-Lint: `starci-fe/button-intent-required`, `starci-fe/button-no-variant`.
+Lint: `starci-fe/button-intent-required`; the prop types have no `variant`.
 
 ### CTA-1 One commit per view
 A view (a page, or an open modal overlay; the page behind a modal is inert) has exactly one `commit`. It is the

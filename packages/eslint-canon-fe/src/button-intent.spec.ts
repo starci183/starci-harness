@@ -3,8 +3,6 @@
 // proves: FE_BUTTON_INTENT@lite
 // proves: FE_BUTTON_INTENT_REQUIRED@full
 // proves: FE_BUTTON_INTENT_REQUIRED@lite
-// proves: FE_BUTTON_NO_VARIANT@full
-// proves: FE_BUTTON_NO_VARIANT@lite
 // proves: FE_DESTRUCTIVE_CONFIRM_IN_DIALOG@full
 // proves: FE_DESTRUCTIVE_CONFIRM_IN_DIALOG@lite
 // proves: FE_SINGLE_COMMIT_PER_RENDER@full
@@ -31,7 +29,7 @@ const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsP
 const fixture = (code: string, messageId: string, count = 1) => ({ code: grammar + code, errors: Array.from({ length: count }, () => ({ messageId })) })
 
 test("CTA-6 laws are registered universally at error with their finding codes", () => {
-  const codes = ["FE_BUTTON_INTENT_REQUIRED", "FE_BUTTON_NO_VARIANT", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
+  const codes = ["FE_BUTTON_INTENT_REQUIRED", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
   Object.entries(rules).forEach(([name, rule], index) => {
     assert.equal(published[name], rule)
     assert.equal(ruleOwners[name], "button-intent")
@@ -72,24 +70,6 @@ for (const edition of ["lite", "full"]) {
   })
 })
   }
-
-  test(`CTA-6 ${edition}: valid app intent passes and app variant is forbidden even with a props spread`, () => {
-  assert.doesNotThrow(() => {
-    tester().run("button-no-variant", rules["button-no-variant"], {
-      valid: [grammar + 'const Page=()=> <Button intent="commit" />', grammar + 'const Page=({Button})=> <Button variant="primary" />', 'import {Button} from "other-kit"; const Page=()=> <Button variant="primary" />'],
-      invalid: [
-        fixture('const Page=()=> <Button variant="primary" />', "FE_BUTTON_NO_VARIANT"),
-        fixture('const Page=()=> <IconButton intent="neutral" variant={variant} />', "FE_BUTTON_NO_VARIANT"),
-        fixture('const props={variant:"outline",intent:"neutral"}; const Page=()=> <Button {...props} />', "FE_BUTTON_NO_VARIANT"),
-        fixture('const props={inner:{variant:"ghost"}}; const Page=()=> <Button {...props.inner} />', "FE_BUTTON_NO_VARIANT"),
-        fixture('const props={variant:"outline"}; const Page=()=> <Button {...{...props}} />', "FE_BUTTON_NO_VARIANT"),
-        { code: 'import {Button as Action} from "@starci/grammar/offset-pop"; const Page=()=> <Action variant="primary" />', errors: [{ messageId: "FE_BUTTON_NO_VARIANT" }] },
-        { code: 'import * as G from "@starci/grammar/offset-pop"; const Page=()=> <G.Button variant="primary" />', errors: [{ messageId: "FE_BUTTON_NO_VARIANT" }] },
-      ],
-    })
-  
-  })
-})
 
   test(`CTA-6 ${edition}: valid same-file dialog confirms pass and outside confirms are rejected`, () => {
   assert.doesNotThrow(() => {
@@ -187,7 +167,6 @@ test("CTA-6: typed literal intent, step and spread variants retain the laws", as
     const cases = [
       { code: 'const Page=({intent}:{intent:"commit"})=> <><Button intent={intent}/><Button intent="commit"/></>', ids: ["FE_SINGLE_COMMIT_PER_RENDER"] },
       { code: 'const Page=({step}:{step:"confirm"})=> <Button intent="destructive" step={step}/>', ids: ["FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"] },
-      { code: 'const Page=(props:{intent:"neutral",variant:"outline"})=> <Button {...props}/>', ids: ["FE_BUTTON_NO_VARIANT"] },
       { code: 'const Page=(props:{intent:"neutral"})=> <Button {...props}/>', ids: [] },
       { code: 'const Page=(props:{intent?:"neutral"})=> <Button {...props}/>', ids: ["FE_BUTTON_INTENT_REQUIRED"] },
     ]

@@ -1,6 +1,4 @@
 /** Regression proof for app composition of Grammar surface context and panel lists. */
-// proves: FE_NESTED_VARIANT@lite
-// proves: FE_NESTED_VARIANT@full
 // proves: FE_LIST_PANEL_PADDING@lite
 // proves: FE_LIST_PANEL_PADDING@full
 // proves: FE_HAND_BUILT_PANES@lite
@@ -22,21 +20,18 @@ import { join } from "node:path"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { nestedControlVariant, noFillCommandInHeader, noHeadingAboveCard, noSelectableTagGroup, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
+import { noFillCommandInHeader, noHeadingAboveCard, noSelectableTagGroup, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
 import { why } from "./lib/why.ts"
 import { eslintRule } from "./lib/eslint-boundary.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
 
 const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } }))
 const grammar = 'import { SurfaceCard, SearchField, ListBox } from "@starci/grammar/core"; '
-const variant = { messageId: "variant" }
-const tabs = { messageId: "tabs" }
 const surface = { messageId: "surface" }
 const padding = { messageId: "padding" }
 
 test("surface rules are published at error with their canon finding codes", () => {
   for (const name of Object.keys(rules)) assert.equal(recommended[`starci-fe/${name}`], "error")
-  assert.equal(why["nested-control-variant"].code, "FE_NESTED_VARIANT")
   assert.equal(why["no-list-panel-padding"].code, "FE_LIST_PANEL_PADDING")
   assert.equal(why["no-app-surface-paint"].code, "FE_GRAMMAR_LAYOUT_ONLY")
   assert.equal(why["no-hand-built-panes"].code, "FE_HAND_BUILT_PANES")
@@ -47,79 +42,6 @@ test("surface rules are published at error with their canon finding codes", () =
 })
 
 for (const edition of ["lite", "full"]) {
-  test(`ANATOMY-2 ${edition}: valid context defaults pass and invalid app field variants are rejected across component boundaries`, () => {
-    assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
-      valid: [
-        grammar + 'const Page = () => <SearchField />',
-        grammar + 'const Page = () => <SurfaceCard><SearchField /></SurfaceCard>',
-        'import { SearchField } from "another-kit"; const Page = () => <SearchField variant="primary" />',
-        grammar + 'const Page = ({ SearchField }) => <SurfaceCard><SearchField variant="primary" /></SurfaceCard>',
-        'import * as G from "other-kit"; const Page = () => <G.SearchField variant="primary" />',
-        grammar + 'const Page = ({ variant }) => <SearchField variant={variant} />',
-        grammar + 'const Page = () => <SearchField variant={`primary${suffix}`} />',
-        grammar + 'const dynamic = () => "secondary"; const Page = () => <SearchField variant={dynamic()} />',
-      ],
-      invalid: [
-        { code: grammar + 'const Page = () => <SearchField variant="secondary" />', errors: [variant] },
-        { code: grammar + 'const Child = () => <SearchField variant="primary" />; const Page = () => <SurfaceCard><Child /></SurfaceCard>', errors: [variant] },
-        { code: grammar + 'const helper = () => <SearchField variant="secondary" />; const Page = () => <SurfaceCard>{helper()}</SurfaceCard>', errors: [variant] },
-        { code: grammar + 'const Page = ({ SurfaceCard }) => <SurfaceCard><SearchField variant="primary" /></SurfaceCard>', errors: [variant] },
-        { code: grammar + 'const Page = () => <SurfaceCard>{rows.map(row => <SearchField key={row.id} variant="primary" />)}</SurfaceCard>', errors: [variant] },
-        { code: 'import { SearchField as Search } from "@starci/grammar/offset-pop"; const Page = () => <Search variant="primary" />', errors: [variant] },
-        { code: 'import * as G from "@starci/grammar/core"; const Page = () => <G.SearchField variant="secondary" />', errors: [variant] },
-        { code: grammar + 'const choice = "secondary"; const Page = () => <SearchField variant={choice} />', errors: [variant] },
-        { code: grammar + 'const Page = () => <SearchField variant={active ? "secondary" : "primary"} />', errors: [variant] },
-        { code: grammar + 'const props = { variant: "primary" }; const Page = () => <SearchField {...props} />', errors: [variant] },
-        { code: grammar + 'const Page = () => <SearchField {...{variant: "secondary"}} />', errors: [variant] },
-        { code: grammar + 'const Page=()=> <SearchField variant={"primary" && "secondary"} />', errors: [variant] },
-        { code: grammar + 'import {memo} from "react"; const Page=()=> <SurfaceCard><Host component={memo(function Child(){return <SearchField variant="primary" />})} /></SurfaceCard>', errors: [variant] },
-        { code: grammar + 'import * as React from "react"; const Page=()=> <SurfaceCard><Host component={React.forwardRef(function Child(){return <SearchField variant="primary" />})} /></SurfaceCard>', errors: [variant] },
-      ],
-    }))
-  })
-}
-
-for (const Field of ["Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField", "Select", "ComboBox", "DatePicker", "DateRangePicker", "Checkbox", "CheckboxGroup", "RadioGroup", "PressableField", "OtpInput", "CopyField"]) {
-  test(`ANATOMY-2: ${Field} cannot force a static variant on either layer`, () => {
-    assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
-      valid: [`import { ${Field} } from "@starci/grammar/core"; const Page = () => <${Field} />`],
-      invalid: [
-        { code: `import { SurfaceCard, ${Field} } from "@starci/grammar/core"; const Page = () => <SurfaceCard><${Field} variant="primary" /></SurfaceCard>`, errors: [variant] },
-        { code: `import { ${Field} as Field } from "@starci/grammar/core"; const Page = () => <Field variant="secondary" />`, errors: [variant] },
-      ],
-    }))
-  })
-}
-
-for (const Surface of ["SurfaceCard", "Sidebar", "Drawer", "Dialog", "AlertDialog", "Popover", "TopBar", "NavigationFeatureNav"]) {
-  test(`ANATOMY-2: Tabs in ${Surface} are the underline bar`, () => {
-    assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
-      valid: [
-        `import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs /></${Surface}>`,
-        `import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs variant="primary" /></${Surface}>`,
-      ],
-      invalid: [{ code: `import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs variant="secondary" /></${Surface}>`, errors: [tabs] }],
-    }))
-  })
-}
-
-test("ANATOMY-2: Tabs are the underline bar on the page, in a slot or a pane; the pill is refused wherever it is set", () => {
-  const imports = 'import { WorkspaceShell, TopBar, Rail, PaneGrid, Dialog, Tabs } from "@starci/grammar/core"; '
-  assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
-    valid: [
-      imports + 'const Page=()=> <Tabs variant="primary" />',
-      imports + 'const Page=()=> <Rail><Tabs /></Rail>',
-      imports + 'const Page=()=> <WorkspaceShell header={<Tabs variant="primary" />} />',
-      imports + 'const Page=()=> <PaneGrid label="Panes" areas={["a"]}><Tabs /></PaneGrid>',
-    ],
-    invalid: [
-      { code: imports + 'const Page=()=> <Tabs variant="secondary" />', errors: [tabs] },
-      { code: imports + 'const Page=()=> <TopBar actions={<Tabs variant="secondary" />} />', errors: [tabs] },
-      { code: imports + 'const Page=()=> <Dialog trigger={<Tabs variant={"secondary"} />}><Tabs /></Dialog>', errors: [tabs] },
-    ],
-  }))
-})
-
 for (const edition of ["lite", "full"]) {
   test(`layout-only ${edition}: valid layout passes and invalid raw surface paint is refused`, () => {
   assert.doesNotThrow(() => tester().run("no-app-surface-paint", noAppSurfacePaint, {

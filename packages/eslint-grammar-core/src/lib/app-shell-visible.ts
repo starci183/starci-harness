@@ -7,7 +7,6 @@ import type { FunctionNode, Node, ReaderContext, Resolved } from "./types.ts"
 const BAR_SLOTS: Readonly<Record<string, readonly string[]>> = {
   WorkspaceShell: ["header", "compactHeader"],
   TopBar: ["brand", "navigation", "actions"],
-  NavigationFeatureNav: ["identity", "navigation", "actions", "compactNavigationTrigger"],
   DropdownMenu: ["trigger"],
   Popover: ["trigger"],
   Drawer: ["trigger"],

@@ -2125,14 +2125,13 @@ rules:
       - {kind: eslint-grammar-core, id: no-navbar-create}
   - id: R318
     code: FE_NESTED_VARIANT
-    law: Apps compose the Grammar with layout-only CSS; paint, variants and surface edges belong to the Grammar, and app styles never target Grammar internals.
+    law: Apps compose the Grammar with layout-only CSS; paint and surface edges belong to the Grammar, and app styles never target Grammar internals.
     failureCodes:
       - FE_NESTED_VARIANT
       - FE_LIST_PANEL_PADDING
       - FE_GRAMMAR_LAYOUT_ONLY
       - FE_DIVIDER_FULL_BLEED
     enforcers:
-      - {kind: eslint-fe, id: nested-control-variant}
       - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
       - {kind: eslint-fe, id: divider-full-bleed}
@@ -2144,13 +2143,11 @@ rules:
     failureCodes:
       - FE_BUTTON_INTENT
       - FE_BUTTON_INTENT_REQUIRED
-      - FE_BUTTON_NO_VARIANT
       - FE_DESTRUCTIVE_CONFIRM_IN_DIALOG
       - FE_SINGLE_COMMIT_PER_RENDER
       - FE_NO_COMMIT_IN_COLLECTION_ITEM
     enforcers:
       - {kind: eslint-fe, id: button-intent-required}
-      - {kind: eslint-fe, id: button-no-variant}
       - {kind: eslint-fe, id: destructive-confirm-in-dialog}
       - {kind: eslint-fe, id: single-commit-per-render}
       - {kind: eslint-fe, id: no-commit-in-collection-item}

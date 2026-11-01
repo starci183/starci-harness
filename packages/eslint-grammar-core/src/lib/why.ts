@@ -49,8 +49,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "no-hand-rolled-page-header": {
     code: "FE_PAGE_HEADER_HAND_ROLLED",
-    en: "A page head in `<file>` is a Breadcrumbs trail and a SectionHeader composed by hand.",
-    fix: "Compose Grammar PageHeader with breadcrumbs, title and the slots the head needs (description, meta, status, mark, actions, tabs).",
+    en: "A page head in `<file>` imports PageHeader or Breadcrumbs from the Grammar, so the head is composed by hand.",
+    fix: "Pass the head to Page `header` (title, breadcrumbs and the slots it needs: description, meta, status, mark, actions, tabs).",
   },
   "page-tabs-in-header": {
     code: "FE_PAGE_TABS_OUTSIDE_HEADER",
@@ -69,8 +69,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "pane-grid-page": {
     code: "FE_PANE_GRID_FRAME",
-    en: "A `PaneGrid` in `<file>` is drawn in a FillViewport, a card or a page chrome other than `panes`, or is wrapped inside `Page chrome=\"panes\"`.",
-    fix: "Make the grid the one child of `<Page chrome=\"panes\">` (or the one child of a `Pane`, nested) and drop the FillViewport or card around it.",
+    en: "A `PaneGrid` in `<file>` is drawn in a card or a page chrome other than `panes`, or is wrapped inside `Page chrome=\"panes\"`.",
+    fix: "Make the grid the one child of `<Page chrome=\"panes\">` (or the one child of a `Pane`, nested) and drop the card around it.",
   },
   "route-page-is-one-page": {
     code: "FE_ROUTE_PAGE_OUTSIDE_PAGE",

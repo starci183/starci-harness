@@ -51,7 +51,7 @@ const proveDrawerBody = (context: ReaderContext, opening: TSESTree.JSXOpeningEle
 const matchesComposition = (context: ReaderContext, opening: TSESTree.JSXOpeningElement, name: string | null, seen: Set<string>, kind: Kind): boolean => {
   if (kind === "drawer") return isNavigationDrawer(context, opening) && proveDrawerBody(context, opening, seen)
   if (kind === "sidebar") return name === "Sidebar" && textProp(context, opening, "presentation") === "drawer"
-  return name !== null && ["TopBar", "NavigationFeatureNav"].includes(name)
+  return name !== null && ["TopBar"].includes(name)
 }
 
 const proveComposition = (context: ReaderContext, render: Render, seen: Set<string>, kind: Kind): boolean => {

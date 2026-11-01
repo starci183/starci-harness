@@ -15,7 +15,7 @@ import { walk } from "@starci/eslint-canon-fe/lib/ast.mjs"
 import type { Node, ReaderContext, Resolved } from "./lib/types.ts"
 
 const CANON = "knowledge/ui/composition/app-shell.yaml"
-const BOTTOM_TABS = /^(?:BottomNav|BottomNavigation|BottomTabBar|MobileBottomNav|MobileTabBar)$/
+const BOTTOM_TABS = /^(?:BottomNavigation|BottomTabBar|MobileBottomNav|MobileTabBar)$/
 const EXPECTED_CLUSTER = ["language:IconButton", "theme:Switch", "notifications:IconButton", "account:AvatarButton"]
 
 const meta = (code: string, description: string, messages: Record<string, string>): Rule.RuleMetaData => ({

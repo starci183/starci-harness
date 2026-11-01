@@ -79,11 +79,6 @@ export const why = {
     en: "`<file>` re-exports a Grammar component under the app's own name.",
     fix: "Delete the shim and import the component from the Grammar where it is rendered; report the Grammar defect the shim worked around (the op files blocked) so the Grammar fixes it.",
   },
-  "button-no-variant": {
-    code: "FE_BUTTON_NO_VARIANT",
-    en: "`<file>` chooses a Button or IconButton variant directly.",
-    fix: "Replace variant with intent and let Grammar resolve placement and visual treatment.",
-  },
   "destructive-confirm-in-dialog": {
     code: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG",
     en: "`<file>` renders a final destructive press outside its confirmation dialog.",
@@ -98,11 +93,6 @@ export const why = {
     code: "FE_NO_COMMIT_IN_COLLECTION_ITEM",
     en: "`<file>` repeats a commit inside a collection item render.",
     fix: "Use alternative for the item's next action and keep the enclosing view's commit unique.",
-  },
-  "nested-control-variant": {
-    code: "FE_NESTED_VARIANT",
-    en: "`<file>` sets a static Grammar field variant, or forces primary Tabs inside a painted surface.",
-    fix: "Omit the field or nested Tabs variant so Grammar supplies the default from its surface context.",
   },
   "no-app-surface-paint": {
     code: "FE_GRAMMAR_LAYOUT_ONLY",

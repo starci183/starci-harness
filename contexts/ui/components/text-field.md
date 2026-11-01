@@ -32,7 +32,7 @@ Choice `text-field.choose.columns`: how the fields of one form are laid out. The
 
 ## Variants
 None for the app: the treatment follows the layer, canvas or inside a surface, resolved by the grammar
-(`DNA-COMMON-FIELD-BY-LAYER`; lint `starci-fe/nested-control-variant`).
+(`DNA-COMMON-FIELD-BY-LAYER`; the prop types have no `variant`).
 
 ## Size
 `md` only ([../scale.md](../scale.md)); a `CopyField` is as tall as every field (`DNA-COMMON-FIELD-MD`). A row that
@@ -52,5 +52,4 @@ politely) and failed (the field's error). Known field types declare autofill and
   reveal behind a masked `onCopy`.
 
 ## Rules
-FEEDBACK-1, COLLECTION-1, RESPONSIVE-1, ANATOMY-2. Lint: `starci-fe/no-native-form-control`,
-`nested-control-variant`. Proof: A11Y-1, UX-3, UX-8, FOCUS-1.
+FEEDBACK-1, COLLECTION-1, RESPONSIVE-1, ANATOMY-2. Lint: `starci-fe/no-native-form-control`. Proof: A11Y-1, UX-3, UX-8, FOCUS-1.

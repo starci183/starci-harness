@@ -252,19 +252,6 @@ const canCoexist = (left: RenderPath, right: RenderPath): boolean => {
   return [...left.guards].every(([condition, value]) => !right.guards.has(condition) || right.guards.get(condition) === value)
 }
 
-/** No explicit visual prop: any authored variant, including a known props spread, is an app bypass. */
-const buttonNoVariant = defineRule({
-  meta: { type: "problem", docs: { description: "CTA-6: app buttons never choose a variant." }, schema: [], messages: {
-    FE_BUTTON_NO_VARIANT: "FE_BUTTON_NO_VARIANT: declare Button intent instead of variant; Grammar resolves the variant from intent and placement.",
-  } },
-  create(context) {
-    return { JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
-      if (!isButton(context, opening)) return
-      for (const node of new Set(propsOf(context, opening, "variant").map((prop) => prop.node))) context.report({ node, messageId: "FE_BUTTON_NO_VARIANT" })
-    } }
-  },
-})
-
 /** Every app button states its command's intent explicitly. */
 const buttonIntentRequired = defineRule({
   meta: { type: "problem", docs: { description: "CTA-6: every app Button and IconButton declares intent." }, schema: [], messages: {
@@ -356,7 +343,6 @@ const noCommitInCollectionItem = defineRule({
 /** Every intent law is universal across Grammar families and app editions. */
 export const rules = {
   "button-intent-required": buttonIntentRequired,
-  "button-no-variant": buttonNoVariant,
   "destructive-confirm-in-dialog": destructiveConfirmInDialog,
   "single-commit-per-render": singleCommitPerRender,
   "no-commit-in-collection-item": noCommitInCollectionItem,

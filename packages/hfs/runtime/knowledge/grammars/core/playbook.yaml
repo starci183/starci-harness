@@ -361,8 +361,7 @@ guidance:
       collapsed-pane drawer also establishes the context. SurfaceCard and bounded SurfaceAccordionCard derive
       data-grammar-surface-depth from the parent context. The top layer is raised and a nested layer is
       subordinate; never raise both. The family DNA owns their surface paint.
-      FE_NESTED_VARIANT rejects a static field variant
-      anywhere in app code and primary Tabs inside a painted surface; FE_GRAMMAR_LAYOUT_ONLY rejects
+      The field `variant` is not in the prop types, so an app cannot set it; FE_GRAMMAR_LAYOUT_ONLY rejects
       application paint utilities, arbitrary paint properties and inline style paint.
       DRAW_NESTED_VARIANT checks the corresponding rendered variant and
       surface stamps.

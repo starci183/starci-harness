@@ -18,7 +18,7 @@ import { noPaneSectionPadding, paneChildren, paneGridChildren, paneGridPage, rec
 const BLOCK = at("apps/web/src/components/blocks/Category/component.tsx")
 const SCRIPT = at("scripts/render.tsx")
 const IMPORTS =
-  "import { Freestyle, FillViewport, Divider, Page, Pane, PaneGrid, PaneSection, SearchField, SurfaceCard } from \"@starci/grammar/core\"\n" +
+  "import { Freestyle, Divider, Page, Pane, PaneGrid, PaneSection, SearchField, SurfaceCard } from \"@starci/grammar/core\"\n" +
   "import { CategoryPane } from \"./CategoryPane\"\n"
 
 test("the law publishes four rules, each an error, each with its failure code", () => {
@@ -166,13 +166,10 @@ test("R348: a PaneGrid stands in Page chrome=\"panes\" or in a Pane", () => {
       // the Freestyle region is the app's own
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Freestyle reason=\"legacy canvas\"><SurfaceCard label=\"x\"><PaneGrid areas={{ base: [\"a\"] }} /></SurfaceCard></Freestyle>" },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"x\"><Freestyle reason=\"legacy canvas\"><PaneGrid areas={{ base: [\"a\"] }} /></Freestyle></SurfaceCard>" },
-      { filename: SCRIPT, code: IMPORTS + "export const A = () => <FillViewport><PaneGrid areas={{ base: [\"a\"] }} /></FillViewport>" },
     ],
     invalid: [
-      // the nivo shapes: FillViewport wrapping a PaneGrid, a PaneGrid inside a SurfaceCard
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <FillViewport><PaneGrid areas={{ base: [\"a\"] }}><Pane area=\"a\" /></PaneGrid></FillViewport>", errors: [{ messageId: "frame", data: { where: "a `FillViewport`" } }] },
+      // the nivo shape: a PaneGrid inside a SurfaceCard
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard composition=\"joined\" label=\"x\"><PaneGrid areas={{ base: [\"a\"] }}><Pane area=\"a\" /></PaneGrid></SurfaceCard>", errors: [{ messageId: "frame", data: { where: "a `SurfaceCard`" } }] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"bleed\"><FillViewport bottomInset=\"none\"><PaneGrid areas={{ base: [\"a\"] }} /></FillViewport></Page>", errors: [{ messageId: "frame", data: { where: "a `FillViewport`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"bleed\"><PaneGrid areas={{ base: [\"a\"] }} /></Page>", errors: [{ messageId: "frame", data: { where: "a `Page chrome=\"bleed\"`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Page header={{ title: \"x\" }}><PaneGrid areas={{ base: [\"a\"] }} /></Page>", errors: [{ messageId: "frame", data: { where: "a `Page` without `chrome=\"panes\"`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\"><div><PaneGrid areas={{ base: [\"a\"] }} /></div></Page>", errors: [{ messageId: "frame" }] },

@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { main, VERBS } from './main.mjs';
+import { CODEMODS } from '../codemod/main.mjs';
 
 test('the app implementation loads with no installed dependency and refuses a missing verb with its usage', async () => {
   let err = '';
@@ -208,6 +209,7 @@ test('the usage is generated from the parser tables: every flag every verb parse
   // The canonical spellings are on the usage lines.
   for (const line of ['starci app slot <path> [--json]', 'starci app world <up|down|status>', 'starci app add service <dir> <name> [--inject <binding>]...', 'starci app add spec <file>.service.ts', 'starci app add image',
     'starci app check [--staged]', 'starci app sync [--execute]', 'starci app upgrade [--execute]', 'starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out ', 'starci app codemod spacing-roles [--execute] [--json] [--format json|markdown] [--out ']) assert.ok(out.includes(line), line);
+  for (const name of CODEMODS) assert.match(out, new RegExp(`^starci app codemod ${name} \\[--execute\\]`, 'm'), `the usage lists the ${name} codemod`);
   assert.match(out, /^starci app lint .*\[--json\] \[--out <file>\]$/m);
   assert.match(out, /^starci app scaffold <name> \[--registry-visibility public\|private\] \[--edition full\|lite\]$/m);
   assert.doesNotMatch(out, /app (hygiene|explain|new|sonar)\b|--plan|--write|--check\b|--into\b(?!-)|--report|app stack <up/, 'the usage lists no old spelling');

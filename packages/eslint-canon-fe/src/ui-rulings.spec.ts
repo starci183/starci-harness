@@ -155,16 +155,4 @@ test("CTA-6 repeated commands declare neutral and never commit or a filled varia
       ],
     },
   ));
-  assert.doesNotThrow(() => slotTester().run("button-no-variant", buttonRules["button-no-variant"], {
-    valid: [
-      grammar +
-        'const C=()=> rows.map(row=> <Button key={row.id} intent="neutral" />)',
-    ],
-    invalid: [
-      fixture(
-        'const C=()=> rows.map(row=> <Button key={row.id} intent="neutral" variant="primary" />)',
-        "FE_BUTTON_NO_VARIANT",
-      ),
-    ],
-  }));
 });

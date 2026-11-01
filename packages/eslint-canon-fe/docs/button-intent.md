@@ -7,7 +7,6 @@ App `Button` and `IconButton` commands declare `intent`. Grammar derives their v
 | Rule | Finding code | Required behavior |
 | --- | --- | --- |
 | `starci-fe/button-intent-required` | `FE_BUTTON_INTENT_REQUIRED` | Pass the command's `intent`. A known props spread may supply it. |
-| `starci-fe/button-no-variant` | `FE_BUTTON_NO_VARIANT` | Omit `variant`, including variants in known props spreads. |
 | `starci-fe/destructive-confirm-in-dialog` | `FE_DESTRUCTIVE_CONFIRM_IN_DIALOG` | Put `intent="destructive" step="confirm"` inside the same-file `AlertDialog` or `ConfirmDialog` content subtree. Its trigger uses `step="entry"`. A separate component's definition does not inherit its caller's JSX ancestry. |
 | `starci-fe/single-commit-per-render` | `FE_SINGLE_COMMIT_PER_RENDER` | Render at most one commit per component path. Different return paths, opposite conditional arms and opposite guards are mutually exclusive. |
 | `starci-fe/no-commit-in-collection-item` | `FE_NO_COMMIT_IN_COLLECTION_ITEM` | Use `alternative` for an item's next action. A `.map` callback or explicit Grammar collection item context cannot expose commit. |

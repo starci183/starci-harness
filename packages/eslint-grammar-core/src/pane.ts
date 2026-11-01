@@ -357,7 +357,7 @@ const wrongFrame = (grid: TSESTree.JSXElement): string | null => {
     if (current.type !== "JSXElement") continue
     const name = nameOf(current.openingElement.name)
     if (name === "Freestyle") return null
-    if (name === "Pane" || name === "Page" || name === "FillViewport" || (name !== null && SURFACES.has(name))) frames.push(current)
+    if (name === "Pane" || name === "Page" || (name !== null && SURFACES.has(name))) frames.push(current)
     else if (frames.length === 0) wrapped = true
   }
   const frame = frames[0]
@@ -377,7 +377,7 @@ const wrongFrame = (grid: TSESTree.JSXElement): string | null => {
 export const paneGridPage: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R348: a PaneGrid is the one child of Page chrome=\"panes\" or stands inside a Pane, never in a FillViewport, a card or another page chrome.", url: "knowledge/hfs/rules.yaml#R348" },
+    docs: { description: "R348: a PaneGrid is the one child of Page chrome=\"panes\" or stands inside a Pane, never in a card or another page chrome.", url: "knowledge/hfs/rules.yaml#R348" },
     schema: [],
     messages: {
       frame:

@@ -37,9 +37,7 @@ tree. `starciTypedSourceConfig({ root })` provides the shared typed, React Hooks
 configuration for source that has not adopted the product composition laws.
 
 The [surface composition law](docs/surface-rules.md) (R318) holds ANATOMY-2 and PADDING-0 for every
-family that publishes the shared HeroUI surface and field API: `nested-control-variant` refuses static
-variants on layer-aware fields and the pill (`variant="secondary"`) on Tabs, which are the underline bar (`FE_NESTED_VARIANT`),
-`no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`) and
+family that publishes the shared HeroUI surface and field API: `no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`) and
 `no-list-panel-padding` refuses horizontal padding wrappers around Grammar lists and section captions
 within the nearest painted surface, a `Pane` or a `PaneSection` included (`FE_LIST_PANEL_PADDING`),
 `no-hand-built-panes` refuses a multi-pane frame drawn by hand, a vertical divider as a column seam or

@@ -117,7 +117,7 @@ Margin:
 The page title, the tab labels and the section headings share one text edge with the card or pane box below them:
 page tabs are the underline bar, their first label on the content edge; pills are the shape of filters and chips
 only (a filter over a collection is a `FilterButtonGroup`). The card's inner text at 12 is the one intentional step.
-Lint: `starci-fe/nested-control-variant`.
+The type has no `variant`.
 
 ### The table (the grammar's decision per component)
 
@@ -237,8 +237,7 @@ Soft faces are translucent, so contrast is measured on the composed pixels, neve
 **The layer chain** holds on every screen: page background, then an owning surface, then its nested controls.
 Grouped content stands in a surface; only page-level marks (a brand lockup, the page heading) sit on the
 background. A form is one unit: its fields and its actions stand in the same surface. Nested controls take the
-grammar's nested treatment, resolved from context; the app never passes a static field variant. Lint:
-`starci-fe/nested-control-variant`.
+grammar's nested treatment, resolved from context; the app never passes a static field variant (the prop types have no `variant`).
 
 ### Boundary
 `separator` draws a line **between** things; `border` outlines **one** thing.

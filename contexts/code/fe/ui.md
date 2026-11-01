@@ -18,7 +18,7 @@ a fork, and a defect shimmed in one app stays in the grammar for every other.
 
 Enforced by: R93 (`grammar-entry`, `vendor-primitive-has-named-owner`), R321 (`no-grammar-shim`), R62
 (`no-native-form-control`, `no-native-img`; grammar `no-raw-structural-element`), R319 (`button-intent-required`,
-`button-no-variant`, `single-commit-per-render`, `destructive-confirm-in-dialog`, `no-commit-in-collection-item`),
+`single-commit-per-render`, `destructive-confirm-in-dialog`, `no-commit-in-collection-item`),
 R320 (`control-height`), R313-R317 (grammar `app-shell-frame` and the navbar laws), R318.
 
 ## FE-CSS-1 App CSS is layout only
@@ -34,7 +34,7 @@ Why: each of these is a way to fork the design system inside one app.
 
 Enforced by: R92 (`no-inline-class-name`, `class-names-in-colocated-file`, `cn-arguments-are-single-tokens`,
 `no-public-classname-prop`), R61 (`no-arbitrary-value`, `no-raw-brand-value`), R318 (`no-app-surface-paint`,
-`no-grammar-internal-selector`, `no-list-panel-padding`, `nested-control-variant`).
+`no-grammar-internal-selector`, `no-list-panel-padding`).
 
 ## FE-CSS-2 `globals.css` imports in the cascade order
 

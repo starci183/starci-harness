@@ -27,10 +27,6 @@ const SURFACES = new Set<string | undefined>([
   "Dialog", "Drawer", "AlertDialog", "Popover",
   "WorkspaceShell", "TopBar", "NavigationFeatureNav", "Pane", "PaneSection",
 ])
-const FIELDS = new Set<string | undefined>([
-  "Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField",
-  "Select", "ComboBox", "DatePicker", "DateRangePicker", "Checkbox", "CheckboxGroup", "RadioGroup", "PressableField", "OtpInput", "CopyField",
-])
 const CLASS_BUILDERS = new Set(["cn", "clsx", "classNames", "cva", "tv"])
 
 /** Resolve a JSX name to its Grammar export and optional compound parts, preserving lexical import identity. */
@@ -217,34 +213,6 @@ const inSectionCaption = (context: AnyContext, node: TSESTree.JSXOpeningElement)
   }
   return false
 }
-
-/** ANATOMY-2: field variants belong to Grammar's context, including across app component boundaries. */
-export const nestedControlVariant = defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "ANATOMY-2: Grammar context supplies field variants; Tabs are the underline bar, never the pill." },
-    schema: [],
-    messages: {
-      variant: "FE_NESTED_VARIANT: app fields cannot set a static variant. Omit variant so Grammar's surface context supplies the appropriate default.",
-      tabs: "FE_NESTED_VARIANT: Tabs are the underline bar, their labels text on the content edge; variant=\"secondary\" is the pill, a filter's shape. Omit variant, or filter a collection with a selectable TagGroup.",
-    },
-  },
-  create(context) {
-    return {
-      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
-        const name = grammarName(context, node.name)
-        if (name?.length !== 1) return
-        if (FIELDS.has(name[0])) {
-          const variant = node.attributes.find((entry) => propStrings(context, entry, "variant", "variant").length > 0)
-          if (variant) context.report({ node: variant, messageId: "variant" })
-        } else if (name[0] === "Tabs") {
-          const pill = node.attributes.find((entry) => propStrings(context, entry, "variant", "variant").some((value) => value.text === "secondary"))
-          if (pill) context.report({ node: pill, messageId: "tabs" })
-        }
-      },
-    }
-  },
-})
 
 /** App classes carry layout; Grammar owns surface paint. */
 export const noAppSurfacePaint = exemptFreestyle(defineRule({
@@ -697,7 +665,7 @@ export const noHeadingAboveCard = defineRule({
 })
 
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-selectable-tag-group": noSelectableTagGroup, "no-heading-above-card": noHeadingAboveCard, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
+export const rules = { "divider-full-bleed": dividerFullBleed, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-selectable-tag-group": noSelectableTagGroup, "no-heading-above-card": noHeadingAboveCard, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

@@ -66,6 +66,6 @@ disabled commit never stands in for an empty state (CTA-5).
   Nothing visual.
 
 ## Rules
-CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-fe/button-intent-required`, `button-no-variant`,
+CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-fe/button-intent-required`,
 `single-commit-per-render`, `no-commit-in-collection-item`, `destructive-confirm-in-dialog`, `control-height`.
 Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.
