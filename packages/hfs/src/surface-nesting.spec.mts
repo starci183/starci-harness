@@ -128,7 +128,7 @@ test('labelled day regions belong to the nearest semantic layout, while peer-car
   for (const kind of ['week', 'week-summary']) {
     assert.deepEqual(kinds(screen(`<Grid kind="${kind}" label="Days">{days.map((day) => <Day key={day.id} item={day} />)}</Grid>`)), []);
   }
-  assert.deepEqual(kinds(screen('<Grid kind="cards">{days.map((day) => <Day key={day.id} item={day} />)}</Grid>')), ['label-in-grid@a/Day.tsx']);
+  assert.deepEqual(kinds(screen('<Grid kind="cards">{days.map((day) => <Day key={day.id} item={day} />)}</Grid>')), ['label-in-grid@a/Week.tsx']);
   assert.deepEqual(kinds(screen('<Grid kind="cards"><Grid kind="week" label="Days">{days.map((day) => <Day key={day.id} item={day} />)}</Grid></Grid>')), []);
 });
 

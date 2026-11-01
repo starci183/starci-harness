@@ -157,10 +157,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 25 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 28 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 80 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM and 118 more
+- [grammars/contract.yaml](../grammars/contract.yaml) · 82 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM and 121 more
 - [grammars/contributing.md](../grammars/contributing.md) · 12 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Skeleton parity · What ships with it · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 6 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
@@ -213,12 +213,14 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: The Choose format · Choosing a role
 - [ui/components/action-group.md](../ui/components/action-group.md) · 3 KB — Contract: ButtonGroup.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/button.md](../ui/components/button.md) · 5 KB — Contract: Button.
+- [ui/components/button.md](../ui/components/button.md) · 6 KB — Contract: Button.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/card.md](../ui/components/card.md) · 6 KB — Contract: Card.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/chip.md](../ui/components/chip.md) · 4 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/color-swatch.md](../ui/components/color-swatch.md) · 1 KB — Contract: ColorSwatch.
+  - sections: Job · Choose · Anatomy and states · Owner split
 - [ui/components/diagram.md](../ui/components/diagram.md) · 5 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 2 KB — Contract: Dialog and Drawer.
@@ -255,7 +257,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · States · Owner split · Rules
 - [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 2 KB — Contract: Toast and Alert.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/composition.md](../ui/composition.md) · 24 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
+- [ui/composition.md](../ui/composition.md) · 25 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
   - sections: 1. Hierarchy · 2. Action and CTA · 3. Accent · 4. State and feedback · 5. Collection · 6. Layout · 7. Responsive · 8. Taste · 9. Coverage
   - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, FE-APP-SHELL-1..6, FEEDBACK-1, FEEDBACK-2, FEEDBACK-3, HIERARCHY-1 and 20 more
 - [ui/loading.md](../ui/loading.md) · 7 KB — A region is in exactly one of four states, and the Grammar owns how each looks.
@@ -270,13 +272,13 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: app-owns-theme
 - [ui/scale.md](../ui/scale.md) · 7 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.
   - sections: Why one ramp · The ramp · Drawn height and target size are two facts · How each component sits on the ramp · What travels with a step · Density
-- [ui/situations.md](../ui/situations.md) · 8 KB — An author says what the thing is; the grammar decides how it looks.
+- [ui/situations.md](../ui/situations.md) · 9 KB — An author says what the thing is; the grammar decides how it looks.
   - sections: The situations · Loading · Where the other decision tables live
 - [vendor/README.md](../vendor/README.md) · 3 KB — The grammar is built on HeroUI (`@heroui/react` with `@heroui/styles`; the version is pinned in stack/pins.yaml).
   - sections: The vendor reference is generated, not kept here · Pin
 - [vendor/heroui.md](../vendor/heroui.md) · 11 KB — HeroUI v3 is a set of compound components over React Aria: each component is a root plus named parts, the behaviour and accessibility come from React Aria, and the paint is vendor ...
-  - sections: Button · ButtonGroup · ToggleButtonGroup · Tabs · Chip · Input · Select · Card · Modal · Dropdown · Table · Alert · Avatar · Small members · How sizes align
+  - sections: Button · ColorSwatch · ButtonGroup · ToggleButtonGroup · Tabs · Chip · Input · Select · Card · Modal · Dropdown · Table · Alert · Avatar · Small members · How sizes align
 - [vendor/parity.yaml](../vendor/parity.yaml) · 9 KB — What a grammar must keep of HeroUI and what it may change.
-  - ids: accordion, alert, alert-dialog, avatar, avatar-group, badge, breadcrumbs, button, button-group, calendar, card, checkbox, chip, close-button, combo-box, date-field, date-picker, date-range-picker, disclosure, drawer, dropdown, fieldset, form, input and 33 more
-- [vendor/wrappers.yaml](../vendor/wrappers.yaml) · 12 KB — Every Grammar source file that imports HeroUI (paths under @starci/grammar src/).
+  - ids: accordion, alert, alert-dialog, avatar, avatar-group, badge, breadcrumbs, button, button-group, calendar, card, checkbox, chip, close-button, color-swatch, combo-box, date-field, date-picker, date-range-picker, disclosure, drawer, dropdown, fieldset, form and 34 more
+- [vendor/wrappers.yaml](../vendor/wrappers.yaml) · 13 KB — Every Grammar source file that imports HeroUI (paths under @starci/grammar src/).
   - ids: data-slot, repaint-default-heroui-unless-ruled, sha256

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 4.17.1 - 2026-11-02
+
+- Fixed: unit provider contracts recognize the real Nest `Optional()` injection decorator through direct, aliased and namespace imports; TypeScript optional parameters and unrelated decorator names still require their providers.
 - Fixed: cross-file `label-in-grid` judges the nearest peer-card layout (`Grid kind="cards"`), matching the existing one-file rule. Dated week regions keep their day headings; labelled peer tiles still fail, with generic regression coverage for both semantic week layouts and nested layout ownership. Bundled R356 knowledge names the same owner.
 
 ## 4.17.0 - 2026-11-02

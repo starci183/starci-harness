@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.1 - 2026-11-02
+
+- Changed: follows Grammar 0.21.1 and requires the coherent core 0.21.1 canon cohort; bundled cross-file checks distinguish semantic week regions from labelled peer-card grids.
+
 ## 0.21.0 - 2026-11-02
 
 Follows the Grammar 0.21.0.

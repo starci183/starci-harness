@@ -93,7 +93,10 @@ wrappers:
         { kind: style, target: "Button.Root:padding", ruling: spacing-roles, reason: "inline padding follows the size step (sm 8, md 12, lg 24), one step less on a glyph side" },
         { kind: style, target: "Link.Root:padding", ruling: spacing-roles, reason: "a link drawn as a button takes the same inline padding as the button of its step" } ] }
   - { file: core/leaf/Checkbox/index.tsx, wraps: [Checkbox] }
-  - { file: core/leaf/ColorSwatch/index.tsx, wraps: [ColorSwatch] }
+  - { file: core/leaf/ColorSwatch/index.tsx, wraps: [ColorSwatch],
+      overrides: [
+        { kind: default, target: "ColorSwatch:size", ruling: grammar-vendor-parity, reason: "a literal color preview occupies the vendor sm content mark beside its name" },
+        { kind: default, target: "ColorSwatch:shape", ruling: grammar-vendor-parity, reason: "literal color content uses the vendor square swatch consistently" } ] }
   - { file: core/leaf/DateField/index.tsx, wraps: [DateField] }
   - { file: core/leaf/Divider/index.tsx, wraps: [Separator] }
   - { file: core/leaf/Field/index.tsx, wraps: [Description, FieldError, Label] }

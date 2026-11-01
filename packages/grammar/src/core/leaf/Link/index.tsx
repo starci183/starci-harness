@@ -59,9 +59,10 @@ export const Link = ({
     onFollow,
 }: LinkProps) => {
     const external = kind === "external"
+    const destinationLabel = media === undefined ? undefined : external && externalHint !== undefined ? `${label} ${externalHint}` : label
     return (
         <HeroLink
-            aria-label={media === undefined ? undefined : external && externalHint !== undefined ? `${label} ${externalHint}` : label}
+            {...(destinationLabel === undefined ? {} : { "aria-label": destinationLabel })}
             aria-current={isCurrent ? "page" : undefined}
             className="starci-core-link"
             data-component="Link"

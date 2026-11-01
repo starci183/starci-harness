@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 9.9.1 - 2026-11-02
+
+- Fixed: Nest injection unit contracts accept an absent provider only when the constructor binding carries the real `@nestjs/common` `Optional()` decorator; bundled cross-file surface checks match the semantic peer-card grid owner. Updated the coherent Grammar and canon pins.
+
 ## 9.9.0 - 2026-11-02
 
 - Added: `no-hand-skeleton` is published (R367) and requested at error: an app draws no `Skeleton`, `ChatBubbleSkeletons` or `MessageBubbleSkeletons`, because the Grammar components draw their loading structure from `isLoading`. Changed: `no-data-status-prop` lets a leaf, branch or composite take `isLoading` (the one flag below SlotView) and refuses `isError`, `isForbidden`, `isEmpty`, `isValidating`; `slotOfReads` counts as a slot builder.

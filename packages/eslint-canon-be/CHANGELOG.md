@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.11.8 - 2026-11-02
+
+- Fixed: Nest injection unit contracts accept an absent provider only when the constructor binding carries the real `@nestjs/common` `Optional()` decorator; bundled cross-file surface checks match the semantic peer-card grid owner. Updated the coherent Grammar and canon pins.
+
 - Changed: bundled R356 names `Grid kind="cards"` as the peer-card layout whose repeated tiles take no outside label, matching the surface-nesting owner and the grammar lint rule.
 
 ## 3.11.7 - 2026-11-02

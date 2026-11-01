@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.38] - 2026-11-02
+
 ### Added
 
 - `starci deps publish-local` builds the harness packages and the CLI in dependency order and publishes the versions npm lacks to a Verdaccio registry on this machine (container `starci-local-registry`, 127.0.0.1 only, no login, npmjs as uplink), dry until `--execute`; an app then installs them for one command with `--@starci:registry` (or a user npmrc), with no worktree of the package and no copy into `node_modules`. An executed run starts the registry before checking its existing versions. A version already in the registry is kept, `--force` replaces it, a version npm serves stays npm's. Existing locks and npm caches retain a forced version's old tarball: prefer a new version, or prove the replacement in a fresh scratch app with a fresh cache. An app switching from `deps source --local` first uses `deps source --npm` to clear its recorded overlay.

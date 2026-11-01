@@ -65,7 +65,7 @@ export const Grid = (props: GridProps) => {
         const { kind, ...layout } = props
         return <PrimaryRailLayout {...layout} />
     }
-    if (props.kind === "week" || props.kind === "week-summary") return <WeekGrid {...props} />
+    if (props.kind !== "cards") return <WeekGrid {...props} />
     return (
         <div
             className="starci-core-grid"

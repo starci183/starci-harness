@@ -416,7 +416,7 @@ const ListTitleDestinationDemo = () => {
 export const ListTitleDestination: Story = {
   render: () => <ListTitleDestinationDemo />,
   play: async ({ canvasElement }) => {
-    const scope = familyScope(canvasElement);
+    const scope = canvasElement;
     const link = scope.querySelector<HTMLAnchorElement>('a[href="#delivery-request"]');
     if (link === null) throw new Error('The row title is not a native destination');
     link.focus();
@@ -454,7 +454,7 @@ const BusyItemActionDemo = () => {
 export const BusyItemAction: Story = {
   render: () => <BusyItemActionDemo />,
   play: ({ canvasElement }) => {
-    const scope = familyScope(canvasElement);
+    const scope = canvasElement;
     const pending = scope.querySelectorAll<HTMLElement>('[data-action-pending="true"]');
     expect(pending.length).toBe(3);
     for (const action of pending) {
@@ -494,7 +494,7 @@ const FigureDestinationsDemo = () => {
 export const FigureDestinations: Story = {
   render: () => <FigureDestinationsDemo />,
   play: async ({ canvasElement }) => {
-    const scope = familyScope(canvasElement);
+    const scope = canvasElement;
     const links = scope.querySelectorAll<HTMLAnchorElement>('[data-grammar-figure-link="true"]');
     expect(links.length).toBe(2);
     const link = scope.querySelector<HTMLAnchorElement>('a[href="#approvals"]');

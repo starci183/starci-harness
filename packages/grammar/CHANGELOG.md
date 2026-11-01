@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.21.1 - 2026-11-02
+
 - Added: `Link` can carry structured `media` from `ImageProps` with a required accessible destination `label`, mutually exclusive with text children. Native navigation, external-tab safety, focus, disabled state and Image loading/fallback stay with their existing owners. The new media destination keeps transparent logo shapes unclipped.
 - Added: `Grid kind="week"` for seven dated event regions and `kind="week-summary"` for seven daily metric summaries, with required region labels and the existing agenda/summary responsive tracks owned by the grid's container. A wrong day count is refused in development; reading and action order stay unchanged.
 - Added: a `ListRowData` string title can have `href` and optional `Link.onFollow`; the title is a native link beside separate row commands, and a row without `href` takes no follow handler. Loading removes the link. Stories cover media destinations, week layouts and title navigation.
