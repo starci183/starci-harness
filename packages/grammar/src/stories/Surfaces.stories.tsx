@@ -392,6 +392,43 @@ export const SurfaceCardListRow: Story = {
   ),
 };
 
+const ListTitleDestinationDemo = () => {
+  const [followed, setFollowed] = useState(0);
+  const rows: readonly G.ListRowData[] = [{
+    id: 'review', title: 'Review the delivery request', description: 'A pending request with a native title destination.',
+    href: '#delivery-request', onFollow: () => setFollowed((count) => count + 1),
+    action: { label: 'Dismiss', press: noop },
+  }];
+  return (
+    <Matrix maxWidth={640}>
+      <State label="Title navigation and a separate command" direction="column">
+        <G.SurfaceCard kind="list" label="Pending requests" items={rows} empty={<G.EmptyNotice message="Nothing waiting" />} />
+        <G.Text>{`Follow callbacks: ${followed}`}</G.Text>
+      </State>
+      <State label="Loading removes the title destination" direction="column">
+        <G.SurfaceCard kind="list" label="Pending requests" isLoading items={rows} empty={<G.EmptyNotice message="Nothing waiting" />} />
+      </State>
+    </Matrix>
+  );
+};
+
+/** A row links its text title; following it reports navigation without enclosing sibling commands. */
+export const ListTitleDestination: Story = {
+  render: () => <ListTitleDestinationDemo />,
+  play: async ({ canvasElement }) => {
+    const scope = familyScope(canvasElement);
+    const link = scope.querySelector<HTMLAnchorElement>('a[href="#delivery-request"]');
+    if (link === null) throw new Error('The row title is not a native destination');
+    link.focus();
+    expect(document.activeElement).toBe(link);
+    expect(link.querySelector('button')).toBeNull();
+    expect(link.closest('[data-component="ListRow"]')?.querySelector('[data-component="Button"]')).not.toBeNull();
+    link.click();
+    await waitFor(() => expect(scope.textContent).toContain('Follow callbacks: 1'));
+    expect(scope.querySelector('[data-component="ListRow"][data-grammar-skeleton="true"] a')).toBeNull();
+  },
+};
+
 const AccordionCardDemo = () => {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['week-1']));
   const weeks = [

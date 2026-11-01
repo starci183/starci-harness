@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Changed: bundled R356 names `Grid kind="cards"` as the peer-card layout whose repeated tiles take no outside label, matching the surface-nesting owner and the grammar lint rule.
+
 ## 3.11.7 - 2026-11-02
 
 - Changed: the bundled rule catalog words the laws of R348, R351, R352 and R355 for the one card (no SurfaceListCard, SectionHeader or PageHeader).

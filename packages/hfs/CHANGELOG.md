@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: cross-file `label-in-grid` judges the nearest peer-card layout (`Grid kind="cards"`), matching the existing one-file rule. Dated week regions keep their day headings; labelled peer tiles still fail, with generic regression coverage for both semantic week layouts and nested layout ownership. Bundled R356 knowledge names the same owner.
+
 ## 4.17.0 - 2026-11-02
 
 - Fixed: the architecture machine run on an app root that has its own tsconfig threw "Cannot destructure property 'lines'" out of `checkClones`: the app resolver has no rule parameters, so the clone threshold (`ruleParams.common.duplicateBlock`, shared by every profile) is read from a side. Spec `architecture-clones-app-root`.

@@ -245,6 +245,16 @@ bot badge. The family owns renderers, cells and sizes.
 
 ## 6. Layout
 
+Choice `grid.choose.content`: which track owner carries the content.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| week | dated events or appointments belong to seven consecutive day regions | `Grid kind="week"` with an accessible region `label` and seven ordered days, including empty days | one-column agenda in a narrow container, seven tracks at the medium container width |
+| week-summary | each of seven consecutive days reports a daily metric summary | `Grid kind="week-summary"` with an accessible region `label` and seven ordered days | one, four and seven tracks by container width, same reading order |
+| cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles | `card.choose.role:tile` |
+| form | neighbouring fields share aligned control rows | `Grid kind="form"` | `text-field.choose.columns` |
+| main-rail | one task has subordinate support beside it | `Grid kind="main-rail"` | one primary and one rail |
+
 ### LAYOUT-1 Which regions exist
 One task with no support is one region. Support the reader consults alongside the task is a rail with a named
 role. Every further region names its task role. A list, detail and info screen is one `PaneGrid` of `Pane`s, mounted as

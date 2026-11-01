@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Changed: bundled R356 names `Grid kind="cards"` as the peer-card layout whose repeated tiles take no outside label, matching the existing `no-label-in-grid` rule and the cross-file surface-nesting owner.
+
 ## 0.21.0 - 2026-11-02
 
 - Removed: `NavigationFeatureNav` from the surface names and the bundled Core playbook (the component is gone; `TopBar` takes `subnavigation`).

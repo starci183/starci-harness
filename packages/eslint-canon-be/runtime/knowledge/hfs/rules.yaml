@@ -6323,7 +6323,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_SURFACE_CARD_KIND]}
   - id: R356
     code: "FE_SURFACE_NESTING"
-    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable is not drawn inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading holds more than one card, and a labelled card is not repeated in a Grid: the render graph replaces every component by what it draws and every children by what its caller handed it."
+    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable is not drawn inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading holds more than one card, and a labelled card is not repeated in the peer-card layout Grid kind=\"cards\": the render graph replaces every component by what it draws and every children by what its caller handed it."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_SURFACE_NESTING"]

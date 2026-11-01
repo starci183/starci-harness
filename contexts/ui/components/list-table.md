@@ -23,7 +23,9 @@ A list is a card by default and a section when it grows (COLLECTION-1). The `tas
 `entity` row is a section whose title is its heading and whose head, filter and rows stand one section step apart. A
 `DataTable` is never placed in a `SurfaceCard` (R351); a table enters a card only when the data is truly complex, and the
 owner names that case in the rule. Plain rows with few facts are a list card with the note in `footer`. Title, count, filters
-and the page command belong to the card's label or the section's head.
+and the page command belong to the card's label or the section's head. A row that leads to its record supplies a native
+title destination with `href`; `onFollow` can close its owning popover alongside that navigation. Without a destination
+there is no `onFollow`. Its commands and menu remain separate targets beside the title, and loading removes the link.
 
 ## Variants
 Rows are separated by lines (n-1 lines) or by gap, never both (`DNA-COMMON-LIST-SEAMS`). Rows align their boxes to the content edge of a panel or a pane

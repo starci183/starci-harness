@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added: `Link` can carry structured `media` from `ImageProps` with a required accessible destination `label`, mutually exclusive with text children. Native navigation, external-tab safety, focus, disabled state and Image loading/fallback stay with their existing owners. Transparent image plates keep cut-out logo shapes unclipped.
+- Added: `Grid kind="week"` for seven dated event regions and `kind="week-summary"` for seven daily metric summaries, with required region labels and the existing agenda/summary responsive tracks owned by the grid's container. A wrong day count is refused in development; reading and action order stay unchanged.
+- Added: a `ListRowData` string title can have `href` and optional `Link.onFollow`; the title is a native link beside separate row commands, and a row without `href` takes no follow handler. Loading removes the link. Stories cover media destinations, week layouts and title navigation.
+
 ## 0.21.0 - 2026-11-02
 
 - Changed: ONE LOADING FLAG (lane 11, contexts/ui/loading.md). `isSkeleton` is renamed `isLoading` on every component. `Section`, every kind of `SurfaceCard`, `ListBox`, `Timeline`, `DataTable`, `MessageBubble` and `PaneSection` derive their skeleton from the rows and fields they are given, or three default rows, keep the title and hide the count, and a `Section` or `PaneSection` that loads tells the Grammar components inside it. Added: an `error` slot (`ErrorData`: `message`, `description`, `actionLabel`, `onAction`, exported) on those seven, drawn as a live alert with its own mark, and `isError` on `EmptyNotice`. Removed: `loadingRows` (`ListBox`, `Timeline`, `DataTable`, `Section`, list `SurfaceCard`), `DataTable` `loadingContent`, and `MessageBubble` `rows` (a loading `MessageBubble` without a `side` is one default thread). Run `starci app codemod loading-states`.

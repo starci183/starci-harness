@@ -24,6 +24,13 @@
         overflow-wrap: anywhere;
     }
 
+    .starci-core-link[data-grammar-link-content="media"] {
+        display: inline-flex;
+        min-inline-size: 0;
+        max-inline-size: 100%;
+        text-decoration-line: none;
+    }
+
     .starci-core-link:hover,
     .starci-core-link[data-hovered="true"] {
         text-decoration-thickness: 2px;
@@ -1251,7 +1258,11 @@
     }
 
     /* Cut-out art (alpha channel) sits directly on its surface: no loading plate behind it. */
-    .starci-core-image[data-grammar-image-plate="none"] { background: transparent; }
+    .starci-core-image[data-grammar-image-plate="none"] {
+        background: transparent;
+        border-radius: 0;
+        overflow: visible;
+    }
 
     .starci-core-image[data-grammar-image-aspect="square"] { aspect-ratio: 1 / 1; }
     .starci-core-image[data-grammar-image-aspect="landscape"] { aspect-ratio: 4 / 3; }

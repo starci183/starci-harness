@@ -220,7 +220,28 @@ one content edge. A static row's description is one line, because the row is sca
 a `ListBox` wraps, because it is read before picking, and a list clamps it only by `descriptionLines`. A table row
 with `href` is one link to its record; a column with `editor` hosts its field in the cell; `low`-priority columns
 fold into the first column as stacked secondary text on a narrow table. The leading slot follows the ramp, so a
-row's identity mark matches the controls beside it. Loading shows the same rows at rest.
+row's identity mark matches the controls beside it. A `ListRowData` title remains text; `href` turns that title into a
+native `Link`, whose `onFollow` reports navigation to its owning region. Without `href`, `onFollow` is unrepresentable.
+The title link and any row command or menu are separate targets, never nested. Loading shows the same rows at rest and
+removes the title link.
+
+### Link
+
+`Link` is a native destination carried by text or one image. Its text form takes string `children`; its media form
+takes `media` as the existing `ImageProps` data and a required accessible destination `label`, with no children.
+The compiler rejects mixing the forms. Image owns aspect, fit, dimensions, provenance, load state and fallback;
+`plate="none"` preserves a cut-out mark's transparent, unclipped shape. Navigation, disabled state, external-tab safety,
+focus and `onFollow` are the same for both forms. Media keeps its supplied destination name while the image loads or fails.
+
+### Grid
+
+`Grid` names a track layout by the content it carries: peer `cards`, aligned `form` fields, `main-rail`, a dated event
+`week` or a `week-summary` of daily metrics. Week kinds take a region `label` and seven consecutive day regions in
+reading order, including empty days; the development check refuses another count. The shared week renderer owns its
+container queries. A week is an agenda in a narrow container and seven tracks at the medium width, at the inline gap.
+A week summary wraps through one, four and seven tracks, at the section gap. The exact thresholds belong to
+`packages/grammar/src/common/styles.css`; an app takes no breakpoint, gap or arbitrary column count. Existing day
+content, empty states and actions remain inside their day regions. `Calendar` remains the date-selection control.
 
 ### Alert
 

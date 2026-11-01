@@ -988,3 +988,48 @@ export const GridMainRailLeading: Story = {
     </G.Page>
   ),
 };
+
+const weekDays = ['Monday 9', 'Tuesday 10', 'Wednesday 11', 'Thursday 12', 'Friday 13', 'Saturday 14', 'Sunday 15'];
+
+const agendaDays = () => weekDays.map((day, index) => (
+  <G.SurfaceCard key={day} kind="list" label={day}
+    items={index % 2 === 0 ? [{ id: day, title: 'Delivery review with the operations team', description: '09:30–10:00', action: { label: 'Open', press: noop } }] : []}
+    empty={<G.EmptyNotice message="No scheduled appointments" />} />
+));
+
+/** Seven dated event tracks at wide container sizes, the same ordered days as an agenda when narrow. */
+export const GridWeek: Story = {
+  render: () => (
+    <G.Page measure="full">
+      <G.Section title="Appointments for 9–15 November">
+        <G.Grid kind="week" label="Appointments by day">{agendaDays()}</G.Grid>
+      </G.Section>
+      <div style={{ maxWidth: 390 }}>
+        <G.Grid kind="week" label="Narrow appointment agenda">{agendaDays()}</G.Grid>
+      </div>
+    </G.Page>
+  ),
+};
+
+const summaryDays = () => weekDays.map((day, index) => (
+  <G.SurfaceCard key={day} label={day}>
+    <G.Meter label="Available capacity" value={index * 10} maxValue={100} valueLabel={`${index * 10}%`} />
+  </G.SurfaceCard>
+));
+
+/** Daily summaries keep the seven-day order while wrapping through one, four and seven tracks. */
+export const GridWeekSummary: Story = {
+  render: () => (
+    <G.Page measure="full">
+      <G.Section title="Capacity for 9–15 November">
+        <G.Grid kind="week-summary" label="Capacity by day">{summaryDays()}</G.Grid>
+      </G.Section>
+      <div style={{ maxWidth: 720 }}>
+        <G.Grid kind="week-summary" label="Intermediate capacity summary">{summaryDays()}</G.Grid>
+      </div>
+      <div style={{ maxWidth: 390 }}>
+        <G.Grid kind="week-summary" label="Narrow capacity summary">{summaryDays()}</G.Grid>
+      </div>
+    </G.Page>
+  ),
+};

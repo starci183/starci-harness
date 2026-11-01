@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { Children, type ReactNode } from "react"
 import { FormGrid, type FormGridColumns } from "../FormGrid/index.js"
 import { PrimaryRailLayout, type PrimaryRailLayoutProps } from "../PrimaryRailLayout/index.js"
 
@@ -25,8 +25,33 @@ type GridMainRailProps = Omit<PrimaryRailLayoutProps, "className"> & {
     readonly kind: "main-rail"
 }
 
-export type GridKind = "cards" | "form" | "main-rail"
-export type GridProps = GridCardsProps | GridFormProps | GridMainRailProps
+type GridWeekProps = {
+    /** A dated event agenda, or one summary per day; the kind owns its responsive tracks and spacing. */
+    readonly kind: "week" | "week-summary"
+    readonly label: string
+    /** Seven consecutive days in reading order, including the days with no entries. */
+    readonly children: ReactNode
+}
+
+export type GridKind = "cards" | "form" | "main-rail" | "week" | "week-summary"
+export type GridProps = GridCardsProps | GridFormProps | GridMainRailProps | GridWeekProps
+
+const WeekGrid = ({ kind, label, children }: GridWeekProps) => {
+    if (process.env.NODE_ENV !== "production" && Children.count(children) !== 7) throw new Error("GRID_WEEK_REQUIRES_SEVEN_DAYS: supply seven consecutive day regions, including empty days")
+    return (
+        <div
+            aria-label={label}
+            role="region"
+            className="starci-core-grid-week"
+            data-component="Grid"
+            data-tier="frame"
+            data-grammar-grid-kind={kind}
+            data-contract="GAP-4 RESPONSIVE-1"
+        >
+            <div className="starci-core-grid-week-days">{children}</div>
+        </div>
+    )
+}
 
 /**
  * A two-dimensional layout named by what it lays out. `cards` is the Grammar's card grid; `form` is the form layout
@@ -40,6 +65,7 @@ export const Grid = (props: GridProps) => {
         const { kind, ...layout } = props
         return <PrimaryRailLayout {...layout} />
     }
+    if (props.kind === "week" || props.kind === "week-summary") return <WeekGrid {...props} />
     return (
         <div
             className="starci-core-grid"

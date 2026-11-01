@@ -489,6 +489,37 @@ export const Link: Story = {
   ),
 };
 
+/** An image destination keeps its own accessible name through loading, error and disabled states. */
+export const LinkMedia: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Transparent brand destination">
+        <G.Link href="#home" label="Open the workspace home" visited="uniform"
+          media={{ src: placeholderImage('Studio'), alt: '', width: 113, height: 40, fit: 'contain', plate: 'none', loading: 'eager' }} />
+      </State>
+      <State label="Original image in a new tab">
+        <div style={{ width: 200 }}>
+          <G.Link href="https://example.com/original.png" kind="external" label="Open the delivery photograph"
+            externalHint="(opens in a new tab)"
+            media={{ src: placeholderImage('Delivery'), alt: 'Delivery photograph', aspect: 'landscape', fit: 'contain' }} />
+        </div>
+      </State>
+      <State label="Disabled image destination">
+        <div style={{ width: 200 }}>
+          <G.Link href="#disabled" label="Unavailable photograph" isDisabled
+            media={{ src: placeholderImage('Unavailable'), alt: '', aspect: 'landscape' }} />
+        </div>
+      </State>
+      <State label="Failed image keeps its destination name">
+        <div style={{ width: 200 }}>
+          <G.Link href="#original" label="Open the original photograph"
+            media={{ src: '/missing-story-image.png', alt: '', aspect: 'landscape', fallback: <G.Text tone="muted">Image unavailable</G.Text> }} />
+        </div>
+      </State>
+    </Matrix>
+  ),
+};
+
 export const Avatar: Story = {
   render: () => (
     <Matrix>

@@ -113,13 +113,23 @@ export const List = () => <Section kind="list" title="T"><Wrapped /></Section>;`
   }), ['heading-over-card@a/One.tsx', 'heading-over-card@a/Three.tsx']);
 });
 
-test('a labelled card repeated by a map in a Grid is found, an unlabelled tile is not', () => {
+test('a labelled card repeated by a map in a peer-card Grid is found, an unlabelled tile is not', () => {
   assert.deepEqual(kinds({
     'a/Tile.tsx': `${G}export const Tile = ({ item }) => <SurfaceCard label={item.name} />;`,
     'a/Plain.tsx': `${G}export const Plain = ({ item }) => <SurfaceCard kind="tile" />;`,
-    'a/Labelled.tsx': `${G}import { Tile } from './Tile';\nexport const Labelled = ({ items }) => <Grid>{items.map((item) => <Tile key={item.id} item={item} />)}</Grid>;`,
-    'a/Tiles.tsx': `${G}import { Plain } from './Plain';\nexport const Tiles = ({ items }) => <Grid>{items.map((item) => <Plain key={item.id} item={item} />)}</Grid>;`,
+    'a/Labelled.tsx': `${G}import { Tile } from './Tile';\nexport const Labelled = ({ items }) => <Grid kind="cards">{items.map((item) => <Tile key={item.id} item={item} />)}</Grid>;`,
+    'a/Tiles.tsx': `${G}import { Plain } from './Plain';\nexport const Tiles = ({ items }) => <Grid kind="cards">{items.map((item) => <Plain key={item.id} item={item} />)}</Grid>;`,
   }), ['label-in-grid@a/Labelled.tsx']);
+});
+
+test('labelled day regions belong to the nearest semantic layout, while peer-card grids still refuse them', () => {
+  const day = { 'a/Day.tsx': `${G}export const Day = ({ item }) => <SurfaceCard label={item.label} />;` };
+  const screen = (layout: string) => ({ ...day, 'a/Week.tsx': `${G}import { Day } from './Day';\nexport const Week = ({ days }) => ${layout};` });
+  for (const kind of ['week', 'week-summary']) {
+    assert.deepEqual(kinds(screen(`<Grid kind="${kind}" label="Days">{days.map((day) => <Day key={day.id} item={day} />)}</Grid>`)), []);
+  }
+  assert.deepEqual(kinds(screen('<Grid kind="cards">{days.map((day) => <Day key={day.id} item={day} />)}</Grid>')), ['label-in-grid@a/Day.tsx']);
+  assert.deepEqual(kinds(screen('<Grid kind="cards"><Grid kind="week" label="Days">{days.map((day) => <Day key={day.id} item={day} />)}</Grid></Grid>')), []);
 });
 
 test('a render cycle ends and an unresolved component is left alone', () => {
