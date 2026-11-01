@@ -217,6 +217,13 @@ the surface that hosts it. It is not a surface: it has no shadow, no outline and
 or a drawer without putting a surface inside a surface. It names its source in one short word and, optionally, where and
 when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a chat bubble).
 
+### ChatBubble
+
+A chat bubble is one message of a conversation; every chat is `ChatBubble`s in a thread the app keeps, and no screen draws its own
+bubble. The reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`),
+the other party's is the surface with its foreground, and inline content (a link, a mention, code, a muted line) inherits the
+bubble's foreground so it reads on either face. The corner on the author's side tightens to point at the avatar.
+
 ### EmptyState
 
 An empty state is a region with nothing to show, or whose read failed: one message in the region's place inside

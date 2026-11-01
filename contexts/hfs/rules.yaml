@@ -2393,6 +2393,14 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-table-in-card}
 
+  - id: R352
+    code: FE_COMMAND_FILLS_HEADER
+    law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a PageHeader or the labelEnd of a SurfaceCard or SurfaceListCard is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
+    failureCodes:
+      - FE_COMMAND_FILLS_HEADER
+    enforcers:
+      - {kind: eslint-fe, id: no-fill-command-in-header}
+
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
 # dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is

@@ -41,8 +41,8 @@ Choice `button.choose.width`: content or fill.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| fill | the button is the only action of a single-column action band at a narrow width (a phone form's submit, a pinned action bar) | `width="fill"` | candidate: a fill button's row holds no other control |
-| content | every other place | omit `width` | judgement |
+| fill | the button is a form submit, the action of an auth panel, or the only action of a phone action bar (a single-column band at a narrow width, a pinned action bar) | `width="fill"` | candidate: a fill button's row holds no other control |
+| content | every other place, and always a page or pane command: it hugs its label and sits at the end of its header row (R352 refuses `width="fill"` in `PageHeader` `actions` and in `labelEnd`) | omit `width` | judgement |
 
 ## Variants
 None for the app: the grammar resolves the variant from `button.choose.intent` and the placement it reads from

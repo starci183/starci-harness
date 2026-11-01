@@ -215,7 +215,7 @@ Status is never a tone choice: success, warning, danger and information belong t
 status tone x, content that sits on a background of the tone uses the pair x-soft and x-soft-foreground, and a mark that
 stands alone, with no background of the tone behind it, uses x itself (a solid fill takes x-foreground). A bare mark is
 measured at `contrast.statusSoft` as a glyph or title and at `contrast.text` as body text, and no app darkens the tone:
-a tone that misses its floor is changed in the grammar's token. Lint: `starci-grammar/status-text-uses-soft-foreground`.
+a tone that misses its floor is changed in the grammar's token. Offset Pop's light theme is the one named exception: its pastel tones are kept and a bare mark there wears the soft foreground. Lint: `starci-grammar/status-text-uses-soft-foreground`.
 When a pair fails contrast, the app changes the surface, never the token.
 
 ## Paint

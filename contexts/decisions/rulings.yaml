@@ -100,7 +100,7 @@ rulings:
   - id: status-soft-pair-on-background
     date: '2026-11-01'
     status: live
-    ruling: "A status tone x (success, warning, danger, info) paints content one of two ways. Content that sits on a background of the tone (a tint, a tinted tile, a tinted band) uses the pair x-soft and x-soft-foreground; a mark that stands alone, with no background of the tone behind it (a bare glyph, a required asterisk, a count, a title on the page or on a neutral surface), uses x itself. A solid fill takes x-foreground. The soft pair on its tint is accepted at the lower contrast floor and body and interactive text keep the full floor; a bare x is judged at `contrast.statusSoft` as a glyph or title and at `contrast.text` as body text, and a tone value that does not reach its floor is changed in the grammar's token, never darkened by an app."
+    ruling: "A status tone x (success, warning, danger, info) paints content one of two ways. Content that sits on a background of the tone (a tint, a tinted tile, a tinted band) uses the pair x-soft and x-soft-foreground; a mark that stands alone, with no background of the tone behind it (a bare glyph, a required asterisk, a count, a title on the page or on a neutral surface), uses x itself. A solid fill takes x-foreground. The soft pair on its tint is accepted at the lower contrast floor and body and interactive text keep the full floor; a bare x is judged at `contrast.statusSoft` as a glyph or title and at `contrast.text` as body text, and a tone value that does not reach its floor is changed in the grammar's token, never darkened by an app. Core's light tones are set so a bare mark reaches 3:1 on the surface (success oklch(62.8% 0.1941 162.85), warning oklch(67% 0.159 84.37), info oklch(66.8% 0.17 250)). Named exception: on Offset Pop's light theme only, a bare status mark wears the soft foreground, because the owner kept the pastel tones (\"1. Pastel\") and a bare success, warning or info there measures 1.30 to 1.46:1; Offset Pop's dark theme keeps bare x, and the lint reports no lone soft foreground for Offset Pop."
     words: "TEXT TRÊN BG THÌ X-SOFT VÀ X-SOFT-FOREGROUND, CÒN NẾU X ĐỘC LẬP THÌ ĐỂ X LUN"
     owner: "contexts/ui/proof/thresholds.yaml; contexts/ui/presentation.md (Tone); lint starci-grammar/status-text-uses-soft-foreground"
     absorbs: [status-tones-follow-heroui]
@@ -727,6 +727,21 @@ rulings:
     status: live
     ruling: "A bounded task list, a fixed set the reader works through as one group (the items an agent setup needs, required steps) with no search, filter or paging, is one SurfaceListCard of ListRow with the label outside, on a page or in a pane, the `task` row of `list-table.choose.role`. A list that grows, searches, filters or pages stays bare rows in its section (COLLECTION-1); a comparison across columns stays a DataTable. The owner's words on the agent setup items: \"ủa cái này phải là surface list card cho các mục chứ\"; bare rows passed the rule and the mockup and still did not read as one block. On the permissions table the owner added: \"quá phức tạp mới nhét bảng vào card\", plain rows are a SurfaceListCard with a bottom note in its footer."
     owner: "contexts/ui/composition.md COLLECTION-1; contexts/ui/components/list-table.md (list-table.choose.role, task); contexts/ui/components/card.md (card.choose.role, task-list); contexts/hfs/rules.yaml R351"
+  - id: chat-primary-and-surface
+    date: '2026-11-01'
+    status: live
+    ruling: "In a chat the reader's own message is the brand fill with its foreground (--accent and --accent-foreground; the contract has no --primary) and the other party's message is the surface with its foreground; inline content in an outgoing bubble (a link, a mention, code, a muted line) inherits the bubble's foreground so it stays readable on the solid fill. Every chat is ChatBubble: no screen draws its own bubble. Offset Pop follows its own accent and surface pair. The owner decided on chat: \"chốt vậy đi\" (my message uses the primary fill with its foreground, the other party uses surface)."
+    owner: "contexts/ui/components/chat.md; @starci/grammar src/core/composite/ChatBubble"
+  - id: flow-graph-lanes
+    date: '2026-11-01'
+    status: live
+    ruling: "A workflow graph is FlowGraph layout=\"lanes\": columns by stage and one row per branch of a condition, so each path reads left to right on one line, rows close together and no node stacked into one tall column; every node is one width and draws its words at the body size with an optional subline (the approver or the provider); the node kind sets the tone through the soft pair (trigger neutral, condition warning, execute its own tone, output accent); an edge is orthogonal with rounded corners and an arrowhead in the muted ink, the branches of a node fork from one point, a terminal node has no outgoing line; a branch label sits on its own edge on the canvas background; a column header is sentence case, muted, and shown only over a column that holds a node; the canvas is as tall as the graph and never magnifies it. The owner called the previous graph ugly; the grammar guarantees the look, not only the structure."
+    owner: "@starci/grammar src/core/branch/FlowGraph; contexts/ui/components/diagram.md (diagram.choose.shape, workflow)"
+  - id: header-command-hugs-label
+    date: '2026-11-01'
+    status: live
+    ruling: "A page or pane command hugs its label and sits at the end of its header row; Button width=\"fill\" is only for a form submit, an auth panel, or a phone action bar. The lint refuses width fill in a PageHeader actions or a card labelEnd; the other three places are not decidable from a file."
+    owner: "contexts/ui/components/button.md (button.choose.width); contexts/hfs/rules.yaml R352"
   - id: flow-graph-orbit
     date: '2026-10-31'
     status: live
