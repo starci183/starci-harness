@@ -1,5 +1,5 @@
 /* Common owns only universal structure/scales. Families supply material DNA. */
-@layer starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
+@layer starci-grammar-theme, starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
 @import "./components-forms.css";
 @import "./components-surface-controls.css";
 @import "./components-overlays.css";
@@ -75,207 +75,53 @@
     }
 
     /*
-     * THE ROOT OWNS EVERY VENDOR THEME VARIABLE.
-     *
-     * HeroUI declares its theme on `:root`, where each `color-mix()` is substituted against HeroUI's
-     * own light values, and a descendant inherits the RESULT. A family that re-declares `--accent`
-     * on its root therefore still received HeroUI's blue `--accent-soft`, and a dark scope still
-     * received HeroUI's light `--default`, `--field-background`, `--segment` and `--overlay`. So
-     * this root declares every HeroUI theme variable itself: the semantic ones get neutral,
-     * AA-safe defaults (bare Common is a real theme, light and dark), and every derived one is
-     * written in terms of the semantic ones, so it re-resolves on whichever family and theme scope
-     * it lands on. A family supplies its semantic values; the rest follows.
+     * THE APP OWNS THE THEME. This root declares no HeroUI token: the app sets them in its own CSS, on `:root`, `.light`
+     * and `.dark`, and HeroUI derives the rest (`*-soft`, `*-hover`, `--field-*`) where it derives them, so every part
+     * below reads the app's values. A family's defaults are the optional `theme.css` beside its `styles.css`.
+     * `--info` and its pairs are the one extension HeroUI lacks; each read of them falls back to `--accent`.
      */
     .grammar-common-root {
-        color-scheme: light;
-
-        --background: oklch(97.02% 0 0);
-        --foreground: oklch(21.03% 0.0059 285.89);
-        --surface: oklch(100% 0 0);
-        --surface-secondary: oklch(95.24% 0.0013 286.37);
-        --muted: oklch(49.5% 0.0138 285.94);
-        --border: oklch(90% 0.004 286.32);
-        --separator: oklch(92% 0.004 286.32);
-        --accent: oklch(53% 0.2 256);
-        --accent-foreground: oklch(99.11% 0 0);
-        --success: oklch(73.29% 0.1935 150.81);
-        --success-foreground: oklch(21.03% 0.0059 285.89);
-        --warning: oklch(78.19% 0.1585 72.33);
-        --warning-foreground: oklch(21.03% 0.0059 285.89);
-        --danger: oklch(55% 0.215 26);
-        --danger-foreground: oklch(99.11% 0 0);
-        --info: var(--accent);
-        --info-foreground: var(--accent-foreground);
-        --backdrop: rgb(0 0 0 / 50%);
-        --surface-shadow: 0 2px 4px 0 rgb(0 0 0 / 4%), 0 1px 2px 0 rgb(0 0 0 / 6%), 0 0 1px 0 rgb(0 0 0 / 6%);
-        --overlay-shadow: 0 2px 8px 0 rgb(0 0 0 / 6%), 0 -6px 12px 0 rgb(0 0 0 / 3%), 0 14px 28px 0 rgb(0 0 0 / 8%);
-        --field-shadow: 0 2px 4px 0 rgb(0 0 0 / 4%), 0 1px 2px 0 rgb(0 0 0 / 6%), 0 0 1px 0 rgb(0 0 0 / 6%);
-
-        /* Derived from the semantic set above, so they follow the family and theme in scope. */
-        --focus: var(--accent);
-        --link: var(--foreground);
-        --surface-foreground: var(--foreground);
-        --surface-secondary-foreground: var(--foreground);
-        --surface-tertiary: color-mix(in oklab, var(--surface-secondary) 98%, var(--foreground));
-        --surface-tertiary-foreground: var(--foreground);
-        --overlay: var(--surface);
-        --overlay-foreground: var(--foreground);
-        --default: color-mix(in oklab, var(--surface-secondary) 98%, var(--foreground));
-        --default-foreground: var(--foreground);
-        --segment: var(--surface);
-        --segment-foreground: var(--foreground);
-        --field-background: var(--surface);
-        --field-foreground: var(--foreground);
-        --field-placeholder: var(--muted);
-        --field-border: transparent;
-        --scrollbar-thumb: color-mix(in oklch, var(--foreground) 15%, transparent);
-        --scrollbar-track: transparent;
-        --scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-        --surface-hover: color-mix(in oklab, var(--surface) 92%, var(--surface-foreground) 8%);
-        --default-hover: color-mix(in oklab, var(--default) 96%, var(--default-foreground) 4%);
-        --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--accent-foreground) 10%);
-        --success-hover: color-mix(in oklab, var(--success) 90%, var(--success-foreground) 10%);
-        --warning-hover: color-mix(in oklab, var(--warning) 90%, var(--warning-foreground) 10%);
-        --danger-hover: color-mix(in oklab, var(--danger) 90%, var(--danger-foreground) 10%);
-        --field-hover: color-mix(in oklab, var(--field-background) 98%, var(--field-foreground) 2%);
-        --field-focus: var(--field-background);
-        --field-border-hover: color-mix(in oklab, var(--field-border, var(--border)) 88%, var(--field-foreground) 10%);
-        --field-border-focus: color-mix(in oklab, var(--field-border, var(--border)) 74%, var(--field-foreground) 22%);
-        --default-soft: color-mix(in oklab, var(--default) 50%, transparent);
-        --default-soft-foreground: var(--default-foreground);
-        --default-soft-hover: color-mix(in oklab, var(--default) 60%, transparent);
-        --accent-soft: color-mix(in oklab, var(--accent) 15%, transparent);
-        --accent-soft-foreground: color-mix(in oklab, var(--accent) 70%, var(--foreground) 30%);
-        --accent-soft-hover: color-mix(in oklab, var(--accent-soft) 94%, var(--accent));
-        --success-soft: color-mix(in oklab, var(--success) 15%, transparent);
-        --success-soft-foreground: color-mix(in oklab, var(--success) 50%, var(--foreground) 50%);
-        --success-soft-hover: color-mix(in oklab, var(--success) 20%, transparent);
-        --warning-soft: color-mix(in oklab, var(--warning) 15%, transparent);
-        --warning-soft-foreground: color-mix(in oklab, var(--warning) 45%, var(--foreground) 55%);
-        --warning-soft-hover: color-mix(in oklab, var(--warning) 20%, transparent);
-        --danger-soft: color-mix(in oklab, var(--danger) 15%, transparent);
-        --danger-soft-foreground: color-mix(in oklab, var(--danger) 65%, var(--foreground) 35%);
-        --danger-soft-hover: color-mix(in oklab, var(--danger) 20%, transparent);
-        --info-soft: color-mix(in oklab, var(--info) 15%, transparent);
-        --info-soft-foreground: color-mix(in oklab, var(--info) 70%, var(--foreground) 30%);
-        --info-soft-hover: color-mix(in oklab, var(--info) 20%, transparent);
-        --background-secondary: color-mix(in oklab, var(--background) 96%, var(--foreground) 4%);
-        --background-tertiary: color-mix(in oklab, var(--background) 92%, var(--foreground) 8%);
-        --background-inverse: var(--foreground);
-        --separator-secondary: color-mix(in oklab, var(--surface) 85%, var(--surface-foreground) 15%);
-        --separator-tertiary: color-mix(in oklab, var(--surface) 81%, var(--surface-foreground) 19%);
-        --border-secondary: color-mix(in oklab, var(--surface) 78%, var(--surface-foreground) 22%);
-        --border-tertiary: color-mix(in oklab, var(--surface) 66%, var(--surface-foreground) 34%);
-
         color: var(--foreground);
         background-color: var(--background);
     }
 
     /*
-     * A hover fill moves AWAY from its foreground, so the pair keeps (and gains) contrast instead
-     * of HeroUI's mix toward the foreground, which takes a 5:1 button under AA on hover. Relative
-     * colour inverts the foreground's lightness; without it the fill keeps the gentler vendor mix.
+     * The accent is a FILL, and on its tint it is `--accent-soft-foreground` (the pair rule). Where a part paints the
+     * accent as TEXT on the page (a link, the current tab and bottom-nav destination, the section eyebrow), that
+     * element reads the soft foreground in place of the fill, so each rule reads `--accent` unchanged.
      */
-    @supports (color: oklch(from white l c h)) {
-        .grammar-common-root {
-            --accent-hover: color-mix(in oklab, var(--accent) 90%, oklch(from var(--accent-foreground) calc(1 - l) 0 0));
-            --success-hover: color-mix(in oklab, var(--success) 90%, oklch(from var(--success-foreground) calc(1 - l) 0 0));
-            --warning-hover: color-mix(in oklab, var(--warning) 90%, oklch(from var(--warning-foreground) calc(1 - l) 0 0));
-            --danger-hover: color-mix(in oklab, var(--danger) 90%, oklch(from var(--danger-foreground) calc(1 - l) 0 0));
-        }
+    :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item[data-grammar-current="true"], .starci-core-section-eyebrow) {
+        --accent: var(--accent-soft-foreground);
     }
 
-    /* A real dark theme for bare Common; families override the semantic set, the mixes follow. */
-    .grammar-common-root[data-grammar-theme="dark"] {
-        color-scheme: dark;
-
-        --background: oklch(12% 0.005 285.82);
-        --foreground: oklch(99.11% 0 0);
-        --surface: oklch(21.03% 0.0059 285.89);
-        --surface-secondary: oklch(25.7% 0.0037 286.14);
-        --muted: oklch(72% 0.015 286.07);
-        --border: oklch(28% 0.006 286.03);
-        --separator: oklch(25% 0.006 286.03);
-        --accent: oklch(72% 0.14 250);
-        --accent-foreground: oklch(21.03% 0.0059 285.89);
-        --success: oklch(73.29% 0.1935 150.81);
-        --success-foreground: oklch(21.03% 0.0059 285.89);
-        --warning: oklch(82.03% 0.1388 76.34);
-        --warning-foreground: oklch(21.03% 0.0059 285.89);
-        --danger: oklch(70% 0.17 24);
-        --danger-foreground: oklch(21.03% 0.0059 285.89);
-        --backdrop: rgb(0 0 0 / 60%);
-        --surface-shadow: 0 0 0 0 transparent inset;
-        --overlay-shadow: 0 0 1px 0 rgb(255 255 255 / 30%) inset;
-        --field-shadow: 0 0 0 0 transparent inset;
-        --segment: color-mix(in oklab, var(--surface) 76%, var(--foreground));
-        --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
-        --accent-soft-foreground: color-mix(in oklab, var(--accent) 70%, var(--foreground) 30%);
-        --success-soft: color-mix(in oklab, var(--success) 14%, transparent);
-        --success-soft-foreground: color-mix(in oklab, var(--success) 70%, var(--foreground) 30%);
-        --warning-soft: color-mix(in oklab, var(--warning) 14%, transparent);
-        --warning-soft-foreground: color-mix(in oklab, var(--warning) 70%, var(--foreground) 30%);
-        --danger-soft: color-mix(in oklab, var(--danger) 16%, transparent);
-        --danger-soft-foreground: color-mix(in oklab, var(--danger) 70%, var(--foreground) 30%);
-        --info-soft: color-mix(in oklab, var(--info) 16%, transparent);
-        --info-soft-foreground: color-mix(in oklab, var(--info) 70%, var(--foreground) 30%);
-    }
-
-    @media (prefers-color-scheme: dark) {
-        .grammar-common-root[data-grammar-theme="system"] {
-            color-scheme: dark;
-
-            --background: oklch(12% 0.005 285.82);
-            --foreground: oklch(99.11% 0 0);
-            --surface: oklch(21.03% 0.0059 285.89);
-            --surface-secondary: oklch(25.7% 0.0037 286.14);
-            --muted: oklch(72% 0.015 286.07);
-            --border: oklch(28% 0.006 286.03);
-            --separator: oklch(25% 0.006 286.03);
-            --accent: oklch(72% 0.14 250);
-            --accent-foreground: oklch(21.03% 0.0059 285.89);
-            --success: oklch(73.29% 0.1935 150.81);
-            --success-foreground: oklch(21.03% 0.0059 285.89);
-            --warning: oklch(82.03% 0.1388 76.34);
-            --warning-foreground: oklch(21.03% 0.0059 285.89);
-            --danger: oklch(70% 0.17 24);
-            --danger-foreground: oklch(21.03% 0.0059 285.89);
-            --backdrop: rgb(0 0 0 / 60%);
-            --surface-shadow: 0 0 0 0 transparent inset;
-            --overlay-shadow: 0 0 1px 0 rgb(255 255 255 / 30%) inset;
-            --field-shadow: 0 0 0 0 transparent inset;
-            --segment: color-mix(in oklab, var(--surface) 76%, var(--foreground));
-            --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
-            --accent-soft-foreground: color-mix(in oklab, var(--accent) 70%, var(--foreground) 30%);
-            --success-soft: color-mix(in oklab, var(--success) 14%, transparent);
-            --success-soft-foreground: color-mix(in oklab, var(--success) 70%, var(--foreground) 30%);
-            --warning-soft: color-mix(in oklab, var(--warning) 14%, transparent);
-            --warning-soft-foreground: color-mix(in oklab, var(--warning) 70%, var(--foreground) 30%);
-            --danger-soft: color-mix(in oklab, var(--danger) 16%, transparent);
-            --danger-soft-foreground: color-mix(in oklab, var(--danger) 70%, var(--foreground) 30%);
-            --info-soft: color-mix(in oklab, var(--info) 16%, transparent);
-            --info-soft-foreground: color-mix(in oklab, var(--info) 70%, var(--foreground) 30%);
-        }
-    }
-
+    /* The reader's system colours replace the theme whatever the app set. */
     @media (forced-colors: active) {
-        .grammar-common-root,
-        .grammar-common-root[data-grammar-theme] {
+        .grammar-common-root {
             --background: Canvas;
             --foreground: CanvasText;
             --surface: Canvas;
             --surface-secondary: Canvas;
+            --surface-tertiary: Canvas;
+            --default: Canvas;
             --muted: GrayText;
             --border: CanvasText;
             --separator: CanvasText;
             --accent: Highlight;
             --accent-foreground: HighlightText;
+            --accent-soft: Canvas;
+            --accent-soft-foreground: CanvasText;
+            --focus: Highlight;
             --success: CanvasText;
             --success-foreground: Canvas;
             --warning: CanvasText;
             --warning-foreground: Canvas;
             --danger: CanvasText;
             --danger-foreground: Canvas;
+            --info: CanvasText;
+            --info-foreground: Canvas;
+            --surface-shadow: none;
+            --overlay-shadow: none;
+            --field-shadow: none;
         }
     }
 
@@ -288,18 +134,12 @@
         box-sizing: border-box;
     }
 
-    /* Grammar scroll remains operable without adding persistent chrome to a composition. */
+    /* Scrollbars are the app's: HeroUI's `--scrollbar*` tokens, so an app's own values show. */
     .grammar-common-root,
     .grammar-common-root * {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-
-    .grammar-common-root::-webkit-scrollbar,
-    .grammar-common-root *::-webkit-scrollbar {
-        display: none;
-        width: 0;
-        height: 0;
+        scrollbar-width: var(--scrollbar-width);
+        scrollbar-color: var(--scrollbar) var(--scrollbar-track);
+        scrollbar-gutter: var(--scrollbar-gutter);
     }
 
     .starci-core-page-container {
@@ -338,7 +178,7 @@
     .starci-core-section-title {
         margin: 0;
         max-width: 100%;
-        color: var(--starci-core-foreground, var(--foreground, CanvasText));
+        color: var(--foreground);
         /* The type scale (knowledge/ui/presentation/font.yaml): the page title is FONT-4 (20/28), a section title
            FONT-3 (16/24); both 600 - the public weights are 400/500/600. */
         font-size: 1.25rem;
@@ -354,7 +194,7 @@
     }
 
     .starci-core-section-eyebrow {
-        color: var(--starci-core-accent, var(--accent, Highlight));
+        color: var(--accent);
         font-size: 0.75rem;
         font-weight: 600;
         letter-spacing: 0.08em;
@@ -364,7 +204,7 @@
 
     .starci-core-section-description,
     .starci-core-media-caption {
-        color: var(--starci-core-muted, var(--muted, GrayText));
+        color: var(--muted);
         font-size: 0.875rem;
         line-height: 1.5;
         overflow-wrap: anywhere;
@@ -376,7 +216,7 @@
 
     /* The section count (0.6.0): "(n)" in the title's line, muted and at the regular weight. */
     .starci-core-section-count {
-        color: var(--starci-core-muted, var(--muted, GrayText));
+        color: var(--muted);
         font-weight: 400;
         font-variant-numeric: tabular-nums;
     }
@@ -385,7 +225,7 @@
     .starci-core-section-meta {
         min-width: 0;
         flex: 0 1 auto;
-        color: var(--starci-core-muted, var(--muted, GrayText));
+        color: var(--muted);
         font-size: 0.75rem;
         line-height: 1rem;
         overflow-wrap: anywhere;
@@ -402,8 +242,8 @@
         min-width: 0;
         flex-direction: column;
         margin-block-end: var(--grammar-region-gap, 2rem);
-        background: var(--surface, Canvas);
-        color: var(--surface-foreground, var(--foreground, CanvasText));
+        background: var(--surface);
+        color: var(--surface-foreground);
     }
 
     .starci-core-page-header-body {
@@ -464,7 +304,7 @@
 
     .starci-core-page-header-meta {
         min-width: 0;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.75rem;
         line-height: 1rem;
         overflow-wrap: anywhere;
@@ -472,7 +312,7 @@
 
     .starci-core-page-header-description {
         min-width: 0;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875rem;
         line-height: 1.5;
         overflow-wrap: anywhere;
@@ -589,7 +429,7 @@
     .starci-core-page[data-grammar-page-chrome="panes"] > .starci-core-page-trail {
         padding-block: var(--grammar-pane-inset-block-start, 0.75rem);
         padding-inline: var(--grammar-page-inset, 0.75rem);
-        border-block-end: 1px solid var(--separator, var(--starci-core-separator, GrayText));
+        border-block-end: 1px solid var(--separator);
     }
 
     /*
@@ -602,7 +442,7 @@
     .starci-core-rail-body[tabindex="0"]:focus-visible,
     .starci-core-fenced-code-block pre[tabindex="0"]:focus-visible,
     .starci-core-markdown-table-frame[tabindex="0"]:focus-visible {
-        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: -2px;
     }
 
@@ -664,9 +504,9 @@
         position: relative;
         min-width: 0;
         overflow: hidden;
-        border: 1px solid var(--starci-core-border, var(--border, GrayText));
+        border: 1px solid var(--border);
         border-radius: var(--starci-core-surface-radius, 1rem);
-        background: var(--starci-core-surface-secondary, var(--surface-secondary, Canvas));
+        background: var(--surface-secondary);
     }
 
     .starci-core-media-frame[data-grammar-media-aspect="landscape"] .starci-core-media-viewport { aspect-ratio: 16 / 10; }
@@ -810,12 +650,12 @@
         align-items: center;
         justify-content: space-between;
         gap: 0.5rem;
-        border: var(--field-border-width, 1px) solid var(--field-border, var(--border, ButtonBorder));
+        border: var(--field-border-width, 1px) solid var(--field-border);
         border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
         padding-inline: 0.75rem;
-        background: var(--field-background, var(--surface, Canvas));
-        color: var(--field-foreground, var(--foreground, CanvasText));
-        box-shadow: var(--field-shadow, none);
+        background: var(--field-background);
+        color: var(--field-foreground);
+        box-shadow: var(--field-shadow);
         font: inherit;
         text-align: start;
         cursor: pointer;
@@ -827,12 +667,12 @@
     }
 
     .starci-core-pressable-field:hover {
-        border-color: var(--field-border-hover, var(--field-border, var(--border, ButtonBorder)));
-        background: var(--field-hover, var(--field-background, var(--surface, Canvas)));
+        border-color: var(--field-border-hover);
+        background: var(--field-hover);
     }
 
     .starci-core-pressable-field:focus-visible {
-        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
@@ -853,18 +693,18 @@
         min-width: 0;
         overflow: hidden;
         font-size: 0.875rem;
-        color: var(--field-placeholder, var(--muted, GrayText));
+        color: var(--field-placeholder);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
     .starci-core-pressable-field-shortcut {
         flex-shrink: 0;
-        border: 1px solid var(--border, var(--starci-core-border, ButtonBorder));
+        border: 1px solid var(--border);
         border-radius: var(--radius-sm, calc(var(--radius, 0.5rem) * 0.75));
         padding: 0.25rem;
-        background: var(--surface-secondary, var(--starci-core-surface-secondary, Canvas));
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        background: var(--surface-secondary);
+        color: var(--muted);
         font-family: inherit;
         font-size: 0.75rem;
         line-height: 1;
@@ -1018,7 +858,7 @@
         min-width: 0;
         margin: 0;
         /* A label names what follows it: full foreground, never the muted tone a vendor body passes down (TONE). */
-        color: var(--foreground, CanvasText);
+        color: var(--foreground);
         font-size: 0.875rem;
         font-weight: 600;
         line-height: 1.25rem;
@@ -1034,8 +874,8 @@
         min-width: 0;
         overflow: hidden;
         border-radius: var(--starci-core-surface-radius, 1rem);
-        background: var(--surface, Canvas);
-        color: var(--surface-foreground, CanvasText);
+        background: var(--surface);
+        color: var(--surface-foreground);
     }
 
     /* The accent corner: one logical corner of a surface or a media viewport at the Common accent radius. */
@@ -1072,8 +912,8 @@
         gap: var(--grammar-region-gap, 2rem);
         padding: var(--grammar-page-inset, 2rem);
         overflow: hidden;
-        background: var(--accent-soft, var(--starci-core-accent-soft, Canvas));
-        color: var(--foreground, CanvasText);
+        background: var(--accent-soft);
+        color: var(--foreground);
     }
 
     .starci-core-backdrop-content {
@@ -1121,7 +961,7 @@
             from var(--starci-core-highlight-angle),
             transparent 0%,
             transparent 82%,
-            var(--starci-core-accent, var(--accent, Highlight)) 92%,
+            var(--accent) 92%,
             transparent 100%
         );
         -webkit-mask:
@@ -1144,11 +984,11 @@
 
     .starci-core-surface[data-grammar-surface-depth="top"] {
         border: 0;
-        box-shadow: var(--starci-core-surface-shadow, var(--shadow-surface, 0 1px 3px rgb(0 0 0 / 0.16)));
+        box-shadow: var(--surface-shadow);
     }
 
     .starci-core-surface[data-grammar-surface-depth="nested"] {
-        border: 1px solid var(--border, GrayText);
+        border: 1px solid var(--border);
         box-shadow: none;
     }
 
@@ -1216,9 +1056,8 @@
      * and every other token keeps its value, so a child's pair stays the one it has on the family's own surface.
      */
     .starci-core-surface[data-grammar-surface-treatment="soft"] {
-        --surface: var(--accent-soft, Canvas);
-        --surface-foreground: var(--foreground, CanvasText);
-        --starci-core-foreground: var(--foreground, CanvasText);
+        --surface: var(--accent-soft);
+        --surface-foreground: var(--foreground);
     }
 
     /*
@@ -1239,7 +1078,7 @@
      * No gradient, no glow, no shadow beyond the surface's own elevation.
      */
     .starci-core-surface[data-grammar-surface-treatment="ink"] {
-        --grammar-ink-band: var(--accent, Highlight);
+        --grammar-ink-band: var(--accent);
         /* 1 on a dark ink (lightness below 0.62), 0 on a light one: every ink below reads toward the far end. */
         --grammar-ink-band-foreground: oklch(from var(--grammar-ink-band) clamp(0, calc((0.62 - l) * 1000), 1) 0 0);
         --grammar-ink-band-muted: oklch(from var(--grammar-ink-band) calc(clamp(0, calc((0.62 - l) * 1000), 1) * max(0.8, calc(l + 0.5)) + (1 - clamp(0, calc((0.62 - l) * 1000), 1)) * min(0.32, calc(l - 0.5))) calc(c * 0.25) h);
@@ -1250,19 +1089,15 @@
         --surface: var(--grammar-ink-band);
         --foreground: var(--grammar-ink-band-foreground);
         --surface-foreground: var(--grammar-ink-band-foreground);
-        --starci-core-foreground: var(--grammar-ink-band-foreground);
         --muted: var(--grammar-ink-band-muted);
-        --starci-core-muted: var(--grammar-ink-band-muted);
         --separator: var(--grammar-ink-band-separator);
         --border: var(--grammar-ink-band-separator);
-        --starci-core-separator: var(--grammar-ink-band-separator);
-        --starci-core-border: var(--grammar-ink-band-separator);
         --default: var(--grammar-ink-band-plate);
         --default-foreground: var(--grammar-ink-band-foreground);
-        --success-soft-foreground: color-mix(in oklab, var(--success, CanvasText) 8%, var(--grammar-ink-band-foreground));
-        --warning-soft-foreground: color-mix(in oklab, var(--warning, CanvasText) 8%, var(--grammar-ink-band-foreground));
-        --danger-soft-foreground: color-mix(in oklab, var(--danger, CanvasText) 8%, var(--grammar-ink-band-foreground));
-        --info-soft-foreground: color-mix(in oklab, var(--info, CanvasText) 8%, var(--grammar-ink-band-foreground));
+        --success-soft-foreground: color-mix(in oklab, var(--success) 8%, var(--grammar-ink-band-foreground));
+        --warning-soft-foreground: color-mix(in oklab, var(--warning) 8%, var(--grammar-ink-band-foreground));
+        --danger-soft-foreground: color-mix(in oklab, var(--danger) 8%, var(--grammar-ink-band-foreground));
+        --info-soft-foreground: color-mix(in oklab, var(--info, var(--accent)) 8%, var(--grammar-ink-band-foreground));
         --accent-soft-foreground: var(--grammar-ink-band-foreground);
         --accent-soft: var(--grammar-ink-band-plate);
     }
@@ -1398,7 +1233,7 @@
     }
 
     [data-grammar-whole-action]:focus-visible {
-        outline: 2px solid var(--focus, Highlight);
+        outline: 2px solid var(--focus);
         outline-offset: -2px;
     }
 
@@ -1408,11 +1243,11 @@
 
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:hover),
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:focus-visible) {
-        background: var(--accent-soft, var(--starci-core-surface-secondary, var(--surface-secondary, Canvas)));
+        background: var(--accent-soft);
     }
 
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:active) {
-        background: color-mix(in oklab, var(--starci-core-accent, Highlight) 14%, var(--starci-core-surface, Canvas));
+        background: color-mix(in oklab, var(--accent) 14%, var(--surface));
     }
 
     [data-grammar-whole-action][aria-disabled="true"],
@@ -1427,7 +1262,7 @@
      */
     [data-grammar-state="unavailable"],
     [data-grammar-state="unavailable"] .starci-core-static-row-copy > * {
-        color: var(--muted, GrayText);
+        color: var(--muted);
     }
 
     [data-grammar-state="unavailable"] [data-grammar-state-mark] {
@@ -1443,7 +1278,7 @@
         flex: none;
         font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
         min-width: 1.25rem;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875rem;
         font-variant-numeric: tabular-nums;
         line-height: 1.25rem;
@@ -1500,12 +1335,12 @@
      */
     .starci-core-owned-collection[data-grammar-collection="verdict"] [data-verdict="success"],
     .starci-core-static-row[data-verdict="success"] {
-        --starci-core-verdict-edge: inset 2px 0 0 0 var(--success, var(--starci-core-success, #15803d));
+        --starci-core-verdict-edge: inset 2px 0 0 0 var(--success);
     }
 
     .starci-core-owned-collection[data-grammar-collection="verdict"] [data-verdict="danger"],
     .starci-core-static-row[data-verdict="danger"] {
-        --starci-core-verdict-edge: inset 2px 0 0 0 var(--danger, var(--starci-core-danger, #b91c1c));
+        --starci-core-verdict-edge: inset 2px 0 0 0 var(--danger);
     }
 
     /*
@@ -1530,7 +1365,7 @@
         width: 100%;
         min-width: 0;
         align-items: center;
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        color: var(--muted);
         font-size: 0.75rem;
         line-height: 1rem;
     }
@@ -1630,7 +1465,7 @@
     }
 
     .starci-core-static-row + .starci-core-static-row {
-        border-top: 1px solid var(--separator, var(--border, GrayText));
+        border-top: 1px solid var(--separator);
     }
 
     /*
@@ -1683,7 +1518,7 @@
 
     .starci-core-list-row-description {
         min-width: 0;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875rem;
         line-height: 1.25rem;
         overflow-wrap: anywhere;
@@ -1776,11 +1611,11 @@
         width: 100% !important;
         min-width: 0;
         padding: 0 var(--grammar-inset, 0.75rem) var(--grammar-inset, 0.75rem) var(--grammar-section-gap, 1.5rem) !important;
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        color: var(--foreground);
     }
 
     .starci-core-accordion-row + .starci-core-accordion-row {
-        border-top: 1px solid var(--separator, var(--border, GrayText));
+        border-top: 1px solid var(--separator);
     }
 
     .starci-core-accordion-heading {
@@ -1816,7 +1651,7 @@
 
     .starci-core-accordion-trigger:focus-visible,
     .starci-core-accordion-trigger[data-focus-visible="true"] {
-        outline: 2px solid var(--focus, Highlight);
+        outline: 2px solid var(--focus);
         outline-offset: -2px;
     }
 
@@ -1895,9 +1730,9 @@
     .starci-core-markdown-article :not(pre) > code {
         display: inline;
         padding: 0 var(--grammar-identity-gap, 0.25rem);
-        border: 1px solid var(--border, GrayText);
+        border: 1px solid var(--border);
         border-radius: 999px;
-        background: var(--muted-surface, color-mix(in srgb, CanvasText 7%, Canvas));
+        background: var(--muted-surface, color-mix(in oklab, var(--foreground) 7%, var(--background)));
         color: inherit;
         font: 500 0.875rem/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
         white-space: break-spaces;
@@ -1909,9 +1744,9 @@
         margin: 0;
         padding: var(--grammar-inset, 0.75rem);
         overflow-x: auto;
-        border: 1px solid var(--border, GrayText);
+        border: 1px solid var(--border);
         border-radius: 0.75rem;
-        background: var(--code-surface, color-mix(in srgb, CanvasText 6%, Canvas));
+        background: var(--code-surface, color-mix(in oklab, var(--foreground) 6%, var(--background)));
         color: inherit;
         overscroll-behavior-inline: contain;
     }
@@ -1940,7 +1775,7 @@
         justify-content: space-between;
         gap: 0.75rem;
         padding: 0 0 0.5rem;
-        color: var(--muted, GrayText);
+        color: var(--muted);
     }
 
     .starci-core-fenced-code-header :where(button) {
@@ -1956,9 +1791,9 @@
         width: 100%;
         min-width: 0;
         overflow-x: auto;
-        border: 1px solid var(--border, GrayText);
+        border: 1px solid var(--border);
         border-radius: 0.75rem;
-        background: var(--code-surface, color-mix(in srgb, CanvasText 6%, Canvas));
+        background: var(--code-surface, color-mix(in oklab, var(--foreground) 6%, var(--background)));
         overscroll-behavior-inline: contain;
     }
 
@@ -1973,8 +1808,8 @@
 
     .starci-core-markdown-article blockquote {
         padding-inline-start: var(--grammar-inset, 0.75rem);
-        border-inline-start: 3px solid var(--border, GrayText);
-        color: var(--muted, GrayText);
+        border-inline-start: 3px solid var(--border);
+        color: var(--muted);
     }
 
     .starci-core-markdown-article table,
@@ -1992,9 +1827,9 @@
 
     .starci-core-markdown-table-frame {
         min-width: 0;
-        border: 1px solid var(--border, GrayText);
+        border: 1px solid var(--border);
         border-radius: 0.75rem;
-        background: var(--code-surface, color-mix(in srgb, CanvasText 4%, Canvas));
+        background: var(--code-surface, color-mix(in oklab, var(--foreground) 4%, var(--background)));
         box-shadow: none;
     }
 
@@ -2002,13 +1837,13 @@
         width: 100%;
         margin: var(--grammar-row-gap, 0.75rem) 0;
         border: 0;
-        border-top: 1px solid var(--separator, var(--border, GrayText));
+        border-top: 1px solid var(--separator);
     }
 
     .starci-core-markdown-article :where(th, td) {
         min-width: 8rem;
         padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
-        border-bottom: 1px solid var(--separator, var(--border, GrayText));
+        border-bottom: 1px solid var(--separator);
         text-align: start;
         vertical-align: top;
     }
@@ -2028,14 +1863,14 @@
     }
 
     .starci-core-static-row-copy > :last-child:not(:first-child) {
-        color: var(--muted, GrayText);
+        color: var(--muted);
     }
 
     [data-grammar-state-mark="check"] {
         width: 1.25rem;
         height: 1.25rem;
         flex: none;
-        color: var(--success, #15803d);
+        color: var(--success);
     }
 
     .starci-core-rail {
@@ -2187,9 +2022,9 @@
     .starci-core-navigation-feature-nav {
         box-sizing: border-box;
         width: 100%;
-        border-bottom: 1px solid var(--separator, var(--starci-core-separator, GrayText));
-        background: var(--surface, Canvas);
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        border-bottom: 1px solid var(--separator);
+        background: var(--surface);
+        color: var(--foreground);
     }
 
     .starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-position="sticky"] {
@@ -2324,9 +2159,9 @@
         justify-content: space-between;
         gap: var(--grammar-row-gap, 0.75rem);
         padding-inline: 0.75rem;
-        border-bottom: 1px solid var(--separator, var(--starci-core-separator, GrayText));
-        background: var(--background, var(--starci-core-canvas, Canvas));
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        border-bottom: 1px solid var(--separator);
+        background: var(--background);
+        color: var(--foreground);
     }
 
     .starci-core-subnav[data-grammar-subnav-position="sticky"] {
@@ -2498,7 +2333,7 @@
         width: 1px;
         align-self: stretch;
         justify-self: stretch;
-        background: var(--separator, var(--starci-core-separator, GrayText));
+        background: var(--separator);
     }
 
     @container starci-core-workspace-shell (min-width: 56.001rem) {
@@ -2616,8 +2451,8 @@
         align-items: center;
         padding-block: 0.5rem;
         padding-inline: var(--grammar-page-inset, 0.75rem);
-        border-block-end: 1px solid var(--separator, GrayText);
-        background: var(--surface, Canvas);
+        border-block-end: 1px solid var(--separator);
+        background: var(--surface);
     }
 
     .starci-core-workspace-shell[data-grammar-workspace-viewport="fixed"] > .starci-core-workspace-shell-layout {
@@ -2657,8 +2492,8 @@
         gap: var(--grammar-inline-gap, 0.5rem);
         padding-inline: var(--grammar-page-inset, 0.75rem);
         padding-block: 0.5rem;
-        border-block-end: 1px solid var(--separator, var(--starci-core-separator, GrayText));
-        background: var(--surface, Canvas);
+        border-block-end: 1px solid var(--separator);
+        background: var(--surface);
     }
 
     .starci-core-workspace-shell-compact-header.starci-core-workspace-shell-opener {
@@ -2703,8 +2538,8 @@
         min-width: 0;
         flex-direction: column;
         overflow: hidden;
-        background: var(--surface, Canvas);
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        background: var(--surface);
+        color: var(--foreground);
     }
 
     .starci-core-sidebar[data-presentation="drawer"] {
@@ -2714,7 +2549,7 @@
     .starci-core-sidebar[data-presentation="rail"] {
         width: var(--starci-core-sidebar-width, 16rem);
         height: 100%;
-        border-inline-end: 1px solid var(--separator, var(--starci-core-separator, GrayText));
+        border-inline-end: 1px solid var(--separator);
         transition: width var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
     }
 
@@ -2775,7 +2610,7 @@
         padding-block: 0.75rem 0.25rem !important;
         font-size: 0.75rem;
         font-weight: 500;
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        color: var(--muted);
     }
 
     /* A collapsed rail keeps the group name for assistive technology and drops it from the paint. */
@@ -2798,7 +2633,7 @@
         align-items: center;
         gap: 0.75rem;
         border-radius: var(--radius-xl, calc(var(--radius, 0.5rem) * 1.5)) !important;
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        color: var(--foreground);
         cursor: pointer;
         outline: none;
     }
@@ -2812,17 +2647,17 @@
     }
 
     .starci-core-sidebar-item[data-hovered="true"] {
-        background: var(--default, var(--starci-core-surface-secondary, Canvas));
+        background: var(--default);
     }
 
     .starci-core-sidebar-item[data-selected="true"],
     .starci-core-sidebar-item[data-grammar-current="true"] {
-        background: var(--accent-soft, var(--starci-core-accent, Highlight)) !important;
-        color: var(--accent-soft-foreground, var(--starci-core-accent, HighlightText));
+        background: var(--accent-soft) !important;
+        color: var(--accent-soft-foreground);
     }
 
     .starci-core-sidebar-item[data-focus-visible="true"] {
-        box-shadow: 0 0 0 2px var(--accent, var(--starci-core-accent, Highlight));
+        box-shadow: 0 0 0 2px var(--accent);
     }
 
     .starci-core-sidebar-item[data-disabled="true"] {
@@ -2871,7 +2706,7 @@
         min-width: 0;
         flex-direction: column;
         overflow: hidden;
-        background: var(--background, var(--starci-core-canvas, Canvas));
+        background: var(--background);
         container: starci-core-pane-grid / inline-size;
     }
 
@@ -2898,8 +2733,8 @@
         --starci-core-pane-be: var(--starci-core-pane-be-base);
         display: var(--starci-core-pane-d, flex);
         flex-direction: column;
-        border-inline-start: var(--starci-core-pane-i, 0px) solid var(--separator, var(--starci-core-separator, GrayText));
-        border-block-start: var(--starci-core-pane-b, 0px) solid var(--separator, var(--starci-core-separator, GrayText));
+        border-inline-start: var(--starci-core-pane-i, 0px) solid var(--separator);
+        border-block-start: var(--starci-core-pane-b, 0px) solid var(--separator);
     }
 
     /*
@@ -3003,7 +2838,7 @@
     }
 
     .starci-core-pane[data-grammar-pane-surface="true"] {
-        background: var(--surface, var(--starci-core-surface, Canvas));
+        background: var(--surface);
     }
 
     .starci-core-pane-scroll {
@@ -3018,7 +2853,7 @@
     .starci-core-pane-scroll:focus-visible,
     .starci-core-pane-drawer-scroll:focus-visible,
     .starci-core-pane-trigger:focus-visible {
-        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: -2px;
     }
 
@@ -3030,7 +2865,7 @@
         justify-content: flex-end;
         gap: var(--grammar-inline-gap, 0.5rem);
         padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
-        border-bottom: 1px solid var(--separator, var(--starci-core-separator, GrayText));
+        border-bottom: 1px solid var(--separator);
     }
 
     .starci-core-pane-trigger {
@@ -3040,10 +2875,10 @@
         align-items: center;
         justify-content: center;
         padding-inline: 0.75rem;
-        border: 1px solid var(--separator, var(--starci-core-separator, GrayText));
+        border: 1px solid var(--separator);
         border-radius: var(--starci-core-control-radius, 0.75rem);
-        background: var(--surface, var(--starci-core-surface, Canvas));
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        background: var(--surface);
+        color: var(--foreground);
         font-size: 0.875rem;
         font-weight: 500;
     }
@@ -3078,10 +2913,10 @@
     .starci-core-pane-drawer-close {
         width: 2.5rem !important;
         height: 2.5rem !important;
-        border: 1px solid var(--separator, var(--starci-core-separator, GrayText)) !important;
+        border: 1px solid var(--separator) !important;
         border-radius: 999px !important;
-        background: var(--surface, var(--starci-core-surface, Canvas)) !important;
-        color: var(--foreground, var(--starci-core-foreground, CanvasText)) !important;
+        background: var(--surface) !important;
+        color: var(--foreground) !important;
     }
 
     @container starci-core-pane-grid (min-width: 48rem) {
@@ -3195,8 +3030,8 @@
             align-items: center;
             justify-content: space-between;
             gap: var(--grammar-inline-gap, 0.5rem);
-            border-block-start: 1px solid var(--separator, var(--starci-core-separator, GrayText));
-            background: var(--background, var(--starci-core-canvas, Canvas));
+            border-block-start: 1px solid var(--separator);
+            background: var(--background);
             padding: var(--grammar-inset, 0.75rem);
         }
     }
@@ -3285,7 +3120,7 @@
 
     /* --- Surface list --- */
     .starci-core-surface-fact {
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        color: var(--muted);
         font-size: 0.875rem;
         line-height: 1.25rem;
     }
@@ -3471,9 +3306,9 @@
         min-width: 0;
         flex-direction: column;
         padding: var(--grammar-inset, 0.75rem) var(--grammar-inset, 0.75rem) calc(var(--grammar-inset, 0.75rem) + env(safe-area-inset-bottom, 0px));
-        border-block-start: 1px solid var(--separator, var(--starci-core-separator, CanvasText));
-        background: var(--surface, Canvas);
-        color: var(--surface-foreground, CanvasText);
+        border-block-start: 1px solid var(--separator);
+        background: var(--surface);
+        color: var(--surface-foreground);
     }
 
     /* A summary bar lays the summary beside its actions and lets the actions drop below it when they do not fit. */
@@ -3633,14 +3468,14 @@
      * Same sizes, focus ring and accessible label as every IconButton.
      */
     .starci-core-icon-button[data-variant="danger-soft"] {
-        --button-bg: var(--danger-soft, transparent);
-        --button-bg-hover: var(--danger-soft-hover, var(--danger-soft, transparent));
-        --button-bg-pressed: var(--danger-soft-hover, var(--danger-soft, transparent));
-        --button-fg: var(--danger-soft-foreground, var(--danger, CanvasText));
+        --button-bg: var(--danger-soft);
+        --button-bg-hover: var(--danger-soft-hover, var(--danger-soft));
+        --button-bg-pressed: var(--danger-soft-hover, var(--danger-soft));
+        --button-fg: var(--danger-soft-foreground);
     }
 
     .starci-core-icon-button[data-floating="true"] {
-        box-shadow: var(--overlay-shadow, 0 8px 24px rgb(0 0 0 / 0.16)) !important;
+        box-shadow: var(--overlay-shadow) !important;
     }
 
     /* A count pinned to the glyph's top end corner; the plate never clips because the button keeps overflow visible. */
@@ -3660,9 +3495,9 @@
         justify-content: center;
         padding-inline: 0.25rem;
         border-radius: var(--starci-core-pill-radius, 999px);
-        background: var(--accent, Highlight);
-        color: var(--accent-foreground, HighlightText);
-        box-shadow: 0 0 0 2px var(--background, Canvas);
+        background: var(--accent);
+        color: var(--accent-foreground);
+        box-shadow: 0 0 0 2px var(--background);
         font-size: 0.6875rem;
         font-weight: 600;
         font-variant-numeric: tabular-nums;
@@ -3693,28 +3528,28 @@
 
     /* A tone pair is painted only when the plate draws its own glyph. */
     .starci-core-icon-tile[data-tone="neutral"][data-artwork="false"][data-loading="false"] {
-        background: var(--default, var(--starci-core-surface-secondary, Canvas));
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        background: var(--default);
+        color: var(--muted);
     }
 
     .starci-core-icon-tile[data-tone="accent"][data-artwork="false"][data-loading="false"] {
-        background: var(--accent-soft, var(--starci-core-accent, Highlight));
-        color: var(--accent-soft-foreground, var(--starci-core-accent, HighlightText));
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
     .starci-core-icon-tile[data-tone="success"][data-artwork="false"][data-loading="false"] {
-        background: var(--success-soft, var(--success, Canvas));
-        color: var(--success-soft-foreground, var(--success-foreground, CanvasText));
+        background: var(--success-soft);
+        color: var(--success-soft-foreground);
     }
 
     .starci-core-icon-tile[data-tone="warning"][data-artwork="false"][data-loading="false"] {
-        background: var(--warning-soft, var(--warning, Canvas));
-        color: var(--warning-soft-foreground, var(--warning-foreground, CanvasText));
+        background: var(--warning-soft);
+        color: var(--warning-soft-foreground);
     }
 
     .starci-core-icon-tile[data-tone="danger"][data-artwork="false"][data-loading="false"] {
-        background: var(--danger-soft, var(--danger, Canvas));
-        color: var(--danger-soft-foreground, var(--danger-foreground, CanvasText));
+        background: var(--danger-soft);
+        color: var(--danger-soft-foreground);
     }
 
     /* --- Progress: a HeroUI `ProgressBar`, and a resting bar of the same measure. --- */
@@ -3729,17 +3564,17 @@
         display: block;
         height: 0.25rem;
         border-radius: var(--radius-xs, 0.125rem);
-        background: var(--default, var(--surface-secondary, GrayText));
+        background: var(--default);
         transition: background-color var(--starci-core-motion-duration, 150ms) cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .starci-core-progress-step[data-grammar-progress-step="done"] { background: var(--starci-progress-fill, var(--accent, Highlight)); }
+    .starci-core-progress-step[data-grammar-progress-step="done"] { background: var(--starci-progress-fill, var(--accent)); }
 
     /* The tone of the fill: the bar's fill variable (the vendor reads it) and the steps' done colour. */
-    .starci-core-progress[data-grammar-progress-tone="success"] { --progress-bar-fill: var(--success, CanvasText); --starci-progress-fill: var(--success, CanvasText); }
-    .starci-core-progress[data-grammar-progress-tone="warning"] { --progress-bar-fill: var(--warning, CanvasText); --starci-progress-fill: var(--warning, CanvasText); }
-    .starci-core-progress[data-grammar-progress-tone="danger"] { --progress-bar-fill: var(--danger, CanvasText); --starci-progress-fill: var(--danger, CanvasText); }
-    .starci-core-progress[data-grammar-progress-tone="info"] { --progress-bar-fill: var(--info, CanvasText); --starci-progress-fill: var(--info, CanvasText); }
+    .starci-core-progress[data-grammar-progress-tone="success"] { --progress-bar-fill: var(--success); --starci-progress-fill: var(--success); }
+    .starci-core-progress[data-grammar-progress-tone="warning"] { --progress-bar-fill: var(--warning); --starci-progress-fill: var(--warning); }
+    .starci-core-progress[data-grammar-progress-tone="danger"] { --progress-bar-fill: var(--danger); --starci-progress-fill: var(--danger); }
+    .starci-core-progress[data-grammar-progress-tone="info"] { --progress-bar-fill: var(--info, var(--accent)); --starci-progress-fill: var(--info, var(--accent)); }
 
     @media (prefers-reduced-motion: reduce) {
         .starci-core-progress-step { transition: none; }
@@ -3786,7 +3621,7 @@
         justify-content: center;
         border: 0;
         background: transparent;
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        color: var(--muted);
         cursor: pointer;
     }
 
@@ -3804,17 +3639,17 @@
     }
 
     .starci-core-input-actions .starci-core-input-reveal:not(:disabled):hover {
-        color: var(--foreground, CanvasText);
-        background: var(--default, transparent);
+        color: var(--foreground);
+        background: var(--default);
     }
 
     .starci-core-input-actions .starci-core-input-reveal:focus-visible {
-        outline: 2px solid var(--focus, Highlight);
+        outline: 2px solid var(--focus);
         outline-offset: 1px;
     }
 
     .starci-core-input-copy[data-copied="true"] {
-        color: var(--success-foreground, var(--foreground, CanvasText));
+        color: var(--success-foreground);
     }
 
     .starci-core-input-live {
@@ -3893,7 +3728,7 @@
 
     /* --- Text: one resolved line of copy, drawn from the attributes it already emits. --- */
     .starci-core-text {
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        color: var(--foreground);
         font-size: 1rem;
         font-weight: 400;
         line-height: 1.5rem;
@@ -3915,11 +3750,11 @@
     }
 
     .starci-core-text[data-tone="muted"] {
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        color: var(--muted);
     }
 
     .starci-core-text[data-tone="accent"] {
-        color: var(--accent-soft-foreground, var(--starci-core-accent, HighlightText));
+        color: var(--accent-soft-foreground);
     }
 
     .starci-core-text[data-weight="medium"] { font-weight: 500; }
@@ -3936,7 +3771,7 @@
     }
 
     :where(.group)[data-selected="true"] .starci-core-text[data-parent-emphasis="accent-soft"] {
-        color: var(--accent-soft-foreground, var(--starci-core-accent, HighlightText));
+        color: var(--accent-soft-foreground);
     }
 
     /* Authored overflow behaviour: wrap is the resting answer, the other two are opted into. */
@@ -4022,12 +3857,12 @@
     .starci-core-text-action[data-size="md"] { font-size: 1rem; line-height: 1.5rem; }
 
     .starci-core-text-action[data-appearance="inline"] {
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        color: var(--foreground);
         font-weight: 500;
     }
 
     .starci-core-text-action[data-appearance="muted"] {
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        color: var(--muted);
         font-weight: 500;
     }
 
@@ -4043,7 +3878,7 @@
     .starci-core-text-action[data-appearance="choice"] {
         border-radius: var(--starci-core-pill-radius, 999px);
         padding: 0.25rem 0.5rem;
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        color: var(--foreground);
         font-weight: 500;
     }
 
@@ -4060,37 +3895,37 @@
         border-radius: var(--starci-core-pill-radius, 999px);
         padding: 0.5rem 0.75rem;
         min-block-size: var(--starci-core-control-min-size, 2.5rem);
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        color: var(--muted);
     }
 
     .starci-core-text-action[data-appearance="section"] {
         border-radius: var(--radius-xl, calc(var(--radius, 0.5rem) * 1.5));
         padding: 0.5rem 0.75rem;
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        color: var(--foreground);
     }
 
     .starci-core-text-action[data-appearance="section"]:hover,
     .starci-core-text-action[data-appearance="section"]:focus-visible {
-        background: var(--default, var(--starci-core-surface-secondary, Canvas));
+        background: var(--default);
     }
 
     .starci-core-text-action[data-appearance="tab"] {
         border-block-end: 2px solid transparent;
         padding-block: 0.75rem;
-        color: var(--muted, var(--starci-core-muted, GrayText));
+        color: var(--muted);
     }
 
     .starci-core-text-action[data-appearance="tab"][data-current="true"] {
-        border-block-end-color: var(--accent, var(--starci-core-accent, Highlight));
-        color: var(--accent, var(--starci-core-accent, Highlight));
+        border-block-end-color: var(--accent);
+        color: var(--accent);
         font-weight: 600;
     }
 
     .starci-core-text-action[data-appearance="choice"][data-current="true"],
     .starci-core-text-action[data-appearance="route"][data-current="true"],
     .starci-core-text-action[data-appearance="section"][data-current="true"] {
-        background: var(--accent-soft, var(--starci-core-accent, Highlight));
-        color: var(--accent-soft-foreground, var(--starci-core-accent, HighlightText));
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
     .starci-core-text-action[data-appearance="route"][data-current="true"],
@@ -4099,12 +3934,12 @@
     }
 
     .starci-core-text-action[data-appearance="disclosure"] {
-        color: var(--accent-soft-foreground, var(--starci-core-accent, HighlightText));
+        color: var(--accent-soft-foreground);
         font-weight: 600;
     }
 
     .starci-core-text-action[data-appearance="plain"] {
-        color: var(--foreground, var(--starci-core-foreground, CanvasText));
+        color: var(--foreground);
         text-decoration-line: none;
     }
 
@@ -4136,13 +3971,13 @@
 
     /* --- PaneGrid: the compact drawer trigger's resting paint. --- */
     .starci-core-pane-trigger {
-        box-shadow: 0 1px 2px 0 color-mix(in srgb, CanvasText 8%, transparent);
+        box-shadow: 0 1px 2px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
         outline: none;
         transition: background-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
     }
 
     .starci-core-pane-trigger:hover {
-        background: var(--default, var(--starci-core-surface-secondary, Canvas));
+        background: var(--default);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -4162,7 +3997,7 @@
     }
 
     .starci-core-status-dot-mark {
-        --starci-core-status-dot-color: var(--muted, GrayText);
+        --starci-core-status-dot-color: var(--muted);
         position: relative;
         display: inline-block;
         width: var(--starci-core-status-dot-size);
@@ -4171,13 +4006,13 @@
         border-radius: 999px;
         background: var(--starci-core-status-dot-color);
         /* The tone's light stop: the tone eased toward the surface. */
-        --starci-core-status-dot-light: color-mix(in oklab, var(--starci-core-status-dot-color) 40%, var(--surface, Canvas));
+        --starci-core-status-dot-light: color-mix(in oklab, var(--starci-core-status-dot-color) 40%, var(--surface));
     }
 
-    .starci-core-status-dot-mark[data-tone="accent"] { --starci-core-status-dot-color: var(--accent, Highlight); }
-    .starci-core-status-dot-mark[data-tone="success"] { --starci-core-status-dot-color: var(--success, CanvasText); }
-    .starci-core-status-dot-mark[data-tone="warning"] { --starci-core-status-dot-color: var(--warning, CanvasText); }
-    .starci-core-status-dot-mark[data-tone="danger"] { --starci-core-status-dot-color: var(--danger, CanvasText); }
+    .starci-core-status-dot-mark[data-tone="accent"] { --starci-core-status-dot-color: var(--accent); }
+    .starci-core-status-dot-mark[data-tone="success"] { --starci-core-status-dot-color: var(--success); }
+    .starci-core-status-dot-mark[data-tone="warning"] { --starci-core-status-dot-color: var(--warning); }
+    .starci-core-status-dot-mark[data-tone="danger"] { --starci-core-status-dot-color: var(--danger); }
 
     .starci-core-status-dot-chip > .starci-core-status-dot-mark {
         margin-inline-end: var(--grammar-identity-gap, 0.25rem);
@@ -4188,13 +4023,13 @@
         display: inline-flex;
         align-items: center;
         gap: var(--grammar-inline-gap, 0.5rem);
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.75rem;
         line-height: 1.25;
         white-space: nowrap;
     }
 
-    .starci-core-connection-status[data-grammar-connection-state="lost"] { color: var(--starci-core-mark-danger, var(--danger, CanvasText)); }
+    .starci-core-connection-status[data-grammar-connection-state="lost"] { color: var(--starci-core-mark-danger, var(--danger)); }
 
     .starci-core-status-dot-label {
         display: inline-block;
@@ -4249,7 +4084,7 @@
         display: inline-flex;
         align-items: center;
         gap: var(--grammar-identity-gap, 0.25rem);
-        color: var(--muted, GrayText);
+        color: var(--muted);
     }
 
     /* Text: monospace and tabular figures, opted into. */
@@ -4265,8 +4100,8 @@
     .starci-core-code {
         padding: 0.125em 0.375em;
         border-radius: 0.375rem;
-        background: var(--default, var(--surface-secondary, Canvas));
-        color: var(--foreground, CanvasText);
+        background: var(--default);
+        color: var(--foreground);
         font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
         font-size: 0.875em;
         overflow-wrap: anywhere;
@@ -4283,14 +4118,14 @@
         flex-direction: column;
         overflow: hidden;
         border-radius: 0.75rem;
-        background: var(--terminal-background, CanvasText);
-        color: var(--terminal-foreground, Canvas);
+        background: var(--terminal-background, var(--foreground));
+        color: var(--terminal-foreground, var(--background));
     }
 
     .starci-core-terminal-title {
         padding: 0.5rem 0.75rem;
-        border-block-end: 1px solid color-mix(in srgb, var(--terminal-foreground, Canvas) 14%, transparent);
-        color: var(--terminal-title-foreground, var(--terminal-foreground, Canvas));
+        border-block-end: 1px solid color-mix(in srgb, var(--terminal-foreground, var(--background)) 14%, transparent);
+        color: var(--terminal-title-foreground, var(--terminal-foreground, var(--background)));
         font-size: 0.75rem;
         font-weight: 500;
     }
@@ -4306,7 +4141,7 @@
     }
 
     .starci-core-terminal-log:focus-visible {
-        outline: 2px solid var(--focus, Highlight);
+        outline: 2px solid var(--focus);
         outline-offset: -2px;
     }
 
@@ -4325,13 +4160,13 @@
     .starci-core-filter-button { flex: none; gap: 0.5rem; white-space: nowrap; }
     .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: 0.8; }
     /* The rest takes the surface; selected is the accent soft pair (ruling status-soft-pair-on-background). */
-    .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { background: var(--surface, Canvas); color: var(--surface-foreground, CanvasText); }
-    .starci-core-filter-button[data-selected="true"] { background: var(--accent-soft, Highlight); color: var(--accent-soft-foreground, HighlightText); }
+    .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { background: var(--surface); color: var(--surface-foreground); }
+    .starci-core-filter-button[data-selected="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
     .starci-core-filter-button-probe { position: absolute; inset-block-start: 0; inset-inline-start: 0; display: flex; flex-wrap: nowrap; visibility: hidden; pointer-events: none; block-size: 0; overflow: hidden; }
     .starci-core-filter-button-skeleton { display: inline-block; inline-size: 5rem; block-size: 2rem; }
     .starci-core-filter-button-panel { display: flex; min-width: 16rem; flex-direction: column; gap: 0.5rem; }
     .starci-core-filter-button-list { max-block-size: 16rem; overflow-y: auto; }
-    .starci-core-filter-button-empty { display: block; padding: 0.75rem; color: var(--muted, GrayText); font-size: 0.875rem; }
+    .starci-core-filter-button-empty { display: block; padding: 0.75rem; color: var(--muted); font-size: 0.875rem; }
 
     /* --- ChatBubble: one message; the thread, grouping and scroll belong to the app. --- */
     .starci-core-chat-bubble {
@@ -4367,8 +4202,8 @@
         line-height: 1rem;
     }
 
-    .starci-core-chat-bubble-author { font-weight: 600; color: var(--foreground, CanvasText); }
-    .starci-core-chat-bubble-meta { color: var(--muted, GrayText); font-variant-numeric: tabular-nums; }
+    .starci-core-chat-bubble-author { font-weight: 600; color: var(--foreground); }
+    .starci-core-chat-bubble-meta { color: var(--muted); font-variant-numeric: tabular-nums; }
 
     .starci-core-chat-bubble-body {
         min-width: 0;
@@ -4376,8 +4211,8 @@
         padding: 0.5rem 0.75rem;
         border-radius: 1rem;
         border-start-start-radius: 0.25rem;
-        background: var(--surface, Canvas);
-        color: var(--surface-foreground, CanvasText);
+        background: var(--surface);
+        color: var(--surface-foreground);
         font-size: 0.875rem;
         line-height: 1.25rem;
         overflow-wrap: anywhere;
@@ -4392,8 +4227,8 @@
     .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body {
         border-start-start-radius: 1rem;
         border-start-end-radius: 0.25rem;
-        background: var(--accent, Highlight);
-        color: var(--accent-foreground, HighlightText);
+        background: var(--accent);
+        color: var(--accent-foreground);
     }
 
     .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, code, kbd, mark, [data-component="Code"], [data-component="Kbd"], [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Markdown"]) {
@@ -4402,10 +4237,10 @@
 
     .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, [data-component="Link"]) { text-decoration: underline; }
     .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body [data-component="Text"][data-tone="muted"] { opacity: 0.85; }
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground, HighlightText) 16%, transparent); }
+    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground) 16%, transparent); }
 
     .starci-core-chat-bubble[data-grammar-bubble-highlight="true"] .starci-core-chat-bubble-body {
-        outline: 2px solid var(--focus, Highlight);
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
@@ -4437,10 +4272,10 @@
             inset-block-start: 50%;
             transform: translateY(-50%);
             padding: var(--grammar-identity-gap, 0.25rem);
-            border: 1px solid var(--border, GrayText);
+            border: 1px solid var(--border);
             border-radius: 0.75rem;
-            background: var(--surface, Canvas);
-            box-shadow: var(--shadow-surface, 0 1px 3px rgb(0 0 0 / 0.16));
+            background: var(--surface);
+            box-shadow: var(--surface-shadow);
             pointer-events: none;
         }
 
@@ -4484,12 +4319,12 @@
         gap: var(--grammar-identity-gap, 0.25rem);
         padding: var(--grammar-inset-nested, 0.5rem);
         border-radius: var(--starci-core-control-radius, 0.75rem);
-        background: var(--surface-secondary, Canvas);
-        color: var(--foreground, CanvasText);
+        background: var(--surface-secondary);
+        color: var(--foreground);
     }
 
     .starci-core-quote-source {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.75rem;
         font-weight: 600;
         line-height: 1rem;
@@ -4503,7 +4338,7 @@
     }
 
     .starci-core-quote-byline {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.75rem;
         line-height: 1rem;
         font-variant-numeric: tabular-nums;
@@ -4543,11 +4378,11 @@
         padding: 0.25rem;
         overflow-y: auto;
         list-style: none;
-        border: 1px solid var(--border, GrayText);
+        border: 1px solid var(--border);
         border-radius: var(--radius-lg, var(--radius, 0.5rem));
-        background: var(--overlay, var(--surface, Canvas));
-        color: var(--overlay-foreground, var(--foreground, CanvasText));
-        box-shadow: var(--overlay-shadow, 0 8px 24px rgb(0 0 0 / 0.12));
+        background: var(--overlay);
+        color: var(--overlay-foreground);
+        box-shadow: var(--overlay-shadow);
     }
 
     .starci-core-mention-option {
@@ -4560,9 +4395,9 @@
         cursor: pointer;
     }
 
-    .starci-core-mention-option[data-grammar-mention-active="true"] { background: var(--default, var(--surface-secondary, Highlight)); }
+    .starci-core-mention-option[data-grammar-mention-active="true"] { background: var(--default); }
     .starci-core-mention-label { font-size: 0.875rem; font-weight: 500; }
-    .starci-core-mention-description { font-size: 0.75rem; color: var(--muted, GrayText); }
+    .starci-core-mention-description { font-size: 0.75rem; color: var(--muted); }
 }
 
 /*

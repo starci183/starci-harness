@@ -9,10 +9,10 @@ export const GRAMMAR_ROOT_SELECTOR = ".grammar-common-root"
  *
  * Overlays (dialog, drawer, popover, menu) are portalled by React Aria. Its default target is
  * `document.body`, which is OUTSIDE `.grammar-common-root[data-grammar-family]`: every family
- * selector, every family token (`--offset-pop-*`, `--starci-core-*`), the scoped light/dark theme and
+ * selector, every family token (`--offset-pop-*`, `--starci-core-*`) and
  * the forced-colors mapping would silently stop applying to the overlay surface. Portalling into the
  * nearest root keeps the overlay a DOM descendant of the same scope as its trigger, so family CSS,
- * inherited custom properties and `data-grammar-theme` all still resolve. Nested roots resolve to
+ * and inherited custom properties all still resolve. Nested roots resolve to
  * the innermost one. With no Grammar root at all the body is used, which is React Aria's default.
  */
 export const resolveOverlayContainer = (anchor: Element | null): Element | null => {

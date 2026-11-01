@@ -7,7 +7,12 @@ import { ButtonIntentFamilyProvider } from "../../buttonIntent.js"
 import { CollectionItemFamilyProvider } from "../../collectionItem.js"
 
 export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "color"> & {
-    /** `system` follows the reader unless an explicit light or dark scope is requested. */
+    /**
+     * The mode is the app's: `.dark` on `html`, as HeroUI reads it. A root that switched the mode itself would shadow
+     * the app's tokens, so this prop sets nothing.
+     *
+     * @deprecated Remove it; set `.dark` on `html`.
+     */
     readonly theme?: "system" | "light" | "dark"
     /** Visual families install their scoped material contract on this neutral root. */
     readonly "data-grammar-family"?: string
@@ -23,10 +28,10 @@ export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "color"> & 
 /**
  * Neutral Common boundary. Select a visual family with its `scopeProps`.
  *
- * Contract: COLOR-5 - the root publishes the theme scope (`data-grammar-theme`) every family keys its
- * light, dark and system token blocks on.
+ * Contract: COLOR-5 - the root declares no theme token: an app's HeroUI tokens, on `:root`, `.light` and `.dark`,
+ * reach every part, and a family's defaults are its optional `theme.css`.
  */
-export const GrammarRoot = ({ className, theme = "system", navigate, useHref, ...props }: GrammarRootProps) => {
+export const GrammarRoot = ({ className, theme: _theme, navigate, useHref, ...props }: GrammarRootProps) => {
     const root = (
     <ButtonIntentFamilyProvider family={props["data-grammar-family"]}>
     <CollectionItemFamilyProvider family={props["data-grammar-family"]}>
@@ -37,7 +42,6 @@ export const GrammarRoot = ({ className, theme = "system", navigate, useHref, ..
         data-grammar="common"
         data-component="GrammarRoot"
         data-tier="atom"
-        data-grammar-theme={theme}
     />
     </CollectionItemFamilyProvider>
     </ButtonIntentFamilyProvider>

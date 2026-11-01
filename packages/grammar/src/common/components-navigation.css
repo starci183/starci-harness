@@ -35,7 +35,7 @@
 
     .starci-core-link:focus-visible,
     .starci-core-link[data-focus-visible="true"] {
-        outline: 2px solid var(--focus, var(--accent, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
@@ -216,12 +216,12 @@
         inset-inline-end: calc(-50% + 1.5rem);
         block-size: 2px;
         border-radius: 999px;
-        background: var(--border, var(--starci-core-border, CanvasText));
+        background: var(--border);
         content: "";
     }
 
     .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step[data-grammar-step-state="complete"]:not(:last-child)::after {
-        background: var(--accent, Highlight);
+        background: var(--accent);
     }
 
     .starci-core-stepper[data-grammar-stepper-orientation="vertical"] .starci-core-stepper-list {
@@ -261,7 +261,7 @@
     }
 
     .starci-core-step-control:focus-visible {
-        outline: 2px solid var(--focus, var(--accent, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
@@ -272,19 +272,19 @@
         flex: 0 0 auto;
         align-items: center;
         justify-content: center;
-        border: 2px solid var(--border, var(--starci-core-border, CanvasText));
+        border: 2px solid var(--border);
         border-radius: 999px;
-        background: var(--surface, Canvas);
-        color: var(--muted, GrayText);
+        background: var(--surface);
+        color: var(--muted);
         font-size: 0.875rem;
         font-weight: 600;
         font-variant-numeric: tabular-nums;
     }
 
     .starci-core-step[data-grammar-step-state="complete"] .starci-core-step-marker {
-        border-color: var(--accent, Highlight);
-        background: var(--accent, Highlight);
-        color: var(--accent-foreground, HighlightText);
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--accent-foreground);
     }
 
     /*
@@ -295,20 +295,20 @@
      */
     .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker {
         border-color: currentColor;
-        color: var(--accent-soft-foreground, var(--accent, Highlight));
+        color: var(--accent-soft-foreground);
     }
 
     /* A bare mark wears the tone itself (ruling status-soft-pair-on-background); Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger, Mark);
-        color: var(--starci-core-mark-danger, var(--danger, CanvasText));
+        color: var(--starci-core-mark-danger, var(--danger));
     }
 
     /* A paused step: a dashed circle in the warning ink, so the state is a form as well as a colour. */
     .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker {
         border-style: dashed;
         border-color: var(--warning, Mark);
-        color: var(--starci-core-mark-warning, var(--warning, CanvasText));
+        color: var(--starci-core-mark-warning, var(--warning));
     }
 
     /* Dense (a list row): a 20px marker, 12px type, no copy padding, and the connector re-aimed at the smaller circle. */
@@ -345,12 +345,12 @@
     }
 
     .starci-core-step[data-grammar-step-state="upcoming"] .starci-core-step-label {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-weight: 500;
     }
 
     .starci-core-step-description {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.8125rem;
     }
 
@@ -378,9 +378,9 @@
         padding-inline: var(--grammar-page-inset, 0.75rem);
         padding-inline-start: max(var(--grammar-page-inset, 0.75rem), env(safe-area-inset-left));
         padding-inline-end: max(var(--grammar-page-inset, 0.75rem), env(safe-area-inset-right));
-        border-block-end: 1px solid var(--separator, var(--border, CanvasText));
-        background: var(--surface, Canvas);
-        color: var(--foreground, CanvasText);
+        border-block-end: 1px solid var(--separator);
+        background: var(--surface);
+        color: var(--foreground);
     }
 
     .starci-core-top-bar[data-grammar-top-bar-position="sticky"] {
@@ -438,9 +438,9 @@
         min-width: 0;
         padding-block-end: env(safe-area-inset-bottom, 0px);
         padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
-        border-block-start: 1px solid var(--separator, var(--border, CanvasText));
-        background: var(--surface, var(--background, Canvas));
-        color: var(--foreground, CanvasText);
+        border-block-start: 1px solid var(--separator);
+        background: var(--surface);
+        color: var(--foreground);
     }
 
     .starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"] {
@@ -520,7 +520,7 @@
         border: 0;
         border-radius: var(--radius, 0.5rem);
         background: transparent;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font: inherit;
         font-size: 0.75rem;
         font-weight: 500;
@@ -535,7 +535,7 @@
     }
 
     .starci-core-bottom-nav-item:focus-visible {
-        outline: 2px solid var(--focus, var(--accent, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: -2px;
     }
 
@@ -550,7 +550,7 @@
     }
 
     .starci-core-bottom-nav-item[data-grammar-current="true"] .starci-core-bottom-nav-icon {
-        background: var(--accent-soft, transparent);
+        background: var(--accent-soft);
     }
 
     .starci-core-bottom-nav-icon > svg {
@@ -594,8 +594,8 @@
         gap: var(--grammar-section-gap, 1.5rem);
         padding-block: var(--grammar-section-gap, 1.5rem) calc(var(--grammar-inset, 0.75rem) + env(safe-area-inset-bottom, 0px));
         padding-inline: var(--grammar-page-inset, 0.75rem);
-        border-block-start: 1px solid var(--separator, var(--border, CanvasText));
-        color: var(--foreground, CanvasText);
+        border-block-start: 1px solid var(--separator);
+        color: var(--foreground);
     }
 
     .starci-core-footer-main {
@@ -659,7 +659,7 @@
     }
 
     .starci-core-footer-legal {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.8125rem;
     }
 
@@ -681,8 +681,8 @@
     }
 
     .starci-core-avatar-agent-badge {
-        --badge-border: var(--surface, Canvas) !important;
-        box-shadow: 0 0 0 1px var(--surface, Canvas);
+        --badge-border: var(--surface) !important;
+        box-shadow: 0 0 0 1px var(--surface);
     }
 
     .starci-core-avatar-agent-glyph {
@@ -749,7 +749,7 @@
     }
 
     [data-component="PlainPressable"]:is(:focus-visible, [data-focus-visible="true"]) {
-        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight)) !important;
+        outline: 2px solid var(--focus) !important;
         outline-offset: 2px;
     }
 
@@ -783,7 +783,7 @@
 
     .starci-core-identity-lockup-title {
         overflow: hidden;
-        color: var(--foreground, CanvasText);
+        color: var(--foreground);
         font-size: 0.875rem;
         font-weight: 600;
         line-height: 1.25rem;
@@ -793,7 +793,7 @@
 
     .starci-core-identity-lockup-subtitle {
         overflow: hidden;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.75rem;
         line-height: 1rem;
         text-overflow: ellipsis;
@@ -850,7 +850,7 @@
     }
 
     .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[data-grammar-tag-drop-target="true"] {
-        outline: 2px solid var(--accent, Highlight);
+        outline: 2px solid var(--accent);
         outline-offset: 2px;
     }
 
@@ -863,7 +863,7 @@
     }
 
     .starci-core-tag[data-focus-visible="true"] {
-        outline: 2px solid var(--focus, var(--accent, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
@@ -872,7 +872,7 @@
     }
 
     .starci-core-tag-empty {
-        color: var(--muted, GrayText);
+        color: var(--muted);
     }
 
     /* ---------- DataTable ---------- */
@@ -937,8 +937,8 @@
     }
 
     .starci-core-data-table-row[data-grammar-selected="true"] {
-        background: var(--accent-soft, Highlight);
-        color: var(--accent-soft-foreground, HighlightText);
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
     }
 
     .starci-core-data-table-placeholder {
@@ -947,7 +947,7 @@
         align-items: center;
         justify-content: center;
         padding: var(--grammar-inset, 0.75rem);
-        color: var(--muted, GrayText);
+        color: var(--muted);
         white-space: normal;
         text-align: center;
     }
@@ -993,7 +993,7 @@
         flex-direction: column;
         gap: var(--grammar-identity-gap, 0.25rem);
         margin-block-start: 0.25rem;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875em;
         white-space: normal;
     }
@@ -1021,17 +1021,17 @@
         width: 100%;
         flex-direction: column;
         gap: 0.25rem;
-        border: 1px solid var(--separator, GrayText);
-        border-inline-start: 4px solid var(--starci-drag-item-leading, var(--separator, GrayText));
+        border: 1px solid var(--separator);
+        border-inline-start: 4px solid var(--starci-drag-item-leading, var(--separator));
         border-radius: var(--radius, 0.5rem);
-        background: var(--surface, Canvas);
+        background: var(--surface);
         padding: 0.25rem 0.5rem;
     }
 
     .starci-core-drag-item[data-grammar-invalid="true"] {
         border-color: var(--danger, Mark);
         border-inline-start-color: var(--starci-drag-item-leading, var(--danger, Mark));
-        background: var(--danger-soft, Canvas);
+        background: var(--danger-soft);
     }
 
     .starci-core-drag-item[data-grammar-dashed="true"] {
@@ -1055,11 +1055,11 @@
     }
 
     .starci-core-description-list[data-grammar-description-divided="true"] .starci-core-description-pair + .starci-core-description-pair {
-        border-block-start: 1px solid var(--separator, var(--border, CanvasText));
+        border-block-start: 1px solid var(--separator);
     }
 
     .starci-core-description-term {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875rem;
         font-weight: 500;
     }
@@ -1102,7 +1102,7 @@
 
     .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {
         --starci-core-strip-line-width: 1px;
-        --starci-core-strip-line-color: var(--separator, var(--border, CanvasText));
+        --starci-core-strip-line-color: var(--separator);
         display: flex;
         box-sizing: border-box;
         min-width: 0;
@@ -1159,7 +1159,7 @@
         align-items: baseline;
         gap: 0.5rem;
         margin: 0;
-        color: var(--foreground, CanvasText);
+        color: var(--foreground);
         font-size: 1.875rem;
         font-weight: 600;
         line-height: 2.25rem;
@@ -1173,7 +1173,7 @@
     }
 
     .starci-core-description-unit {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875rem;
         font-weight: 400;
         line-height: 1.25rem;
@@ -1185,7 +1185,7 @@
     .starci-core-description-meta {
         min-width: 0;
         margin: 0;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875rem;
         line-height: 1.25rem;
         overflow-wrap: anywhere;
@@ -1291,7 +1291,7 @@
 
     .starci-core-list-box-empty {
         padding: var(--grammar-inset, 0.75rem);
-        color: var(--muted, GrayText);
+        color: var(--muted);
     }
 
     /* ---------- Disclosure / Accordion (generic) ---------- */
@@ -1323,7 +1323,7 @@
 
     .starci-core-disclosure-trigger[data-focus-visible="true"],
     .starci-core-generic-accordion-trigger[data-focus-visible="true"] {
-        outline: 2px solid var(--focus, var(--accent, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
@@ -1338,7 +1338,7 @@
         min-width: 0;
         flex: 1 1 0;
         overflow: hidden;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875rem;
         font-weight: 400;
         text-align: end;
@@ -1408,7 +1408,7 @@
         min-block-size: 3rem;
         align-items: center;
         justify-content: center;
-        color: var(--muted, GrayText);
+        color: var(--muted);
     }
 
     /* ---------- Mascot ---------- */
@@ -1481,7 +1481,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: var(--border, GrayText);
+        color: var(--border);
     }
 
     .starci-core-rating[data-grammar-rating-mode="interactive"] .starci-core-rating-item {
@@ -1506,7 +1506,7 @@
     }
 
     .starci-core-rating-item:has(.starci-core-rating-input:focus-visible) {
-        outline: 2px solid var(--focus, var(--accent, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: -2px;
         border-radius: var(--radius, 0.5rem);
     }
@@ -1522,7 +1522,7 @@
 
     .starci-core-rating-item[data-grammar-rating-fill="full"],
     .starci-core-rating-item[data-grammar-rating-fill="half"] {
-        color: var(--warning, var(--accent, Highlight));
+        color: var(--warning);
     }
 
     .starci-core-rating-item[data-grammar-rating-fill="full"] .starci-core-rating-glyph {
@@ -1559,7 +1559,7 @@
         bottom: 0;
         inset-inline-start: calc(0.75rem - 1px);
         width: 2px;
-        background: var(--separator, var(--border, GrayText));
+        background: var(--separator);
         content: "";
     }
 
@@ -1570,8 +1570,8 @@
         align-items: center;
         justify-content: center;
         border-radius: 999px;
-        background: var(--surface, Canvas);
-        color: var(--muted, GrayText);
+        background: var(--surface);
+        color: var(--muted);
     }
 
     .starci-core-timeline-marker:empty::after {
@@ -1582,13 +1582,13 @@
         content: "";
     }
 
-    .starci-core-timeline-item[data-grammar-timeline-state="affirmative"] .starci-core-timeline-marker { color: var(--success, CanvasText); }
-    .starci-core-timeline-item[data-grammar-timeline-state="informative"] .starci-core-timeline-marker { color: var(--info, CanvasText); }
-    .starci-core-timeline-item[data-grammar-timeline-state="cautionary"] .starci-core-timeline-marker { color: var(--warning, CanvasText); }
-    .starci-core-timeline-item[data-grammar-timeline-state="negative"] .starci-core-timeline-marker { color: var(--danger, CanvasText); }
+    .starci-core-timeline-item[data-grammar-timeline-state="affirmative"] .starci-core-timeline-marker { color: var(--success); }
+    .starci-core-timeline-item[data-grammar-timeline-state="informative"] .starci-core-timeline-marker { color: var(--info, var(--accent)); }
+    .starci-core-timeline-item[data-grammar-timeline-state="cautionary"] .starci-core-timeline-marker { color: var(--warning); }
+    .starci-core-timeline-item[data-grammar-timeline-state="negative"] .starci-core-timeline-marker { color: var(--danger); }
 
     .starci-core-timeline-item[data-grammar-current="true"] .starci-core-timeline-marker {
-        color: var(--accent, Highlight);
+        color: var(--accent);
     }
 
     .starci-core-timeline-item[data-grammar-current="true"] .starci-core-timeline-marker:empty::after {
@@ -1601,7 +1601,7 @@
      * column; the connector moves with the padding and reaches the next entry.
      */
     .starci-core-timeline-item[data-grammar-attention="true"] {
-        --starci-core-timeline-attention-tone: var(--warning, CanvasText);
+        --starci-core-timeline-attention-tone: var(--warning);
         margin-inline: -0.5rem;
         margin-block-end: 0.5rem;
         padding: 0.5rem;
@@ -1609,9 +1609,9 @@
         background: color-mix(in oklab, var(--starci-core-timeline-attention-tone) 14%, transparent);
     }
 
-    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="negative"] { --starci-core-timeline-attention-tone: var(--danger, CanvasText); }
-    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="affirmative"] { --starci-core-timeline-attention-tone: var(--success, CanvasText); }
-    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="informative"] { --starci-core-timeline-attention-tone: var(--info, CanvasText); }
+    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="negative"] { --starci-core-timeline-attention-tone: var(--danger); }
+    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="affirmative"] { --starci-core-timeline-attention-tone: var(--success); }
+    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="informative"] { --starci-core-timeline-attention-tone: var(--info, var(--accent)); }
 
     .starci-core-timeline-item[data-grammar-attention="true"]:not(:last-child)::before {
         top: 2rem;
@@ -1625,7 +1625,7 @@
 
     /* Loading timeline (knowledge STATE-8): static mark and connector tint, three Skeleton lines of the entry's rhythm. */
     .starci-core-timeline-skeleton-marker > .starci-core-skeleton { inline-size: 1rem; block-size: 1rem; }
-    .starci-core-timeline[data-loading="true"] .starci-core-timeline-item:not(:last-child)::before { background: color-mix(in srgb, var(--foreground, CanvasText) 9%, transparent); }
+    .starci-core-timeline[data-loading="true"] .starci-core-timeline-item:not(:last-child)::before { background: color-mix(in srgb, var(--foreground) 9%, transparent); }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-title > .starci-core-skeleton-group { inline-size: 50%; }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-time > .starci-core-skeleton-group { inline-size: 25%; }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-description > .starci-core-skeleton-group { inline-size: 80%; }
@@ -1650,7 +1650,7 @@
 
     .starci-core-timeline-time,
     .starci-core-timeline-description {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.8125rem;
     }
 
@@ -1712,10 +1712,10 @@
         min-width: 0;
         margin: 0;
         overflow: hidden;
-        border: 1px solid var(--separator, CanvasText);
+        border: 1px solid var(--separator);
         border-radius: var(--starci-core-surface-radius, 1rem);
-        background: var(--surface, Canvas);
-        color: var(--foreground, CanvasText);
+        background: var(--surface);
+        color: var(--foreground);
     }
 
     .starci-core-flow-graph-canvas {
@@ -1739,15 +1739,15 @@
         min-block-size: 8rem;
         margin: 0;
         padding: 1.5rem;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         text-align: center;
     }
 
     .starci-core-flow-graph .react-flow {
         direction: ltr;
-        --xy-edge-stroke: var(--separator, CanvasText);
+        --xy-edge-stroke: var(--separator);
         --xy-edge-stroke-width: 1.5;
-        --xy-edge-stroke-selected: var(--separator, CanvasText);
+        --xy-edge-stroke-selected: var(--separator);
         --xy-background-color: transparent;
         background: transparent;
     }
@@ -1885,17 +1885,17 @@
     }
 
     .starci-core-flow-graph-node {
-        --starci-flow-tint: var(--default-soft, transparent);
-        --starci-flow-ink: var(--foreground, CanvasText);
+        --starci-flow-tint: var(--default-soft);
+        --starci-flow-ink: var(--foreground);
         position: relative;
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
         max-inline-size: 14rem;
         padding: var(--grammar-inset-nested, 0.5rem) var(--grammar-inset, 0.75rem);
-        border: 1px solid var(--separator, CanvasText);
+        border: 1px solid var(--separator);
         border-radius: 999px;
-        background-color: var(--surface, Canvas);
+        background-color: var(--surface);
         background-image: linear-gradient(var(--starci-flow-tint), var(--starci-flow-tint));
         color: var(--starci-flow-ink);
         font-size: 0.875rem;
@@ -1915,13 +1915,13 @@
     }
 
     .starci-core-flow-graph-node:has(.starci-core-flow-graph-link:focus-visible) {
-        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
     .starci-core-flow-graph-header {
         padding: 0 var(--grammar-inset-nested, 0.5rem);
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.6875rem;
         font-weight: 600;
         letter-spacing: 0.04em;
@@ -1935,13 +1935,13 @@
     .starci-core-flow-graph-node[data-size="sm"] { padding: var(--grammar-identity-gap, 0.25rem) var(--grammar-inset-nested, 0.5rem); font-size: 0.75rem; }
     .starci-core-flow-graph-node[data-size="lg"] { padding: var(--grammar-inset, 0.75rem) var(--grammar-section-gap, 1.5rem); font-size: 1rem; font-weight: 600; }
     /* A tone gives four values: its tint, its ink over the tint, its full colour (`base`) and the ink over the full colour. */
-    .starci-core-flow-graph-node[data-tone="neutral"] { --starci-flow-base: var(--muted, GrayText); --starci-flow-on-base: var(--surface, Canvas); }
-    .starci-core-flow-graph-node[data-tone="accent"] { --starci-flow-tint: var(--accent-soft, transparent); --starci-flow-ink: var(--accent-soft-foreground, CanvasText); --starci-flow-base: var(--accent, Highlight); --starci-flow-on-base: var(--accent-foreground, HighlightText); }
-    .starci-core-flow-graph-node[data-tone="success"] { --starci-flow-tint: var(--success-soft, transparent); --starci-flow-ink: var(--success-soft-foreground, CanvasText); --starci-flow-base: var(--success, CanvasText); --starci-flow-on-base: var(--success-foreground, Canvas); }
-    .starci-core-flow-graph-node[data-tone="warning"] { --starci-flow-tint: var(--warning-soft, transparent); --starci-flow-ink: var(--warning-soft-foreground, CanvasText); --starci-flow-base: var(--warning, CanvasText); --starci-flow-on-base: var(--warning-foreground, Canvas); }
-    .starci-core-flow-graph-node[data-tone="danger"] { --starci-flow-tint: var(--danger-soft, transparent); --starci-flow-ink: var(--danger-soft-foreground, CanvasText); --starci-flow-base: var(--danger, CanvasText); --starci-flow-on-base: var(--danger-foreground, Canvas); }
-    .starci-core-flow-graph-node[data-tone="info"] { --starci-flow-tint: var(--info-soft, transparent); --starci-flow-ink: var(--info-soft-foreground, CanvasText); --starci-flow-base: var(--info, CanvasText); --starci-flow-on-base: var(--info-foreground, Canvas); }
-    .starci-core-flow-graph-node[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted, GrayText); --starci-flow-base: color-mix(in oklab, var(--muted, GrayText) 55%, transparent); --starci-flow-on-base: var(--surface, Canvas); }
+    .starci-core-flow-graph-node[data-tone="neutral"] { --starci-flow-base: var(--muted); --starci-flow-on-base: var(--surface); }
+    .starci-core-flow-graph-node[data-tone="accent"] { --starci-flow-tint: var(--accent-soft); --starci-flow-ink: var(--accent-soft-foreground); --starci-flow-base: var(--accent); --starci-flow-on-base: var(--accent-foreground); }
+    .starci-core-flow-graph-node[data-tone="success"] { --starci-flow-tint: var(--success-soft); --starci-flow-ink: var(--success-soft-foreground); --starci-flow-base: var(--success); --starci-flow-on-base: var(--success-foreground); }
+    .starci-core-flow-graph-node[data-tone="warning"] { --starci-flow-tint: var(--warning-soft); --starci-flow-ink: var(--warning-soft-foreground); --starci-flow-base: var(--warning); --starci-flow-on-base: var(--warning-foreground); }
+    .starci-core-flow-graph-node[data-tone="danger"] { --starci-flow-tint: var(--danger-soft); --starci-flow-ink: var(--danger-soft-foreground); --starci-flow-base: var(--danger); --starci-flow-on-base: var(--danger-foreground); }
+    .starci-core-flow-graph-node[data-tone="info"] { --starci-flow-tint: var(--info-soft, color-mix(in oklab, var(--info, var(--accent)) 15%, transparent)); --starci-flow-ink: var(--info-soft-foreground, color-mix(in oklab, var(--info, var(--accent)) 70%, var(--foreground) 30%)); --starci-flow-base: var(--info, var(--accent)); --starci-flow-on-base: var(--info-foreground, var(--accent-foreground)); }
+    .starci-core-flow-graph-node[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted); --starci-flow-base: color-mix(in oklab, var(--muted) 55%, transparent); --starci-flow-on-base: var(--surface); }
     .starci-core-flow-graph-node[data-placeholder="true"] { border-style: dashed; }
 
     /*
@@ -1956,7 +1956,7 @@
         max-inline-size: none;
         padding: 0;
         justify-content: center;
-        border: 2px solid var(--starci-flow-base, var(--separator, CanvasText));
+        border: 2px solid var(--starci-flow-base, var(--separator));
         border-radius: 50%;
         background-image: linear-gradient(var(--starci-flow-tint), var(--starci-flow-tint));
         color: var(--starci-flow-ink);
@@ -1981,12 +1981,12 @@
     .starci-core-flow-graph-caption { font-weight: 500; }
     .starci-core-flow-graph[data-grammar-flow-mark="off"] .starci-core-flow-graph-mark,
     .starci-core-flow-graph[data-grammar-flow-caption="off"] .starci-core-flow-graph-caption { display: none; }
-    .starci-core-flow-graph-node[data-form="bubble"][data-root="true"] { --starci-flow-base: var(--foreground, CanvasText); --starci-flow-on-base: var(--surface, Canvas); }
+    .starci-core-flow-graph-node[data-form="bubble"][data-root="true"] { --starci-flow-base: var(--foreground); --starci-flow-on-base: var(--surface); }
 
     /* A status never rests on colour alone: the fill is its form. */
-    .starci-core-flow-graph-node[data-fill="solid"] { background-color: var(--starci-flow-base, var(--foreground, CanvasText)); background-image: none; color: var(--starci-flow-on-base, var(--surface, Canvas)); }
-    .starci-core-flow-graph-node[data-fill="half"] { background-image: linear-gradient(to top, color-mix(in oklab, var(--starci-flow-base, var(--foreground, CanvasText)) 42%, transparent) 50%, var(--starci-flow-tint) 50%); }
-    .starci-core-flow-graph-node[data-fill="outline"] { border-style: dashed; background-image: none; color: var(--starci-flow-base, var(--foreground, CanvasText)); }
+    .starci-core-flow-graph-node[data-fill="solid"] { background-color: var(--starci-flow-base, var(--foreground)); background-image: none; color: var(--starci-flow-on-base, var(--surface)); }
+    .starci-core-flow-graph-node[data-fill="half"] { background-image: linear-gradient(to top, color-mix(in oklab, var(--starci-flow-base, var(--foreground)) 42%, transparent) 50%, var(--starci-flow-tint) 50%); }
+    .starci-core-flow-graph-node[data-fill="outline"] { border-style: dashed; background-image: none; color: var(--starci-flow-base, var(--foreground)); }
     .starci-core-flow-graph-node[data-fill="hatched"] { border-style: dotted; background-image: repeating-linear-gradient(135deg, var(--starci-flow-tint) 0 3px, transparent 3px 6px); }
 
     /* A status ring: the conic arcs fill the disc and the inner disc, on the surface, leaves a band of them. */
@@ -1994,22 +1994,22 @@
     .starci-core-flow-graph-node[data-ring="true"] > .starci-core-flow-graph-disc,
     .starci-core-flow-graph-node[data-ring="true"] > .starci-core-flow-graph-link > .starci-core-flow-graph-disc {
         inset: 7px;
-        background: var(--surface, Canvas);
-        color: var(--foreground, CanvasText);
-        box-shadow: var(--surface-shadow, none);
+        background: var(--surface);
+        color: var(--foreground);
+        box-shadow: var(--surface-shadow);
     }
 
     /* A filtered-out node stays in place and in the tab order. */
     .starci-core-flow-graph-node[data-dimmed="true"] { opacity: 0.16; }
     .starci-core-flow-graph .starci-core-flow-graph-edge-dimmed { opacity: 0.2; }
-    .starci-core-flow-graph .starci-core-flow-graph-edge-strong .react-flow__edge-path { stroke: var(--foreground, CanvasText); stroke-width: 2; }
-    .starci-core-flow-graph-node[data-form="bubble"][data-grammar-selected="true"] { outline: 3px solid var(--accent, Highlight); outline-offset: 3px; }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-strong .react-flow__edge-path { stroke: var(--foreground); stroke-width: 2; }
+    .starci-core-flow-graph-node[data-form="bubble"][data-grammar-selected="true"] { outline: 3px solid var(--accent); outline-offset: 3px; }
     .starci-core-flow-graph-node[data-expandable="true"] { cursor: pointer; }
 
     /* The orbit's dashed ring guides sit under the nodes and take no pointer. */
     .starci-core-flow-graph .starci-core-flow-graph-guide-node { pointer-events: none; }
     .starci-core-flow-graph-guide { display: block; pointer-events: none; }
-    .starci-core-flow-graph-guide circle { fill: none; stroke: var(--separator, CanvasText); stroke-width: 1; stroke-dasharray: 2 6; }
+    .starci-core-flow-graph-guide circle { fill: none; stroke: var(--separator); stroke-width: 1; stroke-dasharray: 2 6; }
 
     /* The tip names a bubble on hover and focus, painted from the Tooltip's tokens. */
     .starci-core-flow-graph-tip {
@@ -2020,9 +2020,9 @@
         max-inline-size: 16rem;
         padding: var(--grammar-inset-nested, 0.5rem);
         border-radius: min(32px, var(--radius-xl, 1rem));
-        background: var(--overlay, Canvas);
-        box-shadow: var(--overlay-shadow, none);
-        color: var(--overlay-foreground, CanvasText);
+        background: var(--overlay);
+        box-shadow: var(--overlay-shadow);
+        color: var(--overlay-foreground);
         font-size: 0.75rem;
         line-height: 1.4;
         pointer-events: none;
@@ -2030,7 +2030,7 @@
     }
     .starci-core-flow-graph-tip[data-placement="bottom"] { transform: translate(-50%, var(--grammar-inline-gap, 0.5rem)); }
     .starci-core-flow-graph-tip-label { font-weight: 600; }
-    .starci-core-flow-graph-tip-description { color: var(--muted, GrayText); }
+    .starci-core-flow-graph-tip-description { color: var(--muted); }
 
     /*
      * Node shapes (the flowchart outlines). `stadium` is the default pill above. A diamond cannot carry a CSS border, so
@@ -2069,12 +2069,12 @@
 
     .starci-core-flow-graph-node[data-shape="diamond"]::before {
         inset: -1px;
-        background: var(--separator, CanvasText);
+        background: var(--separator);
     }
 
     .starci-core-flow-graph-node[data-shape="diamond"]::after {
         inset: 0.5px;
-        background-color: var(--surface, Canvas);
+        background-color: var(--surface);
         background-image: linear-gradient(var(--starci-flow-tint), var(--starci-flow-tint));
     }
 
@@ -2097,12 +2097,12 @@
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-copy { inline-size: 100%; gap: 0.25rem; }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-label { overflow: visible; font-weight: 500; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-description { overflow: visible; color: inherit; opacity: 0.8; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
-    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow { --xy-edge-stroke: var(--muted, GrayText); --xy-edge-stroke-width: 1.75; }
-    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__edge-textbg { fill: var(--surface, Canvas); stroke: none; }
-    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__edge-text { fill: var(--muted, GrayText); font-size: 0.75rem; }
-    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__arrowhead polyline { stroke: var(--muted, GrayText); fill: var(--muted, GrayText); }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow { --xy-edge-stroke: var(--muted); --xy-edge-stroke-width: 1.75; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__edge-textbg { fill: var(--surface); stroke: none; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__edge-text { fill: var(--muted); font-size: 0.75rem; }
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__arrowhead polyline { stroke: var(--muted); fill: var(--muted); }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-header {
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.8125rem;
         font-weight: 500;
         letter-spacing: 0;
@@ -2110,8 +2110,8 @@
     }
 
     .starci-core-flow-graph .react-flow__edge-textwrapper { pointer-events: none; }
-    .starci-core-flow-graph .react-flow__edge-textbg { fill: var(--surface, Canvas); stroke: var(--separator, CanvasText); stroke-width: 1px; }
-    .starci-core-flow-graph .react-flow__edge-text { fill: var(--foreground, CanvasText); font-size: 0.75rem; }
+    .starci-core-flow-graph .react-flow__edge-textbg { fill: var(--surface); stroke: var(--separator); stroke-width: 1px; }
+    .starci-core-flow-graph .react-flow__edge-text { fill: var(--foreground); font-size: 0.75rem; }
 
     .starci-core-flow-graph-copy {
         display: flex;
@@ -2127,7 +2127,7 @@
 
     .starci-core-flow-graph-description {
         overflow: hidden;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.75rem;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -2138,8 +2138,8 @@
         min-inline-size: 1.25rem;
         padding: 0 var(--grammar-identity-gap, 0.25rem);
         border-radius: 999px;
-        background: var(--surface, Canvas);
-        color: var(--foreground, CanvasText);
+        background: var(--surface);
+        color: var(--foreground);
         font-size: 0.6875rem;
         font-variant-numeric: tabular-nums;
         line-height: 1.25rem;
@@ -2148,7 +2148,7 @@
 
     /* Selection and keyboard focus draw the package focus ring on the card, not on the React Flow wrapper. */
     .starci-core-flow-graph .react-flow__node:focus-visible > .starci-core-flow-graph-node {
-        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
@@ -2156,9 +2156,9 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        border: 1px solid var(--separator, CanvasText);
+        border: 1px solid var(--separator);
         border-radius: 0.75rem;
-        background: var(--surface, Canvas);
+        background: var(--surface);
     }
 
     .starci-core-flow-graph-controls .react-flow__controls-button {
@@ -2170,13 +2170,13 @@
         padding: var(--grammar-inset-nested, 0.5rem);
         border: 0;
         background: transparent;
-        color: var(--foreground, CanvasText);
+        color: var(--foreground);
         cursor: pointer;
     }
 
-    .starci-core-flow-graph-controls .react-flow__controls-button + .react-flow__controls-button { border-block-start: 1px solid var(--separator, CanvasText); }
+    .starci-core-flow-graph-controls .react-flow__controls-button + .react-flow__controls-button { border-block-start: 1px solid var(--separator); }
     .starci-core-flow-graph-controls .react-flow__controls-button svg { inline-size: 100%; max-inline-size: 0.75rem; max-block-size: 0.75rem; fill: currentColor; }
-    .starci-core-flow-graph-controls .react-flow__controls-button:focus-visible { outline: 2px solid var(--focus, var(--starci-core-focus, Highlight)); outline-offset: -2px; }
+    .starci-core-flow-graph-controls .react-flow__controls-button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
     .starci-core-flow-graph-controls .react-flow__controls-button:disabled { opacity: 0.4; cursor: default; }
 
     @media (prefers-reduced-motion: reduce) {
@@ -2198,10 +2198,10 @@
         display: block;
         min-width: 0;
         margin: 0;
-        border: 1px solid var(--separator, CanvasText);
+        border: 1px solid var(--separator);
         border-radius: var(--starci-core-surface-radius, 1rem);
-        background: var(--surface, Canvas);
-        color: var(--foreground, CanvasText);
+        background: var(--surface);
+        color: var(--foreground);
     }
 
     .starci-core-mermaid-diagram[data-grammar-mermaid-height="md"] { --starci-mermaid-height: 24rem; }
@@ -2218,7 +2218,7 @@
     }
 
     .starci-core-mermaid-diagram-canvas:focus-visible {
-        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline: 2px solid var(--focus);
         outline-offset: -2px;
     }
 

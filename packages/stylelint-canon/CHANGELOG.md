@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Removed: `starci/status-contrast` (owner 2026-11-01, "no gate judges an app's colours"), with the colour maths and the resolved grammar values it read (`lib/color.ts`, `lib/theme-values.ts`, `lib/brand-blocks.ts`, `lib/extract-values.ts`, `grammar-values.generated.ts`).
+- Changed: `starci/brand-layer-shape` judges the shape of `brand.css` and no longer asks for a dark block or for a token in both modes; the grammar root and its family attribute are no longer scopes, because the grammar declares no HeroUI token on its root and an app's `:root` value reaches every part (`--scrollbar` and every other HeroUI token is accepted).
+- Changed: the vocabulary is HeroUI's theme (`fixtures/heroui/variables.css`, `@heroui/styles` 3.2.6) plus the grammar's own tokens, read from the regenerated grammar snapshot; `starci/globals-import-order` admits a family's `theme.css` beside its stylesheet.
+
 ## 2.4.0 - 2026-10-31
 
 - Added: `starci/spacing-scale` (R350, `FE_SPACING_OFF_SCALE`): a padding, margin, gap or scroll inset, and a custom property carrying one, takes a step of 0 4 8 12 24 32 (a 1px or 2px line passes) and no fluid value; its spec judges every `@starci/grammar` stylesheet. The grammar vocabulary and snapshot are regenerated.

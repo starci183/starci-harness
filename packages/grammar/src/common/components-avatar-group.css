@@ -13,13 +13,13 @@
         gap: 1px;
         inline-size: 100%;
         block-size: 100%;
-        background: var(--surface, Canvas);
+        background: var(--surface);
     }
 
     /* Each member and the total-count cell retain a surface ring over uploaded or generated images. */
     .starci-core-avatar-group-grid > .starci-core-avatar-group-member,
     .starci-core-avatar-group-grid > .starci-core-avatar-group-count {
-        outline: 1px solid var(--surface, Canvas);
+        outline: 1px solid var(--surface);
         outline-offset: -1px;
     }
 
@@ -75,8 +75,8 @@
         align-items: center;
         justify-content: center;
         min-inline-size: 0;
-        background: var(--surface-secondary, Canvas);
-        color: var(--foreground, CanvasText);
+        background: var(--surface-secondary);
+        color: var(--foreground);
         font-size: var(--starci-avatar-group-text-size);
         font-weight: 600;
         line-height: 1;

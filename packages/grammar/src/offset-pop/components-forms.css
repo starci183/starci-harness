@@ -11,11 +11,11 @@
 @layer starci-grammar-offset-pop {
     /* --- Field anatomy --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] {
-        --offset-pop-field-ring: var(--offset-pop-shadow-ink);
+        --offset-pop-field-ring: var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] :is([data-grammar-field="true"][data-grammar-invalid="true"], [data-grammar-field="true"][data-invalid="true"]) {
-        --offset-pop-field-ring: var(--offset-pop-critical);
+        --offset-pop-field-ring: var(--danger);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-field-label] {
@@ -25,7 +25,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-field-error] {
-        color: color-mix(in srgb, var(--offset-pop-critical) 65%, var(--offset-pop-ink));
+        color: var(--offset-pop-error);
         font-weight: 800;
     }
 
@@ -37,11 +37,11 @@
      * negative menu item. Re-declaring `--danger` on those elements reroutes each vendor rule.
      */
     .grammar-common-root[data-grammar-family="offset-pop"] :is(.field-error, .error-message, .label, .date-input-group__segment, .list-box-item--danger, .menu-item--danger, .starci-core-field-required, .starci-core-field-error, .starci-core-field-count, .starci-core-menu-item, .starci-core-step-marker) {
-        --danger: color-mix(in srgb, var(--offset-pop-critical) 65%, var(--offset-pop-ink));
+        --danger: var(--offset-pop-error);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field-count][data-grammar-invalid="true"] {
-        color: color-mix(in srgb, var(--offset-pop-critical) 65%, var(--offset-pop-ink));
+        color: var(--offset-pop-error);
         font-weight: 800;
     }
 
@@ -58,10 +58,10 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CopyField"] [data-grammar-field-control="true"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Field"] [data-grammar-field-control="true"] > :where(input, select, textarea),
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Input"] .starci-core-input-field {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border: var(--offset-pop-outline-width) solid var(--foreground);
         border-radius: var(--offset-pop-control-radius);
-        color: var(--offset-pop-ink);
-        background: var(--offset-pop-surface);
+        color: var(--foreground);
+        background: var(--surface);
         box-shadow: none;
         transition:
             transform var(--offset-pop-transition),
@@ -87,26 +87,26 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Field"] [data-grammar-field-control="true"] > :where(input, select, textarea):focus-visible,
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Input"] .starci-core-input-field:focus-visible,
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CopyField"] [data-grammar-field-control="true"]:has(.starci-core-copy-field-value:focus-visible) {
-        border-color: var(--offset-pop-ink);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-field-ring, var(--offset-pop-shadow-ink));
+        border-color: var(--foreground);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-field-ring, var(--offset-pop-shadow-ink, var(--foreground)));
         outline: 2px solid transparent;
     }
 
     /* Press on a field-shaped trigger collapses the shadow into the travel, like Button. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Select"] [data-grammar-field-control="true"][data-pressed="true"] {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] :is([data-component="Select"], [data-component="ComboBox"], [data-component="SearchField"], [data-component="NumberField"], [data-component="DateField"], [data-component="TimeField"], [data-component="DatePicker"], [data-component="DateRangePicker"], [data-component="Textarea"], [data-component="CopyField"]):is([data-grammar-invalid="true"], [data-invalid="true"]) [data-grammar-field-control="true"],
     .grammar-common-root[data-grammar-family="offset-pop"] :is([data-component="Slider"], [data-component="SegmentedControl"])[data-grammar-invalid="true"] [data-grammar-field-control="true"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Field"][data-grammar-invalid="true"] [data-grammar-field-control="true"] > :where(input, select, textarea) {
-        border-color: var(--offset-pop-critical);
+        border-color: var(--danger);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] :is([data-component="Select"], [data-component="ComboBox"], [data-component="SearchField"], [data-component="NumberField"], [data-component="DateField"], [data-component="TimeField"], [data-component="DatePicker"], [data-component="DateRangePicker"], [data-component="Textarea"], [data-component="CopyField"])[data-grammar-readonly="true"] [data-grammar-field-control="true"] {
         border-style: dashed;
-        background: var(--offset-pop-surface-secondary);
+        background: var(--surface-secondary);
     }
 
     /* Disabled dimming stays the vendor's (one opacity, never compounded); the family drops its vectors. */
@@ -125,9 +125,9 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CheckboxGroup"] [data-grammar-choice-control],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="RadioGroup"] [data-grammar-choice-control],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Switch"] [data-grammar-choice-control] {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
-        background: var(--offset-pop-surface);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink);
+        border: var(--offset-pop-outline-width) solid var(--foreground);
+        background: var(--surface);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
         transition:
             transform var(--offset-pop-transition),
             box-shadow var(--offset-pop-transition),
@@ -149,14 +149,14 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CheckboxGroup"] [data-grammar-option]:is([data-selected="true"], [data-indeterminate="true"]) [data-grammar-choice-control],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="RadioGroup"] [data-grammar-option][data-selected="true"] [data-grammar-choice-control],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Switch"][data-selected="true"] [data-grammar-choice-control] {
-        border-color: var(--offset-pop-ink);
+        border-color: var(--foreground);
         color: var(--accent-foreground);
-        background: var(--offset-pop-pink);
+        background: var(--accent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Switch"] [data-grammar-choice-control="switch"] > * {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
-        background: var(--offset-pop-surface);
+        border: var(--offset-pop-outline-width) solid var(--foreground);
+        background: var(--surface);
         box-shadow: none;
     }
 
@@ -168,21 +168,21 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"] [data-grammar-choice-target][data-pressed="true"] [data-grammar-choice-control] {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"]:is([data-grammar-invalid="true"], [data-invalid="true"]) [data-grammar-choice-control] {
-        border-color: var(--offset-pop-critical);
+        border-color: var(--danger);
     }
 
     /* --- SegmentedControl: one outlined unit, pink selected segment --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-field-control="true"] {
         overflow: clip;
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border: var(--offset-pop-outline-width) solid var(--foreground);
         border-radius: var(--offset-pop-control-radius);
-        background: var(--offset-pop-surface);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink);
+        background: var(--surface);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
         transition:
             transform var(--offset-pop-transition),
             box-shadow var(--offset-pop-transition);
@@ -191,39 +191,39 @@
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option] {
         border: 0;
         border-radius: 0;
-        color: var(--offset-pop-ink);
+        color: var(--foreground);
         background: transparent;
         box-shadow: none;
         font-weight: 800;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option] + [data-grammar-option] {
-        border-inline-start: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border-inline-start: var(--offset-pop-outline-width) solid var(--foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option]:is([data-hovered="true"], :hover):not([data-selected="true"], [data-disabled="true"]) {
-        background: color-mix(in srgb, var(--offset-pop-yellow) 32%, transparent);
+        background: color-mix(in srgb, var(--warning) 32%, transparent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option][data-selected="true"] {
         color: var(--accent-foreground);
-        background: var(--offset-pop-pink);
+        background: var(--accent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option][data-focus-visible="true"] {
-        outline: 2px solid var(--offset-pop-ink);
+        outline: 2px solid var(--foreground);
         outline-offset: -0.25rem;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-field-control="true"]:has([data-grammar-option][data-pressed="true"]) {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
     }
 
     /* --- ButtonGroup: one shadow for the unit, joined outlines --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"] {
         border-radius: var(--radius);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
         transition:
             transform var(--offset-pop-transition),
             box-shadow var(--offset-pop-transition);
@@ -243,7 +243,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ButtonGroup"]:has([data-component="Button"]:active:not([disabled])) {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
     }
 
@@ -254,20 +254,20 @@
 
     /* --- Slider: outlined track, pink fill, offset-shadow thumb --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"] [data-grammar-field-control="true"] {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border: var(--offset-pop-outline-width) solid var(--foreground);
         border-radius: 999px;
-        background: var(--offset-pop-surface);
+        background: var(--surface);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"] [data-grammar-slider-fill] {
         border-radius: 999px;
-        background: var(--offset-pop-pink);
+        background: var(--accent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"] [data-grammar-slider-thumb] {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
-        background: var(--offset-pop-surface);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink);
+        border: var(--offset-pop-outline-width) solid var(--foreground);
+        background: var(--surface);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
         transition:
             translate var(--offset-pop-transition),
             box-shadow var(--offset-pop-transition);
@@ -280,17 +280,17 @@
 
     /* The vendor positions the thumb with `transform`; press travel uses `translate` so both compose. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"] [data-grammar-slider-thumb][data-dragging="true"] {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         translate: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x);
     }
 
     /* --- Popovers (list, calendar): a top surface with the hard shadow --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border: var(--offset-pop-outline-width) solid var(--foreground);
         border-radius: var(--offset-pop-control-radius);
-        color: var(--offset-pop-ink);
-        background: var(--offset-pop-surface);
-        box-shadow: var(--shadow-surface);
+        color: var(--foreground);
+        background: var(--surface);
+        box-shadow: var(--surface-shadow);
     }
 
     /*
@@ -304,7 +304,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-option][data-focused="true"]:not([data-selected="true"]) {
-        background: color-mix(in srgb, var(--offset-pop-yellow) 32%, transparent);
+        background: color-mix(in srgb, var(--warning) 32%, transparent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-option][data-focus-visible="true"] {
@@ -314,28 +314,28 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-option][data-selected="true"] {
         background: var(--accent-soft);
-        color: var(--offset-pop-accent-text);
+        color: var(--accent-soft-foreground);
         font-weight: 800;
-        box-shadow: inset 0.25rem 0 0 var(--offset-pop-pink);
+        box-shadow: inset 0.25rem 0 0 var(--accent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-calendar-cell][data-selected="true"] {
         color: var(--accent-foreground);
-        background: var(--offset-pop-pink);
+        background: var(--accent);
         font-weight: 800;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-calendar-cell][data-focus-visible="true"] {
-        outline: 2px solid var(--offset-pop-ink);
+        outline: 2px solid var(--foreground);
         outline-offset: 0;
     }
 
     /* --- FileDropzone --- */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="FileDropzone"] [data-grammar-field-control="true"] {
-        border: var(--offset-pop-outline-width) dashed var(--offset-pop-ink);
+        border: var(--offset-pop-outline-width) dashed var(--foreground);
         border-radius: var(--offset-pop-surface-radius);
-        color: var(--offset-pop-ink);
-        background: var(--offset-pop-surface);
+        color: var(--foreground);
+        background: var(--surface);
         font-weight: 700;
         transition:
             transform var(--offset-pop-transition),
@@ -345,18 +345,18 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="FileDropzone"] [data-grammar-field-control="true"][data-grammar-drag="over"] {
         border-style: solid;
-        border-color: var(--offset-pop-pink);
-        background: var(--offset-pop-blush);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink);
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="FileDropzone"] [data-grammar-field-control="true"]:focus-within:has(:focus-visible) {
         border-style: solid;
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-field-ring, var(--offset-pop-shadow-ink));
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-field-ring, var(--offset-pop-shadow-ink, var(--foreground)));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="FileDropzone"][data-grammar-invalid="true"] [data-grammar-field-control="true"] {
-        border-color: var(--offset-pop-critical);
+        border-color: var(--danger);
     }
 
     /* --- Fieldset and Form --- */
@@ -367,7 +367,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Fieldset"][data-grammar-invalid="true"] [data-grammar-field-error] {
-        color: color-mix(in srgb, var(--offset-pop-critical) 65%, var(--offset-pop-ink));
+        color: var(--offset-pop-error);
         font-weight: 800;
     }
 

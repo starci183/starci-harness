@@ -5,46 +5,16 @@
 
 @layer starci-grammar-offset-pop {
     /*
-     * Offset Pop visual DNA is opt-in through OffsetPopGrammarRoot. It supplies a complete,
-     * portable semantic theme (see ./dna.ts, whose values equal these defaults) and feeds every
-     * Common semantic variable Core feeds. Product/UI laws stay out of CSS.
+     * Offset Pop is a family of rules over the app's HeroUI tokens: ink is `--foreground`, the pink is `--accent`, the
+     * yellow, mint and critical are `--warning`, `--success` and `--danger`, the blush is `--accent-soft`. It declares
+     * no HeroUI token. The default palette is `./theme.css`, which an app may import or replace with its own values.
+     * Its signature is geometry (outline width, the hard offset, radii, motion) and `--offset-pop-shadow-ink`, the
+     * colour of the offset, which an app may set and which falls back to `--foreground`.
      */
     .grammar-common-root[data-grammar-family="offset-pop"] {
-        color-scheme: light;
-
-        /* Family inks and the offset signature. */
-        --offset-pop-pink: #ff3593;
-        --offset-pop-blush: #f8d8e6;
-        --offset-pop-yellow: #ffd447;
-        --offset-pop-mint: #91e4ca;
-        --offset-pop-critical: #e84a5f;
-        --offset-pop-ink: #1c1524;
-        --offset-pop-shadow-ink: #1c1524;
         --offset-pop-outline-width: 2px;
         --offset-pop-shadow-x: 0.25rem;
         --offset-pop-shadow-y: 0.5rem;
-
-        /* Semantic theme, the adaptation contract (OFFSET_POP_TOKEN_NAMES). */
-        --offset-pop-accent: #ff3593;
-        --offset-pop-accent-foreground: #1c1524;
-        --offset-pop-focus: #ff3593;
-        --offset-pop-canvas: #fff8ef;
-        --offset-pop-surface: #fffdf9;
-        --offset-pop-surface-secondary: #f8dbe8;
-        --offset-pop-foreground: #1c1524;
-        --offset-pop-muted: #675f6c;
-        --offset-pop-border: #1c1524;
-        --offset-pop-separator: #1c1524;
-        --offset-pop-success: #91e4ca;
-        --offset-pop-success-foreground: #1c1524;
-        --offset-pop-warning: #ffd447;
-        --offset-pop-warning-foreground: #1c1524;
-        --offset-pop-danger: #e84a5f;
-        --offset-pop-danger-foreground: #1c1524;
-        --offset-pop-info: #f8d8e6;
-        --offset-pop-info-foreground: #1c1524;
-        --offset-pop-accent-text: #b8005f;
-        --offset-pop-accent-soft: #f8dbe8;
         --offset-pop-page-measure: 80rem;
         --offset-pop-reading-measure: 72ch;
         --offset-pop-page-inset: var(--grammar-page-inset);
@@ -52,97 +22,18 @@
         --offset-pop-section-gap: var(--grammar-section-gap);
         --offset-pop-inline-gap: var(--grammar-inline-gap);
         --offset-pop-row-gap: var(--grammar-row-gap);
-        --offset-pop-surface-radius: 1.5rem;
-        --offset-pop-control-radius: 1rem;
+        --offset-pop-surface-radius: calc(var(--radius) * 1.5);
+        --offset-pop-control-radius: var(--radius);
         --offset-pop-pill-radius: 999px;
-        --offset-pop-surface-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink);
         --offset-pop-motion-duration: 140ms;
         --offset-pop-motion-easing: cubic-bezier(.2, .8, .2, 1);
-        /* The Terminal console: an ink panel with canvas text and a yellow title. */
-        --offset-pop-terminal-background: var(--offset-pop-ink);
-        --offset-pop-terminal-foreground: var(--offset-pop-canvas);
-        --offset-pop-terminal-title-foreground: var(--offset-pop-yellow);
-
         /* The composite motion value every family transition reads; reduced motion replaces it. */
         --offset-pop-transition: var(--offset-pop-motion-duration) var(--offset-pop-motion-easing);
-
-        /* HeroUI and Common anatomy resolve through the same DNA. */
-        --accent: var(--offset-pop-accent);
-        --accent-foreground: var(--offset-pop-accent-foreground);
-        --focus: var(--offset-pop-focus);
-        --background: var(--offset-pop-canvas);
-        --foreground: var(--offset-pop-foreground);
-        --surface: var(--offset-pop-surface);
-        --surface-foreground: var(--offset-pop-foreground);
-        --surface-secondary: var(--offset-pop-surface-secondary);
-        --surface-secondary-foreground: var(--offset-pop-foreground);
-        --terminal-background: var(--offset-pop-terminal-background);
-        --terminal-foreground: var(--offset-pop-terminal-foreground);
-        --terminal-title-foreground: var(--offset-pop-terminal-title-foreground);
-        --muted: var(--offset-pop-muted);
-        --border: var(--offset-pop-border);
-        --separator: var(--offset-pop-separator);
-        --success: var(--offset-pop-success);
-        --success-foreground: var(--offset-pop-success-foreground);
-        --warning: var(--offset-pop-warning);
-        --warning-foreground: var(--offset-pop-warning-foreground);
-        --danger: var(--offset-pop-danger);
-        --danger-foreground: var(--offset-pop-danger-foreground);
-        --info: var(--offset-pop-info);
-        --info-foreground: var(--offset-pop-info-foreground);
-        --field-background: var(--offset-pop-surface);
-        --field-border: var(--offset-pop-border);
-        --field-foreground: var(--offset-pop-foreground);
-        --field-placeholder: var(--offset-pop-muted);
-        --radius: var(--offset-pop-control-radius);
-        --field-radius: var(--offset-pop-control-radius);
-        --shadow-surface: var(--offset-pop-surface-shadow);
-
-        /*
-         * The vendor's neutral control fill (secondary and tertiary buttons, tab list, kbd) is the
-         * family's secondary surface, so the text-safe accent on a secondary button clears AA in
-         * both themes instead of reading HeroUI's own light grey.
-         */
-        --default: var(--offset-pop-surface-secondary);
-
-        /*
-         * Accent as TEXT. The pink is a fill and a ring (3.22:1 as text on the canvas), so every
-         * Common place that paints the accent as text reads the text-safe accent instead: the soft
-         * accent pairing (Text tone "accent", current choice/route/section TextAction, disclosure,
-         * selected Sidebar item, accent IconTile) and Markdown links. The soft background is the
-         * secondary surface, on which the text-safe accent still clears AA.
-         */
-        --accent-soft: var(--offset-pop-accent-soft);
-        --accent-soft-foreground: var(--offset-pop-accent-text);
-        --link: var(--offset-pop-accent-text);
+        /* The danger tone is a fill (3.57:1 as text), so danger painted as TEXT is mixed toward the ink. */
+        --offset-pop-error: color-mix(in srgb, var(--danger) 65%, var(--foreground));
 
         color: var(--foreground);
         background: var(--background);
-    }
-
-    /* A real dark theme: its own canvas, surfaces and inks, not an inverted light one. */
-    .grammar-common-root[data-grammar-family="offset-pop"][data-grammar-theme="dark"] {
-        color-scheme: dark;
-
-        --offset-pop-ink: #fff8ef;
-        --offset-pop-shadow-ink: #050306;
-        --offset-pop-canvas: #17121d;
-        --offset-pop-surface: #251d2c;
-        --offset-pop-surface-secondary: #3b2936;
-        --offset-pop-foreground: #fff8ef;
-        --offset-pop-muted: #c8bdca;
-        --offset-pop-border: #fff8ef;
-        --offset-pop-separator: #fff8ef;
-        --offset-pop-success: #91e4ca;
-        --offset-pop-success-foreground: #1c1524;
-        --offset-pop-warning: #ffd447;
-        --offset-pop-warning-foreground: #1c1524;
-        --offset-pop-danger: #e84a5f;
-        --offset-pop-danger-foreground: #1c1524;
-        --offset-pop-info: #f8d8e6;
-        --offset-pop-info-foreground: #1c1524;
-        --offset-pop-accent-text: #ff7ab8;
-        --offset-pop-accent-soft: #3b2936;
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Heading"][data-scale="display"] {
@@ -158,34 +49,24 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Text"][data-tone="accent"] {
-        color: var(--offset-pop-accent-text);
+        color: var(--accent-soft-foreground);
     }
 
     /* Common paints these two with the fill accent itself; the family routes their TEXT to the text-safe one. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-section-header] .starci-core-section-eyebrow {
-        color: var(--offset-pop-accent-text);
+        color: var(--accent-soft-foreground);
     }
 
     /* The current tab keeps its pink underline (non-text, a decision mark); only the label reads the text-safe accent. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TextAction"][data-appearance="tab"][data-current="true"] {
-        border-block-end-color: var(--offset-pop-accent);
-        color: var(--offset-pop-accent-text);
-    }
-
-    /*
-     * Every other Common rule that paints the accent as TEXT (link, current tab, bottom-nav,
-     * eyebrow) reads the text-safe accent too: the family re-declares the accent on those
-     * elements, so a rule the family does not restyle still never paints pink body-size text.
-     * The Stepper's markers are the family's own pairs (components-navigation.css).
-     */
-    .grammar-common-root[data-grammar-family="offset-pop"] :is(.starci-core-link, .starci-core-section-eyebrow, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item) {
-        --accent: var(--offset-pop-accent-text);
+        border-block-end-color: var(--accent);
+        color: var(--accent-soft-foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"] {
         border: var(--offset-pop-outline-width) solid var(--border);
         border-radius: var(--radius);
-        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink, var(--foreground));
         font-weight: 800;
     }
 
@@ -209,7 +90,7 @@
 
     /* The status dot takes an ink ring so it reads on the cream canvas. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-status-dot-mark {
-        box-shadow: 0 0 0 1px var(--offset-pop-ink);
+        box-shadow: 0 0 0 1px var(--foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Badge"][data-tone="muted"] {
@@ -217,10 +98,10 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Code"] {
-        border: 1px solid var(--offset-pop-ink);
+        border: 1px solid var(--foreground);
         border-radius: 0.5rem;
-        background: var(--offset-pop-blush);
-        color: var(--offset-pop-ink);
+        background: var(--accent-soft);
+        color: var(--foreground);
     }
 
     /*
@@ -228,9 +109,9 @@
      * notched the corners), so the shadow takes the family's pink.
      */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Terminal"] {
-        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border: var(--offset-pop-outline-width) solid var(--foreground);
         border-radius: var(--offset-pop-control-radius);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-pink);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--accent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] {
@@ -255,10 +136,21 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="top"] {
-        box-shadow: var(--shadow-surface);
+        box-shadow: var(--surface-shadow);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="nested"],
+    /* The reader's own message is the family's pink with its ink; inline content keeps the ink, over the family's own accent text rules. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
+        color: inherit;
+    }
+
+    /* The seam between two bands of a joined card is the family's outline width, the same line the stat strip draws between its cells. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
+        height: var(--offset-pop-outline-width);
+        min-height: var(--offset-pop-outline-width);
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="nested"] {
         box-shadow: none;
         background: var(--surface-secondary);
@@ -271,16 +163,16 @@
      * about 8:1), not the lightness lift Common uses for a dark accent.
      */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-treatment="ink"] {
-        --grammar-ink-band: var(--offset-pop-ink);
-        --grammar-ink-band-foreground: var(--offset-pop-canvas);
-        --grammar-ink-band-muted: color-mix(in oklab, var(--offset-pop-canvas) 72%, var(--offset-pop-ink));
-        --grammar-ink-band-separator: color-mix(in oklab, var(--offset-pop-canvas) 18%, var(--offset-pop-ink));
-        --grammar-ink-band-plate: color-mix(in oklab, var(--offset-pop-canvas) 10%, var(--offset-pop-ink));
-        --grammar-ink-band-orbit: color-mix(in oklab, var(--offset-pop-canvas) 20%, var(--offset-pop-ink));
-        --success-soft-foreground: color-mix(in oklab, var(--offset-pop-mint) 45%, var(--offset-pop-canvas));
-        --warning-soft-foreground: color-mix(in oklab, var(--offset-pop-yellow) 45%, var(--offset-pop-canvas));
-        --danger-soft-foreground: color-mix(in oklab, var(--offset-pop-critical) 45%, var(--offset-pop-canvas));
-        border-color: var(--offset-pop-ink);
+        --grammar-ink-band: var(--foreground);
+        --grammar-ink-band-foreground: var(--background);
+        --grammar-ink-band-muted: color-mix(in oklab, var(--background) 72%, var(--foreground));
+        --grammar-ink-band-separator: color-mix(in oklab, var(--background) 18%, var(--foreground));
+        --grammar-ink-band-plate: color-mix(in oklab, var(--background) 10%, var(--foreground));
+        --grammar-ink-band-orbit: color-mix(in oklab, var(--background) 20%, var(--foreground));
+        --success-soft-foreground: color-mix(in oklab, var(--success) 45%, var(--background));
+        --warning-soft-foreground: color-mix(in oklab, var(--warning) 45%, var(--background));
+        --danger-soft-foreground: color-mix(in oklab, var(--danger) 45%, var(--background));
+        border-color: var(--foreground);
         color: var(--grammar-ink-band-foreground);
         background: var(--grammar-ink-band);
     }
@@ -339,11 +231,11 @@
     /* IconButton "danger-soft" (a destructive row action): the danger tint plate wears the family's ink outline and a small hard offset, pressed flat. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger-soft"] {
         border: var(--offset-pop-outline-width) solid var(--border);
-        box-shadow: 0.125rem 0.125rem 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0.125rem 0.125rem 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="IconButton"][data-variant="danger-soft"]:active:not([disabled]) {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(0.125rem, 0.125rem);
     }
 
@@ -364,7 +256,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"]:active:not([disabled]) {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(0.25rem, 0.25rem);
     }
 
@@ -380,7 +272,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"]:has([data-grammar-whole-action]:active) {
-        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(0.25rem, 0.25rem);
     }
 
@@ -393,7 +285,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-state="informative"] {
-        --offset-pop-state-color: var(--info);
+        --offset-pop-state-color: var(--info, var(--accent));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-state="cautionary"] {
@@ -426,7 +318,7 @@
     @media (max-width: 40rem) {
         .grammar-common-root[data-grammar-family="offset-pop"] {
             --offset-pop-shadow-y: 0.25rem;
-            --offset-pop-surface-radius: 1.25rem;
+            --offset-pop-surface-radius: calc(var(--radius) * 1.25);
         }
     }
 
@@ -444,67 +336,8 @@
         }
     }
 
-    @media (prefers-color-scheme: dark) {
-        .grammar-common-root[data-grammar-family="offset-pop"][data-grammar-theme="system"] {
-            color-scheme: dark;
-
-            --offset-pop-ink: #fff8ef;
-            --offset-pop-shadow-ink: #050306;
-            --offset-pop-canvas: #17121d;
-            --offset-pop-surface: #251d2c;
-            --offset-pop-surface-secondary: #3b2936;
-            --offset-pop-foreground: #fff8ef;
-            --offset-pop-muted: #c8bdca;
-            --offset-pop-border: #fff8ef;
-            --offset-pop-separator: #fff8ef;
-            --offset-pop-success: #91e4ca;
-            --offset-pop-success-foreground: #1c1524;
-            --offset-pop-warning: #ffd447;
-            --offset-pop-warning-foreground: #1c1524;
-            --offset-pop-danger: #e84a5f;
-            --offset-pop-danger-foreground: #1c1524;
-            --offset-pop-info: #f8d8e6;
-            --offset-pop-info-foreground: #1c1524;
-            --offset-pop-accent-text: #ff7ab8;
-            --offset-pop-accent-soft: #3b2936;
-        }
-    }
-
-    /* The theme-qualified selector outranks the dark and system blocks, so system colours win in every theme. */
+    /* The reader's system colours replace the theme: the family's marks draw in them. */
     @media (forced-colors: active) {
-        .grammar-common-root[data-grammar-family="offset-pop"],
-        .grammar-common-root[data-grammar-family="offset-pop"][data-grammar-theme] {
-            --offset-pop-pink: Highlight;
-            --offset-pop-blush: Canvas;
-            --offset-pop-yellow: Canvas;
-            --offset-pop-mint: Canvas;
-            --offset-pop-critical: CanvasText;
-            --offset-pop-ink: CanvasText;
-            --offset-pop-shadow-ink: CanvasText;
-            --offset-pop-accent: Highlight;
-            --offset-pop-accent-foreground: HighlightText;
-            --offset-pop-focus: Highlight;
-            --offset-pop-canvas: Canvas;
-            --offset-pop-surface: Canvas;
-            --offset-pop-surface-secondary: Canvas;
-            --offset-pop-foreground: CanvasText;
-            --offset-pop-muted: GrayText;
-            --offset-pop-border: CanvasText;
-            --offset-pop-separator: CanvasText;
-            --offset-pop-success: CanvasText;
-            --offset-pop-success-foreground: Canvas;
-            --offset-pop-warning: CanvasText;
-            --offset-pop-warning-foreground: Canvas;
-            --offset-pop-danger: CanvasText;
-            --offset-pop-danger-foreground: Canvas;
-            --offset-pop-info: CanvasText;
-            --offset-pop-info-foreground: Canvas;
-            --offset-pop-accent-text: CanvasText;
-            --offset-pop-accent-soft: Canvas;
-            --offset-pop-surface-shadow: none;
-            --shadow-surface: none;
-        }
-
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Badge"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],

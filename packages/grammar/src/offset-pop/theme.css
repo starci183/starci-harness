@@ -1,0 +1,84 @@
+/*
+ * Offset Pop's default theme, optional and pastel. It sets HeroUI's own tokens, the same ones an app sets, so an app
+ * that has its own theme skips this file or writes its tokens after it. It sits in the first layer, below every
+ * component rule and below unlayered app CSS, and goes after `@heroui/styles` so that it replaces HeroUI's defaults.
+ * The dark block restates every token a theme changes, because this layer outranks HeroUI's `.dark` block.
+ * `@starci/grammar/offset-pop/theme.css`, with `.dark` on `html` for the dark mode.
+ * `--offset-pop-shadow-ink` is the colour of the hard offset; unset, the family reads `--foreground`.
+ */
+@layer starci-grammar-theme, starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
+
+@layer starci-grammar-theme {
+    :root,
+    .light,
+    [data-theme="light"] {
+        --background: #fff8ef;
+        --foreground: #1c1524;
+        --surface: #fffdf9;
+        --surface-secondary: #f8dbe8;
+        --surface-tertiary: color-mix(in oklab, var(--surface-secondary) 98%, var(--foreground));
+        --overlay: var(--surface);
+        --muted: #675f6c;
+        --border: #1c1524;
+        --separator: #1c1524;
+        --accent: #ff3593;
+        --accent-foreground: #1c1524;
+        --accent-soft: #f8dbe8;
+        --accent-soft-foreground: #b8005f;
+        --focus: #ff3593;
+        --link: var(--accent-soft-foreground);
+        --success: #91e4ca;
+        --success-foreground: #1c1524;
+        --warning: #ffd447;
+        --warning-foreground: #1c1524;
+        --danger: #e84a5f;
+        --danger-foreground: #1c1524;
+        --info: #f8d8e6;
+        --info-foreground: #1c1524;
+        --info-soft: var(--accent-soft);
+        --info-soft-foreground: var(--accent-soft-foreground);
+        --default: var(--surface-secondary);
+        --default-foreground: var(--foreground);
+        --segment: var(--surface);
+        --segment-foreground: var(--foreground);
+        --field-background: var(--surface);
+        --field-foreground: var(--foreground);
+        --field-placeholder: var(--muted);
+        --field-border: var(--border);
+        --radius: 1rem;
+        --field-radius: 1rem;
+        --offset-pop-shadow-ink: #1c1524;
+        --surface-shadow: 0.25rem 0.5rem 0 var(--offset-pop-shadow-ink);
+        /* The Terminal console: an ink panel with canvas text and a yellow title. */
+        --terminal-background: var(--foreground);
+        --terminal-foreground: var(--background);
+        --terminal-title-foreground: var(--warning);
+        /* Light only (owner choice "1. Pastel"): the pastel tones are 1.3 to 3.7:1 as bare text, so a bare mark wears the soft foreground. */
+        --starci-core-mark-danger: var(--danger-soft-foreground);
+        --starci-core-mark-warning: var(--warning-soft-foreground);
+    }
+
+    .dark,
+    [data-theme="dark"] {
+        --background: #17121d;
+        --foreground: #fff8ef;
+        --surface: #251d2c;
+        --surface-secondary: #3b2936;
+        --muted: #c8bdca;
+        --border: #fff8ef;
+        --separator: #fff8ef;
+        --accent-soft: #3b2936;
+        --accent-soft-foreground: #ff7ab8;
+        --segment: color-mix(in oklab, var(--surface) 76%, var(--foreground));
+        --offset-pop-shadow-ink: #050306;
+        --surface-shadow: 0.25rem 0.5rem 0 var(--offset-pop-shadow-ink);
+        --starci-core-mark-danger: initial;
+        --starci-core-mark-warning: initial;
+    }
+
+    @media (max-width: 40rem) {
+        :root {
+            --surface-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink);
+        }
+    }
+}

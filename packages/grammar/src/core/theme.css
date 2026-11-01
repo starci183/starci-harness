@@ -1,0 +1,75 @@
+/*
+ * Core's default theme, optional. It sets HeroUI's own tokens, the same ones an app sets, so an app that has its own
+ * theme skips this file or writes its tokens after it. It sits in the first layer, below every component rule and
+ * below unlayered app CSS, and goes after `@heroui/styles` so that it replaces HeroUI's defaults. The dark block
+ * restates every token a theme changes, because this layer outranks HeroUI's `.dark` block.
+ * `@starci/grammar/core/theme.css`, with `.dark` on `html` for the dark mode.
+ */
+@layer starci-grammar-theme, starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
+
+@layer starci-grammar-theme {
+    :root,
+    .light,
+    [data-theme="light"] {
+        --background: oklch(97.02% 0.0015 354.13);
+        --foreground: oklch(21.03% 0.0015 354.13);
+        --surface: oklch(100% 0.0008 354.13);
+        --surface-secondary: oklch(95.24% 0.0012 354.13);
+        --surface-tertiary: oklch(93.73% 0.0012 354.13);
+        --overlay: var(--surface);
+        --muted: oklch(52% 0.003 354.13);
+        --border: oklch(90% 0.0015 354.13);
+        --separator: oklch(92% 0.0015 354.13);
+        --accent: #7547ff;
+        --accent-foreground: oklch(100% 0 0);
+        --accent-soft: oklch(95.5% 0.03 287);
+        --accent-soft-foreground: #6a3cf2;
+        --focus: #7248ff;
+        --link: var(--accent-soft-foreground);
+        --success: oklch(62.8% 0.1941 162.85);
+        --success-foreground: oklch(21.03% 0.0059 162.85);
+        --warning: oklch(67% 0.159 84.37);
+        --warning-foreground: oklch(21.03% 0.0059 84.37);
+        --danger: oklch(55% 0.2 37.78);
+        --danger-foreground: oklch(99.11% 0 0);
+        --info: oklch(66.8% 0.17 250);
+        --info-foreground: oklch(21.03% 0.0059 250);
+        --default: color-mix(in oklab, var(--surface-secondary) 98%, var(--foreground));
+        --default-foreground: var(--foreground);
+        --segment: var(--surface);
+        --segment-foreground: var(--foreground);
+        --field-background: var(--surface);
+        --field-foreground: var(--foreground);
+        --field-placeholder: var(--muted);
+        --field-border: transparent;
+        --radius: 0.75rem;
+        --field-radius: 0.75rem;
+        --surface-shadow: 0 8px 28px oklch(21.03% 0.0059 354.13 / 0.07);
+        /* The Terminal console: dark in both themes. */
+        --terminal-background: oklch(20% 0.01 286);
+        --terminal-foreground: oklch(92% 0.005 286);
+        --terminal-title-foreground: oklch(72% 0.01 286);
+    }
+
+    .dark,
+    [data-theme="dark"] {
+        --background: oklch(12% 0.0015 354.13);
+        --foreground: oklch(99.11% 0.0015 354.13);
+        --surface: oklch(21.03% 0.003 354.13);
+        --surface-secondary: oklch(25.7% 0.0023 354.13);
+        --surface-tertiary: oklch(27.21% 0.0023 354.13);
+        --muted: oklch(70.5% 0.003 354.13);
+        --border: oklch(28% 0.0015 354.13);
+        --separator: oklch(25% 0.0015 354.13);
+        --accent-soft: oklch(30% 0.07 287);
+        --accent-soft-foreground: #a48bff;
+        --success: oklch(73.29% 0.1941 162.85);
+        --warning: oklch(82.03% 0.1392 88.38);
+        --warning-foreground: oklch(21.03% 0.0059 88.38);
+        --danger: oklch(70% 0.17 36.67);
+        --danger-foreground: oklch(21.03% 0.0059 36.67);
+        --info: oklch(72% 0.17 250);
+        --segment: color-mix(in oklab, var(--surface) 76%, var(--foreground));
+        --surface-shadow: 0 8px 28px oklch(21.03% 0.0059 354.13 / 0.07);
+    }
+}

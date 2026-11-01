@@ -42,12 +42,14 @@
     },
     "./core.css": "./dist/core/styles.css",
     "./core/styles.css": "./dist/core/styles.css",
+    "./core/theme.css": "./dist/core/theme.css",
     "./offset-pop": {
       "types": "./dist/offset-pop/index.d.ts",
       "import": "./dist/offset-pop/index.js"
     },
     "./offset-pop.css": "./dist/offset-pop/styles.css",
     "./offset-pop/styles.css": "./dist/offset-pop/styles.css",
+    "./offset-pop/theme.css": "./dist/offset-pop/theme.css",
     "./package.json": "./package.json"
   },
   "scripts": {

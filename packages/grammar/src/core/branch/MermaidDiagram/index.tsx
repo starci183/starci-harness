@@ -89,7 +89,7 @@ const svgNode = (svg: string): SVGSVGElement | null => {
     return node
 }
 
-/** Re-renders when the root's theme changes: its attributes (theme, family, token overrides) or the system scheme. */
+/** Re-renders when the theme changes: the root's attributes (family, token overrides), the page's mode class or the system scheme. */
 const useThemeRevision = (anchor: RefObject<HTMLElement | null>) => {
     const [revision, setRevision] = useState(0)
     useEffect(() => {
@@ -98,10 +98,13 @@ const useThemeRevision = (anchor: RefObject<HTMLElement | null>) => {
         const scheme = window.matchMedia("(prefers-color-scheme: dark)")
         scheme.addEventListener("change", bump)
         const observer = root === null ? null : new MutationObserver(bump)
-        observer?.observe(root as Element, { attributes: true, attributeFilter: ["data-grammar-theme", "data-grammar-family", "style", "class"] })
+        observer?.observe(root as Element, { attributes: true, attributeFilter: ["data-grammar-family", "style", "class"] })
+        const page = new MutationObserver(bump)
+        page.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "style", "class"] })
         return () => {
             scheme.removeEventListener("change", bump)
             observer?.disconnect()
+            page.disconnect()
         }
     }, [anchor])
     return revision

@@ -3,11 +3,12 @@
  *
  *   1. `tailwindcss`
  *   2. `@heroui/styles/css`
- *   3. the grammar family stylesheet: `@starci/grammar/<common|core|offset-pop>.css`
+ *   3. the grammar family stylesheet, with the family's optional default theme: `@starci/grammar/<common|core|offset-pop>.css`,
+ *      `@starci/grammar/<core|offset-pop>/theme.css`
  *   4. `modules/brand/brand.css`
  *
  * then every `@source`, then the token blocks `globals-shape` allows. The order is the cascade: the brand layer sets
- * the tokens the family declared, which the vendor styles read, which Tailwind's utilities sit on. Repeating a step
+ * HeroUI's tokens, over the family's default theme, which the vendor styles read, which Tailwind's utilities sit on. Repeating a step
  * (`common.css` then `core.css`) is fine; going back is not. An import that is none of the four is refused: another
  * stylesheet in the global sheet is a second design system loaded before the first.
  */
@@ -20,7 +21,7 @@ const STEPS = ["tailwindcss", "@heroui/styles/css", "a grammar family stylesheet
 const stepOf = (specifier: string): number => {
   if (specifier === "tailwindcss") return 0
   if (specifier === "@heroui/styles/css") return 1
-  if (/^@starci\/grammar\/(?:common|core|offset-pop)(?:\.css|\/styles\.css)$/.test(specifier)) return 2
+  if (/^@starci\/grammar\/(?:(?:common|core|offset-pop)(?:\.css|\/styles\.css)|(?:core|offset-pop)\/theme\.css)$/.test(specifier)) return 2
   if (/(?:^|\/)modules\/brand\/brand\.css$/.test(specifier)) return 3
   return -1
 }

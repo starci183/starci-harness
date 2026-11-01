@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Changed: THE APP OWNS THE THEME (grammar audit 2026-11, section 8; owner: "bản thân app phải set được không dựa grammar"). No stylesheet declares a HeroUI token on the grammar root any more, so an app's `--accent`, `--background`, `--scrollbar` and every other HeroUI token, set on `:root`, `.light` and `.dark`, reaches every part in both families. Common reads HeroUI's tokens first, with no private token before them and no literal fallback; `*-soft` pairs and hovers are derived by HeroUI from the app's values (so default tints follow HeroUI's mixes, not Common's old 50/50 ones), and `--info` with its pairs, which HeroUI lacks, falls back to `--accent` at each read.
+- Added: `@starci/grammar/core/theme.css` and `@starci/grammar/offset-pop/theme.css`, each family's default palette as HeroUI tokens on `:root, .light` and `.dark`, in the first layer (`starci-grammar-theme`) and optional: an app with its own theme skips it or writes its values after it. Import it after `@heroui/styles`. The family sheets keep only rules, geometry and motion.
+- Changed: the accent painted as text on the page (link, current tab and bottom-nav destination, section eyebrow) reads `--accent-soft-foreground` through one Common rule, replacing each family's own text-safe accent; `accentText` is gone, the pair rule holds (accent alone is `--accent`, on its tint `--accent-soft-foreground`).
+- Changed: Offset Pop's palette is HeroUI's: ink is `--foreground`, pink `--accent`, yellow `--warning`, mint `--success`, critical `--danger`, blush `--accent-soft`; `--offset-pop-shadow-ink` (the colour of the hard offset) stays, reads `--foreground` when unset, and the surface shadow is `--surface-shadow`. Core's `--shadow-surface` and Offset Pop's are `--surface-shadow`, the token HeroUI's own cards read. Radii derive from `--radius`.
+- Changed: the grammar no longer forces `scrollbar-width: none` on every descendant; it reads `--scrollbar-width`, `--scrollbar`, `--scrollbar-track` and `--scrollbar-gutter`, so an app's scrollbar shows.
+- Changed: `GrammarRoot theme` sets nothing (the mode is the app's, `.dark` on `html`) and is deprecated; `data-grammar-theme` is not rendered. `STARCI_CORE_TOKEN_NAMES`, `OFFSET_POP_TOKEN_NAMES` and their default objects name HeroUI's tokens and are deprecated; `--starci-core-<colour>` and `--offset-pop-<colour>` names are removed.
+- Changed: the flow graph lane copy and the filter button gaps take the identity step (4) instead of 2 and 6.
+
 ## 0.20.2 - 2026-11-01
 
 - Changed: the owner's status pair rule (ruling `status-soft-pair-on-background`): content on a tone background wears `x-soft` and `x-soft-foreground`, a mark that stands alone wears `x`. The alert dialog icon tile drew the tone as text on a 16% tint of itself; it now takes the tone's soft pair (`--starci-core-overlay-soft` and `--starci-core-overlay-soft-foreground`, set per tone beside `--starci-core-overlay-tone`), in every tone and both families.

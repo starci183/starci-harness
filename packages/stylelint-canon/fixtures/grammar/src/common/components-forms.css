@@ -30,7 +30,7 @@
     }
 
     .starci-core-field-label {
-        color: var(--foreground, CanvasText);
+        color: var(--foreground);
         font-size: 0.875rem;
         font-weight: 600;
         line-height: 1.25;
@@ -39,12 +39,12 @@
 
     .starci-core-field-required {
         margin-inline-start: 0.25rem;
-        color: var(--danger, CanvasText);
+        color: var(--danger);
     }
 
     .starci-core-field-description {
         margin: 0;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.75rem;
         line-height: 1.4;
         overflow-wrap: anywhere;
@@ -72,13 +72,13 @@
     .starci-core-field-count {
         flex-shrink: 0;
         margin-inline-start: auto;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.75rem;
         font-variant-numeric: tabular-nums;
     }
 
     .starci-core-field-count[data-grammar-invalid="true"] {
-        color: var(--danger, CanvasText);
+        color: var(--danger);
     }
 
     .starci-core-field-spinner {
@@ -96,19 +96,19 @@
         width: 100%;
         min-width: 0;
         min-height: var(--starci-core-field-min-height, 2.5rem);
-        border: var(--field-border-width, 1px) solid var(--field-border, var(--border, ButtonBorder));
+        border: var(--field-border-width, 1px) solid var(--field-border);
         border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
         padding: 0.5rem 0.75rem;
         box-sizing: border-box;
-        background: var(--field-background, var(--surface, Canvas));
-        color: var(--field-foreground, var(--foreground, CanvasText));
-        box-shadow: var(--field-shadow, none);
+        background: var(--field-background);
+        color: var(--field-foreground);
+        box-shadow: var(--field-shadow);
         font: inherit;
         font-size: 0.875rem;
     }
 
     .starci-core-field-control > :where(input, select, textarea):focus-visible {
-        outline: 2px solid var(--focus, Highlight);
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
@@ -118,7 +118,7 @@
     }
 
     .starci-core-field[data-grammar-invalid="true"] > .starci-core-field-control > :where(input, select, textarea) {
-        border-color: var(--danger, CanvasText);
+        border-color: var(--danger);
     }
 
     /* --- Text-shaped controls fill their field --- */
@@ -141,7 +141,7 @@
     .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options), .starci-core-input-field, [data-grammar-choice-control], [data-grammar-tag-id]) {
         position: relative;
         overflow: hidden;
-        background: color-mix(in oklab, var(--surface-tertiary, #e4e4e7) 70%, transparent) !important;
+        background: color-mix(in oklab, var(--surface-tertiary) 70%, transparent) !important;
         color: transparent !important;
         user-select: none;
     }
@@ -159,7 +159,7 @@
         position: absolute;
         inset: 0;
         visibility: visible;
-        background-image: linear-gradient(to right, transparent, var(--surface-tertiary, #e4e4e7), transparent);
+        background-image: linear-gradient(to right, transparent, var(--surface-tertiary), transparent);
         translate: -100%;
         animation: skeleton 2s linear infinite;
     }
@@ -248,7 +248,7 @@
     }
 
     .starci-core-copy-field-group:has(.starci-core-copy-field-value:focus-visible) {
-        box-shadow: 0 0 0 2px var(--focus, Highlight);
+        box-shadow: 0 0 0 2px var(--focus);
     }
 
     .starci-core-copy-field-tooltip {
@@ -257,7 +257,7 @@
     }
 
     .starci-core-copy-field[data-grammar-copy-state="failed"] .starci-core-input-copy {
-        color: var(--danger, CanvasText);
+        color: var(--danger);
     }
 
     @media (forced-colors: active) {
@@ -352,7 +352,7 @@
     }
 
     .starci-core-combo-box-group:focus-within {
-        box-shadow: 0 0 0 2px var(--focus, Highlight);
+        box-shadow: 0 0 0 2px var(--focus);
     }
 
     @media (forced-colors: active) {
@@ -397,7 +397,7 @@
 
     .starci-core-list-empty {
         padding: 0.5rem 0.75rem;
-        color: var(--muted, GrayText);
+        color: var(--muted);
         font-size: 0.875rem;
     }
 
@@ -496,7 +496,7 @@
     }
 
     .starci-core-slider-output {
-        color: var(--muted, GrayText);
+        color: var(--muted);
     }
 
     /* --- SegmentedControl --- */
@@ -597,11 +597,11 @@
         min-height: 7rem;
         align-items: center;
         justify-content: center;
-        border: 2px dashed var(--border, ButtonBorder);
+        border: 2px dashed var(--border);
         border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
         padding: var(--grammar-inset-open, 1.5rem);
-        background: var(--field-background, var(--surface, Canvas));
-        color: var(--muted, GrayText);
+        background: var(--field-background);
+        color: var(--muted);
         text-align: center;
         transition:
             border-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1)),
@@ -633,21 +633,21 @@
 
     .starci-core-file-dropzone-icon {
         display: inline-flex;
-        color: var(--foreground, CanvasText);
+        color: var(--foreground);
     }
 
     .starci-core-file-dropzone-target[data-grammar-drag="over"] {
-        border-color: var(--accent, Highlight);
-        background: color-mix(in srgb, var(--accent, Highlight) 8%, var(--field-background, var(--surface, Canvas)));
+        border-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 8%, var(--field-background));
     }
 
     .starci-core-file-dropzone-target:has(.starci-core-file-dropzone-input:focus-visible) {
-        outline: 2px solid var(--focus, Highlight);
+        outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
 
     .starci-core-file-dropzone[data-grammar-invalid="true"] .starci-core-file-dropzone-target {
-        border-color: var(--danger, CanvasText);
+        border-color: var(--danger);
     }
 
     .starci-core-file-dropzone[data-grammar-disabled="true"] .starci-core-file-dropzone-target {
@@ -657,7 +657,7 @@
     .starci-core-file-dropzone-files {
         margin: 0;
         padding-inline-start: var(--grammar-section-gap, 1.5rem);
-        color: var(--foreground, CanvasText);
+        color: var(--foreground);
         font-size: 0.875rem;
         overflow-wrap: anywhere;
     }

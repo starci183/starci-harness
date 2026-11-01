@@ -1,6 +1,6 @@
 /**
- * The vocabulary the rules judge against is the grammar's own: this twin test recomputes it from the grammar CSS snapshot
- * in fixtures/grammar/src and fails when `lib/vocabulary.generated.ts` is stale (run `npm run vocabulary`).
+ * The vocabulary the rules judge against is HeroUI's theme and the grammar's own: this twin test recomputes it from the grammar CSS snapshot
+ * in fixtures/grammar/src and HeroUI's variables in fixtures/heroui, and fails when `lib/vocabulary.generated.ts` is stale (run `npm run vocabulary`).
  */
 import assert from "node:assert/strict"
 import fs from "node:fs"
@@ -8,17 +8,18 @@ import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { extractValues } from "./lib/extract-values.ts"
-import { extractVocabulary, FAMILY_PREFIXES, GRAMMAR_CSS } from "./lib/extract-vocabulary.ts"
-import { GRAMMAR_VALUES } from "./lib/grammar-values.generated.ts"
+import postcss, { AtRule } from "postcss"
+import type { Container, Document } from "postcss"
+import { extractHeroTokens, extractVocabulary, FAMILY_PREFIXES, GRAMMAR_CSS, HEROUI_VARIABLES } from "./lib/extract-vocabulary.ts"
 import { BREAKPOINTS, DECLARED, STATUS_TONES, VENDOR } from "./lib/vocabulary.generated.ts"
 import { isGrammarToken, isKnownToken } from "./lib/vocabulary.ts"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const grammarSrc = path.resolve(here, "..", "fixtures", "grammar", "src")
+const heroVariables = path.resolve(here, "..", HEROUI_VARIABLES)
 
 test("the generated vocabulary equals what the grammar CSS declares and reads", () => {
-  const fresh = extractVocabulary(grammarSrc)
+  const fresh = extractVocabulary(grammarSrc, heroVariables)
   assert.deepEqual(DECLARED, fresh.declared, "DECLARED is stale: run `npm run vocabulary` in packages/stylelint")
   assert.deepEqual(VENDOR, fresh.vendor, "VENDOR is stale: run `npm run vocabulary` in packages/stylelint")
   assert.deepEqual(BREAKPOINTS, fresh.breakpoints, "BREAKPOINTS is stale: run `npm run vocabulary` in packages/stylelint")
@@ -47,22 +48,39 @@ test("every status tone has a solid pair and a soft pair in the vocabulary, info
   assert.equal(isGrammarToken("--info-softer"), false)
 })
 
-test("a status tone whose solid pair the grammar does not declare is refused by the generator", () => {
+test("the grammar declares no HeroUI theme token on its root: the app sets them", () => {
+  const hero = new Set(extractHeroTokens(fs.readFileSync(heroVariables, "utf8")))
+  for (const name of ["--accent", "--background", "--surface", "--foreground", "--muted", "--border", "--scrollbar", "--radius"]) assert.ok(hero.has(name), `${name} is a HeroUI token`)
+  const ROOT = /^\.grammar-common-root(?:\[[^\]]*\])*$/
+  const found: string[] = []
+  for (const file of GRAMMAR_CSS) {
+    postcss.parse(fs.readFileSync(path.join(grammarSrc, file), "utf8")).walkRules((rule) => {
+      if (!rule.selectors.every((selector) => ROOT.test(selector.trim()))) return
+      // The reader's system colours (forced-colors) replace the theme; nothing else may.
+      let forced = false
+      for (let parent: Container | Document | undefined = rule.parent; parent !== undefined; parent = parent.parent) {
+        if (parent instanceof AtRule && /forced-colors/.test(parent.params)) forced = true
+      }
+      if (forced) return
+      rule.each((child) => {
+        if (child.type === "decl" && hero.has(child.prop)) found.push(`${file}: ${rule.selector} { ${child.prop} }`)
+      })
+    })
+  }
+  assert.deepEqual(found, [])
+})
+
+test("every status tone but info has its solid pair in HeroUI, and the generator refuses one that has not", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "grammar-src-"))
   try {
     for (const file of GRAMMAR_CSS) {
       fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true })
-      fs.writeFileSync(path.join(dir, file), ".grammar-common-root { --success: red; --success-foreground: white; --warning: red; --warning-foreground: white; --danger: red; --danger-foreground: white; }")
+      fs.writeFileSync(path.join(dir, file), ".grammar-common-root { }")
     }
-    assert.throws(() => extractVocabulary(dir), /lists info, but the grammar CSS does not declare --info/)
+    const variables = path.join(dir, "variables.css")
+    fs.writeFileSync(variables, ":root { --success: red; --success-foreground: white; --warning: red; --warning-foreground: white; }")
+    assert.throws(() => extractVocabulary(dir, variables), /lists danger, but HeroUI does not declare --danger/)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }
-})
-
-test("the generated grammar values equal what the grammar CSS declares on its theme roots", () => {
-  assert.deepEqual(GRAMMAR_VALUES, extractValues(grammarSrc), "grammar-values.generated.ts is stale: run `npm run vocabulary` in packages/stylelint")
-  assert.equal(GRAMMAR_VALUES.light.core?.["--success"], "var(--starci-core-success)")
-  assert.match(String(GRAMMAR_VALUES.light.common?.["--success-soft-foreground"]), /^color-mix\(in oklab, var\(--success\)/)
-  assert.ok(GRAMMAR_VALUES.dark.common?.["--background"])
 })

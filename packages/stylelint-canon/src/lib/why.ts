@@ -50,13 +50,8 @@ export const why: Record<string, Why> = {
   },
   "brand-layer-shape": {
     code: "FE_STYLE_TOKEN_ONLY",
-    en: "`brand.css` (`<file>`) has the wrong shape (`<what>`). The brand layer declares only grammar tokens, in one light block and one dark block, each token carrying both values.",
-    fix: "Keep only token declarations in `:root` and `.dark` (or `@media (prefers-color-scheme: dark)`); add the value the other mode is missing.",
-  },
-  "status-contrast": {
-    code: "FE_STYLE_TOKEN_ONLY",
-    en: "`brand.css` (`<file>`) has a status colour failing the HeroUI soft-pair standard (`<what>`). Each status tone (success, warning, danger, info) has `--<tone>-soft` (light background) and `--<tone>-soft-foreground` (text, icon, dot colour) in both light and dark; soft text on a light surface and on the page must reach at least 3:1, body `--foreground` on `--background` at least 4.5:1, and a solid tone may not be a text colour when under 4.5:1.",
-    fix: "Declare the full soft pair for both light and dark (the shared block `:root, .light, .dark` counts for both); blend `--<tone>-soft-foreground` toward `--foreground` until the threshold is met; a value that cannot be resolved is rewritten as a readable colour (hex, rgb, hsl, oklab, oklch, color-mix).",
+    en: "`brand.css` (`<file>`) has the wrong shape (`<what>`). The brand layer declares only HeroUI tokens (and the grammar's own), in light blocks (`:root`, `.light`) and dark blocks (`.dark`).",
+    fix: "Keep only token declarations in `:root`, `.light` and `.dark` (or `@media (prefers-color-scheme: dark)`), on HeroUI's token names.",
   },
   "no-inline-lint-config": {
     code: "HFS_INLINE_SUPPRESSION",

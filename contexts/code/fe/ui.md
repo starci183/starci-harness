@@ -57,15 +57,15 @@ Enforced by: R61 (stylelint `globals-import-order`, `globals-shape`, `source-res
 
 ## FE-CSS-3 Colour lives in one brand file
 
-`modules/brand/brand.css` is the only app file with colour values: it sets only tokens the grammar declares, each with
-a light and a dark value and the status soft pairs at their contrast minimums, matching the product's brand record in
+`modules/brand/brand.css` is the only app file with colour values: it sets HeroUI's tokens (the app's theme, in the modes it
+chooses; no gate judges its colours), matching the product's brand record in
 `.starciwork`; no other stylesheet, component or TypeScript value holds a colour or a `px` length, declares a grammar
 token, uses a class selector, `!important`, a CSS module or an off-scale breakpoint.
 
 Why: one file keeps the brand reviewable, and the grammar's token layer keeps dark mode and contrast its
 responsibility.
 
-Enforced by: R61 (stylelint `raw-brand-value`, `brand-layer-shape`, `status-contrast`, `no-token-redefinition`,
+Enforced by: R61 (stylelint `raw-brand-value`, `brand-layer-shape`, `no-token-redefinition`,
 `token-only`, `no-class-selector`, `no-important`, `no-css-module`, `breakpoint-scale`; `no-raw-brand-value`).
 
 ## FE-ICON One glyph vocabulary through one owner

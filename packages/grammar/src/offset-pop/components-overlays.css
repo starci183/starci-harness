@@ -9,11 +9,11 @@
 @layer starci-grammar-offset-pop {
     /* ---------------------------------------------------------------- tone vocabulary */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-tone] {
-        --offset-pop-tone-color: var(--offset-pop-surface-secondary);
+        --offset-pop-tone-color: var(--surface-secondary);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-tone="informative"] {
-        --offset-pop-tone-color: var(--info);
+        --offset-pop-tone-color: var(--info, var(--accent));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-tone="affirmative"] {
@@ -34,11 +34,11 @@
 
     /* ---------------------------------------------------------------- backdrop: blush tint */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-backdrop] {
-        background: color-mix(in srgb, var(--offset-pop-blush) 72%, transparent);
+        background: color-mix(in srgb, var(--accent-soft) 72%, transparent);
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"][data-grammar-theme="dark"] [data-grammar-overlay-backdrop] {
-        background: color-mix(in srgb, var(--offset-pop-shadow-ink) 72%, var(--offset-pop-pink) 8%);
+    :is(.dark, [data-theme="dark"]) .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-backdrop] {
+        background: color-mix(in srgb, var(--offset-pop-shadow-ink, var(--foreground)) 72%, var(--accent) 8%);
     }
 
     /* ---------------------------------------------------------------- surfaces: ink + hard offset */
@@ -46,7 +46,7 @@
         border: var(--offset-pop-outline-width) solid var(--border);
         color: var(--surface-foreground);
         background: var(--surface);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-surface="dialog"],
@@ -62,23 +62,23 @@
 
     /* Side and bottom sheets throw their hard shadow away from the edge they slide from. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-surface="drawer"][data-placement="right"] {
-        box-shadow: calc(var(--offset-pop-shadow-x) * -1) 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: calc(var(--offset-pop-shadow-x) * -1) 0 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-surface="drawer"][data-placement="left"] {
-        box-shadow: var(--offset-pop-shadow-x) 0 0 var(--offset-pop-shadow-ink);
+        box-shadow: var(--offset-pop-shadow-x) 0 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-surface="drawer"][data-placement="bottom"] {
-        box-shadow: 0 calc(var(--offset-pop-shadow-y) * -1) 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 calc(var(--offset-pop-shadow-y) * -1) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-surface="drawer"][data-placement="top"] {
-        box-shadow: 0 var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-drawer-handle] > * {
-        background: var(--offset-pop-ink);
+        background: var(--foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Dialog"] :is(h1, h2, h3),
@@ -117,11 +117,11 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-menu-item][data-selected] {
-        color: var(--offset-pop-accent-text);
+        color: var(--accent-soft-foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-menu-item][data-grammar-tone="danger"] {
-        color: color-mix(in srgb, var(--offset-pop-critical) 65%, var(--offset-pop-ink));
+        color: var(--offset-pop-error);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-menu-section] + [data-grammar-menu-section],
@@ -152,7 +152,7 @@
         border-radius: var(--offset-pop-control-radius);
         color: var(--foreground);
         background: color-mix(in srgb, var(--offset-pop-tone-color) 38%, var(--surface));
-        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink, var(--foreground));
         font-weight: 600;
     }
 
@@ -169,8 +169,8 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"]:is([data-hovered], [data-focus-visible]) {
-        background: var(--offset-pop-yellow);
-        color: var(--offset-pop-ink);
+        background: var(--warning);
+        color: var(--foreground);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"][data-pressed] {
@@ -182,7 +182,7 @@
         border-radius: 0.5rem;
         color: var(--foreground);
         background: var(--surface);
-        box-shadow: 0 2px 0 var(--offset-pop-shadow-ink);
+        box-shadow: 0 2px 0 var(--offset-pop-shadow-ink, var(--foreground));
         font-weight: 800;
     }
 
@@ -193,12 +193,12 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ProgressCircle"] [data-slot="progress-circle-track-circle"] {
-        stroke: color-mix(in srgb, var(--offset-pop-ink) 18%, transparent);
+        stroke: color-mix(in srgb, var(--foreground) 18%, transparent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Skeleton"][data-shape],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Skeleton"] > [data-grammar-skeleton-line] {
-        background: color-mix(in srgb, var(--offset-pop-blush) 78%, var(--surface));
+        background: color-mix(in srgb, var(--accent-soft) 78%, var(--surface));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Skeleton"][data-shape="text"] {
@@ -231,7 +231,7 @@
     /* The segmented track is Common's 0.25rem line: too thin for the ink outline, so the empty
        segments take the ink at 18% (the ProgressCircle track's mix) instead. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Meter"] [data-grammar-meter-segment] {
-        background: color-mix(in srgb, var(--offset-pop-ink) 18%, transparent);
+        background: color-mix(in srgb, var(--foreground) 18%, transparent);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Meter"] [data-grammar-meter-segment="filled"] {
@@ -251,12 +251,6 @@
     @media (prefers-reduced-motion: reduce) {
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"][data-pressed] {
             transform: none;
-        }
-    }
-
-    @media (prefers-color-scheme: dark) {
-        .grammar-common-root[data-grammar-family="offset-pop"][data-grammar-theme="system"] [data-grammar-overlay-backdrop] {
-            background: color-mix(in srgb, var(--offset-pop-shadow-ink) 72%, var(--offset-pop-pink) 8%);
         }
     }
 

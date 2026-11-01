@@ -22,7 +22,6 @@ const PACKAGE_ROOT = resolve(SRC, "..")
 
 /** Source files that name the disk but read nothing when a stylesheet is linted, and why. */
 const ACCOUNTED: Readonly<Record<string, string>> = {
-  "lib/extract-values.ts": "generation-time script: reads @starci/grammar's source to write the committed vocabulary; the linter reads the committed result",
   "lib/extract-vocabulary.ts": "generation-time script: reads @starci/grammar's source to write the committed vocabulary; the linter reads the committed result",
   "lib/write-vocabulary.ts": "generation-time script: writes the committed vocabulary",
 }

@@ -25,8 +25,7 @@ turns a rule off, downgrades it, omits it, ignores a file or honours inline disa
 
 ## The law
 
-Colour values exist only in `modules/brand/brand.css`, on the tokens the grammar declares, with a light and a dark
-value. Everywhere else CSS uses the grammar's tokens.
+Colour values exist only in `modules/brand/brand.css`, on HeroUI's tokens, which the app sets in whichever mode it chooses. Everywhere else CSS uses the grammar's tokens.
 
 | Rule | Refuses |
 |---|---|
@@ -36,36 +35,36 @@ value. Everywhere else CSS uses the grammar's tokens.
 | `starci/no-important` | `!important` in a declaration, and `!` on an `@apply` utility. |
 | `starci/globals-shape` | In `globals.css`: anything but `@import`, `@source` and `:root`/`.dark`/`[data-theme]`/`@theme` blocks of alias tokens (`var()` values only). |
 | `starci/no-token-redefinition` | A grammar token declared (or `@property`-registered) anywhere but `brand.css`, CSS modules included. Local custom properties are fine. |
-| `starci/brand-layer-shape` | `brand.css` with a selector other than a light or dark block (a compound `:root, .light, .dark` is both), a non-token property, a token the grammar does not publish, or a token that lacks its light or its dark value. |
-| `starci/status-contrast` | In `brand.css`: a status tone (`success`, `warning`, `danger`, `info`) without its HeroUI soft pair (`--<tone>-soft`, `--<tone>-soft-foreground`) in light and in dark; a soft foreground under 3:1 on its tint or on `--background`; `--foreground` under 4.5:1 on `--background`; a solid tone used as the soft foreground under 4.5:1; a value the check cannot resolve. |
+| `starci/brand-layer-shape` | `brand.css` with a selector other than a light or dark scope (`:root`, `.light`, `.dark`, `[data-theme]`; a compound `:root, .light, .dark` is both), a non-token property, or a token that neither HeroUI nor the grammar publishes. It judges the file's shape and never a colour: no contrast, no pairing of light and dark. |
 | `starci/no-inline-lint-config` | `stylelint-disable`, `-enable` and `-disable-next-line` comments. |
 | `starci/no-css-module` | Any `*.module.css`. |
 | `starci/no-class-selector` | A class selector in a plain app stylesheet (`globals.css`, `brand.css` have their own shape rules). |
 | `starci/breakpoint-scale` | A width in `@media` that is not on the grammar's scale (rem, or px at 16px to the rem). |
 | `starci/spacing-scale` | A padding, margin, gap or scroll inset (and a custom property carrying one) whose length is off the spacing scale 0 4 8 12 24 32 (rem, or px at 16px to the rem; a 1px or 2px line passes), or fluid (`clamp()`, a viewport unit). Its spec also judges every `@starci/grammar` stylesheet (finding `FE_SPACING_OFF_SCALE`). |
 | `starci/source-resolves` | A Tailwind `@source` path that does not exist, resolved from the stylesheet's folder (finding `FE_STYLE_SOURCE_UNRESOLVED`). |
-| `starci/globals-import-order` | In `globals.css`: an import outside, or out of, the order `tailwindcss`, `@heroui/styles/css`, a grammar family stylesheet, `modules/brand/brand.css`, then `@source`. |
+| `starci/globals-import-order` | In `globals.css`: an import outside, or out of, the order `tailwindcss`, `@heroui/styles/css`, a grammar family stylesheet (and its optional `theme.css`), `modules/brand/brand.css`, then `@source`. |
 
 The file kind comes from the path: `**/modules/brand/brand.css` is the brand layer, `globals.css` the global sheet,
 `*.module.css` a CSS module, anything else a plain stylesheet. There is no per-file override to turn a rule off.
 
 ## The vocabulary
 
-The tokens the rules accept are the grammar's own, read from the grammar CSS by
-`src/lib/extract-vocabulary.ts`: every custom property under `--grammar-`, `--starci-core-` and
-`--offset-pop-`, the un-prefixed semantic layer the grammar declares (`--accent`, `--surface`, `--border`, ...) and
-the vendor tokens it reads (`--radius-md`, `--font-mono`). `src/lib/vocabulary.generated.ts` is the committed result;
-`npm run vocabulary` regenerates it from the committed grammar CSS snapshot in `fixtures/grammar/src`, and
-`src/vocabulary.spec.ts` fails when it is stale. `npm run vocabulary -- <grammar checkout>/src` refreshes the snapshot first.
+The tokens the rules accept are HeroUI's theme and the grammar's own, read by `src/lib/extract-vocabulary.ts`: every
+custom property HeroUI declares (its `variables.css`, snapshotted in `fixtures/heroui`), the status tone `info` that HeroUI
+lacks, every custom property under `--grammar-`, `--starci-core-` and `--offset-pop-`, the component-local properties
+the grammar declares, and the vendor tokens it reads (`--radius-md`, `--font-mono`). The grammar declares no HeroUI token
+on its root, so the app's values in `brand.css` reach every part. `src/lib/vocabulary.generated.ts` is the committed
+result; `npm run vocabulary` regenerates it from the committed snapshots in `fixtures/`, and `src/vocabulary.spec.ts` fails
+when it is stale or when a grammar root declares a HeroUI token. `npm run vocabulary -- <grammar checkout>/src` first
+refreshes the snapshots.
 
-## Status colours (soft pairs)
+## No gate judges an app's colours
 
-Status tones follow HeroUI's soft pairing: a tint `--<tone>-soft` with its ink `--<tone>-soft-foreground`, in light and in dark.
-`starci/status-contrast` computes WCAG 2 contrast per theme from the resolved values: the ink reaches 3:1 on the tint and on the
-page (a bare icon or dot uses the soft foreground and has only the page under it), body text 4.5:1, and the solid tone is not a text
-colour below 4.5:1. The values come from the brand layer over the grammar's own declarations
-(`src/lib/grammar-values.generated.ts`, generated by `npm run vocabulary` like the vocabulary); the status tones are the
-vocabulary's `STATUS_TONES`, which also reach `status-text-uses-soft-foreground` in the selected Grammar lint package (`@starci/eslint-grammar-core` or `@starci/eslint-grammar-offset-pop`).
+The brand layer is the app's theme. No rule here measures a contrast, a palette or a pairing of light and dark; the
+family's own defaults (`@starci/grammar/<family>/theme.css`) are proved in the package's own render proof, for the family's
+sake, and block nothing in an app. Status tones follow HeroUI's soft pairing (`--<tone>-soft`, `--<tone>-soft-foreground`);
+the vocabulary's `STATUS_TONES` reach `status-text-uses-soft-foreground` in the selected Grammar lint package
+(`@starci/eslint-grammar-core` or `@starci/eslint-grammar-offset-pop`).
 
 ## Not covered
 

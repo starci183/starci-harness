@@ -16,7 +16,6 @@ import { noClassSelector } from "./no-class-selector.ts"
 import { noCssModule } from "./no-css-module.ts"
 import { sourceResolves } from "./source-resolves.ts"
 import { spacingScale } from "./spacing-scale.ts"
-import { statusContrast } from "./status-contrast.ts"
 import { globalsShape } from "./globals-shape.ts"
 import { noApplyRaw } from "./no-apply-raw.ts"
 import { noImportant } from "./no-important.ts"
@@ -43,7 +42,6 @@ export const rules = {
   "globals-shape": globalsShape,
   "no-token-redefinition": noTokenRedefinition,
   "brand-layer-shape": brandLayerShape,
-  "status-contrast": statusContrast,
   "no-inline-lint-config": noInlineLintConfig,
   "no-css-module": noCssModule,
   "no-class-selector": noClassSelector,

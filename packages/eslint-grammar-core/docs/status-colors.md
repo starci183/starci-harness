@@ -1,6 +1,6 @@
 # Status colors: content on a tone background takes the soft pair, a lone mark takes the tone
 
-Law module: `status-colors.ts`. Catalogue: R61 FE_STYLE_TOKEN_ONLY (the class-name half of the status-pair contrast obligation; the brand layer's own contrast is `starci/status-contrast` of @starci/stylelint-canon).
+Law module: `status-colors.ts`. Catalogue: R61 FE_STYLE_TOKEN_ONLY (the status-pair rule for class names; no gate judges the colours an app's theme gives the pair).
 
 A status tone `x` (`success`, `warning`, `danger`, `info`, read from `lib/status-tones.generated.ts`, which is generated from the grammar with the stylelint vocabulary) paints in two ways. Content that sits on a background of the tone uses the pair `x-soft` and `x-soft-foreground`, the way a HeroUI flat Chip does. A mark that stands alone, with no background of the tone behind it, uses `x` itself. A solid fill takes `x-foreground`. The owner's words: "TEXT TRÊN BG THÌ X-SOFT VÀ X-SOFT-FOREGROUND, CÒN NẾU X ĐỘC LẬP THÌ ĐỂ X LUN" (ruling `status-soft-pair-on-background`).
 

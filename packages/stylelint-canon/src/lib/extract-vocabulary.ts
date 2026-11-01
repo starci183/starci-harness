@@ -26,12 +26,15 @@ export const GRAMMAR_CSS: readonly string[] = [
   "offset-pop/components-navigation.css",
 ]
 
+/** HeroUI's `variables.css` snapshot, relative to the package root: the theme an app sets. */
+export const HEROUI_VARIABLES = "fixtures/heroui/variables.css"
+
 /**
  * The status tones: the HeroUI status vocabulary (owner 2026-09-30). Each one is a solid tone (`--<tone>`, ink
  * `--<tone>-foreground`) and a SOFT PAIR, `--<tone>-soft` (the tint) and `--<tone>-soft-foreground` (the ink a status
- * shown as text, an icon or a dot uses), in light and in dark. The grammar derives the soft pair for success, warning
- * and danger; HeroUI has none for info, so the vocabulary adds it here: this list is the one soft-pair extension, and
- * `extractVocabulary` refuses a tone whose solid pair the grammar does not declare.
+ * shown as text, an icon or a dot uses), in light and in dark. HeroUI has the pairs for success, warning and danger;
+ * it has none for info, so the vocabulary adds it here: this list is the one extension, and `extractVocabulary`
+ * refuses a tone other than `info` whose solid pair HeroUI does not declare.
  */
 export const STATUS_TONES: readonly string[] = ["success", "warning", "danger", "info"]
 
@@ -60,22 +63,33 @@ export interface Vocabulary {
   statusTones: string[]
 }
 
-export function extractVocabulary(grammarSrcDir: string): Vocabulary {
-  const declared = new Set<string>()
+/** The custom properties a CSS text declares. */
+const declaredIn = (text: string): string[] => [...text.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/(?:^|[;{\s])(--[\w-]+)\s*:/g)].map((match) => match[1] ?? "")
+
+/** The theme tokens HeroUI declares, read from its `variables.css`. */
+export const extractHeroTokens = (variablesCss: string): string[] => [...new Set(declaredIn(variablesCss))].sort(byCodeUnit)
+
+export function extractVocabulary(grammarSrcDir: string, heroVariablesFile: string): Vocabulary {
+  const declared = new Set<string>(extractHeroTokens(fs.readFileSync(heroVariablesFile, "utf8")))
+  const hero = new Set(declared)
   const referenced = new Set<string>()
   const texts: string[] = []
   for (const file of GRAMMAR_CSS) {
     const text = fs.readFileSync(path.join(grammarSrcDir, file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "")
     texts.push(text)
-    for (const match of text.matchAll(/(?:^|[;{\s])(--[\w-]+)\s*:/g)) declared.add(match[1] ?? "")
+    for (const name of declaredIn(text)) declared.add(name)
     for (const match of text.matchAll(/var\(\s*(--[\w-]+)/g)) referenced.add(match[1] ?? "")
   }
   for (const tone of STATUS_TONES) {
-    for (const name of [`--${tone}`, `--${tone}-foreground`]) {
-      if (!declared.has(name)) throw new Error(`STATUS_TONES lists ${tone}, but the grammar CSS does not declare ${name}`)
+    if (tone !== "info") {
+      for (const name of [`--${tone}`, `--${tone}-foreground`]) {
+        if (!hero.has(name)) throw new Error(`STATUS_TONES lists ${tone}, but HeroUI does not declare ${name}`)
+      }
     }
     for (const name of softPairOf(tone)) declared.add(name)
   }
+  declared.add("--info")
+  declared.add("--info-foreground")
   const own = [...declared].filter((name) => !inFamily(name)).sort(byCodeUnit)
   const vendor = [...referenced].filter((name) => !declared.has(name) && !inFamily(name)).sort(byCodeUnit)
   return { declared: own, vendor, breakpoints: extractBreakpoints(texts), statusTones: [...STATUS_TONES] }

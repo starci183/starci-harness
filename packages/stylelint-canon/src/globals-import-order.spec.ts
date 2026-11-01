@@ -10,6 +10,7 @@ test("accepts the standard order, with sources after the imports", async () => {
 @import "@heroui/styles/css";
 @import "@starci/grammar/common.css";
 @import "@starci/grammar/core.css";
+@import "@starci/grammar/core/theme.css";
 @import "../modules/brand/brand.css";
 @source "../components";
 `

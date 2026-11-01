@@ -613,7 +613,7 @@ rules:
       - {kind: hfs, id: i18n-catalog}
   - id: R61
     code: FE_STYLE_TOKEN_ONLY
-    law: Application CSS uses the selected Grammar tokens and the declared brand owner, every declaration resolves, and status and body text meet the contrast minimums the Grammar declares in each theme.
+    law: Application CSS uses the selected Grammar tokens and the declared brand owner, which sets HeroUI's tokens, and every declaration resolves.
     failureCodes:
       - FE_STYLE_TOKEN_ONLY
       - FE_STYLE_SOURCE_UNRESOLVED
@@ -626,7 +626,6 @@ rules:
       - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
       - {kind: stylelint, id: brand-layer-shape}
-      - {kind: stylelint, id: status-contrast}
       - {kind: stylelint, id: no-css-module}
       - {kind: stylelint, id: no-class-selector}
       - {kind: stylelint, id: breakpoint-scale}

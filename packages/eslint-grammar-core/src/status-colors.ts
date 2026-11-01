@@ -2,8 +2,8 @@ import type { Rule } from "eslint"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Node } from "./lib/types.ts"
 /**
- * The rule that holds `status-colors.md` (HFS R61 `FE_STYLE_TOKEN_ONLY`, the class-name half of the status-pair contrast
- * obligation; the brand layer's own contrast belongs to `@starci/stylelint-canon` `starci/status-contrast`).
+ * The rule that holds `status-colors.md` (HFS R61 `FE_STYLE_TOKEN_ONLY`, the status-pair rule for class names; no gate
+ * judges the colours an app's theme gives the pair).
  *
  * A STATUS TONE x PAINTS IN TWO WAYS (owner ruling `status-soft-pair-on-background`). Content that sits ON A BACKGROUND OF THE
  * TONE uses the pair `x-soft` and `x-soft-foreground`, the way a HeroUI flat Chip does. A mark that STANDS ALONE, with no
