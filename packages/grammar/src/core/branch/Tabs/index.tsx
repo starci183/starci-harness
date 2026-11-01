@@ -35,7 +35,11 @@ export type TabsProps = NoChildren & {
     readonly selectedKey?: string
     readonly items: ReadonlyArray<TabItem>
     readonly onSelect?: (key: string) => void
-    readonly panelId?: (key: string) => string
+    /**
+     * The panel each tab controls (`aria-controls`): a function from the tab key to the id of its panel, or one id when a single
+     * panel is swapped by every tab (page tabs control the page body). A string crosses a server boundary; a function does not.
+     */
+    readonly panelId?: string | ((key: string) => string)
     /** Keep stable labels visible when icon-only navigation would make peer views ambiguous. A tab with no `leading` icon always shows its label (0.9.11): it has nothing else to show. */
     readonly labelVisibility?: "responsive" | "always"
     /** Page chrome owns whether the peer strip starts at the shared page inset. */
@@ -110,7 +114,7 @@ export const Tabs = (props: TabsProps) => {
                 if (itemId === undefined || tab === null) return
                 const current = tab.getAttribute("aria-controls")
                 const previous = relationships.get(tab)
-                const expected = panelId(itemId)
+                const expected = typeof panelId === "string" ? panelId : panelId(itemId)
                 const original = previous !== undefined && current === previous.applied ? previous.original : current
                 relationships.set(tab, { original, applied: expected })
                 if (current !== expected) tab.setAttribute("aria-controls", expected)

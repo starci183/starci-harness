@@ -255,9 +255,19 @@ const cloneCoverage = (entries, blocks, N, T) => {
     return { status: 'checked', minLines: N, minTokens: T, files: entries.length, cloneBlocks: blocks.length, ownersInvolved: owners.size, duplicatedLines,
         ...(blocks.length > MAX_VIOLATIONS ? { truncated: true } : {}) };
 };
+/**
+ * The threshold of the run. The app root (profile app) answers `ruleParams()` with null: its rule parameters are its sides', and
+ * duplicateBlock is the one value they share (ruleParams.common), so the root reads it from a side. A run on the app root
+ * (the root has its own tsconfig) threw "Cannot destructure property 'lines'" here before.
+ */
+function duplicateBlockOf(resolver) {
+    const own = resolver.ruleParams()?.duplicateBlock;
+    const block = own ?? Object.values(resolver.sides ?? {}).map(side => side.ruleParams().duplicateBlock).find(found => found !== undefined);
+    // reason: the rule-params validators require duplicateBlock on every profile, so a side that runs this check carries it
+    return block;
+}
 export function checkClones({ context, graph }) {
-    // reason: the rule-params validators require duplicateBlock on every profile that runs this check
-    const { lines: N, tokens: T } = graph.resolver.ruleParams()?.duplicateBlock;
+    const { lines: N, tokens: T } = duplicateBlockOf(graph.resolver);
     const ts = context.ts ?? context.loaded.ts;
     const entries = [];
     for (const rel of [...graph.files.keys()].sort(byCodeUnit)) {

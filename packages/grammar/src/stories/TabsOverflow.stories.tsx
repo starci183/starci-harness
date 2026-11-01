@@ -18,7 +18,16 @@ const destinations: ReadonlyArray<G.TabItem> = [
 
 const Strip = ({ variant, overflow = true }: { readonly variant: 'primary' | 'secondary'; readonly overflow?: boolean }) => {
   const [selectedKey, setSelectedKey] = useState('overview');
-  return <G.Tabs label={`${variant} destinations`} labelVisibility="always" scrollPreviousLabel="Scroll tabs left" scrollNextLabel="Scroll tabs right" selectedKey={selectedKey} onSelect={setSelectedKey} items={overflow ? destinations : destinations.slice(0, 2)} />;
+  const panel = `strip-${variant}-${overflow ? 'overflow' : 'fits'}-panel`;
+  const items = overflow ? destinations : destinations.slice(0, 2);
+  return (
+    <div>
+      <G.Tabs label={`${variant} destinations`} labelVisibility="always" scrollPreviousLabel="Scroll tabs left" scrollNextLabel="Scroll tabs right" selectedKey={selectedKey} onSelect={setSelectedKey} panelId={panel} items={items} />
+      <div role="tabpanel" id={panel} aria-label={`${variant} destinations`} style={{ paddingTop: '0.5rem' }}>
+        <G.Text>{items.find((item) => item.id === selectedKey)?.label ?? items[0]?.label} panel</G.Text>
+      </div>
+    </div>
+  );
 };
 
 /** Shared scroll-frame regression: directional controls, shadows, focus and vendor tab geometry. */

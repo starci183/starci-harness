@@ -1188,7 +1188,10 @@ const RenamingTabs = () => {
   const items: ReadonlyArray<G.TabItem> = [{ id: 'overview', label: 'Overview' }, { id: 'lessons', label: name }, { id: 'members', label: 'Members' }];
   return (
     <div>
-      <G.Tabs label="Renaming tabs" items={items} selectedKey="lessons" panelId={(key) => `story-rename-panel-${key}`} labelVisibility="always" />
+      <G.Tabs label="Renaming tabs" items={items} selectedKey="lessons" panelId="story-rename-panel" labelVisibility="always" />
+      <div role="tabpanel" id="story-rename-panel" aria-label="Renaming tabs" style={{ paddingTop: '1rem' }}>
+        <G.Text>{name} panel</G.Text>
+      </div>
       <G.Button intent="alternative" onPress={() => setName((current) => (current === 'Lessons' ? 'All lessons and exercises' : 'Lessons'))}>Change the selected tab label</G.Button>
     </div>
   );

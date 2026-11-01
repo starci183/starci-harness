@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
-import { judgeRemovedVocabulary, judgeRuleDocs, judgeVendorWrappers } from "./knowledge-gates.js"
+import { judgeRemovedVocabulary, judgeRuleDocs, judgeShippedVocabulary, judgeVendorWrappers } from "./knowledge-gates.js"
 
 const put = (root: string, path: string, content: string): void => {
     mkdirSync(dirname(join(root, path)), { recursive: true })
@@ -37,6 +37,20 @@ test("a removed spelling written as code in living knowledge is refused, prose a
         put(root, "contexts/decisions/history.md", "`Backdrop` was removed.\n")
         const found = judgeRemovedVocabulary(knowledge).map((finding) => `${finding.subject}:${finding.detail.split(" ")[0]}`)
         assert.deepEqual(found, ["Backdrop:ui/card.md:1", "List:ui/card.md:3"])
+    } finally {
+        done()
+    }
+})
+
+void test("a removed spelling marked shipped is refused anywhere in packages/hfs/runtime as a whole word, one not marked is not", () => {
+    const { root, knowledge, done } = sandbox()
+    try {
+        put(root, "contexts/decisions/rulings.yaml", "removedVocabulary:\n  - spelling: SurfaceListCard\n    shipped: true\n  - spelling: PrimaryRailLayout\n")
+        put(root, "packages/hfs/runtime/knowledge/grammars/core/playbook.yaml", "  - component: SurfaceListCard\n  - component: PrimaryRailLayout\n  - component: SurfaceListCardLike\n")
+        put(root, "packages/hfs/runtime/scripts/draw.mts", "const C = new Set(['SurfaceCard', 'SurfaceListCard'])\n")
+        put(root, "packages/hfs/codemod/a.mts", "SurfaceListCard\n")
+        const found = judgeShippedVocabulary(knowledge).map((finding) => `${finding.subject}:${finding.detail.split(" ")[0]}`)
+        assert.deepEqual(found.sort((a, b) => a.localeCompare(b)), ["SurfaceListCard:../packages/hfs/runtime/knowledge/grammars/core/playbook.yaml:1", "SurfaceListCard:../packages/hfs/runtime/scripts/draw.mts:1"])
     } finally {
         done()
     }

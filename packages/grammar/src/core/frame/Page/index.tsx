@@ -16,6 +16,9 @@ export type PageTrailContent = { readonly breadcrumbs: PageHeaderBreadcrumbs } &
     readonly [Slot in Exclude<keyof PageHeaderContent, "breadcrumbs">]?: never
 }
 
+/** The id of the page body when page tabs control it: a route draws exactly one Page, so one id is unique. */
+const PAGE_PANEL_ID = "grammar-page-panel"
+
 /** The smallest height a filled body keeps on a short window: `sm` 20rem, `md` 28rem (default), `lg` 36rem, `none` no floor. */
 export type PageMinHeight = "none" | "sm" | "md" | "lg"
 
@@ -89,7 +92,12 @@ export const Page = (props: PageProps) => {
     if (props.chrome === "panes" && !(isValidElement(children) && children.type === PaneGrid)) {
         throw new Error("PAGE_PANES_CHILD_NOT_PANE_GRID")
     }
-    const band = header !== undefined && isBand(chrome, header) ? header : undefined
+    const headerBand = header !== undefined && isBand(chrome, header) ? header : undefined
+    // Page tabs switch the page's main area, so the body is the one panel each tab controls, named by the tab list; an app that passes its own `panelId` owns its panels.
+    const tabs = headerBand?.tabs
+    const ownsPanel = tabs !== undefined && tabs.panelId === undefined
+    const band = headerBand === undefined || tabs === undefined || !ownsPanel ? headerBand : { ...headerBand, tabs: { ...tabs, panelId: PAGE_PANEL_ID } }
+    const panel = ownsPanel ? { id: PAGE_PANEL_ID, role: "tabpanel", "aria-label": tabs.label } : {}
     const trail = header !== undefined && !isBand(chrome, header) ? header.breadcrumbs : undefined
     return (
         <div
@@ -108,9 +116,9 @@ export const Page = (props: PageProps) => {
                 </div>
             )}
             {props.chrome === "panes" || props.chrome === "bleed" ? (
-                <FillBox minHeight={props.minHeight ?? "md"}>{children}</FillBox>
+                <FillBox minHeight={props.minHeight ?? "md"} {...panel}>{children}</FillBox>
             ) : (
-                <PageContainerPart className="starci-core-page-body" data-grammar-page-body="true" measure={measure}>
+                <PageContainerPart className="starci-core-page-body" data-grammar-page-body="true" measure={measure} {...panel}>
                     {children}
                 </PageContainerPart>
             )}

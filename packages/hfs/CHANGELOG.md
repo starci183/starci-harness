@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: the architecture machine run on an app root that has its own tsconfig threw "Cannot destructure property 'lines'" out of `checkClones`: the app resolver has no rule parameters, so the clone threshold (`ruleParams.common.duplicateBlock`, shared by every profile) is read from a side. Spec `architecture-clones-app-root`.
+- Changed: the bundled playbooks, rule catalog, failure codes and draw script name the one card (`SurfaceCard kind="list"`, `kind="accordion"`) and Page's header slot; no SurfaceListCard, SurfaceAccordionCard or SectionHeader remains in `runtime`.
 - Removed: `NavigationFeatureNav` from the surface names and the bundled Core playbook (the component is gone; `TopBar` takes `subnavigation`).
 - Changed: the bundled rule catalog words the laws of R348, R351, R352 and R355 for the one card (no SurfaceListCard, SectionHeader or PageHeader).
 - Changed: the status owners of the scaffold follow the flag-union `DataSlot` (`isLoading`, `isError`, `isForbidden`, `isEmpty`; `items` only on the ready member; `isValidating` beside data) and gain `slotOfReads` and `useSlotOfReads`; `isSkeleton` is `isLoading` in every template.

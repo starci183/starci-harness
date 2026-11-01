@@ -17,6 +17,7 @@ Choice `button.choose.role`: which element carries the action. The first row tha
 | overflow | an item has more than three commands, or rarely used ones | the most frequent one visible, the rest behind `menu.choose.placement:overflow` | candidate: at most one visible command per collection item |
 | text-action | the command reads as part of a sentence or a list of links | `TextAction` | judgement |
 | icon | not the view's commit, the glyph is universally understood, and it sits in a toolbar, a row's actions or chrome | `IconButton` with an accessible `label` and its tooltip | candidate: every `IconButton` has a non-empty name and a tooltip |
+| file | the command hands the product a file (an attachment in a composer, an upload in a toolbar or a row), as one action among others | `FileButton` with an accessible `label`, the size of an `IconButton`; a drop area is `FileDropzone` (`text-field.choose.role:file`) | judgement |
 | text | any other command or destination, and always the view's commit | `Button` with a visible text label | candidate: every accent-filled button has visible text |
 
 Choice `button.choose.intent`: which intent the spec's facts give (the facts are CTA-6). The first row that

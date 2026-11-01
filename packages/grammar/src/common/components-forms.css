@@ -540,6 +540,11 @@
         white-space: nowrap;
     }
 
+    /* The vendor steps its md segment down to 2.25rem on a desktop width; the ramp holds md at the control height at every breakpoint (sm stays the vendor's 2rem). */
+    .starci-core-segmented-control[data-grammar-segmented-size="md"] .starci-core-segment {
+        height: var(--starci-core-control-min-size);
+    }
+
     /* --- ButtonGroup --- */
     .starci-core-button-group {
         max-width: 100%;

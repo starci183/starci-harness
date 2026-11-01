@@ -17,6 +17,7 @@ Choice `text-field.choose.role`: which field takes the value. The first row that
 | secret | the reader copies a secret the product holds (a key, a webhook secret) and never edits it | `CopyField masked` with the last four characters; the clear value only in `onCopy` | DNA-COMMON-COPYFIELD-MASKED |
 | copy | the reader copies a value the product holds (an id, a URL, an account number) and never edits it | `CopyField` | judgement |
 | multi | several values of one kind | one `Input` per value with its remove action and an "add another" command (COLLECTION-1), never one textarea | judgement |
+| file | the reader aims a file at a drop area, or the form has a field for a file | `FileDropzone`; a file picked as one action among others is `FileButton` (`button.choose.role:file`) | judgement |
 | search | a search over the current view | `SearchField` (named, with its shortcut hint in chrome) | judgement |
 | number | a number with bounds or steps | `NumberField` | judgement |
 | date | a date or a time | the date and time fields | judgement |

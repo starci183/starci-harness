@@ -78,7 +78,7 @@ shapes:
           Button variant="primary" — the view's single pink fill
       - renderer: "Progress / ProgressCircle / Meter"
         role: Only a verified value with a truthful `label` (ACCENT-4); an unknown value is not drawn
-      - renderer: SurfaceListCard
+      - renderer: SurfaceCard (list kind)
         role: Peers (recent items, suggestions) as static rows; no second primary Button
       - renderer: "Skeleton / EmptyNotice"
         role: Pending is the same tree at rest (Skeleton in place of content); empty or failed is EmptyNotice
@@ -182,10 +182,10 @@ shapes:
         role: The query, labelled
       - renderer: TagGroup
         role: Filters as outlined chips; selected chips turn pink and lift
-      - renderer: "ListBox / SurfaceListCard"
+      - renderer: "ListBox / SurfaceCard (list kind)"
         role: |
           ListBox when picking is the task (yellow hover wash, pink focus ring, soft-pink selected row
-          with a pink leading edge); SurfaceListCard when rows only report facts
+          with a pink leading edge); the list kind of SurfaceCard when rows only report facts
       - renderer: Pagination
         role: Current page is the raised pink pill
       - renderer: "Skeleton / EmptyNotice"

@@ -39,8 +39,9 @@ tokens:
            surface-tertiary, default, default-foreground, muted, border, separator,
            accent, accent-foreground, accent-soft, accent-soft-foreground, link, focus,
            success, success-foreground, success-soft-foreground, warning, warning-foreground, warning-soft-foreground,
-           danger, danger-foreground, danger-soft-foreground, info, info-foreground,
+           danger, danger-foreground, danger-soft-foreground,
            field-background, field-foreground, field-placeholder, field-border, field-shadow]
+  extension: [info, info-foreground]              # the one pair HeroUI lacks: each read falls back to accent, a family's theme.css sets both, an app may; no gate needs it set
   shape: [radius, field-radius]                   # every vendor corner derives from these
   corner: [--grammar-radius-tiny, --grammar-radius-compact, --grammar-radius-control, --grammar-radius-surface,
            --grammar-radius-hero, --grammar-radius-pill]   # roles an app names; the grammar sets them from its base radius
@@ -134,7 +135,7 @@ roles:
 
   - id: button
     ui: ui/components/button.md
-    renderers: [Button, IconButton, TextAction]
+    renderers: [Button, IconButton, FileButton, TextAction]
     vendorParity: [button, link, spinner]
     slots: [label, startContent, endContent, disabledReason]
     variants:
@@ -543,16 +544,15 @@ mustKeep:
       owner: control-height-40
     - id: DNA-COMMON-SEGMENTED-RAMP
       role: segmented-control
-      law: A segmented control sits on the ramp, md 40px and sm 32px.
+      law: A segmented control's segments sit on the ramp, md 40px and sm 32px; its label and description stand outside that box.
       measure:
         kind: box
         metric: height
         op: "="
         cases:
-          - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="md"]', value: 40px }
-          - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="sm"]', value: 32px }
+          - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="md"] [data-grammar-field-control="true"]', value: 40px }
+          - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="sm"] [data-grammar-field-control="true"]', value: 32px }
       owner: control-height-40
-      followUp: D-3
     - id: DNA-COMMON-TABS-BAR-MD
       role: tabs
       law: A tab bar, pill or underline, lands on the md height without a size prop.
@@ -595,10 +595,9 @@ mustKeep:
     # --- root, tokens and rhythm
     - id: DNA-COMMON-TOKENS-BOUND
       role: root
-      law: Every contract colour role resolves to a value, the app's own or the family's default theme.css; none is left undefined.
+      law: Every contract colour role resolves to a value, the app's own, the family's default theme.css or HeroUI's own; none is left undefined. The extension pair (info) is optional and reads as accent when unset.
       measure: { kind: tokens, metric: { contract: tokens.colour }, op: set }
       owner: contract tokens
-      followUp: C-3, C-4
     - id: DNA-COMMON-RHYTHM-MONOTONIC
       role: root
       law: The rhythm tokens are strictly ordered, region gap above section gap above row gap above inline gap above identity gap.
@@ -689,6 +688,7 @@ mustKeep:
           - { select: '[data-grammar-surface-treatment] [data-component="Stepper"] [data-grammar-step-marker]' }
           - { select: '[data-grammar-surface-treatment] :is([data-component="Text"], [data-grammar-section-header] :is(h2, h3, p))' }
       owner: surfacecard-soft-treatment; COLOR-5; story Navigation & Data / Stepper on every treatment, Surfaces / Soft surface card
+      followUp: D-17
     - id: DNA-COMMON-ACCENT-CORNER
       role: card
       law: The corner a SurfaceCard or MediaFrame names in accentCorner is drawn at the Common accent radius.
@@ -1107,13 +1107,8 @@ mustKeep:
       owner: grammars/core.md
     - id: DNA-CORE-SEGMENT-SELECTED
       role: segmented-control
-      law: The selected segment sits on the soft accent with an accent border.
-      measure:
-        kind: style
-        op: "="
-        cases:
-          - { select: '[data-component="SegmentedControl"] [role="radio"][aria-checked="true"]', metric: background-color, value: { token: --accent-soft } }
-          - { select: '[data-component="SegmentedControl"] [role="radio"][aria-checked="true"]', metric: border-top-color, value: { token: --accent } }
+      law: The selected segment sits on the soft accent.
+      measure: { kind: style, select: '[data-component="SegmentedControl"] [role="radio"][aria-checked="true"]', metric: background-color, op: "=", value: { token: --accent-soft } }
       owner: CTA-1/case-6
     - id: DNA-CORE-ALERT-RAISED
       role: alert

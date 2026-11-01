@@ -38,11 +38,6 @@ export const LayerDefaults: Story = {
             <G.SurfaceCard label="Bounded surface: secondary">
                 <Fields prefix="bounded" />
             </G.SurfaceCard>
-            <G.SurfaceCard label="Outer surface: secondary">
-                <G.SurfaceCard label="Nested surface: border, secondary">
-                    <Fields prefix="nested" />
-                </G.SurfaceCard>
-            </G.SurfaceCard>
         </div>
     ),
 }

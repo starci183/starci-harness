@@ -105,7 +105,7 @@
         --starci-core-rail-compact-min: 14rem;
         --starci-core-rail-standard-min: 16rem;
         --starci-core-rail-wide-min: 20rem;
-        --starci-core-tabs-pending-height: 3rem;
+        --starci-core-tabs-pending-height: var(--starci-core-control-min-size);
         --starci-core-rail-compact: 16rem;
         --starci-core-rail-standard: 20rem;
         --starci-core-rail-wide: 24rem;

@@ -128,7 +128,7 @@ in a bar. `pending` means this control accepted work: label and box unchanged, a
 that is also the button's accessible description, since a disabled control is otherwise mute; `skeleton` means the
 content never resolved. A grammar may repaint each vendor variant through its tokens and give the press its own
 motion; it keeps the variant names, so the emphasis ladder means the same in every grammar. `IconButton` is the same contract drawn square or round at the step;
-`TextAction` is the quietest command, set in text.
+`FileButton` is an `IconButton` whose press opens the browser's file picker and reports the files; `TextAction` is the quietest command, set in text.
 
 ### ButtonGroup
 
@@ -147,7 +147,7 @@ which is why Tabs have no size.
 ### SegmentedControl
 
 A segmented control is one value inside a form or a toolbar (period, audience, density), not navigation. Its
-selected segment takes the soft accent with an accent border, the paint of selection rather than of a command. It
+selected segment takes the soft accent fill, the paint of selection rather than of a command. It
 publishes `sm` and `md`, default `md`.
 
 ### FilterButtonGroup

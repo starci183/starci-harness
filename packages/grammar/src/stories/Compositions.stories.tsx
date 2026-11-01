@@ -719,13 +719,14 @@ const PaneInsetDemo = () => {
           <G.PaneSection>
             <G.Tabs
               label="Filter"
-             
+              panelId="office-filter-panel"
               selectedKey={tab}
               onSelect={setTab}
               items={[{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }, { id: 'mine', label: 'Mine' }]}
             />
           </G.PaneSection>
           <G.PaneSection scroll={{ label: 'Conversations' }}>
+            <div role="tabpanel" id="office-filter-panel" aria-label="Filter">
             <G.ListBox
               label="Conversations"
               selectionIndicator="none"
@@ -737,6 +738,7 @@ const PaneInsetDemo = () => {
                 { id: 'minh', label: 'Minh', description: 'Sent the file' },
               ]}
             />
+            </div>
           </G.PaneSection>
         </G.Pane>
         <G.Pane area="thread">

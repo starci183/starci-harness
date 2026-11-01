@@ -351,7 +351,7 @@ export function proposalNamesIn(files: string[]): Set<string> {
 const RATIO_RX = /(?<![\d./])(\d{1,4})\s*\/\s*(\d{1,4})(?![\d./])/;
 const BAR_CLASS = /(?:^|[-_])(bar|bars|track|fill|segment|segments|progress|meter|gauge)(?:$|[-_])/i;
 const NOTICE_CLASS = /(?:^|[-_])(notice|callout|banner|attention|alert|toast|announcement)(?:$|[-_])/i;
-const CONTAINERS = new Set(['SurfaceCard', 'SurfaceListCard', 'SurfaceAccordionCard', 'SurfaceCopyGroup', 'PageContainer', 'EmptyNotice', 'Fieldset']);
+const CONTAINERS = new Set(['SurfaceCard', 'SurfaceCopyGroup', 'PageContainer', 'EmptyNotice', 'Fieldset']);
 const ACTION_COMPONENTS = new Set(['Button', 'IconButton', 'TextAction', 'Link', 'ButtonGroup']);
 const isAction = (el: HtmlElement): boolean => ACTION_COMPONENTS.has(componentNameOf(el)) || el.tag === 'button' || (el.tag === 'a' && el.attrs.href != null);
 

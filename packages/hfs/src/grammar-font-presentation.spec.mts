@@ -84,7 +84,7 @@ test('font component ownership includes the previously unresolved action labels 
   const font = fontOf(presented(topics(), { family: 'core' }));
   const rows = font.doc.componentOwnership.rows;
   assert.ok(rows.some((row: Parsed) => row.component === 'Input' && /reveal/.test(row.element) && row.rule === 'FONT-1'));
-  const facts = rows.filter((row: Parsed) => row.component === 'SurfaceListCard' && /fact/.test(row.element));
+  const facts = rows.filter((row: Parsed) => row.component === 'SurfaceCard (list kind)' && /fact/.test(row.element));
   assert.deepEqual(new Set(facts.map((row: Parsed) => row.rule)), new Set(['FONT-1', 'FONT-2']));
   assert.equal(new Set(facts.map((row: Parsed) => row.element)).size, 2);
   for (const row of rows) assert.ok(font.doc.scale.steps.some((step: Parsed) => step.id === row.rule), `${row.component}/${row.element}`);

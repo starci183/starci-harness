@@ -9,6 +9,7 @@ import { Switch } from "../core/leaf/Switch/index.js"
 import { Slider } from "../core/leaf/Slider/index.js"
 import { DateField } from "../core/leaf/DateField/index.js"
 import { TimeField } from "../core/leaf/TimeField/index.js"
+import { FileButton } from "../core/composite/FileButton/index.js"
 import { FileDropzone } from "../core/branch/FileDropzone/index.js"
 import { Fieldset } from "../core/frame/Fieldset/index.js"
 import { Form } from "../core/frame/Form/index.js"
@@ -32,6 +33,7 @@ export { Switch, type SwitchProps, type SwitchSize } from "../core/leaf/Switch/i
 export { Slider, type SliderProps, type SliderValue } from "../core/leaf/Slider/index.js"
 export { DateField, type DateFieldProps, type DateGranularity } from "../core/leaf/DateField/index.js"
 export { TimeField, type TimeFieldProps } from "../core/leaf/TimeField/index.js"
+export { FileButton, type FileButtonProps } from "../core/composite/FileButton/index.js"
 export { FileDropzone, type FileDropzoneProps } from "../core/branch/FileDropzone/index.js"
 export { Fieldset, type FieldsetProps } from "../core/frame/Fieldset/index.js"
 export { Form, type FormProps, type FormValidationErrors } from "../core/frame/Form/index.js"
@@ -50,6 +52,6 @@ export { DateRangePicker, type DateRangePickerProps, type DateRangeValue } from 
 /** The form group of Common renderers, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_FORMS_COMPONENTS = Object.freeze({
     ButtonGroup, FilterButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker, DateRangePicker, Field,
-    Fieldset, FileDropzone, Form, NumberField, RadioGroup, SearchField, SegmentedControl, Select,
+    Fieldset, FileButton, FileDropzone, Form, NumberField, RadioGroup, SearchField, SegmentedControl, Select,
     Slider, Switch, Textarea, TimeField,
 } as const)

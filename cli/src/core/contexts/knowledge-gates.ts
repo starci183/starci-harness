@@ -67,6 +67,29 @@ export const judgeRemovedVocabulary = (knowledge: string): KnowledgeFinding[] =>
     return found
 }
 
+/**
+ * The spellings of that list marked `shipped: true` against what the harness ships: `packages/hfs/runtime` (the playbooks, the rule catalog, the failure codes and the
+ * draw scripts the eslint packages bundle). It is data an agent loads, so a spelling is a finding wherever it stands as a whole
+ * word, not only in code marks; a removal is told by rulings.yaml and by the codemods, which sit outside the runtime.
+ */
+export const judgeShippedVocabulary = (knowledge: string): KnowledgeFinding[] => {
+    const runtime = join(knowledge, "..", "packages", "hfs", "runtime")
+    if (!existsSync(runtime)) return []
+    const rulings = object(parse(read(join(knowledge, "decisions", "rulings.yaml"))))
+    const spellings = list(rulings["removedVocabulary"]).map(object).filter((entry) => entry["shipped"] === true).map((entry) => text(entry["spelling"])).filter((spelling) => /^[A-Za-z][\w.@/-]*$/.test(spelling) && /[A-Z]/.test(spelling))
+    const found: KnowledgeFinding[] = []
+    for (const path of walk(runtime, (name) => /\.(?:md|yaml|json|mts|ts)$/.test(name))) {
+        const lines = read(path).split("\n")
+        for (const spelling of spellings) {
+            const pattern = new RegExp("(?<![\\w.-])" + spelling.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\w-])")
+            lines.forEach((line, index) => {
+                if (pattern.test(line)) found.push({ kind: "removed-vocabulary-used", subject: spelling, detail: `${relative(knowledge, path).replaceAll("\\", "/")}:${String(index + 1)} writes the removed ${spelling}; rulings.yaml removedVocabulary names what replaces it` })
+            })
+        }
+    }
+    return found
+}
+
 const sha256 = (value: string): string => createHash("sha256").update(value).digest("hex")
 
 /** The capitalised names a file imports as values from `@heroui/react`: the vendor components it wraps. */

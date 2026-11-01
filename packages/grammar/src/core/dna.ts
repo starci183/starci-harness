@@ -188,7 +188,7 @@ export const STARCI_CORE_TOKEN_NAMES = Object.freeze({
  *   falling back to a page's own X when there is no band. A page pins to it with
  *   `top: var(--starci-core-band-offset)` and bounds itself with
  *   `max-height: calc(100dvh - var(--starci-core-band-offset))`.
- * - `bandHeight` - the navigation band alone: 4rem plus its separator, plus 2rem when a
+ * - `bandHeight` - the navigation band alone: 4rem plus its separator, plus the md control height when a
  *   `subnavigation` layer is stacked on it.
  * - `railOffset` - the host override. Unset, it reads the published band.
  */

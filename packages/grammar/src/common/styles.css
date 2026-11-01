@@ -264,7 +264,7 @@
         display: flex;
         flex-direction: column;
         gap: var(--grammar-row-gap);
-        padding-block: var(--grammar-section-gap);
+        padding-block: var(--grammar-region-gap);
     }
 
     .starci-core-page-header[data-grammar-page-header-tabs="true"] .starci-core-page-header-body {
@@ -1357,7 +1357,9 @@
         flex: 0 0 auto !important;
     }
 
+    /* The bar lands on the md control height whatever its labels, so a tab bar aligns with the controls beside it. */
     .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__tab {
+        min-height: var(--starci-core-control-min-size);
         padding-inline: var(--starci-core-tab-padding-start, var(--grammar-inset)) var(--grammar-inset) !important;
         padding-block-end: 0 !important;
     }
@@ -1458,12 +1460,15 @@
         gap: var(--grammar-inline-gap);
     }
 
+    /* owner:item-description-one-line: a row's description is one line with an ellipsis. */
     .starci-core-list-row-description {
         min-width: 0;
+        overflow: hidden;
         color: var(--muted);
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
-        overflow-wrap: anywhere;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .starci-core-list-row-actions {
@@ -3713,8 +3718,8 @@
 
     /*
      * StatusDot and the dot of `Badge isDot` share ONE dot-size token and one tone set. The dot chip is HeroUI's soft Chip, so its
-     * height and type are the vendor's; its inline padding follows the chip padding rule below. The dot-to-text gap is gap-1
-     * (0.25rem): the Chip's own gap-0.5 (0.125rem) plus the 0.125rem the dot adds after itself.
+     * height and type are the vendor's; its inline padding follows the chip padding rule below. The dot-to-text gap is the identity
+     * gap (0.25rem), set as the chip's own column gap in place of the vendor's gap-0.5, so the dot adds nothing after itself.
      */
     .grammar-common-root {
         --starci-core-status-dot-size: 6px;
@@ -3738,8 +3743,8 @@
     .starci-core-status-dot-mark[data-tone="warning"] { --starci-core-status-dot-color: var(--warning); }
     .starci-core-status-dot-mark[data-tone="danger"] { --starci-core-status-dot-color: var(--danger); }
 
-    .starci-core-badge-dot > .starci-core-status-dot-mark {
-        margin-inline-end: var(--grammar-identity-gap);
+    .starci-core-badge-dot {
+        column-gap: var(--grammar-identity-gap);
     }
 
     .starci-core-badge-dot-label {

@@ -3,7 +3,7 @@ import { parseDate, parseTime } from '@internationalized/date';
 import { useState } from 'react';
 import { userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { Matrix, SearchGlyph, SettingsGlyph, StarGlyph, State, UploadGlyph, noop, showRowStates } from './fixtures.js';
+import { Matrix, SearchGlyph, SettingsGlyph, StarGlyph, PaperclipGlyph, State, UploadGlyph, noop, showRowStates } from './fixtures.js';
 
 /**
  * Forms: every input renderer shares the Field contract (label, description, error,
@@ -618,6 +618,34 @@ export const FileDropzone: Story = {
       </State>
       <State label="Invalid" direction="column">
         <G.FileDropzone label="Avatar" prompt="Drop an image" isRequired isInvalid errorMessage="An image is required." />
+      </State>
+    </Matrix>
+  ),
+};
+
+/** The file picker as one action among others: the size of an IconButton, beside a message field in a composer. */
+export const FileButton: Story = {
+  render: () => (
+    <Matrix maxWidth={formColumn}>
+      <State label="Default" direction="row">
+        <G.FileButton label="Attach a file" source={PaperclipGlyph} accept="image/png,application/pdf" onFilesChange={noop} />
+      </State>
+      <State label="In a composer" direction="row">
+        <div style={{ display: 'flex', alignItems: 'end', gap: '0.5rem', width: '100%' }}>
+          <G.FileButton label="Attach a file" source={PaperclipGlyph} multiple onFilesChange={noop} />
+          <div style={{ flex: 1, minWidth: 0 }}><G.Textarea label="Message" isLabelHidden rows={1} /></div>
+          <G.Button onPress={noop}>Send</G.Button>
+        </div>
+      </State>
+    </Matrix>
+  ),
+};
+
+export const FileButtonDisabled: Story = {
+  render: () => (
+    <Matrix maxWidth={formColumn}>
+      <State label="Disabled" direction="row">
+        <G.FileButton label="Attach a file" source={PaperclipGlyph} isDisabled onFilesChange={noop} />
       </State>
     </Matrix>
   ),

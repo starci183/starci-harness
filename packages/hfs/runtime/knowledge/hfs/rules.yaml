@@ -5601,7 +5601,7 @@ rules:
         date: "2026-10-28"
         source: owner
         quote: "Publish Grammar 0.15.3 with PageHeader now, then move all 18 pages to it before deploying. (translated from Vietnamese)"
-        ruling: "A page is headed by Grammar's PageHeader (owner ruling page-header-band): a surface band whose content shares the page content's edges and which ends in its own full-width separator, page tabs standing on it; the lint refuses a page head composed by hand from Breadcrumbs and SectionHeader."
+        ruling: "A page is headed by Grammar's Page header (owner ruling page-header-band): a surface band whose content shares the page content's edges and which ends in its own full-width separator, page tabs standing on it; the lint refuses a PageHeader or Breadcrumbs imported by hand, since both are Page's own parts."
   - id: R324
     code: "FE_PAGE_TABS_OUTSIDE_HEADER"
     law: "Page tabs are the header's tabs; a Tabs that is the first element of a Page body is a page tab bar drawn outside the band."
@@ -5982,8 +5982,8 @@ rules:
       - id: case-1
         date: "2026-10-31"
         source: owner
-        quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); SurfaceListCard takes its depth from the surface context (grammar 0.16.2)."
-        ruling: "SurfaceListCard resolves its depth from the surface context like SurfaceCard and SurfaceAccordionCard; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
+        quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); the list SurfaceCard takes its depth from the surface context (grammar 0.16.2)."
+        ruling: "A list SurfaceCard resolves its depth from the surface context like every SurfaceCard kind; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
   - id: R341
     code: "FE_FREESTYLE_REASON_MISSING"
     law: "A Grammar Freestyle region, the one sanctioned place where an app writes its own plain elements and CSS because no Grammar component fits, names its reason: a non-empty string literal saying why. The rules that judge hand-written elements, classes, styles and generated art leave the raw elements of a Freestyle subtree alone; a Grammar component inside it is judged as before. An element with a spread attribute is not judged."
@@ -6236,7 +6236,7 @@ rules:
         date: "2026-11-01"
         source: owner
         quote: "quá phức tạp mới nhét bảng vào card"
-        ruling: "Plain rows are a SurfaceListCard with a bottom note in its footer; a DataTable is not put in a SurfaceCard."
+        ruling: "Plain rows are a SurfaceCard kind=\"list\" with a bottom note in its footer; a DataTable is not put in a SurfaceCard."
   - id: R352
     code: "FE_COMMAND_FILLS_HEADER"
     law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a Page header or the labelEnd of a SurfaceCard is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
@@ -6285,7 +6285,7 @@ rules:
         ruling: "A filter over a collection is a FilterButtonGroup of sm toggle buttons; the TagGroup has no selection."
   - id: R354
     code: "FE_HEADING_ABOVE_CARD"
-    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard, SurfaceListCard or SurfaceAccordionCard, and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
+    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard (of any kind), and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_HEADING_ABOVE_CARD"]

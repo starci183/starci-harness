@@ -39,8 +39,10 @@ Selected is a persistent value with a non-colour cue (indicator geometry); hover
 (ACCENT-3). Loading keeps the tab labels as real text (STATE-8).
 
 ## Owner split
-- **Grammar owns:** both looks, the nesting-based default, indicator motion, page inset, overflow carets, and for
-  link tabs the selected tab from the current path.
+- **Grammar owns:** both looks, the nesting-based default, indicator motion, page inset, overflow carets, for
+  link tabs the selected tab from the current path, and for page tabs the page body as the one panel every tab controls
+  (`Page` names it by the tab list). Region tabs name their panels with `panelId`, one id for a single swapped panel or
+  a function from the tab key to its panel's id.
 - **Knowledge decides:** tabs vs segmented vs tags vs list; page vs region placement; one page set per page.
 - **App author decides:** the items, their labels and panels, whether page tabs reflect the URL. Tabs that reflect
   the URL are link tabs: every item carries its `href`, and a server page passes them as data with no

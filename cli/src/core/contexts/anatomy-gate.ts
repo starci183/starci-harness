@@ -5,7 +5,7 @@ import { z } from "zod"
 import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { slotRuleGaps } from "./anatomy-render.js"
-import { grammarSourceDir, judgeRemovedVocabulary, judgeRuleDocs, judgeVendorWrappers } from "./knowledge-gates.js"
+import { grammarSourceDir, judgeRemovedVocabulary, judgeRuleDocs, judgeShippedVocabulary, judgeVendorWrappers } from "./knowledge-gates.js"
 import type { KnowledgeFinding } from "./knowledge-gates.js"
 
 /** The gaps an owner ruling may hold open: a slot naming a rule code no rule carries, a rule with no enforcer, a rule whose enforcers are all planned. */
@@ -162,7 +162,7 @@ export const judgeAnatomy = (knowledge: string): GateVerdict => {
     const rulings = declared.length === 0 ? [] : readParsed(rulingsFile, rulingsSchema).rulings
     const covered = (entry: Pending): boolean => rulings.some((ruling) => ruling.id === entry.ruling && ruling.status === "live" && (ruling.covers ?? []).includes(entry.subject))
     const { pendable, hard } = openGaps(knowledge, catalog)
-    const knowledgeFindings: KnowledgeFinding[] = [...judgeRuleDocs(knowledge), ...judgeRemovedVocabulary(knowledge), ...judgeVendorWrappers(knowledge, grammarSourceDir())]
+    const knowledgeFindings: KnowledgeFinding[] = [...judgeRuleDocs(knowledge), ...judgeRemovedVocabulary(knowledge), ...judgeShippedVocabulary(knowledge), ...judgeVendorWrappers(knowledge, grammarSourceDir())]
     const red: Gap[] = [...hard, ...knowledgeFindings.map((finding) => gap(finding.kind, finding.subject, finding.detail))]
     const pending: Gap[] = []
     const used = new Set<Pending>()

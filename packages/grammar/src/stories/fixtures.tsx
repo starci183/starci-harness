@@ -44,6 +44,7 @@ export const FilterGlyph = glyph(<path d="M3 5h18l-7 8v6l-4 2v-8z" />);
 export const StarGlyph = glyph(<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z" />);
 export const BookGlyph = glyph(<><path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z" /><path d="M4 16a4 4 0 0 1 4-4h10" /></>);
 export const ChartGlyph = glyph(<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />);
+export const PaperclipGlyph = glyph(<path d="M21 11.5l-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.8 1.8 0 0 1-2.6-2.6l8.2-8.2" />);
 export const UploadGlyph = glyph(<><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 20h16" /></>);
 export const SignOutGlyph = glyph(<><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5" /><path d="M16 8l4 4-4 4M20 12H9" /></>);
 export const TrashGlyph = glyph(<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />);

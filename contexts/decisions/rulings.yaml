@@ -190,6 +190,11 @@ rulings:
     status: proposed
     ruling: "A rating, which HeroUI does not ship, is one radio group of stars, the platform pattern for one value from a closed set."
     owner: "contexts/vendor/wrappers.yaml; contexts/decisions/open-grammar.md D-11"
+  - id: colours-final
+    date: '2026-11-02'
+    status: proposed
+    ruling: "The grammar's colours are final: no change of the grammar package, a lane or a law moves a colour on its own, and a law that only a colour change can satisfy is exempt from the run until the owner confirms its retirement or names the colour to move. DNA-COMMON-TREATMENT-TEXT-CONTRAST is such a law."
+    owner: "contexts/decisions/open-grammar.md D-17; contexts/grammars/contract.yaml DNA-COMMON-TREATMENT-TEXT-CONTRAST"
 
   # --- ui composition (owner decisions folded into ui/ as plain rules)
   - id: chip-label-uppercase
@@ -811,7 +816,7 @@ rulings:
     owner: "contexts/ui/situations.md; contexts/ui/presentation.md (Space)"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
-# write instead. `pending` marks a name that still exists in published code until the follow-up lands.
+# write instead. `shipped: true` extends the check to packages/hfs/runtime, the knowledge the eslint packages bundle. `pending` marks a name that still exists in published code until the follow-up lands.
 removedVocabulary:
   - spelling: Backdrop
     as: grammar component
@@ -854,6 +859,7 @@ removedVocabulary:
     replacedBy: the thread's own MessageBubbles with isLoading
     ruling: "grammar-names-are-generic"
   - spelling: SectionHeader
+    shipped: true
     as: grammar component
     replacedBy: Section, whose title is the heading
     ruling: "grammar-names-are-generic"
@@ -914,10 +920,12 @@ removedVocabulary:
     replacedBy: PaneGrid
     ruling: "pane-grid"
   - spelling: SurfaceListCard
+    shipped: true
     as: grammar component
     replacedBy: SurfaceCard kind="list"
     ruling: "grammar-canonical-set"
   - spelling: SurfaceAccordionCard
+    shipped: true
     as: grammar component
     replacedBy: SurfaceCard kind="accordion"
     ruling: "grammar-canonical-set"

@@ -347,14 +347,14 @@ guidance:
     ownership: FE-RULE-OWNERSHIP
     implements: [ANATOMY-2, PADDING-0]
     requirement: |
-      SurfaceCard (always painted), SurfaceListCard, a painted SurfaceAccordionCard, Sidebar, Dialog,
-      AlertDialog, Drawer and Popover establish the surface nesting context; Rail and an unpainted
-      SurfaceAccordionCard pass their parent's context through. Input, SearchField, Textarea,
+      SurfaceCard (always painted, of any kind, the accordion kind when painted), Sidebar, Dialog,
+      AlertDialog, Drawer and Popover establish the surface nesting context; Rail and
+      an unpainted accordion SurfaceCard pass their parent's context through. Input, SearchField, Textarea,
       NumberField, DateField, TimeField, Select, ComboBox, DatePicker, DateRangePicker, Checkbox,
       CheckboxGroup, RadioGroup, OtpInput and PressableField resolve variant="secondary" inside it and
       variant="primary" outside. Compose the surface and omit the field variant.
       Switch and Slider have no layer variant; a Radio follows its RadioGroup. PaneGrid's
-      collapsed-pane drawer also establishes the context. SurfaceCard and bounded SurfaceAccordionCard derive
+      collapsed-pane drawer also establishes the context. SurfaceCard and a bounded accordion SurfaceCard derive
       data-grammar-surface-depth from the parent context. The top layer is raised and a nested layer is
       subordinate; never raise both. The family DNA owns their surface paint.
       The field `variant` is not in the prop types, so an app cannot set it; FE_GRAMMAR_LAYOUT_ONLY rejects
@@ -362,7 +362,7 @@ guidance:
       DRAW_NESTED_VARIANT checks the corresponding rendered variant and
       surface stamps.
       ListBox resolves inset="panel" inside that context; callers may select the same value explicitly
-      elsewhere. Its rows and sections captions share the panel edge. SurfaceListCard owns its list
+      elsewhere. Its rows and sections captions share the panel edge. The list kind of SurfaceCard owns its list
       shell with no added inset; SurfaceCard composition="joined" owns flush bands. A grouping wrapper
       adds no padding. An extra px-*, ps-* or pe-* around ListBox or a section caption stacks the inset
       and fails FE_LIST_PANEL_PADDING.
@@ -661,22 +661,22 @@ presentation:
         - component: Subnav
           element: root
           rule: PADDING-3
-        - component: SurfaceAccordionCard
+        - component: SurfaceCard (accordion kind)
           element: accordion panel
           rule: PADDING-0
-        - component: SurfaceAccordionCard
+        - component: SurfaceCard (accordion kind)
           element: accordion trigger
           rule: PADDING-4
-        - component: SurfaceAccordionCard
+        - component: SurfaceCard (accordion kind)
           element: body padding-top
           rule: PADDING-0
-        - component: SurfaceAccordionCard
+        - component: SurfaceCard (accordion kind)
           element: body padding-bottom
           rule: PADDING-3
-        - component: SurfaceAccordionCard
+        - component: SurfaceCard (accordion kind)
           element: body padding-right
           rule: PADDING-4
-        - component: SurfaceAccordionCard
+        - component: SurfaceCard (accordion kind)
           element: body padding-left
           rule: PADDING-5
         - component: SurfaceCard
@@ -685,7 +685,7 @@ presentation:
         - component: SurfaceCard
           element: content, composition="joined"
           rule: PADDING-0
-        - component: SurfaceListCard
+        - component: SurfaceCard (list kind)
           element: root
           rule: PADDING-0
         - component: Tabs
@@ -768,7 +768,7 @@ presentation:
             render: '`composition="joined"` already sets `0`'
           - id: case-3
             when: A Grammar list sits inside a panel or its rows own their own inset
-            owner: "`SurfaceListCard` / `ListBox`"
+            owner: "`SurfaceCard` list kind / `ListBox`"
             render: ListBox resolves inset="panel" in a surface nesting context, or callers select it explicitly. Its
               row boxes align with the panel content edge, like the search field and tabs boxes, without
               negative-margin bleed (owner:panel-list-box-edge). The list retains HeroUI p-1; items retain
@@ -834,7 +834,7 @@ presentation:
             render: Compose the card; no padding
           - id: case-3
             when: A disclosure trigger and its expanded panel
-            owner: "`SurfaceAccordionCard`"
+            owner: "`SurfaceCard` accordion kind"
             render: Compose the card; no padding
           - id: case-4
             when: An empty-state notice
@@ -1005,10 +1005,10 @@ presentation:
         - component: Tooltip
           element: content
           rule: FONT-1
-        - component: SurfaceListCard
+        - component: SurfaceCard (list kind)
           element: fact, label is visible and fact is present, depth="nested"
           rule: FONT-1
-        - component: SurfaceListCard
+        - component: SurfaceCard (list kind)
           element: fact, label is visible and fact is present, depth!="nested"
           rule: FONT-2
     guidance:
@@ -1097,7 +1097,7 @@ anatomyObservations:
     lane: ui
     kind: proven-template
     summary: |-
-      Verified in the draw lab against the real SurfaceListCard render — the prompt shape that
+      Verified in the draw lab against the real list SurfaceCard render — the prompt shape that
       produced a direction both faithful and beautiful:
       1. Frame: flat product UI screenshot, size, light theme.
       2. SUBJECT: screen name + product name.
@@ -1114,11 +1114,9 @@ anatomyObservations:
     lane: ui
     kind: anatomy-detail
     summary: |-
-      The two card components place their labels differently, and a prompt that treats them
-      alike invents one of them. `SurfaceCard` paints one material box around label AND
-      content — its label ("New task") sits inside the card at the top. `SurfaceListCard`
-      renders its label and fact as siblings on the page background ABOVE the list shell —
-      the card bounds only the rows, the footer sits below it.
+      Every `SurfaceCard` kind except `tile` places its label outside: an unpainted row above the material
+      with the fact and the end action, and the card bounds only the content, the footer note below it.
+      A prompt that draws the label inside the card invents a placement the grammar does not have.
   - id: list-separator-bleed
     lane: ui
     kind: anatomy-detail
@@ -1132,7 +1130,7 @@ anatomyObservations:
     lane: ui
     kind: anatomy-detail
     summary: |-
-      An interactive row in a SurfaceListCard is the grammar `ListRow` (@starci/grammar 0.9.1), never an
+      An interactive row in a list SurfaceCard is the grammar `ListRow` (@starci/grammar 0.9.1), never an
       app-owned `<li>` and never a second `<ul>` nested in the card (the card already renders the list,
       so a nested list loses the row inset and the separator - a defect that leaves rows flush against
       the card edge). Its slots, in reading order: `leading`

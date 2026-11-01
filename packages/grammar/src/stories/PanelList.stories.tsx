@@ -20,8 +20,10 @@ export const SectionedPanel: Story = {
         <G.SurfaceCard ariaLabel="Conversations">
             <G.Heading level={2}>Conversations</G.Heading>
             <G.SearchField label="Find a conversation" />
-            <G.Tabs label="Conversation views" selectedKey="all" items={[{ id: "all", label: "All" }, { id: "unread", label: "Unread" }]} />
-            <G.ListBox label="Conversations" descriptionLines={1} sections={sections} selectionMode="single" defaultSelectedIds={["team"]} />
+            <G.Tabs label="Conversation views" panelId="conversation-views-panel" selectedKey="all" items={[{ id: "all", label: "All" }, { id: "unread", label: "Unread" }]} />
+            <div role="tabpanel" id="conversation-views-panel" aria-label="Conversation views">
+                <G.ListBox label="Conversations" descriptionLines={1} sections={sections} selectionMode="single" defaultSelectedIds={["team"]} />
+            </div>
         </G.SurfaceCard>
     ),
 }

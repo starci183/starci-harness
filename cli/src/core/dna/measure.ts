@@ -232,10 +232,15 @@ export const installProbe = (judgePart: Judge): void => {
     }
     const NAME_FROM_CONTENT: ReadonlySet<string> = new Set(["button", "link", "heading", "tab", "option", "menuitem", "menuitemradio", "menuitemcheckbox", "radio", "checkbox", "switch", "row", "cell", "columnheader", "gridcell", "tooltip", "treeitem", "listitem"])
     const textOf = (element: Element): string => element.textContent.replace(/\s+/g, " ").trim()
+    // A node an aria-labelledby points at contributes its own aria-label before its text (accname 2B), so a labelled icon button names a menu it opens.
+    const referencedTextOf = (element: Element): string => {
+        const label = element.getAttribute("aria-label")?.trim()
+        return label !== undefined && label !== "" ? label : textOf(element)
+    }
     const nameOf = (element: Element): string => {
         const labelledby = element.getAttribute("aria-labelledby")
         if (labelledby !== null) {
-            const joined = labelledby.split(/\s+/).map((id) => doc.getElementById(id)).filter((item): item is HTMLElement => item !== null).map(textOf).join(" ").trim()
+            const joined = labelledby.split(/\s+/).map((id) => doc.getElementById(id)).filter((item): item is HTMLElement => item !== null).map(referencedTextOf).join(" ").trim()
             if (joined !== "") return joined
         }
         const label = element.getAttribute("aria-label")?.trim()
@@ -329,13 +334,20 @@ export const installProbe = (judgePart: Judge): void => {
     }
 
     // ---- metrics ----
+    // A size is the box the layout gives, not the box a press or an entrance transform paints: the element's own scale is divided out.
+    const ownScale = (element: Element): { readonly x: number; readonly y: number } => {
+        const transform = style(element).transform
+        if (transform === "none" || transform === "") return { x: 1, y: 1 }
+        const matrix = new DOMMatrix(transform)
+        return { x: Math.hypot(matrix.a, matrix.b) || 1, y: Math.hypot(matrix.c, matrix.d) || 1 }
+    }
     const readMetric = (element: Element, metric: string, pseudo: string | null): DnaScalar | DnaScalar[] => {
         const rect = element.getBoundingClientRect()
         switch (metric) {
             case "width":
-                return round(rect.width)
+                return round(rect.width / ownScale(element).x)
             case "height":
-                return round(rect.height)
+                return round(rect.height / ownScale(element).y)
             case "top":
                 return round(rect.top)
             case "bottom":
@@ -426,9 +438,10 @@ export const installProbe = (judgePart: Judge): void => {
     const DOCUMENT = "document "
     const scopeOfSelector = (selector: string, from: Element | null): { readonly host: ParentNode; readonly selector: string; readonly document: boolean } =>
         selector.startsWith(DOCUMENT) ? { host: doc, selector: selector.slice(DOCUMENT.length), document: true } : { host: from ?? doc, selector, document: false }
+    // An element belongs to the grammar root it stands in; a scope inside that root (a Tabs, a PageHeader) selects what stands in the same root, not only from the root itself.
     const queryAll = (selector: string, from: Element | null): Element[] => {
         const where = scopeOfSelector(selector, from)
-        return list(where.host.querySelectorAll(where.selector)).filter((element) => !inReference(element) && (where.document || from === null || element.closest(rootSelector()) === from))
+        return list(where.host.querySelectorAll(where.selector)).filter((element) => !inReference(element) && (where.document || from === null || element.closest(rootSelector()) === from.closest(rootSelector())))
     }
     const queryMeasured = (selector: string, from: Element | null): Element[] => queryAll(selector, from).filter(visible)
 
