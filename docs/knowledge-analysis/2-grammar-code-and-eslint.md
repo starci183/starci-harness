@@ -19,7 +19,7 @@ Read-only analysis; nothing in the legacy tree was changed.
 | `src/common/state.ts` | 0.7 KB | `PRESENTATION_STATES` (neutral, informative, affirmative, cautionary, negative, pending, unavailable) | data |
 | `src/common/conformance.ts` + `rule-catalog.generated.ts` | 1.8 + 5.5 KB | `COMMON_UI_RULE_IDS` (178 ids, 33 families) generated FROM `contexts/ui/**` + `contexts/grammars/starci`; `defineGrammarRuleConformance` makes each family account for every id (inherited or family evidence) | generated data, tracked |
 | `src/common/*.css` | ~255 KB | Common anatomy, geometry, soft/solid status pairs (`styles.css:93-95`), 40px control floor | data (CSS) |
-| `src/core/**` (≈110 components in primitive/composite/branch/composition) | ~600 KB | The actual Common renderer implementations over HeroUI; stamp `data-contract="GAP-2 PADDING-4 …"` with contexts/ui rule ids | code |
+| `src/core/**` (≈110 components in leaf/branch/composite/frame) | ~600 KB | The actual Common renderer implementations over HeroUI; stamp `data-contract="GAP-2 PADDING-4 …"` with contexts/ui rule ids | code |
 | `src/core/dna.ts` | 13.6 KB | `STARCI_CORE_DNA` (arrangement, intent map, colour light/dark, geometry, rhythm, elevation, motion), `STARCI_CORE_SPACING_SCALE`, token names/defaults, band tokens | data |
 | `src/core/buttonIntent.tsx` | 3.1 KB | intent x placement -> HeroUI variant resolver; picks a family DNA by string | code |
 | `src/offset-pop/{dna,conformance,index}.ts*` + 4 CSS | ~114 KB | Offset Pop DNA (+`offset`, `palette`, a WCAG table in the doc comment), family evidence per rule id | data + evidence prose in code |

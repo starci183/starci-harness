@@ -1,7 +1,7 @@
 "use client"
 
-import { Avatar, type AvatarShape } from "../../primitive/Avatar/index.js"
-import { PlainPressable } from "../../primitive/PlainPressable/index.js"
+import { Avatar, type AvatarShape } from "../../leaf/Avatar/index.js"
+import { PlainPressable } from "../../leaf/PlainPressable/index.js"
 
 export type IdentityLockupProps = {
     /** The workspace or brand name: the first line, and the mark's initials when there is no image. */

@@ -4,7 +4,7 @@ import { expect, waitFor } from "storybook/test"
 import * as G from "../common/index.js"
 import { BellGlyph, Matrix, SearchGlyph, SettingsGlyph, StarGlyph, State, familyScope, noop } from "./fixtures.js"
 
-const meta: Meta = { title: "Primitives/Control heights" }
+const meta: Meta = { title: "Leaves/Control heights" }
 export default meta
 type Story = StoryObj
 

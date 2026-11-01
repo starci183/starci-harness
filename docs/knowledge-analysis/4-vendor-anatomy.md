@@ -98,7 +98,7 @@ outline = border, no fill; ghost = nothing until hover; danger / danger-soft = t
 (scale 0.97; 0.98 sm, 0.96 lg — bigger buttons move less), focus-visible, disabled, pending (`status-*` utilities).
 Size scale: sm h-9→md:h-8, md h-10→md:h-9, lg h-11→md:h-10, i.e. **the vendor steps every size down 4 px on desktop**
 (touch first); icon-only is the same square; svg size-5 (size-4 at sm). Radius rounded-3xl (pill at any height).
-**SC**: Grammar `Button` (`core/primitive/Button/index.tsx:13,89`) adds size `control` = vendor md, adds `width: content|fill`
+**SC**: Grammar `Button` (`core/leaf/Button/index.tsx:13,89`) adds size `control` = vendor md, adds `width: content|fill`
 (fill releases height and wraps the label), `isSkeleton` distinct from action `isPending`, and splits destination (`href` → HeroUI
 `Link` with `buttonVariants`) from command (HeroUI `Button`) at the type level. Apps declare `intent`, not `variant`
 (`buttonIntent.tsx`, `docs/button-intent-props.generated.md`); the mapping is DNA data: commit → primary (decision/chrome) or
@@ -144,7 +144,7 @@ no shadow (a field **inside a surface**, where a white field would vanish) (`inp
 every field family (InputGroup, Select trigger, NumberField/SearchField/DateField/TimeField groups); InputOTP slot h-10.
 **SC**: all single-line fields drawn at 2.5 rem / 40 px ("ONE SINGLE-LINE FIELD ANATOMY (0.9.8)",
 `common/components-forms.css:195–219`), pinned as `InputGroup.Input:block-size` and `Select.Trigger:block-size`
-(`wrappers.yaml:27,60`); variant resolved by nesting (`useFieldVariant`, `core/primitive/Input/index.tsx:119`).
+(`wrappers.yaml:27,60`); variant resolved by nesting (`useFieldVariant`, `core/branch/Input/index.tsx:119`).
 
 **Select / ComboBox** (`select.yaml`, `combo-box.yaml`). Select: Trigger, Value, Indicator, ClearButton, Popover (required
 Trigger+Popover), embeds ListBox/ListBoxItem/Label/Description; variants primary/secondary as fields. The option list is
@@ -181,7 +181,7 @@ Cell, Footer, LoadMore …), required Content, Column, Row, Cell, ColumnResizer;
 **Alert / Toast** (`alert.yaml`). Alert: Indicator, Content, Title, Description; **only `status`** (default, accent, success,
 warning, danger); one paint for all statuses: `bg-surface shadow-surface px-4 py-3 gap-4`, tone only on the indicator glyph and
 title (`*-soft-foreground`). There is no toast reference: HeroUI's Toast is not wrapped. **SC**: Grammar `Toast`
-(`core/branch/Toast/index.tsx`) is its own queue (timeouts, WCAG 2.2.1 persistence, pause on hover/focus) rendering HeroUI
+(`core/composite/Toast/index.tsx`) is its own queue (timeouts, WCAG 2.2.1 persistence, pause on hover/focus) rendering HeroUI
 `Alert` + `Spinner`; ruling ACCENT (2026-09-27) accepts the Alert "as the HeroUI Alert renders it" (`ui/composition/accent.yaml:138`).
 
 **Small members** used by the above: Spinner sm/md/lg/xl = 16/24/32/40; CloseButton h-6 (24); Kbd h-6; Checkbox control

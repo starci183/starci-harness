@@ -11,7 +11,7 @@ import {
     fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
-} from "../../primitive/Field/index.js"
+} from "../../leaf/Field/index.js"
 import type { ChoiceOption, ChoiceOrientation } from "../CheckboxGroup/index.js"
 
 export type RadioGroupProps = FieldControlProps & {

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 
 /** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
 export type ChatBubbleSide = "incoming" | "outgoing"

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { assertPresentationState, type PresentationState } from "../../../common/state.js"
 import { navigationClassName } from "../../navigationClassNames.js"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 
 export type TimelineItem = {
     readonly id: string

@@ -3,7 +3,7 @@
 import { createContext, useContext, type ReactNode } from "react"
 import { STARCI_CORE_DNA } from "./dna.js"
 import { OFFSET_POP_DNA } from "../offset-pop/dna.js"
-import type { ButtonVariant } from "./primitive/Button/index.js"
+import type { ButtonVariant } from "./leaf/Button/index.js"
 
 export type ButtonIntent = "commit" | "alternative" | "dismiss" | "neutral" | "destructive"
 export type DestructiveStep = "entry" | "confirm"

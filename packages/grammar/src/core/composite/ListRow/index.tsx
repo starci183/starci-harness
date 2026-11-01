@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { staticRowClassName } from "../../classNames.js"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { treatmentFor, type PresentationState } from "../../state.js"
 import type { RowVerdict } from "../StaticStateRow/index.js"
 

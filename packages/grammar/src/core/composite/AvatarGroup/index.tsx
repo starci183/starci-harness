@@ -2,7 +2,7 @@
 
 import { Avatar as HeroAvatar, AvatarGroup as HeroAvatarGroup } from "@heroui/react"
 import type { ReactNode } from "react"
-import { Avatar, AvatarAgentBadge, AvatarInitialsImage, avatarA11yProps, avatarParts, vendorAvatarSize, type AvatarKind, type AvatarSize } from "../../primitive/Avatar/index.js"
+import { Avatar, AvatarAgentBadge, AvatarInitialsImage, avatarA11yProps, avatarParts, vendorAvatarSize, type AvatarKind, type AvatarSize } from "../../leaf/Avatar/index.js"
 import { navigationClassName } from "../../navigationClassNames.js"
 
 export type AvatarGroupItem = {

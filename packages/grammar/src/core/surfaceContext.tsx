@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, type ReactNode } from "react"
-import type { FieldVariant } from "./primitive/Field/index.js"
+import type { FieldVariant } from "./leaf/Field/index.js"
 
 const SurfaceNestingContext = createContext(false)
 

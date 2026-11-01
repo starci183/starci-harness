@@ -96,7 +96,7 @@ export const noPlaceholderProp = defineRule({
         if (typeof source !== "string" || !/^\.\.?\//.test(source)) return
         for (const specifier of node.specifiers || []) {
           const local = specifier.local && specifier.local.name
-          // A bare `Skeleton` is the primitive a component rests WITH, not a twin of one.
+          // A bare `Skeleton` is the leaf a component rests WITH, not a twin of one.
           if (!local || local === "Skeleton" || !TWIN_NAME.test(local)) continue
           context.report({ node: specifier, messageId: "import", data: { name: local } })
         }

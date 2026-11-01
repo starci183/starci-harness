@@ -3,7 +3,7 @@
 import { Breadcrumbs as HeroBreadcrumbs } from "@heroui/react"
 import type { ReactNode } from "react"
 import { navigationClassName } from "../../navigationClassNames.js"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 
 export type BreadcrumbItem = {
     readonly id: string

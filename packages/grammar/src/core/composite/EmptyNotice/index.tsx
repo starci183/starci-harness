@@ -1,9 +1,9 @@
 import type { ReactNode } from "react"
-import { Button, type ButtonVariant } from "../../primitive/Button/index.js"
-import { IconTile } from "../../primitive/IconTile/index.js"
-import type { IconSource } from "../../primitive/Icon/index.js"
-import { Mascot, type MascotProps } from "../../primitive/Mascot/index.js"
-import { Text } from "../../primitive/Text/index.js"
+import { Button, type ButtonVariant } from "../../leaf/Button/index.js"
+import { IconTile } from "../../leaf/IconTile/index.js"
+import type { IconSource } from "../../leaf/Icon/index.js"
+import { Mascot, type MascotProps } from "../../leaf/Mascot/index.js"
+import { Text } from "../../leaf/Text/index.js"
 
 /**
  * The art of a first-run notice: generated character art drawn through `Mascot` at the `md` step (the support row of

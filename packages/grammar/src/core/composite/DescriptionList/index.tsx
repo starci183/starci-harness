@@ -1,8 +1,8 @@
 import type { ReactNode } from "react"
 import { navigationClassName } from "../../navigationClassNames.js"
-import type { IconSource } from "../../primitive/Icon/index.js"
-import { SkeletonPlaceholder } from "../../primitive/Skeleton/index.js"
-import { IconTile } from "../../primitive/IconTile/index.js"
+import type { IconSource } from "../../leaf/Icon/index.js"
+import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import { IconTile } from "../../leaf/IconTile/index.js"
 
 export type DescriptionListItem = {
     readonly id: string

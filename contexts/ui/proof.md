@@ -56,7 +56,7 @@ records the mismatch and its route and never redesigns the asset.
 
 ### AUDIT-2 System sources outrank direction pixels
 The accepted direction owns composition, hierarchy, section order, content, state and intent. It does not own what
-a system source defines: grammar anatomy (shape, corner, fill, border of a primitive), brand tokens, the shared
+a system source defines: grammar anatomy (shape, corner, fill, border of a leaf), brand tokens, the shared
 registries (module and app icons) and the wording declared by the ui record or the message catalogue. Where the
 capture follows the system source and the drawing differs, the difference is a resolved note, not a finding, and
 no deviation case is opened. A capture that departs from the system source is a hard finding however it looks.

@@ -21,7 +21,7 @@ import {
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
-} from "../../primitive/Field/index.js"
+} from "../../leaf/Field/index.js"
 
 /** One choice in a list-backed control. `label` is plain text because it is also the typeahead value. */
 export type ListOption = {

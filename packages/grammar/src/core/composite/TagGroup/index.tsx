@@ -2,7 +2,7 @@
 
 import { Tag as HeroTag, TagGroup as HeroTagGroup } from "@heroui/react"
 import { useEffect, useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
-import { FieldSkeletonScope } from "../../primitive/Field/index.js"
+import { FieldSkeletonScope } from "../../leaf/Field/index.js"
 import { navigationClassName } from "../../navigationClassNames.js"
 
 export type TagGroupItem = {

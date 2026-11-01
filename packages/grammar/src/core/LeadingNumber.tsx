@@ -15,7 +15,7 @@ export const LeadingNumber = (props: LeadingNumberProps) => (
     <span
         className={leadingNumberClassName}
         data-component="LeadingNumber"
-        data-tier="atom"
+        data-tier="leaf"
         data-contract="FONT-2 TONE-2"
     >
         {props.position}.

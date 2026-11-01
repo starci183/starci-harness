@@ -22,7 +22,7 @@ export const StateMark = (props: StateMarkProps) => {
             data-contract="STATE-1 A11Y-2"
             data-grammar-state-mark="check"
             data-component="StateMark"
-            data-tier="atom"
+            data-tier="leaf"
             focusable="false"
             viewBox="0 0 20 20"
         >

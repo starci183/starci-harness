@@ -16,8 +16,8 @@ import {
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
-} from "../../primitive/Field/index.js"
-import { DateSegments, type DateGranularity } from "../../primitive/DateField/index.js"
+} from "../../leaf/Field/index.js"
+import { DateSegments, type DateGranularity } from "../../leaf/DateField/index.js"
 
 export type DatePickerProps = FieldControlProps & {
     readonly value?: DateValue | null

@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 import * as G from "../common/index.js"
 import { BellGlyph, Matrix, State, TrashGlyph, familyScope, noop } from "./fixtures.js"
 
-const meta: Meta = { title: "Primitives/Button intent" }
+const meta: Meta = { title: "Leaves/Button intent" }
 export default meta
 type Story = StoryObj
 

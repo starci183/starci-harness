@@ -2,7 +2,7 @@
 
 import { Checkbox as HeroCheckbox, Table as HeroTable, type Selection, type SortDescriptor } from "@heroui/react"
 import { useEffect, useRef, useState, type CSSProperties, type DragEventHandler, type KeyboardEvent, type MouseEvent, type ReactNode } from "react"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { navigationClassName } from "../../navigationClassNames.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 
@@ -86,7 +86,7 @@ export type DataTableProps<Row extends DataTableRow> = {
     readonly className?: string
 }
 
-/** The row primitive filters aria-hidden out of its props, so the skeleton rows take it by ref (knowledge STATE-8). */
+/** The vendor row part filters aria-hidden out of its props, so the skeleton rows take it by ref (knowledge STATE-8). */
 const hideFromAssistiveTechnology = (node: HTMLElement | null) => node?.setAttribute("aria-hidden", "true")
 
 const SELECTION_COLUMN = "starci-data-table-selection"

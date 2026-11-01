@@ -92,4 +92,4 @@ const UpdatedAt = () => <RelativeTime dateTime={instant} locale={locale} mode="r
 
 **Finding code:** `FE_SIZE_AND_STATE_BUDGET`
 
-**Fix:** Render the Grammar primitive and pass the instant; its single shared ticker owns updates and its deterministic fallback owns the server render.
+**Fix:** Render the Grammar RelativeTime leaf and pass the instant; its single shared ticker owns updates and its deterministic fallback owns the server render.

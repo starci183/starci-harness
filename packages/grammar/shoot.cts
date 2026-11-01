@@ -1,5 +1,5 @@
 const { chromium } = require('playwright') as typeof import('playwright');
-const stories = ['sign-in-screen','tasks-screen','primitives','empty-state'];
+const stories = ['sign-in-screen','tasks-screen','leaves','empty-state'];
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });

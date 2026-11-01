@@ -22,7 +22,7 @@ const shots = [
   ['grammar-core-anatomy--tasks-screen', 'tasks-screen.png'],
   ['grammar-core-anatomy--sign-in-screen', 'sign-in-screen.png'],
   ['grammar-core-anatomy--empty-state', 'empty-state.png'],
-  ['grammar-core-anatomy--primitives', 'primitives.png'],
+  ['grammar-core-anatomy--leaves', 'leaves.png'],
 ]
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })

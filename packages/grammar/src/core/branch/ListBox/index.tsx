@@ -3,7 +3,7 @@
 import { Description as HeroDescription, Header as HeroHeader, Label as HeroLabel, ListBox as HeroListBox, Separator as HeroSeparator, type Selection } from "@heroui/react"
 import type { ComponentPropsWithRef, ReactNode } from "react"
 import { navigationClassName } from "../../navigationClassNames.js"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { usePaneContext } from "../../paneContext.js"
 import { useSurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"

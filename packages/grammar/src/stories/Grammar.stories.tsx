@@ -175,9 +175,9 @@ export const TasksScreen: Story = {
   ),
 };
 
-/** Primitive inventory — the palette/type/action atoms every direction region maps to. */
-export const Primitives: Story = {
-  name: 'Primitives (button, input, text, action)',
+/** Leaf inventory: the palette, type and action leaves every direction region maps to. */
+export const Leaves: Story = {
+  name: 'Leaves (button, input, text, action)',
   render: () => (
     <PageContainer>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 560 }}>
@@ -199,7 +199,7 @@ export const Primitives: Story = {
           <Text>Default body text.</Text>
           <Text tone="muted">Muted supporting text.</Text>
           <Text><TextAction href="#">TextAction link</TextAction> beside copy.</Text>
-          <Label>Label primitive</Label>
+          <Label>Label leaf</Label>
           <Badge>Badge</Badge>
         </div>
       </div>

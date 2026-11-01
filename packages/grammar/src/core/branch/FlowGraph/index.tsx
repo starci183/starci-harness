@@ -20,7 +20,7 @@ import {
 } from "@xyflow/react"
 import { Link as RouterLink } from "react-aria-components"
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent } from "react"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { COMMON_SPACING_PX } from "../../../common/spacing.js"
 import {
     FLOW_GRAPH_NODE_MAX_WIDTH,

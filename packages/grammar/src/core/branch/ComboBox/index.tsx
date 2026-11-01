@@ -19,7 +19,7 @@ import {
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
-} from "../../primitive/Field/index.js"
+} from "../../leaf/Field/index.js"
 import { ListOptions, type ListOption } from "../Select/index.js"
 
 export type ComboBoxProps = FieldControlProps & {

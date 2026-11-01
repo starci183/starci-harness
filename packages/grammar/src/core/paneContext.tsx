@@ -12,7 +12,7 @@ export type PaneContextValue = {
     readonly register: () => () => void
 }
 
-/** Internal to the composition tier: not exported from the public entries. */
+/** Internal to the frame tier: not exported from the public entries. */
 export const PaneContext = createContext<PaneContextValue | undefined>(undefined)
 
 export const usePaneContext = (): PaneContextValue | undefined => useContext(PaneContext)

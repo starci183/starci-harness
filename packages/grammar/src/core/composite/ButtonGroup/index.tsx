@@ -2,8 +2,8 @@
 
 import { ButtonGroup as HeroButtonGroup } from "@heroui/react"
 import { Children, cloneElement, isValidElement, type ReactNode } from "react"
-import { Button } from "../../primitive/Button/index.js"
-import { IconButton } from "../../primitive/IconButton/index.js"
+import { Button } from "../../leaf/Button/index.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
 
 export type ButtonGroupProps = {
     /** Names the group (`role="group"`) for assistive technology. */

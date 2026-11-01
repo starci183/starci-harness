@@ -2,8 +2,8 @@ import { Description as HeroDescription, Dropdown as HeroDropdown, Header as Her
 import type { ReactNode } from "react"
 import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
 import { overlayOpenProps, useOverlayContainer, type OverlayOpenState } from "../../overlayScope.js"
-import { Icon, type IconSource } from "../../primitive/Icon/index.js"
-import { kbdChordContent } from "../../primitive/Kbd/index.js"
+import { Icon, type IconSource } from "../../leaf/Icon/index.js"
+import { kbdChordContent } from "../../leaf/Kbd/index.js"
 
 export type DropdownMenuItemTone = "neutral" | "danger"
 

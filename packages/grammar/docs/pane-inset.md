@@ -266,8 +266,8 @@ designed in packages/grammar/docs/pane-inset.md on branch pkg/claude-pane-inset.
 sections 2, 3 and "Grammar (runtime)" of section 5 are your spec. Then read D:/.claude/AGENTS.md,
 contexts/README.md (row "change a canon package"), contexts/harness/rules.md, contexts/authority/branch.md and
 packages.md ("Grammar edits are content only"), packages/README.md, packages/grammar/README.md, CONTRIBUTING.md, and the
-current source of src/core/composition/PaneGrid (index.tsx, layout.ts), src/core/composition/Page,
-src/core/composite/FillViewport, src/core/composite/VerticalScrollRegion, src/core/composite/HorizontalScrollRegion,
+current source of src/core/frame/PaneGrid (index.tsx, layout.ts), src/core/frame/Page,
+src/core/frame/FillViewport, src/core/frame/VerticalScrollRegion, src/core/frame/HorizontalScrollRegion,
 src/core/branch/ListBox, src/core/branch/Tabs, src/core/surfaceContext.tsx, src/common/styles.css (PaneGrid, Page and
 fill-viewport blocks) and src/common/components-list-panel.css.
 
@@ -287,7 +287,7 @@ Do:
    left after Children.toArray that is not a Pane element (null, false and arrays of Panes stay legal); production keeps
    filtering. A content-inset Pane logs console.error("PANE_WITHOUT_SECTION: <area>") in development when no
    PaneSection or PaneGrid registered after mount.
-2. New src/core/composition/PaneSection/index.tsx with exactly the props of section 3 (grow, scroll {label, role,
+2. New src/core/frame/PaneSection/index.tsx with exactly the props of section 3 (grow, scroll {label, role,
    tone, scrollRef}, align, bleed "inline", gap, as; no className, no style). It throws PANE_SECTION_OUTSIDE_PANE
    outside a Pane. The scroll variant is a full-bleed VerticalScrollRegion (isScrollable, aria-label, role, tone, ref)
    with the inset on an inner content element. Export PaneSection and PaneSectionProps from the core, common and

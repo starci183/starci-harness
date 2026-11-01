@@ -5,7 +5,7 @@ import { InputGroup as HeroInputGroup, Label as HeroLabel, Tooltip as HeroToolti
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
-import { FieldSkeletonScope, StaticFieldError, fieldStateAttributes, fieldVariantAttributes, type FieldVariant } from "../../primitive/Field/index.js"
+import { FieldSkeletonScope, StaticFieldError, fieldStateAttributes, fieldVariantAttributes, type FieldVariant } from "../../leaf/Field/index.js"
 import { tooltipContentClassName } from "../Tooltip/classNames.js"
 
 type CopyFieldBase = {

@@ -16,7 +16,7 @@ import { BellGlyph, SearchGlyph, SettingsGlyph, StarGlyph, UserGlyph, noop } fro
  *   component pair id.
  */
 
-const meta: Meta = { title: "Primitives/Skeleton parity" }
+const meta: Meta = { title: "Leaves/Skeleton parity" }
 export default meta
 type Story = StoryObj
 

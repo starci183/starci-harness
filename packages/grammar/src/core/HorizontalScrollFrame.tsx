@@ -2,8 +2,8 @@
 
 import { ScrollShadow, cn } from "@heroui/react"
 import { forwardRef, useCallback, useRef, type ComponentProps } from "react"
-import { IconButton } from "./primitive/IconButton/index.js"
-import type { IconSourceProps } from "./primitive/Icon/index.js"
+import { IconButton } from "./leaf/IconButton/index.js"
+import type { IconSourceProps } from "./leaf/Icon/index.js"
 
 /** HeroUI's horizontal chevron geometry, shared by both directional controls. */
 const ScrollChevron = (props: IconSourceProps) => <svg {...props} viewBox="0 0 16 16" fill="none">

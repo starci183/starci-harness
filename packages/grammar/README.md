@@ -46,7 +46,7 @@ are ghost there, while navbar icon actions stay tertiary. The default decision p
 neutral command outline. Dialogs and drawers restore decision placement inside their surfaces.
 
 Use a `Button` for final destructive confirmation. `AlertDialog` renders dismiss first, focuses it
-on entry, then renders its destructive confirm last. The `Primitives/Button intent` stories show
+on entry, then renders its destructive confirm last. The `Leaves/Button intent` stories show
 the complete placement mapping in light and dark, including destination, pending and skeleton states.
 
 ### App shell
@@ -216,7 +216,7 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Primitives (29).** Avatar, Badge, Button, CloseButton, ConnectionStatus, Divider, GrammarRoot, Heading, Icon,
+**Leaves (29).** Avatar, Badge, Button, CloseButton, ConnectionStatus, Divider, GrammarRoot, Heading, Icon,
 IconButton, IconTile, Image, IncludedMark, Kbd, Label, LeadingNumber, Link, Mascot, Meter, PlainPressable,
 Progress, ProgressCircle, RankArtwork, RelativeTime, Skeleton, Spinner, StateMark, Text, TextAction.
 
@@ -291,7 +291,7 @@ it and the last unsubscribe stops it; leaves own no clock or refresh interval. S
 `fallback` copy when an ISO instant is unsuitable. Invalid timestamps render the fallback and warn
 in development. Time changes are not a live announcement, so a
 page of timestamps does not repeatedly interrupt assistive technology. Grammar owns native
-`Intl.RelativeTimeFormat` for this primitive; other application date display follows FE-DATE.
+`Intl.RelativeTimeFormat` for this element; other application date display follows FE-DATE.
 
 **DropdownMenu entries.** `entries` is a list of items and sections; the app writes data and no markup, no separator, no
 className and no size. An item takes `id`, `label`, `description`, `descriptionLines`, `shortcut`, `href`, `isDisabled`, `submenu` and:
@@ -451,7 +451,7 @@ Every side takes the container inset `--grammar-inset` (0.75rem) at every breakp
 bottom edge) and `--grammar-pane-inset-block-end-divider` (a divider below).
 A `collapse="drawer"` pane renders its children in the drawer under the same inset.
 
-`PaneSection` is the one band primitive of a pane: every child of a Pane is a `PaneSection` or one nested `PaneGrid`.
+`PaneSection` is the one band of a pane: every child of a Pane is a `PaneSection` or one nested `PaneGrid`.
 It pads inline by the pane inset; the sections of a pane stack with the row gap between them, the first takes the
 block-start inset and the last the block-end inset. Props: `grow` (takes the remaining height), `scroll`
 (`{ label, role?: "log" | "region", tone?: "surface" | "background", scrollRef? }`: its own full-bleed scroll owner

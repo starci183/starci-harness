@@ -12,8 +12,8 @@ import {
     fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
-} from "../../primitive/Field/index.js"
-import { CheckboxItem } from "../../primitive/Checkbox/index.js"
+} from "../../leaf/Field/index.js"
+import { CheckboxItem } from "../../leaf/Checkbox/index.js"
 
 /** One option in a choice group. */
 export type ChoiceOption = {

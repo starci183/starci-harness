@@ -298,7 +298,7 @@ rulings:
     status: live
     words: "Thêm treatment `soft`"
     ruling: "SurfaceCard has a `soft` treatment: the brand's light tint as ground (the family's accentSoft) with the default dark text, keeping the artwork slot; its tokens come from the brand layer, never app paint. Every SurfaceCard treatment rebinds the whole surface pair on its ground, so a child's text (a Stepper's step number included) contrasts with what it stands on."
-    owner: "@starci/grammar src/core/branch/SurfaceCard, src/common/styles.css; contexts/grammars/contract.yaml roles.card; contexts/ui/components/card.md card.choose.treatment"
+    owner: "@starci/grammar src/core/frame/SurfaceCard, src/common/styles.css; contexts/grammars/contract.yaml roles.card; contexts/ui/components/card.md card.choose.treatment"
   - id: empty-notice-artwork
     date: '2026-10-30'
     status: live
@@ -310,13 +310,13 @@ rulings:
     status: live
     words: "Thêm vào grammar"
     ruling: "A one-corner rounding is a grammar prop, never app paint: SurfaceCard and MediaFrame take `accentCorner` (start-start, start-end, end-start or end-end), which draws that one logical corner at the Common accent radius `--grammar-accent-corner` while the other corners keep the family's surface radius. An app's `rounded-br` and its kin give way to it."
-    owner: "@starci/grammar src/core/branch/SurfaceCard, src/core/primitive/MediaFrame, src/common/styles.css; contexts/grammars/contract.md Corners are roles; contexts/grammars/contract.yaml DNA-COMMON-ACCENT-CORNER"
+    owner: "@starci/grammar src/core/frame/SurfaceCard, src/core/leaf/MediaFrame, src/common/styles.css; contexts/grammars/contract.md Corners are roles; contexts/grammars/contract.yaml DNA-COMMON-ACCENT-CORNER"
   - id: backdrop
     date: '2026-10-30'
     status: live
     words: "à đổi thành component background đi chứ nó cũng không phải là surfacecard, chốt vậy đi; Backdrop + giữ accentCorner"
     ruling: "The brand half of a split screen (a sign-in) is a Backdrop, not a SurfaceCard: the brand's light tint full-bleed in its host, no card anatomy, the brand copy over it and a hero Mascot as its artwork, with one corner through `accentCorner`. SurfaceCard and MediaFrame keep `accentCorner` too."
-    owner: "@starci/grammar src/core/composite/Backdrop, src/common/styles.css; contexts/grammars/contract.md Backdrop; contexts/ui/components/backdrop.md"
+    owner: "@starci/grammar src/core/frame/Backdrop, src/common/styles.css; contexts/grammars/contract.md Backdrop; contexts/ui/components/backdrop.md"
   - id: workspace-shell-fills-viewport
     date: '2026-10-30'
     status: live
@@ -328,7 +328,7 @@ rulings:
     status: live
     words: "tên gì chung chung tính chất grammar là cấp ui ux chung chung k bias tính năng hiểu k, ghi vào knowlege đi"
     ruling: "The grammar is a generic UI/UX layer: a component, prop or token name says what it does as a layout or UI role (PaneGrid, SurfaceCard, Rail), never a product feature (chat, customer, order, invoice), so any product can reach for it. The multi-pane frame is PaneGrid; the old chat-named and PaneLayout spellings are removed, not aliased (removedVocabulary)."
-    owner: "@starci/grammar src/core/composition/PaneGrid; contexts/grammars/contract.md What a grammar provides; contexts/ui/components/page-header.md Owner split"
+    owner: "@starci/grammar src/core/frame/PaneGrid; contexts/grammars/contract.md What a grammar provides; contexts/ui/components/page-header.md Owner split"
   - id: quote-block
     date: '2026-11-01'
     status: live
@@ -339,25 +339,25 @@ rulings:
     status: live
     words: "phải xây kiểu grid hiểu không, kiểu bỏ A BC ngang hàng D ở dưới... và cách nhau bởi divider; chuẩn build grid và ghép các element nghiệp vụ của chat, mỗi grid có option surface hoặc k"
     ruling: "The multi-pane frame is one generic PaneGrid, not a layout with fixed chat-shaped slots: named areas (A B C side by side, D below) laid out flush with a divider between neighbours, columns and rows by track role, the arrangement chosen per breakpoint, and each Pane either a borderless surface or a plain div. The grid divides the space and each Pane owns the content inset of what is placed in it (ruling pane-inset); what the cell shows is the app's. PaneLayout is removed, not aliased (removedVocabulary). A short inset separator inside a pane's content is the app's own element, not a grammar option."
-    owner: "@starci/grammar src/core/composition/PaneGrid, src/core/composition/PaneSection, src/common/styles.css; contexts/grammars/contract.md PaneGrid; contexts/ui/components/pane-grid.md"
+    owner: "@starci/grammar src/core/frame/PaneGrid, src/core/frame/PaneSection, src/common/styles.css; contexts/grammars/contract.md PaneGrid; contexts/ui/components/pane-grid.md"
   - id: pane-inset
     date: '2026-10-31'
     status: live
     words: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
     ruling: "A Pane owns its content inset and every band in it is a PaneSection whose boxes align to that edge: one padding system for everything placed in a PaneGrid, chosen by the Grammar per side by contact, never by the app. A box (a search field, the first tab, a list row and its selected fill, a chip) starts at the pane content edge and the text inside a box keeps the vendor's own padding; a pane and a section take no class, and no padding or margin utility sits on what a section renders."
-    owner: "@starci/grammar src/core/composition/PaneGrid, src/core/composition/PaneSection, src/common/styles.css; lint starci-grammar/pane-grid-children, pane-children, no-pane-section-padding, pane-grid-page and starci-fe/no-hand-built-panes (R345-R349)"
+    owner: "@starci/grammar src/core/frame/PaneGrid, src/core/frame/PaneSection, src/common/styles.css; lint starci-grammar/pane-grid-children, pane-children, no-pane-section-padding, pane-grid-page and starci-fe/no-hand-built-panes (R345-R349)"
   - id: page-panes-frame
     date: '2026-10-31'
     status: live
     words: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
     ruling: "A tabbed app page's PaneGrid attaches flush under the tab line, full width and to the bottom of the viewport, with no card, radius or gap between the tabs and the grid: Page chrome=\"panes\" is that frame, and a card, a joined surface or a FillViewport around panes is not."
-    owner: "@starci/grammar src/core/composition/Page; lint starci-grammar/pane-grid-page and starci-fe/no-hand-built-panes (R348, R349); contexts/ui/components/page-header.md"
+    owner: "@starci/grammar src/core/frame/Page; lint starci-grammar/pane-grid-page and starci-fe/no-hand-built-panes (R348, R349); contexts/ui/components/page-header.md"
   - id: spacing-roles
     date: '2026-10-31'
     status: live
     words: "ý là tùy mà p-3, tùy cái mà px khác py khác, thầy muốn trò suy nghĩ thấu đáo hiểu k / tương tự với gap, m,... thầy muốn deep thinking / rồi làm r / hay full 3 bỏ 4 đi!!! thầy nghĩ nên v"
     ruling: "Spacing is one scale, 0 4 8 12 24 32, with no 16, and every value on it is the Grammar's: an app names the relation between the blocks it places through role props (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page chrome) and writes no spacing utility. Gaps are roles, strictly ordered: identity 4, inline 8, row 12, section 24, region 32. Insets are levels, each side taking its value from what it touches: every container (a card dense or holding a form, a pane on every side, a dialog or drawer, a band) holds its content 12 in, a box inside a card 8, a low-density region (an empty state, a drop target) 24, the page gutter 12 on a phone, 24 from the medium breakpoint and 32 from wide, stepped and never fluid, except on a page of panes (Page chrome=\"panes\"), whose header takes 12 at every width so the title, the first tab and the pane content share one edge and the gutter column starts at the pane content edge; controls take inline sm 8, md 12, lg 24, one step less on a glyph side, and their block padding comes from their height. A closed box has equal block sides and never two steps between its sides; extra separation belongs to the parent's gap. The page title, the tab labels and the section headings share one text edge with the card or pane box below: tabs are the underline bar with the first label on that edge, pills are only for filters and chips, and the card's inner 12 is the one intentional step. The lint ships at warn for one cohort with a per-rule count while the spacing-roles codemod moves apps onto the role props, then moves to error."
-    owner: "@starci/grammar src/common/spacing.ts, src/common/styles.css (root tokens), src/common/components-spacing.css, src/core/composition/Stack, Cluster, Grid, Page (chrome panes); lint starci-fe/no-spacing-utility and starci/spacing-scale (R350); starci app codemod spacing-roles; contexts/ui/presentation.md Space"
+    owner: "@starci/grammar src/common/spacing.ts, src/common/styles.css (root tokens), src/common/components-spacing.css, src/core/frame/Stack, Cluster, Grid, Page (chrome panes); lint starci-fe/no-spacing-utility and starci/spacing-scale (R350); starci app codemod spacing-roles; contexts/ui/presentation.md Space"
     pins:
       contexts/vendor/wrappers.yaml: 0da99e774deba147e983918c237820ad853fd05840a0d04b5b71c9c2c6030a09
   - id: grammar-freestyle-region
@@ -365,7 +365,7 @@ rulings:
     status: live
     words: "cái trang này free style đi trò div và làm bth thôi, thêm 1 component Freestyle hoặc tên gì đó tương đương đi trò, ý là cho custom nhưng vẫm bám grammar trừ bất đắc dĩ ntn"
     ruling: "The grammar has one sanctioned escape hatch, Freestyle: a region that fills its host where the app writes its own plain divs and app CSS (layout, paint, radius, arbitrary values, absolutely positioned art) because no Grammar component fits. It names its reason, adds no paint of its own, and is a last resort: the rest of the page still follows the grammar, and a Grammar component used inside it is judged as before."
-    owner: "@starci/grammar src/core/composite/Freestyle; @starci/eslint-grammar-core src/freestyle.ts (R341) and exemptFreestyle; @starci/eslint-canon-fe src/lib/freestyle.ts; contexts/ui/components/freestyle.md"
+    owner: "@starci/grammar src/core/frame/Freestyle; @starci/eslint-grammar-core src/freestyle.ts (R341) and exemptFreestyle; @starci/eslint-canon-fe src/lib/freestyle.ts; contexts/ui/components/freestyle.md"
   - id: STATE-8/loading-keeps-anatomy
     date: '2026-10-11'
     status: live
@@ -741,7 +741,7 @@ rulings:
     date: '2026-11-01'
     status: live
     ruling: "A card already has a label, which is the purpose of its design: the title is its label, the count its fact, the action its labelEnd and the note its footer, so a SectionHeader directly above a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard is a hand heading and is refused, as is a card whose ariaLabel repeats the header's title; several cards under one header stay legal. SurfaceCard takes a footer, the same bottom note as SurfaceListCard. The owner's words: \"bản thân card đã có label, vốn là mục đích thiết kế\"."
-    owner: "contexts/ui/components/card.md; contexts/hfs/rules.yaml R354; @starci/grammar src/core/branch/SurfaceCard"
+    owner: "contexts/ui/components/card.md; contexts/hfs/rules.yaml R354; @starci/grammar src/core/frame/SurfaceCard"
   - id: flow-graph-lanes
     date: '2026-11-01'
     status: live

@@ -65,7 +65,7 @@ Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only)
       |  realised by
       v
  @starci/grammar  ── entries: common (anatomy, no colour) | starci | offset-pop | heritage (family = DNA + styles.css)
-   src/core/{primitive, composite, branch, composition}/<Name>      peerDeps: @heroui/react, react only
+   src/core/{leaf, branch, composite, frame}/<Name>      peerDeps: @heroui/react, react only
       |  wraps (vendor parity: contexts/vendor/heroui/*.yaml, wrappers.yaml)
       v
  HeroUI v3 (react-aria)                                             
@@ -106,10 +106,10 @@ What the app may do, and who checks it:
 **On the vocabulary the brief asked about (Tree/slots, Surface* branches, Modal/Drawer shells):** the legacy knowledge tree
 does not contain it. `ModalShell`, `DrawerShell`, `CardShell`, `ContractComponent`, `LeafComponent` and `Tree` appear in no
 `contexts/**` file; only two eslint specs mention them. The current code contradicts that model: `Dialog`
-(`packages/grammar/src/core/branch/Dialog/index.tsx:20`) and `Drawer` (`Drawer/index.tsx:18`) are **branches** that take `children`,
+(`packages/grammar/src/core/frame/Dialog/index.tsx:20`) and `Drawer` (`Drawer/index.tsx:18`) are **frames** that take `children`,
 and so does `SurfaceCard` (`SurfaceCard/index.tsx:73-74`, `readonly children: ReactNode`). The "only two shells take children"
 rule lives only in the owner's auto-memory (`fe-contract-wrapper-shell-model.md`, dated 2026-10-08) and is stale. What survives is:
-Surface* are branch-tier wrappers that paint a face and give context to their content; "slots" in the live code means two other
+Surface* are frame-tier wrappers that paint a face and give context to their content; "slots" in the live code means two other
 things: HFS **slots** (where a file may live, `hfs/slots.yaml`) and `Slot<T>` (a data resource with a status, rendered by `SlotView`).
 The new tree has to pick one meaning per word (see 4.4).
 
@@ -175,10 +175,10 @@ The new tree has to pick one meaning per word (see 4.4).
    (`slots.yaml:2500-2514`, `packages/<family>-ui` with composites, branches, leaves) and `hfs/README.md:734` allow a
    product-family UI package. `css.yaml:101-108` tries to square it ("a shared UI package's family.css is a family entry of
    @starci/grammar"), which leaves the package's renderers unowned by the Grammar.
-4. **Two tier vocabularies.** Grammar tiers are `primitive / composite / branch / composition` (`packages/grammar/src/core/*`,
-   `folder.yaml:367`); app tiers are `blocks / composites / branches / leaves` (`folder.yaml:32`). The word "leaf" then means
-   the Grammar `Icon` primitive in `imports.yaml:185,193` ("Only the Icon leaf imports the icon set ... everything else takes the
-   Grammar Icon") and in `rulings.yaml:422`, which reads as an app leaf to anyone following FE-FOLDER-1.
+4. **One tier vocabulary.** Grammar tiers are `leaf / branch / composite / frame` (`packages/grammar/src/core/*`,
+   `folder.yaml:367`); app tiers are `blocks / composites / branches / leaves` (`folder.yaml:32`). The word "leaf" means the same in
+   both: the Grammar `Icon` leaf in `imports.yaml:185,193` ("Only the Icon leaf imports the icon set ... everything else takes the
+   Grammar Icon") and in `rulings.yaml:422`.
 5. **The memory model vs code** (Tree/slots, only Modal/Drawer shells take children): stale, see §2.
 6. **`hfs/surfaces.yaml` is not about UI surfaces.** It is the A15 standard-coverage ledger (`surfaces.yaml:1-4`); the word
    collides with `Surface*` components and `ui/presentation/surface.yaml`.
@@ -363,7 +363,7 @@ packages/eslint/
 | `canon-pins.yaml` `why` changelogs | **Move** to the package CHANGELOG; keep one-line `why` |
 | eslint-fe button-intent, control-height, surface-rules (inventories), ui-rulings `selection-fill-no-check` | **Move into code** of `grammar-common` lint; leave universal parts (`no-app-surface-paint`, `no-grammar-internal-selector`) in canon-fe. Alternative: canon-fe reads a component-role manifest exported by the selected Grammar, so no names are hard-coded |
 | Verification code lists in pattern rules | **Generate** from `rules.yaml` `enforcers` instead of hand lists (fixes the copy-paste lists in icon/toast/naming) |
-| Tier words | **Decide one vocabulary**: e.g. Grammar `primitive/composite/branch/composition`, app `blocks/composites/branches/leaves`, and never call a Grammar primitive a "leaf"; record the old spelling in removed-vocabulary |
+| Tier words | **One vocabulary**: Grammar `leaf/branch/composite/frame`, app `blocks/composites/branches/leaves`, the same words in both; record the old spelling in removed-vocabulary |
 | "slot" | Keep `slot` = HFS file slot; rename data `Slot<T>` usage in prose to "resource slot" or keep `Slot<T>` only as a code identifier |
 | `fe.package.ui` slot | **Owner decision needed**: either remove (all visuals in Grammar) or define it as a Grammar family entry |
 

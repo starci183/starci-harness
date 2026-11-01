@@ -51,7 +51,7 @@ test("LOADING-1: a ready-made resting shape is not handed in", () => {
   tester.run("no-placeholder-prop", noPlaceholderProp, {
     valid: [
       { filename: BLOCK, code: "const E = () => <Card isLoading={pending} />" },
-      // the primitive a component rests WITH is not a twin of one
+      // the leaf a component rests WITH is not a twin of one
       { filename: BLOCK, code: "import { Skeleton } from \"./Skeleton\"" },
       // a string fallback is not a tree
       { filename: BLOCK, code: "const E = () => <Card fallback=\"none yet\" />" },

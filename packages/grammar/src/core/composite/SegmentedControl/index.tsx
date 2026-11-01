@@ -2,7 +2,7 @@
 
 import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, type Key } from "@heroui/react"
 import { useId, useState, type ReactNode } from "react"
-import { fieldStateAttributes, StaticFieldError, FieldSkeletonScope, loadingFieldProps, isFieldInvalid, type FieldControlProps } from "../../primitive/Field/index.js"
+import { fieldStateAttributes, StaticFieldError, FieldSkeletonScope, loadingFieldProps, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
 
 export type SegmentOption = {
     readonly value: string

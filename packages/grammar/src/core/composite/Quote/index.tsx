@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 
 export type QuoteProps = {
     /** The quoted words. Plain text keeps its line breaks. Ignored (and optional) while `isSkeleton`. */

@@ -364,7 +364,7 @@ rules:
     cases:
       - id: case-1
         when: "A Grammar component (runtime package)"
-        write: "packages/grammar/src/core/<primitive|composite|branch|composition>/<Name>/index.tsx"
+        write: "packages/grammar/src/core/<leaf|branch|composite|frame>/<Name>/index.tsx"
       - id: case-2
         when: "A Grammar component's class strings and spec (runtime package)"
         write: "sibling classNames.ts and index.spec.tsx"

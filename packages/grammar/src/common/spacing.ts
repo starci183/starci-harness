@@ -39,7 +39,7 @@ export const COMMON_GAP_ROLES = Object.freeze({
 } as const satisfies Readonly<Record<string, CommonSpacingStep>>)
 
 export type CommonGapRole = keyof typeof COMMON_GAP_ROLES
-/** The gap roles an app names on a layout primitive (`Stack`, `Cluster`); `seam` belongs to dividers and joined faces. */
+/** The gap roles an app names on a layout frame (`Stack`, `Cluster`); `seam` belongs to dividers and joined faces. */
 export type GapRole = Exclude<CommonGapRole, "seam">
 
 /** The root custom properties that carry the scale, by role. A value is read from here, never written twice. */

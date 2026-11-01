@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
 import { navigationClassName } from "../../navigationClassNames.js"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { Skeleton } from "../../leaf/Skeleton/index.js"
 
 /** `paused` is a step that stopped for a reason outside the flow (out of credit, waiting on the owner) and resumes by itself. */
 export type StepperStepState = "complete" | "current" | "upcoming" | "error" | "paused"
