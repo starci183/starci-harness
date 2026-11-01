@@ -133,9 +133,11 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   work preserved until its Kernel settles it, never resolved inside the harness (`cli/src/harness/land.ts`, `cli/src/core/task/verify.ts`).
   In Orca each Op's worktree is listed under its Kernel's and the Kernel's under the main checkout. Owner, 2026-10-28:
   "phải từng op chạy trên worktree riêng"; "ok chốt vậy sửa lun".
-- **The harness removes what it made, processes first (`worktree-cleanup`).** Every worktree the harness creates, in both
-  runners, is removed by the harness when its work ends, its uncommitted work preserved first ([contexts/authority/README.md](../authority/README.md)
-  "Worktrees", `cli/src/harness/worktree-gc.ts`). Before it removes one it reaps it: it closes its Orca terminals, has Orca
+- **The harness collects what it made under custody (`worktree-cleanup`).** Every worktree the harness creates, in both
+  runners, is collected by the harness when its work ends, its uncommitted work preserved first ([contexts/authority/README.md](../authority/README.md)
+  "Worktrees", `cli/src/harness/worktree-gc.ts`). A reviewed Git-less canonical direct-child remnant of its registered runtime
+  state is quarantined whole with every regular byte retained, dependency links unlinked as links and a verified metadata
+  receipt; no Git reference is inferred (`quarantineRemnant` in `cli/src/harness/worktree-preserve.ts`). Before removing a Git checkout it reaps it: it closes its Orca terminals, has Orca
   forget it, ends the processes it started there or that work inside it (by pid, never by name, never itself or Orca), sees
   them gone, and only then deletes the folder; a folder still held is recorded with its holder and retried
   (`cli/src/harness/reap.ts`, `cli/src/harness/land.ts` removeWorktreeFolder). Owner, 2026-10-28: "xong việc inline và orca gì

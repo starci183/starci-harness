@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, realpathSync, statSync } from "node:fs"
 import { join, relative, resolve, sep } from "node:path"
 import { captureGit, git, gitCommonDir, isAncestor, mainCheckout, samePath } from "../shared/git.js"
+import { Refusal } from "../shared/errors.js"
 import { describeHealed, healRecord } from "../core/deps/packages.js"
 import { pruneVerifyWorktrees } from "./clean-verify.js"
 import { opWorktreeOf, removeOpWorktree, removeTracked } from "./land.js"
@@ -12,7 +13,7 @@ import { getTask, isTerminal, lastEvent, listTasks, recordEvent } from "./tasks.
 import { busyDue, busyRecordOf, openBusyRecords } from "./worktree-busy.js"
 import { getWorkflow } from "./workflow.js"
 import { listProcesses, type HostProcess } from "./process-table.js"
-import { preserveCheckout } from "./worktree-preserve.js"
+import { inspectRemnant, preserveCheckout, quarantineRemnant } from "./worktree-preserve.js"
 
 /** The kinds of worktree the harness makes, each removed when its owner's work ends. */
 export type WorktreeKind = "op" | "workflow" | "worker" | "package" | "orphan"
@@ -31,6 +32,8 @@ export interface GcEntry {
     readonly busy?: boolean
     /** A selected path failed a scope or liveness guard; no removal is attempted. */
     readonly blocked?: boolean
+    /** An explicitly selected Git-less remnant was retained whole under verified project custody. */
+    readonly quarantine?: "complete" | "held" | "changed"
 }
 
 const ENDED_WORKFLOW = new Set(["done", "stopped"])
@@ -156,6 +159,7 @@ const reported = (entry: Collected): GcEntry => ({
     detail: entry.detail,
     ...(entry.busy === undefined ? {} : { busy: entry.busy }),
     ...(entry.blocked === undefined ? {} : { blocked: entry.blocked }),
+    ...(entry.quarantine === undefined ? {} : { quarantine: entry.quarantine }),
 })
 
 /**
@@ -246,7 +250,11 @@ const retiredLeftovers = async (root: string, dryRun: boolean): Promise<GcEntry[
         const remnants = remnantsUnder(repo, listed).map((entry) => ({ ...reported(entry), reason: `its project is retired; ${entry.reason}` }))
         if (dryRun) return [...left.map((entry) => ({ path: entry.path, kind: judge(repo, entry, stateWorktrees)?.kind ?? "orphan", owner: null, due: true, reason: "its project is retired", preserved: null, removed: false, detail: "" })), ...remnants]
         const removed = left.length === 0 ? [] : await retireWorktrees(repo)
-        const cleared = await inOrder(remnants, async (entry) => ({ ...entry, ...(await removeWorktree(repo, entry, false, repo, true)) }))
+        const cleared = await inOrder(remnants, async (entry) => {
+            const snapshot = await preserveCheckout(repo, entry.path)
+            await snapshot?.verify()
+            return { ...entry, preserved: snapshot?.directory ?? null, ...(await removeWorktree(repo, entry, false, repo, true)) }
+        })
         return [...removed, ...cleared]
     })
     return found.flat()
@@ -313,12 +321,18 @@ const selectedPaths = async (root: string, listed: readonly Listed[], known: rea
         if (samePath(main, actual)) return blocked("the primary checkout is protected")
         if (callers.some((caller) => contains(actual, caller))) return blocked("the caller's checkout is protected")
         const entry = listed.find((one) => existsSync(one.path) && samePath(canonical(one.path), actual))
-        if (entry === undefined || !(await sameRepository(root, actual))) return blocked("selected path is not a listed linked worktree of this repository")
-        const owner = known.find((one) => samePath(one.path, entry.path))
+        if (entry === undefined) {
+            try {
+                inspectRemnant(root, path)
+            } catch (error: unknown) {
+                return blocked(`selected path is not a listed linked worktree or a proven project remnant: ${error instanceof Error ? error.message : "provenance unavailable"}`)
+            }
+        } else if (!(await sameRepository(root, actual))) return blocked("selected path is not a listed linked worktree of this repository")
+        const owner = entry === undefined ? judge(root, { path, branch: null }, join(projectDir(root), "worktrees")) : known.find((one) => samePath(one.path, entry.path))
         if (owner !== undefined && !owner.due) return blocked(owner.reason)
         const held = liveWorkerReason(actual) ?? (typeof processes === "string" ? "process inventory unavailable; liveness cannot be proved" : processBlockReason(actual, processes))
         if (held !== undefined) return blocked(held)
-        return { ...(owner ?? base), path: entry.path, due: true, reason: "explicitly selected linked worktree; preserve its work and references before removal" }
+        return { ...base, ...owner, path: entry?.path ?? path, due: true, reason: entry === undefined ? "explicitly selected project remnant; quarantine all bytes and unlink dependency links without deleting" : "explicitly selected linked worktree; preserve its work and references before removal", ...(entry === undefined ? { remnant: true } : {}) }
     })
 }
 
@@ -376,6 +390,20 @@ export const worktreeGc = async (root: string, dryRun: boolean, now = false, sel
         if (explicit) {
             const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
             if (fresh?.blocked === true) return reported(fresh)
+        }
+        if (explicit && remnant === true) {
+            const custody = await quarantineRemnant(root, entry.path, async () => {
+                const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
+                if (fresh === undefined || fresh.blocked === true || !fresh.due) throw new Refusal("WORKTREE_GC_BLOCKED", fresh?.reason ?? "selected remnant scope cannot be proved; nothing moved")
+            })
+            const result = { ...entry, preserved: custody.directory, removed: custody.removed, quarantine: custody.quarantine, detail: custody.detail }
+            const db = openExistingLedger(root)
+            try {
+                if (db !== undefined) recordEvent(db, "worktree-gc", entry.owner, result)
+            } finally {
+                db?.close()
+            }
+            return result
         }
         const snapshot = await preserveCheckout(root, entry.path)
         await snapshot?.verify()
