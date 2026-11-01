@@ -7,7 +7,7 @@
 # path holds it. A target slot is red outside its dated exceptions; an exception that covers nothing, or is past its
 # date, is red too, so the list only shrinks.
 schema: starci/harness-slots@1
-version: 1.0.0
+version: 1.1.0
 kind: runtime
 presenceValues:
   - required
@@ -191,6 +191,23 @@ slots:
     presence: optional
     holds: dependency updates, the pull request template and the issue forms
     rule: open source repository
+
+  # --- service images built from fork source
+  - id: images.readme
+    path: images/README.md
+    presence: optional
+    holds: how the canonical source-build recipes consume their pinned fork contexts and where their existing publication receipts live
+    rule: CONTRIB-4; images/README.md
+  - id: images.sources
+    path: images/sources.json
+    presence: optional
+    holds: the source commits, release build arguments, platforms and published provenance of the source-built service images
+    rule: CONTRIB-4; CONTRIB-9
+  - id: images.dockerfile
+    path: "images/<image>/Dockerfile"
+    presence: optional
+    holds: the canonical Dockerfile that builds a service image from its pinned fork source context
+    rule: images/README.md
 
   # --- knowledge: only in contexts/
   - id: contexts.load-order

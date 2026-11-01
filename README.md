@@ -109,6 +109,7 @@ repositories, so a run survives a closed chat or a dead agent. [contexts/harness
 | [contexts/](contexts/README.md) | how StarCi app code and UI are written: app shape, stack, code patterns, grammars, UI rules, vendor parity |
 | [packages/](packages/README.md) | the packages apps install from npm: the canon (ESLint fe and be, stylelint, tsconfig, prettier, jest), the Grammar and its lint families, `hfs`, the shared libraries (heroicons, event-stream, test-world) and the AI pool router |
 | [app/](app/README.md) | the StarCi Harness desktop app (Tauri, Windows and macOS) over `starci ui`, drawn in the local Grammar |
+| [images/](images/README.md) | canonical Dockerfiles for service images built from pinned fork source, with their build contexts and published provenance |
 | `skills/` | the agent entry for operating the harness (`skills/starci/SKILL.md`) |
 
 ## Build from source
