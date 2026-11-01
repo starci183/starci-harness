@@ -123,7 +123,7 @@ export const depsPublishLocalVerb = defineVerb({
                 if (row === undefined) return
                 const pkgNpm = ["--userconfig", files.publish, ...registryFlags(port)]
                 if (row.action === "republish") {
-                    const gone = await captureNpm(["unpublish", `${row.package}@${row.version}`, "--force", ...pkgNpm], pkg.dir)
+                    const gone = await withHeavySlot("build", `npm unpublish ${row.package}`, pkg.dir, {}, (held) => captureNpm(["unpublish", `${row.package}@${row.version}`, "--force", ...pkgNpm], pkg.dir, held.options))
                     if (gone.exitCode !== 0) throw stepFailed(`npm unpublish ${row.package}@${row.version} from ${registryUrl(port)}`, gone)
                 }
                 context.progress(`publishing ${row.package}@${row.version} to ${registryUrl(port)}`)
