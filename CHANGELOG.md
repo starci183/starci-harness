@@ -7,6 +7,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ## [Unreleased]
 
 - `starci dna check` measures a scoped count inside the grammar root it scopes (a Tabs, a PageHeader, a Toaster counted 0 for every scope that is not the root itself), names a menu popover through the `aria-label` of the trigger it points at, and reads a size as the box the layout gives, not the one a press scale paints. `contexts anatomy` refuses a removed spelling marked `shipped: true` in rulings.yaml anywhere in `packages/hfs/runtime`.
+
+## [1.1.0-alpha.36] - 2026-11-01
+
+### Fixed
+
+- A workflow worktree of a product that declares husky (a tracked `.husky` hook or a `prepare` that runs husky) gets husky installed even when `core.hooksPath` was never set: without `node_modules` of its own the worktree installs it from the main checkout's husky, and `assertWorktreeHooks` refuses WORKTREE_HOOKS_MISSING when the setting is still absent, so the product's pre-commit gate never silently skips (harvest item 5).
+
 ## [1.1.0-alpha.35] - 2026-11-01
 
 ### Changed
