@@ -718,7 +718,7 @@
     :is(.starci-core-button, [data-component="Badge"], [data-component="StatusDot"])[data-loading="true"] > * { visibility: hidden; }
 
     /* A button skeleton takes the corner of the button it stands for: the vendor's own, which the shimmer class would otherwise replace with its small corner. */
-    .starci-core-button[data-loading="true"] {
+    .starci-core-button[data-loading="true"]:not(.starci-core-button-group > *) {
         border-radius: calc(var(--radius) * 3);
     }
 

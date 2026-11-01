@@ -8,6 +8,7 @@ import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
 import type { ButtonProps } from "./leaf/Button/index.js"
+import type { ImageAspect, ImageProps } from "./leaf/Image/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
 export type BadgeData = {
@@ -149,3 +150,35 @@ export type TileMark =
     | { readonly logo: ImageData; readonly icon?: never; readonly avatar?: never }
     | { readonly icon: IconSource; readonly logo?: never; readonly avatar?: never }
     | { readonly avatar: AvatarData; readonly logo?: never; readonly icon?: never }
+
+/** A tile reserves the same media frame for an image and for a known missing image. */
+export type TilePoster = {
+    /** Landscape is the default 4:3 frame; unresolved content uses this same ratio. */
+    readonly aspect?: Exclude<ImageAspect, "auto">
+    readonly fit?: ImageProps["fit"]
+} & (
+    | {
+        readonly image: Pick<ImageProps, "src" | "alt" | "loading" | "srcSet" | "sizes" | "width" | "height">
+        readonly absence?: never
+    }
+    | { readonly absence: string; readonly image?: never }
+)
+
+type TileIdentity =
+    | { readonly mark: TileMark; readonly poster?: undefined }
+    | { readonly poster: TilePoster; readonly mark?: TileMark }
+
+type TileBadges =
+    | { readonly badge?: BadgeData; readonly badges?: undefined }
+    | { readonly badge?: undefined; readonly badges: readonly [BadgeData] | readonly [BadgeData, BadgeData] | readonly [BadgeData, BadgeData, BadgeData] }
+
+/** The tile owns its identity, media, supporting facts, one visible action and any overflow commands. */
+export type TileData = {
+    readonly name: string
+    readonly description?: string
+    /** A short factual line, separate from the name and the operational badges. */
+    readonly facts?: string
+} & TileIdentity & TileBadges & (
+    | { readonly wholeAction: WholeCardAction; readonly action?: undefined; readonly menu?: undefined }
+    | { readonly action?: ItemAction; readonly menu?: ItemMenu; readonly wholeAction?: undefined }
+)

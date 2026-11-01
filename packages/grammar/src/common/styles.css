@@ -1573,7 +1573,8 @@
 
     /*
      * Tile: a peer you recognise and open (a provider, a connector). The name sits inside, beside its mark; the foot row
-     * holds the status at the start and the one action at the end, at the bottom of the card whatever the copy's length.
+     * holds the status at the start and the action with any overflow commands at the end. Media peers reserve their poster
+     * frame even when it is absent or unresolved, with badges and facts inside the same tile identity.
      */
     .starci-core-tile {
         display: flex;
@@ -1617,6 +1618,44 @@
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
+    }
+
+    .starci-core-tile-poster {
+        inline-size: 100%;
+        aspect-ratio: 4 / 3;
+        flex: none;
+    }
+
+    .starci-core-tile-poster[data-aspect="square"] { aspect-ratio: 1; }
+    .starci-core-tile-poster[data-aspect="portrait"] { aspect-ratio: 3 / 4; }
+    .starci-core-tile-poster[data-aspect="wide"] { aspect-ratio: 16 / 9; }
+
+    .starci-core-tile-poster > *,
+    .starci-core-tile-poster-fill {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+    }
+
+    .starci-core-tile-poster-absence {
+        display: grid;
+        place-items: center;
+        padding: var(--grammar-inset);
+        background: var(--surface-secondary);
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
+        overflow-wrap: anywhere;
+        text-align: center;
+    }
+
+    .starci-core-tile-badges,
+    .starci-core-tile-actions {
+        display: flex;
+        min-inline-size: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-tile-foot {
@@ -3263,7 +3302,7 @@
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-icon-button {
+    .starci-core-icon-button:not(.starci-core-button-group > *) {
         border-radius: var(--starci-core-pill-radius) !important;
     }
 

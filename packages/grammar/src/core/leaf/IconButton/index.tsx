@@ -1,6 +1,6 @@
 "use client"
 
-import { Button as HeroButton, Link as HeroLink, buttonVariants, cn, skeletonVariants } from "@heroui/react"
+import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, buttonVariants, cn, skeletonVariants } from "@heroui/react"
 import { Icon, type IconSource } from "../Icon/index.js"
 import { useButtonIntentVariant, type ButtonIntent, type ButtonIntentProps } from "../../buttonIntent.js"
 import { DismissGlyph } from "./dismissGlyph.js"
@@ -33,6 +33,8 @@ export type IconButtonProps = NoChildren & {
     readonly isActive?: boolean
     readonly isDisabled?: boolean
     readonly isLoading?: boolean
+    /** The initiating action keeps its name and box while duplicate presses are blocked. */
+    readonly isPending?: boolean
     readonly onPress?: () => void
     /** A real destination: renders an anchor wearing the icon-button appearance (R7: it takes the intent of the command it stands for). */
     readonly href?: string
@@ -79,6 +81,7 @@ export const IconButton = ({
     isActive = false,
     isDisabled = false,
     isLoading = false,
+    isPending = false,
     onPress,
     href,
     "aria-controls": controls,
@@ -90,8 +93,9 @@ export const IconButton = ({
     const variant = useButtonIntentVariant(intent, step, "iconButton") ?? "tertiary"
     const source = givenSource ?? DismissGlyph
     const badgeText = isLoading ? null : iconButtonBadgeText(badge, badgeMax)
+    const unavailable = isDisabled || isPending || isLoading
+    const glyph = isLoading ? null : isPending ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : <Icon source={source} usage="leading" />
     if (href !== undefined) {
-        const unavailable = isDisabled || isLoading
         return (
             <HeroLink
                 data-tier="leaf"
@@ -102,14 +106,17 @@ export const IconButton = ({
                 data-size={size}
                 data-floating={isFloating ? "true" : "false"}
                 data-loading={isLoading ? "true" : "false"}
+                data-action-pending={isPending ? "true" : "false"}
+                aria-busy={isPending || undefined}
+                aria-hidden={isLoading || undefined}
                 data-element={unavailable ? "span" : "a"}
                 data-grammar-icon-button-badge={badgeText === null ? "none" : "present"}
                 isDisabled={unavailable}
                 aria-label={badgeText !== null && badgeLabel !== undefined ? `${label}, ${badgeLabel}` : label}
-                className={buttonVariants({ variant, isIconOnly: true, className: cn("starci-core-icon-button", isLoading ? SKELETON_CLASS_NAME : undefined) })}
+                className={buttonVariants({ variant, size, isIconOnly: true, className: cn("starci-core-icon-button", isLoading ? SKELETON_CLASS_NAME : undefined) })}
                 {...(unavailable ? {} : { href })}
             >
-                {isLoading ? null : <Icon source={source} usage="leading" />}
+                {glyph}
                 {badgeText === null ? null : <span aria-hidden className="starci-core-icon-button-badge" data-contract="TONE-2">{badgeText}</span>}
             </HeroLink>
         )
@@ -124,18 +131,22 @@ export const IconButton = ({
         data-size={size}
         data-floating={isFloating ? "true" : "false"}
         data-loading={isLoading ? "true" : "false"}
+        data-action-pending={isPending ? "true" : "false"}
+        aria-busy={isPending || undefined}
+        aria-hidden={isLoading || undefined}
         type="button"
         variant={variant}
+        size={size}
         className={cn("starci-core-icon-button", isLoading ? SKELETON_CLASS_NAME : undefined) ?? "starci-core-icon-button"}
         isIconOnly
-        isDisabled={isDisabled || isLoading}
+        isDisabled={unavailable}
         aria-label={badgeText !== null && badgeLabel !== undefined ? `${label}, ${badgeLabel}` : label}
         data-grammar-icon-button-badge={badgeText === null ? "none" : "present"}
         {...(controls === undefined ? {} : { "aria-controls": controls })}
         {...(expanded === undefined ? {} : { "aria-expanded": expanded })}
-        {...(isDisabled || isLoading || onPress === undefined ? {} : { onPress })}
+        {...(unavailable || onPress === undefined ? {} : { onPress })}
     >
-        {isLoading ? null : <Icon source={source} usage="leading" />}
+        {glyph}
         {badgeText === null ? null : <span aria-hidden className="starci-core-icon-button-badge" data-contract="TONE-2">{badgeText}</span>}
     </HeroButton>
     )

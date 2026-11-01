@@ -9,27 +9,20 @@ import type {
     AccordionData,
     AccordionRowData,
     Band,
-    BadgeData,
     CardHead,
     Collection,
     Figure,
-    ItemAction,
     ListData,
-    TileMark,
+    TileData,
     WholeCardAction,
 } from "../../surfaceCardData.js"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../leaf/Label/index.js"
-import { Avatar } from "../../leaf/Avatar/index.js"
-import { Badge } from "../../leaf/Badge/index.js"
-import { Button } from "../../leaf/Button/index.js"
-import { IconTile } from "../../leaf/IconTile/index.js"
-import { Image } from "../../leaf/Image/index.js"
-import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { ErrorView, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
+import { SurfaceCardTile } from "./SurfaceCardTile.js"
 import {
     getSurfaceCardClassName,
     getSurfaceContentClassName,
@@ -42,7 +35,6 @@ import {
     surfaceHighlightSweepClassName,
     surfaceLabelClassName,
     surfaceOrbitClassName,
-    tileClassName,
     type AccentCorner,
     type SurfaceCardMeasure,
     type SurfaceCardMotif,
@@ -51,7 +43,7 @@ import {
 
 export type {
     AccordionData, AccordionRowData, AvatarData, BadgeData, Band, CardHead, Collection, Figure, ImageData, ItemAction, ItemLeading,
-    ItemMenu, ListData, ListRowData, TileMark, WholeCardAction,
+    ItemMenu, ListData, ListRowData, TileData, TileMark, TilePoster, WholeCardAction,
 } from "../../surfaceCardData.js"
 
 /** Every card names itself: a visible `label`, or an `ariaLabel` when the surrounding owner already shows the name. */
@@ -90,9 +82,6 @@ type InkSurfaceCard = {
     /** Decorative motif in the artwork zone: `orbit` draws thin rings with nodes (static SVG, low contrast). */
     readonly motif?: SurfaceCardMotif
 }
-
-type WholeActionOnly = { readonly wholeAction: WholeCardAction; readonly action?: undefined }
-type ActionOnly = { readonly action?: ItemAction; readonly wholeAction?: undefined }
 
 /** What every card has: a note under it, a skeleton state, a highlight, a presentation state. */
 type Shell = {
@@ -141,19 +130,15 @@ type BandsCard = Shell & (Labelled | SelfNamed) & Head & {
 
 /**
  * A tile: a peer you recognise and open (a provider, a connector). It has no `label`, `fact` or `labelEnd`: its name
- * sits inside, beside its mark, and the foot row holds its status and its one action.
+ * sits inside with its mark or media, supporting facts and one action with optional overflow commands.
  */
-type TileCard = Shell & {
+type TileCard = Shell & TileData & {
     readonly kind: "tile"
-    readonly name: string
-    readonly mark: TileMark
-    readonly description?: string
-    readonly badge?: BadgeData
     readonly headingLevel?: SurfaceHeadingLevel
     readonly label?: undefined
     readonly fact?: undefined
     readonly labelEnd?: undefined
-} & (WholeActionOnly | ActionOnly)
+}
 
 export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | AccordionCard | BandsCard | TileCard
 
@@ -181,15 +166,6 @@ const OrbitMotif = () => (
         <circle cx="196" cy="140" r="2.5" />
     </svg>
 )
-
-const TileMarkView = ({ mark, isLoading }: { readonly mark: TileMark; readonly isLoading: boolean }) => {
-    if (isLoading) return <span className="starci-core-tile-mark" data-grammar-tile-mark="skeleton"><SkeletonPlaceholder shape="block"><span className="starci-core-tile-mark-fill" /></SkeletonPlaceholder></span>
-    if (mark.logo !== undefined) {
-        return <span className="starci-core-tile-mark" data-grammar-tile-mark="logo"><Image src={mark.logo.src} alt={mark.logo.alt} aspect="square" fit="contain" plate="none" /></span>
-    }
-    if (mark.icon !== undefined) return <span className="starci-core-tile-mark" data-grammar-tile-mark="icon"><IconTile source={mark.icon} size="md" /></span>
-    return <span className="starci-core-tile-mark" data-grammar-tile-mark="avatar"><Avatar {...mark.avatar} size="control" isDecorative /></span>
-}
 
 const BandView = ({ band, isLoading, isDisabled }: { readonly band: Band | Collection; readonly isLoading: boolean; readonly isDisabled: boolean }) => {
     switch (band.kind) {
@@ -223,7 +199,7 @@ const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) =
  * `accordion`, `bands` (faces divided by seams, ending in at most one collection), or a `tile`.
  *
  * Where the name sits follows the kind (ruling `card-label-by-kind`): a card that heads a section has a `label`, drawn
- * outside the material as an unpainted row above it; a tile has a `name` and a `mark`, drawn inside.
+ * outside the material as an unpainted row above it; a tile has its `name` and mark or media drawn inside.
  *
  * A card never stands inside another surface (a card, `Pane surface`, a `Dialog`, `Drawer` or `Popover`); development
  * throws, and R356 refuses it across files.
@@ -238,7 +214,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const stateTreatment = treatmentFor(state)
     const isLoading = useIsLoading(props.isLoading)
     const height = props.height ?? (props.kind === "tile" ? "fill" : "auto")
-    const disabled = state === "unavailable" || state === "pending"
+    const disabled = isLoading || state === "unavailable" || state === "pending"
     const isTile = props.kind === "tile"
     const body = props.kind === undefined || props.kind === "body" ? props : undefined
     const labelled = isTile ? undefined : props.label
@@ -286,35 +262,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             case "bands":
                 return props.bands.map((band, index) => <BandView key={`${band.kind}-${index}`} band={band} isLoading={isLoading} isDisabled={disabled} />)
             case "tile":
-                return (
-                    <div className={tileClassName} data-grammar-tile="true">
-                        <TileMarkView mark={props.mark} isLoading={isLoading} />
-                        <span className="starci-core-tile-copy" data-contract="GAP-1">
-                            <Label as={`h${headingLevel}`} id={headingId} isLoading={isLoading}>{props.name}</Label>
-                            {props.description === undefined ? null : (
-                                <span className="starci-core-tile-description" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{props.description}</SkeletonPlaceholder> : props.description}</span>
-                            )}
-                        </span>
-                        {
-                            // The foot row always holds its height, so a row of tiles reads even whether or not each has a status or an action.
-                            <ButtonPlacementProvider placement="item">
-                                <span className="starci-core-tile-foot" data-contract="GAP-2">
-                                    {props.badge === undefined ? <span /> : isLoading ? (
-                                        // A loading tile shows no real status: the placeholder is laid out from the status's own words.
-                                        <SkeletonPlaceholder shape="block"><Badge tone="neutral">{props.badge.label}</Badge></SkeletonPlaceholder>
-                                    ) : props.badge.isDot === true
-                                        ? <Badge isDot tone={props.badge.tone ?? "neutral"}>{props.badge.label}</Badge>
-                                        : <Badge tone={props.badge.tone ?? "neutral"}>{props.badge.label}</Badge>}
-                                    {props.action === undefined ? null : (
-                                        props.action.href === undefined
-                                            ? <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isPending={props.action.isPending === true} isLoading={isLoading} onPress={props.action.press}>{props.action.label}</Button>
-                                            : <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isPending={props.action.isPending === true} isLoading={isLoading} href={props.action.href}>{props.action.label}</Button>
-                                    )}
-                                </span>
-                            </ButtonPlacementProvider>
-                        }
-                    </div>
-                )
+                return <SurfaceCardTile data={props} headingId={headingId} headingLevel={headingLevel} isLoading={isLoading} isDisabled={disabled} />
             default:
                 return body === undefined ? null : <LoadingScope isLoading={isLoading}>{body.children}</LoadingScope>
         }
