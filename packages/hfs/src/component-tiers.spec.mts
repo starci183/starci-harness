@@ -40,13 +40,13 @@ test('1. a library whose imports point down is green and counts its edges', (t) 
   assert.equal(result.coverage.edgesChecked, 2);
 });
 
-test('2. a leaf importing a branch is GRAMMAR_TIER_DIRECTION, a type-only import included', (t) => {
+test('2. a leaf importing a branch is FE_GRAMMAR_TIER_DIRECTION, a type-only import included', (t) => {
   const root = tree(t, {
     'packages/ui/src/core/leaf/Button/index.tsx': 'import type { TooltipProps } from "../../branch/Tooltip/index.js";\nexport const Button = (p: TooltipProps) => <b data-tier="leaf" />;\n',
     'packages/ui/src/core/branch/Tooltip/index.tsx': 'export type TooltipProps = { x: 1 };\nexport const Tooltip = () => <i data-tier="branch" />;\n',
   });
   const result = checkGrammarLibraries({ root, matrix: MATRIX });
-  assert.deepEqual(ids(result), ['GRAMMAR_TIER_DIRECTION']);
+  assert.deepEqual(ids(result), ['FE_GRAMMAR_TIER_DIRECTION']);
   assert.equal(result.violations[0]?.path, 'packages/ui/src/core/leaf/Button/index.tsx');
   assert.match(result.violations[0]?.message ?? '', /a leaf may import only leaf/);
 });
@@ -58,7 +58,7 @@ test('2. a shared module under src/core does not hide the climb', (t) => {
     'packages/ui/src/core/frame/Card/index.tsx': 'export const Card = () => <div data-tier="frame" />;\n',
   });
   const result = checkGrammarLibraries({ root, matrix: MATRIX });
-  assert.deepEqual(ids(result), ['GRAMMAR_TIER_DIRECTION']);
+  assert.deepEqual(ids(result), ['FE_GRAMMAR_TIER_DIRECTION']);
   assert.match(result.violations[0]?.message ?? '', /through packages\/ui\/src\/core\/shared\.tsx/);
 });
 
@@ -69,7 +69,7 @@ test('3. a data-tier stamp must equal the folder', (t) => {
     'packages/ui/src/core/frame/Ok/index.tsx': 'export const Ok = () => <i data-tier="frame" />;\n',
   });
   const result = checkGrammarLibraries({ root, matrix: MATRIX });
-  assert.deepEqual(ids(result), ['GRAMMAR_TIER_STAMP', 'GRAMMAR_TIER_STAMP']);
+  assert.deepEqual(ids(result), ['FE_GRAMMAR_TIER_STAMP', 'FE_GRAMMAR_TIER_STAMP']);
 });
 
 test('3. a repository with no grammar library is not applicable; stories and specs are not judged', (t) => {

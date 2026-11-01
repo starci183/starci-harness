@@ -220,7 +220,7 @@ follow for apps:
 
 `src/core` holds four folders, the ladder: **leaf** (one element or vendor part), **branch** (a leaf plus its own interaction state), **composite** (a fixed arrangement of
 leaves and branches) and **frame** (owns a region: tracks, inset, scroll, ground or an overlay). A tier imports nothing above itself, and `data-tier` on the
-rendered element is the folder (`tiers.grammar` of `@starci/hfs`; the machine check reports `GRAMMAR_TIER_DIRECTION` and `GRAMMAR_TIER_STAMP`).
+rendered element is the folder (`tiers.grammar` of `@starci/hfs`; the machine check reports `FE_GRAMMAR_TIER_DIRECTION` and `FE_GRAMMAR_TIER_STAMP`).
 
 `children` belongs to frames. Every other props type carries `NoChildren` (`children?: never`) or, for a leaf's text label, `LabelChild` (`children?: string`), both exported,
 so nested JSX under a leaf, branch or composite fails to compile for every caller. A node a component shows has a named prop for its role (`body`, `trigger`, `media`,

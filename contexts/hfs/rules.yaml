@@ -229,10 +229,12 @@ rules:
       - {kind: eslint-fe, id: dead-exports}
   - id: R26
     code: BE_TIER_DIRECTION
-    law: "Imports follow the tier direction matrix: no shared package imports an app, only page and layout owners import overlays, no other cross-owner feature edge exists, and the one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`."
+    law: "Imports follow the tier direction matrix: no shared package imports an app, only page and layout owners import overlays, no other cross-owner feature edge exists, and the one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`. A component library's tiers (`tiers.grammar`: leaf, branch, composite, frame) import nothing above themselves, and its `data-tier` stamp is its folder."
     failureCodes:
       - BE_TIER_DIRECTION
       - FE_TIER_DIRECTION
+      - FE_GRAMMAR_TIER_DIRECTION
+      - FE_GRAMMAR_TIER_STAMP
       - ARCH_PACKAGE_IMPORTS_APP
     enforcers:
       - {kind: eslint-be, id: tier-direction}

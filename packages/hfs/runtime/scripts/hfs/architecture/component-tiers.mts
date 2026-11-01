@@ -6,17 +6,17 @@ import type { ArchitectureViolation, CheckInput } from './hfs-graph.mjs';
 /**
  * The component tier ladder, checked on the source of a component library and of a component tree.
  *
- *   GRAMMAR_TIER_DIRECTION  a grammar component imports a tier above it (the ladder leaf, branch, composite, frame: a tier imports
+ *   FE_GRAMMAR_TIER_DIRECTION  a grammar component imports a tier above it (the ladder leaf, branch, composite, frame: a tier imports
  *                           nothing above itself), type-only imports included, through a shared untiered module as well;
  *                           `tiers.grammar` of knowledge/hfs/slots.yaml is the matrix
- *   GRAMMAR_TIER_STAMP      a `data-tier` stamp names a tier other than the folder the file sits in (`atom`, `primitive` and
+ *   FE_GRAMMAR_TIER_STAMP      a `data-tier` stamp names a tier other than the folder the file sits in (`atom`, `primitive` and
  *                           `composition` are not tiers)
  *   FE_TIER_DIRECTION       (layers) a component imports a layer at or above its own: blocks, frames, composites, branches, leaves
  *
  * A library is a folder holding `src/core/<tier>/<Name>/`; a tree is a folder holding `components/<layer>/<Unit>/` that no hfs
  * front-end slot already judges (an app without hfs.json, such as the harness desktop app).
  */
-export const COMPONENT_TIER_RULE_IDS = ['GRAMMAR_TIER_DIRECTION', 'GRAMMAR_TIER_STAMP'];
+export const COMPONENT_TIER_RULE_IDS = ['FE_GRAMMAR_TIER_DIRECTION', 'FE_GRAMMAR_TIER_STAMP'];
 
 /** One tier of the matrix: the tiers it may import. */
 export interface TierMatrixEntry { mayImport: readonly string[] }
@@ -95,7 +95,7 @@ export function checkGrammarLibraries({ root, matrix }: { root: string; matrix: 
     for (const stamp of text.matchAll(STAMP)) {
       stamps += 1;
       if (stamp[1] !== from.tier) {
-        violations.push({ ruleId: 'GRAMMAR_TIER_STAMP', path: file, line: lineOf(text, stamp.index ?? 0), column: 1,
+        violations.push({ ruleId: 'FE_GRAMMAR_TIER_STAMP', path: file, line: lineOf(text, stamp.index ?? 0), column: 1,
           message: `${file} stamps data-tier="${stamp[1]}" and sits in the ${from.tier} folder: the stamp is the folder (${[...tiers].join(', ')}).` });
       }
     }
@@ -114,7 +114,7 @@ export function checkGrammarLibraries({ root, matrix }: { root: string; matrix: 
       if (target.unit === from.unit) continue;
       edgesChecked += 1;
       if ((matrix[from.tier]?.mayImport ?? []).includes(target.tier)) continue;
-      violations.push({ ruleId: 'GRAMMAR_TIER_DIRECTION', path: file, line: edge.line, column: 1, specifier: edge.specifier, resolvedPath: edge.to,
+      violations.push({ ruleId: 'FE_GRAMMAR_TIER_DIRECTION', path: file, line: edge.line, column: 1, specifier: edge.specifier, resolvedPath: edge.to,
         message: `${file} (${from.tier}) imports ${edge.to} (${target.tier})${via.length ? ` through ${via.join(' -> ')}` : ''}: a ${from.tier} may import only ${(matrix[from.tier]?.mayImport ?? []).join(', ') || 'nothing'}. Type-only imports count.` });
     }
   }

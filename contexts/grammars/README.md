@@ -72,8 +72,9 @@ Common   renderers, anatomy, spacing, size ladder, intent map, root and portal m
 - **Nothing is a grammar outside its root** ([common](common.md#one-root)).
 - **No default grammar.** The app names its grammar (`hfs.json` `sides.fe.grammar`); unknown fails.
 
-The package stores Common's renderers under `src/core/**` today; that path is storage, not the `core` grammar
-(decision D-1).
+The package stores Common's renderers under `src/core/<tier>/`, where the tier folder (`leaf`, `branch`, `composite`, `frame`) is the tier the renderer
+belongs to and the `data-tier` it stamps; `core` here is storage, not the `core` grammar (decision D-1). A tier imports nothing above itself and only a
+frame takes `children` (`tiers.grammar` of [hfs/slots.yaml](../hfs/slots.yaml), the machine check `FE_GRAMMAR_TIER_DIRECTION`, `starci-grammar/tier-props`).
 
 ## Files
 

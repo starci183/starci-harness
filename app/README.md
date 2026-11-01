@@ -44,8 +44,9 @@ react-router the same tiers map like this:
 | next-intl catalog `messages/<l>.json`| `modules/i18n/labels.ts`, the one typed copy owner (Vietnamese only); templates use `{name}` tokens                |
 
 Imports point down only: `app` → `features/{pages,layouts}` → `components/blocks` → `components/frames` (none yet) → `components/composites`
-(`SlotView`, `DecisionBody`, `ListEditor`, `ConfigField`) → `components/leaves` (`StatusWord`, `KeyList`); hooks reach
-`modules/api` only through `hooks/query`.
+(`SlotView`, `DecisionBody`, `ConfigField`) → `components/branches` (`ListEditor`: it holds the draft text) → `components/leaves` (`StatusWord`, `KeyList`); hooks reach
+`modules/api` only through `hooks/query`. Only a frame takes `children` (`tier-children`, R92): a page block shows its page in a `body` slot and
+`SlotView` takes a `render` function.
 
 Every data region is a block in `components/blocks/<X>/`: `index.tsx` is the connected `X` (it calls the query and
 command hooks, folds each read into a `DataSlot` with `slotOfQuery`/`mapSlot`, resolves every label and action) and

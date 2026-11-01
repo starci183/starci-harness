@@ -211,7 +211,7 @@ tiers:
     transport:    {mayImport: [foundation, modules, package]}                     # modules/api: the one fetch
     package:      {mayImport: [package]}
   # A component library (packages/grammar): src/core/<tier>/<Name>/ and the data-tier stamp equal the tier folder. A tier imports nothing
-  # above itself (GRAMMAR_TIER_DIRECTION); a shared untiered module under src/core is followed, so one hop of indirection hides nothing.
+  # above itself (FE_GRAMMAR_TIER_DIRECTION); a shared untiered module under src/core is followed, so one hop of indirection hides nothing.
   grammar:
     leaf:         {mayImport: [leaf]}                                             # one element or one vendor part
     branch:       {mayImport: [leaf, branch]}                                     # a leaf plus its own interaction state

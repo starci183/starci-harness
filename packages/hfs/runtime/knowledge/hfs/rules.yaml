@@ -474,10 +474,10 @@ rules:
     witness:
       - {path: packages/eslint/be/legacy-owner-graph.a16.spec.mjs, editions: [lite, full]}
     templateNa: "Tier and package direction are constraints on cross-owner import graphs; no dedicated cross-owner graph scaffold is generated."
-    law: "The tier direction matrix; a shared package never imports an app. Front-end page and layout owners may import overlay entries; every other cross-owner feature-to-feature edge is forbidden, including layout-to-page and overlay-to-overlay. Components never import overlays. The one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`."
+    law: "The tier direction matrix; a shared package never imports an app. Front-end page and layout owners may import overlay entries; every other cross-owner feature-to-feature edge is forbidden, including layout-to-page and overlay-to-overlay. Components never import overlays. The one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`. A component library's tiers (`tiers.grammar`: leaf, branch, composite, frame) import nothing above themselves, and its `data-tier` stamp is its folder."
     kinds: [lint, design]
     gates: [settle, land, ci]
-    failureCodes: ["BE_TIER_DIRECTION", "FE_TIER_DIRECTION", "ARCH_PACKAGE_IMPORTS_APP"]
+    failureCodes: ["BE_TIER_DIRECTION", "FE_TIER_DIRECTION", "FE_GRAMMAR_TIER_DIRECTION", "FE_GRAMMAR_TIER_STAMP", "ARCH_PACKAGE_IMPORTS_APP"]
     enforcers:
       - {kind: eslint-be, id: tier-direction}
       - {kind: eslint-fe, id: tier-direction}

@@ -44,6 +44,7 @@
     "scripts/hfs/architecture/client-reaches-server.mjs",
     "scripts/hfs/architecture/clones.mjs",
     "scripts/hfs/architecture/config-unread.mjs",
+    "scripts/hfs/architecture/component-tiers.mjs",
     "scripts/hfs/architecture/config.mjs",
     "scripts/hfs/architecture/connection-map.mjs",
     "scripts/hfs/architecture/constructor-deps.mjs",
