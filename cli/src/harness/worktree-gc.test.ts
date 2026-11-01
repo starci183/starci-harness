@@ -44,6 +44,7 @@ const fixture = (t: { after(fn: () => void): void }): Fixture => {
         const root = join(base, name)
         mkdirSync(root)
         git(root, "init", "-q", "-b", "main")
+        git(root, "config", "core.autocrlf", "false")
         writeFileSync(join(root, ".gitignore"), "node_modules/\ncoverage/\nlocal.config\n")
         writeFileSync(join(root, "source.txt"), "base\n")
         writeFileSync(join(root, "hidden.txt"), "base hidden\n")
@@ -114,6 +115,7 @@ void test("explicit collection preserves restorable dirty binary, staged, untrac
     assert.deepEqual(readFileSync(join(preserved, "ignored/local.config")), Buffer.from([255, 0, 25, 0, 42]))
     assert.equal(readFileSync(join(preserved, "untracked/notes.txt"), "utf8"), "untracked note\n")
     assert.equal(readFileSync(join(preserved, "tracked/hidden.txt"), "utf8"), "working bytes hidden from Git diff\n")
+    assert.equal(readFileSync(join(preserved, "tracked/source.txt"), "utf8"), "unstaged source\n")
     const manifest = JSON.parse(readFileSync(join(preserved, "manifest.json"), "utf8")) as { metadata: { links: { path: string; target: string }[] } }
     assert.ok(manifest.metadata.links.some((link) => link.path === "node_modules" && link.target !== ""))
     const restored = join(base, "restored")
