@@ -2,7 +2,7 @@ import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react"
 import type { PresentationState } from "../../../common/state.js"
 import { Button } from "../../leaf/Button/index.js"
-import { CloseButton } from "../../leaf/CloseButton/index.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
 
 export type ToastAction = {
     readonly label: string
@@ -155,7 +155,7 @@ export const Toast = ({ toast, dismissLabel, onDismiss, isPaused = false }: Toas
                 <span className="starci-core-toast-action" data-grammar-toast-action="true">
                     <Button
                         size="sm"
-                        variant="secondary"
+                        intent="alternative"
                         onPress={() => {
                             toast.action?.onAction()
                             onDismiss()
@@ -165,7 +165,7 @@ export const Toast = ({ toast, dismissLabel, onDismiss, isPaused = false }: Toas
                     </Button>
                 </span>
             )}
-            <CloseButton label={dismissLabel} size="sm" onPress={onDismiss} />
+            <IconButton intent="dismiss" label={dismissLabel} size="sm" onPress={onDismiss} />
         </div>
     )
 }

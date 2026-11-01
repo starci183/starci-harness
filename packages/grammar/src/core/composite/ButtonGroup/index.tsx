@@ -1,34 +1,37 @@
 "use client"
 
 import { ButtonGroup as HeroButtonGroup } from "@heroui/react"
-import { Children, cloneElement, isValidElement, type ReactNode } from "react"
+import type { ButtonIntent } from "../../buttonIntent.js"
 import { Button } from "../../leaf/Button/index.js"
+import type { IconSource } from "../../leaf/Icon/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
+
+/** One member of the group: a `Button` with its label, or an `IconButton` when it has a `source`. */
+export type ButtonGroupAction = {
+    readonly id: string
+    /** The visible label, or the accessible name of an icon-only member. */
+    readonly label: string
+    /** The glyph of an icon-only member. */
+    readonly source?: IconSource
+    /** Peers on one object are never destructive: the members share a decision, so none is a confirmation. */
+    readonly intent?: Exclude<ButtonIntent, "destructive" | "dismiss">
+    readonly onPress?: () => void
+    readonly isDisabled?: boolean
+}
 
 export type ButtonGroupProps = {
     /** Names the group (`role="group"`) for assistive technology. */
     readonly label: string
-    /** Grammar `Button`s (or `IconButton`s). They join visually and keep their own names. */
-    readonly children: ReactNode
+    /** The members as data. They join visually and keep their own names and tab stops. */
+    readonly actions: ReadonlyArray<ButtonGroupAction>
     readonly orientation?: "horizontal" | "vertical"
-    /** Disables every Grammar Button and IconButton in the group. */
+    /** Disables every member. */
     readonly isDisabled?: boolean
     readonly width?: "content" | "fill"
 }
 
-/*
- * Grammar Button always states its own `isDisabled`, so the vendor group's disabled context (read
- * only when a button leaves the prop unset) never reaches it. A disabled group therefore hands the
- * state to its direct Grammar action children itself.
- */
-const disableActions = (children: ReactNode) => Children.map(children, (child) => (
-    isValidElement<{ readonly isDisabled?: boolean }>(child) && (child.type === Button || child.type === IconButton)
-        ? cloneElement(child, { isDisabled: true })
-        : child
-))
-
 /** Related actions joined into one visual unit. Each button stays its own tab stop. */
-export const ButtonGroup = ({ label, children, orientation = "horizontal", isDisabled = false, width = "content" }: ButtonGroupProps) => (
+export const ButtonGroup = ({ label, actions, orientation = "horizontal", isDisabled = false, width = "content" }: ButtonGroupProps) => (
     <HeroButtonGroup
         data-tier="composite"
         data-component="ButtonGroup"
@@ -42,6 +45,16 @@ export const ButtonGroup = ({ label, children, orientation = "horizontal", isDis
         fullWidth={width === "fill"}
         className="starci-core-button-group"
     >
-        {isDisabled ? disableActions(children) : children}
+        {actions.map((action) => {
+            const unavailable = isDisabled || action.isDisabled === true
+            const common = {
+                ...(action.intent === undefined ? {} : { intent: action.intent }),
+                ...(action.onPress === undefined ? {} : { onPress: action.onPress }),
+                isDisabled: unavailable,
+            }
+            return action.source === undefined
+                ? <Button key={action.id} {...common}>{action.label}</Button>
+                : <IconButton key={action.id} source={action.source} label={action.label} {...common} />
+        })}
     </HeroButtonGroup>
 )

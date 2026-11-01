@@ -158,8 +158,8 @@ const typography = (): ReadonlyArray<Pair> => [
     })),
     {
         id: "text-action-control",
-        ready: <G.TextAction appearance="inline" size="control" href="#a">Open report</G.TextAction>,
-        loading: <G.TextAction appearance="inline" size="control" href="#a" isSkeleton>Open report</G.TextAction>,
+        ready: <G.TextAction appearance="inline" size="control" onPress={noop}>Open report</G.TextAction>,
+        loading: <G.TextAction appearance="inline" size="control" onPress={noop} isSkeleton>Open report</G.TextAction>,
     },
 ]
 
@@ -171,7 +171,7 @@ export const TypographyLoading: Story = onePhase("grammar-typography", "loading"
 /* ------------------------------------------------------------------ actions */
 
 const actions = (): ReadonlyArray<Pair> => [
-    ...(["sm", "md", "lg", "control"] as const).map((size) => ({
+    ...(["sm", "md", "lg"] as const).map((size) => ({
         id: `button-${size}`,
         ready: <G.Button size={size} onPress={noop}>Save changes</G.Button>,
         loading: <G.Button size={size} onPress={noop} isSkeleton>Save changes</G.Button>,
@@ -191,7 +191,7 @@ const actions = (): ReadonlyArray<Pair> => [
         ready: <G.Button href="#docs">Read the docs</G.Button>,
         loading: <G.Button href="#docs" isSkeleton>Read the docs</G.Button>,
     },
-    ...(["sm", "md", "control", "lg"] as const).map((size) => ({
+    ...(["sm", "md", "lg"] as const).map((size) => ({
         id: `icon-button-${size}`,
         ready: <G.IconButton source={BellGlyph} label="Notifications" size={size} onPress={noop} />,
         loading: <G.IconButton source={BellGlyph} label="Notifications" size={size} onPress={noop} isSkeleton />,
@@ -246,7 +246,7 @@ export const StatusLoading: Story = onePhase("grammar-status", "loading", status
 /* ------------------------------------------------------------------ identity */
 
 const identity = (): ReadonlyArray<Pair> => [
-    ...(["sm", "md", "lg", "control"] as const).map((size) => ({
+    ...(["sm", "md", "lg"] as const).map((size) => ({
         id: `avatar-${size}`,
         ready: <G.Avatar name="Alex Morgan" size={size} />,
         loading: <G.Avatar name="Alex Morgan" size={size} isSkeleton />,

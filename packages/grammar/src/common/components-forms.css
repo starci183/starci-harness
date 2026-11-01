@@ -540,17 +540,6 @@
         white-space: nowrap;
     }
 
-    /*
-     * --- SegmentedControl size "control" ---
-     * HeroUI's `lg` group held to the shared control height (2.75rem) so a language switch lines up with the IconButtons, Switch and buttons of a
-     * bar. Keyed on the stamp the component emits (`data-grammar-segmented-size`), never on vendor class names. The height is `!important` because
-     * consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide against the vendor `.toggle-button--lg` rule
-     * (h-11, then md:h-10). `md` and `lg` stay HeroUI's own.
-     */
-    [data-component="SegmentedControl"][data-grammar-segmented-size="control"] .starci-core-segment {
-        block-size: var(--starci-core-control-min-size) !important;
-    }
-
     /* --- ButtonGroup --- */
     .starci-core-button-group {
         max-width: 100%;

@@ -1,6 +1,8 @@
 "use client"
 
-import type { CSSProperties, DragEventHandler, ReactNode } from "react"
+import type { DragEventHandler, ReactNode } from "react"
+
+export type DragItemTone = "neutral" | "accent" | "success" | "warning" | "danger"
 
 export type DragItemProps = {
     /** Include a published control that provides the same operation without dragging. */
@@ -12,12 +14,12 @@ export type DragItemProps = {
     readonly isSelected?: boolean
     readonly isInvalid?: boolean
     readonly isDashed?: boolean
-    /** Caller-owned category colour; never the only indication of category or validity. */
-    readonly leadingColor?: string
+    /** The category tone drawn on the leading edge; never the only indication of category or validity. */
+    readonly tone?: DragItemTone
 }
 
 /** A native drag source with Grammar-owned state hooks; its child control supplies keyboard operation. */
-export const DragItem = ({ children, isDisabled = false, onDragStart, onDragEnd, isSelected = false, isInvalid = false, isDashed = false, leadingColor }: DragItemProps) => (
+export const DragItem = ({ children, isDisabled = false, onDragStart, onDragEnd, isSelected = false, isInvalid = false, isDashed = false, tone }: DragItemProps) => (
     <div
         className="starci-core-drag-item"
         data-component="DragItem"
@@ -26,7 +28,7 @@ export const DragItem = ({ children, isDisabled = false, onDragStart, onDragEnd,
         data-grammar-invalid={isInvalid ? "true" : "false"}
         data-grammar-dashed={isDashed ? "true" : "false"}
         draggable={!isDisabled}
-        {...(leadingColor === undefined ? {} : { style: { "--starci-drag-item-leading": leadingColor } as CSSProperties })}
+        {...(tone === undefined ? {} : { "data-grammar-drag-tone": tone })}
         {...(isDisabled || onDragStart === undefined ? {} : { onDragStart })}
         {...(isDisabled || onDragEnd === undefined ? {} : { onDragEnd })}
     >

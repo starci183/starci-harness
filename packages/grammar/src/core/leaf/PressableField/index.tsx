@@ -1,7 +1,6 @@
 "use client"
 
 import { useFieldVariant } from "../../surfaceContext.js"
-import type { FieldVariant } from "../Field/index.js"
 import { Icon, type IconSource } from "../Icon/index.js"
 import {
     pressableFieldClassName,
@@ -15,8 +14,6 @@ export type PressableFieldProps = {
     readonly label: string
     /** Placeholder-style copy that says what pressing the field will let the reader do. */
     readonly placeholder: string
-    /** Defaults to secondary inside a Grammar surface and primary outside (ANATOMY-2). */
-    readonly variant?: FieldVariant
     readonly source?: IconSource
     /** Keyboard hint shown at the end of the field, rendered as a `kbd`. */
     readonly shortcut?: string
@@ -32,8 +29,8 @@ export type PressableFieldProps = {
  * matches them without any application restating field geometry. It never accepts text - the whole
  * field is one press target - so it carries its own accessible name and no form value.
  */
-export const PressableField = ({ label, placeholder, source, shortcut, variant: requestedVariant, isDisabled = false, onPress }: PressableFieldProps) => {
-    const variant = useFieldVariant(requestedVariant)
+export const PressableField = ({ label, placeholder, source, shortcut, isDisabled = false, onPress }: PressableFieldProps) => {
+    const variant = useFieldVariant()
     return (
         <button
             type="button"

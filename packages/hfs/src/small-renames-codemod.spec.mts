@@ -106,9 +106,9 @@ test('11. variant is deleted on fields and Tabs; Button and IconButton variant i
   assert.match(result.findings[0]?.reason ?? '', /button-intent/);
 });
 
-test('12. size control is deleted; Switch and Avatar lg stay', () => {
+test('12. size control is deleted; on Switch and Avatar it becomes lg', () => {
   const result = run('Button, IconButton, Input, SearchField, Switch, Avatar, AvatarButton', 'const A = () => <><Button size="control">a</Button><IconButton size="control" label="l" /><Input size="control" /><SearchField size="control" /><Switch size="control" /><Avatar size="control" /><AvatarButton size="control" /><Switch size="lg" /><Avatar size="lg" /></>;');
-  assert.match(result.text, /<Button>a<\/Button><IconButton label="l" \/><Input \/><SearchField \/><Switch \/><Avatar \/><AvatarButton \/><Switch size="lg" \/><Avatar size="lg" \/>/);
+  assert.match(result.text, /<Button>a<\/Button><IconButton label="l" \/><Input \/><SearchField \/><Switch size="lg" \/><Avatar size="lg" \/><AvatarButton size="lg" \/><Switch size="lg" \/><Avatar size="lg" \/>/);
 });
 
 test('13. FlowGraph orbit becomes BubbleMap and its nodes are reported; exports are renamed', () => {

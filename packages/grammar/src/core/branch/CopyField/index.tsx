@@ -5,7 +5,7 @@ import { InputGroup as HeroInputGroup, Label as HeroLabel, Tooltip as HeroToolti
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
-import { FieldSkeletonScope, StaticFieldError, fieldStateAttributes, fieldVariantAttributes, type FieldVariant } from "../../leaf/Field/index.js"
+import { FieldSkeletonScope, StaticFieldError, fieldStateAttributes, fieldVariantAttributes } from "../../leaf/Field/index.js"
 import { tooltipContentClassName } from "../Tooltip/classNames.js"
 
 type CopyFieldBase = {
@@ -24,8 +24,6 @@ type CopyFieldBase = {
     readonly isDisabled?: boolean
     /** Initial unresolved content (knowledge STATE-8): the ready anatomy, inert, its field box painted as a Skeleton. */
     readonly isSkeleton?: boolean
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: FieldVariant
 }
 
 /** A value shown in full (truncated in the middle when it does not fit) and copied from what it shows. */
@@ -95,7 +93,7 @@ export const CopyField = (props: CopyFieldProps) => props.isSkeleton === true
  */
 const CopyFieldControl = (props: CopyFieldProps) => {
     const { label, isLabelHidden = false, description, copyLabel, copiedLabel, copyErrorLabel, isDisabled = false, isSkeleton = false } = props
-    const variant = useFieldVariant(props.variant)
+    const variant = useFieldVariant()
     const id = `copy-field${useId().replaceAll(":", "")}`
     const labelId = `${id}-label`
     const descriptionId = description == null ? undefined : `${id}-description`

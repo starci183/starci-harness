@@ -22,8 +22,6 @@ export type TimeFieldProps = FieldControlProps & {
     readonly granularity?: "hour" | "minute" | "second"
     /** Forces 12- or 24-hour display; the locale decides by default. */
     readonly hourCycle?: 12 | 24
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
 }
 
 /*
@@ -41,10 +39,9 @@ export const TimeField = ({
     maxValue,
     granularity = "minute",
     hourCycle,
-    variant: requestedVariant,
     ...field
 }: TimeFieldProps) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     return (
         <HeroTimeField
             data-tier="leaf"

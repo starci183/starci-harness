@@ -20,8 +20,6 @@ export type RadioGroupProps = FieldControlProps & {
     readonly defaultValue?: string | null
     readonly onValueChange?: (value: string) => void
     readonly orientation?: ChoiceOrientation
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
     /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
     readonly isSkeleton?: boolean
 }
@@ -56,10 +54,9 @@ const RadioGroupControl = ({
     defaultValue,
     onValueChange,
     orientation = "vertical",
-    variant: requestedVariant,
     ...field
 }: Omit<RadioGroupProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     return (
         <HeroRadioGroup
             data-tier="composite"

@@ -183,26 +183,6 @@
         font-weight: var(--grammar-weight-black);
     }
 
-    /* Tabs variant="secondary": one outlined unit with the family's hard offset, the selected tab a pink pill (the SegmentedControl treatment). */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Tabs"][data-grammar-tabs-variant="secondary"] .tabs__list-container {
-        border: var(--offset-pop-outline-width) solid var(--foreground);
-        border-radius: var(--offset-pop-control-radius) !important;
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Tabs"][data-grammar-tabs-variant="secondary"] .tabs__tab {
-        color: var(--foreground);
-        font-weight: var(--grammar-weight-extrabold);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Tabs"][data-grammar-tabs-variant="secondary"] .tabs__tab[data-selected="true"] {
-        color: var(--accent-foreground) !important;
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Tabs"][data-grammar-tabs-variant="secondary"] .tabs__indicator {
-        background: var(--accent) !important;
-    }
-
     /* TagGroup: outlined chips. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TagGroup"] [data-grammar-tag][data-grammar-tag-drop-target="true"] {
         outline-offset: 3px;

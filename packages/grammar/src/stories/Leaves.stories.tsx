@@ -210,13 +210,13 @@ export const Button: Story = {
   render: () => (
     <Matrix>
       <State label="Variants">
-        <G.Button variant="primary">Primary</G.Button>
-        <G.Button variant="secondary">Secondary</G.Button>
-        <G.Button variant="tertiary">Tertiary</G.Button>
-        <G.Button variant="outline">Outline</G.Button>
-        <G.Button variant="ghost">Ghost</G.Button>
-        <G.Button variant="danger">Danger</G.Button>
-        <G.Button variant="danger-soft">Danger soft</G.Button>
+        <G.Button intent="commit">Primary</G.Button>
+        <G.Button intent="alternative">Secondary</G.Button>
+        <G.Button intent="dismiss">Tertiary</G.Button>
+        <G.Button intent="neutral">Outline</G.Button>
+        <G.Button intent="neutral">Ghost</G.Button>
+        <G.Button intent="destructive" step="confirm">Danger</G.Button>
+        <G.Button intent="destructive">Danger soft</G.Button>
       </State>
       <State label="Sizes">
         <G.Button size="sm">Small</G.Button>
@@ -224,21 +224,21 @@ export const Button: Story = {
         <G.Button size="lg">Large</G.Button>
       </State>
       <State label="Disabled">
-        <G.Button variant="primary" isDisabled>Primary</G.Button>
-        <G.Button variant="secondary" isDisabled>Secondary</G.Button>
-        <G.Button variant="outline" isDisabled>Outline</G.Button>
+        <G.Button intent="commit" isDisabled>Primary</G.Button>
+        <G.Button intent="alternative" isDisabled>Secondary</G.Button>
+        <G.Button intent="neutral" isDisabled>Outline</G.Button>
       </State>
       <State label="Pending">
-        <G.Button variant="primary" isPending>Saving</G.Button>
-        <G.Button variant="secondary" isPending>Loading</G.Button>
+        <G.Button intent="commit" isPending>Saving</G.Button>
+        <G.Button intent="alternative" isPending>Loading</G.Button>
       </State>
       <State label="Skeleton">
         <G.Button isSkeleton>Loading</G.Button>
       </State>
       <State label="With icons, destination and fill width" direction="column">
-        <G.Button variant="secondary" startContent={<G.Icon source={SearchGlyph} usage="leading" />}>Search</G.Button>
-        <G.Button href="#destination" variant="outline">Destination link</G.Button>
-        <G.Button variant="primary" width="fill">Full width</G.Button>
+        <G.Button intent="alternative" startContent={<G.Icon source={SearchGlyph} usage="leading" />}>Search</G.Button>
+        <G.Button href="#destination" intent="neutral">Destination link</G.Button>
+        <G.Button intent="commit" width="fill">Full width</G.Button>
       </State>
     </Matrix>
   ),
@@ -363,15 +363,20 @@ export const IconButton: Story = {
         <G.IconButton source={SettingsGlyph} label="Settings" onPress={noop} />
         <G.IconButton source={SearchGlyph} label="Search (a destination)" href="#search" />
       </State>
+      <State label="Dismiss (draws the close glyph itself)">
+        <G.IconButton intent="dismiss" label="Close" size="sm" onPress={noop} />
+        <G.IconButton intent="dismiss" label="Close" onPress={noop} />
+        <G.IconButton intent="dismiss" label="Close" isDisabled />
+      </State>
       <State label="Active (selected)">
         <G.IconButton source={BellGlyph} label="Notifications" isActive onPress={noop} />
       </State>
       <State label="Quiet (ghost) - an overflow menu glyph">
-        <G.IconButton source={SettingsGlyph} label="More actions" variant="ghost" onPress={noop} />
+        <G.IconButton source={SettingsGlyph} label="More actions" intent="neutral" onPress={noop} />
       </State>
       <State label="Danger-soft - a reversible or row-level delete (an AlertDialog confirm uses the solid danger Button)">
-        <G.IconButton source={TrashGlyph} label="Delete row" variant="danger-soft" onPress={noop} />
-        <G.IconButton source={TrashGlyph} label="Delete row unavailable" variant="danger-soft" isDisabled />
+        <G.IconButton source={TrashGlyph} label="Delete row" intent="destructive" onPress={noop} />
+        <G.IconButton source={TrashGlyph} label="Delete row unavailable" intent="destructive" isDisabled />
       </State>
       <State label="Disabled">
         <G.IconButton source={SearchGlyph} label="Search unavailable" isDisabled />
@@ -505,14 +510,14 @@ export const TextAction: Story = {
   render: () => (
     <Matrix>
       <State label="Appearances">
-        <G.TextAction href="#inline">Inline</G.TextAction>
-        <G.TextAction href="#muted" appearance="muted">Muted</G.TextAction>
+        <G.TextAction onPress={noop}>Inline</G.TextAction>
+        <G.TextAction onPress={noop} appearance="muted">Muted</G.TextAction>
         <G.TextAction onPress={noop} appearance="choice">Choice</G.TextAction>
-        <G.TextAction href="#route" appearance="route">Route</G.TextAction>
+        <G.TextAction onPress={noop} appearance="route">Route</G.TextAction>
         <G.TextAction onPress={noop} appearance="disclosure">Disclosure</G.TextAction>
       </State>
       <State label="Current (selected)">
-        <G.TextAction href="#route" appearance="route" isCurrent>Current route</G.TextAction>
+        <G.TextAction onPress={noop} appearance="route" isCurrent>Current route</G.TextAction>
         <G.TextAction onPress={noop} appearance="choice" isCurrent>Selected choice</G.TextAction>
       </State>
       <State label="Disabled">
@@ -522,7 +527,7 @@ export const TextAction: Story = {
         <G.TextAction onPress={noop} isPending>Refreshing</G.TextAction>
       </State>
       <State label="Skeleton">
-        <G.TextAction href="#loading" isSkeleton>Loading</G.TextAction>
+        <G.TextAction onPress={noop} isSkeleton>Loading</G.TextAction>
       </State>
     </Matrix>
   ),
@@ -644,20 +649,6 @@ export const Kbd: Story = {
   ),
 };
 
-export const CloseButton: Story = {
-  render: () => (
-    <Matrix>
-      <State label="Sizes">
-        <G.CloseButton label="Close" size="sm" onPress={noop} />
-        <G.CloseButton label="Close" size="md" onPress={noop} />
-      </State>
-      <State label="Disabled">
-        <G.CloseButton label="Close" isDisabled />
-      </State>
-    </Matrix>
-  ),
-};
-
 export const Spinner: Story = {
   render: () => (
     <Matrix>
@@ -763,7 +754,7 @@ export const IconButtonBadge: Story = {
     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
       <G.IconButton source={BellGlyph} label="Notifications" badge={3} badgeLabel="3 unread" onPress={noop} />
       <G.IconButton source={BellGlyph} label="Notifications" badge={240} badgeLabel="240 unread" onPress={noop} />
-      <G.IconButton source={BellGlyph} label="Notifications" variant="ghost" badge="New" badgeLabel="new items" onPress={noop} />
+      <G.IconButton source={BellGlyph} label="Notifications" intent="neutral" badge="New" badgeLabel="new items" onPress={noop} />
       <G.IconButton source={BellGlyph} label="Notifications" badge={0} badgeLabel="0 unread" onPress={noop} />
     </div>
   ),
@@ -784,8 +775,8 @@ export const ProgressSteps: Story = {
 export const IconButtonFloating: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', padding: '1rem' }}>
-      <G.IconButton source={BellGlyph} label="Ask the assistant" variant="primary" size="lg" isFloating onPress={noop} />
-      <G.IconButton source={BellGlyph} label="Ask the assistant" variant="primary" onPress={noop} />
+      <G.IconButton source={BellGlyph} label="Ask the assistant" intent="commit" size="lg" isFloating onPress={noop} />
+      <G.IconButton source={BellGlyph} label="Ask the assistant" intent="commit" onPress={noop} />
     </div>
   ),
 };

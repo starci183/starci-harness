@@ -13,8 +13,5 @@ export const SurfaceNesting = ({ children }: { readonly children: ReactNode }) =
 /** Whether the current composition supplies a Grammar surface content edge and control layer. */
 export const useSurfaceNesting = (): boolean => useContext(SurfaceNestingContext)
 
-/** Resolve an explicit field layer, or the surface's secondary/page's primary default. */
-export const useFieldVariant = (variant?: FieldVariant): FieldVariant => {
-    const nested = useSurfaceNesting()
-    return variant ?? (nested ? "secondary" : "primary")
-}
+/** The field layer the surface decides: secondary inside a Grammar surface, primary on the page. */
+export const useFieldVariant = (): FieldVariant => (useSurfaceNesting() ? "secondary" : "primary")

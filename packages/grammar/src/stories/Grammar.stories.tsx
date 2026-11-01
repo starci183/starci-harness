@@ -12,7 +12,7 @@ import {
   SurfaceCard,
   SurfaceListCard,
   Text,
-  TextAction,
+  Link,
   WorkspaceShell,
 } from '../common/index.js';
 import turtleUrl from './assets/turtle.png';
@@ -60,7 +60,7 @@ const topNav = (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <span aria-hidden="true">A</span>
         <span>Alex</span>
-        <TextAction href="#">Sign out</TextAction>
+        <Link href="#">Sign out</Link>
       </div>
     }
     actionsLabel="Account"
@@ -69,8 +69,8 @@ const topNav = (
 
 const pageFooter = (
   <div style={{ display: 'flex', gap: '1rem', padding: '1.5rem 0', color: 'var(--muted, #555)' }}>
-    <TextAction href="#">Privacy policy</TextAction>
-    <TextAction href="#">Terms</TextAction>
+    <Link href="#">Privacy policy</Link>
+    <Link href="#">Terms</Link>
   </div>
 );
 
@@ -103,20 +103,20 @@ export const SignInScreen: Story = {
             <Text tone="muted">Sign in to keep your tasks moving.</Text>
           </div>
           <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <Input id="email" name="email" label="Email" kind="email" variant="secondary" defaultValue="alex@example.test" />
+            <Input id="email" name="email" label="Email" kind="email" defaultValue="alex@example.test" />
             <div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
-                <TextAction href="#">Forgot password?</TextAction>
+                <Link href="#">Forgot password?</Link>
               </div>
-              <Input id="password" name="password" label="Password" kind="password" variant="secondary" placeholder="Enter your password" />
+              <Input id="password" name="password" label="Password" kind="password" placeholder="Enter your password" />
             </div>
             <Text live="assertive">We couldn&apos;t sign you in. Check your email and password.</Text>
-            <Button type="submit" variant="primary" width="fill">Sign in</Button>
-            <Text>New here? <TextAction href="#">Create an account</TextAction></Text>
+            <Button type="submit" intent="commit" width="fill">Sign in</Button>
+            <Text>New here? <Link href="#">Create an account</Link></Text>
           </form>
           <div style={{ marginTop: 'auto', display: 'flex', gap: '1rem' }}>
-            <TextAction href="#">Privacy policy</TextAction>
-            <TextAction href="#">Terms of service</TextAction>
+            <Link href="#">Privacy policy</Link>
+            <Link href="#">Terms of service</Link>
           </div>
         </div>
       </section>
@@ -128,9 +128,9 @@ const taskRow = (title: string, done: boolean) => (
   <li key={title} className="starci-core-static-row" data-grammar-row="true" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
     <input type="checkbox" defaultChecked={done} aria-label={`Complete ${title}`} />
     <span style={{ flex: 1, textDecoration: done ? 'line-through' : 'none', opacity: done ? 0.6 : 1 }}>{title}</span>
-    <TextAction href="#">Share</TextAction>
-    <TextAction href="#">Schedule</TextAction>
-    <Button variant="outline" size="sm">Delete</Button>
+    <Link href="#">Share</Link>
+    <Link href="#">Schedule</Link>
+    <Button intent="neutral" size="sm">Delete</Button>
   </li>
 );
 
@@ -151,9 +151,9 @@ export const TasksScreen: Story = {
             <SurfaceCard ariaLabel="New task">
               <form style={{ display: 'flex', gap: '0.75rem', alignItems: 'end' }}>
                 <div style={{ flex: 1 }}>
-                  <Input id="new-task" name="title" label="New task" variant="secondary" placeholder="What needs doing?" />
+                  <Input id="new-task" name="title" label="New task" placeholder="What needs doing?" />
                 </div>
-                <Button type="submit" variant="primary">Add task</Button>
+                <Button type="submit" intent="commit">Add task</Button>
               </form>
             </SurfaceCard>
             <SurfaceListCard
@@ -182,23 +182,23 @@ export const Leaves: Story = {
     <PageContainer>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 560 }}>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <Button variant="primary">Primary</Button>
-          <Button variant="secondary">Secondary</Button>
-          <Button variant="tertiary">Tertiary</Button>
-          <Button variant="outline">Outline</Button>
-          <Button variant="ghost">Ghost</Button>
-          <Button variant="primary" isPending>Pending</Button>
-          <Button variant="primary" isDisabled>Disabled</Button>
+          <Button intent="commit">Primary</Button>
+          <Button intent="alternative">Secondary</Button>
+          <Button intent="dismiss">Tertiary</Button>
+          <Button intent="neutral">Outline</Button>
+          <Button intent="neutral">Ghost</Button>
+          <Button intent="commit" isPending>Pending</Button>
+          <Button intent="commit" isDisabled>Disabled</Button>
         </div>
         <Divider label="or" />
-        <Input id="i1" name="a" label="Email" kind="email" variant="primary" placeholder="you@example.com" />
-        <Input id="i2" name="b" label="On a surface — secondary" kind="text" variant="secondary" placeholder="secondary field" />
-        <Input id="i3" name="c" label="With error" variant="secondary" isError errorMessage="This value is not accepted." defaultValue="bad input" />
+        <Input id="i1" name="a" label="Email" kind="email" placeholder="you@example.com" />
+        <Input id="i2" name="b" label="On a surface — secondary" kind="text" placeholder="secondary field" />
+        <Input id="i3" name="c" label="With error" isInvalid errorMessage="This value is not accepted." defaultValue="bad input" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <Heading level={2}>Heading</Heading>
           <Text>Default body text.</Text>
           <Text tone="muted">Muted supporting text.</Text>
-          <Text><TextAction href="#">TextAction link</TextAction> beside copy.</Text>
+          <Text><Link href="#">Link</Link> beside copy.</Text>
           <Label>Label leaf</Label>
           <Badge>Badge</Badge>
         </div>

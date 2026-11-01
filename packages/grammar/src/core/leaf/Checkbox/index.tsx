@@ -22,8 +22,6 @@ export type CheckboxProps = Omit<FieldControlProps, "isLabelHidden"> & {
     readonly onSelectedChange?: (isSelected: boolean) => void
     /** Mixed state for a parent of partially selected children. */
     readonly isIndeterminate?: boolean
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
     /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
     readonly isSkeleton?: boolean
 }
@@ -72,10 +70,9 @@ const CheckboxControl = ({
     defaultSelected,
     onSelectedChange,
     isIndeterminate = false,
-    variant: requestedVariant,
     ...field
 }: Omit<CheckboxProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     return (
         <HeroCheckbox
             data-tier="leaf"

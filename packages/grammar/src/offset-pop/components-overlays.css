@@ -161,22 +161,7 @@
         color: inherit;
     }
 
-    /* ---------------------------------------------------------------- close button + kbd */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"] {
-        border: var(--offset-pop-outline-width) solid var(--border);
-        color: var(--foreground);
-        background: var(--surface);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"]:is([data-hovered], [data-focus-visible]) {
-        background: var(--warning);
-        color: var(--foreground);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"][data-pressed] {
-        transform: translate(var(--grammar-hairline), var(--grammar-hairline));
-    }
-
+    /* ---------------------------------------------------------------- kbd */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Kbd"] {
         border: var(--offset-pop-outline-width) solid var(--border);
         border-radius: var(--offset-pop-radius-md);
@@ -248,16 +233,9 @@
     }
 
     /* ---------------------------------------------------------------- motion, theme, contrast */
-    @media (prefers-reduced-motion: reduce) {
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"][data-pressed] {
-            transform: none;
-        }
-    }
-
     @media (forced-colors: active) {
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-surface],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Alert"],
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-component="CloseButton"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Kbd"] {
             border-color: CanvasText;
             color: CanvasText;

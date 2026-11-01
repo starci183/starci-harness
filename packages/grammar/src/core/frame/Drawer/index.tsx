@@ -4,7 +4,7 @@ import { Drawer as HeroDrawer } from "@heroui/react"
 import { useId, type ReactNode } from "react"
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { overlayOpenProps, resolveTriggerlessOpenProps, useOverlayContainer, type OverlayOpenState } from "../../overlayScope.js"
-import { CloseButton } from "../../leaf/CloseButton/index.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
 import type { OverlayFooter } from "../Dialog/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 
@@ -88,7 +88,7 @@ export const Drawer = ({
                                         <p id={descriptionId} className="starci-core-overlay-description">{description}</p>
                                     )}
                                 </div>
-                                {closeLabel === undefined ? null : <CloseButton label={closeLabel} onPress={close} />}
+                                {closeLabel === undefined ? null : <IconButton intent="dismiss" label={closeLabel} onPress={close} />}
                             </HeroDrawer.Header>
                             {children === undefined ? null : (
                                 <HeroDrawer.Body className="starci-core-overlay-body">{children}</HeroDrawer.Body>

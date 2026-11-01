@@ -12,7 +12,7 @@ export type SegmentOption = {
     readonly isDisabled?: boolean
 }
 
-export type SegmentedControlSize = "md" | "lg" | "control"
+export type SegmentedControlSize = "sm" | "md"
 
 export type SegmentedControlProps = FieldControlProps & {
     readonly options: ReadonlyArray<SegmentOption>
@@ -21,10 +21,7 @@ export type SegmentedControlProps = FieldControlProps & {
     readonly onValueChange?: (value: string) => void
     /** `fill` stretches the segments across the parent. */
     readonly width?: "content" | "fill"
-    /**
-     * `md` (default) and `lg` are HeroUI's own ToggleButtonGroup sizes. `control` is the one StarCi size: the HeroUI `lg` group held to the
-     * shared control height (2.75rem, the IconButton and bar control height), so a language switch lines up with the buttons beside it in a bar.
-     */
+    /** `md` (default) or `sm` for a control nested in an item or a dense toolbar: HeroUI's own ToggleButtonGroup sizes. */
     readonly size?: SegmentedControlSize
     /**
      * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
@@ -102,7 +99,7 @@ const SegmentedControlControl = ({
                 selectionMode="single"
                 disallowEmptySelection
                 fullWidth={width === "fill"}
-                size={size === "control" ? "lg" : size}
+                size={size}
                 {...(isDisabled === true ? { isDisabled: true } : {})}
                 selectedKeys={selected === undefined ? [] : [selected]}
                 onSelectionChange={(keys) => {

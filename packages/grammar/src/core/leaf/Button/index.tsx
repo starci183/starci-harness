@@ -11,15 +11,13 @@ import { useButtonIntentVariant, type ButtonIntentProps } from "../../buttonInte
  * (HeroUI's danger Alert carries a `danger` Button "Retry"); they paint the vendor `--danger` tokens.
  */
 export type ButtonVariant = "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft"
-export type ButtonSize = "sm" | "md" | "lg" | "control"
+export type ButtonSize = "sm" | "md" | "lg"
 export type ButtonType = "button" | "submit" | "reset"
 export type ButtonWidth = "content" | "fill"
 
 type ButtonBase = {
     /** The visible action label. It remains present while the action is pending. */
     readonly children: ReactNode
-    /** Grammar internals and stories may select paint directly; applications declare intent. */
-    readonly variant?: ButtonVariant
     readonly size?: ButtonSize
     /** Decorative or explanatory content before the label. Product icon identity stays with the app. */
     readonly startContent?: ReactNode
@@ -101,7 +99,7 @@ const VARIANTS = {
     "danger-soft": "danger-soft",
 } as const
 
-const SIZES = { sm: "sm", md: "md", lg: "lg", control: "md" } as const
+const SIZES = { sm: "sm", md: "md", lg: "lg" } as const
 const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base({
     className: "select-none text-transparent",
 })
@@ -126,7 +124,6 @@ export const Button = (props: ButtonProps) => {
 const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
     const {
         children,
-        variant: legacyVariant = "secondary",
         size = "md",
         startContent,
         endContent,
@@ -136,7 +133,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
         width = "content",
         reasonId,
     } = props
-    const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? legacyVariant
+    const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? "secondary"
     const unavailable = isDisabled || isPending || isSkeleton
     // The side a glyph stands on takes the control's glyph padding (one step less): the glyph carries its own room.
     const glyphSides = {
@@ -158,7 +155,6 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
                 data-tier="leaf"
                 data-component="Button"
                 data-size={size}
-                data-grammar-control-size={size === "control" ? "control" : undefined}
                 {...glyphSides}
                 data-element={unavailable ? "span" : "a"}
                 data-loading={isSkeleton ? "true" : "false"}
@@ -187,7 +183,6 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
             data-tier="leaf"
             data-component="Button"
             data-size={size}
-            data-grammar-control-size={size === "control" ? "control" : undefined}
             {...glyphSides}
             data-element="button"
             data-loading={isSkeleton ? "true" : "false"}

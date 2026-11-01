@@ -133,7 +133,6 @@ export const Sidebar = ({
                     <IconButton
                         source={toggleSource}
                         label={toggleLabel}
-                        size="control"
                         isActive={collapsed}
                         aria-expanded={!collapsed}
                         aria-controls={listId}

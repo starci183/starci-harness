@@ -411,20 +411,20 @@ export const ListRow: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Several accounts of one provider" direction="column">
-        <G.SurfaceListCard label="Bank feed" fact="3 accounts" labelEnd={<G.Button variant="ghost" onPress={noop}>Add</G.Button>}>
+        <G.SurfaceListCard label="Bank feed" fact="3 accounts" labelEnd={<G.Button intent="neutral" onPress={noop}>Add</G.Button>}>
           <G.ListRow
             leading={<G.IconTile source={BookGlyph} />}
             title="Main account"
             badges={<><G.Badge tone="success" isDot>Connected</G.Badge><G.Badge tone="neutral">Test</G.Badge></>}
             description="Bank A · •••• 4321 · Holder name · Used by: Accounting"
-            actions={<G.IconButton source={PlusGlyph} label="Options for Main account" variant="ghost" onPress={noop} />}
+            actions={<G.IconButton source={PlusGlyph} label="Options for Main account" intent="neutral" onPress={noop} />}
           />
           <G.ListRow
             leading={<G.IconTile source={BookGlyph} />}
             title="Second account"
             badges={<G.Badge tone="warning" isDot>Unfinished</G.Badge>}
             description="Bank A · •••• 1234 · Holder name"
-            actions={<><G.Button variant="secondary" onPress={noop}>Continue</G.Button><G.IconButton source={PlusGlyph} label="Options for Second account" variant="ghost" onPress={noop} /></>}
+            actions={<><G.Button intent="alternative" onPress={noop}>Continue</G.Button><G.IconButton source={PlusGlyph} label="Options for Second account" intent="neutral" onPress={noop} /></>}
             state="cautionary"
           />
           <G.ListRow
@@ -432,7 +432,7 @@ export const ListRow: Story = {
             title="Old account"
             badges={<G.Badge tone="danger" isDot>Needs attention</G.Badge>}
             description="Bank B · •••• 9876"
-            actions={<G.IconButton source={PlusGlyph} label="Options for Old account" variant="ghost" onPress={noop} />}
+            actions={<G.IconButton source={PlusGlyph} label="Options for Old account" intent="neutral" onPress={noop} />}
             state="negative"
           >
             <G.Alert tone="negative" title="The provider rejected the last delivery" description="Check the key on the provider, then send a test." />
@@ -441,7 +441,7 @@ export const ListRow: Story = {
       </State>
       <State label="Offers without a leading mark, mixed with a static row" direction="column">
         <G.SurfaceListCard label="Not connected">
-          <G.ListRow title="Chat bot" description="Customers message your bot." actions={<G.Button variant="outline" onPress={noop}>Connect</G.Button>} />
+          <G.ListRow title="Chat bot" description="Customers message your bot." actions={<G.Button intent="neutral" onPress={noop}>Connect</G.Button>} />
           <G.StaticStateRow item={{ id: 'static', label: 'Static row', description: 'Shares the same inset and separator' }} />
         </G.SurfaceListCard>
       </State>
@@ -536,7 +536,7 @@ export const EmptyNotice: Story = {
         <G.EmptyNotice message="No saved lessons." description="Save a lesson to find it here." iconSource={BookGlyph} actionLabel="Browse lessons" actionStartContent={<G.Icon source={PlusGlyph} usage="leading" />} onAction={noop} />
       </State>
       <State label="Action pending" direction="column">
-        <G.EmptyNotice message="Nothing to import." actionLabel="Refresh" actionVariant="secondary" isActionPending onAction={noop} />
+        <G.EmptyNotice message="Nothing to import." actionLabel="Refresh" isActionPending onAction={noop} />
       </State>
       <State label="First run (artwork: the mascot at md, tied to its asset slot)" direction="column">
         <div data-story-empty="first-run">
@@ -568,7 +568,7 @@ export const SectionHeader: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Section header with eyebrow and action" direction="column">
-        <G.SectionHeader eyebrow="Course" title="Grammar basics" description="Twelve short lessons." action={<G.Button variant="secondary" size="sm">Share</G.Button>} level={2} />
+        <G.SectionHeader eyebrow="Course" title="Grammar basics" description="Twelve short lessons." action={<G.Button intent="alternative" size="sm">Share</G.Button>} level={2} />
       </State>
       <State label="Context intro" direction="column">
         <G.SectionHeader composition="context-intro" title="Welcome back" description="Pick up where you left off." level={2} />
@@ -577,7 +577,7 @@ export const SectionHeader: Story = {
         <G.SectionHeader title="Installations" count={2} meta="Inventoried at 10:00, 26 Sep 2026 (GMT+7)" level={2} />
       </State>
       <State label="Loading (isSkeleton)" direction="column">
-        <G.SectionHeader eyebrow="Course" title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button variant="secondary" size="sm">Share</G.Button>} level={2} isSkeleton />
+        <G.SectionHeader eyebrow="Course" title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button intent="alternative" size="sm">Share</G.Button>} level={2} isSkeleton />
       </State>
     </Matrix>
   ),
@@ -631,7 +631,7 @@ export const FencedCodeBlock: Story = {
   render: () => (
     <Matrix maxWidth={640}>
       <State label="Authored code with language and action" direction="column">
-        <G.FencedCodeBlock language="tsx" code={'import { CoreGrammarRoot } from "@starci/grammar/core"\n\nexport const App = () => <CoreGrammarRoot>…</CoreGrammarRoot>'} action={<G.Button size="sm" variant="ghost">Copy</G.Button>} />
+        <G.FencedCodeBlock language="tsx" code={'import { CoreGrammarRoot } from "@starci/grammar/core"\n\nexport const App = () => <CoreGrammarRoot>…</CoreGrammarRoot>'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
       </State>
       <State label="Rendered children" direction="column">
         <G.FencedCodeBlock language="sh"><code>npm install @starci/grammar</code></G.FencedCodeBlock>

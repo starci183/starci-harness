@@ -40,7 +40,7 @@ const IntentMatrix = ({ scope, theme }: { readonly scope: { readonly "data-gramm
                 <State label={`${theme}: toolbar / panel header`}>{actions}{glyphActions}</State>
             </G.ToolbarActions>
             <G.TopBar position="static" brand={<G.Text>Navbar</G.Text>} actions={
-                <G.IconButton intent="neutral" size="control" source={BellGlyph} label="Navbar notifications" />
+                <G.IconButton intent="neutral" source={BellGlyph} label="Navbar notifications" />
             } />
         </Matrix>
     </G.GrammarRoot>

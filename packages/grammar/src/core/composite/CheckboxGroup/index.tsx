@@ -31,8 +31,6 @@ export type CheckboxGroupProps = FieldControlProps & {
     readonly defaultValue?: ReadonlyArray<string>
     readonly onValueChange?: (value: Array<string>) => void
     readonly orientation?: ChoiceOrientation
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
     /**
      * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
      * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
@@ -71,10 +69,9 @@ const CheckboxGroupControl = ({
     defaultValue,
     onValueChange,
     orientation = "vertical",
-    variant: requestedVariant,
     ...field
 }: Omit<CheckboxGroupProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     return (
         <HeroCheckboxGroup
             data-tier="composite"

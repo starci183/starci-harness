@@ -15,7 +15,7 @@ export const ShellHeader: Story = {
   render: () => (
     <G.WorkspaceShell
       viewport="fixed"
-      header={<G.Input id="shell-search" name="query" label="Search in header" size="control" />}
+      header={<G.Input id="shell-search" name="query" label="Search in header" />}
       navigation={<G.Text>Desktop navigation</G.Text>}
       navigationLabel="Workspace"
       navigationDrawer={{ title: 'Navigation', openLabel: 'Open navigation', closeLabel: 'Close navigation', source: EllipsisGlyph, content: <G.Text>Mobile navigation</G.Text> }}
@@ -61,7 +61,7 @@ export const ShellSlotHeader: Story = {
   render: () => (
     <G.WorkspaceShell
       viewport="fixed"
-      compactHeader={<G.Drawer title="Navigation" closeLabel="Close navigation" placement="left" trigger={<G.IconButton label="Open navigation" source={EllipsisGlyph} size="control" variant="tertiary" />}><G.Sidebar label="Mobile navigation" presentation="drawer" groups={[]} selectedKey="home" /></G.Drawer>}
+      compactHeader={<G.Drawer title="Navigation" closeLabel="Close navigation" placement="left" trigger={<G.IconButton label="Open navigation" source={EllipsisGlyph} intent="dismiss" />}><G.Sidebar label="Mobile navigation" presentation="drawer" groups={[]} selectedKey="home" /></G.Drawer>}
       navigation={<G.Sidebar label="Desktop navigation" groups={[]} selectedKey="home" />}
       navigationLabel="Workspace"
       primaryLabel="Page"
@@ -85,7 +85,7 @@ export const ShellSlotHeader: Story = {
 };
 
 export const TopBarSearch: Story = {
-  render: () => <G.TopBar brand={<G.Text>Workspace</G.Text>} actions={<G.Input id="topbar-query" name="query" label="Search" size="control" />} />,
+  render: () => <G.TopBar brand={<G.Text>Workspace</G.Text>} actions={<G.Input id="topbar-query" name="query" label="Search" />} />,
   play: async ({ canvasElement }) => {
     await waitFor(() => expect(canvasElement.querySelector('[data-component="Input"]')).toHaveAttribute('data-grammar-variant', 'secondary'));
   },
@@ -95,9 +95,9 @@ export const FeatureNavSearch: Story = {
   render: () => (
     <G.NavigationFeatureNav
       identity={<G.Text>Workspace</G.Text>}
-      compactNavigationTrigger={<G.IconButton label="Open navigation" source={HomeGlyph} size="control" />}
+      compactNavigationTrigger={<G.IconButton label="Open navigation" source={HomeGlyph} />}
       compactNavigationTriggerLabel="Navigation"
-      actions={<G.Input id="feature-query" name="query" label="Search" size="control" />}
+      actions={<G.Input id="feature-query" name="query" label="Search" />}
     />
   ),
   play: async ({ canvasElement }) => {

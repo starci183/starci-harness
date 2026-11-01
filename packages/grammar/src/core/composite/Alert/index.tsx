@@ -4,8 +4,9 @@ import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
 import { useState, type ReactNode } from "react"
 import type { PresentationState } from "../../../common/state.js"
 import { vendorStatusFor } from "../../overlayScope.js"
-import { Button, type ButtonVariant } from "../../leaf/Button/index.js"
-import { CloseButton } from "../../leaf/CloseButton/index.js"
+import { Button } from "../../leaf/Button/index.js"
+import type { ButtonIntentProps } from "../../buttonIntent.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 
@@ -71,11 +72,11 @@ export type AlertProps = AlertBase & (Dismissible | Permanent)
  * | cautionary               | warning       | secondary      |
  * | neutral / pending / unavailable | default | secondary      |
  */
-const alertActionVariantFor = (tone: PresentationState): ButtonVariant => {
+const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
     const status = vendorStatusFor(tone)
-    if (status === "accent") return "primary"
-    if (status === "danger") return "danger"
-    return "secondary"
+    if (status === "accent") return { intent: "commit" }
+    if (status === "danger") return { intent: "destructive", step: "confirm" }
+    return { intent: "alternative" }
 }
 
 /**
@@ -84,8 +85,8 @@ const alertActionVariantFor = (tone: PresentationState): ButtonVariant => {
  * It is not an overlay: it takes layout space and stays until resolved or dismissed. Dismissal is
  * uncontrolled (the banner removes itself) and `onDismiss` reports it. Tone is echoed on
  * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
- * The action Button's variant follows the tone (`alertActionVariantFor`, after HeroUI's Alert examples):
- * informative (accent) -> `primary`, negative (danger) -> `danger`, every other tone -> `secondary`.
+ * The action Button's intent follows the tone (`alertActionIntentFor`, after HeroUI's Alert examples):
+ * informative (accent) -> `commit`, negative (danger) -> a confirmed `destructive`, every other tone -> `alternative`.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
 export const Alert = (props: AlertProps) => {
@@ -128,15 +129,15 @@ export const Alert = (props: AlertProps) => {
                         <Button
                             isSkeleton={isSkeleton}
                             size="sm"
-                            variant={alertActionVariantFor(tone)}
+                            {...alertActionIntentFor(tone)}
                             onPress={action.onAction}
                             {...(action.icon === undefined ? {} : { startContent: <Icon source={action.icon} usage="leading" /> })}
                         >{action.label}</Button>
                     )}
                     {props.dismissLabel === undefined ? null : (
                         isSkeleton
-                            ? <SkeletonPlaceholder shape="circle"><CloseButton label={props.dismissLabel} size="sm" onPress={dismiss} /></SkeletonPlaceholder>
-                            : <CloseButton label={props.dismissLabel} size="sm" onPress={dismiss} />
+                            ? <SkeletonPlaceholder shape="circle"><IconButton intent="dismiss" label={props.dismissLabel} size="sm" onPress={dismiss} /></SkeletonPlaceholder>
+                            : <IconButton intent="dismiss" label={props.dismissLabel} size="sm" onPress={dismiss} />
                     )}
                 </span>
             )}

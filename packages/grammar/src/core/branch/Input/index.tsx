@@ -12,7 +12,6 @@ import {
 } from "@heroui/react"
 
 export type InputKind = "email" | "tel" | "password" | "newPassword" | "code" | "text"
-export type InputVariant = "primary" | "secondary"
 
 type InputIcon = ComponentType<{ readonly className?: string }>
 
@@ -23,17 +22,13 @@ export type InputProps = {
     /** Keeps the label as the accessible name but hides it visually (a row of inputs that label themselves by position). */
     readonly isLabelHidden?: boolean
     readonly kind?: InputKind
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: InputVariant
-    /** `control` aligns the field with every other control in the navbar. */
-    readonly size?: "md" | "control"
     readonly placeholder?: string
     readonly defaultValue?: string
     readonly value?: string
     /** Standing guidance under the control, like `description` on every other field. It joins the input's accessible description. */
     readonly description?: ReactNode
     readonly errorMessage?: ReactNode
-    readonly isError?: boolean
+    readonly isInvalid?: boolean
     readonly isDisabled?: boolean
     readonly isRequired?: boolean
     readonly isSkeleton?: boolean
@@ -97,14 +92,12 @@ const InputControl = ({
     label,
     isLabelHidden = false,
     kind: kindName = "text",
-    variant: requestedVariant,
-    size = "md",
     placeholder,
     defaultValue,
     value,
     description,
     errorMessage,
-    isError = false,
+    isInvalid = false,
     isDisabled = false,
     isRequired = false,
     isReadOnly = false,
@@ -123,11 +116,11 @@ const InputControl = ({
     onPaste,
     autoFocus = false,
 }: Omit<InputProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     const [isRevealed, setIsRevealed] = useState(false)
     const kind = KINDS[kindName]
     const isSecret = kindName === "password" || kindName === "newPassword"
-    const invalid = isError || errorMessage != null
+    const invalid = isInvalid || errorMessage != null
     const toggleLabel = isRevealed ? hideLabel : revealLabel
     const ToggleIcon = isRevealed ? HideIcon : RevealIcon
     const [isCopied, setIsCopied] = useState(false)
@@ -199,7 +192,6 @@ const InputControl = ({
                             inputMode={kind.inputMode}
                             {...(placeholder === undefined ? {} : { placeholder })}
                             className="starci-core-input-field"
-                            data-grammar-control-size={size === "control" ? "control" : undefined}
                             {...(autoFocus ? { autoFocus: true } : {})}
                             {...(onBlur === undefined ? {} : { onBlur: () => onBlur() })}
                             {...(onPaste === undefined ? {} : { onPaste })}
@@ -243,7 +235,6 @@ const InputControl = ({
                         {...(placeholder === undefined ? {} : { placeholder })}
                         fullWidth
                         className="starci-core-input-field"
-                        data-grammar-control-size={size === "control" ? "control" : undefined}
                         {...(autoFocus ? { autoFocus: true } : {})}
                         {...(onBlur === undefined ? {} : { onBlur: () => onBlur() })}
                         {...(onPaste === undefined ? {} : { onPaste })}

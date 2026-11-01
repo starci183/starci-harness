@@ -4,14 +4,11 @@ import { useCallback, useId, useRef } from "react"
 import { InputOTP, Label as HeroLabel, REGEXP_ONLY_DIGITS } from "@heroui/react"
 import { horizontalScrollRegionClassName } from "../../classNames.js"
 import { HorizontalScrollRegion } from "../../frame/HorizontalScrollRegion/index.js"
-import type { FieldVariant } from "../../leaf/Field/index.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 
 export type OtpInputProps = {
     readonly id: string
     readonly name: string
-    /** Defaults to secondary inside a Grammar surface and primary outside (ANATOMY-2). */
-    readonly variant?: FieldVariant
     /**
      * Visible name of the code, e.g. "Verification code". It is drawn above the slots as a
      * `<label for={id}>` and names both the slot group (`role="group"`) and the one real input.
@@ -22,10 +19,10 @@ export type OtpInputProps = {
     /** Id of an app-owned element (a Field label, a heading) that names the code instead of `label`. */
     readonly labelledBy?: string
     readonly defaultValue?: string
-    readonly disabled?: boolean
-    readonly invalid?: boolean
+    readonly isDisabled?: boolean
+    readonly isInvalid?: boolean
     readonly describedBy?: string
-    readonly onChange?: (value: string) => void
+    readonly onValueChange?: (value: string) => void
 }
 
 /**
@@ -37,18 +34,18 @@ export type OtpInputProps = {
  * which the focused input already reaches, so the region adds no extra Tab stop.
  */
 export const OtpInput = (props: OtpInputProps) => {
-    const variant = useFieldVariant(props.variant)
+    const variant = useFieldVariant()
     const regionRef = useRef<HTMLDivElement>(null)
     const generatedLabelId = useId()
     const onChange = useCallback((nextValue: string) => {
-        props.onChange?.(nextValue)
+        props.onValueChange?.(nextValue)
         window.requestAnimationFrame(() => {
             const slots = regionRef.current?.querySelectorAll<HTMLElement>("[data-slot='input-otp-slot']")
             if (!slots?.length) return
             const activeIndex = Math.min(nextValue.length, slots.length - 1)
             slots.item(activeIndex).scrollIntoView({ block: "nearest", inline: "nearest" })
         })
-    }, [props.onChange])
+    }, [props.onValueChange])
 
     const labelId = props.label === undefined ? props.labelledBy : generatedLabelId
     const control = (
@@ -69,9 +66,9 @@ export const OtpInput = (props: OtpInputProps) => {
                 autoComplete="one-time-code"
                 inputMode="numeric"
                 defaultValue={props.defaultValue}
-                isDisabled={props.disabled === true}
-                isInvalid={props.invalid === true}
-                aria-invalid={props.invalid === true ? true : undefined}
+                isDisabled={props.isDisabled === true}
+                isInvalid={props.isInvalid === true}
+                aria-invalid={props.isInvalid === true ? true : undefined}
                 aria-describedby={props.describedBy}
                 {...(labelId === undefined ? {} : { "aria-labelledby": labelId })}
                 variant={variant}

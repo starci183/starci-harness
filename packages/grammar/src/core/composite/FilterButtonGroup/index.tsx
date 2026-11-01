@@ -39,9 +39,12 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
     return first.done ? undefined : String(first.value)
 }
 
-/** Lower case without tone marks, so "ke toan" finds "Kế toán" (the Vietnamese đ folds to d). */
-export const foldForSearch = (text: string): string =>
-    text.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "d").toLowerCase()
+/** The stroke letters Unicode does not decompose, with the base letter each folds to. */
+const STROKE_LETTERS: Readonly<Record<string, string>> = { đ: "d", ð: "d", ø: "o", ł: "l", ħ: "h" }
+
+/** Lower case without combining marks or strokes, so "ke toan" finds "Kế toán" and "naive" finds "naïve": no language is named. */
+const foldForSearch = (text: string): string =>
+    text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[đðøłħ]/g, (letter) => STROKE_LETTERS[letter] ?? letter)
 
 const GAP_PX = 8
 const SKELETON_COUNT = 4
@@ -203,7 +206,7 @@ export const FilterButtonGroup = ({
                         }}
                         label={searchLabel}
                         placement="bottom"
-                        trigger={<Button variant="secondary" size="sm" aria-label={moreLabel(hidden.length)}>{`+${hidden.length}`}</Button>}
+                        trigger={<Button intent="alternative" size="sm" aria-label={moreLabel(hidden.length)}>{`+${hidden.length}`}</Button>}
                     >
                         <div className="starci-core-filter-button-panel" onKeyDown={onSearchKeyDown}>
                             <SearchField
@@ -251,7 +254,7 @@ export const FilterButtonGroup = ({
                 </HeroToggleButtonGroup>
             </div>
             <span aria-hidden="true" className="starci-core-filter-button-probe" inert ref={plusMeasureRef}>
-                <Button variant="secondary" size="sm" aria-label={label}>{`+${Math.max(options.length, 1)}`}</Button>
+                <Button intent="alternative" size="sm" aria-label={label}>{`+${Math.max(options.length, 1)}`}</Button>
             </span>
         </div>
     )

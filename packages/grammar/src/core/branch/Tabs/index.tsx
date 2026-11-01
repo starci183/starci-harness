@@ -3,7 +3,6 @@
 import { Tabs as HeroTabs } from "@heroui/react"
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { HorizontalScrollFrame } from "../../HorizontalScrollFrame.js"
-import { usePaneContext } from "../../paneContext.js"
 import {
     tabContentClassName,
     tabLabelClassName,
@@ -40,14 +39,6 @@ export type TabsProps = {
     readonly labelVisibility?: "responsive" | "always"
     /** Page chrome owns whether the peer strip starts at the shared page inset. */
     readonly inset?: "page" | "none"
-    /**
-     * `primary` (default) is the underline tab bar, on the page and inside a sub-region alike: the labels are text on
-     * the content edge, the first label on the edge it shares with the title and the box below.
-     * `secondary` is HeroUI's own pill tabs, unpainted by the grammar (a soft track, the selected tab a white segment
-     * pill with the surface shadow). A pill is a filter's shape: a filter over a collection is a `FilterButtonGroup`,
-     * so a new screen never picks `secondary`. Same roles, keyboard, panel wiring and focus ring either way.
-     */
-    readonly variant?: "primary" | "secondary"
     /** Accessible name of the previous-tabs scroll caret. HeroUI hardcodes English; pass the localized text. Defaults to "Scroll tabs left". */
     readonly scrollPreviousLabel?: string
     /** Accessible name of the next-tabs scroll caret. Defaults to "Scroll tabs right". */
@@ -89,7 +80,6 @@ const useLocationPath = (enabled: boolean): readonly [string | undefined, (path:
 
 /** Render peer tabs through Core's selected, accessible and responsive treatment. */
 export const Tabs = (props: TabsProps) => {
-    const inPane = usePaneContext() !== undefined
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
     useEffect(() => setIsClientReady(true), [])
@@ -158,16 +148,12 @@ export const Tabs = (props: TabsProps) => {
     const scrollNextLabel = props.scrollNextLabel ?? "Scroll tabs right"
 
     const inset = props.inset ?? "none"
-    const variant = props.variant ?? "primary"
-    // STATE-6 names the page underline "primary" and the nested pill "secondary".
-    // HeroUI names those looks secondary and primary respectively.
-    const vendorVariant = variant === "secondary" ? "primary" : "secondary"
     const frameContract = inset === "page" ? "PADDING-5" : undefined
-    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="pending" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} />
+    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="pending" data-grammar-tabs-inset={inset} data-grammar-tabs-variant="primary" />
 
-    return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="ready" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} data-grammar-tab-labels={props.labelVisibility ?? "responsive"}>
+    return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="ready" data-grammar-tabs-inset={inset} data-grammar-tabs-variant="primary" data-grammar-tab-labels={props.labelVisibility ?? "responsive"}>
         <HeroTabs
-            variant={vendorVariant}
+            variant="secondary"
             {...(selectedKey === undefined ? {} : { selectedKey })}
             onSelectionChange={(key) => select(String(key))}
             className={tabsClassName ?? ""}
@@ -175,7 +161,7 @@ export const Tabs = (props: TabsProps) => {
         >
             <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => (
                 <HorizontalScrollFrame appearance="tabs" hideScrollBar size={64} scrollPreviousLabel={scrollPreviousLabel} scrollNextLabel={scrollNextLabel}>
-                    <div {...listProps} ref={ref} style={variant === "secondary" && inPane ? { ...listProps.style, paddingInline: 0 } : listProps.style}>{children}</div>
+                    <div {...listProps} ref={ref} style={listProps.style}>{children}</div>
                 </HorizontalScrollFrame>
             )}>
                 {props.items.map((item) => (

@@ -28,8 +28,6 @@ export type DatePickerProps = FieldControlProps & {
     /** Days the reader may not pick; they stay visible and are announced unavailable. */
     readonly isDateUnavailable?: (date: DateValue) => boolean
     readonly granularity?: DateGranularity
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
 }
 
 /** Month grid used by DatePicker: heading, previous/next, and the day grid (arrow-key navigable). */
@@ -87,10 +85,9 @@ export const DatePicker = ({
     maxValue,
     isDateUnavailable,
     granularity = "day",
-    variant: requestedVariant,
     ...field
 }: DatePickerProps) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     const { anchor, portalProps } = useGrammarPortal()
     return (
         <HeroDatePicker

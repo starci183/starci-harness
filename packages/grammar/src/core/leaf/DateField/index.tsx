@@ -24,8 +24,6 @@ export type DateFieldProps = FieldControlProps & {
     readonly maxValue?: DateValue
     /** Smallest editable unit. `day` is a date; finer units add a time. */
     readonly granularity?: DateGranularity
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
 }
 
 // The vendor's own date-group slot classes. `DateField.Group` would stamp them from its context; the
@@ -86,10 +84,9 @@ export const DateField = ({
     minValue,
     maxValue,
     granularity = "day",
-    variant: requestedVariant,
     ...field
 }: DateFieldProps) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     return (
         <HeroDateField
             data-tier="leaf"

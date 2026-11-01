@@ -18,7 +18,7 @@ const destinations: ReadonlyArray<G.TabItem> = [
 
 const Strip = ({ variant, overflow = true }: { readonly variant: 'primary' | 'secondary'; readonly overflow?: boolean }) => {
   const [selectedKey, setSelectedKey] = useState('overview');
-  return <G.Tabs label={`${variant} destinations`} variant={variant} labelVisibility="always" scrollPreviousLabel="Scroll tabs left" scrollNextLabel="Scroll tabs right" selectedKey={selectedKey} onSelect={setSelectedKey} items={overflow ? destinations : destinations.slice(0, 2)} />;
+  return <G.Tabs label={`${variant} destinations`} labelVisibility="always" scrollPreviousLabel="Scroll tabs left" scrollNextLabel="Scroll tabs right" selectedKey={selectedKey} onSelect={setSelectedKey} items={overflow ? destinations : destinations.slice(0, 2)} />;
 };
 
 /** Shared scroll-frame regression: directional controls, shadows, focus and vendor tab geometry. */
@@ -40,7 +40,7 @@ const ChipsRows = () => (
     <State label="Quick prompts: scroll to either edge" direction="column">
       <G.HorizontalScrollRegion aria-label="Quick prompts" overflow="needed" isFocusable={false}>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {prompts.map((prompt) => <G.Button key={prompt} variant="secondary" size="sm">{prompt}</G.Button>)}
+          {prompts.map((prompt) => <G.Button key={prompt} intent="alternative" size="sm">{prompt}</G.Button>)}
         </div>
       </G.HorizontalScrollRegion>
     </State>
@@ -48,7 +48,7 @@ const ChipsRows = () => (
       <State label="Right-to-left prompts" direction="column">
         <G.HorizontalScrollRegion aria-label="Right-to-left quick prompts" overflow="needed" isFocusable={false}>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {prompts.map((prompt) => <G.Button key={prompt} variant="secondary" size="sm">{prompt}</G.Button>)}
+            {prompts.map((prompt) => <G.Button key={prompt} intent="alternative" size="sm">{prompt}</G.Button>)}
           </div>
         </G.HorizontalScrollRegion>
       </State>

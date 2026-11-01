@@ -1,10 +1,10 @@
 "use client"
 
-import { Link as HeroLink, Spinner, skeletonVariants } from "@heroui/react"
+import { Spinner, skeletonVariants } from "@heroui/react"
 import { useRef, type ReactNode } from "react"
 import { getActionClassName, type ActionAppearance, type ActionTextSize } from "../actionStyles.js"
 
-type ActionBase = {
+export type TextActionProps = {
     readonly children: ReactNode
     readonly startContent?: ReactNode
     readonly endContent?: ReactNode
@@ -14,38 +14,9 @@ type ActionBase = {
     readonly isDisabled?: boolean
     readonly isPending?: boolean
     readonly isSkeleton?: boolean
-}
-
-/**
- * A real browser destination. Its active anchor supplies middle-click, copy-link and the platform's
- * `link` role. While pending or disabled the href is withheld and HeroUI supplies the unavailable
- * link state.
- */
-type DestinationAction = {
-    readonly href: string
-    readonly target?: "_blank" | "_self"
-    readonly rel?: string
-    readonly download?: boolean | string
-    /** Runs alongside navigation. It cannot cancel the destination. */
-    readonly onFollow?: () => void
-    readonly onPress?: never
-}
-
-/** A same-document command. It renders a button and owns pending against duplicate presses. */
-type CommandAction = {
     readonly onPress?: () => void
-    readonly href?: never
-    readonly target?: never
-    readonly rel?: never
-    readonly download?: never
-    readonly onFollow?: never
 }
 
-/**
- * The text-shaped action. The element is decided by which of `href` or `onPress` is present, and
- * the type forbids both, so a destination cannot be written as a button by choosing the wrong leaf.
- */
-export type TextActionProps = ActionBase & (DestinationAction | CommandAction)
 
 const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base({
     className: "starci-core-text-action-resting",
@@ -176,25 +147,6 @@ export const TextAction = (props: TextActionProps) => {
             {isPending ? null : endContent}
         </>
     )
-
-    if (props.href !== undefined) {
-        const { href, target, rel, download, onFollow } = props
-        return (
-            <HeroLink
-                {...shared}
-                data-element={unavailable ? "span" : "a"}
-                isDisabled={unavailable}
-                aria-current={isCurrent ? appearance === "route" ? "page" : "true" : undefined}
-                {...(unavailable ? {} : { href })}
-                {...(target === undefined ? {} : { target })}
-                {...(rel === undefined ? target === "_blank" ? { rel: "noopener noreferrer" } : {} : { rel })}
-                {...(download === undefined ? {} : { download })}
-                {...(onFollow === undefined || unavailable ? {} : { onClick: onFollow })}
-            >
-                {content}
-            </HeroLink>
-        )
-    }
 
     const { onPress } = props
     const press = () => {

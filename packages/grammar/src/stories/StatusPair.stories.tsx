@@ -34,7 +34,7 @@ const dialogTone = (tone: 'negative' | 'affirmative' | 'cautionary' | 'informati
       confirmLabel="Apply"
       cancelLabel="Not now"
       onConfirm={noop}
-      trigger={<G.Button variant="outline">Open</G.Button>}
+      trigger={<G.Button intent="neutral">Open</G.Button>}
     />
   ),
 });

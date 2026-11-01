@@ -58,7 +58,7 @@ export const PinnedActionBar: Story = {
         <div style={{ maxWidth: 390 }}>
           <Placeholder label="Page content" height={80} />
           <G.PinnedActionBar label="Install a module" visibility="always">
-            <G.Button variant="primary" width="fill" onPress={noop}>Install module</G.Button>
+            <G.Button intent="commit" width="fill" onPress={noop}>Install module</G.Button>
           </G.PinnedActionBar>
         </div>
       </State>
@@ -470,7 +470,7 @@ export const NavigationFeatureNav: Story = {
       compactNavigationTriggerLabel="Open navigation"
       actions={<G.Avatar name="Alex Morgan" size="sm" />}
       actionsLabel="Account"
-      featureNavigation={<G.TextAction href="#new" appearance="route">What is new</G.TextAction>}
+      featureNavigation={<G.Link href="#new">What is new</G.Link>}
       featureNavigationLabel="Features"
       position="static"
     />
@@ -835,7 +835,7 @@ const PaneInsetDemo = () => {
           <G.PaneSection>
             <G.Tabs
               label="Filter"
-              variant="secondary"
+             
               selectedKey={tab}
               onSelect={setTab}
               items={[{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }, { id: 'mine', label: 'Mine' }]}
@@ -865,7 +865,7 @@ const PaneInsetDemo = () => {
           <G.PaneSection bleed="inline">
             <G.HorizontalScrollRegion aria-label="Quick replies" overflow="needed" carets={false}>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {chipLabels.map((chip) => <G.Button key={chip} size="sm" variant="secondary" onPress={noop}>{chip}</G.Button>)}
+                {chipLabels.map((chip) => <G.Button key={chip} size="sm" intent="alternative" onPress={noop}>{chip}</G.Button>)}
               </div>
             </G.HorizontalScrollRegion>
           </G.PaneSection>
@@ -1065,7 +1065,7 @@ export const MessageBubble: Story = {
         meta="09:13"
         avatar={<G.IconTile source={BellGlyph} size="sm" />}
         isHighlight
-        footer={<G.Button variant="secondary" size="sm" onPress={noop}>Approve draft</G.Button>}
+        footer={<G.Button intent="alternative" size="sm" onPress={noop}>Approve draft</G.Button>}
       >
         {'Draft reply ready.\nIt keeps the original price.'}
       </G.MessageBubble>

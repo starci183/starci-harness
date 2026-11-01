@@ -32,11 +32,11 @@ const ControlRow = () => {
             <G.Button intent="commit">Save</G.Button>
             <G.Button intent="dismiss">Cancel</G.Button>
             <G.IconButton intent="dismiss" source={BellGlyph} label="Notifications" />
-            <G.IconButton intent="dismiss" source={SettingsGlyph} label="Settings" size="control" />
+            <G.IconButton intent="dismiss" source={SettingsGlyph} label="Settings" />
             <G.Input id="control-heights-name" name="name" label="Name" isLabelHidden placeholder="Name" />
             <G.SearchField label="Search" isLabelHidden placeholder="Search" clearLabel="Clear search" />
             <G.Select label="Plan" isLabelHidden options={planOptions} defaultValue="starter" />
-            <G.Tabs label="Filter" variant="secondary" items={tabItems} selectedKey={tab} onSelect={setTab} panelId={(key) => `control-heights-${key}`} labelVisibility="always" />
+            <G.Tabs label="Filter" items={tabItems} selectedKey={tab} onSelect={setTab} panelId={(key) => `control-heights-${key}`} labelVisibility="always" />
             <G.SegmentedControl label="Range" isLabelHidden options={segmentOptions} defaultValue="day" />
             <G.Switch label="Dark mode" isLabelHidden size="control" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
             <G.AvatarButton name="Alex Morgan" size="control" />

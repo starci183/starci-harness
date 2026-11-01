@@ -57,7 +57,7 @@ export type WorkspaceShellNavigationDrawer = OverlayOpenState & {
 /** The actual Drawer trigger owns activation, expanded state and focus restoration without a caller callback. */
 const WorkspaceNavigationDrawer = ({ openLabel, source, content, rowTitle, ...drawerProps }: WorkspaceShellNavigationDrawer) => (
     <div className={workspaceShellOpenerClassName} data-grammar-workspace-opener="true">
-        <Drawer {...drawerProps} placement="left" trigger={<IconButton label={openLabel} source={source} variant="tertiary" size="control" />}>{content}</Drawer>
+        <Drawer {...drawerProps} placement="left" trigger={<IconButton label={openLabel} source={source} intent="neutral" />}>{content}</Drawer>
         {rowTitle === undefined ? null : <span className="starci-core-workspace-shell-opener-title" data-grammar-workspace-opener-title="true">{rowTitle}</span>}
     </div>
 )

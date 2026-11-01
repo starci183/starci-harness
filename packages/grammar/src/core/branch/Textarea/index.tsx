@@ -54,8 +54,6 @@ export type TextareaProps = FieldControlProps & {
     readonly maxLength?: number
     readonly minLength?: number
     readonly onValueChange?: (value: string) => void
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
     /**
      * Chat composer shortcut: Enter (without Shift, outside an IME composition and with no suggestion list open) calls this
      * instead of breaking the line; Shift+Enter still breaks the line.
@@ -115,7 +113,6 @@ const TextareaControl = ({
     maxLength,
     minLength,
     onValueChange,
-    variant: requestedVariant,
     onSubmitShortcut,
     mentions,
     onBlur,
@@ -123,7 +120,7 @@ const TextareaControl = ({
     autoFocus = false,
     ...field
 }: Omit<TextareaProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     const [uncontrolledLength, setUncontrolledLength] = useState((defaultValue ?? "").length)
     const length = value === undefined ? uncontrolledLength : value.length
     const generatedId = useId()

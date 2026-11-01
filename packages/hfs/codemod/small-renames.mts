@@ -56,12 +56,14 @@ const REMOVED: ReadonlyMap<string, { code: string; reason: string }> = new Map([
 const VARIANT_REMOVED = new Set(['Input', 'Textarea', 'SearchField', 'NumberField', 'DateField', 'TimeField', 'PressableField', 'Checkbox', 'CheckboxGroup', 'RadioGroup',
   'Select', 'ComboBox', 'DatePicker', 'DateRangePicker', 'CopyField', 'OtpInput', 'Tabs']);
 /** Components that lost `size="control"`: a bar sets it from context. */
-const CONTROL_SIZED = new Set(['Button', 'IconButton', 'Input', 'SearchField', 'SegmentedControl', 'Switch', 'Avatar', 'AvatarButton']);
+const CONTROL_SIZED = new Set(['Button', 'IconButton', 'Input', 'SearchField', 'SegmentedControl']);
+/** Components whose `control` step was their `lg`: the attribute becomes `size="lg"`, which draws the same. */
+const CONTROL_IS_LG = new Set(['Switch', 'Avatar', 'AvatarButton']);
 const TONES: ReadonlyMap<string, string> = new Map([['live', 'success'], ['reconnecting', 'warning'], ['lost', 'danger']]);
 const OTP_RENAMES: ReadonlyMap<string, string> = new Map([['disabled', 'isDisabled'], ['invalid', 'isInvalid'], ['onChange', 'onValueChange']]);
 const TEXT_ACTION_BLOCKERS = ['appearance', 'size', 'startContent', 'endContent', 'isPending', 'isSkeleton', 'download', 'onPress'];
 const FORM_TAG = /^(?:[\w$]+\.)*(?:Form|Fieldset|form|fieldset)$/;
-const BUTTON_GROUP_SHAPE = 'actions: ReadonlyArray<{ id: string; label: string; source?: IconSource; onPress?: () => void; isDisabled?: boolean; intent?: "commit" | "alternative" | "dismiss" | "neutral" }>';
+const BUTTON_GROUP_SHAPE = 'actions: ReadonlyArray<{ id: string; label: string; source?: IconSource; onPress?: () => void; isDisabled?: boolean; intent?: "commit" | "alternative" | "neutral" }>';
 
 function bindingNames(ts: Ts, binding: TsTypes.BindingName): string[] {
   if (ts.isIdentifier(binding)) return [binding.text];
@@ -223,6 +225,7 @@ export function transformSmallRenames({ ts, text, file = 'component.tsx' }: { ts
     if (VARIANT_REMOVED.has(name)) drop('variant', 'VARIANT_REMOVED');
     if ((name === 'Button' || name === 'IconButton') && has('variant')) flag(props.get('variant') ?? opening, 'BUTTON_VARIANT', 'run `starci app codemod button-intent` first: that codemod owns variant', component);
     if (CONTROL_SIZED.has(name) && sizeValue === 'control') drop('size', 'SIZE_CONTROL_REMOVED');
+    if (CONTROL_IS_LG.has(name) && sizeValue === 'control') { const attribute = props.get('size'); if (attribute) { change(attribute, 'SIZE_CONTROL_LG', attribute.getText(source), 'size="lg"'); edit(attribute.getStart(source), attribute.end, 'size="lg"'); } }
 
     switch (name) {
       case 'ChatBubble': {

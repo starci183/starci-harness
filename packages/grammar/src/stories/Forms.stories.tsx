@@ -41,15 +41,15 @@ export const Input: Story = {
   render: () => (
     <Matrix maxWidth={formColumn}>
       <State label="Variants" direction="column">
-        <G.Input id="input-primary" name="email" label="Email" kind="email" variant="primary" placeholder="you@example.com" />
-        <G.Input id="input-secondary" name="name" label="Display name" variant="secondary" description="Shown on your profile." />
+        <G.Input id="input-primary" name="email" label="Email" kind="email" placeholder="you@example.com" />
+        <G.Input id="input-secondary" name="name" label="Display name" description="Shown on your profile." />
         <G.Input id="input-password" name="password" label="Password" kind="password" defaultValue="hunter22" revealLabel="Show password" hideLabel="Hide password" />
       </State>
       <State label="Required" direction="column">
         <G.Input id="input-required" name="required" label="Full name" isRequired />
       </State>
       <State label="Invalid" direction="column">
-        <G.Input id="input-invalid" name="invalid" label="Email" kind="email" isError errorMessage="Enter a valid email address." defaultValue="not-an-email" />
+        <G.Input id="input-invalid" name="invalid" label="Email" kind="email" isInvalid errorMessage="Enter a valid email address." defaultValue="not-an-email" />
       </State>
       <State label="Disabled" direction="column">
         <G.Input id="input-disabled" name="disabled" label="Workspace" isDisabled defaultValue="Locked value" />
@@ -70,9 +70,9 @@ export const InputRowHiddenLabel: Story = {
       {[1, 2, 3].map((n) => (
         <div key={n} style={{ display: 'flex', alignItems: 'start', gap: '0.5rem' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <G.Input id={`link-${n}`} name={`link-${n}`} label={`Link ${n}`} isLabelHidden variant="secondary" {...(n === 2 ? { errorMessage: 'Enter a valid link.' } : {})} />
+            <G.Input id={`link-${n}`} name={`link-${n}`} label={`Link ${n}`} isLabelHidden {...(n === 2 ? { errorMessage: 'Enter a valid link.' } : {})} />
           </div>
-          <G.Button variant="secondary">Delete</G.Button>
+          <G.Button intent="alternative">Delete</G.Button>
         </div>
       ))}
     </div>
@@ -82,9 +82,9 @@ export const InputRowHiddenLabel: Story = {
 export const InputCopyable: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '1rem', maxWidth: '36rem' }}>
-      <G.Input id="input-copy-url" name="webhookUrl" label="Webhook URL" variant="secondary" description="Paste this into the provider." isReadOnly isCopyable copyLabel="Copy" copiedLabel="Copied" defaultValue="https://example.com/api/hooks/26465cdf" />
-      <G.Input id="input-copy-name" name="webhookName" label="Webhook name" variant="secondary" description="You can change it here." isCopyable copyLabel="Copy" copiedLabel="Copied" defaultValue="Acme · Main account" />
-      <G.Input id="input-copy-key" name="apiKey" label="API Key" kind="password" variant="secondary" isCopyable copyLabel="Copy" copiedLabel="Copied" revealLabel="Show" hideLabel="Hide" defaultValue="key_b564bbce026c88a12f034ecfbee4387" />
+      <G.Input id="input-copy-url" name="webhookUrl" label="Webhook URL" description="Paste this into the provider." isReadOnly isCopyable copyLabel="Copy" copiedLabel="Copied" defaultValue="https://example.com/api/hooks/26465cdf" />
+      <G.Input id="input-copy-name" name="webhookName" label="Webhook name" description="You can change it here." isCopyable copyLabel="Copy" copiedLabel="Copied" defaultValue="Acme · Main account" />
+      <G.Input id="input-copy-key" name="apiKey" label="API Key" kind="password" isCopyable copyLabel="Copy" copiedLabel="Copied" revealLabel="Show" hideLabel="Hide" defaultValue="key_b564bbce026c88a12f034ecfbee4387" />
       <G.Input id="input-copy-disabled" name="disabled" label="Disabled" isDisabled isCopyable copyLabel="Copy" defaultValue="Locked value" />
     </div>
   ),
@@ -105,11 +105,11 @@ export const OtpInput: Story = {
         <LabelledOtp id="otp-filled" label="Partly entered code" defaultValue="428" />
       </State>
       <State label="Invalid">
-        <LabelledOtp id="otp-invalid" label="Rejected code" defaultValue="111111" invalid describedBy="otp-invalid-error" />
+        <LabelledOtp id="otp-invalid" label="Rejected code" defaultValue="111111" isInvalid describedBy="otp-invalid-error" />
         <G.Text id="otp-invalid-error" live="polite">That code has expired.</G.Text>
       </State>
       <State label="Disabled">
-        <LabelledOtp id="otp-disabled" label="Code (locked)" disabled />
+        <LabelledOtp id="otp-disabled" label="Code (locked)" isDisabled />
       </State>
     </Matrix>
   ),
@@ -428,7 +428,7 @@ export const SelectDescriptionsAndVariants: Story = {
         />
       </State>
       <State label="Secondary (on a surface)" direction="column">
-        <G.Select label="Plan" variant="secondary" options={planOptions} defaultValue="starter" />
+        <G.Select label="Plan" options={planOptions} defaultValue="starter" />
       </State>
     </Matrix>
   ),
@@ -550,15 +550,15 @@ export const FieldFamilySecondary: Story = {
   name: 'Single-line fields: one family (secondary, long value)',
   render: () => (
     <Matrix maxWidth={formColumn}>
-      <State label="Input" direction="column"><G.Input id="fam-input" name="fam-input" label="Name" variant="secondary" defaultValue="Ada Lovelace" /></State>
-      <State label="Select" direction="column"><G.Select label="Plan" variant="secondary" options={planOptions} defaultValue="team" /></State>
-      <State label="Select (long value)" direction="column"><G.Select label="Plan" variant="secondary" options={longPlanOptions} defaultValue="long" /></State>
-      <State label="ComboBox" direction="column"><G.ComboBox label="Plan" variant="secondary" options={planOptions} defaultValue="team" /></State>
-      <State label="ComboBox (long value)" direction="column"><G.ComboBox label="Plan" variant="secondary" options={longPlanOptions} defaultValue="long" /></State>
-      <State label="SearchField" direction="column"><G.SearchField label="Search" variant="secondary" /></State>
-      <State label="NumberField" direction="column"><G.NumberField label="Seats" variant="secondary" defaultValue={4} /></State>
-      <State label="DateField" direction="column"><G.DateField label="Due" variant="secondary" /></State>
-      <State label="TimeField" direction="column"><G.TimeField label="At" variant="secondary" /></State>
+      <State label="Input" direction="column"><G.Input id="fam-input" name="fam-input" label="Name" defaultValue="Ada Lovelace" /></State>
+      <State label="Select" direction="column"><G.Select label="Plan" options={planOptions} defaultValue="team" /></State>
+      <State label="Select (long value)" direction="column"><G.Select label="Plan" options={longPlanOptions} defaultValue="long" /></State>
+      <State label="ComboBox" direction="column"><G.ComboBox label="Plan" options={planOptions} defaultValue="team" /></State>
+      <State label="ComboBox (long value)" direction="column"><G.ComboBox label="Plan" options={longPlanOptions} defaultValue="long" /></State>
+      <State label="SearchField" direction="column"><G.SearchField label="Search" /></State>
+      <State label="NumberField" direction="column"><G.NumberField label="Seats" defaultValue={4} /></State>
+      <State label="DateField" direction="column"><G.DateField label="Due" /></State>
+      <State label="TimeField" direction="column"><G.TimeField label="At" /></State>
     </Matrix>
   ),
 };
@@ -577,12 +577,12 @@ export const SegmentedControl: Story = {
       </State>
       <State label="Sizes: md (default), lg, control" direction="column">
         <G.SegmentedControl label="Range md" options={segmentOptions} defaultValue="week" />
-        <G.SegmentedControl label="Range lg" size="lg" options={segmentOptions} defaultValue="week" />
-        <G.SegmentedControl label="Range control" size="control" options={segmentOptions} defaultValue="week" />
+        <G.SegmentedControl label="Range lg" options={segmentOptions} defaultValue="week" />
+        <G.SegmentedControl label="Range control" options={segmentOptions} defaultValue="week" />
       </State>
       <State label="Control height (2.75rem), label hidden but accessible, beside bar controls">
-        <G.SegmentedControl label="Language" isLabelHidden size="control" options={[{ value: 'vi', label: 'VI', accessibleLabel: 'Vietnamese' }, { value: 'en', label: 'EN', accessibleLabel: 'English' }]} defaultValue="vi" />
-        <G.SegmentedControl label="Language" isLabelHidden size="control" options={segmentOptions} isSkeleton />
+        <G.SegmentedControl label="Language" isLabelHidden options={[{ value: 'vi', label: 'VI', accessibleLabel: 'Vietnamese' }, { value: 'en', label: 'EN', accessibleLabel: 'English' }]} defaultValue="vi" />
+        <G.SegmentedControl label="Language" isLabelHidden options={segmentOptions} isSkeleton />
         <G.IconButton source={SettingsGlyph} label="Settings" />
       </State>
       <State label="Disabled" direction="column">
@@ -596,23 +596,23 @@ export const ButtonGroup: Story = {
   render: () => (
     <Matrix>
       <State label="Horizontal">
-        <G.ButtonGroup label="Text alignment">
-          <G.Button variant="secondary">Left</G.Button>
-          <G.Button variant="secondary">Centre</G.Button>
-          <G.Button variant="secondary">Right</G.Button>
-        </G.ButtonGroup>
+        <G.ButtonGroup label="Text alignment" actions={[
+          { id: 'left', label: 'Left', intent: 'alternative' },
+          { id: 'centre', label: 'Centre', intent: 'alternative' },
+          { id: 'right', label: 'Right', intent: 'alternative' },
+        ]} />
       </State>
       <State label="Vertical">
-        <G.ButtonGroup label="Actions" orientation="vertical">
-          <G.Button variant="outline">Duplicate</G.Button>
-          <G.Button variant="outline">Archive</G.Button>
-        </G.ButtonGroup>
+        <G.ButtonGroup label="Actions" orientation="vertical" actions={[
+          { id: 'duplicate', label: 'Duplicate', intent: 'neutral' },
+          { id: 'archive', label: 'Archive', intent: 'neutral' },
+        ]} />
       </State>
       <State label="Disabled">
-        <G.ButtonGroup label="History" isDisabled>
-          <G.Button variant="secondary">Undo</G.Button>
-          <G.Button variant="secondary">Redo</G.Button>
-        </G.ButtonGroup>
+        <G.ButtonGroup label="History" isDisabled actions={[
+          { id: 'undo', label: 'Undo', intent: 'alternative' },
+          { id: 'redo', label: 'Redo', intent: 'alternative' },
+        ]} />
       </State>
     </Matrix>
   ),
@@ -672,8 +672,8 @@ export const Fieldset: Story = {
         </G.Fieldset>
       </State>
       <State label="Invalid with actions" direction="column">
-        <G.Fieldset legend="Address" errorMessage="Complete the address before saving." actions={<G.Button size="sm" variant="secondary">Reset</G.Button>}>
-          <G.Input id="fs-street" name="street" label="Street" isError errorMessage="Required." />
+        <G.Fieldset legend="Address" errorMessage="Complete the address before saving." actions={<G.Button size="sm" intent="alternative">Reset</G.Button>}>
+          <G.Input id="fs-street" name="street" label="Street" isInvalid errorMessage="Required." />
         </G.Fieldset>
       </State>
       <State label="Disabled" direction="column">
@@ -698,8 +698,8 @@ const FormDemo = ({ label, isPending, withErrors }: { readonly label: string; re
       <G.Select label="Role" name="role" options={planOptions} defaultValue="team" />
       <G.Checkbox label="Send a copy to me" name="copy" />
       <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <G.Button type="submit" variant="primary" isPending={isPending === true}>Send invite</G.Button>
-        <G.Button type="reset" variant="ghost">Reset</G.Button>
+        <G.Button type="submit" intent="commit" isPending={isPending === true}>Send invite</G.Button>
+        <G.Button type="reset" intent="neutral">Reset</G.Button>
       </div>
       {submitted === null ? null : <G.Text live="polite">Submitted with role {submitted}.</G.Text>}
     </G.Form>

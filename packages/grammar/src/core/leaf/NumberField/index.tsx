@@ -26,8 +26,6 @@ export type NumberFieldProps = FieldControlProps & {
     readonly formatOptions?: Intl.NumberFormatOptions
     /** Hides the stepper buttons; arrow keys, Page Up/Down and Home/End still step. */
     readonly hideSteppers?: boolean
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
     /**
      * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
      * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
@@ -65,10 +63,9 @@ const NumberFieldControl = ({
     step,
     formatOptions,
     hideSteppers = false,
-    variant: requestedVariant,
     ...field
 }: Omit<NumberFieldProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     return (
         <HeroNumberField
             data-tier="leaf"

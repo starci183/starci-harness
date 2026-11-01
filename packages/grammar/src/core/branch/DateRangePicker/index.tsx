@@ -34,8 +34,6 @@ export type DateRangePickerProps = Omit<FieldControlProps, "name"> & {
     /** Form names for the two ends of the range. */
     readonly startName?: string
     readonly endName?: string
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
 }
 
 /*
@@ -62,10 +60,9 @@ export const DateRangePicker = ({
     granularity = "day",
     startName,
     endName,
-    variant: requestedVariant,
     ...field
 }: DateRangePickerProps) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     const { anchor, portalProps } = useGrammarPortal()
     return (
         <HeroDateRangePicker

@@ -8,7 +8,6 @@ import { DropdownMenu } from "../core/branch/DropdownMenu/index.js"
 import { Popover } from "../core/frame/Popover/index.js"
 import { Toast, Toaster } from "../core/composite/Toast/index.js"
 import { Alert } from "../core/composite/Alert/index.js"
-import { CloseButton } from "../core/leaf/CloseButton/index.js"
 import { Kbd } from "../core/leaf/Kbd/index.js"
 import { Meter } from "../core/leaf/Meter/index.js"
 import { ProgressCircle } from "../core/leaf/ProgressCircle/index.js"
@@ -45,7 +44,6 @@ export {
     type ToastRecord,
 } from "../core/composite/Toast/index.js"
 export { Alert, type AlertAction, type AlertAppearance, type AlertProps, type AlertUrgency } from "../core/composite/Alert/index.js"
-export { CloseButton, type CloseButtonProps, type CloseButtonSize } from "../core/leaf/CloseButton/index.js"
 export { KBD_NAMED_KEYS, Kbd, type KbdNamedKey, type KbdProps } from "../core/leaf/Kbd/index.js"
 export { Meter, type MeterProps, type MeterSegments, type MeterSize } from "../core/leaf/Meter/index.js"
 export { ProgressCircle, type ProgressCircleProps, type ProgressCircleSize } from "../core/leaf/ProgressCircle/index.js"
@@ -55,6 +53,6 @@ export { GRAMMAR_ROOT_SELECTOR, resolveOverlayContainer, type OverlayOpenState }
 
 /** Overlay and feedback renderers merged into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_OVERLAYS_COMPONENTS = Object.freeze({
-    Alert, AlertDialog, CloseButton, Dialog, Drawer, DropdownMenu, Kbd, Meter, Popover,
+    Alert, AlertDialog, Dialog, Drawer, DropdownMenu, Kbd, Meter, Popover,
     ProgressCircle, Skeleton, Spinner, Toast, Toaster,
 } as const)

@@ -1028,6 +1028,12 @@
         padding: 0.25rem 0.5rem;
     }
 
+    .starci-core-drag-item[data-grammar-drag-tone="neutral"] { --starci-drag-item-leading: var(--muted); }
+    .starci-core-drag-item[data-grammar-drag-tone="accent"] { --starci-drag-item-leading: var(--accent); }
+    .starci-core-drag-item[data-grammar-drag-tone="success"] { --starci-drag-item-leading: var(--success); }
+    .starci-core-drag-item[data-grammar-drag-tone="warning"] { --starci-drag-item-leading: var(--warning); }
+    .starci-core-drag-item[data-grammar-drag-tone="danger"] { --starci-drag-item-leading: var(--danger); }
+
     .starci-core-drag-item[data-grammar-invalid="true"] {
         border-color: var(--danger);
         border-inline-start-color: var(--starci-drag-item-leading, var(--danger));
@@ -2242,18 +2248,5 @@
         flex-direction: column;
         gap: var(--grammar-row-gap);
         padding: var(--grammar-inset);
-    }
-
-    /*
-     * Tabs variant="secondary" keeps HeroUI's pill paint: a soft --default track and a selected --segment pill
-     * with the surface shadow and foreground text. The strip fits its content inside a sub-region.
-     */
-    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] {
-        width: fit-content;
-        max-width: 100%;
-    }
-
-    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs {
-        min-width: 0;
     }
 }

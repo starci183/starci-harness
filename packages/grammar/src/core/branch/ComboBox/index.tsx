@@ -42,8 +42,6 @@ export type ComboBoxProps = FieldControlProps & {
     readonly isPending?: boolean
     /** When the list opens: while typing (default), on focus, or only from the trigger/arrow keys. */
     readonly menuTrigger?: "input" | "focus" | "manual"
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
     /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
     readonly isSkeleton?: boolean
 }
@@ -88,10 +86,9 @@ const ComboBoxControl = ({
     emptyState,
     isPending = false,
     menuTrigger = "input",
-    variant: requestedVariant,
     ...field
 }: Omit<ComboBoxProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     const { anchor, portalProps } = useGrammarPortal()
     const [chosen, setChosen] = useState<string | null>(defaultValue ?? null)
     const [typed, setTyped] = useState<string | null>(null)

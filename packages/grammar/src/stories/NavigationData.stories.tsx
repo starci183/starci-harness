@@ -635,7 +635,7 @@ export const FlowGraphReadableFit: Story = {
   },
 };
 
-type OrbitDossier = { readonly id: string; readonly name: string; readonly fill: G.FlowGraphFill; readonly tone: G.FlowGraphTone; readonly files: ReadonlyArray<string>; readonly isDimmed?: boolean };
+type OrbitDossier = { readonly id: string; readonly name: string; readonly fill: G.BubbleMapFill; readonly tone: G.FlowGraphTone; readonly files: ReadonlyArray<string>; readonly isDimmed?: boolean };
 type OrbitCategory = { readonly id: string; readonly name: string; readonly dossiers: ReadonlyArray<OrbitDossier> };
 
 const fileKinds = (count: number): ReadonlyArray<string> => Array.from({ length: count }, (_, index) => ['PDF', 'DOCX', 'XLSX'][index % 3] ?? 'PDF');
@@ -671,10 +671,10 @@ const orbitFilesOf = (category: OrbitCategory) => category.dossiers.reduce((sum,
 const orbitDossierMax = Math.max(...orbitCategories.flatMap((category) => category.dossiers.map((dossier) => dossier.files.length)));
 const orbitCategoryMax = Math.max(...orbitCategories.map(orbitFilesOf));
 
-const orbitNodes: ReadonlyArray<G.FlowGraphNode> = [
+const orbitNodes: ReadonlyArray<G.BubbleMapNode> = [
   { id: 'root', label: 'NIVO', description: `${orbitCategories.reduce((sum, category) => sum + category.dossiers.length, 0)} dossiers`, form: 'bubble', mark: 'NIVO', diameter: 96, isRoot: true },
-  ...orbitCategories.flatMap((category, index): ReadonlyArray<G.FlowGraphNode> => {
-    const tally = (fill: G.FlowGraphFill, tone: G.FlowGraphTone): G.FlowGraphRingPart => ({ tone, value: category.dossiers.filter((dossier) => dossier.fill === fill && dossier.tone === tone).length });
+  ...orbitCategories.flatMap((category, index): ReadonlyArray<G.BubbleMapNode> => {
+    const tally = (fill: G.BubbleMapFill, tone: G.FlowGraphTone): G.BubbleMapRingPart => ({ tone, value: category.dossiers.filter((dossier) => dossier.fill === fill && dossier.tone === tone).length });
     return [
       {
         id: category.id,
@@ -683,22 +683,22 @@ const orbitNodes: ReadonlyArray<G.FlowGraphNode> = [
         form: 'bubble',
         mark: String(index + 1).padStart(2, '0'),
         caption: category.name.split(' ')[0] ?? category.name,
-        diameter: G.flowGraphDiameter(orbitFilesOf(category), orbitCategoryMax, { min: 64, max: 104 }),
+        diameter: G.bubbleDiameter(orbitFilesOf(category), orbitCategoryMax, { min: 64, max: 104 }),
         ring: [tally('solid', 'success'), tally('half', 'warning'), tally('soft', 'info'), tally('outline', 'danger'), tally('hatched', 'muted')],
         ...(category.dossiers.length === 0 ? { isPlaceholder: true } : {}),
       },
-      ...category.dossiers.map((dossier, at): G.FlowGraphNode => ({
+      ...category.dossiers.map((dossier, at): G.BubbleMapNode => ({
         id: dossier.id,
         label: dossier.name,
         description: `${dossier.files.length} files`,
         form: 'bubble',
         mark: String(index * 10 + at + 1).padStart(2, '0'),
-        diameter: G.flowGraphDiameter(dossier.files.length, orbitDossierMax, { min: 30, max: 92 }),
+        diameter: G.bubbleDiameter(dossier.files.length, orbitDossierMax, { min: 30, max: 92 }),
         tone: dossier.tone,
         fill: dossier.fill,
         ...(dossier.isDimmed === true ? { isDimmed: true } : {}),
       })),
-      ...category.dossiers.flatMap((dossier) => dossier.files.map((kind, file): G.FlowGraphNode => ({
+      ...category.dossiers.flatMap((dossier) => dossier.files.map((kind, file): G.BubbleMapNode => ({
         id: `${dossier.id}-file-${file}`,
         label: `${dossier.name}, file ${file + 1}`,
         description: kind,
@@ -712,7 +712,7 @@ const orbitNodes: ReadonlyArray<G.FlowGraphNode> = [
     ];
   }),
 ];
-const orbitEdges: ReadonlyArray<G.FlowGraphEdge> = orbitCategories.flatMap((category) => [
+const orbitEdges: ReadonlyArray<G.BubbleMapEdge> = orbitCategories.flatMap((category) => [
   { id: `root-${category.id}`, source: 'root', target: category.id },
   ...category.dossiers.flatMap((dossier) => [
     { id: `${category.id}-${dossier.id}`, source: category.id, target: dossier.id },
@@ -726,19 +726,18 @@ const orbitEdges: ReadonlyArray<G.FlowGraphEdge> = orbitCategories.flatMap((cate
  * dossiers dimmed, the edges from the root to the selected node drawn strong, two open fans on ring four, and a `+n` bubble
  * where a fan passes the limit. Shown in light and dark.
  */
-export const FlowGraphOrbit: Story = {
-  name: 'FlowGraph (orbit: bubbles, rings, fans)',
+export const BubbleMap: Story = {
+  name: 'BubbleMap (bubbles, rings, fans)',
   render: (_args, { globals }) => (
     <Matrix maxWidth={1100}>
       {THEMES.map((theme) => (
         <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: the Charter dossier open, Labour contracts passes the fan limit`} direction="column">
             <div data-story-theme={theme}>
-              <G.FlowGraph
+              <G.BubbleMap
                 label={`Dossier map (${theme})`}
                 nodes={orbitNodes}
                 edges={orbitEdges}
-                layout="orbit"
                 fit="contain"
                 height="40rem"
                 fanLimit={10}
@@ -752,7 +751,7 @@ export const FlowGraphOrbit: Story = {
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
-    const graphs = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="FlowGraph"]')];
+    const graphs = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="BubbleMap"]')];
     await waitFor(() => {
       if (graphs.length !== THEMES.length) throw new Error('One orbit graph per theme must render');
       for (const graph of graphs) {
@@ -1239,7 +1238,7 @@ const TabsDemo = ({ variant = 'primary' }: { readonly variant?: 'primary' | 'sec
   const [selected, setSelected] = useState('overview');
   return (
     <div>
-      <G.Tabs label={`Course sections (${variant})`} variant={variant} items={tabItems} selectedKey={selected} onSelect={setSelected} panelId={(key) => `story-tab-panel-${variant}-${key}`} labelVisibility="always" />
+      <G.Tabs label={`Course sections (${variant})`} items={tabItems} selectedKey={selected} onSelect={setSelected} panelId={(key) => `story-tab-panel-${variant}-${key}`} labelVisibility="always" />
       {tabItems.map((item) => (
         <div key={item.id} role="tabpanel" id={`story-tab-panel-${variant}-${item.id}`} aria-label={item.label} hidden={item.id !== selected} style={{ paddingTop: '1rem' }}>
           <G.Text>{item.label} panel</G.Text>
@@ -1255,7 +1254,7 @@ const RenamingTabs = () => {
   return (
     <div>
       <G.Tabs label="Renaming tabs" items={items} selectedKey="lessons" panelId={(key) => `story-rename-panel-${key}`} labelVisibility="always" />
-      <G.Button variant="secondary" onPress={() => setName((current) => (current === 'Lessons' ? 'All lessons and exercises' : 'Lessons'))}>Change the selected tab label</G.Button>
+      <G.Button intent="alternative" onPress={() => setName((current) => (current === 'Lessons' ? 'All lessons and exercises' : 'Lessons'))}>Change the selected tab label</G.Button>
     </div>
   );
 };

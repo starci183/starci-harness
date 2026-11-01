@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Button, type ButtonVariant } from "../../leaf/Button/index.js"
+import { Button } from "../../leaf/Button/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { Mascot, type MascotProps } from "../../leaf/Mascot/index.js"
@@ -32,7 +32,6 @@ export type EmptyNoticeProps = EmptyNoticeMark & {
     readonly description?: string
     readonly actionLabel?: string
     readonly actionStartContent?: ReactNode
-    readonly actionVariant?: ButtonVariant
     readonly isActionPending?: boolean
     readonly onAction?: () => void
 }
@@ -48,7 +47,6 @@ export const EmptyNotice = ({
     artwork,
     actionLabel,
     actionStartContent,
-    actionVariant = "primary",
     isActionPending = false,
     onAction,
 }: EmptyNoticeProps) => (
@@ -65,7 +63,7 @@ export const EmptyNotice = ({
         {description === undefined ? null : <Text size="xs" tone="muted">{description}</Text>}
         {actionLabel === undefined ? null : (
             <Button
-                variant={actionVariant}
+                intent="commit"
                 size="sm"
                 startContent={actionStartContent}
                 isPending={isActionPending}

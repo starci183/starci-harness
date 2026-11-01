@@ -28,10 +28,6 @@ export type SearchFieldProps = FieldControlProps & {
     readonly isPending?: boolean
     /** Accessible name of the clear button. Pass the app's localized "clear" copy. */
     readonly clearLabel?: string
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
-    /** `control` aligns the search box with every other control in the navbar. */
-    readonly size?: "md" | "control"
     /**
      * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
      * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
@@ -74,14 +70,12 @@ const SearchFieldControl = ({
     onClear,
     isPending = false,
     clearLabel,
-    variant: requestedVariant,
-    size = "md",
     onBlur,
     onPaste,
     autoFocus = false,
     ...field
 }: Omit<SearchFieldProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     return (
         <HeroSearchField
             data-tier="leaf"
@@ -99,7 +93,7 @@ const SearchFieldControl = ({
             {...(onClear === undefined ? {} : { onClear })}
         >
             <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
-            <HeroSearchField.Group className="starci-core-search-field-group" data-grammar-field-control="true" data-grammar-control-size={size === "control" ? "control" : undefined}>
+            <HeroSearchField.Group className="starci-core-search-field-group" data-grammar-field-control="true">
                 <HeroSearchField.SearchIcon aria-hidden="true" />
                 <HeroSearchField.Input
                     {...(id === undefined ? {} : { id })}

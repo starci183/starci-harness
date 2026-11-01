@@ -82,13 +82,13 @@ export const PanelsAndOverlays: Story = {
             </G.Rail>
             <G.Sidebar label="Workspace navigation" groups={[]} header={<G.SearchField label="Search sidebar" />} />
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                <G.Dialog title="Edit conversation" closeLabel="Close dialog" trigger={<G.Button variant="secondary">Open dialog</G.Button>}>
+                <G.Dialog title="Edit conversation" closeLabel="Close dialog" trigger={<G.Button intent="alternative">Open dialog</G.Button>}>
                     <Fields prefix="dialog" />
                 </G.Dialog>
-                <G.Drawer title="Conversation details" closeLabel="Close drawer" trigger={<G.Button variant="secondary">Open drawer</G.Button>}>
+                <G.Drawer title="Conversation details" closeLabel="Close drawer" trigger={<G.Button intent="alternative">Open drawer</G.Button>}>
                     <Fields prefix="drawer" />
                 </G.Drawer>
-                <G.Popover title="Find conversations" trigger={<G.Button variant="secondary">Open popover</G.Button>}>
+                <G.Popover title="Find conversations" trigger={<G.Button intent="alternative">Open popover</G.Button>}>
                     <Fields prefix="popover" />
                 </G.Popover>
             </div>

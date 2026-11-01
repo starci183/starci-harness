@@ -118,7 +118,7 @@ export const PageHeader = ({
             </div>
             {tabs === undefined ? null : (
                 <div className="starci-core-page-header-tabs">
-                    <Tabs {...tabs} variant="primary" inset="none" />
+                    <Tabs {...tabs} inset="none" />
                 </div>
             )}
         </PageContainer>

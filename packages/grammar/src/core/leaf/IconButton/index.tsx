@@ -2,28 +2,31 @@
 
 import { Button as HeroButton, Link as HeroLink, buttonVariants, cn, skeletonVariants } from "@heroui/react"
 import { Icon, type IconSource } from "../Icon/index.js"
-import { useButtonIntentVariant, type ButtonIntentProps } from "../../buttonIntent.js"
-import type { ButtonVariant } from "../Button/index.js"
+import { useButtonIntentVariant, type ButtonIntent, type ButtonIntentProps } from "../../buttonIntent.js"
+import { DismissGlyph } from "./dismissGlyph.js"
 
 /**
- * HeroUI Button variants an icon-only action wears: `tertiary` (default) is the filled round plate;
- * `ghost` is the quiet bare glyph with no fill at rest (HeroUI's ghost: a fill only on hover/press) -
- * for an overflow "..." menu or a secondary glyph action beside a card title. `primary` is the accent-filled plate for the
- * one glyph action that must stand out (a floating assistant or compose button); one per view, like a primary Button.
- * `danger-soft` is the danger tone's soft tint plate (`--danger-soft` ground, `--danger-soft-foreground` glyph, one step
- * stronger on hover): use it for a reversible or row-level destructive action, such as a trash glyph that deletes a row.
- * A confirmed destructive action inside an AlertDialog uses the solid `danger` Button instead.
+ * The plate an icon-only action wears comes from its `intent` and the placement it sits in (`useButtonIntentVariant`), never from
+ * a prop: `dismiss` is the quiet tertiary plate and draws the close glyph itself, `neutral` is the outline plate in a decision band
+ * and the bare ghost glyph in an item or chrome (an overflow "..." menu, a secondary glyph action beside a card title), `commit` the
+ * accent plate (one per view), and `destructive` the danger tone (`entry` the soft tint plate, `confirm` the solid one).
  */
-export type IconButtonVariant = ButtonVariant
+type IconButtonGlyph =
+    | {
+        /** The close glyph is drawn by the grammar; pass `source` only to draw another. */
+        readonly intent: "dismiss"
+        readonly source?: IconSource
+    }
+    | {
+        readonly intent?: Exclude<ButtonIntent, "dismiss">
+        readonly source: IconSource
+    }
 
 export type IconButtonProps = {
-    readonly source: IconSource
     /** Required accessible name for the glyph-only action. */
     readonly label: string
-    /** Grammar internals and stories may select paint directly; applications declare intent. */
-    readonly variant?: IconButtonVariant
-    /** `md` and `control` are the one control height (2.5rem, 40px: the default), `sm` (2rem) is for a control nested in an item or a dense toolbar, `lg` (3rem) is the landing hero step. */
-    readonly size?: "sm" | "md" | "lg" | "control"
+    /** `md` is the one control height (2.5rem, 40px: the default), `sm` (2rem) is for a control nested in an item or a dense toolbar, `lg` (3rem) is the landing hero step. */
+    readonly size?: "sm" | "md" | "lg"
     /** Lifts the button with the overlay elevation, for an action floating over content (it owns no position). */
     readonly isFloating?: boolean
     readonly isActive?: boolean
@@ -38,7 +41,7 @@ export type IconButtonProps = {
     readonly "aria-expanded"?: boolean
     /** Largest number shown before it collapses to `n+`. Default 99. */
     readonly badgeMax?: number
-} & ButtonIntentProps & (
+} & IconButtonGlyph & Omit<ButtonIntentProps, "intent"> & (
     | {
         /**
          * A decorative count at the glyph's top end. `0` and empty draw nothing;
@@ -66,11 +69,10 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
 
 /** Circular glyph-only action with a mandatory accessible name (A11Y-2). */
 export const IconButton = ({
-    source,
+    source: givenSource,
     label,
     intent,
     step,
-    variant: legacyVariant = "tertiary",
     size = "md",
     isFloating = false,
     isActive = false,
@@ -84,7 +86,8 @@ export const IconButton = ({
     badgeLabel,
     badgeMax = 99,
 }: IconButtonProps) => {
-    const variant = useButtonIntentVariant(intent, step, "iconButton") ?? legacyVariant
+    const variant = useButtonIntentVariant(intent, step, "iconButton") ?? "tertiary"
+    const source = givenSource ?? DismissGlyph
     const badgeText = isSkeleton ? null : iconButtonBadgeText(badge, badgeMax)
     if (href !== undefined) {
         const unavailable = isDisabled || isSkeleton
@@ -96,7 +99,6 @@ export const IconButton = ({
                 data-active={isActive ? "true" : "false"}
                 data-variant={variant}
                 data-size={size}
-                data-grammar-control-size={size === "control" ? "control" : undefined}
                 data-floating={isFloating ? "true" : "false"}
                 data-loading={isSkeleton ? "true" : "false"}
                 data-element={unavailable ? "span" : "a"}
@@ -119,7 +121,6 @@ export const IconButton = ({
         data-active={isActive ? "true" : "false"}
         data-variant={variant}
         data-size={size}
-        data-grammar-control-size={size === "control" ? "control" : undefined}
         data-floating={isFloating ? "true" : "false"}
         data-loading={isSkeleton ? "true" : "false"}
         type="button"

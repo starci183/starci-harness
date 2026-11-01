@@ -4,7 +4,7 @@ import { Modal as HeroModal } from "@heroui/react"
 import { useId, type ReactNode } from "react"
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { overlayOpenProps, resolveTriggerlessOpenProps, useOverlayContainer, type OverlayOpenState } from "../../overlayScope.js"
-import { CloseButton } from "../../leaf/CloseButton/index.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 
 export type DialogSize = "sm" | "md" | "lg" | "full"
@@ -87,7 +87,7 @@ export const Dialog = ({
                                         <p id={descriptionId} className="starci-core-overlay-description">{description}</p>
                                     )}
                                 </div>
-                                {closeLabel === undefined ? null : <CloseButton label={closeLabel} onPress={close} />}
+                                {closeLabel === undefined ? null : <IconButton intent="dismiss" label={closeLabel} onPress={close} />}
                             </HeroModal.Header>
                             {children === undefined ? null : (
                                 <HeroModal.Body className="starci-core-overlay-body">{children}</HeroModal.Body>

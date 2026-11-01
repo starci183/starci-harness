@@ -47,8 +47,6 @@ export type SelectProps = FieldControlProps & {
      * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isSkeleton?: boolean
-    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
-    readonly variant?: "primary" | "secondary"
 }
 
 const toValue = (key: Key | null): string | null => (key === null ? null : String(key))
@@ -113,10 +111,9 @@ const SelectControl = ({
     defaultValue,
     onValueChange,
     isPending = false,
-    variant: requestedVariant,
     ...field
 }: Omit<SelectProps, "isSkeleton">) => {
-    const variant = useFieldVariant(requestedVariant)
+    const variant = useFieldVariant()
     const [heldValue] = useState<string | null>(value ?? defaultValue ?? null)
     const { anchor, portalProps } = useGrammarPortal()
     const readOnly = field.isReadOnly === true

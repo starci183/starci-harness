@@ -1,6 +1,6 @@
 /*
  * Common overlay and feedback anatomy: Dialog, AlertDialog, Drawer, Popover, DropdownMenu, Toast,
- * Toaster, Alert, Spinner, Skeleton, ProgressCircle, Meter, CloseButton, Kbd.
+ * Toaster, Alert, Spinner, Skeleton, ProgressCircle, Meter, Kbd.
  *
  * Structure only, from Common semantic variables (with `--starci-core-*` geometry hooks a family may
  * set). Every overlay surface is portalled INTO the nearest `.grammar-common-root` (see
@@ -137,7 +137,7 @@
         gap: var(--grammar-row-gap) !important;
     }
 
-    .starci-core-overlay-header > .starci-core-close-button {
+    .starci-core-overlay-header > [data-component="IconButton"] {
         flex: none;
         margin-inline-start: auto;
     }
@@ -585,49 +585,6 @@
         align-items: center;
         gap: var(--grammar-inline-gap);
         margin-inline-start: auto;
-    }
-
-    /* ---------------------------------------------------------------- close button */
-    .starci-core-close-button {
-        display: inline-flex;
-        flex: none;
-        align-items: center;
-        justify-content: center;
-        width: var(--starci-core-control-min-size);
-        height: var(--starci-core-control-min-size);
-        margin: -0.5rem -0.5rem 0 0;
-        padding: 0;
-        border: 0;
-        border-radius: var(--grammar-radius-pill);
-        background: transparent;
-        color: var(--muted);
-        cursor: pointer;
-    }
-
-    .starci-core-close-button[data-size="sm"] {
-        width: 2rem;
-        height: 2rem;
-        margin: 0;
-    }
-
-    .starci-core-close-button > svg {
-        width: 1rem;
-        height: 1rem;
-    }
-
-    .starci-core-close-button:is([data-hovered], [data-pressed]) {
-        background: var(--surface-secondary);
-        color: var(--surface-foreground);
-    }
-
-    .starci-core-close-button[data-focus-visible] {
-        outline: 2px solid var(--focus);
-        outline-offset: 2px;
-    }
-
-    .starci-core-close-button[data-disabled] {
-        cursor: not-allowed;
-        opacity: var(--disabled-opacity);
     }
 
     /* ---------------------------------------------------------------- kbd */
