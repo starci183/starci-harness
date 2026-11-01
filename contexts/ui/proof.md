@@ -19,7 +19,7 @@ A claim names its enforcer (CONTRIB-8). Four things prove a look, and only the o
 | Type and lint | a wrong composition: illegal children and props, the R-numbered rules of [hfs/rules.yaml](../hfs/rules.yaml) | on every check of an app and of the package | judges how a legal tree looks |
 | `starci dna check --storybook` | the static laws of [contract.yaml](../grammars/contract.yaml) `mustKeep` (`DNA-*`): a box, a style, a relation, a count measured on the rendered DOM of a built Storybook | on demand against `packages/grammar/storybook-static`; CI does not run it yet | judges taste or an app's colours |
 | `npm run prove-theme` | that a foreign set of HeroUI tokens, and nothing else, repaints every part (ruling `app-owns-theme`) | CI job `grammar-proof` | judges a palette |
-| `npm run prove-render` | a picture per story, both families, light and dark, at 1920 and 390, scale 2, against `packages/grammar/proof/baselines` | CI job `grammar-proof` | approves a look: it reports "changed", and only `proof/approved.json` (the chat renderer) is approved |
+| `npm run prove-render` | a picture per story, both families, light and dark, at 1920 and 390, scale 2, against `packages/grammar/proof/baselines` | by hand, never in build, push, lint or publish | approves a look: it reports "changed", and only `proof/approved.json` (the chat renderer) is approved |
 | The owner's eye | every new or changed baseline, and the scored lenses TASTE and UX below | at review | is replaced by a green check |
 
 An id below that no row holds by machine is the owner's eye or a UAT run: it says so in its Instrument or Key column.

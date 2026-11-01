@@ -33,7 +33,7 @@ const repoGates = jobs.filter((job) => job.name.startsWith("gate (repo) "))
 const gatesGreen = repoGates.length > 0 && repoGates.every((job) => job.conclusion === "success")
 for (const job of repoGates) console.log(`${job.name}: ${job.conclusion}`)
 
-// The render proof (ci.yml `grammar-proof`) runs when the plan tested the Grammar; its verdict gates the Grammar's publication.
+// The theme proof (ci.yml `grammar-proof`) runs when the plan tested the Grammar; its verdict gates the Grammar's publication.
 const PROOF_DIR = "packages/grammar"
 const proofRan = tested.has(PROOF_DIR)
 const proofConclusion = jobs.find((job) => job.name === "grammar proof")?.conclusion

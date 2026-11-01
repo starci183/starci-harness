@@ -182,11 +182,9 @@ jobs:
         working-directory: ${{ matrix.package }}
         run: npm run bundles:check
 
-  # The Grammar's render proof (contexts/grammars/contributing.md "Render proof"), on a change to packages/grammar: the theme proof, then
-  # Playwright's toHaveScreenshot over every story of the built Storybook, in both families, light and dark, at 1920 and 390, device scale
-  # factor 2, against the committed baselines in packages/grammar/proof/baselines. It runs in the pinned Playwright image the baselines
-  # were taken in. A changed picture fails the job; a new one is reviewed by a person before `npm run prove-render:accept` writes it.
-  # publish-packages holds the Grammar while this job is not green.
+  # The Grammar's theme proof, on a change to packages/grammar: a foreign set of HeroUI tokens repaints every part.
+  # publish-packages holds the Grammar while this job is not green. The render proof is not part of CI; it runs by hand
+  # (npm run prove-render in the pinned Playwright image, contexts/grammars/contributing.md "Render proof").
   grammar-proof:
     name: grammar proof
     needs: plan
@@ -195,8 +193,6 @@ jobs:
     timeout-minutes: 120
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
-    env:
-      STORYBOOK_DISABLE_TELEMETRY: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Install the Grammar
@@ -205,22 +201,6 @@ jobs:
       - name: Theme proof
         working-directory: packages/grammar
         run: npm run prove-theme
-      - name: Build the Storybook
-        working-directory: packages/grammar
-        run: npm run build-storybook
-      - name: Render proof across families, themes and widths
-        working-directory: packages/grammar
-        run: npm run prove-render
-      - name: Publish the report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: grammar-proof
-          path: |
-            packages/grammar/proof/report
-            packages/grammar/proof/results
-          if-no-files-found: ignore
-          retention-days: 14
 
   # The CLI and the trees it reads (cli/, contexts/, ops/, policy/, or a package the CLI requires changed).
   harness:

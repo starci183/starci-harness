@@ -209,8 +209,7 @@ dependent, skipping a private one and a version already on npm, with npm provena
 (`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). Each phase waits only for its own jobs. A package
 (`publish-packages`) publishes once the repo-wide gates (`gate (repo)`: secrets, loosening, shape) are green and so is the
 `package` job of every folder of its build order the plan tested, itself and the siblings it needs, and, for the Grammar and
-a package that builds it, the `grammar proof` job (the theme proof, and Playwright's screenshot comparison of every story of the Grammar's Storybook against
-the committed baselines); a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mjs](.github/scripts/publish-gate.mjs)).
+a package that builds it, the `grammar proof` job (the theme proof; the render proof is not part of CI and runs by hand); a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mjs](.github/scripts/publish-gate.mjs)).
 The CLI (`publish-cli`) publishes after it, once the harness job and every gate are green. Sonar and
 the app job never hold a package; Sonar and the app job never hold the CLI. A run on main is never cancelled by a newer push, which waits for it, so
 a publication is never cut short; runs of one phase queue and never overlap, and a re-run publishes only what is still

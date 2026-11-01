@@ -135,7 +135,7 @@ Lint passing says nothing about looks. Before review:
 1. Render every story in **both families** (Core and Offset Pop), in **light and dark**, at **1920 and 390** wide, device scale factor 2:
    Playwright's `toHaveScreenshot` over the built Storybook (`npm run prove-render` in `packages/grammar`) compares each with its baseline in
    `packages/grammar/proof/baselines`. The baselines are unreviewed: they detect change and approve no look, and the report says "changed",
-   never "wrong". A changed picture fails CI; a lane refreshes unreviewed baselines with `npm run prove-render:accept`. Only the pictures in
+   never "wrong". The proof runs by hand and is not part of build, push, lint or publish (owner 2026-11-02); a lane refreshes unreviewed baselines with `npm run prove-render:accept`. Only the pictures in
    `proof/approved.json` are approved (the chat renderer, so far); a change to one needs a person (`npm run prove-render:approve`). Baselines are taken in the pinned Playwright image CI runs in (Linux), never on a laptop.
 2. Measure the static laws with `starci dna check --storybook packages/grammar/storybook-static`; add a narrow container (a drawer or a rail) if it answers its container.
 3. With **real content**: the longest translated label, an empty value, a large count. Lorem ipsum hides the failure.
