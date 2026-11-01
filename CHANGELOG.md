@@ -6,6 +6,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- `starci deps publish-local` builds the harness packages and the CLI in dependency order and publishes the versions npm lacks to a Verdaccio registry on this machine (container `starci-local-registry`, 127.0.0.1 only, no login, npmjs as uplink), dry until `--execute`; an app then installs them for one command with `--@starci:registry` (or a user npmrc), with no worktree of the package and no copy into `node_modules`. An executed run starts the registry before checking its existing versions. A version already in the registry is kept, `--force` replaces it, a version npm serves stays npm's. Existing locks and npm caches retain a forced version's old tarball: prefer a new version, or prove the replacement in a fresh scratch app with a fresh cache. An app switching from `deps source --local` first uses `deps source --npm` to clear its recorded overlay.
+
+### Fixed
+
+- A committed `package-lock.json`, `npm-shrinkwrap.json` or `.npmrc` that names a registry on this machine (a `resolved` URL on localhost, 127.0.0.1, `*.localhost`, `[::1]`) is refused `DEPS_LOCAL_REGISTRY_COMMITTED` by `deps check`, `release push`, `release cut` and an executed `app release`, in an app or the harness alike. Every resolved URL is checked, including compact and JSON-escaped lockfiles. Every npm question those gates and `release publish` ask (`npm view`, `npm pack`, `npm publish`) is pinned to registry.npmjs.org, so a `@starci:registry` set in the environment or a user npmrc can no longer make an unpublished pin look installable.
+
 ## [1.1.0-alpha.37] - 2026-11-02
 
 - `starci dna check` measures a scoped count inside the grammar root it scopes (a Tabs, a PageHeader, a Toaster counted 0 for every scope that is not the root itself), names a menu popover through the `aria-label` of the trigger it points at, and reads a size as the box the layout gives, not the one a press scale paints. `contexts anatomy` refuses a removed spelling marked `shipped: true` in rulings.yaml anywhere in `packages/hfs/runtime`.

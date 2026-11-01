@@ -5,6 +5,7 @@ import { assertMayPushBranch } from "../pkg/edit.js"
 import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
+import { NPMJS_FLAGS } from "../deps/local-refs.js"
 import { assertCliPins } from "../check/cli-pins.js"
 import { SPEC_FILE } from "../../shared/spec-file.js"
 import { listPackages } from "../../shared/workspace.js"
@@ -28,10 +29,10 @@ interface PublishData {
 }
 
 /** The npm dist-tag of a version: its prerelease id (1.0.0-alpha.3 -> alpha), else latest. */
-const distTagOf = (version: string): string => /^\d+\.\d+\.\d+-([A-Za-z]+)/.exec(version)?.[1] ?? "latest"
+export const distTagOf = (version: string): string => /^\d+\.\d+\.\d+-([A-Za-z]+)/.exec(version)?.[1] ?? "latest"
 
 const onRegistry = async (pkg: WorkspacePackage, cwd: string): Promise<boolean> => {
-    const view = await captureNpm(["view", `${pkg.name}@${pkg.version}`, "version"], cwd)
+    const view = await captureNpm(["view", `${pkg.name}@${pkg.version}`, "version", ...NPMJS_FLAGS], cwd)
     return view.exitCode === 0 && view.stdout.trim() === pkg.version
 }
 
@@ -57,7 +58,7 @@ const publishRow = async (row: PlanRow, packages: readonly WorkspacePackage[], r
     if (pkg === undefined) return undefined
     // Provenance needs a CI identity (GitHub Actions OIDC): CI's publish job signs every tarball, Debug's fallback from a workstation goes without it.
     const provenance = process.env.GITHUB_ACTIONS === "true" ? ["--provenance"] : ["--provenance=false"]
-    const run = await captureNpm(["publish", "--tag", row.distTag, ...provenance], pkg.dir)
+    const run = await captureNpm(["publish", "--tag", row.distTag, ...provenance, ...NPMJS_FLAGS], pkg.dir)
     if (run.exitCode !== 0) throw new Refusal("PUBLISH_FAILED", `npm publish of ${row.package}@${row.version} failed: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`)
     if (!(await settledOnRegistry(pkg, root, Date.now() + REGISTRY_SETTLE_MS))) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable on the registry ${String(REGISTRY_SETTLE_MS / 1000)} s after publishing`)
     return `${row.package}@${row.version}`
@@ -97,7 +98,7 @@ const publicationOrder = (due: readonly PlanRow[], packages: readonly WorkspaceP
 }
 
 const versionOnRegistry = async (name: string, version: string, cwd: string): Promise<boolean> => {
-    const view = await captureNpm(["view", `${name}@${version}`, "version"], cwd)
+    const view = await captureNpm(["view", `${name}@${version}`, "version", ...NPMJS_FLAGS], cwd)
     return view.exitCode === 0 && view.stdout.trim() === version
 }
 
@@ -142,7 +143,7 @@ const shippedChanges = async (root: string, from: string, dir: string): Promise<
 
 /** The commit npm recorded for a published version (its `gitHead`), when this repository's history holds it. */
 const publishedFrom = async (row: PlanRow, root: string): Promise<string | undefined> => {
-    const view = await captureNpm(["view", `${row.package}@${row.version}`, "gitHead"], root)
+    const view = await captureNpm(["view", `${row.package}@${row.version}`, "gitHead", ...NPMJS_FLAGS], root)
     const sha = view.stdout.trim()
     if (view.exitCode !== 0 || !/^[0-9a-f]{40}$/.test(sha)) return undefined
     return (await isAncestor(root, sha, "HEAD")) ? sha : undefined
