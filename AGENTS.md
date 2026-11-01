@@ -27,6 +27,8 @@ Rules that are easy to forget:
 
 - A package change is usable in an app the moment it is coded: `starci deps source --local`; only a deploy waits for npm
   ([contexts/authority/packages.md](contexts/authority/packages.md) "An app uses the edit before npm serves it", CONTRIB-20).
+- To install a local build like npm instead: `starci deps publish-local --execute` publishes it to a registry on 127.0.0.1 and the app installs from it for one command
+  ([contexts/authority/packages.md](contexts/authority/packages.md) "Or install it like npm"); a lockfile that keeps the local URL is refused.
 - No role removes a harness worktree by hand: `starci worktree gc --execute` unlinks its `node_modules` junctions as links
   first, while `git worktree remove` or a recursive delete through a junction empties its target
   ([contexts/authority/README.md](contexts/authority/README.md) "Worktrees").

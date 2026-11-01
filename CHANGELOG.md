@@ -6,6 +6,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- `starci deps publish-local` builds the harness packages and the CLI in dependency order and publishes the versions npm lacks to a Verdaccio registry on this machine (container `starci-local-registry`, 127.0.0.1 only, no login, npmjs as uplink), dry until `--execute`; an app then installs them for one command with `--@starci:registry` (or a user npmrc), with no worktree of the package and no copy into `node_modules`. A version already in the registry is kept, `--force` replaces it, a version npm serves stays npm's. `deps source --local` is unchanged.
+
 ### Fixed
 
 - A committed `package-lock.json`, `npm-shrinkwrap.json` or `.npmrc` that names a registry on this machine (a `resolved` URL on localhost, 127.0.0.1, `*.localhost`, `[::1]`) is refused `DEPS_LOCAL_REGISTRY_COMMITTED` by `deps check`, `release push`, `release cut` and an executed `app release`, in an app or the harness alike. Every npm question those gates and `release publish` ask (`npm view`, `npm pack`, `npm publish`) is pinned to registry.npmjs.org, so a `@starci:registry` set in the environment or a user npmrc can no longer make an unpublished pin look installable.

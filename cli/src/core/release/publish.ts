@@ -29,7 +29,7 @@ interface PublishData {
 }
 
 /** The npm dist-tag of a version: its prerelease id (1.0.0-alpha.3 -> alpha), else latest. */
-const distTagOf = (version: string): string => /^\d+\.\d+\.\d+-([A-Za-z]+)/.exec(version)?.[1] ?? "latest"
+export const distTagOf = (version: string): string => /^\d+\.\d+\.\d+-([A-Za-z]+)/.exec(version)?.[1] ?? "latest"
 
 const onRegistry = async (pkg: WorkspacePackage, cwd: string): Promise<boolean> => {
     const view = await captureNpm(["view", `${pkg.name}@${pkg.version}`, "version", ...NPMJS_FLAGS], cwd)
