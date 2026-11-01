@@ -150,11 +150,7 @@ A chip is a label, not a target, on two axes: tone (which settled fact) and emph
 uppercase letter. A grammar's Badge is the vendor chip at soft emphasis and below the ramp, so status reads as
 tinted text, never as a filled button-like shape; its `muted` tone drops the fill for a quiet marker.
 
-`StatusDot` is a status drawn as a dot, in three variants that share one dot-size token and five tones.
-With text it is the dot, the text and the tone's light tint, drawn as the vendor soft Chip of the same size, so its
-padding and height are the Chip's, with a 4px gap from dot to text; `Badge isDot` is this same anatomy. Without
-text it is the dot alone, `static`, or `echo` with a ring that expands and fades in the tone's light stop and stops
-under reduced motion; a dot alone is named by `aria-label` and shows that name in a tooltip on hover and focus.
+`StatusDot` is a status drawn as a dot alone, static or `echo`, named by its `aria-label`; the dot and its size token are shared with `Badge isDot`, the status with its words, whose `isLive` makes it the state of a live feed.
 
 When peers are picked from, the chip is a `TagGroup` tag, interactive and keyboard reachable, on the ramp at `sm`
 (the default: filter rows are dense) or `md` when its row holds `md` controls; a reorderable group moves tags by
@@ -223,11 +219,11 @@ negative one, stays until dismissed.
 A quote is words taken from a source, drawn as a `<blockquote>` on a tinted ground at the nested inset, one radius below
 the surface that hosts it. It is not a surface: it has no shadow, no outline and no action, so it stands in a pane, a card
 or a drawer without putting a surface inside a surface. It names its source in one short word and, optionally, where and
-when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a chat bubble).
+when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a message bubble).
 
-### ChatBubble
+### MessageBubble
 
-A chat bubble is one message of a conversation; every chat is `ChatBubble`s in a thread the app keeps, and no screen draws its own
+A message bubble is one message of a conversation; every conversation is `MessageBubble`s in a thread the app keeps, and no screen draws its own
 bubble. The reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`),
 the other party's is the surface with its foreground, and inline content (a link, a mention, code, a muted line) inherits the
 bubble's foreground so it reads on either face. The corner on the author's side tightens to point at the avatar.
@@ -255,13 +251,6 @@ with no loading plate; below 48rem a square step drops one step, and a hero is a
 it. It is decorative unless its `alt` names it. It carries the asset-slot props of `Image` and `MediaFrame`, so the
 render is tied to the request that generated it; generated art reaches the page only through `Mascot` or a
 `MediaFrame` (lint R338, R339). The scale is Common's: a grammar changes nothing about it.
-
-### Backdrop
-
-A backdrop is the brand's own ground in a split screen: the family's light tint (`accentSoft`), full-bleed in its host,
-with the brand copy at the top and the artwork (a hero `Mascot`) filling the height left. It is a ground, not a card:
-no border, no shadow, no card inset, and square corners except the one `accentCorner` names (ruling backdrop). A brand
-moment among other content stays a soft `SurfaceCard`.
 
 ### PaneGrid
 

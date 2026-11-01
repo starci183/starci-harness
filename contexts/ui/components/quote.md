@@ -14,7 +14,7 @@ Choice `quote.choose.words`: how words that come from elsewhere are shown. The f
 | --- | --- | --- | --- |
 | outcome | the text reports what happened to the reader's action (saved, failed, sent) | `Alert`, never `Quote` ([toast-alert](toast-alert.md)) | judgement |
 | source | the text is the words of a source the reader can name and the host is a pane, a card or a drawer | `Quote` with `source` as one short word and `byline` for where and when | judgement |
-| message | the text is one message of a conversation thread | `ChatBubble`, with the thread kept by the app | judgement |
+| message | the text is one message of a conversation thread | `MessageBubble`, with the thread kept by the app | judgement |
 | plain | the words are the page's own copy | `Text`; a ground would claim a source the words do not have | judgement |
 
 Choice `quote.choose.host`: where a `Quote` stands. The first row that applies wins.

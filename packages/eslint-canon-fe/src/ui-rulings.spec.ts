@@ -98,7 +98,7 @@ for (const edition of ["lite", "full"])
             filename,
             code: 'const classes=cn("[&_.app-row]:flex", active && "gap-4")',
           },
-          { filename, code: "const C=()=> <ChatBubble actions={actions} />" },
+          { filename, code: "const C=()=> <MessageBubble actions={actions} />" },
           { filename, code: 'const note="Grammar owns starci-core-bubble"' },
         ],
         invalid: [

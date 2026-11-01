@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added: the `frames` component tier for apps (grammar audit 2026-11, decision 9): slot `fe.components` layers are `blocks, frames, composites, branches, leaves`, the architecture machine and the world check know it, and `starci app add frame <name>` writes one. The grammar package folders are `leaf`, `branch`, `composite` and `frame`.
+- Added: the codemod `small-renames` (`starci app codemod small-renames [--execute] [--json]`) for the grammar's small cuts: `ChatBubble` to `MessageBubble`, `StatusDot` with text and `ConnectionStatus` to `Badge isDot`, `CloseButton` to `IconButton intent="dismiss"`, `TextAction href` to `Link`, `SurfaceCopyGroup` to `Stack`, the removed `variant`, `size="control"`, `isError` and `OtpInput` props, and `FlowGraph layout="orbit"` to `BubbleMap`; what a person decides is reported, not rewritten.
 
 ## 4.16.5 - 2026-11-01
 

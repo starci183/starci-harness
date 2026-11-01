@@ -73,7 +73,7 @@ relationship is a different shape.
 | Neutral summary band | A card states a measure before its evidence | The first band on the secondary surface; it is a summary, never a verdict. It takes a state colour only for a proven outcome |
 | Bottom action band | A card has one way onward | One action in the last band against the bottom edge; at most one per card |
 | Art is a band | Generated imagery belongs to a surface | Its own full-bleed band, the asset's ratio kept, no inset frame; decorative art is `aria-hidden` |
-| Title and one supporting line | A row, cell or surface names a thing | Title, then one muted qualifying line, stacked at the tightest gap; `SurfaceCopyGroup` owns it (gap G-8) |
+| Title and one supporting line | A row, cell or surface names a thing | Title, then one muted qualifying line, stacked at the tightest gap by `Stack gap="identity"` |
 | Pending is the same tree | Data is loading | The finished tree at rest: same card, bands and row count, skeleton on every owner, never a spinner; an action that must not fire yet is disabled, not removed |
 | One highlighted card | Peers share a view and one is the next step | `isHighlight` on that one card only; the peers keep the same props, so the difference reads as rank (gap G-9) |
 | Single-column form | A step asks for input | `Form`, fields in one column, the status sentence, one commit; secondary ways onward follow as text actions, never a second commit |

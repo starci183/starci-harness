@@ -52,7 +52,7 @@ export const ConnectPageBase = (props: ConnectPageBaseProps) => {
                                 placeholder={labels.urlPlaceholder}
                                 isRequired
                                 autoFocus
-                                isError={error !== null}
+                                isInvalid={error !== null}
                                 errorMessage={error ?? undefined}
                                 onValueChange={props.on.edit}
                             />

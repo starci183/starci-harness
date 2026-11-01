@@ -25,7 +25,7 @@ what a gate measures.
 **Layer 1 is constraints, never judgement.** A DNA entry is one sentence of law plus one measurement on the DOM
 (a selector, a metric, an expected value). Examples: an `md` control is 40px tall
 (`DNA-COMMON-CONTROL-MD`); a horizontal divider has inline inset 0px inside its surface
-(`DNA-COMMON-DIVIDER-FULL-BLEED`); a StatusDot with text has the padding and height of the HeroUI soft Chip of the
+(`DNA-COMMON-DIVIDER-FULL-BLEED`); a Badge with its dot has the height of the HeroUI soft Chip of the
 same size (`DNA-COMMON-STATUSDOT-CHIP-PARITY`); no raised surface sits inside a surface
 (`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); a list card's label sits above its shell
 (`DNA-COMMON-LISTCARD-LABEL-OUTSIDE`); in `offset-pop` pink is never a text colour

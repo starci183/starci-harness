@@ -46,7 +46,7 @@
 }
 
 /* Clay marks work in motion: a running state, a progress or quota bar, a running graph node. */
-:is([data-component="StatusDot"], [data-component="Progress"], [data-component="Meter"], [data-component="FlowGraph"]) {
+:is([data-component="StatusDot"], [data-grammar-badge-dot="true"], [data-component="Progress"], [data-component="Meter"], [data-component="FlowGraph"]) {
     --accent: #c96442;
     --accent-soft: #f5ece6;
 }

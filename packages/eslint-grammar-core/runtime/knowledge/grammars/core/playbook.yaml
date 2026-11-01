@@ -343,7 +343,7 @@ guidance:
       LAYOUT-1 case-10 (owner:joined-multi-pane): the selected family realizes one touching pane
       surface with vertical Dividers. SURFACE-1 case-4 (owner:scroll-region-background-tone):
       VerticalScrollRegion tone="background" under messages and log entries, with the header and
-      composer on the surface. ACTION-3 case-5 (owner:hover-actions-floating-toolbar): ChatBubble's
+      composer on the surface. ACTION-3 case-5 (owner:hover-actions-floating-toolbar): MessageBubble's
       public floating toolbar owns the IconButtons and tooltips beside the text; apps do not target
       starci-core internals. CTA-6 case-4 (owner:button-variant-follows-intent): ordinary repeated
       item commands are neutral and render ghost.
@@ -460,7 +460,7 @@ guidance:
         render: |
           401 is its own status, never forbidden and never an error. The slot shows one sign-in prompt in
           place: `EmptyNotice message={labels.unauthorized} actionLabel={labels.signIn}
-          actionVariant="primary" onAction={signIn}`, where `signIn` opens the product's sign-in route and
+          onAction={signIn}`, where `signIn` opens the product's sign-in route and
           returns to this address. The prompt discloses none of the slot's data. A secondary slot hides, as
           forbidden does, so a page whose reads all need a session shows the prompt once, in its primary slot.
       - status: forbidden
@@ -475,7 +475,7 @@ guidance:
         render: |
           Retry at the slot, re-running that slot's read only (the query's `mutate`), never a page
           reload. Block form, where the slot is a region: `EmptyNotice message={labels.error}
-          actionLabel={labels.retry} actionVariant="secondary" onAction={retry}` with `isActionPending`
+          actionLabel={labels.retry} onAction={retry}` with `isActionPending`
           bound while the retry runs. Inline form, where the slot is one line inside a row or band too
           small for a notice: `Alert tone="negative"` in the slot's place, carrying the retry action. A
           command that is unsafe to repeat is not retried (FEEDBACK-2 case-4); a rejected field value

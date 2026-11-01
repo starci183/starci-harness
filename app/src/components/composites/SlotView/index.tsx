@@ -42,7 +42,6 @@ export const SlotView = <T,>(props: SlotViewProps<T>) => {
             <EmptyNotice
                 message={labels.error}
                 actionLabel={labels.retry}
-                actionVariant="secondary"
                 {...(props.onRetry === undefined ? {} : { onAction: props.onRetry })}
             />,
         )

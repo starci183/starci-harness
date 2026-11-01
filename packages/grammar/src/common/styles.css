@@ -4155,7 +4155,7 @@
     }
 
     /*
-     * The reader's own message is the brand fill with its foreground (owner ruling chat-primary-and-surface): the other party's
+     * The reader's own message is the brand fill with its foreground (owner ruling message-bubble-primary-and-surface): the other party's
      * message is the surface. Everything inline inherits the bubble's foreground, so a link, a mention (Text tone accent), code
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */

@@ -15,7 +15,7 @@ only: props, DOM, ARIA and keyboard behaviour stay the same.
 npm install @starci/grammar @heroui/react react react-dom
 ```
 
-The package needs Node.js 22 or newer. Its peer dependencies are React 18+, `@xyflow/react` 12 (for `FlowGraph`) and `@heroui/react`
+The package needs Node.js 22 or newer. Its peer dependencies are React 18+, `@xyflow/react` 12 (for `FlowGraph` and `BubbleMap`) and `@heroui/react`
 3.2+. Mermaid (for `MermaidDiagram`) is a pinned dependency, imported lazily on the first diagram. Load the HeroUI stylesheet once in the app, as HeroUI's own setup describes. Then import
 exactly one Grammar family stylesheet. Each family sheet already imports Common anatomy first.
 
@@ -54,7 +54,7 @@ the complete placement mapping in light and dark, including destination, pending
 The [app-shell canon](../../contexts/ui/composition.md) owns `FE-APP-SHELL-1` through `FE-APP-SHELL-7`.
 The `Compositions/App shell` stories show the fixed shell, grouped sidebar, icon rail and mobile drawer.
 
-- `size="control"` is available on `Button`, `IconButton`, `TextAction`, `PlainPressable`, `IdentityLockup`, `Input` and `SearchField`, alongside `Switch`, `Avatar` and `AvatarButton`.
+- `size="control"` is available on `TextAction`, `PlainPressable`, `IdentityLockup`, `Switch`, `Avatar` and `AvatarButton`; `Button`, `IconButton`, `Input`, `SearchField` and `SegmentedControl` take the one control height.
 - `SidebarItem.badge`, `badgeLabel` and `badgeMax` show and announce unread counts in both sidebar presentations. `SidebarGroup.placement="end"` places settings groups after the main groups and pushes them to the bottom.
 - The collapsed Sidebar uses Grammar's internal `AnchoredTooltip` on hover and focus. HeroUI Tooltip positions the annotation beside the selected collection item and portals it into the same family DOM scope, preserving HeroUI's collection anatomy. `onAction` runs for every activated destination, including the selected item, so a drawer can close consistently.
 - A fixed `WorkspaceShell` frames its `compactHeader` slot as the mobile opener band; pass a client `Drawer` with an ellipsis `IconButton` trigger. The `navigationDrawer` form owns the same band when it supplies the opener.
@@ -164,6 +164,13 @@ export const Root = ({ children }: { children: React.ReactNode }) => {
 
 Mount the root inside the router. Without `navigate` the links behave as plain anchors.
 
+### BubbleMap
+
+`BubbleMap` is the value-sized map: the root in the centre, its children in sectors on a second ring, their children staggered on a third and
+the fans of the open ring-three nodes on a fourth. `bubbleDiameter(value, max)` sizes a bubble so its area tracks the value; `expandedIds`,
+`defaultExpandedIds`, `onExpandedChange` and `fanLimit` open and limit the fans. It shares the canvas, the fit and the screen-reader lists
+with `FlowGraph`.
+
 ### FlowGraph layouts
 
 `FlowGraph` places nodes with `layout`: `radial` (the default), `layered` (a DAG in layers) or `manual` (each node's `position`).
@@ -216,9 +223,9 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Leaves (29).** Avatar, Badge, Button, CloseButton, ConnectionStatus, Divider, GrammarRoot, Heading, Icon,
-IconButton, IconTile, Image, IncludedMark, Kbd, Label, LeadingNumber, Link, Mascot, Meter, PlainPressable,
-Progress, ProgressCircle, RankArtwork, RelativeTime, Skeleton, Spinner, StateMark, Text, TextAction.
+**Leaves (26).** Avatar, Badge, Button, Divider, GrammarRoot, Heading, Icon,
+IconButton, IconTile, Image, Kbd, Label, LeadingNumber, Link, Mascot, Meter, PlainPressable,
+Progress, ProgressCircle, RelativeTime, Skeleton, Spinner, StateMark, StatusDot, Text, TextAction.
 
 `Mascot` renders generated character art at one size scale: `size` `sm` (96px), `md` (160px, the default) or `lg`
 (240px) square, the Common tokens `--grammar-mascot-sm|md|lg`, or `hero`, which fills its host's height up to
@@ -328,7 +335,7 @@ requires, restyles what the vendor decides, or replaces a vendor default, unless
 and `Select` are HeroUI's own list-box items (a `Label`, a `Description`, the item indicator at the end of the row).
 
 **Navigation & Data (16).** Accordion, AvatarGroup, Breadcrumbs, Calendar, DataTable,
-DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, Pagination, Stepper, Subnav, Tabs, TagGroup, Timeline.
+BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, Pagination, Stepper, Subnav, Tabs, TagGroup, Timeline.
 
 `DataTable.getCellInteraction(row, columnId)` optionally supplies `onAction`, `onDragOver`,
 `onDragLeave` and `onDrop`. Cells remain semantic
@@ -338,7 +345,7 @@ their own actions. Native drag callbacks receive the actual inner content-frame 
 payload validation, accepted targets and effects. Highlighting takes precedence over muted tone.
 
 `DragItem` is a native drag-source frame with `isDisabled`, `onDragStart`, `onDragEnd`,
-`isSelected`, `isInvalid`, `isDashed` and an optional caller-owned `leadingColor`. Its `children`
+`isSelected`, `isInvalid`, `isDashed` and an optional `tone` for the leading edge. Its `children`
 must include a published control providing the operation without dragging, including selection
 and a keyboard-reachable destination when used with cell actions. Selection, invalidity and the
 category must also be expressed in accessible content. The frame itself adds no focus stop.
@@ -409,7 +416,7 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 
 **Surfaces (14).** EmptyNotice, FencedCodeBlock, HorizontalScrollRegion, MarkdownArticle,
 MarkdownTableFrame, MediaFrame, Rail, SectionHeader, StaticStateRow, SurfaceAccordionCard,
-SurfaceCard, SurfaceCopyGroup, SurfaceListCard, VerticalScrollRegion.
+SurfaceCard, SurfaceListCard, VerticalScrollRegion.
 
 **Compositions (15).** BottomNav, Cluster, Footer, Grid, NavigationFeatureNav, Page, PageContainer, PageHeader,
 PaneGrid, PaneSection, PrimaryRailLayout, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
@@ -661,7 +668,7 @@ A minor release. Common grows from 42 to 95 renderers, and Offset Pop reaches pa
   - Overlays and feedback (14): Dialog, AlertDialog, Drawer (side, and bottom sheet with a handle),
     Popover, DropdownMenu (sections, submenus, checkable items, shortcuts), Toast and Toaster
     (queue, tones, action, pause on hover and focus, persistent live regions), Alert, Spinner,
-    Skeleton, ProgressCircle, Meter, CloseButton, Kbd.
+    Skeleton, ProgressCircle, Meter, Kbd.
   - Navigation, chrome and data (19): Link, Breadcrumbs, Pagination, Stepper, TopBar, BottomNav,
     Footer, Avatar, AvatarGroup, TagGroup, DataTable, DescriptionList, ListBox, Disclosure,
     Accordion, Image, Rating, Timeline, Calendar.

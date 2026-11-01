@@ -47,7 +47,6 @@ the knowledge to be true; until then the gate that checks it stays red, by desig
 
 | Id | Change |
 |---|---|
-| C-1 | `Tabs` passes vendor variants one to one and drops its app-facing `variant` prop (D-2, G-3) |
 | C-2 | Remove the dropped wrapper CSS: Drawer handle bar, SurfaceCard `.card`, Tabs slots (D-11) |
 | C-3 | `core` binds `--field-shadow` (or a field border on top-level surfaces): today a field on a white top-level card shows no edge |
 | C-4 | `core` binds `--surface-tertiary` under the HeroUI name instead of `--starci-surface-tertiary` (D-14) |
@@ -61,14 +60,8 @@ Each is closed by an API that removes the choice (preferred), a lint rule, or on
 
 | Id | Choice | Closing move |
 |---|---|---|
-| G-1 | `Button`/`IconButton` publish `variant` beside `intent` | API: drop `variant` from the app-facing type (lint `button-no-variant` refuses it today) |
-| G-2 | Fields and `Select` publish `variant` | API: drop it; context resolves (lint `nested-control-variant` refuses a static one today) |
-| G-3 | `Tabs` publish `variant` | API: drop it (C-1) |
-| G-4 | `size="control"` equals `md`; `Input` publishes `md` and `control` | API: D-3 |
-| G-5 | `EmptyNotice` takes `actionVariant` | API: the notice's action is a `commit` at `decision` placement (or `neutral`), resolved like any button |
 | G-6 | `sm` vs `md` is judged by the app ("nested in an item or a dense toolbar") | API: `item` placement and a dense `Toolbar` composition set `sm`; `lg` only through a landing-hero composition |
 | G-7 | Joined-card band insets are written by the app (`px-4 pt-3` …) | API: a band part of `SurfaceCard` that applies side contact |
-| G-8 | Title and supporting line: `SurfaceCopyGroup` or an app stack of two `Text` | lint: two stacked `Text` at the tightest gap outside `SurfaceCopyGroup` |
 | G-9 | `isHighlight` on more than one card per view | lint: one per render, like `single-commit-per-render` |
 | G-10 | Drawer `placement` for a secondary task, side or bottom by width | API: a responsive placement (side on wide, bottom on narrow) as the default |
 | G-11 | `Toaster` placement | API: the shell sets a placement clear of its fixed chrome; the app passes none |
@@ -79,7 +72,6 @@ Each is closed by an API that removes the choice (preferred), a lint rule, or on
 | G-16 | Mixed glyph sizes in one region | lint: one glyph step per region |
 | G-17 | Alert `appearance` surface or soft | API: resolve `soft` inside a band, `surface` on the canvas |
 | G-18 | `ListBox` publishes `className` | API: drop it (no public style doors) |
-| G-19 | Base `Input` speaks `isError` where the other fields speak `isInvalid` (every field shares `description` and `errorMessage`); `OtpInput` speaks `disabled`/`invalid` | API: one field vocabulary |
 
 ## What the contract cannot express yet
 

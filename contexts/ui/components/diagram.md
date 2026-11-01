@@ -1,4 +1,4 @@
-# Diagram: MermaidDiagram and FlowGraph
+# Diagram: MermaidDiagram, FlowGraph and BubbleMap
 
 Contract: [Diagram](../../grammars/contract.md#diagram). Vendor: [Alert](../../vendor/heroui.md#alert),
 [small members](../../vendor/heroui.md#small-members) (Skeleton).
@@ -26,7 +26,7 @@ Choice `diagram.choose.shape`: the outline of a `FlowGraph` node. Each meaning h
 | terminal | the node starts or ends the flow | `shape: "circle"` | judgement |
 | step | the node is an action or a state of the flow | `shape: "rect"`, or `round` for a step the reader acts on | judgement |
 | entity | the node is a thing in a map (not a flow) | the default `stadium` | judgement |
-| sized thing | the map shows how much each thing holds (files, items) and the reader hovers for the name | `form: "bubble"`, `layout="orbit"` and `diameter` from `flowGraphDiameter(value, max)` so area tracks value | judgement |
+| sized thing | the map shows how much each thing holds (files, items) and the reader hovers for the name | `BubbleMap`, `form: "bubble"` and `diameter` from `bubbleDiameter(value, max)` so area tracks value | judgement |
 
 Choice `diagram.choose.status`: how a bubble shows a status. Every status takes a `fill`, so colour is never the only signal.
 
@@ -43,8 +43,8 @@ loading box is the ready box. Paint is the grammar's, read from the root's token
 ## Size
 No control size. Node text never renders below 12px in `FlowGraph`'s default fit; a Mermaid drawing narrows to the
 frame up to its natural width. A bubble's text keeps one screen size through the viewport zoom (12px, the same floor) and
-drops out when it no longer fits: the caption under zoom 0.42, the mark under 0.5. Ring four of the orbit layout cannot
-meet the floor at full view, so a map in `orbit` takes `fit="contain"`.
+drops out when it no longer fits: the caption under zoom 0.42, the mark under 0.5. Ring four of a `BubbleMap` cannot
+meet the floor at full view, so it takes `fit="contain"`.
 
 ## States
 Loading keeps the reserved box with a skeleton (`isSkeleton` while the source is unresolved; Mermaid itself loads
@@ -52,7 +52,7 @@ lazily on the first diagram). A source Mermaid refuses is an error in the same r
 source as code, so the reader keeps the text (STATE-8). An empty `FlowGraph` shows its `emptyLabel`.
 
 ## Owner split
-- **Grammar owns:** the frame, the reserved box, the theme handed to Mermaid, the node shapes, the bubble, its fills, ring and tip, the orbit rings and fans, the strong edges of the selected path, the edge label paint,
+- **Grammar owns:** the frame, the reserved box, the theme handed to Mermaid, the node shapes, the bubble, its fills, ring and tip, the `BubbleMap` rings and fans, the strong edges of the selected path, the edge label paint,
   the error carrier, the screen-reader text of labelled edges, and loading Mermaid only when a diagram mounts.
 - **Knowledge decides:** which renderer; which shape a node takes; the height step.
 - **App author decides:** the source or the nodes and edges, the label, the error title copy.

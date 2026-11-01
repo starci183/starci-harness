@@ -311,12 +311,6 @@ rulings:
     words: "Thêm vào grammar"
     ruling: "A one-corner rounding is a grammar prop, never app paint: SurfaceCard and MediaFrame take `accentCorner` (start-start, start-end, end-start or end-end), which draws that one logical corner at the Common accent radius `--grammar-accent-corner` while the other corners keep the family's surface radius. An app's `rounded-br` and its kin give way to it."
     owner: "@starci/grammar src/core/frame/SurfaceCard, src/core/leaf/MediaFrame, src/common/styles.css; contexts/grammars/contract.md Corners are roles; contexts/grammars/contract.yaml DNA-COMMON-ACCENT-CORNER"
-  - id: backdrop
-    date: '2026-10-30'
-    status: live
-    words: "à đổi thành component background đi chứ nó cũng không phải là surfacecard, chốt vậy đi; Backdrop + giữ accentCorner"
-    ruling: "The brand half of a split screen (a sign-in) is a Backdrop, not a SurfaceCard: the brand's light tint full-bleed in its host, no card anatomy, the brand copy over it and a hero Mascot as its artwork, with one corner through `accentCorner`. SurfaceCard and MediaFrame keep `accentCorner` too."
-    owner: "@starci/grammar src/core/frame/Backdrop, src/common/styles.css; contexts/grammars/contract.md Backdrop; contexts/ui/components/backdrop.md"
   - id: workspace-shell-fills-viewport
     date: '2026-10-30'
     status: live
@@ -727,11 +721,11 @@ rulings:
     status: live
     ruling: "A bounded task list, a fixed set the reader works through as one group (the items an agent setup needs, required steps) with no search, filter or paging, is one SurfaceListCard of ListRow with the label outside, on a page or in a pane, the `task` row of `list-table.choose.role`. A list that grows, searches, filters or pages stays bare rows in its section (COLLECTION-1); a comparison across columns stays a DataTable. The owner's words on the agent setup items: \"ủa cái này phải là surface list card cho các mục chứ\"; bare rows passed the rule and the mockup and still did not read as one block. On the permissions table the owner added: \"quá phức tạp mới nhét bảng vào card\", plain rows are a SurfaceListCard with a bottom note in its footer."
     owner: "contexts/ui/composition.md COLLECTION-1; contexts/ui/components/list-table.md (list-table.choose.role, task); contexts/ui/components/card.md (card.choose.role, task-list); contexts/hfs/rules.yaml R351"
-  - id: chat-primary-and-surface
+  - id: message-bubble-primary-and-surface
     date: '2026-11-01'
     status: live
-    ruling: "In a chat the reader's own message is the brand fill with its foreground (--accent and --accent-foreground; the contract has no --primary) and the other party's message is the surface with its foreground; inline content in an outgoing bubble (a link, a mention, code, a muted line) inherits the bubble's foreground so it stays readable on the solid fill. Every chat is ChatBubble: no screen draws its own bubble. Offset Pop follows its own accent and surface pair. The owner decided on chat: \"chốt vậy đi\" (my message uses the primary fill with its foreground, the other party uses surface)."
-    owner: "contexts/ui/components/chat.md; @starci/grammar src/core/composite/ChatBubble"
+    ruling: "In a conversation the reader's own message is the brand fill with its foreground (--accent and --accent-foreground; the contract has no --primary) and the other party's message is the surface with its foreground; inline content in an outgoing bubble (a link, a mention, code, a muted line) inherits the bubble's foreground so it stays readable on the solid fill. Every conversation is MessageBubble: no screen draws its own bubble. Offset Pop follows its own accent and surface pair. The owner decided on chat: \"chốt vậy đi\" (my message uses the primary fill with its foreground, the other party uses surface)."
+    owner: "contexts/ui/components/message-bubble.md; @starci/grammar src/core/composite/MessageBubble"
   - id: filter-button-group
     date: '2026-11-01'
     status: live
@@ -772,6 +766,46 @@ rulings:
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.
 removedVocabulary:
+  - spelling: Backdrop
+    as: grammar component
+    replacedBy: a soft SurfaceCard, or Freestyle for a tinted brand ground
+    ruling: "grammar-names-are-generic"
+  - spelling: StatusDot with text
+    as: grammar component form
+    replacedBy: Badge isDot
+    ruling: "grammar-names-are-generic"
+  - spelling: ConnectionStatus
+    as: grammar component
+    replacedBy: Badge isDot isLive
+    ruling: "grammar-names-are-generic"
+  - spelling: CloseButton
+    as: grammar component
+    replacedBy: IconButton intent="dismiss"
+    ruling: "grammar-names-are-generic"
+  - spelling: SurfaceCopyGroup
+    as: grammar component
+    replacedBy: Stack gap="inline" or gap="row"
+    ruling: "grammar-names-are-generic"
+  - spelling: IncludedMark
+    as: grammar component
+    replacedBy: Icon
+    ruling: "grammar-names-are-generic"
+  - spelling: RankArtwork
+    as: grammar component
+    replacedBy: the app's own assets
+    ruling: "grammar-names-are-generic"
+  - spelling: TextAction href
+    as: grammar prop
+    replacedBy: Link
+    ruling: "grammar-names-are-generic"
+  - spelling: ChatBubble
+    as: grammar component
+    replacedBy: MessageBubble
+    ruling: "grammar-names-are-generic"
+  - spelling: ChatBubbleSkeletons
+    as: grammar component
+    replacedBy: MessageBubble isSkeleton rows
+    ruling: "grammar-names-are-generic"
   - spelling: ChatWorkspace
     as: grammar composition
     replacedBy: PaneGrid

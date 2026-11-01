@@ -101,7 +101,7 @@ export const noGrammarInternalSelector = defineRule({
     schema: [],
     messages: {
       internal:
-        "Remove this starci-core- selector. Compose the Grammar public API; message actions belong in the ChatBubble floating toolbar.",
+        "Remove this starci-core- selector. Compose the Grammar public API; message actions belong in the MessageBubble floating toolbar.",
     },
   },
   create(context) {

@@ -4,7 +4,7 @@
  *
  * Tones: `danger` is reserved for a real failure (a failed or lost Op, a red check, an absent Supervisor, an open
  * circuit). Work in progress is `accent`; something that needs a look is `warning`; finished is `success`; idle, waiting
- * and intentionally stopped are `neutral`. A state is a `StatusDot` chip (a dot and its words), a flag is a `Badge`, so
+ * and intentionally stopped are `neutral`. A state is a `Badge isDot` (a dot and its words), a flag is a plain `Badge`, so
  * two side by side differ in shape as well as hue. Every label starts with an uppercase letter.
  */
 import type { FlowGraphTone, PresentationState, StatusDotTone } from "@starci/grammar/core"

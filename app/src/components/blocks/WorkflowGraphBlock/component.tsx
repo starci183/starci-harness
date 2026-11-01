@@ -1,4 +1,4 @@
-import { Button, DescriptionList, EmptyNotice, ListRow, Region, SectionHeader, StatusDot, SurfaceListCard, Text, type PresentationState } from "@starci/grammar/core"
+import { Badge, Button, DescriptionList, EmptyNotice, ListRow, Region, SectionHeader, SurfaceListCard, Text, type PresentationState } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 import { StatusWord } from "../../leaves/StatusWord"
@@ -99,9 +99,9 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
                             <ul className="app-row app-plain-list" aria-label={labels.legend}>
                                 {labels.legendEntries.map((entry) => (
                                     <li key={entry.label}>
-                                        <StatusDot tone={entry.tone} size="sm">
+                                        <Badge isDot tone={entry.tone}>
                                             {entry.label}
-                                        </StatusDot>
+                                        </Badge>
                                     </li>
                                 ))}
                                 <li>
