@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, realpathSync, statSync } from "node:fs"
-import { basename, join, relative, resolve, sep } from "node:path"
+import { join, relative, resolve, sep } from "node:path"
 import { captureGit, git, gitCommonDir, isAncestor, mainCheckout, samePath } from "../shared/git.js"
 import { describeHealed, healRecord } from "../core/deps/packages.js"
 import { pruneVerifyWorktrees } from "./clean-verify.js"

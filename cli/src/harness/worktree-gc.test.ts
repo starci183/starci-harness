@@ -107,7 +107,7 @@ void test("explicit collection preserves restorable dirty binary, staged, untrac
     assert.ok(existsSync(path))
     const done = await worktreeGc(a, false, false, { paths: [path], caller: a })
     assert.equal(done[0]?.removed, true, done[0]?.detail)
-    const preserved = done[0]?.preserved
+    const preserved = done[0].preserved
     assert.ok(preserved)
     assert.equal(existsSync(path), false)
     assert.equal(readFileSync(join(external, "sentinel.txt"), "utf8"), "keep the install\n")
@@ -157,7 +157,7 @@ void test("a unique detached HEAD receives a durable preservation ref before rem
     const head = git(path, "rev-parse", "HEAD")
     const done = await worktreeGc(a, false, false, { paths: [path], caller: a })
     assert.equal(done[0]?.removed, true)
-    const preserved = done[0]?.preserved
+    const preserved = done[0].preserved
     assert.ok(preserved)
     const manifest = JSON.parse(readFileSync(join(preserved, "manifest.json"), "utf8")) as { ref: string }
     assert.equal(git(a, "rev-parse", manifest.ref), head)
@@ -178,7 +178,7 @@ void test("changed files refuse snapshot verification, and a live worker is kept
     machine.close()
     const plan = await worktreeGc(a, false, true, { paths: [path], caller: a })
     assert.equal(plan[0]?.blocked, true)
-    assert.match(plan[0]?.reason ?? "", /worker still-working is live/)
+    assert.match(plan[0].reason, /worker still-working is live/)
     assert.ok(existsSync(path))
 })
 
@@ -191,7 +191,7 @@ void test("an external process working in a selected checkout blocks removal wit
     assert.ok(existsSync(join(path, "live.marker")))
     const plan = await worktreeGc(a, false, false, { paths: [path], caller: a })
     assert.equal(plan[0]?.blocked, true)
-    assert.match(plan[0]?.reason ?? "", /holder pid|inventory unavailable/)
+    assert.match(plan[0].reason, /holder pid|inventory unavailable/)
     assert.ok(pidAlive(pid))
     assert.ok(existsSync(path))
 })
