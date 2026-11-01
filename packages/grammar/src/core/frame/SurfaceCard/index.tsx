@@ -24,7 +24,7 @@ import { Badge } from "../../leaf/Badge/index.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Image } from "../../leaf/Image/index.js"
-import { Skeleton, SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
@@ -176,12 +176,12 @@ const OrbitMotif = () => (
 )
 
 const TileMarkView = ({ mark, isSkeleton }: { readonly mark: TileMark; readonly isSkeleton: boolean }) => {
-    if (isSkeleton) return <span className="starci-core-tile-mark" data-grammar-tile-mark="skeleton"><Skeleton shape="rect" size="md" /></span>
+    if (isSkeleton) return <span className="starci-core-tile-mark" data-grammar-tile-mark="skeleton"><SkeletonPlaceholder shape="block"><span className="starci-core-tile-mark-fill" /></SkeletonPlaceholder></span>
     if (mark.logo !== undefined) {
         return <span className="starci-core-tile-mark" data-grammar-tile-mark="logo"><Image src={mark.logo.src} alt={mark.logo.alt} aspect="square" fit="contain" plate="none" /></span>
     }
     if (mark.icon !== undefined) return <span className="starci-core-tile-mark" data-grammar-tile-mark="icon"><IconTile source={mark.icon} size="md" /></span>
-    return <span className="starci-core-tile-mark" data-grammar-tile-mark="avatar"><Avatar {...mark.avatar} size="lg" isDecorative /></span>
+    return <span className="starci-core-tile-mark" data-grammar-tile-mark="avatar"><Avatar {...mark.avatar} size="control" isDecorative /></span>
 }
 
 const BandView = ({ band, isSkeleton }: { readonly band: Band | Collection; readonly isSkeleton: boolean }) => {
@@ -283,14 +283,16 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                                 <span className="starci-core-tile-description" data-contract="TONE-2 FONT-2">{isSkeleton ? <SkeletonPlaceholder>{props.description}</SkeletonPlaceholder> : props.description}</span>
                             )}
                         </span>
-                        {props.badge === undefined && props.action === undefined ? null : (
+                        {
+                            // The foot row always holds its height, so a row of tiles reads even whether or not each has a status or an action.
                             <ButtonPlacementProvider placement="item">
                                 <span className="starci-core-tile-foot" data-contract="GAP-2">
-                                    {props.badge === undefined ? <span /> : (
-                                        props.badge.isDot === true
-                                            ? <Badge isDot tone={props.badge.tone ?? "neutral"} isSkeleton={isSkeleton}>{props.badge.label}</Badge>
-                                            : <Badge tone={props.badge.tone ?? "neutral"} isSkeleton={isSkeleton}>{props.badge.label}</Badge>
-                                    )}
+                                    {props.badge === undefined ? <span /> : isSkeleton ? (
+                                        // A loading tile shows no real status: the placeholder is laid out from the status's own words.
+                                        <SkeletonPlaceholder shape="block"><Badge tone="neutral">{props.badge.label}</Badge></SkeletonPlaceholder>
+                                    ) : props.badge.isDot === true
+                                        ? <Badge isDot tone={props.badge.tone ?? "neutral"}>{props.badge.label}</Badge>
+                                        : <Badge tone={props.badge.tone ?? "neutral"}>{props.badge.label}</Badge>}
                                     {props.action === undefined ? null : (
                                         props.action.href === undefined
                                             ? <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isSkeleton={isSkeleton} onPress={props.action.press}>{props.action.label}</Button>
@@ -298,7 +300,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                                     )}
                                 </span>
                             </ButtonPlacementProvider>
-                        )}
+                        }
                     </div>
                 )
             default:

@@ -1589,6 +1589,13 @@
     .starci-core-tile-mark > * {
         inline-size: 100%;
         block-size: 100%;
+        margin: 0;
+    }
+
+    .starci-core-tile-mark-fill {
+        display: block;
+        inline-size: 2.5rem;
+        block-size: 2.5rem;
     }
 
     .starci-core-tile-copy {
@@ -1611,6 +1618,7 @@
         min-width: 0;
         inline-size: 100%;
         margin-block-start: auto;
+        min-block-size: 2rem;
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
