@@ -219,13 +219,13 @@ durable owner. Transient confirmations are toasts; see [components/toast-alert.m
 
 ## 5. Collection
 
-### COLLECTION-1 A list is a card; a list that searches, filters or pages is a section
-Rows of one kind are one `SurfaceCard kind="list"` with its label outside, whether the reader works through them as one
-group (the items a setup needs, required steps, a rail's choices) or reads a short list. A list that searches, filters or
-pages, or has no bound, is a `Section kind="list"` of the same rows under its own title, a `FilterButtonGroup` in its
-filter slot when it narrows, and its page command at the end of its head row. The props decide, so no judgement is left:
-a list with a search, a filter or paging is a section, every other is a card (rulings `task-list-card`,
-`section-is-the-heading`). A published container is used where one exists (see
+### COLLECTION-1 The host surface and list scope pick its owner
+Rows of one kind first reuse the surface that owns their region. Inside an existing surface they are an unpainted
+`Section kind="list"` of typed rows, never another card. On the page canvas, a standalone bounded worklist is one
+`SurfaceCard kind="list"` with its label outside; a list that searches, filters or pages, or has no bound, is a
+`Section kind="list"`, with a `FilterButtonGroup` in its filter slot when it narrows. The selected owner carries the
+list's one visible heading and accessible name, its count and page command; no free heading repeats that name
+(rulings `task-list-card`, `section-is-the-heading`). A published container is used where one exists (see
 [components/list-table.md](components/list-table.md)); none existing is a grammar gap, never a substitute card. Several
 values of one kind entered by the user are one single-value field per row with its own remove action and an "add another"
 command, never a "one per line" textarea.
@@ -244,6 +244,16 @@ name. Each identity is an uploaded image or the grammar's generated initials. An
 bot badge. The family owns renderers, cells and sizes.
 
 ## 6. Layout
+
+Choice `grid.choose.content`: which track owner carries the content.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| week | dated events or appointments belong to seven consecutive day regions | `Grid kind="week"` with an accessible region `label` and seven ordered days, including empty days | one-column agenda in a narrow container, seven tracks at the medium container width |
+| week-summary | each of seven consecutive days reports a daily metric summary | `Grid kind="week-summary"` with an accessible region `label` and seven ordered days | one, four and seven tracks by container width, same reading order |
+| cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles | `card.choose.role:tile` |
+| form | neighbouring fields share aligned control rows | `Grid kind="form"` | `text-field.choose.columns` |
+| main-rail | one task has subordinate support beside it | `Grid kind="main-rail"` | one primary and one rail |
 
 ### LAYOUT-1 Which regions exist
 One task with no support is one region. Support the reader consults alongside the task is a rail with a named

@@ -116,7 +116,7 @@ roles:
     ui: ui/components/card.md
     renderers: [SurfaceCard]
     vendorParity: [card, accordion]
-    slots: ["label (a card that heads a section: outside the material)", "name and mark (a tile: inside the material, no outside label)", fact, labelEnd, content, footer, wholeAction, "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
+    slots: ["label (a card that heads a section: outside the material)", "name and mark (a tile: inside the material, no outside label)", fact, labelEnd, content, footer, wholeAction, "Figure: optional whole-cell href with Link.onFollow and isDisabled, neutral values", "ItemAction: Button.isPending preserves action-owned busy state", "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
     variants:
       kind: { values: [body, figures, list, accordion, bands, tile], chosenBy: app, compiler: a discriminated union; a list needs items and an empty state, bands end in at most one collection }
       labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }
@@ -147,6 +147,30 @@ roles:
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
     dna: [DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL]
+
+  - id: link
+    ui: ui/components/button.md
+    renderers: [Link]
+    vendorParity: [link]
+    slots: ["children: string text label, exclusive with media", "media: existing ImageProps data, no arbitrary node", "label: required destination name for media", href, onFollow]
+    variants:
+      content: { values: [text, media], chosenBy: app from the destination's content; compiler rejects mixing the forms }
+      kind: { values: [internal, external], chosenBy: app from the destination }
+    sizes: Image owns media dimensions and aspect
+    states: [rest, hover, focus-visible, disabled, image loading, image loaded, image error]
+    grammarMayChange: [link colour and underline through the existing link treatment]
+    dna: []
+
+  - id: color-swatch
+    ui: ui/components/color-swatch.md
+    renderers: [ColorSwatch]
+    vendorParity: [color-swatch]
+    slots: ["color: the vendor's typed actual color data", "label: required accessible color name"]
+    variants: {}
+    sizes: one small square vendor preview
+    states: [ready, loading with the same inert geometry]
+    grammarMayChange: []
+    dna: []
 
   - id: button-group
     ui: ui/components/action-group.md
@@ -289,7 +313,7 @@ roles:
     ui: ui/components/list-table.md
     renderers: [ListBox, SurfaceCard, DataTable]
     vendorParity: [list-box, table, checkbox]
-    slots: ["items: label, description, leading, trailing, href", "columns: editor, priority", "rows: href", emptyContent]
+    slots: ["items: label, description, leading, trailing, href", "ListRowData: string title; href links its title with optional Link.onFollow; without href, no onFollow", "columns: editor, priority", "rows: href", emptyContent]
     variants:
       descriptionLines: { values: [wrap, 1, 2, 3], meaning: { wrap: the ListBox default, 1: the ListRow default }, chosenBy: app }
       leadingSize: { values: [sm, md, lg], chosenBy: app from the leading content }
@@ -385,6 +409,19 @@ roles:
     grammarMayChange: ["nothing: it adds no paint, inset or radius"]
     dna: []
     lint: [starci-grammar/freestyle-has-reason]
+
+  - id: grid
+    ui: ui/composition.md
+    renderers: [Grid]
+    vendorParity: []
+    slots: ["children: peer cards, aligned fields, or seven consecutive day regions", "label: required accessible region name for week kinds", primary, rail]
+    variants:
+      kind: { values: [cards, form, main-rail, week, week-summary], chosenBy: app from the content role }
+      weekLayout: { values: [agenda then seven tracks, summaries in one then four then seven tracks], chosenBy: kind and the grid container width }
+    sizes: track thresholds and gaps owned by packages/grammar/src/common/styles.css
+    states: [day content and its loading or empty states remain in the day region]
+    grammarMayChange: ["nothing; tracks, reading order and spacing are Common"]
+    dna: []
 
   - id: shell
     ui: ui/composition.md

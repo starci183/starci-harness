@@ -214,13 +214,53 @@ selection mark sits on, the leading glyph size) is the grammar's to declare.
 
 ### List
 
-A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a bounded list reports,
-`Section kind="list"` when a list searches, filters or pages, a data table when columns matter. n rows have n-1 seams, separators are full bleed, and rows and captions share
+A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a standalone bounded list
+reports on the page canvas, `Section kind="list"` when an existing surface owns the region or the list searches,
+filters or pages, a data table when columns matter. The chosen owner carries one heading and accessible name.
+n rows have n-1 seams, separators are full bleed, and rows and captions share
 one content edge. A static row's description is one line, because the row is scanned; an option's description in
 a `ListBox` wraps, because it is read before picking, and a list clamps it only by `descriptionLines`. A table row
 with `href` is one link to its record; a column with `editor` hosts its field in the cell; `low`-priority columns
 fold into the first column as stacked secondary text on a narrow table. The leading slot follows the ramp, so a
-row's identity mark matches the controls beside it. Loading shows the same rows at rest.
+row's identity mark matches the controls beside it. A `ListRowData` title remains text; `href` turns that title into a
+native `Link`, whose `onFollow` reports navigation to its owning region. Without `href`, `onFollow` is unrepresentable.
+The title link and any row command or menu are separate targets, never nested. Loading shows the same rows at rest and
+removes the title link.
+
+### Link
+
+`Link` is a native destination carried by text or one image. Its text form takes string `children`; its media form
+takes `media` as the existing `ImageProps` data and a required accessible destination `label`, with no children.
+The compiler rejects mixing the forms. Image owns aspect, fit, dimensions, provenance, load state and fallback;
+In a media destination, `plate="none"` preserves a cut-out mark's transparent, unclipped shape. Navigation, disabled state, external-tab safety,
+focus and `onFollow` are the same for both forms. Media keeps its supplied destination name while the image loads or fails.
+
+### Grid
+
+`Grid` names a track layout by the content it carries: peer `cards`, aligned `form` fields, `main-rail`, a dated event
+`week` or a `week-summary` of daily metrics. Week kinds take a region `label` and seven consecutive day regions in
+reading order, including empty days; the development check refuses another count. The shared week renderer owns its
+container queries. A week is an agenda in a narrow container and seven tracks at the medium width, at the inline gap.
+A week summary wraps through one, four and seven tracks, at the section gap. The exact thresholds belong to
+`packages/grammar/src/common/styles.css`; an app takes no breakpoint, gap or arbitrary column count. Existing day
+content, empty states and actions remain inside their day regions. `Calendar` remains the date-selection control.
+
+### ColorSwatch
+
+`ColorSwatch` previews an actual color value as content, with a required accessible `label`; the vendor owns the typed
+`color` data, its paint and transparency checkerboard. The fixed small square preview takes no children or appearance
+props. Visible name and value copy accompany it through existing text and layout components. Loading preserves its
+geometry under the inert skeleton. A color value is not a semantic status tone and the swatch selects or drags nothing.
+
+### Figure destinations
+
+Each `Figure` may carry a native `href`, optional `Link.onFollow` and `isDisabled`. Its whole cell is one named keyboard
+target through the root router; values retain their default-tone figure treatment (DISCIPLINE-2). Loading, disabled
+figures and pending cards open nothing. A figure without `href` carries no follow handler or disabled destination state.
+### Item actions
+
+`ItemAction.isPending` forwards the Button's action-owned spinner and duplicate-press guard in both row and tile actions;
+it differs from the unresolved-content `isLoading` geometry.
 
 ### Alert
 
@@ -313,7 +353,8 @@ itself). `isLoading` passes to the band; the body's blocks own their loading.
 
 A section is a named region whose title is its heading and its landmark name; no free heading exists (ruling
 `section-is-the-heading`). `kind="list"` holds rows of the same typed items a list card holds, with a `filter` slot for a
-`FilterButtonGroup`; its head, filter and content stand one section step (24) apart, and its page command hugs its label at
+`FilterButtonGroup`; it is the unpainted list owner within an existing surface and the list owner for search, filters or
+paging on the canvas. Its head, filter and content stand one section step (24) apart, and its page command hugs its label at
 the end of the head row. A card heads itself with its `label`, so a section around one card is refused.
 
 ### Diagram

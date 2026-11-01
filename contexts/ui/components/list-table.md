@@ -12,18 +12,22 @@ Choice `list-table.choose.role`: which collection carries the rows. The first ro
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| task | a bounded set the reader works through or scans as one group, with no search, filter or paging: a setup's items, required steps, a rail's choices, the few facts of a first-run step | `SurfaceCard kind="list"`, label outside, `empty` required (`card.choose.role:task-list`) | type: a list needs `items` and `empty` |
+| contained | an existing surface owns the list's region | unpainted `Section kind="list"` of typed `items`, with its required `empty` state; its title is the list's one heading and accessible name | R340/R356 forbid another surface; `Section` adds no surface |
+| task | a standalone bounded set on the page canvas, worked through or scanned as one group, with no search, filter or paging | `SurfaceCard kind="list"`, label outside, `empty` required (`card.choose.role:task-list`) | type: a list needs `items` and `empty` |
 | entity | entities with a name, one description line, a few facts and actions, in a list that searches, filters, pages or has no bound | `Section kind="list"` with `items`, a `FilterButtonGroup` in its `filter` slot when the list narrows (ruling `section-is-the-heading`) | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
 | timeline | events in time order | `Timeline`; an entry that needs the reader (a failed step, a pending approval) takes `isAttention` | judgement |
 | process | the stages of one process the reader follows (read, index, extract, review) | `Stepper` with its stages; the current stage is marked and a failed stage takes the error state | type: stages are typed data |
 | table | records compared across many columns, sorted or bulk-selected | `DataTable`, never in a card, a muted note below; a row that opens its record takes `href`, a value edited in place takes the column `editor`, a column that may fold on a narrow table is `low` priority | R351 |
 | pick | picking one item is the task (a list inside a panel) | `ListBox`; a navigation-like list selects by fill with no check | lint `selection-fill-no-check` |
 
-A list is a card by default and a section when it grows (COLLECTION-1). The `task` row is a card with the label outside; the
-`entity` row is a section whose title is its heading and whose head, filter and rows stand one section step apart. A
+A list's host surface is decided before its scope (COLLECTION-1). `contained` reuses that existing surface with an
+unpainted section; `task` owns a standalone card with its label outside; `entity` is a section whose head, filter and
+rows stand one section step apart. The selected owner supplies the list's one heading and accessible name. A
 `DataTable` is never placed in a `SurfaceCard` (R351); a table enters a card only when the data is truly complex, and the
-owner names that case in the rule. Plain rows with few facts are a list card with the note in `footer`. Title, count, filters
-and the page command belong to the card's label or the section's head.
+owner names that case in the rule. Standalone bounded rows use a list card with the note in `footer`. Title, count, filters
+and the page command belong to the card's label or the section's head. A row that leads to its record supplies a native
+title destination with `href`; `onFollow` can close its owning popover alongside that navigation. Without a destination
+there is no `onFollow`. Its commands and menu remain separate targets beside the title, and loading removes the link.
 
 ## Variants
 Rows are separated by lines (n-1 lines) or by gap, never both (`DNA-COMMON-LIST-SEAMS`). Rows align their boxes to the content edge of a panel or a pane

@@ -14,6 +14,7 @@ Choice `button.choose.role`: which element carries the action. The first row tha
 | --- | --- | --- | --- |
 | whole | the whole card is the target | the card's whole action (`card.choose.role:whole`), no button inside | judgement |
 | value | the press picks among values, not an action | not a button: `tabs.choose.role` | judgement |
+| media-destination | the target is one image or brand raster leading to an address | `Link` with structured `media` from Image's data contract and a required accessible destination `label`; no JSX children | type: media and text forms are mutually exclusive |
 | overflow | an item has more than three commands, or rarely used ones | the most frequent one visible, the rest behind `menu.choose.placement:overflow` | candidate: at most one visible command per collection item |
 | text-action | the command reads as part of a sentence or a list of links | `TextAction` | judgement |
 | icon | not the view's commit, the glyph is universally understood, and it sits in a toolbar, a row's actions or chrome | `IconButton` with an accessible `label` and its tooltip | candidate: every `IconButton` has a non-empty name and a tooltip |

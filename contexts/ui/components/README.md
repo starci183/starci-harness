@@ -58,6 +58,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | The need | Page |
 | --- | --- |
 | run a command or follow a destination | [button](button.md) |
+| preview an actual color value from a palette or material sample | [color-swatch](color-swatch.md) |
 | several actions together: a decision with its way out, peer commands on one object | [action-group](action-group.md) |
 | frame a route page; name it: trail, heading, status, commands, page tabs | [page-header](page-header.md) |
 | switch which panel or area shows | [tabs](tabs.md) |

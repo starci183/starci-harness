@@ -24,7 +24,12 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - Select · `contexts/grammars/contract.md#select` · 1 KB — A select is a field whose control opens a list in a popover.
     - Dialog · `contexts/grammars/contract.md#dialog` · 1 KB — A dialog, an alert dialog, a drawer, a popover or a tooltip.
     - Menu · `contexts/grammars/contract.md#menu` · 1 KB — A menu is a list of commands behind a trigger.
-    - List · `contexts/grammars/contract.md#list` · 1 KB — A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a bounded list reports, `Section kind="list"` when a list searches, filters or pages, ...
+    - List · `contexts/grammars/contract.md#list` · 1 KB — A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a standalone bounded list reports on the page canvas, `Section kind="list"` when an ...
+    - Link · `contexts/grammars/contract.md#link` · 1 KB — `Link` is a native destination carried by text or one image.
+    - Grid · `contexts/grammars/contract.md#grid` · 1 KB — `Grid` names a track layout by the content it carries: peer `cards`, aligned `form` fields, `main-rail`, a dated event `week` or a `week-summary` of daily metrics.
+    - ColorSwatch · `contexts/grammars/contract.md#colorswatch` · 1 KB — `ColorSwatch` previews an actual color value as content, with a required accessible `label`; the vendor owns the typed `color` data, its paint and transparency checkerboard.
+    - Figure destinations · `contexts/grammars/contract.md#figure-destinations` · 1 KB — Each `Figure` may carry a native `href`, optional `Link.onFollow` and `isDisabled`.
+    - Item actions · `contexts/grammars/contract.md#item-actions` · 1 KB — `ItemAction.isPending` forwards the Button's action-owned spinner and duplicate-press guard in both row and tile actions; it differs from the unresolved-content `isLoading` ...
     - Alert · `contexts/grammars/contract.md#alert` · 1 KB — An alert is feedback in the page; a toast is the same anatomy in the one region.
     - Quote · `contexts/grammars/contract.md#quote` · 1 KB — A quote is words taken from a source, drawn as a `<blockquote>` on a tinted ground at the nested inset, one radius below the surface that hosts it.
     - MessageBubble · `contexts/grammars/contract.md#messagebubble` · 1 KB — A message bubble is one message of a conversation; every conversation is `MessageBubble`s in a thread the app keeps, and no screen draws its own bubble.

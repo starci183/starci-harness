@@ -15,7 +15,7 @@ import type { CheckInput } from './hfs-graph.mjs';
  *   table-in-card        a `DataTable` inside a card (a table stands on the page);
  *   grid-outside-panes   a `PaneGrid` inside a card or a Page whose chrome is not `panes`;
  *   heading-over-card    a `Heading`, or a region `Section`, whose only neighbour or child is one card (a card carries its own label);
- *   label-in-grid        a labelled card repeated by a `.map` in a `Grid` (a repeated tile has no label).
+ *   label-in-grid        a labelled card repeated by a `.map` in a `Grid kind="cards"` (a repeated tile has no label).
  *
  * A finding carries `crossFile: true` when the two elements are drawn in different files, which is what one-file lint cannot see.
  */
@@ -103,9 +103,9 @@ export function checkSurfaceNesting(input: Pick<CheckInput, 'graph'> & { context
       }
       if (element.repeated) {
         const inGrid = [...ancestors].reverse().find(entry => isGrammarIn(entry.element, SURFACE_VOCABULARY.grids));
-        const card = inGrid ? cardOf(graph, element) : null;
+        const card = inGrid?.element.attributes.get('kind')?.text === 'cards' ? cardOf(graph, element) : null;
         if (inGrid && card && card.attributes.has('label')) {
-          report(element, inGrid.element, 'label-in-grid', `${describe(element)} repeats a labelled card in a Grid: a repeated tile has no label`, ancestors, stack);
+          report(element, inGrid.element, 'label-in-grid', `${describe(element)} repeats a labelled card in a Grid kind="cards": a repeated tile has no label`, ancestors, stack);
         }
       }
     },

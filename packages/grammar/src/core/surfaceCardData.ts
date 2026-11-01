@@ -6,6 +6,8 @@ import type { AvatarKind, AvatarShape } from "./leaf/Avatar/index.js"
 import type { BadgeTone } from "./leaf/Badge/index.js"
 import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
+import type { LinkProps } from "./leaf/Link/index.js"
+import type { ButtonProps } from "./leaf/Button/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
 export type BadgeData = {
@@ -31,7 +33,7 @@ export type ImageData = {
 }
 
 /** One visible command of an item or a tile: a destination or a same-document command, never both. */
-export type ItemAction = {
+export type ItemAction = Pick<ButtonProps, "isPending"> & {
     readonly label: string
     readonly intent?: Exclude<ButtonIntent, "destructive">
     readonly isDisabled?: boolean
@@ -53,7 +55,12 @@ export type ItemLeading =
     | { readonly icon: IconSource; readonly avatar?: never; readonly position?: never }
     | { readonly position: number; readonly avatar?: never; readonly icon?: never }
 
-/** One row of a list. The data shape is shared by `SurfaceCard kind="list"` and a `Section` of rows. */
+type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {
+    readonly href?: never
+    readonly onFollow?: never
+}
+
+/** One row of a list. A destination links its text title; its sibling commands remain separate targets. */
 export type ListRowData = {
     readonly id: string
     readonly title: string
@@ -69,9 +76,15 @@ export type ListRowData = {
     readonly menu?: ItemMenu
     /** The one named field for custom drawing under the row's copy: a pre-rendered node, never a function. */
     readonly detail?: ReactNode
+} & ListRowDestination
+
+type FigureDestination = Pick<LinkProps, "href" | "onFollow" | "isDisabled"> | {
+    readonly href?: never
+    readonly onFollow?: never
+    readonly isDisabled?: never
 }
 
-/** One key figure of a `figures` card. */
+/** One key figure of a `figures` card; its optional destination belongs to the whole figure cell. */
 export type Figure = {
     readonly id: string
     /** What the figure measures. */
@@ -82,7 +95,7 @@ export type Figure = {
     /** Its source or its time, under the value. */
     readonly meta?: string
     readonly icon?: IconSource
-}
+} & FigureDestination
 
 /** One disclosure of an `accordion` card. */
 export type AccordionRowData = {

@@ -22,6 +22,7 @@ import { TopBar } from "../core/composite/TopBar/index.js"
 import { Avatar } from "../core/leaf/Avatar/index.js"
 import { Image } from "../core/leaf/Image/index.js"
 import { Link } from "../core/leaf/Link/index.js"
+import { ColorSwatch } from "../core/leaf/ColorSwatch/index.js"
 import { Rating } from "../core/branch/Rating/index.js"
 import { Video } from "../core/leaf/Video/index.js"
 
@@ -49,11 +50,12 @@ export { TopBar, type TopBarMenu, type TopBarProps } from "../core/composite/Top
 export { Avatar, avatarInitials, type AvatarKind, type AvatarProps, type AvatarShape, type AvatarSize } from "../core/leaf/Avatar/index.js"
 export { Image, type AssetSlotProps, type ImageAspect, type ImageLoadState, type ImageProps } from "../core/leaf/Image/index.js"
 export { Link, type LinkKind, type LinkProps } from "../core/leaf/Link/index.js"
+export { ColorSwatch, type ColorSwatchProps } from "../core/leaf/ColorSwatch/index.js"
 export { Rating, type RatingProps } from "../core/branch/Rating/index.js"
 export { Video, type VideoCaptionsTrack, type VideoProps } from "../core/leaf/Video/index.js"
 
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
-    Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, DataTable, DescriptionList,
+    Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, ColorSwatch, DataTable, DescriptionList,
     BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

@@ -2424,7 +2424,7 @@ rules:
 
   - id: R356
     code: FE_SURFACE_NESTING
-    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable not inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading never holds just one card, and a labelled card is not repeated in a Grid."
+    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable not inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading never holds just one card, and a labelled card is not repeated in the peer-card layout Grid kind=\"cards\"."
     failureCodes:
       - FE_SURFACE_NESTING
     enforcers:

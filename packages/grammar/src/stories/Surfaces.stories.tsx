@@ -392,6 +392,124 @@ export const SurfaceCardListRow: Story = {
   ),
 };
 
+const ListTitleDestinationDemo = () => {
+  const [followed, setFollowed] = useState(0);
+  const rows: readonly G.ListRowData[] = [{
+    id: 'review', title: 'Review the delivery request', description: 'A pending request with a native title destination.',
+    href: '#delivery-request', onFollow: () => setFollowed((count) => count + 1),
+    action: { label: 'Dismiss', press: noop },
+  }];
+  return (
+    <Matrix maxWidth={640}>
+      <State label="Title navigation and a separate command" direction="column">
+        <G.SurfaceCard kind="list" label="Pending requests" items={rows} empty={<G.EmptyNotice message="Nothing waiting" />} />
+        <G.Text>{`Follow callbacks: ${followed}`}</G.Text>
+      </State>
+      <State label="Loading removes the title destination" direction="column">
+        <G.SurfaceCard kind="list" label="Pending requests" isLoading items={rows} empty={<G.EmptyNotice message="Nothing waiting" />} />
+      </State>
+    </Matrix>
+  );
+};
+
+/** A row links its text title; following it reports navigation without enclosing sibling commands. */
+export const ListTitleDestination: Story = {
+  render: () => <ListTitleDestinationDemo />,
+  play: async ({ canvasElement }) => {
+    const scope = canvasElement;
+    const link = scope.querySelector<HTMLAnchorElement>('a[href="#delivery-request"]');
+    if (link === null) throw new Error('The row title is not a native destination');
+    link.focus();
+    expect(document.activeElement).toBe(link);
+    expect(link.querySelector('button')).toBeNull();
+    expect(link.closest('[data-component="ListRow"]')?.querySelector('[data-component="Button"]')).not.toBeNull();
+    link.click();
+    await waitFor(() => expect(scope.textContent).toContain('Follow callbacks: 1'));
+    expect(scope.querySelector('[data-component="ListRow"][data-grammar-skeleton="true"] a')).toBeNull();
+  },
+};
+
+const BusyItemActionDemo = () => {
+  const [activations, setActivations] = useState(0);
+  const activate = () => setActivations((count) => count + 1);
+  return (
+    <Matrix maxWidth={640}>
+      <State label="Busy row commands and destinations keep their labels" direction="column">
+        <G.SurfaceCard kind="list" label="Providers" empty={<G.EmptyNotice message="No providers" />}
+          items={[
+            { id: 'install', title: 'Storage provider', action: { label: 'Installing', press: activate, isPending: true } },
+            { id: 'open', title: 'Messaging provider', action: { label: 'Opening', href: '#provider', isPending: true } },
+          ]} />
+      </State>
+      <State label="Busy tile action is pending rather than a skeleton" direction="column">
+        <G.SurfaceCard kind="tile" name="Calendar provider" mark={{ icon: PlusGlyph }}
+          description="Keep events in sync" action={{ label: 'Installing', press: activate, isPending: true }} />
+      </State>
+      <G.Text>{`Action activations: ${activations}`}</G.Text>
+    </Matrix>
+  );
+};
+
+/** ItemAction forwards the Button's action-owned pending state in both row and tile renderers. */
+export const BusyItemAction: Story = {
+  render: () => <BusyItemActionDemo />,
+  play: ({ canvasElement }) => {
+    const scope = canvasElement;
+    const pending = scope.querySelectorAll<HTMLElement>('[data-action-pending="true"]');
+    expect(pending.length).toBe(3);
+    for (const action of pending) {
+      expect(action.querySelector('[aria-busy="true"]')).not.toBeNull();
+      expect(action.getAttribute('href')).toBeNull();
+      action.click();
+    }
+    expect(scope.textContent).toContain('Action activations: 0');
+  },
+};
+
+const FigureDestinationsDemo = () => {
+  const [followed, setFollowed] = useState(0);
+  const figures: readonly G.Figure[] = [
+    { id: 'pending', term: 'Pending approvals', value: 3, meta: 'Needs attention', href: '#approvals', onFollow: () => setFollowed((count) => count + 1) },
+    { id: 'completed', term: 'Completed', value: 8 },
+    { id: 'unavailable', term: 'Archived requests', value: 2, href: '#archive', isDisabled: true },
+    { id: 'coverage', term: 'Coverage', value: 97, unit: '%', href: '#coverage' },
+  ];
+  return (
+    <Matrix maxWidth={960}>
+      <State label="Whole figure cells navigate; their values stay neutral" direction="column">
+        <G.SurfaceCard kind="figures" label="Operations" items={figures} />
+        <G.Text>{`Figure follow callbacks: ${followed}`}</G.Text>
+      </State>
+      <State label="Loading figures open nothing" direction="column">
+        <G.SurfaceCard kind="figures" label="Loading operations" items={figures} isLoading />
+      </State>
+      <State label="A pending card opens nothing" direction="column">
+        <G.SurfaceCard kind="figures" label="Pending operations" items={figures} state="pending" />
+      </State>
+    </Matrix>
+  );
+};
+
+/** Native cell destinations share the root router without changing the metric's text treatment. */
+export const FigureDestinations: Story = {
+  render: () => <FigureDestinationsDemo />,
+  play: async ({ canvasElement }) => {
+    const scope = canvasElement;
+    const links = scope.querySelectorAll<HTMLAnchorElement>('[data-grammar-figure-link="true"]');
+    expect(links.length).toBe(2);
+    const link = scope.querySelector<HTMLAnchorElement>('a[href="#approvals"]');
+    if (link === null) throw new Error('The whole figure cell has no destination');
+    expect(link.getAttribute('aria-label')).toBe('Pending approvals: 3');
+    link.focus();
+    expect(document.activeElement).toBe(link);
+    link.click();
+    await waitFor(() => expect(scope.textContent).toContain('Figure follow callbacks: 1'));
+    expect(scope.querySelector('a[href="#archive"]')).toBeNull();
+    expect(scope.querySelector('[data-grammar-state="pending"] [data-grammar-figure-link="true"]')).toBeNull();
+    expect(scope.querySelector('[data-loading="true"] [data-grammar-figure-link="true"]')).toBeNull();
+  },
+};
+
 const AccordionCardDemo = () => {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['week-1']));
   const weeks = [

@@ -3010,6 +3010,42 @@
         );
     }
 
+    .starci-core-grid-week {
+        container: grammar-week / inline-size;
+        min-inline-size: 0;
+    }
+
+    .starci-core-grid-week-days {
+        display: grid;
+        min-inline-size: 0;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-grid-week-days > * { min-inline-size: 0; }
+
+    .starci-core-grid-week[data-grammar-grid-kind="week-summary"] > .starci-core-grid-week-days {
+        gap: var(--grammar-section-gap);
+    }
+
+    @container grammar-week (min-width: 40rem) {
+        .starci-core-grid-week[data-grammar-grid-kind="week-summary"] > .starci-core-grid-week-days {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    @container grammar-week (min-width: 48rem) {
+        .starci-core-grid-week[data-grammar-grid-kind="week"] > .starci-core-grid-week-days {
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+        }
+    }
+
+    @container grammar-week (min-width: 64rem) {
+        .starci-core-grid-week[data-grammar-grid-kind="week-summary"] > .starci-core-grid-week-days {
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+        }
+    }
+
     .starci-core-nav-landmark {
         display: flex;
         align-items: center;

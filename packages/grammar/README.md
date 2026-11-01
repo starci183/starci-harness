@@ -163,6 +163,29 @@ export const Root = ({ children }: { children: React.ReactNode }) => {
 
 Mount the root inside the router. Without `navigate` the links behave as plain anchors.
 
+`Link` takes either its string label as `children`, or structured `media` using `ImageProps` with a required accessible
+destination `label`; those forms are mutually exclusive. The media form renders `Image` internally, so its dimensions,
+fit, loading and fallback remain Image's. A transparent brand mark uses `plate="none"`, which leaves its whole alpha
+shape unclipped. Both forms keep native anchor, root-router, external-tab, disabled and `onFollow` semantics.
+
+```tsx
+<Link href="/workspaces" label="Open workspaces" media={{ src: "/brand/logo.png", alt: "", width: 113, height: 40, fit: "contain", plate: "none" }} />
+<Link href={originalUrl} kind="external" label={filename} media={{ src: previewUrl, alt: filename, aspect: "auto", fit: "contain" }} />
+```
+
+`ListRowData` keeps a string `title`. With `href` its title is a `Link`; optional `onFollow` runs alongside navigation,
+for example to close the popover that owns the list. A row without `href` takes no `onFollow`. Commands and menus stay
+siblings of that title link; the row itself is not an interactive wrapper. Loading rows render no title link.
+
+`Figure` data may carry `href`, optional `onFollow` and `isDisabled`; the whole figure cell becomes one native destination
+through the root router, with its default-tone number treatment preserved. Loading and disabled figures open nothing.
+`ItemAction.isPending` uses the Button's action-owned busy spinner and blocks duplicate presses; `isLoading` continues
+to mean unresolved-content skeleton geometry.
+
+`ColorSwatch` previews actual color data using the vendor's typed `color`, a required accessible `label` and optional
+`isLoading`. Existing `Cluster` and `Text` place the swatch beside its visible name and value. It takes no arbitrary
+content, class, style, size or status tone; the vendor owns the color preview and transparency checkerboard.
+
 ### BubbleMap
 
 `BubbleMap` is the value-sized map: the root in the centre, its children in sectors on a second ring, their children staggered on a third and
@@ -233,7 +256,7 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Leaves (24).** Avatar, Badge, Button, Divider, GrammarRoot, Heading, Icon,
+**Leaves (25).** Avatar, Badge, Button, ColorSwatch, Divider, GrammarRoot, Heading, Icon,
 IconButton, IconTile, Image, Kbd, Link, Mascot, Meter,
 Progress, ProgressCircle, RelativeTime, Skeleton, Spinner, StateMark, StatusDot, Text, TextAction.
 
@@ -497,8 +520,13 @@ An app writes no spacing value; it names the relation of the blocks it places:
   `reading` | `form`; `as`): blocks in the block axis.
 - `Cluster` (`gap`: `identity` | `inline` | `row` | `section`, the same on both axes; `wrap`, default true; `align`;
   `justify`): items side by side that wrap, a chip set, a toolbar group.
-- `Grid` (`kind="cards"` with `columns?: 2 | 3 | 4`, the section gap on both axes; `kind="form"` draws the form layout;
-  `kind="main-rail"` draws a primary region and one rail).
+- `Grid` (`kind="cards"` with `columns?: 2 | 3 | 4`, the inline gap on both axes; `kind="form"` draws the form layout;
+  `kind="main-rail"` draws a primary region and one rail). `kind="week"` lays out seven dated event regions with the
+  inline gap, changing from a single agenda column to seven tracks at a 48rem container width. `kind="week-summary"`
+  lays out seven daily summaries with the section gap: one track, four from 40rem, seven from 64rem. Both week kinds
+  require a region `label` and seven consecutive day children in reading order, including empty days; a wrong count
+  throws `GRID_WEEK_REQUIRES_SEVEN_DAYS` in development. The tracks use the grid's own width, so a narrow pane keeps
+  its agenda even on a wide screen. The app supplies day labels, entries and their commands; `Calendar` selects dates.
 - `TopBar` takes `subnavigation` with `subnavigationLabel`: a second and last layer under the bar's row.
 
 None takes a `className` or a `style`.

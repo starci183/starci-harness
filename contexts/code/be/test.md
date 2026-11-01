@@ -36,7 +36,9 @@ A unit spec builds its subject with `Test.createTestingModule({ providers: [Subj
 `moduleRef.get(Subject)`, usually in one `build()` function returning the subject and its doubles. No `new` of the
 subject, no `imports`, no `override*`, no `jest.mock`. The providers besides the subject are exactly its constructor
 dependencies: an injector's exported token (`{ provide: CLOCK, useValue: clock }`) or a domain service class
-(`{ provide: MembersService, useValue: mock<MembersService>() }`). A `*.schema.ts` is parsed directly.
+(`{ provide: MembersService, useValue: mock<MembersService>() }`). Every required dependency is provided; a parameter
+decorated with Nest's `@Optional()` may be omitted to cover its absence. A TypeScript optional parameter alone does not
+make Nest injection optional. A `*.schema.ts` is parsed directly.
 
 Why: a hand-built subject drifts from its real constructor, and an extra provider hides a dependency the subject lost.
 

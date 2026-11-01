@@ -191,7 +191,7 @@ const TileMarkView = ({ mark, isLoading }: { readonly mark: TileMark; readonly i
     return <span className="starci-core-tile-mark" data-grammar-tile-mark="avatar"><Avatar {...mark.avatar} size="control" isDecorative /></span>
 }
 
-const BandView = ({ band, isLoading }: { readonly band: Band | Collection; readonly isLoading: boolean }) => {
+const BandView = ({ band, isLoading, isDisabled }: { readonly band: Band | Collection; readonly isLoading: boolean; readonly isDisabled: boolean }) => {
     switch (band.kind) {
         case "body":
             return (
@@ -201,7 +201,7 @@ const BandView = ({ band, isLoading }: { readonly band: Band | Collection; reado
                 </div>
             )
         case "figures":
-            return <div className={surfaceBandClassName} data-grammar-band="figures"><FigureCells items={band.items} isLoading={isLoading} /></div>
+            return <div className={surfaceBandClassName} data-grammar-band="figures"><FigureCells items={band.items} isLoading={isLoading} isDisabled={isDisabled} /></div>
         case "media":
             return <div className={surfaceBandClassName} data-grammar-band="media">{band.artwork}</div>
         case "list":
@@ -278,13 +278,13 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const face = (() => {
         switch (props.kind) {
             case "figures":
-                return <FigureCells items={isLoading && props.items.length === 0 ? PLACEHOLDER_FIGURES : props.items} isLoading={isLoading} />
+                return <FigureCells items={isLoading && props.items.length === 0 ? PLACEHOLDER_FIGURES : props.items} isLoading={isLoading} isDisabled={disabled} />
             case "list":
                 return <ListRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "accordion":
                 return <AccordionRows data={isLoading && props.items.length === 0 ? { ...props, items: PLACEHOLDER_DISCLOSURES } : props} isLoading={isLoading} />
             case "bands":
-                return props.bands.map((band, index) => <BandView key={`${band.kind}-${index}`} band={band} isLoading={isLoading} />)
+                return props.bands.map((band, index) => <BandView key={`${band.kind}-${index}`} band={band} isLoading={isLoading} isDisabled={disabled} />)
             case "tile":
                 return (
                     <div className={tileClassName} data-grammar-tile="true">
@@ -307,8 +307,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                                         : <Badge tone={props.badge.tone ?? "neutral"}>{props.badge.label}</Badge>}
                                     {props.action === undefined ? null : (
                                         props.action.href === undefined
-                                            ? <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isLoading={isLoading} onPress={props.action.press}>{props.action.label}</Button>
-                                            : <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isLoading={isLoading} href={props.action.href}>{props.action.label}</Button>
+                                            ? <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isPending={props.action.isPending === true} isLoading={isLoading} onPress={props.action.press}>{props.action.label}</Button>
+                                            : <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isPending={props.action.isPending === true} isLoading={isLoading} href={props.action.href}>{props.action.label}</Button>
                                     )}
                                 </span>
                             </ButtonPlacementProvider>

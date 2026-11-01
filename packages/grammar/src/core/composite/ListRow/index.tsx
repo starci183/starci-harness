@@ -11,6 +11,7 @@ import { Badge } from "../../leaf/Badge/index.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
+import { Link } from "../../leaf/Link/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { EllipsisHorizontalIcon } from "@heroicons/react/16/solid"
 import type { NoChildren } from "../../tier.js"
@@ -42,8 +43,8 @@ const RowBadge = ({ badge }: { readonly badge: BadgeData }) => (
 
 const RowAction = ({ action }: { readonly action: ItemAction }) => (
     action.href === undefined
-        ? <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} onPress={action.press}>{action.label}</Button>
-        : <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} href={action.href}>{action.label}</Button>
+        ? <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} isPending={action.isPending === true} onPress={action.press}>{action.label}</Button>
+        : <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} isPending={action.isPending === true} href={action.href}>{action.label}</Button>
 )
 
 /**
@@ -101,7 +102,11 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                     : hasMark ? <span className="starci-core-list-row-leading"><StateMark state={state} /></span> : null}
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
                     <span className="starci-core-list-row-title">
-                        <span className="starci-core-list-row-name">{row.title}</span>
+                        <span className="starci-core-list-row-name">
+                            {row.href === undefined
+                                ? row.title
+                                : <Link href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>}
+                        </span>
                         {row.badges === undefined ? null : (
                             <span className="starci-core-list-row-badges" data-contract="GAP-2">
                                 {row.badges.map((badge) => <RowBadge key={badge.label} badge={badge} />)}

@@ -24,6 +24,18 @@
         overflow-wrap: anywhere;
     }
 
+    .starci-core-link[data-grammar-link-content="media"] {
+        display: inline-flex;
+        min-inline-size: 0;
+        max-inline-size: 100%;
+        text-decoration-line: none;
+    }
+
+    .starci-core-link[data-grammar-link-content="media"] > .starci-core-image[data-grammar-image-plate="none"] {
+        border-radius: 0;
+        overflow: visible;
+    }
+
     .starci-core-link:hover,
     .starci-core-link[data-hovered="true"] {
         text-decoration-thickness: 2px;
@@ -1036,6 +1048,21 @@
         display: inline-flex;
         min-width: 0;
         align-items: center;
+    }
+
+    .starci-core-description-pair[data-grammar-figure-destination="true"] { position: relative; }
+
+    .starci-core-figure-link {
+        position: absolute;
+        inset: 0;
+        display: block;
+        border-radius: inherit;
+        text-decoration: none;
+    }
+
+    .starci-core-figure-link:is(:focus-visible, [data-focus-visible="true"]) {
+        outline: 2px solid var(--focus);
+        outline-offset: -2px;
     }
 
     .starci-core-description-unit {

@@ -2,11 +2,25 @@
 
 import { Link as HeroLink } from "@heroui/react"
 import type { ReactNode } from "react"
+import { Image, type ImageProps } from "../Image/index.js"
+import type { NoChildren } from "../../tier.js"
 
 export type LinkKind = "internal" | "external"
 
-export type LinkProps = {
+type TextLinkContent = {
     readonly children: string
+    readonly media?: never
+    readonly label?: never
+}
+
+type MediaLinkContent = NoChildren & {
+    /** The image that is the destination's whole visible target; Image owns its data and load states. */
+    readonly media: ImageProps
+    /** Required destination name, independent of whether the image is decorative or fails to load. */
+    readonly label: string
+}
+
+export type LinkProps = (TextLinkContent | MediaLinkContent) & {
     readonly href: string
     /** `external` leaves the app in a new browsing context with `noopener noreferrer`. */
     readonly kind?: LinkKind
@@ -24,7 +38,7 @@ export type LinkProps = {
 }
 
 /**
- * An inline destination in running text or a link list.
+ * A destination carried by text or one image.
  *
  * It is always a real anchor (middle-click, copy-link and the `link` role come from the platform).
  * `TextAction` owns action-shaped links; `Link` owns prose and directory links, including the
@@ -33,6 +47,8 @@ export type LinkProps = {
  */
 export const Link = ({
     children,
+    media,
+    label,
     href,
     kind = "internal",
     isCurrent = false,
@@ -43,14 +59,17 @@ export const Link = ({
     onFollow,
 }: LinkProps) => {
     const external = kind === "external"
+    const destinationLabel = media === undefined ? undefined : external && externalHint !== undefined ? `${label} ${externalHint}` : label
     return (
         <HeroLink
+            {...(destinationLabel === undefined ? {} : { "aria-label": destinationLabel })}
             aria-current={isCurrent ? "page" : undefined}
             className="starci-core-link"
             data-component="Link"
             data-contract="ACTION-3 FOCUS-1"
             data-tier="leaf"
             data-grammar-link-kind={kind}
+            data-grammar-link-content={media === undefined ? "text" : "media"}
             data-grammar-link-visited={visited}
             data-grammar-current={isCurrent ? "true" : "false"}
             isDisabled={isDisabled}
@@ -58,7 +77,7 @@ export const Link = ({
             {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             {...(onFollow === undefined ? {} : { onPress: () => onFollow() })}
         >
-            {children}
+            {media === undefined ? children : <Image {...media} />}
             {external && externalIcon !== undefined ? <span aria-hidden="true" className="starci-core-link-external-icon" data-contract="A11Y-2" data-grammar-link-external-icon="true">{externalIcon}</span> : null}
             {external && externalHint !== undefined ? <span className="starci-core-nav-visually-hidden">{` ${externalHint}`}</span> : null}
         </HeroLink>
