@@ -175,6 +175,77 @@ test("unit-spec-providers: the providers of a unit spec equal the constructor de
     })
 })
 
+const optionalCacheService = (framework: string, decorator: string, question = "") => [
+    framework,
+    "import { InjectCache, InjectClock } from './cart.decorators';",
+    "import { PriceService } from './price.service';",
+    "export class CartService {",
+    `  constructor(@InjectClock() private readonly clock: object, private readonly prices: PriceService, ${decorator} @InjectCache() private readonly cache${question}: object) {}`,
+    "}",
+    "",
+].filter((line) => line !== "").join("\n")
+
+test("unit-spec-providers: only a real Nest Optional injection may be absent", (t) => {
+    const supplied = "CartService, { provide: CLOCK, useValue: {} }, PriceService"
+    const service = optionalCacheService("import { Optional } from '@nestjs/common';", "@Optional()", "?")
+    const files = {
+        ...capability("optional-nest", { spec: specOf(supplied), service }),
+        ...capability("optional-provided", { spec: specOf(GOOD_PROVIDERS), service }),
+        ...capability("optional-alias", {
+            spec: specOf(supplied),
+            service: optionalCacheService("import { Optional as Maybe } from '@nestjs/common';", "@Maybe()", "?"),
+        }),
+        ...capability("optional-namespace", {
+            spec: specOf(supplied),
+            service: optionalCacheService("import * as Nest from '@nestjs/common';", "@Nest.Optional()", "?"),
+        }),
+        ...capability("optional-class", {
+            spec: specOf("CartService, { provide: CLOCK, useValue: {} }, { provide: CACHE_TOKEN, useValue: {} }"),
+            service: "import { Optional } from '@nestjs/common';\n" + SERVICE.replace("private readonly prices: PriceService", "@Optional() private readonly prices?: PriceService"),
+        }),
+        ...capability("optional-typescript", {
+            spec: specOf(supplied),
+            service: optionalCacheService("", "", "?"),
+        }),
+        ...capability("optional-local", {
+            spec: specOf(supplied),
+            service: optionalCacheService("declare function Optional(): ParameterDecorator;", "@Optional()", "?"),
+        }),
+        ...capability("optional-other-module", {
+            spec: specOf(supplied),
+            service: optionalCacheService("import { Optional } from './optional';", "@Optional()", "?"),
+        }),
+        "src/modules/domain/optional-other-module/optional.ts": "export const Optional = () => () => undefined;\n",
+        ...capability("optional-missing-clock", { spec: specOf("CartService, PriceService"), service }),
+        ...capability("optional-missing-class", { spec: specOf("CartService, { provide: CLOCK, useValue: {} }"), service }),
+        ...capability("optional-extra", { spec: specOf(`${supplied}, { provide: OTHER, useValue: {} }`), service }),
+        ...capability("optional-provider-shape", {
+            spec: specOf(`${supplied}, { provide: CACHE_TOKEN, useFactory: () => ({}) }`),
+            service,
+        }),
+    }
+    const f = projectFixture({ files })
+    t.after(f.cleanup)
+    f.tester.run("unit-spec-providers", ruleNamed(rules, "unit-spec-providers"), {
+        valid: valid(f, files, [
+            "src/modules/domain/optional-nest/cart.service.spec.ts",
+            "src/modules/domain/optional-provided/cart.service.spec.ts",
+            "src/modules/domain/optional-alias/cart.service.spec.ts",
+            "src/modules/domain/optional-namespace/cart.service.spec.ts",
+            "src/modules/domain/optional-class/cart.service.spec.ts",
+        ]),
+        invalid: invalid(f, files, {
+            "src/modules/domain/optional-typescript/cart.service.spec.ts": [6],
+            "src/modules/domain/optional-local/cart.service.spec.ts": [6],
+            "src/modules/domain/optional-other-module/cart.service.spec.ts": [6],
+            "src/modules/domain/optional-missing-clock/cart.service.spec.ts": [6],
+            "src/modules/domain/optional-missing-class/cart.service.spec.ts": [6],
+            "src/modules/domain/optional-extra/cart.service.spec.ts": [6],
+            "src/modules/domain/optional-provider-shape/cart.service.spec.ts": [6],
+        }),
+    })
+})
+
 const functionSpec = ({ provider = "{ provide: SUBJECT, useValue: { total, doubled } }", read = "const subject = moduleRef.get(SUBJECT); expect(subject.total(2, 3)).toBe(5);", compilation = "await Test.createTestingModule", compile = ".compile()" } = {}) => [
     "import { Test } from '@nestjs/testing';",
     "import { total, doubled } from './numbers.service';",
