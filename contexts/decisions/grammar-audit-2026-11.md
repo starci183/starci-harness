@@ -900,45 +900,13 @@ Consumers: components-overlays.css:17-49 (`--starci-core-overlay-soft*`), :534-5
 
 ## Appendix B. Tier violations
 
-Grammar facts by folder, measured by script (children and className include spread element props). The target tier of each is in part 5.
+Empty. Lane 8b fixed what it listed and the machine now holds it: the type of every public props type is measured with the compiler (`children` of a leaf is `string`,
+of a branch or composite `never`; the two named exceptions are `Text` inline content and `Freestyle` `className`), `starci-grammar/tier-props` refuses a
+`children` or `className` that breaks the tier, and the machine check `FE_GRAMMAR_TIER_DIRECTION` / `FE_GRAMMAR_TIER_STAMP` (`tiers.grammar`, `packages/hfs`
+spec `component-tiers`) finds no upward import and no `data-tier` that is not its folder. `app/` passes `checkComponentLayers` and `tier-children`.
 
-**primitive (53):** children 23, ReactNode-slot 16, className 20, state 4, effects 4, heroui 30, grammar-deps 26, upward 3.
+Not tier violations of this appendix, left for lane 9 with their rules (`grammar/tier-state`, `grammar/prop-budget`): state in `Field`, `Image` and `Slider` (leaves) and
+in `Alert`, `FilterButtonGroup`, `SegmentedControl`, `Sidebar`, `TagGroup` and `Toast` (composites); more than 3 `ReactNode` slots on `MessageBubble` (7), `ListRow` (6),
+`DescriptionList`, `Sidebar`, `Timeline` and `TopBar` (4 each); props over 12 lines.
 
-- Take children: Avatar Badge Button Code DateField Field GrammarRoot Heading Label Link List ListItem MediaFrame NavLandmark PageContainer PinnedActionBar PlainPressable Region Skeleton StatusDot SurfaceCopyGroup Text TextAction
-- Take className: Avatar GrammarRoot Icon Image IncludedMark Input Link List ListItem Mascot MediaFrame NavLandmark PageContainer PlainPressable RankArtwork Rating Region SectionHeader SurfaceCopyGroup Video
-- Hold state: FileDropzone Input Rating Textarea
-- No vendor part, no grammar import (a bare element): GrammarRoot Image IncludedMark Label List ListItem NavLandmark PageContainer PinnedActionBar RankArtwork Rating Region SurfaceCopyGroup Video
-- Upward imports: Button->Tooltip(branch) MediaFrame->SurfaceCard(branch) StatusDot->Tooltip(branch)
-- Over 12 prop lines: Avatar:13 Button:26 Field:27 IconButton:13 Image:16 Input:31 SearchField:15 StatusDot:13 Text:14 TextAction:21 Textarea:22
-
-**composite (31):** children 15, ReactNode-slot 16, className 9, state 3, effects 3, heroui 13, grammar-deps 22, upward 0.
-
-- Take children: Backdrop ButtonGroup ChatBubble CollectionItem Fieldset FillViewport Form FormGrid Freestyle HorizontalScrollRegion ItemActions ListRow Quote ToolbarActions VerticalScrollRegion
-- Take className: AvatarGroup Backdrop Breadcrumbs DescriptionList Freestyle Pagination Stepper TagGroup Timeline
-- Hold state: Alert FilterButtonGroup TagGroup
-- No vendor part, no grammar import (a bare element): CollectionItem FillViewport FormGrid Freestyle ItemActions StaticStateRow ToolbarActions
-- Over 12 prop lines: Alert:14 AvatarGroup:13 ChatBubble:13 DescriptionList:13 FilterButtonGroup:14 Stepper:15 TagGroup:22 Timeline:14
-
-**branch (27):** children 12, ReactNode-slot 19, className 8, state 7, effects 7, heroui 16, grammar-deps 18, upward 4.
-
-- Take children: AlertDialog DataTable Dialog Disclosure DragItem Drawer MarkdownArticle Popover Rail SurfaceCard SurfaceListCard Tooltip
-- Take className: Accordion Calendar DataTable Disclosure FlowGraph ListBox MermaidDiagram Subnav
-- Hold state: AlertDialog CopyField Disclosure FlowGraph MermaidDiagram Tabs Toast
-- No vendor part, no grammar import (a bare element): DragItem Rail Subnav Tabs Tooltip
-- Upward imports: MermaidDiagram->Alert(composite) SurfaceAccordionCard->VerticalScrollRegion(composite) SurfaceCard->VerticalScrollRegion(composite) SurfaceListCard->ListRow(composite),StaticStateRow(composite),VerticalScrollRegion(composite)
-- Over 12 prop lines: ComboBox:15 CopyField:15 DataTable:42 DropdownMenu:27 FlowGraph:86 ListBox:27 MarkdownArticle:13 MermaidDiagram:38 Rail:15 Select:13 SurfaceAccordionCard:30 SurfaceCard:34 SurfaceListCard:16 Tabs:14 Toast:24
-
-**composition (14):** children 7, ReactNode-slot 8, className 9, state 0, effects 2, heroui 2, grammar-deps 10, upward 0.
-
-- Take children: Cluster Footer Grid Page PaneGrid PaneSection Stack
-- Take className: BottomNav Footer NavigationFeatureNav Page PageHeader PaneGrid PrimaryRailLayout TopBar WorkspaceShell
-- No vendor part, no grammar import (a bare element): BottomNav PrimaryRailLayout Stack
-- Over 12 prop lines: BottomNav:14 Footer:15 PageHeader:15 PaneGrid:38 Sidebar:26 WorkspaceShell:16
-
-**nivo-lite** (`apps/web`, 617 folders; `useState` in composites 3, in branches 1, in blocks 53 is allowed).
-
-- Leaves taking `children` (4): AccountingBlock, AccountingHeadLine, LoyaltySettingsSection, OfficeCardFrame.
-- Branches (5): AccountingRecordSection, AccountingSectionHead, FormDrawer, OfficeRoomResources, SalesRow.
-- Composites (23): AgentAutomationsFrame, AgentChatThread, AgentSetupBand, AuthForm, AuthFrame, AuthoritySection, AuthPanel, AutomationCard, AutomationDetailFrame, BookingSetupSection, ContentSettingsCard, FirstRunCard, FirstRunStep, HiringPublicShell, HiringReplyCard, KnowledgeRows, LeadPanel, LoyaltyEarningRules, LoyaltyTierRules, OfficeThreadScroll, TeamSection, WizardFrame, WorkspacesFrame.
-- Blocks (15): AgentDashboardFrame, AgentInstanceFrame, AgentProfileHead, AuthorityHead, AutomationsHeading, BrainPageFrame, ConnectionsFrame, ConsoleSessionGate, ContentWorkbenchGate, DevelopersPanel, LeadPageHead, SalesWorkbenchGate, TeamPageFrame, VideoLibraryGate, VideoStepGate.
-- Duplicates of grammar jobs by local wrappers: `FiguresStrip` and `FiguresRibbon` are identical; `FormActions` hand-rolls a button row; `ConnectionCopyInput` and `CopyTextButton` do `CopyField`'s job.
+nivo-lite's folders that take `children` are sorted, with a target each, in `D:/starci-tmp/tino/lanes/NIVO-TIER-SORT.md`; the sort is a Kernel's.
