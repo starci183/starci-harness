@@ -118,13 +118,25 @@ const measureFields = {
 
 const thenSchema = z.strictObject({ kind: z.enum(DNA_KINDS).optional(), ...measureFields })
 
-const measureSchema = z.strictObject({
+const measureFieldsSchema = z.strictObject({
     kind: z.enum(DNA_KINDS),
     ...measureFields,
     act: z.array(z.string().min(1)).min(1).optional(),
-    then: thenSchema.optional(),
+    after: thenSchema.optional(),
     check: z.string().min(1).optional(),
 })
+
+// Keep the contract's `then` spelling at the input boundary, outside serialised measurement objects.
+const measureSchema = z.preprocess((input, context) => {
+    if (typeof input !== "object" || input === null || Array.isArray(input)) return input
+    if ("after" in input) {
+        context.addIssue({ code: "unrecognized_keys", keys: ["after"] })
+        return z.NEVER
+    }
+    if (!("then" in input)) return input
+    const { then: after, ...measure } = input
+    return { ...measure, after }
+}, measureFieldsSchema)
 
 const entrySchema = z.strictObject({
     id: z.string().regex(/^DNA-[A-Z0-9]+(?:-[A-Z0-9]+)+$/, "an id is DNA-<SCOPE>-<NAME> in upper case"),
@@ -180,7 +192,7 @@ export interface DnaVariant {
     readonly ref: { readonly within: string; readonly select: string; readonly metrics: readonly string[]; readonly offset: string | number | undefined } | null
     readonly rows: string | null
     readonly act: readonly string[]
-    readonly then: DnaThen | null
+    readonly after: DnaThen | null
     /** source: the named check. */
     readonly check: string | null
 }
@@ -308,7 +320,7 @@ const variantsOf = (measure: z.infer<typeof measureSchema>, sources: Sources, id
     }
     if (measure.kind === "source") {
         if (measure.check === undefined) return fail("a source measure names its check")
-        return [{ kind: "source", select: "", scope: null, target: null, pseudo: null, metrics: [], op: "=", value: undefined, where: null, context: contextOf(undefined), tolerance: null, ref: null, rows: null, act: [], then: null, check: measure.check }]
+        return [{ kind: "source", select: "", scope: null, target: null, pseudo: null, metrics: [], op: "=", value: undefined, where: null, context: contextOf(undefined), tolerance: null, ref: null, rows: null, act: [], after: null, check: measure.check }]
     }
     const base = {
         kind: measure.kind,
@@ -323,25 +335,25 @@ const variantsOf = (measure: z.infer<typeof measureSchema>, sources: Sources, id
         act: measure.act ?? [],
         check: null,
     }
-    const thenOf = (): DnaThen | null => {
-        const then = measure.then
-        if (then === undefined) return null
-        const op = then.op ?? DEFAULT_OP[then.kind ?? "style"]
+    const afterOf = (): DnaThen | null => {
+        const after = measure.after
+        if (after === undefined) return null
+        const op = after.op ?? DEFAULT_OP[after.kind ?? "style"]
         return {
-            kind: then.kind ?? "style",
-            select: then.select ?? null,
-            metrics: metricsOf(then.metric, sources),
+            kind: after.kind ?? "style",
+            select: after.select ?? null,
+            metrics: metricsOf(after.metric, sources),
             op,
-            value: resolveValue(then.value, op, sources),
-            where: whereOf(then.where, sources),
-            scope: then.scope ?? null,
-            pseudo: then.pseudo ?? null,
+            value: resolveValue(after.value, op, sources),
+            where: whereOf(after.where, sources),
+            scope: after.scope ?? null,
+            pseudo: after.pseudo ?? null,
         }
     }
     const make = (select: string | undefined, metric: z.infer<typeof metricSchema> | undefined, op: DnaOp | undefined, value: DnaValue | undefined): DnaVariant => {
         if (select === undefined && measure.kind !== "tokens") return fail("a measure names its select")
         const resolved = op ?? measure.op ?? DEFAULT_OP[measure.kind]
-        return { ...base, select: select ?? "", metrics: metricsOf(metric, sources), op: resolved, value: resolveValue(value, resolved, sources), then: thenOf() }
+        return { ...base, select: select ?? "", metrics: metricsOf(metric, sources), op: resolved, value: resolveValue(value, resolved, sources), after: afterOf() }
     }
     if (measure.cases !== undefined) return measure.cases.map((one) => make(one.select, one.metric ?? measure.metric, measure.op, one.value ?? measure.value))
     if (measure.checks !== undefined) return measure.checks.map((one) => make(measure.select, one.metric, one.op, one.value))

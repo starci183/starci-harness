@@ -735,19 +735,19 @@ export const installProbe = (judgePart: Judge): void => {
 
     // ---- the thing a dynamic variant measures after the act ----
     const afterVariantOf = (variant: DnaVariant): DnaVariant => {
-        const then = variant.then
-        if (then === null) return variant
+        const after = variant.after
+        if (after === null) return variant
         return {
             ...variant,
-            kind: then.kind,
-            select: then.select ?? variant.select,
-            scope: then.scope,
-            pseudo: then.pseudo,
-            metrics: then.metrics,
-            op: then.op,
-            value: then.value,
-            where: then.where,
-            then: null,
+            kind: after.kind,
+            select: after.select ?? variant.select,
+            scope: after.scope,
+            pseudo: after.pseudo,
+            metrics: after.metrics,
+            op: after.op,
+            value: after.value,
+            where: after.where,
+            after: null,
             act: [],
             ref: null,
             rows: null,
@@ -784,8 +784,8 @@ export const installProbe = (judgePart: Judge): void => {
         before: (item, target) => {
             const element = state.targets.get(item.index)?.[target]
             if (element === undefined) return
-            const then = afterVariantOf(item.variant)
-            state.beforeValues.set(`${String(item.index)}:${String(target)}`, readAll(element, "style", then.metrics, then.pseudo))
+            const after = afterVariantOf(item.variant)
+            state.beforeValues.set(`${String(item.index)}:${String(target)}`, readAll(element, "style", after.metrics, after.pseudo))
             state.ringBaseline = new Map([element, ...list(element.querySelectorAll("*"))].map((node) => [node, style(node).boxShadow]))
             window.__dnaNavigation = history.length
         },
@@ -795,7 +795,7 @@ export const installProbe = (judgePart: Judge): void => {
             const variant = afterVariantOf(item.variant)
             const key = `${String(item.index)}:${String(target)}`
             // A `then` that names its own select looks at the whole page; otherwise it looks at the match that was acted on.
-            const own = (item.variant.then?.select ?? null) === null
+            const own = (item.variant.after?.select ?? null) === null
             const report = evaluate({ ...variant, where: own ? null : variant.where }, item.index, own ? [element] : null, [key])
             // The thing the act should have produced never appeared: the anchor was exercised and the law is broken.
             if (report.matched === 0 && report.error === undefined && report.skipped.length === 0 && variant.kind !== "count") {
