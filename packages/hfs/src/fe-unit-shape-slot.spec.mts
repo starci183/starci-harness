@@ -68,6 +68,8 @@ const STUBS = {
     'export type ReactNode = string | number | boolean | null | undefined | ReactElement | Iterable<ReactNode> | Promise<ReactNode>',
     'export interface ReactElement { readonly type: unknown; readonly props: unknown; readonly key: string | null }',
     'export declare function useState<S>(initial: S | (() => S)): [S, (next: S | ((previous: S) => S)) => void]',
+    'export declare function useRef<T>(initial: T): { current: T }',
+    'export declare function useEffect(effect: () => void | (() => void), deps?: ReadonlyArray<unknown>): void',
   ].join('\n'),
   'react/jsx-runtime.d.ts': [
     'import type { ReactElement, ReactNode } from "./index"',
@@ -93,10 +95,11 @@ const STUBS = {
     'export declare const Text: (props: { readonly children?: ReactNode; readonly tone?: "default" | "muted" | "accent"; readonly isLoading?: boolean }) => ReactNode',
     'export declare const Badge: (props: { readonly children?: ReactNode; readonly isLoading?: boolean }) => ReactNode',
     'export declare const Button: (props: { readonly intent?: "dismiss" | "neutral" | "alternative" | "commit"; readonly type?: "button" | "submit"; readonly form?: string; readonly onPress?: () => void; readonly children?: ReactNode }) => ReactNode',
-    'export declare const EmptyNotice: (props: { readonly message: string; readonly actionLabel?: string; readonly onAction?: () => void }) => ReactNode',
+    'export declare const EmptyNotice: (props: { readonly isError?: boolean; readonly message: string; readonly actionLabel?: string; readonly onAction?: () => void }) => ReactNode',
     'type Crumb = { readonly id: string; readonly label: string; readonly href?: string }',
     'type PageTabs = { readonly label: string; readonly items: ReadonlyArray<{ readonly id: string; readonly label: string; readonly href?: string }>; readonly selectedKey?: string }',
     'export declare const Page: (props: { readonly header?: { readonly title: string; readonly breadcrumbs?: { readonly label: string; readonly items: ReadonlyArray<Crumb> }; readonly tabs?: PageTabs }; readonly isLoading?: boolean; readonly children: ReactNode }) => ReactNode',
+    'export declare const Stack: (props: { readonly gap: string; readonly children?: ReactNode }) => ReactNode',
     'export declare const Alert: (props: { readonly title: string; readonly tone?: "negative"; readonly action?: { readonly label: string; readonly onAction: () => void } }) => ReactNode',
     'type Shell = { readonly isOpen?: boolean; readonly onOpenChange?: (isOpen: boolean) => void; readonly title: string; readonly trigger?: ReactNode; readonly closeLabel?: string; readonly footer?: ReactNode | ((close: () => void) => ReactNode); readonly children?: ReactNode }',
     'export declare const Dialog: (props: Shell) => ReactNode',
@@ -284,7 +287,7 @@ test('a page is one Page with its own loading and error views, an overlay is a D
   const modal = read('src', 'features', 'overlays', 'InviteMemberOverlay', 'component.tsx');
   assert.match(modal, /<Dialog[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*intent="commit"/, 'the way out first, the commit last');
   const drawer = read('src', 'features', 'overlays', 'EditDetailsOverlay', 'component.tsx');
-  assert.match(drawer, /<Drawer[\s\S]*placement="right"[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*type="submit" form="edit-details-overlay-form" intent="commit"[\s\S]*<Form id="edit-details-overlay-form"[\s\S]*<FormGrid columns=\{1\}>/, 'the footer carries the way out, then the submit naming the form');
+  assert.match(drawer, /<Drawer[\s\S]*placement="right"[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*type="submit" form="edit-details-overlay-form" intent="commit"[\s\S]*<Form id="edit-details-overlay-form"[\s\S]*<Grid kind="form" columns=\{1\}>/, 'the footer carries the way out, then the submit naming the form');
   assert.doesNotMatch(drawer.slice(drawer.indexOf('<Form ')), /<Button/, 'no decision inside the form');
   assert.match(read('src', 'features', 'overlays', 'EditDetailsOverlay', 'index.tsx'), /^"use client"[\s\S]*useState\(false\)/);
   assert.match(read('src', 'app', '[locale]', 'settings', 'layout.tsx'), /<SettingsLayout content=\{props\.children\} \/>/);

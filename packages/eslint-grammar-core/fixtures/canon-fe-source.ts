@@ -10,4 +10,4 @@
  */
 import { register } from "node:module"
 
-register("./canon-fe-source-hooks.mjs", import.meta.url)
+register("./canon-fe-source-hooks.ts", import.meta.url)

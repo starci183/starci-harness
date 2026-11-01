@@ -21,7 +21,7 @@
     "proof/*.ts",
     "scripts/*.mts",
     "scripts/lint/*.mts",
-    "eslint.config.mjs",
-    "stylelint.config.mjs"
+    "eslint.config.ts",
+    "stylelint.config.ts"
   ]
 }

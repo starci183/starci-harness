@@ -59,7 +59,7 @@ const PROBES: readonly Probe[] = [
     { name: "primary button ink", selector: '[data-component="Button"]', property: "color", token: "--accent-foreground" },
     { name: "card surface", selector: ".starci-core-surface", property: "background-color", token: "--surface" },
     { name: "muted text", selector: '[data-component="Text"][data-tone="muted"]', property: "color", token: "--muted" },
-    { name: "accent text", selector: '[data-component="Text"][data-tone="accent"]', property: "color", token: "--accent-soft-foreground" },
+    { name: "accent badge ink", selector: '[data-component="Badge"][data-tone="accent"]', property: "color", token: "--accent-soft-foreground", familyToken: { "offset-pop": "--foreground" } },
     { name: "success badge ink", selector: '[data-component="Badge"][data-tone="success"]', property: "color", token: "--success-soft-foreground", familyToken: { "offset-pop": "--foreground" } },
     { name: "success badge tint", selector: '[data-component="Badge"][data-tone="success"]', property: "background-color", token: "--success-soft" },
     { name: "danger badge ink", selector: '[data-component="Badge"][data-tone="danger"]', property: "color", token: "--danger-soft-foreground", familyToken: { "offset-pop": "--foreground" } },
@@ -103,12 +103,12 @@ const markup = async (family: Family): Promise<string> => {
             G.GrammarRoot,
             { "data-grammar-family": family },
             createElement(G.Input, { id: "email", name: "email", label: "Email", kind: "email" }),
-            createElement(G.Button, { variant: "primary" }, "Save"),
+            createElement(G.Button, { intent: "commit" }, "Save"),
             createElement(
                 G.SurfaceCard,
                 { label: "Overview" },
                 createElement(G.Text, { tone: "muted" }, "A muted line"),
-                createElement(G.Text, { tone: "accent" }, "An accent line"),
+                createElement(G.Badge, { tone: "accent" }, "New"),
                 createElement(G.Badge, { tone: "success" }, "Paid"),
                 createElement(G.Badge, { tone: "danger" }, "Late"),
                 createElement(G.Link, { href: "/docs" }, "Read more"),
@@ -154,6 +154,8 @@ ${scenario === "override" ? "<style>:root { --accent: rgb(10 20 200); --accent-f
 
 const decode = (text: string): string => text.replaceAll("&quot;", '"').replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&")
 
+// Chrome refuses to start as root (the CI container) without this; the pages are the proof's own files.
+const sandbox = process.getuid?.() === 0 ? ["--no-sandbox"] : []
 const work = mkdtempSync(join(tmpdir(), "theme-proof-"))
 const lines: string[] = []
 let failures = 0
@@ -166,7 +168,7 @@ try {
             for (const mode of ["light", "dark"] as const) {
                 const file = join(work, `${family}-${scenario}-${mode}.html`)
                 writeFileSync(file, page(family, scenario, mode, body, work))
-                const dom = execFileSync(browser, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${join(work, "profile")}`, "--virtual-time-budget=3000", "--dump-dom", url(file)], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] })
+                const dom = execFileSync(browser, ["--headless=new", ...sandbox, "--disable-gpu", "--no-first-run", `--user-data-dir=${join(work, "profile")}`, "--virtual-time-budget=3000", "--dump-dom", url(file)], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })
                 const found = /<pre id="proof">([\s\S]*?)<\/pre>/.exec(dom)?.[1]
                 if (found === undefined || found === "") throw new Error(`${family} ${scenario} ${mode}: the page produced no result`)
                 const rows = (JSON.parse(decode(found)) as { rows: Row[] }).rows

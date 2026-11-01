@@ -6,16 +6,14 @@ type LocaleShellProps = {
     readonly locale: string
     readonly messages: Record<string, unknown>
     readonly timeZone: string
-    readonly children: ReactNode
+    readonly content: ReactNode
 }
 
-/** The document of one route language: `<html lang>` from the address and the provider stack; the app's own chrome is the children. */
+/** The document of one route language: `<html lang>` from the address and the provider stack; the app's own chrome is the content. */
 export const LocaleShell = (props: LocaleShellProps) => (
     <html lang={props.locale}>
         <body>
-            <Providers locale={props.locale} messages={props.messages} timeZone={props.timeZone}>
-                {props.children}
-            </Providers>
+            <Providers locale={props.locale} messages={props.messages} timeZone={props.timeZone} content={props.content} />
         </body>
     </html>
 )

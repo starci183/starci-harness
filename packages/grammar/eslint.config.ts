@@ -10,7 +10,7 @@ import grammar from "./scripts/lint/eslint-plugin.mts"
 export default defineConfig(
     {
         ignores: [
-            "dist/**", "node_modules/**", "storybook-static/**", "scripts/**", "*.mjs", "*.mts", "*.cts",
+            "dist/**", "node_modules/**", "storybook-static/**", "scripts/**", "*.mts", "*.cts",
             // Showcase code, never published (package.json files).
             "src/stories/**", "src/**/*.stories.*",
             // The scale, the DNA data and the conformance prose own their numbers: that is what they are for.

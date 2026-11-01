@@ -30,7 +30,7 @@ is green ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20).
 
 A Grammar edit changes content: a component, its CSS, its props, and a story for a state it newly renders. Its proof is
 the package's `typecheck`, its literal lint and `build` (`npm test` runs exactly those). The lint is ESLint and Stylelint config
-(`eslint.config.mjs`, `stylelint.config.mjs`): a component or stylesheet holds no hardcoded colour, radius, type size, shadow,
+(`eslint.config.ts`, `stylelint.config.ts`): a component or stylesheet holds no hardcoded colour, radius, type size, shadow,
 motion, opacity or off-scale spacing, and reads a token or a ramp of `src/common/ramps.css`. It adds no spec suite or test helper;
 it runs no Storybook plays and no DNA measurement locally; it bumps and re-pins only `@starci/grammar`. The plays and the DNA gate are
 CI's ([ci.md](ci.md)), and a defect is fixed in the component and recorded as an owner ruling. Apps on the Grammar keep no
