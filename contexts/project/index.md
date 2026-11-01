@@ -11,7 +11,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
 - [authority/branch.md](../authority/branch.md) · 2 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
-- [authority/ci.md](../authority/ci.md) · 1 KB — CI is the critic.
+- [authority/ci.md](../authority/ci.md) · 2 KB — CI is the critic.
 - [authority/packages.md](../authority/packages.md) · 3 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: An app uses the edit before npm serves it · Grammar edits are content only
 - [authority/wave.md](../authority/wave.md) · 2 KB — A wave is one scoped round on a merged tree.
@@ -143,8 +143,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [code/shared/typing.md](../code/shared/typing.md) · 4 KB — How strict the compiler is and which spellings tell it something it cannot check.
   - sections: SHARED-TYPING-1 The repository tsconfig extends the canon preset and adds only paths · SHARED-TYPING-2 No type escape; untrusted values are `unknown` and narrowed · SHARED-TYPING-3 Arrays are `Array<T>` or `ReadonlyArray<T>` · SHARED-TYPING-4 The type-aware rules hold on both sides
 - [decisions/README.md](../decisions/README.md) · 1 KB
-- [decisions/grammar-audit-2026-11.md](../decisions/grammar-audit-2026-11.md) · 102 KB — Status: proposal, awaiting the owner.
-  - sections: 0. The audit in one page · 1. Method and limits · 2. The root failure · 3. The one card · 4. The tier binding · 5. Every public component · 6. Rules · 7. The standard · 8. Theming · 9. The refactor plan · 10. For the owner · Appendix A. Theming violations · Appendix B. Tier violations
+- [decisions/grammar-audit-2026-11.md](../decisions/grammar-audit-2026-11.md) · 102 KB — Status: approved by the owner, 2026-11-01; part 10 holds his decisions and overrides anything above it.
+  - sections: 0. The audit in one page · 1. Method and limits · 2. The root failure · 3. The one card · 4. The tier binding · 5. Every public component · 6. Rules · 7. The standard · 8. Theming · 9. The refactor plan · 10. The owner's decisions · Appendix A. Theming violations · Appendix B. Tier violations
   - ids: E.1, E.2, E.3, JS-side, one-file, string
 - [decisions/legacy-retirement.md](../decisions/legacy-retirement.md) · 35 KB — The owner ordered three things: every package under `packages/` is TypeScript source built to JavaScript, the legacy runtime at `D:/Repositories/starci-academy-backend/.claude` ...
   - sections: 1. Context map · 2. Missing context worth moving · 3. Package TypeScript plan · 4. Retirement checklist
@@ -160,11 +160,11 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Reading order for an author · Where feedback lands
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 23 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 24 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
 - [grammars/contract.yaml](../grammars/contract.yaml) · 81 KB — What every grammar implements.
   - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-SURFACE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CONTROL-FILL, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM and 121 more
-- [grammars/contributing.md](../grammars/contributing.md) · 7 KB — How a component enters `@starci/grammar`, or a prop enters a component.
+- [grammars/contributing.md](../grammars/contributing.md) · 8 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Skeleton parity · What ships with it · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 6 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
