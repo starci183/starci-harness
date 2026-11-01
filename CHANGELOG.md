@@ -9,6 +9,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ## [1.1.0-alpha.40] - 2026-11-02
 
 - Bundled knowledge documents the consolidated Grammar preservation roles, headless figure ownership and native pending/message/date semantics.
+- Explicit worktree collection quarantines proven project remnants without Git metadata, retaining every regular file and unlinking dependency links while protecting live workers and changed custody.
+- Local dependency installation preserves the shared-install refusal within governor callbacks recognized by the heavy-command gate.
 
 ## [1.1.0-alpha.39] - 2026-11-02
 
