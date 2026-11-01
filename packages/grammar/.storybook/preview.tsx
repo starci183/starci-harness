@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import type { Decorator, Preview } from '@storybook/react-vite';
+import { Button, Chip } from '@heroui/react';
 import React, { type CSSProperties, type ReactNode } from 'react';
 import '../node_modules/@heroui/styles/dist/heroui.min.css';
 import commonCss from '../src/common/styles.css?inline';
@@ -38,11 +39,34 @@ type GrammarParameters = {
   readonly minHeight?: string;
 };
 
+/**
+ * The vendor components the DNA gate compares a wrapper with (`value: { vendor: { component, props, metric } }` in
+ * contexts/grammars/contract.yaml): HeroUI's own Button and soft Chip at every step, rendered inside the root so they resolve the
+ * same tokens, hidden and inert. `starci dna check` finds them by `data-dna-vendor` and `data-dna-props` and never measures them.
+ */
+const VENDOR_STEPS = ['sm', 'md', 'lg'] as const;
+const VendorReferences = () => (
+  <div data-dna-reference="vendor" aria-hidden="true" inert style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', pointerEvents: 'none' }}>
+    {VENDOR_STEPS.map((size) => (
+      <Button key={`button-${size}`} size={size} data-dna-vendor="Button" data-dna-props={JSON.stringify({ size })}>
+        Reference
+      </Button>
+    ))}
+    {VENDOR_STEPS.map((size) => (
+      <Chip key={`chip-${size}`} variant="soft" size={size} data-dna-vendor="Chip" data-dna-props={JSON.stringify({ variant: 'soft', size })}>
+        Reference
+      </Chip>
+    ))}
+  </div>
+);
+
 const withGrammarRoot: Decorator = (Story, context) => {
   const family = isFamily(context.globals.grammarFamily) ? context.globals.grammarFamily : 'core';
   const theme = isTheme(context.globals.grammarTheme) ? context.globals.grammarTheme : 'light';
   const grammar = (context.parameters.grammar ?? {}) as GrammarParameters;
   const { css, Root } = FAMILIES[family];
+  // The mode is the app's: `.dark` on `html`, as HeroUI reads it.
+  document.documentElement.classList.toggle('dark', theme === 'dark');
   const isDocs = context.viewMode === 'docs';
   return (
     <>
@@ -58,6 +82,7 @@ const withGrammarRoot: Decorator = (Story, context) => {
           ...grammar.rootStyle,
         }}
       >
+        {isDocs ? null : <VendorReferences />}
         {/* Catalog stories sit in a main landmark like app content; page stories bring their own. */}
         {grammar.bleed === true ? <Story /> : <main aria-label="Story canvas"><Story /></main>}
       </Root>

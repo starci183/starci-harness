@@ -53,6 +53,21 @@ interface ProtocolMessage {
     readonly error?: { readonly message: string }
 }
 
+/** The keys the driver presses: the code and the virtual key code the protocol wants. */
+const KEYS: Readonly<Record<string, { readonly code: string; readonly keyCode: number }>> = {
+    Enter: { code: "Enter", keyCode: 13 },
+    Escape: { code: "Escape", keyCode: 27 },
+    Tab: { code: "Tab", keyCode: 9 },
+    " ": { code: "Space", keyCode: 32 },
+    Space: { code: "Space", keyCode: 32 },
+    ArrowLeft: { code: "ArrowLeft", keyCode: 37 },
+    ArrowUp: { code: "ArrowUp", keyCode: 38 },
+    ArrowRight: { code: "ArrowRight", keyCode: 39 },
+    ArrowDown: { code: "ArrowDown", keyCode: 40 },
+    Home: { code: "Home", keyCode: 36 },
+    End: { code: "End", keyCode: 35 },
+}
+
 const LAUNCH_TIMEOUT_MS = 20_000
 const CALL_TIMEOUT_MS = 30_000
 
@@ -191,6 +206,63 @@ export class HeadlessPage {
         const answer = (await this.call("Page.navigate", { url })) as { errorText?: string }
         if (answer.errorText !== undefined) throw new Refusal("DNA_PAGE_UNREACHABLE", `${url}: ${answer.errorText}`)
         return loaded
+    }
+
+    /**
+     * Sets the viewport the page lays out in. `touch` makes the page a phone to its own media queries (pointer coarse, hover none),
+     * which is how a law about a coarse pointer is measured; `scale` is the device scale factor of a screenshot.
+     */
+    public async viewport(size: { readonly width: number; readonly height: number; readonly touch?: boolean; readonly scale?: number }): Promise<void> {
+        const touch = size.touch === true
+        await this.call("Emulation.setDeviceMetricsOverride", { width: size.width, height: size.height, deviceScaleFactor: size.scale ?? 1, mobile: touch })
+        await this.call("Emulation.setTouchEmulationEnabled", { enabled: touch, maxTouchPoints: 1 })
+    }
+
+    /** Emulates media features: colour scheme, forced colours, reduced motion. An absent feature is reset to the browser's own. */
+    public async media(features: { readonly dark?: boolean; readonly forcedColors?: boolean; readonly reducedMotion?: boolean }): Promise<void> {
+        await this.call("Emulation.setEmulatedMedia", {
+            features: [
+                { name: "prefers-color-scheme", value: features.dark === true ? "dark" : "light" },
+                { name: "forced-colors", value: features.forcedColors === true ? "active" : "none" },
+                { name: "prefers-reduced-motion", value: features.reducedMotion === true ? "reduce" : "no-preference" },
+            ],
+        })
+    }
+
+    /** One key press, with the modifiers held (alt 1, ctrl 2, meta 4, shift 8). */
+    public async key(key: string, modifiers = 0): Promise<void> {
+        const known = KEYS[key]
+        const description = known ?? { code: key.length === 1 ? `Key${key.toUpperCase()}` : key, keyCode: key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0 }
+        const text = key === "Enter" ? String.fromCharCode(13) : key.length === 1 ? key : undefined
+        const base = { key, code: description.code, windowsVirtualKeyCode: description.keyCode, nativeVirtualKeyCode: description.keyCode, modifiers }
+        await this.call("Input.dispatchKeyEvent", { type: text === undefined ? "rawKeyDown" : "keyDown", ...base, ...(text === undefined ? {} : { text }) })
+        await this.call("Input.dispatchKeyEvent", { type: "keyUp", ...base })
+    }
+
+    /** One pointer event at a point of the page: moved, pressed or released with the left button. */
+    public async pointer(type: "mouseMoved" | "mousePressed" | "mouseReleased", x: number, y: number): Promise<void> {
+        await this.call("Input.dispatchMouseEvent", { type, x, y, button: type === "mouseMoved" ? "none" : "left", buttons: type === "mousePressed" ? 1 : 0, clickCount: type === "mouseMoved" ? 0 : 1 })
+    }
+
+    /**
+     * An image of the page as it is (png, or webp for a contact sheet). `full` captures the whole document height beyond the viewport,
+     * at most `maxHeight` CSS px of it, so a very long page never outgrows the browser's texture limit.
+     */
+    public async screenshot(full: boolean, format: "png" | "webp" = "png", maxHeight = 16_000): Promise<Buffer> {
+        const size = full ? ((await this.evaluate("({ width: document.documentElement.clientWidth, height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight) })")) as { width: number; height: number }) : null
+        const clip = size === null ? {} : { clip: { x: 0, y: 0, width: size.width, height: Math.min(size.height, maxHeight), scale: 1 } }
+        const answer = (await this.call("Page.captureScreenshot", { format, ...(format === "webp" ? { quality: 72 } : {}), captureBeyondViewport: full, fromSurface: true, ...clip })) as { data: string }
+        return Buffer.from(answer.data, "base64")
+    }
+
+    /** Types text into the focused element, as an input method would (a field's value is never written by script). */
+    public async insertText(text: string): Promise<void> {
+        await this.call("Input.insertText", { text })
+    }
+
+    /** Runs a script in every document the page opens, before the page's own scripts. */
+    public async onNewDocument(source: string): Promise<void> {
+        await this.call("Page.addScriptToEvaluateOnNewDocument", { source })
     }
 
     /** Evaluates an expression in the page, awaiting a promise, and returns its value as JSON. */

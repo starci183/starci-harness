@@ -1,294 +1,834 @@
-import type { DnaBox, DnaMeasurement, DnaSample } from "../../harness/dna.js"
+/// <reference lib="dom" />
+import type { DnaBreak, DnaPart, DnaScalar, DnaVariant, DnaValue, DnaWhere } from "../../harness/dna.js"
 
 /*
  * The page side of `starci dna check`: a self-contained function the browser runs (its source is sent over the DevTools protocol),
- * so it names nothing outside its own body. The CLI is compiled without the DOM library; the few DOM members it reads are typed
- * here, structurally.
+ * so it names nothing outside its own body; the judge it applies to every sample (harness/dna.ts judgePart) is handed in as a
+ * parameter for the same reason. It installs `window.__dna`, which the driver (check.ts) calls:
+ *
+ *   begin   the Grammar roots of the page and the facts the story declares (`parameters.dna.fixture`)
+ *   run     every static variant: the sample of each element, judged here so a page sends back only what broke
+ *   locate  the matches of a dynamic variant (an interaction, or a `context.state`), scrolled into view, with their centre
+ *   before  the pre-act facts of one match (the `{ before }` value, the focus-ring baseline, the navigation marker)
+ *   after   the sample of one match once the driver has acted on it
+ *
+ * The CLI is compiled with the DOM library for this file's types only; nothing here runs in Node.
  */
 
-interface Box {
-    readonly top: number
-    readonly right: number
-    readonly bottom: number
-    readonly left: number
-    readonly width: number
-    readonly height: number
+/** What a report says when the thing an act should have produced never appeared. */
+export const NOTHING_MATCHED = "nothing matched"
+
+/** A variant with the index the driver refers to it by. */
+export interface PageVariant {
+    readonly index: number
+    readonly variant: DnaVariant
 }
 
-interface Style {
-    getPropertyValue: (property: string) => string
-    readonly paddingLeft: string
-    readonly paddingRight: string
-    readonly borderTopWidth: string
-    readonly borderRightWidth: string
-    readonly borderBottomWidth: string
-    readonly borderLeftWidth: string
-}
-
-interface PageElement {
-    readonly tagName: string
-    readonly id: string
-    readonly parentElement: PageElement | null
-    readonly children: ArrayLike<PageElement>
-    readonly attributes: ArrayLike<{ readonly name: string; readonly value: string }>
-    readonly style: { setProperty: (property: string, value: string) => void }
-    getAttribute: (name: string) => string | null
-    getBoundingClientRect: () => Box
-    getClientRects: () => ArrayLike<Box>
-    closest: (selector: string) => PageElement | null
-    matches: (selector: string) => boolean
-    contains: (other: PageElement) => boolean
-    querySelectorAll: (selector: string) => ArrayLike<PageElement>
-    appendChild: (child: PageElement) => PageElement
-    remove: () => void
-}
-
-interface PageDocument {
-    querySelectorAll: (selector: string) => ArrayLike<PageElement>
-    createElement: (tag: string) => PageElement
-}
-
-interface PageWindow {
-    readonly document: PageDocument
-    getComputedStyle: (element: PageElement) => Style
-}
-
-/** One measured law the page evaluates, keyed by its id. */
-export interface PageLaw {
-    readonly id: string
-    readonly measure: DnaMeasurement
-}
-
-/** What the page is asked: the attribute that marks a Grammar root and the laws per family. */
-export interface PageInput {
-    readonly rootAttribute: string
-    readonly laws: Readonly<Record<string, readonly PageLaw[]>>
-}
-
-/** The samples of one law under one Grammar root. */
-export interface PageLawResult {
-    readonly id: string
-    readonly samples: readonly DnaSample[]
+/** What the page says about one variant on one page: how many matches and samples it judged, and the samples that broke it. */
+export interface PageReport {
+    readonly index: number
+    /** Elements (or scopes) the variant's select reached. */
+    readonly matched: number
+    /** Samples judged: a match the page could measure. */
+    readonly evaluated: number
+    /** Why a match was not measured (a reference the page lacks, a fact the story does not declare), distinct reasons. */
+    readonly skipped: readonly string[]
+    readonly brokenCount: number
+    /** The first samples that broke the law. */
+    readonly broken: readonly { readonly path: string; readonly breaks: readonly DnaBreak[] }[]
     readonly error?: string
 }
 
-/** One Grammar root the page found, with what every law of its family measured there. */
-export interface PageRootResult {
-    readonly family: string
+/** One match of a dynamic variant: where it is and where to put the pointer. */
+export interface PageTarget {
     readonly path: string
-    readonly laws: readonly PageLawResult[]
+    readonly x: number
+    readonly y: number
 }
 
-/** Everything the page measured. */
-export interface PageResult {
-    readonly roots: readonly PageRootResult[]
+/** What the page needs to know before it measures. */
+export interface PageBegin {
+    readonly rootAttribute: string
+    readonly family: string
+    readonly maxBroken: number
 }
 
-/**
- * Runs in the page: waits until a Grammar root is in the document (a Storybook story or a client app renders after load), or the
- * time is up, then for web fonts and two frames, so the layout measured is the settled one. True when a root appeared.
- */
-export const settlePage = async (input: { readonly rootAttribute: string; readonly waitMs: number }): Promise<boolean> => {
-    const view = globalThis as unknown as PageWindow & {
-        readonly document: PageDocument & { readonly fonts: { readonly ready: Promise<unknown> } }
-        requestAnimationFrame: (callback: () => void) => number
-        setTimeout: (callback: () => void, ms: number) => number
+/** The probe the page installs. */
+export interface DnaProbe {
+    begin: (input: PageBegin) => { readonly roots: number; readonly anyRoot: number; readonly fixture: Readonly<Record<string, DnaScalar>>; readonly story: string; readonly followUp: string | null }
+    run: (variants: readonly PageVariant[]) => PageReport[]
+    locate: (variant: PageVariant) => PageTarget[]
+    before: (variant: PageVariant, target: number) => void
+    after: (variant: PageVariant, target: number) => PageReport
+    focus: (variant: PageVariant, target: number) => void
+    blur: () => void
+    reset: () => void
+}
+
+declare global {
+    interface Window {
+        __dna?: DnaProbe
+        __dnaNavigation?: number
     }
-    const deadline = Date.now() + input.waitMs
-    const present = (): boolean => view.document.querySelectorAll(`[${input.rootAttribute}]`).length > 0
-    // Polls every 50ms, one tick after the other, until the root is in the document or the time is up.
-    const poll = async (): Promise<void> => {
-        if (present() || Date.now() >= deadline) return
-        await new Promise<void>((done) => view.setTimeout(done, 50))
-        await poll()
-    }
-    const frame = (): Promise<void> => new Promise<void>((done) => view.requestAnimationFrame(done))
-    await poll()
-    await view.document.fonts.ready
-    await frame()
-    await frame()
-    return present()
 }
 
-/** How a rendered story declares its place in a skeleton pair: `parameters.dna` ({ pair, phase }) and its `shape` arg. */
-export interface StoryPairing {
-    readonly id: string
-    readonly pair: string | null
-    readonly phase: string | null
-    readonly shape: string | null
-}
+type Judge = (part: DnaPart) => { readonly ok: boolean; readonly want: string }
 
-/**
- * Runs in a Storybook iframe after the story rendered: reads the current story's id, `parameters.dna.pair`, `parameters.dna.phase`
- * and its `shape` arg (the live args when the preview exposes them, else the story's initial args). Null outside a Storybook.
- */
-export const readStoryPairing = (): StoryPairing | null => {
-    interface Story {
-        readonly id?: string
-        readonly parameters?: { readonly dna?: { readonly pair?: unknown; readonly phase?: unknown } }
-        readonly initialArgs?: Readonly<Record<string, unknown>>
-    }
-    interface Preview {
-        readonly currentRender?: { readonly story?: Story }
-        readonly storyStore?: { readonly args?: { get?: (id: string) => Readonly<Record<string, unknown>> | undefined } }
-    }
-    const preview = (globalThis as unknown as { readonly __STORYBOOK_PREVIEW__?: Preview }).__STORYBOOK_PREVIEW__
-    const story = preview?.currentRender?.story
-    if (story?.id === undefined) return null
-    const text = (value: unknown): string | null => (typeof value === "string" && value !== "" ? value : null)
-    const args = preview?.storyStore?.args?.get?.(story.id) ?? story.initialArgs ?? {}
-    return { id: story.id, pair: text(story.parameters?.dna?.pair), phase: text(story.parameters?.dna?.phase), shape: text(args.shape) }
-}
+/** Installs `window.__dna`. Runs in the page. */
+export const installProbe = (judgePart: Judge): void => {
+    const doc = document
+    const state: {
+        input: PageBegin
+        root: Element | null
+        fixture: Record<string, DnaScalar>
+        targets: Map<number, Element[]>
+        beforeValues: Map<string, DnaScalar[]>
+        ringBaseline: Map<Element, string>
+    } = { input: { rootAttribute: "data-grammar-family", family: "", maxBroken: 20 }, root: null, fixture: {}, targets: new Map(), beforeValues: new Map(), ringBaseline: new Map() }
 
-/** Runs in the page: finds every Grammar root and measures each law of its family on every element it selects. */
-export const measurePage = (input: PageInput): PageResult => {
-    const view = globalThis as unknown as PageWindow
-    const doc = view.document
-    const rootSelector = `[${input.rootAttribute}]`
+    const rootSelector = (): string => `[${state.input.rootAttribute}="${state.input.family}"]`
+    const list = (items: ArrayLike<Element>): Element[] => Array.from(items)
+    const round = (value: number): number => Math.round(value * 100) / 100
     const px = (value: string): number => Number.parseFloat(value) || 0
-    const list = (items: ArrayLike<PageElement>): PageElement[] => Array.from(items)
+    const visible = (element: Element): boolean => element.getClientRects().length > 0
+    const style = (element: Element, pseudo?: string | null): CSSStyleDeclaration => getComputedStyle(element, pseudo ?? null)
+    const inReference = (element: Element): boolean => element.closest("[data-dna-reference]") !== null
 
-    // A marker attribute as a selector: bare when it is a flag (empty or "true"), else with its value.
-    const markerSelector = (marker: { readonly name: string; readonly value: string } | undefined): string => {
+    // ---- paths ----
+    const markerOf = (element: Element): string => {
+        const marker = Array.from(element.attributes).find((attribute) => attribute.name.startsWith("data-grammar-") || attribute.name === "data-component" || attribute.name === "data-slot")
         if (marker === undefined) return ""
         return marker.value === "" || marker.value === "true" ? `[${marker.name}]` : `[${marker.name}="${marker.value}"]`
     }
-    const step = (element: PageElement): string => {
+    const stepOf = (element: Element): string => {
         const tag = element.tagName.toLowerCase()
         if (element.id !== "") return `${tag}#${element.id}`
-        const marker = Array.from(element.attributes).find((attribute) => attribute.name.startsWith("data-grammar-") || attribute.name === "data-component" || attribute.name === "data-slot" || attribute.name === "data-case")
         const parent = element.parentElement
         const twins = parent === null ? [] : list(parent.children).filter((child) => child.tagName === element.tagName)
-        const nth = twins.length > 1 ? `:nth-of-type(${String(twins.indexOf(element) + 1)})` : ""
-        return `${tag}${markerSelector(marker)}${nth}`
+        return `${tag}${markerOf(element)}${twins.length > 1 ? `:nth-of-type(${String(twins.indexOf(element) + 1)})` : ""}`
     }
-    const pathOf = (element: PageElement): string => {
+    const pathOf = (element: Element): string => {
         const steps: string[] = []
-        let at: PageElement | null = element
-        while (at !== null && steps.length < 12) {
-            steps.unshift(step(at))
-            if (at.tagName.toLowerCase() === "body") break
+        let at: Element | null = element
+        while (at !== null && steps.length < 10) {
+            steps.unshift(stepOf(at))
+            if (at.tagName === "BODY") break
             at = at.parentElement
         }
         return steps.join(" > ")
     }
-    const visible = (element: PageElement): boolean => element.getClientRects().length > 0
-    const paddingBox = (element: PageElement): Box => {
-        const box = element.getBoundingClientRect()
-        const style = view.getComputedStyle(element)
-        const top = box.top + px(style.borderTopWidth)
-        const right = box.right - px(style.borderRightWidth)
-        const bottom = box.bottom - px(style.borderBottomWidth)
-        const left = box.left + px(style.borderLeftWidth)
-        return { top, right, bottom, left, width: right - left, height: bottom - top }
+
+    // ---- colours ----
+    const canvas = doc.createElement("canvas")
+    canvas.width = 1
+    canvas.height = 1
+    const surface = canvas.getContext("2d", { willReadFrequently: true })
+    const COLOUR = /^(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\(|^#[0-9a-f]{3,8}$/i
+    const rgbaOf = (value: string): [number, number, number, number] | null => {
+        if (surface === null) return null
+        surface.clearRect(0, 0, 1, 1)
+        surface.fillStyle = "#010203"
+        surface.fillStyle = value
+        surface.fillRect(0, 0, 1, 1)
+        const data = surface.getImageData(0, 0, 1, 1).data
+        return [data[0] ?? 0, data[1] ?? 0, data[2] ?? 0, (data[3] ?? 0) / 255]
     }
-    const overlaps = (a: Box, b: Box): boolean => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5
-    const resolveVar = (element: PageElement, property: string, name: string): string => {
+    const canon = (value: DnaScalar): DnaScalar => {
+        if (typeof value !== "string" || !COLOUR.test(value.trim())) return value
+        const rgba = rgbaOf(value.trim())
+        return rgba === null ? value : `rgba(${String(rgba[0])}, ${String(rgba[1])}, ${String(rgba[2])}, ${String(Math.round(rgba[3] * 1000) / 1000)})`
+    }
+    const groundOf = (element: Element): [number, number, number] => {
+        const layers: [number, number, number, number][] = []
+        let at: Element | null = element
+        while (at !== null) {
+            const rgba = rgbaOf(style(at).backgroundColor)
+            if (rgba !== null && rgba[3] > 0) layers.push(rgba)
+            if (rgba !== null && rgba[3] >= 0.999) break
+            at = at.parentElement
+        }
+        let ground: [number, number, number] = [255, 255, 255]
+        for (const [r, g, b, a] of layers.reverse()) ground = [r * a + ground[0] * (1 - a), g * a + ground[1] * (1 - a), b * a + ground[2] * (1 - a)]
+        return ground
+    }
+    const luminance = (rgb: readonly [number, number, number]): number => {
+        const channel = (value: number): number => {
+            const unit = value / 255
+            return unit <= 0.03928 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4
+        }
+        return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2])
+    }
+    const contrastOf = (element: Element): number => {
+        const text = rgbaOf(style(element).color)
+        if (text === null) return 0
+        const ground = groundOf(element)
+        const over: [number, number, number] = [text[0] * text[3] + ground[0] * (1 - text[3]), text[1] * text[3] + ground[1] * (1 - text[3]), text[2] * text[3] + ground[2] * (1 - text[3])]
+        const [light, dark] = [Math.max(luminance(over), luminance(ground)), Math.min(luminance(over), luminance(ground))]
+        return round((light + 0.05) / (dark + 0.05))
+    }
+
+    // ---- box shadow and transform ----
+    const firstShadow = (element: Element): number[] => {
+        const value = style(element).boxShadow
+        if (value === "none" || value === "") return [0, 0, 0, 0]
+        let depth = 0
+        let end = value.length
+        for (let index = 0; index < value.length; index += 1) {
+            const char = value[index]
+            if (char === "(") depth += 1
+            else if (char === ")") depth -= 1
+            else if (char === "," && depth === 0) {
+                end = index
+                break
+            }
+        }
+        const layer = value.slice(0, end).replace(/(?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([^)]*\)/gi, "")
+        const lengths = Array.from(layer.matchAll(/(-?\d*\.?\d+)px/g)).map((match) => Number(match[1]))
+        return [lengths[0] ?? 0, lengths[1] ?? 0, lengths[2] ?? 0, lengths[3] ?? 0]
+    }
+    const matrixOf = (element: Element): { scale: number; x: number; y: number } => {
+        const computed = style(element)
+        const numbers = (text: string): number[] => Array.from(text.matchAll(/-?\d*\.?\d+(?:e-?\d+)?/gi)).map((match) => Number(match[0]))
+        let scale = 1
+        let x = 0
+        let y = 0
+        const transform = computed.transform
+        if (transform.startsWith("matrix3d(")) {
+            const n = numbers(transform)
+            scale = Math.hypot(n[0] ?? 1, n[1] ?? 0)
+            x = n[12] ?? 0
+            y = n[13] ?? 0
+        } else if (transform.startsWith("matrix(")) {
+            const n = numbers(transform)
+            scale = Math.hypot(n[0] ?? 1, n[1] ?? 0)
+            x = n[4] ?? 0
+            y = n[5] ?? 0
+        }
+        const scaleProperty = computed.getPropertyValue("scale")
+        if (scaleProperty !== "" && scaleProperty !== "none") scale *= numbers(scaleProperty)[0] ?? 1
+        const translateProperty = computed.getPropertyValue("translate")
+        if (translateProperty !== "" && translateProperty !== "none") {
+            const n = numbers(translateProperty)
+            x += n[0] ?? 0
+            y += n[1] ?? 0
+        }
+        return { scale: round(scale), x: round(x), y: round(y) }
+    }
+
+    // ---- accessibility ----
+    const IMPLICIT: Readonly<Record<string, string>> = {
+        button: "button", a: "link", h1: "heading", h2: "heading", h3: "heading", h4: "heading", h5: "heading", h6: "heading", textarea: "textbox", select: "combobox",
+        img: "img", ul: "list", ol: "list", li: "listitem", table: "table", tr: "row", td: "cell", th: "columnheader", nav: "navigation", main: "main", dialog: "dialog",
+        hr: "separator", progress: "progressbar", aside: "complementary", form: "form", header: "banner", footer: "contentinfo", section: "region", article: "article",
+    }
+    const INPUT_ROLE: Readonly<Record<string, string>> = { checkbox: "checkbox", radio: "radio", range: "slider", button: "button", submit: "button", reset: "button", search: "searchbox", number: "spinbutton" }
+    const roleOf = (element: Element): string => {
+        const explicit = element.getAttribute("role")?.trim().split(/\s+/)[0]
+        if (explicit !== undefined && explicit !== "") return explicit
+        const tag = element.tagName.toLowerCase()
+        if (tag === "input") return INPUT_ROLE[(element.getAttribute("type") ?? "text").toLowerCase()] ?? "textbox"
+        if (tag === "a" && !element.hasAttribute("href")) return ""
+        return IMPLICIT[tag] ?? ""
+    }
+    const NAME_FROM_CONTENT: ReadonlySet<string> = new Set(["button", "link", "heading", "tab", "option", "menuitem", "menuitemradio", "menuitemcheckbox", "radio", "checkbox", "switch", "row", "cell", "columnheader", "gridcell", "tooltip", "treeitem", "listitem"])
+    const textOf = (element: Element): string => element.textContent.replace(/\s+/g, " ").trim()
+    const nameOf = (element: Element): string => {
+        const labelledby = element.getAttribute("aria-labelledby")
+        if (labelledby !== null) {
+            const joined = labelledby.split(/\s+/).map((id) => doc.getElementById(id)).filter((item): item is HTMLElement => item !== null).map(textOf).join(" ").trim()
+            if (joined !== "") return joined
+        }
+        const label = element.getAttribute("aria-label")?.trim()
+        if (label !== undefined && label !== "") return label
+        if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
+            const labels = list(element.labels ?? [])
+            const named = labels.map(textOf).join(" ").trim()
+            if (named !== "") return named
+        }
+        const alt = element.getAttribute("alt")
+        if (alt !== null && alt !== "") return alt
+        if (NAME_FROM_CONTENT.has(roleOf(element))) {
+            const content = textOf(element)
+            if (content !== "") return content
+        }
+        return element.getAttribute("title")?.trim() ?? ""
+    }
+    const descriptionOf = (element: Element): string => {
+        const ids = element.getAttribute("aria-describedby")
+        if (ids === null) return ""
+        return ids.split(/\s+/).map((id) => doc.getElementById(id)).filter((item): item is HTMLElement => item !== null).map(textOf).join(" ").trim()
+    }
+    const focusableOf = (element: Element): boolean => element instanceof HTMLElement && !element.hasAttribute("disabled") && !element.hasAttribute("inert") && element.closest("[inert]") === null && element.tabIndex >= 0 && visible(element)
+    const linesOf = (element: Element): number => {
+        const range = doc.createRange()
+        range.selectNodeContents(element)
+        const tops = new Set(Array.from(range.getClientRects()).filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top / 2)))
+        return tops.size
+    }
+
+    // ---- geometry ----
+    const paddingBox = (element: Element): { left: number; right: number; top: number; bottom: number } => {
+        const rect = element.getBoundingClientRect()
+        const computed = style(element)
+        return { left: rect.left + px(computed.borderLeftWidth), right: rect.right - px(computed.borderRightWidth), top: rect.top + px(computed.borderTopWidth), bottom: rect.bottom - px(computed.borderBottomWidth) }
+    }
+    const hitAreaOf = (element: Element): number => {
+        element.scrollIntoView({ block: "center", inline: "center" })
+        const rect = element.getBoundingClientRect()
+        const cx = rect.left + rect.width / 2
+        const cy = rect.top + rect.height / 2
+        const owns = (x: number, y: number): boolean => {
+            const hit = doc.elementFromPoint(x, y)
+            return hit !== null && (hit === element || element.contains(hit))
+        }
+        const holdsAt = (r: number): boolean => [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, -r], [r, -r], [-r, r]].every(([dx, dy]) => owns(cx + (dx ?? 0), cy + (dy ?? 0)))
+        if (!owns(cx, cy)) return 0
+        let reach = 0
+        while (reach < 96 && holdsAt(reach + 1)) reach += 1
+        return reach * 2
+    }
+    const scrollOwnerCache = new Map<Element, [boolean, boolean]>()
+    const scrollOwnership = (element: Element): [boolean, boolean] => {
+        const cached = scrollOwnerCache.get(element)
+        if (cached !== undefined) return cached
+        const computed = style(element)
+        const scrolls = (overflow: string): boolean => overflow === "auto" || overflow === "scroll"
+        const found: [boolean, boolean] = [scrolls(computed.overflowX) && element.scrollWidth > element.clientWidth + 1, scrolls(computed.overflowY) && element.scrollHeight > element.clientHeight + 1]
+        scrollOwnerCache.set(element, found)
+        return found
+    }
+    const scrollOwners = (element: Element, axis: 0 | 1): number => {
+        let count = 0
+        let at: Element | null = element
+        while (at !== null && at !== doc.documentElement) {
+            if (scrollOwnership(at)[axis]) count += 1
+            at = at.parentElement
+        }
+        return count
+    }
+    const ringsOf = (element: Element): number => {
+        let count = 0
+        for (const item of [element, ...list(element.querySelectorAll("*"))]) {
+            const computed = style(item)
+            const outline = computed.outlineStyle !== "none" && px(computed.outlineWidth) > 0
+            const ring = computed.boxShadow !== "none" && computed.boxShadow !== (state.ringBaseline.get(item) ?? "none")
+            if (outline || ring) count += 1
+        }
+        return count
+    }
+    const paintedBox = (element: Element): Element => {
+        const boundary = element.closest("[data-component]")
+        let at: Element | null = element
+        while (at !== null) {
+            const rgba = rgbaOf(style(at).backgroundColor)
+            if (rgba !== null && rgba[3] > 0) return at
+            if (at === boundary) break
+            at = at.parentElement
+        }
+        return element
+    }
+
+    // ---- metrics ----
+    const readMetric = (element: Element, metric: string, pseudo: string | null): DnaScalar | DnaScalar[] => {
+        const rect = element.getBoundingClientRect()
+        switch (metric) {
+            case "width":
+                return round(rect.width)
+            case "height":
+                return round(rect.height)
+            case "top":
+                return round(rect.top)
+            case "bottom":
+                return round(rect.bottom)
+            case "left":
+                return round(rect.left)
+            case "right":
+                return round(rect.right)
+            case "inner-left":
+                return round(paddingBox(element).left)
+            case "inner-right":
+                return round(paddingBox(element).right)
+            case "hit-area":
+                return hitAreaOf(element)
+            case "radius": {
+                const raw = style(element, pseudo).borderStartStartRadius
+                return raw.endsWith("%") ? round((Number.parseFloat(raw) / 100) * Math.min(rect.width, rect.height)) : round(px(raw))
+            }
+            case "border-width": {
+                const computed = style(element, pseudo)
+                return Math.max(px(computed.borderTopWidth), px(computed.borderRightWidth), px(computed.borderBottomWidth), px(computed.borderLeftWidth))
+            }
+            case "shadow-blur":
+                return firstShadow(element)[2] ?? 0
+            case "shadow-offset": {
+                const shadow = firstShadow(element)
+                return [shadow[0] ?? 0, shadow[1] ?? 0]
+            }
+            case "scale":
+                return matrixOf(element).scale
+            case "translate": {
+                const moved = matrixOf(element)
+                return [moved.x, moved.y]
+            }
+            case "contrast":
+                return contrastOf(element)
+            case "scroll-owners-x":
+                return scrollOwners(element, 0)
+            case "scroll-owners-y":
+                return scrollOwners(element, 1)
+            case "focus-rings":
+                return ringsOf(element)
+            case "tabs-look": {
+                const selected = element.matches("[role=\"tab\"][aria-selected=\"true\"]") ? element : element.querySelector("[role=\"tab\"][aria-selected=\"true\"]")
+                const indicator = selected?.querySelector(".tabs__indicator") ?? element.querySelector(".tabs__indicator")
+                if (selected === null || indicator === null) return null
+                return indicator.getBoundingClientRect().height >= selected.getBoundingClientRect().height * 0.8 ? "pill" : "underline"
+            }
+            case "navigation": {
+                if (window.__dnaNavigation === undefined) return "reload"
+                return window.__dnaNavigation === history.length ? "none" : "client"
+            }
+            case "role":
+                return roleOf(element)
+            case "name":
+                return nameOf(element)
+            case "description":
+                return descriptionOf(element)
+            case "focusable":
+                return focusableOf(element)
+            case "focused":
+                return doc.activeElement === element
+            case "controls": {
+                const id = element.getAttribute("aria-controls")
+                const controlled = id === null ? null : doc.getElementById(id)
+                return controlled === null ? null : roleOf(controlled)
+            }
+            case "text":
+                return textOf(element)
+            case "first-letter": {
+                const letter = Array.from(textOf(element)).find((char) => char.toLowerCase() !== char.toUpperCase())
+                // A label with no letter (a count, a glyph) has no first letter to be cased; it reads as the case the law wants.
+                if (letter === undefined) return "uppercase"
+                return letter === letter.toUpperCase() ? "uppercase" : "lowercase"
+            }
+            case "lines":
+                return linesOf(element)
+            default:
+                return style(element, pseudo).getPropertyValue(metric)
+        }
+    }
+    const flat = (value: DnaScalar | DnaScalar[]): DnaScalar[] => (Array.isArray(value) ? value : [value])
+    // The scalars a metric list reads on an element; attr reads the attribute by its name.
+    const readAll = (element: Element, kind: string, metrics: readonly string[], pseudo: string | null): DnaScalar[] =>
+        metrics.flatMap((metric) => (kind === "attr" ? [element.getAttribute(metric)] : flat(readMetric(element, metric, pseudo)))).map(canon)
+
+    // ---- selection ----
+    const DOCUMENT = "document "
+    const scopeOfSelector = (selector: string, from: Element | null): { readonly host: ParentNode; readonly selector: string; readonly document: boolean } =>
+        selector.startsWith(DOCUMENT) ? { host: doc, selector: selector.slice(DOCUMENT.length), document: true } : { host: from ?? doc, selector, document: false }
+    const queryAll = (selector: string, from: Element | null): Element[] => {
+        const where = scopeOfSelector(selector, from)
+        return list(where.host.querySelectorAll(where.selector)).filter((element) => !inReference(element) && (where.document || from === null || element.closest(rootSelector()) === from))
+    }
+    const queryMeasured = (selector: string, from: Element | null): Element[] => queryAll(selector, from).filter(visible)
+
+    // ---- values ----
+    type Resolved = { readonly alternatives: DnaScalar[][] } | { readonly skip: string }
+    const lengthOf = (anchor: Element, raw: string, property: string): DnaScalar => {
+        // The probe sits inside the element so a token defined on the element itself resolves; a void element cannot hold one.
+        const host = anchor.matches("input,img,hr,br,textarea,select") ? (anchor.parentElement ?? anchor) : anchor
         const probe = doc.createElement("span")
+        probe.setAttribute("data-dna-reference", "probe")
         probe.style.setProperty("position", "absolute")
         probe.style.setProperty("visibility", "hidden")
-        probe.style.setProperty(property, `var(${name})`)
-        const host = element.parentElement ?? element
+        probe.style.setProperty(property, raw)
         host.appendChild(probe)
-        const value = view.getComputedStyle(probe).getPropertyValue(property)
+        const value = style(probe).getPropertyValue(property)
         probe.remove()
         return value
     }
+    const resolveToken = (anchor: Element, token: string, metric: string): DnaScalar => {
+        const raw = style(anchor).getPropertyValue(token).trim()
+        if (raw === "") return null
+        if (/color|background|fill|stroke/i.test(metric)) return canon(lengthOf(anchor, `var(${token})`, "background-color"))
+        const resolved = lengthOf(anchor, `var(${token})`, "width")
+        return resolved === "" || resolved === "auto" ? raw : resolved
+    }
+    const vendorReference = (component: string, props: Readonly<Record<string, string | number | boolean>>, anchor: Element): Element | null => {
+        const wanted = Object.entries(props).map(([key, value]) => [key, typeof value === "string" && value.startsWith("$") ? (anchor.getAttribute(value.slice(1)) ?? "") : value] as const)
+        return (
+            list(doc.querySelectorAll(`[data-dna-vendor="${component}"]`)).find((candidate) => {
+                const declared = JSON.parse(candidate.getAttribute("data-dna-props") ?? "{}") as Record<string, unknown>
+                return wanted.every(([key, value]) => String(declared[key]) === String(value))
+            }) ?? null
+        )
+    }
+    const resolve = (anchor: Element, value: DnaValue | undefined, metrics: readonly string[], context: { readonly scope: Element | null; readonly rows: number; readonly beforeKey: string }): Resolved => {
+        if (value === undefined) return { alternatives: [] }
+        if (typeof value !== "object") return { alternatives: [[canon(value)]] }
+        if ("token" in value) {
+            const resolved = metrics.map((metric) => resolveToken(anchor, value.token, metric))
+            return resolved.some((item) => item === null) ? { skip: `${value.token} is not set where the element is` } : { alternatives: [resolved] }
+        }
+        if ("threshold" in value) return { skip: "a threshold is read before the page" }
+        if ("vendor" in value) {
+            const reference = vendorReference(value.vendor.component, value.vendor.props, anchor)
+            if (reference === null) return { skip: `no ${value.vendor.component} reference (${JSON.stringify(value.vendor.props)}) is rendered beside the story` }
+            const names = typeof value.vendor.metric === "string" ? [value.vendor.metric] : value.vendor.metric
+            return { alternatives: [readAll(reference, "style", names, null)] }
+        }
+        if ("self" in value) return { alternatives: [flat(readMetric(anchor, value.self, null)).map((item) => (typeof item === "number" ? round(item * value.times) : item))] }
+        if ("count" in value) {
+            const inside = context.scope === null ? queryAll(value.count, null).length : queryAll(value.count, context.scope).length
+            return { alternatives: [[inside + (value.offset ?? 0)]] }
+        }
+        if ("rows" in value) return { alternatives: [[context.rows + value.rows]] }
+        if ("oneOf" in value) {
+            const parts = value.oneOf.map((item) => resolve(anchor, item, metrics, context))
+            const alternatives = parts.flatMap((part) => ("alternatives" in part ? part.alternatives : []))
+            return alternatives.length === 0 ? { skip: "no alternative of oneOf resolves" } : { alternatives }
+        }
+        if ("before" in value) {
+            const saved = state.beforeValues.get(context.beforeKey)
+            return saved === undefined ? { skip: "no value was taken before the act" } : { alternatives: [saved] }
+        }
+        const fact = state.fixture[value.fixture]
+        return fact === undefined ? { skip: `the story declares no fixture fact "${value.fixture}"` } : { alternatives: [[fact]] }
+    }
 
-    const round = (value: number): number => Math.round(value * 100) / 100
-    // The widest distance from the element to the padding box of its nearest `ref` ancestor, over the edges measured.
-    const insetOf = (element: PageElement, ref: string, edges: readonly string[]): number | null => {
-        const owner = element.parentElement?.closest(ref) ?? null
-        if (owner === null) return null
-        const inner = paddingBox(owner)
-        const box = element.getBoundingClientRect()
-        const distance: Record<string, number> = { top: box.top - inner.top, right: inner.right - box.right, bottom: inner.bottom - box.bottom, left: box.left - inner.left }
-        return round(Math.max(...edges.map((edge) => Math.abs(distance[edge] ?? 0))))
+    // ---- reports ----
+    interface Collector {
+        matched: number
+        evaluated: number
+        skipped: Set<string>
+        brokenCount: number
+        broken: { path: string; breaks: DnaBreak[] }[]
     }
-    // How many `ref` elements enclose the element, up to and including its Grammar root.
-    const ancestorsOf = (element: PageElement, root: PageElement, ref: string): number => {
-        let count = 0
-        let at = element.parentElement
-        while (at !== null && at !== root) {
-            if (at.matches(ref)) count += 1
-            at = at.parentElement
+    const newCollector = (): Collector => ({ matched: 0, evaluated: 0, skipped: new Set(), brokenCount: 0, broken: [] })
+    const finish = (index: number, collector: Collector, error?: string): PageReport => ({
+        index,
+        matched: collector.matched,
+        evaluated: collector.evaluated,
+        skipped: Array.from(collector.skipped),
+        brokenCount: collector.brokenCount,
+        broken: collector.broken,
+        ...(error === undefined ? {} : { error }),
+    })
+    const toleranceOf = (variant: DnaVariant): number => variant.tolerance ?? (variant.kind === "box" || variant.kind === "relation" || variant.kind === "uniform" ? 0.5 : 0.01)
+    const judgeInto = (collector: Collector, path: string, parts: readonly DnaPart[]): void => {
+        collector.evaluated += 1
+        const breaks: DnaBreak[] = []
+        for (const part of parts) {
+            const verdict = judgePart(part)
+            if (!verdict.ok) breaks.push({ metric: part.metric, measured: part.measured.map((scalar) => JSON.stringify(scalar)).join(", "), want: verdict.want })
         }
-        if (at === root && root.matches(ref)) count += 1
-        return count
+        if (breaks.length === 0) return
+        collector.brokenCount += 1
+        if (collector.broken.length < state.input.maxBroken) collector.broken.push({ path, breaks })
     }
-    // The element's box and the box of every visible leaf under it that matches `leafSelector`, keyed by child position.
-    const unitBoxes = (element: PageElement, path: string, leafSelector: string): DnaBox[] => {
-        const boxOf = (item: PageElement, key: string, at: string): DnaBox => {
-            const box = item.getBoundingClientRect()
-            return { key, path: at, x: round(box.left), y: round(box.top), width: round(box.width), height: round(box.height) }
-        }
-        const boxes: DnaBox[] = [boxOf(element, "", path)]
-        const walk = (parent: PageElement, key: string, at: string): void => {
-            list(parent.children).forEach((child, index) => {
-                const childKey = `${key}/${String(index + 1)}`
-                const childPath = `${at} > ${step(child)}`
-                if (child.children.length === 0) {
-                    if (child.matches(leafSelector) && visible(child)) boxes.push(boxOf(child, childKey, childPath))
-                } else walk(child, childKey, childPath)
-            })
-        }
-        walk(element, "", path)
-        return boxes
-    }
-    // The element's width as a share of the content width of its nearest `ref` ancestor.
-    const shareOf = (element: PageElement, ref: string): number | null => {
-        const owner = element.parentElement?.closest(ref) ?? null
-        if (owner === null) return null
-        const style = view.getComputedStyle(owner)
-        const content = paddingBox(owner).width - px(style.paddingLeft) - px(style.paddingRight)
-        return content > 0 ? Math.round((element.getBoundingClientRect().width / content) * 1000) / 1000 : null
+    const patternFlag = (value: DnaValue | undefined): boolean => typeof value === "string"
+
+    const whereHolds = (element: Element, where: DnaWhere, variant: DnaVariant): boolean => {
+        const resolved = resolve(element, where.value, [where.metric], { scope: null, rows: 0, beforeKey: "" })
+        if (!("alternatives" in resolved)) return false
+        const part: DnaPart = { metric: where.metric, op: where.op, measured: readAll(element, "style", [where.metric], variant.pseudo), expected: resolved.alternatives, pattern: false, tolerance: toleranceOf(variant) }
+        return judgePart(part).ok
     }
 
-    const sampleOf = (element: PageElement, root: PageElement, measure: DnaMeasurement): DnaSample => {
-        const path = pathOf(element)
-        const ref = measure.ref ?? ""
-        switch (measure.metric) {
-            case "height":
-                return { path, measured: round(element.getBoundingClientRect().height) }
-            case "width":
-                return { path, measured: round(element.getBoundingClientRect().width) }
-            case "css": {
-                const property = measure.property ?? ""
-                const measured = view.getComputedStyle(element).getPropertyValue(property)
-                return measure.expected.var === undefined ? { path, measured } : { path, measured, resolvedVar: resolveVar(element, property, measure.expected.var) }
+    /** The part one element gives for a metric list, an operator and a value; a reason string when it cannot be measured. */
+    const partOf = (element: Element, variant: DnaVariant, metrics: readonly string[], op: DnaVariant["op"], value: DnaValue | undefined, kind: string, scope: Element | null, beforeKey: string): DnaPart | string => {
+        const resolved = resolve(element, value, metrics, { scope, rows: 0, beforeKey })
+        if ("skip" in resolved) return resolved.skip
+        if (resolved.alternatives.length === 0 && op !== "set") return "the measure has no value"
+        return { metric: metrics.join(","), op, measured: readAll(element, kind, metrics, variant.pseudo), expected: resolved.alternatives, pattern: patternFlag(value), tolerance: toleranceOf(variant) }
+    }
+
+    const selectedBy = (variant: DnaVariant, root: Element, anchors: readonly Element[] | null): Element[] => {
+        if (anchors !== null) return Array.from(anchors)
+        // A control with pointer-events none is not pressable: its hit area is not a fact about the control.
+        const found = queryMeasured(variant.select, root).filter((element) => !variant.metrics.includes("hit-area") || style(element).pointerEvents !== "none")
+        return variant.where === null ? found : found.filter((element) => variant.where !== null && whereHolds(element, variant.where, variant))
+    }
+
+    // ---- seams ----
+    const hasPaint = (value: string): boolean => {
+        const rgba = rgbaOf(value)
+        return rgba !== null && rgba[3] > 0
+    }
+    const seamBetween = (above: Element, below: Element): { left: number; right: number } | null => {
+        const a = above.getBoundingClientRect()
+        const b = below.getBoundingClientRect()
+        const lower = style(above)
+        if (px(lower.borderBottomWidth) > 0 && lower.borderBottomStyle !== "none" && hasPaint(lower.borderBottomColor)) return { left: a.left, right: a.right }
+        const upper = style(below)
+        if (px(upper.borderTopWidth) > 0 && upper.borderTopStyle !== "none" && hasPaint(upper.borderTopColor)) return { left: b.left, right: b.right }
+        for (const [owner, pseudo] of [[above, "::after"], [below, "::before"]] as const) {
+            const computed = style(owner, pseudo)
+            if (computed.content === "none" || computed.content === "normal") continue
+            const thin = px(computed.height) > 0 && px(computed.height) <= 2
+            if (thin && (hasPaint(computed.backgroundColor) || (px(computed.borderTopWidth) > 0 && computed.borderTopStyle !== "none"))) {
+                const host = owner.getBoundingClientRect()
+                const left = host.left + px(computed.left)
+                const right = computed.right === "auto" ? left + px(computed.width) : host.right - px(computed.right)
+                return { left, right }
             }
-            case "attribute":
-                return { path, measured: element.getAttribute(measure.property ?? "") }
-            case "inset":
-                return { path, measured: insetOf(element, ref, measure.edges ?? ["left", "right"]) }
-            case "outside": {
-                const scope = (measure.scope === undefined ? null : element.closest(measure.scope)) ?? root
-                const box = element.getBoundingClientRect()
-                const inside = list(scope.querySelectorAll(ref)).some((other) => other !== element && !element.contains(other) && (other.contains(element) || overlaps(other.getBoundingClientRect(), box)))
-                return { path, measured: !inside }
-            }
-            case "ancestors":
-                return { path, measured: ancestorsOf(element, root, ref) }
-            case "skeleton-parity":
-                return { path, measured: null, boxes: unitBoxes(element, path, measure.leaf ?? "*") }
-            case "share":
-                return { path, measured: shareOf(element, ref) }
         }
+        const between = list(doc.querySelectorAll("hr,[role=\"separator\"],[data-component=\"Divider\"]")).find((item) => {
+            const rect = item.getBoundingClientRect()
+            return rect.width > 0 && rect.top >= a.bottom - 1 && rect.bottom <= b.top + 2 && rect.height <= 2
+        })
+        if (between !== undefined) {
+            const rect = between.getBoundingClientRect()
+            return { left: rect.left, right: rect.right }
+        }
+        return null
     }
 
-    const roots = list(doc.querySelectorAll(rootSelector))
-    return {
-        roots: roots.map((root) => {
-            const family = root.getAttribute(input.rootAttribute) ?? ""
-            const laws = (input.laws[family] ?? []).map((law): PageLawResult => {
-                try {
-                    const elements = list(root.querySelectorAll(law.measure.selector)).filter((element) => element.closest(rootSelector) === root && visible(element))
-                    return { id: law.id, samples: elements.map((element) => sampleOf(element, root, law.measure)) }
-                } catch (error: unknown) {
-                    return { id: law.id, samples: [], error: error instanceof Error ? error.message : String(error) }
+    // ---- the evaluator ----
+    const evaluate = (variant: DnaVariant, index: number, anchors: readonly Element[] | null, beforeKeys: readonly string[] | null): PageReport => {
+        const collector = newCollector()
+        const root = state.root
+        if (root === null) return finish(index, collector, "no Grammar root of the family on the page")
+        try {
+            const skip = (reason: string): void => {
+                collector.skipped.add(reason)
+            }
+            const add = (path: string, parts: readonly (DnaPart | string)[]): void => {
+                const reasons = parts.filter((part): part is string => typeof part === "string")
+                if (reasons.length > 0) {
+                    reasons.forEach(skip)
+                    return
                 }
-            })
-            return { family, path: pathOf(root), laws }
-        }),
+                judgeInto(collector, path, parts.filter((part): part is DnaPart => typeof part !== "string"))
+            }
+            const single = variant.kind === "uniform" || variant.kind === "count" || variant.kind === "seams" || variant.kind === "relation" || variant.kind === "tokens"
+            if (!single) {
+                const matches = selectedBy(variant, root, anchors)
+                collector.matched = matches.length
+                matches.forEach((original, position) => {
+                    const element = variant.target === "painted-box" ? paintedBox(original) : original
+                    add(pathOf(original), [partOf(element, variant, variant.metrics, variant.op, variant.value, variant.kind, null, beforeKeys?.[position] ?? "")])
+                })
+                return finish(index, collector)
+            }
+            if (variant.kind === "tokens") {
+                collector.matched = 1
+                const names = variant.metrics
+                if (variant.op === "set") {
+                    for (const name of names) {
+                        const raw = style(root).getPropertyValue(name).trim()
+                        add(name, [{ metric: name, op: "set", measured: [raw], expected: [], pattern: false, tolerance: 0 }])
+                    }
+                } else {
+                    const lengths = names.map((name) => {
+                        const raw = style(root).getPropertyValue(name).trim()
+                        return raw === "" ? null : lengthOf(root, `var(${name})`, "width")
+                    })
+                    const parts = names.slice(0, -1).map((name, at): DnaPart | string => {
+                        const next = names[at + 1] ?? ""
+                        const [left, right] = [lengths[at], lengths[at + 1]]
+                        if (left === null || left === undefined || right === null || right === undefined) return `${left === null || left === undefined ? name : next} is not set on the root`
+                        return { metric: `${name} ${variant.op} ${next}`, op: variant.op, measured: [left], expected: [[right]], pattern: false, tolerance: 0 }
+                    })
+                    add(pathOf(root), parts)
+                }
+                return finish(index, collector)
+            }
+            const scopes = variant.scope === null ? (variant.kind === "count" && variant.select.startsWith(DOCUMENT) ? [doc.documentElement] : [root]) : queryAll(variant.scope, root)
+            collector.matched = scopes.length
+            for (const scopeElement of scopes) {
+                const within = scopeElement === doc.documentElement ? null : scopeElement
+                if (variant.kind === "count") {
+                    const found = scopeElement === doc.documentElement || (variant.scope === null && variant.select.startsWith(DOCUMENT)) ? queryAll(variant.select, null) : queryAll(variant.select, scopeElement)
+                    const kept = variant.where === null ? found : found.filter((item) => variant.where !== null && whereHolds(item, variant.where, variant))
+                    add(pathOf(scopeElement), [partOfCount(variant, kept.length, within)])
+                } else if (variant.kind === "uniform") {
+                    const group = queryMeasured(variant.select, scopeElement)
+                    if (group.length === 0) {
+                        skip("no element of the scope matches")
+                        continue
+                    }
+                    const rows = group.map((item) => readAll(item, "style", variant.metrics, variant.pseudo))
+                    const first = rows[0] ?? []
+                    const measured = rows.flat()
+                    const resolved = variant.value === undefined ? { alternatives: [rows.flatMap(() => first)] } : resolve(scopeElement, variant.value, variant.metrics, { scope: within, rows: 0, beforeKey: "" })
+                    if ("skip" in resolved) skip(resolved.skip)
+                    else add(pathOf(scopeElement), [{ metric: variant.metrics.join(","), op: variant.op, measured, expected: resolved.alternatives, pattern: false, tolerance: toleranceOf(variant) }])
+                } else if (variant.kind === "seams") {
+                    const hosts = queryMeasured(variant.select, within ?? root)
+                    for (const host of hosts) {
+                        const rows = variant.rows === null ? [] : list(host.querySelectorAll(variant.rows)).filter(visible)
+                        if (rows.length === 0) {
+                            skip("the match has no rows")
+                            continue
+                        }
+                        const seams = rows.slice(0, -1).map((row, at) => seamBetween(row, rows[at + 1] ?? row))
+                        const drawn = seams.filter((seam): seam is { left: number; right: number } => seam !== null)
+                        const inner = paddingBox(host)
+                        if (variant.metrics.includes("count")) {
+                            const resolved = resolve(host, variant.value, variant.metrics, { scope: null, rows: rows.length, beforeKey: "" })
+                            if ("skip" in resolved) skip(resolved.skip)
+                            else add(pathOf(host), [{ metric: "count", op: variant.op, measured: [drawn.length], expected: resolved.alternatives, pattern: false, tolerance: 0 }])
+                        } else if (drawn.length === 0) {
+                            skip("the match draws no seam to measure")
+                        } else {
+                            const resolved = resolve(host, variant.value, variant.metrics, { scope: null, rows: rows.length, beforeKey: "" })
+                            if ("skip" in resolved) skip(resolved.skip)
+                            else add(pathOf(host), [{ metric: "inset-inline", op: variant.op, measured: drawn.flatMap((seam) => [round(seam.left - inner.left), round(inner.right - seam.right)]), expected: resolved.alternatives, pattern: false, tolerance: 0.5 }])
+                        }
+                    }
+                }
+            }
+            if (variant.kind === "relation") {
+                const matches = selectedBy(variant, root, anchors)
+                collector.matched = matches.length
+                for (const original of matches) {
+                    const ref = variant.ref
+                    if (ref === null) continue
+                    const ancestor = original.closest(ref.within)
+                    const target = ancestor === null ? null : ref.select === "self" ? ancestor : ref.select === "previous" ? original.previousElementSibling : ancestor.querySelector(ref.select)
+                    if (target === null) {
+                        skip("the reference element of the relation is not rendered")
+                        continue
+                    }
+                    const reference = readAll(target, "box", ref.metrics, null)
+                    const offset = typeof ref.offset === "number" ? ref.offset : Number.parseFloat(ref.offset ?? "0") || 0
+                    const element = variant.target === "painted-box" ? paintedBox(original) : original
+                    add(pathOf(original), [
+                        {
+                            metric: variant.metrics.join(","),
+                            op: variant.op,
+                            measured: readAll(element, "box", variant.metrics, variant.pseudo),
+                            expected: [reference.map((item) => (typeof item === "number" ? round(item + offset) : item))],
+                            pattern: false,
+                            tolerance: toleranceOf(variant),
+                        },
+                    ])
+                }
+            }
+            return finish(index, collector)
+        } catch (error: unknown) {
+            return finish(index, collector, error instanceof Error ? error.message : String(error))
+        }
     }
+
+    // Count and uniform parts are built from the resolved value, so a skipped fact stays a skip.
+    const partOfCount = (variant: DnaVariant, count: number, scope: Element | null): DnaPart | string => {
+        const anchor = scope ?? state.root ?? doc.documentElement
+        const resolved = resolve(anchor, variant.value, ["count"], { scope, rows: 0, beforeKey: "" })
+        if ("skip" in resolved) return resolved.skip
+        return { metric: "count", op: variant.op, measured: [count], expected: resolved.alternatives, pattern: false, tolerance: 0 }
+    }
+
+    // ---- the thing a dynamic variant measures after the act ----
+    const afterVariantOf = (variant: DnaVariant): DnaVariant => {
+        const then = variant.then
+        if (then === null) return variant
+        return {
+            ...variant,
+            kind: then.kind,
+            select: then.select ?? variant.select,
+            scope: then.scope,
+            pseudo: then.pseudo,
+            metrics: then.metrics,
+            op: then.op,
+            value: then.value,
+            where: then.where,
+            then: null,
+            act: [],
+            ref: null,
+            rows: null,
+        }
+    }
+
+    const probe: DnaProbe = {
+        begin: (input) => {
+            state.input = input
+            state.targets = new Map()
+            state.beforeValues = new Map()
+            state.ringBaseline = new Map()
+            scrollOwnerCache.clear()
+            const roots = list(doc.querySelectorAll(rootSelector())).filter((element) => !inReference(element))
+            state.root = roots[0] ?? null
+            const preview = (globalThis as unknown as { __STORYBOOK_PREVIEW__?: { currentRender?: { story?: { id?: string; parameters?: { dna?: { fixture?: Record<string, DnaScalar>; followUp?: unknown } } } } } }).__STORYBOOK_PREVIEW__
+            const story = preview?.currentRender?.story
+            state.fixture = story?.parameters?.dna?.fixture ?? {}
+            const followUp = story?.parameters?.dna?.followUp
+            return { roots: roots.length, anyRoot: list(doc.querySelectorAll(`[${input.rootAttribute}]`)).filter((element) => !inReference(element)).length, fixture: state.fixture, story: story?.id ?? "", followUp: typeof followUp === "string" ? followUp : null }
+        },
+        run: (variants) => variants.map((item) => evaluate(item.variant, item.index, null, null)),
+        locate: (item) => {
+            const root = state.root
+            if (root === null) return []
+            const found = queryMeasured(item.variant.select, root).filter((element) => item.variant.where === null || whereHolds(element, item.variant.where, item.variant))
+            state.targets.set(item.index, found)
+            return found.map((element) => {
+                element.scrollIntoView({ block: "center", inline: "center" })
+                const rect = element.getBoundingClientRect()
+                return { path: pathOf(element), x: round(rect.left + rect.width / 2), y: round(rect.top + rect.height / 2) }
+            })
+        },
+        before: (item, target) => {
+            const element = state.targets.get(item.index)?.[target]
+            if (element === undefined) return
+            const then = afterVariantOf(item.variant)
+            state.beforeValues.set(`${String(item.index)}:${String(target)}`, readAll(element, "style", then.metrics, then.pseudo))
+            state.ringBaseline = new Map([element, ...list(element.querySelectorAll("*"))].map((node) => [node, style(node).boxShadow]))
+            window.__dnaNavigation = history.length
+        },
+        after: (item, target) => {
+            const element = state.targets.get(item.index)?.[target]
+            if (element === undefined) return finish(item.index, newCollector())
+            const variant = afterVariantOf(item.variant)
+            const key = `${String(item.index)}:${String(target)}`
+            // A `then` that names its own select looks at the whole page; otherwise it looks at the match that was acted on.
+            const own = (item.variant.then?.select ?? null) === null
+            const report = evaluate({ ...variant, where: own ? null : variant.where }, item.index, own ? [element] : null, [key])
+            // The thing the act should have produced never appeared: the anchor was exercised and the law is broken.
+            if (report.matched === 0 && report.error === undefined && report.skipped.length === 0 && variant.kind !== "count") {
+                return { ...report, matched: 1, brokenCount: 1, broken: [{ path: pathOf(element), breaks: [{ metric: variant.metrics.join(","), measured: "nothing matched" /* NOTHING_MATCHED, which the driver compares */, want: `${variant.select} to be on the page after the act` }] }] }
+            }
+            return { ...report, matched: Math.max(report.matched, 1) }
+        },
+        focus: (item, target) => {
+            const element = state.targets.get(item.index)?.[target]
+            if (!(element instanceof HTMLElement)) return
+            const options: FocusOptions & { focusVisible: boolean } = { focusVisible: true }
+            element.focus(options)
+        },
+        blur: () => {
+            const active = doc.activeElement
+            if (active instanceof HTMLElement) active.blur()
+        },
+        reset: () => {
+            state.targets = new Map()
+            state.beforeValues = new Map()
+            state.ringBaseline = new Map()
+            scrollOwnerCache.clear()
+        },
+    }
+    window.__dna = probe
+}
+
+/**
+ * Runs in the page: waits until a Grammar root is in the document (a Storybook story or a client app renders after load), or the
+ * time is up, then for web fonts and three frames, so the layout measured is the settled one. True when a root appeared.
+ */
+export const settlePage = async (input: { readonly rootSelector: string; readonly waitMs: number }): Promise<boolean> => {
+    const deadline = Date.now() + input.waitMs
+    const present = (): boolean => document.querySelector(input.rootSelector) !== null
+    const poll = async (): Promise<void> => {
+        if (present() || Date.now() >= deadline) return
+        await new Promise<void>((done) => setTimeout(done, 50))
+        await poll()
+    }
+    const frame = (): Promise<void> => new Promise<void>((done) => requestAnimationFrame(() => {
+            done()
+        }))
+    await poll()
+    await document.fonts.ready
+    await frame()
+    await frame()
+    await frame()
+    return present()
 }

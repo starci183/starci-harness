@@ -1,353 +1,232 @@
-import { existsSync, readFileSync, statSync } from "node:fs"
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
-import { defaultContractFile, entriesFor, judgeParity, judgeSample, loadDnaContract, readyTwinOf } from "../../harness/dna.js"
-import type { DnaContract, DnaEntry, DnaSample } from "../../harness/dna.js"
-import { inOrder } from "../../harness/sequential.js"
+import { z } from "zod"
+import { defaultContractFile, entriesFor, judgePart, loadDnaContract } from "../../harness/dna.js"
+import type { DnaBreak, DnaEntry, DnaVariant } from "../../harness/dna.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 import { HeadlessPage, findBrowser } from "./browser.js"
-import { measurePage, readStoryPairing, settlePage } from "./measure.js"
-import type { PageInput, PageLaw, PageResult, StoryPairing } from "./measure.js"
+import { installProbe, settlePage } from "./measure.js"
+import type { PageBegin, PageVariant } from "./measure.js"
 import { serveFolder } from "./serve.js"
 import type { StaticSite } from "./serve.js"
 
-/** The attribute GrammarRoot stamps with its family (contexts/grammars/contract.yaml root.stamps). */
-export const ROOT_ATTRIBUTE = "data-grammar-family"
+/*
+ * `starci dna check`: the measured laws of contexts/grammars/contract.yaml, judged on rendered pages in one headless browser. A
+ * built Storybook is opened story by story in each family and theme; a url or a folder is opened by its routes. The laws that need
+ * a context of their own (a coarse pointer, forced colours) or an act on the page (hover, press, a key) are not run here: the render
+ * proof of packages/grammar (Playwright over the stories) owns pixels, and the lint gates own `source` laws.
+ */
 
-const VIEWPORT = { width: 1280, height: 800 } as const
-const DEFAULT_WAIT_MS = 8_000
+const ROOT_ATTRIBUTE = "data-grammar-family"
+const DEFAULT_WIDTHS = [1920, 390] as const
+const THEMES = ["light", "dark"] as const
+const MAX_BROKEN_PER_PAGE = 60
+const SHOWN_EXAMPLES = 3
 
-/** One page the gate opens. */
-interface PageTarget {
+interface Page {
     readonly label: string
     readonly url: string
+    readonly story: boolean
 }
 
-/** A page the gate opened with what it measured there. */
-interface MeasuredPage {
-    readonly target: PageTarget
-    readonly result: PageResult
-    /** The story's pairing parameters, read in a Storybook; null for a route or file. */
-    readonly story: StoryPairing | null
-    readonly storybook: boolean
-}
+const indexSchema = z.object({ entries: z.record(z.string(), z.object({ id: z.string(), type: z.string().optional() })) })
+const beginSchema = z.object({ roots: z.number(), anyRoot: z.number() })
+const reportsSchema = z.array(
+    z.object({
+        index: z.number(),
+        evaluated: z.number(),
+        skipped: z.array(z.string()),
+        brokenCount: z.number(),
+        broken: z.array(z.object({ path: z.string(), breaks: z.array(z.object({ metric: z.string(), measured: z.string(), want: z.string() })) })),
+        error: z.string().optional(),
+    }),
+)
 
-/** One law an element breaks: where, what was measured and what the law wants. */
-export interface DnaFinding {
+/** The row of one law in one family. */
+export interface LawRow {
     readonly id: string
-    readonly law: string
     readonly family: string
-    readonly page: string
-    readonly path: string
-    readonly metric: string
-    readonly measured: number | string | boolean | null
-    readonly expected: string
+    readonly status: "green" | "red" | "not-exercised" | "known" | "not-run"
+    readonly followUp: string | null
+    readonly law: string
+    readonly evaluated: number
+    readonly broken: number
+    readonly pages: number
+    readonly notes: readonly string[]
+    readonly examples: readonly { readonly page: string; readonly path: string; readonly breaks: readonly DnaBreak[] }[]
 }
 
-/** A page that could not be judged: no Grammar root, a family the contract does not know, a selector the page refused. */
-export interface DnaProblem {
-    readonly code: "DNA_NO_ROOT" | "DNA_UNKNOWN_FAMILY" | "DNA_SELECTOR" | "DNA_PAGE_LOAD" | "DNA_SKELETON_UNPAIRED"
-    readonly page: string
-    readonly detail: string
+/** A row while the walk fills it in. */
+interface Row {
+    readonly id: string
+    readonly family: string
+    readonly followUp: string | null
+    readonly law: string
+    status: LawRow["status"]
+    evaluated: number
+    broken: number
+    pages: number
+    readonly notes: string[]
+    readonly examplesMutable: LawRow["examples"][number][]
+    readonly pageSet: Set<string>
 }
 
-interface DnaCheckData {
+const isDynamic = (variant: DnaVariant): boolean => variant.kind === "interaction" || variant.context.state !== null
+const hasContext = (variant: DnaVariant): boolean => variant.context.pointer !== null || variant.context.viewport !== null || variant.context.theme !== null || variant.context.forcedColors || variant.context.reducedMotion
+
+const numbersOf = (value: string | undefined): number[] => {
+    if (value === undefined) return [...DEFAULT_WIDTHS]
+    return value.split(",").map((item) => {
+        const number = Number(item)
+        if (!Number.isInteger(number) || number < 200 || number > 4000) throw new UsageError(`--widths takes widths in px between 200 and 4000, not ${item}`)
+        return number
+    })
+}
+
+const pagesOf = async (cwd: string, flags: { target: string | undefined; storybook: string | undefined; url: string | undefined; stories: string | undefined; routes: string | undefined }): Promise<{ pages: Page[]; site: StaticSite | undefined }> => {
+    const given = [flags.target, flags.storybook, flags.url].filter((value) => value !== undefined)
+    if (given.length !== 1) throw new UsageError("name one source: a <target> (url, built Storybook, folder or html file), --storybook or --url")
+    const routes = (flags.routes ?? "/").split(",").map((route) => route.trim()).filter((route) => route !== "")
+    const place = flags.url ?? flags.storybook ?? flags.target ?? ""
+    if (/^https?:\/\//i.test(place)) return { pages: routes.map((route) => ({ label: route, url: `${place.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`, story: false })), site: undefined }
+    const path = resolve(cwd, place)
+    if (!existsSync(path)) throw new Refusal("DNA_SOURCE", `${path} does not exist`)
+    const folder = statSync(path).isDirectory() ? path : dirname(path)
+    const site = await serveFolder(folder)
+    if (statSync(path).isDirectory() && existsSync(join(path, "index.json")) && existsSync(join(path, "iframe.html"))) {
+        const index = indexSchema.parse(JSON.parse(readFileSync(join(path, "index.json"), "utf8")))
+        const pages = Object.values(index.entries)
+            .filter((entry) => (entry.type === undefined || entry.type === "story") && (flags.stories === undefined || entry.id.includes(flags.stories)))
+            .map((entry) => ({ label: entry.id, url: `${site.url}/iframe.html?id=${encodeURIComponent(entry.id)}&viewMode=story`, story: true }))
+        return { pages, site }
+    }
+    const start = statSync(path).isDirectory() ? routes : [basename(path)]
+    return { pages: start.map((route) => ({ label: route, url: `${site.url}/${route.replace(/^\/+/, "")}`, story: false })), site }
+}
+
+/** The data of a dna check. */
+export interface DnaCheckData {
     readonly contract: string
-    readonly laws: Readonly<Record<string, number>>
-    readonly pages: readonly { readonly label: string; readonly url: string; readonly roots: readonly string[]; readonly measured: number }[]
-    readonly measured: number
-    readonly findings: readonly DnaFinding[]
-    readonly problems: readonly DnaProblem[]
-    readonly red: readonly string[]
+    readonly widths: readonly number[]
+    readonly pages: number
+    readonly laws: readonly LawRow[]
+    readonly problems: readonly string[]
     readonly verdict: "green" | "red"
-    /** The human report, line by line, so a json reader sees the same words. */
     readonly report: readonly string[]
 }
 
-const isUrl = (value: string): boolean => /^https?:\/\//i.test(value)
-const isStorybook = (folder: string): boolean => existsSync(join(folder, "iframe.html")) && (existsSync(join(folder, "index.json")) || existsSync(join(folder, "stories.json")))
-const isFolder = (path: string): boolean => existsSync(path) && statSync(path).isDirectory()
-
-/** The stories of a built Storybook (index.json, or stories.json of an older build), optionally those whose id contains a filter. */
-const storiesOf = (folder: string, base: string, filter: string | undefined): PageTarget[] => {
-    const file = existsSync(join(folder, "index.json")) ? join(folder, "index.json") : join(folder, "stories.json")
-    const index = JSON.parse(readFileSync(file, "utf8")) as { entries?: Record<string, { id: string; type?: string }>; stories?: Record<string, { id: string; type?: string }> }
-    const entries = Object.values(index.entries ?? index.stories ?? {}).filter((entry) => entry.type === undefined || entry.type === "story")
-    return entries
-        .filter((entry) => filter === undefined || entry.id.includes(filter))
-        .map((entry) => ({ label: entry.id, url: `${base}/iframe.html?id=${encodeURIComponent(entry.id)}&viewMode=story` }))
-}
-
-const routesOf = (routes: string | undefined, fallback: string): string[] =>
-    (routes ?? fallback)
-        .split(",")
-        .map((route) => route.trim())
-        .filter((route) => route !== "")
-
-/** `text` without the slashes it ends with, counted from the end so a long run is walked once. */
-const withoutTrailingSlashes = (text: string): string => {
-    let end = text.length
-    while (end > 0 && text[end - 1] === "/") end -= 1
-    return text.slice(0, end)
-}
-
-const joinRoute = (base: string, route: string): string => (isUrl(route) ? route : `${withoutTrailingSlashes(base)}/${route.replace(/^\/+/, "")}`)
-
-interface Flags {
-    readonly target: string | undefined
-    readonly storybook: string | undefined
-    readonly url: string | undefined
-    readonly serve: string | undefined
-    readonly routes: string | undefined
-    readonly stories: string | undefined
-}
-
-/** Where the pages come from: a URL with routes, a Storybook build, or a static folder (or one html file) served on loopback. */
-const resolveSource = (cwd: string, flags: Flags): { readonly kind: "url" | "storybook" | "folder"; readonly place: string; readonly route: string | undefined } => {
-    const given = [flags.target, flags.storybook, flags.url, flags.serve].filter((value) => value !== undefined)
-    if (given.length !== 1) throw new UsageError("name one source: a <target> (url, Storybook build, folder or html file), or --storybook, --url or --serve")
-    if (flags.url !== undefined) return { kind: "url", place: flags.url, route: undefined }
-    if (flags.storybook !== undefined) {
-        const folder = resolve(cwd, flags.storybook)
-        if (!isStorybook(folder)) throw new Refusal("DNA_SOURCE", `${folder} is not a built Storybook (iframe.html and index.json)`)
-        return { kind: "storybook", place: folder, route: undefined }
-    }
-    if (flags.serve !== undefined) {
-        const folder = resolve(cwd, flags.serve)
-        if (!isFolder(folder)) throw new Refusal("DNA_SOURCE", `${folder} is not a folder`)
-        return { kind: "folder", place: folder, route: undefined }
-    }
-    const target = flags.target ?? ""
-    if (isUrl(target)) return { kind: "url", place: target, route: undefined }
-    const path = resolve(cwd, target)
-    if (!existsSync(path)) throw new Refusal("DNA_SOURCE", `${path} does not exist`)
-    if (isFolder(path)) return { kind: isStorybook(path) ? "storybook" : "folder", place: path, route: undefined }
-    return { kind: "folder", place: dirname(path), route: basename(path) }
-}
-
-const lawsByFamily = (contract: DnaContract): Record<string, PageLaw[]> =>
-    Object.fromEntries(contract.grammars.map((family) => [family, entriesFor(contract, family).map((entry) => ({ id: entry.id, measure: entry.measure }))]))
-
-/** What judging gave: the findings, the problems that stop a page being judged, and how many elements were measured. */
-interface Judged {
-    readonly findings: DnaFinding[]
-    readonly problems: DnaProblem[]
-    measured: number
-}
-
-/** Judges the laws of one Grammar root of a known family into `judged`. */
-const judgeRoot = (page: PageTarget, root: PageResult["roots"][number], entries: ReadonlyMap<string, DnaEntry>, judged: Judged): void => {
-    for (const law of root.laws) {
-        const entry = entries.get(law.id)
-        if (entry === undefined) continue
-        if (law.error !== undefined) judged.problems.push({ code: "DNA_SELECTOR", page: page.label, detail: `${law.id}: ${law.error}` })
-        // A parity law compares two renders, so judgeParityPairs judges it once both pages are measured.
-        if (entry.measure.metric === "skeleton-parity") continue
-        for (const sample of law.samples) {
-            judged.measured += 1
-            const verdict = judgeSample(entry.measure.expected, sample)
-            if (!verdict.ok) {
-                judged.findings.push({ id: entry.id, law: entry.law, family: root.family, page: page.label, path: sample.path, metric: entry.measure.metric, measured: sample.measured, expected: verdict.want })
-            }
-        }
-    }
-}
-
-/** Judges what one page measured: a finding per element that breaks a law, and the problems that stop a page being judged. */
-const judgePage = (page: PageTarget, result: PageResult, entries: ReadonlyMap<string, DnaEntry>, contract: DnaContract): Judged => {
-    const judged: Judged = { findings: [], problems: [], measured: 0 }
-    if (result.roots.length === 0) judged.problems.push({ code: "DNA_NO_ROOT", page: page.label, detail: `no [${ROOT_ATTRIBUTE}] Grammar root rendered` })
-    for (const root of result.roots) {
-        if (contract.grammars.includes(root.family)) judgeRoot(page, root, entries, judged)
-        else judged.problems.push({ code: "DNA_UNKNOWN_FAMILY", page: page.label, detail: `${root.path} names the family "${root.family}", which ${contract.file} does not list` })
-    }
-    return judged
-}
-
-/** The samples of one law on one page, root by root in document order. */
-const samplesOf = (result: PageResult, id: string): { readonly family: string; readonly samples: readonly DnaSample[] }[] =>
-    result.roots.flatMap((root) => root.laws.filter((law) => law.id === id).map((law) => ({ family: root.family, samples: law.samples })))
-
-/**
- * The ready twin of a loading page, or why there is none (null when the page is not a loading render). A story pairs by its
- * `parameters.dna` (the pairing paragraph of harness/dna.ts): a story of phase "loading" names its `pair`, and its twin is the story not in
- * the loading phase whose id is that pair or whose own dna.pair is the same, with the same `shape` arg when the loading story has
- * one. A route or file pairs by name: `<name>-skeleton` is the loading render of `<name>`.
- */
-const readyTwin = (loading: MeasuredPage, pages: readonly MeasuredPage[]): MeasuredPage | string | null => {
-    const story = loading.story
-    // A story pairs by its parameters only; its id's spelling never makes it a loading render.
-    if (loading.storybook && story === null) return null
-    if (story !== null) {
-        if (story.phase !== "loading") return null
-        if (story.pair === null) return "it is in phase loading but names no parameters.dna.pair"
-        const twin = pages.find((other) => {
-            const meta = other.story
-            if (meta === null || meta.phase === "loading") return false
-            if (meta.id !== story.pair && meta.pair !== story.pair) return false
-            return story.shape === null || meta.shape === story.shape
-        })
-        const shaped = story.shape === null ? "" : " and shape " + story.shape
-        return twin ?? `no ready story of pair ${story.pair}${shaped} was opened by this check`
-    }
-    const twinLabel = readyTwinOf(loading.target.label)
-    if (twinLabel === null) return null
-    return pages.find((other) => other.target.label === twinLabel) ?? `its ready twin ${twinLabel} was not opened by this check`
-}
-
-/**
- * Judges the skeleton-parity laws: each loading render against its ready twin (readyTwin), unit by unit in document order. A
- * loading render with no twin opened, or a unit count that differs between the two renders, is red as well.
- */
-const judgeParityPairs = (measuredPages: readonly MeasuredPage[], contract: DnaContract) => {
-    const findings: DnaFinding[] = []
-    const problems: DnaProblem[] = []
-    let measured = 0
-    const parity = contract.entries.filter((entry) => entry.measure.metric === "skeleton-parity")
-    for (const skeleton of measuredPages) {
-        const ready = readyTwin(skeleton, measuredPages)
-        if (ready === null) continue
-        if (typeof ready === "string") {
-            problems.push({ code: "DNA_SKELETON_UNPAIRED", page: skeleton.target.label, detail: ready })
-            continue
-        }
-        const pair = `${skeleton.target.label} ~ ${ready.target.label}`
-        for (const entry of parity) {
-            const loading = samplesOf(skeleton.result, entry.id)
-            const settled = samplesOf(ready.result, entry.id)
-            const units = (rows: typeof loading): DnaSample[] => rows.flatMap((row) => row.samples)
-            const loadingUnits = units(loading)
-            const readyUnits = units(settled)
-            const family = settled[0]?.family ?? loading[0]?.family ?? ""
-            if (loadingUnits.length !== readyUnits.length) {
-                findings.push({ id: entry.id, law: entry.law, family, page: pair, path: readyUnits[0]?.path ?? loadingUnits[0]?.path ?? entry.measure.selector, metric: entry.measure.metric, measured: `${String(loadingUnits.length)} unit(s) loading, ${String(readyUnits.length)} ready`, expected: "the same units in both renders" })
-                continue
-            }
-            readyUnits.forEach((unit, index) => {
-                const twin = loadingUnits[index]
-                if (twin === undefined) return
-                measured += 1
-                for (const broken of judgeParity(entry.measure.expected.max ?? 1, twin, unit)) {
-                    findings.push({ id: entry.id, law: entry.law, family, page: pair, path: broken.path, metric: entry.measure.metric, measured: broken.measured, expected: `every box within ${String(entry.measure.expected.max ?? 1)}px` })
-                }
-            })
-        }
-    }
-    return { findings, problems, measured }
-}
-
-const describeFinding = (finding: DnaFinding): string =>
-    `red ${finding.id} [${finding.family}] ${finding.page}: ${finding.path}\n    ${finding.metric} measured ${JSON.stringify(finding.measured)}, expected ${finding.expected} (${finding.law})`
-
-/** The pages of a served folder: every story of a Storybook build, else the routes under the folder. */
-const folderTargets = (source: ReturnType<typeof resolveSource>, base: string, flags: Flags): PageTarget[] => {
-    if (source.kind === "storybook") return storiesOf(source.place, base, flags.stories)
-    return routesOf(flags.routes, source.route ?? "/").map((route) => ({ label: route, url: joinRoute(base, route) }))
-}
-
-/**
- * Opens one target in the tab, waits for its Grammar root to settle and measures it, with the story's pairing in a Storybook;
- * a page that does not finish loading is a DNA_PAGE_LOAD problem.
- */
-const openTarget = async (tab: HeadlessPage, target: PageTarget, input: PageInput, waitMs: number, storybook: boolean): Promise<MeasuredPage | DnaProblem> => {
-    if (!(await tab.open(target.url, waitMs + 10_000))) return { code: "DNA_PAGE_LOAD", page: target.label, detail: `${target.url} did not finish loading` }
-    await tab.evaluate(`(${settlePage.toString()})(${JSON.stringify({ rootAttribute: ROOT_ATTRIBUTE, waitMs })})`)
-    const result = (await tab.evaluate(`(${measurePage.toString()})(${JSON.stringify(input)})`)) as PageResult
-    const story = storybook ? ((await tab.evaluate(`(${readStoryPairing.toString()})()`)) as StoryPairing | null) : null
-    return { target, result, story, storybook }
-}
-
-/** Judges the opened pages, each on its own and then the skeleton pairs, into the check's data and its report lines. */
-const judgeOpened = (contract: DnaContract, opened: readonly (MeasuredPage | DnaProblem)[]): DnaCheckData => {
-    const entries = new Map(contract.entries.map((entry) => [entry.id, entry]))
-    const findings: DnaFinding[] = []
-    const problems: DnaProblem[] = []
-    const pages: DnaCheckData["pages"][number][] = []
-    const measuredPages: MeasuredPage[] = []
-    for (const item of opened) {
-        if ("code" in item) {
-            problems.push(item)
-            continue
-        }
-        const judged = judgePage(item.target, item.result, entries, contract)
-        findings.push(...judged.findings)
-        problems.push(...judged.problems)
-        pages.push({ label: item.target.label, url: item.target.url, roots: item.result.roots.map((root) => root.family), measured: judged.measured })
-        measuredPages.push(item)
-    }
-    const parity = judgeParityPairs(measuredPages, contract)
-    findings.push(...parity.findings)
-    problems.push(...parity.problems)
-    const measured = pages.reduce((sum, item) => sum + item.measured, 0) + parity.measured
-    const red = [...new Set(findings.map((finding) => finding.id))].sort((a, b) => a.localeCompare(b))
-    const verdict = findings.length === 0 && problems.length === 0 && measured > 0 ? "green" : "red"
-    const laws = Object.fromEntries(contract.grammars.map((family) => [family, entriesFor(contract, family).length]))
-    const lines = [
-        ...findings.map(describeFinding),
-        ...problems.map((problem) => `red ${problem.code} ${problem.page}: ${problem.detail}`),
-        ...(measured === 0 ? ["red DNA_NOTHING_MEASURED: no element on any page matched a law; the gate proves nothing"] : []),
-        `${verdict}: ${String(measured)} element(s) measured on ${String(pages.length)} page(s) against ${String(contract.entries.length)} law(s) of ${contract.file}`,
-        `red ids: [${red.join(", ")}]`,
-    ]
-    return { contract: contract.file, laws, pages, measured, findings, problems, red, verdict, report: lines }
-}
-
-/**
- * `starci dna check`: opens the rendered UI in a headless browser and measures every DNA law of contexts/grammars/contract.yaml
- * (the measured `mustKeep` entries, harness/dna.ts) on the elements of each Grammar root of the family the law binds. Red per law id
- * with the element path, the measured value and the expected one; red too when a page renders no Grammar root or nothing was
- * measured at all, since a gate that measured nothing proves nothing.
- */
 export const dnaCheckVerb = defineVerb({
     path: ["dna", "check"],
-    summary: "measure rendered UI (a url with --routes, a built Storybook, a static folder or html file) against the Grammar's DNA laws; red per law id with element path and measured vs expected",
+    summary: "measure rendered UI (a built Storybook, a url with --routes, a static folder or html file) against the static DNA laws of the Grammar contract in both families, light and dark, at 1920 and 390; red per law id with element path and measured vs wanted",
     editions: BOTH_EDITIONS,
-    effect: "read",
+    effect: "local-write",
     roles: EVERYONE,
-    schema: "starci/dna-check@1",
+    schema: "starci/dna-check@2",
     flags: {
         target: { kind: "string", positional: true, summary: "a url, a built Storybook folder, a static folder or one html file" },
         storybook: { kind: "string", summary: "a built Storybook folder: every story is opened" },
         url: { kind: "string", summary: "the base url of a running app" },
-        serve: { kind: "string", summary: "a static folder served on loopback for the check" },
         routes: { kind: "string", summary: "comma-separated routes under the url or folder (default /)" },
         stories: { kind: "string", summary: "only the Storybook stories whose id contains this text" },
         contract: { kind: "string", summary: "the grammar contract (default contexts/grammars/contract.yaml of the harness)" },
+        widths: { kind: "string", summary: `comma-separated widths in px (default ${DEFAULT_WIDTHS.join(",")})` },
         browser: { kind: "string", summary: "the Chromium binary (default STARCI_BROWSER, else the installed Chrome, Edge or Chromium)" },
-        timeout: { kind: "string", summary: `seconds a page may take to render its Grammar root (default ${String(DEFAULT_WAIT_MS / 1000)})` },
+        timeout: { kind: "string", summary: "seconds a page may take to render its Grammar root (default 8)" },
+        out: { kind: "string", summary: "a file to write the whole report to as json" },
     },
     run: async (context, flags) => {
         const contract = loadDnaContract(flags.contract === undefined ? defaultContractFile() : resolve(context.cwd, flags.contract))
-        if (contract.entries.length === 0) {
-            throw new Refusal("DNA_NO_LAWS", `${contract.file} declares no measured mustKeep entry (id, law, measure); the gate has nothing to hold the UI to`)
-        }
-        const waitMs = flags.timeout === undefined ? DEFAULT_WAIT_MS : Math.round(Number(flags.timeout) * 1000)
-        if (flags.timeout?.trim() === "" || !Number.isFinite(waitMs) || waitMs < 0) throw new UsageError(`--timeout takes seconds, not ${flags.timeout ?? ""}`)
-        const source = resolveSource(context.cwd, flags)
-        const binary = findBrowser(flags.browser)
-        let site: StaticSite | undefined
-        let page: HeadlessPage | undefined
+        if (contract.entries.length === 0) throw new Refusal("DNA_NO_LAWS", `${contract.file} declares no measured mustKeep entry`)
+        const waitMs = Math.round(Number(flags.timeout ?? "8") * 1000)
+        if (!Number.isFinite(waitMs) || waitMs < 0) throw new UsageError(`--timeout takes seconds, not ${flags.timeout ?? ""}`)
+        const widths = numbersOf(flags.widths)
+        const { pages, site } = await pagesOf(context.cwd, flags)
+        const tab = await HeadlessPage.launch(findBrowser(flags.browser), { width: 1280, height: 800 })
         try {
-            let targets: PageTarget[]
-            if (source.kind === "url") targets = routesOf(flags.routes, "/").map((route) => ({ label: route, url: joinRoute(source.place, route) }))
-            else {
-                site = await serveFolder(source.place)
-                targets = folderTargets(source, site.url, flags)
-            }
-            if (targets.length === 0) throw new Refusal("DNA_NO_PAGES", "the source has no page to open (no story matched, or no route)")
-            const tab = await HeadlessPage.launch(binary, VIEWPORT)
-            page = tab
-            const input: PageInput = { rootAttribute: ROOT_ATTRIBUTE, laws: lawsByFamily(contract) }
-            const storybook = source.kind === "storybook"
-            // One tab opens every target, so the targets are opened one after another.
-            const opened = await inOrder(targets, (target) => {
-                context.progress(`dna: ${target.label}`)
-                return openTarget(tab, target, input, waitMs, storybook)
+            if (pages.length === 0) throw new Refusal("DNA_NO_PAGES", "the source has no page to open")
+            const rows = new Map<string, Row>()
+            const problems: string[] = []
+            const plan = contract.grammars.map((family) => {
+                const variants: (PageVariant & { entry: DnaEntry })[] = []
+                for (const entry of entriesFor(contract, family)) {
+                    const isStatic = entry.variants.some((variant) => variant.kind !== "source" && !isDynamic(variant) && !hasContext(variant))
+                    for (const variant of entry.variants) {
+                        const key = `${family}|${entry.id}`
+                        if (!rows.has(key)) {
+                            const row = { id: entry.id, family, status: "not-run" as LawRow["status"], followUp: entry.followUp, law: entry.law, evaluated: 0, broken: 0, pages: 0, notes: isStatic ? [] : ["not run here: a source, contextual or acting law"], examplesMutable: [], pageSet: new Set<string>() }
+                            rows.set(key, row)
+                        }
+                        if (variant.kind === "source" || isDynamic(variant) || hasContext(variant)) continue
+                        variants.push({ index: variants.length, variant, entry })
+                    }
+                }
+                return { family, variants }
             })
-            const data = judgeOpened(contract, opened)
-            return { data, message: data.report.join("\n"), exitCode: data.verdict === "red" ? 1 : 0 }
+            for (const page of pages) {
+                for (const { family, variants } of plan) {
+                    for (const theme of THEMES) {
+                        context.progress(`dna: ${page.label} ${family} ${theme}`)
+                        const url = page.story ? `${page.url}&globals=grammarFamily:${family};grammarTheme:${theme}` : page.url
+                        await tab.media({ dark: theme === "dark" })
+                        if (!(await tab.open(url, waitMs + 10_000))) {
+                            problems.push(`${page.label}: ${url} did not finish loading`)
+                            continue
+                        }
+                        const rootSelector = `[${ROOT_ATTRIBUTE}="${family}"]`
+                        await tab.evaluate(`(${settlePage.toString()})(${JSON.stringify({ rootSelector, waitMs })})`)
+                        await tab.evaluate(`(${installProbe.toString()})(${judgePart.toString()})`)
+                        const begin: PageBegin = { rootAttribute: ROOT_ATTRIBUTE, family, maxBroken: MAX_BROKEN_PER_PAGE }
+                        const roots = beginSchema.parse(await tab.evaluate(`window.__dna.begin(${JSON.stringify(begin)})`))
+                        if (roots.roots === 0) {
+                            if (roots.anyRoot === 0 || !page.story) problems.push(`${page.label}: no [${ROOT_ATTRIBUTE}="${family}"] Grammar root rendered`)
+                            continue
+                        }
+                        for (const width of widths) {
+                            await tab.viewport({ width, height: width >= 1000 ? 1080 : 844 })
+                            const reports = reportsSchema.parse(await tab.evaluate(`window.__dna.run(${JSON.stringify(variants.map(({ index, variant }) => ({ index, variant })))})`))
+                            for (const report of reports) {
+                                const item = variants.find((candidate) => candidate.index === report.index)
+                                const row = item === undefined ? undefined : rows.get(`${family}|${item.entry.id}`)
+                                if (item === undefined || row === undefined) continue
+                                row.evaluated += report.evaluated
+                                row.broken += report.brokenCount
+                                if (report.error !== undefined && !row.notes.includes(`error: ${report.error}`)) row.notes.push(`error: ${report.error}`)
+                                for (const reason of report.skipped) if (!row.notes.includes(`skipped: ${reason}`)) row.notes.push(`skipped: ${reason}`)
+                                if (report.brokenCount > 0) row.pageSet.add(page.label)
+                                for (const broken of report.broken) if (row.examplesMutable.length < 200) row.examplesMutable.push({ page: `${page.label} ${theme}@${String(width)}`, path: broken.path, breaks: broken.breaks })
+                            }
+                        }
+                    }
+                }
+            }
+            const laws: LawRow[] = [...rows.values()]
+                .map(({ examplesMutable, pageSet, ...row }): LawRow => {
+                    const ran = !row.notes.some((note) => note.startsWith("not run here"))
+                    const status: LawRow["status"] = !ran ? "not-run" : row.broken > 0 ? (row.followUp === null ? "red" : "known") : row.evaluated === 0 ? (row.followUp === null ? "not-exercised" : "known") : "green"
+                    return { ...row, status, pages: pageSet.size, examples: examplesMutable }
+                })
+                .sort((a, b) => a.family.localeCompare(b.family) || a.id.localeCompare(b.id))
+            const failing = laws.filter((row) => row.status === "red" || row.status === "not-exercised")
+            const evaluated = laws.reduce((sum, row) => sum + row.evaluated, 0)
+            const lines: string[] = []
+            for (const family of contract.grammars) {
+                const mine = laws.filter((row) => row.family === family)
+                const count = (status: LawRow["status"]): number => mine.filter((row) => row.status === status).length
+                lines.push(`${family}: ${String(mine.length)} law(s): ${String(count("green"))} green, ${String(count("red"))} red, ${String(count("not-exercised"))} not exercised, ${String(count("known"))} known (follow-up), ${String(count("not-run"))} not run here`)
+                for (const row of mine.filter((candidate) => candidate.status === "red" || candidate.status === "not-exercised" || candidate.status === "known")) {
+                    lines.push(`${row.status === "known" ? "known" : "red"} ${row.id} [${family}]${row.followUp === null ? "" : ` follow-up ${row.followUp}`} ${row.status === "not-exercised" ? "not exercised" : `${String(row.broken)} element(s) on ${String(row.pages)} page(s)`}: ${row.law}`)
+                    if (row.status === "red") for (const example of row.examples.slice(0, SHOWN_EXAMPLES)) lines.push(`    ${example.page}: ${example.path}`, `      ${example.breaks[0]?.metric ?? ""} measured ${example.breaks[0]?.measured ?? ""}, wants ${example.breaks[0]?.want ?? ""}`)
+                }
+            }
+            for (const problem of problems.slice(0, 40)) lines.push(`red ${problem}`)
+            const verdict = failing.length === 0 && problems.length === 0 && evaluated > 0 ? "green" : "red"
+            lines.push(`${verdict}: ${String(evaluated)} element(s) judged on ${String(pages.length)} page(s) against ${String(contract.entries.length)} law(s) of ${contract.file}; ${String(failing.length)} failing`)
+            const data: DnaCheckData = { contract: contract.file, widths, pages: pages.length, laws, problems, verdict, report: lines }
+            if (flags.out !== undefined) writeFileSync(resolve(context.cwd, flags.out), JSON.stringify(data, null, 2))
+            return { data, message: lines.join("\n"), exitCode: verdict === "red" ? 1 : 0 }
         } finally {
-            await page?.close()
+            await tab.close()
             await site?.close()
         }
     },
