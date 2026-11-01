@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.21.0 - 2026-11-02
+
 - Changed: ONE LOADING FLAG (lane 11, contexts/ui/loading.md). `isSkeleton` is renamed `isLoading` on every component. `Section`, every kind of `SurfaceCard`, `ListBox`, `Timeline`, `DataTable`, `MessageBubble` and `PaneSection` derive their skeleton from the rows and fields they are given, or three default rows, keep the title and hide the count, and a `Section` or `PaneSection` that loads tells the Grammar components inside it. Added: an `error` slot (`ErrorData`: `message`, `description`, `actionLabel`, `onAction`, exported) on those seven, drawn as a live alert with its own mark, and `isError` on `EmptyNotice`. Removed: `loadingRows` (`ListBox`, `Timeline`, `DataTable`, `Section`, list `SurfaceCard`), `DataTable` `loadingContent`, and `MessageBubble` `rows` (a loading `MessageBubble` without a `side` is one default thread). Run `starci app codemod loading-states`.
 
 - Fixed: DNA DEVIATIONS (grammar lane 12). A tab bar lands on the md height (40px, was 32; the strip under a sticky TopBar grows with it, `--starci-core-band-height`), the page header band is inset by the region step above and below its content (32px, was 24), a `Badge` dot sits one identity step (4px) before its words (was 6), a segmented control in `md` is 40px at every width (the vendor stepped it to 36 on a desktop width), and a list row's description is one line with an ellipsis. Pixels move on every page band, tab bar, dot badge, md segmented control and long row description; no colour changes.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.21.0 - 2026-11-02
+
 - Removed: `NavigationFeatureNav` from the surface names and the bundled Core playbook (the component is gone; `TopBar` takes `subnavigation`).
 - Changed: the bundled rule catalog words the laws of R348, R351, R352 and R355 for the one card (no SurfaceListCard, SectionHeader or PageHeader).
 - Added: `text-inline-only` (R357, `FE_TEXT_BLOCK`), `no-text-heading` (R358, `FE_TEXT_HEADING`) and `one-highlight-per-render` (R359, `FE_ONE_HIGHLIGHT`).

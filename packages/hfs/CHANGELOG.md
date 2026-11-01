@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 4.17.0 - 2026-11-02
+
 - Fixed: the architecture machine run on an app root that has its own tsconfig threw "Cannot destructure property 'lines'" out of `checkClones`: the app resolver has no rule parameters, so the clone threshold (`ruleParams.common.duplicateBlock`, shared by every profile) is read from a side. Spec `architecture-clones-app-root`.
 - Changed: the bundled playbooks, rule catalog, failure codes and draw script name the one card (`SurfaceCard kind="list"`, `kind="accordion"`) and Page's header slot; no SurfaceListCard, SurfaceAccordionCard or SectionHeader remains in `runtime`.
 - Removed: `NavigationFeatureNav` from the surface names and the bundled Core playbook (the component is gone; `TopBar` takes `subnavigation`).

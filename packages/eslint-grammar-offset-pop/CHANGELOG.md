@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.0 - 2026-11-02
+
+Follows the Grammar 0.21.0.
+
 ## 0.20.2 - 2026-11-01
 
 - Changed: inherits the changed `status-text-uses-soft-foreground` of `@starci/eslint-grammar-core` and the Offset Pop information soft pair of `@starci/grammar`.

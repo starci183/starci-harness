@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.11.7 - 2026-11-02
+
 - Changed: the bundled rule catalog words the laws of R348, R351, R352 and R355 for the one card (no SurfaceListCard, SectionHeader or PageHeader).
 
 ## 3.11.6 - 2026-11-01
