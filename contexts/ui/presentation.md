@@ -36,7 +36,7 @@ measured 6 (a meter gap), 3 (a body offset), 20 or a fluid `clamp()` is a second
 | 4 | identity: two lines read as one cluster (title and qualifier, label and field and help, value and unit) | `--grammar-identity-gap` | GAP-1 |
 | 8 | inline: companions inside one unit (glyph and label, chips of one set, a decision and its way out) | `--grammar-inline-gap` | GAP-2 |
 | 12 | row: peers of one row or group, each read on its own (fields of a form, bands of a pane or card, rows of a rail) | `--grammar-row-gap` | GAP-3 |
-| 24 | section: blocks under one heading (cards of one collection, the groups of a rail) | `--grammar-section-gap` | GAP-4 |
+| 24 | section: blocks under one heading (the groups of a rail, the blocks under one heading that are not a card grid) | `--grammar-section-gap` | GAP-4 |
 | 32 | region: page regions with their own heading (summary above history, main and rail, header and body) | `--grammar-region-gap` | GAP-5 |
 
 GAP-6 (a named major transition) takes the region step: the scale holds nothing above it.
@@ -88,7 +88,7 @@ Gap (row and column chosen apart):
 - **G2 Rhythm is monotonic**: region > section > row > inline > identity > seam, and equal peers get equal gaps
   (`DNA-COMMON-RHYTHM-MONOTONIC`; proof TASTE-4).
 - **G3 One relation per axis.** A wrapping chip or filter set takes inline on both axes (a wrapped line is the same
-  set); a toolbar takes inline inside a group and section between groups; a card grid takes section on both axes; a
+  set); a toolbar takes inline inside a group and section between groups; a card or tile grid takes inline on both axes and sits a row step under its heading; a
   two-column form takes row on both axes; main and rail take region on both axes when they stack.
 - **G4 Heading to content.** Title and its supporting line: identity. A section header and its content: row. A page
   header and its body: region, or 0 when the body is a pane grid (`Page chrome="panes"`).
@@ -97,9 +97,9 @@ Gap (row and column chosen apart):
 
 Padding and gap together:
 
-- **R1 Inner gap ≤ inset ≤ outer gap** for a closed box: a card's content sits 12 apart inside a 12 inset, and cards
-  of one collection stand a section apart, so each card reads as its own unit.
-- **R2 Touching panes take 0 and a divider; floating cards take section.** The two never mix.
+- **R1 A closed box's content sits 12 apart inside a 12 inset**, and the blocks under a heading stand a section apart; the one
+  named exception is a card or tile grid, whose siblings stand 8 apart under a heading 12 above (ruling `card-grid-gap`).
+- **R2 Touching panes take 0 and a divider; floating cards take the grid step of their kind.** The two never mix.
 - **R3 A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider. Lint:
   `starci-fe/divider-full-bleed`.
 
@@ -136,7 +136,7 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | `kind="list"` rows | rows divided by lines (n-1, seam 0) or by gap, never both | row 8 block, the content inset inline (a 40 row for one line) | none | `items` |
 | `kind="figures"` | cells touching (0) with a line between cells and rows; label to figure to meta identity | cell 8 | none | `items` |
 | `kind="tile"` | mark to name inline; status and action at the bottom row | 12 | none | `name`, `mark`, `badge`, `action` |
-| Card grid (`Grid kind="cards"`) | section on both axes | none | none | `kind` |
+| Card or tile grid (`Grid kind="cards"`) | inline (8) on both axes; the title to the grid row (12), because siblings sit closer than their heading | none | none | `kind` |
 | Pane (`PaneGrid`) | 0 and a divider; sections row | 12 on every side | none | `areas`, `columns`, `rows` |
 | Dialog, Drawer | header, body and footer row; footer actions inline | 12 | none | `title`, `body`, `footer` |
 | Box in a surface (a notice, a `Quote`, a stat cell) | identity | 8 | none | the component |

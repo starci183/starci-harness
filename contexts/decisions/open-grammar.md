@@ -52,6 +52,7 @@ the knowledge to be true; until then the gate that checks it stays red, by desig
 | C-5 | Common base sheet reads `--grammar-*` rhythm directly; today the base renderers read `--starci-core-*` aliases a grammar must set |
 | C-6 | Overlays use one portal helper; today two helpers implement the root rule |
 | C-7 | Every grammar component that passes a render callback across the RSC boundary (`SurfaceCard` first) declares `"use client"` itself; found by the starci-next-fe trial, where an op re-exported `SurfaceCard` behind a `"use client"` shim in the app; R321 `FE_GRAMMAR_SHIM` refuses that shim in an app, which reports the defect instead |
+| C-8 | `Grid kind="cards"` reads the inline gap (8) on both axes and its title sits a row step (12) above it; today the grid reads the section gap (24) on both axes (ruling `card-grid-gap`) |
 
 ## Gaps: choices an app can make two ways
 
