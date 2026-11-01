@@ -44,8 +44,9 @@ small square role; visible name and value copy stay with the app's content.
 
 ## ButtonGroup
 
-ButtonGroup is Root plus Separator with `orientation` and `fullWidth`, and no size or variant: a group inherits
-its buttons'. Its arrangement makes several buttons read as one object: no gap, inner corners squared, outline
+ButtonGroup is Root plus Separator with `orientation` and `fullWidth`; its root borrows the Button `size` and `variant`
+props through the vendor context. Grammar borrows that native size type and forwards the resolved step to each member.
+Its arrangement makes several buttons read as one object: no gap, inner corners squared, outline
 borders collapsed between neighbours, the press scale turned off (a scaling button would break the joined edge),
 the focused button raised above its neighbours, a short faint separator. House: an action group is only for peers
 of one intent.

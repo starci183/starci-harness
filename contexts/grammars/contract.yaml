@@ -116,7 +116,7 @@ roles:
     ui: ui/components/card.md
     renderers: [SurfaceCard]
     vendorParity: [card, accordion]
-    slots: ["label (a card that heads a section: outside the material)", "name and mark (a tile: inside the material, no outside label)", fact, labelEnd, content, footer, wholeAction, "Figure: optional whole-cell href with Link.onFollow and isDisabled, neutral values", "ItemAction: Button.isPending preserves action-owned busy state", "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
+    slots: ["label (a card that heads a section: outside the material)", "name with mark or typed poster (tile identity inside)", "tile poster: Image-owned data or localized absence, one preserved media frame", "tile facts: plain text; badge or up to three typed badges; primary ItemAction and typed overflow ItemMenu", fact, labelEnd, content, footer, "wholeAction: excludes inner actions and menu", "Figure: optional whole-cell href with Link.onFollow and isDisabled, neutral values", "ItemAction: Button.isPending preserves action-owned busy state", "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
     variants:
       kind: { values: [body, figures, list, accordion, bands, tile], chosenBy: app, compiler: a discriminated union; a list needs items and an empty state, bands end in at most one collection }
       labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }
@@ -137,7 +137,7 @@ roles:
     ui: ui/components/button.md
     renderers: [Button, IconButton, FileButton, TextAction]
     vendorParity: [button, link, spinner]
-    slots: [label, startContent, endContent, disabledReason]
+    slots: [label, startContent, endContent, disabledReason, "isPending: initiating Button or IconButton busy state", "isLoading: unresolved inert geometry"]
     variants:
       variant: { values: vendor Button variants, chosenBy: intent x placement }
       width: { values: [content, fill], chosenBy: app }
@@ -176,12 +176,12 @@ roles:
     ui: ui/components/action-group.md
     renderers: [ButtonGroup]
     vendorParity: [button-group]
-    slots: [buttons]
+    slots: ["actions: each member has label, command and optional isPending", "isLoading: unresolved whole-group content"]
     variants:
       orientation: { values: [horizontal, vertical], chosenBy: app }
       width: { values: [content, fill], chosenBy: app }
-    sizes: inherits its buttons
-    states: [disabled]
+    sizes: native ButtonGroup root size type, forwarded to every member
+    states: [disabled, pending per initiating member, loading inert whole-group skeleton]
     grammarMayChange: [separator paint]
     dna: [DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT]
 
@@ -482,9 +482,9 @@ roles:
     ui: ui/components/list-table.md
     renderers: [Section]
     vendorParity: []                              # no HeroUI part: a Common frame
-    slots: ["title (the heading and the landmark name)", headingLevel, "filter (a FilterButtonGroup)", "items (kind list: the typed rows of a list card)", "children (kind body)", "actions (the page command, at the end of the head row)", "empty and error (ErrorData: message, description, action) beside it, kind list"]
+    slots: ["title (the heading and landmark name; figures may instead require ariaLabel for a headless strip)", headingLevel, "filter (a FilterButtonGroup)", "items (kind list: typed rows; kind figures: shared Figure data)", "children (kind region)", "action (the page command, at the end of the titled head row)", "empty (required for list) and error (ErrorData)"]
     variants:
-      kind: { values: [body, list], chosenBy: app from list-table.choose.role (list when the rows search, filter or page) }
+      kind: { values: [region, list, figures], chosenBy: app from list-table.choose.role or card.choose.role for contained figures }
     sizes: none
     states: [ready, loading (isLoading), error (the error slot), empty (kind list: required)]
     grammarMayChange: [heading weight]

@@ -20,7 +20,7 @@ import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../leaf/Label/index.js"
 import { ErrorView, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
 import { AccordionRows } from "./AccordionRows.js"
-import { FigureCells } from "./FigureCells.js"
+import { FigureCells, figureItems } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
 import { SurfaceCardTile } from "./SurfaceCardTile.js"
 import {
@@ -189,8 +189,6 @@ const BandView = ({ band, isLoading, isDisabled }: { readonly band: Band | Colle
 
 const kindOf = (props: SurfaceCardProps) => props.kind ?? "body"
 
-/** A figures card given no figure while it loads draws three cells; the block's same-shape placeholder replaces this. */
-const PLACEHOLDER_FIGURES: readonly Figure[] = [1, 2, 3].map((n) => ({ id: `loading-${n}`, term: " ", value: "0000" }))
 const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) => ({ id: `loading-${n}`, title: "Loading", body: null, isOpen: false }))
 
 /**
@@ -254,7 +252,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const face = (() => {
         switch (props.kind) {
             case "figures":
-                return <FigureCells items={isLoading && props.items.length === 0 ? PLACEHOLDER_FIGURES : props.items} isLoading={isLoading} isDisabled={disabled} />
+                return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} isDisabled={disabled} />
             case "list":
                 return <ListRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "accordion":

@@ -3,8 +3,10 @@
 import { useId, type ReactNode } from "react"
 import { ListRow } from "../../composite/ListRow/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import { FigureCells, figureItems } from "../SurfaceCard/FigureCells.js"
 import { ErrorView, LOADING_ROWS, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
-import type { ListRowData } from "../../surfaceCardData.js"
+import type { Figure, ListRowData } from "../../surfaceCardData.js"
+import type { NoChildren } from "../../tier.js"
 import { SectionHead, type SectionHeadProps } from "./head.js"
 
 export type { SectionHeadingLevel, SectionHeadProps } from "./head.js"
@@ -27,6 +29,16 @@ type ListSection = {
     readonly filter?: ReactNode
 }
 
+type HeadlessFigures = Pick<SectionHeadProps, "id"> & {
+    /** Names a strip whose visible heading already belongs to its surrounding region. */
+    readonly ariaLabel: string
+} & { readonly [Key in keyof Omit<SectionHeadProps, "id">]?: never }
+
+type FiguresSection = NoChildren & {
+    readonly kind: "figures"
+    readonly items: readonly Figure[]
+} & ((SectionHeadProps & { readonly ariaLabel?: never }) | HeadlessFigures)
+
 /** The status every section takes from its read (contexts/ui/loading.md). */
 type SectionStatus = {
     /**
@@ -40,7 +52,7 @@ type SectionStatus = {
     readonly error?: ErrorData
 }
 
-export type SectionProps = SectionHeadProps & SectionStatus & (RegionSection | ListSection)
+export type SectionProps = SectionStatus & ((SectionHeadProps & (RegionSection | ListSection)) | FiguresSection)
 
 const listRows = (props: ListSection, isLoading: boolean) => {
     if (isLoading && props.items.length === 0) {
@@ -78,25 +90,34 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * `kind="region"` (the default) holds `children`. `kind="list"` owns rows inside an existing surface, or a standalone
  * list that searches, filters or pages: typed `items`, an optional `filter` and a required `empty` state. Its title owns
  * the list heading and accessible name. A standalone bounded worklist on the page canvas is `SurfaceCard kind="list"`.
+ * `kind="figures"` reuses the unpainted FigureCells strip inside an existing surface; a required `ariaLabel` keeps an
+ * already-headed strip headless, while `title` gives a strip its own visible heading. Those forms cannot be mixed.
  */
 export const Section = (props: SectionProps) => {
     const { title, description, count, meta, action, headingLevel = 2, id, error } = props
     const isLoading = useIsLoading(props.isLoading)
     const failed = !isLoading && error !== undefined
     const headingId = useId()
+    const body = (() => {
+        if (props.kind === "list") return <ListBody list={props} isLoading={isLoading} error={error} />
+        if (failed) return <ErrorView error={error} />
+        if (props.kind === "figures") return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} />
+        return <LoadingScope isLoading={isLoading}>{props.children}</LoadingScope>
+    })()
     return (
         <section
             id={id}
-            aria-labelledby={headingId}
+            aria-labelledby={title === undefined ? undefined : headingId}
+            aria-label={props.kind === "figures" && props.title === undefined ? props.ariaLabel : undefined}
             aria-busy={isLoading ? true : undefined}
             className="starci-core-section"
             data-component="Section"
             data-tier="frame"
-            data-grammar-section-kind={props.kind === "list" ? "list" : "region"}
+            data-grammar-section-kind={props.kind ?? "region"}
             data-grammar-skeleton={isLoading ? "true" : undefined}
             data-contract="GAP-4 MARGIN-0 PADDING-0"
         >
-            <SectionHead
+            {title === undefined ? null : <SectionHead
                 headingId={headingId}
                 level={headingLevel}
                 title={title}
@@ -105,10 +126,8 @@ export const Section = (props: SectionProps) => {
                 meta={meta}
                 action={action}
                 isLoading={isLoading}
-            />
-            {props.kind === "list"
-                ? <ListBody list={props} isLoading={isLoading} error={error} />
-                : failed ? <ErrorView error={error} /> : <LoadingScope isLoading={isLoading}>{props.children}</LoadingScope>}
+            />}
+            {body}
         </section>
     )
 }

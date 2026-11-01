@@ -13,13 +13,14 @@ for a kind does not compile). The first row that applies wins.
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | contained-list | an existing surface owns the region holding the rows | unpainted `Section kind="list"` (`list-table.choose.role:contained`), with one heading and accessible name | R340/R356 forbid a surface in a surface |
+| contained-figures | key figures already belong to a pane or another surfaced region | unpainted `Section kind="figures"` with shared `Figure` data; retain an existing parent heading with `ariaLabel`, or use `title` when the strip owns its heading | type: titled/headless forms exclude each other; one shared FigureCells renderer; R340/R356 forbid another surface |
 | task-list | standalone rows on the page canvas, worked through or scanned as one bounded group with no search, filter or paging | `SurfaceCard kind="list"`: label outside, `items`, a required `empty`, a `footer` for the note | type: a list needs `items` and `empty`; R355 |
 | collection | rows that search, filter or page, or have no bound | not a card: `Section kind="list"` (`list-table.choose.role:entity`) | R355 refuses a `Section` around one card |
 | disclosure | one summary that reveals a rarely changed region | `kind="accordion"`, closed by default | judgement |
-| figures | a row of key figures | `kind="figures"` (DISCIPLINE-2): touching cells with lines between cells and rows | type: typed figures; candidate: cells at most `budgets.ribbonCells` |
+| figures | a standalone row of key figures on the page canvas | `kind="figures"` (DISCIPLINE-2): touching cells with lines between cells and rows | type: typed figures; candidate: cells at most `budgets.ribbonCells` |
 | whole | the whole card is one destination or command | `wholeAction`, present only where the card holds no inner control (STATE-5) | type: a nested interactive does not compile |
 | kinds | several kinds of content about one subject | `kind="bands"`: `body`, `figures` and `media` faces, then at most one collection, last; the shell draws the seams, never inner cards or a `Divider` | type; R355; candidate: separators at most `budgets.hairlinesPerCard` |
-| tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | `kind="tile"`: its name inside with its logo or mark, a status and one action at the bottom, in `Grid kind="cards"` | type: a tile has no `label`; R366 |
+| tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | `kind="tile"`: its name inside with its typed mark or media poster, operational badges and one visible action; further commands use its menu, in `Grid kind="cards"` | type: poster image/absence, single/three badges and wholeAction/inner controls are exclusive; a tile has no `label`; R366 |
 | entity | one entity or one summary of one subject, heading its section | `SurfaceCard` of the default `body` kind: label outside | judgement |
 
 Choice `card.choose.label`: where the card's name sits. The kind decides, in both families (ruling `card-label-by-kind`).

@@ -5,6 +5,12 @@ import type { Figure } from "../../surfaceCardData.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 
+const PLACEHOLDER_FIGURES: readonly Figure[] = [1, 2, 3].map((n) => ({ id: `loading-${n}`, term: " ", value: "0000" }))
+
+/** A figures owner with no known items uses the same three-cell loading shape. Bands keep their supplied shape. */
+export const figureItems = (items: readonly Figure[], isLoading: boolean): readonly Figure[] =>
+    isLoading && items.length === 0 ? PLACEHOLDER_FIGURES : items
+
 /**
  * The strip a `kind="figures"` holds: two to four key figures as touching cells, divided by lines, never on the
  * outer edge. It answers its own width, not the viewport's: one row from 40rem, 2 x 2 from 18rem, one column below.

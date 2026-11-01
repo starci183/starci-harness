@@ -117,7 +117,13 @@ paints it but never moves it.
 
 A row of key figures is `kind="figures"`: touching cells (gap 0), each a box in the card at the nested inset (8), divided by lines, not gaps - a vertical line between the cells of a row and a horizontal line between rows, running to the strip's edge and never on its outer edge. The strip answers its own width (container query, no script): one row from 40rem, 2 x 2 from 18rem, one column below, a last odd cell spanning its row, with the right line at every wrap. In a `bands` card it is a face and the shell's seam divides it from the next face (a Meter face, say). Its skeleton keeps the same cells and lines. The line colour is the family's separator (`--separator`, ink in Offset Pop), so dark mode follows the tokens.
 
-A tile (`kind="tile"`) is one peer repeated in a `Grid kind="cards"`: its `name` and `mark` inside, an optional description and badge, its status and one action at the bottom; the compiler refuses a `label`, `fact` or `labelEnd` on it.
+A tile (`kind="tile"`) is one peer repeated in a `Grid kind="cards"`: its name stays inside. A compact identity has a
+typed mark; a media identity has a typed `poster`, retaining the same frame for its image or localized absence text.
+The poster reuses Image-owned data, aspect and fit. Supporting `facts` is plain text. One badge or a typed tuple of
+up to three operational badges accompanies it. The primary `ItemAction` remains a native destination or command;
+secondary commands use typed `menu` data. `wholeAction` excludes both inner action and menu, so nested interactive
+targets do not compile. Loading keeps the poster and action geometry inert. A tile takes no `label`, `fact` or
+`labelEnd`; its name and mark or poster carry its identity.
 
 ### Button
 
@@ -129,12 +135,17 @@ that is also the button's accessible description, since a disabled control is ot
 content never resolved. A grammar may repaint each vendor variant through its tokens and give the press its own
 motion; it keeps the variant names, so the emphasis ladder means the same in every grammar. `IconButton` is the same contract drawn square or round at the step;
 `FileButton` is an `IconButton` whose press opens the browser's file picker and reports the files; `TextAction` is the quietest command, set in text.
+`IconButton.isPending` keeps its accessible name and box while drawing the native spinner, setting busy state and
+refusing duplicate activation. `isLoading` remains unresolved content, not an action's progress.
 
 ### ButtonGroup
 
 An action group is two to five peers of one intent acting on one object (zoom, align). The vendor joins them:
-squared inner corners, collapsed borders, no press scale; the group takes its buttons' size. A decision and its
-way out are not peers, so they are two buttons at the inline gap, never a group.
+squared inner corners, collapsed borders, no press scale; the group forwards the vendor's size to every member.
+Each action's `isPending` keeps its own label and geometry while drawing the native busy state and refusing another
+activation. Group `isLoading` means unresolved content and keeps the whole fused skeleton inert. Icon-only members
+follow the same `IconButton.isPending` contract. Neither pending nor loading overrides the vendor's joined corners.
+A decision and its way out are not peers, so they are two buttons at the inline gap, never a group.
 
 ### Tabs
 
@@ -377,6 +388,12 @@ A section is a named region whose title is its heading and its landmark name; no
 `FilterButtonGroup`; it is the unpainted list owner within an existing surface and the list owner for search, filters or
 paging on the canvas. Its head, filter and content stand one section step (24) apart, and its page command hugs its label at
 the end of the head row. A card heads itself with its `label`, so a section around one card is refused.
+
+`kind="figures"` is the unpainted key-figure strip inside an existing surface. It reuses the exact FigureCells renderer
+and typed `Figure` data of `SurfaceCard kind="figures"`, including neutral values, dividers, responsive wrapping and
+native destinations. Loading uses the same known cells or shared default three-cell shape; error replaces the strip.
+A strip that owns its visible heading supplies `title`. An already-headed strip supplies required `ariaLabel` and
+adds no heading; the compiler rejects mixing the forms or supplying head controls to a headless strip.
 
 ### Diagram
 

@@ -29,6 +29,10 @@ and the page command belong to the card's label or the section's head. A row tha
 title destination with `href`; `onFollow` can close its owning popover alongside that navigation. Without a destination
 there is no `onFollow`. Its commands and menu remain separate targets beside the title, and loading removes the link.
 
+Key figures inside an existing surface use the same unpainted Section owner through `kind="figures"`, as
+`card.choose.role:contained-figures` decides. It reuses the card's FigureCells anatomy and loading geometry. A strip
+already under a heading uses `ariaLabel` and adds no visible heading; a strip that owns its heading uses `title`.
+
 ## Variants
 Rows are separated by lines (n-1 lines) or by gap, never both (`DNA-COMMON-LIST-SEAMS`). Rows align their boxes to the content edge of a panel or a pane
 (the row box and its selected fill start there; the title inside keeps the vendor item padding). Per-item commands are `neutral` (CTA-6). Unread rows take the contract's unread weight.

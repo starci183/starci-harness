@@ -460,6 +460,13 @@ regions, `kind="pair"` requires equal `leading` and `trailing` portions of one r
 requires `leading`, `featured` and `trailing` slots for a focus with symmetric support. These kinds take no column,
 gap, width or breakpoint props; content relation chooses the kind.
 
+`Section kind="figures"` is the unpainted counterpart of a figures card inside an existing pane or surface. It uses
+the same `Figure` data and renderer; supply `title` when it owns a heading or `ariaLabel` when an existing parent owns
+that heading. The headless form has no head controls. Media tiles use `TilePoster` (image or localized absence),
+plain `facts`, one or up to three badges and typed overflow commands; a whole-card action excludes inner controls.
+`ButtonGroup` borrows the vendor size and forwards each action's `isPending`; group `isLoading` is unresolved geometry.
+`IconButton.isPending` has the same native busy and duplicate-activation semantics as Button.
+
 The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
 surface band whose content sits in the page container of the content's `measure`, so both share their edges, and it ends

@@ -33,7 +33,10 @@ A group takes one step for all members ([../scale.md](../scale.md) rule 1). Stac
 order, so the commit lands last, nearest the thumb.
 
 ## States
-Pending sits on the member that started the work; peers keep their own state (CTA-3).
+Pending sits on the member that started the work; peers keep their own state (CTA-3). `ButtonGroupAction.isPending`
+uses the initiating Button or IconButton's native spinner, busy announcement and duplicate-activation refusal.
+Group `isLoading` is unresolved content: all members keep their fused geometry as inert skeletons. It is not a pending
+flag for all peer actions. The joined vendor corners remain joined in every state.
 
 ## Owner split
 - **Grammar owns:** the fused anatomy, separators, `width="fill"` distribution, footer alignment in dialogs.
