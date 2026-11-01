@@ -201,10 +201,10 @@ shapes:
       - id: workspace-identity
         implements: [FE-APP-SHELL-2]
         compose: |
-          IdentityLockup sits inside PlainPressable size="control". Its square logo mark has a
+          IdentityLockup is itself the pressable (size="control"). Its square logo mark has a
           transparent background, no radius and object-fit contain; without an image it uses Avatar's
           bundled DiceBear initials. The title
-          has a muted role subtitle and no caret. PlainPressable has no button shape or hover effect;
+          has a muted role subtitle and no caret. The lockup has no button shape or hover effect;
           press uses scale(0.96), focus remains visible and reduced motion removes the zoom.
       - id: navbar-right-cluster
         implements: [FE-APP-SHELL-3]

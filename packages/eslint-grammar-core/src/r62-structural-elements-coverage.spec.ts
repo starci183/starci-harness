@@ -24,7 +24,7 @@ for (const edition of ["lite", "full"]) {
       settings: { starci: { hfs } },
     })
     tester.run("no-raw-structural-element", noRawStructuralElement, {
-      valid: [{ filename: BLOCK, code: "export const Feed = () => <Section title="Feed"><Text>{message}</Text></Section>" }],
+      valid: [{ filename: BLOCK, code: 'export const Feed = () => <Section title="Feed"><Text>{message}</Text></Section>' }],
       invalid: [
         { filename: BLOCK, code: "export const Feed = () => <section />", errors: [{ messageId: "raw" }] },
         { filename: BLOCK, code: "export const Feed = () => <p>{message}</p>", errors: [{ messageId: "raw" }] },

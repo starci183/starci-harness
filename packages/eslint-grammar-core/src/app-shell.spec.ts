@@ -101,7 +101,7 @@ for (const lite of [false, true]) {
         { filename: FILE, code: 'const view = <WorkspaceShell viewport="fixed" header={<DropdownMenu trigger={<IconButton size="control" />} items={[{ label: "Create", action: <Button /> }]} />} />' },
         { filename: FILE, code: 'const view = <WorkspaceShell viewport="fixed" header={<Popover trigger={<IconButton size="control" />}><Button /></Popover>} />' },
         { filename: FILE, code: 'const view = <SurfaceCard><Button /></SurfaceCard>' },
-        { filename: FILE, code: 'const view = <TopBar brand={<Region label={copy.tools}><Button size="control" /></Region>} />' },
+        { filename: FILE, code: 'const view = <TopBar brand={<Section title={copy.tools}><Button size="control" /></Section>} />' },
         { filename: FILE, code: 'const view = <Drawer placement="left" trigger={<IconButton size="control" />} footer={<Button />}><Sidebar presentation="drawer" footer={<Input label={copy.query} />} /><Button /></Drawer>' },
         { filename: FILE, code: 'const view = <Drawer placement="left" trigger={<IconButton />}><Form><Input label={copy.query} /><Button /></Form></Drawer>' },
         { filename: FILE, code: 'const view = <Drawer placement="right" trigger={<IconButton />}><Sidebar presentation="drawer" /></Drawer>' },
@@ -155,7 +155,7 @@ for (const lite of [false, true]) {
         { filename: FILE, code: `${IMPORTS} const Actions = () => { if (wide) return ${CLUSTER}; return ${MOBILE_CLUSTER} }; const view = <TopBar actions={<Actions />} />` },
         { filename: FILE, code: `${IMPORTS} const view = <WorkspaceShell viewport="fixed" header={<div><IdentityLockup /><Button>Search</Button><div><DropdownMenu trigger={<IconButton source={icons.language} />} /><Switch /><div>${MOBILE_CLUSTER}</div></div></div>} />` },
         { filename: FILE, code: 'import { DropdownMenu as Menu, Popover as Bubble } from "@starci/grammar/common"; const Language = () => <IconButton source={icons.language} variant="tertiary" />; const bell = <IconButton source={icons.bell} />; const view = <TopBar actions={<><Menu trigger={<Language />} /><Switch /><Bubble trigger={bell} /><Menu trigger={<AvatarButton />} /></>} />' },
-        { filename: FILE, code: `${IMPORTS} const view = <TopBar actions={<Region label={copy.tools}>${CLUSTER}</Region>} />` },
+        { filename: FILE, code: `${IMPORTS} const view = <TopBar actions={<Section title={copy.tools}>${CLUSTER}</Section>} />` },
       ],
       invalid: [
         { filename: FILE, code: bar('<><Switch /><IconButton source={icons.language} /><IconButton source={icons.bell} /><AvatarButton /></>'), errors: [{ messageId: "cluster" }] },
