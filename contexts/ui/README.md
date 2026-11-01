@@ -16,6 +16,7 @@ product spec (.starciwork)
 
 | File | Holds | Read it when |
 | --- | --- | --- |
+| [situations.md](situations.md) | one row per situation of a screen (the component, its spacing role, its story, what refuses the wrong version) and the loading table | starting any screen: say what it is, then follow the row |
 | [composition.md](composition.md) | hierarchy, action and CTA, accent, state and feedback, collection, layout, responsive, taste, coverage | writing a spec or a direction, choosing what goes on a page |
 | [loading.md](loading.md) | what drives a loading flag, who draws the skeleton, the laws of a loading state (R367) | drawing a region that waits for reads |
 | [scale.md](scale.md) | the one size ramp, the touch floor, density, how every control aligns | choosing a size, or building a grammar component |
@@ -49,8 +50,8 @@ Ownership words used across these files, defined once:
 
 | Reader | Order |
 | --- | --- |
-| spec or direction writer | this file, composition.md, components/README.md, the components the page uses |
-| implementer | composition.md (action, state), the components used, scale.md, presentation.md |
+| spec or direction writer | this file, situations.md, composition.md, components/README.md, the components the page uses |
+| implementer | situations.md, composition.md (action, state), the components used, scale.md, presentation.md |
 | grammar author | scale.md, components/*, presentation.md, ../vendor/heroui.md, ../grammars/ |
 | auditor, UAT | proof.md, proof/thresholds.yaml, then the composition rule being tested |
 

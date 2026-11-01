@@ -244,7 +244,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 8 KB — Contract: PaneGrid.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/quote.md](../ui/components/quote.md) · 2 KB — Contract: Quote.
+- [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 2 KB — Contract: SegmentedControl.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules

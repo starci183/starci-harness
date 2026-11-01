@@ -17,6 +17,7 @@ Choice `action-group.choose.kind`: which kind of group the actions form. The fir
 | item | per-item commands on a collection row | the row's actions slot: one visible `neutral`, the rest behind `menu.choose.placement:overflow` | candidate: at most one visible command per item |
 | pinned | a page decision that must stay in thumb reach on a narrow screen | `PinnedActionBar`: the one commit, or a `summary` (a selection count, unsaved changes) with its `dismiss` and `commit` | judgement |
 | decision | one decision with its way out and maybe an alternative, unequal in rank: a dialog, drawer, form or wizard footer, a page-header decision | separate `Button`s at the inline gap (GAP-2) at the footer's trailing edge, ordered way out, alternative, commit (CTA-5) | candidate: in a footer the commit is the last button and the gaps equal `--grammar-inline-gap` |
+| approval | something waits on a person's yes: what it is, who asked, why | a `SurfaceCard` labelled with what, a `DescriptionList` of who and why, and a decision group: `dismiss`, an `alternative` when one exists, and the `commit` named for the act ("Approve and send", never "OK") | candidate: the card holds one commit (CTA-1) |
 | peers | 2 to 5 commands of the same intent on one object, none outranking another (zoom in, out, fit; align left, centre, right), none destructive | `ButtonGroup` | `DNA-COMMON-BUTTONGROUP-ONE-INTENT` |
 
 A `ButtonGroup` fuses its members into one object, so it states "these are equals". Putting a decision and its way

@@ -14,7 +14,7 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | mine | the reader wrote it | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | judgement |
 | theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the surface and its foreground, at the start side | judgement |
 
-Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a link, a mention (`Text tone="accent"`), code and a muted line
+Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a link, a mention (`Text isStrong`), code and a muted line
 all inherit the bubble's foreground, so they read on either face; a link keeps its underline. Anything that is not the message's own
 words (an attachment, an approval card, a reaction row) goes in `footer`, outside the bubble face.
 

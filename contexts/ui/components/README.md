@@ -68,12 +68,12 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | present one subject | [card](card.md) |
 | a task that interrupts, or a secondary task beside the page | [dialog-drawer](dialog-drawer.md) |
 | commands that do not deserve a visible button | [menu](menu.md) |
-| several of one kind of thing | [list-table](list-table.md) |
+| several of one kind of thing; a list that searches, filters or pages (a section); the stages of one process | [list-table](list-table.md) |
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
 | show words taken from a source (a stored note, a chat line, a template) in a pane, a card or a drawer | [quote](quote.md) |
 | say words, or title a group of blocks | [text](text.md) |
 | show one message of a conversation | [message bubble](message-bubble.md) |
-| a region with nothing in it yet, or a failed region | [empty-state](empty-state.md) |
+| a region with nothing in it yet, not ready until a setup step, or failed | [empty-state](empty-state.md) |
 | a compact identity beside a name | [identity-mark](identity-mark.md) |
 | show the product's generated character (mascot) art | [mascot](mascot.md) |
 | divide a full-bleed area into flush panes with dividers, side by side and stacked (a list, a main column, an info rail), and place a pane's content at its one inset; mount a tabbed page of panes | [pane-grid](pane-grid.md) |

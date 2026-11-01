@@ -760,8 +760,8 @@ rulings:
   - id: flow-graph-orbit
     date: '2026-10-31'
     status: live
-    ruling: "FlowGraph layout=\"orbit\" is the value-sized map: bubble nodes (form, mark, caption, diameter, flowGraphDiameter), the info tone, fill and ring for status, isDimmed for a filter, expandedIds and fanLimit for the fan on ring four, a hover and focus tip, and the zoom-fixed text of a bubble. An app never draws its own map with React Flow; a status never rests on colour alone."
-    owner: "@starci/grammar src/core/branch/FlowGraph"
+    ruling: "BubbleMap is the value-sized map, split from FlowGraph by the owner: bubble nodes (form, mark, caption, diameter from bubbleDiameter), the info tone, fill and ring for status, isDimmed for a filter, expandedIds and fanLimit for the fan on ring four, a hover and focus tip, and the zoom-fixed text of a bubble. An app never draws its own map with React Flow; a status never rests on colour alone."
+    owner: "@starci/grammar src/core/branch/BubbleMap; contexts/ui/components/diagram.md"
   - id: agent-keyed-schedules
     date: '2026-10-31'
     status: live

@@ -17,7 +17,7 @@ Choice `pane-grid.choose.frame`: what frames a multi-pane screen.
 | --- | --- | --- | --- |
 | grid | several regions share one bounded height or width, touching, divided by lines (list, main, details) | `PaneGrid` with one `Pane` per area | lint `starci-grammar/pane-grid-children`, `starci-fe/no-hand-built-panes` |
 | rail | one persistent supporting column beside a page | `Grid kind="main-rail"` | judgement |
-| cards | separate subjects with their own faces | `SurfaceCard`s in a `Page`, never inside a `PaneGrid` | judgement |
+| cards | separate subjects with their own faces | `SurfaceCard`s in a `Page`, or on a canvas pane (no `surface`) where a bounded list or a figures row stands apart from its neighbours; never in a `Pane surface`, which is itself the face, and never wrapping the grid | lint `starci-grammar/no-raised-surface-in-surface` (R340) |
 
 Never wrap the panes in a `SurfaceCard`: the panes are the faces, the dividers are the only edges.
 

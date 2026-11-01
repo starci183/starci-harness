@@ -143,7 +143,7 @@ prove it. An agent never re-derives what lint enforces and never invents an API 
 | Folder / file | Holds | Read by |
 |---|---|---|
 | [project/](project/README.md) | the map of one StarCi project: app root and sides, Work life cycle, [anatomy](project/anatomy.md) generated from slots, where lint applies, `.starcistacks`, lite and full differences | Kernel (through [project/index.md](project/index.md)), every op through its op file; `starci contexts anatomy` (its dry run, exit 1 on drift) keeps the anatomy in step |
-| [ui/](ui/README.md) | universal interface decisions: composition, presentation, the size scale, one page per component role, proof | authoring agent (spec, draw, implement), auditor; [ui/proof/thresholds.yaml](ui/proof/thresholds.yaml) by the proof gate |
+| [ui/](ui/README.md) | universal interface decisions: the situations table, composition, presentation, the size scale, one page per component role, proof | authoring agent (spec, draw, implement), auditor; [ui/proof/thresholds.yaml](ui/proof/thresholds.yaml) by the proof gate |
 | [grammars/](grammars/README.md) | the grammar contract and why each grammar looks as it does; [contract.yaml](grammars/contract.yaml) as data | authoring agent, grammar author; the conformance gate reads `contract.yaml` |
 | [vendor/](vendor/README.md) | what HeroUI ships and what a grammar must keep; [parity.yaml](vendor/parity.yaml), [wrappers.yaml](vendor/wrappers.yaml) | grammar author; the parity gate reads both |
 | [code/](code/README.md) | code patterns per side: [fe](code/fe/README.md), [be](code/be/README.md) | authoring agent before coding a slot; a generator reads the front matter (`slots`, `files`) |
@@ -160,7 +160,7 @@ reasoning for an agent.
 
 | Task | Order |
 |---|---|
-| FE screen on a grammar | [ui/README](ui/README.md) → [ui/composition](ui/composition.md) and the [components](ui/components/README.md) it uses → [ui/scale](ui/scale.md) → [grammars/contract](grammars/contract.md) and the app's grammar file → [code/fe/README](code/fe/README.md) (the app's limits, the status recipe) → [ui.md](code/fe/ui.md), [function.md](code/fe/function.md), the topics of the slots touched → lint |
+| FE screen on a grammar | [ui/README](ui/README.md) → [ui/situations](ui/situations.md) → [ui/composition](ui/composition.md) and the [components](ui/components/README.md) it uses → [ui/scale](ui/scale.md) → [grammars/contract](grammars/contract.md) and the app's grammar file → [code/fe/README](code/fe/README.md) (the app's limits, the status recipe) → [ui.md](code/fe/ui.md), [function.md](code/fe/function.md), the topics of the slots touched → lint |
 | Code, back end or front end | [code/README "Read for a coding task"](code/README.md#read-for-a-coding-task) (each coding op's `context.base` follows it); a screen reads the row above first |
 | New dependency | [stack/fe.yaml](stack/fe.yaml) (or the be topic that owns the concern) → [stack/pins.yaml](stack/pins.yaml) |
 | New pattern or rule | this file's house rules → the topic that owns the concept (extend it, never add a sibling) → [hfs/rules.yaml](hfs/rules.yaml) if a machine can decide it → a ruling in [decisions/rulings.yaml](decisions/rulings.yaml) when the owner decided it |

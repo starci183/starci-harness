@@ -1,44 +1,43 @@
 /*
  * The catalog of canonical UI rule ids, by family. It changes in the same commit as the rule families it counts.
  * References, scale rows, cases and closed addresses contribute no additional rules.
- * 33 families, 178 rules.
+ * 32 families, 170 rules.
  */
 
 /** The number of declared rule ids in each family, never expanded into addresses. */
 export const RULE_FAMILY_COUNTS = Object.freeze({
-    "A11Y": 5, // ui/proof/accessibility.yaml
-    "ACCENT": 6, // ui/composition/accent.yaml
-    "ACTION": 3, // ui/composition/action.yaml
-    "ANATOMY": 5, // ui/proof/anatomy-source.yaml
-    "BOUNDARY": 6, // ui/presentation/boundary.yaml
-    "BRAND": 3, // ui/proof/brand.yaml
-    "COLLECTION": 3, // ui/composition/collection.yaml
-    "COLOR": 2, // ui/proof/contrast.yaml
-    "CONTRAST": 1, // ui/proof/contrast.yaml
-    "COVERAGE": 1, // ui/composition/coverage.yaml
-    "CTA": 5, // ui/composition/cta.yaml
-    "DISCIPLINE": 3, // ui/composition/taste.yaml
-    "FE-APP-SHELL": 7, // ui/composition/app-shell.yaml
-    "FEEDBACK": 3, // ui/composition/feedback.yaml
-    "FLOW": 5, // ui/presentation/text-flow.yaml
-    "FOCUS": 6, // ui/proof/focus.yaml
-    "FONT": 6, // ui/presentation/font.yaml
-    "GAP": 7, // ui/presentation/gap.yaml
-    "HIERARCHY": 6, // ui/composition/hierarchy.yaml
-    "LAYOUT": 4, // ui/composition/layout.yaml
-    "MARGIN": 8, // ui/presentation/margin.yaml
-    "MEASURE": 7, // ui/presentation/measure.yaml
-    "MOTION": 5, // ui/proof/motion.yaml
-    "OVERFLOW": 5, // ui/presentation/overflow.yaml
-    "PADDING": 10, // ui/presentation/padding.yaml
-    "RADIUS": 6, // ui/presentation/radius.yaml
-    "RESPONSIVE": 4, // ui/composition/responsive.yaml
-    "STATE": 7, // ui/composition/state.yaml
-    "SURFACE": 6, // ui/presentation/surface.yaml
-    "TASTE": 13, // ui/proof/taste.yaml
-    "TONE": 3, // ui/presentation/tone.yaml
-    "TRUTH": 5, // ui/proof/render-truth.yaml
-    "UX": 12, // ui/proof/ux.yaml
+    "A11Y": 4,
+    "ACCENT": 6,
+    "ACTION": 3,
+    "ANATOMY": 5,
+    "BOUNDARY": 6,
+    "BRAND": 3,
+    "COLLECTION": 3,
+    "COLOR": 2,
+    "COVERAGE": 1,
+    "CTA": 5,
+    "DISCIPLINE": 3,
+    "FE-APP-SHELL": 6,
+    "FEEDBACK": 3,
+    "FLOW": 5,
+    "FOCUS": 5,
+    "FONT": 6,
+    "GAP": 7,
+    "HIERARCHY": 6,
+    "LAYOUT": 4,
+    "MARGIN": 8,
+    "MEASURE": 7,
+    "MOTION": 4,
+    "OVERFLOW": 5,
+    "PADDING": 10,
+    "RADIUS": 6,
+    "RESPONSIVE": 4,
+    "STATE": 7,
+    "SURFACE": 6,
+    "TASTE": 12,
+    "TONE": 3,
+    "TRUTH": 4,
+    "UX": 11,
 } as const)
 
 /** Every declared canonical rule id, preserving each topic's authored order. */
@@ -48,7 +47,6 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "A11Y-2",
     "A11Y-3",
     "A11Y-4",
-    "A11Y-5",
     // ACCENT
     "ACCENT-1",
     "ACCENT-2",
@@ -84,8 +82,6 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     // COLOR
     "COLOR-3",
     "COLOR-5",
-    // CONTRAST
-    "CONTRAST-1",
     // COVERAGE
     "COVERAGE-1",
     // CTA
@@ -105,7 +101,6 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "FE-APP-SHELL-4",
     "FE-APP-SHELL-5",
     "FE-APP-SHELL-6",
-    "FE-APP-SHELL-7",
     // FEEDBACK
     "FEEDBACK-1",
     "FEEDBACK-2",
@@ -122,7 +117,6 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "FOCUS-3",
     "FOCUS-4",
     "FOCUS-5",
-    "FOCUS-6",
     // FONT
     "FONT-1",
     "FONT-2",
@@ -172,7 +166,6 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "MOTION-2",
     "MOTION-3",
     "MOTION-4",
-    "MOTION-5",
     // OVERFLOW
     "OVERFLOW-1",
     "OVERFLOW-2",
@@ -230,7 +223,6 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "TASTE-10",
     "TASTE-11",
     "TASTE-12",
-    "TASTE-13",
     // TONE
     "TONE-1",
     "TONE-2",
@@ -240,7 +232,6 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "TRUTH-2",
     "TRUTH-3",
     "TRUTH-4",
-    "TRUTH-5",
     // UX
     "UX-1",
     "UX-2",
@@ -253,5 +244,4 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "UX-9",
     "UX-10",
     "UX-11",
-    "UX-12",
 ])
