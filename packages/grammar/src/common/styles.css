@@ -4078,7 +4078,7 @@
     .starci-core-message-bubble[data-grammar-bubble-footer="true"] .starci-core-message-bubble-stack { width: min(40rem, 85%); }
     .starci-core-message-bubble-footer { align-self: stretch; width: 100%; min-width: 0; max-width: 100%; }
 
-    .starci-core-message-bubble-receipt {
+    .starci-core-message-status {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -4090,24 +4090,34 @@
         line-height: var(--grammar-leading-xs);
     }
 
-    .starci-core-message-bubble-receipt-label {
+    .starci-core-message-status-label {
         display: inline-flex;
         align-items: center;
         gap: var(--grammar-inline-gap);
     }
 
-    .starci-core-message-bubble-receipt[data-grammar-message-receipt="seen"] .starci-core-message-bubble-receipt-label { color: var(--accent); }
-    .starci-core-message-bubble-more-readers { color: var(--muted); }
+    .starci-core-message-status[data-grammar-message-status="receipt"][data-grammar-message-status-state="seen"] .starci-core-message-status-label { color: var(--accent); }
+    .starci-core-message-status-more-readers { color: var(--muted); }
 
-    .starci-core-message-bubble-delivery {
-        color: var(--muted);
-        font-size: var(--grammar-text-xs);
+    .starci-core-message-status[data-grammar-message-status="transport"] {
+        display: block;
         font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-xs);
         overflow-wrap: anywhere;
     }
 
-    .starci-core-message-bubble-delivery:is([data-grammar-message-delivery="failed"], [data-grammar-message-delivery="unknown"]) { color: var(--accent); }
+    .starci-core-message-status[data-grammar-message-status="transport"]:is([data-grammar-message-status-state="failed"], [data-grammar-message-status-state="unknown"]) { color: var(--accent); }
+
+    .starci-core-calendar-day-label {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    .starci-core-calendar-day-label[data-grammar-calendar-day-today="true"] {
+        color: var(--accent);
+        font-weight: var(--grammar-weight-semibold);
+    }
 
     /*
      * Message actions (copy, reply, open): a small floating toolbar beside the bubble, on a bordered surface, centred on the
