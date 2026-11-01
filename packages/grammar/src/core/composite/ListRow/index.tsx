@@ -43,8 +43,8 @@ const RowBadge = ({ badge }: { readonly badge: BadgeData }) => (
 
 const RowAction = ({ action }: { readonly action: ItemAction }) => (
     action.href === undefined
-        ? <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} onPress={action.press}>{action.label}</Button>
-        : <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} href={action.href}>{action.label}</Button>
+        ? <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} isPending={action.isPending === true} onPress={action.press}>{action.label}</Button>
+        : <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} isPending={action.isPending === true} href={action.href}>{action.label}</Button>
 )
 
 /**

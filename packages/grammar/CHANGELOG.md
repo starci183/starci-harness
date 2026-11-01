@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-- Added: `Link` can carry structured `media` from `ImageProps` with a required accessible destination `label`, mutually exclusive with text children. Native navigation, external-tab safety, focus, disabled state and Image loading/fallback stay with their existing owners. Transparent image plates keep cut-out logo shapes unclipped.
+- Added: `Link` can carry structured `media` from `ImageProps` with a required accessible destination `label`, mutually exclusive with text children. Native navigation, external-tab safety, focus, disabled state and Image loading/fallback stay with their existing owners. The new media destination keeps transparent logo shapes unclipped.
 - Added: `Grid kind="week"` for seven dated event regions and `kind="week-summary"` for seven daily metric summaries, with required region labels and the existing agenda/summary responsive tracks owned by the grid's container. A wrong day count is refused in development; reading and action order stay unchanged.
 - Added: a `ListRowData` string title can have `href` and optional `Link.onFollow`; the title is a native link beside separate row commands, and a row without `href` takes no follow handler. Loading removes the link. Stories cover media destinations, week layouts and title navigation.
+- Added: `ColorSwatch` previews actual vendor-typed color data with a required accessible label and inert loading geometry; no appearance or arbitrary-content props. `Figure` data can carry a native destination and follow callback for its whole cell while values remain neutral; loading, disabled figures and pending cards open nothing. `ItemAction.isPending` preserves the Button's busy spinner and duplicate-press guard in row and tile actions. Stories cover raw HEX values, whole-figure navigation and busy item actions.
 
 ## 0.21.0 - 2026-11-02
 

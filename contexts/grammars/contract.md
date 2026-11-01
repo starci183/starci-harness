@@ -230,7 +230,7 @@ removes the title link.
 `Link` is a native destination carried by text or one image. Its text form takes string `children`; its media form
 takes `media` as the existing `ImageProps` data and a required accessible destination `label`, with no children.
 The compiler rejects mixing the forms. Image owns aspect, fit, dimensions, provenance, load state and fallback;
-`plate="none"` preserves a cut-out mark's transparent, unclipped shape. Navigation, disabled state, external-tab safety,
+In a media destination, `plate="none"` preserves a cut-out mark's transparent, unclipped shape. Navigation, disabled state, external-tab safety,
 focus and `onFollow` are the same for both forms. Media keeps its supplied destination name while the image loads or fails.
 
 ### Grid
@@ -242,6 +242,23 @@ container queries. A week is an agenda in a narrow container and seven tracks at
 A week summary wraps through one, four and seven tracks, at the section gap. The exact thresholds belong to
 `packages/grammar/src/common/styles.css`; an app takes no breakpoint, gap or arbitrary column count. Existing day
 content, empty states and actions remain inside their day regions. `Calendar` remains the date-selection control.
+
+### ColorSwatch
+
+`ColorSwatch` previews an actual color value as content, with a required accessible `label`; the vendor owns the typed
+`color` data, its paint and transparency checkerboard. The fixed small square preview takes no children or appearance
+props. Visible name and value copy accompany it through existing text and layout components. Loading preserves its
+geometry under the inert skeleton. A color value is not a semantic status tone and the swatch selects or drags nothing.
+
+### Figure destinations
+
+Each `Figure` may carry a native `href`, optional `Link.onFollow` and `isDisabled`. Its whole cell is one named keyboard
+target through the root router; values retain their default-tone figure treatment (DISCIPLINE-2). Loading, disabled
+figures and pending cards open nothing. A figure without `href` carries no follow handler or disabled destination state.
+### Item actions
+
+`ItemAction.isPending` forwards the Button's action-owned spinner and duplicate-press guard in both row and tile actions;
+it differs from the unresolved-content `isLoading` geometry.
 
 ### Alert
 

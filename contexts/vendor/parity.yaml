@@ -175,6 +175,9 @@ components:
   - id: link
     keep: [anchor semantics]
     customMayChange: [colour, underline]
+  - id: color-swatch
+    keep: [actual color value, transparency checkerboard, accessible color name]
+    customMayChange: []
   - id: progress-bar
     keep: [value semantics and label]
     customMayChange: [track and fill paint]

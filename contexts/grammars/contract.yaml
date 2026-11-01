@@ -161,6 +161,17 @@ roles:
     grammarMayChange: [link colour and underline through the existing link treatment]
     dna: []
 
+  - id: color-swatch
+    ui: ui/components/color-swatch.md
+    renderers: [ColorSwatch]
+    vendorParity: [color-swatch]
+    slots: ["color: the vendor's typed actual color data", "label: required accessible color name"]
+    variants: {}
+    sizes: one small square vendor preview
+    states: [ready, loading with the same inert geometry]
+    grammarMayChange: []
+    dna: []
+
   - id: button-group
     ui: ui/components/action-group.md
     renderers: [ButtonGroup]

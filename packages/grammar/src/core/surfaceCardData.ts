@@ -7,6 +7,7 @@ import type { BadgeTone } from "./leaf/Badge/index.js"
 import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
+import type { ButtonProps } from "./leaf/Button/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
 export type BadgeData = {
@@ -32,7 +33,7 @@ export type ImageData = {
 }
 
 /** One visible command of an item or a tile: a destination or a same-document command, never both. */
-export type ItemAction = {
+export type ItemAction = Pick<ButtonProps, "isPending"> & {
     readonly label: string
     readonly intent?: Exclude<ButtonIntent, "destructive">
     readonly isDisabled?: boolean
@@ -77,7 +78,13 @@ export type ListRowData = {
     readonly detail?: ReactNode
 } & ListRowDestination
 
-/** One key figure of a `figures` card. */
+type FigureDestination = Pick<LinkProps, "href" | "onFollow" | "isDisabled"> | {
+    readonly href?: never
+    readonly onFollow?: never
+    readonly isDisabled?: never
+}
+
+/** One key figure of a `figures` card; its optional destination belongs to the whole figure cell. */
 export type Figure = {
     readonly id: string
     /** What the figure measures. */
@@ -88,7 +95,7 @@ export type Figure = {
     /** Its source or its time, under the value. */
     readonly meta?: string
     readonly icon?: IconSource
-}
+} & FigureDestination
 
 /** One disclosure of an `accordion` card. */
 export type AccordionRowData = {

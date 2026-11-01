@@ -520,6 +520,28 @@ export const LinkMedia: Story = {
   ),
 };
 
+/** Actual color values are content, with their own names and visible values rather than semantic status tones. */
+export const ColorSwatch: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Brand palette values">
+        <G.Cluster gap="inline">
+          {[{ name: 'Brand blue', color: '#0485F7' }, { name: 'Ink', color: '#111111' }, { name: 'Paper', color: '#FFFFFF' }, { name: 'Translucent accent', color: '#0485F780' }].map((item) => (
+            <G.Cluster key={item.name} gap="identity">
+              <G.ColorSwatch color={item.color} label={item.name} />
+              <G.Text size="sm">{`${item.name} · ${item.color}`}</G.Text>
+            </G.Cluster>
+          ))}
+        </G.Cluster>
+      </State>
+      <State label="Loading keeps the swatch footprint">
+        <G.ColorSwatch color="#0485F7" label="Brand blue" isLoading />
+        <G.ColorSwatch color="#0485F7" label="Brand blue" />
+      </State>
+    </Matrix>
+  ),
+};
+
 export const Avatar: Story = {
   render: () => (
     <Matrix>

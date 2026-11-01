@@ -40,6 +40,7 @@ wrappers:
       overrides: [
         { kind: style, target: "Select.Trigger:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
   - { file: core/frame/SurfaceCard/AccordionRows.tsx, wraps: [Accordion] }
+  - { file: core/frame/SurfaceCard/FigureCells.tsx, wraps: [Link] }
   - { file: core/frame/SurfaceCard/index.tsx, wraps: [Card],
       overrides: [
         { kind: style, target: "Card.Root:shadow", ruling: surfacecard-always-painted, reason: "a card is raised by its shadow on the page; a surface never stands inside another, so there is no nested edge" } ] }
@@ -92,6 +93,7 @@ wrappers:
         { kind: style, target: "Button.Root:padding", ruling: spacing-roles, reason: "inline padding follows the size step (sm 8, md 12, lg 24), one step less on a glyph side" },
         { kind: style, target: "Link.Root:padding", ruling: spacing-roles, reason: "a link drawn as a button takes the same inline padding as the button of its step" } ] }
   - { file: core/leaf/Checkbox/index.tsx, wraps: [Checkbox] }
+  - { file: core/leaf/ColorSwatch/index.tsx, wraps: [ColorSwatch] }
   - { file: core/leaf/DateField/index.tsx, wraps: [DateField] }
   - { file: core/leaf/Divider/index.tsx, wraps: [Separator] }
   - { file: core/leaf/Field/index.tsx, wraps: [Description, FieldError, Label] }

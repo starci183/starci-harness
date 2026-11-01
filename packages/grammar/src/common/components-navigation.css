@@ -31,6 +31,11 @@
         text-decoration-line: none;
     }
 
+    .starci-core-link[data-grammar-link-content="media"] > .starci-core-image[data-grammar-image-plate="none"] {
+        border-radius: 0;
+        overflow: visible;
+    }
+
     .starci-core-link:hover,
     .starci-core-link[data-hovered="true"] {
         text-decoration-thickness: 2px;
@@ -1045,6 +1050,21 @@
         align-items: center;
     }
 
+    .starci-core-description-pair[data-grammar-figure-destination="true"] { position: relative; }
+
+    .starci-core-figure-link {
+        position: absolute;
+        inset: 0;
+        display: block;
+        border-radius: inherit;
+        text-decoration: none;
+    }
+
+    .starci-core-figure-link:is(:focus-visible, [data-focus-visible="true"]) {
+        outline: 2px solid var(--focus);
+        outline-offset: -2px;
+    }
+
     .starci-core-description-unit {
         color: var(--muted);
         font-size: var(--grammar-text-md);
@@ -1258,11 +1278,7 @@
     }
 
     /* Cut-out art (alpha channel) sits directly on its surface: no loading plate behind it. */
-    .starci-core-image[data-grammar-image-plate="none"] {
-        background: transparent;
-        border-radius: 0;
-        overflow: visible;
-    }
+    .starci-core-image[data-grammar-image-plate="none"] { background: transparent; }
 
     .starci-core-image[data-grammar-image-aspect="square"] { aspect-ratio: 1 / 1; }
     .starci-core-image[data-grammar-image-aspect="landscape"] { aspect-ratio: 4 / 3; }

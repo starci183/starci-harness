@@ -177,6 +177,15 @@ shape unclipped. Both forms keep native anchor, root-router, external-tab, disab
 for example to close the popover that owns the list. A row without `href` takes no `onFollow`. Commands and menus stay
 siblings of that title link; the row itself is not an interactive wrapper. Loading rows render no title link.
 
+`Figure` data may carry `href`, optional `onFollow` and `isDisabled`; the whole figure cell becomes one native destination
+through the root router, with its default-tone number treatment preserved. Loading and disabled figures open nothing.
+`ItemAction.isPending` uses the Button's action-owned busy spinner and blocks duplicate presses; `isLoading` continues
+to mean unresolved-content skeleton geometry.
+
+`ColorSwatch` previews actual color data using the vendor's typed `color`, a required accessible `label` and optional
+`isLoading`. Existing `Cluster` and `Text` place the swatch beside its visible name and value. It takes no arbitrary
+content, class, style, size or status tone; the vendor owns the color preview and transparency checkerboard.
+
 ### BubbleMap
 
 `BubbleMap` is the value-sized map: the root in the centre, its children in sectors on a second ring, their children staggered on a third and

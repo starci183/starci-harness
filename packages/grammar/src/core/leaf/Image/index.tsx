@@ -27,7 +27,7 @@ export type ImageProps = NoChildren & AssetSlotProps & {
     readonly onLoadStateChange?: (state: ImageLoadState) => void
     /**
      * `default` paints the neutral loading plate behind the picture; `none` keeps the box transparent for cut-out art
-     * (a mascot or logo with an alpha channel) that must sit directly on its surface without rounded clipping.
+     * (a mascot or logo with an alpha channel) that must sit directly on its surface.
      */
     readonly plate?: "default" | "none"
 }

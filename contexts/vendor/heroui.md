@@ -36,6 +36,12 @@ corner is `rounded-3xl`, three times `--radius`, so with a mid-size radius every
 House: apps declare `intent` and the grammar resolves the variant; sizes are held at every breakpoint; `href`
 renders the vendor Link with button paint ([contract](../grammars/contract.md#roles)).
 
+## ColorSwatch
+
+ColorSwatch previews an actual color value, including transparency, and gives it a color name for assistive technology.
+Its `color` is reported content rather than a semantic theme tone. Grammar keeps that vendor preview and uses one
+small square role; visible name and value copy stay with the app's content.
+
 ## ButtonGroup
 
 ButtonGroup is Root plus Separator with `orientation` and `fullWidth`, and no size or variant: a group inherits
