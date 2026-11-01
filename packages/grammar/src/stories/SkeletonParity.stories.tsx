@@ -272,18 +272,22 @@ export const IdentityLoading: Story = onePhase("grammar-identity", "loading", id
 
 const rowList = (row: ReactNode) => <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>{row}</ul>
 
-/** A PageHeader with every slot; the tabs variant puts the page tabs on its separator. */
+/** A Page header with every slot; the tabs variant puts the page tabs on its separator. */
 const pageHeader = (withTabs: boolean, isSkeleton: boolean) => (
-    <G.PageHeader
-        breadcrumbs={{ label: "Breadcrumb", items: [{ id: "connections", label: "Connections", href: "#connections" }, { id: "main", label: "Main account" }] }}
-        title="Main account"
-        mark={<G.Avatar name="Sepay" shape="rounded" isDecorative />}
-        status={<><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode</G.Badge></>}
-        meta="Bank transfer · ****6789"
-        actions={<G.Button intent="neutral" onPress={noop}>Disconnect</G.Button>}
-        {...(withTabs ? { tabs: { label: "Connection", selectedKey: "test", items: [{ id: "overview", label: "Overview" }, { id: "test", label: "Test" }] } } : {})}
+    <G.Page
         isSkeleton={isSkeleton}
-    />
+        header={{
+            breadcrumbs: { label: "Breadcrumb", items: [{ id: "connections", label: "Connections", href: "#connections" }, { id: "main", label: "Main account" }] },
+            title: "Main account",
+            mark: <G.Avatar name="Sepay" shape="rounded" isDecorative />,
+            status: <><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode</G.Badge></>,
+            meta: "Bank transfer · ****6789",
+            actions: <G.Button intent="neutral" onPress={noop}>Disconnect</G.Button>,
+            ...(withTabs ? { tabs: { label: "Connection", selectedKey: "test", items: [{ id: "overview", label: "Overview" }, { id: "test", label: "Test" }] } } : {}),
+        }}
+    >
+        <G.Text>Body</G.Text>
+    </G.Page>
 )
 
 const rows = (): ReadonlyArray<Pair> => [
@@ -343,7 +347,7 @@ const rows = (): ReadonlyArray<Pair> => [
     },
 ]
 
-/** ListRow, SectionHeader, PageHeader, DescriptionList and MessageBubble. */
+/** ListRow, SectionHeader, the Page header, DescriptionList and MessageBubble. */
 export const Rows: Story = sideBySide(rows)
 export const RowsReady: Story = onePhase("grammar-rows", "ready", rows)
 export const RowsLoading: Story = onePhase("grammar-rows", "loading", rows)

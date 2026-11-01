@@ -15,7 +15,7 @@ export type NavLandmarkProps = Omit<ComponentPropsWithoutRef<"nav">, "aria-label
 
 /**
  * A named navigation landmark: a real `<nav>` that holds a row of links and draws no surface of its own.
- * Use `Subnav`, `Breadcrumbs` or `NavigationFeatureNav` when the navigation has its own anatomy.
+ * Use `TopBar` (its `navigation` and `subnavigation`) or `Page` (its `header.breadcrumbs`) when the navigation has its own anatomy.
  */
 export const NavLandmark = (props: NavLandmarkProps) => {
     const { label, layout, className, children, ...rest } = props

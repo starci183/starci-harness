@@ -1,13 +1,10 @@
-import { PageContainer } from "@starci/grammar/core"
+import { Page } from "@starci/grammar/core"
 import { SettingsBlock } from "../../../components/blocks/SettingsBlock"
-import { SettingsHeader } from "../../../components/blocks/SettingsBlock/header"
+import { SETTINGS } from "../../../modules/i18n"
 
-/** Route `/settings` · Cài đặt: the page header flush at the top, then the settings region in the page body. */
+/** Route `/settings` · Cài đặt: the Page headed by the title and what it does, then the settings region in its body. */
 export const SettingsPage = () => (
-    <>
-        <SettingsHeader />
-        <PageContainer measure="full" className="app-page-body">
-            <SettingsBlock />
-        </PageContainer>
-    </>
+    <Page measure="full" header={{ title: SETTINGS.title, description: SETTINGS.description }}>
+        <SettingsBlock />
+    </Page>
 )

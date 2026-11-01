@@ -368,19 +368,49 @@
     /* ---------- TopBar ---------- */
     .starci-core-top-bar {
         box-sizing: border-box;
+        min-width: 0;
+        border-block-end: 1px solid var(--separator);
+        background: var(--surface);
+        color: var(--foreground);
+    }
+
+    .starci-core-top-bar-main {
+        box-sizing: border-box;
         display: flex;
         min-width: 0;
-        block-size: 4rem;
-        min-block-size: 4rem;
+        block-size: calc(4rem - 1px);
+        min-block-size: calc(4rem - 1px);
         align-items: center;
         gap: var(--grammar-row-gap);
         padding-block: 0.5rem;
         padding-inline: var(--grammar-page-inset);
         padding-inline-start: max(var(--grammar-page-inset), env(safe-area-inset-left));
         padding-inline-end: max(var(--grammar-page-inset), env(safe-area-inset-right));
-        border-block-end: 1px solid var(--separator);
-        background: var(--surface);
-        color: var(--foreground);
+    }
+
+    /* The second and last layer under the bar's row (page tabs of an app section): the bar owns the one outer separator. */
+    .starci-core-top-bar-subnavigation {
+        min-width: 0;
+        padding-inline: var(--grammar-page-inset);
+    }
+
+    .starci-core-top-bar-subnavigation .tabs__list-container {
+        border-bottom-width: 0 !important;
+    }
+
+    .starci-core-top-bar-subnavigation .starci-core-tabs .tabs__indicator {
+        bottom: 0 !important;
+        inset-block-end: 0 !important;
+    }
+
+    /* A sticky bar publishes the band offset the sticky parts under it (a rail) pin to. */
+    .grammar-common-root:has(.starci-core-top-bar[data-grammar-top-bar-position="sticky"]) {
+        --starci-core-band-height: 4rem;
+        --starci-core-band-offset: var(--starci-core-band-height);
+    }
+
+    .grammar-common-root:has(.starci-core-top-bar[data-grammar-top-bar-position="sticky"][data-grammar-top-bar-subnavigation="true"]) {
+        --starci-core-band-height: 6rem;
     }
 
     .starci-core-top-bar[data-grammar-top-bar-position="sticky"] {
@@ -429,159 +459,6 @@
     @media (max-width: 47.99rem) {
         .starci-core-top-bar[data-grammar-top-bar-menu="compact"] .starci-core-top-bar-navigation,
         .starci-core-top-bar[data-grammar-top-bar-menu="always"] .starci-core-top-bar-navigation {
-            display: none;
-        }
-    }
-
-    /* ---------- BottomNav ---------- */
-    .starci-core-bottom-nav {
-        min-width: 0;
-        padding-block-end: env(safe-area-inset-bottom, 0px);
-        padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
-        border-block-start: 1px solid var(--separator);
-        background: var(--surface);
-        color: var(--foreground);
-    }
-
-    .starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"] {
-        position: fixed;
-        z-index: var(--starci-core-bottom-nav-z);
-        inset-inline: 0;
-        bottom: 0;
-    }
-
-    /*
-     * THE FIXED BAR RESERVES ITS OWN SPACE.
-     *
-     * A fixed BottomNav publishes `--starci-core-bottom-nav-offset` on its GrammarRoot: the bar's
-     * block size (`--starci-core-bottom-nav-block-size`, which a family redefines when it redraws the
-     * bar) plus the device safe area. It is published only while the bar is actually drawn - always
-     * for `visibility="always"`, below 48rem for `compact` - and is 0 otherwise.
-     *
-     * Three readers consume it, so no content and no toast ever sits under the bar:
-     *   - the OUTERMOST page container (WorkspaceShell, PrimaryRailLayout or PageContainer) pads its
-     *     block end by the offset, so the last content scrolls clear of the bar;
-     *   - a page Footer takes that padding instead when the page has one (it is the last block);
-     *   - a bottom-placed Toaster lifts above the bar.
-     */
-    .grammar-common-root {
-        --starci-core-bottom-nav-block-size: calc(4rem + 1px);
-    }
-
-    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]) {
-        --starci-core-bottom-nav-offset: 0px;
-    }
-
-    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"][data-grammar-bottom-nav-visibility="always"]) {
-        --starci-core-bottom-nav-offset: calc(var(--starci-core-bottom-nav-block-size) + env(safe-area-inset-bottom, 0px));
-    }
-
-    @media (max-width: 47.99rem) {
-        .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"][data-grammar-bottom-nav-visibility="compact"]) {
-            --starci-core-bottom-nav-offset: calc(var(--starci-core-bottom-nav-block-size) + env(safe-area-inset-bottom, 0px));
-        }
-    }
-
-    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]):not(:has(.starci-core-footer)) :is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page:not([data-grammar-page-chrome="bleed"]), .starci-core-page-container):not(:is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page, .starci-core-page-header, .starci-core-page-container, .starci-core-navigation-feature-nav, .starci-core-top-bar, .starci-core-bottom-nav) *) {
-        padding-block-end: var(--starci-core-bottom-nav-offset);
-    }
-
-    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]) .starci-core-footer {
-        padding-block-end: calc(var(--grammar-inset) + max(var(--starci-core-bottom-nav-offset), env(safe-area-inset-bottom, 0px)));
-    }
-
-    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]) .starci-core-toaster:is([data-placement="bottom-start"], [data-placement="bottom"], [data-placement="bottom-end"]) {
-        bottom: max(var(--grammar-page-inset), env(safe-area-inset-bottom, 0px), calc(var(--starci-core-bottom-nav-offset) + var(--grammar-page-inset)));
-    }
-
-    .starci-core-bottom-nav-list {
-        display: grid;
-        grid-template-columns: repeat(var(--starci-core-bottom-nav-count), minmax(0, 1fr));
-        margin: 0;
-        padding: 0.25rem;
-        list-style: none;
-    }
-
-    .starci-core-bottom-nav-slot {
-        display: flex;
-        min-width: 0;
-    }
-
-    .starci-core-bottom-nav-item {
-        display: flex;
-        min-width: 0;
-        min-block-size: 3.5rem;
-        flex: 1 1 auto;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: var(--grammar-identity-gap);
-        padding: 0.25rem;
-        border: 0;
-        border-radius: var(--radius);
-        background: transparent;
-        color: var(--muted);
-        font: inherit;
-        font-size: var(--grammar-text-xs);
-        font-weight: var(--grammar-weight-medium);
-        text-decoration: none;
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    .starci-core-bottom-nav-item:disabled {
-        cursor: default;
-        opacity: var(--disabled-opacity);
-    }
-
-    .starci-core-bottom-nav-item:focus-visible {
-        outline: 2px solid var(--focus);
-        outline-offset: -2px;
-    }
-
-    .starci-core-bottom-nav-icon {
-        position: relative;
-        display: inline-flex;
-        min-inline-size: var(--starci-core-control-min-size);
-        min-block-size: 1.75rem;
-        align-items: center;
-        justify-content: center;
-        border-radius: var(--grammar-radius-pill);
-    }
-
-    .starci-core-bottom-nav-item[data-grammar-current="true"] .starci-core-bottom-nav-icon {
-        background: var(--accent-soft);
-    }
-
-    .starci-core-bottom-nav-icon > svg {
-        width: 1.5rem;
-        height: 1.5rem;
-    }
-
-    .starci-core-bottom-nav-badge {
-        position: absolute;
-        top: -0.125rem;
-        inset-inline-end: 0.25rem;
-        min-inline-size: 1.125rem;
-        padding-inline: 0.25rem;
-        border-radius: var(--grammar-radius-pill);
-        background: var(--danger);
-        color: var(--danger-foreground);
-        font-size: var(--grammar-text-2xs);
-        font-weight: var(--grammar-weight-bold);
-        line-height: var(--grammar-leading-sm);
-        text-align: center;
-    }
-
-    .starci-core-bottom-nav-label {
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    @media (min-width: 48rem) {
-        .starci-core-bottom-nav[data-grammar-bottom-nav-visibility="compact"] {
             display: none;
         }
     }
@@ -1702,7 +1579,6 @@
     @media (forced-colors: active) {
         .starci-core-link[data-grammar-current="true"],
         .starci-core-pagination-page[data-grammar-current="true"],
-        .starci-core-bottom-nav-item[data-grammar-current="true"],
         .starci-core-step[data-grammar-current="true"] .starci-core-step-marker,
         .starci-core-data-table-row[data-grammar-selected="true"],
         .starci-core-list-box-item[data-selected="true"],

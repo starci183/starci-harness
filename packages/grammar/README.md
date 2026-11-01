@@ -85,14 +85,14 @@ export default function WorkspaceFrame({ children }: { children: ReactNode }) {
 ### Common (neutral structure only)
 
 ```tsx
-import { Button, GrammarRoot, PageContainer, SurfaceCard } from "@starci/grammar/common"
+import { Button, GrammarRoot, Page, SurfaceCard } from "@starci/grammar/common"
 import "@starci/grammar/common/styles.css"
 
 export const App = () => (
   <GrammarRoot>
-    <PageContainer>
+    <Page>
       <SurfaceCard label="Welcome"><Button intent="commit">Start</Button></SurfaceCard>
-    </PageContainer>
+    </Page>
   </GrammarRoot>
 )
 ```
@@ -100,18 +100,19 @@ export const App = () => (
 ### Core
 
 ```tsx
-import { CoreGrammarRoot, PageContainer, PrimaryRailLayout, SurfaceCard } from "@starci/grammar/core"
+import { CoreGrammarRoot, Grid, Page, SurfaceCard } from "@starci/grammar/core"
 import "@starci/grammar/core/styles.css"
 import "@starci/grammar/core/theme.css" // optional: Core's default palette; skip it to use your own
 
 export const ProductSurface = () => (
   <CoreGrammarRoot>
-    <PageContainer>
-      <PrimaryRailLayout
+    <Page>
+      <Grid
+        kind="main-rail"
         primary={<SurfaceCard ariaLabel="Main">…</SurfaceCard>}
         rail={<SurfaceCard ariaLabel="Progress">…</SurfaceCard>}
       />
-    </PageContainer>
+    </Page>
   </CoreGrammarRoot>
 )
 ```
@@ -253,7 +254,7 @@ glyph and draws it as the `Mascot` at `md`, the mark of a first-run empty state.
 ```
 
 **Forms (26).** ButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
-DateRangePicker, Field, Fieldset, FileDropzone, Form, FormGrid, Input, NumberField, OtpInput,
+DateRangePicker, Field, Fieldset, FileDropzone, Form, Input, NumberField, OtpInput,
 PressableField, RadioGroup, Rating, SearchField, SegmentedControl, Select, Slider, Switch,
 Textarea, TimeField. Every Field-contract control takes `label`, `description`, `errorMessage`,
 `isRequired`, `isDisabled`, `isReadOnly` and `isInvalid`, and draws HeroUI's field order: label, control,
@@ -264,7 +265,7 @@ code with `label` or an existing label's `labelledBy`.
 field: `label`, `value`, `description`, `copyLabel`, `copiedLabel`, `copyErrorLabel` (the app's words), `onCopy`,
 `isDisabled`, `isSkeleton`. A long value is truncated in the middle, whole in a Tooltip on hover and focus and whole
 for a screen reader. `masked` with `lastFour` draws bullets and the last four characters; its `onCopy` resolves the
-clear value (a server reveal may be async) and the field writes it to the clipboard without keeping it. `FormGrid`
+clear value (a server reveal may be async) and the field writes it to the clipboard without keeping it. `Grid kind="form"`
 lays fields in rows (`columns` 1 or 2, two once its own width holds them) whose controls stand on one line.
 
 **Overlays (9).** Alert, AlertDialog, Dialog, Drawer, DropdownMenu, Popover, Toast, Toaster,
@@ -334,8 +335,8 @@ an item with a submenu).
 requires, restyles what the vendor decides, or replaces a vendor default, unless an owner-pinned override declares it. `ListBox`
 and `Select` are HeroUI's own list-box items (a `Label`, a `Description`, the item indicator at the end of the row).
 
-**Navigation & Data (16).** Accordion, AvatarGroup, Breadcrumbs, Calendar, DataTable,
-BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, Pagination, Stepper, Subnav, Tabs, TagGroup, Timeline.
+**Navigation & Data (16).** Accordion, AvatarGroup, Calendar, DataTable,
+BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, Pagination, Stepper, Tabs, TagGroup, Timeline.
 
 `DataTable.getCellInteraction(row, columnId)` optionally supplies `onAction`, `onDragOver`,
 `onDragLeave` and `onDrop`. Cells remain semantic
@@ -418,27 +419,28 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 MarkdownTableFrame, MediaFrame, Rail, SectionHeader, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceListCard, VerticalScrollRegion.
 
-**Compositions (15).** BottomNav, Cluster, Footer, Grid, NavigationFeatureNav, Page, PageContainer, PageHeader,
-PaneGrid, PaneSection, PrimaryRailLayout, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
+**Compositions (10).** Cluster, Footer, Grid, Page, PaneGrid, PaneSection, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
 
-`PageHeader` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
+The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
-surface band whose content sits in a `PageContainer` of the content's `measure`, so both share their edges, and it ends
+surface band whose content sits in the page container of the content's `measure`, so both share their edges, and it ends
 in its own full-width separator, with or without tabs; tabs stand on it. `isSkeleton` keeps every slot's box.
 
-`Page` is a route page and the one way an app draws one: `header` takes PageHeader's props as data (no element), the
+`Page` is a route page and the one way an app draws one: `header` takes the head's slots as data (no element), the
 children are the body, and `measure` (`reading`, `product`, `full`) is the one measure of the header content and the
 body. The band runs full width; the body sits in the measure and gutter one region step below it (one region step
 from the top without a header), its sections a region step apart, and it clips past its content box so nothing in it
 reaches across the gutter. `isSkeleton` passes to the header. Page is the single owner of the page inset: the layout
-frames (`WorkspaceShell`, `PrimaryRailLayout`, `PaneGrid`) never wrap a page in a `PageContainer`.
+frames (`WorkspaceShell`, `Grid`, `PaneGrid`) never wrap a page in a measure of their own. `PageHeader`, `PageContainer`, `Breadcrumbs` and `FillViewport` are Page's internals and are not exported.
+
+`Page chrome="bleed"` is an app surface: no gutter, no block padding, no clip, and the body is the viewport height left below the trail or the band (`minHeight` is the floor on a short window), so a card or a split in it fills the region.
 
 `Page chrome="panes"` is the tabbed app page: the header band (with or without `tabs`) or the breadcrumb trail, then
 exactly one `PaneGrid` attached flush to the band's separator, reaching both content edges and the viewport bottom
 (less any Grammar bottom chrome): no gap, no block padding, no card, no radius. Page measures the fill box itself
 (`minHeight`: `sm`, `md` default, `lg`, `none`, the floor on a short window), with the same measuring hook as
-`FillViewport`. The tab line is the only line between tabs and grid.
+`chrome="bleed"`. The tab line is the only line between tabs and grid.
 
 ```tsx
 <Page chrome="panes" header={{ title: "Support agent", tabs }}>
@@ -487,8 +489,9 @@ An app writes no spacing value; it names the relation of the blocks it places:
   `reading` | `form`; `as`): blocks in the block axis.
 - `Cluster` (`gap`: `identity` | `inline` | `row` | `section`, the same on both axes; `wrap`, default true; `align`;
   `justify`): items side by side that wrap, a chip set, a toolbar group.
-- `Grid` (`kind="cards"` with `columns?: 2 | 3 | 4`, the section gap on both axes; `kind="form"` renders `FormGrid`;
-  `kind="main-rail"` renders `PrimaryRailLayout` with its props).
+- `Grid` (`kind="cards"` with `columns?: 2 | 3 | 4`, the section gap on both axes; `kind="form"` draws the form layout;
+  `kind="main-rail"` draws a primary region and one rail).
+- `TopBar` takes `subnavigation` with `subnavigationLabel`: a second and last layer under the bar's row.
 
 None takes a `className` or a `style`.
 
@@ -592,16 +595,15 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   an edge or outline, not a fill.
 - **Motion.** Under `prefers-reduced-motion: reduce`, Common's component anatomy drops its
   animations, and Offset Pop also removes its press travel and every other transform.
-- **Structure.** One banner per page, owned by the app bar: `TopBar` / `NavigationFeatureNav`
+- **Structure.** One banner per page, owned by the app bar: `TopBar`
   in `WorkspaceShell`'s `header` slot makes the shell's wrapper a plain `div`
-  (`headerLandmark="slot"`, automatic for those two; pass it for an app-owned `<header>`), and
+  (`headerLandmark="slot"`, automatic for it; pass it for an app-owned `<header>`), and
   `SectionHeader` is never a `<header>`. Surface names (`SurfaceCard`, `SurfaceListCard`,
   `SurfaceAccordionCard`) default to `h3`; pass `headingLevel` (2-6) so the outline never skips a
   level. `SurfaceListCard`'s collection is the list (`<ul>`, or `role="list"` when scrolling), so
   its rows are `<li>`; use `empty` for an empty-state notice. Every scroll owner that holds
   non-focusable content (scroll regions, the Rail body, code and table frames) is a named
-  `tabIndex=0` region. A fixed `BottomNav` publishes `--starci-core-bottom-nav-offset`, which the
-  outermost page container (or the Footer) and a bottom Toaster read.
+  `tabIndex=0` region. A sticky `TopBar` publishes `--starci-core-band-offset`, which a sticky rail reads.
 - **States.** `PRESENTATION_STATES` (`neutral`, `informative`, `affirmative`, `cautionary`,
   `negative`, `pending`, `unavailable`) is the render-neutral state vocabulary. Components stamp
   it as `data-grammar-*` hooks for family CSS.
@@ -669,7 +671,7 @@ A minor release. Common grows from 42 to 95 renderers, and Offset Pop reaches pa
     Popover, DropdownMenu (sections, submenus, checkable items, shortcuts), Toast and Toaster
     (queue, tones, action, pause on hover and focus, persistent live regions), Alert, Spinner,
     Skeleton, ProgressCircle, Meter, Kbd.
-  - Navigation, chrome and data (19): Link, Breadcrumbs, Pagination, Stepper, TopBar, BottomNav,
+  - Navigation, chrome and data (19): Link, Pagination, Stepper, TopBar,
     Footer, Avatar, AvatarGroup, TagGroup, DataTable, DescriptionList, ListBox, Disclosure,
     Accordion, Image, Rating, Timeline, Calendar.
 - **Scoped overlay portals.** Overlays portal into the nearest Grammar root, so family styling
@@ -691,7 +693,6 @@ A minor release. Common grows from 42 to 95 renderers, and Offset Pop reaches pa
 - **Conformance.** `offsetPopRuleConformance` audits the family's own rules against their CSS
   mechanisms and inherits the rest. The package boundary checks the per-family dist modules,
   checks that no family imports another, and checks that the component CSS is in `dist`.
-- **Core.** Subnav's menu toggle meets a 44px touch floor on coarse pointers and narrow viewports.
 - **Build.** `scripts/copy-css.mts` copies every `*.css` file in each entry directory.
   `@internationalized/date` is a dev dependency, used for date values in specs and stories.
 - **Storybook.** The toolbar switches the family (Common, Core, Heritage, Offset Pop) and the

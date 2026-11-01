@@ -36,7 +36,7 @@ export type SectionHeaderProps = {
  * Reusable title-copy-action hierarchy shared by StarCi product sections.
  *
  * It renders a plain `div`, never `<header>`: outside a sectioning element a `<header>` is the page
- * banner landmark, and the banner belongs to the application bar (TopBar / NavigationFeatureNav /
+ * banner landmark, and the banner belongs to the application bar (TopBar /
  * WorkspaceShell header). A section heading group must not add a second one.
  */
 export const SectionHeader = ({

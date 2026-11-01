@@ -1,11 +1,11 @@
 "use client"
 
 import {
-    Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
+    Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
-    NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
-    Progress, Quote, Rail, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
+    NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
+    Progress, Quote, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot,
     Stack, Cluster, Grid,
     SurfaceAccordionCard, SurfaceCard, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
@@ -24,11 +24,11 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
     Extensions & { readonly [Name in Extract<keyof Extensions, keyof Common>]: never }
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
-    Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
+    Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
-    NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
-    Progress, Quote, Rail, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
+    NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
+    Progress, Quote, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot,
     Stack, Cluster, Grid,
     SurfaceAccordionCard, SurfaceCard, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,

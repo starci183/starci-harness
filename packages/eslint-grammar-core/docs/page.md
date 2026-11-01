@@ -8,7 +8,7 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 
 ## `starci-grammar/page-tabs-in-header`
 
-A `Tabs` element that is the first element child of a `Page`, or the next element sibling of a `PageHeader`, is a finding, reported on the `Tabs`. Whitespace text and JSX comments are not children. A `Tabs` lower in the body, or inside a body section, is region tabs and is not judged.
+A `Tabs` element that is the first element child of a `Page` is a finding, reported on the `Tabs`. Whitespace text and JSX comments are not children. A `Tabs` lower in the body, or inside a body section, is region tabs and is not judged.
 
 **Invalid** (`src/features/pages/ConnectionPage/component.tsx`)
 
@@ -39,7 +39,7 @@ Findings, each reported on the element:
 
 - `sibling`: an element that draws the `Page` has an element sibling in its parent, in a page owner or a layout owner.
 - `twice`: an element that draws a `Page` sits inside another one (a `Page` in a `Page`, or a block that draws one inside a `Page` or inside the root block), or sits in a page owner mounted by a route under a segment layout that draws the `Page`; the finding names that layout.
-- `part`: any `PageHeader` or `PageContainer` in a page or layout owner: both are Page's own parts.
+- `part`: a `PageHeader` or `PageContainer` imported from `@starci/grammar` (by name or through a namespace) in a page or layout owner: both are Page's own parts and are not exported, so this finding is the import.
 - `missing`: a page owner file draws JSX but nothing that draws the `Page`, and draws no element imported from its own pure half, reported on its first element: the page has no frame at all.
 
 A `Page` (or the root block) alone in a fragment or a provider, and one per branch of a conditional, are legal; the root block's children are the page body. Not judged for `missing`:
@@ -54,6 +54,8 @@ A workbench page is an ordinary page: it draws its `Page` like any other, usuall
 **Invalid** (`src/features/pages/ConnectionPage/component.tsx`)
 
 ```tsx
+import { PageHeader, PageContainer } from "@starci/grammar/core"
+
 <>
   <PageHeader title="Main account" />
   <PageContainer><WebhookCard /></PageContainer>
@@ -99,9 +101,7 @@ A workbench page is an ordinary page: it draws its `Page` like any other, usuall
 
 ```tsx
 <Page chrome="bleed" header={{ breadcrumbs }}>
-  <FillViewport minHeight="md" bottomInset="page">
-    <SurfaceCard ariaLabel={label} composition="joined" height="fill">{rail}{thread}</SurfaceCard>
-  </FillViewport>
+  <SurfaceCard ariaLabel={label} composition="joined" height="fill">{rail}{thread}</SurfaceCard>
 </Page>
 ```
 

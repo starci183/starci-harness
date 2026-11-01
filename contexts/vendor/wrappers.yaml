@@ -39,7 +39,6 @@ wrappers:
   - { file: core/branch/Select/index.tsx, wraps: [Description, Label, ListBox, Select, Spinner],
       overrides: [
         { kind: style, target: "Select.Trigger:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
-  - { file: core/frame/Subnav/index.tsx, wraps: [Button] }
   - { file: core/frame/SurfaceAccordionCard/index.tsx, wraps: [Accordion] }
   - { file: core/frame/SurfaceCard/index.tsx, wraps: [Card],
       overrides: [

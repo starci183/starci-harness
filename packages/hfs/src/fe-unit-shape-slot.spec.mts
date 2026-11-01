@@ -102,9 +102,8 @@ const STUBS = {
     'export declare const Dialog: (props: Shell) => ReactNode',
     'export declare const Drawer: (props: Shell & { readonly placement?: "left" | "right" | "top" | "bottom" }) => ReactNode',
     'export declare const Form: (props: { readonly id?: string; readonly label?: string; readonly onSubmit?: (data: FormData) => void; readonly children: ReactNode }) => ReactNode',
-    'export declare const FormGrid: (props: { readonly columns?: 1 | 2; readonly children: ReactNode }) => ReactNode',
-    'export declare const Input: (props: { readonly id: string; readonly name: string; readonly label: string; readonly isRequired?: boolean }) => ReactNode',
-    'export declare const PrimaryRailLayout: (props: { readonly primary: ReactNode; readonly rail?: ReactNode }) => ReactNode',
+        'export declare const Input: (props: { readonly id: string; readonly name: string; readonly label: string; readonly isRequired?: boolean }) => ReactNode',
+    'export declare const Grid: (props: { readonly kind: "form"; readonly columns?: 1 | 2; readonly children: ReactNode } | { readonly kind: "main-rail"; readonly primary: ReactNode; readonly rail?: ReactNode }) => ReactNode',
   ].join('\n'),
   '@starci/grammar/package.json': '{"name":"@starci/grammar","exports":{"./common":{"types":"./common.d.ts"}}}',
   '@storybook/react-vite/index.d.ts': [
@@ -289,7 +288,7 @@ test('a page is one Page with its own loading and error views, an overlay is a D
   assert.doesNotMatch(drawer.slice(drawer.indexOf('<Form ')), /<Button/, 'no decision inside the form');
   assert.match(read('src', 'features', 'overlays', 'EditDetailsOverlay', 'index.tsx'), /^"use client"[\s\S]*useState\(false\)/);
   assert.match(read('src', 'app', '[locale]', 'settings', 'layout.tsx'), /<SettingsLayout content=\{props\.children\} \/>/);
-  assert.match(read('src', 'features', 'layouts', 'SettingsLayout', 'index.tsx'), /<PrimaryRailLayout\s+primary=\{props\.content\}\s+rail=/);
+  assert.match(read('src', 'features', 'layouts', 'SettingsLayout', 'index.tsx'), /<Grid\s+kind="main-rail"\s+primary=\{props\.content\}\s+rail=/);
   assert.equal(JSON.parse(read('src', 'modules', 'i18n', 'messages', 'vi.json')).handoffsPage.retry, 'Thử lại');
   assert.deepEqual(typecheck(app), []);
 });

@@ -76,7 +76,7 @@ test("FE-GRAMMAR-1: page structure and text are grammar components, not raw tags
       { filename: FEATURE, code: raw("h2"), errors: [{ messageId: "raw" }] },
       { filename: FEATURE, code: raw("ul"), errors: [{ messageId: "raw" }] },
       { filename: FEATURE, code: raw("li"), errors: [{ messageId: "raw" }] },
-      { filename: FEATURE, code: raw("nav"), errors: [{ messageId: "raw", data: { tag: "nav", owner: "`NavLandmark, Subnav, Breadcrumbs or NavigationFeatureNav`" } }] },
+      { filename: FEATURE, code: raw("nav"), errors: [{ messageId: "raw", data: { tag: "nav", owner: "`NavLandmark, Page or TopBar`" } }] },
       { filename: FEATURE, code: raw("section"), errors: [{ messageId: "raw", data: { tag: "section", owner: "`Region or SurfaceCard`" } }] },
       { filename: FEATURE, code: raw("header"), errors: [{ messageId: "raw" }] },
       { filename: FEATURE, code: raw("footer"), errors: [{ messageId: "raw" }] },

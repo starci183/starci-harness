@@ -237,7 +237,7 @@
         transform: translate(var(--offset-pop-shadow-sm-x), var(--offset-pop-shadow-sm-x));
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-navigation-feature-nav] {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TopBar"] {
         border-block-end-width: var(--offset-pop-outline-width);
         border-block-end-color: var(--border);
     }

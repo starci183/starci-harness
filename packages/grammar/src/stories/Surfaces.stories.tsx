@@ -689,26 +689,3 @@ export const VerticalScrollRegion: Story = {
   ),
 };
 
-export const Rail: Story = {
-  render: () => (
-    <Matrix>
-      <State label="Complementary rail with footer">
-        <div style={{ height: 320, display: 'flex' }}>
-          <G.Rail label="Progress" width="standard" footer={<G.Text tone="muted" size="sm">Updated daily.</G.Text>}>
-            <G.Progress label="Course" value={40} />
-            <G.Meter label="Weekly goal" value={3} maxValue={5} valueLabel="3 of 5" />
-          </G.Rail>
-        </div>
-      </State>
-      <State label="Content navigation, pending state">
-        <div style={{ height: 320, display: 'flex' }}>
-          <G.Rail landmark="content-navigation" width="compact" state="pending">
-            <G.Link href="#intro" isCurrent>Introduction</G.Link>
-            <G.Link href="#rules">Rules</G.Link>
-            <G.Link href="#practice">Practice</G.Link>
-          </G.Rail>
-        </div>
-      </State>
-    </Matrix>
-  ),
-};

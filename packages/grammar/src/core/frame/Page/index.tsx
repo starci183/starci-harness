@@ -1,10 +1,9 @@
 import { cn } from "@heroui/react"
 import { isValidElement, type ReactElement, type ReactNode } from "react"
 import { Breadcrumbs } from "../../composite/Breadcrumbs/index.js"
-import type { FillViewportMinHeight } from "../FillViewport/index.js"
 import { PageContainer, type PageContainerProps } from "../PageContainer/index.js"
 import { PaneGrid, type PaneGridProps } from "../PaneGrid/index.js"
-import { PanesFill } from "./PanesFill.js"
+import { FillBox } from "./FillBox.js"
 import { PageHeader, type PageHeaderBreadcrumbs, type PageHeaderProps } from "../PageHeader/index.js"
 
 /** The page header Page draws: every `PageHeader` prop except the two Page owns, `measure` and `isSkeleton`. */
@@ -18,10 +17,14 @@ export type PageTrailContent = { readonly breadcrumbs: PageHeaderBreadcrumbs } &
     readonly [Slot in Exclude<keyof PageHeaderContent, "breadcrumbs">]?: never
 }
 
+/** The smallest height a filled body keeps on a short window: `sm` 20rem, `md` 28rem (default), `lg` 36rem, `none` no floor. */
+export type PageMinHeight = "none" | "sm" | "md" | "lg"
+
 /**
  * How Page sits in its region. `standard`: the body in the page measure and gutter, a region step above the bottom, clipped
  * at the gutter. `bleed`: an app surface (a chat, a split editor) that fills the region edge to edge: no inline gutter, no
- * block padding, no clip, the body grows to the region's height, so a `FillViewport` in it keeps its own bottom inset.
+ * block padding, no clip, and the body is the viewport height left below the trail or the band (less any Grammar bottom
+ * chrome), so a card or a split in it fills the region.
  */
 export type PageChrome = "standard" | "bleed" | "panes"
 
@@ -51,6 +54,8 @@ export type PageStandardProps = PageCommonProps & {
 export type PageBleedProps = PageCommonProps & {
     readonly chrome: "bleed"
     readonly header?: PageHeaderContent | PageTrailContent
+    /** Floor height of the body on a short window (default `md`). */
+    readonly minHeight?: PageMinHeight
 }
 
 /**
@@ -61,8 +66,8 @@ export type PageBleedProps = PageCommonProps & {
 export type PagePanesProps = PageCommonProps & {
     readonly chrome: "panes"
     readonly header?: PageHeaderContent | PageTrailContent
-    /** Floor height of the grid on a short window, as `FillViewport`'s (default `md`). */
-    readonly minHeight?: FillViewportMinHeight
+    /** Floor height of the grid on a short window (default `md`). */
+    readonly minHeight?: PageMinHeight
     /** Exactly one PaneGrid. */
     readonly children: ReactElement<PaneGridProps>
 }
@@ -76,7 +81,8 @@ const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent
 /**
  * One route page: the header band across the region, then the body in the page measure and gutter, one region step
  * below it. Page is the single owner of the page inset and the page's vertical rhythm; layout frames (WorkspaceShell,
- * PrimaryRailLayout, PaneGrid) only place regions and never wrap a page in a PageContainer. Page tabs are the
+ * Grid, PaneGrid) only place regions and never wrap a page in a measure of their own. PageHeader, PageContainer and
+ * Breadcrumbs are Page's internals: an app reaches them only through `header`, `measure` and `header.breadcrumbs`. Page tabs are the
  * header's `tabs`, never a Tabs at the top of the body (lint `page-tabs-in-header`), and a route page renders nothing
  * beside its Page (lint `route-page-is-one-page`). `chrome="bleed"` is the app surface: the body fills the region edge to
  * edge, under the trail alone or under a band.
@@ -104,12 +110,8 @@ export const Page = (props: PageProps) => {
                     <Breadcrumbs label={trail.label} items={trail.items} {...(trail.onAction === undefined ? {} : { onAction: trail.onAction })} />
                 </div>
             )}
-            {chrome === "panes" ? (
-                <PanesFill minHeight={props.chrome === "panes" ? props.minHeight ?? "md" : "md"}>{children}</PanesFill>
-            ) : chrome === "bleed" ? (
-                <div className="starci-core-page-body" data-grammar-page-body="true">
-                    {children}
-                </div>
+            {props.chrome === "panes" || props.chrome === "bleed" ? (
+                <FillBox minHeight={props.minHeight ?? "md"}>{children}</FillBox>
             ) : (
                 <PageContainer className="starci-core-page-body" data-grammar-page-body="true" measure={measure}>
                     {children}

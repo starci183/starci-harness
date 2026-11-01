@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, type RefObject } from "react"
 
 /**
- * Height of the Grammar chrome pinned to the bottom edge right now (WorkspaceShell's compact navigation, BottomNav,
+ * Height of the Grammar chrome pinned to the bottom edge right now (WorkspaceShell's compact navigation,
  * PinnedActionBar mark themselves `data-grammar-bottom-chrome`): the tallest visible fixed or sticky one in the lower half.
  */
 export const bottomChromeHeight = (): number => {
@@ -20,7 +20,7 @@ export const bottomChromeHeight = (): number => {
 const useIsoLayoutEffect = typeof window === "undefined" ? () => {} : useLayoutEffect
 
 /**
- * The one measurer of a fill box, shared by FillViewport and Page `chrome="panes"`: it measures the returned ref's top
+ * The one measurer of a fill box, of Page `chrome="bleed"` and `chrome="panes"`: it measures the returned ref's top
  * edge in document coordinates into `--starci-core-fill-top` and any Grammar bottom chrome into
  * `--starci-core-fill-bottom`, and re-measures on window resize and body size changes. CSS does the rest.
  */

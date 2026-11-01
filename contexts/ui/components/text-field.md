@@ -27,8 +27,8 @@ Choice `text-field.choose.columns`: how the fields of one form are laid out. The
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| narrow | the form's owner is narrow (drawer, rail, dialog) or every field is long | one column: `FormGrid columns={1}` or the fields stacked in the `Form` | judgement |
-| pairs | short fields that read as pairs (name and plan, retries and URL) in a wide owner | `FormGrid` (two columns once its own width holds them); its rows align on the control line | DNA-COMMON-FIELD-ROW-CONTROL-LINE |
+| narrow | the form's owner is narrow (drawer, rail, dialog) or every field is long | one column: `Grid kind="form" columns={1}` or the fields stacked in the `Form` | judgement |
+| pairs | short fields that read as pairs (name and plan, retries and URL) in a wide owner | `Grid kind="form"` (two columns once its own width holds them); its rows align on the control line | DNA-COMMON-FIELD-ROW-CONTROL-LINE |
 
 ## Variants
 None for the app: the treatment follows the layer, canvas or inside a surface, resolved by the grammar
@@ -46,7 +46,7 @@ politely) and failed (the field's error). Known field types declare autofill and
 
 ## Owner split
 - **Grammar owns:** anatomy (label, control, description, error), the layer treatment, height, focus
-  ring, mobile text size, the control line of a `FormGrid` row, a `CopyField`'s truncation, mask and copy states.
+  ring, mobile text size, the control line of a `Grid kind="form"` row, a `CopyField`'s truncation, mask and copy states.
 - **Knowledge decides:** which field role, one column or pairs, error placement, multi-value as rows.
 - **App author decides:** label, description, error and copy-action copy, validation facts, autofill hints, the
   reveal behind a masked `onCopy`.

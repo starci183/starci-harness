@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { WorkflowHeaderBlockBase } from "../../src/components/blocks/WorkflowHeaderBlock/component"
+import { WorkflowPageBlockBase } from "../../src/components/blocks/WorkflowPageBlock/component"
 import { COMMON, NAV, WORKFLOW, WORKFLOW_STATUS } from "../../src/modules/i18n"
 import { loading, noop, ready, slotLabels } from "../support"
 
@@ -9,9 +9,10 @@ const header = (status: keyof typeof WORKFLOW_STATUS) =>
     ready({ title: "next-subscription-sepay", status: WORKFLOW_STATUS[status], versions: WORKFLOW.versions(27, 15, 4, 19), goal: GOAL, reason: null })
 
 const meta = {
-    title: "WorkflowHeaderBlock",
-    component: WorkflowHeaderBlockBase,
+    title: "WorkflowPageBlock",
+    component: WorkflowPageBlockBase,
     args: {
+        children: null,
         shape: "running",
         props: {
             header: header("running"),
@@ -54,24 +55,24 @@ const meta = {
             stop: () => Promise.resolve(null),
         },
     },
-} satisfies Meta<typeof WorkflowHeaderBlockBase>
+} satisfies Meta<typeof WorkflowPageBlockBase>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Running: Story = { args: { shape: "running" }, parameters: { dna: { pair: "WorkflowHeaderBlock", phase: "ready" } } }
+export const Running: Story = { args: { shape: "running" }, parameters: { dna: { pair: "WorkflowPageBlock", phase: "ready" } } }
 
 export const Paused: Story = {
     args: { shape: "paused", props: { ...meta.args.props, header: header("paused") } },
-    parameters: { dna: { pair: "WorkflowHeaderBlock", phase: "ready" } },
+    parameters: { dna: { pair: "WorkflowPageBlock", phase: "ready" } },
 }
 
 export const Stopped: Story = {
     args: { shape: "stopped", props: { ...meta.args.props, header: header("stopped") } },
-    parameters: { dna: { pair: "WorkflowHeaderBlock", phase: "ready" } },
+    parameters: { dna: { pair: "WorkflowPageBlock", phase: "ready" } },
 }
 
 export const Loading: Story = {
     args: { shape: "running", props: { ...meta.args.props, header: loading() } },
-    parameters: { dna: { pair: "WorkflowHeaderBlock", phase: "loading" } },
+    parameters: { dna: { pair: "WorkflowPageBlock", phase: "loading" } },
 }

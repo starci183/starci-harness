@@ -7,7 +7,7 @@
 // dialog-drawer.md). The connected half (`"use client"`, an overlay entry of FE-BOUNDARY-2) owns whether it is open and resolves
 // every label; the pure half takes `{ props, on }` of atoms (FE-FUNCTION-2). The decision group puts the way out first and the
 // commit last (action-group.md `decision`, CTA-5), always in the shell's footer. With `--form`, the body holds a Form with an `id`
-// whose fields sit in a one-column `FormGrid` (text-field.md `narrow`), and the footer's commit is `type="submit"` with
+// whose fields sit in a one-column `Grid kind="form"` (text-field.md `narrow`), and the footer's commit is `type="submit"` with
 // `form="<id>"`, so it submits that form from outside it. The bodies are templates/fe/units/overlay/; the stories draw it closed and open. A page or layout owner mounts it.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -55,7 +55,7 @@ function overlayVars({ nameKebab, shell, form }: { nameKebab: string, shell: str
   if (form) {
     const formId = `${nameKebab}-form`;
     return {
-      grammarImports: ['Button', shell, 'Form', 'FormGrid', 'Input'].sort().join(', '),
+      grammarImports: ['Button', shell, 'Form', 'Grid', 'Input'].sort().join(', '),
       labelMembers: '        readonly nameLabel: string\n',
       labelsResolved: '                nameLabel: t("name"),\n',
       labelsFixture: '    nameLabel: "Name",\n',
@@ -67,9 +67,9 @@ function overlayVars({ nameKebab, shell, form }: { nameKebab: string, shell: str
       footer: footer(`<Button type="submit" form="${formId}" intent="commit">`),
       body: [
         `        <Form id="${formId}" label={props.props.title} onSubmit={props.on.submit}>`,
-        '            <FormGrid columns={1}>',
+        '            <Grid kind="form" columns={1}>',
         `                <Input id="${nameKebab}-name" name="name" label={props.props.nameLabel} isRequired />`,
-        '            </FormGrid>',
+        '            </Grid>',
         '        </Form>',
       ].join('\n'),
     };

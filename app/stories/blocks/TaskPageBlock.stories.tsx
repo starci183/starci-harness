@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { TaskHeaderBlockBase } from "../../src/components/blocks/TaskHeaderBlock/component"
+import { TaskPageBlockBase } from "../../src/components/blocks/TaskPageBlock/component"
 import { NODE_STATE, TASK } from "../../src/modules/i18n"
 import { loading, noop, ready, slotLabels } from "../support"
 
 const meta = {
-    title: "TaskHeaderBlock",
-    component: TaskHeaderBlockBase,
+    title: "TaskPageBlock",
+    component: TaskPageBlockBase,
     args: {
+        children: null,
         props: {
             task: "t-b2c41e07",
             header: ready({
@@ -20,14 +21,14 @@ const meta = {
         },
         on: { retry: noop },
     },
-} satisfies Meta<typeof TaskHeaderBlockBase>
+} satisfies Meta<typeof TaskPageBlockBase>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Ready: Story = { parameters: { dna: { pair: "TaskHeaderBlock", phase: "ready" } } }
+export const Ready: Story = { parameters: { dna: { pair: "TaskPageBlock", phase: "ready" } } }
 
 export const Loading: Story = {
     args: { props: { ...meta.args.props, header: loading() } },
-    parameters: { dna: { pair: "TaskHeaderBlock", phase: "loading" } },
+    parameters: { dna: { pair: "TaskPageBlock", phase: "loading" } },
 }

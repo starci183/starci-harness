@@ -1,15 +1,21 @@
+import type { ReactNode } from "react"
 import { useOverviewQuery } from "../../../hooks/query"
 import { mapSlot, slotOfQuery, useSlotLabels } from "../../../hooks/slot"
 import { overviewCounts } from "../../../modules/format"
 import { OVERVIEW } from "../../../modules/i18n"
-import { OverviewHeaderBlockBase } from "./component"
+import { OverviewPageBlockBase } from "./component"
 
-/** The overview's page header: its counts come from the overview read. */
-export const OverviewHeaderBlock = () => {
+/** Input of OverviewPageBlock: the page body. */
+export interface OverviewPageBlockProps {
+    readonly children: ReactNode
+}
+
+/** The overview's Page: its header counts come from the overview read. */
+export const OverviewPageBlock = (props: OverviewPageBlockProps) => {
     const query = useOverviewQuery()
     const slotLabels = useSlotLabels()
     return (
-        <OverviewHeaderBlockBase
+        <OverviewPageBlockBase
             props={{
                 counts: mapSlot(slotOfQuery(query), overviewCounts),
                 labels: {
@@ -20,6 +26,8 @@ export const OverviewHeaderBlock = () => {
                 },
             }}
             on={{ retry: () => void query.refetch() }}
-        />
+        >
+            {props.children}
+        </OverviewPageBlockBase>
     )
 }

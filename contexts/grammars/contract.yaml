@@ -223,12 +223,12 @@ roles:
 
   - id: input
     ui: ui/components/text-field.md
-    renderers: [Input, Textarea, SearchField, NumberField, DateField, TimeField, Field, OtpInput, FormGrid]
+    renderers: [Input, Textarea, SearchField, NumberField, DateField, TimeField, Field, OtpInput, Grid]
     vendorParity: [textfield, input, input-group, textarea, search-field, number-field, date-field, time-field, input-otp]
     slots: [label, control, description, errorMessage, prefix, suffix]
     variants:
       variant: { values: [primary, secondary], meaning: { primary: on the canvas, secondary: inside a surface }, chosenBy: context }
-      formColumns: { values: [1, 2], meaning: { 2: FormGrid rows of two once its own width holds them }, chosenBy: app }
+      formColumns: { values: [1, 2], meaning: { 2: Grid kind=form rows of two once its own width holds them }, chosenBy: app }
     sizes: { steps: [md], default: md }
     states: [rest, focus-visible, invalid, disabled, read-only, skeleton]
     grammarMayChange: [fill, border, focus treatment, corner via field-radius]
@@ -388,7 +388,7 @@ roles:
 
   - id: shell
     ui: ui/composition.md
-    renderers: [WorkspaceShell, TopBar, NavigationFeatureNav, Sidebar, PageContainer, PrimaryRailLayout]
+    renderers: [WorkspaceShell, TopBar, Sidebar, Page, Grid]
     vendorParity: [drawer, list-box]
     slots: ["header: identity, navigation, actions", navigation, compactHeader, primary, floatingLayer]
     variants:
@@ -849,7 +849,7 @@ mustKeep:
       owner: field-anatomy-order; vendor/parity.yaml textfield
     - id: DNA-COMMON-FIELD-ROW-CONTROL-LINE
       role: [input, select, copy-field]
-      law: The fields of one FormGrid row laid out in columns start their control boxes on one line, whatever label, description or error a neighbour carries.
+      law: The fields of one form Grid row laid out in columns start their control boxes on one line, whatever label, description or error a neighbour carries.
       measure: { kind: uniform, scope: '[data-component="FormGrid"] [data-grammar-form-grid-row]', select: ':is([data-grammar-field-control="true"],[data-grammar-input-control="true"]):not(:is([data-grammar-field-control="true"],[data-grammar-input-control="true"]) *)', metric: top }
       owner: field-anatomy-order
     # --- copy field
@@ -1036,7 +1036,7 @@ mustKeep:
       owner: page-frame
     - id: DNA-COMMON-PAGE-BLEED-BODY
       role: page
-      law: A bleed page is an app surface; it keeps no block padding, and its body no inline gutter and no clip, so the body fills the region and a FillViewport in it keeps the one bottom inset.
+      law: A bleed page is an app surface; it keeps no block padding, and its body no inline gutter and no clip, so the body is the measured fill box and what it holds fills the region.
       measure:
         kind: style
         select: '[data-component="Page"][data-grammar-page-chrome="bleed"] > [data-grammar-page-body]'

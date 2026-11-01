@@ -280,7 +280,7 @@ Lint: `starci-grammar/app-shell-frame`, `navbar-control-size`, `navbar-cluster`,
 The compact branch keeps the meaning, the commit and the current state in one readable flow; support stays
 reachable. Content recomposes instead of clipping, squeezing or scrolling the page sideways. A hidden branch is
 absent and replaced by a trigger with controlled state and focus return. A form inside a narrow owner (drawer,
-rail, dialog) stays one column at every viewport; field columns come only from Grammar's `FormGrid`, whose
+rail, dialog) stays one column at every viewport; field columns come only from Grammar's `Grid kind="form"`, whose
 container query reads its own width, never the viewport.
 
 ### RESPONSIVE-2 The query owner is named, never the device

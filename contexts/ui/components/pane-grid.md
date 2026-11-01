@@ -16,7 +16,7 @@ Choice `pane-grid.choose.frame`: what frames a multi-pane screen.
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | grid | several regions share one bounded height or width, touching, divided by lines (list, main, details) | `PaneGrid` with one `Pane` per area | lint `starci-grammar/pane-grid-children`, `starci-fe/no-hand-built-panes` |
-| rail | one persistent supporting column beside a page | `PrimaryRailLayout` or `Rail` | judgement |
+| rail | one persistent supporting column beside a page | `Grid kind="main-rail"` | judgement |
 | cards | separate subjects with their own faces | `SurfaceCard`s in a `Page`, never inside a `PaneGrid` | judgement |
 
 Never wrap the panes in a `SurfaceCard`: the panes are the faces, the dividers are the only edges.
@@ -27,9 +27,9 @@ Choice `pane-grid.choose.page`: where a pane grid is mounted.
 | --- | --- | --- | --- |
 | page | a tabbed app page (an instance's setup, a dossier browser, a chat) whose body is panes | `Page chrome="panes"` with the page header band or the trail, the tabs in `header.tabs`, and exactly one `PaneGrid` as its child: the grid attaches flush under the tab line, full width and to the viewport bottom, with no card, radius or gap, never a card around the panes | lint `starci-grammar/pane-grid-page`; `DNA-COMMON-PAGE-PANES-FLUSH` |
 | nested | one pane of a grid is itself several panes (a routed tab's own list, thread and side) | a `PaneGrid` as the one child of a `Pane` with `inset="flush"` | lint `starci-grammar/pane-grid-page` |
-| region | a grid inside a page of cards | none: a card page does not host a pane grid; use `SurfaceCard`s or a `PrimaryRailLayout` | lint `starci-grammar/pane-grid-page` |
+| region | a grid inside a page of cards | none: a card page does not host a pane grid; use `SurfaceCard`s or a `Grid kind="main-rail"` | lint `starci-grammar/pane-grid-page` |
 
-A tabbed route body that is panes is not a `FillViewport` or a card around a grid: `Page chrome="panes"` measures the
+A tabbed route body that is panes is not a filled box or a card around a grid: `Page chrome="panes"` measures the
 fill height itself and the tab line is the only line between the tabs and the grid.
 
 Choice `pane-grid.choose.ground`: what a pane stands on.

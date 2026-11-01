@@ -1,17 +1,18 @@
 import type { ActionResult, WorkflowDetail, WorkflowStatus } from "@contract"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { useActionCommand, useWorkflowQuery } from "../../../hooks/query"
 import { mapSlot, slotOfQuery, useSlotLabels } from "../../../hooks/slot"
 import type { WorkflowAction } from "../../../modules/api"
 import { COMMON, NAV, WORKFLOW, WORKFLOW_STATUS } from "../../../modules/i18n"
 import { APP_ROUTES } from "../../../modules/routes"
 import type { ResultNotice } from "../../../modules/types"
-import { WorkflowHeaderBlockBase, type StopMode, type WorkflowHeaderShape, type WorkflowHeaderView } from "./component"
+import { WorkflowPageBlockBase, type StopMode, type WorkflowHeaderShape, type WorkflowHeaderView } from "./component"
 
-/** Input of WorkflowHeaderBlock: the route's atoms. */
-export interface WorkflowHeaderBlockProps {
+/** Input of WorkflowPageBlock: the route's atoms. */
+export interface WorkflowPageBlockProps {
     readonly project: string
     readonly workflow: string
+    readonly children: ReactNode
 }
 
 /** Which header a status draws: stopping, stopped and done all offer nothing but the record. */
@@ -48,8 +49,8 @@ const noticeOf = (n: number, result: ActionResult): ResultNotice => ({
     description: result.code === null ? result.message : `${result.code}: ${result.message}`,
 })
 
-/** One workflow's header and the owner's verbs on it (goal, pause or resume, stop), each through a harness verb. */
-export const WorkflowHeaderBlock = (props: WorkflowHeaderBlockProps) => {
+/** One workflow's Page: its header and the owner's verbs on it (goal, pause or resume, stop), each through a harness verb. */
+export const WorkflowPageBlock = (props: WorkflowPageBlockProps) => {
     const query = useWorkflowQuery(props.project, props.workflow)
     const { send, isPending } = useActionCommand()
     const slotLabels = useSlotLabels()
@@ -69,7 +70,7 @@ export const WorkflowHeaderBlock = (props: WorkflowHeaderBlockProps) => {
     const run = (action: WorkflowAction) => report({ kind: "workflow", project: props.project, workflow: props.workflow, action })
 
     return (
-        <WorkflowHeaderBlockBase
+        <WorkflowPageBlockBase
             shape={shape}
             props={{
                 header: mapSlot(slotOfQuery(query), toView),
@@ -118,6 +119,8 @@ export const WorkflowHeaderBlock = (props: WorkflowHeaderBlockProps) => {
                     return outcome.ok ? null : outcome.message
                 },
             }}
-        />
+        >
+            {props.children}
+        </WorkflowPageBlockBase>
     )
 }

@@ -88,10 +88,10 @@
 
     /*
      * The accent is a FILL, and on its tint it is `--accent-soft-foreground` (the pair rule). Where a part paints the
-     * accent as TEXT on the page (a link, the current tab and bottom-nav destination, the section eyebrow), that
+     * accent as TEXT on the page (a link, the current tab, the section eyebrow), that
      * element reads the soft foreground in place of the fill, so each rule reads `--accent` unchanged.
      */
-    :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-bottom-nav-item[data-grammar-current="true"], .starci-core-section-eyebrow) {
+    :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"], .starci-core-section-eyebrow) {
         --accent: var(--accent-soft-foreground);
     }
 
@@ -374,8 +374,7 @@
 
     /*
      * Page chrome="bleed": an app surface (a chat, a split editor) that fills its region edge to edge. No block padding,
-     * no inline gutter and no clip; the page and its body grow to the region's height, so a FillViewport in the body
-     * measures its own top and keeps its own bottom inset, never doubled. The trail alone (breadcrumbs, no band) or the
+     * no inline gutter and no clip; the body is the measured fill box (see below), so what it holds fills the region. The trail alone (breadcrumbs, no band) or the
      * band sits a region step above the body, the step the region keeps between its children.
      */
     .starci-core-page[data-grammar-page-chrome="bleed"] {
@@ -408,16 +407,17 @@
         overflow: visible;
     }
 
-    .starci-core-page-panes-fill {
+    /* The fill box of bleed and panes: the viewport height left below the band, less Grammar bottom chrome. */
+    .starci-core-page-fill {
         display: flex;
         flex-direction: column;
         height: calc(100dvh - var(--starci-core-fill-top) - var(--starci-core-fill-bottom));
     }
 
-    .starci-core-page-panes-fill > * { min-height: 0; flex: 1 1 auto; }
-    .starci-core-page-panes-fill[data-grammar-fill-min="sm"] { min-height: 20rem; }
-    .starci-core-page-panes-fill[data-grammar-fill-min="md"] { min-height: 28rem; }
-    .starci-core-page-panes-fill[data-grammar-fill-min="lg"] { min-height: 36rem; }
+    .starci-core-page-fill > * { min-height: 0; flex: 1 1 auto; }
+    .starci-core-page-fill[data-grammar-fill-min="sm"] { min-height: 20rem; }
+    .starci-core-page-fill[data-grammar-fill-min="md"] { min-height: 28rem; }
+    .starci-core-page-fill[data-grammar-fill-min="lg"] { min-height: 36rem; }
 
     /* The trail alone stands as the region's own child would: full width, wrapping inside it. */
     .starci-core-page-trail {
@@ -1970,248 +1970,6 @@
     @media (min-width: 48rem) {
         .starci-core-tab-label {
             display: inline;
-        }
-    }
-
-    .starci-core-navigation-feature-nav {
-        box-sizing: border-box;
-        width: 100%;
-        border-bottom: 1px solid var(--separator);
-        background: var(--surface);
-        color: var(--foreground);
-    }
-
-    .starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-position="sticky"] {
-        position: sticky;
-        z-index: var(--starci-core-navbar-z);
-        top: 0;
-    }
-
-    /* The Grammar root publishes the sticky band offset, including its separator and optional feature layer. */
-    .grammar-common-root:has(.starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-position="sticky"]),
-    .grammar-common-root:has(.starci-core-subnav[data-grammar-subnav-position="sticky"]) {
-        --starci-core-band-offset: calc(var(--starci-core-band-height) + var(--starci-core-band-subnav-height));
-    }
-
-    .grammar-common-root:has(.starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-position="sticky"]) {
-        --starci-core-band-height: 4rem;
-    }
-
-    .grammar-common-root:has(.starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-position="sticky"][data-grammar-navigation-feature-nav-layers="two"]) {
-        --starci-core-band-height: 6rem;
-    }
-
-    /* A sticky Subnav stacks under the band, so it adds its own height and separator to the offset. */
-    .grammar-common-root:has(.starci-core-subnav[data-grammar-subnav-position="sticky"]) {
-        --starci-core-band-subnav-height: calc(3.25rem + 1px);
-    }
-
-    .starci-core-navigation-feature-nav-primary {
-        display: grid !important;
-        box-sizing: border-box;
-        block-size: calc(4rem - 1px);
-        min-height: calc(4rem - 1px);
-        grid-template-columns: minmax(0, 1fr) auto auto !important;
-        align-items: center;
-        gap: var(--grammar-row-gap);
-        padding-block: var(--grammar-inline-gap);
-    }
-
-    .starci-core-navigation-feature-nav-primary.starci-core-page-container {
-        padding-inline: 0.75rem;
-    }
-
-    .starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-layers="one"] {
-        block-size: 4rem;
-    }
-
-    .starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-layers="one"] .starci-core-navigation-feature-nav-primary {
-        block-size: 100%;
-        min-height: 0;
-    }
-
-    .starci-core-navigation-feature-nav-identity,
-    .starci-core-navigation-feature-nav-navigation,
-    .starci-core-navigation-feature-nav-compact-navigation,
-    .starci-core-navigation-feature-nav-actions,
-    .starci-core-navigation-feature-nav-feature {
-        min-width: 0;
-    }
-
-    .starci-core-navigation-feature-nav-navigation {
-        display: none !important;
-    }
-
-    /*
-     * A bar with no primary destinations renders no `nav` at all, so the grid loses a track rather
-     * than keeping an empty one: identity leads, the remaining row belongs to what is still there.
-     */
-    .starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-destinations="absent"] .starci-core-navigation-feature-nav-primary {
-        grid-template-columns: minmax(0, 1fr) auto !important;
-    }
-
-    .starci-core-navigation-feature-nav-compact-navigation {
-        display: block !important;
-    }
-
-    .starci-core-navigation-feature-nav-actions {
-        display: flex;
-        align-items: center;
-        justify-content: end;
-        gap: var(--grammar-inline-gap);
-    }
-
-    /* Navbar controls share one exact height; the feature layer keeps its own tab geometry. */
-    .starci-core-navigation-feature-nav-actions :where(button, [role="button"], a[href]),
-    .starci-core-navigation-feature-nav-navigation :where(button, [role="button"], a[href]),
-    .starci-core-navigation-feature-nav-compact-navigation :where(button, [role="button"], a[href]) {
-        min-inline-size: var(--starci-core-control-min-size);
-        min-block-size: var(--starci-core-control-min-size);
-    }
-
-    /*
-     * The identity slot's brand link is a `plain` TextAction used as a same-document pressable, not
-     * a route: `plain` elsewhere in the family stays a compact inline mark with no reserved hit
-     * area, so the floor is scoped to this one band slot instead of the bare `[data-appearance]`
-     * rule, which would grow every quiet inline action across the app that never claimed to be a
-     * touch target.
-     */
-    .starci-core-navigation-feature-nav-identity .starci-core-text-action[data-appearance="plain"] {
-        min-block-size: var(--starci-core-control-min-size);
-    }
-
-    .starci-core-navigation-feature-nav-feature {
-        width: 100%;
-        padding-inline: 0.75rem;
-    }
-
-    .starci-core-course-section-navigation {
-        padding-inline-start: 0.75rem;
-        padding-inline-end: 0.75rem;
-    }
-
-    /* The navbar owns the only outer separator; HeroUI's secondary tab rail must not add a twin. */
-    .starci-core-navigation-feature-nav-feature .tabs__list-container {
-        border-bottom-width: 0 !important;
-    }
-
-    .starci-core-navigation-feature-nav-feature .starci-core-tabs .tabs__indicator {
-        bottom: 0 !important;
-        inset-block-end: 0 !important;
-    }
-
-    .starci-core-course-section-navigation .tabs__list-container {
-        border-bottom-width: 0 !important;
-    }
-
-    .starci-core-subnav {
-        display: flex;
-        width: 100%;
-        min-width: 0;
-        min-height: 3.25rem;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--grammar-row-gap);
-        padding-inline: 0.75rem;
-        border-bottom: 1px solid var(--separator);
-        background: var(--background);
-        color: var(--foreground);
-    }
-
-    .starci-core-subnav[data-grammar-subnav-position="sticky"] {
-        position: sticky;
-        z-index: var(--starci-core-subnav-z);
-        /* The band's own published height, so a stacked Subnav needs no consumer calc. */
-        top: var(--starci-core-subnav-offset, max(var(--starci-core-band-height), var(--starci-core-subnav-rest)));
-        backface-visibility: hidden;
-        transform: translateZ(0);
-        will-change: transform;
-    }
-
-    .starci-core-subnav-identity {
-        display: flex;
-        min-width: 0;
-        align-items: center;
-        gap: var(--grammar-inline-gap);
-    }
-
-    .starci-core-subnav-leading,
-    .starci-core-subnav-toggle {
-        flex: none;
-    }
-
-    .starci-core-subnav-title {
-        display: flex;
-        min-width: 0;
-        overflow: hidden;
-        align-items: center;
-        font-weight: var(--grammar-weight-semibold);
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    /*
-     * The toggle is a HeroUI `Button`, whose own fill, corner and shadow live in the vendor's
-     * `components` layer - declared after `starci-grammar-common`, so it wins every normal
-     * declaration here regardless of specificity. These are the declarations that have to be important - the 2.75rem target included, because the
-     * vendor sizes its own button and a consumer was re-forcing `size-11` to get the target back.
-     */
-    .starci-core-subnav-toggle {
-        display: inline-flex;
-        width: var(--starci-core-control-min-size) !important;
-        height: var(--starci-core-control-min-size) !important;
-        align-items: center;
-        justify-content: center;
-        border-radius: 0 !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        color: inherit;
-        cursor: pointer;
-    }
-
-    .starci-core-subnav-toggle:hover,
-    .starci-core-subnav-toggle[data-hovered="true"] {
-        background: transparent !important;
-    }
-
-    /*
-     * THE 44px TOUCH FLOOR, as the form controls spell it: on a touch pointer or a narrow viewport
-     * the menu target is at least 44px in both axes even where a consumer resizes the toggle. It is
-     * a MINIMUM, which the vendor never sets, so it owes no `!important`.
-     */
-    @media (pointer: coarse), (max-width: 40rem) {
-        .starci-core-subnav-toggle {
-            min-inline-size: var(--starci-core-control-min-size);
-            min-block-size: var(--starci-core-control-min-size);
-        }
-    }
-
-    @media (min-width: 48rem) {
-        .starci-core-navigation-feature-nav[data-grammar-navigation-feature-nav-destinations="absent"] .starci-core-navigation-feature-nav-primary {
-            grid-template-columns: auto minmax(0, 1fr) !important;
-        }
-
-        .starci-core-navigation-feature-nav-primary {
-            grid-template-columns: auto minmax(0, 1fr) auto !important;
-        }
-
-        .starci-core-navigation-feature-nav-navigation {
-            display: block !important;
-        }
-
-        .starci-core-navigation-feature-nav-compact-navigation {
-            display: none !important;
-        }
-    }
-
-    @media (min-width: 70rem) {
-        .starci-core-subnav[data-grammar-subnav-visibility="compact"] {
-            display: none;
-        }
-
-        /* A compact Subnav is not on screen here, so it contributes no height to the band offset. */
-        .grammar-common-root:has(.starci-core-subnav[data-grammar-subnav-position="sticky"][data-grammar-subnav-visibility="compact"]) {
-            --starci-core-band-subnav-height: 0rem;
         }
     }
 
@@ -4284,21 +4042,6 @@
     @media (forced-colors: active) {
         .starci-core-message-bubble-body { border: 1px solid CanvasText; }
     }
-
-    /* --- FillViewport: the viewport height left below the chrome, measured into --starci-core-fill-top. --- */
-    .starci-core-fill-viewport {
-        --starci-core-fill-inset: 1.5rem;
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        height: calc(100dvh - var(--starci-core-fill-top) - var(--starci-core-fill-bottom) - var(--starci-core-fill-inset));
-    }
-
-    .starci-core-fill-viewport > * { min-height: 0; flex: 1 1 auto; }
-    .starci-core-fill-viewport[data-grammar-fill-inset="none"] { --starci-core-fill-inset: 0px; }
-    .starci-core-fill-viewport[data-grammar-fill-min="sm"] { min-height: 20rem; }
-    .starci-core-fill-viewport[data-grammar-fill-min="md"] { min-height: 28rem; }
-    .starci-core-fill-viewport[data-grammar-fill-min="lg"] { min-height: 36rem; }
 
     /* --- Textarea mention suggestions: a listbox under the control. --- */
     .starci-core-textarea-anchor { position: relative; min-width: 0; }

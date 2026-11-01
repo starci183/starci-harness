@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Heading, IdentityLockup, Input, PageContainer, SurfaceCard, Text } from "@starci/grammar/core"
+import { Alert, Button, Form, Heading, IdentityLockup, Input, Page, SurfaceCard, Text } from "@starci/grammar/core"
 
 /** Copy the connect page resolves. */
 export interface ConnectPageLabels {
@@ -36,7 +36,7 @@ export interface ConnectPageBaseProps {
 export const ConnectPageBase = (props: ConnectPageBaseProps) => {
     const { labels, problem, error } = props.props
     return (
-        <PageContainer measure="reading" className="app-connect">
+        <Page measure="reading">
             <IdentityLockup title={labels.product} subtitle={labels.subtitle} logoSrc={props.props.logoSrc} />
             <SurfaceCard ariaLabel={labels.card}>
                 <div className="app-stack">
@@ -68,6 +68,6 @@ export const ConnectPageBase = (props: ConnectPageBaseProps) => {
                     </Form>
                 </div>
             </SurfaceCard>
-        </PageContainer>
+        </Page>
     )
 }

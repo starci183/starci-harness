@@ -213,7 +213,7 @@ export const OFFSET_POP_TOKEN_NAMES = Object.freeze({
  * Sticky-band geometry published under an Offset Pop root.
  *
  * Common, not the family, publishes the band: `src/common/styles.css` defines these on every
- * `.grammar-common-root` that holds a sticky `NavigationFeatureNav` or `Subnav`, whatever its
+ * `.grammar-common-root` that holds a sticky `TopBar`, whatever its
  * family, and reads the two host overrides. So the names are Common's, shared with Core; the
  * family re-exports them so a consumer reads them from `@starci/grammar/offset-pop`. They are
  * not theme tokens and are absent from `OFFSET_POP_TOKEN_NAMES`; Offset Pop CSS never writes them.
@@ -222,9 +222,7 @@ export const OFFSET_POP_TOKEN_NAMES = Object.freeze({
 export const OFFSET_POP_BAND_TOKEN_NAMES = Object.freeze({
     bandOffset: "--starci-core-band-offset",
     bandHeight: "--starci-core-band-height",
-    bandSubnavHeight: "--starci-core-band-subnav-height",
     railOffset: "--starci-core-rail-offset",
-    subnavOffset: "--starci-core-subnav-offset",
 } as const)
 
 export type OffsetPopBandTokenName = (typeof OFFSET_POP_BAND_TOKEN_NAMES)[keyof typeof OFFSET_POP_BAND_TOKEN_NAMES]

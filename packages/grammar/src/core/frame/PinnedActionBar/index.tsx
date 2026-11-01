@@ -37,7 +37,7 @@ export type PinnedActionBarProps = SingleCommandBar | SummaryBar
  * sticky at the bottom of its scroll container, on `--surface` behind a 1px `--separator` top hairline
  * (BOUNDARY-1), inset 0.75rem above and 1rem at the sides and below - plus the device's bottom safe-area
  * inset. It holds one Button, or a summary beside up to two Buttons (dismiss, then commit); it is not
- * navigation (that is `BottomNav`). Hidden at 48rem and wider unless `visibility="always"`, so the same
+ * navigation. Hidden at 48rem and wider unless `visibility="always"`, so the same
  * command is shown once per viewport (LAYOUT-4 case-2).
  */
 export const PinnedActionBar = (props: PinnedActionBarProps) => {

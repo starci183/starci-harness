@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { OverviewHeaderBlockBase } from "../../src/components/blocks/OverviewHeaderBlock/component"
+import { OverviewPageBlockBase } from "../../src/components/blocks/OverviewPageBlock/component"
 import { OVERVIEW } from "../../src/modules/i18n"
 import { loading, noop, ready, slotLabels } from "../support"
 
 const meta = {
-    title: "OverviewHeaderBlock",
-    component: OverviewHeaderBlockBase,
+    title: "OverviewPageBlock",
+    component: OverviewPageBlockBase,
     args: {
+        children: null,
         props: {
             counts: ready("3 dự án · 3 workflow đang hoạt động · 7 Op đang chạy"),
             labels: {
@@ -18,14 +19,14 @@ const meta = {
         },
         on: { retry: noop },
     },
-} satisfies Meta<typeof OverviewHeaderBlockBase>
+} satisfies Meta<typeof OverviewPageBlockBase>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Ready: Story = { parameters: { dna: { pair: "OverviewHeaderBlock", phase: "ready" } } }
+export const Ready: Story = { parameters: { dna: { pair: "OverviewPageBlock", phase: "ready" } } }
 
 export const Loading: Story = {
     args: { props: { ...meta.args.props, counts: loading() } },
-    parameters: { dna: { pair: "OverviewHeaderBlock", phase: "loading" } },
+    parameters: { dna: { pair: "OverviewPageBlock", phase: "loading" } },
 }

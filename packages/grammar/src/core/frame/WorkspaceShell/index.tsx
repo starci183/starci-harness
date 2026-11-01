@@ -7,7 +7,6 @@ import { Drawer } from "../Drawer/index.js"
 import { Rail } from "../Rail/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
-import { NavigationFeatureNav } from "../NavigationFeatureNav/index.js"
 import { TopBar } from "../../composite/TopBar/index.js"
 import {
     workspaceShellClassName,
@@ -66,14 +65,14 @@ const WorkspaceNavigationDrawer = ({ openLabel, source, content, rowTitle, ...dr
  * Who owns the page's single banner landmark when the shell has a `header`.
  *
  * `shell`: the shell's header wrapper is the `<header>` (banner) and the slot holds plain content.
- * `slot`: the slot content is itself the banner (a `TopBar`, a `NavigationFeatureNav`, or an app
+ * `slot`: the slot content is itself the banner (a `TopBar` or an app
  * bar that renders `<header>`), so the wrapper renders a plain `div` and never nests a second
  * banner around it (axe `landmark-banner-is-top-level`, `landmark-no-duplicate-banner`).
  */
 export type WorkspaceShellHeaderLandmark = "shell" | "slot"
 
 /** Grammar bars that own the banner themselves; hosting one flips the default to `slot`. */
-const BANNER_OWNERS: ReadonlySet<unknown> = new Set([TopBar, NavigationFeatureNav])
+const BANNER_OWNERS: ReadonlySet<unknown> = new Set([TopBar])
 
 /** Resolve the landmark rule: an explicit prop wins, otherwise a Grammar app bar in the slot owns it. */
 export const resolveWorkspaceHeaderLandmark = (header: ReactNode, headerLandmark?: WorkspaceShellHeaderLandmark): WorkspaceShellHeaderLandmark =>
@@ -83,7 +82,7 @@ export type WorkspaceShellProps = (ShellOwnedMain | CallerOwnedMain) & (WithNavi
     readonly header?: ReactNode
     /**
      * Landmark owner for `header` (see `WorkspaceShellHeaderLandmark`). Defaults to `slot` when the
-     * header is a `TopBar` or `NavigationFeatureNav`, otherwise `shell`. Pass `slot` when an
+     * header is a `TopBar`, otherwise `shell`. Pass `slot` when an
      * app-owned bar that renders its own `<header>` goes in the slot.
      */
     readonly headerLandmark?: WorkspaceShellHeaderLandmark

@@ -1,6 +1,7 @@
 import type { Rule } from "eslint"
 import type { TSESTree } from "@typescript-eslint/types"
 import { inSlot, isProductSource, kindOfFile } from "@starci/eslint-canon-fe/lib/scope.mjs"
+import { refuseGrammarExports } from "./lib/grammar-imports.ts"
 import { PURE_HALF, blockDrawsPage, mountedOnlyUnderAuthGroup, segmentFrame } from "./lib/page-frame.ts"
 import type { SegmentFrame } from "./lib/page-frame.ts"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
@@ -10,15 +11,16 @@ import type { ReaderContext } from "./lib/types.ts"
  * and its rhythm.
  *
  * - R324 (`FE_PAGE_TABS_OUTSIDE_HEADER`): page tabs are the header's tabs. A `Tabs` that is the first element child of a
- *   `Page` (the top of the body, right under the band), or the next element sibling of a `PageHeader`, is a page tab bar
- *   drawn outside the band: it misses the separator it stands on and takes the body's inset and gap.
+ *   `Page` (the top of the body, right under the band) is a page tab bar drawn outside the band: it misses the separator
+ *   it stands on and takes the body's inset and gap.
  * - R325 (`FE_ROUTE_PAGE_OUTSIDE_PAGE`): a route draws exactly one `Page` and nothing beside it. The page owner
  *   (`fe.feature`, kind `pages`) draws it itself, through its pure half (`./component`), or through the one connected
  *   block it renders as its root, where client data builds the header a server owner cannot build. A route segment
  *   `layout` whose owner (`fe.feature`, kind `layouts`) draws, in the same ways, a `Page` whose `header` carries `tabs` is
  *   the one `Page` of every route under it: those page owners draw body content only, so a `Page` they draw is a second
  *   one, and they need none. A `Page` (or a block that draws one) with an element sibling, a `Page` inside another, or a
- *   bare `PageHeader` or `PageContainer` in a page or layout owner re-decides the inset and the rhythm `Page` owns. A page
+ *   bare `PageHeader` or `PageContainer` imported from `@starci/grammar` is the finding of its own: both are Page's parts and
+ *   are not exported, so the law reads the import and nothing else of them. A page
  *   owner file that draws JSX but no `Page` in one of those ways has no page frame at all, unless a segment layout frames
  *   every route that mounts it, or every such route lies under the auth route group `(auth)` with its own layout: that
  *   layout draws the auth frame, the page frame of its sign-in, sign-up, password and callback pages.
@@ -51,27 +53,23 @@ const renderedChildren = (children: readonly TSESTree.JSXChild[]): TSESTree.JSXC
     return true
   })
 
-/** The `Tabs` element drawn as page tabs outside the header band, among one parent's children, or null. */
+/** The `Tabs` element drawn as page tabs at the top of a `Page` body, outside the header band, or null. */
 export const tabsOutsideHeader = (parent: TSESTree.JSXElement | TSESTree.JSXFragment): TSESTree.JSXElement | null => {
   const children = renderedChildren(parent.children)
   const first = children[0]
   if (elementName(parent) === "Page" && elementName(first) === "Tabs") return first as TSESTree.JSXElement
-  for (let index = 0; index + 1 < children.length; index += 1) {
-    const next = children[index + 1]
-    if (elementName(children[index]) === "PageHeader" && elementName(next) === "Tabs") return next as TSESTree.JSXElement
-  }
   return null
 }
 
-/** Page tabs are the header's `tabs`, never a `Tabs` at the top of the body or beside a `PageHeader`. */
+/** Page tabs are the header's `tabs`, never a `Tabs` at the top of the body. */
 export const pageTabsInHeader: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R324: page tabs are Page header.tabs (or PageHeader tabs), never a Tabs at the top of the body." },
+    docs: { description: "R324: page tabs are Page header.tabs, never a Tabs at the top of the body." },
     schema: [],
     messages: {
       outside:
-        "This `Tabs` is the page's tab bar drawn under the header band instead of on it: it misses the separator the page tabs stand on and takes the body's inset. Pass it as `header.tabs` of `Page` (or `tabs` of `PageHeader`): `{ label, items, selectedKey, onSelect }`, or link tabs whose items carry an `href` each.",
+        "This `Tabs` is the page's tab bar drawn under the header band instead of on it: it misses the separator the page tabs stand on and takes the body's inset. Pass it as `header.tabs` of `Page`: `{ label, items, selectedKey, onSelect }`, or link tabs whose items carry an `href` each.",
     },
   },
   create(context) {
@@ -87,7 +85,8 @@ export const pageTabsInHeader: Rule.RuleModule = defineRule({
   },
 })
 
-const PAGE_PARTS = new Set(["PageHeader", "PageContainer"])
+/** The Grammar exports that are Page's parts and no longer public. */
+const PAGE_PARTS: ReadonlySet<string> = new Set(["PageHeader", "PageContainer"])
 
 /** The owner kind a file belongs to: a page owner or a layout owner (`fe.feature`, kind `pages` or `layouts`), or null. */
 const ownerKind = (context: ReaderContext): "pages" | "layouts" | null => {
@@ -113,12 +112,12 @@ const enclosingElement = (node: TSESTree.Node): TSESTree.JSXElement | null => {
 
 /**
  * A route draws exactly one `Page` and nothing beside it: the page owner draws it, its pure half does, or the one connected
- * block it renders as its root does. `PageHeader` and `PageContainer` are Page's own parts.
+ * block it renders as its root does. `PageHeader` and `PageContainer` are Page's own parts, refused where they are imported.
  */
 export const routePageIsOnePage: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R325: a route draws one Page (in its page owner, its pure half or its one root block, or in the layout of its tabbed segment) with nothing beside it, never a bare PageHeader or PageContainer, and never no Page at all." },
+    docs: { description: "R325: a route draws one Page (in its page owner, its pure half or its one root block, or in the layout of its tabbed segment) with nothing beside it, never a PageHeader or PageContainer imported by hand, and never no Page at all." },
     schema: [],
     messages: {
       sibling:
@@ -126,7 +125,7 @@ export const routePageIsOnePage: Rule.RuleModule = defineRule({
       twice:
         "This `{{name}}` draws a second `Page` inside the route's `Page`{{framer}}: a route page is exactly one `Page`, so the band, the measure and the rhythm would be decided twice. Draw its content as the body of the one `Page`.",
       part:
-        "`{{name}}` is drawn by `Page`: a page or layout owner composes `Page` (`header` for the band, `measure` for the body), so the inset and the rhythm have one owner. Replace it with `Page`.",
+        "`{{name}}` is a part of `Page`, not an export: a page or layout owner composes `Page` (`header` for the band, `measure` for the body), so the inset and the rhythm have one owner. Replace it with `Page`.",
       missing:
         "This page owner draws no `Page`: a route page is one Grammar `Page`, which owns the header band, the measure and the rhythm, so without it the page has no heading band and its body sits on no inset. Wrap what it draws in a `Page` whose `header.title` is the page heading (never a `Heading` of its own), draw it through the owner's pure half in `./component`, or render as the root the one connected block that draws the `Page` from client data.",
     },
@@ -153,8 +152,16 @@ export const routePageIsOnePage: Rule.RuleModule = defineRule({
       const opening = element.openingElement.name
       return opening.type === "JSXIdentifier" && appImports.has(opening.name) && blockDrawsPage(context, element.openingElement)
     }
+    const parts = refuseGrammarExports(PAGE_PARTS, ({ node, name }) => {
+      // The part's own finding already says to draw a `Page` instead; the missing Page is not reported twice.
+      drawsPage = true
+      context.report({ node, messageId: "part", data: { name } })
+    })
     return {
+      MemberExpression: parts.MemberExpression,
+      JSXMemberExpression: parts.JSXMemberExpression,
       ImportDeclaration(declaration) {
+        parts.ImportDeclaration(declaration)
         const source = String(declaration.source.value)
         const into = PURE_HALF.test(source) ? pureHalf : APP_SOURCE.test(source) ? appImports : null
         if (into === null || declaration.importKind === "type") return
@@ -165,12 +172,6 @@ export const routePageIsOnePage: Rule.RuleModule = defineRule({
         const name = elementName(element)
         const opening = element.openingElement.name
         if (opening.type === "JSXIdentifier" && pureHalf.has(opening.name)) drawsPage = true
-        if (name !== null && PAGE_PARTS.has(name)) {
-          // The part's own finding already says to draw a `Page` instead; the missing Page is not reported twice.
-          drawsPage = true
-          context.report({ node: element, messageId: "part", data: { name } })
-          return
-        }
         if (!drawsFrame(element, name)) return
         drawsPage = true
         frames.add(element)

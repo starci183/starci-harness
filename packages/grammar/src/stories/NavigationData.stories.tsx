@@ -3,7 +3,7 @@ import { parseDate, type DateValue } from '@internationalized/date';
 import { useState, type ReactNode } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, MenuGlyph, State, familyScope, noop, pageLabel, placeholderImage, showRowStates, textContrast } from './fixtures.js';
+import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, State, familyScope, noop, pageLabel, placeholderImage, showRowStates, textContrast } from './fixtures.js';
 
 /**
  * Navigation and data display: wayfinding (tabs, breadcrumbs, pagination, stepper), collections
@@ -107,24 +107,32 @@ export const AvatarGroup: Story = {
   ),
 };
 
-export const Breadcrumbs: Story = {
+/** The trail is Page `header.breadcrumbs`: alone over a bleed page, or the first row of the band. */
+export const PageBreadcrumbs: Story = {
   render: () => (
     <Matrix>
       <State label="Current crumb still loading (isSkeleton)">
-        <G.Breadcrumbs label="Breadcrumb (loading page)" items={[{ id: 'home', label: 'Home', href: '#home' }, { id: 'lessons', label: 'Lessons', href: '#lessons' }, { id: 'lesson', label: '', isSkeleton: true }]} />
+        <G.Page chrome="bleed" minHeight="none" header={{ breadcrumbs: { label: 'Breadcrumb (loading page)', items: [{ id: 'home', label: 'Home', href: '#home' }, { id: 'lessons', label: 'Lessons', href: '#lessons' }, { id: 'lesson', label: '', isSkeleton: true }] } }}>
+          <span />
+        </G.Page>
       </State>
       <State label="Trail ending at the current page">
-        <G.Breadcrumbs
-          label="Breadcrumb"
-          items={[
-            { id: 'home', label: 'Home', href: '#home', leading: <G.Icon source={HomeGlyph} usage="leading" /> },
-            { id: 'courses', label: 'Courses', href: '#courses' },
-            { id: 'grammar', label: 'Grammar basics' },
-          ]}
-        />
-      </State>
-      <State label="Custom separator">
-        <G.Breadcrumbs label="Folders" separator="/" items={[{ id: 'a', label: 'Drive', href: '#a' }, { id: 'b', label: 'Shared', href: '#b' }, { id: 'c', label: 'Reports' }]} />
+        <G.Page
+          chrome="bleed"
+          minHeight="none"
+          header={{
+            breadcrumbs: {
+              label: 'Breadcrumb',
+              items: [
+                { id: 'home', label: 'Home', href: '#home', leading: <G.Icon source={HomeGlyph} usage="leading" /> },
+                { id: 'courses', label: 'Courses', href: '#courses' },
+                { id: 'grammar', label: 'Grammar basics' },
+              ],
+            },
+          }}
+        >
+          <span />
+        </G.Page>
       </State>
     </Matrix>
   ),
@@ -1273,29 +1281,3 @@ export const Tabs: Story = {
   ),
 };
 
-const SubnavDemo = ({ label, initialOpen }: { readonly label: string; readonly initialOpen: boolean }) => {
-  const [open, setOpen] = useState(initialOpen);
-  return (
-    <G.Subnav
-      label={label}
-      title="Grammar basics"
-      leading={<G.Icon source={BookGlyph} usage="leading" />}
-      menuIcon={<G.Icon source={MenuGlyph} />}
-      openMenuLabel="Open section menu"
-      closeMenuLabel="Close section menu"
-      isMenuOpen={open}
-      onMenuOpenChange={setOpen}
-      position="static"
-      visibility="always"
-    />
-  );
-};
-
-export const Subnav: Story = {
-  render: () => (
-    <Matrix maxWidth={560}>
-      <State label="Menu closed" direction="column"><SubnavDemo label="Lesson sections" initialOpen={false} /></State>
-      <State label="Menu open (expanded)" direction="column"><SubnavDemo label="Course sections" initialOpen /></State>
-    </Matrix>
-  ),
-};

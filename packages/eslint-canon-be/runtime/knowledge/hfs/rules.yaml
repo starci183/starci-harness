@@ -5576,7 +5576,7 @@ rules:
         ruling: "The label of a status chip starts with an uppercase letter (owner ruling chip-label-uppercase); StatusDot capitalises a text label it renders, and the lint refuses a lowercase literal label at its source."
   - id: R323
     code: "FE_PAGE_HEADER_HAND_ROLLED"
-    law: "A page is headed by Grammar's PageHeader; a Breadcrumbs trail followed by a SectionHeader in one parent is a page head composed by hand, with no band, no top inset and no separator."
+    law: "A page is headed by the header of Grammar's Page; PageHeader and Breadcrumbs are Page's parts and are not exported, so importing either from the Grammar composes a page head by hand, with no band, no top inset and no separator."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_PAGE_HEADER_HAND_ROLLED"]
@@ -5599,7 +5599,7 @@ rules:
         ruling: "A page is headed by Grammar's PageHeader (owner ruling page-header-band): a surface band whose content shares the page content's edges and which ends in its own full-width separator, page tabs standing on it; the lint refuses a page head composed by hand from Breadcrumbs and SectionHeader."
   - id: R324
     code: "FE_PAGE_TABS_OUTSIDE_HEADER"
-    law: "Page tabs are the header's tabs; a Tabs that is the first element of a Page body or the next element after a PageHeader is a page tab bar drawn outside the band."
+    law: "Page tabs are the header's tabs; a Tabs that is the first element of a Page body is a page tab bar drawn outside the band."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_PAGE_TABS_OUTSIDE_HEADER"]
@@ -5622,7 +5622,7 @@ rules:
         ruling: "A route page is one Grammar Page (owner ruling page-frame); page tabs are its header's tabs, and the lint refuses a Tabs at the top of the Page body or right after a PageHeader."
   - id: R325
     code: "FE_ROUTE_PAGE_OUTSIDE_PAGE"
-    law: "A page owner draws one Grammar Page with nothing beside it; a sibling of the Page, or a bare PageHeader or PageContainer in the page owner, re-decides the inset and rhythm Page owns."
+    law: "A page owner draws one Grammar Page with nothing beside it; a sibling of the Page re-decides the inset and rhythm Page owns, and PageHeader and PageContainer are Page's parts, not exports to import from the Grammar."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_ROUTE_PAGE_OUTSIDE_PAGE"]

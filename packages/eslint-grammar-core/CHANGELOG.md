@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed: R323 (`no-hand-rolled-page-header`) reduces to imports: `PageHeader` and `Breadcrumbs` imported from `@starci/grammar` (by name, aliased or through a namespace) are the finding. R325 (`route-page-is-one-page`) refuses `PageHeader` and `PageContainer` the same way (message `part`) and keeps its one-Page reading. R324 (`page-tabs-in-header`) loses its `PageHeader` sibling clause. The bundled catalog carries the new law text.
+
 ## 0.20.2 - 2026-11-01
 
 - Changed: `status-text-uses-soft-foreground` follows the owner's pair rule. It refuses a solid tone painted as text on a `bg-<tone>-soft` tint of the same element (message `onTint`: use `text-<tone>-soft-foreground`) and the soft foreground with no `bg-<tone>-soft` behind it on its element or on an enclosing element of the file (message `alone`: use `text-<tone>`). A bare `text-<tone>`, which the rule refused before, is no longer a finding. Constants and `classes` entries are judged for the first finding only.

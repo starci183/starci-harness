@@ -1,4 +1,5 @@
-import { Alert, AlertDialog, Button, Dialog, PageContainer, PageHeader, RadioGroup, Textarea } from "@starci/grammar/core"
+import { Alert, AlertDialog, Button, Dialog, Page, RadioGroup, Textarea } from "@starci/grammar/core"
+import type { ReactNode } from "react"
 import type { DataSlot, ResultNotice, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 import { StatusWord } from "../../leaves/StatusWord"
@@ -21,7 +22,7 @@ export interface WorkflowHeaderView {
 export type StopMode = "stop-graceful" | "stop-hard"
 
 /** Copy the connected header resolves. */
-export interface WorkflowHeaderBlockLabels {
+export interface WorkflowPageBlockLabels {
     readonly trail: { readonly label: string; readonly project: string; readonly workflows: string }
     readonly reason: string
     readonly changeGoal: string
@@ -45,8 +46,10 @@ export interface WorkflowHeaderBlockLabels {
     readonly slot: SlotLabels
 }
 
-/** Complete input of WorkflowHeaderBlockBase. */
-export interface WorkflowHeaderBlockBaseProps {
+/** Complete input of WorkflowPageBlockBase. */
+export interface WorkflowPageBlockBaseProps {
+    /** The page body, below the header and its notices. */
+    readonly children: ReactNode
     readonly shape: WorkflowHeaderShape
     readonly props: {
         readonly header: DataSlot<WorkflowHeaderView>
@@ -56,7 +59,7 @@ export interface WorkflowHeaderBlockBaseProps {
         readonly stopMode: StopMode
         readonly isPending: boolean
         readonly result: ResultNotice | null
-        readonly labels: WorkflowHeaderBlockLabels
+        readonly labels: WorkflowPageBlockLabels
     }
     readonly on: {
         readonly retry: () => void
@@ -79,7 +82,7 @@ const HEADER_PLACEHOLDER: WorkflowHeaderView = {
 }
 
 /** Change goal, pause or resume, and stop; what each offers follows the shape. */
-const WorkflowActions = (props: WorkflowHeaderBlockBaseProps) => {
+const WorkflowActions = (props: WorkflowPageBlockBaseProps) => {
     const { labels } = props.props
     const isStopped = props.shape === "stopped"
     let toggle: { readonly label: string; readonly isDisabled: boolean }
@@ -160,51 +163,59 @@ const WorkflowActions = (props: WorkflowHeaderBlockBaseProps) => {
 }
 
 /**
- * Pure half: the page header (where the workflow sits, its title, status and versions, its goal and the owner's verbs), then
- * the reason it is held and the last verb's outcome in the page's gutter.
+ * Pure half: the route Page, headed by where the workflow sits, its title, status and versions, its goal and the owner's
+ * verbs; the reason it is held and the last verb's outcome open its body, above the page body.
  */
-export const WorkflowHeaderBlockBase = (props: WorkflowHeaderBlockBaseProps) => {
+export const WorkflowPageBlockBase = (props: WorkflowPageBlockBaseProps) => {
     const { labels, result } = props.props
+    const resultNotice =
+        result === null ? null : (
+            <Alert
+                key={result.n}
+                tone={result.isOk ? "affirmative" : "negative"}
+                title={result.title}
+                description={result.description}
+                dismissLabel={labels.dismiss}
+            />
+        )
     return (
-        <>
-            <SlotView slot={props.props.header} placeholder={HEADER_PLACEHOLDER} labels={labels.slot} isFramed onRetry={props.on.retry}>
-                {(header, isSkeleton) => (
-                    <>
-                        <PageHeader
-                            measure="full"
-                            isSkeleton={isSkeleton}
-                            breadcrumbs={{
-                                label: labels.trail.label,
-                                items: [
-                                    { id: "project", label: labels.trail.project, href: props.props.overviewHref },
-                                    { id: "workflows", label: labels.trail.workflows },
-                                ],
-                            }}
-                            title={header.title}
-                            status={<StatusWord status={header.status} />}
-                            meta={header.versions}
-                            description={header.goal}
-                            actions={<WorkflowActions {...props} />}
-                        />
-                        {header.reason === null ? null : (
-                            <PageContainer measure="full" className="app-page-notices">
-                                <Alert tone="cautionary" title={labels.reason} description={header.reason} />
-                            </PageContainer>
-                        )}
-                    </>
-                )}
-            </SlotView>
-            {result === null ? null : (
-                <PageContainer measure="full" className="app-page-notices">
-                    <Alert
-                        key={result.n}
-                        tone={result.isOk ? "affirmative" : "negative"}
-                        title={result.title}
-                        description={result.description}
-                        dismissLabel={labels.dismiss}
-                    />
-                </PageContainer>
+        <SlotView
+            slot={props.props.header}
+            placeholder={HEADER_PLACEHOLDER}
+            labels={labels.slot}
+            frame={(notice) => (
+                <Page measure="full">
+                    {notice}
+                    {resultNotice}
+                    {props.children}
+                </Page>
             )}
-        </>
+            onRetry={props.on.retry}
+        >
+            {(header, isSkeleton) => (
+                <Page
+                    measure="full"
+                    isSkeleton={isSkeleton}
+                    header={{
+                        breadcrumbs: {
+                            label: labels.trail.label,
+                            items: [
+                                { id: "project", label: labels.trail.project, href: props.props.overviewHref },
+                                { id: "workflows", label: labels.trail.workflows },
+                            ],
+                        },
+                        title: header.title,
+                        status: <StatusWord status={header.status} />,
+                        meta: header.versions,
+                        description: header.goal,
+                        actions: <WorkflowActions {...props} />,
+                    }}
+                >
+                    {header.reason === null ? null : <Alert tone="cautionary" title={labels.reason} description={header.reason} />}
+                    {resultNotice}
+                    {props.children}
+                </Page>
+            )}
+        </SlotView>
     )
 }

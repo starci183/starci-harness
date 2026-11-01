@@ -4,7 +4,7 @@
 //   starci app add layout settings --blocks settings-nav-block   the blocks fill the frame's rail
 //
 // The route file only mounts the layout owner (contexts/code/fe architecture.md FE-ARCHITECTURE-1). The owner is a server
-// component that composes a Grammar layout frame, `PrimaryRailLayout`: the routed page is its primary region and the `--blocks`
+// component that composes a Grammar layout frame, `Grid kind="main-rail"`: the routed page is its primary region and the `--blocks`
 // (existing blocks of components/blocks) its rail. A frame places regions only and never insets a page or draws a page head;
 // `Page` owns both (contexts/ui/components page-header.md). The owner has no copy to resolve, so it has no pure half and no story:
 // the frame's look is the Grammar's and the regions are the page's and the blocks'. The bodies are templates/fe/units/layout/.
@@ -36,8 +36,8 @@ export function addFeLayout({ repoRoot, segment, options = {} }: { repoRoot: str
     blockImports: parts.imports,
     railDoc: blocks.length === 0 ? 'leaves its rail empty until a block fills it' : `fills its rail with ${blocks.join(', ')}`,
     frame: blocks.length === 0
-      ? '<PrimaryRailLayout primary={props.content} />'
-      : ['(', '    <PrimaryRailLayout', '        primary={props.content}', '        rail={', '            <>', parts.jsx, '            </>', '        }', '    />', ')'].join('\n'),
+      ? '<Grid kind="main-rail" primary={props.content} />'
+      : ['(', '    <Grid', '        kind="main-rail"', '        primary={props.content}', '        rail={', '            <>', parts.jsx, '            </>', '        }', '    />', ')'].join('\n'),
   };
   const created: string[] = [];
   writeNew(created, repoRoot, route, fill('layout/route-layout.tsx.tpl', vars));

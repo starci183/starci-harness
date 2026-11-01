@@ -167,7 +167,7 @@ drag and by Alt+arrow keys and announces each move.
 A field is a label, a control, a description and an error slot, drawn in that order, HeroUI's: the label is the
 accessible name and sits on the control, the description is standing guidance under the control, and the error
 lives in the field's own slot last. Label and control stay adjacent so a row of fields can align on its controls:
-`FormGrid` lays fields in rows whose label, control, description and error are shared tracks, so neighbouring
+`Grid kind="form"` lays fields in rows whose label, control, description and error are shared tracks, so neighbouring
 controls stand on one line whatever their neighbours carry, and its columns come from its own width. Groups
 (`RadioGroup`, `CheckboxGroup`, `Fieldset`) keep HeroUI's group order, their description before the options they
 explain. Its look comes from context: `primary` on the canvas, `secondary` inside a surface, so a field never

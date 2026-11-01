@@ -116,46 +116,6 @@
         color: var(--accent-foreground);
     }
 
-    /*
-     * The dock is taller than Common's bar (4rem items, a 1.5x ink rule and a raised shadow above
-     * it), so it redefines the block size the fixed-bar offset is computed from.
-     */
-    .grammar-common-root[data-grammar-family="offset-pop"] {
-        --starci-core-bottom-nav-block-size: calc(4.5rem + var(--offset-pop-outline-width) * 1.5 + var(--offset-pop-shadow-y) * 0.5);
-    }
-
-    /* BottomNav: a chunky raised dock with a pink current pill. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="BottomNav"] {
-        border-block-start: calc(var(--offset-pop-outline-width) * 1.5) solid var(--foreground);
-        background: var(--surface);
-        box-shadow: 0 calc(var(--offset-pop-shadow-y) * -0.5) 0 var(--offset-pop-shadow-ink, var(--foreground));
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="BottomNav"] [data-grammar-bottom-nav-item] {
-        min-block-size: 4rem;
-        color: var(--foreground);
-        font-weight: var(--grammar-weight-extrabold);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="BottomNav"] [data-grammar-bottom-nav-item] > [aria-hidden="true"] {
-        min-inline-size: 3.25rem;
-        min-block-size: 2rem;
-        border: var(--offset-pop-outline-width) solid transparent;
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="BottomNav"] [data-grammar-current="true"] > [aria-hidden="true"] {
-        border-color: var(--foreground);
-        background: var(--accent);
-        color: var(--accent-foreground);
-        box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="BottomNav"] [data-grammar-bottom-nav-badge] {
-        border: var(--offset-pop-outline-width) solid var(--foreground);
-        background: var(--warning);
-        color: var(--foreground);
-    }
-
     /* Footer: ink top rule and bold group labels. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Footer"] {
         border-block-start: var(--offset-pop-outline-width) solid var(--foreground);

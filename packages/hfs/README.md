@@ -45,9 +45,9 @@ and `contexts/ui`, from `templates/fe/units`, with its copy in every catalog; no
   `<Name>ErrorPage` (the page with one negative Alert), and the stories pairing the page with its loading view.
 - `overlay <name> --kind modal|drawer`: `features/overlays/<Name>Overlay`, a `Dialog` or a trailing `Drawer` whose connected
   half owns its open state; its decision group puts the way out first and the commit last, always in the footer; with `--form`
-  the body holds a Form with an `id` over a one-column `FormGrid` and the footer's commit submits it by `form="<id>"`; stories draw it closed and open.
+  the body holds a Form with an `id` over a one-column `Grid kind="form"` and the footer's commit submits it by `form="<id>"`; stories draw it closed and open.
 - `layout <segment>`: `app/[locale]/<segment>/layout.tsx` and `features/layouts/<Name>Layout`, which composes Grammar's
-  `PrimaryRailLayout`: the routed page in its primary region, `--blocks` in its rail. A frame never insets a page.
+  `Grid kind="main-rail"`: the routed page in its primary region, `--blocks` in its rail. A frame never insets a page.
 
 ## Lite edition
 

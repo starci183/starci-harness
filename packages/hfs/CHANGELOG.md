@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added: the codemod `page-navigation` (`starci app codemod page-navigation [--execute] [--json]`) for the grammar's page and navigation cuts: `PrimaryRailLayout` to `Grid kind="main-rail"` and `FormGrid` to `Grid kind="form"` (a `className` or a spread blocks the rewrite), and every use of `PageHeader`, `PageContainer`, `Breadcrumbs`, `FillViewport`, `Rail`, `NavigationFeatureNav`, `Subnav` and `BottomNav` is reported with a code and the way to `Page`, `Grid` or `TopBar`.
+- Changed: `starci app add layout` draws `Grid kind="main-rail"` and `starci app add overlay --form` a `Grid kind="form"`; R323 to R325 law text follows (the page parts are not exports).
+
 - Added: the `frames` component tier for apps (grammar audit 2026-11, decision 9): slot `fe.components` layers are `blocks, frames, composites, branches, leaves`, the architecture machine and the world check know it, and `starci app add frame <name>` writes one. The grammar package folders are `leaf`, `branch`, `composite` and `frame`.
 - Added: the codemod `small-renames` (`starci app codemod small-renames [--execute] [--json]`) for the grammar's small cuts: `ChatBubble` to `MessageBubble`, `StatusDot` with text and `ConnectionStatus` to `Badge isDot`, `CloseButton` to `IconButton intent="dismiss"`, `TextAction href` to `Link`, `SurfaceCopyGroup` to `Stack`, the removed `variant`, `size="control"`, `isError` and `OtpInput` props, and `FlowGraph layout="orbit"` to `BubbleMap`; what a person decides is reported, not rewritten.
 

@@ -1,59 +1,33 @@
 import type { Rule } from "eslint"
-import type { TSESTree } from "@typescript-eslint/types"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
+import { refuseGrammarExports } from "./lib/grammar-imports.ts"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 /**
- * The rule that holds the page header law (HFS R323, `FE_PAGE_HEADER_HAND_ROLLED`): a page is headed by Grammar's
- * `PageHeader`. A page head composed by hand from a `Breadcrumbs` trail and a `SectionHeader` has no band, no top
- * inset and no separator, and every page re-decides its spacing, so the heads of an app drift apart.
+ * The rule that holds the page header law (HFS R323, `FE_PAGE_HEADER_HAND_ROLLED`): a page is headed by Grammar's `Page`,
+ * whose `header` is the band. `PageHeader` and `Breadcrumbs` are Page's own parts and are not exported; a page head
+ * composed from them by hand has no band, no top inset and no separator, and every page re-decides its spacing.
  *
- * WHAT IT READS. The children of one JSX element or fragment. A `Breadcrumbs` element followed, among the same parent's
- * element children, by a `SectionHeader` element is the hand-rolled head: the trail and the heading of one page, which
- * is exactly what `PageHeader` composes. A `Breadcrumbs` and a `SectionHeader` in different parents, a `SectionHeader`
- * before the trail, or either alone are not judged: a region's `SectionHeader` under the page head stays legal.
+ * WHAT IT READS. The imports of a file: a `PageHeader` or `Breadcrumbs` imported from `@starci/grammar` (by name, or
+ * as a member of a namespace import) is the finding. The law is the export that is gone, so it reads nothing else.
  */
 
-/** The element name of a JSX opening element (`SectionHeader`, or `Grammar.SectionHeader` as `SectionHeader`). */
-const elementName = (child: TSESTree.JSXChild): string | null => {
-  if (child.type !== "JSXElement") return null
-  const name = child.openingElement.name
-  if (name.type === "JSXIdentifier") return name.name
-  if (name.type === "JSXMemberExpression") return name.property.name
-  return null
-}
+/** The Grammar exports that are Page's parts and no longer public. */
+export const PAGE_HEAD_PARTS: ReadonlySet<string> = new Set(["PageHeader", "Breadcrumbs"])
 
-/** The `SectionHeader` that follows a `Breadcrumbs` among the element children, or null. */
-export const handRolledHead = (children: readonly TSESTree.JSXChild[]): TSESTree.JSXElement | null => {
-  let trail = false
-  for (const child of children) {
-    const name = elementName(child)
-    if (name === "Breadcrumbs") trail = true
-    if (name === "SectionHeader" && trail && child.type === "JSXElement") return child
-  }
-  return null
-}
-
-/** A page head is Grammar's `PageHeader`, never a `Breadcrumbs` and a `SectionHeader` composed by hand. */
+/** A page head is Page `header`, never `PageHeader` or `Breadcrumbs` reached for by hand. */
 export const noHandRolledPageHeader: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R323: a page head is Grammar's PageHeader, never Breadcrumbs and SectionHeader composed by hand." },
+    docs: { description: "R323: a page head is Page header (title, breadcrumbs, slots), never PageHeader or Breadcrumbs imported by hand." },
     schema: [],
     messages: {
       handRolled:
-        "A `Breadcrumbs` trail followed by a `SectionHeader` is a page head composed by hand: it has no band, no top inset and no separator, and each page re-decides its spacing. Use Grammar's `PageHeader` with `breadcrumbs`, `title` and the slots the head needs (`description`, `meta`, `status`, `mark`, `actions`, `tabs`).",
+        "`{{name}}` is a part of `Page`, not an export to compose: a head built from it has no band, no top inset and no separator, and each page re-decides its spacing. Pass the head as `header` of `Page`: `{ breadcrumbs, title, description, meta, status, mark, actions, tabs }`.",
     },
   },
   create(context) {
     if (!isProductSource(context)) return {}
-    const judge = (children: readonly TSESTree.JSXChild[]): void => {
-      const header = handRolledHead(children)
-      if (header !== null) context.report({ node: header, messageId: "handRolled" })
-    }
-    return {
-      JSXElement(element) { judge(element.children) },
-      JSXFragment(fragment) { judge(fragment.children) },
-    }
+    return refuseGrammarExports(PAGE_HEAD_PARTS, ({ node, name }) => { context.report({ node, messageId: "handRolled", data: { name } }) })
   },
 })
 

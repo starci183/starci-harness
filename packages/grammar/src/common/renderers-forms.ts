@@ -12,7 +12,6 @@ import { TimeField } from "../core/leaf/TimeField/index.js"
 import { FileDropzone } from "../core/branch/FileDropzone/index.js"
 import { Fieldset } from "../core/frame/Fieldset/index.js"
 import { Form } from "../core/frame/Form/index.js"
-import { FormGrid } from "../core/frame/FormGrid/index.js"
 import { CheckboxGroup } from "../core/composite/CheckboxGroup/index.js"
 import { RadioGroup } from "../core/composite/RadioGroup/index.js"
 import { SegmentedControl } from "../core/composite/SegmentedControl/index.js"
@@ -36,7 +35,7 @@ export { TimeField, type TimeFieldProps } from "../core/leaf/TimeField/index.js"
 export { FileDropzone, type FileDropzoneProps } from "../core/branch/FileDropzone/index.js"
 export { Fieldset, type FieldsetProps } from "../core/frame/Fieldset/index.js"
 export { Form, type FormProps, type FormValidationErrors } from "../core/frame/Form/index.js"
-export { FormGrid, type FormGridColumns, type FormGridProps } from "../core/frame/FormGrid/index.js"
+export type { FormGridColumns } from "../core/frame/FormGrid/index.js"
 export { CheckboxGroup, type CheckboxGroupProps, type ChoiceOption, type ChoiceOrientation } from "../core/composite/CheckboxGroup/index.js"
 export { RadioGroup, type RadioGroupProps } from "../core/composite/RadioGroup/index.js"
 export { SegmentedControl, type SegmentOption, type SegmentedControlProps, type SegmentedControlSize } from "../core/composite/SegmentedControl/index.js"
@@ -51,6 +50,6 @@ export { DateRangePicker, type DateRangePickerProps, type DateRangeValue } from 
 /** The form group of Common renderers, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_FORMS_COMPONENTS = Object.freeze({
     ButtonGroup, FilterButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker, DateRangePicker, Field,
-    Fieldset, FileDropzone, Form, FormGrid, NumberField, RadioGroup, SearchField, SegmentedControl, Select,
+    Fieldset, FileDropzone, Form, NumberField, RadioGroup, SearchField, SegmentedControl, Select,
     Slider, Switch, Textarea, TimeField,
 } as const)

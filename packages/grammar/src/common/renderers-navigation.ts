@@ -12,13 +12,11 @@ import { MermaidDiagram } from "../core/composite/MermaidDiagram/index.js"
 import { AvatarButton } from "../core/leaf/AvatarButton/index.js"
 import { AvatarGroup } from "../core/composite/AvatarGroup/index.js"
 import { IdentityLockup } from "../core/composite/IdentityLockup/index.js"
-import { Breadcrumbs } from "../core/composite/Breadcrumbs/index.js"
 import { DescriptionList } from "../core/composite/DescriptionList/index.js"
 import { Pagination } from "../core/composite/Pagination/index.js"
 import { Stepper } from "../core/composite/Stepper/index.js"
 import { TagGroup } from "../core/composite/TagGroup/index.js"
 import { Timeline } from "../core/composite/Timeline/index.js"
-import { BottomNav } from "../core/frame/BottomNav/index.js"
 import { Footer } from "../core/composite/Footer/index.js"
 import { TopBar } from "../core/composite/TopBar/index.js"
 import { Avatar } from "../core/leaf/Avatar/index.js"
@@ -42,13 +40,12 @@ export { AvatarButton, type AvatarButtonProps } from "../core/leaf/AvatarButton/
 export { IdentityLockup, type IdentityLockupProps } from "../core/composite/IdentityLockup/index.js"
 export { PlainPressable, type PlainPressableProps, type PlainPressableShape } from "../core/leaf/PlainPressable/index.js"
 export { AvatarGroup, type AvatarGroupItem, type AvatarGroupProps } from "../core/composite/AvatarGroup/index.js"
-export { Breadcrumbs, type BreadcrumbItem, type BreadcrumbsProps } from "../core/composite/Breadcrumbs/index.js"
+export type { BreadcrumbItem } from "../core/composite/Breadcrumbs/index.js"
 export { DescriptionList, type DescriptionListItem, type DescriptionListLayout, type DescriptionListProps, type DescriptionListStatItem } from "../core/composite/DescriptionList/index.js"
 export { Pagination, paginationTokens, type PaginationProps, type PaginationToken } from "../core/composite/Pagination/index.js"
 export { Stepper, stepStateFor, type StepperProps, type StepperSize, type StepperStep, type StepperStepState } from "../core/composite/Stepper/index.js"
 export { TagGroup, type TagGroupItem, type TagGroupProps } from "../core/composite/TagGroup/index.js"
 export { Timeline, type TimelineItem, type TimelineProps } from "../core/composite/Timeline/index.js"
-export { BottomNav, type BottomNavItem, type BottomNavProps } from "../core/frame/BottomNav/index.js"
 export { Footer, type FooterLink, type FooterLinkGroup, type FooterProps } from "../core/composite/Footer/index.js"
 export { TopBar, type TopBarMenu, type TopBarProps } from "../core/composite/TopBar/index.js"
 export { Avatar, avatarInitials, type AvatarKind, type AvatarProps, type AvatarShape, type AvatarSize } from "../core/leaf/Avatar/index.js"
@@ -59,6 +56,6 @@ export { Video, type VideoCaptionsTrack, type VideoProps } from "../core/leaf/Vi
 
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
-    Accordion, Avatar, AvatarButton, AvatarGroup, BottomNav, Breadcrumbs, Calendar, DataTable, DescriptionList,
+    Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, DataTable, DescriptionList,
     BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, MermaidDiagram, Pagination, PlainPressable, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

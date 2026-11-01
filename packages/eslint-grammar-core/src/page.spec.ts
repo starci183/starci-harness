@@ -23,18 +23,17 @@ test("the laws publish two rules and both are errors", () => {
   assert.deepEqual(recommended, { "starci-grammar/page-tabs-in-header": "error", "starci-grammar/route-page-is-one-page": "error" })
 })
 
-test("R324: a Tabs at the top of a Page body or right after a PageHeader is a page tab bar outside the band", () => {
+test("R324: a Tabs at the top of a Page body is a page tab bar outside the band", () => {
   slotTester().run("page-tabs-in-header", pageTabsInHeader, {
     valid: [
       // the header's tabs
       { filename: OWNER, code: "export const A = () => <Page header={{ title: \"Main account\", tabs: { label: \"Connection\", items, selectedKey, onSelect } }}><Card /></Page>" },
-      { filename: BLOCK, code: "export const A = () => <PageHeader title=\"Main account\" tabs={{ label: \"Connection\", items, selectedKey, onSelect }} />" },
       // region tabs lower in the body
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}><Card />${TABS}</Page>` },
       // tabs inside a body section, not at the top of the body
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}><SurfaceCard label="Usage">${TABS}</SurfaceCard></Page>` },
-      // a PageHeader followed by something else
-      { filename: BLOCK, code: `export const A = () => <><PageHeader title="Main account" /><Card />${TABS}</>` },
+      // a Tabs beside other elements outside a Page is region tabs
+      { filename: BLOCK, code: `export const A = () => <><Header /><Card />${TABS}</>` },
       // a script is not product source
       { filename: SCRIPT, code: `export const A = () => <Page ${HEADER}>${TABS}</Page>` },
     ],
@@ -42,13 +41,11 @@ test("R324: a Tabs at the top of a Page body or right after a PageHeader is a pa
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}>${TABS}<Card /></Page>`, errors: [{ messageId: "outside" }] },
       // whitespace and comments before it are not children; a namespace still names it
       { filename: OWNER, code: `export const A = () => <G.Page ${HEADER}>\n  {/* the tabs */}\n  <G.Tabs label="Connection" items={items} /></G.Page>`, errors: [{ messageId: "outside" }] },
-      { filename: BLOCK, code: `export const A = () => <div><PageHeader title="Main account" />${TABS}</div>`, errors: [{ messageId: "outside" }] },
-      { filename: LAYOUT, code: `export const A = () => <><PageHeader title="Main account" />\n  ${TABS}</>`, errors: [{ messageId: "outside" }] },
     ],
   })
 })
 
-test("R325: a page or layout owner draws one Page with nothing beside it and no bare PageHeader or PageContainer", () => {
+test("R325: a page or layout owner draws one Page with nothing beside it and no PageHeader or PageContainer imported", () => {
   slotTester().run("route-page-is-one-page", routePageIsOnePage, {
     valid: [
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}><Card /></Page>` },
@@ -57,12 +54,12 @@ test("R325: a page or layout owner draws one Page with nothing beside it and no 
       { filename: OWNER, code: `export const A = () => <FormProvider value={form}>\n  <Page ${HEADER}><Card /></Page>\n</FormProvider>` },
       // one Page per branch
       { filename: OWNER, code: `export const A = ({ ready }) => ready ? <Page ${HEADER}><Card /></Page> : <Page ${HEADER} isSkeleton><Card /></Page>` },
-      // outside a page or layout owner the parts are not judged by this law
-      { filename: BLOCK, code: "export const A = () => <PageContainer><Card /></PageContainer>" },
+      // the same names from another module are not the Grammar's parts
+      { filename: BLOCK, code: "import { PageContainer } from \"./PageContainer\"\nexport const A = () => <PageContainer><Card /></PageContainer>" },
       // a layout owner that is a pure frame draws no Page and is never missing one
       { filename: LAYOUT, code: "export const A = ({ children }) => <WorkspaceShell primary={children} />" },
       // a layout owner draws the one Page of its tabbed segment, the routed page as its body
-      { filename: LAYOUT, code: "export const A = ({ children }) => <Page chrome=\"bleed\" header={{ title, tabs: { label, items } }}><FillViewport>{children}</FillViewport></Page>" },
+      { filename: LAYOUT, code: "export const A = ({ children }) => <Page chrome=\"bleed\" header={{ title, tabs: { label, items } }}>{children}</Page>" },
       // a connected half draws through its own pure half, which owns the Page
       { filename: OWNER_INDEX, code: "import { ConnectionPageBase } from \"./component\"\nexport const A = () => <><ConnectionPageBase /><GuideOverlay /></>" },
       // a segment boundary owner draws its notice
@@ -79,14 +76,14 @@ test("R325: a page or layout owner draws one Page with nothing beside it and no 
       { filename: OWNER, code: `export const A = () => <div><Page ${HEADER}><Card /></Page>{footer}</div>`, errors: [{ messageId: "sibling" }] },
       // two Pages: one inside the other
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}><Card /><Page ${HEADER}><Card /></Page></Page>`, errors: [{ messageId: "twice" }] },
-      { filename: OWNER, code: "export const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>", errors: [{ messageId: "part", data: { name: "PageHeader" } }, { messageId: "part", data: { name: "PageContainer" } }] },
-      { filename: OWNER, code: `export const A = () => <Page ${HEADER}><G.PageContainer measure="reading"><Card /></G.PageContainer></Page>`, errors: [{ messageId: "part", data: { name: "PageContainer" } }] },
+      { filename: OWNER, code: "import { PageHeader, PageContainer } from \"@starci/grammar/core\"\nexport const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>", errors: [{ messageId: "part", data: { name: "PageHeader" } }, { messageId: "part", data: { name: "PageContainer" } }] },
+      { filename: OWNER, code: `import * as G from "@starci/grammar/core"\nexport const A = () => <Page ${HEADER}><G.PageContainer measure="reading"><Card /></G.PageContainer></Page>`, errors: [{ messageId: "part", data: { name: "PageContainer" } }] },
       // no Page at all: a heading and blocks on no frame
       { filename: OWNER, code: "export const A = () => <><Heading level={1}>Home</Heading><SignInForm /></>", errors: [{ messageId: "missing" }] },
-      // a layout owner's Page has nothing beside it: the head goes into its header, never a PageHeader sibling
+      // a layout owner's Page has nothing beside it: the head goes into its header
       { filename: LAYOUT, code: "export const A = ({ children }) => <><InstanceHeader /><Page header={{ title, tabs }}>{children}</Page></>", errors: [{ messageId: "sibling" }] },
       { filename: LAYOUT, code: "export const A = ({ children }) => <><Page measure=\"full\"><SectionHeader title={title} /></Page>{children}</>", errors: [{ messageId: "sibling" }] },
-      { filename: LAYOUT, code: "export const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>", errors: [{ messageId: "part", data: { name: "PageHeader" } }, { messageId: "part", data: { name: "PageContainer" } }] },
+      { filename: LAYOUT, code: "import { PageHeader, PageContainer } from \"@starci/grammar/core\"\nexport const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>", errors: [{ messageId: "part", data: { name: "PageHeader" } }, { messageId: "part", data: { name: "PageContainer" } }] },
       // an element imported from elsewhere is no pure half
       { filename: OWNER_INDEX, code: "import { HomeView } from \"@/components/blocks/HomeView\"\nexport const A = () => <HomeView />", errors: [{ messageId: "missing" }] },
     ],

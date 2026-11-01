@@ -38,9 +38,6 @@ export const LayerDefaults: Story = {
             <G.SurfaceCard label="Bounded surface: secondary">
                 <Fields prefix="bounded" />
             </G.SurfaceCard>
-            <G.Rail label="Page rail: primary">
-                <Fields prefix="rail" />
-            </G.Rail>
             <G.SurfaceCard label="Outer surface: secondary">
                 <G.SurfaceCard label="Nested surface: border, secondary">
                     <Fields prefix="nested" />
@@ -77,9 +74,6 @@ export const EveryNestedField: Story = {
 export const PanelsAndOverlays: Story = {
     render: () => (
         <div style={{ display: "grid", gap: "2rem", maxWidth: "42rem" }}>
-            <G.Rail label="Conversation panel" inset="content">
-                <G.SearchField label="Search panel" />
-            </G.Rail>
             <G.Sidebar label="Workspace navigation" groups={[]} header={<G.SearchField label="Search sidebar" />} />
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 <G.Dialog title="Edit conversation" closeLabel="Close dialog" trigger={<G.Button intent="alternative">Open dialog</G.Button>}>

@@ -26,24 +26,14 @@ body,
     min-height: 100%;
 }
 
-/* The routed page: a full-width column; the PageHeader sits flush at its top, the body below it in the Grammar inset. */
+/* The routed page: a full-width column; its Page draws the header band flush at the top and the body below it. */
 .app-page {
     display: flex;
     flex-direction: column;
     min-height: 100%;
 }
 
-/* The body under a header band: the Grammar page inset above and below. */
-.app-page-body {
-    padding-block: var(--grammar-page-inset);
-}
-
-/* Alerts under the page header: the body's gutter, no extra space above (the header's own space follows it). */
-.app-page-notices {
-    padding-block-start: var(--grammar-page-inset);
-}
-
-/* One page: header, then its sections. */
+/* Sections of one region, a region step apart. */
 .app-page-stack {
     display: flex;
     flex-direction: column;
@@ -113,14 +103,6 @@ body,
 .app-cell-progress {
     inline-size: 7.5rem;
     flex-shrink: 0;
-}
-
-.app-connect {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: var(--grammar-region-gap);
-    min-height: 100dvh;
 }
 
 /* Helper text in two lines: a description, then the config key. */

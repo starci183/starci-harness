@@ -8,7 +8,7 @@
  * Every colour pair the family's CSS combines clears WCAG AA in light and dark, measured
  * through the resolved scope, HeroUI's vendor variables included. `accent` is the
  * brand FILL (white text on it, and the focus ring); where the accent is painted as TEXT - links,
- * the current tab and bottom-nav label, the section eyebrow, the soft accent pairing - the family
+ * the current tab label, the section eyebrow, the soft accent pairing - the family
  * reads `accentText`, which is themed because the violet fill is too dark to read on the dark
  * canvas (3.95:1) and a hair too light on the secondary surface (4.44:1). `accentSoft` is the
  * selected/soft tint that `accentText` and `muted` both stay AA on.
@@ -181,25 +181,21 @@ export const STARCI_CORE_TOKEN_NAMES = Object.freeze({
  * These are not theme tokens and they are deliberately absent from `STARCI_CORE_TOKEN_NAMES`: a
  * theme token has one default the family always defines, while each of these is either derived from
  * what is actually on the page or supplied by a host that wants to override that. A consumer reads
- * them; only `railOffset` and `subnavOffset` are meant to be written.
+ * them; only `railOffset` is meant to be written.
  *
  * - `bandOffset` - where the sticky band stack stops. Defined only while a sticky
- *   `NavigationFeatureNav` or `Subnav` is present, so `var(--starci-core-band-offset, X)` keeps
+ *   `TopBar` is present, so `var(--starci-core-band-offset, X)` keeps
  *   falling back to a page's own X when there is no band. A page pins to it with
  *   `top: var(--starci-core-band-offset)` and bounds itself with
  *   `max-height: calc(100dvh - var(--starci-core-band-offset))`.
- * - `bandHeight` - the navigation band alone: 4rem plus its separator, plus 2rem when a feature
- *   layer is stacked on it.
- * - `bandSubnavHeight` - a stacked sticky `Subnav`, which contributes nothing once a compact one is
- *   hidden at 70rem.
- * - `railOffset` / `subnavOffset` - the host overrides. Unset, each reads the published band.
+ * - `bandHeight` - the navigation band alone: 4rem plus its separator, plus 2rem when a
+ *   `subnavigation` layer is stacked on it.
+ * - `railOffset` - the host override. Unset, it reads the published band.
  */
 export const STARCI_CORE_BAND_TOKEN_NAMES = Object.freeze({
     bandOffset: "--starci-core-band-offset",
     bandHeight: "--starci-core-band-height",
-    bandSubnavHeight: "--starci-core-band-subnav-height",
     railOffset: "--starci-core-rail-offset",
-    subnavOffset: "--starci-core-subnav-offset",
 } as const)
 
 export type StarCiCoreBandTokenName = (typeof STARCI_CORE_BAND_TOKEN_NAMES)[keyof typeof STARCI_CORE_BAND_TOKEN_NAMES]

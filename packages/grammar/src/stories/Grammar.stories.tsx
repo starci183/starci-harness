@@ -7,8 +7,8 @@ import {
   Heading,
   Input,
   Label,
-  NavigationFeatureNav,
-  PageContainer,
+  Page,
+  TopBar,
   SurfaceCard,
   SurfaceListCard,
   Text,
@@ -39,7 +39,7 @@ export default meta;
 
 type Story = StoryObj;
 
-// NavigationFeatureNav owns the `<nav aria-label="Primary">` landmark; the slot takes bare links.
+// The primary destinations are a named `<nav>` the app draws; TopBar holds it in its row.
 const navDestinations = (
   <div style={{ display: 'flex', gap: '1.5rem' }}>
     <a href="#" aria-current="page">Tasks</a>
@@ -50,12 +50,10 @@ const navDestinations = (
 );
 
 const topNav = (
-  <NavigationFeatureNav
-    identity={<strong>Todo app</strong>}
-    navigation={navDestinations}
-    navigationLabel="Primary"
-    compactNavigationTrigger={<button type="button">Menu</button>}
-    compactNavigationTriggerLabel="Open navigation"
+  <TopBar
+    brand={<strong>Todo app</strong>}
+    navigation={<nav aria-label="Primary">{navDestinations}</nav>}
+    menu={{ icon: <span>Menu</span>, openLabel: "Open navigation", closeLabel: "Close navigation", isOpen: false, onOpenChange: () => undefined }}
     actions={
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <span aria-hidden="true">A</span>
@@ -63,7 +61,6 @@ const topNav = (
         <Link href="#">Sign out</Link>
       </div>
     }
-    actionsLabel="Account"
   />
 );
 
@@ -142,7 +139,7 @@ export const TasksScreen: Story = {
       header={topNav}
       primaryLabel="Tasks"
       primary={
-        <PageContainer>
+        <Page>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             <div>
               <Heading level={1}>Your tasks</Heading>
@@ -169,7 +166,7 @@ export const TasksScreen: Story = {
             </SurfaceListCard>
             {pageFooter}
           </div>
-        </PageContainer>
+        </Page>
       }
     />
   ),
@@ -179,7 +176,7 @@ export const TasksScreen: Story = {
 export const Leaves: Story = {
   name: 'Leaves (button, input, text, action)',
   render: () => (
-    <PageContainer>
+    <Page>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 560 }}>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button intent="commit">Primary</Button>
@@ -203,7 +200,7 @@ export const Leaves: Story = {
           <Badge>Badge</Badge>
         </div>
       </div>
-    </PageContainer>
+    </Page>
   ),
 };
 
@@ -214,7 +211,7 @@ export const EmptyState: Story = {
       header={topNav}
       primaryLabel="Tasks"
       primary={
-        <PageContainer>
+        <Page>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             <div>
               <Heading level={1}>Your tasks</Heading>
@@ -227,7 +224,7 @@ export const EmptyState: Story = {
               empty={<EmptyNotice message="No tasks yet." description="Add the first one above." />}
             />
           </div>
-        </PageContainer>
+        </Page>
       }
     />
   ),

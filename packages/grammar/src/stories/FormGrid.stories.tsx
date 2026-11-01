@@ -46,14 +46,14 @@ const assertControlLine = (canvasElement: HTMLElement, columns: number) => {
 };
 
 const SettingsGrid = () => (
-  <G.FormGrid>
+  <G.Grid kind="form">
     <G.Input id="grid-account" name="account" label="Account name" defaultValue="Main account" description="Shown on the payment page." />
     <G.Select label="Environment" options={planOptions} defaultValue="live" />
     <G.NumberField label="Retry attempts" defaultValue={3} />
     <G.CopyField label="Webhook URL" value="https://hooks.example.com/api/v2/payments/26465cdf9a0b" description="Paste it into the provider." {...labels} />
     <G.CopyField masked label="API key" lastFour="4387" onCopy={() => 'key_example_4387'} {...labels} />
     <G.Input id="grid-bank" name="bank" label="Bank account" defaultValue="12-34" errorMessage="Enter the full account number." />
-  </G.FormGrid>
+  </G.Grid>
 );
 
 /** Two columns: a description, an error or a missing description in one field never moves its neighbour's control. */
@@ -95,10 +95,10 @@ export const NarrowOwner: Story = {
 export const Skeleton: Story = {
   render: () => (
     <div style={{ maxWidth: 720 }}>
-      <G.FormGrid>
+      <G.Grid kind="form">
         <G.Input id="grid-skeleton-account" name="account" label="Account name" description="Shown on the payment page." isSkeleton />
         <G.CopyField label="Webhook URL" value="https://hooks.example.com/26465cdf" {...labels} isSkeleton />
-      </G.FormGrid>
+      </G.Grid>
     </div>
   ),
   play: async ({ canvasElement }) => {

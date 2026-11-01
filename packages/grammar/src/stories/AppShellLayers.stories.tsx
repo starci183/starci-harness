@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { EllipsisGlyph, HomeGlyph } from './fixtures.js';
+import { EllipsisGlyph } from './fixtures.js';
 
 const meta: Meta = {
   title: 'Compositions/App shell layers',
@@ -86,20 +86,6 @@ export const ShellSlotHeader: Story = {
 
 export const TopBarSearch: Story = {
   render: () => <G.TopBar brand={<G.Text>Workspace</G.Text>} actions={<G.Input id="topbar-query" name="query" label="Search" />} />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('[data-component="Input"]')).toHaveAttribute('data-grammar-variant', 'secondary'));
-  },
-};
-
-export const FeatureNavSearch: Story = {
-  render: () => (
-    <G.NavigationFeatureNav
-      identity={<G.Text>Workspace</G.Text>}
-      compactNavigationTrigger={<G.IconButton label="Open navigation" source={HomeGlyph} />}
-      compactNavigationTriggerLabel="Navigation"
-      actions={<G.Input id="feature-query" name="query" label="Search" />}
-    />
-  ),
   play: async ({ canvasElement }) => {
     await waitFor(() => expect(canvasElement.querySelector('[data-component="Input"]')).toHaveAttribute('data-grammar-variant', 'secondary'));
   },

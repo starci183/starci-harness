@@ -14,14 +14,14 @@ type GridCardsProps = {
 }
 
 type GridFormProps = {
-    /** The fields of one form, through the form layout (`FormGrid`): labels, controls and messages on shared rows. */
+    /** The fields of one form, through the form layout: labels, controls and messages on shared rows. */
     readonly kind: "form"
     readonly children: ReactNode
     readonly columns?: FormGridColumns
 }
 
 type GridMainRailProps = Omit<PrimaryRailLayoutProps, "className"> & {
-    /** Dominant content and one subordinate rail (`PrimaryRailLayout`), the region gap between them on both axes. */
+    /** Dominant content and one subordinate rail, the region gap between them on both axes. */
     readonly kind: "main-rail"
 }
 
@@ -30,8 +30,7 @@ export type GridProps = GridCardsProps | GridFormProps | GridMainRailProps
 
 /**
  * A two-dimensional layout named by what it lays out. `cards` is the Grammar's card grid; `form` is the form layout
- * and `main-rail` the primary-and-rail layout, the same components `FormGrid` and `PrimaryRailLayout` render, so each
- * layout has one owner and the app names it by kind. No kind takes a class or a gap: the kind decides both.
+ * and `main-rail` the primary-and-rail layout, so each layout has one owner and the app names it by kind. No kind takes a class or a gap: the kind decides both.
  */
 export const Grid = (props: GridProps) => {
     if (props.kind === "form") {

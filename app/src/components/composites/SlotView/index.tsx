@@ -1,4 +1,4 @@
-import { EmptyNotice, PageContainer } from "@starci/grammar/core"
+import { EmptyNotice } from "@starci/grammar/core"
 import type { ReactNode } from "react"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 
@@ -14,8 +14,8 @@ export interface SlotViewProps<T> {
     readonly onRetry?: () => void
     /** An answer that holds nothing reads as empty, as an empty list does. */
     readonly isEmpty?: (items: T) => boolean
-    /** The region heads the page, so its notice (the ready tree draws its own header) sits in the page body's gutter. */
-    readonly isFramed?: boolean
+    /** The region heads the page, so its notice (the ready tree draws its own header) stands in the route's Page: the caller wraps it. */
+    readonly frame?: (notice: ReactNode) => ReactNode
     readonly children: (items: T, isSkeleton: boolean) => ReactNode
 }
 
@@ -27,14 +27,7 @@ const isEmptyList = (items: unknown): boolean => Array.isArray(items) && items.l
  */
 export const SlotView = <T,>(props: SlotViewProps<T>) => {
     const { slot, labels } = props
-    const frame = (notice: ReactNode): ReactNode =>
-        props.isFramed === true ? (
-            <PageContainer measure="full" className="app-page-body">
-                {notice}
-            </PageContainer>
-        ) : (
-            notice
-        )
+    const frame = (notice: ReactNode): ReactNode => (props.frame === undefined ? notice : props.frame(notice))
     if (slot.isLoading === true) return <>{props.children(props.placeholder, true)}</>
     if (slot.isForbidden === true) return props.forbidden === "hide" ? null : frame(<EmptyNotice message={labels.forbidden} />)
     if (slot.isError === true) {

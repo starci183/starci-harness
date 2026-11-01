@@ -48,7 +48,7 @@ const links = (
 /** TopBar's `navigation` slot takes the app's own `<nav>`. */
 const inlineNav = <nav aria-label="Primary" style={{ display: 'flex', gap: '1rem' }}>{links}</nav>;
 
-/** NavigationFeatureNav owns the `<nav>` landmark itself, so its slot takes bare links. */
+/** TopBar `subnavigation` is a named region itself, so its slot takes bare links. */
 const inlineLinks = <div style={{ display: 'flex', gap: '1rem' }}>{links}</div>;
 
 export const PinnedActionBar: Story = {
@@ -91,36 +91,25 @@ export const PinnedActionBarSummary: Story = {
   ),
 };
 
-export const PageContainer: Story = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem 0' }}>
-      {(['reading', 'product', 'full'] as const).map((measure) => (
-        <G.PageContainer key={measure} measure={measure}>
-          <State label={`measure="${measure}"`} direction="column"><Placeholder label={`${measure} measure`} height={40} /></State>
-        </G.PageContainer>
-      ))}
-    </div>
-  ),
-};
-
 const PageHeaderDemo = ({ withTabs }: { readonly withTabs: boolean }) => {
   const [tab, setTab] = useState('test');
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <G.PageHeader
-        breadcrumbs={{ label: 'Breadcrumb', items: [{ id: 'connections', label: 'Connections', href: '#connections' }, { id: 'main', label: 'Main account' }] }}
-        title="Main account"
-        titleId="page-header-story-title"
-        mark={<G.Avatar name="Sepay" shape="rounded" isDecorative />}
-        status={<><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode · not posted</G.Badge></>}
-        meta="Bank transfer · ****6789"
-        description="Payments arrive by webhook and are matched to invoices."
-        actions={<><G.Button intent="neutral" onPress={noop}>Switch to live</G.Button><G.Button intent="destructive" onPress={noop}>Disconnect</G.Button></>}
-        {...(withTabs ? { tabs: { label: 'Connection', selectedKey: tab, onSelect: setTab, items: [{ id: 'overview', label: 'Overview' }, { id: 'setup', label: 'Setup' }, { id: 'test', label: 'Test' }, { id: 'agents', label: 'Agents' }] } } : {})}
-      />
-      <G.PageContainer data-story-page-content="true">
+      <G.Page
+        header={{
+          breadcrumbs: { label: 'Breadcrumb', items: [{ id: 'connections', label: 'Connections', href: '#connections' }, { id: 'main', label: 'Main account' }] },
+          title: 'Main account',
+          titleId: 'page-header-story-title',
+          mark: <G.Avatar name="Sepay" shape="rounded" isDecorative />,
+          status: <><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode · not posted</G.Badge></>,
+          meta: 'Bank transfer · ****6789',
+          description: 'Payments arrive by webhook and are matched to invoices.',
+          actions: <><G.Button intent="neutral" onPress={noop}>Switch to live</G.Button><G.Button intent="destructive" onPress={noop}>Disconnect</G.Button></>,
+          ...(withTabs ? { tabs: { label: 'Connection', selectedKey: tab, onSelect: setTab, items: [{ id: 'overview', label: 'Overview' }, { id: 'setup', label: 'Setup' }, { id: 'test', label: 'Test' }, { id: 'agents', label: 'Agents' }] } } : {}),
+        }}
+      >
         <Placeholder label="Webhook details" headingLevel={2} />
-      </G.PageContainer>
+      </G.Page>
     </div>
   );
 };
@@ -131,7 +120,7 @@ const assertPageHeaderBand = async (canvasElement: HTMLElement, withTabs: boolea
     const band = canvasElement.querySelector<HTMLElement>('[data-component="PageHeader"]');
     const body = band?.querySelector<HTMLElement>('.starci-core-page-header-body');
     const separator = band?.querySelector<HTMLElement>('[data-grammar-page-header-separator] [data-component="Divider"]');
-    const content = canvasElement.querySelector<HTMLElement>('[data-story-page-content="true"]');
+    const content = canvasElement.querySelector<HTMLElement>('[data-grammar-page-body="true"]');
     if (!band || !body || !separator || !content) throw new Error('PageHeader band, body, separator and content must render');
     const bandBox = band.getBoundingClientRect();
     const separatorBox = separator.getBoundingClientRect();
@@ -149,33 +138,37 @@ const assertPageHeaderBand = async (canvasElement: HTMLElement, withTabs: boolea
   }, { timeout: 4000 });
 };
 
-export const PageHeader: Story = {
-  name: 'PageHeader (separator, no tabs)',
+export const PageBand: Story = {
+  name: 'Page header (separator, no tabs)',
   render: () => <PageHeaderDemo withTabs={false} />,
   play: async ({ canvasElement }) => assertPageHeaderBand(canvasElement, false),
 };
 
-export const PageHeaderTabs: Story = {
-  name: 'PageHeader (page tabs on the separator)',
+export const PageBandTabs: Story = {
+  name: 'Page header (page tabs on the separator)',
   render: () => <PageHeaderDemo withTabs />,
   play: async ({ canvasElement }) => assertPageHeaderBand(canvasElement, true),
 };
 
 /** Link tabs: each item carries its route, no state or `onSelect`, and the tab of the current path is selected. */
-export const PageHeaderLinkTabs: Story = {
-  name: 'PageHeader (link tabs follow the path)',
+export const PageBandLinkTabs: Story = {
+  name: 'Page header (link tabs follow the path)',
   render: () => (
-    <G.PageHeader
-      title="Main account"
-      tabs={{
-        label: 'Connection',
-        items: [
-          { id: 'overview', label: 'Overview', href: '/overview' },
-          { id: 'current', label: 'Current', href: globalThis.location.pathname },
-          { id: 'setup', label: 'Setup', href: '/setup' },
-        ],
+    <G.Page
+      header={{
+        title: 'Main account',
+        tabs: {
+          label: 'Connection',
+          items: [
+            { id: 'overview', label: 'Overview', href: '/overview' },
+            { id: 'current', label: 'Current', href: globalThis.location.pathname },
+            { id: 'setup', label: 'Setup', href: '/setup' },
+          ],
+        },
       }}
-    />
+    >
+      <Placeholder label="Page body" headingLevel={2} />
+    </G.Page>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
@@ -186,8 +179,8 @@ export const PageHeaderLinkTabs: Story = {
   },
 };
 
-export const PageHeaderPhone: Story = {
-  name: 'PageHeader (360px: actions wrap under the heading)',
+export const PageBandPhone: Story = {
+  name: 'Page header (360px: actions wrap under the heading)',
   parameters: {
     viewport: { options: { phone360: { name: 'Phone 360 x 740', styles: { width: '360px', height: '740px' }, type: 'mobile' } } },
   },
@@ -280,19 +273,17 @@ const PageBleedDemo = ({ withBand }: { readonly withBand: boolean }) => (
     chrome="bleed"
     header={withBand ? { breadcrumbs: bleedTrail, title: 'Support agent', tabs: { label: 'Agent', items: [{ id: 'setup', label: 'Setup', href: globalThis.location.pathname }, { id: 'settings', label: 'Settings', href: '/settings' }] } } : { breadcrumbs: bleedTrail }}
   >
-    <G.FillViewport minHeight="sm" bottomInset="page">
-      <G.SurfaceCard ariaLabel="Conversation" composition="joined" height="fill">
-        <div style={{ display: 'flex', blockSize: '100%', minBlockSize: 0 }}>
-          <div style={{ inlineSize: '16rem', padding: '1rem' }}><G.Text tone="muted">Conversations</G.Text></div>
-          <G.Divider orientation="vertical" semantics="presentation" />
-          <div style={{ flex: '1 1 auto', padding: '1rem' }}><G.Text tone="muted">Thread</G.Text></div>
-        </div>
-      </G.SurfaceCard>
-    </G.FillViewport>
+    <G.SurfaceCard ariaLabel="Conversation" composition="joined" height="fill">
+      <div style={{ display: 'flex', blockSize: '100%', minBlockSize: 0 }}>
+        <div style={{ inlineSize: '16rem', padding: '1rem' }}><G.Text tone="muted">Conversations</G.Text></div>
+        <G.Divider orientation="vertical" semantics="presentation" />
+        <div style={{ flex: '1 1 auto', padding: '1rem' }}><G.Text tone="muted">Thread</G.Text></div>
+      </div>
+    </G.SurfaceCard>
   </G.Page>
 );
 
-/** A bleed body has no gutter, no block padding and no clip, and fills the page; the FillViewport keeps the one bottom inset. */
+/** A bleed body has no gutter, no block padding and no clip, and fills the viewport height left below the trail or the band. */
 const assertPageBleed = async (canvasElement: HTMLElement, withBand: boolean) => {
   await waitFor(() => {
     const page = canvasElement.querySelector<HTMLElement>('[data-component="Page"][data-grammar-page-chrome="bleed"]');
@@ -324,21 +315,6 @@ export const PageBleedBand: Story = {
   play: async ({ canvasElement }) => assertPageBleed(canvasElement, true),
 };
 
-export const PrimaryRailLayout: Story = {
-  render: () => (
-    <G.PageContainer>
-      <div style={{ padding: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <State label="Standard rail, primary first" direction="column">
-          <G.PrimaryRailLayout primary={<Placeholder label="Primary" />} rail={<Placeholder label="Rail" />} />
-        </State>
-        <State label="Wide rail, stretched, rail first when collapsed" direction="column">
-          <G.PrimaryRailLayout railWidth="wide" align="stretch" collapsedOrder="rail-first" primary={<Placeholder label="Primary" />} rail={<Placeholder label="Rail" />} />
-        </State>
-      </div>
-    </G.PageContainer>
-  ),
-};
-
 const TopBarDemo = ({ initialOpen }: { readonly initialOpen: boolean }) => {
   const [open, setOpen] = useState(initialOpen);
   return (
@@ -362,89 +338,6 @@ export const TopBarMenuOpen: Story = {
   render: () => <TopBarDemo initialOpen />,
 };
 
-const bottomItems: ReadonlyArray<G.BottomNavItem> = [
-  { id: 'home', label: 'Home', icon: <G.Icon source={HomeGlyph} />, href: '#home' },
-  { id: 'learn', label: 'Learn', icon: <G.Icon source={BookGlyph} />, href: '#learn' },
-  { id: 'alerts', label: 'Alerts', icon: <G.Icon source={BellGlyph} />, badge: '3', badgeLabel: '3 unread' },
-  { id: 'profile', label: 'Profile', icon: <G.Icon source={UserGlyph} />, isDisabled: true },
-];
-
-const BottomNavDemo = ({ label }: { readonly label: string }) => {
-  const [current, setCurrent] = useState('home');
-  return <G.BottomNav label={label} items={bottomItems} currentId={current} onSelect={setCurrent} position="static" visibility="always" />;
-};
-
-export const BottomNav: Story = {
-  render: () => (
-    <div style={{ maxWidth: 420, padding: '1.5rem' }}>
-      <State label="Current item, badge and a disabled item" direction="column"><BottomNavDemo label="Primary" /></State>
-    </div>
-  ),
-};
-
-const fixedNavQueue = G.createToastQueue();
-
-/** Fixed BottomNav publishes clearance for the page content and bottom-placed toasts. */
-const FixedBottomNavDemo = () => {
-  const [current, setCurrent] = useState('home');
-  const [queue] = useState(() => {
-    fixedNavQueue.clear();
-    fixedNavQueue.add({ title: 'Lesson saved for offline', tone: 'affirmative', timeout: 0 });
-    return fixedNavQueue;
-  });
-  return (
-    <>
-      <G.WorkspaceShell
-        primaryLabel="Lessons"
-        primary={
-          <G.PageContainer measure="reading">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <G.SectionHeader level={1} title="Lessons" description="Everything scrolls clear of the bar." />
-              {['Articles', 'Plurals', 'Pronouns', 'Present simple', 'Past simple'].map((title) => (
-                <G.SurfaceCard key={title} label={title} headingLevel={2}>
-                  <G.Text tone="muted">Five short exercises.</G.Text>
-                </G.SurfaceCard>
-              ))}
-              <div data-story-last-content="true"><G.Text>End of the list.</G.Text></div>
-            </div>
-          </G.PageContainer>
-        }
-      />
-      <G.BottomNav label="Primary" position="fixed" visibility="compact" currentId={current} onSelect={setCurrent} items={bottomItems} />
-      <G.Toaster label="Notifications" dismissLabel="Dismiss notification" queue={queue} placement="bottom" />
-    </>
-  );
-};
-
-/** Follows the toolbar family, so the sweep checks the offset in every family at 360px. */
-export const FixedBottomNavLayout: Story = {
-  name: 'Fixed BottomNav clearance (360px)',
-  parameters: {
-    viewport: { options: { phone360: { name: 'Phone 360 x 740', styles: { width: '360px', height: '740px' }, type: 'mobile' } } },
-  },
-  globals: { viewport: { value: 'phone360', isRotated: false } },
-  render: () => <FixedBottomNavDemo />,
-  play: async ({ canvasElement }) => {
-    const nav = canvasElement.querySelector<HTMLElement>('[data-component="BottomNav"]');
-    const last = canvasElement.querySelector<HTMLElement>('[data-story-last-content="true"]');
-    await expect(nav).not.toBeNull();
-    await expect(last).not.toBeNull();
-    await waitFor(() => {
-      const offset = getComputedStyle(canvasElement.querySelector('.grammar-common-root') ?? canvasElement).getPropertyValue('--starci-core-bottom-nav-offset').trim();
-      expect(offset).not.toBe('');
-      expect(canvasElement.querySelector('[data-component="Toaster"] ol')).not.toBeNull();
-    });
-    window.scrollTo(0, document.documentElement.scrollHeight);
-    await waitFor(() => {
-      const barTop = nav!.getBoundingClientRect().top;
-      const toasts = canvasElement.querySelector<HTMLElement>('[data-component="Toaster"] ol');
-      expect(Math.round(last!.getBoundingClientRect().bottom)).toBeLessThanOrEqual(Math.round(barTop));
-      expect(Math.round(toasts!.getBoundingClientRect().bottom)).toBeLessThanOrEqual(Math.round(barTop));
-    });
-    window.scrollTo(0, 0);
-  },
-};
-
 export const Footer: Story = {
   render: () => (
     <G.Footer
@@ -460,19 +353,17 @@ export const Footer: Story = {
   ),
 };
 
-export const NavigationFeatureNav: Story = {
+export const TopBarSubnavigation: Story = {
+  name: 'TopBar (a second layer: subnavigation)',
   render: () => (
-    <G.NavigationFeatureNav
-      identity={<strong>Studio</strong>}
-      navigation={inlineLinks}
-      navigationLabel="Primary"
-      compactNavigationTrigger={<G.IconButton source={MenuGlyph} label="Open navigation" />}
-      compactNavigationTriggerLabel="Open navigation"
-      actions={<G.Avatar name="Alex Morgan" size="sm" />}
-      actionsLabel="Account"
-      featureNavigation={<G.Link href="#new">What is new</G.Link>}
-      featureNavigationLabel="Features"
+    <G.TopBar
       position="static"
+      brand={<strong>Studio</strong>}
+      navigation={inlineLinks}
+      actions={<G.Avatar name="Alex Morgan" size="sm" />}
+      menu={{ icon: <G.Icon source={MenuGlyph} />, openLabel: 'Open navigation', closeLabel: 'Close navigation', isOpen: false, onOpenChange: noop }}
+      subnavigation={<G.Link href="#new">What is new</G.Link>}
+      subnavigationLabel="Features"
     />
   ),
 };
@@ -570,12 +461,12 @@ const FixedShellDemo = ({ defaultOpen = false }: { readonly defaultOpen?: boolea
       }}
       primaryLabel="Lessons"
       primary={
-        <G.PageContainer>
+        <G.Page>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem 0' }}>
             <G.SectionHeader title="Lessons" description="The navigation and this region scroll on their own." level={1} />
             <Placeholder label="Primary" height={900} headingLevel={2} />
           </div>
-        </G.PageContainer>
+        </G.Page>
       }
     />
   );
@@ -611,13 +502,13 @@ export const WorkspaceShell: Story = {
       railLabel="Details"
       primaryLabel="Lessons"
       primary={
-        <G.PageContainer>
+        <G.Page>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem 0' }}>
             <G.SectionHeader title="Lessons" description="Everything in this workspace." level={1} />
             {/* The page title is an h1, so the first card under it names itself at rank 2. */}
             <Placeholder label="Primary" height={240} headingLevel={2} />
           </div>
-        </G.PageContainer>
+        </G.Page>
       }
     />
   ),
@@ -1125,27 +1016,25 @@ export const MessengerFrame: Story = {
   ),
 };
 
-/** Fills the viewport height left under whatever sits above it; the child takes `h-full`. */
-export const FillViewport: Story = {
+/** The primary content and one subordinate rail: reading order collapses by `collapsedOrder`. */
+export const GridMainRail: Story = {
   render: () => (
-    <div style={{ display: 'grid', gap: '1rem' }}>
-      <Placeholder label="Chrome above (top bar, page header)" height={80} />
-      <G.FillViewport minHeight="sm" label="Conversation">
-        <G.SurfaceCard height="fill" label="Conversation">
-          <G.Text tone="muted">This card reaches the bottom of the window.</G.Text>
-        </G.SurfaceCard>
-      </G.FillViewport>
-    </div>
+    <G.Page>
+      <State label="Standard rail, primary first" direction="column">
+        <G.Grid kind="main-rail" primary={<Placeholder label="Primary" />} rail={<Placeholder label="Rail" />} />
+      </State>
+      <State label="Wide rail, stretched, rail first when collapsed" direction="column">
+        <G.Grid kind="main-rail" railWidth="wide" align="stretch" collapsedOrder="rail-first" primary={<Placeholder label="Primary" />} rail={<Placeholder label="Rail" />} />
+      </State>
+    </G.Page>
   ),
 };
 
 /** `railPosition="leading"` draws the rail first (a module switcher, a filter list) without changing reading order. */
-export const PrimaryRailLayoutLeading: Story = {
+export const GridMainRailLeading: Story = {
   render: () => (
-    <G.PageContainer>
-      <div style={{ padding: '1.5rem 0' }}>
-        <G.PrimaryRailLayout railPosition="leading" railWidth="compact" primary={<Placeholder label="Primary" />} rail={<Placeholder label="Rail" />} />
-      </div>
-    </G.PageContainer>
+    <G.Page>
+      <G.Grid kind="main-rail" railPosition="leading" railWidth="compact" primary={<Placeholder label="Primary" />} rail={<Placeholder label="Rail" />} />
+    </G.Page>
   ),
 };

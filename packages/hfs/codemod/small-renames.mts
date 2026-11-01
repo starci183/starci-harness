@@ -65,14 +65,14 @@ const TEXT_ACTION_BLOCKERS = ['appearance', 'size', 'startContent', 'endContent'
 const FORM_TAG = /^(?:[\w$]+\.)*(?:Form|Fieldset|form|fieldset)$/;
 const BUTTON_GROUP_SHAPE = 'actions: ReadonlyArray<{ id: string; label: string; source?: IconSource; onPress?: () => void; isDisabled?: boolean; intent?: "commit" | "alternative" | "neutral" }>';
 
-function bindingNames(ts: Ts, binding: TsTypes.BindingName): string[] {
+export function bindingNames(ts: Ts, binding: TsTypes.BindingName): string[] {
   if (ts.isIdentifier(binding)) return [binding.text];
   if (ts.isObjectBindingPattern(binding)) return binding.elements.flatMap(element => bindingNames(ts, element.name));
   return binding.elements.flatMap((element): string[] => ts.isBindingElement(element) ? bindingNames(ts, element.name) : []);
 }
 
 /** Whether a local declaration (a parameter, a block-level declaration, a loop variable) hides the import `identifier` names. */
-function shadowed(ts: Ts, identifier: TsTypes.Identifier): boolean {
+export function shadowed(ts: Ts, identifier: TsTypes.Identifier): boolean {
   const name = identifier.text;
   for (let at: Node | undefined = identifier.parent; at && !ts.isSourceFile(at); at = at.parent) {
     if (ts.isFunctionLike(at) && (at.parameters.some(parameter => bindingNames(ts, parameter.name).includes(name)) || (ts.isFunctionExpression(at) && at.name?.text === name))) return true;
