@@ -851,7 +851,7 @@ removedVocabulary:
     ruling: "grammar-names-are-generic"
   - spelling: ChatBubbleSkeletons
     as: grammar component
-    replacedBy: MessageBubble isSkeleton rows
+    replacedBy: the thread's own MessageBubbles with isLoading
     ruling: "grammar-names-are-generic"
   - spelling: SectionHeader
     as: grammar component

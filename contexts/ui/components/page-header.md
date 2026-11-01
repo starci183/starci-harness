@@ -47,7 +47,7 @@ No size. Commands keep the ramp (`scale.choose.step`); the tab bar lands on `md`
 under the heading.
 
 ## States
-Loading renders the same page with `isSkeleton`, which `Page` passes to the header: every slot keeps its box, the trail
+Loading renders the same page with `isLoading`, which `Page` passes to the header: every slot keeps its box, the trail
 and the tab labels stay real (STATE-8); the body's blocks own their own loading.
 
 ## Owner split

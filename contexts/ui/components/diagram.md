@@ -47,7 +47,7 @@ drops out when it no longer fits: the caption under zoom 0.42, the mark under 0.
 meet the floor at full view, so it takes `fit="contain"`.
 
 ## States
-Loading keeps the reserved box with a skeleton (`isSkeleton` while the source is unresolved; Mermaid itself loads
+Loading keeps the reserved box with a skeleton (`isLoading` while the source is unresolved; Mermaid itself loads
 lazily on the first diagram). A source Mermaid refuses is an error in the same region: the error title, then the
 source as code, so the reader keeps the text (STATE-8). An empty `FlowGraph` shows its `emptyLabel`.
 

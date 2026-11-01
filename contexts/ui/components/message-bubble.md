@@ -26,7 +26,7 @@ It takes no step; the words use the body step and the author line the caption st
 
 ## States
 `isHighlight` draws the focus ring round the bubble (a link jumped here). Loading draws the face with two skeleton lines
-(`isSkeleton`, STATE-8); a whole loading thread is `isSkeleton` with `rows`. Actions show on hover and focus inside the message.
+(`isLoading`, STATE-8); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus inside the message.
 
 ## Owner split
 - **Grammar owns:** the faces, the corner that points at the avatar, the inline colours on each face, the actions toolbar, the skeleton.

@@ -76,7 +76,7 @@ This is the one statement of this distinction; other rules cite it.
 | --- | --- | --- |
 | the work cannot start (permission, prerequisite) | `isDisabled` on that control | inert |
 | this control accepted work that has not settled | `isPending` on the initiator only | label and box unchanged, busy exposed, second press refused |
-| content never resolved, no action taken | `isSkeleton` on the content owner | the resolved anatomy as inert geometry |
+| content never resolved, no action taken | `isLoading` on the content owner | the resolved anatomy as inert geometry |
 
 Pending is never page-wide, never on a peer that started nothing, and never swapped for `isDisabled`. A recovery
 inside an empty or failed region forwards pending through that region's owner (`EmptyNotice.isActionPending`).

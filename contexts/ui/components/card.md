@@ -63,9 +63,9 @@ stat cell), not a card. A decorative slab belongs to the bands card's first face
 No size. Width follows measure rules; a form card caps itself with the surface's form measure (MEASURE-4).
 
 ## States
-`isSkeleton` renders the same card from its own fields: a list draws `loadingRows` rows from the same row, figures and a
+`isLoading` renders the same card from its own fields: a list draws the rows it was given, or three, from the same row, figures and a
 tile keep their cells, the label stays real text (STATE-8, the [loading table](loading.md)). A failed card
-fails in place.
+fails in place through its `error` slot (message, description, action), beside its `empty` slot.
 
 ## Owner split
 - **Grammar owns:** face, corner (one accent corner through `accentCorner`, ruling accent-corner), elevation, inset, the

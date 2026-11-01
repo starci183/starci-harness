@@ -33,7 +33,7 @@ The unit is drawn on three axes, and none stands in for another:
   (`pending`, `loading`, `failed`, `error`, `empty`, `forbidden`, `closed`, `idle`); open or closed is a boolean atom.
 - **Slot** (inside `props`): one API read is one `DataSlot<T>`, and its status (loading, error, forbidden, empty)
   renders by formula through `SlotView` (FE-ERROR-1). A slot's status is never a shape and is never drawn by hand.
-- **Error**: a read failure is its slot's `isError` or `isForbidden`, drawn by `SlotView` with a retry; a write failure
+- **Error**: a read failure is its slot's `isError` or `isForbidden` (a `DataSlot<T>` is a union over `isLoading`, `isError`, `isForbidden`, `isEmpty` and ready `items`, with `isValidating` beside the last two), drawn by `SlotView` with a retry; a write failure
   is a field error or a toast ([form.md](form.md)); a render failure is a boundary ([boundaries.md](boundaries.md)); a
   missing resource is `notFound()` in the page owner. No error is a shape ([error.md](error.md)).
 
@@ -41,10 +41,10 @@ The unit is drawn on three axes, and none stands in for another:
 |---|---|---|---|
 | page, layout, overlay | yes, the arrangement it approves | none: it reads no data and composes the blocks that do | its route's boundary; `notFound()` in the page owner |
 | block | yes | one `DataSlot<T>` per read it owns | each slot's, through `SlotView`; its writes' through the toast runner or a field |
-| composite | may take `shape` beside its flat fields (FE-FUNCTION-4) | none: it receives an item and `isSkeleton` from its block's `SlotView` | a resolved field error it is handed |
+| composite | may take `shape` beside its flat fields (FE-FUNCTION-4) | none: it receives an item and `isLoading` from its block's `SlotView` | a resolved field error it is handed |
 | frame | none | none | none |
 | branch | none: only intrinsic interaction (open, expanded) in its own `useState` | none | none |
-| leaf | none | none: it takes `isSkeleton` | none |
+| leaf | none | none: it takes `isLoading` | none |
 
 Why: a pure half of atoms renders from a fixture, so every shape can be drawn and audited without standing the world
 up; a status or a failure kept out of `shape` leaves no shape nobody drew, and a slot fails and waits alone.
@@ -68,9 +68,9 @@ Enforced by: R92 (`connected-block-has-presentational-twin`), R55 (`use-client-o
 
 ## FE-FUNCTION-4 A lower tier takes narrow resolved fields
 
-A frame, composite, branch or leaf has no twin and takes the flat fields it draws (`label`, `items`, `isSkeleton`,
+A frame, composite, branch or leaf has no twin and takes the flat fields it draws (`label`, `items`, `isLoading`,
 `onRetry`, and `shape` for a composite with shapes), already resolved by its block; it never resolves copy, reads data
-or chooses between a component and its resting copy, and a leaf hands `isSkeleton` to the grammar component it draws. Only a frame takes `children`;
+or chooses between a component and its resting copy, and a leaf hands `isLoading` to the grammar component it draws. Only a frame takes `children`;
 a leaf's `children` is its text (`children: string`), and a composite, a branch or a block names a slot for a node (`body`, `render`).
 
 Why: a reusable unit stays reusable only while it knows nothing about the product, the session or the catalog.
@@ -159,10 +159,10 @@ const HandoffOrder = (props: HandoffBlockBaseProps) => (
         placeholder={ORDER_PLACEHOLDER}
         labels={props.props.labels.orderSlot}
         onRetry={props.on.retryOrder}
-        render={(order, isSkeleton) => (
+        render={(order, isLoading) => (
             <>
-                <OrderSummary customer={order.customer} amount={order.amountText} isSkeleton={isSkeleton} />
-                {isSkeleton ? null : <OrderDisclosure lines={order.lines} title={props.props.labels.lines} />}
+                <OrderSummary customer={order.customer} amount={order.amountText} isLoading={isLoading} />
+                {isLoading ? null : <OrderDisclosure lines={order.lines} title={props.props.labels.lines} />}
             </>
         )}
     />

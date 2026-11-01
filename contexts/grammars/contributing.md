@@ -56,7 +56,7 @@ Choice `tier.choose.component`: which tier a component belongs to. The first row
 | frame | it owns a region: tracks, an inset, a scroll, a ground, or an overlay; it adds no content of its own | frame | layout or a portal | everything below | role props | yes: this is the tier's job | `starci-grammar/tier-props`; imports by R26 `FE_GRAMMAR_TIER_DIRECTION`, the folder stamp by `FE_GRAMMAR_TIER_STAMP` |
 | composite | it draws a fixed anatomy from fields | composite | none beyond a branch's | branches, leaves, lower composites | typed data, `on*`, at most 3 `ReactNode` slots each named for its role | never: `NoChildren` | `starci-grammar/tier-props`; the same R26 checks |
 | branch | it holds its own interaction state and reads no data | branch | `useState` for open, selected or draft | leaves, branches | typed data (`items`, `options`), `on*`, named slots | never: `NoChildren` | `starci-grammar/tier-props`; state by R362 `tier-state` (counting) |
-| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isSkeleton` | a string or none: `LabelChild` | `starci-grammar/tier-props`; state by R362 `tier-state` (counting) |
+| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isLoading` | a string or none: `LabelChild` | `starci-grammar/tier-props`; state by R362 `tier-state` (counting) |
 | block | an app world: it reads data through hooks (apps only) | block | the app's hooks | composites and below, never a block | `{ shape?, props, on? }` | never | `starci-fe/tier-children`; R26 |
 
 A prop type extends `NoChildren` (`{ children?: never }`) or `LabelChild` (`{ children?: string }`) in a tier that takes no
@@ -108,7 +108,7 @@ announces, and when.
 
 ## Skeleton parity
 
-A component that shows content takes `isSkeleton`, and the loading box equals the ready box. Known text stays real, unresolved values lay out
+A component that shows content takes `isLoading` (a frame or list component also an `error` slot beside its `empty` slot), and the loading box equals the ready box. Known text stays real, unresolved values lay out
 unseen under a shimmer, nothing focusable remains, and the owner of the data carries `aria-busy`. No DNA law measures that the two boxes are equal yet; the `SkeletonParity` stories draw the loading and the ready render, and their committed pictures show a jump.
 
 ## What ships with it

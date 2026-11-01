@@ -33,7 +33,7 @@ None. `source` and `byline` are optional facts, not variants: a quote with neith
 It takes no step. Its words use the body step, its source and byline the caption step ([../scale.md](../scale.md)).
 
 ## States
-Loading draws the ground with two skeleton lines and no source or byline (`isSkeleton`, STATE-8). It has no action, no
+Loading draws the ground with two skeleton lines and no source or byline (`isLoading`, STATE-8). It has no action, no
 focus target and no selected state.
 
 ## Owner split

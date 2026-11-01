@@ -30,7 +30,8 @@ What the app decides, and that it makes no visual choice, is FE-UI-1 in [ui.md](
 
 FE-ERROR-1: the slot axis of [function.md](function.md) FE-FUNCTION-2. A region that reads data shows its status
 through the one status view, in its own place, by one recipe in every app and grammar. A read is folded into a
-`DataSlot<T>` (`items`, `isLoading`, `isError`, `isForbidden`; none set means empty) by `slotOfSwr`, and `mapSlot`
+`DataSlot<T>`, a union over flags built only by `slotOfSwr`, `mapSlot`, `loadingSlot` and `slotOfReads` (`{ isLoading: true }`, `{ isForbidden: true }`,
+`{ isError: true }`, `{ isEmpty: true, isValidating? }` or `{ items, isValidating? }`; `items` only on a ready slot and empty is explicit), and `mapSlot`
 carries the status over to the view made of its items. The pure half renders the region through
 `components/composites/SlotView` in the region's place, inside the unchanged surface: on error the failure notice with a
 retry that re-runs exactly that read; on forbidden the notice for a primary region (`forbidden="notice"`) or nothing
@@ -39,19 +40,19 @@ namespace through `useSlotLabels`. A signed-out viewer never reaches a region: t
 to sign-in. A missing resource behind a route is `notFound()` in the page owner, never a region status.
 
 Loading is skeleton parity, end to end: a first load with no data (`slot.isLoading`) makes `SlotView` call `render(placeholder, true)`,
-so the loading tree is the ready tree drawn with the same boxes, and `isSkeleton` is passed down to every frame and leaf, which
+so the loading tree is the ready tree drawn with the same boxes, and `isLoading` is passed down to every frame, composite, branch and leaf, which
 draw the grammar's skeleton from their own structure ([ui composition](../../ui/composition.md) STATE-8). An app draws no
 skeleton and no item list of fake data, a revalidation (`isValidating`) never makes a slot loading, several reads feeding one
 frame reach it as one status that is loading while any read has no data, and a failed read is `isError`, never an empty array
-(the [loading table](../../ui/loading.md)). The one allowed `isSkeleton` branch hides a part that cannot be drawn
-without real data (`{isSkeleton ? null : <OrderDisclosure ... />}`); a part that only waits (a button, a field) takes
+(the [loading rules](../../ui/loading.md)); `isValidating` never draws a skeleton and `SlotView` is the only place that branches on a slot. The one allowed
+`isLoading` branch hides a part that cannot be drawn without real data (`{isLoading ? null : <OrderDisclosure ... />}`); a part that only waits (a button, a field) takes
 its flag and rests as itself, and no branch picks between two different elements. A pure block never branches on a
 status flag, and nothing draws a page-level loading view except the route's `*LoadingPage` ([boundaries.md](boundaries.md)
 FE-BOUNDARY-1).
 
 ```tsx
 <SlotView slot={props.props.leads} placeholder={LEADS_PLACEHOLDER} labels={props.props.slotLabels} onRetry={props.on.retry}>
-    {(leads, isSkeleton) => <LeadRows rows={leads} isSkeleton={isSkeleton} />}
+    {(leads, isLoading) => <LeadRows rows={leads} isLoading={isLoading} />}
 </SlotView>
 ```
 
