@@ -1,7 +1,6 @@
 # Grammar audit, 2026-11
 
-Status: proposal, awaiting the owner. Nothing here changes a component or an app; the one rule changed on this branch is the card
-label (ruling `card-label-by-kind`), by the owner's order. Measured on `@starci/grammar` 0.20.2 at branch head `b4e6d392`. Consumers:
+Status: approved by the owner, 2026-11-01; part 10 holds his decisions and overrides anything above it. The refactor runs from part 9. Measured on `@starci/grammar` 0.20.2 at branch head `b4e6d392`. Consumers:
 nivo-lite at 0.20.1 is the one current app; the harness `app/` tracks the package; every other app pins 0.4 to 0.12 and meets this
 cohort only when it upgrades. Rule ids and rulings cited below live in [rulings.yaml](rulings.yaml),
 [hfs/rules.yaml](../hfs/rules.yaml) and [contract.yaml](../grammars/contract.yaml).
@@ -15,7 +14,7 @@ cohort only when it upgrades. Rule ids and rulings cited below live in [rulings.
 - **The app does not own its theme.** The grammar root re-declares about 75 HeroUI tokens on its own element, so an app's `:root`
   value loses whatever its specificity. The families then derive HeroUI's tokens from private `--starci-core-*` and `--offset-pop-*`
   names, the reverse of the stated rule. nivo had to write the private names to win.
-- **135 public exports: 101 keep or rename, 21 merge, 13 remove.** The canonical set is 102 with one new frame, `Section`.
+- **135 public exports: 100 keep or rename, 21 merge, 14 remove.** The canonical set is 102, with two new: the frame `Section` and the branch `BubbleMap`.
 - **One card.** `SurfaceCard` with a compiler-checked `kind` replaces `SurfaceListCard`, `SurfaceAccordionCard`, `composition="joined"`
   and the stat strip, and carries tiles (part 3).
 - **Tiers bind by type and check, not by word.** One ladder for grammar and apps: leaf, branch, composite, frame, and block in apps.
@@ -321,7 +320,7 @@ Columns: nivo-lite files/uses; uses in the harness app (0.12.14) and in `app/`; 
 | Avatar | keep | leaf | 13/14 | 1 | 1 | 0 | Identity mark. Initials palette is hard-coded; see theming. |
 | AvatarButton | keep | leaf | 2/2 | 0 | 0 | 0 | Avatar as a press target. |
 | AvatarGroup | keep | composite | 2/2 | 0 | 0 | 0 | COLLECTION-3. |
-| Backdrop | keep | frame | 0/0 | 0 | 0 | 0 | Zero uses and a ruling two days old. Kept on the ruling; drops the SurfaceCard import only if it is types. Owner item. |
+| Backdrop | remove | - | 0/0 | 0 | 0 | 0 | Zero uses. Removed by the owner's decision; a tinted brand ground is a soft card or `Freestyle`. |
 | Badge | keep | leaf | 173/227 | 13 | 6 | 183 | One settled fact on a soft pair. `children: string`. Takes the text form of StatusDot. |
 | BottomNav | remove | - | 0/0 | 0 | 0 | 0 | Zero uses, and banned: R316, DNA-COMMON-NO-BOTTOM-TABS and D-13 refuse the thing the grammar still exports. |
 | Breadcrumbs | merge | internal | 0/0 | 2 | 0 | 3 | Merge into Page `header.breadcrumbs`. No app draws a trail elsewhere legally. |
@@ -358,7 +357,7 @@ Columns: nivo-lite files/uses; uses in the harness app (0.12.14) and in `app/`; 
 | FileDropzone | keep | branch | 11/11 | 0 | 0 | 1 | Drop state; generic. |
 | FillViewport | merge | internal | 1/1 | 0 | 0 | 0 | Merge into `Page chrome="bleed"`, which already pairs with it, and shares PanesFill's measuring. |
 | FilterButtonGroup | keep | composite | 0/0 | 0 | 0 | 0 | Filters a collection in place. Shares an internal toggle core with SegmentedControl; zero uses yet because nivo-lite pins 0.20.1. Folds Vietnamese in `foldForSearch`: move to a locale-neutral fold. |
-| FlowGraph | keep | branch | 2/2 | 2 | 0 | 0 | Keep, but it fails one job: 86 props, `orbit` is a one-consumer product map. Owner item: split BubbleMap. |
+| FlowGraph | keep | branch | 2/2 | 2 | 0 | 0 | Keep for layered, lanes, radial and manual graphs. `layout="orbit"` splits into `BubbleMap` by the owner's decision. |
 | Footer | keep | composite | 1/1 | 0 | 0 | 0 | Site footer from `groups`. `children` goes. |
 | Form | keep | frame | 38/40 | 1 | 1 | 23 | Hosts fields and a submit. |
 | FormGrid | merge | internal | 5/6 | 0 | 0 | 0 | Merge into `Grid kind="form"`, which already renders it (UI-24). |
@@ -451,7 +450,7 @@ Columns: nivo-lite files/uses; uses in the harness app (0.12.14) and in `app/`; 
 | Video | keep | leaf | 3/3 | 0 | 0 | 0 | Media. |
 | WorkspaceShell | keep | frame | 8/8 | 1 | 1 | 10 | The app frame. |
 
-Counts: **101 keep or rename, 21 merge, 13 remove** of 135. Two names stand out: `BottomNav` is exported while three rules ban it, and
+Counts: **100 keep or rename, 21 merge, 14 remove** of 135. Two names stand out: `BottomNav` is exported while three rules ban it, and
 `NavigationFeatureNav` has the word Feature in it.
 
 The ten that matter most:
@@ -525,9 +524,9 @@ on the grammar's own source, no rule against private tokens in app CSS, four pub
 
 102 public components.
 
-- **Frames (25):** GrammarRoot, CoreGrammarRoot, OffsetPopGrammarRoot, Page, WorkspaceShell, PaneGrid, Pane, PaneSection, Section (new), Stack, Cluster, Grid, SurfaceCard, Form, Fieldset, Dialog, AlertDialog, Drawer, Popover, HorizontalScrollRegion, VerticalScrollRegion, NavLandmark, PinnedActionBar, Backdrop, Freestyle.
+- **Frames (24):** GrammarRoot, CoreGrammarRoot, OffsetPopGrammarRoot, Page, WorkspaceShell, PaneGrid, Pane, PaneSection, Section (new), Stack, Cluster, Grid, SurfaceCard, Form, Fieldset, Dialog, AlertDialog, Drawer, Popover, HorizontalScrollRegion, VerticalScrollRegion, NavLandmark, PinnedActionBar, Freestyle.
 - **Composites (22):** Sidebar, TopBar, Footer, Alert, Toaster, EmptyNotice, Quote, MessageBubble, FencedCodeBlock, MarkdownArticle, DescriptionList, Timeline, Stepper, Pagination, IdentityLockup, AvatarGroup, TagGroup, SegmentedControl, FilterButtonGroup, ButtonGroup, CheckboxGroup, RadioGroup.
-- **Branches (22):** Input, Textarea, OtpInput, Select, ComboBox, DatePicker, DateRangePicker, Calendar, FileDropzone, CopyField, Rating, Tabs, Accordion, Disclosure, DropdownMenu, ListBox, DataTable, Tooltip, DragItem, Terminal, FlowGraph, MermaidDiagram.
+- **Branches (23):** Input, Textarea, OtpInput, Select, ComboBox, DatePicker, DateRangePicker, Calendar, FileDropzone, CopyField, Rating, Tabs, Accordion, Disclosure, DropdownMenu, ListBox, DataTable, Tooltip, DragItem, Terminal, FlowGraph, BubbleMap (new), MermaidDiagram.
 - **Leaves (33):** Text, Heading, Code, Kbd, RelativeTime, Link, TextAction, Button, IconButton, AvatarButton, Badge, StatusDot, Icon, IconTile, Avatar, Image, Video, MediaFrame, Mascot, Divider, Progress, Meter, ProgressCircle, Spinner, Skeleton, PressableField, SearchField, NumberField, Checkbox, Switch, Slider, DateField, TimeField.
 
 Knobs that go: `SurfaceCard` `composition`, `placement`, `scroll`, `isScrollable`, `height` except `fill`; `SurfaceListCard` `depth`, `isVerdict`, `labelHidden`; `SectionHeader` `eyebrow`, `composition`; `Text` `weight`, `parentEmphasis`; every public `className` but Freestyle's; `Button variant`, `Tabs variant`, field `variant`; `EmptyNotice actionVariant`; `Alert appearance`, resolved by context (G-17); `control` as an app value.
@@ -655,18 +654,24 @@ Per app:
 
 Risks: lanes 4 and 5 move pixels on most screens, so lane 1 is a hard prerequisite. Lane 8 renames folders under every other lane, so it runs after them. If the owner wants half the scope, take lanes 1, 2, 4, 7.
 
-## 10. For the owner
+## 10. The owner's decisions
 
-1. **Approve or cut the plan.** The refactor starts only on your word.
-2. **`kind="panes"`:** left out until a screen asks. It would reverse `page-panes-frame` and R348.
-3. **`ChatBubble` to `MessageBubble`:** today's `chat-primary-and-surface` says ChatBubble, your name rule says no chat.
-4. **`FlowGraph layout="orbit"`:** ruled yesterday, one consumer, the largest prop surface in the package. Split to a `BubbleMap`?
-5. **Surface in surface:** I read your order as a total ban, cards in dialogs and drawers included. `surfacecard-always-painted` says otherwise. Confirm, then it is amended.
-6. **A list is a card by default** (contradiction 4): inverts COLLECTION-1. Confirm.
-7. **Avatar initials:** the bundled palette is 18 fixed colours and cannot follow a theme. Replace with a token mix, or accept it as identity art?
-8. **`Backdrop`:** zero uses. Keep on your ruling, or drop?
-9. **`components/frames` in apps:** a new tier folder, against converting 47 frames to named slots. I prefer the folder.
-10. **Offset Pop's bare-mark exception** in `status-soft-pair-on-background`: keep it as a family default? It needs no lint branch once contrast is off the table.
+Approved 2026-11-01. These override anything above them.
+
+1. **The plan runs**, lanes 1, 2, 3 in sequence, 4 to 7 in parallel, then 8, 9, 10; grammar first, then nivo-lite on `lane/grammar-refactor`.
+2. **`kind="panes"` stays out.**
+3. **`ChatBubble` becomes `MessageBubble`**, and the `chat-primary-and-surface` ruling moves with it.
+4. **`FlowGraph layout="orbit"` splits into `BubbleMap`.**
+5. **Surface in surface is banned totally**, dialogs and drawers included.
+6. **A list is a card by default**, except a long list with filter and search, which is `Section`.
+7. **Avatar initial colours stay** as identity art; they are not a theming violation.
+8. **`Backdrop` goes.**
+9. **`components/frames` joins apps.**
+10. **Offset Pop's bare-mark exception stays** as a family default.
+11. **No gate judges an app's colours.**
+
+Running rule: an up-to-date public API stays until migration finishes, so demo work is not blocked. Grammar lanes add the new API and keep
+the old exports working, marked `@deprecated`; removal comes after nivo-lite has migrated and the retake at 1920 and 390 shows nothing broke.
 
 ## Appendix A. Theming violations
 
