@@ -14,3 +14,6 @@ export const isGrammarToken = (name: string): boolean => NAMES.has(name) || FAMI
 
 /** True for a grammar token or an app token the repository declared to the factory. */
 export const isKnownToken = (name: string, appTokens: readonly string[] = []): boolean => isGrammarToken(name) || appTokens.includes(name)
+
+/** True for a token the app's theme layer may set: HeroUI's whole token list and the grammar's published names, plus the `--info*` family (HeroUI declares `--font-sans` and `--font-mono`, which NAMES holds; any other `--font-*` is the app's own type and stays foreign); never a family-prefixed private token. */
+export const isThemeToken = (name: string): boolean => NAMES.has(name) || /^--info(?:-[\w-]+)?$/.test(name)

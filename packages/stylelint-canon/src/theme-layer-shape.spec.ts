@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { FILES, lint, lintRule, textAt } from "./testing.ts"
 
-const rule = (code: string, file = FILES.brand) => lintRule("brand-layer-shape", code, file)
+const rule = (code: string, file = FILES.brand) => lintRule("theme-layer-shape", code, file)
 
 test("accepts a light block and a dark block on HeroUI's tokens", async () => {
   const code = `

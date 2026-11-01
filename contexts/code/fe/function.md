@@ -49,7 +49,7 @@ The unit is drawn on three axes, and none stands in for another:
 Why: a pure half of atoms renders from a fixture, so every shape can be drawn and audited without standing the world
 up; a status or a failure kept out of `shape` leaves no shape nobody drew, and a slot fails and waits alone.
 
-Enforced by: R92 (`public-component-signature`, `tier-children`, `base-props-atom`, `base-import-pair`, `no-data-status-shape`,
+Enforced by: R361 (machine `render-prop-across-server`: a function never crosses from a server file into a client component; a block takes data), R92 (`public-component-signature`, `tier-children`, `base-props-atom`, `base-import-pair`, `no-data-status-shape`,
 `presentational-purity`, `component-purity`); the shape words of a composite, which is not split, are review only.
 
 ## FE-FUNCTION-3 The connected half resolves everything and renders its twin

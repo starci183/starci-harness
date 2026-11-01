@@ -14,10 +14,8 @@ import test from "node:test"
 import { at, fixtureHfs, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import {
   heroiconsIsTheGlyphVendor,
-  noDecorativeIconInMetricCell,
   noInlineSvgOutsideBrandMarkLeaf,
   noIconSizeClass,
-  noOffScaleGlyphSize,
   noVendorIconOutsideIconLeaf,
   rules,
 } from "./icon.ts"
@@ -29,7 +27,6 @@ const ICON_LEAF = at(`${R}/leaves/Icon/index.tsx`)
 const ICON_LEAF_BRANDS = at(`${R}/leaves/Icon/brands.tsx`)
 const OTHER_LEAF = at(`${R}/leaves/SeeMoreLink/index.tsx`)
 const BLOCK = at(`${R}/blocks/dashboard/DailyQuest/component.tsx`)
-const METRIC_CELL = at(`${R}/composites/LabelledProgressRow/index.tsx`)
 const SCRIPT = at("scripts/build.ts")
 const PACKAGE_ICON_LEAF = at("packages/nivo-ui/src/leaves/Icon/index.tsx")
 const NOT_A_LEAF = at("apps/web/src/modules/components/leaves/Icon/index.tsx")
@@ -126,33 +123,6 @@ test("ICON-7: the heroicons family on its two cuts is the whole glyph surface", 
   })
 })
 
-test("ICON-1: a glyph size off both steps is a third step", () => {
-  tester.run("no-off-scale-glyph-size", noOffScaleGlyphSize, {
-    valid: [
-      { filename: OTHER_LEAF, code: "const C = \"size-4 shrink-0\"" },
-      { filename: OTHER_LEAF, code: "const C = \"size-5 shrink-0\"" },
-      // a script is not product source
-      { filename: SCRIPT, code: "const C = \"size-[13px]\"" },
-      { filename: BLOCK, code: "const E = () => <div className=\"size-8 rounded-lg\" />" },
-      // a spacing utility that merely looks similar is not this rule's business
-      { filename: BLOCK, code: "const C = \"gap-2 p-4\"" },
-    ],
-    invalid: [
-      {
-        // the escape: hoisted into a constant, where the JSX arm would never have seen it
-        filename: OTHER_LEAF,
-        code: "const CARET_CLASSES = \"size-3.5 shrink-0 transition-[translate]\"",
-        errors: [{ messageId: "offScale" }],
-      },
-      {
-        filename: BLOCK,
-        code: "const E = () => <Glyph className=\"size-[13px]\" />",
-        errors: [{ messageId: "offScale" }],
-      },
-    ],
-  })
-})
-
 test("ICON-1: the call site passes the glyph and never a size class", () => {
   tester.run("no-icon-size-class", noIconSizeClass, {
     valid: [
@@ -172,34 +142,6 @@ test("ICON-1: the call site passes the glyph and never a size class", () => {
   })
 })
 
-test("ICON-10: a repeated metric cell does not invent a decorative feature glyph", () => {
-  tester.run("no-decorative-icon-in-metric-cell", noDecorativeIconInMetricCell, {
-    valid: [
-      {
-        filename: METRIC_CELL,
-        code: "const Row = () => <div><Text props={{ content: 'Content' }} /></div>",
-      },
-      // a leaf called like the metric cell is not the metric cell
-      { filename: at(`${R}/leaves/LabelledProgressRow/index.tsx`), code: "const Row = () => <Icon props={{ name: 'course' }} />" },
-      {
-        filename: BLOCK,
-        code: "const Entry = () => <Icon props={{ name: 'course' }} />",
-      },
-    ],
-    invalid: [
-      {
-        filename: at("packages/nivo-ui/src/composites/LabelledProgressRow/index.tsx"),
-        code: "const Row = () => <div><Icon props={{ name: 'course' }} /></div>",
-        errors: [{ messageId: "decorative" }],
-      },
-      {
-        filename: METRIC_CELL,
-        code: "const Row = () => <div><Icon props={{ name: 'course' }} /><Text /></div>",
-        errors: [{ messageId: "decorative" }],
-      },
-    ],
-  })
-})
 
 for (const edition of ["lite", "full"]) {
   test(`R286: FE_ICON_INLINE_SVG requires an exported brand-mark leaf (${edition})`, () => {

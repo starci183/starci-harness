@@ -5,6 +5,8 @@ import { z } from "zod"
 import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { slotRuleGaps } from "./anatomy-render.js"
+import { grammarSourceDir, judgeRemovedVocabulary, judgeRuleDocs, judgeVendorWrappers } from "./knowledge-gates.js"
+import type { KnowledgeFinding } from "./knowledge-gates.js"
 
 /** The gaps an owner ruling may hold open: a slot naming a rule code no rule carries, a rule with no enforcer, a rule whose enforcers are all planned. */
 export const PENDABLE_GAPS = ["slot-rule-unknown", "rule-no-enforcer", "rule-enforcer-planned"] as const
@@ -16,6 +18,13 @@ export const GAP_CODES = {
     "rule-enforcer-planned": "ANATOMY_RULE_ENFORCER_PLANNED",
     "enforcer-kind-unknown": "ANATOMY_ENFORCER_KIND_UNKNOWN",
     "law-path-unresolved": "ANATOMY_LAW_PATH_UNRESOLVED",
+    "rule-no-doc": "ANATOMY_RULE_NO_DOC",
+    "removed-vocabulary-used": "ANATOMY_REMOVED_VOCABULARY_USED",
+    "wrapper-stale": "ANATOMY_WRAPPER_STALE",
+    "wrapper-undeclared": "ANATOMY_WRAPPER_UNDECLARED",
+    "wrapper-wraps-drift": "ANATOMY_WRAPPER_WRAPS_DRIFT",
+    "wrapper-pin-drift": "ANATOMY_WRAPPER_PIN_DRIFT",
+    "wrapper-ruling-unknown": "ANATOMY_WRAPPER_RULING_UNKNOWN",
     "pending-unruled": "ANATOMY_PENDING_UNRULED",
     "pending-stale": "ANATOMY_PENDING_STALE",
 } as const
@@ -142,7 +151,7 @@ const openGaps = (knowledge: string, catalog: z.infer<typeof catalogSchema>): { 
 
 /**
  * The completeness gate of `contexts anatomy` (its dry run): every slot rule code resolves to a rule, every rule names an enforcer,
- * and not only planned ones, of a declared kind, and every path its law cites resolves (never pendable). A gap stays pending (not red) only while a dated entry of rules.yaml's `pending` list holds it
+ * and not only planned ones, of a declared kind, and every path its law cites resolves, every rule is named by a page of the living knowledge, no removed spelling of rulings.yaml is written as code there, and vendor/wrappers.yaml matches the Grammar source and its pin (never pendable). A gap stays pending (not red) only while a dated entry of rules.yaml's `pending` list holds it
  * and the live owner ruling that entry cites (contexts/decisions/rulings.yaml) lists it in `covers`; an entry with no such
  * ruling is ANATOMY_PENDING_UNRULED and one that holds no gap is ANATOMY_PENDING_STALE, so the list only shrinks.
  */
@@ -153,7 +162,8 @@ export const judgeAnatomy = (knowledge: string): GateVerdict => {
     const rulings = declared.length === 0 ? [] : readParsed(rulingsFile, rulingsSchema).rulings
     const covered = (entry: Pending): boolean => rulings.some((ruling) => ruling.id === entry.ruling && ruling.status === "live" && (ruling.covers ?? []).includes(entry.subject))
     const { pendable, hard } = openGaps(knowledge, catalog)
-    const red: Gap[] = [...hard]
+    const knowledgeFindings: KnowledgeFinding[] = [...judgeRuleDocs(knowledge), ...judgeRemovedVocabulary(knowledge), ...judgeVendorWrappers(knowledge, grammarSourceDir())]
+    const red: Gap[] = [...hard, ...knowledgeFindings.map((finding) => gap(finding.kind, finding.subject, finding.detail))]
     const pending: Gap[] = []
     const used = new Set<Pending>()
     for (const found of pendable) {

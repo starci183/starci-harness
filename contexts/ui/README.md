@@ -17,6 +17,7 @@ product spec (.starciwork)
 | File | Holds | Read it when |
 | --- | --- | --- |
 | [composition.md](composition.md) | hierarchy, action and CTA, accent, state and feedback, collection, layout, responsive, taste, coverage | writing a spec or a direction, choosing what goes on a page |
+| [loading.md](loading.md) | what drives a loading flag, who draws the skeleton, the laws of a loading state (R367) | drawing a region that waits for reads |
 | [scale.md](scale.md) | the one size ramp, the touch floor, density, how every control aligns | choosing a size, or building a grammar component |
 | [components/](components/README.md) | one page per component role: job, choice against neighbours, variants, sizes, states, owner split | picking a component |
 | [presentation.md](presentation.md) | space, type, paint, room and how they relate | writing layout classes on an app-owned boundary |

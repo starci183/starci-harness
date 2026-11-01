@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Added: `tier-children` (R92): only a unit of `components/frames` takes `children`; a leaf takes `children: string`; a block, a composite and a branch take none (`children?: never`) and `PropsWithChildren` is refused there.
+- Added: `no-swr-default-array`, `no-foreign-slot-status`, `no-validating-as-loading`, `no-placeholder-object` (R367; `FE_SWR_DEFAULT_ARRAY`, `FE_FOREIGN_SLOT_STATUS`, `FE_VALIDATING_AS_LOADING`, `FE_PLACEHOLDER_OBJECT`): a loading state is drawn from the page's own reads. `no-hand-skeleton` is written and tested but not published until the Grammar owns the loading shape.
+- Removed: `button-no-variant` and `nested-control-variant` (the `variant` prop is out of the Grammar types, so the props they refused cannot be written).
+
 - Changed: `no-heading-above-card` (R354) follows the removal of `SectionHeader`: it refuses a `Section` (not `kind="list"`) whose only child is one card, and a card whose `ariaLabel` repeats the `Section` title. `no-hand-built-panes` reads a `Section` as a column where it read `Region`, and `no-commit-in-collection-item` no longer names the removed `CollectionItem`, `ItemActions` and `ListItem`.
 
 - eslint-canon-fe: the surface rules follow the one card (SurfaceListCard and SurfaceAccordionCard are gone).
@@ -177,7 +180,6 @@
 - Changed: `modules/auth` is the session issuer's client. `fetch-only-in-api-client` admits axios in `modules/auth/auth-door.ts` and refuses a door call whose readable path names no `/auth/` door; `no-shared-transport-state` judges `modules/auth` and admits only `modules/auth/token-store.ts`; the machine `transport-owner` admits the auth door. `fe-stack-import` no longer carves Supabase into `modules/auth`: the fe-stack catalog forbids `@supabase/supabase-js`, `@supabase/ssr` and `@supabase/auth-js` everywhere and lists `fe.modules.auth` as a home of axios.
 - Removed: `callback-shape` (R287 `FE_CALLBACK_SHAPE`) with the `fe.route.callback` slot: the OAuth callback is a back-end door.
 - Changed: the bundled slot manifest 3.9.0 replaces the lite `app.supabase*` slots with `app.db` (`db/migrations`, `db/migrations/archive`, `db/seed.sql`, the managed `db/bootstrap.sql`), `be.integrations.supabase` with `be.integrations.passport` and `be.integrations.object-storage`, removes `fe.route.callback`, sets lite `schemaAuthority: sql`, gives lite TypeORM entities in `be.persistence`, adds `ruleParams.be.dbFunctions`, and moves the S3 SDKs to `integrations/object-storage` and the identity libraries to `integrations/passport` in `infraOwners` (`@supabase/*`, `minio` and `bcrypt` nowhere); the bundled rule catalog retires R216, R217, R219, R254 and R287 and adds R328-R334; the bundled canon pins name hfs 4.10.0, eslint-canon-be 3.7.0, eslint-canon-fe 9.5.0 and the Grammar family 0.15.11, pin `@nestjs/passport` 11.0.5 (CommonJS on the Nest 11 line), `passport` 0.7.0, `passport-google-oauth20` 2.0.0, `passport-local` 1.0.0, `bcryptjs` 3.0.3 and their types (tokens are signed and verified with `jose`; `@nestjs/jwt` stays allowed in `integrations/passport` but unpinned), and drop `@supabase/ssr`, `@supabase/supabase-js` and the `supabase` CLI.
-
 
 ## 9.4.9 - 2026-10-29
 
@@ -441,7 +443,6 @@
 ## 8.2.17 - 2026-10-14
 - Changed: `component-line-budget` gives a pure re-export `index.ts` the slot's `barrel` budget (400); `basePropsAtom` admits named `render*` callbacks in `props` of non-block pure halves for feature composition; the bundled machine carries the kind-scoped feature tier edge, canon-shape clone exclusions and in-segment i18n template reads.
 
-
 - Changed: carry the runtime mirror of HFS manifest 3.1.0 (the back-end app composition standard, R245 and R246) and the canon pins of eslint-canon-be 3.3.0, HFS 4.3.0 and CLI 1.2.16. ESLint rule implementations are unchanged.
 
 ## 8.2.18 - 2026-10-14
@@ -693,7 +694,6 @@
 - New `lib/bindings.mjs` (scope bindings, imports, stable keys), `lib/platform.mjs` (platform symbols) and `lib/react.mjs` (React exports by import).
 
 ## 5.1.2 - 2026-09-30
-
 
 ## 5.1.1 - 2026-09-30
 

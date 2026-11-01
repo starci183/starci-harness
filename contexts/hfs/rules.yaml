@@ -627,7 +627,7 @@ rules:
       - {kind: stylelint, id: globals-shape}
       - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
-      - {kind: stylelint, id: brand-layer-shape}
+      - {kind: stylelint, id: theme-layer-shape}
       - {kind: stylelint, id: no-css-module}
       - {kind: stylelint, id: no-class-selector}
       - {kind: stylelint, id: breakpoint-scale}
@@ -635,9 +635,7 @@ rules:
       - {kind: eslint-fe, id: no-raw-brand-value}
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
-      - {kind: eslint-grammar-core, id: no-hand-rolled-heading}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: no-heading-tag-outside-heading-component}
       - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
   - id: R62
     code: FE_NATIVE_FORM_CONTROL
@@ -959,10 +957,8 @@ rules:
     enforcers:
       - {kind: eslint-grammar-core, id: no-vendor-icon-outside-icon-leaf}
       - {kind: eslint-grammar-core, id: heroicons-is-the-glyph-vendor}
-      - {kind: eslint-grammar-core, id: no-off-scale-glyph-size}
       - {kind: eslint-grammar-core, id: no-icon-size-class}
       - {kind: eslint-grammar-core, id: destructive-menu-entry-needs-danger-tone}
-      - {kind: eslint-grammar-core, id: no-decorative-icon-in-metric-cell}
       - {kind: eslint-grammar-core, id: vendor-primitive-has-named-owner}
       - {kind: eslint-fe, id: grammar-entry}
       - {kind: machine, id: grammar}
@@ -2436,6 +2432,54 @@ rules:
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
 # dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is
 # red (ANATOMY_PENDING_UNRULED) and one that holds no open gap is red (ANATOMY_PENDING_STALE), so this list only shrinks.
+  - id: R356
+    code: FE_SURFACE_NESTING
+    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable not inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading never holds just one card, and a labelled card is not repeated in a Grid."
+    failureCodes:
+      - FE_SURFACE_NESTING
+    enforcers:
+      - {kind: machine, id: surface-nesting}
+  - id: R357
+    code: FE_TEXT_BLOCK
+    law: "Text holds a run of words; a block component or element inside it is refused."
+    failureCodes:
+      - FE_TEXT_BLOCK
+    enforcers:
+      - {kind: eslint-grammar-core, id: text-inline-only}
+  - id: R358
+    code: FE_TEXT_HEADING
+    law: "A strong Text that only titles the blocks after it is a hand heading; use a Section title, a card label or Heading."
+    failureCodes:
+      - FE_TEXT_HEADING
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-text-heading}
+  - id: R359
+    code: FE_ONE_HIGHLIGHT
+    law: "A render states one highlighted thing; a second isHighlight is refused."
+    failureCodes:
+      - FE_ONE_HIGHLIGHT
+    enforcers:
+      - {kind: eslint-grammar-core, id: one-highlight-per-render}
+  - id: R367
+    code: FE_SWR_DEFAULT_ARRAY
+    law: "A loading state is drawn from the page's own reads: a read folded to [] also returns its isLoading, a slot never takes another slot's loading or error, a background refresh never drives a loading flag, a placeholder is not the ready data emptied, and an app draws no skeleton by hand once the Grammar owns the loading shape."
+    failureCodes:
+      - FE_SWR_DEFAULT_ARRAY
+      - FE_FOREIGN_SLOT_STATUS
+      - FE_VALIDATING_AS_LOADING
+      - FE_PLACEHOLDER_OBJECT
+    enforcers:
+      - {kind: eslint-fe, id: no-swr-default-array}
+      - {kind: eslint-fe, id: no-foreign-slot-status}
+      - {kind: eslint-fe, id: no-validating-as-loading}
+      - {kind: eslint-fe, id: no-placeholder-object}
+  - id: R361
+    code: FE_RENDER_PROP_ACROSS_SERVER
+    law: "A function is not handed from a server file to a client component; pass data, or move the callback into the client branch that owns the interaction."
+    failureCodes:
+      - FE_RENDER_PROP_ACROSS_SERVER
+    enforcers:
+      - {kind: machine, id: render-prop-across-server}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

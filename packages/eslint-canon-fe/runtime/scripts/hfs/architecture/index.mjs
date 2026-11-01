@@ -42,6 +42,8 @@ import { checkBackgroundUnowned, BACKGROUND_UNOWNED_RULE_IDS } from './backgroun
 import { checkTransportOwner, TRANSPORT_OWNER_RULE_IDS } from './transport-owner.mjs';
 import { checkRouteFilesThin, ROUTE_FILES_THIN_RULE_IDS } from './route-files-thin.mjs';
 import { checkHooksAreHooks, HOOKS_ARE_HOOKS_RULE_IDS } from './hooks-are-hooks.mjs';
+import { checkRenderPropAcrossServer, RENDER_PROP_ACROSS_SERVER_RULE_IDS } from './render-prop-across-server.mjs';
+import { checkSurfaceNesting, SURFACE_NESTING_RULE_IDS } from './surface-nesting.mjs';
 import { checkClientReachesServer, CLIENT_REACHES_SERVER_RULE_IDS } from './client-reaches-server.mjs';
 import { checkCrossAppDuplicate, CROSS_APP_DUPLICATE_RULE_IDS } from './cross-app-duplicate.mjs';
 import { checkPackageShape, PACKAGE_SHAPE_RULE_IDS } from './package-shape.mjs';
@@ -93,6 +95,8 @@ const FRONTEND_MACHINE = {
     hooksAreHooks: [checkHooksAreHooks, HOOKS_ARE_HOOKS_RULE_IDS],
     packageShape: [checkPackageShape, PACKAGE_SHAPE_RULE_IDS],
     clientReachesServer: [checkClientReachesServer, CLIENT_REACHES_SERVER_RULE_IDS],
+    surfaceNesting: [checkSurfaceNesting, SURFACE_NESTING_RULE_IDS],
+    renderPropAcrossServer: [checkRenderPropAcrossServer, RENDER_PROP_ACROSS_SERVER_RULE_IDS],
     crossAppDuplicate: [checkCrossAppDuplicate, CROSS_APP_DUPLICATE_RULE_IDS],
     feSlotAllows: [checkFeSlotAllows, FE_SLOT_ALLOWS_RULE_IDS],
     i18nKeys: [checkI18nKeys, I18N_KEYS_RULE_IDS],

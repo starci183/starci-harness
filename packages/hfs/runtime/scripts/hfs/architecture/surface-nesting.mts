@@ -14,7 +14,7 @@ import type { CheckInput } from './hfs-graph.mjs';
  *   card-in-overlay      a card inside a Dialog, Drawer, AlertDialog or Popover;
  *   table-in-card        a `DataTable` inside a card (a table stands on the page);
  *   grid-outside-panes   a `PaneGrid` inside a card or a Page whose chrome is not `panes`;
- *   heading-over-card    a heading directly followed by one card in the same parent (a card carries its own label);
+ *   heading-over-card    a `Heading`, or a region `Section`, whose only neighbour or child is one card (a card carries its own label);
  *   label-in-grid        a labelled card repeated by a `.map` in a `Grid` (a repeated tile has no label).
  *
  * A finding carries `crossFile: true` when the two elements are drawn in different files, which is what one-file lint cannot see.
@@ -28,7 +28,8 @@ export const SURFACE_VOCABULARY = Object.freeze({
   cards: new Set(['SurfaceCard', 'SurfaceListCard', 'SurfaceAccordionCard']),
   overlays: new Set(['Dialog', 'Drawer', 'AlertDialog', 'Popover']),
   tables: new Set(['DataTable']),
-  headings: new Set(['SectionHeader', 'Heading']),
+  headings: new Set(['Heading']),
+  sections: new Set(['Section']),
   paneGrids: new Set(['PaneGrid']),
   pane: 'Pane',
   page: 'Page',
@@ -107,6 +108,11 @@ export function checkSurfaceNesting(input: Pick<CheckInput, 'graph'> & { context
           report(element, inGrid.element, 'label-in-grid', `${describe(element)} repeats a labelled card in a Grid: a repeated tile has no label`, ancestors, stack);
         }
       }
+    },
+    parent(element, drawn, ancestors, stack) {
+      if (!isGrammarIn(element, SURFACE_VOCABULARY.sections) || element.attributes.get('kind')?.text === 'list' || drawn.length !== 1) return;
+      const only = drawn[0] as RenderElement;
+      if (cardOf(graph, only)) report(only, element, 'heading-over-card', `${describe(only)} is the only thing in a Section: the card has two titles`, ancestors, stack);
     },
     siblings(elements, ancestors, stack) {
       for (let index = 0; index < elements.length - 1; index += 1) {

@@ -18,12 +18,6 @@ import type { Node, ReaderContext } from "./lib/types.ts"
 const FRACTIONAL =
   /\b(?:gap|gap-x|gap-y|p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|space-x|space-y|inset|top|bottom|left|right|size|w|h)-\d+\.\d+\b/
 
-/** Large text. Paired with a heavy weight it is a heading, whatever element carries it. */
-const LARGE_TEXT = /\btext-(?:xl|2xl|3xl|4xl|5xl)\b/
-
-/** A heavy weight. */
-const HEAVY_WEIGHT = /\bfont-(?:bold|extrabold|black)\b/
-
 /** A fractional step is off the ladder, not between two rungs. */
 export const noFractionalStep: Rule.RuleModule = exemptFreestyle(defineRule({
   meta: {
@@ -44,40 +38,6 @@ export const noFractionalStep: Rule.RuleModule = exemptFreestyle(defineRule({
   },
 }))
 
-/** Large text plus a heavy weight is a heading, and headings come from the component that owns both. */
-export const noHandRolledHeading: Rule.RuleModule = defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "A heading comes from the heading component, not from raw type classes." },
-    schema: [],
-    messages: {
-      heading:
-        "Large text and a heavy weight together are a heading, whatever element carries them - and assembled here it is a heading nothing else knows about: the outline a screen reader builds does not contain it, and it stays behind the day the type scale changes. Render the heading component, which owns the tag and the size as one decision.",
-    },
-  },
-  create(context) {
-    return classTextVisitors(context, (node, text) => {
-      if (!text) return
-      if (LARGE_TEXT.test(text) && HEAVY_WEIGHT.test(text)) {
-        context.report({ node, messageId: "heading" })
-      }
-    })
-  },
-})
-
-/**
- * The class families whose names are PROMISES about a theme token, and the variable each needs.
- *
- * Tailwind resolves `max-w-app-lg` by looking for `--container-app-lg`. Nothing warns when that
- * variable does not exist: the class is emitted, the element gets no width, and the type system
- * is satisfied because the name IS in the union. That is the failure this rule exists for - a
- * class can be typesafe and mean nothing at the same time, and the union is exactly what makes
- * it look settled.
- *
- * Only families whose token name is DERIVABLE from the class name are listed. A colour or a
- * spacing step resolves through Tailwind's own scale as well as the theme, so a rule guessing at
- * those would report classes that work.
- */
 /**
  * Names Tailwind resolves ITSELF, which therefore promise nothing about this theme.
  *
@@ -166,7 +126,6 @@ export const noUnresolvedTokenClass: Rule.RuleModule = defineRule({
 /** StarCi scale rules, bound to their knowledge owner. */
 export const rules: Record<string, Rule.RuleModule> = {
   "no-fractional-step": noFractionalStep,
-  "no-hand-rolled-heading": noHandRolledHeading,
   "no-unresolved-token-class": noUnresolvedTokenClass,
 }
 

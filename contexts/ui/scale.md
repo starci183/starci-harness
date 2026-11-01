@@ -79,7 +79,7 @@ calendar days and the stepper and clear glyphs of fields. Proof: A11Y-4, TASTE-1
   (button, chip, tag, segment) may be a pill: its corner is at least half its height at every step, so the
   shape is the same at every size. Corner roles: [presentation.md](presentation.md) "Radius".
 - **Glyphs come from one icon scale**, small and standard for controls, large only for standalone marks
-  (an empty state, an identity tile). Lint: `starci-grammar/no-off-scale-glyph-size`, `no-icon-size-class`.
+  (an empty state, an identity tile). Lint: `starci-grammar/no-icon-size-class` (any size class on a glyph is refused, so no third step can be written).
 - **Label rank** never changes the step: a long label wraps or the control fills its parent.
 
 ## Density

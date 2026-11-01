@@ -14,6 +14,7 @@
     "knowledge/grammars/core/playbook.yaml",
     "knowledge/grammars/index.yaml",
     "knowledge/hfs/canon-pins.yaml",
+    "knowledge/hfs/rules.yaml",
     "knowledge/ui/presentation/font.yaml",
     "knowledge/ui/presentation/padding.yaml",
     "modules/kernel/removed-vocabulary.yaml",
@@ -63,7 +64,6 @@
   "own": [
     "engine/config.mjs",
     "engine/invalid-config.mjs",
-    "knowledge/hfs/rules.yaml",
     "knowledge/hfs/slots.yaml",
     "knowledge/patterns/fe/index.yaml",
     "knowledge/patterns/fe/ui.yaml",

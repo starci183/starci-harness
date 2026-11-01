@@ -27,6 +27,7 @@ import { recommended as hygieneRecommended, rules as hygieneRules } from "./hygi
 import { recommended as landmarkRecommended, rules as landmarkRules } from "./landmark.ts"
 import { recommended as listsRecommended, rules as listsRules } from "./lists.ts"
 import { recommended as loadingRecommended, rules as loadingRules } from "./loading.ts"
+import { recommended as skeletonStatesRecommended, rules as skeletonStatesRules } from "./skeleton-states.ts"
 import { recommended as lintEscapeRecommended, rules as lintEscapeRules } from "./lint-escape-hatch.ts"
 import { recommended as namingRecommended, rules as namingRules } from "./naming.ts"
 import { recommended as nativeControlsRecommended, rules as nativeControlsRules } from "./native-controls.ts"
@@ -89,6 +90,7 @@ const CONTRIBUTIONS: Contribution[] = [
   { law: "landmark", rules: landmarkRules, recommended: landmarkRecommended },
   { law: "lists", rules: listsRules, recommended: listsRecommended },
   { law: "loading", rules: loadingRules, recommended: loadingRecommended },
+  { law: "skeleton-states", rules: skeletonStatesRules, recommended: skeletonStatesRecommended },
   { law: "lint-escape-hatch", rules: lintEscapeRules, recommended: lintEscapeRecommended },
   { law: "naming", rules: namingRules, recommended: namingRecommended },
   { law: "native-controls", rules: nativeControlsRules, recommended: nativeControlsRecommended },

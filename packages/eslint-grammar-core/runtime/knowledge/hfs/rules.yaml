@@ -75,6 +75,7 @@ rules:
       - {kind: machine, id: required-files, at: scripts/hfs/architecture/required-files.mjs}
       - {kind: machine, id: repository-tree-required, at: scripts/hfs/architecture/hfs.mjs}
       - {kind: runtime, id: runtime-required, at: scripts/hfs/runtime-check.mjs}
+    docs: [contexts/code/be/folder.md]
   - id: R03
     code: "HFS_UNTRACKED_ROOT_ENTRY"
     editions: [lite, full]
@@ -155,6 +156,7 @@ rules:
     failureCodes: ["HFS_AGENT_DATA_TRACKED"]
     enforcers:
       - {kind: work-validate, id: agent-data-tracked, at: scripts/work/validate/check-example-work.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R09
     code: "HFS_IDENTITY_CUSTODY"
     law: "An identity points its secret at `secrets/identity-<slug>.enc`; UAT chooses by role."
@@ -164,6 +166,7 @@ rules:
     enforcers:
       - {kind: work-validate, id: sealed-custody-location, at: scripts/work/validate/check-work-artifacts.mjs}
       - {kind: work-validate, id: identity-custody-role, at: scripts/work/validate/check-example-work.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R10
     code: "HFS_STACKS_SHAPE"
     editions: [lite, full]
@@ -336,6 +339,7 @@ rules:
       - {kind: eslint-be, id: no-inline-suppression}
       - {kind: eslint-fe, id: no-inline-lint-config}
       - {kind: stylelint, id: no-inline-lint-config}
+    docs: [contexts/code/shared/format.md]
   - id: R19
     code: "HFS_FORMAT"
     editions: ["lite", "full"]
@@ -365,6 +369,7 @@ rules:
       - {kind: eslint-fe, id: file-size-growth}
       - {kind: sonar, id: cognitive-complexity, at: knowledge/sonar-gate.yaml}
       - {kind: runtime, id: runtime-size, at: scripts/hfs/runtime-rules/size.mjs}
+    docs: [contexts/code/be/function.md]
   - id: R21
     code: "HFS_DUPLICATE_CODE"
     law: "No duplicated blocks or twice-defined helpers."
@@ -378,6 +383,7 @@ rules:
       - {kind: eslint-fe, id: duplicate-symbol}
       - {kind: eslint-fe, id: cross-app-duplicate}
       - {kind: sonar, id: duplicated-lines-density, at: knowledge/sonar-gate.yaml}
+    docs: [contexts/code/be/function.md]
   - id: R22
     code: "HFS_TS_STRICT"
     editions: ["lite", "full"]
@@ -1266,7 +1272,7 @@ rules:
       - {kind: stylelint, id: globals-shape}
       - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
-      - {kind: stylelint, id: brand-layer-shape}
+      - {kind: stylelint, id: theme-layer-shape}
       - {kind: stylelint, id: status-contrast}
       - {kind: stylelint, id: no-css-module}
       - {kind: stylelint, id: no-class-selector}
@@ -1275,9 +1281,7 @@ rules:
       - {kind: eslint-fe, id: no-raw-brand-value}
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
-      - {kind: eslint-grammar-core, id: no-hand-rolled-heading}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: no-heading-tag-outside-heading-component}
       - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
     proves:
       - {path: packages/stylelint/source-resolves.spec.mjs, editions: [lite, full], codes: [FE_STYLE_SOURCE_UNRESOLVED]}
@@ -1916,10 +1920,8 @@ rules:
     enforcers:
       - {kind: eslint-grammar-core, id: no-vendor-icon-outside-icon-leaf}
       - {kind: eslint-grammar-core, id: heroicons-is-the-glyph-vendor}
-      - {kind: eslint-grammar-core, id: no-off-scale-glyph-size}
       - {kind: eslint-grammar-core, id: no-icon-size-class}
       - {kind: eslint-grammar-core, id: destructive-menu-entry-needs-danger-tone}
-      - {kind: eslint-grammar-core, id: no-decorative-icon-in-metric-cell}
       - {kind: eslint-grammar-core, id: vendor-primitive-has-named-owner}
       - {kind: eslint-fe, id: grammar-entry}
       - {kind: machine, id: grammar, at: scripts/hfs/architecture/frontend-grammar.mjs}
@@ -3696,7 +3698,7 @@ rules:
     editions: [lite, full]
     docs: [docs/architecture.md#r213]
     templateNa: "Full apps keep TypeORM migrations under be/; the managed db/migrations scaffold is lite's."
-    law: "A migration is `db/migrations/<ts14>_<kebab>.sql`; the stamp is a valid UTC instant, active stamps are unique, and a new migration sorts strictly after the committed active migrations in HEAD. Repository history includes the archive: moving an active migration to the archive retires it from ordering, so a replacement baseline may predate archived stamps and later migrations append after the baseline. Wall-clock time, commit time and remote-branch stamps do not set the ordering boundary. A migration already on the base is immutable (a diff or an unarchived removal is a finding); a file that does not parse as PostgreSQL is a shape failure."
+    law: "A migration is `db/migrations/<ts14>_<kebab>.sql`; the stamp is a valid UTC instant, active stamps are unique, and a new migration sorts strictly after the committed active migrations in HEAD. Repository history includes the archive: moving an active migration to the archive retires it from ordering, so a replacement baseline may predate archived stamps and later migrations append after the baseline. Wall-clock time, commit time and remote-branch stamps do not set the ordering boundary. A migration already on the base is immutable (a diff or an unarchived removal is a finding); a file that does not parse as PostgreSQL is a shape failure. `starci app db migrate` applies each migration in one transaction with its history row, so a top-level BEGIN, START TRANSACTION, COMMIT, END, ROLLBACK, ABORT, SAVEPOINT, RELEASE or PREPARE TRANSACTION, or a COMMIT or ROLLBACK inside a DO block, is a shape failure named by file:line; a function or procedure body is never judged."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_MIGRATION_SHAPE"]
@@ -3777,7 +3779,7 @@ rules:
       - {path: packages/hfs/src/hfs-lite-secrets.spec.mjs, edition: lite}
   - id: R221
     code: "CI_TRIGGERS_RELEASE_ONLY"
-    law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, and workflow_dispatch. Runtime workflows and app ci.yml also admit main. App ci.yml includes the candidate branch filter for starci app release push. Other branches, events, path filters and ignore filters are refused."
+    law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, workflow_call (a reusable workflow has no trigger of its own) and workflow_dispatch. Runtime workflows and app ci.yml also admit main, and app ci.yml admits pull_request to main (branches ['main'] only: a pull request run has no secret and no environment). App ci.yml includes the candidate branch filter for starci app release push. pull_request_target, workflow_run, schedules, other branches, events, path filters and ignore filters are refused."
     scope: runtime
     editions: [lite, full]
     docs: [docs/git-governance.md#r221]
@@ -3810,6 +3812,7 @@ rules:
     failureCodes: ["RIGHTS_ROLE_DENIED", "RIGHTS_GIT_PUSH", "RIGHTS_GIT_TAG", "RIGHTS_GIT_COMMIT", "RIGHTS_GIT_SYNC", "RIGHTS_NPM_PUBLISH", "RIGHTS_NPM_CI_UNLOCKED", "RIGHTS_SUITE_RUN", "RIGHTS_RELEASE_CUT", "RIGHTS_RAW_TOOL"]
     enforcers:
       - {kind: runtime, id: role-rights, at: scripts/hfs/runtime-rules/rights-policy.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R224
     code: "RIGHTS_PROTECTED_ZONE"
     law: "The protected zone declared once in modules/kernel/protected-zone.yaml is edited only by the owner path; a supervisor self-upgrade files an owner proposal, and an op never writes the .claude runtime checkout."
@@ -3819,6 +3822,7 @@ rules:
     failureCodes: ["RIGHTS_PROTECTED_ZONE", "RIGHTS_OP_RUNTIME_WRITE"]
     enforcers:
       - {kind: runtime, id: protected-zone, at: scripts/hfs/runtime-rules/rights-policy.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R225
     code: "RT_HOOK_SHAPE"
     law: "The app hook templates keep the gate model: pre-commit is L0 only (no typecheck or test run); pre-push invokes the bundled scripts/guards/release-push-gate.mjs policy for fast-forward main, a clean outgoing secret scan and annotated v* tags, then the harness's `starci deps check` (every committed @starci pin installable from npm, no local package copy ahead of npm). It runs no build, test, typecheck or lint."
@@ -3828,6 +3832,7 @@ rules:
     failureCodes: ["RT_HOOK_SHAPE", "RIGHTS_PUSH_NOT_RELEASE"]
     enforcers:
       - {kind: runtime, id: hook-shape, at: scripts/hfs/runtime-rules/hook-shape.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R227
     code: "RT_SYNTAX_INVALID"
     editions: [lite, full]
@@ -4196,7 +4201,7 @@ rules:
     editions: [lite, full]
     docs:
       - {path: docs/application-stacks.md#r251-deploy-workflow, editions: [lite, full]}
-    law: "In lite and full apps, deployment jobs declare a protected environment, explicit permissions and concurrency, materialize sealed secrets through SOPS_AGE_KEY or starci app secret materialize, and reference only the age key and transport SSH key/known_hosts secrets. They never embed a dotenv blob or write a dotenv file. Every remote workflow action uses a 40-hex commit SHA (local actions are allowed and container actions require a full sha256 digest); supply-chain reports each unpinned uses reference at its source line, including disabled jobs and steps; installed tools are checksum or digest verified, or supplied by a pinned action. App workflows start only on release tags [v*], the release candidate branches release/candidate-* (required in ci.yml: starci app release push waits for that run, owner ruling candidate-ci 2026-10-18) or workflow_dispatch; ci.yml also runs on main, and other branch pushes are refused."
+    law: "In lite and full apps, deployment jobs declare a protected environment, explicit permissions and concurrency, materialize sealed secrets through SOPS_AGE_KEY or starci app secret materialize, and reference only the age key and transport SSH key/known_hosts secrets; every job that reads secrets.SOPS_AGE_KEY, a deployment job or not, is bound to the GitHub Environment whose members it opens, so it reads that environment's server key and never a repository secret of that name. Deployment jobs never embed a dotenv blob or write a dotenv file. Every remote workflow action uses a 40-hex commit SHA (local actions are allowed and container actions require a full sha256 digest); supply-chain reports each unpinned uses reference at its source line, including disabled jobs and steps; installed tools are checksum or digest verified, or supplied by a pinned action. App workflows start only on release tags [v*], the release candidate branches release/candidate-* (required in ci.yml: starci app release push waits for that run, owner ruling candidate-ci 2026-10-18), workflow_call or workflow_dispatch; ci.yml also runs on main and on pull_request to main (read-only workflow permissions, no environment bound in the file), and other branch pushes are refused. A release deploys through the reusable stack-deploy.yml (ruling app-cicd-auto-deploy): the job of ci.yml that calls it (deploy-<env>, after the verdict job) holds permissions, concurrency and with.environment, the called deploy job binds the GitHub Environment (deployment refs restricted to v* tags) and reads SOPS_AGE_KEY there, and the transport is the sealed member vps-ci opened with that key, so the CI deploy key, the host and the pinned host keys are never GitHub secrets, workflow text or log lines; STARCI_DEPLOY_PAUSED on the environment stops the automatic deploy. The secrets allowlist and the dotenv ban are judged on the deployment jobs, not on the check jobs beside them."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_DEPLOY_WORKFLOW", "HFS_WORKFLOW_PIN", "HFS_CI_TOOL_INSTALL", "HFS_APP_WORKFLOW_TRIGGER"]
@@ -4206,7 +4211,7 @@ rules:
     proves:
       - {path: packages/hfs/src/hfs-deploy-workflow.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml, edition: lite}
+      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml, edition: lite}
       - {path: packages/hfs/templates/app/ci-workflows/github/workflows/ci.yml, edition: full}
       - {path: packages/hfs/src/hfs-deploy-workflow.spec.mjs, editions: [lite, full]}
     witness:
@@ -4225,7 +4230,7 @@ rules:
     proves:
       - {path: packages/hfs/src/hfs-script-hygiene.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml, edition: lite}
+      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml, edition: lite}
       - {path: packages/hfs/templates/app/ci-workflows/github/workflows/ci.yml, edition: full}
       - {path: packages/hfs/src/hfs-script-hygiene.spec.mjs, editions: [lite, full]}
     witness:
@@ -4332,7 +4337,7 @@ rules:
     editionWhy: "owner:lite-backing-services makes the db service lite's database; database configuration, extension, migration and seed requirements apply to that backing."
     docs: [docs/microservices.md#r259]
     templateNa: "Extension use, contract migrations, vault operations and seed literals are product-authored db content, rather than a scaffolded SQL surface."
-    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities. Seeds contain no real email or phone literals."
+    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities, and a contract migration that is new since the previous release tag (the newest v* tag HEAD contains) never destroys an object that the back-end sources of that tag still reference: the deploy applies it right after the accept, while that release is the rollback target, so the code change goes in one release and its contract migration in the next. Seeds contain no real email or phone literals."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_EXTENSION_ALLOWED", "DB_MIGRATION_DESTRUCTIVE", "HFS_SEED_PII", "DB_VAULT_WRITE"]
@@ -4601,7 +4606,7 @@ rules:
       - {path: packages/hfs/src/hfs-doc-fresh.spec.mjs, edition: full}
   - id: R271
     code: "HFS_RELEASE_TAG_MISMATCH"
-    law: "A lite or full product release uses a v-prefixed semantic version tag equal to package.json version; images.yml publishes images under that release tag, and every database deployment refuses a non-tag ref before migration."
+    law: "A lite or full product release uses a v-prefixed semantic version tag equal to package.json version; images.yml pushes each image under the immutable tag sha-<github.sha> and adds the release name v<version> only as a retag of that digest on a release tag run, under a guard that rejects any other ref; and every database deployment refuses a non-tag ref before migration (a lite app migrates inside its stack deploy, which stack-deploy.yml starts only from a release tag, so its db-deploy.yml is retired and starci app sync removes it)."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["HFS_RELEASE_TAG_MISMATCH", "HFS_DB_DEPLOY_UNGUARDED"]
@@ -4615,7 +4620,7 @@ rules:
     exemplifiedBy:
       - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/images.yml","edition":"lite"}
       - {"path":"packages/hfs/templates/app/ci-workflows/github/workflows/images.yml","edition":"full"}
-      - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml","edition":"lite"}
+      - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml","edition":"lite"}
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: lite}
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
     witness:
@@ -4623,10 +4628,10 @@ rules:
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
   - id: R272
     code: "BE_APP_BOOT_PROOF_MISSING"
-    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers, circular dependencies and a missing or failed proof are refused. The app check wiring verb uses the same proof. Full retains its existing e2e boot proof."
+    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers, circular dependencies and a missing or failed proof are refused. The proof worker runs within its own budget from its spawn and is retried once when it runs out; a second timeout reaches no verdict and is reported as BOOT_PROOF_TIMEOUT, a warning, never as a failed proof. The app check wiring verb uses the same proof. Full retains its existing e2e boot proof."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["BE_APP_BOOT_PROOF_MISSING"]
+    failureCodes: ["BE_APP_BOOT_PROOF_MISSING", "BOOT_PROOF_TIMEOUT"]
     enforcers:
       - {kind: hfs, id: boot-proof, at: scripts/hfs/rules/boot-proof.mjs}
     editions: ["lite"]
@@ -5469,7 +5474,6 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NESTED_VARIANT", "FE_LIST_PANEL_PADDING", "FE_GRAMMAR_LAYOUT_ONLY", "FE_DIVIDER_FULL_BLEED"]
     enforcers:
-      - {kind: eslint-fe, id: nested-control-variant}
       - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
       - {kind: eslint-fe, id: divider-full-bleed}
@@ -5480,15 +5484,15 @@ rules:
     templateNa: "Product composition is proved by the FE canon's Grammar import and surface fixtures; a template cannot choose product slots or lists."
     proves:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     exemplifiedBy:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     witness:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     cases:
       - id: case-1
@@ -5502,10 +5506,9 @@ rules:
     law: "An app Button or IconButton declares an intent and never a variant; Grammar resolves the variant from intent and placement (CTA-6). A destructive confirm lives in a confirmation dialog, a render holds at most one commit, and a collection item holds none."
     kinds: [codemod, lint, design]
     gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_BUTTON_INTENT", "FE_BUTTON_INTENT_REQUIRED", "FE_BUTTON_NO_VARIANT", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
+    failureCodes: ["FE_BUTTON_INTENT", "FE_BUTTON_INTENT_REQUIRED", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
     enforcers:
       - {kind: eslint-fe, id: button-intent-required}
-      - {kind: eslint-fe, id: button-no-variant}
       - {kind: eslint-fe, id: destructive-confirm-in-dialog}
       - {kind: eslint-fe, id: single-commit-per-render}
       - {kind: eslint-fe, id: no-commit-in-collection-item}
@@ -5514,11 +5517,11 @@ rules:
       - knowledge/ui/composition/cta.yaml
       - docs/code-pattern-enforcement.md#r319-button-intent
     proves:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     exemplifiedBy:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     witness:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     templateNa: "The intent of an action comes from the product decision in the .starciwork specification; a template cannot choose it."
     cases:
       - id: case-1
@@ -6041,6 +6044,28 @@ rules:
         source: owner
         quote: "Entities do not repeat the columns every table shares; the owner approved a lint so they never repeat them again (ruling entity-base, 2026-10-31)."
         ruling: "A table whose migration has created_at, updated_at (set by the database) and the generated uuid id maps them by extending AbstractEntity or UuidAbstractEntity from @modules/platform/database; an entity that declares them itself is a finding. A table without them extends nothing."
+  - id: R343
+    code: "HFS_CHECK_CACHE_FORGED"
+    editions: ["lite", "full"]
+    docs: [contexts/hfs/README.md#rule-notes]
+    law: "An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (a hard blocker at any count), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings)."
+    kinds: [codemod]
+    gates: [ci]
+    failureCodes: ["HFS_CHECK_CACHE_FORGED", "HFS_CHECK_CACHE_STALE", "HFS_CHECK_CACHE_MISSING"]
+    enforcers:
+      - {kind: hfs, id: check-cache, at: packages/hfs/cache/trust.mjs}
+    proves:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full], codes: [HFS_CHECK_CACHE_FORGED, HFS_CHECK_CACHE_STALE, HFS_CHECK_CACHE_MISSING]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "app check cache lại vào file dc không? sau chỉ check diff; chốt starcistacks lưu hết nhé và check diff và triển cho ci và local lun."
+        ruling: "The app commits its check results in .starcistacks/cache/; CI trusts only the cache at the trusted base, a forged record blocks at any count, stale and missing only warn (ruling app-check-cache)."
   - id: R344
     code: "BE_AI_VIRTUAL_KEY"
     law: "An app's ai-router gateway has one client key, STARCI_AI_KEY (sk-starci-<app>-<48 hex>, sealed in the ai member, used by the integrations/ai LangChain client and the agent runtime alike), and no admin token: integrations/ai reads exactly that secret name with env.secret, as a literal, and the custody owner integrations/ai-gateway passes the gateway no adminToken."

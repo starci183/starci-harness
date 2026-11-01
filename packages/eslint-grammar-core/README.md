@@ -28,12 +28,13 @@ rules (nested control variants, panel-list alignment, layout-only CSS) stay in t
 The pinned canon-fe release moved twenty rules here. Their IDs, finding codes and error severity are unchanged;
 only the namespace changes from `starci-fe/` to `starci-grammar/`: `app-shell-frame`,
 `no-shell-bottom-tabs`, `navbar-control-size`, `navbar-cluster`, `no-navbar-create`,
-`no-raw-structural-element`, `no-heading-tag-outside-heading-component`,
+`no-raw-structural-element`,
 `status-text-uses-soft-foreground`, `vendor-primitive-has-named-owner`,
-`no-vendor-icon-outside-icon-leaf`, `heroicons-is-the-glyph-vendor`, `no-off-scale-glyph-size`,
+`no-vendor-icon-outside-icon-leaf`, `heroicons-is-the-glyph-vendor`,
 `no-icon-size-class`, `destructive-menu-entry-needs-danger-tone`,
-`no-decorative-icon-in-metric-cell`, `no-inline-svg-outside-brand-mark-leaf`, `no-fractional-step`,
-`no-hand-rolled-heading`, `no-unresolved-token-class` and `slot-status-through-slotview`.
+`no-inline-svg-outside-brand-mark-leaf`, `no-fractional-step`,
+`no-unresolved-token-class`, `slot-status-through-slotview`, and the text laws `text-inline-only` (R357),
+`no-text-heading` (R358) and `one-highlight-per-render` (R359).
 
 1. Set `sides.fe.grammar` to `core` in `hfs.json`; no family is inferred.
 2. Install this package at its canon-pins version beside `@starci/eslint-canon-fe` 9 in the app

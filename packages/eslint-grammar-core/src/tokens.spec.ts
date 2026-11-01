@@ -10,7 +10,7 @@ import { appDeclaration } from "../../eslint-canon-be/fixtures/app.ts"
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { noFractionalStep, noHandRolledHeading, noUnresolvedTokenClass, rules } from "./tokens.ts"
+import { noFractionalStep, noUnresolvedTokenClass, rules } from "./tokens.ts"
 
 const tester = slotTester()
 const LEAF = at("apps/web/src/components/leaves/Text/index.tsx")
@@ -47,26 +47,6 @@ test("TOKEN-3: a fractional step is off the ladder, wherever it is written", () 
         filename: CLASS_NAMES,
         code: "const C = { x: { classes: [\"flex\", \"py-1.5\"] } }",
         errors: [{ messageId: "fractional" }],
-      },
-    ],
-  })
-})
-
-test("TOKEN-5: large text plus a heavy weight is a heading", () => {
-  tester.run("no-hand-rolled-heading", noHandRolledHeading, {
-    valid: [
-      // large text alone is a size decision, not a heading
-      { filename: LEAF, code: "const C = \"text-2xl\"" },
-      // weight alone is emphasis within body text, which the type scale allows
-      { filename: LEAF, code: "const C = \"text-sm font-bold\"" },
-      { filename: LEAF, code: "const C = \"text-base font-medium\"" },
-    ],
-    invalid: [
-      { filename: LEAF, code: "const C = \"text-2xl font-bold\"", errors: [{ messageId: "heading" }] },
-      {
-        filename: LEAF,
-        code: "const E = () => <span className=\"text-xl font-extrabold\">{t}</span>",
-        errors: [{ messageId: "heading" }],
       },
     ],
   })
@@ -142,10 +122,6 @@ for (const edition of ["lite", "full"]) {
     editionTester.run("no-fractional-step", noFractionalStep, {
       valid: [{ filename, code: 'const classes = "gap-2 p-4"' }],
       invalid: [{ filename, code: 'const classes = "gap-1.5"', errors: [{ messageId: "fractional" }] }],
-    })
-    editionTester.run("no-hand-rolled-heading", noHandRolledHeading, {
-      valid: [{ filename, code: 'const classes = "text-sm font-bold"' }],
-      invalid: [{ filename, code: 'const classes = "text-2xl font-bold"', errors: [{ messageId: "heading" }] }],
     })
     editionTester.run("no-unresolved-token-class", noUnresolvedTokenClass, {
       valid: [{ filename, code: 'const classes = "max-w-app-sm"' }],

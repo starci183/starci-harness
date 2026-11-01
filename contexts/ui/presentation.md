@@ -188,7 +188,7 @@ weights):
 
 - A heading's level is its document position and sets its size together, so tag and size never drift; levels stop
   at four, because a fifth means the page nested deeper than a reader holds. Lint:
-  `starci-grammar/no-heading-tag-outside-heading-component`, `starci-grammar/no-hand-rolled-heading`.
+  `starci-grammar/no-raw-structural-element` (a heading tag), `starci-grammar/no-text-heading` (R358).
 - **Weight refines a rank, never creates one**; structure must hold with weight and colour removed.
 - Body copy is never shrunk to fit a container; the layout is repaired instead.
 

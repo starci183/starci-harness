@@ -16,8 +16,8 @@ import { rules as paneRules } from "./pane.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
+import { rules as textRules } from "./text-rules.ts"
 import { rules as tokensRules } from "./tokens.ts"
-import { rules as typographyRules } from "./typography.ts"
 import { rules as vendorRules } from "./vendor-boundary.ts"
 import { why as familyWhy } from "./lib/why.ts"
 
@@ -48,8 +48,8 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "status-colors", rules: statusColorsRules },
   { law: "surface-card", rules: surfaceCardRules },
   { law: "surface-depth", rules: surfaceDepthRules },
+  { law: "text-rules", rules: textRules },
   { law: "tokens", rules: tokensRules },
-  { law: "typography", rules: typographyRules },
   { law: "vendor-boundary", rules: vendorRules },
 ]
 

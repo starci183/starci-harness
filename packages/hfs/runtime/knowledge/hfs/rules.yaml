@@ -75,6 +75,7 @@ rules:
       - {kind: machine, id: required-files, at: scripts/hfs/architecture/required-files.mjs}
       - {kind: machine, id: repository-tree-required, at: scripts/hfs/architecture/hfs.mjs}
       - {kind: runtime, id: runtime-required, at: scripts/hfs/runtime-check.mjs}
+    docs: [contexts/code/be/folder.md]
   - id: R03
     code: "HFS_UNTRACKED_ROOT_ENTRY"
     editions: [lite, full]
@@ -155,6 +156,7 @@ rules:
     failureCodes: ["HFS_AGENT_DATA_TRACKED"]
     enforcers:
       - {kind: work-validate, id: agent-data-tracked, at: scripts/work/validate/check-example-work.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R09
     code: "HFS_IDENTITY_CUSTODY"
     law: "An identity points its secret at `secrets/identity-<slug>.enc`; UAT chooses by role."
@@ -164,6 +166,7 @@ rules:
     enforcers:
       - {kind: work-validate, id: sealed-custody-location, at: scripts/work/validate/check-work-artifacts.mjs}
       - {kind: work-validate, id: identity-custody-role, at: scripts/work/validate/check-example-work.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R10
     code: "HFS_STACKS_SHAPE"
     editions: [lite, full]
@@ -336,6 +339,7 @@ rules:
       - {kind: eslint-be, id: no-inline-suppression}
       - {kind: eslint-fe, id: no-inline-lint-config}
       - {kind: stylelint, id: no-inline-lint-config}
+    docs: [contexts/code/shared/format.md]
   - id: R19
     code: "HFS_FORMAT"
     editions: ["lite", "full"]
@@ -365,6 +369,7 @@ rules:
       - {kind: eslint-fe, id: file-size-growth}
       - {kind: sonar, id: cognitive-complexity, at: knowledge/sonar-gate.yaml}
       - {kind: runtime, id: runtime-size, at: scripts/hfs/runtime-rules/size.mjs}
+    docs: [contexts/code/be/function.md]
   - id: R21
     code: "HFS_DUPLICATE_CODE"
     law: "No duplicated blocks or twice-defined helpers."
@@ -378,6 +383,7 @@ rules:
       - {kind: eslint-fe, id: duplicate-symbol}
       - {kind: eslint-fe, id: cross-app-duplicate}
       - {kind: sonar, id: duplicated-lines-density, at: knowledge/sonar-gate.yaml}
+    docs: [contexts/code/be/function.md]
   - id: R22
     code: "HFS_TS_STRICT"
     editions: ["lite", "full"]
@@ -1266,7 +1272,7 @@ rules:
       - {kind: stylelint, id: globals-shape}
       - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
-      - {kind: stylelint, id: brand-layer-shape}
+      - {kind: stylelint, id: theme-layer-shape}
       - {kind: stylelint, id: status-contrast}
       - {kind: stylelint, id: no-css-module}
       - {kind: stylelint, id: no-class-selector}
@@ -1275,9 +1281,7 @@ rules:
       - {kind: eslint-fe, id: no-raw-brand-value}
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
-      - {kind: eslint-grammar-core, id: no-hand-rolled-heading}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: no-heading-tag-outside-heading-component}
       - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
     proves:
       - {path: packages/stylelint/source-resolves.spec.mjs, editions: [lite, full], codes: [FE_STYLE_SOURCE_UNRESOLVED]}
@@ -1916,10 +1920,8 @@ rules:
     enforcers:
       - {kind: eslint-grammar-core, id: no-vendor-icon-outside-icon-leaf}
       - {kind: eslint-grammar-core, id: heroicons-is-the-glyph-vendor}
-      - {kind: eslint-grammar-core, id: no-off-scale-glyph-size}
       - {kind: eslint-grammar-core, id: no-icon-size-class}
       - {kind: eslint-grammar-core, id: destructive-menu-entry-needs-danger-tone}
-      - {kind: eslint-grammar-core, id: no-decorative-icon-in-metric-cell}
       - {kind: eslint-grammar-core, id: vendor-primitive-has-named-owner}
       - {kind: eslint-fe, id: grammar-entry}
       - {kind: machine, id: grammar, at: scripts/hfs/architecture/frontend-grammar.mjs}
@@ -3810,6 +3812,7 @@ rules:
     failureCodes: ["RIGHTS_ROLE_DENIED", "RIGHTS_GIT_PUSH", "RIGHTS_GIT_TAG", "RIGHTS_GIT_COMMIT", "RIGHTS_GIT_SYNC", "RIGHTS_NPM_PUBLISH", "RIGHTS_NPM_CI_UNLOCKED", "RIGHTS_SUITE_RUN", "RIGHTS_RELEASE_CUT", "RIGHTS_RAW_TOOL"]
     enforcers:
       - {kind: runtime, id: role-rights, at: scripts/hfs/runtime-rules/rights-policy.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R224
     code: "RIGHTS_PROTECTED_ZONE"
     law: "The protected zone declared once in modules/kernel/protected-zone.yaml is edited only by the owner path; a supervisor self-upgrade files an owner proposal, and an op never writes the .claude runtime checkout."
@@ -3819,6 +3822,7 @@ rules:
     failureCodes: ["RIGHTS_PROTECTED_ZONE", "RIGHTS_OP_RUNTIME_WRITE"]
     enforcers:
       - {kind: runtime, id: protected-zone, at: scripts/hfs/runtime-rules/rights-policy.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R225
     code: "RT_HOOK_SHAPE"
     law: "The app hook templates keep the gate model: pre-commit is L0 only (no typecheck or test run); pre-push invokes the bundled scripts/guards/release-push-gate.mjs policy for fast-forward main, a clean outgoing secret scan and annotated v* tags, then the harness's `starci deps check` (every committed @starci pin installable from npm, no local package copy ahead of npm). It runs no build, test, typecheck or lint."
@@ -3828,6 +3832,7 @@ rules:
     failureCodes: ["RT_HOOK_SHAPE", "RIGHTS_PUSH_NOT_RELEASE"]
     enforcers:
       - {kind: runtime, id: hook-shape, at: scripts/hfs/runtime-rules/hook-shape.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R227
     code: "RT_SYNTAX_INVALID"
     editions: [lite, full]
@@ -6042,6 +6047,7 @@ rules:
   - id: R343
     code: "HFS_CHECK_CACHE_FORGED"
     editions: ["lite", "full"]
+    docs: [contexts/hfs/README.md#rule-notes]
     law: "An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (a hard blocker at any count), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings)."
     kinds: [codemod]
     gates: [ci]
@@ -6329,3 +6335,144 @@ rules:
       - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
     witness:
       - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
+  - id: R356
+    code: "FE_SURFACE_NESTING"
+    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable is not drawn inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading holds more than one card, and a labelled card is not repeated in a Grid: the render graph replaces every component by what it draws and every children by what its caller handed it."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_SURFACE_NESTING"]
+    enforcers:
+      - {kind: machine, id: surface-nesting, at: scripts/hfs/architecture/surface-nesting.mjs}
+    editions: [lite, full]
+    docs: [contexts/ui/components/card.md]
+    templateNa: "A template draws no card, table or grid."
+    proves:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_SURFACE_NESTING]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_SURFACE_NESTING]}
+    witness:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_SURFACE_NESTING]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "Surface in surface is banned totally, dialogs and drawers included."
+        ruling: "The one-file card laws (R340, R348, R351, R354, R366) are closed across files by the render graph; the machine reports the inner element and the chain that led to it."
+  - id: R357
+    code: "FE_TEXT_BLOCK"
+    law: "Text holds a run of words: a block component or block element inside it is refused."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_TEXT_BLOCK"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: text-inline-only}
+    editions: [lite, full]
+    docs: [contexts/ui/components/text.md]
+    templateNa: "A template writes no Text with a block inside."
+    proves:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_BLOCK]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_BLOCK]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_BLOCK]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "A card carries its own label; text is inline."
+        ruling: "Text is inline only, so a layout cannot hide inside a paragraph."
+  - id: R358
+    code: "FE_TEXT_HEADING"
+    law: "A strong Text that is the first child of a group and is followed only by blocks is a hand heading: the group takes a Section title, a card label or Heading."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_TEXT_HEADING"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-text-heading}
+    editions: [lite, full]
+    docs: [contexts/ui/components/text.md]
+    templateNa: "A template writes no heading by hand."
+    proves:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_HEADING]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_HEADING]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_HEADING]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "No free heading in apps."
+        ruling: "A heading is a Section title, a card label or Heading, never a strong Text."
+  - id: R359
+    code: "FE_ONE_HIGHLIGHT"
+    law: "A render states one highlighted thing: a second isHighlight on a Grammar element in one component render is refused."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_ONE_HIGHLIGHT"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: one-highlight-per-render}
+    editions: [lite, full]
+    docs: [contexts/ui/components/card.md]
+    templateNa: "A template highlights nothing."
+    proves:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_ONE_HIGHLIGHT]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_ONE_HIGHLIGHT]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_ONE_HIGHLIGHT]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "One accent fill per render."
+        ruling: "When two things are highlighted neither is."
+  - id: R367
+    code: "FE_SWR_DEFAULT_ARRAY"
+    law: "A loading state is drawn from the page's own reads: a hook folds a read to [] only while it also returns that read's isLoading, a slot takes its loading and error from the reads it draws and never from another slot, a background refresh (isValidating) never drives a loading flag or a status, a placeholder is not the ready data with its lists emptied, and an app draws no skeleton by hand once the Grammar owns the loading shape (written as `no-hand-skeleton`, published with that Grammar change)."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_SWR_DEFAULT_ARRAY", "FE_FOREIGN_SLOT_STATUS", "FE_VALIDATING_AS_LOADING", "FE_PLACEHOLDER_OBJECT"]
+    enforcers:
+      - {kind: eslint-fe, id: no-swr-default-array}
+      - {kind: eslint-fe, id: no-foreign-slot-status}
+      - {kind: eslint-fe, id: no-validating-as-loading}
+      - {kind: eslint-fe, id: no-placeholder-object}
+    editions: [lite, full]
+    docs: [contexts/ui/loading.md]
+    templateNa: "A template draws no loading state of its own."
+    proves:
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "The skeleton is the ready structure with its data missing; it is drawn from isLoading alone and from the reads the region shows."
+        ruling: "Several reads feed one frame: loading is any read loading with no data; a key change reloads only the region keyed by it; a refresh keeps the content."
+  - id: R361
+    code: "FE_RENDER_PROP_ACROSS_SERVER"
+    law: "A function is not handed from a server file to a client component: React serialises props across that line and a function is not serialisable; pass data, or move the callback into the client branch that owns the interaction."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_RENDER_PROP_ACROSS_SERVER"]
+    enforcers:
+      - {kind: machine, id: render-prop-across-server, at: scripts/hfs/architecture/render-prop-across-server.mjs}
+    editions: [lite, full]
+    docs: [contexts/code/fe/function.md]
+    templateNa: "A template hands no function across the server line."
+    proves:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    witness:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "a block takes data"
+        ruling: "A render callback is for a client branch; a block takes data and renders it itself."

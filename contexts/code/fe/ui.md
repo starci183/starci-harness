@@ -65,7 +65,7 @@ token, uses a class selector, `!important`, a CSS module or an off-scale breakpo
 Why: one file keeps the brand reviewable, and the grammar's token layer keeps dark mode and contrast its
 responsibility.
 
-Enforced by: R61 (stylelint `raw-brand-value`, `brand-layer-shape`, `no-token-redefinition`,
+Enforced by: R61 (stylelint `raw-brand-value`, `theme-layer-shape`, `no-token-redefinition`,
 `token-only`, `no-class-selector`, `no-important`, `no-css-module`, `breakpoint-scale`; `no-raw-brand-value`).
 
 ## FE-ICON One glyph vocabulary through one owner
@@ -77,5 +77,5 @@ grammar draws it at one size per region; a meaning the base set lacks is added t
 
 Why: one map keeps stroke, size and metaphor consistent, and the call site decides only the meaning.
 
-Enforced by: R93 (grammar `no-vendor-icon-outside-icon-leaf`, `heroicons-is-the-glyph-vendor`, `no-off-scale-glyph-size`,
+Enforced by: R93 (grammar `no-vendor-icon-outside-icon-leaf`, `heroicons-is-the-glyph-vendor`,
 `no-icon-size-class`), R286 (grammar `no-inline-svg-outside-brand-mark-leaf`).

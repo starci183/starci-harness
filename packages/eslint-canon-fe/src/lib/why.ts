@@ -79,6 +79,26 @@ export const why = {
     en: "`<file>` re-exports a Grammar component under the app's own name.",
     fix: "Delete the shim and import the component from the Grammar where it is rendered; report the Grammar defect the shim worked around (the op files blocked) so the Grammar fixes it.",
   },
+  "no-swr-default-array": {
+    code: "FE_SWR_DEFAULT_ARRAY",
+    en: "`<file>` folds a read to an empty array and never returns whether that read is loading.",
+    fix: "Return the read's isLoading and error with the list, so the view draws a skeleton while loading and an error when it fails, never an empty state.",
+  },
+  "no-foreign-slot-status": {
+    code: "FE_FOREIGN_SLOT_STATUS",
+    en: "`<file>` builds a slot from another slot's loading or error.",
+    fix: "Build the slot from every read it draws with the one slotOfReads helper, so a key change reloads only the region keyed by it.",
+  },
+  "no-validating-as-loading": {
+    code: "FE_VALIDATING_AS_LOADING",
+    en: "`<file>` lets a background refresh (isValidating) drive a loading flag or a status.",
+    fix: "Drive the skeleton from isLoading alone; a refresh keeps the content on screen.",
+  },
+  "no-placeholder-object": {
+    code: "FE_PLACEHOLDER_OBJECT",
+    en: "`<file>` holds a placeholder object that is the ready data with its lists emptied.",
+    fix: "Delete the placeholder; pass a loading flag and let the Grammar component derive the skeleton from the structure it draws.",
+  },
   "destructive-confirm-in-dialog": {
     code: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG",
     en: "`<file>` renders a final destructive press outside its confirmation dialog.",

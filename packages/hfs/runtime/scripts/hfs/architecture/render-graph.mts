@@ -84,6 +84,8 @@ export interface RenderVisitor {
   enter?(element: RenderElement, ancestors: readonly Ancestor[], stack: readonly string[]): void;
   /** The elements one parent draws side by side, placements and fragments resolved, in order. */
   siblings?(elements: readonly RenderElement[], ancestors: readonly Ancestor[], stack: readonly string[]): void;
+  /** A grammar or host element with the elements it draws directly, placements resolved. */
+  parent?(element: RenderElement, drawn: readonly RenderElement[], ancestors: readonly Ancestor[], stack: readonly string[]): void;
 }
 
 const GRAMMAR_PACKAGE = /^@starci\/grammar(?:\/|$)/u;
@@ -320,6 +322,7 @@ export class RenderGraph {
       } else {
         const inner = tag.kind === 'grammar' || tag.kind === 'host' ? [...ancestors, { element }] : ancestors;
         const slotParts = [...element.attributes.values()].flatMap(attribute => attribute.parts);
+        if (visitor.parent) visitor.parent(element, this.flatten(element.children, supplied).flatMap(entry => (entry.element ? [entry.element] : [])), ancestors, stack);
         this.walk([...slotParts, ...element.children], inner, supplied, stack, visitor, depth + 1);
       }
     }

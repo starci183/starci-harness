@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 import { checkSurfaceNesting } from '../runtime/scripts/hfs/architecture/surface-nesting.mjs';
+import { checkRenderPropAcrossServer } from '../runtime/scripts/hfs/architecture/render-prop-across-server.mjs';
 import type { HfsGraph } from '../runtime/scripts/hfs/architecture/hfs-graph.mjs';
 
 /** A program of source texts by path; a relative import resolves to `X.tsx` or `X/index.tsx` under the importing file's folder. */
@@ -28,7 +29,7 @@ function program(sources: Record<string, string>): { graph: HfsGraph; context: {
 }
 
 const kinds = (sources: Record<string, string>): string[] => checkSurfaceNesting(program(sources)).violations.map((v) => `${String(v['kind'])}@${String(v.path)}`).sort();
-const G = "import { SurfaceCard, SurfaceListCard, DataTable, Dialog, Pane, PaneGrid, Page, Grid, SectionHeader, Heading } from '@starci/grammar/core';\n";
+const G = "import { SurfaceCard, SurfaceListCard, DataTable, Dialog, Pane, PaneGrid, Page, Grid, Section, Heading } from '@starci/grammar/core';\n";
 
 test('a card drawn in a card across files is found at the inner card, with the file of each', () => {
   const result = checkSurfaceNesting(program({
@@ -100,12 +101,16 @@ test('a PaneGrid in a card, or in a Page with no chrome, is found', () => {
   }), ['grid-outside-panes@a/Grid.tsx']);
 });
 
-test('a heading directly followed by one card is found, through one wrapper, and several cards under it are not', () => {
+test('a Section or a Heading with one card is found, through one wrapper, and several cards under it are not', () => {
   assert.deepEqual(kinds({
     'a/Wrapped.tsx': `${G}export const Wrapped = () => <SurfaceCard label="x" />;`,
-    'a/One.tsx': `${G}import { Wrapped } from './Wrapped';\nexport const One = () => <><SectionHeader title="T" /><Wrapped /></>;`,
+    'a/One.tsx': `${G}import { Wrapped } from './Wrapped';\nexport const One = () => <Section title="T"><Wrapped /></Section>;`,
     'a/Two.tsx': `${G}import { Wrapped } from './Wrapped';\nexport const Two = () => <><Heading>T</Heading><Wrapped /><Wrapped /></>;`,
-  }), ['heading-over-card@a/One.tsx']);
+    'a/Three.tsx': `${G}import { Wrapped } from './Wrapped';
+export const Three = () => <><Heading>T</Heading><Wrapped /></>;`,
+    'a/List.tsx': `${G}import { Wrapped } from './Wrapped';
+export const List = () => <Section kind="list" title="T"><Wrapped /></Section>;`,
+  }), ['heading-over-card@a/One.tsx', 'heading-over-card@a/Three.tsx']);
 });
 
 test('a labelled card repeated by a map in a Grid is found, an unlabelled tile is not', () => {
@@ -123,4 +128,15 @@ test('a render cycle ends and an unresolved component is left alone', () => {
     'a/Other.tsx': `${G}import { Unknown } from 'elsewhere';\nexport const Other = () => <SurfaceCard label="x"><Unknown /></SurfaceCard>;`,
   });
   assert.ok(!found.some((entry) => entry.endsWith('a/Other.tsx')));
+});
+
+test('R361: a function prop from a server file into a client component is found; data, a client file and a server action are not', () => {
+  const client = "'use client';\nexport const Picker = (props) => <button onClick={props.onPick} />;";
+  const found = (page: string) => checkRenderPropAcrossServer(program({ 'a/Picker.tsx': client, 'a/Page.tsx': page })).violations.map((v) => String(v.path));
+  const head = "import { Picker } from './Picker';\n";
+  assert.deepEqual(found(head + 'export const Page = () => <Picker onPick={() => 1} />;'), ['a/Page.tsx']);
+  assert.deepEqual(found(head + 'export const Page = () => <Picker render={function () { return 1; }} />;'), ['a/Page.tsx']);
+  assert.deepEqual(found(head + 'export const Page = () => <Picker label="x" items={[1]} />;'), []);
+  assert.deepEqual(found("'use client';\n" + head + 'export const Page = () => <Picker onPick={() => 1} />;'), []);
+  assert.deepEqual(found(head + "export const Page = () => <Picker onPick={async () => { 'use server'; return 1; }} />;"), []);
 });

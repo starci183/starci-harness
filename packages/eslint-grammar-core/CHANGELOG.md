@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added: `text-inline-only` (R357, `FE_TEXT_BLOCK`), `no-text-heading` (R358, `FE_TEXT_HEADING`) and `one-highlight-per-render` (R359, `FE_ONE_HIGHLIGHT`).
+- Removed: `no-off-scale-glyph-size` (subsumed by `no-icon-size-class`), `no-decorative-icon-in-metric-cell` (named a component that does not exist), and `no-hand-rolled-heading` with `no-heading-tag-outside-heading-component` (one rule for headings: `no-raw-structural-element`).
+- Changed: the app-shell laws and the pane laws stop naming `NavigationFeatureNav`, `BottomNav`, `FillViewport` and `Region`; the specs run from a worktree (`fixtures/canon-fe-source.mjs` resolves `@starci/eslint-canon-fe` to the sibling source, because `install-links=true` copies the package before its `dist/` is built).
+- Fixed: the type declaration of `@starci/eslint-canon-fe/lib/freestyle.mjs`, so `npm test`'s typecheck passes.
+
 - Changed: R323 (`no-hand-rolled-page-header`) reduces to imports: `PageHeader` and `Breadcrumbs` imported from `@starci/grammar` (by name, aliased or through a namespace) are the finding. R325 (`route-page-is-one-page`) refuses `PageHeader` and `PageContainer` the same way (message `part`) and keeps its one-Page reading. R324 (`page-tabs-in-header`) loses its `PageHeader` sibling clause. The bundled catalog carries the new law text.
 - Changed: `no-raw-structural-element` names `Section` as the owner of `section`, `header`, `ul`, `ol` and `li`, and `Input`, `Select` and `Textarea` as the owners of `label`, since `Region`, `SectionHeader`, `List`, `ListItem` and `Label` are no longer grammar components. The bundled core playbook states `Text isStrong` in place of `Text weight`.
 - eslint-grammar-core: R355 `surface-card-kind`, R366 `no-label-in-grid`; R340 `no-raised-surface-in-surface` now refuses any card in a card, Pane surface or overlay.
@@ -168,7 +173,6 @@
 ## 0.15.11 - 2026-10-29
 
 - Changed: the peer moves to the 0.15.11 cohort; the bundled slot manifest 3.9.0 replaces the lite `app.supabase*` slots with `app.db` (`db/migrations`, `db/migrations/archive`, `db/seed.sql`, the managed `db/bootstrap.sql`), `be.integrations.supabase` with `be.integrations.passport` and `be.integrations.object-storage`, removes `fe.route.callback`, sets lite `schemaAuthority: sql`, gives lite TypeORM entities in `be.persistence`, adds `ruleParams.be.dbFunctions`, and moves the S3 SDKs to `integrations/object-storage` and the identity libraries to `integrations/passport` in `infraOwners` (`@supabase/*`, `minio` and `bcrypt` nowhere); the bundled rule catalog retires R216, R217, R219, R254 and R287 and adds R328-R334; the bundled canon pins name hfs 4.10.0, eslint-canon-be 3.7.0, eslint-canon-fe 9.5.0 and the Grammar family 0.15.11, pin `@nestjs/passport` 11.0.5 (CommonJS on the Nest 11 line), `passport` 0.7.0, `passport-google-oauth20` 2.0.0, `passport-local` 1.0.0, `bcryptjs` 3.0.3 and their types (tokens are signed and verified with `jose`; `@nestjs/jwt` stays allowed in `integrations/passport` but unpinned), and drop `@supabase/ssr`, `@supabase/supabase-js` and the `supabase` CLI. No rule changed.
-
 
 ## 0.15.10 - 2026-10-29
 

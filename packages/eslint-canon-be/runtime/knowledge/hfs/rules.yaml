@@ -75,6 +75,7 @@ rules:
       - {kind: machine, id: required-files, at: scripts/hfs/architecture/required-files.mjs}
       - {kind: machine, id: repository-tree-required, at: scripts/hfs/architecture/hfs.mjs}
       - {kind: runtime, id: runtime-required, at: scripts/hfs/runtime-check.mjs}
+    docs: [contexts/code/be/folder.md]
   - id: R03
     code: "HFS_UNTRACKED_ROOT_ENTRY"
     editions: [lite, full]
@@ -155,6 +156,7 @@ rules:
     failureCodes: ["HFS_AGENT_DATA_TRACKED"]
     enforcers:
       - {kind: work-validate, id: agent-data-tracked, at: scripts/work/validate/check-example-work.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R09
     code: "HFS_IDENTITY_CUSTODY"
     law: "An identity points its secret at `secrets/identity-<slug>.enc`; UAT chooses by role."
@@ -164,6 +166,7 @@ rules:
     enforcers:
       - {kind: work-validate, id: sealed-custody-location, at: scripts/work/validate/check-work-artifacts.mjs}
       - {kind: work-validate, id: identity-custody-role, at: scripts/work/validate/check-example-work.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R10
     code: "HFS_STACKS_SHAPE"
     editions: [lite, full]
@@ -336,6 +339,7 @@ rules:
       - {kind: eslint-be, id: no-inline-suppression}
       - {kind: eslint-fe, id: no-inline-lint-config}
       - {kind: stylelint, id: no-inline-lint-config}
+    docs: [contexts/code/shared/format.md]
   - id: R19
     code: "HFS_FORMAT"
     editions: ["lite", "full"]
@@ -365,6 +369,7 @@ rules:
       - {kind: eslint-fe, id: file-size-growth}
       - {kind: sonar, id: cognitive-complexity, at: knowledge/sonar-gate.yaml}
       - {kind: runtime, id: runtime-size, at: scripts/hfs/runtime-rules/size.mjs}
+    docs: [contexts/code/be/function.md]
   - id: R21
     code: "HFS_DUPLICATE_CODE"
     law: "No duplicated blocks or twice-defined helpers."
@@ -378,6 +383,7 @@ rules:
       - {kind: eslint-fe, id: duplicate-symbol}
       - {kind: eslint-fe, id: cross-app-duplicate}
       - {kind: sonar, id: duplicated-lines-density, at: knowledge/sonar-gate.yaml}
+    docs: [contexts/code/be/function.md]
   - id: R22
     code: "HFS_TS_STRICT"
     editions: ["lite", "full"]
@@ -1266,7 +1272,7 @@ rules:
       - {kind: stylelint, id: globals-shape}
       - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
-      - {kind: stylelint, id: brand-layer-shape}
+      - {kind: stylelint, id: theme-layer-shape}
       - {kind: stylelint, id: status-contrast}
       - {kind: stylelint, id: no-css-module}
       - {kind: stylelint, id: no-class-selector}
@@ -1275,9 +1281,7 @@ rules:
       - {kind: eslint-fe, id: no-raw-brand-value}
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
-      - {kind: eslint-grammar-core, id: no-hand-rolled-heading}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-core, id: no-heading-tag-outside-heading-component}
       - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
     proves:
       - {path: packages/stylelint/source-resolves.spec.mjs, editions: [lite, full], codes: [FE_STYLE_SOURCE_UNRESOLVED]}
@@ -1916,10 +1920,8 @@ rules:
     enforcers:
       - {kind: eslint-grammar-core, id: no-vendor-icon-outside-icon-leaf}
       - {kind: eslint-grammar-core, id: heroicons-is-the-glyph-vendor}
-      - {kind: eslint-grammar-core, id: no-off-scale-glyph-size}
       - {kind: eslint-grammar-core, id: no-icon-size-class}
       - {kind: eslint-grammar-core, id: destructive-menu-entry-needs-danger-tone}
-      - {kind: eslint-grammar-core, id: no-decorative-icon-in-metric-cell}
       - {kind: eslint-grammar-core, id: vendor-primitive-has-named-owner}
       - {kind: eslint-fe, id: grammar-entry}
       - {kind: machine, id: grammar, at: scripts/hfs/architecture/frontend-grammar.mjs}
@@ -3696,7 +3698,7 @@ rules:
     editions: [lite, full]
     docs: [docs/architecture.md#r213]
     templateNa: "Full apps keep TypeORM migrations under be/; the managed db/migrations scaffold is lite's."
-    law: "A migration is `db/migrations/<ts14>_<kebab>.sql`; the stamp is a valid UTC instant, active stamps are unique, and a new migration sorts strictly after the committed active migrations in HEAD. Repository history includes the archive: moving an active migration to the archive retires it from ordering, so a replacement baseline may predate archived stamps and later migrations append after the baseline. Wall-clock time, commit time and remote-branch stamps do not set the ordering boundary. A migration already on the base is immutable (a diff or an unarchived removal is a finding); a file that does not parse as PostgreSQL is a shape failure."
+    law: "A migration is `db/migrations/<ts14>_<kebab>.sql`; the stamp is a valid UTC instant, active stamps are unique, and a new migration sorts strictly after the committed active migrations in HEAD. Repository history includes the archive: moving an active migration to the archive retires it from ordering, so a replacement baseline may predate archived stamps and later migrations append after the baseline. Wall-clock time, commit time and remote-branch stamps do not set the ordering boundary. A migration already on the base is immutable (a diff or an unarchived removal is a finding); a file that does not parse as PostgreSQL is a shape failure. `starci app db migrate` applies each migration in one transaction with its history row, so a top-level BEGIN, START TRANSACTION, COMMIT, END, ROLLBACK, ABORT, SAVEPOINT, RELEASE or PREPARE TRANSACTION, or a COMMIT or ROLLBACK inside a DO block, is a shape failure named by file:line; a function or procedure body is never judged."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_MIGRATION_SHAPE"]
@@ -3777,7 +3779,7 @@ rules:
       - {path: packages/hfs/src/hfs-lite-secrets.spec.mjs, edition: lite}
   - id: R221
     code: "CI_TRIGGERS_RELEASE_ONLY"
-    law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, and workflow_dispatch. Runtime workflows and app ci.yml also admit main. App ci.yml includes the candidate branch filter for starci app release push. Other branches, events, path filters and ignore filters are refused."
+    law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, workflow_call (a reusable workflow has no trigger of its own) and workflow_dispatch. Runtime workflows and app ci.yml also admit main, and app ci.yml admits pull_request to main (branches ['main'] only: a pull request run has no secret and no environment). App ci.yml includes the candidate branch filter for starci app release push. pull_request_target, workflow_run, schedules, other branches, events, path filters and ignore filters are refused."
     scope: runtime
     editions: [lite, full]
     docs: [docs/git-governance.md#r221]
@@ -3810,6 +3812,7 @@ rules:
     failureCodes: ["RIGHTS_ROLE_DENIED", "RIGHTS_GIT_PUSH", "RIGHTS_GIT_TAG", "RIGHTS_GIT_COMMIT", "RIGHTS_GIT_SYNC", "RIGHTS_NPM_PUBLISH", "RIGHTS_NPM_CI_UNLOCKED", "RIGHTS_SUITE_RUN", "RIGHTS_RELEASE_CUT", "RIGHTS_RAW_TOOL"]
     enforcers:
       - {kind: runtime, id: role-rights, at: scripts/hfs/runtime-rules/rights-policy.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R224
     code: "RIGHTS_PROTECTED_ZONE"
     law: "The protected zone declared once in modules/kernel/protected-zone.yaml is edited only by the owner path; a supervisor self-upgrade files an owner proposal, and an op never writes the .claude runtime checkout."
@@ -3819,6 +3822,7 @@ rules:
     failureCodes: ["RIGHTS_PROTECTED_ZONE", "RIGHTS_OP_RUNTIME_WRITE"]
     enforcers:
       - {kind: runtime, id: protected-zone, at: scripts/hfs/runtime-rules/rights-policy.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R225
     code: "RT_HOOK_SHAPE"
     law: "The app hook templates keep the gate model: pre-commit is L0 only (no typecheck or test run); pre-push invokes the bundled scripts/guards/release-push-gate.mjs policy for fast-forward main, a clean outgoing secret scan and annotated v* tags, then the harness's `starci deps check` (every committed @starci pin installable from npm, no local package copy ahead of npm). It runs no build, test, typecheck or lint."
@@ -3828,6 +3832,7 @@ rules:
     failureCodes: ["RT_HOOK_SHAPE", "RIGHTS_PUSH_NOT_RELEASE"]
     enforcers:
       - {kind: runtime, id: hook-shape, at: scripts/hfs/runtime-rules/hook-shape.mjs}
+    docs: [contexts/hfs/README.md#rule-notes]
   - id: R227
     code: "RT_SYNTAX_INVALID"
     editions: [lite, full]
@@ -4196,7 +4201,7 @@ rules:
     editions: [lite, full]
     docs:
       - {path: docs/application-stacks.md#r251-deploy-workflow, editions: [lite, full]}
-    law: "In lite and full apps, deployment jobs declare a protected environment, explicit permissions and concurrency, materialize sealed secrets through SOPS_AGE_KEY or starci app secret materialize, and reference only the age key and transport SSH key/known_hosts secrets. They never embed a dotenv blob or write a dotenv file. Every remote workflow action uses a 40-hex commit SHA (local actions are allowed and container actions require a full sha256 digest); supply-chain reports each unpinned uses reference at its source line, including disabled jobs and steps; installed tools are checksum or digest verified, or supplied by a pinned action. App workflows start only on release tags [v*], the release candidate branches release/candidate-* (required in ci.yml: starci app release push waits for that run, owner ruling candidate-ci 2026-10-18) or workflow_dispatch; ci.yml also runs on main, and other branch pushes are refused."
+    law: "In lite and full apps, deployment jobs declare a protected environment, explicit permissions and concurrency, materialize sealed secrets through SOPS_AGE_KEY or starci app secret materialize, and reference only the age key and transport SSH key/known_hosts secrets; every job that reads secrets.SOPS_AGE_KEY, a deployment job or not, is bound to the GitHub Environment whose members it opens, so it reads that environment's server key and never a repository secret of that name. Deployment jobs never embed a dotenv blob or write a dotenv file. Every remote workflow action uses a 40-hex commit SHA (local actions are allowed and container actions require a full sha256 digest); supply-chain reports each unpinned uses reference at its source line, including disabled jobs and steps; installed tools are checksum or digest verified, or supplied by a pinned action. App workflows start only on release tags [v*], the release candidate branches release/candidate-* (required in ci.yml: starci app release push waits for that run, owner ruling candidate-ci 2026-10-18), workflow_call or workflow_dispatch; ci.yml also runs on main and on pull_request to main (read-only workflow permissions, no environment bound in the file), and other branch pushes are refused. A release deploys through the reusable stack-deploy.yml (ruling app-cicd-auto-deploy): the job of ci.yml that calls it (deploy-<env>, after the verdict job) holds permissions, concurrency and with.environment, the called deploy job binds the GitHub Environment (deployment refs restricted to v* tags) and reads SOPS_AGE_KEY there, and the transport is the sealed member vps-ci opened with that key, so the CI deploy key, the host and the pinned host keys are never GitHub secrets, workflow text or log lines; STARCI_DEPLOY_PAUSED on the environment stops the automatic deploy. The secrets allowlist and the dotenv ban are judged on the deployment jobs, not on the check jobs beside them."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_DEPLOY_WORKFLOW", "HFS_WORKFLOW_PIN", "HFS_CI_TOOL_INSTALL", "HFS_APP_WORKFLOW_TRIGGER"]
@@ -4206,7 +4211,7 @@ rules:
     proves:
       - {path: packages/hfs/src/hfs-deploy-workflow.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml, edition: lite}
+      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml, edition: lite}
       - {path: packages/hfs/templates/app/ci-workflows/github/workflows/ci.yml, edition: full}
       - {path: packages/hfs/src/hfs-deploy-workflow.spec.mjs, editions: [lite, full]}
     witness:
@@ -4225,7 +4230,7 @@ rules:
     proves:
       - {path: packages/hfs/src/hfs-script-hygiene.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml, edition: lite}
+      - {path: packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml, edition: lite}
       - {path: packages/hfs/templates/app/ci-workflows/github/workflows/ci.yml, edition: full}
       - {path: packages/hfs/src/hfs-script-hygiene.spec.mjs, editions: [lite, full]}
     witness:
@@ -4332,7 +4337,7 @@ rules:
     editionWhy: "owner:lite-backing-services makes the db service lite's database; database configuration, extension, migration and seed requirements apply to that backing."
     docs: [docs/microservices.md#r259]
     templateNa: "Extension use, contract migrations, vault operations and seed literals are product-authored db content, rather than a scaffolded SQL surface."
-    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities. Seeds contain no real email or phone literals."
+    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities, and a contract migration that is new since the previous release tag (the newest v* tag HEAD contains) never destroys an object that the back-end sources of that tag still reference: the deploy applies it right after the accept, while that release is the rollback target, so the code change goes in one release and its contract migration in the next. Seeds contain no real email or phone literals."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_EXTENSION_ALLOWED", "DB_MIGRATION_DESTRUCTIVE", "HFS_SEED_PII", "DB_VAULT_WRITE"]
@@ -4601,7 +4606,7 @@ rules:
       - {path: packages/hfs/src/hfs-doc-fresh.spec.mjs, edition: full}
   - id: R271
     code: "HFS_RELEASE_TAG_MISMATCH"
-    law: "A lite or full product release uses a v-prefixed semantic version tag equal to package.json version; images.yml publishes images under that release tag, and every database deployment refuses a non-tag ref before migration."
+    law: "A lite or full product release uses a v-prefixed semantic version tag equal to package.json version; images.yml pushes each image under the immutable tag sha-<github.sha> and adds the release name v<version> only as a retag of that digest on a release tag run, under a guard that rejects any other ref; and every database deployment refuses a non-tag ref before migration (a lite app migrates inside its stack deploy, which stack-deploy.yml starts only from a release tag, so its db-deploy.yml is retired and starci app sync removes it)."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["HFS_RELEASE_TAG_MISMATCH", "HFS_DB_DEPLOY_UNGUARDED"]
@@ -4615,7 +4620,7 @@ rules:
     exemplifiedBy:
       - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/images.yml","edition":"lite"}
       - {"path":"packages/hfs/templates/app/ci-workflows/github/workflows/images.yml","edition":"full"}
-      - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml","edition":"lite"}
+      - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/stack-deploy.yml","edition":"lite"}
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: lite}
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
     witness:
@@ -4623,10 +4628,10 @@ rules:
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
   - id: R272
     code: "BE_APP_BOOT_PROOF_MISSING"
-    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers, circular dependencies and a missing or failed proof are refused. The app check wiring verb uses the same proof. Full retains its existing e2e boot proof."
+    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers, circular dependencies and a missing or failed proof are refused. The proof worker runs within its own budget from its spawn and is retried once when it runs out; a second timeout reaches no verdict and is reported as BOOT_PROOF_TIMEOUT, a warning, never as a failed proof. The app check wiring verb uses the same proof. Full retains its existing e2e boot proof."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["BE_APP_BOOT_PROOF_MISSING"]
+    failureCodes: ["BE_APP_BOOT_PROOF_MISSING", "BOOT_PROOF_TIMEOUT"]
     enforcers:
       - {kind: hfs, id: boot-proof, at: scripts/hfs/rules/boot-proof.mjs}
     editions: ["lite"]
@@ -5469,7 +5474,6 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NESTED_VARIANT", "FE_LIST_PANEL_PADDING", "FE_GRAMMAR_LAYOUT_ONLY", "FE_DIVIDER_FULL_BLEED"]
     enforcers:
-      - {kind: eslint-fe, id: nested-control-variant}
       - {kind: eslint-fe, id: no-list-panel-padding}
       - {kind: eslint-fe, id: no-app-surface-paint}
       - {kind: eslint-fe, id: divider-full-bleed}
@@ -5480,15 +5484,15 @@ rules:
     templateNa: "Product composition is proved by the FE canon's Grammar import and surface fixtures; a template cannot choose product slots or lists."
     proves:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     exemplifiedBy:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     witness:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
-      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
+      - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
     cases:
       - id: case-1
@@ -5502,10 +5506,9 @@ rules:
     law: "An app Button or IconButton declares an intent and never a variant; Grammar resolves the variant from intent and placement (CTA-6). A destructive confirm lives in a confirmation dialog, a render holds at most one commit, and a collection item holds none."
     kinds: [codemod, lint, design]
     gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_BUTTON_INTENT", "FE_BUTTON_INTENT_REQUIRED", "FE_BUTTON_NO_VARIANT", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
+    failureCodes: ["FE_BUTTON_INTENT", "FE_BUTTON_INTENT_REQUIRED", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
     enforcers:
       - {kind: eslint-fe, id: button-intent-required}
-      - {kind: eslint-fe, id: button-no-variant}
       - {kind: eslint-fe, id: destructive-confirm-in-dialog}
       - {kind: eslint-fe, id: single-commit-per-render}
       - {kind: eslint-fe, id: no-commit-in-collection-item}
@@ -5514,11 +5517,11 @@ rules:
       - knowledge/ui/composition/cta.yaml
       - docs/code-pattern-enforcement.md#r319-button-intent
     proves:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     exemplifiedBy:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     witness:
-      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_BUTTON_NO_VARIANT, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
+      - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     templateNa: "The intent of an action comes from the product decision in the .starciwork specification; a template cannot choose it."
     cases:
       - id: case-1
@@ -5891,6 +5894,118 @@ rules:
       - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}
     witness:
       - {path: packages/eslint-canon-be/src/event-bus-lite.spec.ts, edition: lite, codes: [BE_EVENT_BUS_LITE_SHAPE]}
+  - id: R337
+    code: "HFS_AUTH_COOKIE_DOMAIN_MISSING"
+    law: "In a lite app whose api uses the skeleton's passport (a tracked src/modules/integrations/passport/passport.config.ts), a docker-swarm environment whose rendered stack serves the web and the api on different hosts gives the api an AUTH_COOKIE_DOMAIN: a declared value in services.api.environment, a row of the environment's runtime/env/KEYS.md or a key sealed under its secrets/. Otherwise the refresh cookie is host-only on the api host, is absent from the Cookie header the web server forwards to the api, the api refuses the session and the user loops back to sign-in. The hosts are read from the rendered stack (web: NEXT_PUBLIC_SITE_URL, AUTH_WEB_ORIGIN, deploy.verify.http, HTTP_SECURITY_ALLOWED_ORIGINS; api: AUTH_JWT_ISSUER, GOOGLE_CALLBACK_URL, NEXT_PUBLIC_API_URL, deploy.verify.http), ports ignored, an unknown host is not judged. The finding names both hosts and their common parent domain as the value to set. A declared AUTH_COOKIE_DOMAIN that is not a bare domain (no scheme, port, path, leading dot or IP) or is not a parent of the web and the api hosts is a finding too. Same host: no key is required."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_AUTH_COOKIE_DOMAIN_MISSING"]
+    enforcers:
+      - {kind: hfs, id: stacks-auth-cookie-domain, at: scripts/hfs/rules/stacks-auth-cookie-domain.mjs}
+    editions: [lite]
+    docs:
+      - contexts/project/stacks.md
+    proves:
+      - {path: packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs, edition: lite}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.config.ts, edition: lite}
+      - {path: packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs, edition: lite}
+    witness:
+      - {path: packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs, edition: lite}
+
+  - id: R338
+    code: "FE_GENERATED_ART_OUTSIDE_FRAME"
+    law: "Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives, so the same art comes out at a different size on every screen."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_GENERATED_ART_OUTSIDE_FRAME"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: generated-art-in-mascot-or-media-frame}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template draws no generated art; the art is the app's."
+    proves:
+      - packages/eslint-grammar-core/src/mascot.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_GENERATED_ART_OUTSIDE_FRAME]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_GENERATED_ART_OUTSIDE_FRAME]}
+    cases:
+      - id: case-1
+        date: "2026-10-30"
+        source: owner
+        quote: "Generated art renders at one consistent size across screens (relayed by the nivo-lite app)."
+        ruling: "Grammar's Mascot owns the character size scale (sm 96px, md 160px, lg 240px, hero up to its cap), always contained on a transparent ground; generated art under /images/ renders through Mascot or inside MediaFrame, never a bare Image."
+  - id: R339
+    code: "FE_MASCOT_ASSET_SLOT_MISSING"
+    law: "Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_MASCOT_ASSET_SLOT_MISSING"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template draws no mascot; the art is the app's."
+    proves:
+      - packages/eslint-grammar-core/src/mascot.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_MASCOT_ASSET_SLOT_MISSING]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_MASCOT_ASSET_SLOT_MISSING]}
+    cases:
+      - id: case-1
+        date: "2026-10-30"
+        source: owner
+        quote: "A Mascot reuses the provenance props of Image and MediaFrame; a Mascot without an assetSlot is a finding (relayed by the nivo-lite app)."
+        ruling: "Mascot takes AssetSlotProps (assetSlot, assetSha256, assetPrompt) and emits them as data-asset-* on its root; the lint requires assetSlot on every Mascot."
+  - id: R340
+    code: "FE_RAISED_SURFACE_IN_SURFACE"
+    law: "A Grammar surface that accepts a depth prop (SurfaceListCard) does not pass depth=\"top\" when a SurfaceCard, SurfaceListCard or SurfaceAccordionCard of the same file encloses it: a nested surface is subordinate (outlined, BOUNDARY-5), never raised again (BOUNDARY-6, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); the Grammar resolves the depth from the surface context. A depth computed at run time is not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_RAISED_SURFACE_IN_SURFACE"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-raised-surface-in-surface}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template forces no surface depth; the app composes its surfaces."
+    proves:
+      - packages/eslint-grammar-core/src/surface-depth.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/surface-depth.spec.ts, editions: [lite, full], codes: [FE_RAISED_SURFACE_IN_SURFACE]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/surface-depth.spec.ts, editions: [lite, full], codes: [FE_RAISED_SURFACE_IN_SURFACE]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); SurfaceListCard takes its depth from the surface context (grammar 0.16.2)."
+        ruling: "SurfaceListCard resolves its depth from the surface context like SurfaceCard and SurfaceAccordionCard; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
+  - id: R341
+    code: "FE_FREESTYLE_REASON_MISSING"
+    law: "A Grammar Freestyle region, the one sanctioned place where an app writes its own plain elements and CSS because no Grammar component fits, names its reason: a non-empty string literal saying why. The rules that judge hand-written elements, classes, styles and generated art leave the raw elements of a Freestyle subtree alone; a Grammar component inside it is judged as before. An element with a spread attribute is not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_FREESTYLE_REASON_MISSING"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: freestyle-has-reason}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template writes no Freestyle region; the app adds one only when no Grammar component fits."
+    proves:
+      - packages/eslint-grammar-core/src/freestyle.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/freestyle.spec.ts, editions: [lite, full], codes: [FE_FREESTYLE_REASON_MISSING]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/freestyle.spec.ts, editions: [lite, full], codes: [FE_FREESTYLE_REASON_MISSING]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "cái trang này free style đi trò div và làm bth thôi, thêm 1 component Freestyle hoặc tên gì đó tương đương đi trò, ý là cho custom nhưng vẫm bám grammar trừ bất đắc dĩ ntn"
+        ruling: "The Grammar has one sanctioned escape hatch, Freestyle: a region where the app writes its own plain divs and CSS because no Grammar component fits; it names its reason (the lint requires it), and the rest of the page still follows the Grammar."
   - id: R342
     code: "BE_ENTITY_EXTENDS_BASE"
     law: "An @Entity class does not repeat the columns every table shares: a database-set created_at or updated_at (CreateDateColumn, UpdateDateColumn, or a Column on those names, or on createdAt / updatedAt, with insert false, update false or a default) and, beside both, the generated uuid id are inherited from AbstractEntity or UuidAbstractEntity of @modules/platform/database (BE-PERSISTENCE-3, ruling entity-base). The finding names the base to extend: UuidAbstractEntity with the uuid key, AbstractEntity without it. A table whose timestamps the application sets (a plain Column), or that lacks one of them, extends nothing and maps its own; the base file platform/database/abstract.entity.ts is exempt."
@@ -5914,6 +6029,28 @@ rules:
         source: owner
         quote: "Entities do not repeat the columns every table shares; the owner approved a lint so they never repeat them again (ruling entity-base, 2026-10-31)."
         ruling: "A table whose migration has created_at, updated_at (set by the database) and the generated uuid id maps them by extending AbstractEntity or UuidAbstractEntity from @modules/platform/database; an entity that declares them itself is a finding. A table without them extends nothing."
+  - id: R343
+    code: "HFS_CHECK_CACHE_FORGED"
+    editions: ["lite", "full"]
+    docs: [contexts/hfs/README.md#rule-notes]
+    law: "An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (a hard blocker at any count), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings)."
+    kinds: [codemod]
+    gates: [ci]
+    failureCodes: ["HFS_CHECK_CACHE_FORGED", "HFS_CHECK_CACHE_STALE", "HFS_CHECK_CACHE_MISSING"]
+    enforcers:
+      - {kind: hfs, id: check-cache, at: packages/hfs/cache/trust.mjs}
+    proves:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full], codes: [HFS_CHECK_CACHE_FORGED, HFS_CHECK_CACHE_STALE, HFS_CHECK_CACHE_MISSING]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "app check cache lại vào file dc không? sau chỉ check diff; chốt starcistacks lưu hết nhé và check diff và triển cho ci và local lun."
+        ruling: "The app commits its check results in .starcistacks/cache/; CI trusts only the cache at the trusted base, a forged record blocks at any count, stale and missing only warn (ruling app-check-cache)."
   - id: R344
     code: "BE_AI_VIRTUAL_KEY"
     law: "An app's ai-router gateway has one client key, STARCI_AI_KEY (sk-starci-<app>-<48 hex>, sealed in the ai member, used by the integrations/ai LangChain client and the agent runtime alike), and no admin token: integrations/ai reads exactly that secret name with env.secret, as a literal, and the custody owner integrations/ai-gateway passes the gateway no adminToken."
@@ -5937,3 +6074,375 @@ rules:
         source: owner
         quote: "Xóa ai api key và openclaw ai key chỉnh thành starci ai key là key ảo"
         ruling: "Per app and environment the ai member holds the upstream provider keys and one random virtual key STARCI_AI_KEY that the gateway mounts and every client uses; the gateway has no admin API (ruling be-ai-one-virtual-key)."
+  - id: R345
+    code: "FE_PANE_GRID_CHILD_NOT_PANE"
+    law: "A child of a Grammar PaneGrid is a literal Pane element, written directly or returned by a conditional (`cond ? <Pane/> : null`, `cond && <Pane/>`) or a `.map`; a wrapper component, a raw element, a fragment or a variable is refused, because PaneGrid places each child by the area of a Pane and drops the rest, leaving its cell blank. A Freestyle subtree leaves the raw elements inside it alone."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PANE_GRID_CHILD_NOT_PANE"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-grid-children}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no pane grid; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_CHILD_NOT_PANE]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_CHILD_NOT_PANE]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_CHILD_NOT_PANE]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
+        ruling: "A Pane owns its content inset and every band in it is a PaneSection; a PaneGrid holds Panes only, so the lint refuses a wrapper component that the grid would drop."
+  - id: R346
+    code: "FE_PANE_CHILD_NOT_SECTION"
+    law: "A Grammar Pane holds PaneSection elements or one nested PaneGrid; a raw element, or a Grammar component other than PaneSection, PaneGrid and Freestyle, placed directly in a Pane skips the inset the pane publishes to its bands. A project component is judged in its own file, and a Freestyle subtree leaves its raw elements alone."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PANE_CHILD_NOT_SECTION"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-children}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no pane grid; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_CHILD_NOT_SECTION]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_CHILD_NOT_SECTION]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_CHILD_NOT_SECTION]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
+        ruling: "A Pane owns its content inset and every band in it is a PaneSection whose boxes align to that edge, so the lint refuses a band hand-built in a pane."
+  - id: R347
+    code: "FE_PANE_SECTION_PADDING"
+    law: "The outermost element a Grammar PaneSection renders, and the root of a same-file component returned as its child, carries no padding or margin utility (`p-*`, `px-*`, `py-*`, `ps/pe/pt/pb/pl/pr-*`, `m-*`, `mx/my/ms/me/mt/mb/ml/mr-*`, their negative forms, or an arbitrary padding or margin property; zero and auto values place or reset and are not one), because the Pane owns the content inset and the section applies it. A Freestyle subtree leaves its raw elements alone."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PANE_SECTION_PADDING"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-pane-section-padding}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no pane grid; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_SECTION_PADDING]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_SECTION_PADDING]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_SECTION_PADDING]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
+        ruling: "One padding system for everything placed in a PaneGrid: the Pane publishes the inset and the PaneSection applies it, so no band adds its own."
+  - id: R348
+    code: "FE_PANE_GRID_FRAME"
+    law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"` or stands inside a Pane; a PaneGrid drawn in a FillViewport, a SurfaceCard, SurfaceListCard or SurfaceAccordionCard, a Page of another chrome, or wrapped inside `Page chrome=\"panes\"` re-decides the frame and the bottom edge that Page owns. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PANE_GRID_FRAME"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: pane-grid-page}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no pane grid; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_FRAME]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_FRAME]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_FRAME]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
+        ruling: "A tabbed app page's PaneGrid attaches flush under the tab line, full width and to the bottom, with no card, radius or gap: Page chrome=\"panes\"."
+  - id: R349
+    code: "FE_HAND_BUILT_PANES"
+    law: "A multi-pane frame is a Grammar PaneGrid of Panes, which draws the dividers between panes; a vertical Divider used as a column seam (among the plain columns of a flex row, or anywhere inside a SurfaceCard composition=\"joined\") and a joined SurfaceCard that holds a flex row of two or more plain columns are a pane frame drawn by hand and are refused. A short vertical separator between controls and a row whose classes cannot be read in the file are not judged."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_HAND_BUILT_PANES"]
+    enforcers:
+      - {kind: eslint-fe, id: no-hand-built-panes}
+    editions: [lite, full]
+    docs: [contexts/ui/components/pane-grid.md]
+    templateNa: "A template draws no multi-pane frame; an app adds one with its multi-pane screens."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HAND_BUILT_PANES]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HAND_BUILT_PANES]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HAND_BUILT_PANES]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
+        ruling: "A multi-pane frame is the Grammar's PaneGrid, never columns and a vertical Divider composed by hand inside a card."
+  - id: R350
+    code: "FE_SPACING_UTILITY"
+    law: "Every spacing value is the Grammar's, on its one scale 0 4 8 12 24 32: an app names the relation between the blocks it places through a role prop (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page) and writes no padding, margin, gap or space utility and no arbitrary spacing value in a class string; a Grammar stylesheet writes no spacing length off the scale and no fluid spacing value."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_SPACING_UTILITY", "FE_SPACING_OFF_SCALE"]
+    enforcers:
+      - {kind: eslint-fe, id: no-spacing-utility}
+      - {kind: stylelint, id: spacing-scale}
+    editions: [lite, full]
+    docs: [contexts/ui/presentation.md]
+    templateNa: "A template's own layout is moved onto the role props by starci app codemod spacing-roles; the rule counts at warn for one cohort."
+    proves:
+      - {path: packages/eslint-canon-fe/src/spacing.spec.ts, editions: [lite, full], codes: [FE_SPACING_UTILITY]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/spacing.spec.ts, editions: [lite, full], codes: [FE_SPACING_UTILITY]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/spacing.spec.ts, editions: [lite, full], codes: [FE_SPACING_UTILITY]}
+    cases:
+      - id: case-1
+        date: "2026-10-31"
+        source: owner
+        quote: "hay full 3 bỏ 4 đi!!! thầy nghĩ nên v"
+        ruling: "One spacing scale with no 16; every container holds its content 12 in, and an app names relations through role props, never spacing utilities."
+  - id: R351
+    code: "FE_TABLE_IN_CARD"
+    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a SurfaceListCard with the label outside and the note in its footer, and a table that belongs to a card is an owner decision named in this rule. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_TABLE_IN_CARD"]
+    enforcers:
+      - {kind: eslint-fe, id: no-table-in-card}
+    editions: [lite, full]
+    docs: [contexts/ui/components/list-table.md]
+    templateNa: "A template draws no table in a card; an app adds one with its list screens."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TABLE_IN_CARD]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TABLE_IN_CARD]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TABLE_IN_CARD]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "quá phức tạp mới nhét bảng vào card"
+        ruling: "Plain rows are a SurfaceListCard with a bottom note in its footer; a DataTable is not put in a SurfaceCard."
+  - id: R352
+    code: "FE_COMMAND_FILLS_HEADER"
+    law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a PageHeader or the labelEnd of a SurfaceCard or SurfaceListCard is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_COMMAND_FILLS_HEADER"]
+    enforcers:
+      - {kind: eslint-fe, id: no-fill-command-in-header}
+    editions: [lite, full]
+    docs: [contexts/ui/components/button.md]
+    templateNa: "A template draws no header command with a fill width."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_COMMAND_FILLS_HEADER]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_COMMAND_FILLS_HEADER]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_COMMAND_FILLS_HEADER]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "(owner order relayed by the coordinator, 2026-11-01) a page or pane command hugs its label and sits at the end of its header row; Button width=fill is only for a form submit, an auth panel, or a phone action bar"
+        ruling: "A header command is never width fill; fill is for a form submit, an auth panel and a phone action bar."
+  - id: R353
+    code: "FE_TAG_GROUP_SELECTION"
+    law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list)."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_TAG_GROUP_SELECTION"]
+    enforcers:
+      - {kind: eslint-fe, id: no-selectable-tag-group}
+    editions: [lite, full]
+    docs: [contexts/ui/components/chip.md]
+    templateNa: "A template draws no filter row."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TAG_GROUP_SELECTION]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TAG_GROUP_SELECTION]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TAG_GROUP_SELECTION]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "sao cái này không phải cụm button... button size xs kiểu nhóm button"
+        ruling: "A filter over a collection is a FilterButtonGroup of sm toggle buttons; the TagGroup has no selection."
+  - id: R354
+    code: "FE_HEADING_ABOVE_CARD"
+    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard, SurfaceListCard or SurfaceAccordionCard, and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_HEADING_ABOVE_CARD"]
+    enforcers:
+      - {kind: eslint-fe, id: no-heading-above-card}
+    editions: [lite, full]
+    docs: [contexts/ui/components/card.md]
+    templateNa: "A template draws no section header above a card."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HEADING_ABOVE_CARD]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HEADING_ABOVE_CARD]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HEADING_ABOVE_CARD]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "bản thân card đã có label, vốn là mục đích thiết kế"
+        ruling: "A card carries its own title, count, action and note; a Section around a single card is refused."
+  - id: R356
+    code: "FE_SURFACE_NESTING"
+    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable is not drawn inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading holds more than one card, and a labelled card is not repeated in a Grid: the render graph replaces every component by what it draws and every children by what its caller handed it."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_SURFACE_NESTING"]
+    enforcers:
+      - {kind: machine, id: surface-nesting, at: scripts/hfs/architecture/surface-nesting.mjs}
+    editions: [lite, full]
+    docs: [contexts/ui/components/card.md]
+    templateNa: "A template draws no card, table or grid."
+    proves:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_SURFACE_NESTING]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_SURFACE_NESTING]}
+    witness:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_SURFACE_NESTING]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "Surface in surface is banned totally, dialogs and drawers included."
+        ruling: "The one-file card laws (R340, R348, R351, R354, R366) are closed across files by the render graph; the machine reports the inner element and the chain that led to it."
+  - id: R357
+    code: "FE_TEXT_BLOCK"
+    law: "Text holds a run of words: a block component or block element inside it is refused."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_TEXT_BLOCK"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: text-inline-only}
+    editions: [lite, full]
+    docs: [contexts/ui/components/text.md]
+    templateNa: "A template writes no Text with a block inside."
+    proves:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_BLOCK]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_BLOCK]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_BLOCK]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "A card carries its own label; text is inline."
+        ruling: "Text is inline only, so a layout cannot hide inside a paragraph."
+  - id: R358
+    code: "FE_TEXT_HEADING"
+    law: "A strong Text that is the first child of a group and is followed only by blocks is a hand heading: the group takes a Section title, a card label or Heading."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_TEXT_HEADING"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-text-heading}
+    editions: [lite, full]
+    docs: [contexts/ui/components/text.md]
+    templateNa: "A template writes no heading by hand."
+    proves:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_HEADING]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_HEADING]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_HEADING]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "No free heading in apps."
+        ruling: "A heading is a Section title, a card label or Heading, never a strong Text."
+  - id: R359
+    code: "FE_ONE_HIGHLIGHT"
+    law: "A render states one highlighted thing: a second isHighlight on a Grammar element in one component render is refused."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_ONE_HIGHLIGHT"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: one-highlight-per-render}
+    editions: [lite, full]
+    docs: [contexts/ui/components/card.md]
+    templateNa: "A template highlights nothing."
+    proves:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_ONE_HIGHLIGHT]}
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_ONE_HIGHLIGHT]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_ONE_HIGHLIGHT]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "One accent fill per render."
+        ruling: "When two things are highlighted neither is."
+  - id: R367
+    code: "FE_SWR_DEFAULT_ARRAY"
+    law: "A loading state is drawn from the page's own reads: a hook folds a read to [] only while it also returns that read's isLoading, a slot takes its loading and error from the reads it draws and never from another slot, a background refresh (isValidating) never drives a loading flag or a status, a placeholder is not the ready data with its lists emptied, and an app draws no skeleton by hand once the Grammar owns the loading shape (written as `no-hand-skeleton`, published with that Grammar change)."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_SWR_DEFAULT_ARRAY", "FE_FOREIGN_SLOT_STATUS", "FE_VALIDATING_AS_LOADING", "FE_PLACEHOLDER_OBJECT"]
+    enforcers:
+      - {kind: eslint-fe, id: no-swr-default-array}
+      - {kind: eslint-fe, id: no-foreign-slot-status}
+      - {kind: eslint-fe, id: no-validating-as-loading}
+      - {kind: eslint-fe, id: no-placeholder-object}
+    editions: [lite, full]
+    docs: [contexts/ui/loading.md]
+    templateNa: "A template draws no loading state of its own."
+    proves:
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "The skeleton is the ready structure with its data missing; it is drawn from isLoading alone and from the reads the region shows."
+        ruling: "Several reads feed one frame: loading is any read loading with no data; a key change reloads only the region keyed by it; a refresh keeps the content."
+  - id: R361
+    code: "FE_RENDER_PROP_ACROSS_SERVER"
+    law: "A function is not handed from a server file to a client component: React serialises props across that line and a function is not serialisable; pass data, or move the callback into the client branch that owns the interaction."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_RENDER_PROP_ACROSS_SERVER"]
+    enforcers:
+      - {kind: machine, id: render-prop-across-server, at: scripts/hfs/architecture/render-prop-across-server.mjs}
+    editions: [lite, full]
+    docs: [contexts/code/fe/function.md]
+    templateNa: "A template hands no function across the server line."
+    proves:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    witness:
+      - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "a block takes data"
+        ruling: "A render callback is for a client branch; a block takes data and renders it itself."

@@ -157,6 +157,11 @@ declare module "@starci/eslint-canon-fe/lib/config.mjs" {
   export const linterOptions: Readonly<import("eslint").Linter.LinterOptions>
 }
 
+declare module "@starci/eslint-canon-fe/lib/freestyle.mjs" {
+  /** `context` with the findings about plain elements inside a Freestyle subtree dropped; every other finding is the original's. */
+  export const freestyleContext: <C extends object>(context: C) => C
+}
+
 declare module "*/runtime/scripts/lib/source-phrases.mjs" {
   /** The phrase list `dotKey` (`<group>.<list>`) of `root`, [] when absent. */
   export function phrasesOf(dotKey: string, root?: string): string[]

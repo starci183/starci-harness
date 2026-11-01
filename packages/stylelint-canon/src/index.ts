@@ -9,7 +9,7 @@
  * turn a rule off, downgrade it, ignore a file or honour an inline `stylelint-disable`; `assertEveryRuleOn`
  * refuses a config that does.
  */
-import { brandLayerShape } from "./brand-layer-shape.ts"
+import { themeLayerShape } from "./theme-layer-shape.ts"
 import { breakpointScale } from "./breakpoint-scale.ts"
 import { globalsImportOrder } from "./globals-import-order.ts"
 import { noClassSelector } from "./no-class-selector.ts"
@@ -41,7 +41,7 @@ export const rules = {
   "no-important": noImportant,
   "globals-shape": globalsShape,
   "no-token-redefinition": noTokenRedefinition,
-  "brand-layer-shape": brandLayerShape,
+  "theme-layer-shape": themeLayerShape,
   "no-inline-lint-config": noInlineLintConfig,
   "no-css-module": noCssModule,
   "no-class-selector": noClassSelector,

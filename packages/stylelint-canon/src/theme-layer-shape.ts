@@ -1,5 +1,5 @@
 /**
- * `starci/brand-layer-shape` (HFS R61 `FE_STYLE_TOKEN_ONLY`): `modules/brand/brand.css` is the app's theme, and it has
+ * `starci/theme-layer-shape` (HFS R61 `FE_STYLE_TOKEN_ONLY`): `modules/brand/brand.css` is the app's theme, and it has
  * one shape.
  *
  * It is the only stylesheet where a raw colour or pixel value may be written, so it may hold nothing else: token
@@ -20,10 +20,10 @@
 import type { Rule } from "postcss"
 import { makeRule } from "./lib/make-rule.ts"
 import { fileKind, fileOf, isDarkMedia, isSystemSelector, themeOfSelector } from "./lib/scope.ts"
-import { isGrammarToken } from "./lib/vocabulary.ts"
+import { isThemeToken } from "./lib/vocabulary.ts"
 
-export const brandLayerShape = makeRule(
-  "brand-layer-shape",
+export const themeLayerShape = makeRule(
+  "theme-layer-shape",
   {
     selector: (selector: string) =>
       `\`${selector}\` in brand.css. The brand layer has light blocks (\`:root\`, \`.light\`) and dark blocks (\`.dark\`, \`[data-theme="dark"]\` or \`@media (prefers-color-scheme: dark)\`) and nothing else. The grammar root and its family attribute are not scopes: set HeroUI's tokens on \`:root\`.`,
@@ -40,7 +40,7 @@ export const brandLayerShape = makeRule(
         if (child.type !== "decl") return report(child, "property", [child.type === "rule" ? child.selector : `@${child.name}`])
         if (child.prop === "color-scheme") return
         if (!child.prop.startsWith("--")) return report(child, "property", [child.prop], { word: child.prop })
-        if (!isGrammarToken(child.prop)) report(child, "foreign", [child.prop], { word: child.prop })
+        if (!isThemeToken(child.prop)) report(child, "foreign", [child.prop], { word: child.prop })
       })
     }
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Changed: `starci/brand-layer-shape` is renamed `starci/theme-layer-shape`; it admits HeroUI's whole token list, the grammar's published names and the `--info*` family, and no family-prefixed private token.
+
 - Removed: `starci/status-contrast` (owner 2026-11-01, "no gate judges an app's colours"), with the colour maths and the resolved grammar values it read (`lib/color.ts`, `lib/theme-values.ts`, `lib/brand-blocks.ts`, `lib/extract-values.ts`, `grammar-values.generated.ts`).
 - Changed: `starci/brand-layer-shape` judges the shape of `brand.css` and no longer asks for a dark block or for a token in both modes; the grammar root and its family attribute are no longer scopes, because the grammar declares no HeroUI token on its root and an app's `:root` value reaches every part (`--scrollbar` and every other HeroUI token is accepted).
 - Changed: the vocabulary is HeroUI's theme (`fixtures/heroui/variables.css`, `@heroui/styles` 3.2.6) plus the grammar's own tokens, read from the regenerated grammar snapshot; `starci/globals-import-order` admits a family's `theme.css` beside its stylesheet.

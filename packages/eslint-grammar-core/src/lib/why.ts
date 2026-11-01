@@ -77,6 +77,21 @@ export const why: Record<string, WhyEntry> = {
     en: "The page or layout owner `<file>` draws something beside its Page, a Page inside another (or inside the Page its tabbed segment's layout draws), a bare PageHeader or PageContainer, or no Page at all (itself, through its pure half, or through the one connected block it renders as its root).",
     fix: "Draw one Page: the band as its header, everything else in its body, the measure as its measure. When client data builds the header, render as the root the one connected block that draws the Page and pass the body as its children. Under a segment layout whose Page carries header.tabs, a page draws its body only; that layout's Page has nothing beside it, its head in its header. A page mounted only under the (auth) route group is framed by that group's layout.",
   },
+  "text-inline-only": {
+    code: "FE_TEXT_BLOCK",
+    en: "A block component inside `Text` in `<file>`.",
+    fix: "Close the Text and place the block beside it, or use the component that owns that layout.",
+  },
+  "no-text-heading": {
+    code: "FE_TEXT_HEADING",
+    en: "A strong `Text` in `<file>` only titles the blocks that follow it.",
+    fix: "Give the group a Section title, a card label or Heading; they own the level and the spacing.",
+  },
+  "one-highlight-per-render": {
+    code: "FE_ONE_HIGHLIGHT",
+    en: "A second `isHighlight` in one render of `<file>`.",
+    fix: "Keep the highlight on the one thing that matters now and give the other its plain state.",
+  },
   "freestyle-has-reason": {
     code: "FE_FREESTYLE_REASON_MISSING",
     en: "A `<Freestyle>` region in `<file>` has no non-empty string `reason`.",

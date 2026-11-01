@@ -71,6 +71,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | several of one kind of thing | [list-table](list-table.md) |
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
 | show words taken from a source (a stored note, a chat line, a template) in a pane, a card or a drawer | [quote](quote.md) |
+| say words, or title a group of blocks | [text](text.md) |
 | show one message of a conversation | [message bubble](message-bubble.md) |
 | a region with nothing in it yet, or a failed region | [empty-state](empty-state.md) |
 | a compact identity beside a name | [identity-mark](identity-mark.md) |

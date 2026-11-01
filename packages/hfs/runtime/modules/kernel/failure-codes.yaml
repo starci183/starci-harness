@@ -2377,6 +2377,16 @@ FE_SURFACE_NESTING:
   owner: op-retry
   kind: check-finding
 
+FE_RENDER_PROP_ACROSS_SERVER:
+  title: "A server file hands a function to a client component"
+  title_vi: "Tệp server truyền hàm vào component client"
+  meaning_vi: "`<file>` không có 'use client' truyền một hàm (prop dạng arrow hoặc function) vào một component nằm trong tệp có 'use client'. Hàm không đi qua ranh giới server-client."
+  causes_vi:
+    - "Vi phạm luật R361: một block nhận dữ liệu và tự vẽ; callback thuộc nhánh client sở hữu tương tác."
+  nextStep_vi: "Truyền dữ liệu thay vì hàm, hoặc chuyển callback vào nhánh client sở hữu tương tác."
+  owner: op-retry
+  kind: check-finding
+
 FE_HREF_RESOLVES:
   title: "Link points to a route that does not exist"
   title_vi: "Liên kết trỏ tới đường dẫn không tồn tại"

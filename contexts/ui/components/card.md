@@ -63,3 +63,10 @@ Loading renders the same card in skeleton mode; a failed card fails in place (ST
 ## Rules
 COLLECTION-1, COLLECTION-2, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..6, SURFACE-2..6. Lint:
 `starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340). Proof: TASTE-7 (`budgets.cardDepth`).
+
+## Across files
+R356 (`FE_SURFACE_NESTING`, the render graph of the architecture machine) closes the one-file card laws across files. It replaces
+every component by what it draws and every `children` by what its caller handed it, then reports at the inner element: a card
+in a card, in `Pane surface` or in an overlay; a `DataTable` in a card; a `PaneGrid` outside `Page chrome="panes"`; a `Section`
+or `Heading` whose only content is one card; a labelled card repeated in a `Grid`. R359 (`starci-grammar/one-highlight-per-render`)
+keeps one `isHighlight` in a render.

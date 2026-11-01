@@ -62,10 +62,9 @@ wrappers:
         { kind: style, target: "AvatarGroup.Count:block-size", ruling: control-height-40, reason: "the overflow count of a control-size group is drawn at the control height" } ] }
   - { file: core/composite/Breadcrumbs/index.tsx, wraps: [Breadcrumbs] }
   - { file: core/composite/ButtonGroup/index.tsx, wraps: [ButtonGroup] }
-  - { file: core/composite/CheckboxGroup/index.tsx, wraps: [Checkbox], delegates: { Checkbox: [Content] } }
+  - { file: core/composite/CheckboxGroup/index.tsx, wraps: [Checkbox, CheckboxGroup], delegates: { Checkbox: [Content] } }
   - { file: core/frame/Fieldset/index.tsx, wraps: [Fieldset] }
   - { file: core/frame/Form/index.tsx, wraps: [Form] }
-  - { file: core/frame/HorizontalScrollRegion/index.tsx, wraps: [ScrollShadow] }
   - { file: core/composite/Pagination/index.tsx, wraps: [Pagination],
       overrides: [
         { kind: style, target: "Pagination.Link:background", ruling: grammar-menu-drawer-live-time, reason: "the current page paints its exclusive mark" },
@@ -93,13 +92,15 @@ wrappers:
         { kind: style, target: "Button.Root:padding", ruling: spacing-roles, reason: "inline padding follows the size step (sm 8, md 12, lg 24), one step less on a glyph side" },
         { kind: style, target: "Link.Root:padding", ruling: spacing-roles, reason: "a link drawn as a button takes the same inline padding as the button of its step" } ] }
   - { file: core/leaf/Checkbox/index.tsx, wraps: [Checkbox] }
-  - { file: core/leaf/CloseButton/index.tsx, wraps: [CloseButton] }
   - { file: core/leaf/DateField/index.tsx, wraps: [DateField] }
   - { file: core/leaf/Divider/index.tsx, wraps: [Separator] }
   - { file: core/leaf/Field/index.tsx, wraps: [Description, FieldError, Label] }
   - { file: core/leaf/Heading/index.tsx, wraps: [Typography] }
-  - { file: core/leaf/IconButton/index.tsx, wraps: [Button] }
-  - { file: core/branch/Input/index.tsx, wraps: [Description, ErrorMessage, Input, InputGroup, Label, Skeleton, TextField], delegates: { InputGroup: [TextArea] },
+  - { file: core/leaf/IconButton/index.tsx, wraps: [Button, Link] }
+  - { file: core/HorizontalScrollFrame.tsx, wraps: [ScrollShadow] }
+  - { file: core/branch/CopyField/index.tsx, wraps: [InputGroup, Label, Tooltip] }
+  - { file: core/leaf/StatusDot/index.tsx, wraps: [Tooltip] }
+  - { file: core/branch/Input/index.tsx, wraps: [ErrorMessage, Input, InputGroup, Label, TextField], delegates: { InputGroup: [TextArea] },
       overrides: [
         { kind: style, target: "InputGroup.Input:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
   - { file: core/leaf/Kbd/index.tsx, wraps: [Kbd] }
@@ -127,6 +128,6 @@ wrappers:
         { kind: slot, target: "description", ruling: control-height-40, reason: "the control-size switch track is wider than the vendor's, so the description indents past it to stay aligned with the label" },
         { kind: style, target: "Switch.Control:block-size", ruling: control-height-40, reason: "the control-size switch track is drawn at the control height" },
         { kind: style, target: "Switch.Thumb:block-size", ruling: control-height-40, reason: "the control-size switch thumb fills that track" } ] }
-  - { file: core/leaf/TextAction/index.tsx, wraps: [Link, Spinner] }
+  - { file: core/leaf/TextAction/index.tsx, wraps: [Spinner] }
   - { file: core/branch/Textarea/index.tsx, wraps: [TextArea, TextField] }
   - { file: core/leaf/TimeField/index.tsx, wraps: [TimeField] }
