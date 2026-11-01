@@ -67,7 +67,7 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
     return (
         <div className="app-stack">
             <SurfaceCard label={labels.card} headingLevel={2}>
-                <SlotView slot={props.props.projects} placeholder={PROJECTS_PLACEHOLDER} labels={labels.projectsSlot} onRetry={props.on.retryProjects} render={(projects, isSkeleton) => (
+                <SlotView slot={props.props.projects} placeholder={PROJECTS_PLACEHOLDER} labels={labels.projectsSlot} onRetry={props.on.retryProjects} render={(projects, isLoading) => (
                         <div className="app-stack">
                             <Select
                                 label={labels.project}
@@ -76,7 +76,7 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
                                 value={props.props.project}
                                 onValueChange={props.on.setProject}
                                 isDisabled={isPending}
-                                isSkeleton={isSkeleton}
+                                isLoading={isLoading}
                             />
                             <Textarea
                                 label={labels.text}
@@ -85,27 +85,27 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
                                 value={props.props.text}
                                 onValueChange={props.on.setText}
                                 isDisabled={isPending}
-                                isSkeleton={isSkeleton}
+                                isLoading={isLoading}
                             />
                             <div className="app-pair">
                                 <span className="app-row">
-                                    <Button intent="commit" onPress={props.on.send} isDisabled={!props.props.canSend} isPending={isPending} isSkeleton={isSkeleton}>
+                                    <Button intent="commit" onPress={props.on.send} isDisabled={!props.props.canSend} isPending={isPending} isLoading={isLoading}>
                                         {labels.send}
                                     </Button>
                                 </span>
-                                <Text size="xs" tone="muted" isSkeleton={isSkeleton}>
+                                <Text size="xs" tone="muted" isLoading={isLoading}>
                                     {labels.commandPrefix} <Code>{labels.command}</Code> {labels.commandSuffix}
                                 </Text>
                             </div>
                         </div>
                     )} />
             </SurfaceCard>
-            <SlotView slot={props.props.requests} placeholder={REQUESTS_PLACEHOLDER} labels={labels.requestsSlot} onRetry={props.on.retryRequests} render={(requests, isSkeleton) => (
+            <SlotView slot={props.props.requests} placeholder={REQUESTS_PLACEHOLDER} labels={labels.requestsSlot} onRetry={props.on.retryRequests} render={(requests, isLoading) => (
                     <SurfaceCard
                         kind="list"
                         label={labels.list}
                         headingLevel={2}
-                        isSkeleton={isSkeleton}
+                        isLoading={isLoading}
                         empty={<EmptyNotice message={labels.requestsSlot.empty} />}
                         items={requests.map((request) => ({
                             id: request.id,

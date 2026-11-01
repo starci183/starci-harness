@@ -29,7 +29,7 @@ export type SegmentedControlProps = NoChildren & FieldControlProps & {
      * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
      * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 const firstKey = (keys: Iterable<Key>): string | undefined => {
@@ -38,10 +38,10 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
 }
 
 /**
- * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const SegmentedControl = ({ isSkeleton = false, ...props }: SegmentedControlProps) => isSkeleton
+export const SegmentedControl = ({ isLoading = false, ...props }: SegmentedControlProps) => isLoading
     ? <FieldSkeletonScope component="SegmentedControl"><SegmentedControlControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SegmentedControlControl {...props} />
 
@@ -66,7 +66,7 @@ const SegmentedControlControl = ({
     isDisabled,
     isReadOnly,
     name,
-}: Omit<SegmentedControlProps, "isSkeleton">) => {
+}: Omit<SegmentedControlProps, "isLoading">) => {
     const id = useId().replaceAll(":", "")
     const [held, setHeld] = useState<string | undefined>(value ?? defaultValue ?? options[0]?.value)
     const selected = value ?? held

@@ -92,8 +92,8 @@ export const WorkspaceNavBlockBase = (props: WorkspaceNavBlockBaseProps) => {
                     selectedKey={props.props.selectedKey}
                     header={<IdentityLockup title={labels.product} {...(props.props.version === null ? {} : { subtitle: props.props.version })} logoSrc={props.props.logoSrc} onPress={props.on.home} />}
                     footer={
-                        <SlotView slot={props.props.status} placeholder={STATUS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry} render={(status, isSkeleton) => (
-                                <Text size="xs" tone="muted" live="polite" isSkeleton={isSkeleton}>
+                        <SlotView slot={props.props.status} placeholder={STATUS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry} render={(status, isLoading) => (
+                                <Text size="xs" tone="muted" live="polite" isLoading={isLoading}>
                                     {status}
                                 </Text>
                             )} />

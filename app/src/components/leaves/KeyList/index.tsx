@@ -5,12 +5,12 @@ export interface KeyListProps {
     readonly keys: readonly string[]
     /** The word for no keys at all. */
     readonly noneLabel: string
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /** Leaf: keys (Op keys, dependencies, records) as inline code, comma separated, or the word for none. */
 export const KeyList = (props: KeyListProps) => (
-    <Text as="span" size="sm" isSkeleton={props.isSkeleton === true}>
+    <Text as="span" size="sm" isLoading={props.isLoading === true}>
         {props.keys.length === 0
             ? props.noneLabel
             : props.keys.map((key, index) => (

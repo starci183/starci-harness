@@ -41,7 +41,7 @@ and `contexts/ui`, from `templates/fe/units`, with its copy in every catalog; no
 - `page <route>`: `app/[locale]/<route>/{page,loading,error}.tsx`, the server page owner `<Name>Page` drawing one Grammar
   `Page` (R325) whose header carries the trail and the heading and whose body composes `--blocks` (blocks that take no input;
   else the page's empty sentence) and, with `--tabs a,b`, the page tabs in its header as link tabs (the first tab the route, each
-  other one its sub-route `<route>/<tab>`, the selected tab the current path's), its loading view `<Name>LoadingPage` (the same page drawn with `isSkeleton`, STATE-8),
+  other one its sub-route `<route>/<tab>`, the selected tab the current path's), its loading view `<Name>LoadingPage` (the same page drawn with `isLoading`, STATE-8),
   `<Name>ErrorPage` (the page with one negative Alert), and the stories pairing the page with its loading view.
 - `overlay <name> --kind modal|drawer`: `features/overlays/<Name>Overlay`, a `Dialog` or a trailing `Drawer` whose connected
   half owns its open state; its decision group puts the way out first and the commit last, always in the footer; with `--form`

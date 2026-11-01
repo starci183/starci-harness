@@ -15,7 +15,7 @@ export type TerminalProps = NoChildren & {
      * Unresolved log (knowledge STATE-8): the same frame and title; each line (three when none arrived yet) is laid out
      * unseen under a shimmer bar, so the log keeps its ready box (skeleton parity). Nothing is announced; the root is `aria-busy`.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 const LOADING_LINES: ReadonlyArray<string> = ["", "", ""]
@@ -28,7 +28,7 @@ const FOLLOW_THRESHOLD = 8
  * without interrupting. It follows the end as lines arrive, unless the reader has scrolled up; scrolling back to
  * the end follows again.
  */
-export const Terminal = ({ lines, title, label, isSkeleton = false }: TerminalProps) => {
+export const Terminal = ({ lines, title, label, isLoading = false }: TerminalProps) => {
     const titleId = useId()
     const logRef = useRef<HTMLDivElement>(null)
     const following = useRef(true)
@@ -39,12 +39,12 @@ export const Terminal = ({ lines, title, label, isSkeleton = false }: TerminalPr
     }, [lines])
 
     return (
-        <div data-tier="branch" data-component="Terminal" className="starci-core-terminal" {...(isSkeleton ? { "data-loading": "true", "aria-busy": true } : {})}>
+        <div data-tier="branch" data-component="Terminal" className="starci-core-terminal" {...(isLoading ? { "data-loading": "true", "aria-busy": true } : {})}>
             {title === undefined ? null : <div id={titleId} className="starci-core-terminal-title">{title}</div>}
             <div
                 ref={logRef}
                 role="log"
-                aria-live={isSkeleton ? "off" : "polite"}
+                aria-live={isLoading ? "off" : "polite"}
                 {...(title === undefined ? { "aria-label": label ?? "Log" } : { "aria-labelledby": titleId })}
                 tabIndex={0}
                 className="starci-core-terminal-log"
@@ -53,7 +53,7 @@ export const Terminal = ({ lines, title, label, isSkeleton = false }: TerminalPr
                     following.current = log.scrollHeight - log.scrollTop - log.clientHeight <= FOLLOW_THRESHOLD
                 }}
             >
-                {isSkeleton
+                {isLoading
                     ? (lines.length === 0 ? LOADING_LINES : lines).map((line, index) => (
                         <div key={index} className="starci-core-terminal-line" aria-hidden="true"><SkeletonPlaceholder>{line}</SkeletonPlaceholder></div>
                     ))

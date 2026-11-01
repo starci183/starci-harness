@@ -10,7 +10,7 @@ export type ProgressProps = NoChildren & {
     /** Completion from 0 to 100. Validation remains with the resolving application. */
     readonly value?: number
     /** Initial unresolved-content geometry, not a zero-valued measurement. */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     /**
      * Step mode for a wizard: one segment per step at the bar's own height, the finished and current steps filled.
      * `completed` counts filled segments (current step included); `value` is ignored in this mode.
@@ -34,8 +34,8 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
 })
 
 /** Accessible, full-width completion bar with an inert initial-loading shape. */
-export const Progress = ({ label, value = 0, isSkeleton = false, steps, valueText, tone = "accent" }: ProgressProps) => {
-    if (steps !== undefined && !isSkeleton) {
+export const Progress = ({ label, value = 0, isLoading = false, steps, valueText, tone = "accent" }: ProgressProps) => {
+    if (steps !== undefined && !isLoading) {
         const total = Math.max(1, Math.round(steps.total))
         const completed = Math.min(total, Math.max(0, Math.round(steps.completed)))
         return (
@@ -62,7 +62,7 @@ export const Progress = ({ label, value = 0, isSkeleton = false, steps, valueTex
             </ProgressBar>
         )
     }
-    if (isSkeleton) {
+    if (isLoading) {
         return (
             <span
                 data-tier="leaf"

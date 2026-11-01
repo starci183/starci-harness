@@ -32,7 +32,7 @@ export type NumberFieldProps = NoChildren & FieldControlProps & {
      * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
      * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /*
@@ -42,10 +42,10 @@ export type NumberFieldProps = NoChildren & FieldControlProps & {
  */
 
 /**
- * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const NumberField = ({ isSkeleton = false, ...props }: NumberFieldProps) => isSkeleton
+export const NumberField = ({ isLoading = false, ...props }: NumberFieldProps) => isLoading
     ? <FieldSkeletonScope component="NumberField"><NumberFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <NumberFieldControl {...props} />
 
@@ -65,7 +65,7 @@ const NumberFieldControl = ({
     formatOptions,
     hideSteppers = false,
     ...field
-}: Omit<NumberFieldProps, "isSkeleton">) => {
+}: Omit<NumberFieldProps, "isLoading">) => {
     const variant = useFieldVariant()
     return (
         <HeroNumberField

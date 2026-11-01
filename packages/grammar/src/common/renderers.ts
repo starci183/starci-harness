@@ -42,6 +42,7 @@ export { MessageBubble, type MessageBubbleProps, type MessageBubbleSide } from "
 export { Quote, type QuoteProps } from "../core/composite/Quote/index.js"
 export { HorizontalScrollRegion, type HorizontalScrollRegionProps } from "../core/frame/HorizontalScrollRegion/index.js"
 export { VerticalScrollRegion, type VerticalScrollRegionProps } from "../core/frame/VerticalScrollRegion/index.js"
+export type { ErrorData } from "../core/loadingState.js"
 export { SurfaceCard, type SurfaceCardProps } from "../core/frame/SurfaceCard/index.js"
 export type {
     AccordionData, AccordionRowData, AvatarData, BadgeData, Band, CardHead, Collection, Figure, ImageData, ItemAction, ItemLeading, ItemMenu,

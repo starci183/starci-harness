@@ -34,10 +34,10 @@ export const EventsBlockBase = (props: EventsBlockBaseProps) => {
     const { labels } = props.props
     return (
         <SurfaceCard label={labels.title} headingLevel={2}>
-            <SlotView slot={props.props.events} placeholder={EVENTS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(events, isSkeleton) => (
+            <SlotView slot={props.props.events} placeholder={EVENTS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(events, isLoading) => (
                     <Timeline
                         label={labels.title}
-                        items={isSkeleton ? [] : events.map((event) => ({
+                        items={isLoading ? [] : events.map((event) => ({
                             id: event.id,
                             title: event.text,
                             dateTime: event.at,
@@ -45,8 +45,7 @@ export const EventsBlockBase = (props: EventsBlockBaseProps) => {
                             state: event.isAttention ? "cautionary" : "neutral",
                             isAttention: event.isAttention,
                         }))}
-                        isLoading={isSkeleton}
-                        loadingRows={events.length}
+                        isLoading={isLoading}
                     />
                 )} />
         </SurfaceCard>

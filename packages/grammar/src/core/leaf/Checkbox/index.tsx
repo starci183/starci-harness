@@ -24,7 +24,7 @@ export type CheckboxProps = NoChildren & Omit<FieldControlProps, "isLabelHidden"
     /** Mixed state for a parent of partially selected children. */
     readonly isIndeterminate?: boolean
     /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /** Shared checkbox anatomy. Also rendered by CheckboxGroup for each of its options. */
@@ -54,10 +54,10 @@ export const CheckboxItem = ({ label, description, errorMessage, isStandalone }:
  */
 
 /**
- * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const Checkbox = ({ isSkeleton = false, ...props }: CheckboxProps) => isSkeleton
+export const Checkbox = ({ isLoading = false, ...props }: CheckboxProps) => isLoading
     ? <FieldSkeletonScope component="Checkbox"><CheckboxControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <CheckboxControl {...props} />
 
@@ -72,7 +72,7 @@ const CheckboxControl = ({
     onSelectedChange,
     isIndeterminate = false,
     ...field
-}: Omit<CheckboxProps, "isSkeleton">) => {
+}: Omit<CheckboxProps, "isLoading">) => {
     const variant = useFieldVariant()
     return (
         <HeroCheckbox

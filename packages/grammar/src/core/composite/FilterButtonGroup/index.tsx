@@ -32,7 +32,7 @@ export type FilterButtonGroupProps = NoChildren & {
     /** Shown in the overflow list when the search matches nothing. */
     readonly emptyLabel?: string
     /** One row of skeleton buttons while the options are unresolved (knowledge STATE-8). */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 const firstKey = (keys: Iterable<Key>): string | undefined => {
@@ -96,7 +96,7 @@ export const FilterButtonGroup = ({
     moreLabel = (count) => `${count} more filters`,
     searchLabel = "Search filters",
     emptyLabel = "No filter found",
-    isSkeleton = false,
+    isLoading = false,
 }: FilterButtonGroupProps) => {
     const id = useId().replaceAll(":", "")
     const labelId = `filter${id}-label`
@@ -120,14 +120,14 @@ export const FilterButtonGroup = ({
         setFit((previous) => previous !== null && previous.available === next.available && previous.plus === next.plus && previous.widths.length === widths.length && previous.widths.every((width, index) => width === widths[index]) ? previous : next)
     }, [])
     const optionKey = options.map((option) => `${option.value}|${option.label}|${option.count ?? ""}`).join("\u0000")
-    useIsomorphicLayoutEffect(() => { measure() }, [measure, optionKey, isSkeleton])
+    useIsomorphicLayoutEffect(() => { measure() }, [measure, optionKey, isLoading])
     useEffect(() => {
         const row = rowRef.current
         if (row === null || typeof ResizeObserver === "undefined") return
         const observer = new ResizeObserver(() => measure())
         observer.observe(row)
         return () => observer.disconnect()
-    }, [measure, isSkeleton])
+    }, [measure, isLoading])
 
     const shown = useMemo<ReadonlyArray<number>>(
         () => fit === null || fit.widths.length !== options.length ? options.map((_, index) => index) : visibleOptionIndexes(fit.widths, selectedIndex, fit.available, fit.plus),
@@ -144,7 +144,7 @@ export const FilterButtonGroup = ({
         onValueChange?.(next)
     }
 
-    if (isSkeleton) {
+    if (isLoading) {
         return (
             <div className="starci-core-filter-button-group" data-component="FilterButtonGroup" data-tier="composite" data-grammar-filter-fit="ready" aria-busy="true" data-loading="true">
                 <div className="starci-core-filter-button-row">

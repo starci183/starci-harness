@@ -3,6 +3,7 @@
 import { createElement, useEffect, type ReactNode, type Ref } from "react"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { usePaneContext } from "../../paneContext.js"
+import { ErrorView, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
 
 export type PaneSectionProps = {
     readonly children: ReactNode
@@ -22,6 +23,14 @@ export type PaneSectionProps = {
     /** Gap between its own children. Default `row`. */
     readonly gap?: "inline" | "row" | "section"
     readonly as?: "div" | "header" | "footer"
+    /**
+     * The first read of this band has no data yet (knowledge STATE-8). The band is `aria-busy` and tells every Grammar component
+     * inside it (`Section`, `SurfaceCard`, `ListBox`, `Timeline`, `DataTable`, `MessageBubble`) to draw its loading structure, so
+     * one flag covers the band. A refresh that has data is not loading.
+     */
+    readonly isLoading?: boolean
+    /** The read failed: this takes the place of the band's content. Loading comes first, then error. */
+    readonly error?: ErrorData
 }
 
 /**
@@ -30,8 +39,10 @@ export type PaneSectionProps = {
  * full-bleed scroll owner and the inset sits on its content, so the scrollbar stays on the pane edge. A section outside
  * a Pane throws `PANE_SECTION_OUTSIDE_PANE`.
  */
-export const PaneSection = ({ children, grow = false, scroll, align = "start", bleed, gap = "row", as = "div" }: PaneSectionProps) => {
+export const PaneSection = ({ children: content, grow = false, scroll, align = "start", bleed, gap = "row", as = "div", isLoading: ownLoading, error }: PaneSectionProps) => {
     const pane = usePaneContext()
+    const isLoading = useIsLoading(ownLoading)
+    const children = !isLoading && error !== undefined ? <ErrorView error={error} /> : <LoadingScope isLoading={isLoading}>{content}</LoadingScope>
     useEffect(() => pane?.register(), [pane])
     if (pane === undefined) throw new Error("PANE_SECTION_OUTSIDE_PANE")
     const shared = {
@@ -41,6 +52,7 @@ export const PaneSection = ({ children, grow = false, scroll, align = "start", b
         "data-grammar-pane-section-gap": gap,
         "data-grammar-pane-section-bleed": bleed,
         "data-grammar-pane-section-grow": grow || scroll !== undefined ? "true" : undefined,
+        "aria-busy": isLoading ? true : undefined,
     }
     const contract = "PADDING-4 GAP-3"
     if (scroll === undefined) {

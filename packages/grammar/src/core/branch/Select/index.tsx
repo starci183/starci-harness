@@ -47,7 +47,7 @@ export type SelectProps = NoChildren & FieldControlProps & {
      * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
      * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 const toValue = (key: Key | null): string | null => (key === null ? null : String(key))
@@ -91,10 +91,10 @@ export const ListOptions = ({ options }: { readonly options: ReadonlyArray<ListO
  */
 
 /**
- * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const Select = ({ isSkeleton = false, ...props }: SelectProps) => isSkeleton
+export const Select = ({ isLoading = false, ...props }: SelectProps) => isLoading
     ? <FieldSkeletonScope component="Select"><SelectControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SelectControl {...props} />
 
@@ -113,7 +113,7 @@ const SelectControl = ({
     onValueChange,
     isPending = false,
     ...field
-}: Omit<SelectProps, "isSkeleton">) => {
+}: Omit<SelectProps, "isLoading">) => {
     const variant = useFieldVariant()
     const [heldValue] = useState<string | null>(value ?? defaultValue ?? null)
     const { anchor, portalProps } = useGrammarPortal()

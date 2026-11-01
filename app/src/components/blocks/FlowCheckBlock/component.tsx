@@ -35,12 +35,12 @@ const CHECK_PLACEHOLDER: FlowCheckView = { flow: [], problems: [], problemsTitle
 export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SlotView slot={props.props.check} placeholder={CHECK_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(check, isSkeleton) => {
+        <SlotView slot={props.props.check} placeholder={CHECK_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(check, isLoading) => {
                 const flow: Band = {
                     kind: "body",
                     children:
                         check.flow.length === 0 ? (
-                            <Text size="sm" tone="muted" isSkeleton={isSkeleton}>
+                            <Text size="sm" tone="muted" isLoading={isLoading}>
                                 {labels.noLanes}
                             </Text>
                         ) : (
@@ -52,11 +52,11 @@ export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
                         kind="bands"
                         label={labels.title}
                         headingLevel={2}
-                        isSkeleton={isSkeleton}
+                        isLoading={isLoading}
                         {...(check.problems.length === 0 ? {} : { fact: check.problemsTitle })}
                         bands={
                             // A verdict has nowhere to go before the check answers (LOADING-5); the Alert has no resting shape.
-                            isSkeleton
+                            isLoading
                                 ? [flow]
                                 : check.problems.length === 0
                                   ? [flow, { kind: "body", children: <Alert tone="affirmative" title={labels.clean} description={labels.cleanHint} /> }]

@@ -32,7 +32,7 @@ export type InputProps = NoChildren & {
     readonly isInvalid?: boolean
     readonly isDisabled?: boolean
     readonly isRequired?: boolean
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     /** The value can be focused, selected and copied but not changed (unlike `isDisabled`, it stays at full contrast). */
     readonly isReadOnly?: boolean
     /**
@@ -80,10 +80,10 @@ const KINDS = {
  * `align-items: start` and offset the action by the label above the box, so a description or an error never shifts it.
  */
 /**
- * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside `FieldSkeletonScope`
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside `FieldSkeletonScope`
  * (inert, `aria-busy`, the control box painted as a Skeleton), so the loading field keeps the ready box, label and description.
  */
-export const Input = ({ isSkeleton = false, ...props }: InputProps) => isSkeleton
+export const Input = ({ isLoading = false, ...props }: InputProps) => isLoading
     ? <FieldSkeletonScope component="Input"><InputControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <InputControl {...props} />
 
@@ -116,7 +116,7 @@ const InputControl = ({
     onBlur,
     onPaste,
     autoFocus = false,
-}: Omit<InputProps, "isSkeleton">) => {
+}: Omit<InputProps, "isLoading">) => {
     const variant = useFieldVariant()
     const [isRevealed, setIsRevealed] = useState(false)
     const kind = KINDS[kindName]

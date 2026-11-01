@@ -4,7 +4,7 @@ import type { ToneLabel } from "../../../modules/types"
 /** Input of StatusWord. */
 export interface StatusWordProps {
     readonly status: ToneLabel
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /**
@@ -12,7 +12,7 @@ export interface StatusWordProps {
  * inside a `Text` line of the same size: one tree, and the line takes its place while the read waits.
  */
 export const StatusWord = (props: StatusWordProps) => (
-    <Text as="span" size="sm" isSkeleton={props.isSkeleton === true}>
+    <Text as="span" size="sm" isLoading={props.isLoading === true}>
         <Badge isDot tone={props.status.tone}>
             {props.status.label}
         </Badge>

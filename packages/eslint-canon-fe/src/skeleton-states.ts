@@ -7,7 +7,7 @@
  *   no-foreign-slot-status     a slot takes its loading or error from another slot's read;
  *   no-validating-as-loading   a background refresh (`isValidating`) drives a loading flag or a status;
  *   no-placeholder-object      a `*Placeholder` object is the ready tree with its data stripped to `[]`;
- *   no-hand-skeleton           an app draws a skeleton by hand (off until the Grammar owns the loading shape).
+ *   no-hand-skeleton           an app draws a skeleton by hand (the Grammar derives it from `isLoading`).
  */
 import type { TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
@@ -202,7 +202,7 @@ const noPlaceholderObject = defineRule({
 
 const HAND_SKELETONS = new Set(["Skeleton", "ChatBubbleSkeletons", "MessageBubbleSkeletons"])
 
-/** Not published: it ships with the Grammar loading flag (see `rules`). */
+/** Published with the Grammar `isLoading` flag: the Grammar components draw their own loading structure. */
 export const noHandSkeleton = defineRule({
   meta: {
     type: "problem",
@@ -229,11 +229,11 @@ export const rules = {
   "no-foreign-slot-status": noForeignSlotStatus,
   "no-validating-as-loading": noValidatingAsLoading,
   "no-placeholder-object": noPlaceholderObject,
+  "no-hand-skeleton": noHandSkeleton,
 } satisfies Rules
 
 /**
- * The level this law asks for. `no-hand-skeleton` is written and tested but not published: the plugin requests every published rule at
- * error, and an error now would refuse the only way an app can draw a skeleton until the Grammar owns the loading shape (a loading
- * flag on Section, the list card and the row components). It joins `rules` the day that lands.
+ * The level this law asks for: every rule at error. `no-hand-skeleton` joined when the Grammar took the loading shape (`isLoading` on
+ * Section, the cards, ListBox, Timeline, DataTable, MessageBubble and PaneSection, with the `error` slot).
  */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

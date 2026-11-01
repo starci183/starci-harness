@@ -67,7 +67,8 @@ export const InboxDetailBlock = (props: InboxDetailBlockProps) => {
     const current: Draft = draft !== null && draft.key === key ? draft : { key: key ?? "", option: null, note: "" }
     const ruled = key === null ? undefined : sent.get(key)
     const canSend = current.option !== null || current.note.trim() !== ""
-    const decision: DataSlot<DecisionView> = { ...slotOfQuery(query), items: selected === undefined ? undefined : toView(selected) }
+    const read = slotOfQuery(query)
+    const decision: DataSlot<DecisionView> = !("items" in read) ? read : selected === undefined ? { isEmpty: true } : { items: toView(selected) }
     const optionTitle = (option: string | null) =>
         option === null ? INBOX.noOption : (selected?.options.find((candidate) => candidate.id === option)?.title ?? option)
 

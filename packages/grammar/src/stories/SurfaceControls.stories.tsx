@@ -62,9 +62,9 @@ export const EveryNestedField: Story = {
                     <G.ComboBox label="Conversation" options={options} />
                     <G.CheckboxGroup label="Notifications" options={choices} />
                     <G.RadioGroup label="Digest channel" options={choices} />
-                    <G.SearchField label="Loading search" isSkeleton />
-                    <G.NumberField label="Loading member limit" isSkeleton />
-                    <G.Textarea label="Loading description" isSkeleton />
+                    <G.SearchField label="Loading search" isLoading />
+                    <G.NumberField label="Loading member limit" isLoading />
+                    <G.Textarea label="Loading description" isLoading />
                 </div>
             </G.SurfaceCard>
         </div>

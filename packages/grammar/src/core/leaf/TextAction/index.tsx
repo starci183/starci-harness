@@ -13,7 +13,7 @@ export type TextActionProps = {
     readonly isCurrent?: boolean
     readonly isDisabled?: boolean
     readonly isPending?: boolean
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     readonly onPress?: () => void
 }
 
@@ -107,7 +107,7 @@ export const TextAction = (props: TextActionProps) => {
         isCurrent = false,
         isDisabled = false,
         isPending = false,
-        isSkeleton = false,
+        isLoading = false,
     } = props
     const pressLockRef = useRef(false)
     const unavailable = isDisabled || isPending
@@ -130,7 +130,7 @@ export const TextAction = (props: TextActionProps) => {
      * unchanged), so it keeps the ready action's box. Its label stays laid out as a measured placeholder inside the
      * shimmer bar; the start and end content keep their places, unseen.
      */
-    if (isSkeleton) {
+    if (isLoading) {
         return (
             <span {...shared} aria-busy={undefined} data-element="span" data-loading="true" aria-hidden="true" data-contract={FONT_RULE_BY_SIZE[size]}>
                 {startContent == null ? null : <span className="starci-core-text-action-placeholder">{startContent}</span>}

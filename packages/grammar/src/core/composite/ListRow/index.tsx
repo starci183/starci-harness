@@ -25,7 +25,7 @@ export type ListRowProps = NoChildren & {
      * drawn as the caller built it, from the same data with its own skeleton flag. The row is `aria-hidden` and
      * renders no badge or command; the collection owns `aria-busy`.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
@@ -51,13 +51,13 @@ const RowAction = ({ action }: { readonly action: ItemAction }) => (
  * badges, one supporting line, one visible command and a menu, with an optional detail under the copy. It is an `<li>`
  * and is never rendered loose; the collection that holds it is the list.
  */
-export const ListRow = ({ row, isSkeleton = false }: ListRowProps) => {
+export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
     const state = row.state ?? "neutral"
     const treatment = treatmentFor(state)
     const hasLeading = row.leading !== undefined
     const hasMark = !hasLeading && treatment.mark === "check"
     const hasActions = row.action !== undefined || row.menu !== undefined
-    if (isSkeleton) {
+    if (isLoading) {
         return (
             <li
                 aria-hidden="true"

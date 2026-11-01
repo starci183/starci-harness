@@ -30,7 +30,7 @@ export type TextProps = {
     readonly mono?: boolean
     /** Tabular figures (`tabular-nums`): digits of equal width, so a column or a counter does not jitter. */
     readonly tabular?: boolean
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     readonly isSuperseded?: boolean
 }
 
@@ -97,7 +97,7 @@ export const Text = ({
     overflow,
     mono = false,
     tabular = false,
-    isSkeleton = false,
+    isLoading = false,
     isSuperseded = false,
 }: TextProps) => {
     const resolvedTone = size === "xs" ? "muted" : tone ?? "default"
@@ -117,15 +117,15 @@ export const Text = ({
             data-overflow={overflow}
             data-mono={mono ? "true" : undefined}
             data-tabular={tabular ? "true" : undefined}
-            data-loading={isSkeleton ? "true" : "false"}
-            data-contract={isSkeleton ? getTextSkeletonContract(size) : getTextContract(size, resolvedTone, showsStartContent)}
-            aria-live={isSkeleton || live === "off" ? undefined : live}
-            aria-atomic={isSkeleton || live === "off" ? undefined : true}
-            aria-hidden={isSkeleton || undefined}
+            data-loading={isLoading ? "true" : "false"}
+            data-contract={isLoading ? getTextSkeletonContract(size) : getTextContract(size, resolvedTone, showsStartContent)}
+            aria-live={isLoading || live === "off" ? undefined : live}
+            aria-atomic={isLoading || live === "off" ? undefined : true}
+            aria-hidden={isLoading || undefined}
             className={TEXT_CLASS_NAME}
         >
             {showsStartContent ? startContent : null}
-            {isSkeleton ? <span className={SKELETON_BAR_CLASS_NAME} data-empty={children == null ? "true" : undefined}>{children ?? "\u00a0"}</span> : children}
+            {isLoading ? <span className={SKELETON_BAR_CLASS_NAME} data-empty={children == null ? "true" : undefined}>{children ?? "\u00a0"}</span> : children}
         </Element>
     )
 }

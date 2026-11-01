@@ -34,7 +34,7 @@ export type FencedCodeBlockProps = FencedCodeBlockFrameProps & (AuthoredCodeProp
      * Unresolved code (knowledge STATE-8): the same frame and header; the code (and the action) is laid out unseen under a
      * shimmer, so the block keeps its ready box (skeleton parity). Nothing in it is focusable; the root is `aria-busy`.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 export type MarkdownTableFrameProps = {
@@ -64,21 +64,21 @@ export const MarkdownArticle = (props: MarkdownArticleProps) => (
 
 /** Own bounded code overflow while allowing a caller-supplied neutral action such as Copy. */
 export const FencedCodeBlock = (props: FencedCodeBlockProps) => {
-    const isSkeleton = props.isSkeleton === true
+    const isLoading = props.isLoading === true
     const ready = "children" in props ? props.children : <pre {...scrollFrameProps(props.label ?? props.language)}><code>{props.code}</code></pre>
-    const body = isSkeleton ? <SkeletonPlaceholder shape="region">{ready}</SkeletonPlaceholder> : ready
+    const body = isLoading ? <SkeletonPlaceholder shape="region">{ready}</SkeletonPlaceholder> : ready
     return (
         <div
             className={fencedCodeBlockClassName}
             data-component="FencedCodeBlock"
             data-tier="frame"
             data-contract="OVERFLOW-4"
-            {...(isSkeleton ? { "data-loading": "true", "aria-busy": true } : {})}
+            {...(isLoading ? { "data-loading": "true", "aria-busy": true } : {})}
         >
             {props.language === undefined && props.action === undefined ? null : (
                 <div className={fencedCodeHeaderClassName}>
                     {props.language === undefined ? <span /> : <span>{props.language}</span>}
-                    {isSkeleton && props.action !== undefined ? <SkeletonPlaceholder shape="block">{props.action}</SkeletonPlaceholder> : props.action}
+                    {isLoading && props.action !== undefined ? <SkeletonPlaceholder shape="block">{props.action}</SkeletonPlaceholder> : props.action}
                 </div>
             )}
             {body}

@@ -15,7 +15,7 @@ export const slotLabels = (empty: string, emptyHint?: string): SlotLabels => ({
 
 export const ready = <T>(items: T): DataSlot<T> => ({ items })
 
-export const loading = <T>(): DataSlot<T> => ({ items: undefined, isLoading: true })
+export const loading = <T>(): DataSlot<T> => ({ isLoading: true })
 
 /** An action a story never needs to answer. */
 export const noop = (): void => undefined

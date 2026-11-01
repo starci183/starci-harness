@@ -14,7 +14,7 @@ export type IconTileProps = NoChildren & {
     readonly ariaLabel?: string
     readonly tone?: IconTileTone
     readonly size?: IconTileSize
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /*
@@ -44,10 +44,10 @@ export const IconTile = ({
     ariaLabel,
     tone = "neutral",
     size = "sm",
-    isSkeleton = false,
+    isLoading = false,
 }: IconTileProps) => {
-    const showsArtwork = !isSkeleton && artwork != null
-    const toneRule = isSkeleton || showsArtwork ? undefined : TONE_CONTRACT[tone]
+    const showsArtwork = !isLoading && artwork != null
+    const toneRule = isLoading || showsArtwork ? undefined : TONE_CONTRACT[tone]
     return (
         <span
             data-tier="leaf"
@@ -55,12 +55,12 @@ export const IconTile = ({
             data-tone={tone}
             data-size={size}
             data-artwork={showsArtwork ? "true" : "false"}
-            data-loading={isSkeleton ? "true" : "false"}
-            aria-hidden={isSkeleton || undefined}
+            data-loading={isLoading ? "true" : "false"}
+            aria-hidden={isLoading || undefined}
             data-contract={["OVERFLOW-2", toneRule].filter(Boolean).join(" ")}
-            className={cn("starci-core-icon-tile", isSkeleton ? SKELETON_CLASS_NAME : undefined)}
+            className={cn("starci-core-icon-tile", isLoading ? SKELETON_CLASS_NAME : undefined)}
         >
-            {isSkeleton ? null : showsArtwork ? artwork : (
+            {isLoading ? null : showsArtwork ? artwork : (
                 <Icon source={source} usage="leading" {...(ariaLabel === undefined ? {} : { ariaLabel })} />
             )}
         </span>

@@ -8,7 +8,7 @@ export interface {{Name}}BaseProps {
         readonly homeLabel: string
         readonly homeHref: string
 {{emptyMember}}{{tabsMember}}        /** True for the route's loading view: the same page, its header resting in its own boxes (STATE-8). */
-        readonly isSkeleton: boolean
+        readonly isLoading: boolean
     }
 }
 
@@ -28,7 +28,7 @@ export const {{Name}}Base = (props: {{Name}}BaseProps) => (
                 ],
             },
 {{tabsHeader}}        }}
-        isSkeleton={props.props.isSkeleton}
+        isLoading={props.props.isLoading}
     >
 {{body}}
     </Page>

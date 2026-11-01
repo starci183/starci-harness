@@ -24,7 +24,7 @@ type CopyFieldBase = {
     readonly copyErrorLabel: string
     readonly isDisabled?: boolean
     /** Initial unresolved content (knowledge STATE-8): the ready anatomy, inert, its field box painted as a Skeleton. */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /** A value shown in full (truncated in the middle when it does not fit) and copied from what it shows. */
@@ -78,10 +78,10 @@ const writeClipboard = async (text: string | Promise<string>): Promise<void> => 
 }
 
 /**
- * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside `FieldSkeletonScope`
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside `FieldSkeletonScope`
  * (inert, `aria-busy`, the field box painted as a Skeleton), so the loading field keeps the ready box, label and description.
  */
-export const CopyField = (props: CopyFieldProps) => props.isSkeleton === true
+export const CopyField = (props: CopyFieldProps) => props.isLoading === true
     ? <FieldSkeletonScope component="CopyField"><CopyFieldControl {...props} /></FieldSkeletonScope>
     : <CopyFieldControl {...props} />
 
@@ -93,14 +93,14 @@ export const CopyField = (props: CopyFieldProps) => props.isSkeleton === true
  * Tooltip on hover and focus. A masked field draws only bullets and the last four characters and has no Tooltip.
  */
 const CopyFieldControl = (props: CopyFieldProps) => {
-    const { label, isLabelHidden = false, description, copyLabel, copiedLabel, copyErrorLabel, isDisabled = false, isSkeleton = false } = props
+    const { label, isLabelHidden = false, description, copyLabel, copiedLabel, copyErrorLabel, isDisabled = false, isLoading = false } = props
     const variant = useFieldVariant()
     const id = `copy-field${useId().replaceAll(":", "")}`
     const labelId = `${id}-label`
     const descriptionId = description == null ? undefined : `${id}-description`
     const errorId = `${id}-error`
     const [state, setState] = useState<CopyFieldState>("idle")
-    const failed = state === "failed" && !isSkeleton
+    const failed = state === "failed" && !isLoading
     const shown = props.masked === true ? `${MASK}${props.lastFour.slice(-4)}` : props.value
     const [head, tail] = props.masked === true ? [MASK, props.lastFour.slice(-4)] as const : splitForMiddle(props.value)
     const headRef = useRef<HTMLSpanElement>(null)
@@ -143,7 +143,7 @@ const CopyFieldControl = (props: CopyFieldProps) => {
     const actionName = state === "copied" ? copiedLabel : copyLabel
     const Glyph = state === "copied" ? CheckIcon : failed ? ExclamationCircleIcon : DocumentDuplicateIcon
     const announcement = state === "copied" ? copiedLabel : failed ? copyErrorLabel : ""
-    const showsTooltip = props.masked !== true && isTruncated && !isSkeleton
+    const showsTooltip = props.masked !== true && isTruncated && !isLoading
 
     return (
         <div
@@ -152,7 +152,7 @@ const CopyFieldControl = (props: CopyFieldProps) => {
             data-contract="A11Y-1 FEEDBACK-1 STATE-8"
             className="starci-core-field starci-core-copy-field"
             data-grammar-copy-masked={props.masked === true ? "true" : "false"}
-            data-grammar-copy-state={isSkeleton ? "idle" : state}
+            data-grammar-copy-state={isLoading ? "idle" : state}
             {...fieldVariantAttributes(variant)}
             {...fieldStateAttributes({ isInvalid: failed, isDisabled, isReadOnly: true, isPending: state === "pending" })}
         >

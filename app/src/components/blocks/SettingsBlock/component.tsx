@@ -126,7 +126,7 @@ const SETTINGS_PLACEHOLDER: SettingsView = {
 /** Below this width the effort select folds under the tier name, so the members editor keeps its room. */
 const TIER_TABLE_COLLAPSE_BELOW = 820
 
-type PanelProps = SettingsBlockBaseProps & { readonly group: SettingsGroupView; readonly isSkeleton: boolean }
+type PanelProps = SettingsBlockBaseProps & { readonly group: SettingsGroupView; readonly isLoading: boolean }
 
 const Field = (props: PanelProps & { readonly field: ConfigFieldView; readonly isLabelHidden?: boolean }) => (
     <ConfigField
@@ -134,7 +134,7 @@ const Field = (props: PanelProps & { readonly field: ConfigFieldView; readonly i
         efforts={props.props.labels.efforts}
         words={props.props.labels.words}
         isDisabled={props.props.isSaving}
-        isSkeleton={props.isSkeleton}
+        isLoading={props.isLoading}
         isLabelHidden={props.isLabelHidden === true}
         onChange={props.on.change}
         onJson={props.on.json}
@@ -184,8 +184,7 @@ const ModelsPanel = (props: PanelProps) => {
                     columns={columns}
                     rows={props.group.tiers}
                     collapseBelow={TIER_TABLE_COLLAPSE_BELOW}
-                    isLoading={props.isSkeleton}
-                    loadingRows={props.group.tiers.length}
+                    isLoading={props.isLoading}
                     renderCell={(tier) => (
                         <span className="app-pair">
                             <Text as="span" size="sm" isStrong>
@@ -217,7 +216,7 @@ const LanesPanel = (props: PanelProps) => (
             label={props.group.label}
             headingLevel={2}
             fact={props.group.description}
-            isSkeleton={props.isSkeleton}
+            isLoading={props.isLoading}
             empty={<EmptyNotice message={props.props.labels.slot.empty} />}
             items={props.group.lanes.map((lane) => ({
                 id: lane.configKey,
@@ -299,7 +298,7 @@ export const SettingsBlockBase = (props: SettingsBlockBaseProps) => {
     const { labels, summary, pending, update } = props.props
     return (
         <div className="app-page-stack">
-            <SlotView slot={props.props.settings} placeholder={SETTINGS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(settings, isSkeleton) => (
+            <SlotView slot={props.props.settings} placeholder={SETTINGS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(settings, isLoading) => (
                     <div className="app-stack">
                         {settings.tabs.length === 0 ? null : (
                             <Tabs
@@ -314,7 +313,7 @@ export const SettingsBlockBase = (props: SettingsBlockBaseProps) => {
                             />
                         )}
                         <div role="tabpanel" id={`settings-panel-${settings.active.id}`} aria-label={settings.active.label}>
-                            <GroupPanel {...props} group={settings.active} isSkeleton={isSkeleton} />
+                            <GroupPanel {...props} group={settings.active} isLoading={isLoading} />
                         </div>
                     </div>
                 )} />

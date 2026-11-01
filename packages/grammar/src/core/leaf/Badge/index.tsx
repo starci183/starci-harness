@@ -10,7 +10,7 @@ type BadgeBase = {
     readonly startContent?: ReactNode
     /** `muted` is the quiet tone: no fill, muted ink. */
     readonly tone?: BadgeTone
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 type BadgePlain = BadgeBase & {
@@ -61,7 +61,7 @@ const capitaliseFirst = (children: ReactNode): ReactNode => {
  * inferred, and defaults to neutral).
  */
 export const Badge = (props: BadgeProps) => {
-    const { children, startContent, tone = "neutral", isSkeleton = false } = props
+    const { children, startContent, tone = "neutral", isLoading = false } = props
     if (props.isDot === true) {
         const isLive = props.isLive === true
         const dotTone = tone === "muted" ? "neutral" : tone
@@ -74,12 +74,12 @@ export const Badge = (props: BadgeProps) => {
                 data-grammar-badge-live={isLive ? "true" : undefined}
                 data-tone={dotTone}
                 data-badge-tone={tone}
-                data-loading={isSkeleton ? "true" : "false"}
+                data-loading={isLoading ? "true" : "false"}
                 color={TONE_COLORS[dotTone]}
                 variant="soft"
                 size="sm"
-                className={isSkeleton ? `starci-core-badge-dot ${SKELETON_CLASS_NAME}` : "starci-core-badge-dot"}
-                {...(isSkeleton ? { "aria-hidden": true } : isLive ? { role: "status", "aria-live": "polite" as const } : {})}
+                className={isLoading ? `starci-core-badge-dot ${SKELETON_CLASS_NAME}` : "starci-core-badge-dot"}
+                {...(isLoading ? { "aria-hidden": true } : isLive ? { role: "status", "aria-live": "polite" as const } : {})}
             >
                 <StatusDotMark tone={dotTone} echo={isLive} />
                 <span className="starci-core-badge-dot-label">{capitaliseFirst(startContent === undefined ? children ?? " " : <>{startContent}{children}</>)}</span>
@@ -94,13 +94,13 @@ export const Badge = (props: BadgeProps) => {
             data-component="Badge"
             data-contract="TRUTH-1"
             data-tone={tone}
-            data-loading={isSkeleton ? "true" : "false"}
+            data-loading={isLoading ? "true" : "false"}
             color={TONE_COLORS[tone]}
             variant={tone === "muted" ? "tertiary" : "soft"}
             size="sm"
-            {...(isSkeleton ? { "aria-hidden": true, className: SKELETON_CLASS_NAME } : {})}
+            {...(isLoading ? { "aria-hidden": true, className: SKELETON_CLASS_NAME } : {})}
         >
-            {tone === "muted" && !isSkeleton ? (
+            {tone === "muted" && !isLoading ? (
                 <span className="starci-core-badge-muted">{content}{children ?? " "}</span>
             ) : (
                 <>

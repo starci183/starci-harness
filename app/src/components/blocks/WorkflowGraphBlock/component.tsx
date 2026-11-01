@@ -79,12 +79,12 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
     const { labels } = props.props
     return (
         <Section title={labels.title}>
-            <SlotView slot={props.props.graph} placeholder={GRAPH_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(graph, isSkeleton) => (
+            <SlotView slot={props.props.graph} placeholder={GRAPH_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(graph, isLoading) => (
                     <div className="app-stack">
                         <SurfaceCard
                             kind="figures"
                             ariaLabel={labels.title}
-                            isSkeleton={isSkeleton}
+                            isLoading={isLoading}
                             items={[
                                 { id: "live", term: labels.statLive, value: graph.stats.live, unit: graph.stats.cap },
                                 { id: "queued", term: labels.statQueued, value: graph.stats.queued },
@@ -116,7 +116,7 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
                                         kind="list"
                                         label={wave.label}
                                         headingLevel={3}
-                                        isSkeleton={isSkeleton}
+                                        isLoading={isLoading}
                                         empty={<EmptyNotice message={labels.empty} />}
                                         items={wave.cells.map((cell) => ({
                                             id: cell.id,

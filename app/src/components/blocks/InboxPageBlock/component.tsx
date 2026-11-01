@@ -29,7 +29,7 @@ export const InboxPageBlockBase = (props: InboxPageBlockBaseProps) => {
     return (
         <Page
             measure="full"
-            isSkeleton={count.isLoading === true}
+            isLoading={count.isLoading === true}
             header={{
                 title: labels.title,
                 description: labels.description,

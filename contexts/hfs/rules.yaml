@@ -2487,17 +2487,19 @@ rules:
 # red (ANATOMY_PENDING_UNRULED) and one that holds no open gap is red (ANATOMY_PENDING_STALE), so this list only shrinks.
   - id: R367
     code: FE_SWR_DEFAULT_ARRAY
-    law: "A loading state is drawn from the page's own reads: a read folded to [] also returns its isLoading, a slot never takes another slot's loading or error, a background refresh never drives a loading flag, a placeholder is not the ready data emptied, and an app draws no skeleton by hand once the Grammar owns the loading shape."
+    law: "A loading state is drawn from the page's own reads: a read folded to [] also returns its isLoading, a slot never takes another slot's loading or error, a background refresh never drives a loading flag, a placeholder is not the ready data emptied, and an app draws no skeleton by hand: the Grammar components draw their loading structure from `isLoading`."
     failureCodes:
       - FE_SWR_DEFAULT_ARRAY
       - FE_FOREIGN_SLOT_STATUS
       - FE_VALIDATING_AS_LOADING
       - FE_PLACEHOLDER_OBJECT
+      - FE_HAND_SKELETON
     enforcers:
       - {kind: eslint-fe, id: no-swr-default-array}
       - {kind: eslint-fe, id: no-foreign-slot-status}
       - {kind: eslint-fe, id: no-validating-as-loading}
       - {kind: eslint-fe, id: no-placeholder-object}
+      - {kind: eslint-fe, id: no-hand-skeleton}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

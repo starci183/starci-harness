@@ -43,12 +43,12 @@ const ROUTE_PLACEHOLDER: TaskRouteView = {
 export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
     const { labels, fact } = props.props
     return (
-        <SlotView slot={props.props.route} placeholder={ROUTE_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(route, isSkeleton) => (
+        <SlotView slot={props.props.route} placeholder={ROUTE_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(route, isLoading) => (
                 <SurfaceCard
                     kind="bands"
                     label={labels.title}
                     headingLevel={2}
-                    isSkeleton={isSkeleton}
+                    isLoading={isLoading}
                     {...(fact === "" ? {} : { fact })}
                     bands={[
                         {
@@ -56,9 +56,8 @@ export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
                             children: (
                                 <Timeline
                                     label={labels.steps}
-                                    items={isSkeleton ? [] : route.steps.map((step) => ({ id: step.id, title: step.step, description: step.detail }))}
-                                    isLoading={isSkeleton}
-                                    loadingRows={route.steps.length}
+                                    items={isLoading ? [] : route.steps.map((step) => ({ id: step.id, title: step.step, description: step.detail }))}
+                                    isLoading={isLoading}
                                 />
                             ),
                         },
@@ -69,7 +68,7 @@ export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
                                 <DescriptionList
                                     layout="stacked"
                                     isDivided
-                                    isLoading={isSkeleton}
+                                    isLoading={isLoading}
                                     items={[
                                         { id: "model", term: labels.model, description: route.model },
                                         { id: "effort", term: labels.effort, description: route.effort },

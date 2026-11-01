@@ -33,11 +33,11 @@ export type MeterProps = NoChildren & {
      */
     readonly segments?: MeterSegments
     /**
-     * Initial unresolved reading (knowledge STATE-8), the twin of `Progress isSkeleton`: the `label` stays real text, the
+     * Initial unresolved reading (knowledge STATE-8), the twin of `Progress isLoading`: the `label` stays real text, the
      * bar is a static Skeleton bar of the track height, and no `role="meter"`, value or reading is announced (a skeleton is
      * not a zero measurement). The geometry is `aria-hidden`; the root is `aria-busy`. `value`, `tone` and `segments` are ignored.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     /** `sm` is HeroUI's thin track (h-1, 0.25rem) for a gauge inside dense rows; `md` (default) is the h-2 track. */
     readonly size?: MeterSize
 }
@@ -77,10 +77,10 @@ export const Meter = ({
     tone = "neutral",
     isLabelHidden = false,
     segments,
-    isSkeleton = false,
+    isLoading = false,
     size = "md",
 }: MeterProps) => {
-    if (isSkeleton) {
+    if (isLoading) {
         return (
             <div
                 data-tier="leaf"

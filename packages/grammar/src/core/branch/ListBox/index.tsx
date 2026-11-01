@@ -7,6 +7,7 @@ import { usePaneContext } from "../../paneContext.js"
 import { useSurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import type { ItemDescriptionLines } from "../../collectionItem.js"
+import { ErrorView, LOADING_ROWS, useIsLoading, type ErrorData } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 /** The leading identity slot is 32, 40 or 48px; HeroUI retains the row's own padding and radius. */
@@ -46,20 +47,20 @@ type ListBoxContent =
     | { readonly items: ReadonlyArray<ListBoxItem>; readonly sections?: never }
     | { readonly items?: never; readonly sections: ReadonlyArray<ListBoxSection> }
 
-const clampRows = (rows: number) => Math.min(12, Math.max(1, Math.floor(Number.isFinite(rows) ? rows : 3)))
-
 /**
  * Skeleton rows for a loading list. They sit directly inside the busy listbox (an `aria-busy` listbox may be empty), NOT in
  * `renderEmptyState`: the vendor wraps that in an unnamed `role="option"`, and these rows are `aria-hidden`, so it would be a nameless option.
  */
-const loadingSkeleton = (rows: number) => (
+const loadingSkeleton = (items: ReadonlyArray<ListBoxItem>, size: ListBoxSize) => (
     <div className="starci-core-list-box-skeleton" data-grammar-list-skeleton="true">
-        {Array.from({ length: clampRows(rows) }, (_, index) => (
-            <div key={index} aria-hidden="true" className="starci-core-list-box-skeleton-option" data-grammar-skeleton="true">
+        {(items.length > 0 ? items : Array.from({ length: LOADING_ROWS }, (_, index): ListBoxItem => ({ id: String(index), label: " ", description: " " }))).map((item) => (
+            <div key={item.id} aria-hidden="true" className="starci-core-list-box-skeleton-option" data-grammar-skeleton="true" data-grammar-list-size={item.size ?? size}>
+                {item.leading === undefined ? null : <span data-grammar-list-leading="true"><Skeleton shape="circle" size={item.size ?? size} /></span>}
                 <span data-grammar-list-copy="true">
                     <span className="starci-core-list-box-label"><Skeleton shape="text" /></span>
-                    <span className="starci-core-list-box-description"><Skeleton shape="text" /></span>
+                    {item.description === undefined ? null : <span className="starci-core-list-box-description"><Skeleton shape="text" lines={item.descriptionLines === 2 || item.descriptionLines === 3 ? item.descriptionLines : 1} /></span>}
                 </span>
+                {item.trailing === undefined ? null : <span className="starci-core-list-box-skeleton-trailing" data-grammar-list-trailing="true"><Skeleton shape="rect" /></span>}
             </div>
         ))}
     </div>
@@ -88,13 +89,14 @@ export type ListBoxProps = NoChildren & ListBoxContent & {
     readonly selectionIndicator?: "check" | "none"
     readonly emptyContent?: ReactNode
     /**
-     * The options are loading (knowledge STATE-8). With no `items` it draws `loadingRows` skeleton options (a label line and a
-     * description line, `aria-hidden`) inside the same named list, which is `aria-busy`; real `items` win, and loading beats
-     * `emptyContent`.
+     * The first read has no data yet (knowledge STATE-8). The list draws one skeleton option per item it was given, each with the
+     * leading mark, description lines and trailing node that item has (the block's same-shape placeholder), or a default few when
+     * it has none, inside the same named list, which is `aria-busy`. A refresh that has data is not loading. Loading comes first,
+     * then `error`, then `emptyContent`.
      */
     readonly isLoading?: boolean
-    /** How many skeleton options a loading list draws (default 3, 1 to 12). */
-    readonly loadingRows?: number
+    /** The read failed: this takes the place of the options, as `emptyContent` does. */
+    readonly error?: ErrorData
 }
 
 /**
@@ -117,9 +119,10 @@ export const ListBox = ({
     onAction,
     selectionIndicator = "check",
     emptyContent,
-    isLoading = false,
-    loadingRows = 3,
+    isLoading: ownLoading,
+    error,
 }: ListBoxProps) => {
+    const isLoading = useIsLoading(ownLoading)
     const nested = useSurfaceNesting()
     const inPane = usePaneContext() !== undefined
     const resolvedInset = inset ?? (nested || inPane ? "panel" : "default")
@@ -168,7 +171,7 @@ export const ListBox = ({
         data-contract="FOCUS-2 STATE-1 PADDING-0"
         data-tier="branch"
         data-loading={String(isLoading)}
-        {...(isLoading ? { render: (domProps: ComponentPropsWithRef<"div">) => <div {...domProps} aria-busy="true">{domProps.children}{allItems.length === 0 ? loadingSkeleton(loadingRows) : null}</div> } : {})}
+        {...(isLoading ? { render: (domProps: ComponentPropsWithRef<"div">) => <div {...domProps} aria-busy="true">{loadingSkeleton(allItems, size)}</div> } : {})}
         data-grammar-list-inset={resolvedInset}
         {...(inPane && resolvedInset === "panel" ? { style: { paddingInline: 0 } } : {})}
         data-grammar-list-size={size}
@@ -182,9 +185,10 @@ export const ListBox = ({
         {...(onAction === undefined ? {} : { onAction: (key: string | number) => onAction(String(key)) })}
         {...(isLoading
             ? {}
+            : error !== undefined ? { renderEmptyState: () => <div className="starci-core-list-box-empty" data-grammar-list-error="true"><ErrorView error={error} /></div> }
             : emptyContent === undefined ? {} : { renderEmptyState: () => <div className="starci-core-list-box-empty" data-contract="STATE-3" data-grammar-list-empty="true">{emptyContent}</div> })}
     >
-        {sections === undefined ? items.map(renderItem) : sections.flatMap((section, index) => {
+        {isLoading ? [] : error !== undefined ? [] : sections === undefined ? items.map(renderItem) : sections.flatMap((section, index) => {
             const sectionElement = <HeroListBox.Section key={section.id} id={section.id} aria-label={section.label}>
                 <HeroHeader data-grammar-list-section-header="true">{section.label}</HeroHeader>
                 {section.items.map(renderItem)}

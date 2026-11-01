@@ -84,18 +84,19 @@ test("the shape union is read from the program's types when it comes from elsewh
   }))
 })
 
-test("no unit below SlotView takes a data-status prop; a leaf takes only isSkeleton", () => {
+test("no unit below SlotView takes a data-status prop; a leaf, branch or composite takes only isLoading", () => {
   assert.doesNotThrow(() => tester.run("no-data-status-prop", noDataStatusProp, {
     valid: [
       { filename: SLOT_VIEW, code: "type SlotViewProps = { readonly isLoading: boolean; readonly isError: boolean; readonly isForbidden: boolean }" },
       { filename: LOADING_PAGE, code: "type OrdersLoadingPageBaseProps = { readonly props: { readonly isLoading: boolean } }" },
-      { filename: LEAF, code: "type AmountProps = { readonly value: string; readonly isSkeleton?: boolean }" },
+      { filename: LEAF, code: "type AmountProps = { readonly value: string; readonly isLoading?: boolean }" },
+      { filename: COMPOSITE, code: "type OrderCardProps = { readonly isLoading: boolean }" },
       { filename: COMPOSITE, code: "type OrderCardProps = { readonly isPending: boolean; readonly isOpen: boolean }" },
       // the DataSlot type lives in modules/types, outside every unit
       { filename: at("apps/web/src/modules/types/slot.ts"), code: "export type DataSlot<T> = { readonly items?: T; readonly isLoading?: boolean; readonly isError?: boolean }" },
     ],
     invalid: [
-      { filename: COMPOSITE, code: "type OrderCardProps = { readonly isLoading: boolean }", errors: [{ messageId: "status" }] },
+      { filename: COMPOSITE, code: "type OrderCardProps = { readonly isEmpty: boolean; readonly isValidating: boolean }", errors: [{ messageId: "status" }, { messageId: "status" }] },
       { filename: BLOCK, code: "type HandoffBlockBaseProps = { readonly props: { readonly isFailed: boolean; readonly failure: string | null } }", errors: [{ messageId: "status" }, { messageId: "status" }] },
       { filename: BRANCH, code: "interface OrderRowProps { readonly isForbidden: boolean }", errors: [{ messageId: "status" }] },
       { filename: LEAF, code: "type AmountProps = { readonly isError?: boolean }", errors: [{ messageId: "leaf" }] },

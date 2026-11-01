@@ -22,7 +22,7 @@ export type RadioGroupProps = NoChildren & FieldControlProps & {
     readonly onValueChange?: (value: string) => void
     readonly orientation?: ChoiceOrientation
     /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /*
@@ -38,10 +38,10 @@ export type RadioGroupProps = NoChildren & FieldControlProps & {
  */
 
 /**
- * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const RadioGroup = ({ isSkeleton = false, ...props }: RadioGroupProps) => isSkeleton
+export const RadioGroup = ({ isLoading = false, ...props }: RadioGroupProps) => isLoading
     ? <FieldSkeletonScope component="RadioGroup"><RadioGroupControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <RadioGroupControl {...props} />
 
@@ -56,7 +56,7 @@ const RadioGroupControl = ({
     onValueChange,
     orientation = "vertical",
     ...field
-}: Omit<RadioGroupProps, "isSkeleton">) => {
+}: Omit<RadioGroupProps, "isLoading">) => {
     const variant = useFieldVariant()
     return (
         <HeroRadioGroup

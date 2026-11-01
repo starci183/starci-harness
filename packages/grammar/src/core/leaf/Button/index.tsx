@@ -34,7 +34,7 @@ type ButtonBase = {
      * Initial unresolved-content geometry. It is distinct from action-owned pending. Skeleton parity: the loading Button keeps
      * the ready box (control height, label and start/end content laid out as an unseen measured placeholder).
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     /** Pending belongs to the action that started the work and blocks duplicate presses. */
     readonly isPending?: boolean
     /**
@@ -158,23 +158,23 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
         startContent,
         endContent,
         isDisabled = false,
-        isSkeleton = false,
+        isLoading = false,
         isPending = false,
         width = "content",
         reasonId,
     } = props
     const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? "secondary"
-    const unavailable = isDisabled || isPending || isSkeleton
+    const unavailable = isDisabled || isPending || isLoading
     // The side a glyph stands on takes the control's glyph padding (one step less): the glyph carries its own room.
     const glyphSides = {
-        "data-grammar-button-start": (isPending && !isSkeleton) || startContent != null ? "glyph" : undefined,
-        "data-grammar-button-end": !(isPending && !isSkeleton) && endContent != null ? "glyph" : undefined,
+        "data-grammar-button-start": (isPending && !isLoading) || startContent != null ? "glyph" : undefined,
+        "data-grammar-button-end": !(isPending && !isLoading) && endContent != null ? "glyph" : undefined,
     }
     const content = (
         <>
-            {isPending && !isSkeleton ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : startContent}
+            {isPending && !isLoading ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : startContent}
             <span aria-busy={isPending || undefined}>{children}</span>
-            {isPending && !isSkeleton ? null : endContent}
+            {isPending && !isLoading ? null : endContent}
         </>
     )
 
@@ -187,15 +187,15 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
                 data-size={size}
                 {...glyphSides}
                 data-element={unavailable ? "span" : "a"}
-                data-loading={isSkeleton ? "true" : "false"}
+                data-loading={isLoading ? "true" : "false"}
                 data-action-pending={isPending ? "true" : "false"}
                 isDisabled={unavailable}
                 {...(reasonId === undefined ? {} : { "aria-describedby": reasonId })}
                 aria-busy={isPending || undefined}
-                aria-hidden={isSkeleton || undefined}
+                aria-hidden={isLoading || undefined}
                 data-width={width}
                 data-contract={width === "fill" ? "MEASURE-2" : undefined}
-                className={buttonVariants({ variant: VARIANTS[variant], size: SIZES[size], fullWidth: width === "fill", className: isSkeleton ? `starci-core-button ${SKELETON_CLASS_NAME}` : "starci-core-button" })}
+                className={buttonVariants({ variant: VARIANTS[variant], size: SIZES[size], fullWidth: width === "fill", className: isLoading ? `starci-core-button ${SKELETON_CLASS_NAME}` : "starci-core-button" })}
                 {...(unavailable ? {} : { href })}
                 {...(target === undefined ? {} : { target })}
                 {...(rel === undefined ? target === "_blank" ? { rel: "noopener noreferrer" } : {} : { rel })}
@@ -215,7 +215,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
             data-size={size}
             {...glyphSides}
             data-element="button"
-            data-loading={isSkeleton ? "true" : "false"}
+            data-loading={isLoading ? "true" : "false"}
             data-action-pending={isPending ? "true" : "false"}
             type={type}
             {...(form === undefined ? {} : { form })}
@@ -228,7 +228,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
             data-contract={width === "fill" ? "MEASURE-2" : undefined}
             fullWidth={width === "fill"}
             {...(props["aria-pressed"] === undefined ? {} : { "aria-pressed": props["aria-pressed"] })}
-            className={isSkeleton ? `starci-core-button ${SKELETON_CLASS_NAME}` : "starci-core-button"}
+            className={isLoading ? `starci-core-button ${SKELETON_CLASS_NAME}` : "starci-core-button"}
             {...(unavailable || onPress === undefined ? {} : { onPress })}
         >
             {content}

@@ -132,7 +132,7 @@ export const WorkflowsTableBlockBase = (props: WorkflowsTableBlockBaseProps) => 
     ]
     return (
         <SurfaceCard label={labels.title} headingLevel={2} fact={labels.fact}>
-            <SlotView slot={props.props.rows} placeholder={ROWS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(rows, isSkeleton) => (
+            <SlotView slot={props.props.rows} placeholder={ROWS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(rows, isLoading) => (
                     <DataTable<WorkflowRowView>
                         label={labels.title}
                         columns={columns}
@@ -140,8 +140,7 @@ export const WorkflowsTableBlockBase = (props: WorkflowsTableBlockBaseProps) => 
                         renderCell={(row, columnId) => <Cell row={row} columnId={columnId} />}
                         // The slot says empty before the table could; the table still names its own empty content.
                         emptyContent={<EmptyNotice message={labels.slot.empty} />}
-                        isLoading={isSkeleton}
-                        loadingRows={rows.length}
+                        isLoading={isLoading}
                         collapseBelow={COLLAPSE_BELOW}
                     />
                 )} />

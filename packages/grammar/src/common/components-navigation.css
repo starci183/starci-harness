@@ -1147,8 +1147,18 @@
         align-items: center;
         padding-inline: 0.5rem;
         padding-block: var(--grammar-inset-nested);
+        gap: 0.75rem;
         pointer-events: none;
     }
+
+    /* A skeleton option has the leading mark, the copy and the trailing node its ready option has. */
+    .starci-core-list-box-skeleton-option [data-grammar-list-copy] { flex: 1 1 auto; }
+    .starci-core-list-box-skeleton-option[data-grammar-list-size="sm"] { --grammar-list-leading-size: 2rem; }
+    .starci-core-list-box-skeleton-option[data-grammar-list-size="md"] { --grammar-list-leading-size: 2.5rem; }
+    .starci-core-list-box-skeleton-option[data-grammar-list-size="lg"] { --grammar-list-leading-size: 3rem; }
+    .starci-core-list-box-skeleton-option > [data-grammar-list-leading="true"] { inline-size: var(--grammar-list-leading-size); block-size: var(--grammar-list-leading-size); align-items: center; justify-content: center; }
+    .starci-core-list-box-skeleton-trailing { inline-size: 2.5rem; block-size: 1rem; }
+    .starci-core-list-box-skeleton-trailing > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
 
     .starci-core-list-box-skeleton-option .starci-core-list-box-label,
     .starci-core-list-box-skeleton-option .starci-core-list-box-description { display: block; }

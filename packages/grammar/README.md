@@ -187,7 +187,7 @@ label", in the graph's visually hidden edge list.
 `MermaidDiagram` renders Mermaid text (an article's `mermaid` fence) to SVG in the browser. Mermaid is imported on the
 first diagram that mounts, initialised with `theme: "base"`, `securityLevel: "strict"` and colours resolved from the
 root's semantic tokens (so family, theme and token overrides apply), and re-rendered when the root's theme changes.
-`height` (`sm` 16rem, `md` 24rem, `lg` 32rem) is the least canvas box every state keeps; `isSkeleton` draws that box
+`height` (`sm` 16rem, `md` 24rem, `lg` 32rem) is the least canvas box every state keeps; `isLoading` draws that box
 with a skeleton and loads nothing. A source Mermaid refuses becomes an error inside the same frame: an `Alert` with
 `errorTitle`, then the source as a `FencedCodeBlock`.
 
@@ -272,7 +272,7 @@ code with `label` or an existing label's `labelledBy`.
 
 `CopyField` is a read-only value with its copy action inside the field, at its end, as tall as every single-line
 field: `label`, `value`, `description`, `copyLabel`, `copiedLabel`, `copyErrorLabel` (the app's words), `onCopy`,
-`isDisabled`, `isSkeleton`. A long value is truncated in the middle, whole in a Tooltip on hover and focus and whole
+`isDisabled`, `isLoading`. A long value is truncated in the middle, whole in a Tooltip on hover and focus and whole
 for a screen reader. `masked` with `lastFour` draws bullets and the last four characters; its `onCopy` resolves the
 clear value (a server reveal may be async) and the field writes it to the clipboard without keeping it. `Grid kind="form"`
 lays fields in rows (`columns` 1 or 2, two once its own width holds them) whose controls stand on one line.
@@ -433,13 +433,13 @@ recipes to each family; the mobile app recipes reuse the fixed App shell with it
 The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
 surface band whose content sits in the page container of the content's `measure`, so both share their edges, and it ends
-in its own full-width separator, with or without tabs; tabs stand on it. `isSkeleton` keeps every slot's box.
+in its own full-width separator, with or without tabs; tabs stand on it. `isLoading` keeps every slot's box.
 
 `Page` is a route page and the one way an app draws one: `header` takes the head's slots as data (no element), the
 children are the body, and `measure` (`reading`, `product`, `full`) is the one measure of the header content and the
 body. The band runs full width; the body sits in the measure and gutter one region step below it (one region step
 from the top without a header), its sections a region step apart, and it clips past its content box so nothing in it
-reaches across the gutter. `isSkeleton` passes to the header. Page is the single owner of the page inset: the layout
+reaches across the gutter. `isLoading` passes to the header. Page is the single owner of the page inset: the layout
 frames (`WorkspaceShell`, `Grid`, `PaneGrid`) never wrap a page in a measure of their own. `PageHeader`, `PageContainer`, `Breadcrumbs` and `FillViewport` are Page's internals and are not exported.
 
 `Page chrome="bleed"` is an app surface: no gutter, no block padding, no clip, and the body is the viewport height left below the trail or the band (`minHeight` is the floor on a short window), so a card or a split in it fills the region.

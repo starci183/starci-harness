@@ -111,8 +111,6 @@ export type ListData = {
     readonly items: readonly ListRowData[]
     /** What the card shows when it has no rows. Required: every list answers for its empty state. */
     readonly empty: ReactNode
-    /** How many skeleton rows a loading card draws (default 3, 1 to 12). */
-    readonly loadingRows?: number
 }
 
 export type AccordionData = {

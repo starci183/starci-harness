@@ -35,7 +35,7 @@ export const OverviewPageBlockBase = (props: OverviewPageBlockBaseProps) => {
     return (
         <Page
             measure="full"
-            isSkeleton={counts.isLoading === true}
+            isLoading={counts.isLoading === true}
             header={{
                 title: labels.title,
                 description: (

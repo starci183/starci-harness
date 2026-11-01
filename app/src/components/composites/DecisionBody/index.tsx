@@ -5,7 +5,7 @@ import { Fragment, type ReactNode } from "react"
 export interface DecisionBodyProps {
     readonly label: string
     readonly paragraphs: readonly string[]
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /** `**bold**` and `code` spans of a body paragraph, as the semantic elements MarkdownArticle owns. */
@@ -21,7 +21,7 @@ export const DecisionBody = (props: DecisionBodyProps) => (
     <MarkdownArticle ariaLabel={props.label}>
         {props.paragraphs.map((paragraph, index) => (
             <p key={index}>
-                <Text as="span" isSkeleton={props.isSkeleton === true}>
+                <Text as="span" isLoading={props.isLoading === true}>
                     {inline(paragraph)}
                 </Text>
             </p>

@@ -44,7 +44,7 @@ type AlertBase = {
      * Unresolved banner (knowledge STATE-8): the same anatomy in the neutral tone, not announced (no status role), its
      * glyph, title, description and actions laid out unseen under shimmers, so it keeps the ready box (skeleton parity).
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /** A dismissible banner must name its close action; a permanent one has neither prop. */
@@ -91,9 +91,9 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
 export const Alert = (props: AlertProps) => {
-    const { title, description, tone: readyTone = "informative", action, urgency, appearance = "surface", isSkeleton = false } = props
-    const tone: PresentationState = isSkeleton ? "neutral" : readyTone
-    const unseen = (node: ReactNode) => isSkeleton ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
+    const { title, description, tone: readyTone = "informative", action, urgency, appearance = "surface", isLoading = false } = props
+    const tone: PresentationState = isLoading ? "neutral" : readyTone
+    const unseen = (node: ReactNode) => isLoading ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
     const [isDismissed, setIsDismissed] = useState(false)
     if (isDismissed) return null
 
@@ -111,7 +111,7 @@ export const Alert = (props: AlertProps) => {
             data-grammar-appearance={appearance}
             data-urgency={resolvedUrgency}
             data-contract="FEEDBACK-3"
-            {...(isSkeleton ? { "data-loading": "true", "aria-busy": true } : { role: resolvedUrgency === "assertive" ? "alert" : "status" })}
+            {...(isLoading ? { "data-loading": "true", "aria-busy": true } : { role: resolvedUrgency === "assertive" ? "alert" : "status" })}
             status={vendorStatusFor(tone)}
             className="starci-core-alert"
         >
@@ -128,7 +128,7 @@ export const Alert = (props: AlertProps) => {
                 <span className="starci-core-alert-actions" data-grammar-alert-actions="true" data-contract="FEEDBACK-2">
                     {action === undefined ? null : (
                         <Button
-                            isSkeleton={isSkeleton}
+                            isLoading={isLoading}
                             size="sm"
                             {...alertActionIntentFor(tone)}
                             onPress={action.onAction}
@@ -136,7 +136,7 @@ export const Alert = (props: AlertProps) => {
                         >{action.label}</Button>
                     )}
                     {props.dismissLabel === undefined ? null : (
-                        isSkeleton
+                        isLoading
                             ? <SkeletonPlaceholder shape="circle"><IconButton intent="dismiss" label={props.dismissLabel} size="sm" onPress={dismiss} /></SkeletonPlaceholder>
                             : <IconButton intent="dismiss" label={props.dismissLabel} size="sm" onPress={dismiss} />
                     )}

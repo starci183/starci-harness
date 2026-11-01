@@ -40,22 +40,22 @@ export const TaskContractBlockBase = (props: TaskContractBlockBaseProps) => {
     const { labels } = props.props
     return (
         <SurfaceCard label={labels.title} headingLevel={2}>
-            <SlotView slot={props.props.contract} placeholder={CONTRACT_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(contract, isSkeleton) => (
+            <SlotView slot={props.props.contract} placeholder={CONTRACT_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(contract, isLoading) => (
                     <div className="app-stack">
-                        <Text isSkeleton={isSkeleton}>{contract.summary}</Text>
+                        <Text isLoading={isLoading}>{contract.summary}</Text>
                         <TagGroup
                             label={labels.allowPaths}
                             size="sm"
                             items={contract.allowPaths.map((path) => ({ id: path, label: path }))}
                             emptyContent={
-                                <Text size="sm" tone="muted" isSkeleton={isSkeleton}>
+                                <Text size="sm" tone="muted" isLoading={isLoading}>
                                     {labels.anyPath}
                                 </Text>
                             }
                         />
                         <DescriptionList
                             isDivided
-                            isLoading={isSkeleton}
+                            isLoading={isLoading}
                             items={[
                                 { id: "deps", term: labels.deps, description: <KeyList keys={contract.dependsOn} noneLabel={labels.none} /> },
                                 { id: "record", term: labels.record, description: <KeyList keys={contract.record} noneLabel={labels.none} /> },

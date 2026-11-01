@@ -36,7 +36,7 @@ export interface ConfigFieldProps {
     readonly efforts: readonly EffortOption[]
     readonly words: ListEditorWords
     readonly isDisabled: boolean
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     /** A field hidden behind a column header keeps its label for assistive technology only. */
     readonly isLabelHidden?: boolean
     readonly onChange: (key: string, value: ConfigValue) => void
@@ -59,9 +59,9 @@ const helper = (key: string, description: string | null): ReactNode =>
 /** Composite: one editor per value type (number, checkbox, effort select, text, tag list, and JSON only for the rest). */
 export const ConfigField = (props: ConfigFieldProps) => {
     const { field } = props
-    const isSkeleton = props.isSkeleton === true
+    const isLoading = props.isLoading === true
     const error = field.error === null ? {} : { errorMessage: field.error }
-    const common = { label: field.label, isDisabled: props.isDisabled, isSkeleton }
+    const common = { label: field.label, isDisabled: props.isDisabled, isLoading }
     const description = props.isLabelHidden === true ? undefined : helper(field.configKey, field.description)
     switch (field.kind) {
         case "number":
@@ -120,7 +120,7 @@ export const ConfigField = (props: ConfigFieldProps) => {
                     list={field.list}
                     words={props.words}
                     isDisabled={props.isDisabled}
-                    isSkeleton={isSkeleton}
+                    isLoading={isLoading}
                     onChange={(items) => props.onChange(field.configKey, items)}
                 />
             )

@@ -43,14 +43,14 @@ const SEATS_PLACEHOLDER: readonly SeatView[] = ["s0", "s1", "s2", "s3"].map((id)
 export const SeatsBlockBase = (props: SeatsBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SlotView slot={props.props.seats} placeholder={SEATS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(seats, isSkeleton) => (
+        <SlotView slot={props.props.seats} placeholder={SEATS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(seats, isLoading) => (
                 <SurfaceCard
                     kind="list"
                     label={labels.title}
                     headingLevel={2}
-                    isSkeleton={isSkeleton}
+                    isLoading={isLoading}
                     labelEnd={
-                        <Text as="span" size="sm" tone="muted" isSkeleton={isSkeleton}>
+                        <Text as="span" size="sm" tone="muted" isLoading={isLoading}>
                             {labels.count}
                         </Text>
                     }

@@ -32,7 +32,7 @@ export type IconButtonProps = NoChildren & {
     readonly isFloating?: boolean
     readonly isActive?: boolean
     readonly isDisabled?: boolean
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     readonly onPress?: () => void
     /** A real destination: renders an anchor wearing the icon-button appearance (R7: it takes the intent of the command it stands for). */
     readonly href?: string
@@ -78,7 +78,7 @@ export const IconButton = ({
     isFloating = false,
     isActive = false,
     isDisabled = false,
-    isSkeleton = false,
+    isLoading = false,
     onPress,
     href,
     "aria-controls": controls,
@@ -89,9 +89,9 @@ export const IconButton = ({
 }: IconButtonProps) => {
     const variant = useButtonIntentVariant(intent, step, "iconButton") ?? "tertiary"
     const source = givenSource ?? DismissGlyph
-    const badgeText = isSkeleton ? null : iconButtonBadgeText(badge, badgeMax)
+    const badgeText = isLoading ? null : iconButtonBadgeText(badge, badgeMax)
     if (href !== undefined) {
-        const unavailable = isDisabled || isSkeleton
+        const unavailable = isDisabled || isLoading
         return (
             <HeroLink
                 data-tier="leaf"
@@ -101,15 +101,15 @@ export const IconButton = ({
                 data-variant={variant}
                 data-size={size}
                 data-floating={isFloating ? "true" : "false"}
-                data-loading={isSkeleton ? "true" : "false"}
+                data-loading={isLoading ? "true" : "false"}
                 data-element={unavailable ? "span" : "a"}
                 data-grammar-icon-button-badge={badgeText === null ? "none" : "present"}
                 isDisabled={unavailable}
                 aria-label={badgeText !== null && badgeLabel !== undefined ? `${label}, ${badgeLabel}` : label}
-                className={buttonVariants({ variant, isIconOnly: true, className: cn("starci-core-icon-button", isSkeleton ? SKELETON_CLASS_NAME : undefined) })}
+                className={buttonVariants({ variant, isIconOnly: true, className: cn("starci-core-icon-button", isLoading ? SKELETON_CLASS_NAME : undefined) })}
                 {...(unavailable ? {} : { href })}
             >
-                {isSkeleton ? null : <Icon source={source} usage="leading" />}
+                {isLoading ? null : <Icon source={source} usage="leading" />}
                 {badgeText === null ? null : <span aria-hidden className="starci-core-icon-button-badge" data-contract="TONE-2">{badgeText}</span>}
             </HeroLink>
         )
@@ -123,19 +123,19 @@ export const IconButton = ({
         data-variant={variant}
         data-size={size}
         data-floating={isFloating ? "true" : "false"}
-        data-loading={isSkeleton ? "true" : "false"}
+        data-loading={isLoading ? "true" : "false"}
         type="button"
         variant={variant}
-        className={cn("starci-core-icon-button", isSkeleton ? SKELETON_CLASS_NAME : undefined) ?? "starci-core-icon-button"}
+        className={cn("starci-core-icon-button", isLoading ? SKELETON_CLASS_NAME : undefined) ?? "starci-core-icon-button"}
         isIconOnly
-        isDisabled={isDisabled || isSkeleton}
+        isDisabled={isDisabled || isLoading}
         aria-label={badgeText !== null && badgeLabel !== undefined ? `${label}, ${badgeLabel}` : label}
         data-grammar-icon-button-badge={badgeText === null ? "none" : "present"}
         {...(controls === undefined ? {} : { "aria-controls": controls })}
         {...(expanded === undefined ? {} : { "aria-expanded": expanded })}
-        {...(isDisabled || isSkeleton || onPress === undefined ? {} : { onPress })}
+        {...(isDisabled || isLoading || onPress === undefined ? {} : { onPress })}
     >
-        {isSkeleton ? null : <Icon source={source} usage="leading" />}
+        {isLoading ? null : <Icon source={source} usage="leading" />}
         {badgeText === null ? null : <span aria-hidden className="starci-core-icon-button-badge" data-contract="TONE-2">{badgeText}</span>}
     </HeroButton>
     )

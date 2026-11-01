@@ -28,7 +28,7 @@ export const {{Name}}Base = (props: {{Name}}BaseProps) => (
             placeholder={{{NAME_UPPER}}_PLACEHOLDER}
             labels={props.props.slotLabels}
             onRetry={props.on.retry}
-            render={(item, isSkeleton) => {{readyTree}}}
+            render={(item, isLoading) => {{readyTree}}}
         />
     </SurfaceCard>
 )

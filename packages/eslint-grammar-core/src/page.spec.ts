@@ -53,7 +53,7 @@ test("R325: a page or layout owner draws one Page with nothing beside it and no 
       { filename: OWNER, code: `export const A = () => <><Page ${HEADER}><Card /></Page></>` },
       { filename: OWNER, code: `export const A = () => <FormProvider value={form}>\n  <Page ${HEADER}><Card /></Page>\n</FormProvider>` },
       // one Page per branch
-      { filename: OWNER, code: `export const A = ({ ready }) => ready ? <Page ${HEADER}><Card /></Page> : <Page ${HEADER} isSkeleton><Card /></Page>` },
+      { filename: OWNER, code: `export const A = ({ ready }) => ready ? <Page ${HEADER}><Card /></Page> : <Page ${HEADER} isLoading><Card /></Page>` },
       // the same names from another module are not the Grammar's parts
       { filename: BLOCK, code: "import { PageContainer } from \"./PageContainer\"\nexport const A = () => <PageContainer><Card /></PageContainer>" },
       // a layout owner that is a pure frame draws no Page and is never missing one

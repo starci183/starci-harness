@@ -62,7 +62,7 @@ export const DestinationAndStates: Story = {
     render: () => (
         <Matrix>
             <State label="Destinations follow the same intent"><G.Button intent="commit" href="#next">Continue</G.Button><G.Button intent="dismiss" href="#back">Back</G.Button></State>
-            <State label="Action state is independent of intent"><G.Button intent="commit" isPending>Saving</G.Button><G.Button intent="dismiss" isDisabled>Cancel</G.Button><G.Button intent="neutral" isSkeleton>Details</G.Button></State>
+            <State label="Action state is independent of intent"><G.Button intent="commit" isPending>Saving</G.Button><G.Button intent="dismiss" isDisabled>Cancel</G.Button><G.Button intent="neutral" isLoading>Details</G.Button></State>
         </Matrix>
     ),
 }

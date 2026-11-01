@@ -36,7 +36,8 @@ export const OwnerRequestBlock = () => {
     const [isPending, setIsPending] = useState(false)
 
     const projects = mapSlot(slotOfQuery(projectsQuery), (overview) => overview.projects.map(toProject))
-    const chosen = project ?? (projects.items?.length === 1 ? (projects.items[0]?.value ?? null) : null)
+    const projectItems = "items" in projects ? projects.items : undefined
+    const chosen = project ?? (projectItems?.length === 1 ? (projectItems[0]?.value ?? null) : null)
     const canSend = chosen !== null && text.trim() !== ""
 
     const submit = async () => {

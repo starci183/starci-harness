@@ -159,8 +159,8 @@ export const exhaustiveShapeSwitch = defineRule({
 
 // -- SLOT-1 -----------------------------------------------------------------------------------------
 
-/** The data-status props only SlotView takes; a lower unit gets `isSkeleton` and nothing else. */
-const STATUS_PROPS = new Set(["isLoading", "isError", "isForbidden", "isFailed", "failure"])
+/** The data-status props only SlotView takes; a lower unit gets `isLoading` (the one flag a leaf, branch or composite knows) and nothing else. */
+const STATUS_PROPS = new Set(["isError", "isForbidden", "isEmpty", "isValidating", "isFailed", "failure"])
 
 /** The units that own the status recipe: the status view itself and a route's loading page. */
 const isStatusOwner = (name: string): boolean => name === "SlotView" || /LoadingPage$/.test(name)
@@ -169,13 +169,13 @@ const isStatusOwner = (name: string): boolean => name === "SlotView" || /Loading
 export const noDataStatusProp = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "A unit other than SlotView (and a route LoadingPage) takes no `isLoading`, `isError`, `isForbidden`, `isFailed` or `failure` prop; a leaf takes only `isSkeleton`." },
+    docs: { description: "A unit other than SlotView (and a route LoadingPage) takes no `isError`, `isForbidden`, `isEmpty`, `isValidating`, `isFailed` or `failure` prop; a leaf, branch or composite takes only `isLoading`." },
     schema: [],
     messages: {
       status:
-        "`{{key}}` is a data status handed to `{{unit}}`. A read's status is a DataSlot rendered through SlotView in the region's place; the parts below it take `isSkeleton` and rest as themselves.",
+        "`{{key}}` is a data status handed to `{{unit}}`. A read's status is a DataSlot rendered through SlotView in the region's place; the parts below it take `isLoading` and rest as themselves.",
       leaf:
-        "`{{key}}` is a data status handed to the leaf `{{unit}}`. A leaf takes only `isSkeleton`: SlotView passes it while the region waits.",
+        "`{{key}}` is a data status handed to the leaf `{{unit}}`. A leaf takes only `isLoading`: SlotView passes it while the region waits.",
     },
   },
   create(context) {
@@ -198,7 +198,7 @@ export const noDataStatusProp = defineRule({
 const SWR_HOOK = /^use[A-Za-z0-9]*Swr$/
 
 /** The builders that fold a read into a DataSlot (`hooks/slot/slot.shared.ts`). */
-const SLOT_BUILDER = /^(?:slotOfSwr|mapSlot|loadingSlot|toSlot)$/
+const SLOT_BUILDER = /^(?:slotOfSwr|slotOfReads|useSlotOfReads|mapSlot|loadingSlot|toSlot)$/
 
 /** A region that reads data hands its Base a DataSlot, and the Base renders it through SlotView. */
 export const regionReadsThroughSlot = defineRule({

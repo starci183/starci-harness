@@ -43,14 +43,14 @@ export type PageHeaderProps = {
      * Draw the header as inert geometry while the subject is unresolved (STATE-8). Skeleton parity: `title`,
      * `description`, `meta`, `status`, `mark` and `actions` keep their slots and are laid out unseen as measured
      * placeholders under a shimmer, so the loading band has the ready band's box. The breadcrumbs and the tabs stay real
-     * (a crumb whose label is unknown takes its own `isSkeleton`); the root is `aria-busy`.
+     * (a crumb whose label is unknown takes its own `isLoading`); the root is `aria-busy`.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /** One slot, real or as its measured placeholder. */
-const slot = (content: ReactNode, isSkeleton: boolean, shape: "text" | "block" = "text") =>
-    isSkeleton ? <SkeletonPlaceholder shape={shape}>{content}</SkeletonPlaceholder> : content
+const slot = (content: ReactNode, isLoading: boolean, shape: "text" | "block" = "text") =>
+    isLoading ? <SkeletonPlaceholder shape={shape}>{content}</SkeletonPlaceholder> : content
 
 /**
  * The page header band: the trail, the page heading with its mark, status and summary, the page's commands, and the
@@ -72,16 +72,16 @@ export const PageHeader = ({
     actions,
     tabs,
     measure = "product",
-    isSkeleton = false,
+    isLoading = false,
 }: PageHeaderProps) => (
     <div
         className="starci-core-page-header"
         data-component="PageHeader"
         data-tier="frame"
-        data-contract={isSkeleton ? "MARGIN-5 STATE-8" : "MARGIN-5"}
+        data-contract={isLoading ? "MARGIN-5 STATE-8" : "MARGIN-5"}
         data-grammar-page-header="true"
         data-grammar-page-header-tabs={tabs === undefined ? "false" : "true"}
-        {...(isSkeleton ? { "data-grammar-skeleton": "true", "data-loading": "true", "aria-busy": true } : {})}
+        {...(isLoading ? { "data-grammar-skeleton": "true", "data-loading": "true", "aria-busy": true } : {})}
     >
         <PageContainerPart className="starci-core-page-header-body" data-contract="GAP-3 PADDING-5" measure={measure}>
             {breadcrumbs === undefined ? null : (
@@ -93,24 +93,24 @@ export const PageHeader = ({
             )}
             <div className="starci-core-page-header-row" data-contract="GAP-5">
                 <div className="starci-core-page-header-lead" data-contract="GAP-3">
-                    {mark === undefined ? null : <div className="starci-core-page-header-mark" aria-hidden={isSkeleton || undefined}>{slot(mark, isSkeleton, "block")}</div>}
+                    {mark === undefined ? null : <div className="starci-core-page-header-mark" aria-hidden={isLoading || undefined}>{slot(mark, isLoading, "block")}</div>}
                     <div className="starci-core-page-header-copy" data-contract="GAP-1">
                         <div className="starci-core-page-header-title-line" data-contract="GAP-2">
                             <h1
                                 className="starci-core-section-title starci-core-page-header-title"
                                 data-contract="FONT-4 MARGIN-0"
                                 {...(titleId === undefined ? {} : { id: titleId })}
-                                {...(isSkeleton ? { "aria-hidden": true } : {})}
+                                {...(isLoading ? { "aria-hidden": true } : {})}
                             >
-                                {slot(title, isSkeleton)}
+                                {slot(title, isLoading)}
                             </h1>
-                            {status === undefined ? null : <div className="starci-core-page-header-status" data-contract="GAP-2" aria-hidden={isSkeleton || undefined}>{slot(status, isSkeleton)}</div>}
+                            {status === undefined ? null : <div className="starci-core-page-header-status" data-contract="GAP-2" aria-hidden={isLoading || undefined}>{slot(status, isLoading)}</div>}
                         </div>
-                        {meta === undefined ? null : <div className="starci-core-page-header-meta" data-contract="FONT-1 TONE-2" aria-hidden={isSkeleton || undefined}>{slot(meta, isSkeleton)}</div>}
-                        {description === undefined ? null : <div className="starci-core-page-header-description" data-contract="FONT-2 TONE-2" aria-hidden={isSkeleton || undefined}>{slot(description, isSkeleton)}</div>}
+                        {meta === undefined ? null : <div className="starci-core-page-header-meta" data-contract="FONT-1 TONE-2" aria-hidden={isLoading || undefined}>{slot(meta, isLoading)}</div>}
+                        {description === undefined ? null : <div className="starci-core-page-header-description" data-contract="FONT-2 TONE-2" aria-hidden={isLoading || undefined}>{slot(description, isLoading)}</div>}
                     </div>
                 </div>
-                {actions === undefined ? null : <div className="starci-core-page-header-actions" data-contract="GAP-2" aria-hidden={isSkeleton || undefined}>{slot(actions, isSkeleton, "block")}</div>}
+                {actions === undefined ? null : <div className="starci-core-page-header-actions" data-contract="GAP-2" aria-hidden={isLoading || undefined}>{slot(actions, isLoading, "block")}</div>}
             </div>
             {tabs === undefined ? null : (
                 <div className="starci-core-page-header-tabs">

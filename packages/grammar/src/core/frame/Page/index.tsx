@@ -5,8 +5,8 @@ import { PaneGrid, type PaneGridProps } from "../PaneGrid/index.js"
 import { FillBox } from "./FillBox.js"
 import { PageHeader, type PageHeaderBreadcrumbs, type PageHeaderProps } from "../PageHeader/index.js"
 
-/** The page header Page draws: every `PageHeader` prop except the two Page owns, `measure` and `isSkeleton`. */
-export type PageHeaderContent = Omit<PageHeaderProps, "measure" | "isSkeleton">
+/** The page header Page draws: every `PageHeader` prop except the two Page owns, `measure` and `isLoading`. */
+export type PageHeaderContent = Omit<PageHeaderProps, "measure" | "isLoading">
 
 /**
  * A bleed page's trail without a band: the breadcrumbs alone, no heading and no other slot. A header that carries a
@@ -33,7 +33,7 @@ type PageCommonProps = {
     /** The page measure, shared by the header's content and (in `standard`) the body. Default `product`. */
     readonly measure?: PageContainerProps["measure"]
     /** Unresolved page subject (STATE-8): passed to the header, which keeps its slots' boxes. The body owns its own loading. */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /** A standard page: its header, when given, is the band with its heading. */
@@ -85,7 +85,7 @@ const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent
  * edge, under the trail alone or under a band.
  */
 export const Page = (props: PageProps) => {
-    const { chrome = "standard", header, children, measure = "product", isSkeleton = false } = props
+    const { chrome = "standard", header, children, measure = "product", isLoading = false } = props
     if (props.chrome === "panes" && !(isValidElement(children) && children.type === PaneGrid)) {
         throw new Error("PAGE_PANES_CHILD_NOT_PANE_GRID")
     }
@@ -101,7 +101,7 @@ export const Page = (props: PageProps) => {
             data-grammar-page-header={band === undefined ? "false" : "true"}
             data-grammar-page-trail={trail === undefined ? "false" : "true"}
         >
-            {band === undefined ? null : <PageHeader {...band} measure={chrome === "panes" ? "full" : measure} isSkeleton={isSkeleton} />}
+            {band === undefined ? null : <PageHeader {...band} measure={chrome === "panes" ? "full" : measure} isLoading={isLoading} />}
             {trail === undefined ? null : (
                 <div className="starci-core-page-trail" data-grammar-page-trail-row="true">
                     <Breadcrumbs label={trail.label} items={trail.items} {...(trail.onAction === undefined ? {} : { onAction: trail.onAction })} />

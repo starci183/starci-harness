@@ -20,7 +20,7 @@ export type StatusDotProps = NoChildren & {
      * Initial unresolved status (knowledge STATE-8). Skeleton parity: the same anatomy at the same size, painted as one
      * Skeleton block; `aria-hidden`, no Tooltip, nothing announced.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base()
@@ -72,8 +72,8 @@ const DotOnly = ({ tone, size, echo, label }: { readonly tone: StatusDotTone; re
  * expands and fades in the tone's light stop. The dot and the dot-size token are shared with `Badge isDot`, which is the form
  * with words.
  */
-export const StatusDot = ({ tone = "neutral", size = "md", "aria-label": label, echo = false, isSkeleton = false }: StatusDotProps) => {
-    if (isSkeleton) {
+export const StatusDot = ({ tone = "neutral", size = "md", "aria-label": label, echo = false, isLoading = false }: StatusDotProps) => {
+    if (isLoading) {
         return (
             <span aria-hidden="true" className={`starci-core-status-dot ${SKELETON_CLASS_NAME}`} data-tier="leaf" data-component="StatusDot" data-variant="static" data-tone={tone} data-size={size} data-loading="true">
                 <StatusDotMark tone={tone} />

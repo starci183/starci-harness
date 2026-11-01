@@ -36,8 +36,8 @@ export const InboxListBlockBase = (props: InboxListBlockBaseProps) => {
     const { labels, selectedKey, locale } = props.props
     return (
         <SurfaceCard ariaLabel={labels.card}>
-            <SlotView slot={props.props.decisions} placeholder={DECISIONS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(decisions, isSkeleton) => {
-                    const items: ListBoxItem[] = isSkeleton
+            <SlotView slot={props.props.decisions} placeholder={DECISIONS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(decisions, isLoading) => {
+                    const items: ListBoxItem[] = isLoading
                         ? []
                         : decisions.map((decision) => ({
                               id: decision.key,
@@ -61,8 +61,7 @@ export const InboxListBlockBase = (props: InboxListBlockBaseProps) => {
                                 const id = ids[0]
                                 if (id !== undefined) props.on.select(id)
                             }}
-                            isLoading={isSkeleton}
-                            loadingRows={decisions.length}
+                            isLoading={isLoading}
                         />
                     )
                 }} />

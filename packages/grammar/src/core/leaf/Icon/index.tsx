@@ -33,7 +33,7 @@ export type IconProps = NoChildren & {
     readonly usage?: IconUsage
     /** Omit for a decorative glyph; provide when the icon itself carries meaning. */
     readonly ariaLabel?: string
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /*
@@ -53,8 +53,8 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
  * The app resolves the glyph and Common owns its usage box. Contract: A11Y-2 (named once when it
  * carries meaning, `aria-hidden` when it does not).
  */
-export const Icon = ({ source: Source, usage = "chip", ariaLabel, isSkeleton = false }: IconProps) => {
-    if (isSkeleton) {
+export const Icon = ({ source: Source, usage = "chip", ariaLabel, isLoading = false }: IconProps) => {
+    if (isLoading) {
         // Skeleton parity: the resting glyph takes the same usage box as the glyph (`.starci-core-icon[data-usage]`).
         return <span data-tier="leaf" data-component="Icon" data-usage={usage} data-loading="true" aria-hidden className={SKELETON_CLASS_NAME} />
     }

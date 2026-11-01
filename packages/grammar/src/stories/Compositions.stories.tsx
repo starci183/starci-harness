@@ -194,11 +194,11 @@ export const PageBandPhone: Story = {
   },
 };
 
-const PageDemo = ({ withHeader, isSkeleton = false }: { readonly withHeader: boolean; readonly isSkeleton?: boolean }) => {
+const PageDemo = ({ withHeader, isLoading = false }: { readonly withHeader: boolean; readonly isLoading?: boolean }) => {
   const [tab, setTab] = useState('overview');
   return (
     <G.Page
-      isSkeleton={isSkeleton}
+      isLoading={isLoading}
       {...(withHeader ? {
         header: {
           breadcrumbs: { label: 'Breadcrumb', items: [{ id: 'connections', label: 'Connections', href: '#connections' }, { id: 'main', label: 'Main account' }] },
@@ -258,7 +258,7 @@ export const PageWithoutHeader: Story = {
 
 export const PageSkeleton: Story = {
   name: 'Page (skeleton passes to the header)',
-  render: () => <PageDemo withHeader isSkeleton />,
+  render: () => <PageDemo withHeader isLoading />,
   play: async ({ canvasElement }) => {
     await assertPage(canvasElement, true);
     await expect(canvasElement.querySelector('[data-component="PageHeader"]')?.getAttribute('aria-busy')).toBe('true');
@@ -944,8 +944,8 @@ export const MessageBubble: Story = {
         avatar={<G.IconTile source={BellGlyph} size="sm" />}
         isHighlight
         footer={<G.Button intent="alternative" size="sm" onPress={noop}>Approve draft</G.Button>} body={'Draft reply ready.\nIt keeps the original price.'} />
-      <G.MessageBubble isSkeleton side="outgoing" />
-      <G.MessageBubble isSkeleton rows={3} />
+      <G.MessageBubble isLoading side="outgoing" />
+      <G.MessageBubble isLoading hasAvatar />
     </div>
   ),
 };
@@ -959,7 +959,7 @@ export const Quote: Story = {
       <G.SurfaceCard ariaLabel="Reply source">
         <G.Quote source="Chat" byline="Zalo, 09:12" text={"Can the order for table 4 move to 19:30?"} />
       </G.SurfaceCard>
-      <G.Quote isSkeleton />
+      <G.Quote isLoading />
     </div>
   ),
 };

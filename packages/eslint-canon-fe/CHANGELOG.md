@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added: `no-hand-skeleton` is published (R367) and requested at error: an app draws no `Skeleton`, `ChatBubbleSkeletons` or `MessageBubbleSkeletons`, because the Grammar components draw their loading structure from `isLoading`. Changed: `no-data-status-prop` lets a leaf, branch or composite take `isLoading` (the one flag below SlotView) and refuses `isError`, `isForbidden`, `isEmpty`, `isValidating`; `slotOfReads` counts as a slot builder.
+
 - Removed: `NavigationFeatureNav` from the surface names and the bundled Core playbook (the component is gone; `TopBar` takes `subnavigation`).
 - Added: `tier-children` (R92): only a unit of `components/frames` takes `children`; a leaf takes `children: string`; a block, a composite and a branch take none (`children?: never`) and `PropsWithChildren` is refused there.
 - Added: `no-swr-default-array`, `no-foreign-slot-status`, `no-validating-as-loading`, `no-placeholder-object` (R367; `FE_SWR_DEFAULT_ARRAY`, `FE_FOREIGN_SLOT_STATUS`, `FE_VALIDATING_AS_LOADING`, `FE_PLACEHOLDER_OBJECT`): a loading state is drawn from the page's own reads. `no-hand-skeleton` is written and tested but not published until the Grammar owns the loading shape.

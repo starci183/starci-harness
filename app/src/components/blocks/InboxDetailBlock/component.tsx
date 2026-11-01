@@ -64,11 +64,11 @@ const DECISION_PLACEHOLDER: DecisionView = {
     command: "",
 }
 
-type PartProps = InboxDetailBlockBaseProps & { readonly decision: DecisionView; readonly isSkeleton: boolean }
+type PartProps = InboxDetailBlockBaseProps & { readonly decision: DecisionView; readonly isLoading: boolean }
 
 /** The command line under either shape. */
-const CommandLine = ({ decision, labels, isSkeleton }: { readonly decision: DecisionView; readonly labels: InboxDetailBlockLabels; readonly isSkeleton: boolean }) => (
-    <Text size="xs" tone="muted" isSkeleton={isSkeleton}>
+const CommandLine = ({ decision, labels, isLoading }: { readonly decision: DecisionView; readonly labels: InboxDetailBlockLabels; readonly isLoading: boolean }) => (
+    <Text size="xs" tone="muted" isLoading={isLoading}>
         {labels.commandPrefix} <Code>{decision.command}</Code> {labels.commandSuffix}
     </Text>
 )
@@ -93,7 +93,7 @@ const RulingForm = (props: PartProps) => {
                 value={props.props.note}
                 onValueChange={props.on.setNote}
                 isDisabled={props.props.isPending}
-                isSkeleton={props.isSkeleton}
+                isLoading={props.isLoading}
             />
             {refusal === null ? null : <Alert key={refusal.n} tone="negative" title={refusal.title} description={refusal.description} />}
             <div className="app-pair">
@@ -103,12 +103,12 @@ const RulingForm = (props: PartProps) => {
                         onPress={props.on.send}
                         isDisabled={!props.props.canSend}
                         isPending={props.props.isPending}
-                        isSkeleton={props.isSkeleton}
+                        isLoading={props.isLoading}
                     >
                         {labels.send}
                     </Button>
                 </span>
-                <CommandLine decision={props.decision} labels={labels} isSkeleton={props.isSkeleton} />
+                <CommandLine decision={props.decision} labels={labels} isLoading={props.isLoading} />
             </div>
         </>
     )
@@ -127,7 +127,7 @@ const RuledSummary = (props: PartProps) => {
                 ]}
             />
             <Alert tone="affirmative" title={labels.sent} description={labels.ruledHint} />
-            <CommandLine decision={props.decision} labels={labels} isSkeleton={props.isSkeleton} />
+            <CommandLine decision={props.decision} labels={labels} isLoading={props.isLoading} />
         </>
     )
 }
@@ -136,14 +136,14 @@ const RuledSummary = (props: PartProps) => {
 export const InboxDetailBlockBase = (props: InboxDetailBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SlotView slot={props.props.decision} placeholder={DECISION_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(decision, isSkeleton) => {
+        <SlotView slot={props.props.decision} placeholder={DECISION_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(decision, isLoading) => {
                 let action
                 switch (props.shape) {
                     case "ruling":
-                        action = <RulingForm {...props} decision={decision} isSkeleton={isSkeleton} />
+                        action = <RulingForm {...props} decision={decision} isLoading={isLoading} />
                         break
                     case "ruled":
-                        action = <RuledSummary {...props} decision={decision} isSkeleton={isSkeleton} />
+                        action = <RuledSummary {...props} decision={decision} isLoading={isLoading} />
                         break
                 }
                 return (
@@ -152,13 +152,13 @@ export const InboxDetailBlockBase = (props: InboxDetailBlockBaseProps) => {
                         headingLevel={2}
                         {...(decision.raised === "" ? {} : { fact: decision.raised })}
                         labelEnd={
-                            <Badge tone={decision.kind.tone} isSkeleton={isSkeleton}>
+                            <Badge tone={decision.kind.tone} isLoading={isLoading}>
                                 {decision.kind.label}
                             </Badge>
                         }
                     >
                         <div className="app-stack">
-                            <DecisionBody label={labels.body} paragraphs={decision.paragraphs} isSkeleton={isSkeleton} />
+                            <DecisionBody label={labels.body} paragraphs={decision.paragraphs} isLoading={isLoading} />
                             {action}
                         </div>
                     </SurfaceCard>

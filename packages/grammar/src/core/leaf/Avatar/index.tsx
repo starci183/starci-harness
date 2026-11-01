@@ -33,7 +33,7 @@ export type AvatarProps = NoChildren & {
     readonly isDecorative?: boolean
     readonly isCurrent?: boolean
     /** Unresolved identity: an unnamed Skeleton; the owner carries aria-busy (STATE-8). */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /** First and last whitespace-delimited word; a one-word name contributes one initial. */
@@ -111,9 +111,9 @@ export const AvatarAgentBadge = ({ children, kind, size, renderedScale = 1, clas
 )
 
 /** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
-export const Avatar = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, isSkeleton = false }: AvatarProps) => {
+export const Avatar = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, isLoading = false }: AvatarProps) => {
     const avatarClassName = "starci-core-avatar"
-    if (isSkeleton) return (
+    if (isLoading) return (
         <span aria-hidden="true" className={"starci-core-avatar starci-core-avatar-skeleton"}
             data-component="Avatar" data-contract="STATE-8" data-tier="leaf" data-grammar-avatar-size={size}
             data-grammar-avatar-shape={shape} data-grammar-current="false" data-grammar-skeleton="true">

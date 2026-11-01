@@ -1,5 +1,9 @@
+"use client"
+
 import { useId, type ReactNode } from "react"
 import { ListRow } from "../../composite/ListRow/index.js"
+import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import { ErrorView, LOADING_ROWS, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
 import type { ListRowData } from "../../surfaceCardData.js"
 import { SectionHead, type SectionHeadProps } from "./head.js"
 
@@ -21,29 +25,45 @@ type ListSection = {
     readonly empty: ReactNode
     /** The row that narrows the list: a `FilterButtonGroup` and a `SearchField`. Drawn between the head and the rows. */
     readonly filter?: ReactNode
-    /** How many placeholder rows the loading list draws. Default 3. */
-    readonly loadingRows?: number
 }
 
-export type SectionProps = SectionHeadProps & (RegionSection | ListSection)
+/** The status every section takes from its read (contexts/ui/loading.md). */
+type SectionStatus = {
+    /**
+     * The first read has no data yet (knowledge STATE-8). The head keeps its title and draws `description`, `meta` and
+     * `action` as geometry; the count is hidden; the rows are drawn from the rows given (the block's same-shape placeholder)
+     * or a default few; a region's children follow. A refresh that already has data is not loading. Inside a loading
+     * region the section follows the region.
+     */
+    readonly isLoading?: boolean
+    /** The read failed: the head stays and this takes the place of the body. Loading comes first, then error, then empty. */
+    readonly error?: ErrorData
+}
 
-const listRows = (props: ListSection, isSkeleton: boolean) => {
-    if (isSkeleton) {
-        const count = props.loadingRows ?? 3
-        return Array.from({ length: count }, (_, index) => <ListRow key={index} row={{ id: String(index), title: " ", description: " " }} isSkeleton />)
+export type SectionProps = SectionHeadProps & SectionStatus & (RegionSection | ListSection)
+
+const listRows = (props: ListSection, isLoading: boolean) => {
+    if (isLoading && props.items.length === 0) {
+        return Array.from({ length: LOADING_ROWS }, (_, index) => <ListRow key={index} row={{ id: String(index), title: " ", description: " " }} isLoading />)
     }
-    return props.items.map((row) => <ListRow key={row.id} row={row} />)
+    return props.items.map((row) => <ListRow key={row.id} row={row} isLoading={isLoading} />)
 }
 
-const ListBody = ({ list, isSkeleton }: { readonly list: ListSection; readonly isSkeleton: boolean }) => {
+const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; readonly isLoading: boolean; readonly error: ErrorData | undefined }) => {
     const ordered = list.items.length > 0 && list.items.every((item) => item.leading?.position !== undefined)
     const Rows = ordered ? "ol" : "ul"
+    const filter = list.filter === undefined ? null : (
+        <div className="starci-core-section-filter" data-contract="GAP-2">
+            {isLoading ? <SkeletonPlaceholder shape="block">{list.filter}</SkeletonPlaceholder> : list.filter}
+        </div>
+    )
+    if (!isLoading && error !== undefined) return <>{filter}<ErrorView error={error} /></>
     return (
         <>
-            {list.filter === undefined || isSkeleton ? null : <div className="starci-core-section-filter" data-contract="GAP-2">{list.filter}</div>}
-            {!isSkeleton && list.items.length === 0 ? list.empty : (
+            {filter}
+            {!isLoading && list.items.length === 0 ? list.empty : (
                 <Rows className="starci-core-section-list" data-contract="MARGIN-0 PADDING-0 GAP-0">
-                    {listRows(list, isSkeleton)}
+                    {listRows(list, isLoading)}
                 </Rows>
             )}
         </>
@@ -60,18 +80,20 @@ const ListBody = ({ list, isSkeleton }: { readonly list: ListSection; readonly i
  * is a `SurfaceCard kind="list"`, not a section.
  */
 export const Section = (props: SectionProps) => {
-    const { title, description, count, meta, action, headingLevel = 2, id, isSkeleton = false } = props
+    const { title, description, count, meta, action, headingLevel = 2, id, error } = props
+    const isLoading = useIsLoading(props.isLoading)
+    const failed = !isLoading && error !== undefined
     const headingId = useId()
     return (
         <section
             id={id}
             aria-labelledby={headingId}
-            aria-busy={isSkeleton ? true : undefined}
+            aria-busy={isLoading ? true : undefined}
             className="starci-core-section"
             data-component="Section"
             data-tier="frame"
             data-grammar-section-kind={props.kind === "list" ? "list" : "region"}
-            data-grammar-skeleton={isSkeleton ? "true" : undefined}
+            data-grammar-skeleton={isLoading ? "true" : undefined}
             data-contract="GAP-4 MARGIN-0 PADDING-0"
         >
             <SectionHead
@@ -79,12 +101,14 @@ export const Section = (props: SectionProps) => {
                 level={headingLevel}
                 title={title}
                 description={description}
-                count={count}
+                count={failed ? undefined : count}
                 meta={meta}
                 action={action}
-                isSkeleton={isSkeleton}
+                isLoading={isLoading}
             />
-            {props.kind === "list" ? <ListBody list={props} isSkeleton={isSkeleton} /> : props.children}
+            {props.kind === "list"
+                ? <ListBody list={props} isLoading={isLoading} error={error} />
+                : failed ? <ErrorView error={error} /> : <LoadingScope isLoading={isLoading}>{props.children}</LoadingScope>}
         </section>
     )
 }

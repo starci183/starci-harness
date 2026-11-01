@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { codemodMain as buttonIntentMain } from './button-intent.mjs';
 import { migratePageNavigation, pageNavigationMarkdown } from './page-navigation.mjs';
+import { loadingStatesMarkdown, migrateLoadingStates } from './loading-states.mjs';
 import { migrateSectionFrame, sectionFrameMarkdown } from './section-frame.mjs';
 import { migrateSmallRenames, smallRenamesMarkdown } from './small-renames.mjs';
 import { migrateSpacingRoles, spacingRolesMarkdown } from './spacing-roles.mjs';
@@ -10,9 +11,9 @@ import { migrateThemeTokens, themeTokensMarkdown } from './theme-tokens.mjs';
 import { migrateTierBinding, tierBindingMarkdown } from './tier-binding.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding']);
+export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states']);
 
-/** The arguments of `starci app codemod spacing-roles`, `theme-tokens`, `small-renames`, `page-navigation`, `section-frame` and `surface-card-kinds`: --execute, --json, --format and --out; any other is refused. */
+/** The arguments of `starci app codemod spacing-roles`, `theme-tokens`, `small-renames`, `page-navigation`, `section-frame`, `surface-card-kinds`, `tier-binding` and `loading-states`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
   const options: { write: boolean; format: 'json' | 'markdown'; out?: string } = { write: false, format: 'markdown' };
   const args = argv.values();
@@ -35,7 +36,7 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 }
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
-function runCodemod(name: 'spacing-roles' | 'theme-tokens' | 'small-renames' | 'page-navigation' | 'section-frame' | 'surface-card-kinds' | 'tier-binding', root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+function runCodemod(name: 'spacing-roles' | 'theme-tokens' | 'small-renames' | 'page-navigation' | 'section-frame' | 'surface-card-kinds' | 'tier-binding' | 'loading-states', root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
   if (name === 'theme-tokens') {
     const report = migrateThemeTokens({ root, write });
     return { report, markdown: themeTokensMarkdown(report) };
@@ -56,6 +57,10 @@ function runCodemod(name: 'spacing-roles' | 'theme-tokens' | 'small-renames' | '
     const report = migrateSectionFrame({ root, write });
     return { report, markdown: sectionFrameMarkdown(report) };
   }
+  if (name === 'loading-states') {
+    const report = migrateLoadingStates({ root, write });
+    return { report, markdown: loadingStatesMarkdown(report) };
+  }
   if (name === 'small-renames') {
     const report = migrateSmallRenames({ root, write });
     return { report, markdown: smallRenamesMarkdown(report) };
@@ -71,7 +76,7 @@ function runCodemod(name: 'spacing-roles' | 'theme-tokens' | 'small-renames' | '
 export function codemodMain(argv: string[], io: { cwd: string; stdout: (text: string) => unknown }): number {
   const [name, ...rest] = argv;
   if (name === 'button-intent') return buttonIntentMain(argv, io);
-  if (name !== 'spacing-roles' && name !== 'theme-tokens' && name !== 'small-renames' && name !== 'page-navigation' && name !== 'section-frame' && name !== 'surface-card-kinds' && name !== 'tier-binding') throw new Error(`starci app codemod takes ${CODEMODS.join(' or ')}`);
+  if (name !== 'spacing-roles' && name !== 'theme-tokens' && name !== 'small-renames' && name !== 'page-navigation' && name !== 'section-frame' && name !== 'surface-card-kinds' && name !== 'tier-binding' && name !== 'loading-states') throw new Error(`starci app codemod takes ${CODEMODS.join(' or ')}`);
   const options = spacingRolesArguments(rest);
   if (options.out && !/\.(?:json|md)$/i.test(options.out)) throw new Error('--out needs a .json or .md report file');
   const root = path.resolve(io.cwd);

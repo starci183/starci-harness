@@ -50,7 +50,7 @@ const placeholderProvider = (id: string): ProviderView => ({
 const PROVIDERS_PLACEHOLDER: readonly ProviderView[] = ["p0", "p1", "p2", "p3"].map(placeholderProvider)
 
 /** What a provider row holds under its name: the quota meter, the windows with the reset countdown, and the running seats. */
-const ProviderDetail = ({ provider, locale, isSkeleton }: { readonly provider: ProviderView; readonly locale: string; readonly isSkeleton: boolean }) => (
+const ProviderDetail = ({ provider, locale, isLoading }: { readonly provider: ProviderView; readonly locale: string; readonly isLoading: boolean }) => (
     <div className="app-pair">
             <Meter
                 label={provider.quotaLabel}
@@ -58,9 +58,9 @@ const ProviderDetail = ({ provider, locale, isSkeleton }: { readonly provider: P
                 tone={provider.meterTone}
                 valueLabel={provider.usageText}
                 isLabelHidden
-                isSkeleton={isSkeleton}
+                isLoading={isLoading}
             />
-            <Text as="p" size="xs" tone="muted" isSkeleton={isSkeleton}>
+            <Text as="p" size="xs" tone="muted" isLoading={isLoading}>
                 {provider.windows}
                 {provider.reset === null ? null : (
                     <>
@@ -77,7 +77,7 @@ const ProviderDetail = ({ provider, locale, isSkeleton }: { readonly provider: P
                     </>
                 )}
             </Text>
-            <Text as="p" size="xs" isSkeleton={isSkeleton}>
+            <Text as="p" size="xs" isLoading={isLoading}>
                 {provider.running}
             </Text>
     </div>
@@ -87,19 +87,19 @@ const ProviderDetail = ({ provider, locale, isSkeleton }: { readonly provider: P
 export const ProvidersBlockBase = (props: ProvidersBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(providers, isSkeleton) => (
+        <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(providers, isLoading) => (
                 <SurfaceCard
                     kind="list"
                     label={labels.title}
                     headingLevel={2}
                     fact={labels.fact}
-                    isSkeleton={isSkeleton}
+                    isLoading={isLoading}
                     empty={<EmptyNotice message={labels.slot.empty} />}
                     items={providers.map((provider) => ({
                         id: provider.id,
                         title: provider.name,
                         badges: [{ label: provider.circuit.label, tone: provider.circuit.tone, isDot: true }],
-                        detail: <ProviderDetail provider={provider} locale={labels.locale} isSkeleton={isSkeleton} />,
+                        detail: <ProviderDetail provider={provider} locale={labels.locale} isLoading={isLoading} />,
                     }))}
                 />
             )} />

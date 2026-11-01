@@ -1,2 +1,3 @@
-export { loadingSlot, mapSlot, slotOfQuery } from "./slot.shared"
+export { loadingSlot, mapSlot, slotOfQuery, slotOfReads, type SlotSource } from "./slot.shared"
 export { useSlotLabels } from "./useSlotLabels"
+export { useSlotOfReads } from "./useSlotOfReads"

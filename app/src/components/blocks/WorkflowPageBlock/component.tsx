@@ -190,10 +190,10 @@ export const WorkflowPageBlockBase = (props: WorkflowPageBlockBaseProps) => {
                     {props.body}
                 </Page>
             )}
-            onRetry={props.on.retry} render={(header, isSkeleton) => (
+            onRetry={props.on.retry} render={(header, isLoading) => (
                 <Page
                     measure="full"
-                    isSkeleton={isSkeleton}
+                    isLoading={isLoading}
                     header={{
                         breadcrumbs: {
                             label: labels.trail.label,

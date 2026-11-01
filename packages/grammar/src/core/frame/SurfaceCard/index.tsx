@@ -7,6 +7,7 @@ import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { assertPresentationState, treatmentFor, type PresentationState } from "../../state.js"
 import type {
     AccordionData,
+    AccordionRowData,
     Band,
     BadgeData,
     CardHead,
@@ -25,6 +26,7 @@ import { Button } from "../../leaf/Button/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Image } from "../../leaf/Image/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import { ErrorView, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
@@ -96,8 +98,13 @@ type ActionOnly = { readonly action?: ItemAction; readonly wholeAction?: undefin
 type Shell = {
     /** A note under the card: the same small muted line, full width. */
     readonly footer?: ReactNode
-    /** Unresolved content (knowledge STATE-8): the card keeps its ready geometry. */
-    readonly isSkeleton?: boolean
+    /**
+     * The first read has no data yet (knowledge STATE-8): the card keeps its ready geometry, drawn from the content it was
+     * given, with the label kept. A refresh that has data is not loading. A card inside a loading region follows the region.
+     */
+    readonly isLoading?: boolean
+    /** The read failed: the card keeps its label and draws this in place of its content. Loading comes first, then error, then empty. */
+    readonly error?: ErrorData
     /** Draw one accent sweep behind this card; use for one featured card only. */
     readonly isHighlight?: boolean
     /** How the subject is doing; paints nothing new, exposes `data-grammar-state` for the family. */
@@ -175,8 +182,8 @@ const OrbitMotif = () => (
     </svg>
 )
 
-const TileMarkView = ({ mark, isSkeleton }: { readonly mark: TileMark; readonly isSkeleton: boolean }) => {
-    if (isSkeleton) return <span className="starci-core-tile-mark" data-grammar-tile-mark="skeleton"><SkeletonPlaceholder shape="block"><span className="starci-core-tile-mark-fill" /></SkeletonPlaceholder></span>
+const TileMarkView = ({ mark, isLoading }: { readonly mark: TileMark; readonly isLoading: boolean }) => {
+    if (isLoading) return <span className="starci-core-tile-mark" data-grammar-tile-mark="skeleton"><SkeletonPlaceholder shape="block"><span className="starci-core-tile-mark-fill" /></SkeletonPlaceholder></span>
     if (mark.logo !== undefined) {
         return <span className="starci-core-tile-mark" data-grammar-tile-mark="logo"><Image src={mark.logo.src} alt={mark.logo.alt} aspect="square" fit="contain" plate="none" /></span>
     }
@@ -184,7 +191,7 @@ const TileMarkView = ({ mark, isSkeleton }: { readonly mark: TileMark; readonly 
     return <span className="starci-core-tile-mark" data-grammar-tile-mark="avatar"><Avatar {...mark.avatar} size="control" isDecorative /></span>
 }
 
-const BandView = ({ band, isSkeleton }: { readonly band: Band | Collection; readonly isSkeleton: boolean }) => {
+const BandView = ({ band, isLoading }: { readonly band: Band | Collection; readonly isLoading: boolean }) => {
     switch (band.kind) {
         case "body":
             return (
@@ -194,17 +201,21 @@ const BandView = ({ band, isSkeleton }: { readonly band: Band | Collection; read
                 </div>
             )
         case "figures":
-            return <div className={surfaceBandClassName} data-grammar-band="figures"><FigureCells items={band.items} isSkeleton={isSkeleton} /></div>
+            return <div className={surfaceBandClassName} data-grammar-band="figures"><FigureCells items={band.items} isLoading={isLoading} /></div>
         case "media":
             return <div className={surfaceBandClassName} data-grammar-band="media">{band.artwork}</div>
         case "list":
-            return <div className={surfaceBandClassName} data-grammar-band="list"><ListRows data={band} isSkeleton={isSkeleton} /></div>
+            return <div className={surfaceBandClassName} data-grammar-band="list"><ListRows data={band} isLoading={isLoading} /></div>
         case "accordion":
-            return <div className={surfaceBandClassName} data-grammar-band="accordion"><AccordionRows data={band} isSkeleton={isSkeleton} /></div>
+            return <div className={surfaceBandClassName} data-grammar-band="accordion"><AccordionRows data={band} isLoading={isLoading} /></div>
     }
 }
 
 const kindOf = (props: SurfaceCardProps) => props.kind ?? "body"
+
+/** A figures card given no figure while it loads draws three cells; the block's same-shape placeholder replaces this. */
+const PLACEHOLDER_FIGURES: readonly Figure[] = [1, 2, 3].map((n) => ({ id: `loading-${n}`, term: " ", value: "0000" }))
+const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) => ({ id: `loading-${n}`, title: "Loading", body: null, isOpen: false }))
 
 /**
  * The one card: a bounded object with its own face (COLLECTION-2). What it holds is its `kind`, a discriminated
@@ -225,7 +236,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const state = props.state ?? "neutral"
     assertPresentationState(state)
     const stateTreatment = treatmentFor(state)
-    const isSkeleton = props.isSkeleton === true
+    const isLoading = useIsLoading(props.isLoading)
     const height = props.height ?? (props.kind === "tile" ? "fill" : "auto")
     const disabled = state === "unavailable" || state === "pending"
     const isTile = props.kind === "tile"
@@ -263,31 +274,32 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
         />
     ) : null
 
+    const failure = isLoading ? undefined : props.error
     const face = (() => {
         switch (props.kind) {
             case "figures":
-                return <FigureCells items={props.items} isSkeleton={isSkeleton} />
+                return <FigureCells items={isLoading && props.items.length === 0 ? PLACEHOLDER_FIGURES : props.items} isLoading={isLoading} />
             case "list":
-                return <ListRows data={props} isSkeleton={isSkeleton} ariaLabel={accessibleName} />
+                return <ListRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "accordion":
-                return <AccordionRows data={props} isSkeleton={isSkeleton} />
+                return <AccordionRows data={isLoading && props.items.length === 0 ? { ...props, items: PLACEHOLDER_DISCLOSURES } : props} isLoading={isLoading} />
             case "bands":
-                return props.bands.map((band, index) => <BandView key={`${band.kind}-${index}`} band={band} isSkeleton={isSkeleton} />)
+                return props.bands.map((band, index) => <BandView key={`${band.kind}-${index}`} band={band} isLoading={isLoading} />)
             case "tile":
                 return (
                     <div className={tileClassName} data-grammar-tile="true">
-                        <TileMarkView mark={props.mark} isSkeleton={isSkeleton} />
+                        <TileMarkView mark={props.mark} isLoading={isLoading} />
                         <span className="starci-core-tile-copy" data-contract="GAP-1">
-                            <Label as={`h${headingLevel}`} id={headingId} isSkeleton={isSkeleton}>{props.name}</Label>
+                            <Label as={`h${headingLevel}`} id={headingId} isLoading={isLoading}>{props.name}</Label>
                             {props.description === undefined ? null : (
-                                <span className="starci-core-tile-description" data-contract="TONE-2 FONT-2">{isSkeleton ? <SkeletonPlaceholder>{props.description}</SkeletonPlaceholder> : props.description}</span>
+                                <span className="starci-core-tile-description" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{props.description}</SkeletonPlaceholder> : props.description}</span>
                             )}
                         </span>
                         {
                             // The foot row always holds its height, so a row of tiles reads even whether or not each has a status or an action.
                             <ButtonPlacementProvider placement="item">
                                 <span className="starci-core-tile-foot" data-contract="GAP-2">
-                                    {props.badge === undefined ? <span /> : isSkeleton ? (
+                                    {props.badge === undefined ? <span /> : isLoading ? (
                                         // A loading tile shows no real status: the placeholder is laid out from the status's own words.
                                         <SkeletonPlaceholder shape="block"><Badge tone="neutral">{props.badge.label}</Badge></SkeletonPlaceholder>
                                     ) : props.badge.isDot === true
@@ -295,8 +307,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                                         : <Badge tone={props.badge.tone ?? "neutral"}>{props.badge.label}</Badge>}
                                     {props.action === undefined ? null : (
                                         props.action.href === undefined
-                                            ? <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isSkeleton={isSkeleton} onPress={props.action.press}>{props.action.label}</Button>
-                                            : <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isSkeleton={isSkeleton} href={props.action.href}>{props.action.label}</Button>
+                                            ? <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isLoading={isLoading} onPress={props.action.press}>{props.action.label}</Button>
+                                            : <Button size="sm" intent={props.action.intent ?? "neutral"} isDisabled={props.action.isDisabled === true} isLoading={isLoading} href={props.action.href}>{props.action.label}</Button>
                                     )}
                                 </span>
                             </ButtonPlacementProvider>
@@ -304,7 +316,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                     </div>
                 )
             default:
-                return body?.children
+                return body === undefined ? null : <LoadingScope isLoading={isLoading}>{body.children}</LoadingScope>
         }
     })()
 
@@ -312,7 +324,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
         <Card.Content
             aria-label={labelled === undefined && !isTile ? accessibleName : undefined}
             aria-labelledby={labelled !== undefined || isTile ? headingId : undefined}
-            aria-busy={isSkeleton || undefined}
+            aria-busy={isLoading || undefined}
             className={surfaceClassName}
             data-contract={contentContract}
             data-grammar-accent-corner={body?.accentCorner}
@@ -342,7 +354,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 data-grammar-surface-content="true"
                 isScrollable={false}
             >
-                {face}
+                {failure === undefined ? face : <ErrorView error={failure} />}
             </VerticalScrollRegionPart>
             {action}
         </Card.Content>

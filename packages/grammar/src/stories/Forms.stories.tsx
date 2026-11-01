@@ -55,7 +55,7 @@ export const Input: Story = {
         <G.Input id="input-disabled" name="disabled" label="Workspace" isDisabled defaultValue="Locked value" />
       </State>
       <State label="Skeleton (pending)" direction="column">
-        <G.Input id="input-skeleton" name="skeleton" label="Loading" isSkeleton />
+        <G.Input id="input-skeleton" name="skeleton" label="Loading" isLoading />
       </State>
     </Matrix>
   ),
@@ -151,8 +151,8 @@ export const Textarea: Story = {
       <State label="Default" direction="column">
         <G.Textarea label="Bio" description="A sentence or two." placeholder="Tell people about yourself" rows={3} />
       </State>
-      <State label="Loading (isSkeleton)" direction="column">
-        <G.Textarea label="Bio" rows={3} isSkeleton />
+      <State label="Loading (isLoading)" direction="column">
+        <G.Textarea label="Bio" rows={3} isLoading />
       </State>
       <State label="Invalid" direction="column">
         <G.Textarea label="Bio" isInvalid errorMessage="Keep it under 20 characters." defaultValue="This bio is a little too long." maxLength={20} />
@@ -168,8 +168,8 @@ export const Textarea: Story = {
 export const SearchField: Story = {
   render: () => (
     <Matrix maxWidth={formColumn}>
-      <State label="Loading (isSkeleton)" direction="column">
-        <G.SearchField label="Search" isSkeleton />
+      <State label="Loading (isLoading)" direction="column">
+        <G.SearchField label="Search" isLoading />
       </State>
       <State label="Default" direction="column">
         <G.SearchField label="Search" isLabelHidden placeholder="Search lessons" clearLabel="Clear search" />
@@ -193,8 +193,8 @@ export const SearchField: Story = {
 export const NumberField: Story = {
   render: () => (
     <Matrix maxWidth={formColumn}>
-      <State label="Loading (isSkeleton)" direction="column">
-        <G.NumberField label="Seats" isSkeleton />
+      <State label="Loading (isLoading)" direction="column">
+        <G.NumberField label="Seats" isLoading />
       </State>
       <State label="Default" direction="column">
         <G.NumberField label="Seats" defaultValue={3} minValue={1} maxValue={50} />
@@ -238,8 +238,8 @@ export const Checkbox: Story = {
 export const CheckboxGroup: Story = {
   render: () => (
     <Matrix maxWidth={formColumn}>
-      <State label="Loading (isSkeleton)" direction="column">
-        <G.CheckboxGroup label="Notifications" options={choiceOptions} isSkeleton />
+      <State label="Loading (isLoading)" direction="column">
+        <G.CheckboxGroup label="Notifications" options={choiceOptions} isLoading />
       </State>
       <State label="Default" direction="column">
         <G.CheckboxGroup label="Notifications" description="Choose any." options={choiceOptions} defaultValue={['email']} />
@@ -279,8 +279,8 @@ export const RadioGroup: Story = {
 export const Switch: Story = {
   render: () => (
     <Matrix>
-      <State label="Loading (isSkeleton)">
-        <G.Switch label="Dark mode" isSkeleton />
+      <State label="Loading (isLoading)">
+        <G.Switch label="Dark mode" isLoading />
       </State>
       <State label="Default">
         <G.Switch label="Dark mode" />
@@ -291,7 +291,7 @@ export const Switch: Story = {
       <State label="Large (StarCi look), with thumb glyphs">
         <G.Switch label="Appearance" size="lg" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
         <G.Switch label="Appearance" size="lg" defaultSelected thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
-        <G.Switch label="Appearance" size="lg" isSkeleton />
+        <G.Switch label="Appearance" size="lg" isLoading />
       </State>
       <State label="Control height (2.5rem, 40px), label hidden but accessible">
         <G.Switch label="Dark mode" isLabelHidden size="control" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
@@ -435,8 +435,8 @@ export const Select: Story = {
       <State label="Selected" direction="column">
         <G.Select label="Plan" options={planOptions} defaultValue="team" />
       </State>
-      <State label="Loading (isSkeleton)" direction="column">
-        <G.Select label="Plan" options={planOptions} isSkeleton />
+      <State label="Loading (isLoading)" direction="column">
+        <G.Select label="Plan" options={planOptions} isLoading />
       </State>
       <State label="Pending" direction="column">
         <G.Select label="Plan" options={planOptions} isPending placeholder="Loading plans" />
@@ -558,8 +558,8 @@ export const FieldFamilySecondary: Story = {
 export const SegmentedControl: Story = {
   render: () => (
     <Matrix maxWidth={formColumn}>
-      <State label="Loading (isSkeleton)" direction="column">
-        <G.SegmentedControl label="Range" options={segmentOptions} isSkeleton />
+      <State label="Loading (isLoading)" direction="column">
+        <G.SegmentedControl label="Range" options={segmentOptions} isLoading />
       </State>
       <State label="Selected" direction="column">
         <G.SegmentedControl label="Range" options={segmentOptions} defaultValue="week" />
@@ -574,7 +574,7 @@ export const SegmentedControl: Story = {
       </State>
       <State label="Control height (2.75rem), label hidden but accessible, beside bar controls">
         <G.SegmentedControl label="Language" isLabelHidden options={[{ value: 'vi', label: 'VI', accessibleLabel: 'Vietnamese' }, { value: 'en', label: 'EN', accessibleLabel: 'English' }]} defaultValue="vi" />
-        <G.SegmentedControl label="Language" isLabelHidden options={segmentOptions} isSkeleton />
+        <G.SegmentedControl label="Language" isLabelHidden options={segmentOptions} isLoading />
         <G.IconButton source={SettingsGlyph} label="Settings" />
       </State>
       <State label="Disabled" direction="column">

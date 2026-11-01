@@ -9,7 +9,7 @@ export type HeadingProps = {
     readonly level?: HeadingLevel
     /** Display changes emphasis without changing the document outline. */
     readonly scale?: HeadingScale
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     readonly isVisuallyHidden?: boolean
 }
 
@@ -29,7 +29,7 @@ export const Heading = ({
     children,
     level = 2,
     scale = "standard",
-    isSkeleton = false,
+    isLoading = false,
     isVisuallyHidden = false,
 }: HeadingProps) => (
     <Typography.Heading
@@ -37,8 +37,8 @@ export const Heading = ({
         data-component="Heading"
         data-level={level}
         data-scale={scale}
-        data-loading={isSkeleton ? "true" : "false"}
-        aria-hidden={isSkeleton || undefined}
+        data-loading={isLoading ? "true" : "false"}
+        aria-hidden={isLoading || undefined}
         data-contract={
             scale === "display"
                 ? "FONT-6"
@@ -48,7 +48,7 @@ export const Heading = ({
         }
         level={level}
         className={cn(
-            isSkeleton ? SKELETON_CLASS_NAME : undefined,
+            isLoading ? SKELETON_CLASS_NAME : undefined,
             isVisuallyHidden ? "sr-only" : undefined,
         ) ?? ""}
     >

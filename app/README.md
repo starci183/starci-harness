@@ -51,7 +51,7 @@ Imports point down only: `app` → `features/{pages,layouts}` → `components/bl
 Every data region is a block in `components/blocks/<X>/`: `index.tsx` is the connected `X` (it calls the query and
 command hooks, folds each read into a `DataSlot` with `slotOfQuery`/`mapSlot`, resolves every label and action) and
 `component.tsx` is the pure `XBase({ shape?, props, on })` of atoms. Each read renders through the one `SlotView`:
-loading draws the ready tree from a same-shape placeholder with `isSkeleton` (or `isLoading` on Grammar collections);
+loading draws the ready tree from a same-shape placeholder with `isLoading` (or `isLoading` on Grammar collections);
 forbidden hides or says so; error shows the region's notice with a retry of that read; empty shows the region's
 sentence. Only a block with more than one drawn shape takes `shape` (`WorkflowHeaderShape`, `InboxDetailShape`), and
 while its read waits the shape follows the placeholder; there is no `xDefaultState`.

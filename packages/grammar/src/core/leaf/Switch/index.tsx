@@ -37,7 +37,7 @@ export type SwitchProps = NoChildren & FieldControlProps & {
      * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
      * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /*
@@ -50,11 +50,11 @@ export type SwitchProps = NoChildren & FieldControlProps & {
  * An immediate on/off setting (`role="switch"`). Use Checkbox for a choice that only takes effect
  * on submit. The label is part of the hit area; Space toggles.
  */
-export const Switch = ({ isSkeleton = false, ...props }: SwitchProps) => isSkeleton
+export const Switch = ({ isLoading = false, ...props }: SwitchProps) => isLoading
     ? <FieldSkeletonScope component="Switch"><SwitchControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SwitchControl {...props} />
 
-const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, size = "md", thumbIcon, selectedThumbIcon, ...field }: Omit<SwitchProps, "isSkeleton">) => (
+const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, size = "md", thumbIcon, selectedThumbIcon, ...field }: Omit<SwitchProps, "isLoading">) => (
     <HeroSwitch
         data-tier="leaf"
         data-component="Switch"

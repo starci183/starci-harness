@@ -50,7 +50,7 @@ export type TextareaProps = NoChildren & FieldControlProps & {
      * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
      * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     /** Also shows a live `count / max` beside the guidance. */
     readonly maxLength?: number
     readonly minLength?: number
@@ -97,10 +97,10 @@ export const filterMentionOptions = (options: ReadonlyArray<TextareaMentionOptio
  */
 
 /**
- * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const Textarea = ({ isSkeleton = false, ...props }: TextareaProps) => isSkeleton
+export const Textarea = ({ isLoading = false, ...props }: TextareaProps) => isLoading
     ? <FieldSkeletonScope component="Textarea"><TextareaControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <TextareaControl {...props} />
 
@@ -120,7 +120,7 @@ const TextareaControl = ({
     onPaste,
     autoFocus = false,
     ...field
-}: Omit<TextareaProps, "isSkeleton">) => {
+}: Omit<TextareaProps, "isLoading">) => {
     const variant = useFieldVariant()
     const [uncontrolledLength, setUncontrolledLength] = useState((defaultValue ?? "").length)
     const length = value === undefined ? uncontrolledLength : value.length

@@ -408,7 +408,7 @@ const TRANSLATOR_HELPER = {
   'apps/web/src/modules/types.ts': `export type OfficeText = (key: string, values?: Readonly<Record<string, string | number>>) => string;
 export type PlainLabel = (key: string) => string;
 export interface OfficeWords { readonly t: OfficeText; readonly g: OfficeText; readonly time: (iso: string) => string }
-export interface ComposerProps { readonly props: { readonly draft: string; readonly isSkeleton: boolean; readonly text: OfficeText } }`,
+export interface ComposerProps { readonly props: { readonly draft: string; readonly isLoading: boolean; readonly text: OfficeText } }`,
   'apps/web/src/hooks/useOfficeWords.ts': `import type { OfficeWords } from '../modules/types';
 export const useOfficeWords = (): OfficeWords => {
   const t = useTranslations("office");
@@ -426,7 +426,7 @@ export const Composer = (props: ComposerProps) => { const view = props.props; co
   'apps/web/src/components/Messenger.tsx': `import { SlotView } from '@starci/grammar/common';
 import { Composer } from './Composer'; import { useMessenger } from '../hooks/useMessenger';
 export const Messenger = () => { const { composer } = useMessenger();
-  return <SlotView slot={{ items: composer }}>{(items, isSkeleton) => <Composer props={{ ...items, isSkeleton }} />}</SlotView>; };`,
+  return <SlotView slot={{ items: composer }}>{(items, isLoading) => <Composer props={{ ...items, isLoading }} />}</SlotView>; };`,
   'apps/web/src/components/Plain.tsx': `import type { PlainLabel } from '../modules/types';
 const label: PlainLabel = (key) => key.toUpperCase(); export const plain = [label("retired"), "unrelated", label("dead")];`,
 };

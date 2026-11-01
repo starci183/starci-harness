@@ -96,8 +96,8 @@ export const Skeleton: Story = {
   render: () => (
     <div style={{ maxWidth: 720 }}>
       <G.Grid kind="form">
-        <G.Input id="grid-skeleton-account" name="account" label="Account name" description="Shown on the payment page." isSkeleton />
-        <G.CopyField label="Webhook URL" value="https://hooks.example.com/26465cdf" {...labels} isSkeleton />
+        <G.Input id="grid-skeleton-account" name="account" label="Account name" description="Shown on the payment page." isLoading />
+        <G.CopyField label="Webhook URL" value="https://hooks.example.com/26465cdf" {...labels} isLoading />
       </G.Grid>
     </div>
   ),

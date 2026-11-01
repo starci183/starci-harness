@@ -111,8 +111,8 @@ export const AvatarGroup: Story = {
 export const PageBreadcrumbs: Story = {
   render: () => (
     <Matrix>
-      <State label="Current crumb still loading (isSkeleton)">
-        <G.Page chrome="bleed" minHeight="none" header={{ breadcrumbs: { label: 'Breadcrumb (loading page)', items: [{ id: 'home', label: 'Home', href: '#home' }, { id: 'lessons', label: 'Lessons', href: '#lessons' }, { id: 'lesson', label: '', isSkeleton: true }] } }}>
+      <State label="Current crumb still loading (isLoading)">
+        <G.Page chrome="bleed" minHeight="none" header={{ breadcrumbs: { label: 'Breadcrumb (loading page)', items: [{ id: 'home', label: 'Home', href: '#home' }, { id: 'lessons', label: 'Lessons', href: '#lessons' }, { id: 'lesson', label: '', isLoading: true }] } }}>
           <span />
         </G.Page>
       </State>
@@ -278,7 +278,7 @@ export const DataTable: Story = {
     <Matrix maxWidth={720}>
       <State label="Sortable with a selected row" direction="column"><SortableTable /></State>
       <State label="Loading (pending)" direction="column">
-        <G.DataTable label="Lessons loading" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading loadingContent="Loading lessons" emptyContent="No lessons." />
+        <G.DataTable label="Lessons loading" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading emptyContent="No lessons." />
       </State>
       <State label="Loading (3 skeleton rows, real headers)" direction="column">
         <G.DataTable label="Lessons skeleton" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading emptyContent="No lessons." />
@@ -495,7 +495,7 @@ export const MermaidDiagram: Story = {
         <G.MermaidDiagram label="Sign-in request" source={mermaidSequence} />
       </State>
       <State label="Skeleton (the same box)" direction="column">
-        <G.MermaidDiagram label="Cache lookup (loading)" source={mermaidSource} isSkeleton />
+        <G.MermaidDiagram label="Cache lookup (loading)" source={mermaidSource} isLoading />
       </State>
       <State label="Error: the source as code" direction="column">
         <G.MermaidDiagram label="Broken diagram" source={'flowchart LR\n  A --> {'} errorTitle="This diagram could not be drawn." />
@@ -938,7 +938,7 @@ const steps: ReadonlyArray<G.StepperStep> = [
 export const Stepper: Story = {
   render: () => (
     <Matrix maxWidth={720}>
-      <State label="Loading (isSkeleton)" direction="column">
+      <State label="Loading (isLoading)" direction="column">
         <G.Stepper label="Sign-up progress (loading)" steps={steps} currentStepId="profile" isLoading />
       </State>
       <State label="Horizontal, current step" direction="column">
@@ -1131,7 +1131,7 @@ export const TagGroup: Story = {
 export const Timeline: Story = {
   render: () => (
     <Matrix maxWidth={560}>
-      <State label="Loading (isSkeleton)" direction="column">
+      <State label="Loading (isLoading)" direction="column">
         <G.Timeline label="Order history" items={[]} isLoading />
       </State>
       <State label="States with a current item" direction="column">

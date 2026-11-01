@@ -8,7 +8,7 @@ const READY: {{Name}}BaseProps["props"] = {
     breadcrumbLabel: "Breadcrumb",
     homeLabel: "Home",
     homeHref: "/",
-{{emptyFixture}}{{tabsFixture}}    isSkeleton: false,
+{{emptyFixture}}{{tabsFixture}}    isLoading: false,
 }
 
 /** The pure half of {{Name}}: the resolved page and its loading view, paired for the DNA gate. */
@@ -29,6 +29,6 @@ export const Ready: Story = {
 
 /** The route's loading view: the same page, its header resting in its own boxes. */
 export const ReadySkeleton: Story = {
-    args: { props: { ...READY, isSkeleton: true } },
+    args: { props: { ...READY, isLoading: true } },
     parameters: { dna: { pair: "Ready", phase: "loading" } },
 }

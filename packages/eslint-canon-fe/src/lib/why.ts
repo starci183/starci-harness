@@ -99,6 +99,11 @@ export const why = {
     en: "`<file>` holds a placeholder object that is the ready data with its lists emptied.",
     fix: "Delete the placeholder; pass a loading flag and let the Grammar component derive the skeleton from the structure it draws.",
   },
+  "no-hand-skeleton": {
+    code: "FE_HAND_SKELETON",
+    en: "`<file>` draws a skeleton by hand.",
+    fix: "Pass isLoading to the Grammar component and let it draw its loading structure; the block hands it the same-shape placeholder (FE-ERROR-1).",
+  },
   "destructive-confirm-in-dialog": {
     code: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG",
     en: "`<file>` renders a final destructive press outside its confirmation dialog.",

@@ -4,6 +4,7 @@ import { Checkbox as HeroCheckbox, Table as HeroTable, type Selection, type Sort
 import { useEffect, useRef, useState, type CSSProperties, type DragEventHandler, type KeyboardEvent, type MouseEvent, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
+import { ErrorView, LOADING_ROWS, useIsLoading, type ErrorData } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
@@ -66,13 +67,13 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & {
     readonly selectAllLabel?: string
     readonly selectRowLabel?: (row: Row) => string
     /**
-     * Marks the table busy and replaces the rows (knowledge STATE-8). With no `loadingContent` the real column headers stay
-     * and the body draws `loadingRows` skeleton rows; `loadingContent` replaces the body with that content instead.
+     * The first read has no data yet (knowledge STATE-8). The table is busy, the real column headers stay and the body draws one
+     * skeleton row per row it was given (the block's same-shape placeholder), or a default few when it has none. A refresh that
+     * has data is not loading. Loading comes first, then `error`, then `emptyContent`.
      */
     readonly isLoading?: boolean
-    /** Skeleton rows drawn while loading without `loadingContent` (default 3, 1 to 12). */
-    readonly loadingRows?: number
-    readonly loadingContent?: ReactNode
+    /** The read failed: this takes the place of the rows, as `emptyContent` does. */
+    readonly error?: ErrorData
     /** Shown when there are no rows and the table is not loading. */
     readonly emptyContent: ReactNode
     /** Keep the column header visible while the body scrolls inside `maxBlockSize`. */
@@ -198,9 +199,8 @@ export const DataTable = <Row extends DataTableRow>({
     onSelectionChange,
     selectAllLabel,
     selectRowLabel,
-    isLoading = false,
-    loadingContent,
-    loadingRows = 3,
+    isLoading: ownLoading,
+    error,
     emptyContent,
     stickyHeader = false,
     maxBlockSize,
@@ -234,10 +234,11 @@ export const DataTable = <Row extends DataTableRow>({
     const [uncontrolledSelection, setUncontrolledSelection] = useState<ReadonlyArray<string> | "all">(defaultSelectedIds ?? [])
     const selection = selectedIds ?? uncontrolledSelection
     const isRowSelected = (id: string) => selection === "all" || selection.includes(id)
-    const isSkeleton = isLoading && loadingContent === undefined
-    const skeletonRows = isSkeleton ? Array.from({ length: Math.min(12, Math.max(1, Math.floor(Number.isFinite(loadingRows) ? loadingRows : 3))) }, (_, index) => ({ id: `starci-skeleton-${index}` })) : []
-    const visibleRows = isLoading ? [] : rows
-    const state = isLoading ? "loading" : rows.length === 0 ? "empty" : "ready"
+    const isLoading = useIsLoading(ownLoading)
+    const skeletonRows = isLoading ? Array.from({ length: rows.length > 0 ? Math.min(12, rows.length) : LOADING_ROWS }, (_, index) => ({ id: `starci-skeleton-${index}` })) : []
+    const failed = !isLoading && error !== undefined
+    const visibleRows = isLoading || failed ? [] : rows
+    const state = isLoading ? "loading" : failed ? "error" : rows.length === 0 ? "empty" : "ready"
     const scrollStyle = maxBlockSize === undefined ? undefined : { "--starci-core-data-table-max-block-size": maxBlockSize } as CSSProperties
     // RAC filters consumer key handlers out of Cell props. The native scroll owner captures activation before its grid handlers.
     const onCellKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -271,7 +272,7 @@ export const DataTable = <Row extends DataTableRow>({
                     {...(hasEditors ? { keyboardNavigationBehavior: "tab" as const } : getCellInteraction === undefined ? {} : { keyboardNavigationBehavior: "arrow" as const })}
                     className="starci-core-data-table-content"
                     data-contract="FOCUS-2 STATE-1"
-                    selectionMode={isSkeleton ? "none" : selectionMode}
+                    selectionMode={isLoading ? "none" : selectionMode}
                     {...(sort === undefined ? {} : { sortDescriptor: toSortDescriptor(sort) })}
                     {...(onSortChange === undefined ? {} : {
                         onSortChange: (descriptor: SortDescriptor) => onSortChange({ columnId: String(descriptor.column), direction: descriptor.direction }),
@@ -308,8 +309,8 @@ export const DataTable = <Row extends DataTableRow>({
                     </HeroTable.Header>
                     <HeroTable.Body
                         className="starci-core-data-table-body"
-                        renderEmptyState={() => isLoading
-                            ? <div className="starci-core-data-table-placeholder" data-grammar-table-loading="true" role="status">{loadingContent}</div>
+                        renderEmptyState={() => failed
+                            ? <div className="starci-core-data-table-placeholder" data-grammar-table-error="true"><ErrorView error={error} /></div>
                             : <div className="starci-core-data-table-placeholder" data-contract="STATE-3" data-grammar-table-empty="true">{emptyContent}</div>}
                     >
                         {skeletonRows.map((row) => (

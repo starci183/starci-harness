@@ -6500,24 +6500,25 @@ rules:
       - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
   - id: R367
     code: "FE_SWR_DEFAULT_ARRAY"
-    law: "A loading state is drawn from the page's own reads: a hook folds a read to [] only while it also returns that read's isLoading, a slot takes its loading and error from the reads it draws and never from another slot, a background refresh (isValidating) never drives a loading flag or a status, a placeholder is not the ready data with its lists emptied, and an app draws no skeleton by hand once the Grammar owns the loading shape (written as `no-hand-skeleton`, published with that Grammar change)."
+    law: "A loading state is drawn from the page's own reads: a hook folds a read to [] only while it also returns that read's isLoading, a slot takes its loading and error from the reads it draws and never from another slot, a background refresh (isValidating) never drives a loading flag or a status, a placeholder is not the ready data with its lists emptied, and an app draws no skeleton by hand (`no-hand-skeleton`): the Grammar components draw their loading structure from `isLoading`."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
-    failureCodes: ["FE_SWR_DEFAULT_ARRAY", "FE_FOREIGN_SLOT_STATUS", "FE_VALIDATING_AS_LOADING", "FE_PLACEHOLDER_OBJECT"]
+    failureCodes: ["FE_SWR_DEFAULT_ARRAY", "FE_FOREIGN_SLOT_STATUS", "FE_VALIDATING_AS_LOADING", "FE_PLACEHOLDER_OBJECT", "FE_HAND_SKELETON"]
     enforcers:
       - {kind: eslint-fe, id: no-swr-default-array}
       - {kind: eslint-fe, id: no-foreign-slot-status}
       - {kind: eslint-fe, id: no-validating-as-loading}
       - {kind: eslint-fe, id: no-placeholder-object}
+      - {kind: eslint-fe, id: no-hand-skeleton}
     editions: [lite, full]
     docs: [contexts/ui/loading.md]
     templateNa: "A template draws no loading state of its own."
     proves:
-      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT, FE_HAND_SKELETON]}
     exemplifiedBy:
-      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT, FE_HAND_SKELETON]}
     witness:
-      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT]}
+      - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT, FE_HAND_SKELETON]}
     cases:
       - id: case-1
         date: "2026-11-01"

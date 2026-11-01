@@ -282,13 +282,10 @@ export const SettingsBlock = () => {
 
     const active = groups.find((group) => group.id === tab) ?? groups[0]
     const read = slotOfQuery(query)
-    const settings: DataSlot<SettingsView> = {
-        ...read,
-        items:
-            read.items === undefined || active === undefined
-                ? undefined
-                : { tabs: groups.map((group) => ({ id: group.id, label: group.label })), active: groupView(draft, active) },
-    }
+    const settings: DataSlot<SettingsView> =
+        !("items" in read) ? read
+            : active === undefined ? { isEmpty: true }
+                : { items: { tabs: groups.map((group) => ({ id: group.id, label: group.label })), active: groupView(draft, active) } }
     const pending: PendingView[] = [...drafts].map(([key, value]) => ({
         configKey: key,
         label: keyLabel(key),

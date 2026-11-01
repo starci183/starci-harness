@@ -14,7 +14,7 @@ import {
 } from "./accordionClassNames.js"
 
 /** The disclosures a `kind="accordion"` holds: joined rows, each a title (and one muted meta) over a body. */
-export const AccordionRows = ({ data, isSkeleton }: { readonly data: AccordionData; readonly isSkeleton: boolean }) => {
+export const AccordionRows = ({ data, isLoading }: { readonly data: AccordionData; readonly isLoading: boolean }) => {
     const { items, onItemOpenChange } = data
     const expandedKeys = new Set(items.filter((item) => item.isOpen).map((item) => item.id))
     const onExpandedChange = (nextKeys: Set<Key>) => {
@@ -30,7 +30,7 @@ export const AccordionRows = ({ data, isSkeleton }: { readonly data: AccordionDa
             className={accordionRootClassName ?? ""}
             expandedKeys={expandedKeys}
             onExpandedChange={onExpandedChange}
-            {...(isSkeleton ? { "aria-busy": true } : {})}
+            {...(isLoading ? { "aria-busy": true } : {})}
         >
             {items.map((item) => (
                 <Accordion.Item
@@ -39,14 +39,14 @@ export const AccordionRows = ({ data, isSkeleton }: { readonly data: AccordionDa
                     data-grammar-accordion-row="true"
                     data-grammar-disclosure-state={item.isOpen ? "open" : "closed"}
                     id={item.id}
-                    isDisabled={item.isDisabled === true || isSkeleton}
+                    isDisabled={item.isDisabled === true || isLoading}
                     key={item.id}
                 >
                     <Accordion.Heading className={accordionHeadingClassName ?? ""} data-contract="MARGIN-0">
                         <Accordion.Trigger className={accordionTriggerClassName ?? ""} data-contract="PADDING-4">
                             <span className="starci-core-accordion-summary">
-                                <span className="starci-core-accordion-title">{isSkeleton ? <SkeletonPlaceholder>{item.title}</SkeletonPlaceholder> : item.title}</span>
-                                {item.meta === undefined ? null : <span className="starci-core-accordion-meta" data-contract="TONE-2 FONT-2">{isSkeleton ? <SkeletonPlaceholder>{item.meta}</SkeletonPlaceholder> : item.meta}</span>}
+                                <span className="starci-core-accordion-title">{isLoading ? <SkeletonPlaceholder>{item.title}</SkeletonPlaceholder> : item.title}</span>
+                                {item.meta === undefined ? null : <span className="starci-core-accordion-meta" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{item.meta}</SkeletonPlaceholder> : item.meta}</span>}
                             </span>
                         </Accordion.Trigger>
                     </Accordion.Heading>

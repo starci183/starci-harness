@@ -182,7 +182,7 @@ export const FilterButtonGroup: Story = {
               </div>
             </State>
           ))}
-          <State label={`${theme}: loading`} direction="column"><G.FilterButtonGroup label="Team" options={providers} isSkeleton /></State>
+          <State label={`${theme}: loading`} direction="column"><G.FilterButtonGroup label="Team" options={providers} isLoading /></State>
         </G.GrammarRoot>
       ))}
     </Matrix>

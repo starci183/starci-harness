@@ -51,15 +51,15 @@ export const TaskPageBlockBase = (props: TaskPageBlockBaseProps) => {
                     {props.body}
                 </Page>
             )}
-            onRetry={props.on.retry} render={(header, isSkeleton) => (
+            onRetry={props.on.retry} render={(header, isLoading) => (
                 <Page
                     measure="full"
-                    isSkeleton={isSkeleton}
+                    isLoading={isLoading}
                     header={{
                         breadcrumbs: {
                             label: labels.trail,
                             items: [
-                                { id: "workflow", label: header.workflow, href: header.workflowHref, ...(isSkeleton ? { isSkeleton: true as const } : {}) },
+                                { id: "workflow", label: header.workflow, href: header.workflowHref, ...(isLoading ? { isLoading: true as const } : {}) },
                                 { id: "task", label: task },
                             ],
                         },

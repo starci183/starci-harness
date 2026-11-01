@@ -4,6 +4,7 @@ import { IconTile } from "../../leaf/IconTile/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { Mascot, type MascotProps } from "../../leaf/Mascot/index.js"
 import { Text } from "../../leaf/Text/index.js"
+import { ErrorView } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 /**
@@ -35,6 +36,8 @@ export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & {
     readonly actionStartContent?: ReactNode
     readonly isActionPending?: boolean
     readonly onAction?: () => void
+    /** The read failed: the notice is a live alert with a warning mark, so a failure never reads as empty. The mark props are ignored. */
+    readonly isError?: boolean
 }
 
 /**
@@ -50,7 +53,10 @@ export const EmptyNotice = ({
     actionStartContent,
     isActionPending = false,
     onAction,
-}: EmptyNoticeProps) => (
+    isError = false,
+}: EmptyNoticeProps) => isError ? (
+    <ErrorView error={{ message, ...(description === undefined ? {} : { description }), ...(actionLabel === undefined ? {} : { actionLabel }), ...(onAction === undefined ? {} : { onAction }) }} />
+) : (
     <div
         data-tier="composite"
         data-component="EmptyNotice"

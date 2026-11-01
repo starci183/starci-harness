@@ -1,6 +1,9 @@
+"use client"
+
 import type { ReactNode } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import { ErrorView, type ErrorData } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 /** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
@@ -8,7 +11,8 @@ export type MessageBubbleSide = "incoming" | "outgoing"
 
 /** A resolved message. */
 type MessageBubbleMessage = {
-    readonly isSkeleton?: false
+    readonly isLoading?: false
+    readonly error?: never
     /** The message body. Plain text keeps its line breaks. */
     readonly body: ReactNode
     readonly side?: MessageBubbleSide
@@ -31,40 +35,47 @@ type MessageBubbleMessage = {
     readonly isHighlight?: boolean
     /** Anchor for links that jump to this message. */
     readonly id?: string
-    readonly rows?: never
     readonly hasAvatar?: never
 }
 
 /**
- * One unresolved message (knowledge STATE-8): the bubble face on its `side`, with two Skeleton text lines in the body and, only
- * with `hasAvatar`, a Skeleton circle in its column. No author, meta, status, actions or footer are drawn, so no control exists.
- * The bubble is `aria-hidden`.
+ * One unresolved message (knowledge STATE-8): with a `side`, the bubble face on that side with two Skeleton text lines in the
+ * body and, only with `hasAvatar`, a Skeleton circle in its column. No author, meta, status, actions or footer are drawn, so no
+ * control exists. The bubble is `aria-hidden`.
  */
 type MessageBubbleSkeleton = {
-    readonly isSkeleton: true
-    readonly side?: MessageBubbleSide
+    readonly isLoading: true
+    readonly side: MessageBubbleSide
     readonly hasAvatar?: boolean
-    readonly rows?: undefined
+    readonly error?: never
 }
 
 /**
- * A loading conversation (knowledge STATE-8): `rows` skeleton bubbles (1 to 12) that alternate incoming and outgoing, starting with
- * `incoming`, inside one `aria-busy` thread. Place it as the conversation content of a `PaneGrid` (or any scroll owner) while the
- * messages are unresolved. `hasAvatar` gives each incoming bubble a Skeleton circle.
+ * A conversation whose messages have not been read (knowledge STATE-8): without a `side`, one `aria-busy` thread of bubbles that
+ * alternate incoming and outgoing, the way a list of `MessageBubble` reads. The Grammar chooses how many. Place it as the
+ * conversation content of a `PaneGrid` (or any scroll owner). `hasAvatar` gives each incoming bubble a Skeleton circle.
  */
 type MessageBubbleSkeletonThread = {
-    readonly isSkeleton: true
-    readonly rows: number
+    readonly isLoading: true
     readonly hasAvatar?: boolean
     readonly side?: never
+    readonly error?: never
 }
 
-export type MessageBubbleProps = NoChildren & (MessageBubbleMessage | MessageBubbleSkeleton | MessageBubbleSkeletonThread)
+/** A conversation whose read failed: the failure in the place of the messages, never an empty thread. */
+type MessageBubbleFailed = {
+    readonly isLoading?: false
+    readonly error: ErrorData
+    readonly side?: never
+    readonly hasAvatar?: never
+}
+
+export type MessageBubbleProps = NoChildren & (MessageBubbleMessage | MessageBubbleSkeleton | MessageBubbleSkeletonThread | MessageBubbleFailed)
 
 const SKELETON_CONTRACT = "SURFACE-3 SURFACE-4 RADIUS-6 STATE-8"
-const THREAD_MAX = 12
+const THREAD_LINES = [2, 1, 3] as const
 
-const SkeletonBubble = ({ side, hasAvatar }: { readonly side: MessageBubbleSide, readonly hasAvatar: boolean }) => (
+const SkeletonBubble = ({ side, hasAvatar, lines = 2 }: { readonly side: MessageBubbleSide, readonly hasAvatar: boolean, readonly lines?: number }) => (
     <div
         aria-hidden="true"
         className="starci-core-message-bubble"
@@ -78,7 +89,7 @@ const SkeletonBubble = ({ side, hasAvatar }: { readonly side: MessageBubbleSide,
     >
         {hasAvatar ? <div className="starci-core-message-bubble-avatar"><Skeleton shape="circle" size="sm" /></div> : null}
         <div className="starci-core-message-bubble-stack">
-            <div className="starci-core-message-bubble-body starci-core-message-bubble-skeleton-body"><Skeleton shape="text" lines={2} /></div>
+            <div className="starci-core-message-bubble-body starci-core-message-bubble-skeleton-body"><Skeleton shape="text" lines={lines} /></div>
         </div>
     </div>
 )
@@ -87,23 +98,23 @@ const SkeletonBubble = ({ side, hasAvatar }: { readonly side: MessageBubbleSide,
  * One message of a conversation. The app owns the thread (order, grouping, day dividers with `Divider label`, scroll with
  * `VerticalScrollRegion`); this owns the anatomy of a single message: avatar column, author line, the bubble face and its
  * actions. Faces follow SURFACE-2 (incoming, the surface pair) and the brand fill (outgoing, the accent pair; inline content inherits its foreground); the corner on
- * the author's side tightens to point at the avatar (RADIUS-6). With `isSkeleton` it draws inert geometry instead, one bubble or a
- * whole loading thread (`rows`).
+ * the author's side tightens to point at the avatar (RADIUS-6). With `isLoading` it draws inert geometry instead, one bubble or a
+ * whole loading thread; with `error` the failure.
  */
 export const MessageBubble = (props: MessageBubbleProps) => {
-    if (props.isSkeleton === true) {
-        if (props.rows !== undefined) {
-            const count = Math.min(THREAD_MAX, Math.max(1, Math.floor(Number.isFinite(props.rows) ? props.rows : 1)))
+    if (props.isLoading === true) {
+        if (props.side === undefined) {
             return (
                 <div className="starci-core-message-bubble-thread" data-grammar-message-skeleton-thread="true" data-loading="true" aria-busy="true">
-                    {Array.from({ length: count }, (_, index) => (
-                        <SkeletonBubble key={index} side={index % 2 === 0 ? "incoming" : "outgoing"} hasAvatar={props.hasAvatar === true && index % 2 === 0} />
+                    {THREAD_LINES.map((lines, index) => (
+                        <SkeletonBubble key={index} side={index % 2 === 0 ? "incoming" : "outgoing"} hasAvatar={props.hasAvatar === true && index % 2 === 0} lines={lines} />
                     ))}
                 </div>
             )
         }
-        return <SkeletonBubble side={props.side ?? "incoming"} hasAvatar={props.hasAvatar === true} />
+        return <SkeletonBubble side={props.side} hasAvatar={props.hasAvatar === true} />
     }
+    if (props.error !== undefined) return <div className="starci-core-message-bubble-thread" data-grammar-message-error="true"><ErrorView error={props.error} /></div>
     const { body, side = "incoming", author, avatar, meta, status, actions, footer, isHighlight = false, id } = props
     const hasHead = author != null || meta != null || status != null
     return (

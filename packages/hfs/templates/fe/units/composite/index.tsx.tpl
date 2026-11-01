@@ -4,15 +4,15 @@ import { Text } from "@starci/grammar/common"
 type {{Name}}Props = {
     readonly term: string
     readonly value: string
-    readonly isSkeleton: boolean
+    readonly isLoading: boolean
 }
 
 /** A closed arrangement of Grammar parts: a term and its value, each resting as itself while its block waits. */
 export const {{Name}} = (props: {{Name}}Props) => (
     <>
-        <Text tone="muted" isSkeleton={props.isSkeleton}>
+        <Text tone="muted" isLoading={props.isLoading}>
             {props.term}
         </Text>
-        <Text isSkeleton={props.isSkeleton}>{props.value}</Text>
+        <Text isLoading={props.isLoading}>{props.value}</Text>
     </>
 )

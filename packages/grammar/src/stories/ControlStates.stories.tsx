@@ -98,7 +98,7 @@ export const InputFamily: Story = {
                         Filled: <G.Input id="state-input-filled" name="name" label="Name" defaultValue="Alex Morgan" />,
                         Disabled: <G.Input id="state-input-disabled" name="name" label="Name" defaultValue="Alex Morgan" isDisabled />,
                         Invalid: <G.Input id="state-input-invalid" name="name" label="Name" errorMessage="Enter your name." />,
-                        Loading: <G.Input id="state-input-loading" name="name" label="Name" isSkeleton />,
+                        Loading: <G.Input id="state-input-loading" name="name" label="Name" isLoading />,
                     },
                 },
                 {
@@ -108,7 +108,7 @@ export const InputFamily: Story = {
                         Filled: <G.Textarea label="Bio" rows={2} defaultValue="Teaches grammar." />,
                         Disabled: <G.Textarea label="Bio" rows={2} defaultValue="Teaches grammar." isDisabled />,
                         Invalid: <G.Textarea label="Bio" rows={2} errorMessage="Write a sentence or two." />,
-                        Loading: <G.Textarea label="Bio" rows={2} isSkeleton />,
+                        Loading: <G.Textarea label="Bio" rows={2} isLoading />,
                     },
                 },
                 {
@@ -118,7 +118,7 @@ export const InputFamily: Story = {
                         Filled: <G.NumberField label="Seats" defaultValue={8} />,
                         Disabled: <G.NumberField label="Seats" defaultValue={8} isDisabled />,
                         Invalid: <G.NumberField label="Seats" defaultValue={0} errorMessage="At least one seat." />,
-                        Loading: <G.NumberField label="Seats" isSkeleton />,
+                        Loading: <G.NumberField label="Seats" isLoading />,
                     },
                 },
                 {
@@ -128,7 +128,7 @@ export const InputFamily: Story = {
                         Filled: <G.SearchField label="Search" defaultValue="lessons" />,
                         Disabled: <G.SearchField label="Search" defaultValue="lessons" isDisabled />,
                         Invalid: <G.SearchField label="Search" errorMessage="Type at least two letters." />,
-                        Loading: <G.SearchField label="Search" isSkeleton />,
+                        Loading: <G.SearchField label="Search" isLoading />,
                     },
                 },
             ]}
@@ -153,7 +153,7 @@ export const SelectFamily: Story = {
                         Filled: <G.Select label="Plan" options={planOptions} defaultValue="team" />,
                         Disabled: <G.Select label="Plan" options={planOptions} defaultValue="team" isDisabled />,
                         Invalid: <G.Select label="Plan" options={planOptions} errorMessage="Choose a plan." />,
-                        Loading: <G.Select label="Plan" options={planOptions} isSkeleton />,
+                        Loading: <G.Select label="Plan" options={planOptions} isLoading />,
                     },
                 },
                 {
@@ -163,7 +163,7 @@ export const SelectFamily: Story = {
                         Filled: <G.ComboBox label="Plan" options={planOptions} defaultValue="team" />,
                         Disabled: <G.ComboBox label="Plan" options={planOptions} defaultValue="team" isDisabled />,
                         Invalid: <G.ComboBox label="Plan" options={planOptions} errorMessage="Choose a plan." />,
-                        Loading: <G.ComboBox label="Plan" options={planOptions} isSkeleton />,
+                        Loading: <G.ComboBox label="Plan" options={planOptions} isLoading />,
                     },
                 },
             ]}
@@ -191,7 +191,7 @@ export const ChoiceFamily: Story = {
                         Checked: <G.Checkbox label="Accept the terms" defaultSelected />,
                         Disabled: <G.Checkbox label="Accept the terms" isDisabled />,
                         Invalid: <G.Checkbox label="Accept the terms" isRequired errorMessage="Required to continue." />,
-                        Loading: <G.Checkbox label="Accept the terms" isSkeleton />,
+                        Loading: <G.Checkbox label="Accept the terms" isLoading />,
                     },
                 },
                 {
@@ -201,7 +201,7 @@ export const ChoiceFamily: Story = {
                         Checked: <G.CheckboxGroup label="Notifications" options={choiceOptions} defaultValue={["email"]} />,
                         Disabled: <G.CheckboxGroup label="Notifications" options={choiceOptions} isDisabled />,
                         Invalid: <G.CheckboxGroup label="Notifications" options={choiceOptions} errorMessage="Pick at least one." />,
-                        Loading: <G.CheckboxGroup label="Notifications" options={choiceOptions} isSkeleton />,
+                        Loading: <G.CheckboxGroup label="Notifications" options={choiceOptions} isLoading />,
                     },
                 },
                 {
@@ -211,7 +211,7 @@ export const ChoiceFamily: Story = {
                         Checked: <G.RadioGroup label="Digest" options={choiceOptions} defaultValue="email" />,
                         Disabled: <G.RadioGroup label="Digest" options={choiceOptions} isDisabled />,
                         Invalid: <G.RadioGroup label="Digest" options={choiceOptions} errorMessage="Pick a channel." />,
-                        Loading: <G.RadioGroup label="Digest" options={choiceOptions} isSkeleton />,
+                        Loading: <G.RadioGroup label="Digest" options={choiceOptions} isLoading />,
                     },
                 },
                 {
@@ -220,7 +220,7 @@ export const ChoiceFamily: Story = {
                         Default: <G.Switch label="Dark mode" />,
                         Checked: <G.Switch label="Dark mode" defaultSelected />,
                         Disabled: <G.Switch label="Dark mode" isDisabled />,
-                        Loading: <G.Switch label="Dark mode" isSkeleton />,
+                        Loading: <G.Switch label="Dark mode" isLoading />,
                     },
                 },
                 {
@@ -229,7 +229,7 @@ export const ChoiceFamily: Story = {
                         Default: <G.SegmentedControl label="Range" options={segmentOptions} />,
                         Checked: <G.SegmentedControl label="Range" options={segmentOptions} defaultValue="week" />,
                         Disabled: <G.SegmentedControl label="Range" options={segmentOptions} isDisabled />,
-                        Loading: <G.SegmentedControl label="Range" options={segmentOptions} isSkeleton />,
+                        Loading: <G.SegmentedControl label="Range" options={segmentOptions} isLoading />,
                     },
                 },
             ]}
@@ -256,7 +256,7 @@ export const FieldStates: Story = {
                         Required: <G.Field label="Account id" isRequired control={nativeInput} />,
                         Error: <G.Field label="Account id" errorMessage="Use 8 digits." control={nativeInput} />,
                         Disabled: <G.Field label="Account id" isDisabled control={nativeInput} />,
-                        Loading: <G.Field label="Account id" description="Shown on invoices." isSkeleton control={nativeInput} />,
+                        Loading: <G.Field label="Account id" description="Shown on invoices." isLoading control={nativeInput} />,
                     },
                 },
             ]}

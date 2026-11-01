@@ -15,7 +15,7 @@ export type BreadcrumbItem = {
      * A data-driven crumb (usually the current page) whose label is not known yet (knowledge STATE-8): it draws a short
      * Skeleton text line in place of `label` and `leading`, `aria-hidden`, and carries no link. The other crumbs stay real.
      */
-    readonly isSkeleton?: true
+    readonly isLoading?: true
 }
 
 export type BreadcrumbsProps = NoChildren & {
@@ -58,7 +58,7 @@ export const Breadcrumbs = ({ label, items, separator, onAction }: BreadcrumbsPr
                         data-contract="ACTION-3"
                         {...(item.href === undefined || isCurrent ? {} : { href: item.href })}
                     >
-                        {item.isSkeleton === true ? (
+                        {item.isLoading === true ? (
                             // A function child skips the vendor's link: a nameless (aria-hidden) link is an axe aria-command-name violation.
                             () => (
                                 <span className="starci-core-breadcrumb-label" data-grammar-breadcrumb="true" data-grammar-current={isCurrent ? "true" : "false"}>

@@ -321,10 +321,10 @@ export const SurfaceCardList: Story = {
         />
       </State>
       <State label="Loading (3 skeleton rows by default)" direction="column">
-        <G.SurfaceCard kind="list" label="Saved lessons" isSkeleton items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />
+        <G.SurfaceCard kind="list" label="Saved lessons" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />
       </State>
       <State label="Loading (the rows it was given, as geometry)" direction="column">
-        <G.SurfaceCard kind="list" label="Saved lessons" isSkeleton items={checkRows} empty={<G.EmptyNotice message="Nothing saved yet." />} />
+        <G.SurfaceCard kind="list" label="Saved lessons" isLoading items={checkRows} empty={<G.EmptyNotice message="Nothing saved yet." />} />
       </State>
       <State label="Empty (a notice, not a list)" direction="column">
         <G.SurfaceCard kind="list" label="Saved" items={[]} empty={<G.EmptyNotice message="Nothing saved yet." description="Saved lessons appear here." />} />
@@ -442,7 +442,7 @@ export const SurfaceCardAccordion: Story = {
       <State label="Rows: one open (selected), one disabled" direction="column"><AccordionCardDemo /></State>
       <State label="Single item, collapsed" direction="column"><SingleAccordionDemo /></State>
       <State label="Loading" direction="column">
-        <G.SurfaceCard kind="accordion" label="Course outline" isSkeleton onItemOpenChange={noop} items={[{ id: 'w1', title: 'Week 1', meta: '3 lessons', body: 'x', isOpen: false }, { id: 'w2', title: 'Week 2', meta: '4 lessons', body: 'x', isOpen: false }]} />
+        <G.SurfaceCard kind="accordion" label="Course outline" isLoading onItemOpenChange={noop} items={[{ id: 'w1', title: 'Week 1', meta: '3 lessons', body: 'x', isOpen: false }, { id: 'w2', title: 'Week 2', meta: '4 lessons', body: 'x', isOpen: false }]} />
       </State>
     </Matrix>
   ),
@@ -478,7 +478,7 @@ export const SurfaceCardFigures: Story = {
         </State>
       ))}
       <State label="Loading" direction="column">
-        <G.SurfaceCard kind="figures" label="Usage, loading" isSkeleton items={stripFigures} />
+        <G.SurfaceCard kind="figures" label="Usage, loading" isLoading items={stripFigures} />
       </State>
     </Matrix>
   ),
@@ -528,7 +528,7 @@ export const SurfaceCardTile: Story = {
       </State>
       <State label="Loading" direction="column">
         <G.Grid kind="cards">
-          <G.SurfaceCard kind="tile" isSkeleton name="Google Drive" mark={{ icon: BookGlyph }} description="Reads the files you share with the agent." badge={{ label: 'Connected', tone: 'success' }} action={{ label: 'Open', press: noop }} />
+          <G.SurfaceCard kind="tile" isLoading name="Google Drive" mark={{ icon: BookGlyph }} description="Reads the files you share with the agent." badge={{ label: 'Connected', tone: 'success' }} action={{ label: 'Open', press: noop }} />
         </G.Grid>
       </State>
     </Matrix>
@@ -612,8 +612,8 @@ export const Section: Story = {
       <State label="Empty list" direction="column">
         <G.Section kind="list" title="Customers" items={[]} empty={<G.EmptyNotice message="No customers yet." />} />
       </State>
-      <State label="Loading (isSkeleton)" direction="column">
-        <G.Section kind="list" title="Customers" description="Everyone on a plan." meta="Updated now" action={<G.Button intent="alternative" size="sm">Share</G.Button>} items={[]} empty={null} loadingRows={3} isSkeleton />
+      <State label="Loading (isLoading)" direction="column">
+        <G.Section kind="list" title="Customers" description="Everyone on a plan." meta="Updated now" action={<G.Button intent="alternative" size="sm">Share</G.Button>} items={[]} empty={null} isLoading />
       </State>
     </Matrix>
   ),

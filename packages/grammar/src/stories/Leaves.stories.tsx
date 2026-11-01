@@ -134,7 +134,7 @@ export const Badge: Story = {
         <G.Badge tone="muted" isDot>paused</G.Badge>
       </State>
       <State label="Skeleton (pending)">
-        <G.Badge isSkeleton>Loading</G.Badge>
+        <G.Badge isLoading>Loading</G.Badge>
       </State>
     </Matrix>
   ),
@@ -233,7 +233,7 @@ export const Button: Story = {
         <G.Button intent="alternative" isPending>Loading</G.Button>
       </State>
       <State label="Skeleton">
-        <G.Button isSkeleton>Loading</G.Button>
+        <G.Button isLoading>Loading</G.Button>
       </State>
       <State label="With icons, destination and fill width" direction="column">
         <G.Button intent="alternative" startContent={<G.Icon source={SearchGlyph} usage="leading" />}>Search</G.Button>
@@ -292,7 +292,7 @@ export const Heading: Story = {
         <G.Heading level={2} scale="display">Display heading</G.Heading>
       </State>
       <State label="Skeleton and visually hidden" direction="column">
-        <G.Heading level={3} isSkeleton>Loading heading</G.Heading>
+        <G.Heading level={3} isLoading>Loading heading</G.Heading>
         <G.Heading level={3} isVisuallyHidden>Only announced to assistive technology</G.Heading>
       </State>
     </Matrix>
@@ -311,7 +311,7 @@ export const Icon: Story = {
         <G.Icon source={BellGlyph} ariaLabel="Notifications" usage="leading" />
       </State>
       <State label="Skeleton">
-        <G.Icon source={SearchGlyph} isSkeleton />
+        <G.Icon source={SearchGlyph} isLoading />
       </State>
     </Matrix>
   ),
@@ -344,7 +344,7 @@ export const IconButton: Story = {
         <G.IconButton source={SearchGlyph} label="Search unavailable" isDisabled />
       </State>
       <State label="Skeleton">
-        <G.IconButton source={SearchGlyph} label="Loading" isSkeleton />
+        <G.IconButton source={SearchGlyph} label="Loading" isLoading />
       </State>
     </Matrix>
   ),
@@ -365,7 +365,7 @@ export const IconTile: Story = {
         <G.IconTile source={StarGlyph} size="md" tone="accent" />
       </State>
       <State label="Skeleton">
-        <G.IconTile source={StarGlyph} isSkeleton />
+        <G.IconTile source={StarGlyph} isLoading />
       </State>
     </Matrix>
   ),
@@ -390,7 +390,7 @@ export const Progress: Story = {
         <G.Progress label="Preparing" />
       </State>
       <State label="Skeleton" direction="column">
-        <G.Progress label="Loading" isSkeleton />
+        <G.Progress label="Loading" isLoading />
       </State>
     </Matrix>
   ),
@@ -436,7 +436,7 @@ export const Text: Story = {
       <State label="Superseded, live and skeleton" direction="column">
         <G.Text isSuperseded>Superseded value</G.Text>
         <G.Text live="polite">Saved just now.</G.Text>
-        <G.Text isSkeleton>Loading text</G.Text>
+        <G.Text isLoading>Loading text</G.Text>
       </State>
     </Matrix>
   ),
@@ -463,7 +463,7 @@ export const TextAction: Story = {
         <G.TextAction onPress={noop} isPending>Refreshing</G.TextAction>
       </State>
       <State label="Skeleton">
-        <G.TextAction onPress={noop} isSkeleton>Loading</G.TextAction>
+        <G.TextAction onPress={noop} isLoading>Loading</G.TextAction>
       </State>
     </Matrix>
   ),
@@ -492,10 +492,10 @@ export const Link: Story = {
 export const Avatar: Story = {
   render: () => (
     <Matrix>
-      <State label="Loading (isSkeleton)">
-        <G.Avatar name="Alex Morgan" isSkeleton size="sm" />
-        <G.Avatar name="Alex Morgan" isSkeleton />
-        <G.Avatar name="Alex Morgan" isSkeleton size="lg" />
+      <State label="Loading (isLoading)">
+        <G.Avatar name="Alex Morgan" isLoading size="sm" />
+        <G.Avatar name="Alex Morgan" isLoading />
+        <G.Avatar name="Alex Morgan" isLoading size="lg" />
       </State>
       <State label="Local DiceBear initials by default, and uploaded image">
         <G.Avatar name={"Tr\u1ea7n Minh Khoa"} />
@@ -623,8 +623,8 @@ export const Skeleton: Story = {
 export const Meter: Story = {
   render: () => (
     <Matrix maxWidth={420}>
-      <State label="Loading (isSkeleton)" direction="column">
-        <G.Meter label="Storage" value={32} isSkeleton />
+      <State label="Loading (isLoading)" direction="column">
+        <G.Meter label="Storage" value={32} isLoading />
       </State>
       <State label="Tones" direction="column">
         <G.Meter label="Storage" value={32} tone="neutral" />
@@ -639,7 +639,7 @@ export const Meter: Story = {
       <State label="Thin track (size sm)" direction="column">
         <G.Meter label="Storage" value={32} size="sm" />
         <G.Meter label="Errors" value={95} tone="negative" size="sm" valueLabel="95%" />
-        <G.Meter label="Storage" value={32} size="sm" isSkeleton />
+        <G.Meter label="Storage" value={32} size="sm" isLoading />
       </State>
       <State label="Segmented count" direction="column">
         <G.Meter label="Capabilities" value={3} maxValue={3} segments={3} valueLabel="3 of 3" />

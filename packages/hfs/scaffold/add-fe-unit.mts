@@ -10,7 +10,7 @@
 // A block reads `useQuery<Read>Swr` of hooks/swr (`--read`, default: the block name without its `Block` suffix; `add table --fe`
 // writes that hook). A block with shapes takes its shape from the read's `status` (the placeholder's own while the read loads), so
 // the read names its shape in that field. The first block of an app also writes the app's one copy of the status owners
-// (FE-ERROR-1): DataSlot and SlotLabels in modules/types, slotOfSwr/mapSlot/loadingSlot in hooks/slot/slot.shared.ts,
+// (FE-ERROR-1): DataSlot and SlotLabels in modules/types, slotOfSwr/slotOfReads/mapSlot/loadingSlot in hooks/slot/slot.shared.ts (and useSlotOfReads),
 // useSlotLabels, the SlotView composite and the shared `status` namespace of every catalog. Nothing that exists is overwritten.
 // A frame, composite, branch or leaf, SlotView among them, is vocabulary that knows no feature: in a front end of two or more apps with
 // the shared ui package (slot fe.package.ui) it lives in that package and its barrel, DataSlot and SlotLabels are declared beside
@@ -165,7 +165,9 @@ function ensureSlotOwners(created: string[], { repoRoot, appBase, ui }: Place): 
   }
   writeOnce(created, repoRoot, `${appBase}/src/hooks/slot/slot.shared.ts`, fill('slot/slot.shared.ts.tpl', {}));
   writeOnce(created, repoRoot, `${appBase}/src/hooks/slot/useSlotLabels.ts`, fill('slot/useSlotLabels.ts.tpl', {}));
-  exportFrom(created, repoRoot, `${appBase}/src/hooks/slot/index.ts`, 'export { loadingSlot, mapSlot, slotOfSwr } from "./slot.shared"');
+  writeOnce(created, repoRoot, `${appBase}/src/hooks/slot/useSlotOfReads.ts`, fill('slot/useSlotOfReads.ts.tpl', {}));
+  exportFrom(created, repoRoot, `${appBase}/src/hooks/slot/index.ts`, 'export { loadingSlot, mapSlot, slotOfReads, slotOfSwr } from "./slot.shared"');
+  exportFrom(created, repoRoot, `${appBase}/src/hooks/slot/index.ts`, 'export { useSlotOfReads } from "./useSlotOfReads"');
   exportFrom(created, repoRoot, `${appBase}/src/hooks/slot/index.ts`, 'export { useSlotLabels } from "./useSlotLabels"');
 }
 
@@ -205,8 +207,8 @@ function shapeParts({ Name, NAME_UPPER, shapes }: { Name: string, NAME_UPPER: st
     `        case "${shape}":`,
     '            return (',
     '                <>',
-    `                    <Text isSkeleton={isSkeleton}>{shapeLabels.${shape}}</Text>`,
-    '                    <Text isSkeleton={isSkeleton}>{item.id}</Text>',
+    `                    <Text isLoading={isLoading}>{shapeLabels.${shape}}</Text>`,
+    '                    <Text isLoading={isLoading}>{item.id}</Text>',
     '                </>',
     '            )',
   ].join('\n')).join('\n');
@@ -223,7 +225,7 @@ function shapeParts({ Name, NAME_UPPER, shapes }: { Name: string, NAME_UPPER: st
     shapeBody: [
       '',
       `/** The ready tree of one drawn shape: one case per member of ${Name}Shape, so a member nobody draws fails the lint. */`,
-      `const readyTreeOf = (shape: ${Name}Shape, shapeLabels: ${Name}BaseProps["props"]["shapeLabels"], item: ${Name}Item, isSkeleton: boolean) => {`,
+      `const readyTreeOf = (shape: ${Name}Shape, shapeLabels: ${Name}BaseProps["props"]["shapeLabels"], item: ${Name}Item, isLoading: boolean) => {`,
       '    switch (shape) {',
       cases,
       '    }',
@@ -256,12 +258,12 @@ function blockVars({ Name, nameCamel, nameKebab, Read, shapes, title, ui }: Bloc
     shapeLabelsMember: shaped ? `        readonly shapeLabels: { ${shapes.map((shape) => `readonly ${shape}: string`).join('; ')} }\n` : '',
     placeholderShapeDoc: shaped ? ', and its shape is the block\'s while the read loads' : '',
     placeholderShape: shaped ? `, shape: "${shapes[0]}"` : '',
-    readyTree: shaped ? 'readyTreeOf(props.shape, props.props.shapeLabels, item, isSkeleton)' : '<Text isSkeleton={isSkeleton}>{item.id}</Text>',
+    readyTree: shaped ? 'readyTreeOf(props.shape, props.props.shapeLabels, item, isLoading)' : '<Text isLoading={isLoading}>{item.id}</Text>',
     componentImports: shaped ? `${NAME_UPPER}_PLACEHOLDER, ${NAME_UPPER}_SHAPES, ${Name}Base` : `${Name}Base`,
     componentTypeImport: shaped ? `import type { ${Name}Shape } from "./component"\n` : '',
     connectedDoc: shaped ? 'takes its shape from the read (the placeholder\'s while it loads), ' : '',
     itemShapeMapped: shaped ? ', shape: shapeOf(value.status)' : '',
-    shapeAttribute: shaped ? `            shape={(item.items ?? ${NAME_UPPER}_PLACEHOLDER).shape}\n` : '',
+    shapeAttribute: shaped ? `            shape={("items" in item ? item.items : ${NAME_UPPER}_PLACEHOLDER).shape}\n` : '',
     shapeLabelsResolved: shaped ? `                shapeLabels: { ${shapes.map((shape) => `${shape}: t("shapes.${shape}")`).join(', ')} },\n` : '',
     shapeLabelsFixture: shaped ? `    shapeLabels: { ${shapes.map((shape) => `${shape}: "${humanOf(shape)}"`).join(', ')} },\n` : '',
     fixtureShape: shaped ? `, shape: "${shapes[0]}"` : '',

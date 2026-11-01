@@ -826,7 +826,7 @@
         pointer-events: none;
     }
 
-    /* Loading meter (knowledge STATE-8, `isSkeleton`): the label stays real, the bar is a static Skeleton bar of the track height. */
+    /* Loading meter (knowledge STATE-8, `isLoading`): the label stays real, the bar is a static Skeleton bar of the track height. */
     .starci-core-meter-skeleton-bar { display: block; block-size: 0.5rem; overflow: hidden; border-radius: var(--grammar-radius-pill); }
 
     /* `size="sm"`: the thin track is HeroUI's own `.meter--sm` (h-1); only the loading bar, which is ours, follows it. */

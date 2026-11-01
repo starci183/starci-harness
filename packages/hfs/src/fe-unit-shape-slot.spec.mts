@@ -90,13 +90,13 @@ const STUBS = {
   '@starci/grammar/common.d.ts': [
     'import type { ReactNode } from "react"',
     'export declare const SurfaceCard: (props: { readonly label: string; readonly children: ReactNode }) => ReactNode',
-    'export declare const Text: (props: { readonly children?: ReactNode; readonly tone?: "default" | "muted" | "accent"; readonly isSkeleton?: boolean }) => ReactNode',
-    'export declare const Badge: (props: { readonly children?: ReactNode; readonly isSkeleton?: boolean }) => ReactNode',
+    'export declare const Text: (props: { readonly children?: ReactNode; readonly tone?: "default" | "muted" | "accent"; readonly isLoading?: boolean }) => ReactNode',
+    'export declare const Badge: (props: { readonly children?: ReactNode; readonly isLoading?: boolean }) => ReactNode',
     'export declare const Button: (props: { readonly intent?: "dismiss" | "neutral" | "alternative" | "commit"; readonly type?: "button" | "submit"; readonly form?: string; readonly onPress?: () => void; readonly children?: ReactNode }) => ReactNode',
     'export declare const EmptyNotice: (props: { readonly message: string; readonly actionLabel?: string; readonly onAction?: () => void }) => ReactNode',
     'type Crumb = { readonly id: string; readonly label: string; readonly href?: string }',
     'type PageTabs = { readonly label: string; readonly items: ReadonlyArray<{ readonly id: string; readonly label: string; readonly href?: string }>; readonly selectedKey?: string }',
-    'export declare const Page: (props: { readonly header?: { readonly title: string; readonly breadcrumbs?: { readonly label: string; readonly items: ReadonlyArray<Crumb> }; readonly tabs?: PageTabs }; readonly isSkeleton?: boolean; readonly children: ReactNode }) => ReactNode',
+    'export declare const Page: (props: { readonly header?: { readonly title: string; readonly breadcrumbs?: { readonly label: string; readonly items: ReadonlyArray<Crumb> }; readonly tabs?: PageTabs }; readonly isLoading?: boolean; readonly children: ReactNode }) => ReactNode',
     'export declare const Alert: (props: { readonly title: string; readonly tone?: "negative"; readonly action?: { readonly label: string; readonly onAction: () => void } }) => ReactNode',
     'type Shell = { readonly isOpen?: boolean; readonly onOpenChange?: (isOpen: boolean) => void; readonly title: string; readonly trigger?: ReactNode; readonly closeLabel?: string; readonly footer?: ReactNode | ((close: () => void) => ReactNode); readonly children?: ReactNode }',
     'export declare const Dialog: (props: Shell) => ReactNode',
@@ -213,7 +213,7 @@ test('the units added to a scaffolded full app pass the starci-fe canon and the 
 test('add block with three shapes and one slot writes the pair, the shape inventory, the status owners and the stories; tsc is green', (t) => {
   const { app, root } = stubbedApp(t);
   const created = addUnits(root);
-  for (const owner of ['src/modules/types/data-slot.ts', 'src/hooks/slot/slot.shared.ts', 'src/hooks/slot/useSlotLabels.ts', 'src/components/composites/SlotView/index.tsx']) {
+  for (const owner of ['src/modules/types/data-slot.ts', 'src/hooks/slot/slot.shared.ts', 'src/hooks/slot/useSlotLabels.ts', 'src/hooks/slot/useSlotOfReads.ts', 'src/components/composites/SlotView/index.tsx']) {
     assert.ok(created.includes(`fe/apps/app/${owner}`), `the first block writes the status owner ${owner}`);
   }
   const pure = fs.readFileSync(path.join(app, 'src', 'components', 'blocks', 'HandoffBlock', 'component.tsx'), 'utf8');
@@ -223,7 +223,7 @@ test('add block with three shapes and one slot writes the pair, the shape invent
   assert.doesNotMatch(pure, /\bstate\b/, 'the pure half takes `shape`, never `state`');
   for (const shape of SHAPES) assert.match(pure, new RegExp(`case "${shape}":`), `the switch draws ${shape}`);
   const connected = fs.readFileSync(path.join(app, 'src', 'components', 'blocks', 'HandoffBlock', 'index.tsx'), 'utf8');
-  assert.match(connected, /shape=\{\(item\.items \?\? HANDOFF_BLOCK_PLACEHOLDER\)\.shape\}/, 'the connected half takes the shape from the read, the placeholder\'s while it loads');
+  assert.match(connected, /shape=\{\("items" in item \? item\.items : HANDOFF_BLOCK_PLACEHOLDER\)\.shape\}/, 'the connected half takes the shape from the read, the placeholder\'s while it loads');
   assert.doesNotMatch(connected, /readonly shape/, 'no caller hands the block a shape');
   const stories = fs.readFileSync(path.join(app, 'stories', 'blocks', 'HandoffBlock.stories.tsx'), 'utf8');
   for (const shape of SHAPES) assert.match(stories, new RegExp(`args: \\{ shape: "${shape}" \\}`), `one story draws ${shape}`);
@@ -271,7 +271,7 @@ test('a page is one Page with its own loading and error views, an overlay is a D
   assert.match(read(...route, 'loading.tsx'), /<HandoffsLoadingPage \/>/);
   assert.match(read(...route, 'error.tsx'), /^"use client"[\s\S]*<HandoffsErrorPage onRetry=\{props\.reset\} \/>/);
   const page = read('src', 'features', 'pages', 'HandoffsPage', 'component.tsx');
-  assert.match(page, /<Page\s+header=\{\{[\s\S]*breadcrumbs:[\s\S]*isSkeleton=\{props\.props\.isSkeleton\}\s*>\s*<SignInForm \/>\s*<\/Page>/, 'one Page, its body the block');
+  assert.match(page, /<Page\s+header=\{\{[\s\S]*breadcrumbs:[\s\S]*isLoading=\{props\.props\.isLoading\}\s*>\s*<SignInForm \/>\s*<\/Page>/, 'one Page, its body the block');
   assert.match(read('src', 'features', 'pages', 'HandoffsPage', 'index.tsx'), /export const HandoffsLoadingPage = async \(\) => <HandoffsPageBase props=\{await copyOf\(true\)\} \/>/, 'the loading view is the page in skeleton mode');
   assert.match(read('stories', 'pages', 'HandoffsPage.stories.tsx'), /dna: \{ pair: "Ready", phase: "loading" \}/);
   assert.match(read('src', 'features', 'pages', 'SettingsBillingPage', 'component.tsx'), /<EmptyNotice message=\{props\.props\.empty\} \/>/);

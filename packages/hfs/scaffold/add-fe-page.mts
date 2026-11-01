@@ -11,7 +11,7 @@
 // `--tabs`, the header carries the page tabs as link tabs (contexts/ui/components tabs.md `level:page`): the first tab is the route
 // itself and every other one its sub-route `<route>/<tab>`, which the author adds as its own page; Grammar selects the tab of the
 // current path, so the server owner passes no state and no handler. The
-// owner also exports the route's loading view, the same page drawn with `isSkeleton` (contexts/ui composition.md STATE-8), and
+// owner also exports the route's loading view, the same page drawn with `isLoading` (contexts/ui composition.md STATE-8), and
 // `<Name>ErrorPage` keeps the page and puts one negative Alert where the first region would be. The bodies are
 // templates/fe/units/page/; the stories pair the page with its loading view for the DNA gate.
 import fs from 'node:fs';

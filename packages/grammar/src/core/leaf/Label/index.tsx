@@ -14,7 +14,7 @@ import { getLabelClassName, getLabelContract } from "./classNames.js"
 
 export type LabelProps = {
     /** Unresolved name: the words are laid out unseen under a Skeleton, so the label keeps its ready box. */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     readonly id?: string
     readonly children: string
     readonly depth?: "top" | "nested"
@@ -23,7 +23,7 @@ export type LabelProps = {
 }
 
 /** Names a bounded surface region without claiming document-outline heading rank. */
-export const Label = ({ id, children, depth = "top", as = "span", isSkeleton = false }: LabelProps) => {
+export const Label = ({ id, children, depth = "top", as = "span", isLoading = false }: LabelProps) => {
     const shared = {
         id,
         className: getLabelClassName(),
@@ -34,5 +34,5 @@ export const Label = ({ id, children, depth = "top", as = "span", isSkeleton = f
         "data-contract": getLabelContract(depth),
     } as const
 
-    return createElement(as, shared, isSkeleton ? createElement(SkeletonPlaceholder, null, children) : children)
+    return createElement(as, shared, isLoading ? createElement(SkeletonPlaceholder, null, children) : children)
 }

@@ -33,7 +33,7 @@ export interface ListEditorProps {
     readonly list: ListEditorView
     readonly words: ListEditorWords
     readonly isDisabled: boolean
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
     readonly onChange: (items: readonly string[]) => void
 }
 
@@ -47,7 +47,7 @@ const fill = (template: string, values: Readonly<Record<string, string | number>
 export const ListEditor = (props: ListEditorProps) => {
     const { list, words } = props
     const [text, setText] = useState("")
-    const isSkeleton = props.isSkeleton === true
+    const isLoading = props.isLoading === true
     const available = (list.pool ?? []).filter((item) => !list.items.includes(item))
     const add = (value: string) => {
         const next = value.trim()
@@ -71,7 +71,7 @@ export const ListEditor = (props: ListEditorProps) => {
                 removeLabel={(label) => fill(words.removeTag, { label })}
                 {...reorder}
                 emptyContent={
-                    <Text size="sm" tone="muted" isSkeleton={isSkeleton}>
+                    <Text size="sm" tone="muted" isLoading={isLoading}>
                         {list.emptyText}
                     </Text>
                 }
@@ -86,7 +86,7 @@ export const ListEditor = (props: ListEditorProps) => {
                         value={text}
                         onValueChange={setText}
                         isDisabled={props.isDisabled}
-                        isSkeleton={isSkeleton}
+                        isLoading={isLoading}
                         description={<Code>{list.configKey}</Code>}
                         {...(list.error === null ? {} : { errorMessage: list.error, isError: true })}
                     />
@@ -95,7 +95,7 @@ export const ListEditor = (props: ListEditorProps) => {
                             intent="neutral"
                             size="sm"
                             isDisabled={props.isDisabled || text.trim() === ""}
-                            isSkeleton={isSkeleton}
+                            isLoading={isLoading}
                             onPress={() => {
                                 add(text)
                                 setText("")
@@ -116,7 +116,7 @@ export const ListEditor = (props: ListEditorProps) => {
                         if (value !== null) add(value)
                     }}
                     isDisabled={props.isDisabled || available.length === 0}
-                    isSkeleton={isSkeleton}
+                    isLoading={isLoading}
                     {...(list.isAddLabelHidden ? {} : { description: <Code>{list.configKey}</Code> })}
                     {...error}
                 />

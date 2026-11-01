@@ -201,7 +201,7 @@ export const Skeleton: Story = {
   render: () => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'start', gap: '1rem', maxWidth: 720 }}>
       <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" description="Paste it into the provider." {...labels} />
-      <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" description="Paste it into the provider." {...labels} isSkeleton />
+      <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" description="Paste it into the provider." {...labels} isLoading />
     </div>
   ),
   play: async ({ canvasElement }) => {

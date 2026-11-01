@@ -25,7 +25,7 @@ export type MermaidDiagramProps = NoChildren & {
     /** Accessible name of the source code block in the error state. Default: `${label} source`. */
     readonly sourceLabel?: string
     /** Unresolved source (STATE-8): the frame at its height with a Skeleton block, Mermaid not loaded, `aria-busy`. */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 type Drawing =
@@ -122,7 +122,7 @@ export const MermaidDiagram = ({
     height = "sm",
     errorTitle = "This diagram could not be drawn.",
     sourceLabel,
-    isSkeleton = false,
+    isLoading = false,
 }: MermaidDiagramProps) => {
     const frame = useRef<HTMLElement | null>(null)
     const canvas = useRef<HTMLDivElement | null>(null)
@@ -131,7 +131,7 @@ export const MermaidDiagram = ({
     const id = `grammar-mermaid-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`
 
     useEffect(() => {
-        if (isSkeleton || frame.current === null) return
+        if (isLoading || frame.current === null) return
         let isCurrent = true
         setDrawing({ status: "loading" })
         const theme = resolveMermaidTheme(frame.current)
@@ -140,7 +140,7 @@ export const MermaidDiagram = ({
             (error: unknown) => { if (isCurrent) setDrawing({ status: "error", message: error instanceof Error ? error.message : String(error) }) },
         )
         return () => { isCurrent = false }
-    }, [id, isSkeleton, revision, source])
+    }, [id, isLoading, revision, source])
 
     useEffect(() => {
         if (drawing.status !== "ready" || canvas.current === null) return
@@ -148,7 +148,7 @@ export const MermaidDiagram = ({
         if (node !== null) canvas.current.replaceChildren(node)
     }, [drawing])
 
-    const state = isSkeleton ? "loading" : drawing.status
+    const state = isLoading ? "loading" : drawing.status
     return (
         <figure
             ref={frame}

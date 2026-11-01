@@ -1,6 +1,9 @@
+"use client"
+
 import type { ReactNode } from "react"
 import { assertPresentationState, type PresentationState } from "../../../common/state.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import { ErrorView, LOADING_ROWS, useIsLoading, type ErrorData } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 export type TimelineItem = {
@@ -27,20 +30,28 @@ export type TimelineProps = NoChildren & {
     readonly label: string
     readonly items: ReadonlyArray<TimelineItem>
     /**
-     * The history is loading (knowledge STATE-8). With no `items` it draws `loadingRows` skeleton entries (a static marker, a title line,
-     * a time line and a description line, `aria-hidden`) in the same named list, which is `aria-busy`; real `items` win.
+     * The first read has no data yet (knowledge STATE-8). The list draws one skeleton entry per item it was given (a static marker,
+     * a title line, and a time and a description line where that item has them), or a default few when it has none, in the same
+     * named list, which is `aria-busy`. A refresh that has data is not loading. Loading comes first, then `error`.
      */
     readonly isLoading?: boolean
-    /** How many skeleton entries a loading timeline draws (default 3, 1 to 12). */
-    readonly loadingRows?: number
+    /** The read failed: this takes the place of the entries. */
+    readonly error?: ErrorData
 }
+
+const DEFAULT_ENTRIES: ReadonlyArray<TimelineItem> = Array.from({ length: LOADING_ROWS }, (_, index) => ({ id: String(index), title: " ", timeLabel: " ", description: " " }))
 
 /**
  * An ordered history of events. Each entry exposes `data-grammar-timeline-state` from the Common
  * presentation states and `data-grammar-current`; the connector line is drawn by the stylesheet.
  * Contract: list HIERARCHY-3, entry STATE-1 TRUTH-1 (closed presentation states, neutral default), marker A11Y-2.
  */
-export const Timeline = ({ label, items, isLoading = false, loadingRows = 3 }: TimelineProps) => (
+export const Timeline = ({ label, items, isLoading: ownLoading, error }: TimelineProps) => {
+    const isLoading = useIsLoading(ownLoading)
+    if (!isLoading && error !== undefined) {
+        return <div aria-label={label} role="group" className="starci-core-timeline" data-component="Timeline" data-contract="HIERARCHY-3" data-tier="composite" data-grammar-timeline-error="true"><ErrorView error={error} /></div>
+    }
+    return (
     <ol
         aria-label={label}
         data-loading={String(isLoading)}
@@ -50,13 +61,13 @@ export const Timeline = ({ label, items, isLoading = false, loadingRows = 3 }: T
         data-contract="HIERARCHY-3"
         data-tier="composite"
     >
-        {isLoading && items.length === 0 ? Array.from({ length: Math.min(12, Math.max(1, Math.floor(Number.isFinite(loadingRows) ? loadingRows : 3))) }, (_, index) => (
-            <li key={index} aria-hidden="true" className="starci-core-timeline-item" data-contract="STATE-1 STATE-8" data-grammar-timeline-state="neutral" data-grammar-current="false" data-grammar-skeleton="true">
+        {isLoading ? (items.length > 0 ? items : DEFAULT_ENTRIES).map((entry) => (
+            <li key={entry.id} aria-hidden="true" className="starci-core-timeline-item" data-contract="STATE-1 STATE-8" data-grammar-timeline-state="neutral" data-grammar-current="false" data-grammar-skeleton="true">
                 <span aria-hidden="true" className="starci-core-timeline-marker starci-core-timeline-skeleton-marker" data-grammar-timeline-marker="true"><Skeleton shape="circle" size="sm" /></span>
                 <div className="starci-core-timeline-copy">
                     <div className="starci-core-timeline-title"><Skeleton shape="text" /></div>
-                    <span className="starci-core-timeline-time"><Skeleton shape="text" /></span>
-                    <div className="starci-core-timeline-description"><Skeleton shape="text" /></div>
+                    {entry.timeLabel === undefined ? null : <span className="starci-core-timeline-time"><Skeleton shape="text" /></span>}
+                    {entry.description === undefined ? null : <div className="starci-core-timeline-description"><Skeleton shape="text" /></div>}
                 </div>
             </li>
         )) : items.map((item) => {
@@ -84,4 +95,5 @@ export const Timeline = ({ label, items, isLoading = false, loadingRows = 3 }: T
             )
         })}
     </ol>
-)
+    )
+}

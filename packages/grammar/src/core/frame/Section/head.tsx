@@ -23,13 +23,6 @@ export type SectionHeadProps = {
     readonly headingLevel?: SectionHeadingLevel
     /** The in-page anchor a link targets. */
     readonly id?: string
-    /**
-     * Draw the section as inert geometry while its content is unresolved (knowledge STATE-8). Skeleton parity: `title`
-     * (with `count`), `description`, `meta` and `action` keep their slots and are laid out unseen as measured
-     * placeholders under a shimmer, so the loading head has the ready head's box. The skeleton parts are `aria-hidden`;
-     * the section is `aria-busy`.
-     */
-    readonly isSkeleton?: boolean
 }
 
 type HeadDrawing = {
@@ -38,19 +31,19 @@ type HeadDrawing = {
     readonly count: number | undefined
     readonly meta: string | undefined
     readonly action: ReactNode
-    readonly isSkeleton: boolean
+    readonly isLoading: boolean
     readonly headingId: string
     readonly level: SectionHeadingLevel
 }
 
-const hidden = (isSkeleton: boolean) => (isSkeleton ? { "aria-hidden": true } as const : {})
+const hidden = (isLoading: boolean) => (isLoading ? { "aria-hidden": true } as const : {})
 
 /**
  * The head of a section: a plain `div`, never `<header>` (outside a sectioning element a `<header>` is the page banner,
  * and the banner belongs to the application bar). The row is inline, the title and its line are identity.
  */
-export const SectionHead = ({ title, description, count, meta, action, isSkeleton, headingId, level }: HeadDrawing) => {
-    const countPart = count === undefined ? null : (
+export const SectionHead = ({ title, description, count, meta, action, isLoading, headingId, level }: HeadDrawing) => {
+    const countPart = count === undefined || isLoading ? null : (
         <span key="count" className="starci-core-section-count" data-grammar-section-count={count} data-contract="TONE-2">{` (${count})`}</span>
     )
     return (
@@ -58,24 +51,24 @@ export const SectionHead = ({ title, description, count, meta, action, isSkeleto
             <div className="starci-core-section-header-copy" data-contract="GAP-1">
                 {createElement(
                     `h${level}`,
-                    { className: "starci-core-section-title", id: headingId, "data-contract": "MARGIN-0 FLOW-3", ...hidden(isSkeleton) },
-                    isSkeleton ? <SkeletonPlaceholder key="title">{title}{countPart}</SkeletonPlaceholder> : title,
-                    isSkeleton ? null : countPart,
+                    { className: "starci-core-section-title", id: headingId, "data-contract": "MARGIN-0 FLOW-3" },
+                    title,
+                    countPart,
                 )}
                 {description === undefined ? null : (
-                    <div className="starci-core-section-description" {...hidden(isSkeleton)}>
-                        {isSkeleton ? <SkeletonPlaceholder>{description}</SkeletonPlaceholder> : description}
+                    <div className="starci-core-section-description" {...hidden(isLoading)}>
+                        {isLoading ? <SkeletonPlaceholder>{description}</SkeletonPlaceholder> : description}
                     </div>
                 )}
             </div>
             {meta === undefined ? null : (
-                <div className="starci-core-section-meta" data-contract="FONT-1 TONE-2" {...hidden(isSkeleton)}>
-                    {isSkeleton ? <SkeletonPlaceholder>{meta}</SkeletonPlaceholder> : meta}
+                <div className="starci-core-section-meta" data-contract="FONT-1 TONE-2" {...hidden(isLoading)}>
+                    {isLoading ? <SkeletonPlaceholder>{meta}</SkeletonPlaceholder> : meta}
                 </div>
             )}
             {action === undefined ? null : (
-                <div className="starci-core-section-action" {...hidden(isSkeleton)}>
-                    {isSkeleton ? <SkeletonPlaceholder shape="block">{action}</SkeletonPlaceholder> : action}
+                <div className="starci-core-section-action" {...hidden(isLoading)}>
+                    {isLoading ? <SkeletonPlaceholder shape="block">{action}</SkeletonPlaceholder> : action}
                 </div>
             )}
         </div>

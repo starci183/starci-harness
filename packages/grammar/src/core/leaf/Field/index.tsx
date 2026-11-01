@@ -199,7 +199,7 @@ export type FieldProps = NoChildren & FieldControlProps & {
     /** Renders the control with the attributes that bind it to this field's label, guidance and error. */
     readonly control: (attributes: FieldControlAttributes) => ReactNode
     /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control box painted as a Skeleton. */
-    readonly isSkeleton?: boolean
+    readonly isLoading?: boolean
 }
 
 /**
@@ -208,7 +208,7 @@ export type FieldProps = NoChildren & FieldControlProps & {
  * for everything else, with the id and `aria-describedby` / `aria-invalid` wiring handed to the
  * control so a custom control is announced exactly like a Grammar one.
  */
-export const Field = ({ isSkeleton = false, ...props }: FieldProps) => isSkeleton
+export const Field = ({ isLoading = false, ...props }: FieldProps) => isLoading
     ? <FieldSkeletonScope component="Field"><FieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <FieldControl {...props} />
 

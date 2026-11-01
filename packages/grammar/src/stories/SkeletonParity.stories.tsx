@@ -117,49 +117,49 @@ const typography = (): ReadonlyArray<Pair> => [
     ...(["xs", "sm", "md"] as const).map((size) => ({
         id: `text-${size}`,
         ready: <G.Text size={size}>Quarterly revenue</G.Text>,
-        loading: <G.Text size={size} isSkeleton>Quarterly revenue</G.Text>,
+        loading: <G.Text size={size} isLoading>Quarterly revenue</G.Text>,
     })),
     {
         id: "text-inline-span",
         ready: <p style={{ margin: 0 }}><G.Text as="span" size="sm">Due today</G.Text></p>,
-        loading: <p style={{ margin: 0 }}><G.Text as="span" size="sm" isSkeleton>Due today</G.Text></p>,
+        loading: <p style={{ margin: 0 }}><G.Text as="span" size="sm" isLoading>Due today</G.Text></p>,
     },
     {
         id: "text-start-content",
         ready: <G.Text size="sm" startContent={<StarGlyph />}>Starred</G.Text>,
-        loading: <G.Text size="sm" startContent={<StarGlyph />} isSkeleton>Starred</G.Text>,
+        loading: <G.Text size="sm" startContent={<StarGlyph />} isLoading>Starred</G.Text>,
     },
     {
         id: "text-truncate",
         ready: <G.Text overflow="truncate">A long line of copy that runs past the column and is cut with an ellipsis</G.Text>,
-        loading: <G.Text overflow="truncate" isSkeleton>A long line of copy that runs past the column and is cut with an ellipsis</G.Text>,
+        loading: <G.Text overflow="truncate" isLoading>A long line of copy that runs past the column and is cut with an ellipsis</G.Text>,
         width: "14rem",
     },
     {
         id: "text-wrap-two-lines",
         ready: <G.Text overflow="wrap">Copy long enough to wrap onto a second line inside this column</G.Text>,
-        loading: <G.Text overflow="wrap" isSkeleton>Copy long enough to wrap onto a second line inside this column</G.Text>,
+        loading: <G.Text overflow="wrap" isLoading>Copy long enough to wrap onto a second line inside this column</G.Text>,
         width: "14rem",
     },
     ...([1, 2, 3, 4] as const).map((level) => ({
         id: `heading-${level}`,
         ready: <G.Heading level={level}>Billing settings</G.Heading>,
-        loading: <G.Heading level={level} isSkeleton>Billing settings</G.Heading>,
+        loading: <G.Heading level={level} isLoading>Billing settings</G.Heading>,
     })),
     {
         id: "heading-display",
         ready: <G.Heading level={1} scale="display">Welcome back</G.Heading>,
-        loading: <G.Heading level={1} scale="display" isSkeleton>Welcome back</G.Heading>,
+        loading: <G.Heading level={1} scale="display" isLoading>Welcome back</G.Heading>,
     },
     ...(["inline", "muted", "route", "plain"] as const).map((appearance) => ({
         id: `text-action-${appearance}`,
         ready: <G.TextAction appearance={appearance} onPress={noop}>View details</G.TextAction>,
-        loading: <G.TextAction appearance={appearance} onPress={noop} isSkeleton>View details</G.TextAction>,
+        loading: <G.TextAction appearance={appearance} onPress={noop} isLoading>View details</G.TextAction>,
     })),
     {
         id: "text-action-control",
         ready: <G.TextAction appearance="inline" size="control" onPress={noop}>Open report</G.TextAction>,
-        loading: <G.TextAction appearance="inline" size="control" onPress={noop} isSkeleton>Open report</G.TextAction>,
+        loading: <G.TextAction appearance="inline" size="control" onPress={noop} isLoading>Open report</G.TextAction>,
     },
 ]
 
@@ -174,27 +174,27 @@ const actions = (): ReadonlyArray<Pair> => [
     ...(["sm", "md", "lg"] as const).map((size) => ({
         id: `button-${size}`,
         ready: <G.Button size={size} onPress={noop}>Save changes</G.Button>,
-        loading: <G.Button size={size} onPress={noop} isSkeleton>Save changes</G.Button>,
+        loading: <G.Button size={size} onPress={noop} isLoading>Save changes</G.Button>,
     })),
     {
         id: "button-start-end-content",
         ready: <G.Button intent="commit" startContent={<SearchGlyph />} endContent={<StarGlyph />} onPress={noop}>Search</G.Button>,
-        loading: <G.Button intent="commit" startContent={<SearchGlyph />} endContent={<StarGlyph />} onPress={noop} isSkeleton>Search</G.Button>,
+        loading: <G.Button intent="commit" startContent={<SearchGlyph />} endContent={<StarGlyph />} onPress={noop} isLoading>Search</G.Button>,
     },
     {
         id: "button-fill",
         ready: <G.Button width="fill" onPress={noop}>Continue</G.Button>,
-        loading: <G.Button width="fill" onPress={noop} isSkeleton>Continue</G.Button>,
+        loading: <G.Button width="fill" onPress={noop} isLoading>Continue</G.Button>,
     },
     {
         id: "button-href",
         ready: <G.Button href="#docs">Read the docs</G.Button>,
-        loading: <G.Button href="#docs" isSkeleton>Read the docs</G.Button>,
+        loading: <G.Button href="#docs" isLoading>Read the docs</G.Button>,
     },
     ...(["sm", "md", "lg"] as const).map((size) => ({
         id: `icon-button-${size}`,
         ready: <G.IconButton source={BellGlyph} label="Notifications" size={size} onPress={noop} />,
-        loading: <G.IconButton source={BellGlyph} label="Notifications" size={size} onPress={noop} isSkeleton />,
+        loading: <G.IconButton source={BellGlyph} label="Notifications" size={size} onPress={noop} isLoading />,
     })),
 ]
 
@@ -209,32 +209,32 @@ const status = (): ReadonlyArray<Pair> => [
     ...(["neutral", "success", "muted"] as const).map((tone) => ({
         id: `badge-${tone}`,
         ready: <G.Badge tone={tone}>Active</G.Badge>,
-        loading: <G.Badge tone={tone} isSkeleton>Active</G.Badge>,
+        loading: <G.Badge tone={tone} isLoading>Active</G.Badge>,
     })),
     {
         id: "badge-start-content",
         ready: <G.Badge tone="accent" startContent={<StarGlyph />}>Featured</G.Badge>,
-        loading: <G.Badge tone="accent" startContent={<StarGlyph />} isSkeleton>Featured</G.Badge>,
+        loading: <G.Badge tone="accent" startContent={<StarGlyph />} isLoading>Featured</G.Badge>,
     },
     {
         id: "badge-dot",
         ready: <G.Badge tone="success" isDot>Online</G.Badge>,
-        loading: <G.Badge tone="success" isDot isSkeleton>Online</G.Badge>,
+        loading: <G.Badge tone="success" isDot isLoading>Online</G.Badge>,
     },
     {
         id: "status-dot-only",
         ready: <G.StatusDot tone="success" aria-label="Online" />,
-        loading: <G.StatusDot tone="success" aria-label="Online" isSkeleton />,
+        loading: <G.StatusDot tone="success" aria-label="Online" isLoading />,
     },
     ...(["md", "sm"] as const).map((size) => ({
         id: `meter-${size}`,
         ready: <G.Meter label="Storage" value={32} size={size} />,
-        loading: <G.Meter label="Storage" value={32} size={size} isSkeleton />,
+        loading: <G.Meter label="Storage" value={32} size={size} isLoading />,
     })),
     {
         id: "progress",
         ready: <G.Progress label="Upload" value={40} />,
-        loading: <G.Progress label="Upload" value={40} isSkeleton />,
+        loading: <G.Progress label="Upload" value={40} isLoading />,
     },
 ]
 
@@ -249,17 +249,17 @@ const identity = (): ReadonlyArray<Pair> => [
     ...(["sm", "md", "lg"] as const).map((size) => ({
         id: `avatar-${size}`,
         ready: <G.Avatar name="Alex Morgan" size={size} />,
-        loading: <G.Avatar name="Alex Morgan" size={size} isSkeleton />,
+        loading: <G.Avatar name="Alex Morgan" size={size} isLoading />,
     })),
     ...(["chip", "leading", "heading"] as const).map((usage) => ({
         id: `icon-${usage}`,
         ready: <G.Icon source={SettingsGlyph} usage={usage} />,
-        loading: <G.Icon source={SettingsGlyph} usage={usage} isSkeleton />,
+        loading: <G.Icon source={SettingsGlyph} usage={usage} isLoading />,
     })),
     ...(["sm", "md"] as const).map((size) => ({
         id: `icon-tile-${size}`,
         ready: <G.IconTile source={UserGlyph} size={size} />,
-        loading: <G.IconTile source={UserGlyph} size={size} isSkeleton />,
+        loading: <G.IconTile source={UserGlyph} size={size} isLoading />,
     })),
 ]
 
@@ -270,15 +270,15 @@ export const IdentityLoading: Story = onePhase("grammar-identity", "loading", id
 
 /* ------------------------------------------------------------------ rows */
 
-/** A list card holding one row; `isSkeleton` draws the same row as geometry. */
-const rowCard = (row: G.ListRowData, isSkeleton: boolean) => (
-    <G.SurfaceCard kind="list" label="Rows" items={[row]} empty={<G.EmptyNotice message="No rows." />} isSkeleton={isSkeleton} />
+/** A list card holding one row; `isLoading` draws the same row as geometry. */
+const rowCard = (row: G.ListRowData, isLoading: boolean) => (
+    <G.SurfaceCard kind="list" label="Rows" items={[row]} empty={<G.EmptyNotice message="No rows." />} isLoading={isLoading} />
 )
 
 /** A Page header with every slot; the tabs variant puts the page tabs on its separator. */
-const pageHeader = (withTabs: boolean, isSkeleton: boolean) => (
+const pageHeader = (withTabs: boolean, isLoading: boolean) => (
     <G.Page
-        isSkeleton={isSkeleton}
+        isLoading={isLoading}
         header={{
             breadcrumbs: { label: "Breadcrumb", items: [{ id: "connections", label: "Connections", href: "#connections" }, { id: "main", label: "Main account" }] },
             title: "Main account",
@@ -315,7 +315,7 @@ const rows = (): ReadonlyArray<Pair> => [
     {
         id: "section",
         ready: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>}><G.Text>Everything the course covers.</G.Text></G.Section>,
-        loading: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>} isSkeleton><G.Text isSkeleton>Everything the course covers.</G.Text></G.Section>,
+        loading: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>} isLoading><G.Text isLoading>Everything the course covers.</G.Text></G.Section>,
         width: "32rem",
     },
     {
@@ -339,19 +339,19 @@ const rows = (): ReadonlyArray<Pair> => [
     {
         id: "figures-card",
         ready: <G.SurfaceCard kind="figures" label="Today" items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
-        loading: <G.SurfaceCard kind="figures" label="Today" isSkeleton items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
+        loading: <G.SurfaceCard kind="figures" label="Today" isLoading items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
         width: "28rem",
     },
     {
         id: "tile-card",
         ready: <G.SurfaceCard kind="tile" name="Google Drive" mark={{ icon: BellGlyph }} description="Reads the files you share." badge={{ label: "Connected", tone: "success" }} action={{ label: "Open", press: noop }} />,
-        loading: <G.SurfaceCard kind="tile" isSkeleton name="Google Drive" mark={{ icon: BellGlyph }} description="Reads the files you share." badge={{ label: "Connected", tone: "success" }} action={{ label: "Open", press: noop }} />,
+        loading: <G.SurfaceCard kind="tile" isLoading name="Google Drive" mark={{ icon: BellGlyph }} description="Reads the files you share." badge={{ label: "Connected", tone: "success" }} action={{ label: "Open", press: noop }} />,
         width: "20rem",
     },
     {
         id: "message-bubble",
         ready: <G.MessageBubble side="incoming" body={"Two short lines of a message that wraps once in the bubble."} />,
-        loading: <G.MessageBubble side="incoming" isSkeleton />,
+        loading: <G.MessageBubble side="incoming" isLoading />,
         width: "28rem",
     },
 ]
@@ -385,13 +385,13 @@ const collections = (): ReadonlyArray<Pair> => [
     {
         id: "data-table",
         ready: <G.DataTable label="Lessons" columns={lessonColumns} rows={lessons} renderCell={lessonCell} emptyContent="No lessons." />,
-        loading: <G.DataTable label="Lessons" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading loadingRows={3} emptyContent="No lessons." />,
+        loading: <G.DataTable label="Lessons" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading emptyContent="No lessons." />,
         width: "32rem",
     },
     {
         id: "list-box",
         ready: <G.ListBox label="Folders" items={folders} />,
-        loading: <G.ListBox label="Folders" items={[]} isLoading loadingRows={3} />,
+        loading: <G.ListBox label="Folders" items={[]} isLoading />,
         width: "20rem",
     },
     {
@@ -404,13 +404,13 @@ const collections = (): ReadonlyArray<Pair> => [
                 items={lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, description: `${lesson.minutes} minutes`, action: { label: "Open", press: noop } }))}
             />
         ),
-        loading: <G.SurfaceCard kind="list" label="Saved lessons" isSkeleton loadingRows={3} items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />,
+        loading: <G.SurfaceCard kind="list" label="Saved lessons" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />,
         width: "28rem",
     },
     {
         id: "timeline",
         ready: <G.Timeline label="Order history" items={[{ id: "a", title: "Order placed", timeLabel: "09:12", description: "Paid by card" }, { id: "b", title: "Packed", timeLabel: "11:40", description: "Warehouse 2" }, { id: "c", title: "Shipped", timeLabel: "15:05", description: "Tracking sent" }]} />,
-        loading: <G.Timeline label="Order history" items={[]} isLoading loadingRows={3} />,
+        loading: <G.Timeline label="Order history" items={[]} isLoading />,
         width: "28rem",
     },
 ]
@@ -439,87 +439,87 @@ const forms = (): ReadonlyArray<Pair> => [
     {
         id: "input",
         ready: <G.Input id="parity-input" name="name" label="Name" />,
-        loading: <G.Input id="parity-input-loading" name="name" label="Name" isSkeleton />,
+        loading: <G.Input id="parity-input-loading" name="name" label="Name" isLoading />,
     },
     {
         id: "input-description",
         ready: <G.Input id="parity-input-d" name="email" label="Email" description="We never share it." />,
-        loading: <G.Input id="parity-input-d-loading" name="email" label="Email" description="We never share it." isSkeleton />,
+        loading: <G.Input id="parity-input-d-loading" name="email" label="Email" description="We never share it." isLoading />,
     },
     {
         id: "input-label-hidden",
         ready: <G.Input id="parity-input-h" name="q" label="Query" isLabelHidden />,
-        loading: <G.Input id="parity-input-h-loading" name="q" label="Query" isLabelHidden isSkeleton />,
+        loading: <G.Input id="parity-input-h-loading" name="q" label="Query" isLabelHidden isLoading />,
     },
     {
         id: "copy-field",
         ready: <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" description="Paste it into the provider." copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" />,
-        loading: <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" description="Paste it into the provider." copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" isSkeleton />,
+        loading: <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" description="Paste it into the provider." copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" isLoading />,
     },
     {
         id: "copy-field-masked",
         ready: <G.CopyField masked label="API key" lastFour="4387" onCopy={() => ""} copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" />,
-        loading: <G.CopyField masked label="API key" lastFour="4387" onCopy={() => ""} copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" isSkeleton />,
+        loading: <G.CopyField masked label="API key" lastFour="4387" onCopy={() => ""} copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" isLoading />,
     },
     {
         id: "textarea",
         ready: <G.Textarea label="Bio" description="A sentence or two." rows={3} />,
-        loading: <G.Textarea label="Bio" description="A sentence or two." rows={3} isSkeleton />,
+        loading: <G.Textarea label="Bio" description="A sentence or two." rows={3} isLoading />,
     },
     {
         id: "number-field",
         ready: <G.NumberField label="Seats" defaultValue={8} />,
-        loading: <G.NumberField label="Seats" defaultValue={8} isSkeleton />,
+        loading: <G.NumberField label="Seats" defaultValue={8} isLoading />,
     },
     {
         id: "search-field",
         ready: <G.SearchField label="Search" />,
-        loading: <G.SearchField label="Search" isSkeleton />,
+        loading: <G.SearchField label="Search" isLoading />,
     },
     {
         id: "select",
         ready: <G.Select label="Plan" options={planOptions} defaultValue="team" />,
-        loading: <G.Select label="Plan" options={planOptions} isSkeleton />,
+        loading: <G.Select label="Plan" options={planOptions} isLoading />,
     },
     {
         id: "select-description",
         ready: <G.Select label="Plan" description="Billed monthly." options={planOptions} defaultValue="team" />,
-        loading: <G.Select label="Plan" description="Billed monthly." options={planOptions} isSkeleton />,
+        loading: <G.Select label="Plan" description="Billed monthly." options={planOptions} isLoading />,
     },
     {
         id: "combo-box",
         ready: <G.ComboBox label="Plan" options={planOptions} />,
-        loading: <G.ComboBox label="Plan" options={planOptions} isSkeleton />,
+        loading: <G.ComboBox label="Plan" options={planOptions} isLoading />,
     },
     {
         id: "field",
         ready: <G.Field label="Account id" description="Shown on invoices." control={(control) => <input {...control} style={{ boxSizing: "border-box", width: "100%", height: "2.5rem" }} />} />,
-        loading: <G.Field label="Account id" description="Shown on invoices." isSkeleton control={(control) => <input {...control} />} />,
+        loading: <G.Field label="Account id" description="Shown on invoices." isLoading control={(control) => <input {...control} />} />,
     },
     ...(["md", "lg", "control"] as const).map((size) => ({
         id: `switch-${size}`,
         ready: <G.Switch label="Dark mode" size={size} />,
-        loading: <G.Switch label="Dark mode" size={size} isSkeleton />,
+        loading: <G.Switch label="Dark mode" size={size} isLoading />,
     })),
     {
         id: "checkbox",
         ready: <G.Checkbox label="Accept the terms" />,
-        loading: <G.Checkbox label="Accept the terms" isSkeleton />,
+        loading: <G.Checkbox label="Accept the terms" isLoading />,
     },
     {
         id: "checkbox-group",
         ready: <G.CheckboxGroup label="Notifications" options={choiceOptions} />,
-        loading: <G.CheckboxGroup label="Notifications" options={choiceOptions} isSkeleton />,
+        loading: <G.CheckboxGroup label="Notifications" options={choiceOptions} isLoading />,
     },
     {
         id: "radio-group",
         ready: <G.RadioGroup label="Digest" options={choiceOptions} defaultValue="email" />,
-        loading: <G.RadioGroup label="Digest" options={choiceOptions} isSkeleton />,
+        loading: <G.RadioGroup label="Digest" options={choiceOptions} isLoading />,
     },
     {
         id: "segmented-control",
         ready: <G.SegmentedControl label="Range" options={segmentOptions} defaultValue="day" />,
-        loading: <G.SegmentedControl label="Range" options={segmentOptions} isSkeleton />,
+        loading: <G.SegmentedControl label="Range" options={segmentOptions} isLoading />,
     },
 ]
 
@@ -541,30 +541,30 @@ const content = (): ReadonlyArray<Pair> => [
     {
         id: "code",
         ready: <p style={{ margin: 0 }}>Run <G.Code>npm ci</G.Code> first.</p>,
-        loading: <p style={{ margin: 0 }}>Run <G.Code isSkeleton>npm ci</G.Code> first.</p>,
+        loading: <p style={{ margin: 0 }}>Run <G.Code isLoading>npm ci</G.Code> first.</p>,
     },
     {
         id: "terminal",
         ready: <G.Terminal title="Build log" lines={logLines} />,
-        loading: <G.Terminal title="Build log" lines={logLines} isSkeleton />,
+        loading: <G.Terminal title="Build log" lines={logLines} isLoading />,
         width: "28rem",
     },
     {
         id: "fenced-code-block",
         ready: <G.FencedCodeBlock language="bash" code={"npm ci\nnpm run build"} action={<G.Button size="sm" onPress={noop}>Copy</G.Button>} />,
-        loading: <G.FencedCodeBlock language="bash" code={"npm ci\nnpm run build"} action={<G.Button size="sm" onPress={noop}>Copy</G.Button>} isSkeleton />,
+        loading: <G.FencedCodeBlock language="bash" code={"npm ci\nnpm run build"} action={<G.Button size="sm" onPress={noop}>Copy</G.Button>} isLoading />,
         width: "28rem",
     },
     {
         id: "alert",
         ready: <G.Alert title="Sync paused" description="Reconnect to resume." action={{ label: "Retry", onAction: noop }} dismissLabel="Dismiss" />,
-        loading: <G.Alert title="Sync paused" description="Reconnect to resume." action={{ label: "Retry", onAction: noop }} dismissLabel="Dismiss" isSkeleton />,
+        loading: <G.Alert title="Sync paused" description="Reconnect to resume." action={{ label: "Retry", onAction: noop }} dismissLabel="Dismiss" isLoading />,
         width: "32rem",
     },
     {
         id: "tag-group",
         ready: <G.TagGroup label="Teams" items={tags} />,
-        loading: <G.TagGroup label="Teams" items={tags} isSkeleton />,
+        loading: <G.TagGroup label="Teams" items={tags} isLoading />,
     },
 ]
 
