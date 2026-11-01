@@ -1,8 +1,8 @@
 # Adding to the grammar
 
-How a component enters `@starci/grammar`, or a prop enters a component. Read by anyone proposing one. The tiers, the `SurfaceCard`
-shape and the rule ids it cites as proposed are specified in
-[grammar-audit-2026-11](../decisions/grammar-audit-2026-11.md) parts 3, 4 and 7 until the owner approves them and their lanes land.
+How a component enters `@starci/grammar`, or a prop enters a component. Read by anyone proposing one. The tiers are
+the ladder below, the card's shape is the `kind` union of [contract](contract.md#card), and the situation each component
+answers is a row of [situations](../ui/situations.md); a component that has no row has no job yet.
 
 The default answer is no. Every component is a choice each later author has to make, and a wrong choice is what the owner corrects.
 
@@ -10,8 +10,8 @@ The default answer is no. Every component is a choice each later author has to m
 
 Before writing anything, answer these in order. Stop at the first that settles it.
 
-1. **Does a component already do this job?** Search the [canonical set](../decisions/grammar-audit-2026-11.md#72-the-canonical-set) and
-   the Choose tables. If yes, use it.
+1. **Does a component already do this job?** Search the folders of `src/core/<tier>` (the set is what they hold), the
+   [situations](../ui/situations.md) and the Choose tables. If yes, use it.
 2. **Does an existing `kind`, slot or field cover it?** Add a field, not a component.
 3. **Is it a capability or a feature?** Name three unrelated products that would use it, chat, billing and a game say. If you cannot, it
    belongs in the app. A feature that looks generic is still a feature: a pricing tick, a leaderboard medal, a conversation list.
@@ -33,17 +33,33 @@ one. No two names mean the same, and nothing is aliased: a renamed thing is remo
 
 ## Which tier
 
-The folder is the tier and a check holds it. Pick by what it does, not by size.
+The folder is the tier and a check holds it (`data-tier` equals the folder). Pick by what it does, not by size. One ladder serves
+the grammar and apps, with `block` added in apps; a tier imports nothing above it (ruling `grammar-tier-ladder`).
 
-| Tier | Choose when | `children` |
-|---|---|---|
-| leaf | one element or one vendor part | `string` or none |
-| branch | it holds its own interaction state | never |
-| composite | it draws a fixed anatomy from fields | never |
-| frame | it owns a region: tracks, inset, scroll, ground, or an overlay | yes |
+Choice `tier.choose.component`: which tier a component belongs to. The first row that applies wins.
 
-A tier imports only below itself. Import the vendor part rather than climb. `children` outside a frame, or any new exception, needs an owner
-ruling. Every public prop type extends `NoChildren` or `LabelChild`, so a wrong caller fails to compile.
+| Row | When | Tier | State | May import | Props | `children` | Held by |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| frame | it owns a region: tracks, an inset, a scroll, a ground, or an overlay; it adds no content of its own | frame | layout or a portal | everything below | role props | yes: this is the tier's job | tier-props lint; `tiers.grammar` import check |
+| composite | it draws a fixed anatomy from fields | composite | none beyond a branch's | branches, leaves, lower composites | typed data, `on*`, at most 3 `ReactNode` slots each named for its role | never: `NoChildren` | tier-props lint; the same import check |
+| branch | it holds its own interaction state and reads no data | branch | `useState` for open, selected or draft | leaves, branches | typed data (`items`, `options`), `on*`, named slots | never: `NoChildren` | tier-state and tier-props lint |
+| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isSkeleton` | a string or none: `LabelChild` | tier-state and tier-props lint |
+| block | an app world: it reads data through hooks (apps only) | block | the app's hooks | composites and below, never a block | `{ shape?, props, on? }` | never | `starci-fe/tier-children`; R26 |
+
+A prop type extends `NoChildren` (`{ children?: never }`) or `LabelChild` (`{ children?: string }`) in a tier that takes no
+`children`, so nested JSX fails to compile for every caller. `children` outside a frame, or any new exception, needs an owner
+ruling. Each exception has its reason and its holder; no other exists.
+
+| Exception | Reason | Held by |
+| --- | --- | --- |
+| `Text` inline content | a sentence holds `Code`, `Link`, `Kbd` | lint `text-inline-only` refuses a block component in it |
+| `Freestyle` `className` | the one sanctioned hole, with a stated reason | R341 |
+| `Tooltip` behind a leaf | `disabledReason` needs one; the leaf uses the vendor part | the import check sees no upward edge |
+| `DataTable` `render` per column | a cell draws from row data; a client branch | lint: no function prop from a server file |
+| Vendor field props over budget | parity forwards them | the budget counts own props only |
+
+Import the vendor part rather than climb. A frame is the only tier that takes `children`, and a `Dialog` or `Drawer` body is a
+frame's, so overlays need no exception.
 
 ## Props
 

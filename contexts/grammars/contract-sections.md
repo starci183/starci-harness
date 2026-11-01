@@ -12,7 +12,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
   - The shared scale · `contexts/grammars/contract.md#the-shared-scale` · 2 KB — A row of controls reads as one object, so its controls share one height.
   - Intent x placement -> variant · `contexts/grammars/contract.md#intent-x-placement---variant` · 1 KB — The app states what a command does; the composition states where it sits; Common's map turns the pair into a HeroUI variant.
   - Roles · `contexts/grammars/contract.md#roles` · 1 KB — Each heading is one role of contract.yaml `roles`.
-    - Card · `contexts/grammars/contract.md#card` · 2 KB — Card is one subject on its own surface.
+    - Card · `contexts/grammars/contract.md#card` · 3 KB — Card is one subject on its own surface, and a surface never stands inside another (a card, a `Pane surface`, a `Dialog`, `Drawer`, `AlertDialog` or `Popover`): the card has one ...
     - Button · `contexts/grammars/contract.md#button` · 1 KB — Button is a command (`onPress`) or a destination (`href`) drawn as a button; the kind decides semantics, the shape only paints.
     - ButtonGroup · `contexts/grammars/contract.md#buttongroup` · 1 KB — An action group is two to five peers of one intent acting on one object (zoom, align).
     - Tabs · `contexts/grammars/contract.md#tabs` · 1 KB — Tabs switch whole panels; each tab owns its panel.
@@ -24,7 +24,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - Select · `contexts/grammars/contract.md#select` · 1 KB — A select is a field whose control opens a list in a popover.
     - Dialog · `contexts/grammars/contract.md#dialog` · 1 KB — A dialog, an alert dialog, a drawer, a popover or a tooltip.
     - Menu · `contexts/grammars/contract.md#menu` · 1 KB — A menu is a list of commands behind a trigger.
-    - List · `contexts/grammars/contract.md#list` · 1 KB — A list is rows of peers: a `ListBox` when picking is the task, a list card of static rows when rows only report, a data table when columns matter.
+    - List · `contexts/grammars/contract.md#list` · 1 KB — A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a bounded list reports, `Section kind="list"` when a list searches, filters or pages, ...
     - Alert · `contexts/grammars/contract.md#alert` · 1 KB — An alert is feedback in the page; a toast is the same anatomy in the one region.
     - Quote · `contexts/grammars/contract.md#quote` · 1 KB — A quote is words taken from a source, drawn as a `<blockquote>` on a tinted ground at the nested inset, one radius below the surface that hosts it.
     - MessageBubble · `contexts/grammars/contract.md#messagebubble` · 1 KB — A message bubble is one message of a conversation; every conversation is `MessageBubble`s in a thread the app keeps, and no screen draws its own bubble.
@@ -33,7 +33,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - Mascot · `contexts/grammars/contract.md#mascot` · 1 KB — A mascot is generated character art on its own size scale, so one character comes out at one size on every screen: square boxes `sm`, `md` and `lg` (Common tokens ...
     - PaneGrid · `contexts/grammars/contract.md#panegrid` · 2 KB — A pane grid divides a bounded height into named areas (`["a b c", "d d d"]`): A, B and C side by side with D below.
     - Freestyle · `contexts/grammars/contract.md#freestyle` · 1 KB — Freestyle is the one sanctioned escape hatch: a div that fills its host, where the app writes its own plain elements and CSS because no Grammar component fits (a sign-in brand ...
-    - PageHeader · `contexts/grammars/contract.md#pageheader` · 1 KB — The page header is the top of one page: the trail, the page heading (the document's one h1) with the subject's mark, status chips and summary, the page's commands, and the page ...
-    - Page · `contexts/grammars/contract.md#page` · 1 KB — A page is one route's frame: the page header band (PageHeader's slots, given as data) across the region, then the body in the page measure and gutter.
+    - Page · `contexts/grammars/contract.md#page` · 2 KB — A page is one route's frame, and its `header` is data: the trail, the page heading (the document's one h1) with the subject's mark, status chips and summary, the page's commands, ...
+    - Section · `contexts/grammars/contract.md#section` · 1 KB — A section is a named region whose title is its heading and its landmark name; no free heading exists (ruling `section-is-the-heading`).
     - Diagram · `contexts/grammars/contract.md#diagram` · 1 KB — A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source in the grammar's tokens, `FlowGraph` draws nodes and edges the app holds ...
     - Shell · `contexts/grammars/contract.md#shell` · 1 KB — The shell is the frame of an app: one shell owns the bar, the navigation and the mobile drawer, and one owner scrolls each axis.

@@ -40,15 +40,15 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - FEEDBACK-2 Recover at the smallest owner · `FEEDBACK-2` · 1 KB — A failed or empty region recovers through its own `EmptyNotice` action, scoped to the failed operation; an unsafe repeat (a purchase) becomes a distinct safe operation; work ...
     - FEEDBACK-3 Claim only after settlement · `FEEDBACK-3` · 1 KB — Pending clears on a real settlement; the result names the outcome that arrived; one `live="polite"` owner announces a non-urgent result (`assertive` only for a real interruption); ...
   - 5. Collection · `contexts/ui/composition.md#5-collection` · 1 KB
-    - COLLECTION-1 A list of entities is a section, never a card · `COLLECTION-1` · 1 KB — Three or more of one kind sit in a page section under its own heading; title, count, filter and section action belong to that heading region.
+    - COLLECTION-1 A list is a card; a list that searches, filters or pages is a section · `COLLECTION-1` · 1 KB — Rows of one kind are one `SurfaceCard kind="list"` with its label outside, whether the reader works through them as one group (the items a setup needs, required steps, a rail's ...
     - COLLECTION-2 A card is one subject · `COLLECTION-2` · 1 KB — A card presents one entity or one summary of one subject.
     - COLLECTION-3 A group identity shows its members · `COLLECTION-3` · 1 KB — A group or conversation identity is one composite of its members' identities, distinguishable from one person's, with a count when members overflow; the composite carries the ...
   - 6. Layout · `contexts/ui/composition.md#6-layout` · 1 KB
     - LAYOUT-1 Which regions exist · `LAYOUT-1` · 1 KB — One task with no support is one region.
-    - LAYOUT-2 Every region's owner is a published composition · `LAYOUT-2` · 1 KB — Tracks, slots and bounds belong to a published composition (shell, primary-rail layout, chat workspace); the spec names only its props.
+    - LAYOUT-2 Every region's owner is a published composition · `LAYOUT-2` · 1 KB — Tracks, slots and bounds belong to a published composition (`WorkspaceShell`, `Page`, `Grid kind="main-rail"`, `PaneGrid`); the spec names only its props.
     - LAYOUT-3 One owner per region and per scroll axis · `LAYOUT-3` · 1 KB — Each region has one composition owner.
     - LAYOUT-4 Regions that leave normal flow · `LAYOUT-4` · 1 KB — Sticky, fixed, drawer and floating regions use their composition's contract and return to flow below its narrow width.
-    - FE-APP-SHELL-1..7 App chrome · `FE-APP-SHELL-1..7` · 2 KB
+    - FE-APP-SHELL-1..6 App chrome · `FE-APP-SHELL-1..6` · 2 KB
   - 7. Responsive · `contexts/ui/composition.md#7-responsive` · 1 KB
     - RESPONSIVE-1 What survives · `RESPONSIVE-1` · 1 KB — The compact branch keeps the meaning, the commit and the current state in one readable flow; support stays reachable.
     - RESPONSIVE-2 The query owner is named, never the device · `RESPONSIVE-2` · 1 KB — Every branch names one owner: a composition's container query or its viewport query.

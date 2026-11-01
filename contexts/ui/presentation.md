@@ -20,7 +20,7 @@ Lint: `starci-fe/no-spacing-utility`, `starci-fe/no-arbitrary-value`, `starci-fe
 Every distance on a screen is the grammar's. The grammar owns every value (padding, gap, margin) through tokens and
 the anatomy of its components; the app only names the relation between two blocks it placed side by side, because only
 the app knows whether they belong together, and the grammar resolves the name to its step. Lint:
-`starci-fe/no-spacing-utility` in app class strings, `starci/spacing-scale` in grammar stylesheets (R350).
+`starci-fe/no-spacing-utility` in app class strings, `starci-grammar/spacing-scale` in the grammar's own stylesheets (its `npm test`), `starci/spacing-scale` in app stylesheets (R350).
 
 ### The scale
 
@@ -171,7 +171,7 @@ reading measure stays). `MARGIN-0..6` are the same steps used as a named placeme
 | --- | --- |
 | grammar | every number: the role tokens, the insets of every component, the divider-facing sides, the bleed API, the row and bubble rhythm, and the `data-contract` stamps (`PADDING-*`, `GAP-*`) on each part |
 | app | structure and relation names: `<Stack gap="region \| section \| row \| inline \| identity">`, `<Cluster gap>` (a wrapping set, one role on both axes), `<Grid kind="cards \| form \| main-rail">`, `PaneGrid`/`PaneSection`, `Page chrome`; measure and columns through props; no spacing class |
-| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci/spacing-scale` (grammar stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`; proof TASTE-4 measures the rhythm on the live page |
+| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci-grammar/spacing-scale` (grammar stylesheets, the package's `npm test`), `starci/spacing-scale` (app stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`; proof TASTE-4 measures the rhythm on the live page |
 
 An app moves onto role props with `starci app codemod spacing-roles` (dry run by default, a report of every rewrite
 and of every utility left for a person).
@@ -187,7 +187,7 @@ weights):
 | FONT-2 | supporting reading: a full supporting line | `Text` small size |
 | FONT-3 | ordinary reading | `Text` default size |
 | FONT-4 | page heading: one per document | `Heading` level 1 |
-| FONT-5 | leading value: the principal figure of a region | `DescriptionList` stat-strip value, text semantics |
+| FONT-5 | leading value: the principal figure of a region | the value of a `kind="figures"` item, text semantics |
 | FONT-6 | display: a landing introduction | `Heading` display treatment, outline unchanged |
 
 - A heading's level is its document position and sets its size together, so tag and size never drift; levels stop

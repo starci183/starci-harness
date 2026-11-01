@@ -32,7 +32,7 @@ to the caller:
 ## Spacing: one scale, roles for gaps and levels for insets
 
 `COMMON_SPACING_SCALE` (0 4 8 12 24 32) is the only scale (`owner: src/common/spacing.ts`); a grammar does not
-re-space, and a grammar stylesheet writes no length off it (`starci/spacing-scale`). Common publishes the rhythm as
+re-space, and a grammar stylesheet writes no length off it (`starci-grammar/spacing-scale`, run by the package's `npm test`). Common publishes the rhythm as
 five gap roles, each named for the relation it separates, not for its size: `--grammar-identity-gap`,
 `--grammar-inline-gap`, `--grammar-row-gap`, `--grammar-section-gap` and `--grammar-region-gap` are GAP-1 to GAP-5
 (`COMMON_GAP_ROLES`). Insets are levels: `--grammar-inset` for every container, `--grammar-inset-nested` for a box

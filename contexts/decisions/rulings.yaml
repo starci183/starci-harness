@@ -77,7 +77,7 @@ rulings:
   - id: surfacecard-always-painted
     date: '2026-10-25'
     status: live
-    ruling: "A card carries its shadow on the page background. A surface never stands inside another surface, dialogs and drawers included, so there is no nested edge (owner decision 2026-11-01, ruling surface-card-kinds)."
+    ruling: "A card carries its shadow on the page background and its border, without shadow, when it sits on another surface."
     owner: "contexts/ui/components/card.md; contexts/grammars/core.md"
   - id: surface-card-kinds
     date: '2026-11-01'
@@ -163,7 +163,7 @@ rulings:
   - id: hover-actions-floating-toolbar
     date: '2026-10-26'
     status: live
-    ruling: "The actions of an item that show on hover and focus use the grammar's floating toolbar beside the item, tooltip-named icon buttons that never overlap its text; a MessageBubble draws its own."
+    ruling: "An item's actions that show on hover and focus are the grammar's floating strip beside it, tooltip-named icon commands that never overlap its text; a MessageBubble draws its own."
     owner: "contexts/ui/components/message-bubble.md"
   - id: divider-full-bleed
     date: '2026-10-26'
@@ -240,7 +240,7 @@ rulings:
   - id: field-anatomy-order
     date: '2026-10-28'
     status: live
-    ruling: "Every field draws HeroUI's order, label, control, description, error, with the description under the control; a group keeps HeroUI's group order. Fields that pair sit in Grammar's `Grid kind="form"`, whose rows align on the control line whatever a neighbour carries, its columns from its own width."
+    ruling: "Every field draws HeroUI's order, label, control, description, error, with the description under the control; a group keeps HeroUI's group order. Fields that pair sit in Grammar's `Grid kind=\"form\"`, whose rows align on the control line whatever a neighbour carries, its columns from its own width."
     owner: "contexts/grammars/contract.md input; contexts/grammars/contract.yaml DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE; contexts/ui/components/text-field.md"
   - id: copy-field
     date: '2026-10-28'
@@ -362,7 +362,9 @@ rulings:
     status: live
     words: "ý là tùy mà p-3, tùy cái mà px khác py khác, thầy muốn trò suy nghĩ thấu đáo hiểu k / tương tự với gap, m,... thầy muốn deep thinking / rồi làm r / hay full 3 bỏ 4 đi!!! thầy nghĩ nên v"
     ruling: "Spacing is one scale, 0 4 8 12 24 32, with no 16, and every value on it is the Grammar's: an app names the relation between the blocks it places through role props (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page chrome) and writes no spacing utility. Gaps are roles, strictly ordered: identity 4, inline 8, row 12, section 24, region 32. Insets are levels, each side taking its value from what it touches: every container (a card dense or holding a form, a pane on every side, a dialog or drawer, a band) holds its content 12 in, a box inside a card 8, a low-density region (an empty state, a drop target) 24, the page gutter 12 on a phone, 24 from the medium breakpoint and 32 from wide, stepped and never fluid, except on a page of panes (Page chrome=\"panes\"), whose header takes 12 at every width so the title, the first tab and the pane content share one edge and the gutter column starts at the pane content edge; controls take inline sm 8, md 12, lg 24, one step less on a glyph side, and their block padding comes from their height. A closed box has equal block sides and never two steps between its sides; extra separation belongs to the parent's gap. The page title, the tab labels and the section headings share one text edge with the card or pane box below: tabs are the underline bar with the first label on that edge, pills are only for filters and chips, and the card's inner 12 is the one intentional step. The lint ships at warn for one cohort with a per-rule count while the spacing-roles codemod moves apps onto the role props, then moves to error."
-    owner: "@starci/grammar src/common/spacing.ts, src/common/styles.css (root tokens), src/common/components-spacing.css, src/core/frame/Stack, Cluster, Grid, Page (chrome panes); lint starci-fe/no-spacing-utility and starci/spacing-scale (R350); starci app codemod spacing-roles; contexts/ui/presentation.md Space"
+    owner: "@starci/grammar src/common/spacing.ts, src/common/styles.css (root tokens), src/common/components-spacing.css, src/core/frame/Stack, Cluster, Grid, Page (chrome panes); lint starci-fe/no-spacing-utility and starci/spacing-scale (R350) and the package's own starci-grammar/spacing-scale; starci app codemod spacing-roles; contexts/ui/presentation.md Space"
+    pins:
+      contexts/vendor/wrappers.yaml: 0da99e774deba147e983918c237820ad853fd05840a0d04b5b71c9c2c6030a09
   - id: grammar-freestyle-region
     date: '2026-10-31'
     status: live
@@ -777,6 +779,33 @@ rulings:
     status: live
     ruling: "The Grammar package keeps one lint config, the gate of literals: ESLint over its components and Stylelint over its stylesheets refuse a hardcoded colour, radius, type size, shadow geometry, motion or opacity, a literal var() fallback, a utility class that decides a look, and a spacing value off the scale. Every value is a token or a step of a ramp in src/common/ramps.css. It runs in the package's own `npm test`, so CI judges every grammar change. This is the one exception to no-grammar-tests: the Grammar still adds no spec suite or test helper."
     owner: "packages/grammar/eslint.config.mjs and stylelint.config.mjs (rules in scripts/lint/)"
+
+  - id: grammar-tier-ladder
+    date: '2026-11-01'
+    status: live
+    ruling: "One ladder of tiers serves the grammar and apps, and a tier imports nothing above it: leaf (one element or one vendor part; a string or no children), branch (a leaf plus its own interaction state; never children), composite (a fixed anatomy drawn from fields; never children, at most three named ReactNode slots), frame (owns a region: tracks, inset, scroll, ground or an overlay; the one tier that takes children), and in apps block (owns a world, reads data through hooks, never children, never imports a block). The folder is the tier and data-tier carries it. Overlays are frames. Apps gain components/frames between blocks and composites; a Gate block moves to features/layouts. Named exceptions, each with its holder: Text inline content, Freestyle className, a Tooltip behind a leaf, DataTable render per column on a client branch, vendor field props over budget; any other needs a ruling."
+    owner: "contexts/grammars/contributing.md (Which tier); contexts/code/fe/architecture.md FE-ARCHITECTURE-2; contexts/code/fe/folder.md FE-FOLDER-1; contexts/hfs/slots.yaml tiers"
+  - id: grammar-canonical-set
+    date: '2026-11-01'
+    status: live
+    ruling: "One job, one component: when two components could carry a job, one is removed in the same change that settles it, never aliased. The public set is what the folders of src/core/<tier> export and the roles of contract.yaml name; a card is the one SurfaceCard, a heading comes from the frame that owns what it heads, a route is one Page, a graph of value-sized bubbles is BubbleMap and FlowGraph keeps layered, radial, manual and lanes layouts, a conversation is MessageBubble, and Backdrop is removed (a tinted brand ground is a soft card or Freestyle). Every removed spelling is listed under removedVocabulary and migrated by a codemod of packages/hfs. A prop states a fact and no prop chooses a look: variant, className, style, colour, radius and size in pixels are not public; an illegal state is a type error."
+    owner: "contexts/grammars/contributing.md; contexts/grammars/contract.yaml roles; @starci/grammar src/core"
+  - id: avatar-initial-colours
+    date: '2026-11-01'
+    status: live
+    ruling: "The colours of an avatar's generated initials are identity art, a stable palette chosen by seed, and not a theming violation: an app's HeroUI tokens do not recolour them."
+    owner: "@starci/grammar src/core/leaf/Avatar; contexts/ui/components/identity-mark.md"
+  - id: render-proof
+    date: '2026-11-01'
+    status: live
+    ruling: "The grammar's look is proved by Playwright's toHaveScreenshot over every story of the built Storybook, in both families, light and dark, at 1920 and 390, device scale factor 2, against baselines committed in packages/grammar/proof/baselines and taken in the pinned Playwright image CI runs in. A baseline detects change and approves no look: a diff fails CI and reads changed, a lane refreshes unreviewed baselines, and only the pictures named in proof/approved.json (the chat renderer) are approved, a change to one needing a person. The owner's eye reviews every new or changed baseline, and a green check never stands in for it. Storybook stays."
+    owner: "packages/grammar/playwright.config.ts and proof/; contexts/grammars/contributing.md (Render proof); contexts/ui/proof.md (Who holds each proof)"
+  - id: situation-tables
+    date: '2026-11-01'
+    status: live
+    ruling: "An author says what a thing is and the grammar decides how it looks: knowledge is decision tables that cover every UI situation, and a table row names one situation, one component, the spacing role, one story and the lint or type that enforces it. Spacing is a role chosen by the structure (identity 4, inline 8, row 12, section 24, region 32; a card holds 12, a box in a card 8, an empty region 24), never a number an author writes."
+    words: "An author says what it is. The grammar decides how it looks. A wrong composition does not compile, and every allowed input looks right."
+    owner: "contexts/ui/situations.md; contexts/ui/presentation.md (Space)"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.

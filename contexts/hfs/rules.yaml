@@ -148,7 +148,7 @@ rules:
       - {kind: hfs, id: tool-config-forbidden}
   - id: R17
     code: HFS_RULE_OFF_WITHOUT_REPLACEMENT
-    law: The lint configurations are the rendered one-liners, so no rule is turned off, warned or redefined in a repository.
+    law: The lint configurations are the rendered one-liners, so no rule is turned off, warned or redefined in a repository; the one declared exception is the canon's own counting cohort (`COUNTING` of eslint-canon-fe), a rule the owner ruled to ship at warn for one release while a codemod moves apps onto its API, and its entry ends when the count is 0.
     failureCodes:
       - HFS_RULE_OFF_WITHOUT_REPLACEMENT
     enforcers:
@@ -2374,7 +2374,7 @@ rules:
 
   - id: R350
     code: FE_SPACING_UTILITY
-    law: "Every spacing value is the Grammar's, on its one scale 0 4 8 12 24 32: an app names the relation between the blocks it places through a role prop (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page) and writes no padding, margin, gap or space utility and no arbitrary spacing value in a class string; a Grammar stylesheet writes no spacing length off the scale and no fluid spacing value."
+    law: "Every spacing value is the Grammar's, on its one scale 0 4 8 12 24 32: an app names the relation between the blocks it places through a role prop (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page) and writes no padding, margin, gap or space utility and no arbitrary spacing value in a class string; a Grammar stylesheet writes no spacing length off the scale and no fluid spacing value (the package's own `starci-grammar/spacing-scale`, run by its `npm test`)."
     failureCodes:
       - FE_SPACING_UTILITY
       - FE_SPACING_OFF_SCALE
