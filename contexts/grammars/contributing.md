@@ -55,8 +55,8 @@ Choice `tier.choose.component`: which tier a component belongs to. The first row
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | frame | it owns a region: tracks, an inset, a scroll, a ground, or an overlay; it adds no content of its own | frame | layout or a portal | everything below | role props | yes: this is the tier's job | `starci-grammar/tier-props`; imports by R26 `FE_GRAMMAR_TIER_DIRECTION`, the folder stamp by `FE_GRAMMAR_TIER_STAMP` |
 | composite | it draws a fixed anatomy from fields | composite | none beyond a branch's | branches, leaves, lower composites | typed data, `on*`, at most 3 `ReactNode` slots each named for its role | never: `NoChildren` | `starci-grammar/tier-props`; the same R26 checks |
-| branch | it holds its own interaction state and reads no data | branch | `useState` for open, selected or draft | leaves, branches | typed data (`items`, `options`), `on*`, named slots | never: `NoChildren` | `starci-grammar/tier-props`; state is review until a `tier-state` lint exists |
-| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isSkeleton` | a string or none: `LabelChild` | `starci-grammar/tier-props`; state is review until a `tier-state` lint exists |
+| branch | it holds its own interaction state and reads no data | branch | `useState` for open, selected or draft | leaves, branches | typed data (`items`, `options`), `on*`, named slots | never: `NoChildren` | `starci-grammar/tier-props`; state by R362 `tier-state` (counting) |
+| leaf | one element or one vendor part | leaf | none beyond the vendor's | the vendor, tokens, leaves | atoms, `on*`, `isSkeleton` | a string or none: `LabelChild` | `starci-grammar/tier-props`; state by R362 `tier-state` (counting) |
 | block | an app world: it reads data through hooks (apps only) | block | the app's hooks | composites and below, never a block | `{ shape?, props, on? }` | never | `starci-fe/tier-children`; R26 |
 
 A prop type extends `NoChildren` (`{ children?: never }`) or `LabelChild` (`{ children?: string }`) in a tier that takes no
@@ -77,7 +77,7 @@ frame's, so overlays need no exception.
 ## Props
 
 - **Data before slots, slots before children.** A typed field if the content has a shape, a named slot if it does not, `children` only on a frame.
-- **A budget, held by review until a `prop-budget` lint exists.** Leaf 8, branch 12, composite 12 with at most 3 `ReactNode` slots, frame 10. Vendor props forwarded for
+- **A budget, counted by lint (R362 `prop-budget`).** Leaf 8, branch 12, composite 12 with at most 3 `ReactNode` slots, frame 10. Vendor props forwarded for
   parity do not count. Over budget means two components.
 - **No look props.** No `variant`, `className`, `style`, colour, radius or size in pixels. A look is resolved from intent, context or kind.
 - **Illegal states do not compile.** Use a discriminated union, and make a field required when the look depends on it, as `empty` on a list.
