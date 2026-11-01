@@ -4078,6 +4078,37 @@
     .starci-core-message-bubble[data-grammar-bubble-footer="true"] .starci-core-message-bubble-stack { width: min(40rem, 85%); }
     .starci-core-message-bubble-footer { align-self: stretch; width: 100%; min-width: 0; max-width: 100%; }
 
+    .starci-core-message-bubble-receipt {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        align-self: flex-end;
+        justify-content: flex-end;
+        gap: var(--grammar-inline-gap);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    .starci-core-message-bubble-receipt-label {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-message-bubble-receipt[data-grammar-message-receipt="seen"] .starci-core-message-bubble-receipt-label { color: var(--accent); }
+    .starci-core-message-bubble-more-readers { color: var(--muted); }
+
+    .starci-core-message-bubble-delivery {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-xs);
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-message-bubble-delivery:is([data-grammar-message-delivery="failed"], [data-grammar-message-delivery="unknown"]) { color: var(--accent); }
+
     /*
      * Message actions (copy, reply, open): a small floating toolbar beside the bubble, on a bordered surface, centred on the
      * stack's outer side (the end side of an incoming bubble, the start side of an outgoing one). It takes no height in the

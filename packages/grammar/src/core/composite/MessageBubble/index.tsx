@@ -1,13 +1,39 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { CheckIcon } from "@heroicons/react/16/solid"
+import { CheckCircleIcon } from "@heroicons/react/24/outline"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
+import { Icon } from "../../leaf/Icon/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ErrorView, type ErrorData } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
+import { AvatarGroup } from "../AvatarGroup/index.js"
 
 /** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
 export type MessageBubbleSide = "incoming" | "outgoing"
+
+/** People authority reports have read the message; the app supplies localized overflow copy. */
+export type MessageBubbleReaders = {
+    readonly items: ReadonlyArray<{ readonly id: string; readonly name: string; readonly src?: string }>
+    /** Accessible copy for readers beyond the visible avatars. */
+    readonly overflowLabel: string
+    /** Additional readers outside the supplied list, already formatted by the app. */
+    readonly moreLabel?: string
+}
+
+/** A persisted send, delivery or read receipt; only a read receipt can name readers. */
+export type MessageBubbleReceipt = { readonly label: string } & (
+    | { readonly kind: "sent" | "delivered"; readonly readers?: never }
+    | { readonly kind: "seen"; readonly readers?: MessageBubbleReaders }
+)
+
+/** The transport's known delivery state; unknown requires reconciliation rather than an automatic resend. */
+export type MessageBubbleDelivery = {
+    readonly kind: "queued" | "sent" | "failed" | "unknown"
+    /** Localized authority-owned copy, including the recovery guidance when the result is unknown. */
+    readonly label: string
+}
 
 /** A resolved message. */
 type MessageBubbleMessage = {
@@ -31,6 +57,10 @@ type MessageBubbleMessage = {
     readonly actions?: ReactNode
     /** Content under the body that is not part of the message text: an attachment, an approval card, a reaction row. */
     readonly footer?: ReactNode
+    /** The persisted receipt under this message, with native marks and any known readers. */
+    readonly receipt?: MessageBubbleReceipt
+    /** A transport delivery note after attachments; its state chooses the native treatment. */
+    readonly delivery?: MessageBubbleDelivery
     /** Draws the focus ring around the bubble, e.g. when a link jumps to this message. */
     readonly isHighlight?: boolean
     /** Anchor for links that jump to this message. */
@@ -74,6 +104,26 @@ export type MessageBubbleProps = NoChildren & (MessageBubbleMessage | MessageBub
 
 const SKELETON_CONTRACT = "SURFACE-3 SURFACE-4 RADIUS-6 STATE-8"
 const THREAD_LINES = [2, 1, 3] as const
+const RECEIPT_READERS_SHOWN = 3
+
+const Receipt = ({ receipt }: { readonly receipt: MessageBubbleReceipt }) => {
+    const readers = receipt.kind === "seen" ? receipt.readers : undefined
+    return (
+        <div className="starci-core-message-bubble-receipt" data-grammar-message-receipt={receipt.kind}>
+            <span className="starci-core-message-bubble-receipt-label" aria-live="polite" aria-atomic="true">
+                <Icon source={receipt.kind === "delivered" ? CheckCircleIcon : CheckIcon} usage="chip" />
+                {receipt.kind === "seen" ? <Icon source={CheckIcon} usage="chip" /> : null}
+                {receipt.label}
+            </span>
+            {readers === undefined || readers.items.length === 0 ? null : (
+                <AvatarGroup label={receipt.label} size="sm" max={RECEIPT_READERS_SHOWN}
+                    items={readers.items.map((reader) => ({ ...reader, seed: reader.id }))}
+                    overflowLabel={() => readers.overflowLabel} />
+            )}
+            {readers?.moreLabel === undefined ? null : <span className="starci-core-message-bubble-more-readers">{readers.moreLabel}</span>}
+        </div>
+    )
+}
 
 const SkeletonBubble = ({ side, hasAvatar, lines = 2 }: { readonly side: MessageBubbleSide, readonly hasAvatar: boolean, readonly lines?: number }) => (
     <div
@@ -115,7 +165,7 @@ export const MessageBubble = (props: MessageBubbleProps) => {
         return <SkeletonBubble side={props.side} hasAvatar={props.hasAvatar === true} />
     }
     if (props.error !== undefined) return <div className="starci-core-message-bubble-thread" data-grammar-message-error="true"><ErrorView error={props.error} /></div>
-    const { body, side = "incoming", author, avatar, meta, status, actions, footer, isHighlight = false, id } = props
+    const { body, side = "incoming", author, avatar, meta, status, actions, footer, receipt, delivery, isHighlight = false, id } = props
     const hasHead = author != null || meta != null || status != null
     return (
         <div
@@ -139,6 +189,8 @@ export const MessageBubble = (props: MessageBubbleProps) => {
                 ) : null}
                 <div className="starci-core-message-bubble-body">{body}</div>
                 {footer == null ? null : <div className="starci-core-message-bubble-footer">{footer}</div>}
+                {delivery === undefined ? null : <div className="starci-core-message-bubble-delivery" data-grammar-message-delivery={delivery.kind} aria-live="polite" aria-atomic="true">{delivery.label}</div>}
+                {receipt === undefined ? null : <Receipt receipt={receipt} />}
                 {actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar"><ButtonPlacementProvider placement="chrome">{actions}</ButtonPlacementProvider></div>}
             </div>
         </div>
