@@ -60,8 +60,6 @@ Each is closed by an API that removes the choice (preferred), a lint rule, or on
 | Id | Choice | Closing move |
 |---|---|---|
 | G-6 | `sm` vs `md` is judged by the app ("nested in an item or a dense toolbar") | API: `item` placement and a dense `Toolbar` composition set `sm`; `lg` only through a landing-hero composition |
-| G-7 | Joined-card band insets are written by the app (`px-4 pt-3` …) | API: a band part of `SurfaceCard` that applies side contact |
-| G-9 | `isHighlight` on more than one card per view | lint: one per render, like `single-commit-per-render` |
 | G-10 | Drawer `placement` for a secondary task, side or bottom by width | API: a responsive placement (side on wide, bottom on narrow) as the default |
 | G-11 | `Toaster` placement | API: the shell sets a placement clear of its fixed chrome; the app passes none |
 | G-15 | `Tabs` `inset` page or none | API: derive `page` when the tabs are the header tabs of a `Page` |

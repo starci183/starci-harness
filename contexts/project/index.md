@@ -143,9 +143,6 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [code/shared/typing.md](../code/shared/typing.md) · 4 KB — How strict the compiler is and which spellings tell it something it cannot check.
   - sections: SHARED-TYPING-1 The repository tsconfig extends the canon preset and adds only paths · SHARED-TYPING-2 No type escape; untrusted values are `unknown` and narrowed · SHARED-TYPING-3 Arrays are `Array<T>` or `ReadonlyArray<T>` · SHARED-TYPING-4 The type-aware rules hold on both sides
 - [decisions/README.md](../decisions/README.md) · 1 KB
-- [decisions/grammar-audit-2026-11.md](../decisions/grammar-audit-2026-11.md) · 99 KB — Status: approved by the owner, 2026-11-01; part 10 holds his decisions and overrides anything above it.
-  - sections: 0. The audit in one page · 1. Method and limits · 2. The root failure · 3. The one card · 4. The tier binding · 5. Every public component · 6. Rules · 7. The standard · 8. Theming · 9. The refactor plan · 10. The owner's decisions · Appendix A. Theming violations · Appendix B. Tier violations
-  - ids: E.1, E.2, E.3, JS-side, one-file, string
 - [decisions/legacy-retirement.md](../decisions/legacy-retirement.md) · 35 KB — The owner ordered three things: every package under `packages/` is TypeScript source built to JavaScript, the legacy runtime at `D:/Repositories/starci-academy-backend/.claude` ...
   - sections: 1. Context map · 2. Missing context worth moving · 3. Package TypeScript plan · 4. Retirement checklist
   - ids: In-flight

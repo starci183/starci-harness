@@ -913,6 +913,38 @@ removedVocabulary:
     as: grammar composition
     replacedBy: PaneGrid
     ruling: "pane-grid"
+  - spelling: SurfaceListCard
+    as: grammar component
+    replacedBy: SurfaceCard kind="list"
+    ruling: "grammar-canonical-set"
+  - spelling: SurfaceAccordionCard
+    as: grammar component
+    replacedBy: SurfaceCard kind="accordion"
+    ruling: "grammar-canonical-set"
+  - spelling: StaticStateRow
+    as: grammar component
+    replacedBy: an item of SurfaceCard kind="list" with its state field
+    ruling: "grammar-canonical-set"
+  - spelling: FormGrid
+    as: grammar component
+    replacedBy: Grid kind="form"
+    ruling: "grammar-canonical-set"
+  - spelling: PrimaryRailLayout
+    as: grammar component
+    replacedBy: Grid kind="main-rail"
+    ruling: "grammar-canonical-set"
+  - spelling: Subnav
+    as: grammar component
+    replacedBy: TopBar menu
+    ruling: "grammar-canonical-set"
+  - spelling: BottomNav
+    as: grammar component
+    replacedBy: the drawer (no bottom tab bar)
+    ruling: "grammar-canonical-set"
+  - spelling: NavigationFeatureNav
+    as: grammar component
+    replacedBy: TopBar subnavigation
+    ruling: "grammar-canonical-set"
   - spelling: starci
     as: grammar family id
     replacedBy: core
