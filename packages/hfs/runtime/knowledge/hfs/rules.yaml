@@ -1272,6 +1272,7 @@ rules:
       - {kind: stylelint, id: globals-shape}
       - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
+      - {kind: stylelint, id: no-grammar-private-token}
       - {kind: stylelint, id: theme-layer-shape}
       - {kind: stylelint, id: status-contrast}
       - {kind: stylelint, id: no-css-module}
@@ -6435,6 +6436,53 @@ rules:
         source: owner
         quote: "a block takes data"
         ruling: "A render callback is for a client branch; a block takes data and renders it itself."
+  - id: R362
+    code: "FE_GRAMMAR_TIER_STATE"
+    law: "In the Grammar package a leaf and a composite hold no useState, useReducer or effect, and a component's own props and its ReactNode slots stay inside its tier's budget (leaf 8, branch 12, composite 12, frame 10 props; 3 slots). Both run as counting rules: their findings are the tier refactor list."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_GRAMMAR_TIER_STATE", "FE_GRAMMAR_PROP_BUDGET"]
+    enforcers:
+      - {kind: runtime, id: tier-state, at: packages/grammar/scripts/lint/eslint-plugin.mts}
+      - {kind: runtime, id: prop-budget, at: packages/grammar/scripts/lint/eslint-plugin.mts}
+    editions: [lite, full]
+    docs: [contexts/grammars/README.md#grammar-lint]
+    templateNa: "A template ships no Grammar source."
+    proves:
+      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_TIER_STATE, FE_GRAMMAR_PROP_BUDGET]}
+    exemplifiedBy:
+      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_TIER_STATE, FE_GRAMMAR_PROP_BUDGET]}
+    witness:
+      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_TIER_STATE, FE_GRAMMAR_PROP_BUDGET]}
+    cases:
+      - id: case-1
+        date: "2026-11-02"
+        source: owner
+        quote: "The tier binding of the Grammar is a ladder; a leaf draws and a branch behaves."
+        ruling: "State sits in branches; budgets keep a role from growing into two."
+  - id: R363
+    code: "FE_GRAMMAR_LITERAL"
+    law: "A Grammar component holds no hardcoded colour, length, utility class or numeric style value (`no-literal-look`); its stylesheets read named roles and ramps."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_GRAMMAR_LITERAL"]
+    enforcers:
+      - {kind: runtime, id: no-literal-look, at: packages/grammar/scripts/lint/eslint-plugin.mts}
+    editions: [lite, full]
+    docs: [contexts/grammars/README.md#grammar-lint]
+    templateNa: "A template ships no Grammar source."
+    proves:
+      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_LITERAL]}
+    exemplifiedBy:
+      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_LITERAL]}
+    witness:
+      - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_LITERAL]}
+    cases:
+      - id: case-1
+        date: "2026-11-02"
+        source: owner
+        quote: "A component names a role and the stylesheet gives it a value."
+        ruling: "Literals live in the ramps."
   - id: R366
     code: "FE_LABEL_IN_GRID"
     law: "A SurfaceCard with a label repeated in a Grid kind=cards is a tile drawn with the wrong anatomy: a peer you recognise and open names itself inside (SurfaceCard kind=tile), and peers compared by a fact are one kind=list card."

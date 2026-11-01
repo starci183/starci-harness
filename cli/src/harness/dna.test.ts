@@ -64,7 +64,8 @@ void test("judgePart compares numbers with their unit, text blank-normalised, an
 
 void test("judgePart is one self-contained function, because the page runs its source", () => {
     // Run in a context that holds nothing of this module: a helper outside the function would be undefined there.
-    const verdict = (given: DnaPart): unknown => runInNewContext(`(${judgePart.toString()})(${JSON.stringify(given)})`)
+    // The result is built in the other context, so its prototype is not this one's: compare it as data.
+    const verdict = (given: DnaPart): unknown => JSON.parse(JSON.stringify(runInNewContext(`(${judgePart.toString()})(${JSON.stringify(given)})`)))
     assert.deepEqual(verdict(part({ op: ">=", measured: [44], expected: [[44]] })), { ok: true, want: ">= 44" })
     assert.deepEqual(verdict(part({ op: "=", measured: ["a"], expected: [["b"]] })), { ok: false, want: '= "b"' })
 })

@@ -48,6 +48,11 @@ export const why: Record<string, Why> = {
     en: "`<file>` redeclares a grammar token (`<what>`). A grammar token may be assigned only in `modules/brand/brand.css`; a CSS module or `globals.css` redeclaring one makes a component leave the family and unrebrandable.",
     fix: "Delete the declaration; to change the value, change it in `modules/brand/brand.css`, for both light and dark.",
   },
+  "no-grammar-private-token": {
+    code: "FE_STYLE_TOKEN_ONLY",
+    en: "`<file>` reads or writes a private token of the grammar (`<what>`). `--grammar-*`, `--starci-core-*` and `--offset-pop-*` are the grammar's own plumbing.",
+    fix: "Theme through HeroUI's tokens in `modules/brand/brand.css` and compose through the grammar's props; delete the private token.",
+  },
   "theme-layer-shape": {
     code: "FE_STYLE_TOKEN_ONLY",
     en: "`brand.css` (`<file>`) has the wrong shape (`<what>`). The brand layer declares only HeroUI tokens (and the grammar's own), in light blocks (`:root`, `.light`) and dark blocks (`.dark`).",

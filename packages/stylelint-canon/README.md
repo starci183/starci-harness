@@ -35,6 +35,7 @@ Colour values exist only in `modules/brand/brand.css`, on HeroUI's tokens, which
 | `starci/no-important` | `!important` in a declaration, and `!` on an `@apply` utility. |
 | `starci/globals-shape` | In `globals.css`: anything but `@import`, `@source` and `:root`/`.dark`/`[data-theme]`/`@theme` blocks of alias tokens (`var()` values only). |
 | `starci/no-token-redefinition` | A grammar token declared (or `@property`-registered) anywhere but `brand.css`, CSS modules included. Local custom properties are fine. |
+| `starci/no-grammar-private-token` | A private token of the grammar (`--grammar-*`, `--starci-core-*`, `--offset-pop-*`) read with `var()` or written, in any app stylesheet. |
 | `starci/theme-layer-shape` | `brand.css` with a selector other than a light or dark scope (`:root`, `.light`, `.dark`, `[data-theme]`; a compound `:root, .light, .dark` is both), a non-token property, or a token that neither HeroUI nor the grammar publishes. It judges the file's shape and never a colour: no contrast, no pairing of light and dark. |
 | `starci/no-inline-lint-config` | `stylelint-disable`, `-enable` and `-disable-next-line` comments. |
 | `starci/no-css-module` | Any `*.module.css`. |

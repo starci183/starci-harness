@@ -144,4 +144,94 @@ export const tierProps: Rule.RuleModule = {
     },
 }
 
-export default { rules: { "no-literal-look": noLiteralLook, "tier-props": tierProps } }
+/** The props a tier may own, counted over `<Name>Props` and the local types it names, and the slots (`ReactNode` props) any of them may have. */
+const PROP_BUDGET: Readonly<Record<string, number>> = { leaf: 8, branch: 12, composite: 12, frame: 10 }
+const SLOT_BUDGET = 3
+
+/** The `<Name>Props` declaration of a file and every local type it reaches, or null when the file declares none. */
+const reachableProps = (program: Ast, name: string): { readonly root: Ast; readonly reachable: readonly Ast[] } | null => {
+    const declarations = new Map<string, Ast>()
+    const body: unknown = program.body
+    for (const statement of Array.isArray(body) ? body : []) {
+        if (!isAst(statement)) continue
+        const inner: unknown = statement.type === "ExportNamedDeclaration" ? statement.declaration : statement
+        if (isAst(inner) && (inner.type === "TSTypeAliasDeclaration" || inner.type === "TSInterfaceDeclaration")) {
+            const id = nameOf(inner.id)
+            if (id !== undefined) declarations.set(id, inner)
+        }
+    }
+    const root = declarations.get(`${name}Props`)
+    if (root === undefined) return null
+    const reachable = new Map<string, Ast>([[`${name}Props`, root]])
+    const queue = [root]
+    for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+        for (const node of subtree(next)) {
+            const referenced = node.type === "TSTypeReference" ? nameOf(node.typeName) : undefined
+            const target = referenced === undefined ? undefined : declarations.get(referenced)
+            if (referenced !== undefined && target !== undefined && !reachable.has(referenced)) {
+                reachable.set(referenced, target)
+                queue.push(target)
+            }
+        }
+    }
+    return { root, reachable: [...reachable.values()] }
+}
+
+const reportAt = (context: Rule.RuleContext, node: Ast, message: string): void => {
+    const loc: unknown = node.loc
+    const start = typeof loc === "object" && loc !== null && "start" in loc ? loc.start : undefined
+    const end = typeof loc === "object" && loc !== null && "end" in loc ? loc.end : undefined
+    if (isPosition(start) && isPosition(end)) context.report({ loc: { start, end }, message })
+}
+
+/** A component's props stay inside its tier's budget: a count of props, and at most three `ReactNode` slots. */
+export const propBudget: Rule.RuleModule = {
+    meta: { type: "problem", schema: [], docs: { description: "A component's own props and its ReactNode slots stay inside the tier's budget." } },
+    create(context) {
+        const match = COMPONENT_FILE.exec(context.filename)
+        if (match === null) return {}
+        const tier = match[1] ?? ""
+        const name = match[2] ?? ""
+        const budget = PROP_BUDGET[tier]
+        return {
+            Program(program) {
+                const found = reachableProps(program, name)
+                if (found === null || budget === undefined) return
+                const props = new Set<string>()
+                let slots = 0
+                for (const declaration of found.reachable) {
+                    for (const node of subtree(declaration)) {
+                        if (node.type !== "TSPropertySignature") continue
+                        const key = nameOf(node.key)
+                        if (key === undefined) continue
+                        props.add(key)
+                        const annotation = isAst(node.typeAnnotation) ? context.sourceCode.text.slice(...(isRange(node.typeAnnotation.range) ? node.typeAnnotation.range : [0, 0])) : ""
+                        if (/ReactNode/.test(annotation) && key !== "children") slots += 1
+                    }
+                }
+                if (props.size > budget) reportAt(context, found.root, `${name}Props has ${String(props.size)} props, over the ${tier} budget of ${String(budget)}: split the role, or move a group of props into data one prop carries.`)
+                if (slots > SLOT_BUDGET) reportAt(context, found.root, `${name}Props has ${String(slots)} ReactNode slots, over the budget of ${String(SLOT_BUDGET)}: a component with more slots is a frame or two components.`)
+            },
+        }
+    },
+}
+
+const STATE_HOOKS = new Set(["useState", "useReducer", "useEffect", "useLayoutEffect", "useInsertionEffect"])
+
+/** A leaf and a composite hold no state and no effect: what changes over time belongs to a branch, which owns the behaviour. */
+export const tierState: Rule.RuleModule = {
+    meta: { type: "problem", schema: [], docs: { description: "A leaf or a composite holds no useState, useReducer or effect." } },
+    create(context) {
+        const match = COMPONENT_FILE.exec(context.filename)
+        if (match === null || (match[1] !== "leaf" && match[1] !== "composite")) return {}
+        return {
+            CallExpression(node) {
+                const callee: unknown = node.callee
+                const name = nameOf(callee)
+                if (name !== undefined && STATE_HOOKS.has(name)) reportAt(context, node as unknown as Ast, `A ${match[1] ?? "leaf"} holds no state or effect (${name}): the behaviour belongs to a branch, and a leaf or composite draws what it is given.`)
+            },
+        }
+    },
+}
+
+export default { rules: { "no-literal-look": noLiteralLook, "tier-props": tierProps, "prop-budget": propBudget, "tier-state": tierState } }

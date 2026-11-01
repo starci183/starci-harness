@@ -65,7 +65,7 @@ test("assertEveryRuleOn refuses a rule that is off, downgraded, missing or hidde
 })
 
 test("the config lints a clean stylesheet with no finding and no unknown-rule error", async () => {
-  assert.deepEqual(await lint('[data-state="open"] { color: var(--accent); padding: var(--grammar-inline-gap); }', FILES.css), [])
+  assert.deepEqual(await lint('[data-state="open"] { color: var(--accent); padding: var(--spacing); }', FILES.css), [])
 })
 
 test("every rule fires through the factory config on a stylesheet that breaks it", async () => {

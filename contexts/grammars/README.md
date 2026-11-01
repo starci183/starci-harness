@@ -129,3 +129,17 @@ Feedback hardens, it never accumulates. In order of preference it becomes an API
 (grammar package), a DNA entry or a lint rule, a stricter row in the Choose table that owns the decision, or a
 stricter sentence in the one section that owns the concept: the contract role, the common section or the
 grammar's role row. It is never a case note appended beside a rule.
+
+## Grammar lint
+
+The Grammar package lints its own source with `packages/grammar/scripts/lint` (`npm run lint`, in `npm test`): ESLint over the components and Stylelint over the stylesheets.
+
+| Rule | Id | Refuses |
+|---|---|---|
+| `starci-grammar/tier-state` | R362 | `useState`, `useReducer` or an effect in a leaf or a composite: behaviour belongs to a branch. |
+| `starci-grammar/prop-budget` | R362 | Props over the tier budget (leaf 8, branch 12, composite 12, frame 10), or more than 3 `ReactNode` slots. |
+| `starci-grammar/no-literal-look` | R363 | A colour, length, utility class or numeric style value written in a component. |
+| `starci-grammar/tier-props` | R26 | `children` or `className` against the tier. |
+| `starci/no-grammar-private-token` | R61 (audit R364) | In an app stylesheet, reading or writing `--grammar-*`, `--starci-core-*` or `--offset-pop-*`. |
+
+`tier-state` and `prop-budget` count at warn while their findings (the tier refactor list of the grammar audit, Appendix B) are fixed; the stamp of `data-tier` against the folder is R26 / `FE_GRAMMAR_TIER_STAMP` (R365), a machine check.

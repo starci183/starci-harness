@@ -6,6 +6,7 @@ schema: starci/hfs-rules@4
 enforcerKinds:
   eslint-be: a rule of @starci/eslint-canon-be (id without the plugin prefix)
   eslint-fe: a universal rule of @starci/eslint-canon-fe
+  grammar-lint: the Grammar package's own lint (packages/grammar/scripts/lint), run over the Grammar source
   eslint-grammar-core: a rule of the selected Grammar's lint package over the shared component API
   stylelint: a rule of @starci/stylelint-canon
   machine: a check of the architecture machine over the import graph
@@ -627,6 +628,7 @@ rules:
       - {kind: stylelint, id: globals-shape}
       - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
+      - {kind: stylelint, id: no-grammar-private-token}
       - {kind: stylelint, id: theme-layer-shape}
       - {kind: stylelint, id: no-css-module}
       - {kind: stylelint, id: no-class-selector}
@@ -2455,6 +2457,22 @@ rules:
       - FE_RENDER_PROP_ACROSS_SERVER
     enforcers:
       - {kind: machine, id: render-prop-across-server}
+  - id: R362
+    code: FE_GRAMMAR_TIER_STATE
+    law: "In the Grammar package a leaf and a composite hold no useState, useReducer or effect, and a component's own props and its ReactNode slots stay inside its tier's budget (leaf 8, branch 12, composite 12, frame 10 props; 3 slots). Both run as counting rules: their findings are the tier refactor list."
+    failureCodes:
+      - FE_GRAMMAR_TIER_STATE
+      - FE_GRAMMAR_PROP_BUDGET
+    enforcers:
+      - {kind: grammar-lint, id: tier-state}
+      - {kind: grammar-lint, id: prop-budget}
+  - id: R363
+    code: FE_GRAMMAR_LITERAL
+    law: "A Grammar component holds no hardcoded colour, length, utility class or numeric style value (`no-literal-look`); its stylesheets read named roles and ramps."
+    failureCodes:
+      - FE_GRAMMAR_LITERAL
+    enforcers:
+      - {kind: grammar-lint, id: no-literal-look}
   - id: R366
     code: FE_LABEL_IN_GRID
     law: "A card with a label heads a section and draws the label outside its material; a peer you recognise and open names itself inside, beside its mark (ruling card-label-by-kind). A SurfaceCard with a label repeated in a Grid kind=cards (two or more as direct children, or one written in a .map) is refused: it is a tile (SurfaceCard kind=tile with name, mark, description, badge and action), or, when the peers are compared by a fact, one kind=list card."

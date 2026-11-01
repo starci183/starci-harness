@@ -20,6 +20,7 @@ import { globalsShape } from "./globals-shape.ts"
 import { noApplyRaw } from "./no-apply-raw.ts"
 import { noImportant } from "./no-important.ts"
 import { noInlineLintConfig } from "./no-inline-lint-config.ts"
+import { noGrammarPrivateToken } from "./no-grammar-private-token.ts"
 import { noTokenRedefinition } from "./no-token-redefinition.ts"
 import { rawBrandValue } from "./raw-brand-value.ts"
 import { tokenOnly } from "./token-only.ts"
@@ -41,6 +42,7 @@ export const rules = {
   "no-important": noImportant,
   "globals-shape": globalsShape,
   "no-token-redefinition": noTokenRedefinition,
+  "no-grammar-private-token": noGrammarPrivateToken,
   "theme-layer-shape": themeLayerShape,
   "no-inline-lint-config": noInlineLintConfig,
   "no-css-module": noCssModule,

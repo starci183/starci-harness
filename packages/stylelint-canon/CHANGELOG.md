@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added: `starci/no-grammar-private-token` (R61, `FE_STYLE_TOKEN_ONLY`; the audit's R364): an app stylesheet neither reads nor writes `--grammar-*`, `--starci-core-*` or `--offset-pop-*`.
 - Changed: `starci/brand-layer-shape` is renamed `starci/theme-layer-shape`; it admits HeroUI's whole token list, the grammar's published names and the `--info*` family, and no family-prefixed private token.
 
 - Removed: `starci/status-contrast` (owner 2026-11-01, "no gate judges an app's colours"), with the colour maths and the resolved grammar values it read (`lib/color.ts`, `lib/theme-values.ts`, `lib/brand-blocks.ts`, `lib/extract-values.ts`, `grammar-values.generated.ts`).
