@@ -17,12 +17,11 @@
     "noEmit": true
   },
   "include": [
+    "playwright.config.ts",
+    "proof/*.ts",
     "scripts/*.mts",
     "scripts/lint/*.mts",
     "eslint.config.mjs",
-    "stylelint.config.mjs",
-    "capture-refs.mts",
-    "svg-shot.mts",
-    "shoot.cts"
+    "stylelint.config.mjs"
   ]
 }

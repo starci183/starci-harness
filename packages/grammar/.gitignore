@@ -6,3 +6,5 @@ reference-renders/
 *storybook.log
 storybook-static
 coverage/
+proof/results
+proof/report

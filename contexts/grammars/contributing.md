@@ -80,7 +80,7 @@ announces, and when.
 ## Skeleton parity
 
 A component that shows content takes `isSkeleton`, and the loading box equals the ready box. Known text stays real, unresolved values lay out
-unseen under a shimmer, nothing focusable remains, and the owner of the data carries `aria-busy`. Prove it with the skeleton-parity law.
+unseen under a shimmer, nothing focusable remains, and the owner of the data carries `aria-busy`. No DNA law measures that the two boxes are equal yet; the `SkeletonParity` stories draw the loading and the ready render, and their committed pictures show a jump.
 
 ## What ships with it
 
@@ -103,8 +103,12 @@ Rewrite what it changes rather than adding beside it (CONTRIB-6). Delete what it
 
 Lint passing says nothing about looks. Before review:
 
-1. Render every story in **both families** (Core and Offset Pop), in **light and dark**, through `starci dna check`.
-2. At **real widths: 375, 768 and 1280**, plus a narrow container (a drawer or a rail) if it answers its container.
+1. Render every story in **both families** (Core and Offset Pop), in **light and dark**, at **1920 and 390** wide, device scale factor 2:
+   Playwright's `toHaveScreenshot` over the built Storybook (`npm run prove-render` in `packages/grammar`) compares each with its baseline in
+   `packages/grammar/proof/baselines`. The baselines are unreviewed: they detect change and approve no look, and the report says "changed",
+   never "wrong". A changed picture fails CI; a lane refreshes unreviewed baselines with `npm run prove-render:accept`. Only the pictures in
+   `proof/approved.json` are approved (the chat renderer, so far); a change to one needs a person (`npm run prove-render:approve`). Baselines are taken in the pinned Playwright image CI runs in (Linux), never on a laptop.
+2. Measure the static laws with `starci dna check --storybook packages/grammar/storybook-static`; add a narrow container (a drawer or a rail) if it answers its container.
 3. With **real content**: the longest translated label, an empty value, a large count. Lorem ipsum hides the failure.
 4. Beside its **neighbours**: in a card, a pane and a row of controls.
 5. With a **foreign theme**: HeroUI's tokens set to an unrelated palette, radius and font, to prove nothing is hard-coded.
@@ -113,6 +117,6 @@ Every law must be measured, not merely pass: a law with zero matches is not exer
 
 ## The look, reviewed by a person
 
-Publish the contact sheet from the proof and link it in the change. A person reads the screens, in the state a reader would see them, and
+Link the proof report (the `grammar-proof` artifact of CI, or `proof/report`) in the change. A person reads the screens, in the state a reader would see them, and
 accepts or rejects. The owner reviews anything that changes how a component looks. A green check does not stand in for this, and a rejection
 means a rule is missing or wrong (ruling `beautiful-by-eye`): the fix lands in a type, a law or the rule, then the component.

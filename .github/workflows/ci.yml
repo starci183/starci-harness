@@ -34,6 +34,7 @@ jobs:
       harness: ${{ steps.plan.outputs.harness }}
       app: ${{ steps.plan.outputs.app }}
       app-build: ${{ steps.plan.outputs.app-build }}
+      grammar: ${{ steps.plan.outputs.grammar }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,6 +86,7 @@ jobs:
               `harness=${data.harness}`,
               `app=${data.app}`,
               `app-build=${data.appBuild.join(" ")}`,
+              `grammar=${data.matrix.include.some((entry) => entry.package === "packages/grammar")}`,
             ]
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n")
           '
@@ -180,6 +182,46 @@ jobs:
         working-directory: ${{ matrix.package }}
         run: npm run bundles:check
 
+  # The Grammar's render proof (contexts/grammars/contributing.md "Render proof"), on a change to packages/grammar: the theme proof, then
+  # Playwright's toHaveScreenshot over every story of the built Storybook, in both families, light and dark, at 1920 and 390, device scale
+  # factor 2, against the committed baselines in packages/grammar/proof/baselines. It runs in the pinned Playwright image the baselines
+  # were taken in. A changed picture fails the job; a new one is reviewed by a person before `npm run prove-render:accept` writes it.
+  # publish-packages holds the Grammar while this job is not green.
+  grammar-proof:
+    name: grammar proof
+    needs: plan
+    if: needs.plan.outputs.grammar == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    env:
+      STORYBOOK_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the Grammar
+        working-directory: packages/grammar
+        run: npm ci --no-audit --no-fund
+      - name: Theme proof
+        working-directory: packages/grammar
+        run: npm run prove-theme
+      - name: Build the Storybook
+        working-directory: packages/grammar
+        run: npm run build-storybook
+      - name: Render proof across families, themes and widths
+        working-directory: packages/grammar
+        run: npm run prove-render
+      - name: Publish the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grammar-proof
+          path: |
+            packages/grammar/proof/report
+            packages/grammar/proof/results
+          if-no-files-found: ignore
+          retention-days: 14
+
   # The CLI and the trees it reads (cli/, contexts/, ops/, policy/, or a package the CLI requires changed).
   harness:
     needs: plan
@@ -248,7 +290,7 @@ jobs:
 
   # The one required check: green when the plan and every job it needed passed, a job the plan did not need being skipped.
   ci:
-    needs: [plan, gates, package, harness, app, sonar]
+    needs: [plan, gates, package, grammar-proof, harness, app, sonar]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -269,7 +311,7 @@ jobs:
   # judges the plan before anything reaches npm and reads every version back. With provenance; a version already on npm is
   # skipped, so a re-run publishes only what is still missing; runs of one job queue, never overlap.
   publish-packages:
-    needs: [plan, gates, package]
+    needs: [plan, gates, package, grammar-proof]
     if: >-
       !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.plan.result == 'success'
       && (needs.plan.outputs.packages == 'true' || needs.plan.outputs.harness == 'true')

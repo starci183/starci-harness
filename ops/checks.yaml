@@ -121,11 +121,11 @@ presets:
     behavioural: false
     check:
       kind: cite
-  # The DNA gate (cli/src/core/dna, measurement shape in cli/src/harness/dna.ts): the harness renders the target in a headless
-  # browser and measures the measured mustKeep laws of contexts/grammars/contract.yaml; a target is a url, a built Storybook
-  # folder, a static folder or one html file, relative to the checkout.
+  # The DNA gate (cli/src/core/dna, the laws and their shape in contexts/grammars/contract.yaml, read by cli/src/harness/dna.ts): the
+  # harness renders the target in a headless browser and measures the static laws on it; a target is a url, a built Storybook
+  # folder, a static folder or one html file, relative to the checkout. Pictures are the Grammar's Playwright proof, not this check.
   dna:
-    summary: the rendered UI keeps every measured DNA law of the Grammar contract (starci dna check), skeleton twins included
+    summary: the rendered UI keeps every static DNA law of the Grammar contract (starci dna check)
     behavioural: true
     args: [target]
     check:

@@ -61,7 +61,10 @@
     "prepack": "npm run typecheck && npm run build",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "lint": "eslint . && stylelint \"src/**/*.css\""
+    "lint": "eslint . && stylelint \"src/**/*.css\"",
+    "prove-render": "playwright test",
+    "prove-render:accept": "playwright test --update-snapshots --grep-invert @approved",
+    "prove-render:approve": "playwright test --update-snapshots --grep @approved"
   },
   "engines": {
     "node": ">=22"
@@ -89,7 +92,6 @@
     "@storybook/addon-docs": "^10.6.0",
     "@storybook/addon-mcp": "^10.6.0",
     "eslint-plugin-storybook": "^10.6.0",
-    "playwright": "latest",
     "react-dom": "^19.0.0",
     "@internationalized/date": "^3.12.4",
     "vite": "^8.3.0",
@@ -101,7 +103,8 @@
     "eslint": "10.13.0",
     "stylelint": "17.15.0",
     "postcss-value-parser": "4.2.0",
-    "typescript-eslint": "8.72.0"
+    "typescript-eslint": "8.72.0",
+    "@playwright/test": "1.63.0"
   },
   "publishConfig": {
     "access": "public"
