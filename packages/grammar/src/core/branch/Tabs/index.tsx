@@ -44,7 +44,7 @@ export type TabsProps = {
      * `primary` (default) is the underline tab bar, on the page and inside a sub-region alike: the labels are text on
      * the content edge, the first label on the edge it shares with the title and the box below.
      * `secondary` is HeroUI's own pill tabs, unpainted by the grammar (a soft track, the selected tab a white segment
-     * pill with the surface shadow). A pill is a filter's shape: a filter over a collection is a selectable `TagGroup`,
+     * pill with the surface shadow). A pill is a filter's shape: a filter over a collection is a `FilterButtonGroup`,
      * so a new screen never picks `secondary`. Same roles, keyboard, panel wiring and focus ring either way.
      */
     readonly variant?: "primary" | "secondary"

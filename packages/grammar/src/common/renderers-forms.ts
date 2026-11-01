@@ -17,6 +17,7 @@ import { CheckboxGroup } from "../core/composite/CheckboxGroup/index.js"
 import { RadioGroup } from "../core/composite/RadioGroup/index.js"
 import { SegmentedControl } from "../core/composite/SegmentedControl/index.js"
 import { ButtonGroup } from "../core/composite/ButtonGroup/index.js"
+import { FilterButtonGroup } from "../core/composite/FilterButtonGroup/index.js"
 import { Select } from "../core/branch/Select/index.js"
 import { CopyField } from "../core/branch/CopyField/index.js"
 import { ComboBox } from "../core/branch/ComboBox/index.js"
@@ -40,6 +41,7 @@ export { CheckboxGroup, type CheckboxGroupProps, type ChoiceOption, type ChoiceO
 export { RadioGroup, type RadioGroupProps } from "../core/composite/RadioGroup/index.js"
 export { SegmentedControl, type SegmentOption, type SegmentedControlProps, type SegmentedControlSize } from "../core/composite/SegmentedControl/index.js"
 export { ButtonGroup, type ButtonGroupProps } from "../core/composite/ButtonGroup/index.js"
+export { FilterButtonGroup, foldForSearch, type FilterButtonGroupProps, type FilterOption } from "../core/composite/FilterButtonGroup/index.js"
 export { Select, type ListOption, type SelectProps } from "../core/branch/Select/index.js"
 export { CopyField, type CopyFieldMaskedProps, type CopyFieldPlainProps, type CopyFieldProps, type CopyFieldState } from "../core/branch/CopyField/index.js"
 export { ComboBox, type ComboBoxProps } from "../core/branch/ComboBox/index.js"
@@ -48,7 +50,7 @@ export { DateRangePicker, type DateRangePickerProps, type DateRangeValue } from 
 
 /** The form group of Common renderers, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_FORMS_COMPONENTS = Object.freeze({
-    ButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker, DateRangePicker, Field,
+    ButtonGroup, FilterButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker, DateRangePicker, Field,
     Fieldset, FileDropzone, Form, FormGrid, NumberField, RadioGroup, SearchField, SegmentedControl, Select,
     Slider, Switch, Textarea, TimeField,
 } as const)

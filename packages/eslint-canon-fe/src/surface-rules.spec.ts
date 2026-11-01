@@ -5,6 +5,8 @@
 // proves: FE_LIST_PANEL_PADDING@full
 // proves: FE_HAND_BUILT_PANES@lite
 // proves: FE_HAND_BUILT_PANES@full
+// proves: FE_TAG_GROUP_SELECTION@lite
+// proves: FE_TAG_GROUP_SELECTION@full
 // proves: FE_COMMAND_FILLS_HEADER@lite
 // proves: FE_COMMAND_FILLS_HEADER@full
 // proves: FE_TABLE_IN_CARD@lite
@@ -18,7 +20,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { nestedControlVariant, noFillCommandInHeader, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
+import { nestedControlVariant, noFillCommandInHeader, noSelectableTagGroup, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
 import { why } from "./lib/why.ts"
 import { eslintRule } from "./lib/eslint-boundary.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
@@ -37,6 +39,7 @@ test("surface rules are published at error with their canon finding codes", () =
   assert.equal(why["no-app-surface-paint"].code, "FE_GRAMMAR_LAYOUT_ONLY")
   assert.equal(why["no-hand-built-panes"].code, "FE_HAND_BUILT_PANES")
   assert.equal(why["no-table-in-card"].code, "FE_TABLE_IN_CARD")
+  assert.equal(why["no-selectable-tag-group"].code, "FE_TAG_GROUP_SELECTION")
   assert.equal(why["no-fill-command-in-header"].code, "FE_COMMAND_FILLS_HEADER")
 })
 
@@ -389,3 +392,22 @@ for (const edition of ["lite", "full"]) {
     }))
   })
 }
+
+for (const edition of ["lite", "full"]) {
+  test(`${edition}: a TagGroup has no selection, a filter is a FilterButtonGroup`, () => {
+    const head = 'import { TagGroup, FilterButtonGroup } from "@starci/grammar/core"; '
+    const selection = { messageId: "selection" }
+    assert.doesNotThrow(() => tester().run("no-selectable-tag-group", noSelectableTagGroup, {
+      valid: [
+        head + 'const A = () => <TagGroup label="Topics" items={items} onRemove={remove} removeLabel={name} />',
+        head + 'const A = () => <FilterButtonGroup label="Team" options={options} onValueChange={set} />',
+        'import { TagGroup } from "other-kit"; const A = () => <TagGroup selectionMode="single" />',
+      ],
+      invalid: [
+        { code: head + 'const A = () => <TagGroup label="Filter" items={items} selectionMode="single" />', errors: [selection] },
+        { code: head + 'const A = () => <TagGroup label="Filter" items={items} selectedIds={ids} onSelectionChange={set} />', errors: [selection, selection] },
+      ].map((entry) => ({ ...entry })),
+    }))
+  })
+}
+

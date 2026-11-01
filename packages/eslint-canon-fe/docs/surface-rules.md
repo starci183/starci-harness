@@ -121,3 +121,21 @@ import { PageHeader, Button } from "@starci/grammar/core"
 const Head = () => <PageHeader title="Agents" actions={<Button intent="commit">Add agent</Button>} />
 ```
 
+## `starci-fe/no-selectable-tag-group`
+
+Finding code: `FE_TAG_GROUP_SELECTION` (R353). A Grammar `TagGroup` holds values the user entered, to remove or to order, and has no selection: `selectionMode`, `selectedIds`, `defaultSelectedIds` and `onSelectionChange` on it are refused. Peer values that filter a collection that stays in place are a `FilterButtonGroup`.
+
+Invalid:
+
+```tsx
+import { TagGroup } from "@starci/grammar/core"
+const Filter = () => <TagGroup label="Team" items={items} selectionMode="single" selectedIds={[team]} onSelectionChange={pick} />
+```
+
+Valid:
+
+```tsx
+import { FilterButtonGroup } from "@starci/grammar/core"
+const Filter = () => <FilterButtonGroup label="Team" options={options} value={team} onValueChange={pick} />
+```
+

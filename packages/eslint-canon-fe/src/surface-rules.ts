@@ -662,8 +662,35 @@ export const noFillCommandInHeader = defineRule({
   },
 })
 
+/** The props that made a TagGroup a selectable filter. */
+const TAG_SELECTION_PROPS = new Set(["selectionMode", "selectedIds", "defaultSelectedIds", "onSelectionChange"])
+
+/** A TagGroup holds values the user entered (remove, reorder); a filter over a collection is a FilterButtonGroup. */
+export const noSelectableTagGroup = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "A TagGroup has no selection: a filter over a collection is a FilterButtonGroup." },
+    schema: [],
+    messages: {
+      selection:
+        "FE_TAG_GROUP_SELECTION: a TagGroup holds values the user entered, to remove or to order, and has no selection. Peer values that filter a collection that stays in place are a `FilterButtonGroup` (`sm` toggle buttons on one row, the rest behind a \"+n\" search list).",
+    },
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
+        const name = grammarName(context, node.name)
+        if (name?.length !== 1 || name[0] !== "TagGroup") return
+        for (const entry of node.attributes) {
+          if (entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && TAG_SELECTION_PROPS.has(entry.name.name)) context.report({ node: entry, messageId: "selection" })
+        }
+      },
+    }
+  },
+})
+
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
+export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-selectable-tag-group": noSelectableTagGroup, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

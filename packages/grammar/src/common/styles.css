@@ -4316,6 +4316,23 @@
     }
 
 
+    /* --- FilterButtonGroup: peer filter values on ONE row of small toggle buttons; what does not fit goes behind a "+n" button. --- */
+    .starci-core-filter-button-group { position: relative; display: block; min-width: 0; inline-size: 100%; }
+    .starci-core-filter-button-row { display: flex; min-width: 0; flex-wrap: nowrap; align-items: center; gap: 0.5rem; overflow: hidden; }
+    /* Until the width is measured the row is held at its height and hidden, so the server render and the first paint never jump. */
+    .starci-core-filter-button-group[data-grammar-filter-fit="pending"] .starci-core-filter-button-row { visibility: hidden; }
+    .starci-core-filter-button-toggles { display: flex; flex-wrap: nowrap; gap: 0.5rem; min-width: 0; }
+    .starci-core-filter-button { flex: none; gap: 0.375rem; white-space: nowrap; }
+    .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: 0.8; }
+    /* The rest takes the surface; selected is the accent soft pair (ruling status-soft-pair-on-background). */
+    .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { background: var(--surface, Canvas); color: var(--surface-foreground, CanvasText); }
+    .starci-core-filter-button[data-selected="true"] { background: var(--accent-soft, Highlight); color: var(--accent-soft-foreground, HighlightText); }
+    .starci-core-filter-button-probe { position: absolute; inset-block-start: 0; inset-inline-start: 0; display: flex; flex-wrap: nowrap; visibility: hidden; pointer-events: none; block-size: 0; overflow: hidden; }
+    .starci-core-filter-button-skeleton { display: inline-block; inline-size: 5rem; block-size: 2rem; }
+    .starci-core-filter-button-panel { display: flex; min-width: 16rem; flex-direction: column; gap: 0.5rem; }
+    .starci-core-filter-button-list { max-block-size: 16rem; overflow-y: auto; }
+    .starci-core-filter-button-empty { display: block; padding: 0.75rem; color: var(--muted, GrayText); font-size: 0.875rem; }
+
     /* --- ChatBubble: one message; the thread, grouping and scroll belong to the app. --- */
     .starci-core-chat-bubble {
         display: flex;

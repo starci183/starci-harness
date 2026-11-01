@@ -1,6 +1,6 @@
 "use client"
 
-import { Tag as HeroTag, TagGroup as HeroTagGroup, type Selection } from "@heroui/react"
+import { Tag as HeroTag, TagGroup as HeroTagGroup } from "@heroui/react"
 import { useEffect, useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import { FieldSkeletonScope } from "../../primitive/Field/index.js"
 import { navigationClassName } from "../../navigationClassNames.js"
@@ -53,11 +53,6 @@ export type TagGroupProps = TagGroupRemoval & TagGroupReorder & {
     /** Names the set of tags/chips, e.g. "Filters". */
     readonly label: string
     readonly items: ReadonlyArray<TagGroupItem>
-    /** `none` renders static chips; `single`/`multiple` make them selectable filter chips. */
-    readonly selectionMode?: "none" | "single" | "multiple"
-    readonly selectedIds?: ReadonlyArray<string>
-    readonly defaultSelectedIds?: ReadonlyArray<string>
-    readonly onSelectionChange?: (ids: ReadonlyArray<string>) => void
     /** Shown when no items remain. */
     readonly emptyContent?: ReactNode
     readonly size?: "sm" | "md" | "lg"
@@ -69,9 +64,6 @@ export type TagGroupProps = TagGroupRemoval & TagGroupReorder & {
     readonly isSkeleton?: boolean
 }
 
-const toIds = (selection: Selection, items: ReadonlyArray<TagGroupItem>): ReadonlyArray<string> => selection === "all"
-    ? items.map((item) => item.id)
-    : [...selection].map(String)
 
 const moveId = (ids: ReadonlyArray<string>, id: string, targetIndex: number): ReadonlyArray<string> => {
     const from = ids.indexOf(id)
@@ -91,7 +83,7 @@ const tagIdOf = (target: EventTarget | null, root: HTMLElement): string | undefi
 /**
  * Chips/tags: static labels, selectable filters, removable tokens, or a reorderable set.
  *
- * Built on the vendor TagGroup, so arrow keys move between chips, Space/Enter toggle selection
+ * Built on the vendor TagGroup, so arrow keys move between chips, Delete removes a removable chip
  * and Delete/Backspace remove. Each chip exposes `data-grammar-selected`; chips wrap onto new lines
  * at narrow widths instead of overflowing.
  * Reordering (`onReorder`) is Grammar's own layer: the vendor TagGroup has no drag-and-drop collection hooks, so the group
@@ -106,10 +98,6 @@ export const TagGroup = (props: TagGroupProps) => props.isSkeleton === true
 const TagGroupControl = ({
     label,
     items,
-    selectionMode = "none",
-    selectedIds,
-    defaultSelectedIds,
-    onSelectionChange,
     onRemove,
     removeLabel,
     onReorder,
@@ -214,13 +202,9 @@ const TagGroupControl = ({
         data-component="TagGroup"
         data-contract="STATE-1"
         data-tier="composite"
-        data-grammar-tag-selection={selectionMode}
         data-grammar-tag-removable={onRemove === undefined ? "false" : "true"}
-        selectionMode={selectionMode}
+        selectionMode="none"
         size={size}
-        {...(selectedIds === undefined ? {} : { selectedKeys: new Set(selectedIds) })}
-        {...(defaultSelectedIds === undefined ? {} : { defaultSelectedKeys: new Set(defaultSelectedIds) })}
-        {...(onSelectionChange === undefined ? {} : { onSelectionChange: (selection: Selection) => onSelectionChange(toIds(selection, items)) })}
         {...(onRemove === undefined ? {} : { onRemove: (keys: Set<string | number>) => onRemove([...keys].map(String)) })}
     >
         <HeroTagGroup.List

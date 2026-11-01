@@ -6254,3 +6254,26 @@ rules:
         source: owner
         quote: "(owner order relayed by the coordinator, 2026-11-01) a page or pane command hugs its label and sits at the end of its header row; Button width=fill is only for a form submit, an auth panel, or a phone action bar"
         ruling: "A header command is never width fill; fill is for a form submit, an auth panel and a phone action bar."
+  - id: R353
+    code: "FE_TAG_GROUP_SELECTION"
+    law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list)."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_TAG_GROUP_SELECTION"]
+    enforcers:
+      - {kind: eslint-fe, id: no-selectable-tag-group}
+    editions: [lite, full]
+    docs: [contexts/ui/components/chip.md]
+    templateNa: "A template draws no filter row."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TAG_GROUP_SELECTION]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TAG_GROUP_SELECTION]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TAG_GROUP_SELECTION]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "sao cái này không phải cụm button... button size xs kiểu nhóm button"
+        ruling: "A filter over a collection is a FilterButtonGroup of sm toggle buttons; the TagGroup has no selection."

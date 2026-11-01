@@ -2,6 +2,7 @@
 
 ## 4.16.5 - 2026-11-01
 
+- Added: R353 `FE_TAG_GROUP_SELECTION` (eslint-canon-fe `no-selectable-tag-group`).
 - Added: R352 `FE_COMMAND_FILLS_HEADER` (eslint-canon-fe `no-fill-command-in-header`).
 - Added: R351 `FE_TABLE_IN_CARD` (eslint-canon-fe `no-table-in-card`) in the bundled rule catalog; R61 states the status law as the owner's pair rule.
 - Changed: the bundled canon pins name @starci/grammar 0.20.2, eslint-grammar-core and eslint-grammar-offset-pop 0.20.2, eslint-canon-be 3.11.6, eslint-canon-fe 9.8.5, stylelint-canon 2.4.0 and hfs 4.16.5 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm). No behaviour change.

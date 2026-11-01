@@ -1148,7 +1148,7 @@ export const TagGroup: Story = {
   render: () => (
     <Matrix>
       <State label="Selectable (secondary face + border; selected = accent-soft + accent border)">
-        <G.TagGroup label="Topics" items={tags} selectionMode="multiple" defaultSelectedIds={['grammar']} />
+        <G.TagGroup label="Topics" items={tags} />
       </State>
       <State label="Removable"><RemovableTags /></State>
       <State label="Reorderable (drag, or Alt+arrow on a focused tag)"><ReorderableTags /></State>

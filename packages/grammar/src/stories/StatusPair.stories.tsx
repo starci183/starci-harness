@@ -144,3 +144,25 @@ export const ChatBubbles: Story = {
     </Matrix>
   ),
 };
+
+const providers = ['All', 'Accounting', 'Sales', 'Support', 'Marketing', 'Operations', 'Warehouse', 'Hiring', 'Legal', 'Kế toán'].map((label, index) => ({ value: label, label, count: index === 0 ? 124 : index * 3 }));
+
+/** The filter row at one width and another: one row, a "+n" button for what does not fit, the chosen hidden option swapped in. */
+export const FilterButtonGroup: Story = {
+  render: (_, { globals }) => (
+    <Matrix maxWidth={1400}>
+      {(['light', 'dark'] as const).map((theme) => (
+        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
+          {([['wide', 1100], ['mid', 560], ['narrow', 300]] as const).map(([name, width]) => (
+            <State key={name} label={`${theme}: ${name} (${width}px)`} direction="column">
+              <div style={{ width, maxWidth: '100%' }}>
+                <G.FilterButtonGroup label="Team" options={providers} defaultValue="All" moreLabel={(count) => `${count} more filters`} searchLabel="Search teams" emptyLabel="No team found" />
+              </div>
+            </State>
+          ))}
+          <State label={`${theme}: loading`} direction="column"><G.FilterButtonGroup label="Team" options={providers} isSkeleton /></State>
+        </G.GrammarRoot>
+      ))}
+    </Matrix>
+  ),
+};

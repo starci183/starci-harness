@@ -49,6 +49,11 @@ export const why = {
     en: "`<file>` stretches a command in a page or card header (`PageHeader actions`, `labelEnd`) with `width=\"fill\"`.",
     fix: "A page or pane command hugs its label and sits at the end of its header row: drop `width`. `width=\"fill\"` is for a form submit, an auth panel and a phone action bar.",
   },
+  "no-selectable-tag-group": {
+    code: "FE_TAG_GROUP_SELECTION",
+    en: "`<file>` gives a TagGroup a selection (`selectionMode`, `selectedIds`, `onSelectionChange`) to use it as a filter.",
+    fix: "A TagGroup holds values the user entered; peer values that filter a collection are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list).",
+  },
   "no-table-in-card": {
     code: "FE_TABLE_IN_CARD",
     en: "`<file>` puts a DataTable inside a SurfaceCard (directly, or in a component of the file that a SurfaceCard encloses).",
