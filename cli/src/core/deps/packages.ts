@@ -7,6 +7,7 @@ import { recordEvent } from "../../harness/tasks.js"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
+import type { RunOptions } from "../../shared/exec.js"
 import { HOST_HELD, withHeavySlot } from "../../harness/heavy.js"
 import { git, nulPaths } from "../../shared/git.js"
 
@@ -183,10 +184,10 @@ const installStale = (folder: string): boolean => {
     return existsSync(lock) && statSync(lock).mtimeMs > statSync(installed).mtimeMs
 }
 
-/** An install owns its node_modules: npm must never mutate the shared folder a junction or symlink points at. */
-const assertInstallUnlinked = (folder: string): void => {
+/** Installs receive process options only after proving node_modules is private, including after the governor's wait. */
+const unlinkedInstallOptions = (folder: string, options: RunOptions = {}): RunOptions => {
     const modules = join(folder, "node_modules")
-    if (lstatSync(modules, { throwIfNoEntry: false })?.isSymbolicLink() !== true) return
+    if (lstatSync(modules, { throwIfNoEntry: false })?.isSymbolicLink() !== true) return options
     throw new Refusal(
         "DEPS_INSTALL_LINKED",
         `${modules} is a junction or symlink; npm will not install dependencies through it because that would mutate the shared target. Materialize a private node_modules for this checkout, or unlink only the link itself and install this checkout's lockfile before retrying; keep the shared target intact`,
@@ -197,12 +198,9 @@ const assertInstallUnlinked = (folder: string): void => {
 export const buildPackage = async (pkg: LocalPackage): Promise<void> => {
     if (!pkg.builds) return
     if (installStale(pkg.folder)) {
-        assertInstallUnlinked(pkg.folder)
+        unlinkedInstallOptions(pkg.folder)
         const args = existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"]
-        const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => {
-            assertInstallUnlinked(pkg.folder)
-            return captureNpm(args, pkg.folder, held.options)
-        })
+        const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(args, pkg.folder, unlinkedInstallOptions(pkg.folder, held.options)))
         if (install.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm install in ${pkg.folder} failed:\n${tail(install.stdout, install.stderr)}`)
     }
     const build = await withHeavySlot("build", `npm run build ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(["run", "build"], pkg.folder, held.options))
@@ -253,11 +251,8 @@ export const installMissing = async (root: string, packages: readonly LocalPacka
     }
     const wanted = [...specs.values()].sort((left, right) => left.localeCompare(right))
     if (wanted.length === 0) return []
-    assertInstallUnlinked(root)
-    const run = await withHeavySlot("install", "npm install --no-save", root, {}, (held) => {
-        assertInstallUnlinked(root)
-        return captureNpm(["install", "--no-save", "--no-audit", "--no-fund", ...wanted], root, held.options)
-    })
+    unlinkedInstallOptions(root)
+    const run = await withHeavySlot("install", "npm install --no-save", root, {}, (held) => captureNpm(["install", "--no-save", "--no-audit", "--no-fund", ...wanted], root, unlinkedInstallOptions(root, held.options)))
     if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm install --no-save ${wanted.join(" ")} in ${root} failed:\n${tail(run.stdout, run.stderr)}`)
     return wanted
 }
