@@ -8,7 +8,7 @@ import { checkWorldRenderBoundaries } from './frontend-world.mjs';
 import { checkGrammar } from './frontend-grammar.mjs';
 import { checkRoute } from './frontend-routing.mjs';
 const FEATURE_TIERS = new Set(['pages', 'layouts', 'overlays']);
-const COMPONENT_TIERS = new Set(['blocks', 'composites', 'branches', 'leaves', 'providers']);
+const COMPONENT_TIERS = new Set(['blocks', 'frames', 'composites', 'branches', 'leaves', 'providers']);
 function absolute(root, relative) {
     return path.resolve(root, ...relative.split('/'));
 }
@@ -82,7 +82,7 @@ function checkFrontendSourceLayout(config, sourceFile, roots) {
         valid = located.relative.includes('/') || roleEntry(located.relative);
     return valid ? [] : [{ ruleId: 'FE_SOURCE_LAYOUT_INVALID', path: relativePath(config.root, sourceFile.fileName), line: 1, column: 1,
             message: { features: 'Frontend features contain only pages, layouts and overlays plus an optional root public entry.',
-                components: 'Frontend components contain only blocks, composites, branches, leaves and providers plus an optional root public entry.',
+                components: 'Frontend components contain only blocks, frames, composites, branches, leaves and providers plus an optional root public entry.',
                 hooks: 'Every authored custom hook is grouped below a domain folder under hooks; only the root public entry may sit directly under hooks.' }[located.role] }];
 }
 function declarationName(ts, declaration) {

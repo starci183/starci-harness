@@ -1859,7 +1859,7 @@ rules:
     editions: ["lite","full"]
     docs: ["docs/frontend-source-authoring.md#r91-source-form"]
     proves: [{"path":"packages/eslint/fe/r91-source-form.spec.mjs","editions":["lite","full"]}]
-    exemplifiedBy: [{"path":"packages/hfs/templates/fe/skeleton-lite/apps/web/src/components/composites/SiteShell/index.tsx","edition":"lite"},{"path":"packages/hfs/templates/fe/skeleton/apps/app/src/features/pages/AppHomePage/index.tsx","edition":"full"},{"path":"packages/eslint/fe/r91-source-form.spec.mjs","editions":["lite","full"]}]
+    exemplifiedBy: [{"path":"packages/hfs/templates/fe/skeleton-lite/apps/web/src/components/frames/SiteShell/index.tsx","edition":"lite"},{"path":"packages/hfs/templates/fe/skeleton/apps/app/src/features/pages/AppHomePage/index.tsx","edition":"full"},{"path":"packages/eslint/fe/r91-source-form.spec.mjs","editions":["lite","full"]}]
     witness: [{"path":"packages/eslint/fe/r91-source-form.spec.mjs","edition":"lite","codes":["FE_SOURCE_FORM","FE_SOURCE_LAYOUT_INVALID"]},{"path":"packages/eslint/fe/r91-source-form.spec.mjs","edition":"full","codes":["FE_SOURCE_FORM","FE_SOURCE_LAYOUT_INVALID"]}]
     gates: ["pre-commit","settle","land","ci"]
   - id: R92
@@ -1875,6 +1875,7 @@ rules:
       - {kind: eslint-fe, id: no-public-classname-prop}
       - {kind: eslint-fe, id: no-public-frame-css-props}
       - {kind: eslint-fe, id: no-css-door-type-laundering}
+      - {kind: eslint-fe, id: tier-children}
       - {kind: eslint-fe, id: base-props-atom}
       - {kind: eslint-fe, id: base-import-pair}
       - {kind: eslint-fe, id: no-data-status-shape}

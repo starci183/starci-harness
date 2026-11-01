@@ -49,12 +49,26 @@ function checkProfileMaps(m, bad) {
             continue;
         }
         for (const extra of Object.keys(m[key]))
-            if (!isSide(extra))
+            if (!isSide(extra) && !(key === 'tiers' && extra === COMPONENT_LIBRARY))
                 bad.push(`${key}.${extra} is not a profile`);
         for (const profile of PROFILES)
             if (!(profile in m[key]))
                 bad.push(`${key}.${profile} is missing`);
     }
+}
+/** The tier matrix of a component library (packages/grammar), beside the be and fe profiles: tiers.grammar. */
+const COMPONENT_LIBRARY = 'grammar';
+function checkComponentLibraryTiers(m, bad) {
+    const tiers = m.tiers?.[COMPONENT_LIBRARY];
+    if (tiers === undefined)
+        return;
+    bad.push(...tierMapProblems(COMPONENT_LIBRARY, tiers));
+    if (!isPlainObject(tiers))
+        return;
+    for (const [tier, def] of Object.entries(tiers))
+        for (const target of def?.mayImport ?? [])
+            if (!(target in tiers))
+                bad.push(`tiers.${COMPONENT_LIBRARY}.${tier}.mayImport names ${target}, which is not a ${COMPONENT_LIBRARY} tier`);
 }
 function checkAppKindAndTierShapes(m, bad) {
     for (const profile of PROFILES) {
@@ -66,6 +80,7 @@ function checkAppKindAndTierShapes(m, bad) {
             continue;
         bad.push(...tierMapProblems(profile, tiers));
     }
+    checkComponentLibraryTiers(m, bad);
 }
 function checkSlotShapes(m, bad) {
     if (!Array.isArray(m.slots) || !m.slots.length) {

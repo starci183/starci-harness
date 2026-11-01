@@ -933,6 +933,7 @@ rules:
       - {kind: eslint-fe, id: no-public-classname-prop}
       - {kind: eslint-fe, id: no-public-frame-css-props}
       - {kind: eslint-fe, id: no-css-door-type-laundering}
+      - {kind: eslint-fe, id: tier-children}
       - {kind: eslint-fe, id: base-props-atom}
       - {kind: eslint-fe, id: base-import-pair}
       - {kind: eslint-fe, id: no-data-status-shape}

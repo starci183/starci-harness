@@ -208,7 +208,7 @@ function inferredLayout(root, workspaces) {
     // A design-system workspace whose src carries tier dirs (leaves/branches/…) IS a component root;
     // collecting its src/components too would nest two roots in one role and fail the disjoint check.
     const tierSources = new Set(workspaces.map(prefix => `${prefix}/src`)
-        .filter(source => ['leaves', 'branches', 'blocks', 'overlays', 'composites', 'layouts', 'product-shells', 'pages']
+        .filter(source => ['leaves', 'branches', 'blocks', 'frames', 'overlays', 'composites', 'layouts', 'product-shells', 'pages']
         .some(tier => existingDirectory(root, `${source}/${tier}`))));
     const components = collect('src/components')
         .filter(relative => !tierSources.has(path.posix.dirname(relative)));

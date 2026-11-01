@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 import type { ReactNode } from "react"
-import { SiteShell } from "@/components/composites/SiteShell"
+import { SiteShell } from "@/components/frames/SiteShell"
 import { siteUrl } from "@/modules/config"
 import { APP_ROUTES } from "@/modules/routes"
 

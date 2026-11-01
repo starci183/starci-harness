@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added: `tier-children` (R92): only a unit of `components/frames` takes `children`; a leaf takes `children: string`; a block, a composite and a branch take none (`children?: never`) and `PropsWithChildren` is refused there.
 - Changed: `no-heading-above-card` (R354) follows the removal of `SectionHeader`: it refuses a `Section` (not `kind="list"`) whose only child is one card, and a card whose `ariaLabel` repeats the `Section` title. `no-hand-built-panes` reads a `Section` as a column where it read `Region`, and `no-commit-in-collection-item` no longer names the removed `CollectionItem`, `ItemActions` and `ListItem`.
 
 - eslint-canon-fe: the surface rules follow the one card (SurfaceListCard and SurfaceAccordionCard are gone).

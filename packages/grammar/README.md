@@ -52,7 +52,7 @@ the complete placement mapping in light and dark, including destination, pending
 The [app-shell canon](../../contexts/ui/composition.md) owns `FE-APP-SHELL-1` through `FE-APP-SHELL-7`.
 The `Compositions/App shell` stories show the fixed shell, grouped sidebar, icon rail and mobile drawer.
 
-- `size="control"` is available on `TextAction`, `PlainPressable`, `IdentityLockup`, `Switch`, `Avatar` and `AvatarButton`; `Button`, `IconButton`, `Input`, `SearchField` and `SegmentedControl` take the one control height.
+- `size="control"` is available on `TextAction`, `IdentityLockup`, `Switch`, `Avatar` and `AvatarButton`; `Button`, `IconButton`, `Input`, `SearchField` and `SegmentedControl` take the one control height.
 - `SidebarItem.badge`, `badgeLabel` and `badgeMax` show and announce unread counts in both sidebar presentations. `SidebarGroup.placement="end"` places settings groups after the main groups and pushes them to the bottom.
 - The collapsed Sidebar uses Grammar's internal `AnchoredTooltip` on hover and focus. HeroUI Tooltip positions the annotation beside the selected collection item and portals it into the same family DOM scope, preserving HeroUI's collection anatomy. `onAction` runs for every activated destination, including the selected item, so a drawer can close consistently.
 - A fixed `WorkspaceShell` frames its `compactHeader` slot as the mobile opener band; pass a client `Drawer` with an ellipsis `IconButton` trigger. The `navigationDrawer` form owns the same band when it supplies the opener.
@@ -216,6 +216,17 @@ follow for apps:
   with `toastQueue.add({ title, tone, action, timeout })`, or give the Toaster its own
   `createToastQueue()`. A Toaster outside the root renders unstyled.
 
+## Tiers and children
+
+`src/core` holds four folders, the ladder: **leaf** (one element or vendor part), **branch** (a leaf plus its own interaction state), **composite** (a fixed arrangement of
+leaves and branches) and **frame** (owns a region: tracks, inset, scroll, ground or an overlay). A tier imports nothing above itself, and `data-tier` on the
+rendered element is the folder (`tiers.grammar` of `@starci/hfs`; the machine check reports `GRAMMAR_TIER_DIRECTION` and `GRAMMAR_TIER_STAMP`).
+
+`children` belongs to frames. Every other props type carries `NoChildren` (`children?: never`) or, for a leaf's text label, `LabelChild` (`children?: string`), both exported,
+so nested JSX under a leaf, branch or composite fails to compile for every caller. A node a component shows has a named prop for its role (`body`, `trigger`, `media`,
+`control`, `text`). `Text` alone keeps inline content, and `Freestyle` alone keeps `className`. `starci-grammar/tier-props` in this package's ESLint config refuses
+a `children` or `className` that breaks the tier.
+
 ## Components
 
 Each group below matches a Storybook group. Run `npm run storybook`: every story renders inside
@@ -223,7 +234,7 @@ the family and theme chosen in the toolbar. It shows the default, disabled, inva
 selected/current states where they apply. Overlay stories open by default.
 
 **Leaves (24).** Avatar, Badge, Button, Divider, GrammarRoot, Heading, Icon,
-IconButton, IconTile, Image, Kbd, Link, Mascot, Meter, PlainPressable,
+IconButton, IconTile, Image, Kbd, Link, Mascot, Meter,
 Progress, ProgressCircle, RelativeTime, Skeleton, Spinner, StateMark, StatusDot, Text, TextAction.
 
 `Mascot` renders generated character art at one size scale: `size` `sm` (96px), `md` (160px, the default) or `lg`
@@ -344,7 +355,7 @@ their own actions. Native drag callbacks receive the actual inner content-frame 
 payload validation, accepted targets and effects. Highlighting takes precedence over muted tone.
 
 `DragItem` is a native drag-source frame with `isDisabled`, `onDragStart`, `onDragEnd`,
-`isSelected`, `isInvalid`, `isDashed` and an optional `tone` for the leading edge. Its `children`
+`isSelected`, `isInvalid`, `isDashed` and an optional `tone` for the leading edge. Its `body`
 must include a published control providing the operation without dragging, including selection
 and a keyboard-reachable destination when used with cell actions. Selection, invalidity and the
 category must also be expressed in accessible content. The frame itself adds no focus stop.
@@ -381,11 +392,10 @@ reuses the shared overlay contract, so optional `isOpen` / `onOpenChange` remain
 coordinated client interactions. The opener is the Drawer's own trigger, which owns activation,
 dismissal and focus return.
 
-`PlainPressable` is a pressable that does not look like a button: no padding, background, border or
+`AvatarButton` is a circle-only avatar that is a pressable without a button look (no padding, background, border or
 shape in any state, no hover effect, a zoom-out on press, a focus ring, and no zoom under
-`prefers-reduced-motion`. `AvatarButton` is a circle-only avatar built on it (an account-menu
-trigger) and `IdentityLockup` a mark beside a title and a muted subtitle with no caret (a workspace
-switcher trigger). All three work as the `trigger` of `DropdownMenu` and `Popover`. `IdentityLockup`'s uploaded mark has a transparent box; without an image it uses Avatar's local DiceBear initials. The mark is an uncropped square by default (`markShape="rounded"` opts in to a
+`prefers-reduced-motion`; an account-menu trigger) and `IdentityLockup` a mark beside a title and a muted subtitle with no caret (a workspace
+switcher trigger). Both work as the `trigger` of `DropdownMenu` and `Popover`. `IdentityLockup`'s uploaded mark has a transparent box; without an image it uses Avatar's local DiceBear initials. The mark is an uncropped square by default (`markShape="rounded"` opts in to a
 corner) and `Avatar` takes `shape="square" | "rounded"`.
 
 Personal avatars are circles. `Avatar`, `AvatarButton` and each `AvatarGroup` member render the

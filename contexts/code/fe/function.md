@@ -21,8 +21,8 @@ Enforced by: R92 (`public-component-signature`, `no-inline-parameter-type`), R91
 A page, layout, overlay or block is split: the connected `X(props: XProps)` in `index.tsx` and the pure
 `XBase(props: XBaseProps)` in `component.tsx`, where `XBaseProps` is `{ shape?, props, on? }`. `props` holds atoms
 (strings, numbers, booleans, arrays and plain objects of them, one `DataSlot<T>` per read, the resolved labels, and for
-feature composition a named `render` callback that takes data), `on` holds actions whose arguments are atoms, a layout
-alone also takes `children`, as does a frame (the tier whose job it is), and the pure half calls no hook of the world. Only its sibling `index.tsx` imports
+a named `render` callback only on a client branch, never in a block, which takes data), `on` holds actions whose arguments are atoms, a block takes no
+`children` and a node it shows is a named slot, only a layout and a frame (the tier whose job it is) take `children`, and the pure half calls no hook of the world. Only its sibling `index.tsx` imports
 `component.tsx`, which never re-exports `XBase`, so only `X` leaves the folder.
 
 The unit is drawn on three axes, and none stands in for another:
@@ -42,13 +42,14 @@ The unit is drawn on three axes, and none stands in for another:
 | page, layout, overlay | yes, the arrangement it approves | none: it reads no data and composes the blocks that do | its route's boundary; `notFound()` in the page owner |
 | block | yes | one `DataSlot<T>` per read it owns | each slot's, through `SlotView`; its writes' through the toast runner or a field |
 | composite | may take `shape` beside its flat fields (FE-FUNCTION-4) | none: it receives an item and `isSkeleton` from its block's `SlotView` | a resolved field error it is handed |
+| frame | none | none | none |
 | branch | none: only intrinsic interaction (open, expanded) in its own `useState` | none | none |
 | leaf | none | none: it takes `isSkeleton` | none |
 
 Why: a pure half of atoms renders from a fixture, so every shape can be drawn and audited without standing the world
 up; a status or a failure kept out of `shape` leaves no shape nobody drew, and a slot fails and waits alone.
 
-Enforced by: R92 (`public-component-signature`, `base-props-atom`, `base-import-pair`, `no-data-status-shape`,
+Enforced by: R92 (`public-component-signature`, `tier-children`, `base-props-atom`, `base-import-pair`, `no-data-status-shape`,
 `presentational-purity`, `component-purity`); the shape words of a composite, which is not split, are review only.
 
 ## FE-FUNCTION-3 The connected half resolves everything and renders its twin
@@ -69,11 +70,12 @@ Enforced by: R92 (`connected-block-has-presentational-twin`), R55 (`use-client-o
 
 A frame, composite, branch or leaf has no twin and takes the flat fields it draws (`label`, `items`, `isSkeleton`,
 `onRetry`, and `shape` for a composite with shapes), already resolved by its block; it never resolves copy, reads data
-or chooses between a component and its resting copy, and a leaf hands `isSkeleton` to the grammar component it draws.
+or chooses between a component and its resting copy, and a leaf hands `isSkeleton` to the grammar component it draws. Only a frame takes `children`;
+a leaf's `children` is its text (`children: string`), and a composite, a branch or a block names a slot for a node (`body`, `render`).
 
 Why: a reusable unit stays reusable only while it knows nothing about the product, the session or the catalog.
 
-Enforced by: R58 (`no-copy-resolution-below-block`), R92 (`component-purity`, `no-resting-branch-at-call-site`,
+Enforced by: R58 (`no-copy-resolution-below-block`), R92 (`tier-children`, `component-purity`, `no-resting-branch-at-call-site`,
 `no-placeholder-prop`).
 
 ## FE-FUNCTION-5 The route file adapts; the page owner holds the metadata
@@ -152,14 +154,18 @@ export interface HandoffBlockBaseProps {
 }
 
 const HandoffOrder = (props: HandoffBlockBaseProps) => (
-    <SlotView slot={props.props.order} placeholder={ORDER_PLACEHOLDER} labels={props.props.labels.orderSlot} onRetry={props.on.retryOrder}>
-        {(order, isSkeleton) => (
+    <SlotView
+        slot={props.props.order}
+        placeholder={ORDER_PLACEHOLDER}
+        labels={props.props.labels.orderSlot}
+        onRetry={props.on.retryOrder}
+        render={(order, isSkeleton) => (
             <>
                 <OrderSummary customer={order.customer} amount={order.amountText} isSkeleton={isSkeleton} />
                 {isSkeleton ? null : <OrderDisclosure lines={order.lines} title={props.props.labels.lines} />}
             </>
         )}
-    </SlotView>
+    />
 )
 
 const HandoffBody = (props: HandoffBlockBaseProps) => {

@@ -45,6 +45,7 @@ import { checkHooksAreHooks, HOOKS_ARE_HOOKS_RULE_IDS } from './hooks-are-hooks.
 import { checkClientReachesServer, CLIENT_REACHES_SERVER_RULE_IDS } from './client-reaches-server.mjs';
 import { checkCrossAppDuplicate, CROSS_APP_DUPLICATE_RULE_IDS } from './cross-app-duplicate.mjs';
 import { checkPackageShape, PACKAGE_SHAPE_RULE_IDS } from './package-shape.mjs';
+import { COMPONENT_TIER_RULE_IDS, checkGrammarTiers } from './component-tiers.mjs';
 import { checkFeSlotAllows, FE_SLOT_ALLOWS_RULE_IDS } from './fe-slot-allows.mjs';
 import { checkI18nKeys, I18N_KEYS_RULE_IDS } from './i18n-keys.mjs';
 import { checkDocLanguage, DOC_LANGUAGE_RULE_IDS } from './doc-language.mjs';
@@ -96,6 +97,7 @@ const FRONTEND_MACHINE = {
     feSlotAllows: [checkFeSlotAllows, FE_SLOT_ALLOWS_RULE_IDS],
     i18nKeys: [checkI18nKeys, I18N_KEYS_RULE_IDS],
     serverActions: [checkServerActions, SERVER_ACTION_RULE_IDS],
+    grammarTiers: [checkGrammarTiers, COMPONENT_TIER_RULE_IDS],
 };
 /** Errors the machine reports when a program cannot be built or an edge cannot be proven: it cannot judge, so it refuses. */
 const COMMON_REFUSAL_RULE_IDS = [

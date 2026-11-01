@@ -11,12 +11,12 @@ type SlotViewProps<T> = {
     readonly forbidden?: "notice" | "hide"
     /** Re-runs exactly the read of this slot. */
     readonly onRetry: () => void
-    readonly children: (items: T, isSkeleton: boolean) => ReactNode
+    readonly render: (items: T, isSkeleton: boolean) => ReactNode
 }
 
 /** The one status view (FE-ERROR-1): every region renders its loading, forbidden, error and empty status through here. */
 export const SlotView = <T,>(props: SlotViewProps<T>) => {
-    if (props.slot.isLoading === true) return props.children(props.placeholder, true)
+    if (props.slot.isLoading === true) return props.render(props.placeholder, true)
     if (props.slot.isForbidden === true) return props.forbidden === "hide" ? null : <EmptyNotice message={props.labels.forbidden} />
     if (props.slot.isError === true) {
         return <EmptyNotice message={props.labels.error} actionLabel={props.labels.retry} onAction={props.onRetry} />
@@ -24,5 +24,5 @@ export const SlotView = <T,>(props: SlotViewProps<T>) => {
     const items = props.slot.items
     // No items, or an empty list, is the region's empty sentence.
     if (items === undefined || (Array.isArray(items) && items.length === 0)) return <EmptyNotice message={props.labels.empty} />
-    return props.children(items, false)
+    return props.render(items, false)
 }

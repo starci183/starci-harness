@@ -68,7 +68,7 @@ const DotOnly = ({ tone, size, echo, label }: { readonly tone: StatusDotTone; re
 }
 
 /**
- * ATOM - `StatusDot`: a status as a coloured dot alone, with its name in a Tooltip on hover and focus. `echo` adds a ring that
+ * LEAF - `StatusDot`: a status as a coloured dot alone, with its name in a Tooltip on hover and focus. `echo` adds a ring that
  * expands and fades in the tone's light stop. The dot and the dot-size token are shared with `Badge isDot`, which is the form
  * with words.
  */

@@ -38,7 +38,7 @@ for a secondary one (`"hide"`); empty shows the region's empty sentence. The cop
 namespace through `useSlotLabels`. A signed-out viewer never reaches a region: the proxy and the session gate send them
 to sign-in. A missing resource behind a route is `notFound()` in the page owner, never a region status.
 
-Loading is skeleton parity, end to end: `slot.isLoading` makes `SlotView` call `children(placeholder, true)`, so the
+Loading is skeleton parity, end to end: `slot.isLoading` makes `SlotView` call `render(placeholder, true)`, so the
 loading tree is the ready tree drawn from a `placeholder` value of the same shape, with the same boxes. `isSkeleton` is
 passed down to every leaf, and each leaf draws the grammar's skeleton in its own box 
 ([ui composition](../../ui/composition.md) STATE-8). The one allowed `isSkeleton` branch hides a part that cannot be drawn

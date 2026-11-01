@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added: `tiers.grammar` in `knowledge/hfs/slots.yaml` (leaf, branch, composite, frame: a tier imports nothing above it) and the machine check `GRAMMAR_TIER_DIRECTION` / `GRAMMAR_TIER_STAMP` over a component library (`src/core/<tier>/<Name>/`): an import that climbs, a type-only one and one through a shared module included, and a `data-tier` stamp that is not the folder. `checkComponentLayers` runs the layer order over a component tree no hfs slot judges.
+- Added: the codemod `tier-binding` (`starci app codemod tier-binding [--execute] [--json]`) for the grammar's tier binding: a child that became a prop (`Tooltip` `trigger`, `Disclosure`, `DragItem` and `MessageBubble` `body`, `MediaFrame` `media`, `Field` `control`, `Quote` `text`) moves into it, and `TAKES_NO_CHILDREN`, `LABEL_NOT_TEXT`, `CLASS_NAME_REMOVED`, `TOOLTIP_DISABLED_TRIGGER` and `CHILD_NOT_TEXT` are reported for a person.
+- Changed: the scaffold follows the binding. `SlotView` takes a `render` function (not `children`), the `branch` unit takes a `body` slot, and `SiteShell`, which hosts the page, is a frame (`components/frames/SiteShell`, `packages/<project>-ui/src/frames/SiteShell`).
 - Added: the codemod `page-navigation` (`starci app codemod page-navigation [--execute] [--json]`) for the grammar's page and navigation cuts: `PrimaryRailLayout` to `Grid kind="main-rail"` and `FormGrid` to `Grid kind="form"` (a `className` or a spread blocks the rewrite), and every use of `PageHeader`, `PageContainer`, `Breadcrumbs`, `FillViewport`, `Rail`, `NavigationFeatureNav`, `Subnav` and `BottomNav` is reported with a code and the way to `Page`, `Grid` or `TopBar`.
 - Changed: `starci app add layout` draws `Grid kind="main-rail"` and `starci app add overlay --form` a `Grid kind="form"`; R323 to R325 law text follows (the page parts are not exports).
 
