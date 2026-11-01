@@ -116,7 +116,7 @@ roles:
     ui: ui/components/card.md
     renderers: [SurfaceCard]
     vendorParity: [card, accordion]
-    slots: ["label (a card that heads a section: outside the material)", "name and mark (a tile: inside the material, no outside label)", fact, labelEnd, content, footer, wholeAction, "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
+    slots: ["label (a card that heads a section: outside the material)", "name and mark (a tile: inside the material, no outside label)", fact, labelEnd, content, footer, wholeAction, "Figure: optional whole-cell href with Link.onFollow and isDisabled, neutral values", "ItemAction: Button.isPending preserves action-owned busy state", "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
     variants:
       kind: { values: [body, figures, list, accordion, bands, tile], chosenBy: app, compiler: a discriminated union; a list needs items and an empty state, bands end in at most one collection }
       labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }

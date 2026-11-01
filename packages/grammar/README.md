@@ -256,7 +256,7 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Leaves (24).** Avatar, Badge, Button, Divider, GrammarRoot, Heading, Icon,
+**Leaves (25).** Avatar, Badge, Button, ColorSwatch, Divider, GrammarRoot, Heading, Icon,
 IconButton, IconTile, Image, Kbd, Link, Mascot, Meter,
 Progress, ProgressCircle, RelativeTime, Skeleton, Spinner, StateMark, StatusDot, Text, TextAction.
 

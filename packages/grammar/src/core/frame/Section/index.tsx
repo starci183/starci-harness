@@ -75,9 +75,9 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * The title is the heading and the landmark's name, so there is no free heading to place and no label to repeat.
  * Its head, its filter and its body are blocks under one heading: one section step apart (GAP-4).
  *
- * `kind="region"` (the default) holds `children`. `kind="list"` is the long list that searches or filters: it draws
- * `items` as rows under an optional `filter` row, and an `empty` line when there are none. A short list to work through
- * is a `SurfaceCard kind="list"`, not a section.
+ * `kind="region"` (the default) holds `children`. `kind="list"` owns rows inside an existing surface, or a standalone
+ * list that searches, filters or pages: typed `items`, an optional `filter` and a required `empty` state. Its title owns
+ * the list heading and accessible name. A standalone bounded worklist on the page canvas is `SurfaceCard kind="list"`.
  */
 export const Section = (props: SectionProps) => {
     const { title, description, count, meta, action, headingLevel = 2, id, error } = props

@@ -12,7 +12,8 @@ for a kind does not compile). The first row that applies wins.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| task-list | rows of one kind the reader works through or scans as one group, bounded and with no search, filter or paging: a setup's items, required steps, a rail's choices, the few facts of a first-run step | `SurfaceCard kind="list"`: label outside, `items`, a required `empty`, a `footer` for the note | type: a list needs `items` and `empty`; R355 |
+| contained-list | an existing surface owns the region holding the rows | unpainted `Section kind="list"` (`list-table.choose.role:contained`), with one heading and accessible name | R340/R356 forbid a surface in a surface |
+| task-list | standalone rows on the page canvas, worked through or scanned as one bounded group with no search, filter or paging | `SurfaceCard kind="list"`: label outside, `items`, a required `empty`, a `footer` for the note | type: a list needs `items` and `empty`; R355 |
 | collection | rows that search, filter or page, or have no bound | not a card: `Section kind="list"` (`list-table.choose.role:entity`) | R355 refuses a `Section` around one card |
 | disclosure | one summary that reveals a rarely changed region | `kind="accordion"`, closed by default | judgement |
 | figures | a row of key figures | `kind="figures"` (DISCIPLINE-2): touching cells with lines between cells and rows | type: typed figures; candidate: cells at most `budgets.ribbonCells` |

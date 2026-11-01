@@ -214,8 +214,10 @@ selection mark sits on, the leading glyph size) is the grammar's to declare.
 
 ### List
 
-A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a bounded list reports,
-`Section kind="list"` when a list searches, filters or pages, a data table when columns matter. n rows have n-1 seams, separators are full bleed, and rows and captions share
+A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a standalone bounded list
+reports on the page canvas, `Section kind="list"` when an existing surface owns the region or the list searches,
+filters or pages, a data table when columns matter. The chosen owner carries one heading and accessible name.
+n rows have n-1 seams, separators are full bleed, and rows and captions share
 one content edge. A static row's description is one line, because the row is scanned; an option's description in
 a `ListBox` wraps, because it is read before picking, and a list clamps it only by `descriptionLines`. A table row
 with `href` is one link to its record; a column with `editor` hosts its field in the cell; `low`-priority columns
@@ -351,7 +353,8 @@ itself). `isLoading` passes to the band; the body's blocks own their loading.
 
 A section is a named region whose title is its heading and its landmark name; no free heading exists (ruling
 `section-is-the-heading`). `kind="list"` holds rows of the same typed items a list card holds, with a `filter` slot for a
-`FilterButtonGroup`; its head, filter and content stand one section step (24) apart, and its page command hugs its label at
+`FilterButtonGroup`; it is the unpainted list owner within an existing surface and the list owner for search, filters or
+paging on the canvas. Its head, filter and content stand one section step (24) apart, and its page command hugs its label at
 the end of the head row. A card heads itself with its `label`, so a section around one card is refused.
 
 ### Diagram
