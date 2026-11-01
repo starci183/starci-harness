@@ -4,6 +4,7 @@
 
 - Changed: R323 (`no-hand-rolled-page-header`) reduces to imports: `PageHeader` and `Breadcrumbs` imported from `@starci/grammar` (by name, aliased or through a namespace) are the finding. R325 (`route-page-is-one-page`) refuses `PageHeader` and `PageContainer` the same way (message `part`) and keeps its one-Page reading. R324 (`page-tabs-in-header`) loses its `PageHeader` sibling clause. The bundled catalog carries the new law text.
 - Changed: `no-raw-structural-element` names `Section` as the owner of `section`, `header`, `ul`, `ol` and `li`, and `Input`, `Select` and `Textarea` as the owners of `label`, since `Region`, `SectionHeader`, `List`, `ListItem` and `Label` are no longer grammar components. The bundled core playbook states `Text isStrong` in place of `Text weight`.
+- eslint-grammar-core: R355 `surface-card-kind`, R366 `no-label-in-grid`; R340 `no-raised-surface-in-surface` now refuses any card in a card, Pane surface or overlay.
 
 ## 0.20.2 - 2026-11-01
 

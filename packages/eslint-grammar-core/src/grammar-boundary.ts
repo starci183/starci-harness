@@ -35,7 +35,7 @@ export const GRAMMAR_OWNERS: Readonly<Record<string, string>> = Object.freeze({
   fieldset: "Fieldset",
   dl: "DescriptionList", dt: "DescriptionList", dd: "DescriptionList",
   table: "DataTable", thead: "DataTable", tbody: "DataTable", tr: "DataTable", td: "DataTable", th: "DataTable",
-  ul: "Section, SurfaceListCard or StaticStateRow", ol: "Section, SurfaceListCard or StaticStateRow", li: "Section, SurfaceListCard or StaticStateRow",
+  ul: "Section or SurfaceCard", ol: "Section or SurfaceCard", li: "Section or SurfaceCard",
   header: "Section or TopBar",
   footer: "Footer",
   nav: "NavLandmark, Page or TopBar",

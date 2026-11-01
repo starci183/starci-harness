@@ -43,31 +43,45 @@ const ROUTE_PLACEHOLDER: TaskRouteView = {
 export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
     const { labels, fact } = props.props
     return (
-        <SurfaceCard label={labels.title} headingLevel={2} {...(fact === "" ? {} : { fact })}>
-            <SlotView slot={props.props.route} placeholder={ROUTE_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
-                {(route, isSkeleton) => (
-                    <div className="app-stack">
-                        <Timeline
-                            label={labels.steps}
-                            items={isSkeleton ? [] : route.steps.map((step) => ({ id: step.id, title: step.step, description: step.detail }))}
-                            isLoading={isSkeleton}
-                            loadingRows={route.steps.length}
-                        />
-                        <SurfaceCard label={labels.chosen} headingLevel={3} state="informative">
-                            <DescriptionList
-                                layout="stacked"
-                                isDivided
-                                isLoading={isSkeleton}
-                                items={[
-                                    { id: "model", term: labels.model, description: route.model },
-                                    { id: "effort", term: labels.effort, description: route.effort },
-                                    { id: "by", term: labels.by, description: route.by },
-                                ]}
-                            />
-                        </SurfaceCard>
-                    </div>
-                )}
-            </SlotView>
-        </SurfaceCard>
+        <SlotView slot={props.props.route} placeholder={ROUTE_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
+            {(route, isSkeleton) => (
+                <SurfaceCard
+                    kind="bands"
+                    label={labels.title}
+                    headingLevel={2}
+                    isSkeleton={isSkeleton}
+                    {...(fact === "" ? {} : { fact })}
+                    bands={[
+                        {
+                            kind: "body",
+                            children: (
+                                <Timeline
+                                    label={labels.steps}
+                                    items={isSkeleton ? [] : route.steps.map((step) => ({ id: step.id, title: step.step, description: step.detail }))}
+                                    isLoading={isSkeleton}
+                                    loadingRows={route.steps.length}
+                                />
+                            ),
+                        },
+                        {
+                            kind: "body",
+                            label: labels.chosen,
+                            children: (
+                                <DescriptionList
+                                    layout="stacked"
+                                    isDivided
+                                    isLoading={isSkeleton}
+                                    items={[
+                                        { id: "model", term: labels.model, description: route.model },
+                                        { id: "effort", term: labels.effort, description: route.effort },
+                                        { id: "by", term: labels.by, description: route.by },
+                                    ]}
+                                />
+                            ),
+                        },
+                    ]}
+                />
+            )}
+        </SlotView>
     )
 }

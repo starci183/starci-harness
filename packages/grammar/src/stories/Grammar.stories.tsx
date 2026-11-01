@@ -9,7 +9,7 @@ import {
   Page,
   TopBar,
   SurfaceCard,
-  SurfaceListCard,
+  type ListRowData,
   Text,
   Link,
   WorkspaceShell,
@@ -120,19 +120,16 @@ export const SignInScreen: Story = {
   ),
 };
 
-const taskRow = (title: string, done: boolean) => (
-  <li key={title} className="starci-core-static-row" data-grammar-row="true" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-    <input type="checkbox" defaultChecked={done} aria-label={`Complete ${title}`} />
-    <span style={{ flex: 1, textDecoration: done ? 'line-through' : 'none', opacity: done ? 0.6 : 1 }}>{title}</span>
-    <Link href="#">Share</Link>
-    <Link href="#">Schedule</Link>
-    <Button intent="neutral" size="sm">Delete</Button>
-  </li>
-);
+const taskRow = (title: string, done: boolean): ListRowData => ({
+  id: title,
+  title,
+  ...(done ? { state: 'affirmative' as const } : {}),
+  action: { label: 'Delete', press: () => undefined },
+});
 
 /** Full tasks screen: shell + composer card + collection card — the anatomy the direction maps. */
 export const TasksScreen: Story = {
-  name: 'Tasks (shell + composer + SurfaceListCard)',
+  name: 'Tasks (shell + composer + list card)',
   render: () => (
     <WorkspaceShell
       header={topNav}
@@ -152,17 +149,20 @@ export const TasksScreen: Story = {
                 <Button type="submit" intent="commit">Add task</Button>
               </form>
             </SurfaceCard>
-            <SurfaceListCard
+            <SurfaceCard
+              kind="list"
               label="All tasks"
               headingLevel={2}
               fact="4 tasks"
               footer={<Text tone="muted">Completed tasks stay here until you delete them.</Text>}
-            >
-              {taskRow('Plan the week', false)}
-              {taskRow('Send the project update', false)}
-              {taskRow('Book the bike repair', false)}
-              {taskRow('Water the plants', true)}
-            </SurfaceListCard>
+              empty={<EmptyNotice message="No tasks yet." />}
+              items={[
+                taskRow('Plan the week', false),
+                taskRow('Send the project update', false),
+                taskRow('Book the bike repair', false),
+                taskRow('Water the plants', true),
+              ]}
+            />
             {pageFooter}
           </div>
         </Page>
@@ -215,10 +215,12 @@ export const EmptyState: Story = {
               <Heading level={1}>Your tasks</Heading>
               <Text tone="muted">A little progress, every day.</Text>
             </div>
-            <SurfaceListCard
+            <SurfaceCard
+              kind="list"
               label="All tasks"
               headingLevel={2}
               fact="0 tasks"
+              items={[]}
               empty={<EmptyNotice message="No tasks yet." description="Add the first one above." />}
             />
           </div>

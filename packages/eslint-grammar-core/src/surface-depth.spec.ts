@@ -1,6 +1,5 @@
 /**
- * Twin tests for the surface depth law (R340): a depth-accepting Grammar surface nested in another surface does not force
- * `depth="top"`.
+ * Twin tests for the surface nesting law (R340): a `SurfaceCard` never stands inside another surface.
  *
  *   node --test src/surface-depth.spec.ts
  */
@@ -11,38 +10,41 @@ import { noRaisedSurfaceInSurface, recommended, rules } from "./surface-depth.ts
 
 const BLOCK = at("apps/web/src/components/blocks/Runs/component.tsx")
 const SCRIPT = at("scripts/render.tsx")
-const IMPORTS = "import { SurfaceAccordionCard, SurfaceCard, SurfaceListCard } from \"@starci/grammar/core\"\n"
+const IMPORTS = "import { SurfaceCard, Dialog, Drawer, AlertDialog, Popover, Pane } from \"@starci/grammar/core\"\n"
+const nested = { messageId: "nested" }
 
 test("the law publishes one rule and it is an error", () => {
   assert.deepEqual(Object.keys(rules), ["no-raised-surface-in-surface"])
   assert.deepEqual(recommended, { "starci-grammar/no-raised-surface-in-surface": "error" })
 })
 
-test("R340: a surface nested in a surface does not force depth=\"top\"", () => {
+test("R340: a card never stands inside another card, a Pane surface or an overlay", () => {
   slotTester().run("no-raised-surface-in-surface", noRaisedSurfaceInSurface, {
     valid: [
-      // a top-level list may say top
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceListCard label=\"Runs\" depth=\"top\" items={[]} />" },
-      // a nested list lets the Grammar resolve its depth, or says nested
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SurfaceListCard label=\"Steps\" items={[]} /></SurfaceCard>" },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SurfaceListCard depth=\"nested\" items={[]} /></SurfaceCard>" },
-      // a depth computed at run time is not judged
-      { filename: BLOCK, code: IMPORTS + "export const A = (p: P) => <SurfaceCard label=\"Run\"><SurfaceListCard depth={p.depth} items={[]} /></SurfaceCard>" },
-      // a sibling of a surface is not inside it
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <div><SurfaceCard label=\"Run\" /><SurfaceListCard depth=\"top\" items={[]} /></div>" },
-      // another element's depth is not a surface depth
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><Tree depth=\"top\" /></SurfaceCard>" },
+      // a card at the top
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Runs\" kind=\"list\" items={[]} empty={null} />" },
+      // two cards side by side are not nested
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <div><SurfaceCard label=\"Run\" /><SurfaceCard label=\"Steps\" /></div>" },
+      // a Pane without a surface is a canvas
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"main\"><SurfaceCard label=\"Run\" /></Pane>" },
+      // a card in an overlay's trigger is not its content
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Dialog title=\"x\" trigger={<SurfaceCard label=\"Run\" />}>body</Dialog>" },
+      // another source's card is not the Grammar's
+      { filename: BLOCK, code: "import { SurfaceCard } from \"other-kit\"\nimport { Dialog } from \"@starci/grammar/core\"\nexport const A = () => <Dialog title=\"x\"><SurfaceCard /></Dialog>" },
       // a script is not product source
-      { filename: SCRIPT, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SurfaceListCard depth=\"top\" items={[]} /></SurfaceCard>" },
+      { filename: SCRIPT, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SurfaceCard label=\"Steps\" /></SurfaceCard>" },
     ],
     invalid: [
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SurfaceListCard label=\"Steps\" depth=\"top\" items={[]} /></SurfaceCard>", errors: [{ messageId: "raised", data: { element: "SurfaceListCard" } }] },
-      // an expression container, a template literal and a namespaced element
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><G.SurfaceListCard depth={\"top\"} items={[]} /></SurfaceCard>", errors: [{ messageId: "raised" }] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SurfaceListCard depth={`top`} items={[]} /></SurfaceCard>", errors: [{ messageId: "raised" }] },
-      // deeper inside, in a list card or an accordion card
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceListCard items={[]}><div><SurfaceListCard depth=\"top\" items={[]} /></div></SurfaceListCard>", errors: [{ messageId: "raised" }] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceAccordionCard label=\"Run\"><SurfaceListCard depth=\"top\" items={[]} /></SurfaceAccordionCard>", errors: [{ messageId: "raised" }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SurfaceCard label=\"Steps\" /></SurfaceCard>", errors: [nested] },
+      // deeper inside
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><div><SurfaceCard label=\"Steps\" /></div></SurfaceCard>", errors: [nested] },
+      // a card in a Pane that stands on the surface ground
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"main\" surface><SurfaceCard label=\"Run\" /></Pane>", errors: [nested] },
+      // a card in a dialog, a drawer, an alert dialog and a popover
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Dialog title=\"x\"><SurfaceCard label=\"Run\" /></Dialog>", errors: [nested] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Drawer title=\"x\"><SurfaceCard label=\"Run\" /></Drawer>", errors: [nested] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <AlertDialog title=\"x\"><SurfaceCard label=\"Run\" /></AlertDialog>", errors: [nested] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Popover trigger={<b />}><SurfaceCard label=\"Run\" /></Popover>", errors: [nested] },
     ],
   })
 })

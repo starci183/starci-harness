@@ -79,7 +79,7 @@ export const Drawer = ({
                 >
                     {({ close }) => (
                         <ButtonPlacementProvider placement="decision">
-                        <SurfaceNesting>
+                        <SurfaceNesting host="overlay">
                             {hasHandle ? <HeroDrawer.Handle data-grammar-drawer-handle="true" className="starci-core-drawer-handle" /> : null}
                             <HeroDrawer.Header className="starci-core-overlay-header">
                                 <div className="starci-core-overlay-heading-group">

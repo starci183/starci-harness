@@ -70,8 +70,16 @@ rulings:
   - id: surfacecard-always-painted
     date: '2026-10-25'
     status: live
-    ruling: "A card carries its shadow on the page background and its border, without shadow, when it sits on another surface."
+    ruling: "A card carries its shadow on the page background. A surface never stands inside another surface, dialogs and drawers included, so there is no nested edge (owner decision 2026-11-01, ruling surface-card-kinds)."
     owner: "contexts/ui/components/card.md; contexts/grammars/core.md"
+  - id: surface-card-kinds
+    date: '2026-11-01'
+    status: live
+    words: "Owner decisions of the grammar audit: kind=panes stays out; surface in surface is banned totally, dialogs and drawers included; a list is a card by default and a long list with search or filter is a Section; label by kind, a tile inside and a section card outside; tables do not go in cards unless truly complex."
+    ruling: "SurfaceCard is the one card, a discriminated union on kind: body (default), figures, list, accordion, bands and tile. SurfaceListCard, SurfaceAccordionCard, StaticStateRow, ListRow as a public export and DescriptionList stat-strip are gone; a row is an item of kind=list. A card never stands inside another surface (a card, Pane surface, Dialog, Drawer, AlertDialog or Popover): development throws, R340 and R356 refuse it. A body card holds no hand list, Divider or second title (R355); a labelled card repeated in a Grid of cards is a tile (R366)."
+    owner: "@starci/grammar src/core/frame/SurfaceCard, src/core/composite/ListRow, src/core/surfaceContext.tsx; contexts/grammars/contract.yaml roles.card; lint starci-grammar/surface-card-kind, no-label-in-grid, no-raised-surface-in-surface; starci app codemod surface-card-kinds"
+    pins:
+      contexts/vendor/wrappers.yaml: dfe5f71ee2d30e9f1bf0a872dc9844e52a54e699fad927bfda4d4c2339911e96
   - id: R318/case-1
     date: '2026-10-25'
     status: live
@@ -353,8 +361,6 @@ rulings:
     words: "ý là tùy mà p-3, tùy cái mà px khác py khác, thầy muốn trò suy nghĩ thấu đáo hiểu k / tương tự với gap, m,... thầy muốn deep thinking / rồi làm r / hay full 3 bỏ 4 đi!!! thầy nghĩ nên v"
     ruling: "Spacing is one scale, 0 4 8 12 24 32, with no 16, and every value on it is the Grammar's: an app names the relation between the blocks it places through role props (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page chrome) and writes no spacing utility. Gaps are roles, strictly ordered: identity 4, inline 8, row 12, section 24, region 32. Insets are levels, each side taking its value from what it touches: every container (a card dense or holding a form, a pane on every side, a dialog or drawer, a band) holds its content 12 in, a box inside a card 8, a low-density region (an empty state, a drop target) 24, the page gutter 12 on a phone, 24 from the medium breakpoint and 32 from wide, stepped and never fluid, except on a page of panes (Page chrome=\"panes\"), whose header takes 12 at every width so the title, the first tab and the pane content share one edge and the gutter column starts at the pane content edge; controls take inline sm 8, md 12, lg 24, one step less on a glyph side, and their block padding comes from their height. A closed box has equal block sides and never two steps between its sides; extra separation belongs to the parent's gap. The page title, the tab labels and the section headings share one text edge with the card or pane box below: tabs are the underline bar with the first label on that edge, pills are only for filters and chips, and the card's inner 12 is the one intentional step. The lint ships at warn for one cohort with a per-rule count while the spacing-roles codemod moves apps onto the role props, then moves to error."
     owner: "@starci/grammar src/common/spacing.ts, src/common/styles.css (root tokens), src/common/components-spacing.css, src/core/frame/Stack, Cluster, Grid, Page (chrome panes); lint starci-fe/no-spacing-utility and starci/spacing-scale (R350); starci app codemod spacing-roles; contexts/ui/presentation.md Space"
-    pins:
-      contexts/vendor/wrappers.yaml: 0da99e774deba147e983918c237820ad853fd05840a0d04b5b71c9c2c6030a09
   - id: grammar-freestyle-region
     date: '2026-10-31'
     status: live

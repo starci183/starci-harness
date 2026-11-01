@@ -17,71 +17,63 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * A Core PANEL card carries its title inside the card (the card header), inset from the boundary: the label row keeps a
- * non-zero inline padding (0.13.0 fix). Offset Pop keeps a panel title outside, flush with the card edge like every label.
+ * Where the name sits follows the card's kind (ruling card-label-by-kind): a card that heads a section carries its label
+ * outside the material, in both families, flush with the card edge; a tile carries its name inside, beside its mark.
  */
-export const SurfaceCardLabelInset: Story = {
-  name: 'SurfaceCard panel title inset',
+export const SurfaceCardLabelByKind: Story = {
+  name: 'SurfaceCard label by kind',
   render: () => (
-    <div style={{ maxWidth: 480 }}>
-      <G.SurfaceCard label="Group info" placement="panel">
-        <G.Text>Keep the streak going with one short lesson a day.</G.Text>
-      </G.SurfaceCard>
+    <div data-story-label-by-kind="true" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', maxWidth: 720 }}>
+      <div data-story-kind="section">
+        <G.SurfaceCard label="Group info">
+          <G.Text>Keep the streak going with one short lesson a day.</G.Text>
+        </G.SurfaceCard>
+      </div>
+      <div data-story-kind="tile">
+        <G.SurfaceCard kind="tile" name="Google Drive" mark={{ icon: BookGlyph }} description="Reads the files you share." badge={{ label: 'Connected', tone: 'success', isDot: true }} action={{ label: 'Open', press: noop }} />
+      </div>
     </div>
   ),
-  play: async ({ canvasElement, globals }) => {
-    const inside = (globals['grammarFamily'] ?? 'core') === 'core';
+  play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const label = canvasElement.querySelector<HTMLElement>('[data-component="SurfaceCard"] > [data-grammar-surface-label]');
+      const section = canvasElement.querySelector('[data-story-kind="section"] [data-component="SurfaceCard"]');
+      const label = section?.querySelector(':scope > [data-grammar-surface-label]');
+      const material = section?.querySelector(':scope > [data-grammar-frame="bounded"]');
       expect(label).not.toBeNull();
-      const style = getComputedStyle(label as HTMLElement);
-      for (const side of [style.paddingInlineStart, style.paddingInlineEnd]) {
-        if (inside) expect(Number.parseFloat(side)).toBeGreaterThan(0);
-        else expect(Number.parseFloat(side)).toBe(0);
-      }
+      expect(material).not.toBeNull();
+      // The label row stands above the material, outside it.
+      expect(label?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual((material?.getBoundingClientRect().top ?? 0) + 0.5);
+      const tile = canvasElement.querySelector('[data-story-kind="tile"] [data-component="SurfaceCard"]');
+      const name = tile?.querySelector('h3');
+      const face = tile?.querySelector(':scope > [data-grammar-frame="bounded"]');
+      expect(tile?.querySelector(':scope > [data-grammar-surface-label]')).toBeNull();
+      // The name stands inside the material, beside its mark.
+      expect(name).not.toBeNull();
+      expect(face?.contains(name ?? null)).toBe(true);
     });
   },
 };
-
-/** Each family's own card-label decision (ruling card-label-placement-per-grammar): where a PANEL card's title sits. */
-const PANEL_TITLE: Readonly<Record<string, 'inside' | 'outside'>> = { core: 'inside', 'offset-pop': 'outside' };
 
 const dnaPlanOptions = [
   { id: 'starter', label: 'Starter' },
   { id: 'team', label: 'Team' },
 ];
 
-/** A page that mixes a floating card in the content flow with a docked panel column, as a chat's details pane. */
-const FloatingAndPanelPage = () => (
-  <div data-story-dna-page="true" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 20rem', gap: '1.5rem', alignItems: 'stretch', minHeight: '34rem' }}>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
-      <G.Section title="Weekly review" description="A floating card among other content, with a nested card inside.">
-      <div data-story-dna="floating">
-        <G.SurfaceCard label="This week" fact="3 lessons">
-          <G.Text>Keep the streak going with one short lesson a day.</G.Text>
-          <G.Divider />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div data-story-dna="nested">
-            <G.SurfaceCard label="Nested card" fact="2 seats">
-              <G.Text>A surface placed on a surface: border, no shadow.</G.Text>
-            </G.SurfaceCard>
-          </div>
-          <div data-story-dna="controls" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
-            <G.Input id="dna-input" name="name" label="Name" />
-            <G.Select label="Plan" options={dnaPlanOptions} defaultValue="team" />
-            <G.Button intent="commit" onPress={noop}>Save</G.Button>
-          </div>
-          </div>
-        </G.SurfaceCard>
-      </div>
-      </G.Section>
-    </div>
-    <div data-story-dna="panel" style={{ display: 'flex', minWidth: 0 }}>
-      <G.SurfaceCard label="Group info" placement="panel" height="fill">
-        <G.Text tone="muted">12 members, created 3 March.</G.Text>
-        <G.Text>A docked panel of the layout carries its title as its header.</G.Text>
+/** A page with a floating card among other content, holding controls. */
+const FloatingCardPage = () => (
+  <div data-story-dna-page="true" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, maxWidth: 640 }}>
+    <G.Section title="Weekly review" description="A floating card among other content.">
+    <div data-story-dna="floating">
+      <G.SurfaceCard label="This week" fact="3 lessons">
+        <G.Text>Keep the streak going with one short lesson a day.</G.Text>
+        <div data-story-dna="controls" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
+          <G.Input id="dna-input" name="name" label="Name" />
+          <G.Select label="Plan" options={dnaPlanOptions} defaultValue="team" />
+          <G.Button intent="commit" onPress={noop}>Save</G.Button>
+        </div>
       </G.SurfaceCard>
     </div>
+    </G.Section>
   </div>
 );
 
@@ -89,56 +81,23 @@ const rectOf = (element: Element) => element.getBoundingClientRect();
 /** A shadow that draws something: any layer left once the transparent zero layers are removed. */
 const raised = (element: Element) => /px/.test(getComputedStyle(element).boxShadow.replaceAll(/rgba\(0, 0, 0, 0\) 0px 0px 0px 0px,? ?/g, ''));
 
-/** Every DNA rule the page breaks for `family`, as readable lines. */
-const dnaProblems = (scope: Element, family: string): string[] => {
+/** Every DNA rule the page breaks, as readable lines. */
+const dnaProblems = (scope: Element): string[] => {
   const problems: string[] = [];
   const card = (slot: string) => scope.querySelector(`[data-story-dna="${slot}"] > [data-component="SurfaceCard"]`);
-  const partsOf = (root: Element | null) => ({
-    label: root?.querySelector(':scope > [data-grammar-surface-label]') ?? null,
-    material: root?.querySelector(':scope > [data-grammar-frame="bounded"], :scope > [data-grammar-highlight] > [data-grammar-frame="bounded"]') ?? null,
-  });
   const painted = (element: Element) => {
     const style = getComputedStyle(element);
     return style.backgroundColor !== 'rgba(0, 0, 0, 0)' || raised(element) || Number.parseFloat(style.borderTopWidth) > 0;
   };
 
   const floating = card('floating');
-  const f = partsOf(floating);
-  if (floating === null || f.label === null || f.material === null) problems.push('floating card: label or material missing');
+  const label = floating?.querySelector(':scope > [data-grammar-surface-label]') ?? null;
+  const material = floating?.querySelector(':scope > [data-grammar-frame="bounded"], :scope > [data-grammar-highlight] > [data-grammar-frame="bounded"]') ?? null;
+  if (floating === null || label === null || material === null) problems.push('floating card: label or material missing');
   else {
-    if (rectOf(f.label).bottom > rectOf(f.material).top + 0.5) problems.push(`floating card: label bottom ${rectOf(f.label).bottom.toFixed(1)} below material top ${rectOf(f.material).top.toFixed(1)}`);
+    if (rectOf(label).bottom > rectOf(material).top + 0.5) problems.push(`floating card: label bottom ${rectOf(label).bottom.toFixed(1)} below material top ${rectOf(material).top.toFixed(1)}`);
     if (painted(floating)) problems.push('floating card: the root around the label is painted');
-    if (!painted(f.material)) problems.push('floating card: the material box is not painted');
-  }
-
-  const panel = card('panel');
-  const p = partsOf(panel);
-  if (panel === null || p.label === null || p.material === null) problems.push('panel card: title or material missing');
-  else if ((PANEL_TITLE[family] ?? 'outside') === 'inside') {
-    const box = rectOf(panel);
-    const title = rectOf(p.label.firstElementChild ?? p.label);
-    if (!painted(panel)) problems.push('panel card: the card box around the title is not painted');
-    if (title.top < box.top || title.left < box.left + 1 || title.right > box.right) problems.push('panel card: the title is not inside the material');
-  } else if (rectOf(p.label).bottom > rectOf(p.material).top + 0.5) problems.push('panel card: this family keeps the title outside, but it overlaps the material');
-
-  const nested = partsOf(card('nested')).material;
-  if (nested === null) problems.push('nested card: material missing');
-  else {
-    const style = getComputedStyle(nested);
-    if (!(Number.parseFloat(style.borderTopWidth) > 0)) problems.push('nested card: no border');
-    if (raised(nested)) problems.push(`nested card: raised (${style.boxShadow})`);
-  }
-
-  const divider = scope.querySelector('[data-story-dna="floating"] [data-grammar-surface-content] > [data-component="Divider"]');
-  if (divider === null || f.material === null) problems.push('divider missing');
-  else {
-    const d = rectOf(divider);
-    // The card's edges are the inside of its border (an Offset Pop outline is the border itself).
-    const m = rectOf(f.material);
-    const border = getComputedStyle(f.material);
-    const inner = { left: m.left + Number.parseFloat(border.borderLeftWidth), right: m.right - Number.parseFloat(border.borderRightWidth) };
-    const inset = Math.max(Math.abs(d.left - inner.left), Math.abs(inner.right - d.right));
-    if (inset > 1.5) problems.push(`divider inset ${inset.toFixed(1)}px (full bleed is 0)`);
+    if (!painted(material)) problems.push('floating card: the material box is not painted');
   }
 
   const controls = scope.querySelector('[data-story-dna="controls"]');
@@ -151,30 +110,29 @@ const dnaProblems = (scope: Element, family: string): string[] => {
 };
 
 /**
- * The family DNA on one page, light and dark: a FLOATING card (label above the material, the page's commonest card), a
- * docked PANEL card (Core: title inside, as the header; Offset Pop: outside), a nested surface (border, no shadow), a
- * full-bleed divider (inset 0) and the 40px controls (Input, Select, Button).
+ * The family DNA on one page, light and dark: a floating card (label above the material, the page's commonest card)
+ * and the 40px controls (Input, Select, Button) inside it.
  */
-export const FloatingCardAndPanel: Story = {
+export const FloatingCard: Story = {
   parameters: { grammar: { bleed: false } },
   render: (_, { globals }) => (
     <Matrix>
       {(['light', 'dark'] as const).map((theme) => (
         <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-dna-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
-          <FloatingAndPanelPage />
+          <FloatingCardPage />
         </G.GrammarRoot>
       ))}
     </Matrix>
   ),
-  play: async ({ canvasElement, globals }) => {
-    const family = typeof globals['grammarFamily'] === 'string' ? globals['grammarFamily'] : 'core';
+  play: async ({ canvasElement }) => {
     await waitFor(() => {
       const problems = [...canvasElement.querySelectorAll('[data-story-dna-theme]')].flatMap((root) =>
-        dnaProblems(root, family).map((problem) => `${root.getAttribute('data-story-dna-theme')}: ${problem}`));
+        dnaProblems(root).map((problem) => `${root.getAttribute('data-story-dna-theme')}: ${problem}`));
       expect(problems, problems.join('; ')).toEqual([]);
     });
   },
 };
+
 
 export const SurfaceCard: Story = {
   render: () => (
@@ -198,35 +156,15 @@ export const SurfaceCard: Story = {
         <G.SurfaceCard label="Unavailable (disabled)" state="unavailable"><G.Text>Not included in your plan.</G.Text></G.SurfaceCard>
         <G.SurfaceCard label="Negative (invalid)" state="negative"><G.Text>The import failed.</G.Text></G.SurfaceCard>
       </State>
-      <State label="Contextual surface depth" direction="column">
-        <G.SurfaceCard label="Outer">
-          <G.SurfaceCard label="Nested"><G.Text>Nested depth.</G.Text></G.SurfaceCard>
-        </G.SurfaceCard>
-      </State>
-      <State label="Ink band with artwork and orbit motif (joined faces, stat strip, unlabelled divider)" direction="column">
+      <State label="Ink band with artwork and orbit motif" direction="column">
         <G.SurfaceCard
           ariaLabel="Workspace overview"
           treatment="ink"
-          composition="joined"
           motif="orbit"
           artwork={<G.Image src={placeholderImage('Art', 20)} alt="" fit="contain" loading="eager" assetSlot="story.overview-art" />}
         >
-          <div style={{ padding: '1.5rem', maxWidth: '30rem' }}>
-            <G.Text isStrong>Workspace Support</G.Text>
-            <G.Text tone="muted">Owner Alex Morgan · Team plan</G.Text>
-          </div>
-          <G.Divider semantics="presentation" />
-          <div style={{ padding: '1.5rem' }}>
-            <G.DescriptionList
-              layout="stat-strip"
-              items={[
-                { id: 'runtime', icon: BookGlyph, term: 'Runtime', description: <G.Badge tone="success" isDot>Provisioned</G.Badge>, meta: 'Verified 10:00' },
-                { id: 'installs', icon: BookGlyph, term: 'Installations', description: '2', unit: 'modules', meta: 'Inventoried 10:00' },
-                { id: 'capabilities', icon: BookGlyph, term: 'Capabilities on', description: '5/6', meta: '1 capability off' },
-                { id: 'conversations', icon: BookGlyph, term: 'Conversations · 7 days', description: '1,596', unit: 'conversations', meta: 'Across 2 modules' },
-              ]}
-            />
-          </div>
+          <G.Text isStrong>Workspace Support</G.Text>
+          <G.Text tone="muted">Owner Alex Morgan · Team plan</G.Text>
         </G.SurfaceCard>
         <G.SurfaceCard ariaLabel="Ink band, motif only" treatment="ink" motif="orbit">
           <G.Text isStrong>Motif without artwork</G.Text>
@@ -361,124 +299,119 @@ export const Freestyle: Story = {
   },
 };
 
-export const SurfaceListCard: Story = {
+const checkRows: readonly G.ListRowData[] = [
+  { id: 'a', title: 'Email verified', state: 'affirmative' },
+  { id: 'b', title: 'Payment method', description: 'Expires soon', state: 'cautionary' },
+  { id: 'c', title: 'Two-factor', state: 'negative' },
+  { id: 'd', title: 'Backup', state: 'pending' },
+];
+
+/** `kind="list"`: rows as data, drawn by one row; the list answers for its empty and loading states. */
+export const SurfaceCardList: Story = {
+  name: 'SurfaceCard kind list',
   render: () => (
     <Matrix maxWidth={640}>
-      <State label="Rows with states" direction="column">
-        <G.SurfaceListCard label="Checks" fact="4 items" footer={<G.Text tone="muted" size="sm">Updated just now.</G.Text>}>
-          <G.StaticStateRow item={{ id: 'a', label: 'Email verified', state: 'affirmative' }} />
-          <G.StaticStateRow item={{ id: 'b', label: 'Payment method', description: 'Expires soon', state: 'cautionary' }} />
-          <G.StaticStateRow item={{ id: 'c', label: 'Two-factor', state: 'negative' }} />
-          <G.StaticStateRow item={{ id: 'd', label: 'Backup', state: 'pending' }} />
-        </G.SurfaceListCard>
+      <State label="Rows with states, a fact and a footer" direction="column">
+        <G.SurfaceCard kind="list" label="Checks" fact="4 items" footer={<G.Text tone="muted" size="sm">Updated just now.</G.Text>} items={checkRows} empty={<G.EmptyNotice message="Nothing to check." />} />
       </State>
-      <State label="Verdict collection" direction="column">
-        <G.SurfaceListCard label="Movement" isVerdict>
-          <G.StaticStateRow item={{ id: 'up', label: 'Ada', verdict: 'success' }} />
-          <G.StaticStateRow item={{ id: 'down', label: 'Grace', verdict: 'danger' }} />
-        </G.SurfaceListCard>
-      </State>
-      <State label="Loading (pending)" direction="column">
-        <G.SurfaceListCard label="Loading" isLoading>
-          <G.StaticStateRow item={{ id: 'l', label: 'Loading row', state: 'pending' }} />
-        </G.SurfaceListCard>
+      <State label="Verdict collection (a row reports a direction)" direction="column">
+        <G.SurfaceCard
+          kind="list"
+          label="Movement"
+          items={[{ id: 'up', title: 'Ada', verdict: 'success' }, { id: 'down', title: 'Grace', verdict: 'danger' }]}
+          empty={<G.EmptyNotice message="No movement." />}
+        />
       </State>
       <State label="Loading (3 skeleton rows by default)" direction="column">
-        <G.SurfaceListCard label="Saved lessons" isLoading />
+        <G.SurfaceCard kind="list" label="Saved lessons" isSkeleton items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />
       </State>
-      <State label="Empty (notice, not a list)" direction="column">
-        <G.SurfaceListCard label="Saved" empty={<G.EmptyNotice message="Nothing saved yet." description="Saved lessons appear here." />} />
+      <State label="Loading (the rows it was given, as geometry)" direction="column">
+        <G.SurfaceCard kind="list" label="Saved lessons" isSkeleton items={checkRows} empty={<G.EmptyNotice message="Nothing saved yet." />} />
       </State>
-      <State label="Contained scroll (focusable list)" direction="column">
-        <div style={{ height: 160, display: 'flex', flexDirection: 'column' }}>
-          <G.SurfaceListCard label="History" isScrollable>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-              <G.StaticStateRow key={day} item={{ id: day, label: day, description: 'One lesson', state: 'affirmative' }} />
-            ))}
-          </G.SurfaceListCard>
-        </div>
+      <State label="Empty (a notice, not a list)" direction="column">
+        <G.SurfaceCard kind="list" label="Saved" items={[]} empty={<G.EmptyNotice message="Nothing saved yet." description="Saved lessons appear here." />} />
       </State>
     </Matrix>
   ),
 };
 
-const StaticRows = () => (
-  <G.SurfaceListCard ariaLabel="Every presentation state" labelHidden>
-    {G.PRESENTATION_STATES.map((state) => (
-      <G.StaticStateRow key={state} item={{ id: state, label: state, description: `A ${state} row` , state }} />
-    ))}
-  </G.SurfaceListCard>
-);
-
-/** `ListRow`: an interactive row on the static row's geometry - leading mark, title with badges, one line, actions, a detail region. */
-export const ListRow: Story = {
+/** The row anatomy: leading mark, title with badges, one line, one visible command, a menu, a detail region. */
+export const SurfaceCardListRow: Story = {
+  name: 'SurfaceCard list row',
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Several accounts of one provider" direction="column">
-        <G.SurfaceListCard label="Bank feed" fact="3 accounts" labelEnd={<G.Button intent="neutral" onPress={noop}>Add</G.Button>}>
-          <G.ListRow
-            leading={<G.IconTile source={BookGlyph} />}
-            title="Main account"
-            badges={<><G.Badge tone="success" isDot>Connected</G.Badge><G.Badge tone="neutral">Test</G.Badge></>}
-            description="Bank A · •••• 4321 · Holder name · Used by: Accounting"
-            actions={<G.IconButton source={PlusGlyph} label="Options for Main account" intent="neutral" onPress={noop} />}
-          />
-          <G.ListRow
-            leading={<G.IconTile source={BookGlyph} />}
-            title="Second account"
-            badges={<G.Badge tone="warning" isDot>Unfinished</G.Badge>}
-            description="Bank A · •••• 1234 · Holder name"
-            actions={<><G.Button intent="alternative" onPress={noop}>Continue</G.Button><G.IconButton source={PlusGlyph} label="Options for Second account" intent="neutral" onPress={noop} /></>}
-            state="cautionary"
-          />
-          <G.ListRow
-            leading={<G.IconTile source={BookGlyph} />}
-            title="Old account"
-            badges={<G.Badge tone="danger" isDot>Needs attention</G.Badge>}
-            description="Bank B · •••• 9876"
-            actions={<G.IconButton source={PlusGlyph} label="Options for Old account" intent="neutral" onPress={noop} />}
-            state="negative"
-          >
-            <G.Alert tone="negative" title="The provider rejected the last delivery" description="Check the key on the provider, then send a test." />
-          </G.ListRow>
-        </G.SurfaceListCard>
+        <G.SurfaceCard
+          kind="list"
+          label="Bank feed"
+          fact="3 accounts"
+          labelEnd={<G.Button intent="neutral" onPress={noop}>Add</G.Button>}
+          empty={<G.EmptyNotice message="No accounts." />}
+          items={[
+            {
+              id: 'main',
+              leading: { icon: BookGlyph },
+              title: 'Main account',
+              badges: [{ label: 'Connected', tone: 'success', isDot: true }, { label: 'Test' }],
+              description: 'Bank A · •••• 4321 · Holder name · Used by: Accounting',
+              menu: { label: 'Options for Main account', entries: [{ id: 'rename', label: 'Rename' }] },
+            },
+            {
+              id: 'second',
+              leading: { icon: BookGlyph },
+              title: 'Second account',
+              badges: [{ label: 'Unfinished', tone: 'warning', isDot: true }],
+              description: 'Bank A · •••• 1234 · Holder name',
+              action: { label: 'Continue', intent: 'alternative', press: noop },
+              menu: { label: 'Options for Second account', entries: [{ id: 'rename', label: 'Rename' }] },
+              state: 'cautionary',
+            },
+            {
+              id: 'old',
+              leading: { icon: BookGlyph },
+              title: 'Old account',
+              badges: [{ label: 'Needs attention', tone: 'danger', isDot: true }],
+              description: 'Bank B · •••• 9876',
+              menu: { label: 'Options for Old account', entries: [{ id: 'rename', label: 'Rename' }] },
+              state: 'negative',
+              detail: <G.Alert tone="negative" title="The provider rejected the last delivery" description="Check the key on the provider, then send a test." />,
+            },
+          ]}
+        />
       </State>
-      <State label="Offers without a leading mark, mixed with a static row" direction="column">
-        <G.SurfaceListCard label="Not connected">
-          <G.ListRow title="Chat bot" description="Customers message your bot." actions={<G.Button intent="neutral" onPress={noop}>Connect</G.Button>} />
-          <G.StaticStateRow item={{ id: 'static', label: 'Static row', description: 'Shares the same inset and separator' }} />
-        </G.SurfaceListCard>
+      <State label="Avatars, positions and a destination" direction="column">
+        <G.SurfaceCard
+          kind="list"
+          label="Seats"
+          empty={<G.EmptyNotice message="No seats." />}
+          items={[
+            { id: 'a', leading: { avatar: { name: 'Alex Morgan', kind: 'person' } }, title: 'Alex Morgan', description: 'Owner', action: { label: 'Open', href: '#alex' } },
+            { id: 'b', leading: { position: 2 }, title: 'Second step', description: 'Runs after the first' },
+          ]}
+        />
       </State>
     </Matrix>
   ),
 };
-
-export const StaticStateRow: Story = {
-  render: () => (
-    <Matrix maxWidth={560}>
-      <State label="Every presentation state" direction="column"><StaticRows /></State>
-    </Matrix>
-  ),
-};
-
-type Summary = { readonly title: string; readonly meta: string };
 
 const AccordionCardDemo = () => {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['week-1']));
   const weeks = [
-    { id: 'week-1', summary: { title: 'Week 1', meta: '3 lessons' }, body: 'Articles, plurals and pronouns.' },
-    { id: 'week-2', summary: { title: 'Week 2', meta: '4 lessons' }, body: 'Present tenses.' },
-    { id: 'week-3', summary: { title: 'Week 3', meta: 'Locked' }, body: 'Past tenses.', isDisabled: true },
+    { id: 'week-1', title: 'Week 1', meta: '3 lessons', body: 'Articles, plurals and pronouns.' },
+    { id: 'week-2', title: 'Week 2', meta: '4 lessons', body: 'Present tenses.' },
+    { id: 'week-3', title: 'Week 3', meta: 'Locked', body: 'Past tenses.', isDisabled: true },
   ];
   return (
-    <G.SurfaceAccordionCard<Summary, string>
+    <G.SurfaceCard
+      kind="accordion"
       label="Course outline"
       items={weeks.map((week) => ({
         id: week.id,
+        title: week.title,
+        meta: week.meta,
+        body: <G.Text>{week.body}</G.Text>,
         isOpen: open.has(week.id),
         isDisabled: week.isDisabled === true,
-        summaryRender: week.summary,
-        bodyRender: week.body,
       }))}
       onItemOpenChange={(id, isOpen) =>
         setOpen((current) => {
@@ -488,47 +421,122 @@ const AccordionCardDemo = () => {
           return next;
         })
       }
-      renderSummary={(summary) => (
-        <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', width: '100%' }}>
-          <span>{summary.title}</span>
-          <G.Text as="span" tone="muted" size="sm">{summary.meta}</G.Text>
-        </span>
-      )}
-      renderBody={(body) => <G.Text>{body}</G.Text>}
     />
   );
 };
 
-const SingleAccordionDemo = ({ frame }: Pick<G.SurfaceAccordionCardProps<string, string>, 'frame'> = {}) => {
+const SingleAccordionDemo = () => {
   const [isOpen, setOpen] = useState(false);
   return (
-    <G.SurfaceAccordionCard<string, string>
+    <G.SurfaceCard
+      kind="accordion"
       ariaLabel="Refund policy"
-      {...(frame === undefined ? {} : { frame })}
-      isOpen={isOpen}
-      onOpenChange={setOpen}
-      summaryRender="Refund policy"
-      bodyRender="Refunds are available within 14 days."
-      renderSummary={(summary) => summary}
-      renderBody={(body) => <G.Text>{body}</G.Text>}
+      items={[{ id: 'refund', title: 'Refund policy', body: <G.Text>Refunds are available within 14 days.</G.Text>, isOpen }]}
+      onItemOpenChange={(_id, next) => setOpen(next)}
     />
   );
 };
 
-export const SurfaceAccordionCard: Story = {
+export const SurfaceCardAccordion: Story = {
+  name: 'SurfaceCard kind accordion',
   render: () => (
     <Matrix maxWidth={640}>
       <State label="Rows: one open (selected), one disabled" direction="column"><AccordionCardDemo /></State>
       <State label="Single item, collapsed" direction="column"><SingleAccordionDemo /></State>
-      <State label="Bounded disclosure inherits nested depth" direction="column">
-        <G.SurfaceCard label="Course details"><SingleAccordionDemo /></G.SurfaceCard>
-      </State>
-      <State label="Unpainted disclosure inherits its parent's surface" direction="column">
-        <G.SurfaceCard label="Course details"><SingleAccordionDemo frame="unpainted" /></G.SurfaceCard>
+      <State label="Loading" direction="column">
+        <G.SurfaceCard kind="accordion" label="Course outline" isSkeleton onItemOpenChange={noop} items={[{ id: 'w1', title: 'Week 1', meta: '3 lessons', body: 'x', isOpen: false }, { id: 'w2', title: 'Week 2', meta: '4 lessons', body: 'x', isOpen: false }]} />
       </State>
     </Matrix>
   ),
 };
+
+const stripFigures: readonly G.Figure[] = [
+  { id: 'runtime', icon: BookGlyph, term: 'Runtime', value: 'Provisioned', meta: 'Verified 10:00' },
+  { id: 'installs', icon: BookGlyph, term: 'Installations', value: 2, unit: 'modules', meta: 'Inventoried 10:00' },
+  { id: 'capabilities', icon: BookGlyph, term: 'Capabilities on', value: '5/6', meta: '1 capability off' },
+  { id: 'conversations', icon: BookGlyph, term: 'Conversations · 7 days', value: '1,596', unit: 'conversations', meta: 'Across 2 modules' },
+];
+
+/** `kind="figures"`: two to four key figures as touching cells, divided by lines; the card holds nothing else. */
+export const SurfaceCardFigures: Story = {
+  name: 'SurfaceCard kind figures',
+  render: () => (
+    <Matrix maxWidth={960}>
+      <State label="Four figures with a label" direction="column">
+        <G.SurfaceCard kind="figures" label="Usage" items={stripFigures} />
+      </State>
+      <State label="Three figures, unlabelled (an odd last cell spans its row when narrow)" direction="column">
+        <G.SurfaceCard kind="figures" ariaLabel="Usage" items={stripFigures.slice(0, 3)} />
+      </State>
+      {([
+        ['Narrow: 2 x 2 from 18rem of its own width', 400, stripFigures],
+        ['Narrow: one column', 240, stripFigures],
+        ['Narrow, odd last cell: 2 + 1', 400, stripFigures.slice(0, 3)],
+      ] as const).map(([label, width, items]) => (
+        <State key={label} label={label} direction="column">
+          <div style={{ width, maxWidth: '100%' }}>
+            <G.SurfaceCard kind="figures" ariaLabel={label} items={items} />
+          </div>
+        </State>
+      ))}
+      <State label="Loading" direction="column">
+        <G.SurfaceCard kind="figures" label="Usage, loading" isSkeleton items={stripFigures} />
+      </State>
+    </Matrix>
+  ),
+};
+
+/** `kind="bands"`: faces divided by seams the shell draws, then at most one collection, last. */
+export const SurfaceCardBands: Story = {
+  name: 'SurfaceCard kind bands',
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Body, figures, then a list" direction="column">
+        <G.SurfaceCard
+          kind="bands"
+          label="Workspace"
+          bands={[
+            { kind: 'body', children: <G.Text>Support runs on the Team plan, owned by Alex Morgan.</G.Text> },
+            { kind: 'figures', items: stripFigures.slice(0, 3) },
+            { kind: 'list', items: checkRows.slice(0, 2), empty: <G.EmptyNotice message="Nothing to check." /> },
+          ]}
+        />
+      </State>
+      <State label="A media face, then a body face" direction="column">
+        <G.SurfaceCard
+          kind="bands"
+          label="Launch"
+          bands={[
+            { kind: 'media', artwork: <G.Image src={placeholderImage('Launch', 20)} alt="Launch artwork" aspect="wide" loading="eager" assetSlot="story.bands-media" /> },
+            { kind: 'body', children: <G.Text>The first face is a decorative slab, edge to edge.</G.Text> },
+          ]}
+        />
+      </State>
+    </Matrix>
+  ),
+};
+
+/** `kind="tile"`: a peer you recognise and open. The name sits inside, beside its mark; status and action are at the bottom. */
+export const SurfaceCardTile: Story = {
+  name: 'SurfaceCard kind tile',
+  render: () => (
+    <Matrix maxWidth={960}>
+      <State label="A grid of tiles: icon, logo and avatar marks; a status; an action or a whole-card link" direction="column">
+        <G.Grid kind="cards">
+          <G.SurfaceCard kind="tile" name="Google Drive" mark={{ icon: BookGlyph }} description="Reads the files you share with the agent." badge={{ label: 'Connected', tone: 'success', isDot: true }} action={{ label: 'Open', press: noop }} />
+          <G.SurfaceCard kind="tile" name="SePay" mark={{ logo: { src: placeholderImage('Pay', 40), alt: '' } }} description="Matches incoming payments." badge={{ label: 'Not set up', tone: 'muted', isDot: true }} action={{ label: 'Set up', press: noop }} />
+          <G.SurfaceCard kind="tile" name="Zalo OA" mark={{ avatar: { name: 'Zalo OA', kind: 'agent' } }} description="Answers customers on Zalo." wholeAction={{ kind: 'link', href: '#zalo', label: 'Open Zalo OA' }} />
+        </G.Grid>
+      </State>
+      <State label="Loading" direction="column">
+        <G.Grid kind="cards">
+          <G.SurfaceCard kind="tile" isSkeleton name="Google Drive" mark={{ icon: BookGlyph }} description="Reads the files you share with the agent." badge={{ label: 'Connected', tone: 'success' }} action={{ label: 'Open', press: noop }} />
+        </G.Grid>
+      </State>
+    </Matrix>
+  ),
+};
+
 
 export const EmptyNotice: Story = {
   render: () => (

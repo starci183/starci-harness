@@ -91,7 +91,7 @@ for (const Field of ["Input", "TextField", "Textarea", "TextArea", "SearchField"
   })
 }
 
-for (const Surface of ["SurfaceCard", "SurfaceListCard", "Sidebar", "Drawer", "Dialog", "AlertDialog", "Popover", "TopBar", "NavigationFeatureNav"]) {
+for (const Surface of ["SurfaceCard", "Sidebar", "Drawer", "Dialog", "AlertDialog", "Popover", "TopBar", "NavigationFeatureNav"]) {
   test(`ANATOMY-2: Tabs in ${Surface} are the underline bar`, () => {
     assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
       valid: [
@@ -339,14 +339,14 @@ for (const edition of ["lite", "full"]) {
 
 for (const edition of ["lite", "full"]) {
   test(`${edition}: a DataTable is not placed in a SurfaceCard, here or through a component of the file`, () => {
-    const tables = 'import { SurfaceCard, SurfaceListCard, DataTable } from "@starci/grammar/core"; '
+    const tables = 'import { SurfaceCard, DataTable } from "@starci/grammar/core"; '
     const table = { messageId: "table" }
     assert.doesNotThrow(() => tester().run("no-table-in-card", noTableInCard, {
       valid: [
         // a table in its section, with no card around it
         tables + 'const A = () => <section><DataTable label="Members" columns={c} rows={r} renderCell={f} emptyContent={null} /></section>',
         // plain rows are a list card, the table is not inside a card
-        tables + 'const A = () => <SurfaceListCard label="Rules" footer="Locked">{rows}</SurfaceListCard>',
+        tables + 'const A = () => <SurfaceCard kind="list" label="Rules" footer="Locked" items={rows} empty={null} />',
         // a table in a component no card renders
         tables + 'const T = () => <DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} />; const A = () => <section><T /></section>',
         // a table that is not the Grammar's
@@ -376,7 +376,7 @@ for (const edition of ["lite", "full"]) {
 
 for (const edition of ["lite", "full"]) {
   test(`${edition}: a command in a page or card header hugs its label`, () => {
-    const head = 'import { PageHeader, SurfaceCard, SurfaceListCard, Button, Form } from "@starci/grammar/core"; '
+    const head = 'import { PageHeader, SurfaceCard, Button, Form } from "@starci/grammar/core"; '
     const fill = { messageId: "fill" }
     assert.doesNotThrow(() => tester().run("no-fill-command-in-header", noFillCommandInHeader, {
       valid: [
@@ -390,7 +390,7 @@ for (const edition of ["lite", "full"]) {
       invalid: [
         { code: head + 'const A = () => <PageHeader title="a" actions={<Button intent="commit" width="fill">Add</Button>} />', errors: [fill] },
         { code: head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button intent="neutral" width="fill">Edit</Button>} />', errors: [fill] },
-        { code: head + 'const A = () => <SurfaceListCard label="a" labelEnd={<div><Button width={"fill"}>Add</Button></div>} />', errors: [fill] },
+        { code: head + 'const A = () => <SurfaceCard kind="list" label="a" labelEnd={<div><Button width={"fill"}>Add</Button></div>} items={[]} empty={null} />', errors: [fill] },
       ],
     }))
   })
@@ -416,7 +416,7 @@ for (const edition of ["lite", "full"]) {
 
 for (const edition of ["lite", "full"]) {
   test(`${edition}: a card has its own label, a Section around a single card is refused`, () => {
-    const head = 'import { Section, SurfaceCard, SurfaceListCard, SurfaceAccordionCard, Text } from "@starci/grammar/core"; '
+    const head = 'import { Section, SurfaceCard, Text } from "@starci/grammar/core"; '
     const header = { messageId: "header" }
     const name = { messageId: "name" }
     assert.doesNotThrow(() => tester().run("no-heading-above-card", noHeadingAboveCard, {
@@ -437,8 +437,8 @@ for (const edition of ["lite", "full"]) {
       ],
       invalid: [
         { code: head + 'const A = () => <Section title="Rules"><SurfaceCard label="Rules">x</SurfaceCard></Section>', errors: [header] },
-        { code: head + 'const A = () => <Section title={t("rules")} action={<b />}><SurfaceListCard ariaLabel={t("rules")}>x</SurfaceListCard></Section>', errors: [header, name] },
-        { code: head + 'const A = () => <Section title="Rules"><SurfaceAccordionCard ariaLabel="Other">x</SurfaceAccordionCard></Section>', errors: [header] },
+        { code: head + 'const A = () => <Section title={t("rules")} action={<b />}><SurfaceCard kind="list" ariaLabel={t("rules")} items={[]} empty={null} /></Section>', errors: [header, name] },
+        { code: head + 'const A = () => <Section title="Rules"><SurfaceCard kind="accordion" ariaLabel="Other" items={[]} onItemOpenChange={noop} /></Section>', errors: [header] },
         // a repeated name is refused even under several cards
         { code: head + 'const A = () => <Section title="Rules"><SurfaceCard ariaLabel="Rules">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></Section>', errors: [name] },
       ],

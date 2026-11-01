@@ -11,13 +11,13 @@ Choice `card.choose.role`: what presents the subject. The first row that applies
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| task-list | a bounded set the reader works through as one group, with no search, filter or paging | `SurfaceListCard`: label outside, rows inside (`list-table.choose.role:task`) | judgement |
+| task-list | a bounded set the reader works through as one group, with no search, filter or paging | `SurfaceCard kind="list"`: label outside, rows inside (`list-table.choose.role:task`) | judgement |
 | collection | three or more entities of one kind on a page | not a card: a section with a list (`list-table.choose.role`) | candidate: no card holds three or more sibling cards |
-| rail-list | a standalone list in a rail (choices, suggestions, how it works) | `SurfaceListCard`: label outside, rows inside | `DNA-COMMON-LISTCARD-LABEL-OUTSIDE` |
-| disclosure | one summary that reveals a rarely changed region | `SurfaceAccordionCard`, closed by default | judgement |
-| figures | a row of key figures | one default card holding a stat strip (DISCIPLINE-2): touching cells at the nested inset, lines between cells and rows, a Meter as a second joined band | candidate: stat cells at most `budgets.ribbonCells` |
+| rail-list | a standalone list in a rail (choices, suggestions, how it works) | `SurfaceCard kind="list"`: label outside, rows inside | `DNA-COMMON-LISTCARD-LABEL-OUTSIDE` |
+| disclosure | one summary that reveals a rarely changed region | `SurfaceCard kind="accordion"`, closed by default | judgement |
+| figures | a row of key figures | `SurfaceCard kind="figures"` (DISCIPLINE-2): touching cells, lines between cells and rows; a Meter is a second band of `kind="bands"` | candidate: stat cells at most `budgets.ribbonCells` |
 | whole | the whole card is one destination or command | `SurfaceCard` with its whole action (STATE-5) | judgement |
-| kinds | several kinds of content about one subject | one joined `SurfaceCard`, its bands divided by separators, never inner cards | candidate: separators per card at most `budgets.hairlinesPerCard` |
+| kinds | several kinds of content about one subject | `SurfaceCard kind="bands"`, its faces divided by seams the shell draws, never inner cards or a `Divider` | candidate: separators per card at most `budgets.hairlinesPerCard` |
 | tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | a tile: its name inside with its logo or mark, no outside label (ruling `card-label-by-kind`) | candidate: no labelled card repeated in a `Grid` |
 | entity | one entity or one summary of one subject, heading its section | `SurfaceCard`: label outside | judgement |
 
@@ -40,7 +40,7 @@ A painted treatment rebinds the surface pair on its ground, so the grammar child
 (`DNA-COMMON-TREATMENT-TEXT-CONTRAST`); the app never paints a card's ground itself (`starci-fe/no-app-surface-paint`).
 
 A card carries its own title, count, action and note: the title is its `label`, the count its `fact`, the action its `labelEnd`
-and the note its `footer` (`SurfaceCard`, `SurfaceListCard`). A `Section` around a single card is a heading over one card and
+and the note its `footer` (`SurfaceCard`). A `Section` around a single card is a heading over one card and
 is refused (R354, ruling `card-carries-its-own-label`), as is a card whose `ariaLabel` repeats that title; several cards under one
 `Section` stay legal.
 

@@ -5,12 +5,13 @@ import { migratePageNavigation, pageNavigationMarkdown } from './page-navigation
 import { migrateSectionFrame, sectionFrameMarkdown } from './section-frame.mjs';
 import { migrateSmallRenames, smallRenamesMarkdown } from './small-renames.mjs';
 import { migrateSpacingRoles, spacingRolesMarkdown } from './spacing-roles.mjs';
+import { migrateSurfaceCardKinds, surfaceCardKindsMarkdown } from './surface-card-kinds.mjs';
 import { migrateThemeTokens, themeTokensMarkdown } from './theme-tokens.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame']);
+export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds']);
 
-/** The arguments of `starci app codemod spacing-roles`, `theme-tokens`, `small-renames`, `page-navigation` and `section-frame`: --execute, --json, --format and --out; any other is refused. */
+/** The arguments of `starci app codemod spacing-roles`, `theme-tokens`, `small-renames`, `page-navigation`, `section-frame` and `surface-card-kinds`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
   const options: { write: boolean; format: 'json' | 'markdown'; out?: string } = { write: false, format: 'markdown' };
   const args = argv.values();
@@ -33,10 +34,14 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 }
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
-function runCodemod(name: 'spacing-roles' | 'theme-tokens' | 'small-renames' | 'page-navigation' | 'section-frame', root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+function runCodemod(name: 'spacing-roles' | 'theme-tokens' | 'small-renames' | 'page-navigation' | 'section-frame' | 'surface-card-kinds', root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
   if (name === 'theme-tokens') {
     const report = migrateThemeTokens({ root, write });
     return { report, markdown: themeTokensMarkdown(report) };
+  }
+  if (name === 'surface-card-kinds') {
+    const report = migrateSurfaceCardKinds({ root, write });
+    return { report, markdown: surfaceCardKindsMarkdown(report) };
   }
   if (name === 'page-navigation') {
     const report = migratePageNavigation({ root, write });
@@ -61,7 +66,7 @@ function runCodemod(name: 'spacing-roles' | 'theme-tokens' | 'small-renames' | '
 export function codemodMain(argv: string[], io: { cwd: string; stdout: (text: string) => unknown }): number {
   const [name, ...rest] = argv;
   if (name === 'button-intent') return buttonIntentMain(argv, io);
-  if (name !== 'spacing-roles' && name !== 'theme-tokens' && name !== 'small-renames' && name !== 'page-navigation' && name !== 'section-frame') throw new Error(`starci app codemod takes ${CODEMODS.join(' or ')}`);
+  if (name !== 'spacing-roles' && name !== 'theme-tokens' && name !== 'small-renames' && name !== 'page-navigation' && name !== 'section-frame' && name !== 'surface-card-kinds') throw new Error(`starci app codemod takes ${CODEMODS.join(' or ')}`);
   const options = spacingRolesArguments(rest);
   if (options.out && !/\.(?:json|md)$/i.test(options.out)) throw new Error('--out needs a .json or .md report file');
   const root = path.resolve(io.cwd);

@@ -34,7 +34,7 @@ export type AccordionProps = {
  */
 
 /**
- * A generic, unframed stack of disclosures (FAQ, settings groups). `SurfaceAccordionCard` stays
+ * A generic, unframed stack of disclosures (FAQ, settings groups). `SurfaceCard kind="accordion"` stays
  * the framed card form. Up/Down/Home/End move between section triggers; each section exposes
  * `data-grammar-disclosure-state`.
  * Contract: group FOCUS-2 (peer keys), item STATE-7 (controlled open set), trigger FOCUS-1, indicator MOTION-2.

@@ -2302,7 +2302,7 @@ rules:
       - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
   - id: R340
     code: FE_RAISED_SURFACE_IN_SURFACE
-    law: A Grammar surface that accepts a depth prop (SurfaceListCard) does not pass depth="top" when a SurfaceCard, SurfaceListCard or SurfaceAccordionCard of the same file encloses it; a nested surface is subordinate (outlined, BOUNDARY-5), never raised again (BOUNDARY-6, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE), and the Grammar resolves the depth from the surface context. A depth computed at run time is not judged.
+    law: A surface never stands inside another surface (owner decision, dialogs and drawers included); a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised, and draws no nested edge, and throws the same refusal in development. An overlay's trigger is not its content. Across files the whole-program rule closes it (R356).
     failureCodes:
       - FE_RAISED_SURFACE_IN_SURFACE
     enforcers:
@@ -2410,11 +2410,27 @@ rules:
 
   - id: R354
     code: FE_HEADING_ABOVE_CARD
-    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard, SurfaceListCard or SurfaceAccordionCard, and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
+    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard, and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
     failureCodes:
       - FE_HEADING_ABOVE_CARD
     enforcers:
       - {kind: eslint-fe, id: no-heading-above-card}
+
+  - id: R355
+    code: FE_SURFACE_CARD_KIND
+    law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind (the default) holds no raw ul, ol, li or dl, no Divider, and no SectionHeader or Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice. Rows are kind=list, key figures kind=figures, faces divided by seams kind=bands; the card's title is its label."
+    failureCodes:
+      - FE_SURFACE_CARD_KIND
+    enforcers:
+      - {kind: eslint-grammar-core, id: surface-card-kind}
+
+  - id: R366
+    code: FE_LABEL_IN_GRID
+    law: "A card with a label heads a section and draws the label outside its material; a peer you recognise and open names itself inside, beside its mark (ruling card-label-by-kind). A SurfaceCard with a label repeated in a Grid kind=cards (two or more as direct children, or one written in a .map) is refused: it is a tile (SurfaceCard kind=tile with name, mark, description, badge and action), or, when the peers are compared by a fact, one kind=list card."
+    failureCodes:
+      - FE_LABEL_IN_GRID
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-label-in-grid}
 
 # Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

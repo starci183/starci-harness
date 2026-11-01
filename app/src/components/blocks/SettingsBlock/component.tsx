@@ -4,11 +4,10 @@ import {
     Button,
     DataTable,
     DescriptionList,
+    EmptyNotice,
     Link,
-    ListRow,
     PinnedActionBar,
     SurfaceCard,
-    SurfaceListCard,
     Tabs,
     Text,
     type DataTableColumn,
@@ -213,18 +212,27 @@ const ModelsPanel = (props: PanelProps) => {
 
 const LanesPanel = (props: PanelProps) => (
     <div className="app-stack">
-        <SurfaceListCard label={props.group.label} headingLevel={2} fact={props.group.description}>
-            {props.group.lanes.map((lane) => (
-                <ListRow key={lane.configKey} title={lane.title} {...(lane.description === null ? {} : { description: lane.description })}>
+        <SurfaceCard
+            kind="list"
+            label={props.group.label}
+            headingLevel={2}
+            fact={props.group.description}
+            isSkeleton={props.isSkeleton}
+            empty={<EmptyNotice message={props.props.labels.slot.empty} />}
+            items={props.group.lanes.map((lane) => ({
+                id: lane.configKey,
+                title: lane.title,
+                ...(lane.description === null ? {} : { description: lane.description }),
+                detail: (
                     <ListEditor
                         list={lane.list}
                         words={props.props.labels.words}
                         isDisabled={props.props.isSaving}
                         onChange={(items) => props.on.change(lane.configKey, items)}
                     />
-                </ListRow>
-            ))}
-        </SurfaceListCard>
+                ),
+            }))}
+        />
         <FieldsPanel {...props} />
     </div>
 )

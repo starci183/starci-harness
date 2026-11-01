@@ -113,14 +113,13 @@ doc: contexts/grammars/<id>.md                   # how the grammar fills each ro
 roles:
   - id: card
     ui: ui/components/card.md
-    renderers: [SurfaceCard, SurfaceListCard, SurfaceAccordionCard]
+    renderers: [SurfaceCard]
     vendorParity: [card, accordion]
     slots: ["label (a card that heads a section: outside the material)", "name and mark (a tile: inside the material, no outside label)", fact, labelEnd, content, footer, wholeAction, "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
     variants:
-      composition: { values: [single, joined], chosenBy: app }
+      kind: { values: [body, figures, list, accordion, bands, tile], chosenBy: app, compiler: a discriminated union; a list needs items and an empty state, bands end in at most one collection }
       labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }
       measure: { values: [content, form, formCompact], chosenBy: app }
-      depth: { values: [top, nested], chosenBy: context }
       highlight: { values: [false, true], chosenBy: app, limit: one per view }
       treatment:
         values: [surface, soft, ink]
@@ -287,7 +286,7 @@ roles:
 
   - id: list
     ui: ui/components/list-table.md
-    renderers: [ListBox, SurfaceListCard, ListRow, StaticStateRow, DataTable]
+    renderers: [ListBox, SurfaceCard, DataTable]
     vendorParity: [list-box, table, checkbox]
     slots: ["items: label, description, leading, trailing, href", "columns: editor, priority", "rows: href", emptyContent]
     variants:
@@ -648,8 +647,8 @@ mustKeep:
     # --- surfaces and cards
     - id: DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE
       role: card
-      law: A surface inside another surface takes the nested depth; two raised surfaces never stack.
-      measure: { kind: count, select: '[data-grammar-nesting="surface"] [data-grammar-nesting="surface"] [data-grammar-surface-depth="top"]', op: "=", value: 0 }
+      law: A surface never stands inside another surface (a card in a card, in Pane surface, in a Dialog, Drawer or Popover); the grammar has one depth, raised.
+      measure: { kind: count, select: '[data-grammar-surface-card] [data-grammar-surface-card]', op: "=", value: 0 }
       owner: surfacecard-always-painted; src/core/surfaceContext.tsx
     - id: DNA-COMMON-CARD-LABEL-ABOVE
       role: card
@@ -661,19 +660,6 @@ mustKeep:
       law: A card label is a heading and names its card.
       measure: { kind: a11y, select: '[data-grammar-surface-label] > :first-child', metric: role, op: "=", value: heading }
       owner: contract roles.card
-    - id: DNA-COMMON-LISTCARD-LABEL-OUTSIDE
-      role: card
-      law: A list card's label row sits on the page above the list shell, outside its material.
-      measure: { kind: relation, select: '[data-component="SurfaceListCard"] > [data-grammar-surface-label]', metric: bottom, op: "<=", ref: { within: '[data-component="SurfaceListCard"]', select: '[data-grammar-surface="true"]', metric: top } }
-      owner: R318/case-1
-    - id: DNA-COMMON-LISTCARD-LABEL-UNPAINTED
-      role: card
-      law: A list card's label row carries no fill, border or shadow of its own.
-      measure:
-        kind: style
-        select: '[data-component="SurfaceListCard"] > [data-grammar-surface-label]'
-        checks: [{ metric: background-color, op: "=", value: "rgba(0, 0, 0, 0)" }, { metric: box-shadow, op: "=", value: none }, { metric: border-width, op: "=", value: 0px }]
-      owner: R318/case-1
     - id: DNA-COMMON-ONE-HIGHLIGHT
       role: card
       law: A view holds at most one highlighted card.
@@ -1090,21 +1076,12 @@ mustKeep:
       owner: page-header-band
     - id: DNA-CORE-EDGE-TOP
       role: card
-      law: A top-depth surface is raised by its shadow and draws no border.
+      law: A card is raised by its shadow and draws no border.
       measure:
         kind: style
-        select: '[data-grammar-surface-depth="top"]'
+        select: '[data-grammar-surface-card] > [data-grammar-frame="bounded"]'
         target: painted-box
         checks: [{ metric: box-shadow, op: "!=", value: none }, { metric: border-width, op: "=", value: 0px }]
-      owner: surfacecard-always-painted
-    - id: DNA-CORE-EDGE-NESTED
-      role: card
-      law: A nested surface draws a border and no shadow; border and shadow are never both drawn.
-      measure:
-        kind: style
-        select: '[data-grammar-surface-depth="nested"]'
-        target: painted-box
-        checks: [{ metric: box-shadow, op: "=", value: none }, { metric: border-width, op: ">=", value: 1px }]
       owner: surfacecard-always-painted
     - id: DNA-CORE-CARD-LABEL-OUTSIDE
       role: card
@@ -1159,21 +1136,12 @@ mustKeep:
       owner: page-header-band; grammars/offset-pop.md
     - id: DNA-OFFSET-POP-STICKER
       role: card
-      law: A top-depth object wears the ink outline and an unblurred offset shadow down and to the right.
+      law: A card wears the ink outline and an unblurred offset shadow down and to the right.
       measure:
         kind: style
-        select: '[data-grammar-surface-depth="top"]'
+        select: '[data-grammar-surface-card] > [data-grammar-frame="bounded"]'
         target: painted-box
         checks: [{ metric: border-width, op: "=", value: { token: --offset-pop-outline-width } }, { metric: shadow-blur, op: "=", value: 0px }, { metric: shadow-offset, op: ">", value: 0px }]
-      owner: O-1
-    - id: DNA-OFFSET-POP-POCKET
-      role: card
-      law: A nested surface keeps the outline, drops the shadow and takes the secondary fill.
-      measure:
-        kind: style
-        select: '[data-grammar-surface-depth="nested"]'
-        target: painted-box
-        checks: [{ metric: border-width, op: "=", value: { token: --offset-pop-outline-width } }, { metric: box-shadow, op: "=", value: none }, { metric: background-color, op: "=", value: { token: --surface-secondary } }]
       owner: O-1
     - id: DNA-OFFSET-POP-CARD-LABEL-OUTSIDE
       role: card

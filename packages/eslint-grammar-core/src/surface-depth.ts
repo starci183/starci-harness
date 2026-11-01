@@ -1,30 +1,27 @@
 import type { Rule } from "eslint"
 import type { TSESTree } from "@typescript-eslint/types"
+import { importOf } from "@starci/eslint-canon-fe/lib/bindings.mjs"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
-import type { Node } from "./lib/types.ts"
+import type { Context, Node } from "./lib/types.ts"
 /**
- * The surface depth law (HFS R340 `FE_RAISED_SURFACE_IN_SURFACE`; Grammar BOUNDARY-5 and BOUNDARY-6, DNA
- * `DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`): a surface inside another surface is subordinate (outlined, BOUNDARY-5), never
- * raised (BOUNDARY-6) again.
+ * The surface nesting law (HFS R340 `FE_RAISED_SURFACE_IN_SURFACE`): a surface never stands inside another surface. A
+ * `SurfaceCard` inside another `SurfaceCard`, inside a `Pane surface`, or inside a `Dialog`, `Drawer`, `AlertDialog` or
+ * `Popover` is refused; the Grammar has one depth, raised, and draws no nested edge (owner decision: surface in surface is
+ * banned totally, dialogs and drawers included). The Grammar throws the same refusal in development; this is its
+ * same-file half, and R356 closes it across files.
  *
- * Grammar's bounded surfaces read their depth from the surface context (`useSurfaceNesting`): `SurfaceCard`,
- * `SurfaceAccordionCard` and `SurfaceListCard` draw outlined inside another surface and raised only at the top.
- * `SurfaceListCard` alone also takes a `depth` prop that overrides the context, so `depth="top"` on a list that sits inside
- * another surface raises a surface inside a surface.
- *
- * WHAT IT READS. A `depth` attribute whose value is the string `"top"` (a literal, or an expression container holding one)
- * on a depth-accepting surface element (`SurfaceListCard` or `<ns>.SurfaceListCard`), when a `SurfaceCard`,
- * `SurfaceListCard` or `SurfaceAccordionCard` element of the same file encloses it. A depth computed at run time is not
- * judged, and neither is a surface nobody encloses in this file (its parent may nest it; Grammar resolves that).
+ * WHAT IT READS. A `SurfaceCard` element (or `<ns>.SurfaceCard`) imported from `@starci/grammar` that a `SurfaceCard`,
+ * `Dialog`, `Drawer`, `AlertDialog`, `Popover` or `Pane` with a `surface` prop of the same file encloses. An overlay's
+ * `trigger` is not its content, so a card written in a trigger is not enclosed by it. A surface nobody encloses in this file
+ * (its parent may nest it) is judged where the parent is written.
  *
  * WHERE IT APPLIES. Product source (`isProductSource`).
  */
 
-/** The bounded surfaces that open a surface context for what they enclose. */
-const SURFACES = new Set(["SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard"])
-/** The surfaces that accept a `depth` prop overriding the one read from context. */
-const DEPTH_PROP = new Set(["SurfaceListCard"])
+const GRAMMAR_SOURCE = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
+/** Surfaces and overlays whose content is a surface. */
+const HOSTS = new Set(["SurfaceCard", "Dialog", "Drawer", "AlertDialog", "Popover", "Pane"])
 
 /** The element name of a JSX name: `SurfaceCard`, or `G.SurfaceCard` as `SurfaceCard`. */
 const nameOf = (name: TSESTree.JSXTagNameExpression): string | null => {
@@ -33,49 +30,57 @@ const nameOf = (name: TSESTree.JSXTagNameExpression): string | null => {
   return null
 }
 
-/** True when a bounded surface element encloses the element the opening tag belongs to. */
-const insideSurface = (opening: Node): boolean => {
-  // The opening tag's parent is the element itself, so the walk starts above that; the Program's parent is null at run time
-  // though the tree's types say a node always has one.
-  for (let current: Node | null | undefined = opening.parent?.parent; current !== undefined && current !== null; current = current.parent) {
+/** The leftmost identifier of a JSX name. */
+const rootOf = (name: TSESTree.JSXTagNameExpression): TSESTree.JSXIdentifier | null => {
+  if (name.type === "JSXIdentifier") return name
+  if (name.type === "JSXMemberExpression") return rootOf(name.object)
+  return null
+}
+
+/** True when an opening element names the Grammar component `wanted`, or one of a set. */
+const isGrammar = (context: Context, opening: TSESTree.JSXOpeningElement, wanted: ReadonlySet<string>): string | null => {
+  const root = rootOf(opening.name)
+  const name = nameOf(opening.name)
+  if (root === null || name === null || !wanted.has(name)) return null
+  const imported = importOf(context, root)
+  return imported !== null && imported !== undefined && GRAMMAR_SOURCE.test(imported.source) ? name : null
+}
+
+/** The host that encloses this card's content in the same file, or null. A host's attributes (a `trigger`) do not enclose. */
+const enclosingHost = (context: Context, opening: TSESTree.JSXOpeningElement): string | null => {
+  let previous: Node = opening
+  for (let current: Node | null | undefined = opening.parent?.parent; current !== undefined && current !== null; previous = current, current = current.parent) {
     if (current.type !== "JSXElement") continue
-    const name = nameOf(current.openingElement.name)
-    if (name !== null && SURFACES.has(name)) return true
+    // `previous` is a child of the element, or its opening tag when the walk came up through an attribute.
+    if (previous === current.openingElement) continue
+    const name = isGrammar(context, current.openingElement, HOSTS)
+    if (name === null) continue
+    if (name === "Pane" && !current.openingElement.attributes.some((entry) => entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && entry.name.name === "surface")) continue
+    return name
   }
-  return false
+  return null
 }
 
-/** True when an attribute value is statically the string `"top"`. */
-const isTop = (value: TSESTree.JSXAttribute["value"]): boolean => {
-  if (value === null) return false
-  if (value.type === "Literal") return value.value === "top"
-  if (value.type !== "JSXExpressionContainer") return false
-  const expression = value.expression
-  if (expression.type === "Literal") return expression.value === "top"
-  return expression.type === "TemplateLiteral" && expression.expressions.length === 0 && expression.quasis.length === 1 && expression.quasis[0]?.value.cooked === "top"
-}
-
-/** A surface inside another surface never forces `depth="top"`: it is subordinate, and the Grammar resolves it. */
+/** A surface inside another surface is refused. */
 export const noRaisedSurfaceInSurface: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R340: a Grammar surface nested in another surface does not force depth=\"top\" (BOUNDARY-6); a nested surface is subordinate (BOUNDARY-5)." },
+    docs: { description: "R340: a SurfaceCard never stands inside another SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover." },
     schema: [],
     messages: {
-      raised:
-        "`<{{element}} depth=\"top\">` is nested inside another Grammar surface, so it raises a surface inside a surface (BOUNDARY-6, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE): a nested surface is subordinate (outlined, BOUNDARY-5). Drop `depth` and let the Grammar resolve it from the surface context.",
+      nested:
+        "This `SurfaceCard` stands inside {{host}}: a surface never stands inside a surface (the Grammar has one depth and draws no nested edge). Give the content to the host's own body, or use a kind of the outer card (`bands`, `list`, `figures`) for what needs its own faces.",
     },
   },
   create(context) {
     if (!isProductSource(context)) return {}
     return {
-      JSXAttribute(attribute) {
-        if (attribute.name.type !== "JSXIdentifier" || attribute.name.name !== "depth" || !isTop(attribute.value)) return
-        const opening = attribute.parent
-        if (opening.type !== "JSXOpeningElement") return
-        const element = nameOf(opening.name)
-        if (element === null || !DEPTH_PROP.has(element) || !insideSurface(opening)) return
-        context.report({ node: attribute, messageId: "raised", data: { element } })
+      JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
+        if (isGrammar(context, opening, new Set(["SurfaceCard"])) === null) return
+        const host = enclosingHost(context, opening)
+        if (host === null) return
+        const label = host === "SurfaceCard" ? "another `SurfaceCard`" : host === "Pane" ? "a `Pane surface`" : `a \`${host}\``
+        context.report({ node: opening, messageId: "nested", data: { host: label } })
       },
     }
   },

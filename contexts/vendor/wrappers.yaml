@@ -39,10 +39,10 @@ wrappers:
   - { file: core/branch/Select/index.tsx, wraps: [Description, Label, ListBox, Select, Spinner],
       overrides: [
         { kind: style, target: "Select.Trigger:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
-  - { file: core/frame/SurfaceAccordionCard/index.tsx, wraps: [Accordion] }
+  - { file: core/frame/SurfaceCard/AccordionRows.tsx, wraps: [Accordion] }
   - { file: core/frame/SurfaceCard/index.tsx, wraps: [Card],
       overrides: [
-        { kind: style, target: "Card.Root:shadow", ruling: surfacecard-always-painted, reason: "a card is raised by its shadow on the page and bordered without a shadow when nested" } ] }
+        { kind: style, target: "Card.Root:shadow", ruling: surfacecard-always-painted, reason: "a card is raised by its shadow on the page; a surface never stands inside another, so there is no nested edge" } ] }
   - { file: core/branch/Tabs/index.tsx, wraps: [Tabs],
       overrides: [
         { kind: style, target: "Tabs.Tab:padding", ruling: spacing-roles, reason: "an underline tab takes the row step per side and the first label stands on the content edge" } ] }

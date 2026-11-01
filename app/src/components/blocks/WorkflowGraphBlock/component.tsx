@@ -1,7 +1,6 @@
-import { Badge, Button, DescriptionList, EmptyNotice, ListRow, Section, SurfaceListCard, Text, type PresentationState } from "@starci/grammar/core"
+import { Badge, EmptyNotice, Section, SurfaceCard, Text, type PresentationState } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
-import { StatusWord } from "../../leaves/StatusWord"
 
 /** One Op cell of a wave, resolved for drawing. */
 export interface WaveCellView {
@@ -83,15 +82,15 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
             <SlotView slot={props.props.graph} placeholder={GRAPH_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
                 {(graph, isSkeleton) => (
                     <div className="app-stack">
-                        <DescriptionList
-                            layout="stat-strip"
-                            isDivided
-                            isLoading={isSkeleton}
+                        <SurfaceCard
+                            kind="figures"
+                            ariaLabel={labels.title}
+                            isSkeleton={isSkeleton}
                             items={[
-                                { id: "live", term: labels.statLive, description: graph.stats.live, unit: graph.stats.cap },
-                                { id: "queued", term: labels.statQueued, description: graph.stats.queued },
-                                { id: "waves", term: labels.statWaves, description: graph.stats.waves },
-                                { id: "done", term: labels.statDone, description: graph.stats.done, unit: graph.stats.total },
+                                { id: "live", term: labels.statLive, value: graph.stats.live, unit: graph.stats.cap },
+                                { id: "queued", term: labels.statQueued, value: graph.stats.queued },
+                                { id: "waves", term: labels.statWaves, value: graph.stats.waves },
+                                { id: "done", term: labels.statDone, value: graph.stats.done, unit: graph.stats.total },
                             ]}
                         />
                         <ul className="app-row app-plain-list" aria-label={labels.legend}>
@@ -111,27 +110,24 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
                         {graph.waves.length === 0 ? (
                             <EmptyNotice message={labels.empty} />
                         ) : (
-                            <div className="app-grid">
+                            <div className="app-stack">
                                 {graph.waves.map((wave) => (
-                                    <SurfaceListCard key={wave.id} label={wave.label} headingLevel={3}>
-                                        {wave.cells.map((cell) => (
-                                            <ListRow
-                                                key={cell.id}
-                                                isSkeleton={isSkeleton}
-                                                state={cell.presentation}
-                                                title={cell.title}
-                                                description={cell.description}
-                                                badges={<StatusWord status={cell.state} isSkeleton={isSkeleton} />}
-                                                actions={
-                                                    cell.taskHref === null ? undefined : (
-                                                        <Button intent="neutral" size="sm" href={cell.taskHref} isSkeleton={isSkeleton}>
-                                                            {labels.openTask}
-                                                        </Button>
-                                                    )
-                                                }
-                                            />
-                                        ))}
-                                    </SurfaceListCard>
+                                    <SurfaceCard
+                                        key={wave.id}
+                                        kind="list"
+                                        label={wave.label}
+                                        headingLevel={3}
+                                        isSkeleton={isSkeleton}
+                                        empty={<EmptyNotice message={labels.empty} />}
+                                        items={wave.cells.map((cell) => ({
+                                            id: cell.id,
+                                            state: cell.presentation,
+                                            title: cell.title,
+                                            description: cell.description,
+                                            badges: [{ label: cell.state.label, tone: cell.state.tone, isDot: true }],
+                                            ...(cell.taskHref === null ? {} : { action: { label: labels.openTask, href: cell.taskHref } }),
+                                        }))}
+                                    />
                                 ))}
                             </div>
                         )}

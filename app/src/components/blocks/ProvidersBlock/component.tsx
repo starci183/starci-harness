@@ -1,7 +1,6 @@
-import { Meter, RelativeTime, Section, SurfaceCard, Text, type PresentationState } from "@starci/grammar/core"
+import { EmptyNotice, Meter, RelativeTime, SurfaceCard, Text, type PresentationState } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
-import { StatusWord } from "../../leaves/StatusWord"
 
 /** One provider, resolved for drawing. */
 export interface ProviderView {
@@ -50,9 +49,9 @@ const placeholderProvider = (id: string): ProviderView => ({
 
 const PROVIDERS_PLACEHOLDER: readonly ProviderView[] = ["p0", "p1", "p2", "p3"].map(placeholderProvider)
 
-const ProviderCard = ({ provider, locale, isSkeleton }: { readonly provider: ProviderView; readonly locale: string; readonly isSkeleton: boolean }) => (
-    <SurfaceCard label={provider.name} headingLevel={3} height="fill" labelEnd={<StatusWord status={provider.circuit} isSkeleton={isSkeleton} />}>
-        <div className="app-pair">
+/** What a provider row holds under its name: the quota meter, the windows with the reset countdown, and the running seats. */
+const ProviderDetail = ({ provider, locale, isSkeleton }: { readonly provider: ProviderView; readonly locale: string; readonly isSkeleton: boolean }) => (
+    <div className="app-pair">
             <Meter
                 label={provider.quotaLabel}
                 value={provider.usage}
@@ -81,24 +80,30 @@ const ProviderCard = ({ provider, locale, isSkeleton }: { readonly provider: Pro
             <Text as="p" size="xs" isSkeleton={isSkeleton}>
                 {provider.running}
             </Text>
-        </div>
-    </SurfaceCard>
+    </div>
 )
 
 /** Pure half: each provider's circuit, quota windows, peak usage and running seats against its cap. */
 export const ProvidersBlockBase = (props: ProvidersBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <Section title={labels.title} description={labels.fact}>
-            <div className="app-grid">
-                <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                    {(providers, isSkeleton) =>
-                        providers.map((provider) => (
-                            <ProviderCard key={provider.id} provider={provider} locale={labels.locale} isSkeleton={isSkeleton} />
-                        ))
-                    }
-                </SlotView>
-            </div>
-        </Section>
+        <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
+            {(providers, isSkeleton) => (
+                <SurfaceCard
+                    kind="list"
+                    label={labels.title}
+                    headingLevel={2}
+                    fact={labels.fact}
+                    isSkeleton={isSkeleton}
+                    empty={<EmptyNotice message={labels.slot.empty} />}
+                    items={providers.map((provider) => ({
+                        id: provider.id,
+                        title: provider.name,
+                        badges: [{ label: provider.circuit.label, tone: provider.circuit.tone, isDot: true }],
+                        detail: <ProviderDetail provider={provider} locale={labels.locale} isSkeleton={isSkeleton} />,
+                    }))}
+                />
+            )}
+        </SlotView>
     )
 }

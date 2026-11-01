@@ -1,7 +1,6 @@
-import { Avatar, Button, EmptyNotice, ListRow, SurfaceListCard, Text } from "@starci/grammar/core"
+import { EmptyNotice, SurfaceCard, Text } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
-import { StatusWord } from "../../leaves/StatusWord"
 
 /** One seat of the workflow's tree, resolved for drawing. */
 export interface SeatView {
@@ -46,34 +45,26 @@ export const SeatsBlockBase = (props: SeatsBlockBaseProps) => {
     return (
         <SlotView slot={props.props.seats} placeholder={SEATS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
             {(seats, isSkeleton) => (
-                <SurfaceListCard
+                <SurfaceCard
+                    kind="list"
                     label={labels.title}
                     headingLevel={2}
+                    isSkeleton={isSkeleton}
                     labelEnd={
                         <Text as="span" size="sm" tone="muted" isSkeleton={isSkeleton}>
                             {labels.count}
                         </Text>
                     }
                     empty={<EmptyNotice message={labels.empty} />}
-                >
-                    {seats.map((seat) => (
-                        <ListRow
-                            key={seat.id}
-                            isSkeleton={isSkeleton}
-                            leading={<Avatar name={seat.model} seed={seat.model} kind="agent" size="sm" isDecorative isSkeleton={isSkeleton} />}
-                            title={seat.title}
-                            description={seat.member}
-                            badges={<StatusWord status={seat.liveness} isSkeleton={isSkeleton} />}
-                            actions={
-                                seat.taskHref === null ? undefined : (
-                                    <Button intent="neutral" size="sm" href={seat.taskHref} isSkeleton={isSkeleton}>
-                                        {labels.openTask}
-                                    </Button>
-                                )
-                            }
-                        />
-                    ))}
-                </SurfaceListCard>
+                    items={seats.map((seat) => ({
+                        id: seat.id,
+                        leading: { avatar: { name: seat.model, seed: seat.model, kind: "agent" } },
+                        title: seat.title,
+                        description: seat.member,
+                        badges: [{ label: seat.liveness.label, tone: seat.liveness.tone, isDot: true }],
+                        ...(seat.taskHref === null ? {} : { action: { label: labels.openTask, href: seat.taskHref } }),
+                    }))}
+                />
             )}
         </SlotView>
     )

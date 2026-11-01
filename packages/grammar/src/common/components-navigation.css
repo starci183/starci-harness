@@ -1008,23 +1008,6 @@
         border-block-start: 0;
     }
 
-    /* A strip placed in a default card reaches the card edge on the inline axis, and on both axes when it is the card's only content. */
-    .starci-core-surface:not([data-grammar-surface-composition="joined"], .starci-core-frameless-surface) > .starci-core-surface-content > .starci-core-description-list[data-grammar-description-layout="stat-strip"] {
-        margin-inline: calc(-1 * var(--grammar-card-padding-inline));
-    }
-
-    .starci-core-surface:not([data-grammar-surface-composition="joined"], .starci-core-frameless-surface) > .starci-core-surface-content > .starci-core-description-list[data-grammar-description-layout="stat-strip"]:only-child {
-        margin-block: calc(-1 * var(--grammar-card-padding-block));
-    }
-
-    .starci-core-surface[data-grammar-surface-depth="nested"]:not([data-grammar-surface-composition="joined"], .starci-core-frameless-surface) > .starci-core-surface-content > .starci-core-description-list[data-grammar-description-layout="stat-strip"] {
-        margin-inline: calc(-1 * var(--grammar-inset-nested));
-    }
-
-    .starci-core-surface[data-grammar-surface-depth="nested"]:not([data-grammar-surface-composition="joined"], .starci-core-frameless-surface) > .starci-core-surface-content > .starci-core-description-list[data-grammar-description-layout="stat-strip"]:only-child {
-        margin-block: calc(-1 * var(--grammar-inset-nested));
-    }
-
     .starci-core-description-stat-term {
         display: flex;
         min-width: 0;

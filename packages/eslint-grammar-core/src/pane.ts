@@ -33,7 +33,7 @@ import type { Context, Node } from "./lib/types.ts"
 /** The Grammar package entries a component can be imported from. */
 const GRAMMAR_SOURCE = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 /** The bounded surfaces a pane grid is not drawn in. */
-const SURFACES = new Set(["SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard"])
+const SURFACES = new Set(["SurfaceCard"])
 /** The helpers that join class strings. */
 const CLASS_BUILDERS = new Set(["cn", "clsx", "cx", "classNames", "classnames", "twMerge", "twJoin", "cva", "tv"])
 /** How many same-file components a section's root follows. */

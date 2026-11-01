@@ -148,7 +148,7 @@ export const Pane = (props: PaneProps) => {
             </VerticalScrollRegion>
         )
         : stack
-    const surfaced = surface ? <SurfaceNesting>{body}</SurfaceNesting> : body
+    const surfaced = surface ? <SurfaceNesting host="pane">{body}</SurfaceNesting> : body
     const content = <PaneContext.Provider value={pane}>{surfaced}</PaneContext.Provider>
     const shared = {
         className: "starci-core-pane",
@@ -307,7 +307,7 @@ const PaneDrawer = ({ pane, placement, models }: {
             <Drawer.Backdrop>
                 <Drawer.Content className="starci-core-pane-drawer-content" placement={placement}>
                     <Drawer.Dialog className="starci-core-pane-drawer-dialog" data-grammar-nesting="surface">
-                        <SurfaceNesting>
+                        <SurfaceNesting host="overlay">
                             <Drawer.Header className="starci-core-pane-drawer-header" style={drawerHeaderStyle}>
                                 <Drawer.Heading>{props.collapseLabel}</Drawer.Heading>
                             </Drawer.Header>

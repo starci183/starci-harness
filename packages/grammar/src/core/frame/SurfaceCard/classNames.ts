@@ -63,3 +63,14 @@ export type SurfaceCardMotif = "none" | "orbit"
 export const surfaceArtworkClassName = cn("starci-core-surface-artwork") ?? "starci-core-surface-artwork"
 /** The static orbit motif SVG inside the artwork zone. */
 export const surfaceOrbitClassName = cn("starci-core-surface-orbit") ?? "starci-core-surface-orbit"
+
+/** Keeps the peer fact at the same visual level as its owning label. */
+export const surfaceFactClassName = cn("starci-core-surface-fact") ?? "starci-core-surface-fact"
+/** Identifies the optional footer region: a small muted note under the card. */
+export const surfaceFooterClassName = cn("starci-core-surface-footer") ?? "starci-core-surface-footer"
+/** Identifies the collection region of a list, shared by verdict and ordinary lists. */
+export const collectionClassName = cn("starci-core-owned-collection") ?? "starci-core-owned-collection"
+/** Identifies one face of a `bands` card. */
+export const surfaceBandClassName = cn("starci-core-surface-band") ?? "starci-core-surface-band"
+/** Identifies a tile's anatomy: mark, name, copy and the foot row. */
+export const tileClassName = cn("starci-core-tile") ?? "starci-core-tile"

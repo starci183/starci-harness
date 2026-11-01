@@ -77,7 +77,7 @@ const Frame = () => (
 
 ## `starci-fe/no-table-in-card`
 
-Finding code: `FE_TABLE_IN_CARD` (R351). A `DataTable` is not placed in a `SurfaceCard`. Plain rows with a few facts are a `SurfaceListCard` of `ListRow` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with no card around it. The rule reads the file: a Grammar `DataTable` enclosed by a Grammar `SurfaceCard` element is a finding, and so is a `DataTable` rendered by a component of the same file (a declaration, a variable's function, a `memo` or `forwardRef` wrapper, followed through other components of the file) that a `SurfaceCard` encloses. A card in another file that renders a table component is judged where the card is written. There is no inline exemption; a table the owner rules complex enough to sit in a card is named in this rule.
+Finding code: `FE_TABLE_IN_CARD` (R351). A `DataTable` is not placed in a `SurfaceCard`. Plain rows with a few facts are a `SurfaceCard kind="list"` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with no card around it. The rule reads the file: a Grammar `DataTable` enclosed by a Grammar `SurfaceCard` element is a finding, and so is a `DataTable` rendered by a component of the same file (a declaration, a variable's function, a `memo` or `forwardRef` wrapper, followed through other components of the file) that a `SurfaceCard` encloses. A card in another file that renders a table component is judged where the card is written. There is no inline exemption; a table the owner rules complex enough to sit in a card is named in this rule.
 
 Invalid:
 
@@ -95,17 +95,21 @@ const Rules = () => (
 Valid:
 
 ```tsx
-import { SurfaceListCard, ListRow } from "@starci/grammar/core"
+import { SurfaceCard } from "@starci/grammar/core"
 const Rules = () => (
-  <SurfaceListCard label="Rules" footer={footnote}>
-    {rules.map((rule) => <ListRow key={rule.id} title={rule.title} description={rule.summary} />)}
-  </SurfaceListCard>
+  <SurfaceCard
+    kind="list"
+    label="Rules"
+    footer={footnote}
+    items={rules.map((rule) => ({ id: rule.id, title: rule.title, description: rule.summary }))}
+    empty={<EmptyNotice message="No rules." />}
+  />
 )
 ```
 
 ## `starci-fe/no-fill-command-in-header`
 
-Finding code: `FE_COMMAND_FILLS_HEADER` (R352). A page or pane command hugs its label and sits at the end of its header row: a Grammar `Button` with `width="fill"` written in the `actions` of a `PageHeader` or in the `labelEnd` of a `SurfaceCard` or `SurfaceListCard` is refused. `width="fill"` is for a form submit, an auth panel and a phone action bar (`PinnedActionBar`); the rule judges the header slots only, since a form, an auth panel and a phone action bar are not decidable from the file.
+Finding code: `FE_COMMAND_FILLS_HEADER` (R352). A page or pane command hugs its label and sits at the end of its header row: a Grammar `Button` with `width="fill"` written in the `actions` of a `PageHeader` or in the `labelEnd` of a `SurfaceCard` is refused. `width="fill"` is for a form submit, an auth panel and a phone action bar (`PinnedActionBar`); the rule judges the header slots only, since a form, an auth panel and a phone action bar are not decidable from the file.
 
 Invalid:
 
@@ -141,15 +145,15 @@ const Filter = () => <FilterButtonGroup label="Team" options={options} value={te
 
 ## `starci-fe/no-heading-above-card`
 
-Finding code: `FE_HEADING_ABOVE_CARD` (R354). A card has a label by design (ruling `card-carries-its-own-label`), so a heading over it is wrong. A Grammar `Section` (not `kind="list"`) whose only child is one `SurfaceCard`, `SurfaceListCard` or `SurfaceAccordionCard` is refused, and so is a card whose `ariaLabel` is the `Section`'s `title`. Several cards under one `Section` stay legal, and a `Section` holding anything else is not judged. The fix moves the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`.
+Finding code: `FE_HEADING_ABOVE_CARD` (R354). A card has a label by design (ruling `card-carries-its-own-label`), so a heading over it is wrong. A Grammar `Section` (not `kind="list"`) whose only child is one `SurfaceCard` is refused, and so is a card whose `ariaLabel` is the `Section`'s `title`. Several cards under one `Section` stay legal, and a `Section` holding anything else is not judged. The fix moves the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`.
 
 Invalid:
 
 ```tsx
-import { Section, SurfaceListCard } from "@starci/grammar/core"
+import { Section, SurfaceCard } from "@starci/grammar/core"
 const Rules = () => (
   <Section title="Rules" count={3} action={add}>
-    <SurfaceListCard ariaLabel="Rules">{rows}</SurfaceListCard>
+    <SurfaceCard kind="list" ariaLabel="Rules" items={items} empty={empty} />
   </Section>
 )
 ```
@@ -157,7 +161,7 @@ const Rules = () => (
 Valid:
 
 ```tsx
-import { SurfaceListCard } from "@starci/grammar/core"
-const Rules = () => <SurfaceListCard label="Rules" fact="3" labelEnd={add} footer={note}>{rows}</SurfaceListCard>
+import { SurfaceCard } from "@starci/grammar/core"
+const Rules = () => <SurfaceCard kind="list" label="Rules" fact="3" labelEnd={add} footer={note} items={items} empty={empty} />
 ```
 

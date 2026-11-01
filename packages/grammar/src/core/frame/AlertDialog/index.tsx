@@ -126,7 +126,7 @@ export const AlertDialog = ({
                         }
                         return (
                             <ButtonPlacementProvider placement="decision">
-                            <SurfaceNesting>
+                            <SurfaceNesting host="overlay">
                                 <HeroAlertDialog.Header className="starci-core-overlay-header">
                                     <HeroAlertDialog.Icon status={vendorStatusFor(tone)} className="starci-core-alert-dialog-icon" />
                                     <div className="starci-core-overlay-heading-group">

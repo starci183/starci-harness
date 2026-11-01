@@ -56,13 +56,13 @@ export const why = {
   },
   "no-heading-above-card": {
     code: "FE_HEADING_ABOVE_CARD",
-    en: "`<file>` wraps a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard in a Section, or gives the card an ariaLabel that repeats the Section's title.",
+    en: "`<file>` wraps a single SurfaceCard in a Section, or gives the card an ariaLabel that repeats the Section's title.",
     fix: "A card has a label by design: move the title to the card's label, the count to fact, the action to labelEnd and the note to footer.",
   },
   "no-table-in-card": {
     code: "FE_TABLE_IN_CARD",
     en: "`<file>` puts a DataTable inside a SurfaceCard (directly, or in a component of the file that a SurfaceCard encloses).",
-    fix: "Plain rows with a few facts are a SurfaceListCard of ListRow with the label outside and the note in its footer; a comparison table sits in its section with no card around it.",
+    fix: "Plain rows with a few facts are a SurfaceCard kind=\"list\" with the label outside and the note in its footer; a comparison table sits in its section with no card around it.",
   },
   "button-intent-required": {
     code: "FE_BUTTON_INTENT_REQUIRED",

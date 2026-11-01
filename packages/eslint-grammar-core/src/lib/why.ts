@@ -87,15 +87,25 @@ export const why: Record<string, WhyEntry> = {
     en: "The outermost element a `PaneSection` renders in `<file>` carries a padding or margin utility, a second inset beside the one the pane publishes.",
     fix: "Remove the utility: PaneSection pads inline by the pane inset and spaces its own children by `gap`; use `bleed=\"inline\"` for a scroller that reaches the pane edges.",
   },
+  "no-label-in-grid": {
+    code: "FE_LABEL_IN_GRID",
+    en: "A `SurfaceCard` with a `label` is repeated in a `Grid kind=\"cards\"` in `<file>`: the label sits outside the material, so the grid reads as headings over boxes.",
+    fix: "A peer you recognise and open is a tile: `<SurfaceCard kind=\"tile\" name mark description badge action />`, named inside beside its mark. Comparing a fact across peers is one `kind=\"list\"` card.",
+  },
   "no-raised-surface-in-surface": {
     code: "FE_RAISED_SURFACE_IN_SURFACE",
-    en: "A Grammar surface in `<file>` forces `depth=\"top\"` inside another surface, raising a surface inside a surface (BOUNDARY-6).",
-    fix: "Drop `depth`: a nested surface is subordinate (outlined, BOUNDARY-5) and the Grammar resolves it from the surface context.",
+    en: "A `SurfaceCard` in `<file>` stands inside another SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover: a surface never stands inside a surface.",
+    fix: "Give the content to the host's own body, or use a kind of the outer card (`bands`, `list`, `figures`) for what needs its own faces.",
   },
   "no-shell-bottom-tabs": {
     code: "FE_APP_SHELL_BOTTOM_TABS",
     en: "Bottom tab navigation replaces the required mobile sidebar drawer.",
     fix: "Use WorkspaceShell navigationDrawer and Sidebar presentation=\"drawer\".",
+  },
+  "surface-card-kind": {
+    code: "FE_SURFACE_CARD_KIND",
+    en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, a SectionHeader or Heading as a second title, or a `Section` wraps one card.",
+    fix: "Rows are `kind=\"list\"`, key figures `kind=\"figures\"`, faces divided by seams `kind=\"bands\"`; the card's title is its `label`. A `Section` is for a long list with search or filter, never around one card.",
   },
   "status-text-uses-soft-foreground": {
     code: "FE_STYLE_TOKEN_ONLY",

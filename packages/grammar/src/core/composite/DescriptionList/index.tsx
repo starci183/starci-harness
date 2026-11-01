@@ -1,8 +1,5 @@
 import type { ReactNode } from "react"
-import { navigationClassName } from "../../navigationClassNames.js"
-import type { IconSource } from "../../leaf/Icon/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
-import { IconTile } from "../../leaf/IconTile/index.js"
 
 export type DescriptionListItem = {
     readonly id: string
@@ -10,66 +7,36 @@ export type DescriptionListItem = {
     readonly description: ReactNode
 }
 
-/**
- * One cell of the `stat-strip` layout: a key figure (KPI). `term` is its label, `description` the figure
- * itself (a number, or a status Badge); `unit` follows the figure in a lighter face, `meta` (its source,
- * its time) sits under it. `icon` draws a neutral `IconTile` (sm) before the label.
- */
-export type DescriptionListStatItem = DescriptionListItem & {
-    readonly icon?: IconSource
-    readonly unit?: ReactNode
-    readonly meta?: ReactNode
-}
+export type DescriptionListLayout = "columns" | "stacked"
 
-export type DescriptionListLayout = "columns" | "stacked" | "stat-strip"
-
-type PairLayout = {
+export type DescriptionListProps = {
     /**
      * `columns` pairs each term with its value on one row and falls back to `stacked` below 30rem;
      * `stacked` always puts the value under its term.
      */
-    readonly layout?: "columns" | "stacked"
+    readonly layout?: DescriptionListLayout
     readonly items: ReadonlyArray<DescriptionListItem>
-}
-
-type StatStripLayout = {
-    /**
-     * `stat-strip` lays 2-4 key figures as touching cells (gap 0, each inset by the nested step) and answers the
-     * strip's own width, not the viewport's: one row from 40rem, 2 x 2 from 18rem, one column below, a last odd cell
-     * spanning its row. When divided, a line runs between the cells of a row and between rows, at every wrap, to the
-     * strip's edge and never on its outer edge. In a default card it bleeds to the card edge; in a
-     * `SurfaceCard composition="joined"` it is a band, and a `Divider` seams it to the next band.
-     */
-    readonly layout: "stat-strip"
-    readonly items: ReadonlyArray<DescriptionListStatItem>
-}
-
-export type DescriptionListProps = (PairLayout | StatStripLayout) & {
-    /** Draw a separator between pairs (a line between touching cells, for `stat-strip`). */
+    /** Draw a separator between pairs. */
     readonly isDivided?: boolean
     /**
-     * Unresolved values (knowledge STATE-8): every `term` stays real text; each `description` (and a stat item meta) is
-     * laid out unseen under a shimmer bar, and a stat `unit` keeps its place unseen, so every cell keeps its ready size
-     * (skeleton parity). The list is `aria-busy`.
+     * Unresolved values (knowledge STATE-8): every `term` stays real text; each `description` is laid out unseen under a
+     * shimmer bar, so every pair keeps its ready size (skeleton parity). The list is `aria-busy`.
      */
     readonly isLoading?: boolean
-    readonly className?: string
 }
 
 /**
- * Term/value pairs (details, metadata, settings summaries) as a real `<dl>`.
+ * Term/value pairs (details, metadata, settings summaries) as a real `<dl>`. Key figures are not pairs: a strip of
+ * them is `SurfaceCard kind="figures"`, which owns the cells, the lines between them and the figure scale.
  * Contract: HIERARCHY-3 (term precedes value in source and paint), TRUTH-1 (no tone carrier on facts).
- * A stat-strip cell keeps the same `<dt>`/`<dd>` order: label, figure (+ unit), then its meta as a
- * second `<dd>` of the same term.
  */
 export const DescriptionList = (props: DescriptionListProps) => {
-    const { isDivided = true, isLoading = false, className } = props
-    // Skeleton parity: a loading value is laid out unseen under the shimmer, so the cell keeps the ready value's box.
+    const { isDivided = true, isLoading = false, layout = "columns" } = props
+    // Skeleton parity: a loading value is laid out unseen under the shimmer, so the pair keeps the ready value's box.
     const pending = (value: ReactNode) => <SkeletonPlaceholder>{value}</SkeletonPlaceholder>
-    const layout: DescriptionListLayout = props.layout ?? "columns"
     return (
         <dl
-            className={navigationClassName("starci-core-description-list", className)}
+            className="starci-core-description-list"
             data-component="DescriptionList"
             data-contract="HIERARCHY-3 TRUTH-1"
             data-tier="composite"
@@ -77,28 +44,12 @@ export const DescriptionList = (props: DescriptionListProps) => {
             data-grammar-description-layout={layout}
             data-grammar-description-divided={isDivided ? "true" : "false"}
         >
-            {props.layout === "stat-strip"
-                ? props.items.map((item) => (
-                    <div key={item.id} className="starci-core-description-pair" data-grammar-description-pair="true">
-                        <dt className="starci-core-description-term starci-core-description-stat-term">
-                            {item.icon === undefined ? null : <IconTile source={item.icon} size="sm" tone="neutral" />}
-                            <span>{item.term}</span>
-                        </dt>
-                        <dd className="starci-core-description-value starci-core-description-figure" data-contract="FONT-5">
-                            <span className="starci-core-description-figure-value">{isLoading ? pending(item.description) : item.description}</span>
-                            {item.unit === undefined ? null : <span className="starci-core-description-unit">{item.unit}</span>}
-                        </dd>
-                        {item.meta === undefined ? null : (
-                            <dd className="starci-core-description-meta" data-contract="FONT-2">{isLoading ? pending(item.meta) : item.meta}</dd>
-                        )}
-                    </div>
-                ))
-                : props.items.map((item) => (
-                    <div key={item.id} className="starci-core-description-pair" data-grammar-description-pair="true">
-                        <dt className="starci-core-description-term">{item.term}</dt>
-                        <dd className="starci-core-description-value">{isLoading ? pending(item.description) : item.description}</dd>
-                    </div>
-                ))}
+            {props.items.map((item) => (
+                <div key={item.id} className="starci-core-description-pair" data-grammar-description-pair="true">
+                    <dt className="starci-core-description-term">{item.term}</dt>
+                    <dd className="starci-core-description-value">{isLoading ? pending(item.description) : item.description}</dd>
+                </div>
+            ))}
         </dl>
     )
 }

@@ -1,5 +1,5 @@
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline"
-import { Alert, FencedCodeBlock, Icon, ListRow, SurfaceCard, SurfaceListCard, Text } from "@starci/grammar/core"
+import { Alert, FencedCodeBlock, SurfaceCard, Text, type Band } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -35,30 +35,49 @@ const CHECK_PLACEHOLDER: FlowCheckView = { flow: [], problems: [], problemsTitle
 export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
     const { labels } = props.props
     return (
-        <SurfaceCard label={labels.title} headingLevel={2}>
-            <SlotView slot={props.props.check} placeholder={CHECK_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
-                {(check, isSkeleton) => (
-                    <div className="app-stack">
-                        {check.flow.length === 0 ? (
+        <SlotView slot={props.props.check} placeholder={CHECK_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false}>
+            {(check, isSkeleton) => {
+                const flow: Band = {
+                    kind: "body",
+                    children:
+                        check.flow.length === 0 ? (
                             <Text size="sm" tone="muted" isSkeleton={isSkeleton}>
                                 {labels.noLanes}
                             </Text>
                         ) : (
                             <FencedCodeBlock label={labels.code} code={check.flow.join("\n")} />
-                        )}
-                        {check.problems.length === 0 ? (
+                        ),
+                }
+                return (
+                    <SurfaceCard
+                        kind="bands"
+                        label={labels.title}
+                        headingLevel={2}
+                        isSkeleton={isSkeleton}
+                        {...(check.problems.length === 0 ? {} : { fact: check.problemsTitle })}
+                        bands={
                             // A verdict has nowhere to go before the check answers (LOADING-5); the Alert has no resting shape.
-                            isSkeleton ? null : <Alert tone="affirmative" appearance="soft" title={labels.clean} description={labels.cleanHint} />
-                        ) : (
-                            <SurfaceListCard label={check.problemsTitle} headingLevel={3} depth="nested">
-                                {check.problems.map((problem) => (
-                                    <ListRow key={problem} title={problem} state="negative" leading={<Icon source={ExclamationTriangleIcon} usage="leading" />} />
-                                ))}
-                            </SurfaceListCard>
-                        )}
-                    </div>
-                )}
-            </SlotView>
-        </SurfaceCard>
+                            isSkeleton
+                                ? [flow]
+                                : check.problems.length === 0
+                                  ? [flow, { kind: "body", children: <Alert tone="affirmative" title={labels.clean} description={labels.cleanHint} /> }]
+                                  : [
+                                        flow,
+                                        {
+                                            kind: "list",
+                                            items: check.problems.map((problem) => ({
+                                                id: problem,
+                                                title: problem,
+                                                state: "negative" as const,
+                                                leading: { icon: ExclamationTriangleIcon },
+                                            })),
+                                            empty: null,
+                                        },
+                                    ]
+                        }
+                    />
+                )
+            }}
+        </SlotView>
     )
 }

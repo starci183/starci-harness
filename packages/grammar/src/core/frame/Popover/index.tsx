@@ -54,7 +54,7 @@ export const Popover = ({
                     data-contract="LAYOUT-4 BOUNDARY-6 MOTION-2"
                     className="starci-core-popover"
                 >
-                    <SurfaceNesting>
+                    <SurfaceNesting host="overlay">
                         {showArrow ? (
                             <HeroPopover.Arrow className="starci-core-popover-arrow" data-grammar-popover-arrow="true" />
                         ) : null}

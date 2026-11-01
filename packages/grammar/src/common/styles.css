@@ -811,9 +811,7 @@
         }
     }
 
-    .starci-core-surface-card,
-    .starci-core-surface-list,
-    .starci-core-surface-accordion-card {
+    .starci-core-surface-card {
         container-name: starci-core-surface;
         container-type: inline-size;
         display: flex;
@@ -939,14 +937,10 @@
         }
     }
 
-    .starci-core-surface[data-grammar-surface-depth="top"] {
+    /* A card is raised. A surface never stands inside another surface, so there is one depth and no nested edge. */
+    .starci-core-surface {
         border: 0;
         box-shadow: var(--surface-shadow);
-    }
-
-    .starci-core-surface[data-grammar-surface-depth="nested"] {
-        border: 1px solid var(--border);
-        box-shadow: none;
     }
 
     .starci-core-surface-content {
@@ -955,16 +949,31 @@
         padding-inline: var(--grammar-card-padding-inline);
     }
 
-    /* A box inside a card (a nested card, a stat cell, a notice) is one level in: the nested step on every side. */
-    .starci-core-surface[data-grammar-surface-depth="nested"]:not([data-grammar-surface-composition="joined"], .starci-core-frameless-surface) > .starci-core-surface-content {
-        padding: var(--grammar-inset-nested);
-    }
-
-    .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content {
+    /* A list, an accordion, a figures strip or bands: the faces touch the card's edge and the shell draws the seams. */
+    .starci-core-surface[data-grammar-surface-flush="true"] > .starci-core-surface-content {
         display: flex;
         flex-direction: column;
         gap: 0;
         padding: 0;
+    }
+
+    /* Two bands of one card are divided by one seam, edge to edge; the shell draws it, never a Divider. */
+    .starci-core-surface-band + .starci-core-surface-band {
+        border-block-start: 1px solid var(--separator);
+    }
+
+    /* A body band holds copy and controls: the card inset on every side. */
+    .starci-core-surface-band[data-grammar-band="body"] {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        padding-block: var(--grammar-card-padding-block);
+        padding-inline: var(--grammar-card-padding-inline);
+    }
+
+    /* A media band is a decorative slab on the card's first face, edge to edge. */
+    .starci-core-surface-band[data-grammar-band="media"] {
+        overflow: hidden;
     }
 
     .starci-core-surface-card[data-grammar-surface-height="fill"],
@@ -973,21 +982,6 @@
     .starci-core-surface-card[data-grammar-surface-height="fill"] > .starci-core-surface-highlight > .starci-core-surface,
     .starci-core-surface-card[data-grammar-surface-height="fill"] .starci-core-surface-content {
         height: 100%;
-    }
-
-    .starci-core-surface.starci-core-frameless-surface {
-        position: relative;
-        min-width: 0;
-        overflow: visible;
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-        box-shadow: none;
-        color: inherit;
-    }
-
-    .starci-core-frameless-surface > .starci-core-surface-content {
-        padding: 0;
     }
 
     /*
@@ -1134,8 +1128,7 @@
 
         /* The first face (or the single content region) keeps the zone's 12.25rem in-band height, so the
            content below it - a stat strip - starts clear of the art. */
-        .starci-core-surface[data-grammar-surface-artwork="art"][data-grammar-surface-composition="joined"] > .starci-core-surface-content > :first-child,
-        .starci-core-surface[data-grammar-surface-artwork="art"][data-grammar-surface-composition="single"] > .starci-core-surface-content {
+        .starci-core-surface[data-grammar-surface-artwork="art"] > .starci-core-surface-content {
             min-block-size: 12.25rem;
         }
     }
@@ -1213,7 +1206,7 @@
      * ~2.3:1. Only the non-text state mark keeps the disabled fade as the visual cue.
      */
     [data-grammar-state="unavailable"],
-    [data-grammar-state="unavailable"] .starci-core-static-row-copy > * {
+    [data-grammar-state="unavailable"] :is(.starci-core-static-row-copy, .starci-core-list-row-copy) > * {
         color: var(--muted);
     }
 
@@ -1236,10 +1229,6 @@
         line-height: var(--grammar-leading-md);
         text-align: end;
         white-space: nowrap;
-    }
-
-    .starci-core-list-shell {
-        padding: 0;
     }
 
     .starci-core-static-list {
@@ -1278,9 +1267,8 @@
      * It is an INSET SHADOW, not a border and not a padded rule, because the rows of a verdict
      * collection are usually the consumer's own children: a border would move their content two
      * pixels and a padding would fight the inset they already own, while a shadow paints inside the
-     * box that is already there. The row is addressed by `data-verdict`, which is the slot contract
-     * `SurfaceListCard` documents for its collection, so a Grammar row and an application row draw
-     * the same edge from the same attribute.
+     * box that is already there. The row is addressed by `data-verdict`, which a list row
+     * of `SurfaceCard kind="list"` emits from its `verdict` field.
      *
      * The offset is physical because `box-shadow` has no logical form; under `dir="rtl"` the edge
      * stays on the left. No shipped object mirrors yet, so this is consistent rather than a new gap.
@@ -1305,9 +1293,7 @@
     .starci-core-owned-collection[data-grammar-collection="verdict"] [data-verdict="success"],
     .starci-core-owned-collection[data-grammar-collection="verdict"] [data-verdict="danger"],
     .starci-core-static-row[data-verdict="success"],
-    .starci-core-static-row[data-verdict="danger"],
-    .starci-core-list-shell[data-grammar-hover="invariant"] .starci-core-static-row[data-verdict="success"]:hover,
-    .starci-core-list-shell[data-grammar-hover="invariant"] .starci-core-static-row[data-verdict="danger"]:hover {
+    .starci-core-static-row[data-verdict="danger"] {
         box-shadow: var(--starci-core-verdict-edge, none);
     }
 
@@ -1534,18 +1520,6 @@
         }
     }
 
-    .starci-core-list-shell[data-grammar-hover="invariant"] .starci-core-static-row:hover {
-        background: transparent;
-        box-shadow: none;
-        color: inherit;
-        transform: none;
-    }
-
-    .starci-core-accordion-shell {
-        width: 100%;
-        min-width: 0;
-    }
-
     .starci-core-accordion-row {
         width: 100% !important;
         min-width: 0;
@@ -1554,11 +1528,6 @@
     /* HeroUI's `Accordion` root sizes itself; the Grammar shell owns the measure. */
     .starci-core-accordion-root {
         width: 100% !important;
-        min-width: 0;
-    }
-
-    .starci-core-accordion-scroll-region {
-        width: 100%;
         min-width: 0;
     }
 
@@ -1572,6 +1541,80 @@
 
     .starci-core-accordion-row + .starci-core-accordion-row {
         border-top: 1px solid var(--separator);
+    }
+
+    /* The trigger's copy: the title, then one muted meta at the end of the line (below it when the card is narrow). */
+    .starci-core-accordion-summary {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        column-gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-accordion-title {
+        min-width: 0;
+        font-weight: var(--grammar-weight-semibold);
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-accordion-meta {
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
+    }
+
+    /*
+     * Tile: a peer you recognise and open (a provider, a connector). The name sits inside, beside its mark; the foot row
+     * holds the status at the start and the one action at the end, at the bottom of the card whatever the copy's length.
+     */
+    .starci-core-tile {
+        display: flex;
+        min-width: 0;
+        block-size: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-tile-mark {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        inline-size: 2.5rem;
+        block-size: 2.5rem;
+    }
+
+    .starci-core-tile-mark > * {
+        inline-size: 100%;
+        block-size: 100%;
+    }
+
+    .starci-core-tile-copy {
+        display: flex;
+        min-width: 0;
+        inline-size: 100%;
+        flex-direction: column;
+        gap: var(--starci-core-copy-gap);
+    }
+
+    .starci-core-tile-description {
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-tile-foot {
+        display: flex;
+        min-width: 0;
+        inline-size: 100%;
+        margin-block-start: auto;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-accordion-heading {
@@ -2838,11 +2881,6 @@
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-surface-fact[data-grammar-surface-depth="nested"] {
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-xs);
-    }
-
     /* --- Empty notice --- */
     .starci-core-empty-notice {
         display: flex;
@@ -2865,23 +2903,6 @@
 
     .starci-core-divider-rule {
         flex: 1 1 0%;
-    }
-
-    /*
-     * Dividers are full bleed (DNA-COMMON-DIVIDER-FULL-BLEED): a horizontal hairline placed in a card's content region
-     * runs from card edge to card edge, through the content inset, never inset from them; the content above and below
-     * it keeps the card inset from the rule.
-     */
-    .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
-        align-self: stretch;
-        inline-size: auto !important;
-        margin-inline: calc(-1 * var(--grammar-card-padding-inline)) !important;
-        margin-block: var(--grammar-card-padding-block);
-    }
-
-    /* In a joined card the divider is the seam between two bands: it touches both and the card's edges, with no inset of its own. */
-    .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
-        margin: 0 !important;
     }
 
     /* A vertical hairline between touching columns of one joined surface: it fills the row, whatever its height. */

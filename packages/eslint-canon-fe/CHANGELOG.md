@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Changed: `no-heading-above-card` (R354) follows the removal of `SectionHeader`: it refuses a `Section` (not `kind="list"`) whose only child is one card, and a card whose `ariaLabel` repeats the `Section` title. `no-hand-built-panes` reads a `Section` as a column where it read `Region`, and `no-commit-in-collection-item` no longer names the removed `CollectionItem`, `ItemActions` and `ListItem`.
+
+- eslint-canon-fe: the surface rules follow the one card (SurfaceListCard and SurfaceAccordionCard are gone).
 - Added: `frames` joins the component tiers (`components/frames/<Name>`, `meta.shape = 'frame'`); a frame is a lower tier for the world check (it owns no data, session or navigation).
 
 ## 9.8.5 - 2026-11-01

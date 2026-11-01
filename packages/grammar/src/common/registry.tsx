@@ -3,11 +3,11 @@
 import {
     Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
-    ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
+    MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
-    Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StaticStateRow, StatusDot,
+    Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StatusDot,
     Stack, Cluster, Grid,
-    SurfaceAccordionCard, SurfaceCard, SurfaceListCard, Tabs, Terminal, Text,
+    SurfaceCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
 } from "./renderers.js"
 import { COMMON_FORMS_COMPONENTS } from "./renderers-forms.js"
@@ -26,11 +26,11 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
     Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
-    ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
+    MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
-    Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StaticStateRow, StatusDot,
+    Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StatusDot,
     Stack, Cluster, Grid,
-    SurfaceAccordionCard, SurfaceCard, SurfaceListCard, Tabs, Terminal, Text,
+    SurfaceCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
     ...COMMON_FORMS_COMPONENTS,
     ...COMMON_OVERLAYS_COMPONENTS,

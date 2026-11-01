@@ -12,9 +12,6 @@ import type { TypedString } from "./lib/typed-class-values.ts"
 /** A same-file variable definition: its declarator holds the binding pattern and the initializer. */
 type VariableDefinition = TSESLint.Scope.Definitions.VariableDefinition
 
-/** Whether an accordion frame is painted, unpainted, or not set by an entry. */
-type Frame = "painted" | "unpainted" | "absent"
-
 /** True when `text` is a string among `values`; any other value never is. */
 const isOneOf = (values: readonly string[], text: unknown): boolean => typeof text === "string" && values.includes(text)
 
@@ -26,7 +23,7 @@ const present = (value: Node | null | undefined): value is Node => Boolean(value
 
 const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const SURFACES = new Set<string | undefined>([
-  "SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard", "Sidebar",
+  "SurfaceCard", "Sidebar",
   "Dialog", "Drawer", "AlertDialog", "Popover",
   "WorkspaceShell", "TopBar", "NavigationFeatureNav", "Pane", "PaneSection",
 ])
@@ -104,15 +101,6 @@ function* surfaceAncestors(context: AnyContext, node: Node | undefined): Generat
 const isSurface = (context: AnyContext, node: TSESTree.JSXOpeningElement, descendant: Node): boolean => {
   const name = grammarName(context, node.name)
   if (name?.length !== 1) return false
-  if (name[0] === "SurfaceAccordionCard") {
-    let frame: Frame = "painted"
-    for (const entry of node.attributes) {
-      const value: Frame = entry.type === "JSXSpreadAttribute" ? frameEffect(context, entry.argument, frame)
-        : entry.name.name === "frame" ? unpaintedFrame(context, attributeValue(entry)) ? "unpainted" : "painted" : "absent"
-      if (value !== "absent") frame = value
-    }
-    return frame !== "unpainted"
-  }
   if (name[0] === "WorkspaceShell") {
     for (let current: Node | undefined = descendant; current && current !== node.parent; current = current.parent) {
       if (current.type === "JSXAttribute" && current.parent === node && current.name.name === "header") return true
@@ -191,42 +179,6 @@ const propStrings = (context: AnyContext, entry: TSESTree.JSXAttribute | TSESTre
     return values.length ? values.flatMap((value) => authoredStrings(context, value, new Set(), mode)) : typedPropertyStrings(context, entry.argument, name, mode)
   }
   return entry.name.name === name ? authoredStrings(context, attributeValue(entry), new Set(), mode) : []
-}
-
-/** Only a fully known unpainted frame removes the accordion's bounded surface context. */
-const unpaintedFrame = (context: AnyContext, input: Node | null | undefined, seen = new Set<Node>()): boolean => {
-  const node = unwrap(input)
-  if (!node || seen.has(node)) return false
-  seen.add(node)
-  const text = stringOf(node)
-  if (text !== null) return text === "unpainted"
-  if (node.type === "ConditionalExpression") return [node.consequent, node.alternate].every((branch) => unpaintedFrame(context, branch, new Set(seen)))
-  const values = node.type === "Identifier" ? bindingValues(context, node)
-    : node.type === "MemberExpression" ? propertyValues(context, node.object, memberName(node)) : []
-  return values.length > 0 && values.every((value) => unpaintedFrame(context, value, new Set(seen)))
-}
-
-/** A spread overrides preceding frame props; an unresolved spread may install a bounded frame. */
-const frameEffect = (context: AnyContext, input: Node | null | undefined, prior: Frame, seen = new Set<Node>()): Frame => {
-  const node = unwrap(input)
-  if (!node || seen.has(node)) return "painted"
-  seen.add(node)
-  if (node.type === "ObjectExpression") {
-    let effect = prior
-    for (const property of node.properties) {
-      const key = property.type === "Property" ? propertyName(context, property) : null
-      const value: Frame = property.type === "SpreadElement" ? frameEffect(context, property.argument, effect, new Set(seen))
-        : key === "frame" ? unpaintedFrame(context, property.value) ? "unpainted" : "painted" : key === null ? "painted" : "absent"
-      if (value !== "absent") effect = value
-    }
-    return effect
-  }
-  const values: Node[] = node.type === "Identifier" ? bindingValues(context, node)
-    : node.type === "MemberExpression" ? propertyValues(context, node.object, memberName(node))
-      : node.type === "ConditionalExpression" ? [node.consequent, node.alternate] : []
-  const effects = values.map((value) => frameEffect(context, value, prior, new Set(seen)))
-  const [first] = effects
-  return first !== undefined && effects.every((effect) => effect === first) ? first : "painted"
 }
 
 /** Resolve authored style objects without treating unrelated object siblings or conditions as CSS. */
@@ -594,7 +546,7 @@ const standsInCard = (context: AnyContext, node: Node, seen: Set<string>): boole
   return usages.some((usage) => standsInCard(context, usage, seen))
 }
 
-/** A table is not placed in a SurfaceCard: plain rows are a SurfaceListCard with the note in its footer. */
+/** A table is not placed in a SurfaceCard: plain rows are a `SurfaceCard kind="list"` with the note in its footer. */
 export const noTableInCard = defineRule({
   meta: {
     type: "problem",
@@ -602,7 +554,7 @@ export const noTableInCard = defineRule({
     schema: [],
     messages: {
       table:
-        "FE_TABLE_IN_CARD: this DataTable stands inside a SurfaceCard (here or in the component that renders it). Plain rows with a few facts are a `SurfaceListCard` of `ListRow` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with its label outside, with no card around it.",
+        "FE_TABLE_IN_CARD: this DataTable stands inside a SurfaceCard (here or in the component that renders it). Plain rows with a few facts are a `SurfaceCard kind=\"list\"` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with its label outside, with no card around it.",
     },
   },
   create(context) {
@@ -620,7 +572,6 @@ export const noTableInCard = defineRule({
 const HEADER_SLOTS = new Map<string, readonly string[]>([
   ["PageHeader", ["actions"]],
   ["SurfaceCard", ["labelEnd"]],
-  ["SurfaceListCard", ["labelEnd"]],
 ])
 
 /** True when the Button's own opening element sets `width="fill"`. */
@@ -690,7 +641,7 @@ export const noSelectableTagGroup = defineRule({
 })
 
 /** The bounded surfaces that carry their own label. */
-const LABELLED_CARDS = new Set(["SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard"])
+const LABELLED_CARDS = new Set(["SurfaceCard"])
 
 /** The source text of a prop value, or null when the prop is absent: `"a"` and `{"a"}` read the same, an expression reads as written. */
 const propText = (context: AnyContext, opening: TSESTree.JSXOpeningElement, name: string): string | null => {

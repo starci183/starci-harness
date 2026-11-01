@@ -30,7 +30,7 @@ export type DisclosureProps = {
  */
 
 /**
- * One show/hide section (the generic, unframed disclosure; `SurfaceAccordionCard` is the framed
+ * One show/hide section (the generic, unframed disclosure; `SurfaceCard kind="accordion"` is the framed
  * card form). The trigger is a real button inside a heading with `aria-expanded`/`aria-controls`;
  * `data-grammar-disclosure-state` mirrors the open state for the stylesheet.
  * Contract: root STATE-7 (controlled expansion), trigger FOCUS-1, indicator MOTION-2.

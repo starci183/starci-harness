@@ -1,4 +1,4 @@
-import { Badge, Button, Code, ListRow, Select, SurfaceCard, SurfaceListCard, Text, Textarea } from "@starci/grammar/core"
+import { Button, Code, EmptyNotice, Select, SurfaceCard, Text, Textarea } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -102,30 +102,23 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
                     )}
                 </SlotView>
             </SurfaceCard>
-            <SurfaceListCard label={labels.list} headingLevel={2}>
-                <SlotView slot={props.props.requests} placeholder={REQUESTS_PLACEHOLDER} labels={labels.requestsSlot} onRetry={props.on.retryRequests}>
-                    {(requests, isSkeleton) =>
-                        requests.map((request) => (
-                            <ListRow
-                                key={request.id}
-                                title={request.text}
-                                description={
-                                    <span className="app-row">
-                                        <Code>{request.id}</Code>
-                                        <span>{request.project}</span>
-                                    </span>
-                                }
-                                badges={
-                                    <Badge tone={request.status.tone} isSkeleton={isSkeleton}>
-                                        {request.status.label}
-                                    </Badge>
-                                }
-                                isSkeleton={isSkeleton}
-                            />
-                        ))
-                    }
-                </SlotView>
-            </SurfaceListCard>
+            <SlotView slot={props.props.requests} placeholder={REQUESTS_PLACEHOLDER} labels={labels.requestsSlot} onRetry={props.on.retryRequests}>
+                {(requests, isSkeleton) => (
+                    <SurfaceCard
+                        kind="list"
+                        label={labels.list}
+                        headingLevel={2}
+                        isSkeleton={isSkeleton}
+                        empty={<EmptyNotice message={labels.requestsSlot.empty} />}
+                        items={requests.map((request) => ({
+                            id: request.id,
+                            title: request.text,
+                            description: `${request.id} · ${request.project}`,
+                            badges: [{ label: request.status.label, tone: request.status.tone }],
+                        }))}
+                    />
+                )}
+            </SlotView>
         </div>
     )
 }

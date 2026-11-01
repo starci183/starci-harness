@@ -109,8 +109,7 @@
         box-shadow: none;
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface] {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"] {
         border: var(--offset-pop-outline-width) solid var(--border);
         border-radius: var(--offset-pop-surface-radius);
         color: var(--surface-foreground);
@@ -118,31 +117,23 @@
     }
 
     /* The accent corner survives this family's surface radius. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-start"][data-grammar-surface-depth] { border-start-start-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-end"][data-grammar-surface-depth] { border-start-end-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-start"][data-grammar-surface-depth] { border-end-start-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-end"][data-grammar-surface-depth] { border-end-end-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-start"] { border-start-start-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-end"] { border-start-end-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-start"] { border-end-start-radius: var(--grammar-accent-corner); }
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-end"] { border-end-end-radius: var(--grammar-accent-corner); }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="top"] {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"] {
         box-shadow: var(--surface-shadow);
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="nested"],
     /* The reader's own message is the family's pink with its ink; inline content keeps the ink, over the family's own accent text rules. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
         color: inherit;
     }
 
-    /* The seam between two bands of a joined card is the family's outline width, the same line the stat strip draws between its cells. */
-    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface[data-grammar-surface-composition="joined"] > .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
-        height: var(--offset-pop-outline-width);
-        min-height: var(--offset-pop-outline-width);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface][data-grammar-surface-depth="nested"] {
-        box-shadow: none;
-        background: var(--surface-secondary);
+    /* The seam between two bands of a card is the family's outline width, the same line the figures strip draws between its cells. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface-band + .starci-core-surface-band {
+        border-block-start-width: var(--offset-pop-outline-width);
     }
 
     /*
@@ -230,7 +221,6 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row] {
         transition:
             transform var(--offset-pop-transition),
@@ -255,13 +245,9 @@
         outline-offset: 0.25rem;
     }
 
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="top"]:has([data-grammar-whole-action]:active) {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"]:has([data-grammar-whole-action]:active) {
         box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
         transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="nested"]:has([data-grammar-whole-action]:active) {
-        transform: translateY(var(--offset-pop-shadow-x));
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-state="affirmative"] {
@@ -314,7 +300,6 @@
 
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row] {
             transform: none;
         }
@@ -325,7 +310,6 @@
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Button"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Badge"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"],
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-state-mark],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-rail] {
             border-color: CanvasText;

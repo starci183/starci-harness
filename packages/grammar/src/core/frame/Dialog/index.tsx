@@ -79,7 +79,7 @@ export const Dialog = ({
                 >
                     {({ close }) => (
                         <ButtonPlacementProvider placement="decision">
-                        <SurfaceNesting>
+                        <SurfaceNesting host="overlay">
                             <HeroModal.Header className="starci-core-overlay-header">
                                 <div className="starci-core-overlay-heading-group">
                                     <HeroModal.Heading className="starci-core-overlay-title">{title}</HeroModal.Heading>

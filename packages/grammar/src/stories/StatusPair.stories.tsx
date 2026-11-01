@@ -5,7 +5,7 @@ import { BookGlyph, HomeGlyph, Matrix, State, familyScope, noop } from './fixtur
 /**
  * The owner's status pair rule (ruling `status-soft-pair-on-background`): content on a tone background wears the pair
  * `x-soft` and `x-soft-foreground`; a mark that stands alone wears `x`. These stories draw the places the rule reaches in
- * the grammar's own CSS: the alert dialog's icon tile (on its tint) and the footer note of a surface list.
+ * the grammar's own CSS: the alert dialog's icon tile (on its tint) and the footer note of a list card.
  */
 const meta: Meta = {
   title: 'Status pair',
@@ -14,11 +14,11 @@ export default meta;
 
 type Story = StoryObj;
 
-const stripItems: ReadonlyArray<G.DescriptionListStatItem> = [
-  { id: 'lessons', icon: BookGlyph, term: 'Lessons', description: '12', unit: 'done', meta: 'This month' },
-  { id: 'streak', icon: HomeGlyph, term: 'Streak', description: '9', unit: 'days', meta: 'Best 14' },
-  { id: 'score', term: 'Score', description: '86%', meta: 'Last quiz' },
-  { id: 'time', term: 'Time', description: '4.5', unit: 'h', meta: '7 days' },
+const stripItems: ReadonlyArray<G.Figure> = [
+  { id: 'lessons', icon: BookGlyph, term: 'Lessons', value: '12', unit: 'done', meta: 'This month' },
+  { id: 'streak', icon: HomeGlyph, term: 'Streak', value: '9', unit: 'days', meta: 'Best 14' },
+  { id: 'score', term: 'Score', value: '86%', meta: 'Last quiz' },
+  { id: 'time', term: 'Time', value: '4.5', unit: 'h', meta: '7 days' },
 ];
 
 const openParameters = { grammar: { minHeight: '30rem' } };
@@ -44,19 +44,26 @@ export const AlertDialogAffirmative: Story = dialogTone('affirmative');
 export const AlertDialogCautionary: Story = dialogTone('cautionary');
 export const AlertDialogInformative: Story = dialogTone('informative');
 
-/** The footer of a SurfaceListCard: a small muted line under the card, the full width of the list, in light and dark. */
-export const SurfaceListCardFooter: Story = {
+/** The footer of a list card: a small muted line under the card, the full width of the list, in light and dark. */
+export const SurfaceCardFooter: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
         <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-footer-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: a plain-text footer`} direction="column">
             <div style={{ width: 640, maxWidth: '100%' }}>
-              <G.SurfaceListCard label="Permissions" fact="3 rules" footer="Locked rules are set by the workspace owner.">
-                <G.ListRow leading={<G.IconTile source={BookGlyph} />} title="Read the knowledge" description="Customers and every agent" />
-                <G.ListRow leading={<G.IconTile source={BookGlyph} />} title="Write notes" description="Agents only" />
-                <G.ListRow leading={<G.IconTile source={BookGlyph} />} title="Share outside the workspace" description="Nobody" />
-              </G.SurfaceListCard>
+              <G.SurfaceCard
+                kind="list"
+                label="Permissions"
+                fact="3 rules"
+                footer="Locked rules are set by the workspace owner."
+                empty={<G.EmptyNotice message="No rules." />}
+                items={[
+                  { id: 'read', leading: { icon: BookGlyph }, title: 'Read the knowledge', description: 'Customers and every agent' },
+                  { id: 'write', leading: { icon: BookGlyph }, title: 'Write notes', description: 'Agents only' },
+                  { id: 'share', leading: { icon: BookGlyph }, title: 'Share outside the workspace', description: 'Nobody' },
+                ]}
+              />
             </div>
           </State>
           <State label={`${theme}: a SurfaceCard footer`} direction="column">
@@ -68,10 +75,17 @@ export const SurfaceListCardFooter: Story = {
           </State>
           <State label={`${theme}: a footer that is a muted Text`} direction="column">
             <div style={{ width: 640, maxWidth: '100%' }}>
-              <G.SurfaceListCard label="Permissions" fact="2 rules" footer={<G.Text tone="muted">Locked rules are set by the workspace owner.</G.Text>}>
-                <G.ListRow leading={<G.IconTile source={BookGlyph} />} title="Read the knowledge" description="Customers and every agent" />
-                <G.ListRow leading={<G.IconTile source={BookGlyph} />} title="Write notes" description="Agents only" />
-              </G.SurfaceListCard>
+              <G.SurfaceCard
+                kind="list"
+                label="Permissions"
+                fact="2 rules"
+                footer={<G.Text tone="muted">Locked rules are set by the workspace owner.</G.Text>}
+                empty={<G.EmptyNotice message="No rules." />}
+                items={[
+                  { id: 'read', leading: { icon: BookGlyph }, title: 'Read the knowledge', description: 'Customers and every agent' },
+                  { id: 'write', leading: { icon: BookGlyph }, title: 'Write notes', description: 'Agents only' },
+                ]}
+              />
             </div>
           </State>
         </G.GrammarRoot>
@@ -80,21 +94,22 @@ export const SurfaceListCardFooter: Story = {
   ),
 };
 
-/** A joined card: the stat strip as one band and a Meter as the band below it, in light and dark. */
-export const JoinedStripWithMeter: Story = {
+/** A bands card: the figures strip as one band and a Meter as the band below it, in light and dark. */
+export const FiguresStripWithMeter: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-joined-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
-          <State label={`${theme}: joined card, the strip and a Meter`} direction="column">
+        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-bands-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
+          <State label={`${theme}: bands card, the figures and a Meter`} direction="column">
             <div style={{ width: 672, maxWidth: '100%' }}>
-              <G.SurfaceCard ariaLabel="Usage" composition="joined">
-                <G.DescriptionList layout="stat-strip" items={stripItems} />
-                <G.Divider semantics="presentation" />
-                <div style={{ padding: 'var(--grammar-inset, 0.75rem)' }}>
-                  <G.Meter label="Storage" value={64} valueLabel="6.4 of 10 GB" />
-                </div>
-              </G.SurfaceCard>
+              <G.SurfaceCard
+                kind="bands"
+                ariaLabel="Usage"
+                bands={[
+                  { kind: 'figures', items: stripItems },
+                  { kind: 'body', children: <G.Meter label="Storage" value={64} valueLabel="6.4 of 10 GB" /> },
+                ]}
+              />
             </div>
           </State>
         </G.GrammarRoot>

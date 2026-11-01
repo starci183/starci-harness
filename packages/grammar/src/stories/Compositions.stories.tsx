@@ -267,18 +267,14 @@ export const PageSkeleton: Story = {
 
 const bleedTrail = { label: 'Breadcrumb', items: [{ id: 'agents', label: 'Agents', href: '#agents' }, { id: 'chat', label: 'Support agent' }] };
 
-/** An app surface: one joined card that fills the viewport height left below the trail or the band. */
+/** An app surface: one card that fills the viewport height left below the trail or the band. */
 const PageBleedDemo = ({ withBand }: { readonly withBand: boolean }) => (
   <G.Page
     chrome="bleed"
     header={withBand ? { breadcrumbs: bleedTrail, title: 'Support agent', tabs: { label: 'Agent', items: [{ id: 'setup', label: 'Setup', href: globalThis.location.pathname }, { id: 'settings', label: 'Settings', href: '/settings' }] } } : { breadcrumbs: bleedTrail }}
   >
-    <G.SurfaceCard ariaLabel="Conversation" composition="joined" height="fill">
-      <div style={{ display: 'flex', blockSize: '100%', minBlockSize: 0 }}>
-        <div style={{ inlineSize: '16rem', padding: '1rem' }}><G.Text tone="muted">Conversations</G.Text></div>
-        <G.Divider orientation="vertical" semantics="presentation" />
-        <div style={{ flex: '1 1 auto', padding: '1rem' }}><G.Text tone="muted">Thread</G.Text></div>
-      </div>
+    <G.SurfaceCard ariaLabel="Conversation" height="fill">
+      <G.Text tone="muted">Thread</G.Text>
     </G.SurfaceCard>
   </G.Page>
 );
@@ -973,42 +969,6 @@ export const Quote: Story = {
         <G.Quote source="Chat" byline="Zalo, 09:12">Can the order for table 4 move to 19:30?</G.Quote>
       </G.SurfaceCard>
       <G.Quote isSkeleton />
-    </div>
-  ),
-};
-
-/** A messenger frame: ONE joined surface, columns touching and divided by vertical hairlines; the thread scrolls on the background tone. */
-export const MessengerFrame: Story = {
-  render: () => (
-    <div style={{ height: '28rem' }}>
-      <G.SurfaceCard ariaLabel="Messenger" composition="joined" height="fill">
-        <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
-          <div style={{ width: '16rem', flex: 'none', padding: '1rem' }}>
-            <G.ListBox
-              label="Conversations"
-              selectionIndicator="none"
-              selectionMode="single"
-              defaultSelectedIds={['study-group']}
-              items={[
-                { id: 'study-group', label: 'Study group', description: 'See you at 7' },
-                { id: 'linh', label: 'Linh', description: 'Thanks!' },
-              ]}
-            />
-          </div>
-          <G.Divider orientation="vertical" semantics="presentation" />
-          <div style={{ display: 'flex', minWidth: 0, flex: 1, flexDirection: 'column' }}>
-            <div style={{ padding: '1rem' }}><G.Text isStrong>Study group</G.Text></div>
-            <G.Divider semantics="presentation" />
-            <G.VerticalScrollRegion isScrollable tone="background" aria-label="Messages" style={{ flex: 1, minHeight: 0, padding: '1rem' }}>
-              <G.MessageBubble author="Linh" meta="09:12" actions={<G.Tooltip content="Copy"><G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} /></G.Tooltip>}>
-                Can the order for table 4 move to 19:30?
-              </G.MessageBubble>
-            </G.VerticalScrollRegion>
-          </div>
-          <G.Divider orientation="vertical" semantics="presentation" />
-          <div style={{ width: '14rem', flex: 'none', padding: '1rem' }}><G.Text tone="muted">Info</G.Text></div>
-        </div>
-      </G.SurfaceCard>
     </div>
   ),
 };

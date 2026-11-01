@@ -5958,7 +5958,7 @@ rules:
         ruling: "Mascot takes AssetSlotProps (assetSlot, assetSha256, assetPrompt) and emits them as data-asset-* on its root; the lint requires assetSlot on every Mascot."
   - id: R340
     code: "FE_RAISED_SURFACE_IN_SURFACE"
-    law: "A Grammar surface that accepts a depth prop (SurfaceListCard) does not pass depth=\"top\" when a SurfaceCard, SurfaceListCard or SurfaceAccordionCard of the same file encloses it: a nested surface is subordinate (outlined, BOUNDARY-5), never raised again (BOUNDARY-6, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); the Grammar resolves the depth from the surface context. A depth computed at run time is not judged."
+    law: "A surface never stands inside another surface (owner decision, dialogs and drawers included): a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_RAISED_SURFACE_IN_SURFACE"]
@@ -5979,6 +5979,36 @@ rules:
         source: owner
         quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); SurfaceListCard takes its depth from the surface context (grammar 0.16.2)."
         ruling: "SurfaceListCard resolves its depth from the surface context like SurfaceCard and SurfaceAccordionCard; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
+  - id: R355
+    code: "FE_SURFACE_CARD_KIND"
+    law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind holds no raw ul, ol, li or dl, no Divider, and no SectionHeader or Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_SURFACE_CARD_KIND"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: surface-card-kind}
+    editions: [lite, full]
+    proves:
+      - packages/eslint-grammar-core/src/surface-card.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_SURFACE_CARD_KIND]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_SURFACE_CARD_KIND]}
+  - id: R366
+    code: "FE_LABEL_IN_GRID"
+    law: "A SurfaceCard with a label repeated in a Grid kind=cards is a tile drawn with the wrong anatomy: a peer you recognise and open names itself inside (SurfaceCard kind=tile), and peers compared by a fact are one kind=list card."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_LABEL_IN_GRID"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-label-in-grid}
+    editions: [lite, full]
+    proves:
+      - packages/eslint-grammar-core/src/surface-card.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
   - id: R341
     code: "FE_FREESTYLE_REASON_MISSING"
     law: "A Grammar Freestyle region, the one sanctioned place where an app writes its own plain elements and CSS because no Grammar component fits, names its reason: a non-empty string literal saying why. The rules that judge hand-written elements, classes, styles and generated art leave the raw elements of a Freestyle subtree alone; a Grammar component inside it is judged as before. An element with a spread attribute is not judged."

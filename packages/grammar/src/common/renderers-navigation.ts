@@ -41,7 +41,7 @@ export { IdentityLockup, type IdentityLockupProps } from "../core/composite/Iden
 export { PlainPressable, type PlainPressableProps, type PlainPressableShape } from "../core/leaf/PlainPressable/index.js"
 export { AvatarGroup, type AvatarGroupItem, type AvatarGroupProps } from "../core/composite/AvatarGroup/index.js"
 export type { BreadcrumbItem } from "../core/composite/Breadcrumbs/index.js"
-export { DescriptionList, type DescriptionListItem, type DescriptionListLayout, type DescriptionListProps, type DescriptionListStatItem } from "../core/composite/DescriptionList/index.js"
+export { DescriptionList, type DescriptionListItem, type DescriptionListLayout, type DescriptionListProps } from "../core/composite/DescriptionList/index.js"
 export { Pagination, paginationTokens, type PaginationProps, type PaginationToken } from "../core/composite/Pagination/index.js"
 export { Stepper, stepStateFor, type StepperProps, type StepperSize, type StepperStep, type StepperStepState } from "../core/composite/Stepper/index.js"
 export { TagGroup, type TagGroupItem, type TagGroupProps } from "../core/composite/TagGroup/index.js"

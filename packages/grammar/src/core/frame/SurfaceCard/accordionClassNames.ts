@@ -1,0 +1,23 @@
+import { cn } from "@heroui/react"
+
+/**
+ * Disclosure-card geometry is SHIPPED.
+ *
+ * The root, every row, the trigger, the panel and the body are HeroUI `Accordion` parts, so
+ * `.starci-core-accordion-*` in `src/common/styles.css` re-states their box in the
+ * `starci-grammar-common` layer with `!important` where the vendor's `components` layer sets the
+ * same property. Nothing here depends on a consumer scanning this package with Tailwind.
+ */
+
+/** Keeps the HeroUI part full-width inside the Grammar-owned surface shell. */
+export const accordionRootClassName = cn("starci-core-accordion-root") ?? "starci-core-accordion-root"
+/** Identifies one HeroUI-owned disclosure row; the part owns sibling separators. */
+export const accordionRowClassName = cn("starci-core-accordion-row") ?? "starci-core-accordion-row"
+/** Identifies the semantic disclosure heading. */
+export const accordionHeadingClassName = cn("starci-core-accordion-heading") ?? "starci-core-accordion-heading"
+/** Identifies the disclosure trigger control. */
+export const accordionTriggerClassName = cn("starci-core-accordion-trigger") ?? "starci-core-accordion-trigger"
+/** The animated HeroUI region owns no inset, so a closed panel collapses to zero height. */
+export const accordionPanelClassName = cn("starci-core-accordion-panel") ?? "starci-core-accordion-panel"
+/** Expanded content starts flush beneath its trigger while preserving the bottom and inline insets. */
+export const accordionBodyClassName = cn("starci-core-accordion-body") ?? "starci-core-accordion-body"

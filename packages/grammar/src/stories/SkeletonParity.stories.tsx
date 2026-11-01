@@ -270,7 +270,10 @@ export const IdentityLoading: Story = onePhase("grammar-identity", "loading", id
 
 /* ------------------------------------------------------------------ rows */
 
-const rowList = (row: ReactNode) => <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>{row}</ul>
+/** A list card holding one row; `isSkeleton` draws the same row as geometry. */
+const rowCard = (row: G.ListRowData, isSkeleton: boolean) => (
+    <G.SurfaceCard kind="list" label="Rows" items={[row]} empty={<G.EmptyNotice message="No rows." />} isSkeleton={isSkeleton} />
+)
 
 /** A Page header with every slot; the tabs variant puts the page tabs on its separator. */
 const pageHeader = (withTabs: boolean, isSkeleton: boolean) => (
@@ -293,20 +296,20 @@ const pageHeader = (withTabs: boolean, isSkeleton: boolean) => (
 const rows = (): ReadonlyArray<Pair> => [
     {
         id: "list-row-title",
-        ready: rowList(<G.ListRow title="Invoices" />),
-        loading: rowList(<G.ListRow title="Invoices" isSkeleton />),
+        ready: rowCard({ id: "r", title: "Invoices" }, false),
+        loading: rowCard({ id: "r", title: "Invoices" }, true),
         width: "28rem",
     },
     {
         id: "list-row-full",
-        ready: rowList(<G.ListRow title="Invoices" description="12 open, 3 overdue" leading={<G.IconTile source={BellGlyph} />} actions={<G.Button size="sm" onPress={noop}>Open</G.Button>} />),
-        loading: rowList(<G.ListRow title="Invoices" description="12 open, 3 overdue" leading={<G.IconTile source={BellGlyph} />} actions={<G.Button size="sm" onPress={noop}>Open</G.Button>} isSkeleton />),
+        ready: rowCard({ id: "r", title: "Invoices", description: "12 open, 3 overdue", leading: { icon: BellGlyph }, action: { label: "Open", press: noop } }, false),
+        loading: rowCard({ id: "r", title: "Invoices", description: "12 open, 3 overdue", leading: { icon: BellGlyph }, action: { label: "Open", press: noop } }, true),
         width: "28rem",
     },
     {
         id: "list-row-avatar",
-        ready: rowList(<G.ListRow title="Alex Morgan" description="Owner" leading={<G.Avatar name="Alex Morgan" size="sm" />} />),
-        loading: rowList(<G.ListRow title="Alex Morgan" description="Owner" leading={<G.Avatar name="Alex Morgan" size="sm" />} isSkeleton />),
+        ready: rowCard({ id: "r", title: "Alex Morgan", description: "Owner", leading: { avatar: { name: "Alex Morgan" } } }, false),
+        loading: rowCard({ id: "r", title: "Alex Morgan", description: "Owner", leading: { avatar: { name: "Alex Morgan" } } }, true),
         width: "28rem",
     },
     {
@@ -334,10 +337,16 @@ const rows = (): ReadonlyArray<Pair> => [
         width: "28rem",
     },
     {
-        id: "description-list-stat-strip",
-        ready: <G.DescriptionList layout="stat-strip" items={[{ id: "a", term: "Revenue", description: "1,200", meta: "Today" }, { id: "b", term: "Users", description: "40", meta: "Today" }]} />,
-        loading: <G.DescriptionList isLoading layout="stat-strip" items={[{ id: "a", term: "Revenue", description: "1,200", meta: "Today" }, { id: "b", term: "Users", description: "40", meta: "Today" }]} />,
+        id: "figures-card",
+        ready: <G.SurfaceCard kind="figures" label="Today" items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
+        loading: <G.SurfaceCard kind="figures" label="Today" isSkeleton items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
         width: "28rem",
+    },
+    {
+        id: "tile-card",
+        ready: <G.SurfaceCard kind="tile" name="Google Drive" mark={{ icon: BellGlyph }} description="Reads the files you share." badge={{ label: "Connected", tone: "success" }} action={{ label: "Open", press: noop }} />,
+        loading: <G.SurfaceCard kind="tile" isSkeleton name="Google Drive" mark={{ icon: BellGlyph }} description="Reads the files you share." badge={{ label: "Connected", tone: "success" }} action={{ label: "Open", press: noop }} />,
+        width: "20rem",
     },
     {
         id: "message-bubble",
@@ -347,7 +356,7 @@ const rows = (): ReadonlyArray<Pair> => [
     },
 ]
 
-/** ListRow, Section, the Page header, DescriptionList and MessageBubble. */
+/** List rows, Section, the Page header, DescriptionList, figures and tile cards, and MessageBubble. */
 export const Rows: Story = sideBySide(rows)
 export const RowsReady: Story = onePhase("grammar-rows", "ready", rows)
 export const RowsLoading: Story = onePhase("grammar-rows", "loading", rows)
@@ -386,13 +395,16 @@ const collections = (): ReadonlyArray<Pair> => [
         width: "20rem",
     },
     {
-        id: "surface-list-card",
+        id: "list-card",
         ready: (
-            <G.SurfaceListCard label="Saved lessons">
-                {lessons.map((lesson) => <G.ListRow key={lesson.id} title={lesson.title} description={`${lesson.minutes} minutes`} actions={<G.Button size="sm" onPress={noop}>Open</G.Button>} />)}
-            </G.SurfaceListCard>
+            <G.SurfaceCard
+                kind="list"
+                label="Saved lessons"
+                empty={<G.EmptyNotice message="Nothing saved yet." />}
+                items={lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, description: `${lesson.minutes} minutes`, action: { label: "Open", press: noop } }))}
+            />
         ),
-        loading: <G.SurfaceListCard label="Saved lessons" isLoading loadingRows={3} />,
+        loading: <G.SurfaceCard kind="list" label="Saved lessons" isSkeleton loadingRows={3} items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />,
         width: "28rem",
     },
     {
@@ -403,7 +415,7 @@ const collections = (): ReadonlyArray<Pair> => [
     },
 ]
 
-/** DataTable, ListBox, SurfaceListCard and Timeline: the loading rows keep the ready rows' rhythm. */
+/** DataTable, ListBox, the list card and Timeline: the loading rows keep the ready rows' rhythm. */
 export const Collections: Story = sideBySide(collections)
 export const CollectionsReady: Story = onePhase("grammar-collections", "ready", collections)
 export const CollectionsLoading: Story = onePhase("grammar-collections", "loading", collections)
