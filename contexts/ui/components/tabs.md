@@ -37,6 +37,9 @@ label, at every width. Overflowing tabs scroll with edge carets (OVERFLOW-4).
 ## States
 Selected is a persistent value with a non-colour cue (indicator geometry); hover and focus never carry it
 (ACCENT-3). Loading keeps the tab labels as real text (STATE-8).
+An unavailable tab carries `isDisabled` on its item; HeroUI keeps it out of selection and keyboard traversal and
+blocks its link navigation. When an operation locks panel switching, disable every item while retaining the
+controlled selection and its panel.
 
 ## Owner split
 - **Grammar owns:** both looks, the nesting-based default, indicator motion, page inset, overflow carets, for
