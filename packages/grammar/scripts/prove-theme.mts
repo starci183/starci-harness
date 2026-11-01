@@ -124,7 +124,7 @@ const markup = async (family: Family): Promise<string> => {
 const measure = (probes: readonly Probe[]): readonly Row[] => {
     const root = document.querySelector(".grammar-common-root")
     if (root === null) throw new Error("the page has no Grammar root")
-    const missingSheets = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].filter((link) => link.sheet === null)
+    const missingSheets = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).filter((link) => link.sheet === null)
     if (missingSheets.length > 0) throw new Error(`stylesheets did not load: ${missingSheets.map((link) => link.href).join(", ")}`)
     const used = (token: string, property: string): string => {
         const el = document.createElement("i")
