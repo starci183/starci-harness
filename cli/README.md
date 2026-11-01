@@ -138,8 +138,9 @@ handoffs, retired projects and busy records. `worktree gc --path <directory> [--
 reviewed legacy linked worktrees of that repository; it refuses primary/caller checkouts, foreign or unlisted paths,
 live workers and live or ambiguous holders, and performs no incidental host sweep. It keeps named branches and a durable
 HEAD ref. Preservation (`harness/worktree-preserve.ts`) keeps binary tracked/index patches, opaque tracked, untracked and ignored
-file copies, and link metadata, excluding reproducible install and compiler/test cache folders; changed metadata or a failed
-copy refuses removal. Selection and liveness are checked again before removal. Removal then reaps the worktree before it removes it
+file copies, and link metadata, excluding reproducible install and compiler/test cache folders; changed metadata, a failed
+copy, a nested repository or an existing folder without Git metadata refuses removal. Selection and liveness are checked
+again before removal. Removal then reaps the worktree before it removes it
 (`removeWorktreeFolder` in `harness/land.ts`, `reapWorktree` in `harness/reap.ts`), in this order: it reads the process
 table, closes every Orca terminal working there (each tab, then Orca's forced close `orca terminal close --worktree
 path:<folder> --all`, which also stops a terminal no list shows), unlinks the install links with a plain unlink (never a

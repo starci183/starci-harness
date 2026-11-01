@@ -39,7 +39,8 @@ Every worktree the harness creates is removed by the harness when its work ends,
 removes one by hand or keeps one alive past its owner. Before removal the collector preserves its binary tracked and index
 patches, tracked working bytes, untracked and ignored files by opaque copies, file and link metadata, and a durable HEAD ref in the project's
 `preserved/` (`cli/src/harness/worktree-preserve.ts`); reproducible install and compiler/test cache folders are excluded by
-that owner. A failed copy or a changed checkout refuses removal. It is then reaped: every Orca terminal
+that owner. A failed copy, a changed checkout, a nested repository or an existing folder without Git metadata refuses
+removal. It is then reaped: every Orca terminal
 whose worktree it is is closed, its install links (each `node_modules` junction or symlink) are unlinked as links (never
 `git worktree remove` or a recursive delete through one, which empties the install it points at, never `robocopy /MIR`), Orca forgets it, and the processes the harness started in it or that work inside it are ended and seen
 gone (by pid, never by name, never the caller or Orca: `cli/src/harness/reap.ts`); then it is removed and git prunes. An

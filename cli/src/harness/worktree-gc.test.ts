@@ -200,3 +200,17 @@ void test("unknown-cwd arguments that name the target are ambiguous, while the c
     assert.equal(processBlockReason(target, [process(10, 9, target), process(9, 1, target)], 10), undefined)
     assert.match(processBlockReason(target, [process(11, 1, target)], 10) ?? "", /holder pid 11/)
 })
+
+void test("unlisted existing remnants and nested repositories refuse deletion until their custody is resolved", async (t) => {
+    const { base, a } = fixture(t)
+    const remnant = join(base, "unlisted-remnant")
+    mkdirSync(remnant)
+    writeFileSync(join(remnant, "local.config"), "retain opaque fixture bytes\n")
+    await assert.rejects(preserveCheckout(a, remnant), /lacks Git metadata/)
+    assert.equal(readFileSync(join(remnant, "local.config"), "utf8"), "retain opaque fixture bytes\n")
+    const path = linked(a, base, "nested-a")
+    mkdirSync(join(path, "nested"))
+    writeFileSync(join(path, "nested/.git"), "fixture metadata pointer\n")
+    await assert.rejects(preserveCheckout(a, path), /nested checkout/)
+    assert.ok(existsSync(path))
+})

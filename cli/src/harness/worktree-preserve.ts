@@ -66,7 +66,8 @@ export interface PreservedCheckout {
 
 /** Preserves binary/index patches, opaque working-file copies, link metadata and a durable HEAD ref. */
 export const preserveCheckout = async (root: string, path: string): Promise<PreservedCheckout | null> => {
-    if (!existsSync(join(path, ".git"))) return null
+    if (!existsSync(path)) return null
+    if (!existsSync(join(path, ".git"))) throw new Refusal("WORKTREE_PRESERVE_UNSAFE", "existing folder lacks Git metadata; retain it until its bytes have a preservation owner")
     const head = await git(path, ["rev-parse", "HEAD"])
     const branch = await git(path, ["branch", "--show-current"])
     const tracked = new Set(nulPaths(await git(path, ["ls-files", "-z"])))
