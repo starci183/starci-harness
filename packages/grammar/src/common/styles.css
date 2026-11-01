@@ -473,26 +473,6 @@
         border: 0;
     }
 
-    .starci-core-surface-copy-group {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .starci-core-surface-copy-group[data-grammar-copy-density="comfortable"] {
-        gap: 0.75rem;
-    }
-
-    .starci-core-included-mark {
-        display: inline-block;
-        width: 1.25rem;
-        height: 1.25rem;
-        flex: none;
-        color: inherit;
-        vertical-align: text-bottom;
-    }
-
     .starci-core-media-frame {
         display: flex;
         min-width: 0;
@@ -880,16 +860,11 @@
     }
 
     /* The accent corner: one logical corner of a surface or a media viewport at the Common accent radius. */
-    [data-grammar-accent-corner="start-start"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-start-start-radius: var(--grammar-accent-corner); }
-    [data-grammar-accent-corner="start-end"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-start-end-radius: var(--grammar-accent-corner); }
-    [data-grammar-accent-corner="end-start"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-end-start-radius: var(--grammar-accent-corner); }
-    [data-grammar-accent-corner="end-end"]:is(.starci-core-surface, .starci-core-backdrop, .starci-core-media-frame > .starci-core-media-viewport) { border-end-end-radius: var(--grammar-accent-corner); }
+    [data-grammar-accent-corner="start-start"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-start-start-radius: var(--grammar-accent-corner); }
+    [data-grammar-accent-corner="start-end"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-start-end-radius: var(--grammar-accent-corner); }
+    [data-grammar-accent-corner="end-start"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-end-start-radius: var(--grammar-accent-corner); }
+    [data-grammar-accent-corner="end-end"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-end-end-radius: var(--grammar-accent-corner); }
 
-    /*
-     * The brand backdrop: the brand's light tint, full-bleed in its host, with no card anatomy (no border, shadow or card
-     * inset; its corners stay square but the accent one). The copy sits at the top; the artwork takes the height left, so
-     * a hero Mascot fills it.
-     */
     /*
      * Freestyle (ruling grammar-freestyle-region): the app's own region. It fills its host and adds no paint, inset or
      * radius of its own; what is inside is the app's.
@@ -900,38 +875,6 @@
         min-width: 0;
         inline-size: 100%;
         block-size: 100%;
-    }
-
-    .starci-core-backdrop {
-        position: relative;
-        display: flex;
-        box-sizing: border-box;
-        min-width: 0;
-        min-block-size: 100%;
-        block-size: 100%;
-        flex-direction: column;
-        gap: var(--grammar-region-gap);
-        padding: var(--grammar-page-inset);
-        overflow: hidden;
-        background: var(--accent-soft);
-        color: var(--foreground);
-    }
-
-    .starci-core-backdrop-content {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        gap: var(--grammar-row-gap);
-    }
-
-    .starci-core-backdrop-artwork {
-        display: flex;
-        min-width: 0;
-        min-block-size: 0;
-        flex: 1 1 auto;
-        align-items: flex-end;
-        justify-content: center;
-        pointer-events: none;
     }
 
     @property --starci-core-highlight-angle {
@@ -3356,11 +3299,6 @@
         flex: none;
     }
 
-    /* RankArtwork is a glyph too: a flex row never squeezes it. Its size stays the consumer's. */
-    .starci-core-rank-artwork {
-        flex: none;
-    }
-
     .starci-core-icon[data-usage="heading"] {
         width: 1.5rem;
         height: 1.5rem;
@@ -3999,10 +3937,9 @@
     }
 
     /*
-     * StatusDot: three variants (text chip, echo, static) share ONE dot-size token and one tone set. The text
-     * chip is HeroUI's soft Chip, so its height and type are the vendor's per size (20px/24px/28px); its inline
-     * padding follows the chip padding rule below. The dot-to-text gap is gap-1 (0.25rem): the Chip's own gap-0.5
-     * (0.125rem) plus the 0.125rem the dot adds after itself.
+     * StatusDot and the dot of `Badge isDot` share ONE dot-size token and one tone set. The dot chip is HeroUI's soft Chip, so its
+     * height and type are the vendor's; its inline padding follows the chip padding rule below. The dot-to-text gap is gap-1
+     * (0.25rem): the Chip's own gap-0.5 (0.125rem) plus the 0.125rem the dot adds after itself.
      */
     .grammar-common-root {
         --starci-core-status-dot-size: 6px;
@@ -4026,33 +3963,20 @@
     .starci-core-status-dot-mark[data-tone="warning"] { --starci-core-status-dot-color: var(--warning); }
     .starci-core-status-dot-mark[data-tone="danger"] { --starci-core-status-dot-color: var(--danger); }
 
-    .starci-core-status-dot-chip > .starci-core-status-dot-mark {
+    .starci-core-badge-dot > .starci-core-status-dot-mark {
         margin-inline-end: var(--grammar-identity-gap);
     }
 
-    /* ConnectionStatus: the dot and its words on one line, in the muted small type of a row annotation. */
-    .starci-core-connection-status {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--grammar-inline-gap);
-        color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-tight);
-        white-space: nowrap;
-    }
-
-    .starci-core-connection-status[data-grammar-connection-state="lost"] { color: var(--starci-core-mark-danger, var(--danger)); }
-
-    .starci-core-status-dot-label {
+    .starci-core-badge-dot-label {
         display: inline-block;
     }
 
-    .starci-core-status-dot-label::first-letter {
+    .starci-core-badge-dot-label::first-letter {
         text-transform: uppercase;
     }
 
-    /* Dot only (static and echo): a small focusable target, so the ring has room and the Tooltip has a trigger. */
-    .starci-core-status-dot:not(.starci-core-status-dot-chip) {
+    /* StatusDot (static and echo): a small focusable target, so the ring has room and the Tooltip has a trigger. */
+    .starci-core-status-dot {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -4084,10 +4008,9 @@
 
     /*
      * Chip inline padding: HeroUI's sm Chip pads 4px each side, so a status word ("đang hoạt động") sits on the pill
-     * edge. Badge and the StatusDot text chip keep the vendor height and type and pad 8px (0.5rem) inline at sm.
+     * edge. Badge, with or without its dot, keeps the vendor height and type and pads 8px (0.5rem) inline at sm.
      */
-    [data-component="Badge"][data-loading],
-    .starci-core-status-dot-chip[data-size="sm"] {
+    [data-component="Badge"][data-loading] {
         padding-inline: 0.5rem;
     }
 
@@ -4180,19 +4103,19 @@
     .starci-core-filter-button-list { max-block-size: 16rem; overflow-y: auto; }
     .starci-core-filter-button-empty { display: block; padding: 0.75rem; color: var(--muted); font-size: var(--grammar-text-md); }
 
-    /* --- ChatBubble: one message; the thread, grouping and scroll belong to the app. --- */
-    .starci-core-chat-bubble {
+    /* --- MessageBubble: one message; the thread, grouping and scroll belong to the app. --- */
+    .starci-core-message-bubble {
         display: flex;
         min-width: 0;
         align-items: flex-start;
         gap: 0.5rem;
     }
 
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] { flex-direction: row-reverse; }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] { flex-direction: row-reverse; }
 
-    .starci-core-chat-bubble-avatar { flex: none; }
+    .starci-core-message-bubble-avatar { flex: none; }
 
-    .starci-core-chat-bubble-stack {
+    .starci-core-message-bubble-stack {
         position: relative;
         display: flex;
         min-width: 0;
@@ -4202,9 +4125,9 @@
         gap: 0.25rem;
     }
 
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-stack { align-items: flex-end; }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-stack { align-items: flex-end; }
 
-    .starci-core-chat-bubble-head {
+    .starci-core-message-bubble-head {
         display: flex;
         min-width: 0;
         flex-wrap: wrap;
@@ -4214,10 +4137,10 @@
         line-height: var(--grammar-leading-xs);
     }
 
-    .starci-core-chat-bubble-author { font-weight: var(--grammar-weight-semibold); color: var(--foreground); }
-    .starci-core-chat-bubble-meta { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .starci-core-message-bubble-author { font-weight: var(--grammar-weight-semibold); color: var(--foreground); }
+    .starci-core-message-bubble-meta { color: var(--muted); font-variant-numeric: tabular-nums; }
 
-    .starci-core-chat-bubble-body {
+    .starci-core-message-bubble-body {
         min-width: 0;
         max-width: 100%;
         padding: 0.5rem 0.75rem;
@@ -4236,22 +4159,22 @@
      * message is the surface. Everything inline inherits the bubble's foreground, so a link, a mention (Text tone accent), code
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body {
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body {
         border-start-start-radius: var(--grammar-radius-lg);
         border-start-end-radius: var(--grammar-radius-xs);
         background: var(--accent);
         color: var(--accent-foreground);
     }
 
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, code, kbd, mark, [data-component="Code"], [data-component="Kbd"], [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Markdown"]) {
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, code, kbd, mark, [data-component="Code"], [data-component="Kbd"], [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Markdown"]) {
         color: inherit;
     }
 
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, [data-component="Link"]) { text-decoration: underline; }
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body [data-component="Text"][data-tone="muted"] { opacity: var(--grammar-opacity-secondary); }
-    .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground) 16%, transparent); }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"]) { text-decoration: underline; }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body [data-component="Text"][data-tone="muted"] { opacity: var(--grammar-opacity-secondary); }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground) 16%, transparent); }
 
-    .starci-core-chat-bubble[data-grammar-bubble-highlight="true"] .starci-core-chat-bubble-body {
+    .starci-core-message-bubble[data-grammar-bubble-highlight="true"] .starci-core-message-bubble-body {
         outline: 2px solid var(--focus);
         outline-offset: 2px;
     }
@@ -4260,8 +4183,8 @@
      * A footer (an approval card, an attachment) takes the stack's full width; the stack of a message with a footer has a
      * definite width, so percentage widths inside the footer resolve instead of collapsing in a shrink-to-fit loop.
      */
-    .starci-core-chat-bubble[data-grammar-bubble-footer="true"] .starci-core-chat-bubble-stack { width: min(40rem, 85%); }
-    .starci-core-chat-bubble-footer { align-self: stretch; width: 100%; min-width: 0; max-width: 100%; }
+    .starci-core-message-bubble[data-grammar-bubble-footer="true"] .starci-core-message-bubble-stack { width: min(40rem, 85%); }
+    .starci-core-message-bubble-footer { align-self: stretch; width: 100%; min-width: 0; max-width: 100%; }
 
     /*
      * Message actions (copy, reply, open): a small floating toolbar beside the bubble, on a bordered surface, centred on the
@@ -4269,7 +4192,7 @@
      * thread and never overlaps text; it shows on hover or focus inside the message. Touch has no hover: there it is a quiet
      * in-flow row under the bubble, always visible.
      */
-    .starci-core-chat-bubble-actions {
+    .starci-core-message-bubble-actions {
         display: flex;
         align-items: center;
         gap: var(--grammar-identity-gap);
@@ -4278,7 +4201,7 @@
     }
 
     @media (hover: hover) {
-        .starci-core-chat-bubble-actions {
+        .starci-core-message-bubble-actions {
             position: absolute;
             z-index: 1;
             inset-block-start: 50%;
@@ -4291,33 +4214,33 @@
             pointer-events: none;
         }
 
-        .starci-core-chat-bubble[data-grammar-bubble-side="incoming"] .starci-core-chat-bubble-actions {
+        .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-actions {
             inset-inline-start: calc(100% + 0.5rem);
         }
 
-        .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-actions {
+        .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-actions {
             inset-inline-end: calc(100% + 0.5rem);
         }
 
-        .starci-core-chat-bubble:hover .starci-core-chat-bubble-actions,
-        .starci-core-chat-bubble:focus-within .starci-core-chat-bubble-actions { pointer-events: auto; }
+        .starci-core-message-bubble:hover .starci-core-message-bubble-actions,
+        .starci-core-message-bubble:focus-within .starci-core-message-bubble-actions { pointer-events: auto; }
     }
 
-    .starci-core-chat-bubble:hover .starci-core-chat-bubble-actions,
-    .starci-core-chat-bubble:focus-within .starci-core-chat-bubble-actions { opacity: 1; }
+    .starci-core-message-bubble:hover .starci-core-message-bubble-actions,
+    .starci-core-message-bubble:focus-within .starci-core-message-bubble-actions { opacity: 1; }
 
     @media (hover: none) {
-        .starci-core-chat-bubble-actions { opacity: 1; }
+        .starci-core-message-bubble-actions { opacity: 1; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .starci-core-chat-bubble-actions { transition: none; }
+        .starci-core-message-bubble-actions { transition: none; }
     }
 
     /* Loading bubble (knowledge STATE-8): the face on its side with two Skeleton lines; a thread alternates sides. */
-    .starci-core-chat-bubble-skeleton-body { inline-size: min(18rem, 70vw); white-space: normal; }
-    .starci-core-chat-bubble-skeleton-body .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
-    .starci-core-chat-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
+    .starci-core-message-bubble-skeleton-body { inline-size: min(18rem, 70vw); white-space: normal; }
+    .starci-core-message-bubble-skeleton-body .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
+    .starci-core-message-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
 
     /*
      * Quote: words from a source on a tinted ground at the nested inset, one radius below the host surface (the control radius
@@ -4359,7 +4282,7 @@
     .starci-core-quote .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
 
     @media (forced-colors: active) {
-        .starci-core-chat-bubble-body { border: 1px solid CanvasText; }
+        .starci-core-message-bubble-body { border: 1px solid CanvasText; }
     }
 
     /* --- FillViewport: the viewport height left below the chrome, measured into --starci-core-fill-top. --- */

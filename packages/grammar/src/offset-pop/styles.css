@@ -86,12 +86,6 @@
         font-weight: var(--grammar-weight-extrabold);
     }
 
-    /* StatusDot with text: a pill in ink. No outline, so its padding and height stay the HeroUI Chip's. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="StatusDot"][data-variant="text"] {
-        border-radius: var(--offset-pop-pill-radius);
-        font-weight: var(--grammar-weight-extrabold);
-    }
-
     /* The status dot takes an ink ring so it reads on the cream canvas. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-status-dot-mark {
         box-shadow: 0 0 0 var(--grammar-hairline) var(--foreground);
@@ -145,7 +139,7 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-depth="nested"],
     /* The reader's own message is the family's pink with its ink; inline content keeps the ink, over the family's own accent text rules. */
-    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-chat-bubble[data-grammar-bubble-side="outgoing"] .starci-core-chat-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
         color: inherit;
     }
 

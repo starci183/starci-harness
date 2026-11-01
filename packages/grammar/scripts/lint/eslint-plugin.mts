@@ -16,7 +16,7 @@ const STYLE_KEY =
 const FALLBACK = /var\(--[\w-]+\s*,\s*(?!var\()/
 
 const CHECKS: readonly { readonly test: RegExp; readonly say: string }[] = [
-    { test: HEX, say: "A hex colour is a literal. Read a HeroUI token or a --grammar-art-* token." },
+    { test: HEX, say: "A hex colour is a literal. Read a HeroUI token." },
     { test: COLOR_FUNCTION, say: "A colour function is a literal. Read a HeroUI token, or mix tokens in CSS." },
     { test: LENGTH, say: "A length is a literal. Name a role in CSS (a ramp of src/common/ramps.css, or the spacing scale)." },
     { test: FALLBACK, say: "A var() fallback is a literal. Define the token once on the root (src/common/ramps.css) and read it bare." },

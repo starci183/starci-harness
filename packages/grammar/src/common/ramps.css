@@ -3,7 +3,7 @@
  * Every component rule reads one of these by name and holds no literal (`scripts/lint/stylelint-plugin.mts`,
  * `starci-grammar/no-literal`); a family overrides a ramp step on its own root, never inside a component rule.
  * Spacing is not here: it is the scale 0 4 8 12 24 32 in `styles.css`. Colour is not here either: the app sets
- * HeroUI's tokens and every rule reads them; the few colours that are art (the rank medals) are `--grammar-art-*`.
+ * HeroUI's tokens and every rule reads them.
  */
 @layer starci-grammar-common {
     .grammar-common-root {
@@ -139,18 +139,5 @@
         --starci-flow-height: 24rem;
         --starci-flow-zoom: 1;
         --avatar-size: var(--starci-core-control-min-size);
-
-        /* ART. Fixed colours of the rank medals: art that no theme restyles, named once so no component carries a hex. */
-        --grammar-art-blue: #0074ba;
-        --grammar-art-sky: #00a6ed;
-        --grammar-art-orange: #ffb02e;
-        --grammar-art-brown: #6d4534;
-        --grammar-art-yellow: #fcd53f;
-        --grammar-art-steel: #636363;
-        --grammar-art-silver: #bebebe;
-        --grammar-art-pearl: #e6e6e6;
-        --grammar-art-bronze: #d3883e;
-        --grammar-art-copper: #f3ad61;
-        --grammar-art-umber: #402a32;
     }
 }

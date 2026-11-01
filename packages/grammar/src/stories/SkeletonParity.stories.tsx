@@ -341,14 +341,14 @@ const rows = (): ReadonlyArray<Pair> => [
         width: "28rem",
     },
     {
-        id: "chat-bubble",
-        ready: <G.ChatBubble side="incoming">Two short lines of a message that wraps once in the bubble.</G.ChatBubble>,
-        loading: <G.ChatBubble side="incoming" isSkeleton>Two short lines of a message that wraps once in the bubble.</G.ChatBubble>,
+        id: "message-bubble",
+        ready: <G.MessageBubble side="incoming">Two short lines of a message that wraps once in the bubble.</G.MessageBubble>,
+        loading: <G.MessageBubble side="incoming" isSkeleton />,
         width: "28rem",
     },
 ]
 
-/** ListRow, SectionHeader, PageHeader, DescriptionList and ChatBubble. */
+/** ListRow, SectionHeader, PageHeader, DescriptionList and MessageBubble. */
 export const Rows: Story = sideBySide(rows)
 export const RowsReady: Story = onePhase("grammar-rows", "ready", rows)
 export const RowsLoading: Story = onePhase("grammar-rows", "loading", rows)

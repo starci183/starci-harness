@@ -1,13 +1,13 @@
 "use client"
 
 import {
-    Backdrop, Badge, Button, Code, ConnectionStatus, ChatBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
-    Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, IncludedMark, Input,
+    Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
+    Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
-    Progress, Quote, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
+    Progress, Quote, Rail, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
     Stack, Cluster, Grid,
-    SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Terminal, Text,
+    SurfaceAccordionCard, SurfaceCard, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
 } from "./renderers.js"
 import { COMMON_FORMS_COMPONENTS } from "./renderers-forms.js"
@@ -24,13 +24,13 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
     Extensions & { readonly [Name in Extract<keyof Extensions, keyof Common>]: never }
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
-    Backdrop, Badge, Button, Code, ConnectionStatus, ChatBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
-    Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, IncludedMark, Input,
+    Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, FillViewport, Freestyle, GrammarRoot,
+    Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, Page, PageContainer, PageHeader, PinnedActionBar, PressableField, PrimaryRailLayout,
-    Progress, Quote, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
+    Progress, Quote, Rail, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
     Stack, Cluster, Grid,
-    SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Terminal, Text,
+    SurfaceAccordionCard, SurfaceCard, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
     ...COMMON_FORMS_COMPONENTS,
     ...COMMON_OVERLAYS_COMPONENTS,

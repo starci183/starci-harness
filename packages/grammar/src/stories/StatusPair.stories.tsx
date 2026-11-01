@@ -131,20 +131,20 @@ export const BareMarks: Story = {
 const longMessage = 'Thanks for the update. I checked the order for table 4 against the booking sheet and the kitchen log, and the 19:30 slot is free as long as the group of eight confirms by 18:00; otherwise the table goes back to the walk-in list and we offer 20:15 instead. Please reply here once you hear from them so the shift lead can plan the pass.';
 
 /** One chat in both sides: the other party on the surface, the reader's own message on the brand fill, with a mention, a link, code and a long message. */
-export const ChatBubbles: Story = {
+export const MessageBubbles: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
         <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-chat-theme={theme} style={{ padding: '1rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: both sides`} direction="column">
-            <G.ChatBubble author="Linh" meta="09:12">
+            <G.MessageBubble author="Linh" meta="09:12">
               <G.Text tone="accent">@You</G.Text> can the order for table 4 move to 19:30? See <G.Link href="#menu">the booking sheet</G.Link> and <G.Code>T4-1930</G.Code>.
-            </G.ChatBubble>
-            <G.ChatBubble author="You" meta="09:14" side="outgoing" status={<G.Badge tone="neutral">Sent</G.Badge>}>
+            </G.MessageBubble>
+            <G.MessageBubble author="You" meta="09:14" side="outgoing" status={<G.Badge tone="neutral">Sent</G.Badge>}>
               <G.Text tone="accent">@Linh</G.Text> yes, moved it. Details in <G.Link href="#sheet">the sheet</G.Link>, ref <G.Code>T4-1930</G.Code>. <G.Text tone="muted">Seen 09:15</G.Text>
-            </G.ChatBubble>
-            <G.ChatBubble author="Linh" meta="09:20" isHighlight>{longMessage}</G.ChatBubble>
-            <G.ChatBubble author="You" meta="09:21" side="outgoing" isHighlight>{longMessage}</G.ChatBubble>
+            </G.MessageBubble>
+            <G.MessageBubble author="Linh" meta="09:20" isHighlight>{longMessage}</G.MessageBubble>
+            <G.MessageBubble author="You" meta="09:21" side="outgoing" isHighlight>{longMessage}</G.MessageBubble>
           </State>
         </G.GrammarRoot>
       ))}

@@ -1,23 +1,37 @@
 import { Chip, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
-import { StatusDotChip } from "../StatusDot/index.js"
+import { StatusDotMark } from "../StatusDot/index.js"
 
 export type BadgeTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted"
 
-export type BadgeProps = {
+type BadgeBase = {
     readonly children?: ReactNode
     /** App-owned status glyph or artwork. */
     readonly startContent?: ReactNode
     /** `muted` is the quiet tone: no fill, muted ink. */
     readonly tone?: BadgeTone
-    /**
-     * A leading status dot, rendered through the `StatusDot` text anatomy (a soft HeroUI Chip, the shared dot-size
-     * token, a gap-1 dot-to-text gap, an uppercase first letter), so a dot chip matches StatusDot everywhere.
-     * `muted` has no dot tone and draws a neutral dot.
-     */
-    readonly isDot?: boolean
     readonly isSkeleton?: boolean
 }
+
+type BadgePlain = BadgeBase & {
+    readonly isDot?: false
+    readonly isLive?: never
+}
+
+type BadgeDot = BadgeBase & {
+    /**
+     * A leading status dot (the shared dot-size token, a gap-1 dot-to-text gap, an uppercase first letter): a status with its words.
+     * `muted` has no dot tone and draws a neutral dot.
+     */
+    readonly isDot: true
+    /**
+     * The status is a live feed (server-sent events, a socket): the dot echoes (off under reduced motion) and the badge is a polite
+     * live region, so a change of its words is spoken without moving focus. The words carry the state, never the colour alone.
+     */
+    readonly isLive?: boolean
+}
+
+export type BadgeProps = BadgePlain | BadgeDot
 
 const TONE_COLORS = {
     muted: "default",
@@ -32,26 +46,44 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
     className: "select-none text-transparent",
 })
 
+/** The label's first letter is always uppercase: a text node is capitalised here, any other node by `::first-letter`. */
+const capitaliseFirst = (children: ReactNode): ReactNode => {
+    if (typeof children !== "string" || children.length === 0) return children
+    return children.charAt(0).toLocaleUpperCase() + children.slice(1)
+}
+
 /**
- * Compact semantic status or figure; product glyph identity remains app-owned. `isDot` renders through
- * `StatusDotChip`, the same anatomy as `StatusDot` with text. `muted` uses HeroUI's tertiary Chip (transparent
+ * Compact semantic status or figure; product glyph identity remains app-owned. `isDot` draws the dot and then the words on a soft
+ * HeroUI `Chip`, and `isLive` makes it the state of a live feed. `muted` uses HeroUI's tertiary Chip (transparent
  * fill) with the muted ink on its content, so no vendor rule is overridden.
  *
  * The glyph and its words share one status owner. Contract: TRUTH-1 (the tone is stated, never
  * inferred, and defaults to neutral).
  */
-export const Badge = ({ children, startContent, tone = "neutral", isDot = false, isSkeleton = false }: BadgeProps) => {
-    if (isDot) {
+export const Badge = (props: BadgeProps) => {
+    const { children, startContent, tone = "neutral", isSkeleton = false } = props
+    if (props.isDot === true) {
+        const isLive = props.isLive === true
+        const dotTone = tone === "muted" ? "neutral" : tone
         return (
-            <StatusDotChip
-                component="Badge"
-                tone={tone === "muted" ? "neutral" : tone}
+            <Chip
+                data-tier="leaf"
+                data-component="Badge"
+                data-contract="TRUTH-1"
+                data-grammar-badge-dot="true"
+                data-grammar-badge-live={isLive ? "true" : undefined}
+                data-tone={dotTone}
+                data-badge-tone={tone}
+                data-loading={isSkeleton ? "true" : "false"}
+                color={TONE_COLORS[dotTone]}
+                variant="soft"
                 size="sm"
-                extra={{ "data-contract": "TRUTH-1", "data-grammar-badge-dot": "true", "data-loading": isSkeleton ? "true" : "false", "data-badge-tone": tone }}
-                isSkeleton={isSkeleton}
+                className={isSkeleton ? `starci-core-badge-dot ${SKELETON_CLASS_NAME}` : "starci-core-badge-dot"}
+                {...(isSkeleton ? { "aria-hidden": true } : isLive ? { role: "status", "aria-live": "polite" as const } : {})}
             >
-                {startContent === undefined ? children ?? " " : <>{startContent}{children}</>}
-            </StatusDotChip>
+                <StatusDotMark tone={dotTone} echo={isLive} />
+                <span className="starci-core-badge-dot-label">{capitaliseFirst(startContent === undefined ? children ?? " " : <>{startContent}{children}</>)}</span>
+            </Chip>
         )
     }
     // Skeleton parity: the start content stays laid out as an unseen measured placeholder, so the chip keeps its width.
@@ -69,11 +101,11 @@ export const Badge = ({ children, startContent, tone = "neutral", isDot = false,
             {...(isSkeleton ? { "aria-hidden": true, className: SKELETON_CLASS_NAME } : {})}
         >
             {tone === "muted" && !isSkeleton ? (
-                <span className="starci-core-badge-muted">{content}{children ?? " "}</span>
+                <span className="starci-core-badge-muted">{content}{children ?? " "}</span>
             ) : (
                 <>
                     {content}
-                    {children ?? " "}
+                    {children ?? " "}
                 </>
             )}
         </Chip>

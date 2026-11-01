@@ -857,8 +857,8 @@ const PaneInsetDemo = () => {
         </G.Pane>
         <G.Pane area="thread">
           <G.PaneSection scroll={{ label: 'Messages', role: 'log', tone: 'background' }}>
-            <G.ChatBubble author="Linh" meta="09:12">Can the order for table 4 move to 19:30?</G.ChatBubble>
-            <G.ChatBubble author="You" meta="09:14" side="outgoing">Yes, I moved it.</G.ChatBubble>
+            <G.MessageBubble author="Linh" meta="09:12">Can the order for table 4 move to 19:30?</G.MessageBubble>
+            <G.MessageBubble author="You" meta="09:14" side="outgoing">Yes, I moved it.</G.MessageBubble>
           </G.PaneSection>
         </G.Pane>
         <G.Pane area="composer" surface>
@@ -988,7 +988,7 @@ const PagePanesDemo = () => (
     <G.PaneGrid label="Setup" areas={{ base: ['chat', 'side'], medium: ['chat side'] }} columns={{ base: ['fill'], medium: ['fill', 'standard'] }}>
       <G.Pane area="chat">
         <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'background' }}>
-          <G.ChatBubble author="Agent" meta="09:12">How can I help?</G.ChatBubble>
+          <G.MessageBubble author="Agent" meta="09:12">How can I help?</G.MessageBubble>
         </G.PaneSection>
       </G.Pane>
       <G.Pane area="side" surface>
@@ -1013,7 +1013,7 @@ const assertPagePanes = async (canvasElement: HTMLElement) => {
     expect(getComputedStyle(grid).borderTopLeftRadius).toBe('0px');
     // The first pane's bands start 12px inside it.
     const chat = grid.querySelector<HTMLElement>('[data-grammar-pane-area="chat"]');
-    const bubble = chat?.querySelector<HTMLElement>('[data-component="ChatBubble"]');
+    const bubble = chat?.querySelector<HTMLElement>('[data-component="MessageBubble"]');
     if (!chat || !bubble) throw new Error('the chat pane renders');
     expect(Math.abs(bubble.getBoundingClientRect().left - contentLeft(chat) - 12)).toBeLessThanOrEqual(0.5);
   }, { timeout: 4000 });
@@ -1036,10 +1036,10 @@ export const PagePanesPhone: Story = {
 };
 
 /** One message: incoming on the recessed face, outgoing on the accent-soft pair; actions appear on hover or focus. */
-export const ChatBubble: Story = {
+export const MessageBubble: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '40rem' }}>
-      <G.ChatBubble
+      <G.MessageBubble
         author="Linh"
         meta="09:12"
         avatar={<G.Avatar name="Linh" size="sm" />}
@@ -1051,15 +1051,15 @@ export const ChatBubble: Story = {
         }
       >
         Can the order for table 4 move to 19:30?
-      </G.ChatBubble>
-      <G.ChatBubble
+      </G.MessageBubble>
+      <G.MessageBubble
         side="outgoing"
         meta="09:13"
         actions={<G.Tooltip content="Copy"><G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} /></G.Tooltip>}
       >
         Yes, moved. The kitchen has the new time.
-      </G.ChatBubble>
-      <G.ChatBubble
+      </G.MessageBubble>
+      <G.MessageBubble
         author="Assistant"
         status={<G.Badge>AI</G.Badge>}
         meta="09:13"
@@ -1068,9 +1068,9 @@ export const ChatBubble: Story = {
         footer={<G.Button variant="secondary" size="sm" onPress={noop}>Approve draft</G.Button>}
       >
         {'Draft reply ready.\nIt keeps the original price.'}
-      </G.ChatBubble>
-      <G.ChatBubble isSkeleton side="outgoing" />
-      <G.ChatBubbleSkeletons />
+      </G.MessageBubble>
+      <G.MessageBubble isSkeleton side="outgoing" />
+      <G.MessageBubble isSkeleton rows={3} />
     </div>
   ),
 };
@@ -1112,9 +1112,9 @@ export const MessengerFrame: Story = {
             <div style={{ padding: '1rem' }}><G.Text weight="semibold">Study group</G.Text></div>
             <G.Divider semantics="presentation" />
             <G.VerticalScrollRegion isScrollable tone="background" aria-label="Messages" style={{ flex: 1, minHeight: 0, padding: '1rem' }}>
-              <G.ChatBubble author="Linh" meta="09:12" actions={<G.Tooltip content="Copy"><G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} /></G.Tooltip>}>
+              <G.MessageBubble author="Linh" meta="09:12" actions={<G.Tooltip content="Copy"><G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} /></G.Tooltip>}>
                 Can the order for table 4 move to 19:30?
-              </G.ChatBubble>
+              </G.MessageBubble>
             </G.VerticalScrollRegion>
           </div>
           <G.Divider orientation="vertical" semantics="presentation" />
