@@ -251,9 +251,16 @@ Choice `grid.choose.content`: which track owner carries the content.
 | --- | --- | --- | --- |
 | week | dated events or appointments belong to seven consecutive day regions | `Grid kind="week"` with an accessible region `label` and seven ordered days, including empty days | one-column agenda in a narrow container, seven tracks at the medium container width |
 | week-summary | each of seven consecutive days reports a daily metric summary | `Grid kind="week-summary"` with an accessible region `label` and seven ordered days | one, four and seven tracks by container width, same reading order |
+| sections | independent named working regions retain separate tasks and heading owners | `Grid kind="sections"` of those regions | one column, two equal tracks in a wide workspace viewport |
+| pair | two equal portions form one reading or comparison unit | `Grid kind="pair"` with required `leading` and `trailing` slots | one column, two equal tracks when their container supports both measures |
+| featured | one central focus has two symmetric secondary support groups | `Grid kind="featured"` with required `leading`, `featured` and `trailing` slots | one reading column or three symmetric tracks, preserving source order |
 | cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles | `card.choose.role:tile` |
 | form | neighbouring fields share aligned control rows | `Grid kind="form"` | `text-field.choose.columns` |
 | main-rail | one task has subordinate support beside it | `Grid kind="main-rail"` | one primary and one rail |
+
+These kinds name content relations. An independent working region is not one portion of a reading pair, and a
+featured focus is not a primary task with an asymmetric rail. Their types own the slots and their styles own every
+threshold and gap; an author does not choose a kind for a desired width or breakpoint.
 
 ### LAYOUT-1 Which regions exist
 One task with no support is one region. Support the reader consults alongside the task is a rail with a named

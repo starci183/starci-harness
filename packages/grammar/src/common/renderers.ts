@@ -1,6 +1,7 @@
 // Common is the public semantic/props authority. A renderer lives in the
 // folder of its tier under src/core: leaf, branch, composite or frame.
 export { GrammarRoot, type GrammarRootProps } from "../core/frame/GrammarRoot/index.js"
+export { EntryFrame, type EntryFrameProps } from "../core/frame/EntryFrame/index.js"
 export { Badge, type BadgeProps, type BadgeTone } from "../core/leaf/Badge/index.js"
 export { Button, type ButtonProps, type ButtonSize, type ButtonType } from "../core/leaf/Button/index.js"
 export type { ButtonIntent, ButtonIntentProps, DestructiveStep } from "../core/buttonIntent.js"

@@ -410,17 +410,43 @@ roles:
     dna: []
     lint: [starci-grammar/freestyle-has-reason]
 
+  - id: cluster
+    ui: ui/composition.md
+    renderers: [Cluster]
+    vendorParity: []
+    slots: [children]
+    variants:
+      gap: { values: [identity, inline, row, section], chosenBy: the relation between siblings }
+      align: { values: [start, center, baseline, end], chosenBy: the shared cross-axis alignment }
+      justify: { values: [start, center, end, between], chosenBy: the shared inline-axis alignment, preserved on each wrapped line }
+      wrap: { values: [true, false], chosenBy: whether the owning region permits additional lines }
+    sizes: shared spacing scale
+    states: []
+    grammarMayChange: ["nothing; spacing, source order and alignment are Common"]
+    dna: []
+
   - id: grid
     ui: ui/composition.md
     renderers: [Grid]
     vendorParity: []
-    slots: ["children: peer cards, aligned fields, or seven consecutive day regions", "label: required accessible region name for week kinds", primary, rail]
+    slots: ["children: peer cards, aligned fields, independent named working sections, or seven consecutive day regions", "label: required accessible region name for week kinds", primary, rail, "leading and trailing: required two portions for pair", "leading, featured and trailing: required focus and symmetric support for featured"]
     variants:
-      kind: { values: [cards, form, main-rail, week, week-summary], chosenBy: app from the content role }
+      kind: { values: [cards, form, main-rail, sections, pair, featured, week, week-summary], chosenBy: app from grid.choose.content, never the desired breakpoint }
       weekLayout: { values: [agenda then seven tracks, summaries in one then four then seven tracks], chosenBy: kind and the grid container width }
     sizes: track thresholds and gaps owned by packages/grammar/src/common/styles.css
     states: [day content and its loading or empty states remain in the day region]
     grammarMayChange: ["nothing; tracks, reading order and spacing are Common"]
+    dna: []
+
+  - id: entry-frame
+    ui: ui/components/entry-frame.md
+    renderers: [EntryFrame]
+    vendorParity: []
+    slots: ["label: required main landmark name", "artwork: app-owned asset composition", "intro: contextual headline and copy", "identity: compact identity when the context pane is hidden", "tools: entry settings", "footer: supporting navigation", "children: bounded form or outcome"]
+    variants: {}
+    sizes: fixed form measure and responsive split owned by packages/grammar/src/common/entry-frame.css and ramps.css
+    states: [form loading, failure and outcomes remain in the same frame slots]
+    grammarMayChange: ["nothing; the tracks, form measure, reading order and spacing are Common"]
     dna: []
 
   - id: shell

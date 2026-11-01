@@ -79,6 +79,16 @@ rulings:
     status: live
     ruling: "The cards and tiles of one Grid kind=\"cards\" stand the inline step (8) apart on both axes, and the grid sits the row step (12) under its title, because siblings sit closer than their heading. This replaces the section step (24) for a card grid."
     owner: "contexts/ui/presentation.md (Space); contexts/ui/situations.md; @starci/grammar src/core/frame/Grid"
+  - id: entry-task-frame
+    date: '2026-11-02'
+    status: live
+    ruling: "One full-height entry task is an EntryFrame: equal context and task panes on desktop, compact identity over the bounded centred form on mobile, tools at the top trailing edge and supporting navigation below. The app owns artwork and copy inside named slots; the Grammar owns every track, bound and responsive transition. The form measure is 24rem and the desktop split begins at 64rem, with no app look props."
+    owner: "contexts/ui/components/entry-frame.md; contexts/grammars/contract.yaml roles.entry-frame; packages/grammar/src/core/frame/EntryFrame; packages/grammar/src/common/entry-frame.css"
+  - id: semantic-region-relations
+    date: '2026-11-02'
+    status: live
+    ruling: "A Grid kind is chosen by its content relation: independent named working sections, two equal portions of one reading or comparison unit, or one featured focus between symmetric support groups. The last two require named slots; no role takes arbitrary columns, gap, width or breakpoint props. Source and focus order are preserved. Independent working sections follow the wide workspace viewport; the other relations answer their own container."
+    owner: "contexts/ui/composition.md grid.choose.content; contexts/grammars/contract.yaml roles.grid; packages/grammar/src/core/frame/Grid; packages/grammar/src/common/styles.css"
   - id: surfacecard-always-painted
     date: '2026-10-25'
     status: live

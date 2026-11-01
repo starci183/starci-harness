@@ -1,12 +1,13 @@
 import { Children, type ReactNode } from "react"
 import { FormGrid, type FormGridColumns } from "../FormGrid/index.js"
 import { PrimaryRailLayout, type PrimaryRailLayoutProps } from "../PrimaryRailLayout/index.js"
+import type { NoChildren } from "../../tier.js"
 
 /** The most cards a row of a `cards` grid holds once its width allows; below that it holds fewer. */
 export type GridCardColumns = 2 | 3 | 4
 
 type GridCardsProps = {
-    /** Peer cards of one collection: equal tracks, the section gap on both axes. */
+    /** Peer cards of one collection: equal tracks, the inline gap on both axes. */
     readonly kind: "cards"
     readonly children: ReactNode
     /** The most cards per row. Omit it to fit as many tracks of the card minimum as the width holds. */
@@ -33,8 +34,43 @@ type GridWeekProps = {
     readonly children: ReactNode
 }
 
-export type GridKind = "cards" | "form" | "main-rail" | "week" | "week-summary"
-export type GridProps = GridCardsProps | GridFormProps | GridMainRailProps | GridWeekProps
+type GridSectionsProps = {
+    /** Independent named working regions; each child keeps its own heading owner. */
+    readonly kind: "sections"
+    readonly children: ReactNode
+}
+
+type GridPairProps = NoChildren & {
+    /** Two equal portions of one reading or comparison unit, in reading order. */
+    readonly kind: "pair"
+    readonly leading: ReactNode
+    readonly trailing: ReactNode
+}
+
+type GridFeaturedProps = NoChildren & {
+    /** One focus between two symmetric supporting groups, in reading order. */
+    readonly kind: "featured"
+    readonly leading: ReactNode
+    readonly featured: ReactNode
+    readonly trailing: ReactNode
+}
+
+export type GridKind = "cards" | "form" | "main-rail" | "week" | "week-summary" | "sections" | "pair" | "featured"
+export type GridProps = GridCardsProps | GridFormProps | GridMainRailProps | GridWeekProps | GridSectionsProps | GridPairProps | GridFeaturedProps
+
+const RelatedRegions = (props: GridSectionsProps | GridPairProps | GridFeaturedProps) => (
+    <div className="starci-core-grid-relations" data-component="Grid" data-tier="frame" data-grammar-grid-kind={props.kind} data-contract="LAYOUT-2 GAP-4 RESPONSIVE-1">
+        <div className="starci-core-grid-regions">
+            {props.kind === "sections" ? props.children : (
+                <>
+                    <div data-grammar-grid-slot="leading">{props.leading}</div>
+                    {props.kind === "featured" ? <div data-grammar-grid-slot="featured">{props.featured}</div> : null}
+                    <div data-grammar-grid-slot="trailing">{props.trailing}</div>
+                </>
+            )}
+        </div>
+    </div>
+)
 
 const WeekGrid = ({ kind, label, children }: GridWeekProps) => {
     if (process.env.NODE_ENV !== "production" && Children.count(children) !== 7) throw new Error("GRID_WEEK_REQUIRES_SEVEN_DAYS: supply seven consecutive day regions, including empty days")
@@ -65,6 +101,7 @@ export const Grid = (props: GridProps) => {
         const { kind, ...layout } = props
         return <PrimaryRailLayout {...layout} />
     }
+    if (props.kind === "sections" || props.kind === "pair" || props.kind === "featured") return <RelatedRegions {...props} />
     if (props.kind !== "cards") return <WeekGrid {...props} />
     return (
         <div

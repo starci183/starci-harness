@@ -450,8 +450,15 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 MarkdownTableFrame, MediaFrame, Rail, Section, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceListCard, VerticalScrollRegion.
 
-**Compositions (10).** Cluster, Footer, Grid, Page, PaneGrid, PaneSection, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
+**Compositions (11).** Cluster, EntryFrame, Footer, Grid, Page, PaneGrid, PaneSection, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
+
+`EntryFrame` holds a full-height entry task with required `artwork`, `intro`, `identity`, `tools` and `footer` slots,
+a named main landmark and form children. It owns the equal desktop split, compact identity on mobile and bounded
+centred form; artwork composition stays with the app. `Grid kind="sections"` groups independent named working
+regions, `kind="pair"` requires equal `leading` and `trailing` portions of one reading unit, and `kind="featured"`
+requires `leading`, `featured` and `trailing` slots for a focus with symmetric support. These kinds take no column,
+gap, width or breakpoint props; content relation chooses the kind.
 
 The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
@@ -519,7 +526,8 @@ An app writes no spacing value; it names the relation of the blocks it places:
 - `Stack` (`gap`: `identity` | `inline` | `row` | `section` | `region`, required; `align`; `measure`: `full` |
   `reading` | `form`; `as`): blocks in the block axis.
 - `Cluster` (`gap`: `identity` | `inline` | `row` | `section`, the same on both axes; `wrap`, default true; `align`;
-  `justify`): items side by side that wrap, a chip set, a toolbar group.
+  `justify`: `start` | `center` | `end` | `between`): items side by side that wrap, a chip set, a toolbar group. A centred
+  set centres each wrapped line without changing its DOM or focus order.
 - `Grid` (`kind="cards"` with `columns?: 2 | 3 | 4`, the inline gap on both axes; `kind="form"` draws the form layout;
   `kind="main-rail"` draws a primary region and one rail). `kind="week"` lays out seven dated event regions with the
   inline gap, changing from a single agenda column to seven tracks at a 48rem container width. `kind="week-summary"`

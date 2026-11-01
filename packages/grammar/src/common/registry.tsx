@@ -2,7 +2,7 @@
 
 import {
     Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
-    Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
+    EntryFrame, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
     Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StatusDot,
@@ -25,7 +25,7 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
     Badge, Button, Code, MessageBubble, PaneGrid, Pane, PaneSection, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
-    Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
+    EntryFrame, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
     Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StatusDot,

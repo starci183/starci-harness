@@ -7,7 +7,7 @@ export type ClusterGap = Exclude<GapRole, "region">
 /** Where the items stand across the line. Default `center`. */
 export type ClusterAlign = "start" | "center" | "baseline" | "end"
 /** How the items share the line. Default `start`. */
-export type ClusterJustify = "start" | "end" | "between"
+export type ClusterJustify = "start" | "center" | "end" | "between"
 
 export type ClusterProps = {
     readonly children: ReactNode

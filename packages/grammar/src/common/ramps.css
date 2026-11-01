@@ -102,6 +102,8 @@
         --starci-core-reading-measure: 72ch;
         --starci-core-form-measure: 30rem;
         --starci-core-form-compact-measure: 28rem;
+        --grammar-entry-form-measure: 24rem;
+        --grammar-entry-intro-measure: 36rem;
         --starci-core-rail-compact-min: 14rem;
         --starci-core-rail-standard-min: 16rem;
         --starci-core-rail-wide-min: 20rem;

@@ -8,6 +8,7 @@
 @import "./components-list-panel.css";
 @import "./components-avatar-group.css";
 @import "./components-spacing.css";
+@import "./entry-frame.css";
 
 @layer starci-grammar-common {
     .grammar-common-root {
@@ -2978,6 +2979,7 @@
     .starci-core-cluster[data-grammar-align="baseline"] { align-items: baseline; }
     .starci-core-cluster[data-grammar-align="end"] { align-items: flex-end; }
     .starci-core-cluster[data-grammar-justify="end"] { justify-content: flex-end; }
+    .starci-core-cluster[data-grammar-justify="center"] { justify-content: center; }
     .starci-core-cluster[data-grammar-justify="between"] { justify-content: space-between; }
 
     /* A heading over a grid of cards sits 12 above it, further than the siblings are from each other. */
@@ -3013,6 +3015,41 @@
     .starci-core-grid-week {
         container: grammar-week / inline-size;
         min-inline-size: 0;
+    }
+
+    .starci-core-grid-relations {
+        container: grammar-relations / inline-size;
+        min-inline-size: 0;
+    }
+
+    .starci-core-grid-regions {
+        display: grid;
+        min-inline-size: 0;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--grammar-section-gap);
+    }
+
+    .starci-core-grid-regions > * { min-inline-size: 0; }
+
+    /* Independent working regions answer the wide workspace viewport, as its page chrome does. */
+    @media (min-width: 80rem) {
+        .starci-core-grid-relations[data-grammar-grid-kind="sections"] > .starci-core-grid-regions {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    /* Two readable portions need two content measures; a narrower parent keeps their source order. */
+    @container grammar-relations (min-width: 33.5rem) {
+        .starci-core-grid-relations[data-grammar-grid-kind="pair"] > .starci-core-grid-regions {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    /* The focus stays between equal support tracks; an intermediate two-track row would break that relation. */
+    @container grammar-relations (min-width: 51rem) {
+        .starci-core-grid-relations[data-grammar-grid-kind="featured"] > .starci-core-grid-regions {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 
     .starci-core-grid-week-days {

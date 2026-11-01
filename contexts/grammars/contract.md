@@ -241,13 +241,30 @@ focus and `onFollow` are the same for both forms. Media keeps its supplied desti
 
 ### Grid
 
-`Grid` names a track layout by the content it carries: peer `cards`, aligned `form` fields, `main-rail`, a dated event
-`week` or a `week-summary` of daily metrics. Week kinds take a region `label` and seven consecutive day regions in
+`Grid` names a track layout by the content it carries: peer `cards`, aligned `form` fields, `main-rail`, independent
+working `sections`, a reading `pair`, one `featured` focus with symmetric support, a dated event `week` or a
+`week-summary` of daily metrics. `sections` holds children whose named regions remain independent. `pair` requires
+`leading` and `trailing`; `featured` requires `leading`, `featured` and `trailing`. Both slot forms reject children,
+arbitrary column counts and look props. Their DOM and focus order remains the supplied reading order. A pair's
+portions are equal; a featured focus stays between symmetric support tracks. These roles use the section gap and
+keep one reading column when constrained; independent sections follow the wide workspace viewport, while a pair
+and featured layout answer their own container. Choose by the content relation, never the desired breakpoint.
+
+Week kinds take a region `label` and seven consecutive day regions in
 reading order, including empty days; the development check refuses another count. The shared week renderer owns its
 container queries. A week is an agenda in a narrow container and seven tracks at the medium width, at the inline gap.
 A week summary wraps through one, four and seven tracks, at the section gap. The exact thresholds belong to
 `packages/grammar/src/common/styles.css`; an app takes no breakpoint, gap or arbitrary column count. Existing day
 content, empty states and actions remain inside their day regions. `Calendar` remains the date-selection control.
+
+### EntryFrame
+
+`EntryFrame` owns one full-height entry task. Its required `label` names the main landmark. Required named frame
+slots `artwork`, `intro`, `identity`, `tools` and `footer` preserve the app's content, while `children` holds its
+bounded form or outcome. The desktop context and task panes are equal; on a phone the context pane is hidden and
+the compact identity remains above the form. Tools stay at the top trailing edge and supporting navigation below
+the vertically centred form. The frame takes no width, gap, class or breakpoint prop. Artwork crop and paint stay
+with the app's asset composition inside `artwork`; no content slot owns the surrounding page layout.
 
 ### ColorSwatch
 
