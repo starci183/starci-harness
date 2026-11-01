@@ -183,12 +183,26 @@ const installStale = (folder: string): boolean => {
     return existsSync(lock) && statSync(lock).mtimeMs > statSync(installed).mtimeMs
 }
 
-/** Builds a package in its folder (installing it first when its install is missing or stale); DEPS_BUILD_FAILED with the output's tail. */
+/** A reinstall owns its node_modules: npm must never empty the shared folder a junction or symlink points at. */
+const assertBuildInstallUnlinked = (folder: string): void => {
+    const modules = join(folder, "node_modules")
+    if (lstatSync(modules, { throwIfNoEntry: false })?.isSymbolicLink() !== true) return
+    throw new Refusal(
+        "DEPS_BUILD_INSTALL_LINKED",
+        `${modules} is a junction or symlink and its install is missing or stale; npm will not run through it. Materialize a private node_modules for this checkout, or unlink only the link itself and install this checkout's lockfile before retrying; keep the shared target intact`,
+    )
+}
+
+/** Builds a package, installing missing or stale private dependencies; refuses DEPS_BUILD_INSTALL_LINKED before reinstalling a linked install. */
 export const buildPackage = async (pkg: LocalPackage): Promise<void> => {
     if (!pkg.builds) return
     if (installStale(pkg.folder)) {
+        assertBuildInstallUnlinked(pkg.folder)
         const args = existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"]
-        const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(args, pkg.folder, held.options))
+        const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => {
+            assertBuildInstallUnlinked(pkg.folder)
+            return captureNpm(args, pkg.folder, held.options)
+        })
         if (install.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm install in ${pkg.folder} failed:\n${tail(install.stdout, install.stderr)}`)
     }
     const build = await withHeavySlot("build", `npm run build ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(["run", "build"], pkg.folder, held.options))
