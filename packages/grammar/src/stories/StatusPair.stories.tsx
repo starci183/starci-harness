@@ -59,6 +59,13 @@ export const SurfaceListCardFooter: Story = {
               </G.SurfaceListCard>
             </div>
           </State>
+          <State label={`${theme}: a SurfaceCard footer`} direction="column">
+            <div style={{ width: 640, maxWidth: '100%' }}>
+              <G.SurfaceCard label="Workspace" fact="2 seats" footer="Seats renew on the first of the month.">
+                <G.Text>Plan: Team</G.Text>
+              </G.SurfaceCard>
+            </div>
+          </State>
           <State label={`${theme}: a footer that is a muted Text`} direction="column">
             <div style={{ width: 640, maxWidth: '100%' }}>
               <G.SurfaceListCard label="Permissions" fact="2 rules" footer={<G.Text tone="muted">Locked rules are set by the workspace owner.</G.Text>}>

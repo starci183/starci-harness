@@ -2,6 +2,7 @@
 
 ## 9.8.5 - 2026-11-01
 
+- Added: `no-heading-above-card` (R354, `FE_HEADING_ABOVE_CARD`): a `SectionHeader` directly above a single card, or a card whose `ariaLabel` repeats the header title, is refused; several cards under one header stay legal.
 - Added: `no-selectable-tag-group` (R353, `FE_TAG_GROUP_SELECTION`): a selection prop on a Grammar `TagGroup` is refused; a filter is a `FilterButtonGroup`.
 - Added: `no-fill-command-in-header` (R352, `FE_COMMAND_FILLS_HEADER`): a Grammar `Button` with `width="fill"` in the `actions` of a `PageHeader` or the `labelEnd` of a `SurfaceCard` or `SurfaceListCard` is refused (a page or pane command hugs its label).
 - Added: `no-table-in-card` (R351, `FE_TABLE_IN_CARD`): a Grammar `DataTable` enclosed by a `SurfaceCard`, or rendered by a component of the same file that a `SurfaceCard` encloses, is refused; plain rows are a `SurfaceListCard` with the note in its `footer`. It is a slot-free surface law at error, with no inline exemption.

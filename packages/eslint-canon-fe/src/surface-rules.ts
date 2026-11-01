@@ -689,8 +689,71 @@ export const noSelectableTagGroup = defineRule({
   },
 })
 
+/** The bounded surfaces that carry their own label. */
+const LABELLED_CARDS = new Set(["SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard"])
+
+/** The source text of a prop value, or null when the prop is absent: `"a"` and `{"a"}` read the same, an expression reads as written. */
+const propText = (context: AnyContext, opening: TSESTree.JSXOpeningElement, name: string): string | null => {
+  const attribute = opening.attributes.find((entry) => entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && entry.name.name === name)
+  if (attribute === undefined || attribute.type !== "JSXAttribute" || attribute.value === null) return null
+  const value = attribute.value
+  if (value.type === "Literal") return String(value.value)
+  if (value.type === "JSXExpressionContainer" && value.expression.type !== "JSXEmptyExpression") {
+    const expression = value.expression
+    return expression.type === "Literal" ? String(expression.value) : context.sourceCode.getText(expression)
+  }
+  return null
+}
+
+/** The element children of a JSX parent, whitespace-only text and empty expressions left out. */
+const meaningfulChildren = (parent: TSESTree.JSXElement | TSESTree.JSXFragment): TSESTree.JSXChild[] =>
+  parent.children.filter((child) => !(child.type === "JSXText" && child.value.trim() === "") && !(child.type === "JSXExpressionContainer" && child.expression.type === "JSXEmptyExpression"))
+
+/** A card has a label by design: a SectionHeader above it is a hand heading. */
+export const noHeadingAboveCard = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "A SectionHeader directly above a single card is a hand heading: the card has a label." },
+    schema: [],
+    messages: {
+      header:
+        "FE_HEADING_ABOVE_CARD: this SectionHeader is directly followed by a single card, and a card has a label by design. Move the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`. Several cards under one header stay legal.",
+      name:
+        "FE_HEADING_ABOVE_CARD: this card's `ariaLabel` repeats the title of the SectionHeader above it. Give the card that title as its `label` (count in `fact`, action in `labelEnd`, note in `footer`) and drop the header.",
+    },
+  },
+  create(context) {
+    const check = (parent: TSESTree.JSXElement | TSESTree.JSXFragment): void => {
+      const children = meaningfulChildren(parent)
+      children.forEach((child, index) => {
+        if (child.type !== "JSXElement") return
+        const header = grammarName(context, child.openingElement.name)
+        if (header?.length !== 1 || header[0] !== "SectionHeader") return
+        const cards: TSESTree.JSXElement[] = []
+        for (let next = index + 1; next < children.length; next += 1) {
+          const sibling = children[next]
+          if (sibling === undefined || sibling.type !== "JSXElement") break
+          const name = grammarName(context, sibling.openingElement.name)
+          if (name?.length !== 1 || name[0] === undefined || !LABELLED_CARDS.has(name[0])) break
+          cards.push(sibling)
+        }
+        if (cards.length === 1) context.report({ node: child.openingElement, messageId: "header" })
+        const title = propText(context, child.openingElement, "title")
+        if (title === null) return
+        for (const card of cards) {
+          if (propText(context, card.openingElement, "ariaLabel") === title) context.report({ node: card.openingElement, messageId: "name" })
+        }
+      })
+    }
+    return {
+      JSXElement: check,
+      JSXFragment: check,
+    }
+  },
+})
+
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-selectable-tag-group": noSelectableTagGroup, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
+export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-hand-built-panes": noHandBuiltPanes, "no-fill-command-in-header": noFillCommandInHeader, "no-selectable-tag-group": noSelectableTagGroup, "no-heading-above-card": noHeadingAboveCard, "no-table-in-card": noTableInCard, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
 export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

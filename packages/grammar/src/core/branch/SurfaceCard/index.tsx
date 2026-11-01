@@ -7,7 +7,7 @@ import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { assertPresentationState, treatmentFor, type PresentationState } from "../../state.js"
 import { VerticalScrollRegion } from "../../composite/VerticalScrollRegion/index.js"
 import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../primitive/Label/index.js"
-import { surfaceFactClassName } from "../SurfaceListCard/classNames.js"
+import { surfaceFactClassName, surfaceFooterClassName } from "../SurfaceListCard/classNames.js"
 import {
     getSurfaceCardClassName,
     getSurfaceContentClassName,
@@ -90,6 +90,8 @@ export type SurfaceCardProps = (LabelledSurfaceCard | SelfNamedSurfaceCard) & (P
     readonly fact?: string
     /** Optional content at the end of the external label row. It takes the fact's single place. */
     readonly labelEnd?: ReactNode
+    /** A note under the card: the same small muted line, full width, as the footer of a `SurfaceListCard`. */
+    readonly footer?: ReactNode
     /**
      * Outline rank of the visible `label` (default 3). Pick the rank below the nearest heading
      * above this surface so the page never skips a level.
@@ -159,6 +161,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
         children,
         fact,
         labelEnd,
+        footer,
         headingLevel = DEFAULT_SURFACE_HEADING_LEVEL,
         state = "neutral",
         wholeAction,
@@ -284,6 +287,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 </Card.Header>
             )}
             {highlightedSurface}
+            {footer === undefined ? null : <div className={surfaceFooterClassName} data-grammar-surface-footer="true">{footer}</div>}
         </Card.Root>
     )
     return <SurfaceNesting>{content}</SurfaceNesting>

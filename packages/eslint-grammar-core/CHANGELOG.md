@@ -4,7 +4,7 @@
 
 - Changed: `status-text-uses-soft-foreground` follows the owner's pair rule. It refuses a solid tone painted as text on a `bg-<tone>-soft` tint of the same element (message `onTint`: use `text-<tone>-soft-foreground`) and the soft foreground with no `bg-<tone>-soft` behind it on its element or on an enclosing element of the file (message `alone`: use `text-<tone>`). A bare `text-<tone>`, which the rule refused before, is no longer a finding. Constants and `classes` entries are judged for the first finding only.
 - Changed: with `offset-pop` as the selected Grammar the `alone` finding is not reported (its light theme keeps the soft foreground for a bare mark, owner choice "1. Pastel").
-- Changed: the bundled rule catalog carries R351, R352, R353 and the new R61 law text.
+- Changed: the bundled rule catalog carries R351 to R354 and the new R61 law text.
 - Changed: moves with `@starci/grammar` 0.20.2 (the stat strip's dividers) and requires `@starci/eslint-canon-fe` 9.8.5; the bundled canon pins follow; the status rule changes (below).
 
 ## 0.20.1 - 2026-11-01

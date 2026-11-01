@@ -54,6 +54,11 @@ export const why = {
     en: "`<file>` gives a TagGroup a selection (`selectionMode`, `selectedIds`, `onSelectionChange`) to use it as a filter.",
     fix: "A TagGroup holds values the user entered; peer values that filter a collection are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list).",
   },
+  "no-heading-above-card": {
+    code: "FE_HEADING_ABOVE_CARD",
+    en: "`<file>` puts a SectionHeader directly above a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard, or gives the card an ariaLabel that repeats the header's title.",
+    fix: "A card has a label by design: move the title to the card's label, the count to fact, the action to labelEnd and the note to footer.",
+  },
   "no-table-in-card": {
     code: "FE_TABLE_IN_CARD",
     en: "`<file>` puts a DataTable inside a SurfaceCard (directly, or in a component of the file that a SurfaceCard encloses).",

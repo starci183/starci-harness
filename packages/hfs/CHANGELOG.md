@@ -2,6 +2,7 @@
 
 ## 4.16.5 - 2026-11-01
 
+- Added: R354 `FE_HEADING_ABOVE_CARD` (eslint-canon-fe `no-heading-above-card`).
 - Added: R353 `FE_TAG_GROUP_SELECTION` (eslint-canon-fe `no-selectable-tag-group`).
 - Added: R352 `FE_COMMAND_FILLS_HEADER` (eslint-canon-fe `no-fill-command-in-header`).
 - Added: R351 `FE_TABLE_IN_CARD` (eslint-canon-fe `no-table-in-card`) in the bundled rule catalog; R61 states the status law as the owner's pair rule.

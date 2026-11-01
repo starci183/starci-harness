@@ -7,6 +7,8 @@
 // proves: FE_HAND_BUILT_PANES@full
 // proves: FE_TAG_GROUP_SELECTION@lite
 // proves: FE_TAG_GROUP_SELECTION@full
+// proves: FE_HEADING_ABOVE_CARD@lite
+// proves: FE_HEADING_ABOVE_CARD@full
 // proves: FE_COMMAND_FILLS_HEADER@lite
 // proves: FE_COMMAND_FILLS_HEADER@full
 // proves: FE_TABLE_IN_CARD@lite
@@ -20,7 +22,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { nestedControlVariant, noFillCommandInHeader, noSelectableTagGroup, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
+import { nestedControlVariant, noFillCommandInHeader, noHeadingAboveCard, noSelectableTagGroup, noHandBuiltPanes, noTableInCard, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
 import { why } from "./lib/why.ts"
 import { eslintRule } from "./lib/eslint-boundary.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
@@ -39,6 +41,7 @@ test("surface rules are published at error with their canon finding codes", () =
   assert.equal(why["no-app-surface-paint"].code, "FE_GRAMMAR_LAYOUT_ONLY")
   assert.equal(why["no-hand-built-panes"].code, "FE_HAND_BUILT_PANES")
   assert.equal(why["no-table-in-card"].code, "FE_TABLE_IN_CARD")
+  assert.equal(why["no-heading-above-card"].code, "FE_HEADING_ABOVE_CARD")
   assert.equal(why["no-selectable-tag-group"].code, "FE_TAG_GROUP_SELECTION")
   assert.equal(why["no-fill-command-in-header"].code, "FE_COMMAND_FILLS_HEADER")
 })
@@ -407,6 +410,36 @@ for (const edition of ["lite", "full"]) {
         { code: head + 'const A = () => <TagGroup label="Filter" items={items} selectionMode="single" />', errors: [selection] },
         { code: head + 'const A = () => <TagGroup label="Filter" items={items} selectedIds={ids} onSelectionChange={set} />', errors: [selection, selection] },
       ].map((entry) => ({ ...entry })),
+    }))
+  })
+}
+
+for (const edition of ["lite", "full"]) {
+  test(`${edition}: a card has its own label, a SectionHeader above a single card is refused`, () => {
+    const head = 'import { SectionHeader, SurfaceCard, SurfaceListCard, SurfaceAccordionCard, Text } from "@starci/grammar/core"; '
+    const header = { messageId: "header" }
+    const name = { messageId: "name" }
+    assert.doesNotThrow(() => tester().run("no-heading-above-card", noHeadingAboveCard, {
+      valid: [
+        // the card carries the title
+        head + 'const A = () => <div><SurfaceCard label="Rules" fact="3" labelEnd={<b />}>x</SurfaceCard></div>',
+        // several cards under one header stay legal
+        head + 'const A = () => <section><SectionHeader title="Team" /><SurfaceCard label="a">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></section>',
+        // a header above something that is not a card
+        head + 'const A = () => <section><SectionHeader title="Team" /><Text>hello</Text></section>',
+        // the card names itself differently from the header
+        head + 'const A = () => <section><SectionHeader title="Team" /><SurfaceCard ariaLabel="Members">x</SurfaceCard><SurfaceCard ariaLabel="Roles">y</SurfaceCard></section>',
+        // a header with other content between it and the card
+        head + 'const A = () => <section><SectionHeader title="Team" /><Text>note</Text><SurfaceCard label="a">x</SurfaceCard></section>',
+        'import { SectionHeader } from "other-kit"; import { SurfaceCard } from "@starci/grammar/core"; const A = () => <section><SectionHeader title="a" /><SurfaceCard label="a">x</SurfaceCard></section>',
+      ],
+      invalid: [
+        { code: head + 'const A = () => <section><SectionHeader title="Rules" /><SurfaceCard label="Rules">x</SurfaceCard></section>', errors: [header] },
+        { code: head + 'const A = () => <section><SectionHeader title={t("rules")} action={<b />} /><SurfaceListCard ariaLabel={t("rules")}>x</SurfaceListCard></section>', errors: [header, name] },
+        { code: head + 'const A = () => <><SectionHeader title="Rules" /><SurfaceAccordionCard ariaLabel="Other">x</SurfaceAccordionCard></>', errors: [header] },
+        // a repeated name is refused even under several cards
+        { code: head + 'const A = () => <section><SectionHeader title="Rules" /><SurfaceCard ariaLabel="Rules">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></section>', errors: [name] },
+      ],
     }))
   })
 }

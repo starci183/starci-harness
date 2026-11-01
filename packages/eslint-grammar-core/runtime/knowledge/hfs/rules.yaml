@@ -6256,3 +6256,26 @@ rules:
         source: owner
         quote: "sao cái này không phải cụm button... button size xs kiểu nhóm button"
         ruling: "A filter over a collection is a FilterButtonGroup of sm toggle buttons; the TagGroup has no selection."
+  - id: R354
+    code: "FE_HEADING_ABOVE_CARD"
+    law: "A card has a label by design, so a hand heading above it is wrong: a SectionHeader directly followed, in the same parent, by one SurfaceCard, SurfaceListCard or SurfaceAccordionCard, and a card whose ariaLabel is the header title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one header stay legal."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_HEADING_ABOVE_CARD"]
+    enforcers:
+      - {kind: eslint-fe, id: no-heading-above-card}
+    editions: [lite, full]
+    docs: [contexts/ui/components/card.md]
+    templateNa: "A template draws no section header above a card."
+    proves:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HEADING_ABOVE_CARD]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HEADING_ABOVE_CARD]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HEADING_ABOVE_CARD]}
+    cases:
+      - id: case-1
+        date: "2026-11-01"
+        source: owner
+        quote: "bản thân card đã có label, vốn là mục đích thiết kế"
+        ruling: "A card carries its own title, count, action and note; a SectionHeader above a single card is refused."
