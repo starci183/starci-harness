@@ -197,7 +197,7 @@ for everything known without data; only unresolved content becomes inert geometr
 component in skeleton mode, never a separate generic layout, and let the grammar frame derive the geometry from its own
 structure: an app draws no skeleton, no fake item list and no row shape. A skeleton means a first load with no data;
 content stays through a refresh; empty appears only after loading ends; an error never reads as empty. The
-[loading table](situations.md#loading) decides each state. A collection draws `budgets.skeletonRows` rows unless
+[loading rules](loading.md) decides each state. A collection draws `budgets.skeletonRows` rows unless
 its size is known. A failed region fails in place (its `EmptyNotice` with a safe retry, or a soft negative
 `Alert`); a failed route keeps its chrome and puts one negative `Alert` where the first region would be. Each route
 ships its own loading and error views. Lint: `starci-fe/no-resting-twin-component`,

@@ -7,7 +7,7 @@
     { "q": "what is the slot of a webhook handler", "expect": ["be.feature.webhooks", "be.feature.webhooks.http", "BE-WEBHOOK-1"] },
     { "q": "R321", "expect": ["R321"] },
     { "q": "which component for a bounded list the reader works through", "expect": ["contexts/ui/situations.md#the-situations", "contexts/ui/components/card.md#choose", "COLLECTION-1"] },
-    { "q": "when is a region a skeleton and when does it keep its content", "expect": ["contexts/ui/situations.md#loading", "STATE-8"] },
+    { "q": "when is a region a skeleton and when does it keep its content", "expect": ["contexts/ui/loading.md#choose", "STATE-8"] },
     { "q": "which tier may take children", "expect": ["contexts/grammars/contributing.md#which-tier", "grammar-tier-ladder"] },
     { "q": "which colour for text on a tinted status background", "expect": ["contexts/ui/presentation.md#type", "status-soft-pair-on-background"] },
     { "q": "may an app set its own colours and theme", "expect": ["app-owns-theme"] },

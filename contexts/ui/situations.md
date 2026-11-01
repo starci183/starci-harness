@@ -5,7 +5,7 @@ screen, each naming the component that is the answer, the spacing role the struc
 and the type, lint or gate that refuses the wrong version. A wrong composition does not compile, and every allowed input
 looks right (ruling `situation-tables`). The Choose tables of [components](components/README.md) and the rules of
 [composition](composition.md) own the finer decisions; this table routes to them and is not cited itself, except the
-[loading table](#loading), which has no other owner.
+[loading](loading.md) page, which has no other owner.
 
 A story is a Storybook id (`<title>--<export>`, lowercased) and names the baseline picture `core-light-<id>.png` under
 [packages/grammar/proof/baselines](../../packages/grammar/proof/README.md), so a row's reference image is its story. A baseline
@@ -43,29 +43,7 @@ comes from the structure.
 
 ## Loading
 
-Four states cover every region that reads data. The fact picks the state; the author passes one boolean and draws nothing.
-
-| State | The data fact | The reader sees | Never |
-|---|---|---|---|
-| skeleton | a first load: `isLoading` and no data yet | the region's own frame with its known text real and the unresolved content as inert geometry, shaped by the frame from its own structure | a refresh, a revalidation or an `isValidating` flag; a fake item list; a hand-drawn bar |
-| content | data exists | the data, and it stays through every refresh | a skeleton or a blank while it revalidates |
-| error | the read failed: `isError` | the region fails in place: an `EmptyNotice` naming what could not load, with a retry of exactly that read | an empty region, a `0`, or the notice painted in a sibling region |
-| empty | loading ended with no items | the region's `EmptyNotice` with its one action | any empty line while a read is still loading |
-
-Choice `loading.choose.situation`: what a region reads decides when it is a skeleton. The first row that applies wins.
-
-| Row | When | Shows | Mechanism | Story | Refused by |
-|---|---|---|---|---|---|
-| one read | a region fed by one read | skeleton on the first load, then content; a later refresh keeps the content | the block's slot (`isLoading`, `isError`) passes `isSkeleton` to the frame, which derives its shape from its own data fields | `leaves-skeleton-parity--collections-loading` | R92 `no-placeholder-prop`, `slot-status-through-slotview`; R367 `no-placeholder-object`: a placeholder is not the ready data emptied |
-| several reads | one frame fed by several reads (a header, a count, a list) | one skeleton until every read has settled its first load, then all of it at once; a count of an unsettled read is hidden, never `0` | loading is any read loading with no data, latched once the frame first drew; every read reaches the frame through one status, never `data ?? []` | `leaves-skeleton-parity--rows-loading` | R367 `no-swr-default-array`: a hook returning `data ?? []` without that read's `isLoading` |
-| key change | a key (a selected room, a filter, a page) changes and its data is not cached | only the region keyed by it returns to skeleton; regions that do not read the key keep their content | each region reads its own slot; a slot is never built from another read's status | `leaves-skeleton-parity--collections-loading` | R367 `no-foreign-slot-status`: a slot built from another slot's `isLoading` or `isError` |
-| background refresh | data exists and is being revalidated | the content unchanged; at most the pending cue of the control that asked (CTA-3) | `isValidating` never feeds a loading decision | `leaves-skeleton-parity--rows-ready` | R367 `no-validating-as-loading`: `isValidating` driving a loading flag |
-| error | one read failed | that region's notice with its retry; every other region unaffected | `isError` is a state, never an empty array | `surfaces--empty-notice` | R367 `no-swr-default-array`: a failed read is never an empty array |
-| empty | loading ended with no items | `EmptyNotice` in the collection's place | empty is reached only from a settled read; a list requires `empty` | `surfaces--empty-notice` | type: `empty` required; `DNA-COMMON-EMPTY-ONE-ACTION` |
-
-A skeleton equals the ready box: the shape comes from the same fields the ready render draws (leading, trailing, description
-lines, bands), so nothing jumps when the data lands (TASTE-10, `SkeletonParity`). Where the grammar cannot yet derive a shape
-from the structure, the gap is [open-grammar](../decisions/open-grammar.md) G-21, not a licence for an app to draw one.
+Four states cover every region that reads data (skeleton, content, error, empty), and the rows that pick them are owned by [loading](loading.md); the situations above link there instead of repeating it.
 
 ## Where the other decision tables live
 
@@ -75,4 +53,5 @@ from the structure, the gap is [open-grammar](../decisions/open-grammar.md) G-21
 | Which tier may do what | [contributing](../grammars/contributing.md#which-tier) |
 | Card kinds and where the label sits | [card](components/card.md) `card.choose.role` and `card.choose.label` |
 | What behind a mark picks its colour token | [presentation](presentation.md#type) `tone.choose.pair` |
+| Loading, error and empty by what a region reads | [loading](loading.md) `loading.choose.status` |
 | Filter, empty, not ready, approval, chat | the Choose anchors in the table above |

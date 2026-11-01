@@ -43,7 +43,7 @@ so the loading tree is the ready tree drawn with the same boxes, and `isSkeleton
 draw the grammar's skeleton from their own structure ([ui composition](../../ui/composition.md) STATE-8). An app draws no
 skeleton and no item list of fake data, a revalidation (`isValidating`) never makes a slot loading, several reads feeding one
 frame reach it as one status that is loading while any read has no data, and a failed read is `isError`, never an empty array
-(the [loading table](../../ui/situations.md#loading)). The one allowed `isSkeleton` branch hides a part that cannot be drawn
+(the [loading table](../../ui/loading.md)). The one allowed `isSkeleton` branch hides a part that cannot be drawn
 without real data (`{isSkeleton ? null : <OrderDisclosure ... />}`); a part that only waits (a button, a field) takes
 its flag and rests as itself, and no branch picks between two different elements. A pure block never branches on a
 status flag, and nothing draws a page-level loading view except the route's `*LoadingPage` ([boundaries.md](boundaries.md)

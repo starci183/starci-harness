@@ -153,7 +153,7 @@ Gate set: `verdict.gates.taste`. Each criterion's numbers are under its threshol
 | TASTE-7 | shape: one family of corner roles; equal peers equal elevation; inner corners nest; hairlines per card | `budgets.hairlinesPerCard` |
 | TASTE-8 | imagery earns its place: decorative images per view; one signature moment (DISCIPLINE-3); an image is never the band's only justification nor the focal point unless it is the job | `budgets.decorativeImages`, `budgets.signatureMoments` |
 | TASTE-9 | density fits the surface class, measured against representative volume, reproducible by a second reader; achieved by grouping, never by shrinking targets | `density.<class>`, `density.reproducibility` |
-| TASTE-10 | designed states: loading keeps the anatomy, empty carries title, line and action, error fails in place, nothing jumps when content arrives; each state is decided by the loading table of [situations.md](situations.md#loading) | — |
+| TASTE-10 | designed states: loading keeps the anatomy, empty carries title, line and action, error fails in place, nothing jumps when content arrives; each state is decided by the loading table of [situations.md](loading.md) | — |
 | TASTE-11 | touch and feedback: targets per A11Y-4; hover, focus and rest visibly distinct with no layout shift; pending visible on the initiator | `target.*` |
 | TASTE-12 | reference match: the direction names reference standards by class, and a reader would sort the surface into that class; `n/a` when the delivery composed nothing | — |
 

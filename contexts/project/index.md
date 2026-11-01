@@ -270,7 +270,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: app-owns-theme
 - [ui/scale.md](../ui/scale.md) · 7 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.
   - sections: Why one ramp · The ramp · Drawn height and target size are two facts · How each component sits on the ramp · What travels with a step · Density
-- [ui/situations.md](../ui/situations.md) · 11 KB — An author says what the thing is; the grammar decides how it looks.
+- [ui/situations.md](../ui/situations.md) · 8 KB — An author says what the thing is; the grammar decides how it looks.
   - sections: The situations · Loading · Where the other decision tables live
 - [vendor/README.md](../vendor/README.md) · 3 KB — The grammar is built on HeroUI (`@heroui/react` with `@heroui/styles`; the version is pinned in stack/pins.yaml).
   - sections: The vendor reference is generated, not kept here · Pin

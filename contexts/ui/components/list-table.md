@@ -36,7 +36,7 @@ Tables are dense by default; numeric columns align end (FLOW-1); a wide table ha
 ## States
 Loading shows `budgets.skeletonRows` skeleton rows from the same row the list draws, in the list's own container, with the
 resolved row anatomy; empty and failed states are the region's [empty-state](empty-state.md) (STATE-8, FEEDBACK-2, the
-[loading table](../situations.md#loading)).
+[loading table](loading.md)).
 
 ## Owner split
 - **Grammar owns:** row anatomy and order, description line limit, separators, selection fill, table density,

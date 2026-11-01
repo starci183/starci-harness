@@ -64,7 +64,7 @@ No size. Width follows measure rules; a form card caps itself with the surface's
 
 ## States
 `isSkeleton` renders the same card from its own fields: a list draws `loadingRows` rows from the same row, figures and a
-tile keep their cells, the label stays real text (STATE-8, the [loading table](../situations.md#loading)). A failed card
+tile keep their cells, the label stays real text (STATE-8, the [loading table](loading.md)). A failed card
 fails in place.
 
 ## Owner split
