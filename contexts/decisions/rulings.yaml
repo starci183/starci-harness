@@ -737,6 +737,11 @@ rulings:
     status: live
     ruling: "Peer values that filter a collection in place are a FilterButtonGroup: one row of sm toggle buttons (the vendor ToggleButton group, single selection, never empty), an optional count per option, selected on the soft accent pair and the rest on the surface; it never wraps, and the options that do not fit go behind a \"+n\" button that opens a search list (matching without tone marks), a chosen hidden option taking the place of the last visible one. The selectable TagGroup is removed from the filter role everywhere and TagGroup has no selection: it stays for values the user entered, with remove or reorder. The owner's words: \"sao cái này không phải cụm button... button size xs kiểu nhóm button\"; the owner then set the size to sm, not xs."
     owner: "contexts/ui/components/chip.md (chip.choose.role, filter); @starci/grammar src/core/composite/FilterButtonGroup; contexts/hfs/rules.yaml R353"
+  - id: card-carries-its-own-label
+    date: '2026-11-01'
+    status: live
+    ruling: "A card already has a label, which is the purpose of its design: the title is its label, the count its fact, the action its labelEnd and the note its footer, so a SectionHeader directly above a single SurfaceCard, SurfaceListCard or SurfaceAccordionCard is a hand heading and is refused, as is a card whose ariaLabel repeats the header's title; several cards under one header stay legal. SurfaceCard takes a footer, the same bottom note as SurfaceListCard. The owner's words: \"bản thân card đã có label, vốn là mục đích thiết kế\"."
+    owner: "contexts/ui/components/card.md; contexts/hfs/rules.yaml R354; @starci/grammar src/core/branch/SurfaceCard"
   - id: flow-graph-lanes
     date: '2026-11-01'
     status: live
