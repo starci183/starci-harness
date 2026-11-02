@@ -92,7 +92,7 @@ declare module "*/runtime/scripts/hfs/architecture/jwt-ast.mjs" {
 declare module "*/runtime/scripts/hfs/architecture/function-spec-providers.mjs" {
     import type ts from "typescript"
     /** The callable exports of a function subject, or null when the class-provider check applies. */
-    export function functionSubjectExports(tsModule: typeof ts, sourceFile: ts.SourceFile): string[] | null
+    export function functionSubjectExports(tsModule: typeof ts, sourceFile: ts.SourceFile, checker: ts.TypeChecker): string[] | null
     /** The value-object classes a module exports, or null when it exports a class that is not one (or none). */
     export function valueObjectSubjects(tsModule: typeof ts, sourceFile: ts.SourceFile): string[] | null
 }

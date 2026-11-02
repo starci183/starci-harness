@@ -266,19 +266,27 @@ for (const edition of ["lite", "full"]) test(`spec-infra-double-from-kit: ${edit
 
 test("spec-infra-double-from-kit: a function subject beside constants, enums, re-exports and overloads is judged by its callable subset (A1)", () => {
     const filename = at("src/modules/domain/order/mixed-subject.mapper.spec.ts")
-    const functions = 'import { pad, shout } from "./mixed-subject.mapper"\n'
+    const functions = 'import { pad, shout, total as sum } from "./mixed-subject.mapper"\n'
     const subject = (value: string) => `${functions}const SUBJECT = Symbol("subject")\nconst provider = { provide: SUBJECT, useValue: ${value} }`
     assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [
             { filename, code: subject("pad") },
             { filename, code: subject("{ pad, shout }") },
+            // the sibling's real re-export keeps the same subject provenance, including a renamed local import
+            { filename, code: subject("sum") },
+            { filename, code: subject("{ pad, shout, total: sum }") },
         ],
         invalid: [
             // a hand-built stand-in for the overloaded function or for the arrow export is still a drift
             { filename, code: subject("{ pad: () => '', shout }"), errors: [{ messageId: "wrong" }] },
             { filename, code: subject("{ pad, shout: () => '' }"), errors: [{ messageId: "wrong" }] },
+            { filename, code: subject("{ pad, shout, total: () => 0 }"), errors: [{ messageId: "wrong" }] },
+            // importing the same implementation through another module does not make it a sibling subject import
+            { filename, code: 'import { total } from "./function-subject.mapper"\nconst provider = { provide: SUBJECT, useValue: total }', errors: [{ messageId: "unknown" }] },
+            { filename, code: 'import type { total } from "./mixed-subject.mapper"\nconst provider = { provide: SUBJECT, useValue: total }', errors: [{ messageId: "unknown" }] },
             // a constant is not a callable subject function
             { filename, code: 'import { LIMIT } from "./mixed-subject.mapper"\nconst provider = { provide: SUBJECT, useValue: LIMIT }', errors: [{ messageId: "unknown" }] },
+            { filename, code: subject("{ pad, shout, total: sum, LIMIT: 5 }"), errors: [{ messageId: "wrong" }] },
         ],
     }) })
 })

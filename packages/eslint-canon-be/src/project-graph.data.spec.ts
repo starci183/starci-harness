@@ -307,6 +307,50 @@ for (const edition of ["lite", "full"] as const) test(`unit-spec-providers: ${ed
     })
 })
 
+for (const edition of ["lite", "full"] as const) test(`unit-spec-providers: ${edition} named callable re-exports keep their real implementation provenance`, (t) => {
+    const cases = {
+        good: { value: "{ total, doubled, tripled }" },
+        alias: { value: "{ total, doubled, tripled: triple }", imports: 'import { total, doubled, tripled as triple } from "./numbers.service";' },
+        missing: { value: "{ total, doubled }" },
+        wrapped: { value: "{ total, doubled, tripled: (value: number) => tripled(value) }" },
+        wrongModule: { value: "{ total, doubled, tripled }", imports: 'import { total, doubled } from "./numbers.service"; import { tripled } from "./functions.policy";' },
+        noncallable: { value: "{ total, doubled, tripled, LIMIT }", extra: "import { LIMIT } from './numbers.service';" },
+        stub: { value: "{ total, doubled, tripled, stub }", extra: "import { stub } from './numbers.service';" },
+        missingExport: { value: "{ total, doubled, tripled, missing }", extra: "import { missing } from './numbers.service';" },
+        typeOnly: { value: "{ total, doubled, tripled, quadrupled }", extra: "import { quadrupled } from './numbers.service';" },
+        extraneous: { value: "{ total, doubled, tripled, quadrupled }", extra: "import { quadrupled } from './functions.policy';" },
+    }
+    const files: Record<string, string> = {}
+    for (const [name, options] of Object.entries(cases)) {
+        const root = `src/modules/domain/reexport-${name}`
+        files[`${root}/index.ts`] = 'export { total, doubled, tripled } from "./numbers.service";'
+        files[`${root}/numbers.service.ts`] = [
+            'import { tripled } from "./bridge.policy"; export { tripled };',
+            'export const total = (left: number, right: number): number => left + right;',
+            'export function doubled(value: number): number { return value * 2; }',
+            'export { LIMIT } from "./functions.policy";',
+            'export type { quadrupled } from "./functions.policy";',
+            ...(name === "stub" ? ['export { stub } from "./stub.policy";'] : []),
+            ...(name === "missingExport" ? ['export { missing } from "./missing.policy";'] : []),
+        ].join("\n")
+        files[`${root}/bridge.policy.ts`] = 'export { tripled } from "./functions.policy";'
+        files[`${root}/functions.policy.ts`] = 'export const tripled = (value: number): number => value * 3; export const quadrupled = (value: number): number => value * 4; export const LIMIT = 5;'
+        files[`${root}/stub.policy.ts`] = 'export declare function stub(value: number): number;'
+        files[`${root}/missing.policy.ts`] = 'export {};'
+        files[`${root}/numbers.service.spec.ts`] = functionSpec({ provider: `{ provide: SUBJECT, useValue: ${options.value} }` })
+            .replace("import { total, doubled } from './numbers.service';", `${"imports" in options ? options.imports : 'import { total, doubled, tripled } from "./numbers.service";'}\n${"extra" in options ? options.extra : ""}`)
+    }
+    const fixture = projectFixture({ files, edition })
+    t.after(fixture.cleanup)
+    fixture.tester.run("unit-spec-providers", ruleNamed(rules, "unit-spec-providers"), {
+        valid: valid(fixture, files, ["good", "alias"].map(name => `src/modules/domain/reexport-${name}/numbers.service.spec.ts`)),
+        invalid: Object.keys(cases).filter(name => name !== "good" && name !== "alias").map(name => ({
+            ...source(fixture, files, `src/modules/domain/reexport-${name}/numbers.service.spec.ts`),
+            errors: [{ messageId: "finding" }],
+        })),
+    })
+})
+
 test("injection-token-exported: an Inject<Thing>() over an exported token is fine, over a private token it is refused on its decorator", (t) => {
     const f = projectFixture({ files: SPEC_FILES })
     t.after(f.cleanup)

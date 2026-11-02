@@ -1,7 +1,8 @@
 import path from 'node:path';
-import type { ArrayLiteralExpression, CallExpression, ClassDeclaration, ConstructorDeclaration, Decorator, Expression, Identifier, ModifierLike, Node, ObjectLiteralExpression, SourceFile, Statement, VariableStatement } from 'typescript';
+import type { ArrayLiteralExpression, CallExpression, ClassDeclaration, ConstructorDeclaration, Decorator, Expression, Identifier, ModifierLike, Node, ObjectLiteralExpression, SourceFile, Statement, TypeChecker, VariableStatement } from 'typescript';
 import type { TypeScriptApi } from './config.mjs';
 import type { ImportBinding } from './machine-ast.mjs';
+import { normalizedSymbol } from './ast-walks.mjs';
 
 /** A statement that may carry modifiers (`export`, `declare`, ...). */
 type ModifiedStatement = Statement & { readonly modifiers?: readonly ModifierLike[] | undefined };
@@ -28,16 +29,27 @@ function callableExports(ts: TypeScriptApi, statement: Statement): string[] {
   return ts.isVariableStatement(statement) ? callableVariables(ts, statement) : [];
 }
 
+/** Named value re-exports count only when the checker resolves an actual function implementation. */
+function callableReexports(ts: TypeScriptApi, checker: TypeChecker, statement: Statement): string[] {
+  if (!ts.isExportDeclaration(statement) || statement.isTypeOnly || !statement.exportClause || !ts.isNamedExports(statement.exportClause)) return [];
+  return statement.exportClause.elements.filter(element => !element.isTypeOnly && (normalizedSymbol(ts, checker, element.name)?.declarations ?? []).some(declaration => {
+    if (declaration.getSourceFile().isDeclarationFile) return false;
+    if (ts.isFunctionDeclaration(declaration)) return Boolean(declaration.body);
+    return ts.isVariableDeclaration(declaration) && Boolean(declaration.initializer
+      && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer)));
+  })).map(element => element.name.text);
+}
+
 /**
- * The callable subset of a function subject's exports. Constants, enums, objects, types, `export ... from` re-exports and overload
- * signatures do not change which functions the spec must provide; a class or a default-export assignment keeps the class-provider
- * check (null), as does a module with no callable export.
+ * The callable subset of a function subject's exports, including named re-exports resolved to real implementations. Constants,
+ * enums, objects, type-only exports and bodyless declarations do not count; a class or a default-export assignment keeps the
+ * class-provider check (null), as does a module with no callable export.
  */
-export function functionSubjectExports(ts: TypeScriptApi, sourceFile: SourceFile): string[] | null {
+export function functionSubjectExports(ts: TypeScriptApi, sourceFile: SourceFile, checker: TypeChecker): string[] | null {
   const names: string[] = [];
   for (const statement of sourceFile.statements) {
     if (ts.isClassDeclaration(statement) || ts.isExportAssignment(statement)) return null;
-    for (const name of callableExports(ts, statement)) if (!names.includes(name)) names.push(name);
+    for (const name of [...callableExports(ts, statement), ...callableReexports(ts, checker, statement)]) if (!names.includes(name)) names.push(name);
   }
   return names.length ? names : null;
 }

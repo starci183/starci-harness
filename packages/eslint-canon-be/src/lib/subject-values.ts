@@ -16,14 +16,14 @@ const realSubjectFunction = (context: Context, value: Node): string | null => {
     const tsNode = toTs(value)
     const symbol = ts.isShorthandPropertyAssignment(tsNode.parent)
         ? checker.getShorthandAssignmentValueSymbol(tsNode.parent) : checker.getSymbolAtLocation(tsNode)
-    const alias = symbol?.declarations?.some(declaration => ts.isImportSpecifier(declaration))
-    const target = alias && symbol ? checker.getAliasedSymbol(symbol) : symbol
-    const declaration = target?.valueDeclaration
-    if (!declaration) return null
-    const sourceFile = declaration.getSourceFile()
+    const declaration = symbol?.declarations?.find(ts.isImportSpecifier)
+    if (!declaration || declaration.isTypeOnly || declaration.parent.parent.isTypeOnly) return null
+    const importedModule = checker.getSymbolAtLocation(declaration.parent.parent.parent.moduleSpecifier)
     const sibling = (context.filename || context.getFilename()).replace(/\.spec\.ts$/u, ".ts")
-    if (path.resolve(sourceFile.fileName) !== path.resolve(sibling)) return null
-    const names = functionSubjectExports(ts, sourceFile)
+    const sourceFile = importedModule?.declarations?.find((candidate): candidate is ts.SourceFile => ts.isSourceFile(candidate)
+        && path.resolve(candidate.fileName) === path.resolve(sibling))
+    if (!sourceFile) return null
+    const names = functionSubjectExports(ts, sourceFile, checker)
     return imported.imported !== null && names?.includes(imported.imported) ? imported.imported : null
 }
 
