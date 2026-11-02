@@ -328,7 +328,7 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
         const ran = new Map<string, CheckOutcome>()
         const outcomes: Record<string, CheckOutcome[]> = {}
         if (prepared.every((outcome) => outcome.status === "green")) {
-            for (const each of tasks) {
+            await inOrder(tasks, async (each) => {
                 outcomes[each.task.id] = await inOrder(each.checks, async (check) => {
                     // A task its live suite's custody stopped runs nothing more here: it is judged once the key is sealed or the declaration read.
                     if (blocked.has(each.task.id)) return { name: check.name, kind: check.check.kind, status: "green", exitCode: null, detail: "not run: blocked on custody" }
@@ -353,7 +353,7 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
                     ran.set(key, outcome)
                     return outcome
                 })
-            }
+            })
         }
         return { prepared, outcomes }
     }).catch((error: unknown) => {

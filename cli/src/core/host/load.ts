@@ -10,6 +10,7 @@ import { registeredRepositories } from "../../harness/project-workers.js"
 import { captureTool } from "../../shared/exec.js"
 import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /** One heavy command as `host load` shows it: its slot row and the resident memory of the child it spawned. */
 interface LoadRow extends HeavySlot {
@@ -117,16 +118,16 @@ const residentMb = async (pids: readonly number[]): Promise<Map<number, number>>
         }
         return found
     }
-    for (const pid of pids) {
+    await inOrder(pids, async (pid) => {
         const status = join("/proc", String(pid), "status")
         if (existsSync(status)) {
             const kb = /VmRSS:\s+(\d+)/.exec(readFileSync(status, "utf8"))?.[1]
             if (kb !== undefined) found.set(pid, Math.round(Number(kb) / 1024))
-            continue
+            return
         }
         const run = await captureTool("ps", ["-o", "rss=", "-p", String(pid)], process.cwd(), { timeoutMs: 10_000 })
         if (run.exitCode === 0 && run.stdout.trim() !== "") found.set(pid, Math.round(Number(run.stdout.trim()) / 1024))
-    }
+    })
     return found
 }
 

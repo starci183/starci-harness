@@ -668,13 +668,11 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd, task }
     const started = Date.now()
     const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
-    let announced = false
-    let load: HostLoad
-    for (;;) {
+    const admit = async (announced: boolean): Promise<{ readonly load: HostLoad; readonly announced: boolean }> => {
         // Re-judged at every poll from the RAM free now and the commands running now, so admission follows the host as it frees.
         const tried = tryAcquire(slot, rules, await cpuLoad(rules))
-        load = tried.load
-        if (tried.holders === null) break
+        const { load } = tried
+        if (tried.holders === null) return { load, announced }
         if (waitsRefused) {
             release(slot.id)
             throw new Refusal(HEAVY_DEFERRED, `${label} was not admitted at once (${load.reason}) and a coordinator's turn never waits in the heavy queue; it runs detached or on a later turn`)
@@ -686,10 +684,11 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
         }
         if (!announced) {
             process.stderr.write(`starci: ${label} waits for a heavy-command slot (${load.reason}; running: ${tried.holders.join(", ") || "none"})\n`)
-            announced = true
         }
         await sleep(rules.pollSeconds * 1000)
+        return admit(true)
     }
+    const { load, announced } = await admit(false)
     if (announced) {
         const waitedMs = Date.now() - started
         withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner, task })))

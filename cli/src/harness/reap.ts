@@ -186,6 +186,13 @@ const GRACE_MS = 3_000
 
 const pause = async (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
 
+/** Waits in 100 ms pauses, up to the grace period, while any of `pids` is still alive. */
+const waitGone = async (pids: readonly number[], waited = 0): Promise<void> => {
+    if (waited >= GRACE_MS || !pids.some(pidAlive)) return
+    await pause(100)
+    await waitGone(pids, waited + 100)
+}
+
 /** Ends each pid, never its tree by parent id (a reused parent id would take strangers): taskkill /F on Windows, SIGTERM then SIGKILL elsewhere. */
 const endAll = async (pids: readonly number[]): Promise<void> => {
     if (pids.length === 0) return
@@ -203,10 +210,10 @@ const endAll = async (pids: readonly number[]): Promise<void> => {
             }
         }
         signal("SIGTERM")
-        for (let waited = 0; waited < GRACE_MS && pids.some(pidAlive); waited += 100) await pause(100)
+        await waitGone(pids)
         signal("SIGKILL")
     }
-    for (let waited = 0; waited < GRACE_MS && pids.some(pidAlive); waited += 100) await pause(100)
+    await waitGone(pids)
 }
 
 /** How long a removal waits after closing a worktree's terminals, for their shells to exit. */

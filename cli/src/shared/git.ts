@@ -2,6 +2,7 @@ import { resolve } from "node:path"
 import { Refusal } from "./errors.js"
 import { captureTool, captureToolSync, runTool } from "./exec.js"
 import type { RunOptions, ToolRun } from "./exec.js"
+import { inOrder } from "./sequential.js"
 
 /**
  * The configuration every harness git call runs under, whatever the user's config says: paths are printed as they are, never
@@ -100,13 +101,15 @@ export const branchBase = async (cwd: string): Promise<string> => {
     const remote = (await refExists(cwd, "origin/main")) ? "origin/main" : "HEAD"
     if (branch === undefined || branch === "main") return remote
     const forks: string[] = []
-    for (const trunk of ["main", "origin/main"]) {
-        if (!(await refExists(cwd, trunk))) continue
+    await inOrder(["main", "origin/main"], async (trunk) => {
+        if (!(await refExists(cwd, trunk))) return
         const run = await captureGit(["merge-base", "HEAD", trunk], cwd)
         if (run.exitCode === 0 && run.stdout.trim() !== "") forks.push(run.stdout.trim())
-    }
-    let newest: string | undefined
-    for (const fork of forks) if (newest === undefined || (await isAncestor(cwd, newest, fork))) newest = fork
+    })
+    const newest = await forks.reduce<Promise<string | undefined>>(async (best, fork) => {
+        const current = await best
+        return current === undefined || (await isAncestor(cwd, current, fork)) ? fork : current
+    }, Promise.resolve(undefined))
     return newest ?? "HEAD"
 }
 

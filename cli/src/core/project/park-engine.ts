@@ -344,12 +344,14 @@ const sleep = async (ms: number): Promise<void> => new Promise((done) => setTime
 /** Waits up to `seconds` for the project's Supervisor to attach; null when it has not. */
 const attachedWithin = async (project: Project, seconds: number): Promise<AttachedSupervisor | null> => {
     const deadline = Date.now() + seconds * 1000
-    for (;;) {
+    const poll = async (): Promise<AttachedSupervisor | null> => {
         const seat = supervisorRecord(project.key)
         if (isAttached(seat)) return seat
         if (Date.now() >= deadline) return null
         await sleep(2000)
+        return poll()
     }
+    return poll()
 }
 
 /**

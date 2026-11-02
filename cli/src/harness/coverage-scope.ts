@@ -4,6 +4,7 @@ import { captureTool } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
 import { SPEC_FILE } from "../shared/spec-file.js"
 import { underPaths } from "./contract.js"
+import { inOrder } from "./sequential.js"
 
 /** The config file names jest resolves in a folder, in its own order of preference. */
 const JEST_CONFIGS = ["jest.config.js", "jest.config.ts", "jest.config.mjs", "jest.config.cjs", "jest.config.json"]
@@ -85,19 +86,19 @@ export const changedCoverageScope = async (place: CoveragePlace, allowPaths: rea
     if (groups.size === 0) return { args: [], detail: "coverage: no changed source file under allowPaths has a jest config above it; the command runs as named" }
     const measured: string[] = []
     const problems: string[] = []
-    for (const [dir, files] of groups) {
+    await inOrder([...groups], async ([dir, files]) => {
         const entry = jestEntry(place.root, dir)
         if (entry === undefined) {
             problems.push(`jest is not installed for ${toSlash(relative(place.root, dir)) || "."}`)
-            continue
+            return
         }
         const config = await resolvedCoverage(entry, dir, place)
         if ("problem" in config) {
             problems.push(config.problem)
-            continue
+            return
         }
         measured.push(...files.map((file) => toSlash(relative(config.rootDir, join(place.root, file)))).filter((file) => measuredBy(config.globs, file)))
-    }
+    })
     if (problems.length > 0) return { args: [], detail: `coverage: the scope could not be read (${problems.join("; ")}); the command runs as named` }
     if (measured.length === 0) return { args: ["--coverage=false"], detail: `coverage: none of the ${String(changed.length)} changed source file(s) is measured logic; the measured scope is CI's` }
     return { args: measured.map((file) => `--collectCoverageFrom=${file}`), detail: `coverage judged on the ${String(measured.length)} changed logic file(s): ${measured.join(", ")}` }

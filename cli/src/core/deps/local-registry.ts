@@ -132,6 +132,14 @@ export const registryStatus = async (port: number, cwd: string): Promise<"absent
 
 const PING_SECONDS = 60
 
+/** Whether the registry on `port` answers within `seconds`, asked once a second. */
+const answersWithin = async (port: number, seconds: number): Promise<boolean> => {
+    if (seconds <= 0) return false
+    if (await registryAnswers(port)) return true
+    await new Promise((done) => setTimeout(done, 1000))
+    return answersWithin(port, seconds - 1)
+}
+
 /** Whether the registry answers its ping. */
 export const registryAnswers = async (port: number): Promise<boolean> => {
     try {
@@ -160,10 +168,7 @@ export const ensureRegistry = async (port: number, cwd: string): Promise<void> =
         const restarted = await docker(["restart", CONTAINER], cwd)
         if (restarted.exitCode !== 0) throw failed(`docker restart ${CONTAINER}`, restarted)
     }
-    for (let waited = 0; waited < PING_SECONDS; waited += 1) {
-        if (await registryAnswers(port)) return
-        await new Promise((done) => setTimeout(done, 1000))
-    }
+    if (await answersWithin(port, PING_SECONDS)) return
     throw new Refusal("LOCAL_REGISTRY_NOT_READY", `${registryUrl(port)} did not answer within ${String(PING_SECONDS)} s; see docker logs ${CONTAINER}`)
 }
 

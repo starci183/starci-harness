@@ -13,6 +13,7 @@ import type { NeedResolver } from "./needs.js"
 import { thisVerifier, withSettleLock } from "./settle.js"
 import { recordEvent } from "./tasks.js"
 import { projectOf } from "./work.js"
+import { inOrder } from "./sequential.js"
 
 /**
  * Opt-in pattern ownership. A slot of the hfs manifest with `pattern: <name>` is enabled only by `sides.<side>.patterns` of the
@@ -170,10 +171,10 @@ const commitFile = async (checkout: string, head: string, file: string, text: st
         writeFileSync(join(dir, "hfs.json"), text)
         const blob = await git(checkout, ["hash-object", "-w", `--path=${file}`, join(dir, "hfs.json")])
         const mode = (await git(checkout, ["ls-tree", head, "--", file])).split(/\s/)[0] ?? "100644"
-        for (const args of [["read-tree", head], ["update-index", "--cacheinfo", `${mode},${blob},${file}`]]) {
+        await inOrder([["read-tree", head], ["update-index", "--cacheinfo", `${mode},${blob},${file}`]], async (args) => {
             const run = await captureGit(args, checkout, { env })
             if (run.exitCode !== 0) throw new Refusal("HFS_PATTERN_NOT_LANDED", `git ${args[0] ?? ""}: ${run.stderr}`)
-        }
+        })
         const tree = await captureGit(["write-tree"], checkout, { env })
         if (tree.exitCode !== 0) throw new Refusal("HFS_PATTERN_NOT_LANDED", `git write-tree: ${tree.stderr}`)
         return await git(checkout, ["commit-tree", tree.stdout, "-p", head, "-m", message])

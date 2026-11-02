@@ -150,13 +150,15 @@ const pause = async (ms: number): Promise<void> => new Promise((done) => setTime
 const orcaRemove = async (binary: OrcaBinary, path: string, repo: string): Promise<string | undefined> => {
     await worktreeRemove(binary, path, repo)
     const deadline = Date.now() + ORCA_REMOVAL_MS
-    for (;;) {
+    const poll = async (): Promise<string | undefined> => {
         const state = await worktreeState(binary, path, repo)
         if (!state.listed) return undefined
         if (state.removalError !== null) return `Orca's removal failed: ${state.removalError}`
         if (Date.now() >= deadline) return `still removing after ${String(ORCA_REMOVAL_MS / 1000)}s`
         await pause(500)
+        return poll()
     }
+    return poll()
 }
 
 /** Drops Orca's record of a removed worktree that Orca still lists (a removal it began and could not finish stays listed as failed). */

@@ -12,6 +12,7 @@ import { listPackages, workspacePatterns } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import type { StepResult } from "./scope.js"
 import { trimEndChars } from "../../shared/trim.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /** The code of a workspace dependency that did not build, on its own step and on every step it held back. */
 export const DEP_BUILD_FAILED = "CHECK_WORKSPACE_DEP_BUILD_FAILED"
@@ -164,7 +165,7 @@ export const buildWorkspaceDependencies = async (root: string, given: readonly W
     const keys = new Map<WorkspacePackage, string>()
     const failed = new Set<WorkspacePackage>()
     const steps: StepResult[] = []
-    for (const pkg of order) {
+    await inOrder(order, async (pkg) => {
         const sources = await sourceFiles(root, pkg)
         const key = sha256([
             CACHE_SCHEMA,
@@ -177,23 +178,23 @@ export const buildWorkspaceDependencies = async (root: string, given: readonly W
         ].join("\n"))
         keys.set(pkg, key)
         const missing = missingEntries(pkg)
-        if (missing.length === 0) continue
+        if (missing.length === 0) return
         const held = dependenciesOf(pkg).filter((dependency) => failed.has(dependency))
         if (held.length > 0) {
             failed.add(pkg)
             steps.push(step(pkg, "skipped", `not built: its workspace dependency ${held.map((each) => each.name).join(", ")} did not build`))
-            continue
+            return
         }
         const shortKey = key.slice(0, 12)
         const lacking = `${missing.join(", ")} missing`
         if (restore(key, pkg)) {
             steps.push(step(pkg, "green", `${lacking}; restored from the build cache (${shortKey})`))
-            continue
+            return
         }
         if (pkg.scripts.build === undefined) {
             failed.add(pkg)
             steps.push(step(pkg, "red", `${DEP_BUILD_FAILED}: ${pkg.name} (${pkg.relativeDir}) has ${lacking} and no build script to make them`))
-            continue
+            return
         }
         const before = snapshot(pkg.dir)
         const run = await withHeavySlot("build", `npm run build ${pkg.name}`, pkg.dir, options, (held) => captureNpm(["run", "build"], pkg.dir, held.options))
@@ -203,14 +204,14 @@ export const buildWorkspaceDependencies = async (root: string, given: readonly W
             const deadlineSuffix = run.timedOut ? " at the deadline" : ""
             const why = run.exitCode !== 0 ? `exited ${String(run.exitCode)}${deadlineSuffix}` : `exited 0 but left ${still.join(", ")} missing`
             steps.push(step(pkg, "red", `${DEP_BUILD_FAILED}: npm run build of ${pkg.name} in ${pkg.relativeDir} ${why}`, evidenceTail(run.stdout, run.stderr)))
-            continue
+            return
         }
         const source = new Set(sources)
         const outputs = [...snapshot(pkg.dir)].filter(([file, stamp]) => !source.has(file) && before.get(file) !== stamp).map(([file]) => file).sort((left, right) => left.localeCompare(right))
         const unstored = store(key, pkg, outputs)
         const unstoredText = unstored === undefined ? ` and cached (${shortKey})` : `, not cached: ${unstored}`
         steps.push(step(pkg, "green", `${lacking}; built${unstoredText}`))
-    }
+    })
     const closure = (pkg: WorkspacePackage, met: Set<WorkspacePackage>): WorkspacePackage[] =>
         dependenciesOf(pkg).flatMap((dependency) => {
             if (met.has(dependency)) return []

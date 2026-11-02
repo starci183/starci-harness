@@ -49,6 +49,7 @@ import { listHandoffs } from "../pkg/edit.js"
 import { taskCancelVerb } from "../task/cancel.js"
 import { amendWithRelays, workflowAmendVerb } from "../workflow/amend.js"
 import type { StepAction } from "../workflow/engine.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /**
  * The router of shared needs (cli/README.md "Shared needs"), run by every step of a workflow (harness/engine.ts settleWorkflow:
@@ -444,9 +445,8 @@ const filesOf = async (target: string, commit: string): Promise<string[]> => {
 
 /** Every file the resolving commits change, in the order they first touch it: the need's paths as the source settled them. */
 const pathsOf = async (target: string, commits: readonly string[]): Promise<string[]> => {
-    const files: string[] = []
-    for (const commit of commits) files.push(...(await filesOf(target, commit)))
-    return [...new Set(files)]
+    const files = await inOrder(commits, (commit) => filesOf(target, commit))
+    return [...new Set(files.flat())]
 }
 
 /**
@@ -489,13 +489,13 @@ const relay = async (place: Place, need: NeedRow): Promise<Relay> => {
             if (await holdsFinal(target, start, last, paths)) return { status: "present", relayed: [], files: [], detail: `${branch} holds the resolving commits' content at all ${String(paths.length)} of their file(s)`, commits, branch }
             let head = start
             const relayed: Relayed[] = []
-            for (const commit of commits) {
-                if (await gitSucceeds(target, ["merge-base", "--is-ancestor", commit, head])) continue
+            await inOrder(commits, async (commit) => {
+                if (await gitSucceeds(target, ["merge-base", "--is-ancestor", commit, head])) return
                 const made = await rebaseCandidate(target, commit, await resolveSha(target, `${commit}^`), head)
-                if (made.tree === (await captureGit(["rev-parse", `${head}^{tree}`], target)).stdout.trim()) continue
+                if (made.tree === (await captureGit(["rev-parse", `${head}^{tree}`], target)).stdout.trim()) return
                 relayed.push({ from: commit, to: made.commit })
                 head = made.commit
-            }
+            })
             if (head === start) return { status: "present", relayed, files: [], detail: `${branch} holds every resolving commit's change`, commits, branch }
             const ff = await captureGit(["merge", "--ff-only", "--quiet", head], target)
             if (ff.exitCode !== 0) throw new Refusal("NEED_RELAY_FAILED", `git merge --ff-only in ${target}: ${ff.stderr.trim()}`)
@@ -703,7 +703,7 @@ const registerReturned = async (place: Place): Promise<StepAction[]> => {
         }),
     )
     const actions: StepAction[] = []
-    for (const one of returned) {
+    await inOrder(returned, async (one) => {
         const keys = withMachine((db) =>
             one.reports.map((report) => {
                 const attached = attachWaiter(db, report, { project: place.project, repo: place.repo, workflow: place.workflow, task: one.task, taskKey: one.key })
@@ -715,11 +715,11 @@ const registerReturned = async (place: Place): Promise<StepAction[]> => {
             await taskCancelVerb.run({ ...place.context, cwd: place.root }, { task: one.task, reason: `parked on shared need ${keys.join(", ")}; released when it is resolved or rejected` })
         } catch (error: unknown) {
             actions.push(action(`waiter not parked (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`, "problem", one.task, one.key))
-            continue
+            return
         }
         withMachine((db) => db.prepare("UPDATE shared_need_waiters SET parked_at = ? WHERE project = ? AND repo = ? AND task_id = ? AND parked_at IS NULL").run(now(), place.project, place.repo, one.task))
         actions.push(action(`parked on shared need ${keys.join(", ")} (work preserved)`, "cancelled", one.task, one.key))
-    }
+    })
     return actions
 }
 
@@ -764,13 +764,13 @@ export const tendNeeds = async (context: VerbContext, root: string, workflowId: 
         if (getWorkflowSafe(root, workflowId) === undefined) return []
         const place: Place = { context, project: project.key, repo: needRepo(await mainCheckout(root)), root, workflow: workflowId }
         const actions = await registerReturned(place)
-        for (const need of withMachine((db) => needsOfWorkflow(db, place.project, place.repo, workflowId))) {
+        await inOrder(withMachine((db) => needsOfWorkflow(db, place.project, place.repo, workflowId)), async (need) => {
             try {
                 actions.push(...(await tendOne(place, need)))
             } catch (error: unknown) {
                 actions.push(action(`need ${need.key} not tended (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`, "problem"))
             }
-        }
+        })
         return actions
     } catch (error: unknown) {
         return [action(`shared needs not tended (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`, "problem")]

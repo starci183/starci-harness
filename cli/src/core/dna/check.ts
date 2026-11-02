@@ -11,6 +11,7 @@ import type { PageBegin, PageVariant } from "./measure.js"
 import { serveFolder } from "./serve.js"
 import type { StaticSite } from "./serve.js"
 import { trimEndChars } from "../../shared/trim.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /*
  * `starci dna check`: the measured laws of contexts/grammars/contract.yaml, judged on rendered pages in one headless browser. A
@@ -164,15 +165,15 @@ export const dnaCheckVerb = defineVerb({
                 }
                 return { family, variants }
             })
-            for (const page of pages) {
-                for (const { family, variants } of plan) {
-                    for (const theme of THEMES) {
+            await inOrder(pages, async (page) => {
+                await inOrder(plan, async ({ family, variants }) => {
+                    await inOrder(THEMES, async (theme) => {
                         context.progress(`dna: ${page.label} ${family} ${theme}`)
                         const url = page.story ? `${page.url}&globals=grammarFamily:${family};grammarTheme:${theme}` : page.url
                         await tab.media({ dark: theme === "dark" })
                         if (!(await tab.open(url, waitMs + 10_000))) {
                             problems.push(`${page.label}: ${url} did not finish loading`)
-                            continue
+                            return
                         }
                         const rootSelector = `[${ROOT_ATTRIBUTE}="${family}"]`
                         await tab.evaluate(`(${settlePage.toString()})(${JSON.stringify({ rootSelector, waitMs })})`)
@@ -181,9 +182,9 @@ export const dnaCheckVerb = defineVerb({
                         const roots = beginSchema.parse(await tab.evaluate(`window.__dna.begin(${JSON.stringify(begin)})`))
                         if (roots.roots === 0) {
                             if (roots.anyRoot === 0 || !page.story) problems.push(`${page.label}: no [${ROOT_ATTRIBUTE}="${family}"] Grammar root rendered`)
-                            continue
+                            return
                         }
-                        for (const width of widths) {
+                        await inOrder(widths, async (width) => {
                             await tab.viewport({ width, height: width >= 1000 ? 1080 : 844 })
                             const reports = reportsSchema.parse(await tab.evaluate(`window.__dna.run(${JSON.stringify(variants.map(({ index, variant }) => ({ index, variant })))})`))
                             for (const report of reports) {
@@ -197,10 +198,10 @@ export const dnaCheckVerb = defineVerb({
                                 if (report.brokenCount > 0) row.pageSet.add(page.label)
                                 for (const broken of report.broken) if (row.examplesMutable.length < 200) row.examplesMutable.push({ page: `${page.label} ${theme}@${String(width)}`, path: broken.path, breaks: broken.breaks })
                             }
-                        }
-                    }
-                }
-            }
+                        })
+                    })
+                })
+            })
             const lawStatus = (ran: boolean, row: { readonly broken: number; readonly evaluated: number; readonly followUp: string | null }): LawRow["status"] => {
                 if (!ran) return "not-run"
                 if (row.broken > 0) return row.followUp === null ? "red" : "known"

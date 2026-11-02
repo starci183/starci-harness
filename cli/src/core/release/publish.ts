@@ -10,6 +10,7 @@ import { assertCliPins } from "../check/cli-pins.js"
 import { SPEC_FILE } from "../../shared/spec-file.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /** What publication does with one package. */
 type Action = "publish" | "published" | "private"
@@ -110,23 +111,23 @@ const versionOnRegistry = async (name: string, version: string, cwd: string): Pr
  * (assertCliPins), so a CLI waiting on a sibling never holds the packages that sibling is published with.
  */
 const judgeRequires = async (rows: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string): Promise<void> => {
-    for (const row of rows.filter((candidate) => candidate.action === "publish")) {
+    await inOrder(rows.filter((candidate) => candidate.action === "publish"), async (row) => {
         const requires = packages.find((pkg) => pkg.name === row.package)?.requires ?? {}
-        for (const [name, spec] of Object.entries(requires)) {
+        await inOrder(Object.entries(requires), async ([name, spec]) => {
             const sibling = rows.find((candidate) => candidate.package === name)
-            if (sibling === undefined) continue
+            if (sibling === undefined) return
             if (sibling.action === "private") throw new Refusal("RELEASE_DEPENDENCY_UNPUBLISHED", `${row.package}@${row.version} requires ${name}@${spec}, which is private: it is neither on npm nor published by this run`)
             if (row.dir === HELD_DIR) {
                 if (!(await versionOnRegistry(name, spec, root))) {
                     throw new Refusal("RELEASE_DEPENDENCY_SKEW", `${row.package}@${row.version} requires ${name}@${spec}, which npm does not serve; the CLI installs its siblings from npm, so it moves to ${sibling.version} once npm serves it`)
                 }
-                continue
+                return
             }
             if (spec !== sibling.version) {
                 throw new Refusal("RELEASE_DEPENDENCY_SKEW", `${row.package}@${row.version} requires ${name} ${spec}, but ${sibling.dir} is ${sibling.version} at this commit; set the requirement to ${sibling.version} in the commit that raises ${row.package}`)
             }
-        }
-    }
+        })
+    })
 }
 
 /** A path of a package folder under one of its test folders, which never ship. */

@@ -1,6 +1,7 @@
 import { posix } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { git, nulPaths } from "../../shared/git.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /** The registry every judgement of "what npm serves" asks, whatever the caller's npm configuration or environment says. */
 export const NPMJS_REGISTRY = "https://registry.npmjs.org/"
@@ -91,8 +92,7 @@ export const judgeLocalRegistry = async (root: string, revision: string): Promis
     const files = nulPaths(await git(root, ["ls-tree", "-r", "-z", "--name-only", revision])).filter(
         (file) => !file.split("/").includes("node_modules") && (LOCKFILE.test(posix.basename(file)) || posix.basename(file) === ".npmrc"),
     )
-    const found: LocalReference[] = []
-    for (const file of files) found.push(...localReferences(file, await git(root, ["show", `${revision}:${file}`])))
+    const found = (await inOrder(files, async (file) => localReferences(file, await git(root, ["show", `${revision}:${file}`])))).flat()
     if (found.length === 0) return
     const listed = found.slice(0, 5).map((one) => `${one.file}:${String(one.line)} ${registryAddress(one.url)}`).join("; ")
     const more = found.length > 5 ? ` and ${String(found.length - 5)} more` : ""
