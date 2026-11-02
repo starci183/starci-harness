@@ -85,7 +85,7 @@ const parsed = (text: string): unknown => {
 
 /**
  * The HFS child execution port: admission and worker limits apply to each actual Node tool. A request that names the number of files it judges
- * (`files`, @starci/hfs 5.0.8 and later) has its kind's liveness budget scaled with it (`heavyTimeoutMinutes`).
+ * (`files`, @starci/hfs releases after 5.0.7) has its kind's liveness budget scaled with it (`heavyTimeoutMinutes`).
  */
 export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): HeavyNodeRun => async (request: HeavyNodeRequest & { readonly files?: number | undefined }) =>
     admit(request.kind, request.label, request.cwd, {
