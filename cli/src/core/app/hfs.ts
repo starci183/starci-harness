@@ -7,7 +7,7 @@ import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { packageVersion } from "../version.js"
 
 /** The `starci app` verbs @starci/hfs implements; each is one verb file of this folder. */
-export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "lint" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
+export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
 
 /**
  * What the CLI hands @starci/hfs besides its version, for the verbs that use it: the caller's role an urgent release record names, and the
