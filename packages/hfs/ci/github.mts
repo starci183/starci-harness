@@ -6,7 +6,7 @@ import type { ValidCiDeclaration, ValidCiEntry } from '../runtime/scripts/hfs/ci
 export interface CiScope { env?: string | undefined; dependabot?: boolean | undefined }
 
 /** The parsed options of a `starci app ci` command: the scope plus `--repo`, `--value` and `--execute`/`--json`. */
-export interface CiOptions extends CiScope { repo?: string | undefined; value?: string | undefined; execute?: boolean | undefined; json?: boolean | undefined }
+export interface CiOptions extends CiScope { repo?: string | undefined; value?: string | undefined; execute?: boolean | undefined; json?: boolean | undefined; 'from-custody'?: boolean | undefined }
 
 /** One declared CI secret or variable of a declaration without problems (runtime/scripts/hfs/ci-declaration.mjs readCiDeclaration). */
 export type CiEntry = ValidCiEntry;

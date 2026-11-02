@@ -196,7 +196,7 @@ $defs:
           local: {type: string, pattern: '^https?://[^\s]+$'}
           public: {type: string, pattern: '^https://[^\s]+$'}
           fromCredential:
-            description: A hosted endpoint carried inside a credential (a Sentry DSN) - the credential id, never the value.
+            description: A private connection URL carried inside a sealed credential - its credential id, never the value. Public local or hosted URLs use local or public.
             type: string
             pattern: '^[a-z][a-z0-9-]*$'
       stack: {$ref: '#/$defs/serviceStack'}
@@ -432,17 +432,19 @@ $defs:
       publishedBy: {type: string, minLength: 1}
   serviceCredential:
     description: >-
-      A custody reference, never a value - the repository whose stack holds it and the plaintext
-      member's path from that repository's root; the tracked <path>.enc twin must exist. The field env is the
-      variable the consuming tool reads; `key` is the field inside a structured custody file (app.yaml)
-      when the application reads the file itself. At least one of env and key is named. Sonar
-      convention (scripts/gates/sonar-local.mjs reads it): id `admin` creates projects and mints
-      tokens; a credential whose id is a project key is that project's analysis token.
+      A name-only connection or credential reference: its repository, actual sealed member path and key.
+      env names the consuming tool's variable. project references projects[].key for project-scoped tooling;
+      ids identify references independently of provider project-key syntax. Username, password and private
+      endpoint keys use separate references; operator/admin login lives in a separate authority member and
+      is never an implicit scanner or CI credential. Product Sonar analysis names exactly
+      .starcistacks/<declared-env>/secrets/sonar.enc.yaml; ci-declaration.mjs enforces that service-specific member.
+      Legacy plaintext paths with .enc twins require migration.
     type: object
     additionalProperties: false
     required: [id, custody]
     properties:
       id: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+      project: {type: string, minLength: 1, description: "The exact projects[].key this credential serves; execution selects the entry by the actual consumer repository."}
       purpose: {type: string, minLength: 1}
       env: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
       key: {type: string, minLength: 1}
@@ -469,6 +471,7 @@ $defs:
       workflow: {type: string, minLength: 1}
       permissions: {type: array, items: {type: string, minLength: 1}}
       secrets:
+        description: Explicit credential-to-CI execution-copy links; names are declared in the top-level ci block. ci.token selects the analysis copy.
         type: array
         items:
           type: object

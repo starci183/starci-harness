@@ -1995,14 +1995,14 @@ rules:
       - {kind: eslint-be, id: capability-module-shape}
   - id: R296
     code: CI_SECRET_SEALED
-    law: No CI secret names a key sealed inside an app secret member.
+    law: A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key; required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential.
     failureCodes:
       - CI_SECRET_SEALED
     enforcers:
       - {kind: hfs, id: ci-custody}
   - id: R297
     code: APP_SECRET_IN_CI
-    law: No sealed key granted to an app container appears in the CI secrets or vars.
+    law: No sealed key selected by an app runtime secret declaration or deploy grant appears in the CI secrets or vars.
     failureCodes:
       - APP_SECRET_IN_CI
     enforcers:

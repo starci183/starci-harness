@@ -34,7 +34,7 @@ export const catalogOf = (id: string): CatalogEntry => {
 export const checkServiceForm = (service: StackServiceEntry, id: string, entry: ServiceDeclaration, at: string, kind: string, add: AddFinding, ambiguous: Ambiguous): void => {
   if (service.provider && !catalogOf(id).providers.includes(service.provider))
     add('refuse', 'STACKS_PROVIDER_UNKNOWN', `${at}.provider`, `${service.provider} is not a ${id} provider (${catalogOf(id).providers.join(', ')})`);
-  if (Object.hasOwn(entry?.ci ?? {}, 'secrets') || Object.hasOwn(entry?.ci ?? {}, 'vars'))
+  if (Object.hasOwn(entry?.ci ?? {}, 'vars') || service.ci.secrets.some((item) => !item.credential))
     add('suspect', 'STACKS_CI_LEGACY_FORM', `${at}.ci`, 'move the names to the top-level ci block and name them by services.<id>.ci.token / hostVar');
   if (id === 'sonar' && service.provider === 'sonarcloud' && !service.organization
     && !(kind === 'example' && service.runtimeSecrets.length && !service.credentials.length && service.ci.organizationVar))
@@ -66,6 +66,7 @@ export function checkQualityService(service: StackServiceEntry, id: string, at: 
   if (['codecov', 'dependabot', 'audit'].includes(id)) {
     if (id === 'codecov' && !['oidc', 'token'].includes(service.auth ?? '')) ambiguous('codecov auth must be oidc or token');
     if (id === 'codecov' && service.auth === 'token' && !service.ci.token) ambiguous('codecov auth token requires ci.token');
+    if (id === 'codecov' && service.auth === 'oidc' && (service.ci.token || service.credentials.length || service.ci.secrets.length)) ambiguous('codecov OIDC has no token, credential or sealed member');
     checkServiceCi(service, id, at, context);
     return true;
   }

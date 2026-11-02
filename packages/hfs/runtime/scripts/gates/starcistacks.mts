@@ -41,6 +41,8 @@ import { readProperties } from '../lib/properties.mjs';
 import { escapeRegExp } from '../lib/regex.mjs';
 import { isInfrastructureValueFile } from './starcistacks-value-file.mjs';
 import { STACK_DECLARATION_TEMPLATE } from '../lib/example-refs.mjs';
+import { isSealedName } from '../lib/sealed-member.mjs';
+import { serviceBindings } from '../hfs/ci-declaration.mjs';
 import { checkSecretForm, kindOf, type AddFinding, type ServiceCredential, type ServiceStack, type StackServiceEntry } from './starcistacks-form.mjs';
 import { SERVICE_CATALOG, catalogOf, checkServiceForm, checkCiDeclaration, checkQualityService, type Ambiguous, type ParsedDocument, type QualityServiceContext } from './starcistacks-ci.mjs';
 import { applicationStackFindings } from './starcistacks-runtime.mjs';
@@ -157,9 +159,10 @@ const normalizeCredential = (credential: ParsedDocument, declaringRepo: string |
   const repo = resolveDeclaredRepository(custody.repository, { fromRepo: declaringRepo });
   const rel = text(custody.path);
   const abs = resolveCustodyFile(repo, rel);
-  return { id: text(credential.id), env: text(credential.env), key: text(credential.key), purpose: text(credential.purpose),
+  const sealed = rel && isSealedName(rel) ? abs : abs ? `${abs}.enc` : null;
+  return { id: text(credential.id), env: text(credential.env), key: text(credential.key), purpose: text(credential.purpose), project: text(credential.project),
     custody: { repository: text(custody.repository), path: rel, resolved: Boolean(repo), file: abs,
-      encPresent: abs ? isFile(`${abs}.enc`) : null, plainPresent: abs ? isFile(abs) : null } };
+      encPresent: sealed ? isFile(sealed) : null, plainPresent: abs && !isSealedName(abs) ? isFile(abs) : false } };
 };
 const ownerActionOf = (s: ParsedDocument): StackServiceEntry['ownerAction'] => {
   const noAction = s.ownerAction === 'none' ? 'none' : null;
@@ -223,11 +226,8 @@ export function resolveStackService(repoRoot: unknown, serviceId: string): Resol
     let service: ServiceLike = normalizeService(serviceId, entry, { declaringRepo: declaration?.repo });
     const listed = service.projects.some((project) => project.repository === name);
     if (declaration.sourceHost && !listed) continue;
-    // Through the source host a product gets the shared server, its shared credentials and its own project
-    // token (a credential whose id is a project key); other projects' tokens and the host's CI wiring are not its.
-    const ownKey = service.projects.find((project) => project.repository === name)?.key;
-    const projectKeys = new Set(service.projects.map((project) => project.key));
-    if (declaration.sourceHost) service = { ...service, credentials: service.credentials.filter((credential) => !projectKeys.has(credential.id) || credential.id === ownKey),
+    // A source host lends public server settings only; analysis credentials stay in the selected product's custody.
+    if (declaration.sourceHost) service = { ...service, credentials: [],
       ci: { wiring: null, workflow: null, permissions: [], secrets: [], vars: [], provisioning: null } };
     return { declaration: declaration.file, declaringRepo: declaration.repo, sourceHost: Boolean(declaration.sourceHost),
       repository: name, projectKey: service.projects.find((project) => project.repository === name)?.key ?? null, ...service };
@@ -271,7 +271,7 @@ const checkServiceCredentials = (service: StackServiceEntry, at: string, add: Ad
     if (!credential.env && !credential.key) ambiguous(`credential ${credential.id ?? '?'} names the env variable or the file key its consumer reads`);
     if (!credential.custody.resolved) add('suspect', 'STACKS_CUSTODY_UNVERIFIED', where, `custody repository ${credential.custody.repository} is not checked out on this machine`);
     else if (!credential.custody.encPresent)
-      add('refuse', 'STACKS_CUSTODY_MISSING', where, `${credential.custody.repository}/${credential.custody.path}.enc is not in custody; repair the stack custody (secret:gen / stack-secret) - never ask the owner for a value the declaration says the runtime holds`);
+      add('refuse', 'STACKS_CUSTODY_MISSING', where, `${credential.custody.repository}/${credential.custody.path} is not sealed in custody; repair the declared member through starci app secret`);
   }
   return ids;
 };
@@ -319,6 +319,14 @@ const checkService = (id: string, entry: ParsedDocument, { schema, declFile, dec
   const ambiguous: Ambiguous = (message) => add('refuse', 'STACKS_SERVICE_AMBIGUOUS', at, message);
   checkServiceForm(service, id, entry, at, kind, add, ambiguous);
   if (checkDisabledService(service, id, at, ciUses, ambiguous, add)) return;
+  let product = false;
+  try { product = JSON.parse(fs.readFileSync(path.join(declaration?.repo ?? '', 'hfs.json'), 'utf8')).kind === 'app'; } catch { /* other checks own a missing app declaration */ }
+  if (id === 'sonar' && product) {
+    const selected = serviceBindings(declaration?.doc, name);
+    for (const problem of selected.problems.filter((problem) => problem.at.startsWith('services.sonar'))) ambiguous(problem.message);
+    if (service.ci.wiring === 'required' && !selected.bindings.some((binding) => binding.service === 'sonar' && binding.name === service.ci.token))
+      ambiguous('required Sonar analysis needs this product project credential in its declared environment sonar.enc.yaml member');
+  }
   if (checkQualityService(service, id, at, { governing, name, ciUses, ciText, add, ambiguous }, checkServiceCi)) return;
   checkEnabledService(service, id, at, { governing, name, ciUses, ciText, add, kind }, ambiguous);
 };
@@ -472,7 +480,7 @@ export function checkStarciStacks(repoRoot: unknown, { newRepo = false, examples
 function summary(service: ServiceLike) {
   return { provider: service.provider, mode: service.mode, auth: service.auth, host: service.host,
     stack: service.stack ? { owner: service.stack.owner ?? null, repository: service.stack.repository, root: service.stack.root, environment: service.stack.environment, compose: service.stack.compose, container: service.stack.container } : null,
-    projects: service.projects, credentials: service.credentials.map((credential) => ({ id: credential.id, env: credential.env, key: credential.key,
+    projects: service.projects, credentials: service.credentials.map((credential) => ({ id: credential.id, env: credential.env, key: credential.key, project: credential.project,
       custody: `${credential.custody.repository}/${credential.custody.path}`, present: credential.custody.encPresent ?? null })),
     ci: service.ci, ownerAction: service.ownerAction };
 }
@@ -498,7 +506,7 @@ export function ownerAskConflict({ repo, question }: { repo?: string; question?:
     if (!byName && !(byWord && asksAboutCustody(body))) continue;
     const custody = service.credentials.map((credential) => `${credential.custody.repository}/${credential.custody.path}`);
     const custodyNote = custody.length ? ` and its credentials in custody (${custody.join(', ')})` : ` and auth ${service.auth}`;
-    const sonarNote = id === 'sonar' ? 'Run starci gate sonar (status, ensure-project, scan) - it reads host, project and token from the declaration and custody. ' : '';
+    const sonarNote = id === 'sonar' ? 'The native app release gate selects this product project credential; analysis never provisions projects or rotates credentials. ' : '';
     const provisioningNote = service.ci.provisioning ? ` (${service.ci.provisioning})` : '';
     return { service: id, provider: service.provider, declaration: slash(service.declaration), matched: byName ?? byWord,
       message: `${id} (${service.provider}, ${service.mode}) is declared in ${slash(service.declaration)} with ownerAction none${custodyNote}; the owner is never asked for it. ${sonarNote}CI wiring is ${service.ci.wiring ?? 'undeclared'}${provisioningNote}.` };

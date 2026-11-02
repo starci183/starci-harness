@@ -122,7 +122,7 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R283 | removed words stay removed | Replace the word `hfs.json` `lexicon.removed` lists with its replacement. |
 | R293 | deploy tooling has one owner | Call the canon stack verbs instead of re-implementing them in scripts or workflows. |
 | R294 | deploy config is coherent | Fix the environment's deploy block until the stack verbs normalise it against the real tree. |
-| R296 | CI secrets are not app secrets | Remove from CI any key sealed inside an app secret member. |
+| R296 | service custody and CI execution copies | Bind each sealed tooling copy to its exact product service, project, environment, member and key; keep runtime keys out of CI. |
 | R297 | app secrets are not CI secrets | Remove from CI secrets or vars any key granted to the app container. |
 | R298 | CI declarations match use | Declare each referenced secret or variable in its CI class, and drop declarations nothing consumes. |
 | R299 | workflow expressions | Use only contexts that exist at that workflow key. |

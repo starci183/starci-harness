@@ -29,7 +29,7 @@ interface Verdict { state: string; run: CiRun | null }
 interface CandidateWait { pollSeconds: number; graceMinutes: number; waitMinutes: number }
 
 function run(ctx: VerbContext, command: string, args: string[]): Partial<SpawnResult> & { status: number | null } {
-  try { return ctx.spawn(command, args, { cwd: ctx.cwd }); } catch { return { status: null }; }
+  try { return ctx.spawn(command, args, { cwd: ctx.cwd, env: ctx.env }); } catch { return { status: null }; }
 }
 
 // reason: gh answers JSON; callers check the shape they read

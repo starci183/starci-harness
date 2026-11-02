@@ -43,7 +43,7 @@ function codecovSteps(lcovReport: string, codecov: Declaration): string {
 function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, nodeMajor: string, timeout: string): string {
   if (!sonar) return '';
   const condition = SONAR_CONDITION;
-  const host = sonar.provider === 'sonarcloud' ? 'https://sonarcloud.io' : `\${{ vars.${sonar.hostVar} }}`;
+  const host = sonar.hostSecret ? `\${{ secrets.${sonar.hostSecret} }}` : sonar.provider === 'sonarcloud' ? 'https://sonarcloud.io' : `\${{ vars.${sonar.hostVar} }}`;
   const header = [
     '  sonar:',
     '    needs: [plan, lint, coverage]',
@@ -60,6 +60,7 @@ function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, 
     `        if: ${condition}`,
     '        run: |',
     `          if [ -z "$SONAR_TOKEN" ]; then echo "::error::SONAR_TOKEN is not set: Sonar is required, so a missing token fails this job (secret ${sonar.token})"; exit 1; fi`,
+    '          if [ -z "$SONAR_HOST_URL" ]; then echo "::error::SONAR_HOST_URL is not set: the declared analysis endpoint is required"; exit 1; fi',
     `      - uses: ${DOWNLOAD_ARTIFACT}`,
     `        if: ${condition}`,
     '        with:',

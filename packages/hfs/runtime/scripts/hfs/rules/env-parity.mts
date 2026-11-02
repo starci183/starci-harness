@@ -22,7 +22,9 @@ import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { envelopeOf } from '../secret-document.mjs';
-import { SSH_GROUP, sshTransportMembers, type StacksDocument } from '../secret-standard.mjs';
+import { SSH_GROUP, sshTransportMembers, declaredServiceKeys, type StacksDocument } from '../secret-standard.mjs';
+import { repositoryName, identityQueryEnvironment } from '../repo-identity.mjs';
+import { serviceCredentialNames } from '../ci-declaration.mjs';
 import { memberOfName } from '../../lib/sealed-member.mjs';
 import { found, readText } from './read.mjs';
 import type { Finding, Parsed, Ts } from './rule-types.mjs';
@@ -317,12 +319,12 @@ function addRequiredFindings(reads: Parsed, sealed: Parsed, declared: Parsed, fi
   }
 }
 
-function sealedMemberFinding(key: string, member: Parsed, reads: Parsed, declared: Parsed) {
+function sealedMemberFinding(key: string, member: Parsed, reads: Parsed, declared: Parsed, serviceConsumer: (file: string, key: string) => boolean) {
   // The specific public-custody code wins over the generic unread one for a NEXT_PUBLIC_* key.
   if (key.startsWith('NEXT_PUBLIC_')) {
     return found(ENV_PUBLIC_SEALED, member, `${member} seals the public key ${key}; NEXT_PUBLIC_* values are public configuration and never enter custody`);
   }
-  if (!reads.has(key) && !declared.has(key)) {
+  if (!reads.has(key) && !declared.has(key) && !serviceConsumer(member, key)) {
     return found(ENV_SEALED_UNREAD, member, `${member} seals ${key}, which no EnvSource reader and no declared consumer uses; unseal it or declare who consumes it`);
   }
   return null;
@@ -336,10 +338,10 @@ function transportMembers(repoRoot: string): (environment: string) => Set<string
   return (environment: string) => sshTransportMembers(stacks.environments?.[environment]);
 }
 
-function addSealedFindings(sealed: Parsed, reads: Parsed, declared: Parsed, transport: (environment: string) => Set<string>, findings: Finding[]) {
+function addSealedFindings(sealed: Parsed, reads: Parsed, declared: Parsed, transport: (environment: string) => Set<string>, findings: Finding[], serviceConsumer: (file: string, key: string) => boolean) {
   for (const [key, members] of sealed) {
     for (const member of members) {
-      const finding = sealedMemberFinding(key, member, reads, declared);
+      const finding = sealedMemberFinding(key, member, reads, declared, serviceConsumer);
       if (finding !== null) findings.push(finding);
     }
     addDuplicateFindings(key, members, transport, findings);
@@ -382,8 +384,13 @@ export function envParityFindings({ repoRoot, all = [], isRoot }: { repoRoot: st
   const sealed = sealedKeys(repoRoot, all);
   const declared = declaredKeys(repoRoot, all);
   const findings: Finding[] = [];
+  let stacks: StacksDocument = {};
+  try { stacks = parseYaml(readText(repoRoot, '.starcistacks/application-stacks.yaml') ?? '') ?? {}; } catch { /* the shape owner reports invalid YAML */ }
+  const repository = repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(stacks)) });
+  const serviceConsumer = (file: string, key: string): boolean => declaredServiceKeys(stacks, repository, file.split('/')[1] as string,
+    memberOfName(file.split('/').pop() as string)).includes(key);
   addRequiredFindings(reads, sealed, declared, findings);
-  addSealedFindings(sealed, reads, declared, transportMembers(repoRoot), findings);
+  addSealedFindings(sealed, reads, declared, transportMembers(repoRoot), findings, serviceConsumer);
   addExampleFindings(repoRoot, all, reads, findings);
   return findings;
 }

@@ -26,7 +26,7 @@ export function renderReadmeBadges(doc: Declaration, { repository, example = fal
   const branch = encodeURIComponent(github.defaultBranch ?? 'main');
   const workflow = encodeURIComponent(github.workflow ?? 'ci.yml');
   const base = `https://github.com/${repo}`;
-  const quality = qualityServices(doc, { example });
+  const quality = qualityServices(doc, { example, repository: repo.split('/')[1] });
   const lines = [badge('CI', `${base}/actions/workflows/${workflow}/badge.svg?branch=${branch}`, `${base}/actions/workflows/${workflow}`)];
   if (quality.codecov.enabled) {
     const params: string[] = [];

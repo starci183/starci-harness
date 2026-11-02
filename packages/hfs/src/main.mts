@@ -56,7 +56,7 @@
 //   starci app secret materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove <age1...|owner>] [--execute]
 //                                            dotenv custody in .starcistacks, public age rule initialization, private KEY files outside Git;
 //                                            values reach stdout only when get explicitly receives --reveal.
-//   starci app ci secret set <NAME> [--env E | --dependabot] [--repo owner/name] [--execute]  reads the value from stdin only; dry until --execute.
+//   starci app ci secret set <NAME> [--from-custody] [--env E | --dependabot] [--repo owner/name] [--execute]  stdin or the explicit service custody binding; dry until --execute.
 //   starci app ci var set <NAME> [--env E] [--value v] [--execute] | var sync [--execute] | verify [--json] | local [--execute]
 //                                            declared GitHub CI custody; verify compares names, scopes and public values; local prints the CI plan, --execute runs it.
 //   starci app db new <name> | baseline | restamp --map <restamp.yaml> | migrate | post-cutover | dump | drift   [--db-url-env <NAME>]

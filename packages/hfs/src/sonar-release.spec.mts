@@ -6,6 +6,8 @@ import path from 'node:path';
 import {tempRoot} from '../runtime/engine/temp-root.mjs';
 import {normalizeRelease, releaseGate} from '../release/gate.mjs';
 import type { VerbContext } from '../release/index.mjs';
+import { releaseMain } from '../release/index.mjs';
+import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 
 /** What a gate spawn double reads of the options, and the rows of a gate run it inspects. */
 interface SpawnOptions { env?: NodeJS.ProcessEnv; cwd?: string }
@@ -20,10 +22,10 @@ const lintFixture = (t: TestContext, name: string) => {
 };
 let lintExit = 0;
 /** The scanner's report-task.txt under `cwd`, as @sonar/scan writes it after an upload. */
-const writeReportTask = (cwd: string) => {
+const writeReportTask = (cwd: string, host = 'https://quality.example.invalid') => {
   fs.mkdirSync(path.join(cwd, '.scannerwork'), {recursive: true});
-  fs.writeFileSync(path.join(cwd, '.scannerwork', 'report-task.txt'), ['projectKey=product', 'serverUrl=https://quality.example.invalid', 'ceTaskId=AX-task',
-    'dashboardUrl=https://quality.example.invalid/dashboard?id=product', ''].join('\n'));
+  fs.writeFileSync(path.join(cwd, '.scannerwork', 'report-task.txt'), ['projectKey=product', `serverUrl=${host}`, 'ceTaskId=AX-task',
+    `dashboardUrl=${host}/dashboard?id=product`, ''].join('\n'));
 };
 /** A Sonar server: status UP, the compute-engine task SUCCESS, the quality gate `gate` with its conditions. */
 const sonarServer = (gate: string, conditions: object[] = []) => async (url: string) => ({ok: true, json: async () => {
@@ -59,23 +61,31 @@ test('native release sends selected Sonar credentials only to its scanner and ke
     throw new Error('Unexpected native gate command');
   };
   const services = {audit: {mode: 'disabled'}, sonar: {provider: 'sonarqube', mode: 'hosted', optional: false,
-    host: {public: 'https://quality.example.invalid'}, ci: {token: 'SONAR_NIVO_TOKEN'}}};
+    host: {public: 'https://quality.example.invalid'}, auth: 'token',
+    projects: [{repository: 'other-product', key: 'other:key'}, {repository: 'product', key: 'product:key'}],
+    credentials: [{id: 'analysis', project: 'product:key', key: 'SONAR_TOKEN', custody: {repository: 'product', path: '.starcistacks/dev/secrets/sonar.enc.yaml'}}],
+    ci: {token: 'SONAR_NIVO_TOKEN', secrets: [{name: 'SONAR_NIVO_TOKEN', credential: 'analysis'}]}}};
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({name: 'product'}));
+  fs.mkdirSync(path.join(root, '.starcistacks/dev/secrets'), {recursive: true});
+  fs.writeFileSync(path.join(root, '.starcistacks/dev/secrets/sonar.enc.yaml'), 'SONAR_TOKEN: ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]\nsops:\n  version: 3.13.2\n');
+  const declaration = {services, environments: {dev: {}}};
   const normalized = normalizeRelease({gates: [
     {name: 'build', command: ['build-probe'], env: {SONAR_TOKEN: 'attempted-reintroduction', SONAR_NIVO_TOKEN: 'attempted-reintroduction'}},
     {name: 'lint', command: ['lint-probe']},
-  ]}, {}, services);
+  ]}, {}, services, {repository: 'product'});
   assert.ok(normalized.config);
   // reason: the gate reads only cwd, spawn, now, fetch, env and (lazily) sops of the context; the doubles are not the full stack context.
   const result = await releaseGate({cwd: root, spawn, now: () => 1000, fetch: sonarServer('OK'),
-    get sops() {throw new Error('A release gate must not open unrelated stack custody');},
-    env: {SONAR_TOKEN: secret, SONAR_NIVO_TOKEN: secret, KEEP_PUBLIC: 'retained', SONAR_SCANNER_JSON_PARAMS: '{"sonar.qualitygate.wait":"true"}'}} as unknown as VerbContext,
-  {...normalized.config, version: '1.0.0'}, {execute: true, platform: 'linux'});
+    sops: {decrypt: (file: string) => {assert.equal(path.basename(file), 'sonar.enc.yaml'); return {SONAR_TOKEN: secret};}},
+    env: {SONAR_TOKEN: 'synthetic-global-token', SONAR_NIVO_TOKEN: 'synthetic-global-token', SOPS_AGE_KEY: 'synthetic-owner-identity', KEEP_PUBLIC: 'retained', SONAR_SCANNER_JSON_PARAMS: '{"sonar.qualitygate.wait":"true"}'}} as unknown as VerbContext,
+  {...normalized.config, services: {...qualityServices(declaration, {repository: 'product'}), declaration}, version: '1.0.0'}, {execute: true, platform: 'linux'});
   assert.equal(result.ok, true);
   const ordinary = calls.filter(call => ['build-probe', 'lint-probe'].includes(call.command));
   assert.equal(ordinary.length, 2);
   for (const call of ordinary) {
     assert.equal(Object.hasOwn(call.env!, 'SONAR_TOKEN'), false);
     assert.equal(Object.hasOwn(call.env!, 'SONAR_NIVO_TOKEN'), false);
+    assert.equal(Object.hasOwn(call.env!, 'SOPS_AGE_KEY'), false);
     assert.equal(call.env!.KEEP_PUBLIC, 'retained');
   }
   for (const call of calls.filter(row => row.command === 'git')) {
@@ -85,6 +95,8 @@ test('native release sends selected Sonar credentials only to its scanner and ke
   }
   const scanner = calls.find(call => call.command === 'npx' && call.args[0] !== 'starci')!;
   assert.equal(scanner.env!.SONAR_TOKEN, secret);
+  assert.ok(scanner.args.includes('-Dsonar.projectKey=product:key'));
+  assert.equal(Object.hasOwn(scanner.env!, 'SOPS_AGE_KEY'), false);
   assert.equal(Object.hasOwn(scanner.env!, 'SONAR_NIVO_TOKEN'), false);
   assert.equal(scanner.env!.SONAR_SCANNER_JSON_PARAMS, '{"sonar.qualitygate.wait":"true"}');
   assert.ok(calls.some(call => call.command === 'git' && call.args[0] === 'tag' && call.args[1] === '-a'));
@@ -124,7 +136,7 @@ test('a failing lint fails the sonar row and the scanner never runs', async t =>
   const normalized = normalizeRelease({gates: [{name: 'build', command: ['build-probe']}]}, {}, services);
   // reason: the gate reads only cwd, spawn, now, fetch and env of the context; the doubles are not the full stack context.
   const result = await releaseGate({cwd: root, spawn, now: () => 1000, fetch: async () => ({ok: true, json: async () => ({status: 'UP'})}),
-    env: {SONAR_NIVO_TOKEN: 'fixture-private-analysis-value'}} as unknown as VerbContext, {...normalized.config!, version: '1.0.0'}, {execute: true, platform: 'linux'});
+    env: {GITHUB_ACTIONS: 'true', SONAR_NIVO_TOKEN: 'fixture-private-analysis-value'}} as unknown as VerbContext, {...normalized.config!, version: '1.0.0'}, {execute: true, platform: 'linux'});
   assert.equal(result.ok, false, result.lines!.join(' | '));
   const sonar = (result.data!.results as GateRow[]).find(row => row.name === 'sonar')!;
   assert.equal(sonar.pass, false);
@@ -134,8 +146,11 @@ test('a failing lint fails the sonar row and the scanner never runs', async t =>
 
 test('a quality gate ERROR fails the sonar row after a scanner exit 0 and names the failed conditions', async t => {
   const root = lintFixture(t, 'hfs-sonar-gate-red-');
+  const privateHost = 'https://private-quality.example.invalid', privateToken = 'fixture-private-analysis-value';
   const head = 'c'.repeat(40);
+  const calls: { command: string; args: string[]; env: NodeJS.ProcessEnv }[] = [];
   const spawn = (command: string, args: string[], options: SpawnOptions = {}) => {
+    calls.push({command, args, env: options.env ?? {}});
     if (command === 'git') {
       if (args[1] === 'HEAD') return {status: 0, stdout: head};
       if (args[1] === '--abbrev-ref') return {status: 0, stdout: 'main'};
@@ -148,21 +163,58 @@ test('a quality gate ERROR fails the sonar row after a scanner exit 0 and names 
       fs.writeFileSync(file, JSON.stringify({rules: [], issues: []}));
       return {status: 0, stdout: 'lint ok'};
     }
-    if (command === 'npx') { writeReportTask(options.cwd!); return {status: 0, stdout: 'ANALYSIS SUCCESSFUL'}; }
+    if (command === 'npx') { writeReportTask(options.cwd!, privateHost); return {status: 0, stdout: `ANALYSIS SUCCESSFUL ${privateHost}`}; }
     return {status: 0, stdout: ''};
   };
   const services = {audit: {mode: 'disabled'}, sonar: {provider: 'sonarqube', mode: 'hosted', optional: false,
-    host: {public: 'https://quality.example.invalid'}, ci: {token: 'SONAR_NIVO_TOKEN'}}};
+    host: {fromCredential: 'endpoint'}, ci: {token: 'SONAR_NIVO_TOKEN', hostVar: 'PRIVATE_SONAR_HOST'}}};
   const normalized = normalizeRelease({gates: [{name: 'build', command: ['build-probe']}]}, {}, services);
   const conditions = [{status: 'ERROR', metricKey: 'new_critical_violations', comparator: 'GT', errorThreshold: '0', actualValue: '5'},
-    {status: 'OK', metricKey: 'new_coverage', comparator: 'LT', errorThreshold: '80', actualValue: '91'}];
+    {status: 'OK', metricKey: 'new_coverage', comparator: 'LT', errorThreshold: '80', actualValue: '91'},
+    {status: 'ERROR', metricKey: 'reflected_private', comparator: 'GT', errorThreshold: '0', actualValue: privateHost + privateToken}];
   // reason: the gate reads only cwd, spawn, now, fetch and env of the context; the doubles are not the full stack context.
   const result = await releaseGate({cwd: root, spawn, now: () => 1000, fetch: sonarServer('ERROR', conditions),
-    env: {SONAR_NIVO_TOKEN: 'fixture-private-analysis-value'}} as unknown as VerbContext, {...normalized.config!, version: '1.0.0'}, {execute: true, platform: 'linux'});
+    env: {GITHUB_ACTIONS: 'true', SONAR_NIVO_TOKEN: privateToken, PRIVATE_SONAR_HOST: privateHost}} as unknown as VerbContext, {...normalized.config!, version: '1.0.0'}, {execute: true, platform: 'linux'});
   assert.equal(result.ok, false);
   const sonar = (result.data!.results as GateRow[]).find(row => row.name === 'sonar')!;
   assert.equal(sonar.pass, false);
   assert.match(sonar.detail, /^RELEASE_SONAR_GATE_FAILED: quality gate ERROR \(new_critical_violations GT 0 \(actual 5\)\)/u);
   assert.doesNotMatch(sonar.detail, /new_coverage/u);
   assert.match(fs.readFileSync(sonar.log, 'utf8'), /failed: new_critical_violations GT 0 \(actual 5\)/u);
+  for (const value of [privateHost, privateToken]) {
+    assert.equal(sonar.detail.includes(value), false);
+    assert.equal(fs.readFileSync(sonar.log, 'utf8').includes(value), false);
+    assert.equal(JSON.stringify(result).includes(value), false);
+  }
+  for (const call of calls) {
+    assert.equal(Object.hasOwn(call.env, 'PRIVATE_SONAR_HOST'), false);
+    if (call.command === 'npx' && !call.args.includes('starci')) assert.equal(call.env.SONAR_HOST_URL === privateHost, true);
+    else assert.equal(Object.values(call.env).includes(privateHost), false);
+  }
+});
+
+test('native push dry-run isolates service and age identities from its children while preserving GitHub authentication', async (t) => {
+  const root = lintFixture(t, 'hfs-release-push-credentials-'), head = 'd'.repeat(40);
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'product', version: '1.0.0' }));
+  fs.mkdirSync(path.join(root, '.starcistacks'));
+  fs.writeFileSync(path.join(root, '.starcistacks/application-stacks.yaml'), JSON.stringify({ services: { sonar: {
+    mode: 'hosted', provider: 'sonarqube', host: { public: 'https://quality.example.invalid' }, ci: { token: 'PROJECT_ANALYSIS_TOKEN' },
+    credentials: [{ id: 'operator-password', key: 'SONAR_PASSWORD', custody: { repository: 'product', path: '.starcistacks/dev/secrets/sonar-operator.enc.yaml' } }],
+  } } }));
+  const children: NodeJS.ProcessEnv[] = [];
+  const spawn = (_command: string, args: string[], options: SpawnOptions = {}) => {
+    children.push(options.env ?? {});
+    if (args[0] === 'rev-parse' && args[1] === 'HEAD') return { status: 0, stdout: head };
+    if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref') return { status: 0, stdout: 'main' };
+    if (args[0] === 'rev-parse' && args[1] === '--git-common-dir') return { status: 0, stdout: path.join(root, '.git') };
+    return { status: 0, stdout: '' };
+  };
+  const code = await releaseMain(['push'], { cwd: root, stdout: () => {}, stderr: () => {}, stackIo: { spawn, now: () => 1000 },
+    env: { SOPS_AGE_KEY: 'synthetic-owner', SOPS_AGE_KEY_FILE: 'synthetic-key-path', PROJECT_ANALYSIS_TOKEN: 'synthetic-token', SONAR_PASSWORD: 'synthetic-password', GH_TOKEN: 'synthetic-github-auth' } });
+  assert.notEqual(code, 0, 'the scratch repository has no release record');
+  assert.ok(children.length > 0);
+  for (const env of children) {
+    for (const name of ['SOPS_AGE_KEY', 'SOPS_AGE_KEY_FILE', 'PROJECT_ANALYSIS_TOKEN', 'SONAR_PASSWORD']) assert.equal(Object.hasOwn(env, name), false);
+    assert.equal(env.GH_TOKEN, 'synthetic-github-auth');
+  }
 });

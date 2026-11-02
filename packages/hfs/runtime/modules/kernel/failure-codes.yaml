@@ -1742,12 +1742,12 @@ CI_DECLARATION_DRIFT:
   kind: check-finding
 
 CI_SECRET_SEALED:
-  title: "CI name overlaps sealed app custody"
+  title: "CI credential lacks exact project service custody"
   title_vi: "Tên CI trùng khóa bí mật đã niêm phong"
-  meaning_vi: "Tên CI hoặc Dependabot cũng là khóa trong thành viên .enc của ứng dụng."
+  meaning_vi: "Bản sao khóa CI không trỏ đúng dịch vụ, dự án, môi trường, thành viên và khóa đã niêm phong; khóa chạy ứng dụng không thuộc CI."
   causes_vi:
-    - "Tên CI hoặc Dependabot cũng là khóa trong thành viên .enc của ứng dụng."
-  nextStep_vi: "Bỏ khóa ứng dụng khỏi khai báo CI; đưa bí mật CI vào kho GitHub tương ứng."
+    - "Thiếu liên kết credential của dịch vụ, sai dự án hoặc dùng khóa được cấp cho container ứng dụng."
+  nextStep_vi: "Giữ khóa runtime ngoài CI; khai báo đúng credential.project và liên kết services.<id>.ci.secrets cho bản sao khóa công cụ."
   owner: op-retry
   kind: check-finding
 

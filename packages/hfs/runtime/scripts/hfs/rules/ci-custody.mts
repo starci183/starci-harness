@@ -2,9 +2,10 @@
 import fs from 'node:fs';
 import { list } from '../../lib/list.mjs';
 import { findStackDeclaration, STACK_ROOT } from '../../lib/stack-declaration.mjs';
-import { readCiDeclaration, sealedKeyNames, workflowReferences, ciNamesOfServices } from '../ci-declaration.mjs';
+import { readCiDeclaration, sealedKeyNames, workflowReferences, ciNamesOfServices, serviceBindings, boundSealedKey, runtimeGranted, serviceCredentialNames, type ServiceBinding } from '../ci-declaration.mjs';
+import { repositoryName, identityQueryEnvironment } from '../repo-identity.mjs';
 import { found } from './read.mjs';
-import type { Finding, Parsed, Repo } from './rule-types.mjs';
+import type { Parsed, Repo } from './rule-types.mjs';
 
 const DECLARATION = `${STACK_ROOT}/application-stacks.yaml`;
 const named = <T extends { name: unknown }>(entry: T): entry is T & { name: string } => typeof entry.name === 'string' && /^[A-Z][A-Z0-9_]*$/.test(entry.name);
@@ -13,39 +14,22 @@ const atCi = (section: Parsed) => `${DECLARATION}#ci.${section}`;
 /** The variables the managed workflows themselves read; an app declares none of them. STARCI_DEPLOY_PAUSED is the brake of the automatic deploy, set per GitHub environment by the owner. */
 const MANAGED_VARIABLES = ['STARCI_DEPLOY_PAUSED'];
 
-/** A CI or Dependabot secret must never also live in a sealed app member. */
-function sealedFindings(ci: Parsed, sealed: Parsed) {
+/** A sealed CI copy has exact service/project custody; every other sealed CI key remains refused. */
+function sealedFindings(ci: Parsed, sealed: Parsed, bindings: ServiceBinding[]) {
   const names = new Set([...ci.secrets, ...ci.dependabotSecrets].filter(named).map((entry) => entry.name));
-  return sealed.filter(({ key }: { key: string }) => names.has(key)).map(({ key, file }: { key: string; file: string }) => found(
+  const copies = bindings.filter((binding) => names.has(binding.name));
+  return sealed.filter((entry: Parsed) => (names.has(entry.key) || copies.some((binding) => binding.key === entry.key))
+    && !copies.some((binding) => boundSealedKey(binding, entry))).map(({ key, file }: { key: string; file: string }) => found(
     'CI_SECRET_SEALED', file,
-    `${key} is a CI secret (GitHub reads it) but it is sealed in ${file} for app containers; one key, one class: remove it from the member (starci app secret unset --env <env> ...) and set it with starci app ci secret set ${key} --execute`,
+    `${key} is a CI secret sealed in ${file} without an exact project service binding; app runtime keys stay in their members and tooling copies name services.<id>.ci.secrets[].credential`,
   ));
 }
 
-/** A source selects sealed keys only from its own member and environment. */
-function sourceRuntimeFindings(source: Parsed, grant: Parsed, environment: Parsed, { sealed, names, findings, seen }: { sealed: Parsed; names: Set<string>; findings: Finding[]; seen: Parsed }) {
-  for (const entry of sealed) {
-    if (entry.env !== environment || entry.member !== source?.member || !names.has(entry.key)) continue;
-    if (source.keys !== undefined && !list(source.keys).includes(entry.key)) continue;
-    const id = `${entry.file}:${grant.service}:${entry.key}`;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    findings.push(found('APP_SECRET_IN_CI', entry.file,
-      `${entry.key} is read by the ${grant.service} container at runtime through the ${environment} deploy grant; keep it in the .enc and drop it from ci`));
-  }
-}
-
-/** Only keys actually selected by a grant, in that grant's environment and member, are runtime consumers. */
+/** Runtime declarations and grants select exact environment/member/key consumers; an unselected key is unrelated. */
 function runtimeFindings(doc: Parsed, ci: Parsed, sealed: Parsed) {
   const names = new Set([...ci.secrets, ...ci.vars].filter(named).map((entry) => entry.name));
-  const findings: Finding[] = [], seen = new Set();
-  for (const [environment, spec] of Object.entries<Parsed>(doc.environments ?? {})) {
-    for (const grant of list<Parsed>(spec?.deploy?.secrets?.grants)) {
-      if (typeof grant?.service !== 'string') continue;
-      for (const source of list<Parsed>(grant.from)) sourceRuntimeFindings(source, grant, environment, { sealed, names, findings, seen });
-    }
-  }
-  return findings;
+  return sealed.filter((entry: Parsed) => names.has(entry.key) && runtimeGranted(doc, entry.env, entry.member, entry.key))
+    .map((entry: Parsed) => found('APP_SECRET_IN_CI', entry.file, `${entry.key} is selected by an app runtime declaration or deploy grant in ${entry.env}; keep it sealed and drop it from ci`));
 }
 
 /** Workflow reads are class-sensitive; legacy lists remain readable, but an absent ci block always signals migration once per name. */
@@ -55,7 +39,7 @@ function workflowFindings(doc: Parsed, declared: Parsed, references: Parsed) {
   if (hasCi) {
     for (const entry of ciNamesOfServices(doc).filter(named)) {
       const legacy = list(doc.services?.[entry.service]?.ci?.[`${entry.kind}s`]);
-      if (legacy.some((item: Parsed) => (typeof item === 'string' ? item : item?.name) === entry.name)) allowed.add(identity(`${entry.kind}s`, entry.name));
+      if (legacy.some((item: Parsed) => (typeof item === 'string' ? item : !item?.credential ? item?.name : null) === entry.name)) allowed.add(identity(`${entry.kind}s`, entry.name));
     }
   }
   const findings = [], seen = new Set();
@@ -85,7 +69,11 @@ function driftFindings(doc: Parsed, ci: Parsed, references: Parsed) {
   }
   const names = new Set(declared.map(({ kind, name }) => identity(kind, name)));
   for (const [service, entry] of Object.entries<Parsed>(doc.services ?? {})) {
-    for (const [field, kind] of [['token', 'secrets'], ['hostVar', 'vars']]) {
+    for (const binding of list<Parsed>(entry?.ci?.secrets)) {
+      if (typeof binding?.credential === 'string' && !names.has(identity('secrets', binding.name))) findings.push(found('CI_DECLARATION_DRIFT', atCi('secrets'),
+        `services.${service}.ci.secrets names ${binding.name}, which is not declared in ci.secrets`));
+    }
+    for (const [field, kind] of [['token', 'secrets'], ['hostVar', entry?.host?.fromCredential ? 'secrets' : 'vars']]) {
       const name = entry?.ci?.[field!];
       if (typeof name !== 'string' || names.has(identity(kind!, name))) continue;
       findings.push(found('CI_DECLARATION_DRIFT', atCi(kind),
@@ -101,7 +89,11 @@ export function ciCustodyFindings({ repoRoot, repo, isRoot }: { repoRoot: string
   const { doc } = findStackDeclaration(repoRoot);
   if (!doc) return [];
   const ci = readCiDeclaration(doc);
+  const selected = serviceBindings(doc, repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(doc)) }));
   const sealed = sealedKeyNames(repoRoot, { fs });
   const references = workflowReferences(repoRoot, { fs });
-  return [...sealedFindings(ci, sealed), ...runtimeFindings(doc, ci, sealed), ...driftFindings(doc, ci, references)];
+  const missing = selected.bindings.filter((binding) => !sealed.some((entry) => boundSealedKey(binding, entry)))
+    .map((binding) => found('CI_SECRET_SEALED', binding.path, 'the selected service credential member/key is not sealed in this product custody'));
+  return [...selected.problems.map((problem) => found('CI_SECRET_SEALED', `${DECLARATION}#${problem.at}`, problem.message)), ...missing,
+    ...sealedFindings(ci, sealed, selected.bindings), ...runtimeFindings(doc, ci, sealed), ...driftFindings(doc, ci, references)];
 }

@@ -10,11 +10,13 @@ import path from 'node:path';
 import { isPlainObject as plain } from '../runtime/engine/plain-object.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
+import { repositoryName, identityQueryEnvironment } from '../runtime/scripts/hfs/repo-identity.mjs';
+import { serviceCredentialNames } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { hasEntityList } from '../db/entity-list.mjs';
 import { STACKS_DIR, STACKS_FILE } from '../stack/config.mjs';
 import { stackContext, type StackContext } from '../stack/context.mjs';
 import { EXIT, StackError, refusal } from '../stack/errors.mjs';
-import { RELEASE_CODE, VERSION, normalizeRelease, releaseGate } from './gate.mjs';
+import { RELEASE_CODE, VERSION, normalizeRelease, releaseGate, withoutCredentials } from './gate.mjs';
 import { releasePush } from './push.mjs';
 import { releaseUrgentPush } from './urgent.mjs';
 
@@ -89,9 +91,10 @@ export function loadReleaseConfig(root: string) {
   const pkg = readPackage(root);
   if (typeof pkg.version !== 'string' || !VERSION.test(pkg.version)) throw refusal(RELEASE_CODE, 'package.json needs a version like 1.2.3 (the release tag derives from it)');
   const declaration = readDeclaration(root);
-  const { config, problems } = normalizeRelease(declaration.release, pkg.scripts, declaration.services, { example: isRuntimeExampleApp(root), entities: hasEntityList(root) });
+  const { config, problems } = normalizeRelease(declaration.release, pkg.scripts, declaration.services, { example: isRuntimeExampleApp(root), entities: hasEntityList(root),
+    repository: repositoryName(root, { env: identityQueryEnvironment(process.env, serviceCredentialNames(declaration)) }) });
   if (!config) throw refusal(RELEASE_CODE, `${problems.length} problem(s) in release: ${problems.slice(0, 6).join('; ')}`);
-  return { root, version: pkg.version, ...config };
+  return { root, version: pkg.version, ...config, services: { ...config.services, declaration } };
 }
 
 function print(ctx: VerbContext, name: string, flags: VerbFlags, result: VerbResult): void {
@@ -133,6 +136,7 @@ const ACTIONS: Record<string, ReleaseAction> = {
     run: (ctx, flags, harness) => {
       if (flags.reason !== undefined && flags.urgent !== true) throw refusal('RELEASE_USAGE', '--reason belongs to an urgent release (--urgent)');
       const config = loadReleaseConfig(ctx.cwd);
+      ctx = Object.create(ctx, { env: { value: withoutCredentials(ctx.env, serviceCredentialNames(config.services?.declaration)) } }) as VerbContext;
       if (flags.urgent === true) return releaseUrgentPush(ctx, config, { execute: flags.execute === true, remote: flags.remote, reason: flags.reason, role: harness?.role ?? ctx.env.STARCI_ROLE });
       return releasePush(ctx, config, { execute: flags.execute === true, remote: flags.remote });
     },

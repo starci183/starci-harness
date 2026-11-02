@@ -1,6 +1,7 @@
 import { badgeTokenNotices } from '../sync/readme-badges.mjs';
 import { refuse, scopeArgs, scopeName } from './github.mjs';
 import type { CiDeclaration, CiEntry, CiOptions, CiScope, Gh } from './github.mjs';
+import { boundSealedKey, type ServiceBinding } from '../runtime/scripts/hfs/ci-declaration.mjs';
 
 /** One name a store lists (and, for a variable, its value). */
 interface StoreRow { name: string; value?: string }
@@ -8,8 +9,9 @@ interface Store { scope: CiScope; kind: 'secret' | 'variable'; rows: StoreRow[] 
 interface CiFinding { code: string; name: string; scope: string }
 
 /** Verification reports names and scopes only; values are compared in memory and excluded from findings. */
-export function verifyCi({ declaration, sealed, gh, options, stdout, notices = [] }: {
-  declaration: CiDeclaration; sealed: readonly { key: string }[]; gh: Gh; options: CiOptions; stdout: (text: string) => unknown; notices?: string[];
+export function verifyCi({ declaration, sealed, gh, options, stdout, notices = [], bindings = [], runtime = [] }: {
+  declaration: CiDeclaration; sealed: readonly { env?: string; member?: string; file?: string; key: string }[]; gh: Gh; options: CiOptions; stdout: (text: string) => unknown; notices?: string[]; bindings?: ServiceBinding[];
+  runtime?: readonly { key: string }[];
 }): number {
   const repo = gh.repository(options.repo), stores: Store[] = [];
   const environments = [...new Set([...declaration.secrets, ...declaration.vars].filter((item) => item.scope === 'environment').map((item) => item.environment))].sort() as string[];
@@ -20,7 +22,7 @@ export function verifyCi({ declaration, sealed, gh, options, stdout, notices = [
       stores.push({ scope, kind, rows });
     }
   }
-  const findings: CiFinding[] = [], sealedNames = new Set(sealed.map((item) => item.key));
+  const findings: CiFinding[] = [];
   const declarations = (store: Store): CiEntry[] => store.scope.dependabot ? declaration.dependabotSecrets : store.kind === 'secret' ? declaration.secrets : declaration.vars;
   const matches = (entry: CiEntry, scope: CiScope): boolean => (entry.scope === 'environment' ? entry.environment : undefined) === scope.env;
   const add = (code: string, name: string, scope: CiScope): void => { findings.push({ code, name, scope: scopeName(scope) }); };
@@ -32,7 +34,8 @@ export function verifyCi({ declaration, sealed, gh, options, stdout, notices = [
       else if (row && store.kind === 'variable' && entry.value !== undefined && row.value !== String(entry.value)) add('CI_VAR_DRIFT', entry.name, store.scope);
     }
     for (const row of store.rows) {
-      if (store.kind === 'secret' && sealedNames.has(row.name)) add('APP_SECRET_IN_CI', row.name, store.scope);
+      const binding = store.scope.dependabot ? undefined : bindings.find((item) => item.name === row.name);
+      if (runtime.some((item) => item.key === row.name) || (store.kind === 'secret' && sealed.some((item) => (item.key === row.name || (binding && item.key === binding.key)) && !(binding && boundSealedKey(binding, item))))) add('APP_SECRET_IN_CI', row.name, store.scope);
       if (entries.some((entry) => entry.name === row.name && matches(entry, store.scope))) continue;
       const sameKind = store.kind === 'secret' ? [...declaration.secrets, ...declaration.dependabotSecrets] : declaration.vars;
       add(sameKind.some((entry) => entry.name === row.name) ? 'CI_SCOPE_MISMATCH' : store.kind === 'secret' ? 'CI_SECRET_UNDECLARED' : 'CI_VAR_UNDECLARED', row.name, store.scope);

@@ -94,11 +94,13 @@ image, so any digest-pinned supported reverse proxy serves.
   `<env>/secrets/<provider>.enc.yaml`, sops YAML whose values come back byte for byte (a multi-line key, a trailing
   newline), committed (R06, R277; the names are `scripts/lib/sealed-member.mjs` of @starci/hfs).
   A legacy dotenv `<member>.enc` stays readable until `migrate` moves it. Nothing else under `.starcistacks/` is ciphertext.
-- **Declared per key, read as `<KEY>_FILE`.** Each key is one entry of its environment's `secrets:` in
+- **Declared per consumer.** An app runtime key is one entry of its environment's `secrets:` in
   `application-stacks.yaml` (`name: <kebab of the key>`, `member`, `key`, `where: secrets/<member>`); `materialize` writes
   each key to its own file in host-local custody and the back end reads it through `<KEY>_FILE` as BE-CONFIG-4 in
   [code/be/config.md](../code/be/config.md) says. `set` declares the keys of a compose environment itself; a swarm
   environment's secret is wired with its stack (runtimeName and the deploy grant) by hand.
+  A delivery or quality-service key is declared by its exact `services.<id>.credentials[]` member path and `key`
+  instead (PROJECT-STACKS-8); `set` keeps it out of runtime secret declarations. The audit recognizes both consumers.
 - **One owner identity, found by itself; one rule per environment.** Every member is sealed to the public recipients of
   its environment's rule in the app's `.sops.yaml`, which `starci app secret init` and `recipients` manage: dev to the owner
   key, production to the production server key and the owner key both, so the owner sets and rotates production from his
@@ -146,8 +148,8 @@ image, so any digest-pinned supported reverse proxy serves.
 - **Set in one write.** `starci app secret set --env <env> <provider> <KEY>...` prompts for each key with masked input on a
   terminal (or reads redirected stdin, or `--from-file KEY=path` byte for byte) and seals them all in one write, so no member
   is left half filled. `starci app secret audit [--env <env>]` names every deviation (a legacy member, a member mixing providers by
-  the first word of its keys unless the stack groups it on purpose, every key of it declared in `secrets:` with that
-  `member`; one sealed to other recipients than its rule, a key not declared, a declared member not sealed, an untracked
+  the first word of its keys unless the stack groups it on purpose, each key declared by its runtime consumer or exact
+  service credential reference; one sealed to other recipients than its rule, a key not declared, a declared member not sealed, an untracked
   member, a rule that does not name the recorded `deploy.remote.serverRecipient` beside the owner key, a production swarm
   deploy that records none) and exits 1 while any stands; `migrate` and `split` repair them, dry runs until `--execute`, decrypting in
   memory only. Either merges into a member that already exists only with `--into-existing`: a key the target holds with
@@ -233,16 +235,23 @@ One key belongs to one class, and the manifest's `ci` block declares names and p
 |---|---|---|
 | app secret | the app's containers at runtime | a sealed member (PROJECT-STACKS-5) |
 | app public config | the app's build and runtime | the manifest's build arguments and environment record |
-| CI secret | the CI workflows | the CI provider's secret store, repository or environment scope |
+| CI execution credential | the CI workflows | the CI provider's secret store, repository or environment scope; a project service copy explicitly links its sealed source |
 | CI public config | the CI workflows | the CI provider's variables, repository or environment scope |
 | dependency-bot secret | the dependency bot | its own secret store |
 
 A name is upper snake case, never in the CI provider's reserved prefix, and declared once across the classes; an
 environment-scoped name names its environment; a variable whose value only the owner may give is declared as such and
-set from standard input, never argv. A sealed key is never a CI secret, an app's runtime secret never reaches CI, and
-every workflow reference is declared and every required declaration read (R296, R297, R298). CI holds only each
-environment's server key, as the SOPS_AGE_KEY of that GitHub Environment (PROJECT-STACKS-5), and the deploy transport
-credentials, never the owner key and no repository-level SOPS_AGE_KEY. Every job that reads SOPS_AGE_KEY is bound to the
+set from standard input, never argv. A project service credential has one retrievable source in its product's sealed
+custody and one explicitly linked execution copy in the CI provider: `services.<id>.ci.secrets[]` names the CI secret and
+its `credential` id, while `ci.token` selects that same analysis copy. `starci app ci secret set <NAME> --from-custody`
+judges the binding without decrypting or contacting the provider; `--execute` opens the selected key in memory and sends
+it on the provider tool's stdin. Custody input requires terminal or closed/null stdin: a pipe or file is refused as a
+competing input channel without reading it, even when empty. A same-named key in another project is
+unrelated; a missing, ambiguous or unopenable member is a failure, with no global token fallback. An app runtime key
+never reaches CI; sealed tooling classification requires the exact service, project, environment, member and key
+binding (R296, R297). Every workflow reference is declared and every required declaration read (R298).
+The decryption identity CI holds is each environment's server key, as SOPS_AGE_KEY of that GitHub Environment
+(PROJECT-STACKS-5), never the owner key and no repository-level SOPS_AGE_KEY. Every job that reads SOPS_AGE_KEY is bound to the
 environment whose members it opens (`environment: <env>`), so it reads that environment's key, injected into that job
 alone and gone when it ends; a job that only builds or checks needs no key (R251, R252).
 
@@ -257,6 +266,24 @@ job, never a skip, and the analysis row passes only on the server's quality gate
 scanner's exit code. A shared analysis server the host runs for every project is declared host-owned, and a project
 never copies its Compose files. The app's CI follows the one CI standard, delivered only by the app sync (R299, R301);
 its thresholds are `sonar-new-code` in [policy/quality.yaml](../../policy/quality.yaml).
+
+The connection profile lives in this product's manifest: provider, mode, project keys and public local/hosted URLs.
+A private URL is `host.fromCredential`, referencing a sealed URL key; username and password each have a credential
+reference with their actual `key` and `custody: { repository, path }`. The path names the actual
+`.starcistacks/<declared-env>/secrets/<provider>.enc.yaml` member, sealed to that environment's recipients; no plaintext
+twin is declared. Required product Sonar analysis uses exactly `sonar.enc.yaml` in that environment's secrets folder;
+an absent member or a reference to another basename fails. Local and cloud connections use the same profile shape. Operator/admin login credentials occupy a
+separate authority member from the project's analysis token. A scanner and its CI copy select the analysis credential
+only; stored username/password metadata grants no scanner, CI or provisioning authority. A private endpoint's CI copy
+has its own `ci.secrets` credential link selected by `ci.hostVar`; the managed workflow reads that selector from secrets,
+while a public endpoint selector reads variables. A missing endpoint fails before the scanner starts.
+
+A project credential's `project` references its `projects[].key`; the credential `id` is just its reference name, with
+no relationship to provider project-key syntax. Execution selects the project entry by the actual consumer repository,
+then follows the explicit credential and exact member/key. A host-owned server supplies public endpoint settings,
+never a fallback analysis or administrator identity. The native local release opens the selected product token in
+memory and gives it to its scanner child alone; an explicit CI job token remains its execution copy. Quality jobs need
+no age identity. Missing custody fails without creating a project, replacing history or rotating a credential.
 
 **Status badges.** The app's README carries one managed badge block, rendered by the app sync from the manifest and
 checked for drift by it: CI, coverage, analysis and dependency-bot badges, each linking a live public service only,

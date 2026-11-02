@@ -5107,7 +5107,7 @@ rules:
       - {path: packages/eslint/be/module-shape.spec.mjs, editions: [lite, full], codes: [BE_MODULE_DEFINITION_MISSING]}
   - id: R296
     code: "CI_SECRET_SEALED"
-    law: "A name declared in ci.secrets or ci.dependabot.secrets never names a key stored inside an app sealed .starcistacks/<env>/secrets/<member>.enc member. App runtime and CI custody are separate; checks inspect key names without decrypting or printing values."
+    law: "A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key; required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential. Checks inspect names without decrypting or printing values."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["CI_SECRET_SEALED"]
@@ -5129,7 +5129,7 @@ rules:
       - {path: packages/hfs/src/ci-custody.spec.mjs, editions: [lite, full], codes: [CI_SECRET_SEALED]}
   - id: R297
     code: "APP_SECRET_IN_CI"
-    law: "A sealed member key granted to an app container by a deploy grant never appears in ci.secrets or ci.vars. The grant environment, member and selected key determine app custody; online GitHub custody is verified by starci app ci verify."
+    law: "A sealed member key selected by an app runtime secret declaration or deploy grant never appears in ci.secrets or ci.vars. The consumer environment, member and selected key determine app custody; online GitHub custody is verified by starci app ci verify."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["APP_SECRET_IN_CI"]

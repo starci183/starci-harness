@@ -26,6 +26,7 @@ starci app slot <path> [--cwd <dir>] [--json]
 starci app emit [--cwd <dir>]
 starci app db drift [--db-url-env <NAME>] [--json] [--cwd <dir>]
 starci app secret init | <set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit|server-key> --env <env> ... [--cwd <dir>]
+starci app ci secret set <NAME> [--from-custody] [--env <env>] [--repo <owner/name>] [--execute]
 ```
 
 `starci app add` writes every front-end unit, in either edition, already in the shape of the harness's `contexts/code/fe`
@@ -227,8 +228,9 @@ read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mjs` names bot
 seals every named key in one sops write (`runtime/scripts/hfs/secret.mjs`): on a terminal it prompts `<KEY>: ` for each with
 masked input (one `*` per character; a paste, backspace, Enter, Ctrl+C to cancel with nothing written), redirected stdin gives
 one key its whole text or several one `KEY=value` line each, `--from-file KEY=path` reads a key byte for byte
-(`secret-prompt.mjs`), and `--generate <bytes>` makes a random value per key. It then declares the keys in the environment's
-`secrets:` of a compose environment (`declareKeys`, `secret-standard.mjs`) and names a swarm environment's to wire by hand.
+(`secret-prompt.mjs`), and `--generate <bytes>` makes a random value per key. Keys declared by exact service credential
+references stay with that consumer; other keys are declared in the environment's `secrets:` of a compose environment
+(`declareKeys`, `secret-standard.mjs`), while a swarm environment's are named to wire by hand.
 A member is sealed to its environment's rule of the managed `.sops.yaml`; `recipients --env <env> [--add|--remove <age1...|owner>]`
 rewrites that rule (`environmentRecipients`, `secret-init.mjs`), and `init` takes the owner's identity as the app's recipient.
 Re-sealing a member whose every key the set replaces needs no age identity; adding a key to one does, and the identity is found
@@ -243,6 +245,24 @@ every CI job bound to `<env>` reads, and `--restore github` writes it back (`sta
 except `get --reveal`.
 
 ## Sonar
+
+The product's `.starcistacks/application-stacks.yaml` holds its connection profile: provider, local/hosted mode, public
+URL and `projects` entries. Each stored username, password, private URL or token has a separate `credentials[]` reference
+to its actual sealed member and `key`; a private endpoint uses `host.fromCredential`. A project analysis reference has
+`project: <projects[].key>`, independently of its reference `id`. Operator/admin login keys live in a separate authority
+member and are never selected implicitly by analysis or CI. Change the declared connection profile when moving to a
+hosted/cloud server; usernames, passwords and tokens remain sealed.
+
+The CI execution copy is explicit: `services.sonar.ci.secrets: [{name: <CI_NAME>, credential: <analysis-id>}]`, with
+`ci.token: <CI_NAME>` and the name/scope declared in the top-level `ci.secrets`. Declare the exact product credential
+first, seal it with `starci app secret set --env <declared-env> <provider> <KEY>`, then run
+`starci app ci secret set <CI_NAME> --from-custody` to inspect the plan and add `--execute` to stream its selected value
+to the CI provider. A dry run decrypts no credential, reads no stdin and reaches no remote. Custody input uses terminal or
+closed/null stdin; a competing pipe/file channel, even empty, is refused without reading it. A private endpoint has its
+own explicit secret-copy link selected by `ci.hostVar`; public endpoint selectors read CI variables. The native local release opens
+the selected product token through the common SOPS identity loader in memory and passes it only to the scanner child.
+Missing, ambiguous, unopenable, wrong-project or runtime-granted custody is a failure, with no host/global fallback.
+Analysis never creates a project, replaces its history or rotates a token. OIDC Codecov keeps no synthetic token member.
 
 One mechanism for both sides: every finding of the canon is imported into Sonar, and the quality gate
 fails while any is open. Nothing is configured per app; the pieces are managed files (`starci app sync`) and this package.

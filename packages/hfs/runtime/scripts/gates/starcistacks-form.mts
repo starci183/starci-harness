@@ -8,7 +8,7 @@ import path from 'node:path';
 export type AddFinding = (level: string, code: string, where: string, message: string) => void;
 /** A custody reference of a declared service, resolved to presence (never a value). */
 export interface ServiceCredential {
-  id: string | null; env: string | null; key: string | null; purpose: string | null;
+  id: string | null; env: string | null; key: string | null; purpose: string | null; project?: string | null;
   custody: { repository: string | null; path: string | null; resolved: boolean; file: string | null; encPresent: boolean | null; plainPresent: boolean | null };
 }
 /** A declared stack resolved to its host or repository directory. */

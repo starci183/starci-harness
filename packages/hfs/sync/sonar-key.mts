@@ -4,6 +4,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
+import { repositoryName, identityQueryEnvironment } from '../runtime/scripts/hfs/repo-identity.mjs';
+import { serviceCredentialNames } from '../runtime/scripts/hfs/ci-declaration.mjs';
+export { repositoryName };
 
 // reason: the stack declaration is YAML parsed from disk; the readers below check each field they use
 type Declaration = any;
@@ -11,17 +14,6 @@ type ParseYaml = (text: string) => Declaration;
 
 /** The stack declaration, app-relative: .starcistacks sits at the app root, beside be/, fe/ and .starciwork. */
 export const DECLARATION = path.join('.starcistacks', 'application-stacks.yaml');
-
-/** The repository name the declaration lists its projects under: the app package.json name, else the folder name. */
-export function repositoryName(root: string): string {
-  try {
-    const name = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).name;
-    if (typeof name === 'string' && name) return name;
-  } catch {
-    // no readable package.json: the folder name stands in
-  }
-  return path.basename(path.resolve(root));
-}
 
 /** The keys services.sonar declares for `repository` in a parsed declaration (empty when it declares none). */
 export function declaredSonarKeys(declaration: Declaration, repository: string): string[] {
@@ -39,8 +31,10 @@ export async function readDeclaredSonarKey(root: string, { parseYaml, fail }: { 
   const file = path.join(root, DECLARATION);
   if (!fs.existsSync(file)) return null;
   const parse: ParseYaml = parseYaml ?? bundledParseYaml;
-  const keys = declaredSonarKeys(parse(fs.readFileSync(file, 'utf8')), repositoryName(root));
-  if (keys.length > 1) fail(`${DECLARATION.split(path.sep).join('/')} declares ${keys.length} Sonar projects for ${repositoryName(root)} (${keys.join(', ')}); one app has one key`);
+  const doc = parse(fs.readFileSync(file, 'utf8'));
+  const repository = repositoryName(root, { env: identityQueryEnvironment(process.env, serviceCredentialNames(doc)) });
+  const keys = declaredSonarKeys(doc, repository);
+  if (keys.length > 1) fail(`${DECLARATION.split(path.sep).join('/')} declares ${keys.length} Sonar projects for ${repository} (${keys.join(', ')}); one app has one key`);
   return keys[0] ?? null;
 }
 

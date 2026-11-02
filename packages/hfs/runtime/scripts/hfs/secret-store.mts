@@ -15,6 +15,7 @@ import {
 } from "./secret-document.mjs";
 import { type SecretSops, defaultSops } from "./secret-sops.mjs";
 import { SecretError } from "./secret-errors.mjs";
+import type { ServiceBinding } from "./ci-declaration.mjs";
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/u;
 
@@ -58,6 +59,30 @@ export const fileOf = (directory: string, slug: string | undefined): string => {
   try { return memberFile(directory, slug as string); } // SLUG matched above, so slug is a non-empty string
   catch (error) { throw new SecretError((error as Error).message); }
 };
+
+/** Judge a selected service member and cleartext key names without decrypting; its real path stays in this product. */
+export function serviceCredentialFile(repoRoot: string, binding: ServiceBinding): string {
+  const file = fileOf(secretsDirectory(repoRoot, binding.environment), binding.member);
+  const declared = path.resolve(repoRoot, binding.path);
+  try {
+    if (file !== declared || !fs.statSync(file).isFile() || fs.realpathSync(file) !== path.join(fs.realpathSync(repoRoot), binding.path))
+      throw new SecretError("service custody must name one regular sealed member inside this product");
+    if (!envelopeOf(fs.readFileSync(file, "utf8")).keys.includes(binding.key)) throw new SecretError("service custody does not hold the declared key");
+  } catch { throw new SecretError("service custody is missing, ambiguous or outside this product"); }
+  return file;
+}
+
+/** Native service loader: one exact key, decrypted in memory through the common identity/SOPS owner, never an env fallback. */
+export function serviceCredentialValue(repoRoot: string, binding: ServiceBinding, sops: Pick<SecretSops, "decrypt">): string {
+  const file = serviceCredentialFile(repoRoot, binding);
+  try {
+    const envelope = envelopeOf(fs.readFileSync(file, "utf8"));
+    if (!envelope.keys.includes(binding.key)) throw new SecretError("service credential key is absent from the selected member");
+    const value = sops.decrypt(file, envelope.format)[binding.key];
+    if (typeof value !== "string" || !value.length) throw new SecretError("service credential key is empty or absent");
+    return value;
+  } catch { throw new SecretError("service credential custody could not be opened; check its member, key and owner identity"); }
+}
 
 /**
  * Build and validate a replacement envelope without publishing it. An existing member is decrypted only when it holds a key

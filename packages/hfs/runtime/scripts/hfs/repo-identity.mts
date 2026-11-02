@@ -5,11 +5,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { revParseQuery } from '../api/git/rev-parse-query.mjs';
 import { remote as gitRemote } from '../api/git/remote.mjs';
-import { gitOutputOf, type GitSpawnResult } from '../lib/git.mjs';
+import { gitOutputOf, withoutGitLocalEnv, type GitSpawnResult } from '../lib/git.mjs';
 import { trimTrailingSlashes } from './trailing-slashes.mjs';
 
 /** One git call (a scripts/api/git call file) in `root`: its trimmed stdout; throws unless git exits 0. */
-const git = (call: (args: string[], options: { cwd: string }) => GitSpawnResult, root: string, args: string[]): string => (gitOutputOf(call(args, { cwd: root })) as string).trim(); // gitOutputOf threw unless git exited 0, whose stdout is text
+const git = (call: (args: string[], options: { cwd: string; env: NodeJS.ProcessEnv }) => GitSpawnResult, root: string, args: string[], env: NodeJS.ProcessEnv): string => (gitOutputOf(call(args, { cwd: root, env: identityQueryEnvironment(env) })) as string).trim(); // gitOutputOf threw unless git exited 0, whose stdout is text
+
+/** Identity queries need repository configuration, never age identities or selected service connection credentials. */
+export function identityQueryEnvironment(parent: NodeJS.ProcessEnv, privateNames: readonly string[] = []): NodeJS.ProcessEnv {
+  const selected = new Set(privateNames.map((name) => name.toUpperCase()));
+  return Object.fromEntries(Object.entries(withoutGitLocalEnv(parent)).filter(([name]) => !selected.has(name.toUpperCase()) && !/^(?:SOPS_AGE_KEY(?:_FILE)?|SONAR_.*)$/iu.test(name)));
+}
 const real = (p: string): string => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
 const GIT_SUFFIX_SOURCE = String.raw`\.git$`;
 const GIT_SUFFIX = new RegExp(GIT_SUFFIX_SOURCE, 'iu');
@@ -22,19 +28,19 @@ const known = new Map<string, RepoIdentity>();
 const stateOf = (root: string): string | null => { try { const stat = fs.statSync(path.join(root, '.git')); return `${real(root)}|${stat.ino}|${stat.mtimeMs}`; } catch { return null; } };
 
 /** { repositoryRoot, inWorkTree, home } for `root`: home is the main checkout folder when root is a repository top level. */
-function identityOf(root: string): RepoIdentity {
+function identityOf(root: string, env = process.env): RepoIdentity {
   const state = stateOf(root);
-  if (state === null) return askGit(root);
-  if (!known.has(state)) known.set(state, askGit(root));
+  if (state === null) return askGit(root, env);
+  if (!known.has(state)) known.set(state, askGit(root, env));
   return known.get(state) as RepoIdentity;
 }
 
-function askGit(root: string): RepoIdentity {
+function askGit(root: string, env: NodeJS.ProcessEnv): RepoIdentity {
   let inWorkTree = false, repositoryRoot = false, home: string | null = null;
   try {
     // Identity comes from Git only when root IS a repository (or worktree) top level, never a folder inside one.
     // One git call answers both questions: the top level on the first line, the common git dir on the second.
-    const [top, commonDir] = git(revParseQuery, root, ['--show-toplevel', '--git-common-dir']).split(String.fromCodePoint(10)).map((line) => line.trim());
+    const [top, commonDir] = git(revParseQuery, root, ['--show-toplevel', '--git-common-dir'], env).split(String.fromCodePoint(10)).map((line) => line.trim());
     repositoryRoot = real(top as string) === real(root);
     inWorkTree = true;
     const common = path.resolve(root, commonDir as string);
@@ -49,11 +55,11 @@ function askGit(root: string): RepoIdentity {
  * name outside Git, else the folder name. A folder inside a larger repository (a nested product, an example) is named by
  * its own folder.
  */
-export function repositoryName(root: string): string {
-  const { inWorkTree, repositoryRoot, home } = identityOf(root);
+export function repositoryName(root: string, { env = process.env }: { env?: NodeJS.ProcessEnv } = {}): string {
+  const { inWorkTree, repositoryRoot, home } = identityOf(root, env);
   if (repositoryRoot) {
     try {
-      const remote = trimTrailingSlashes(git(gitRemote, root, ['get-url', 'origin'])).replace(GIT_SUFFIX, '');
+      const remote = trimTrailingSlashes(git(gitRemote, root, ['get-url', 'origin'], env)).replace(GIT_SUFFIX, '');
       const name = remote.split(/[/:]/u).pop();
       if (name) return name;
     } catch { /* No origin remote. */ }

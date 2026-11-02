@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
-import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
+import { qualityServices, serviceCredentialNames } from '../runtime/scripts/hfs/ci-declaration.mjs';
+import { repositoryName, identityQueryEnvironment } from '../runtime/scripts/hfs/repo-identity.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { badgeTokenNotices, renderReadmeBadges } from './readme-badges.mjs';
 import { DECLARATION } from './sonar-key.mjs';
@@ -23,7 +24,7 @@ export function hasDeclaredServices(root: string, { parseYaml = bundledParseYaml
 export function readDeclaredQuality(root: string, { parseYaml = bundledParseYaml as ParseYaml }: { parseYaml?: ParseYaml | undefined } = {}) {
   try {
     const doc = parseYaml(fs.readFileSync(path.join(root, DECLARATION), 'utf8'));
-    return qualityServices(doc, { example: isRuntimeExampleApp(root) });
+    return qualityServices(doc, { example: isRuntimeExampleApp(root), repository: repositoryName(root, { env: identityQueryEnvironment(process.env, serviceCredentialNames(doc)) }) });
   } catch {
     return qualityServices({});
   }

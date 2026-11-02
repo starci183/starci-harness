@@ -7,7 +7,9 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../runtime/engine/plain-object.mjs';
-import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
+import { qualityServices, serviceBindings, projectServiceCredential, serviceCredentialNames } from '../runtime/scripts/hfs/ci-declaration.mjs';
+import { repositoryName, identityQueryEnvironment } from '../runtime/scripts/hfs/repo-identity.mjs';
+import { serviceCredentialFile, serviceCredentialValue } from '../runtime/scripts/hfs/secret-store.mjs';
 import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
 import { firstLine, lines, tool } from '../stack/context.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
@@ -106,18 +108,52 @@ function auditGate(audit: Services): Gate | null {
   return { name: 'audit', command: ['npm', 'audit', ...(audit.omitDev ? ['--omit=dev'] : []), `--audit-level=${audit.level}`], summary: null, env: {} };
 }
 
-/** A requested local Sonar scan uses only the declared host and token variable; the token never enters argv. */
-function sonarGate(services: Services, env: NodeJS.ProcessEnv): Gate {
+/** The CI execution copy is job-local; a native owner run opens the selected product credential only when executed. */
+function sonarGate(services: Services, ctx: VerbContext, execute: boolean): Gate {
+  const env = ctx.env;
   const configured = services?.sonar;
-  const sonar = configured?.provider === 'sonarcloud' ? { ...configured, host: 'https://sonarcloud.io' } : configured;
+  let sonar = configured?.provider === 'sonarcloud' ? { ...configured, host: configured.host || 'https://sonarcloud.io' } : configured;
   const tokenName = sonar?.token;
-  if (!sonar?.host || !ENV_KEY.test(tokenName) || !env[tokenName]) throw refusal('RELEASE_SONAR_UNAVAILABLE', 'declare an enabled services.sonar host and set its ci.token environment variable');
-  const command: string[] = ['npx', '--yes', '@sonar/scan@4.3.0', `-Dsonar.host.url=${sonar.host}`];
+  if (!sonar || !ENV_KEY.test(tokenName)) throw refusal('RELEASE_SONAR_UNAVAILABLE', 'declare an enabled services.sonar host and ci.token selector');
+  let token: string | undefined;
+  let privateHost: string | undefined;
+  if (env.GITHUB_ACTIONS === 'true') {
+    token = env[tokenName];
+    if (!token) throw refusal('RELEASE_SONAR_UNAVAILABLE', 'the declared Sonar CI execution copy is missing');
+    if (sonar.hostCredential) {
+      privateHost = env[sonar.hostVar || 'SONAR_HOST_URL'];
+      sonar = { ...sonar, host: privateHost ?? null, privateHost: true };
+    }
+  } else {
+    const doc = services.declaration;
+    const repository = repositoryName(ctx.cwd, { env: identityQueryEnvironment(env, serviceCredentialNames(doc)) });
+    const selected = serviceBindings(doc, repository);
+    const binding = selected.bindings.find((item) => item.service === 'sonar' && item.name === tokenName);
+    if (selected.problems.length || !binding) throw refusal('RELEASE_SONAR_UNAVAILABLE', 'declare one explicit Sonar project credential binding in this product');
+    try {
+      serviceCredentialFile(ctx.cwd, binding);
+      if (execute) token = serviceCredentialValue(ctx.cwd, binding, ctx.sops);
+      if (sonar.hostCredential) {
+        const endpoint = projectServiceCredential(doc, 'sonar', sonar.hostCredential, repository);
+        if (!endpoint) throw new Error('invalid endpoint reference');
+        serviceCredentialFile(ctx.cwd, endpoint);
+        if (execute) privateHost = serviceCredentialValue(ctx.cwd, endpoint, ctx.sops);
+        sonar = { ...sonar, host: privateHost ?? null, privateHost: true };
+      }
+    } catch { throw refusal('RELEASE_SONAR_UNAVAILABLE', 'the selected Sonar project custody is missing or cannot be opened'); }
+  }
+  if (!sonar.host && !(sonar.hostCredential && !execute)) throw refusal('RELEASE_SONAR_UNAVAILABLE', 'the declared Sonar connection URL is missing');
+  if (sonar.host) {
+    try { const url = new URL(sonar.host); if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('invalid URL'); }
+    catch { throw refusal('RELEASE_SONAR_UNAVAILABLE', 'the Sonar connection must be HTTP(S), with login kept in separate sealed credential keys'); }
+  }
+  const command: string[] = ['npx', '--yes', '@sonar/scan@4.3.0', ...(sonar.privateHost ? [] : [`-Dsonar.host.url=${sonar.host}`])];
+  if (sonar.projectKey) command.push(`-Dsonar.projectKey=${sonar.projectKey}`);
   const organization = sonar.organization ?? (sonar.organizationVar ? env[sonar.organizationVar] : null);
   if (organization) command.push(`-Dsonar.organization=${organization}`);
   if (!command.every((word) => TOKEN.test(word))) throw refusal('RELEASE_SONAR_UNAVAILABLE', 'Sonar host and organization must be plain command arguments');
-  return { name: 'sonar', command, summary: null, env: { SONAR_TOKEN: env[tokenName] as string }, provider: sonar,
-    credentialNames: [...new Set(['SONAR_TOKEN', tokenName])] };
+  return { name: 'sonar', command, summary: null, env: { ...(token === undefined ? {} : { SONAR_TOKEN: token }), ...(privateHost ? { SONAR_HOST_URL: privateHost } : {}) }, provider: sonar,
+    credentialNames: [...new Set(['SONAR_TOKEN', tokenName, ...serviceCredentialNames(services.declaration), ...(sonar.hostCredential ? ['SONAR_HOST_URL', sonar.hostVar] : [])].filter((name): name is string => typeof name === 'string'))] };
 }
 
 function gateProblems(entry: Record<string, any>, at: string, seen: ReadonlySet<string>): string[] { // reason: a gate entry of the YAML-parsed release block
@@ -153,7 +189,7 @@ function gatesOf(list: unknown, problems: string[]): Gate[] {
 }
 
 /** Judges the optional `release:` block. Absence is fine (defaults). Returns { config } or { problems }. */
-export function normalizeRelease(block: unknown, scripts: Record<string, unknown> | undefined = {}, services: Services = {}, options: { example?: boolean; entities?: boolean } = {}): { config: ReleaseConfig; problems?: undefined } | { config?: undefined; problems: string[] } {
+export function normalizeRelease(block: unknown, scripts: Record<string, unknown> | undefined = {}, services: Services = {}, options: { example?: boolean; entities?: boolean; repository?: string } = {}): { config: ReleaseConfig; problems?: undefined } | { config?: undefined; problems: string[] } {
   const given = block ?? {};
   if (!plain(given)) return { problems: ['release: must be a mapping'] };
   const raw: Record<string, any> = given; // reason: the release block is YAML parsed from disk; every field is judged below
@@ -278,7 +314,7 @@ async function sonarAvailability(ctx: VerbContext, gate: Gate): Promise<{ pass: 
     up = response.ok && ((await response.json()) as { status?: string }).status === 'UP';
   } catch { up = false; }
   if (up) return null;
-  return { pass: false, detail: `${SONAR_UNREACHABLE}: ${sonar.host} did not report UP within ten seconds` };
+  return { pass: false, detail: `${SONAR_UNREACHABLE}: ${sonar.privateHost ? 'the declared private host' : sonar.host} did not report UP within ten seconds` };
 }
 
 /** An unreachable Sonar host stays a red row with a real log and no scan invocation. */
@@ -308,13 +344,20 @@ async function judgeQualityGate(ctx: VerbContext, gate: Gate, row: GateRow): Pro
   if (!row.pass) return row;
   const started = ctx.now();
   const verdict = await sonarQualityGate(ctx, { cwd: ctx.cwd, host: gate.provider.host, token: gate.env.SONAR_TOKEN as string });
-  const failed = (verdict.conditions ?? []).map((line: string) => `  failed: ${line}\n`).join('');
-  fs.appendFileSync(row.log as string, `\nquality gate: ${verdict.detail}\n${failed}`);
-  return { ...row, pass: verdict.pass, detail: verdict.detail, seconds: (row.seconds as number) + Math.round((ctx.now() - started) / 1000), logSha256: sha256(row.log as string) };
+  const detail = redactGateText(gate, verdict.detail);
+  const failed = (verdict.conditions ?? []).map((line: string) => `  failed: ${redactGateText(gate, line)}\n`).join('');
+  fs.appendFileSync(row.log as string, `\nquality gate: ${detail}\n${failed}`);
+  return { ...row, pass: verdict.pass, detail, seconds: (row.seconds as number) + Math.round((ctx.now() - started) / 1000), logSha256: sha256(row.log as string) };
+}
+
+/** Scanner output and the later server verdict share one redaction boundary. */
+function redactGateText(gate: Gate, text: string): string {
+  const values = gate.provider ? [gate.env.SONAR_TOKEN, ...(gate.provider.privateHost ? [gate.env.SONAR_HOST_URL] : [])].filter((value): value is string => Boolean(value)) : [];
+  return values.reduce((redacted, value) => redacted.replaceAll(value, '[REDACTED]'), text);
 }
 
 export const withoutCredentials = (values: Record<string, string | undefined> | undefined, credentialNames: readonly string[]): Record<string, string | undefined> => {
-  const selected = new Set(credentialNames);
+  const selected = new Set([...credentialNames, 'SOPS_AGE_KEY', 'SOPS_AGE_KEY_FILE'].map((name) => name.toUpperCase()));
   return Object.fromEntries(Object.entries(values ?? {}).filter(([key]) => !selected.has(key.toUpperCase())));
 };
 
@@ -326,10 +369,10 @@ export function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentia
   const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)), ...RELEASE_CACHE_ENV };
   const run = tool(ctx, command, args, { cwd: ctx.cwd, env });
   const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
-  const text = gate.name === 'sonar' && gate.env.SONAR_TOKEN ? output.replaceAll(gate.env.SONAR_TOKEN, '[REDACTED]') : output;
+  const text = redactGateText(gate, output);
   fs.writeFileSync(log, preface + text);
   const verdict = judgeVerdict(run, gate, text);
-  if (gate.name === 'sonar' && gate.env.SONAR_TOKEN) verdict.detail = verdict.detail.replaceAll(gate.env.SONAR_TOKEN, '[REDACTED]');
+  verdict.detail = redactGateText(gate, verdict.detail);
   const seconds = Math.round((ctx.now() - started) / 1000);
   return {
     name: gate.name, command: gate.command.join(' '), pass: verdict.pass, detail: verdict.detail, seconds,
@@ -468,7 +511,7 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   execute?: boolean; source?: string | boolean | undefined; tagPrefix?: string | boolean | undefined; platform?: string; backfill?: string | boolean | undefined; openTicket?: unknown;
 } = {}): Promise<VerbResult> {
   // Sonar is a row of the managed CI, so it is a row of the local gate whenever the app declares services.sonar; a missing token is a refusal, never a skip.
-  if (config.services?.sonar) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx.env)] };
+  if (config.services?.sonar) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx, options.execute === true)] };
   const credentialNames: string[] = config.gates.find(gate => gate.provider)?.credentialNames ?? ['SONAR_TOKEN', config.services?.sonar?.token].filter(Boolean);
   ctx = Object.create(ctx, {env: {value: withoutCredentials(ctx.env, credentialNames)}}) as VerbContext;
   // The CI verdict of a release is the candidate run of its own sha, judged by `starci app release push` (candidate-ci.mjs, OWNER RULING candidate-ci 2026-10-18):

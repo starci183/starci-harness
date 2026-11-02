@@ -25,10 +25,12 @@ function fakeCtx({ reads = [[row()]], jobs = { jobs: [] }, push = { status: 0 },
   reads?: (CiRow[] | null)[]; jobs?: { jobs: unknown[] }; push?: { status: number; stderr?: string }; common?: string | null;
 } = {}) {
   const calls: string[][] = [];
+  const environments: (NodeJS.ProcessEnv | undefined)[] = [];
   let clock = 0;
   let index = 0;
-  const spawn = (command: string, args: readonly string[]) => {
+  const spawn = (command: string, args: readonly string[], options?: { env?: NodeJS.ProcessEnv }) => {
     calls.push([command, ...args]);
+    environments.push(options?.env);
     if (command === 'git' && args[0] === 'push') return push;
     if (command === 'git' && args[0] === 'rev-parse') return common ? { status: 0, stdout: common } : { status: 128, stdout: '' };
     if (command === 'gh' && args[1] === 'list') {
@@ -40,8 +42,8 @@ function fakeCtx({ reads = [[row()]], jobs = { jobs: [] }, push = { status: 0 },
     throw new Error(`unexpected ${command} ${args.join(' ')}`);
   };
   // reason: the context is the four seams the candidate step reads (cwd, spawn, clock, sleep), not a full stack context.
-  const ctx = { cwd: '/app', spawn, now: () => clock, sleep: async (ms: number) => { clock += ms; } } as unknown as VerbContext;
-  return { calls, ctx };
+  const ctx = { cwd: '/app', env: { GH_TOKEN: 'synthetic-github-auth' }, spawn, now: () => clock, sleep: async (ms: number) => { clock += ms; } } as unknown as VerbContext;
+  return { calls, ctx, environments };
 }
 
 test('the candidate ref names the version without the tag prefix', () => {
@@ -77,13 +79,14 @@ test('a green run whose jobs cannot be read is not green: the wait ends unknown'
 });
 
 test('a green candidate pushes HEAD to the candidate ref first and reports the run', async () => {
-  const { ctx, calls } = fakeCtx({ reads: [[], [row({ status: 'in_progress', conclusion: null })], [row()]] });
+  const { ctx, calls, environments } = fakeCtx({ reads: [[], [row({ status: 'in_progress', conclusion: null })], [row()]] });
   const judged = await candidateStep(ctx, { head: HEAD, tag: 'v1.2.3', prefix: 'v', remote: 'origin', wait: WAIT });
   assert.equal(judged.ok, true);
   assert.equal(judged.data.state, 'green');
   assert.deepEqual(calls[0], ['git', 'push', 'origin', `+${HEAD}:refs/heads/release/candidate-1.2.3`]);
   assert.ok(calls.some((call) => call.join(' ') === `gh run list --workflow ci.yml --commit ${HEAD} --limit 20 --json databaseId,headSha,status,conclusion,url,event,createdAt`));
   assert.match(judged.lines.at(-1) as string, /candidate CI {3}green https:\/\/example\.invalid\/runs\/7/);
+  for (const env of environments) assert.equal(env, ctx.env, 'every candidate child uses the explicit release context environment');
 });
 
 test('a red candidate refuses and names the failing jobs and steps; nothing else is pushed', async () => {

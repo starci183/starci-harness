@@ -14,6 +14,9 @@ import { type SecretEnvelope, envelopeOf, validateMap } from "./secret-document.
 import { deleteSealed, fileOf, sealedFiles, writeSecret } from "./secret-store.mjs";
 import { SecretError } from "./secret-errors.mjs";
 import type { SecretSops } from "./secret-sops.mjs";
+import { serviceMemberPath, serviceCredentialNames } from "./ci-declaration.mjs";
+import { repositoryName, identityQueryEnvironment } from "./repo-identity.mjs";
+import { list } from "../lib/list.mjs";
 
 /** One entry of an environment's `secrets:` in application-stacks.yaml. */
 export interface SecretsEntry {
@@ -85,6 +88,21 @@ const keyList = (keys: string[]): string => keys.join(", ");
 /** The member a `secrets:` entry names: `member`, else the slug of `where`, else its `name`. */
 const memberOfEntry = (entry: SecretsEntry | undefined): string | undefined => entry?.member ?? /^secrets\/([a-z0-9-]+)/u.exec(entry?.where ?? "")?.[1] ?? entry?.name;
 
+/** The declared connection/credential keys of this project's services, including separately kept operator login custody. */
+function declaredServiceReferences(document: StacksDocument, repository: string): { environment: string; member: string; path: string; key: string }[] {
+  // reason: a service credential is a name-only reference from the YAML manifest; validate the fields consumed here.
+  type Reference = { key?: string; custody?: { repository?: string; path?: string } };
+  const services = document.services as Record<string, { credentials?: Reference[] }> | undefined;
+  return Object.values(services ?? {}).flatMap((service) => list<Reference>(service?.credentials).flatMap((credential) => {
+    const selected = serviceMemberPath(credential?.custody?.path);
+    return credential?.custody?.repository === repository && selected && typeof credential.key === "string" ? [{ ...selected, key: credential.key }] : [];
+  }));
+}
+
+export function declaredServiceKeys(document: StacksDocument, repository: string, environment: string, member: string): string[] {
+  return declaredServiceReferences(document, repository).filter((reference) => reference.environment === environment && reference.member === member).map((reference) => reference.key);
+}
+
 /** The keys an environment's `secrets:` declares for `member`: an entry naming `key` with that `member`, or a whole-member entry. */
 function declaredKeys(spec: EnvironmentSpec | undefined, member: string, keys: string[]): string[] {
   const entries = Array.isArray(spec?.secrets) ? spec.secrets : [];
@@ -145,6 +163,11 @@ export function auditSecrets(repoRoot: string, environment: string | null = null
         .map((entry) => entry.name)
         .sort();
   const findings: AuditFinding[] = [];
+  const repository = repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(stacks)) });
+  for (const reference of declaredServiceReferences(stacks, repository).filter((item) => !environment || item.environment === environment)) {
+    if (!Object.hasOwn(stacks.environments ?? {}, reference.environment) || !fs.existsSync(path.join(repoRoot, reference.path)))
+      findings.push({ code: "MISSING", env: reference.environment, member: reference.member, detail: "service credential references a missing member or undeclared environment" });
+  }
   for (const env of environments) {
     const directory = path.join(root, env, "secrets");
     const spec = stacks.environments?.[env];
@@ -156,15 +179,16 @@ export function auditSecrets(repoRoot: string, environment: string | null = null
       const add = (code: string, detail: string): number => findings.push({ code, env, member: name, detail });
       const providers = [...new Set(envelope.keys.map(providerOf))];
       if (isLegacyName(name)) add("LEGACY_MEMBER", `is a dotenv .enc member; move it: starci app secret migrate --env ${env} ${member} [--to <provider>] --execute`);
-      if (providers.length > 1 && !declaredGroup(spec, member, envelope.keys))
+      const serviceKeys = declaredServiceKeys(stacks, repository, env, member);
+      if (providers.length > 1 && !declaredGroup(spec, member, envelope.keys) && !envelope.keys.every((key) => serviceKeys.includes(key)))
         add("MIXED_PROVIDERS", `holds keys of ${providers.length} providers by their first word (${providers.join(", ")}) that the stack does not group in it; split it (starci app secret split --env ${env} ${member} [--group KEY=member] --execute) or declare its keys in environments.${env}.secrets (an entry naming ${member} with keys: [...])`);
       const wanted = recipientsFor(repoRoot, path.join(directory, `${member}${MEMBER_SUFFIX}`));
       if (!isLegacyName(name) && wanted.length && !sameSet(wanted, envelope.recipients))
         add("RECIPIENT_DRIFT", `is sealed to ${keyList(envelope.recipients)}, its environment's rule names ${keyList(wanted)}; seal it again: starci app secret migrate --env ${env} ${member} --execute`);
       if (spec) {
-        const declared = declaredKeys(spec, member, envelope.keys);
+        const declared = [...declaredKeys(spec, member, envelope.keys), ...serviceKeys];
         const missing = envelope.keys.filter((key) => !declared.includes(key));
-        if (missing.length) add("UNDECLARED_KEY", `holds ${keyList(missing)}, not declared in environments.${env}.secrets of application-stacks.yaml`);
+        if (missing.length) add("UNDECLARED_KEY", `holds ${keyList(missing)}, not declared as runtime secrets or exact service credential references in application-stacks.yaml`);
       }
       if (tracked && !tracked.has(name)) add("UNTRACKED", "is not committed; commit it (it is ciphertext)");
     }
@@ -219,7 +243,8 @@ export function declareKeys(
   const document: StacksDocument = parseYaml(text) ?? {}; // reason: parsed YAML boundary, read from disk
   const spec = document.environments?.[environment];
   if (!spec) return { declared: [], byHand: [] };
-  const missing = keys.filter((key) => !declaredKeys(spec, member, keys).includes(key));
+  const serviceKeys = declaredServiceKeys(document, repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(document)) }), environment, member);
+  const missing = keys.filter((key) => !declaredKeys(spec, member, keys).includes(key) && !serviceKeys.includes(key));
   if (!missing.length) return { declared: [], byHand: [] };
   // A swarm environment's secret is a versioned external secret its stack file names (runtimeName, deploy grants): its
   // declaration is wired with the stack, not appended here.

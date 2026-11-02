@@ -38,6 +38,107 @@ export const isValidCiDeclaration = (declaration: CiDeclaration): declaration is
 
 const nameOf = (item: ParsedDoc): unknown => typeof item === 'string' ? item : item?.name;
 
+/** A private endpoint uses an explicitly linked secret copy; public endpoints use the existing CI variable selector. */
+export function serviceHostSecret(service: ParsedDoc): string | null {
+  const name = service?.ci?.hostVar || 'SONAR_HOST_URL';
+  return service?.host?.fromCredential && list<ParsedDoc>(service?.ci?.secrets).some((link) => link?.name === name && link?.credential === service.host.fromCredential) ? name : null;
+}
+
+/** Public credential selectors that ordinary child processes have no authority to inherit. */
+export function serviceCredentialNames(doc: ParsedDoc): string[] {
+  return [...new Set(Object.values<ParsedDoc>(doc?.services ?? {}).flatMap((service) => [service?.ci?.token,
+    ...(service?.host?.fromCredential ? [service?.ci?.hostVar] : []), ...list<ParsedDoc>(service?.ci?.secrets).map((entry) => entry?.name),
+    ...list<ParsedDoc>(service?.credentials).flatMap((credential) => [credential?.env, credential?.key])]).filter((name): name is string => typeof name === 'string' && /^[A-Za-z_][A-Za-z0-9_]*$/u.test(name)))];
+}
+
+/** A project service's retrievable credential, and the explicitly linked CI execution copy. No value is held here. */
+export interface ServiceBinding { service: string; credential: string; name: string; repository: string; projectKey: string; environment: string; member: string; key: string; path: string }
+export interface BindingProblem { at: string; message: string }
+const OPERATOR_CREDENTIAL = /(?:^|-)(?:admin|operator|provision|provisioning|global)(?:-|$)/iu;
+
+/** An application runtime declaration or deploy grant selects runtime authority regardless of its CI name. */
+export function runtimeGranted(doc: ParsedDoc, environment: string, member: string, key: string): boolean {
+  const spec = doc?.environments?.[environment];
+  if (list<ParsedDoc>(spec?.secrets).some((entry) => (entry?.member ?? /^secrets\/([a-z0-9-]+)/u.exec(entry?.where ?? '')?.[1] ?? entry?.name) === member
+    && (entry.key === key || (entry.key === undefined && (entry.keys === undefined || list(entry.keys).includes(key)))))) return true;
+  return list<ParsedDoc>(spec?.deploy?.secrets?.grants).some((grant) => typeof grant?.service === 'string'
+    && list<ParsedDoc>(grant.from).some((source) => source?.member === member && (source.keys === undefined || list(source.keys).includes(key))));
+}
+
+/** Read an actual member path, retaining the legacy dotenv suffix without guessing a plaintext twin. */
+export function serviceMemberPath(value: unknown): { environment: string; member: string; path: string } | null {
+  if (typeof value !== 'string') return null;
+  const match = /^\.starcistacks\/([a-z][a-z0-9-]*)\/secrets\/([a-z][a-z0-9-]*)\.enc(?:\.yaml)?$/u.exec(value);
+  return match ? { environment: match[1] as string, member: match[2] as string, path: value } : null;
+}
+
+/** The selected project's public credential reference, independent of CI: used for a sealed private endpoint too. */
+export function projectServiceCredential(doc: ParsedDoc, serviceId: string, credentialId: string, repository: string): ServiceBinding | null {
+  const service = doc?.services?.[serviceId], projects = list<ParsedDoc>(service?.projects);
+  const selected = projects.filter((project) => project?.repository === repository);
+  const credentials = list<ParsedDoc>(service?.credentials).filter((item) => item?.id === credentialId);
+  const credential = credentials.length === 1 ? credentials[0] : null, member = serviceMemberPath(credential?.custody?.path);
+  if (selected.length !== 1 || typeof selected[0]?.key !== 'string' || !selected[0].key || credential?.project !== selected[0].key
+    || projects.filter((project) => project?.key === credential?.project).length !== 1
+    || !member || credential.custody.repository !== repository || !Object.hasOwn(doc?.environments ?? {}, member.environment)
+    || typeof credential.key !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(credential.key)
+    || OPERATOR_CREDENTIAL.test(credentialId)
+    || runtimeGranted(doc, member.environment, member.member, credential.key)) return null;
+  // A tooling member carries one authority: another project's or the operator's credential cannot share its envelope.
+  if (list<ParsedDoc>(service.credentials).some((item) => item !== credential && item?.custody?.repository === repository
+    && item?.custody?.path === member.path && (item?.project !== credential.project || OPERATOR_CREDENTIAL.test(String(item?.id))))) return null;
+  return { service: serviceId, credential: credentialId, name: '', repository, projectKey: selected[0].key,
+    environment: member.environment, member: member.member, key: credential.key, path: member.path };
+}
+
+/**
+ * Positive tooling classification: the selected product project, one explicit CI link, its own declared environment and exact
+ * member/key. Names alone, a sealed key alone, or credentials of a host or another project confer no tooling authority.
+ */
+export function serviceBindings(doc: ParsedDoc, repository: string): { bindings: ServiceBinding[]; problems: BindingProblem[] } {
+  const bindings: ServiceBinding[] = [], problems: BindingProblem[] = [];
+  const bad = (at: string, message: string): void => { problems.push({ at, message }); };
+  for (const [id, service] of Object.entries<ParsedDoc>(doc?.services ?? {})) {
+    const links = list<ParsedDoc>(service?.ci?.secrets);
+    const at = `services.${id}`;
+    if (id === 'codecov' && service?.auth === 'oidc' && (service.ci?.token || links.length || list(service.credentials).length))
+      bad(at, 'OIDC Codecov declares no stored token, credential or CI secret copy');
+    if (id === 'sonar' && service?.mode && service.mode !== 'disabled' && service.ci?.wiring === 'required'
+      && (!links.length || typeof service.ci.token !== 'string')) bad(at, 'required product Sonar declares its analysis credential and CI binding to a sonar.enc.yaml member');
+    if (service?.host?.fromCredential && service.ci?.wiring === 'required' && !serviceHostSecret(service))
+      bad(`${at}.host.fromCredential`, 'a required private endpoint has an explicit credential-to-CI secret copy selected by ci.hostVar');
+    if (!links.length) continue;
+    if (service.ci.token && !links.some((link) => link?.name === service.ci.token)) { bad(`${at}.ci.token`, 'ci.token must select an explicit credential copy'); continue; }
+    for (const link of links) {
+      const where = `${at}.ci.secrets`;
+      if (service?.mode === 'disabled' || service?.auth !== 'token') { bad(where, 'credential copies require an enabled token-authenticated service'); continue; }
+      const references = list<ParsedDoc>(service.credentials).filter((credential) => credential?.id === link?.credential);
+      const other = references.length === 1 && list<ParsedDoc>(service.projects).find((project) => project?.key === references[0]?.project);
+      if (other && other.repository !== repository) continue;
+      const binding = typeof link?.credential === 'string' ? projectServiceCredential(doc, id, link.credential, repository) : null;
+      if (!binding || typeof link?.name !== 'string' || !/^[A-Z][A-Z0-9_]*$/u.test(link.name)
+        || links.filter((item) => item?.name === link.name).length !== 1) { bad(where, 'each unique CI copy selects one project credential in its own declared environment/member/key, separate from operator and app runtime authority'); continue; }
+      if (id === 'sonar' && link.name === service.ci.token && binding.path !== `.starcistacks/${binding.environment}/secrets/sonar.enc.yaml`) {
+        bad(where, 'Sonar analysis custody is the product environment\'s sonar.enc.yaml member'); continue;
+      }
+      bindings.push({ ...binding, name: link.name });
+    }
+  }
+  for (const binding of [...bindings]) {
+    if (bindings.filter((item) => item.name === binding.name).length > 1) bad('services', `CI secret ${binding.name} has ambiguous service custody`);
+  }
+  const sonar = doc?.services?.sonar;
+  if (sonar?.mode && sonar.mode !== 'disabled' && sonar.ci?.wiring === 'required'
+    && !bindings.some((binding) => binding.service === 'sonar' && binding.name === sonar.ci.token))
+    bad('services.sonar', 'required Sonar analysis has no credential binding for the selected product project');
+  return { bindings: bindings.filter((binding) => bindings.filter((item) => item.name === binding.name).length === 1), problems };
+}
+
+/** A sealed row belongs to this exact positive binding; a same-named key elsewhere remains unrelated custody. */
+export function boundSealedKey(binding: ServiceBinding, sealed: { env?: string; member?: string; key: string; file?: string }): boolean {
+  return binding.environment === sealed.env && binding.member === sealed.member && binding.key === sealed.key && binding.path === sealed.file;
+}
+
 /** A public CI variable declares either a manifest value or an owner-supplied value, never both. */
 function variableProblems(item: ParsedDoc, at: string, invalid: (at: string, message: string) => void): void {
   const hasValue = item != null && Object.hasOwn(item, 'value');
@@ -71,14 +172,18 @@ export function readCiDeclaration(doc: ParsedDoc): CiDeclaration {
 }
 
 /** Missing quality blocks preserve the existing rendered defaults; disabled services remain explicitly disabled. */
-export function qualityServices(doc: ParsedDoc, { example = false }: { example?: boolean } = {}): ParsedDoc {
+export function qualityServices(doc: ParsedDoc, { example = false, repository }: { example?: boolean; repository?: string | undefined } = {}): ParsedDoc {
   const services = doc?.services ?? {}, sonar = services.sonar, codecov = services.codecov ?? {};
   const dependabot = services.dependabot ?? {}, audit = services.audit ?? {};
   return {
     sonar: !sonar || sonar.mode === 'disabled' ? null : {
       provider: sonar.provider, mode: sonar.mode, host: sonar.host?.public || sonar.host?.local || null,
+      hostCredential: sonar.host?.fromCredential ?? null,
+      hostSecret: serviceHostSecret(sonar),
       organization: sonar.organization ?? null,
-      organizationVar: sonar.ci?.organizationVar ?? (sonar.provider === 'sonarcloud' && (example || list(sonar.runtimeSecrets).length > 0) && !list(sonar.credentials).length ? 'SONAR_ORGANIZATION' : null), projectKey: sonar.projects?.[0]?.key ?? null,
+      organizationVar: sonar.ci?.organizationVar ?? (sonar.provider === 'sonarcloud' && (example || list(sonar.runtimeSecrets).length > 0) && !list(sonar.credentials).length ? 'SONAR_ORGANIZATION' : null),
+      projectKey: (repository ? list<ParsedDoc>(sonar.projects).find((project) => project?.repository === repository) : sonar.projects?.[0])?.key ?? null,
+      credentials: sonar.credentials ?? [], projects: sonar.projects ?? [], auth: sonar.auth, ci: sonar.ci ?? {},
       qualityGate: sonar.qualityGate ?? (example ? 'starci-quality-lite' : 'starci-quality'), wiring: sonar.ci?.wiring ?? 'required',
       token: sonar.ci?.token || nameOf(sonar.ci?.secrets?.[0]) || 'SONAR_TOKEN', hostVar: sonar.ci?.hostVar || 'SONAR_HOST_URL',
     },
@@ -139,7 +244,7 @@ export function ciNamesOfServices(doc: ParsedDoc): Array<{ service: string; name
   for (const [service, entry] of Object.entries((doc?.services ?? {}) as Record<string, ParsedDoc>)) {
     const ci = entry?.ci ?? {};
     if (ci.token) out.push({ service, name: ci.token, kind: 'secret' });
-    if (ci.hostVar) out.push({ service, name: ci.hostVar, kind: 'var' });
+    if (ci.hostVar) out.push({ service, name: ci.hostVar, kind: entry?.host?.fromCredential ? 'secret' : 'var' });
     if (ci.organizationVar) out.push({ service, name: ci.organizationVar, kind: 'var' });
     for (const item of list(ci.secrets) as ParsedDoc[]) out.push({ service, name: nameOf(item), kind: 'secret' });
     for (const item of list(ci.vars) as ParsedDoc[]) out.push({ service, name: nameOf(item), kind: 'var' });

@@ -181,11 +181,15 @@ services:
       environment: dev
       compose: compose.yaml
     auth: token
-    credentials: []
+    credentials:
+      - id: analysis
+        project: "{{project}}"
+        key: SONAR_TOKEN
+        custody: {repository: "{{project}}", path: .starcistacks/dev/secrets/sonar.enc.yaml}
     projects: [{repository: "{{project}}", key: "{{project}}"}]
-    ci: {wiring: required, workflow: .github/workflows/ci.yml, token: SONAR_TOKEN, hostVar: SONAR_HOST_URL}
+    ci: {wiring: required, workflow: .github/workflows/ci.yml, token: SONAR_TOKEN, hostVar: SONAR_HOST_URL, secrets: [{name: SONAR_TOKEN, credential: analysis}]}
     ownerAction:
-      needed: Provision this app's Sonar host and project, then set SONAR_TOKEN with starci app ci secret set SONAR_TOKEN --execute and sync SONAR_HOST_URL.
+      needed: Declare this app's connection profile and project credential with its actual sealed member/key and project reference, seal it through starci app secret, bind ci.secrets to that credential, then set the CI execution copy with starci app ci secret set SONAR_TOKEN --from-custody --execute and sync SONAR_HOST_URL.
       reason: A fresh app declares its quality service without fabricating credentials or a successful analysis.
   codecov:
     provider: codecov
