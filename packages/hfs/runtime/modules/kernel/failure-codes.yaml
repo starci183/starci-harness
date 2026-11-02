@@ -294,7 +294,7 @@ BE_APP_BOOT_PROOF_MISSING:
     - "Thiếu provider, thiếu export của module hoặc có phụ thuộc vòng"
     - "Thiếu AppModule, dữ liệu mẫu cho đăng ký động hoặc đối tượng thay thế hạ tầng"
     - "Tiến trình chứng minh ghép nối thất bại hoặc hết thời gian"
-  nextStep_vi: "Sửa đăng ký và phạm vi provider trong AppModule thật, cung cấp dữ liệu mẫu cùng đối tượng thay thế hạ tầng rồi chạy lại starci app check --wiring."
+  nextStep_vi: "Sửa đăng ký và phạm vi provider trong AppModule thật, cung cấp dữ liệu mẫu cùng đối tượng thay thế hạ tầng rồi chạy lại starci app check --gate wiring."
   owner: op-retry
   kind: check-finding
 
@@ -1727,7 +1727,7 @@ BOOT_PROOF_TIMEOUT:
   meaning_vi: "Tiến trình chứng minh ghép nối Nest chạy quá ngân sách thời gian riêng của nó (STARCI_BOOT_PROOF_TIMEOUT_MS, lấy từ heavy.bootProofTimeoutSeconds của ops/liveness.yaml) cả lần đầu lẫn lần thử lại. Đây không phải lỗi ghép nối: máy đang quá tải nên chưa phán được."
   causes_vi:
     - "Máy chủ đang chạy nhiều lệnh nặng cùng lúc nên trình biên dịch TypeScript của bằng chứng chạy quá chậm"
-  nextStep_vi: "Chạy lại starci app check --wiring khi máy rảnh hơn; nếu vẫn hết thời gian khi máy rảnh, nâng heavy.bootProofTimeoutSeconds trong ops/liveness.yaml."
+  nextStep_vi: "Chạy lại starci app check --gate wiring khi máy rảnh hơn; nếu vẫn hết thời gian khi máy rảnh, nâng heavy.bootProofTimeoutSeconds trong ops/liveness.yaml."
   owner: op-retry
   kind: check-finding
 
