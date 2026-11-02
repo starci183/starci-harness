@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0.2
+
+- Changed: Align bundled canon pins and exact sibling requirements with Grammar and its lint families at 0.21.6. Runtime behavior and rule severity are unchanged.
+
 ## Unreleased
 
 ## 5.0.1 - 2026-11-02

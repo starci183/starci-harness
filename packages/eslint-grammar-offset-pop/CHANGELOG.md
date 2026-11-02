@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.6
+
+- Changed: Align bundled canon pins and exact sibling requirements with Grammar and its lint families at 0.21.6. Runtime behavior and rule severity are unchanged.
+
 ## 0.21.5 - 2026-11-02
 
 - Changed: requires core 0.21.5 and follows the HFS 5.0.1 canon-pin cohort; the Grammar component runtime stays at 0.21.3.

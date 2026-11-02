@@ -4,6 +4,10 @@ The packages StarCi apps install from npm: the quality canon, the Grammar and it
 
 A package's `runtime/` holds tracked source and generated bundle copies. The canonical architecture code is `hfs/runtime/**/*.mts`: edit it there, run the HFS build to emit `.mjs`, then `node scripts/sync-bundles.mjs` in `hfs` to refresh the copies declared by each package's `runtime/bundle.json`. Commit the canonical source and generated copies together; editing a bundled `.mjs` alone is overwritten by that generator. `eslint-canon-fe`, `eslint-canon-be`, `eslint-grammar-core`, `eslint-grammar-offset-pop` and `hfs` also carry shared runtime data (the canon pins, Grammar catalog and slot manifest); update their canonical data owner and refresh every declared copy in the same commit. The canon pins name each `@starci` package by its folder here (`source: packages/<name>/package.json`) at that folder's version (`packages/hfs/src/canon-pins.spec.mts` holds both). The CLI is not pinned there: an app's `starci-harness` is the version of the CLI that runs `@starci/hfs` (`runtime/scripts/hfs/canon-pins.mjs`), since the CLI depends on `@starci/hfs` exactly.
 
+## Grammar family versions
+
+`grammar`, `eslint-grammar-core` and `eslint-grammar-offset-pop` always have the identical full release version, including the patch. A metadata-only change to a lint family releases all three together; unchanged component code is rebuilt with the new version stamp. The family equality spec in `eslint-grammar-core/src/index.spec.ts` enforces this release contract.
+
 ## Build convention
 
 Every package is TypeScript source built to JavaScript in `dist/`; no package ships hand-written JavaScript or a hand-written `.d.ts`.
@@ -19,8 +23,8 @@ Every package is TypeScript source built to JavaScript in `dist/`; no package sh
 - `eslint-canon-fe` (`@starci/eslint-canon-fe`): the universal front-end ESLint canon (`starciFeConfig`, `loadHfs`) for TypeScript and Next.js; consumed by the `fe/eslint.config.mjs` of every StarCi app, beside its Grammar family config.
 - `eslint-canon-be` (`@starci/eslint-canon-be`): the back-end ESLint canon (`starciBeConfig`, `loadHfs`) for Nest; consumed by the `be/eslint.config.mjs` of every StarCi app.
 - `grammar` (`@starci/grammar`): the Grammar an app's UI is drawn in: the Common contract and the two families `core` and `offset-pop`, each with its root and stylesheet; consumed by every StarCi front end.
-- `eslint-grammar-core` (`@starci/eslint-grammar-core`): the `core` family's lint factory (`coreGrammarConfig`) over the Grammar component API; versioned with `grammar`, with `@starci/eslint-canon-fe` as its peer.
-- `eslint-grammar-offset-pop` (`@starci/eslint-grammar-offset-pop`): the `offset-pop` family's lint factory (`offsetPopGrammarConfig`), inheriting the core checks; versioned with `grammar`, with `@starci/eslint-grammar-core` as its peer.
+- `eslint-grammar-core` (`@starci/eslint-grammar-core`): the `core` family's lint factory (`coreGrammarConfig`) over the Grammar component API, with `@starci/eslint-canon-fe` as its peer; its release follows the Grammar family version contract above.
+- `eslint-grammar-offset-pop` (`@starci/eslint-grammar-offset-pop`): the `offset-pop` family's lint factory (`offsetPopGrammarConfig`), inheriting the core checks, with `@starci/eslint-grammar-core` as its peer; its release follows the Grammar family version contract above.
 - `stylelint-canon` (`@starci/stylelint-canon`): the CSS canon (Grammar tokens only, brand values only in `brand.css`); consumed by the `stylelint.config.mjs` of StarCi front ends.
 - `heroicons` (`@starci/heroicons`): the glyphs `@heroicons/react` lacks, drawn in its style; imported by StarCi front ends.
 - `event-stream` (`@starci/event-stream`): the server-sent-events client (Bearer renewal, Last-Event-ID resume, backoff, heartbeat, an SWR adapter); one instance per front end.

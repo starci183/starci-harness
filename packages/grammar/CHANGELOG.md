@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.6
+
+- Changed: Align the component package release with both Grammar lint families. Component source, styles and public API are unchanged; the build stamp carries this release version.
+
 ## Unreleased
 
 ## 0.21.3 - 2026-11-02

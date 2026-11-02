@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.43
+
+- Changed: Package contexts name the aligned Grammar and canon cohort; installed CLI dependencies remain on served npm pins until CI follows the package publication.
+
 All notable changes to the `starci-harness` CLI are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Each package under `packages/` keeps its own CHANGELOG.
