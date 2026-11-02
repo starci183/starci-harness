@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.0.0 - 2026-11-02
+
+- Added: per-project Sonar and Codecov gates selected alongside HFS with repeatable `app check --gate` selectors.
+- Changed: `app check` reuses valid cached gate results by default; `--no-cache` recomputes the selected gates and writes their refreshed cache entries.
+- Breaking: removed public `app check --full`. Select gates explicitly, for example `--gate hfs --gate sonar --gate codecov`.
+
 ## 4.17.3 - 2026-11-02
 
 - Changed: bundled canonical pins follow the consolidated Grammar 0.21.3 preservation API cohort; runtime rules are unchanged.
