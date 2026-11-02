@@ -43,7 +43,7 @@ export interface ProjectGraphSnapshot {
 /**
  * The findings every project-graph rule of this canon reports, per file, from one fresh build of the side's graph.
  *
- * The result cache of `starci app lint` calls this once for a side whose files changed and compares each file's findings with the recorded
+ * The result cache of `starci app check --gate lint` calls this once for a side whose files changed and compares each file's findings with the recorded
  * ones: a file whose graph findings differ is linted again by ESLint itself, so ESLint stays the only emitter of each message. It is the very
  * graph the rules read (same machine, same manifest, same filter), never a second judge.
  *

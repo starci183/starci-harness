@@ -48,7 +48,7 @@ columns inside a joined card, where `PaneGrid` owns both (`FE_HAND_BUILT_PANES`)
 The spacing law (R350) leaves every distance to Grammar: `no-spacing-utility` refuses a padding, margin, gap
 or space utility (`p-*`, `px-*`, `m*-*`, `gap-*`, `space-*`, arbitrary values and variants included) in an app class
 string, where a role prop names the relation instead (`Stack`/`Cluster` `gap`, `Grid` `kind`, `PaneSection`, `Page`;
-`FE_SPACING_UTILITY`). It runs in the counting cohort (`COUNTING` of `src/lib/config.ts`): `starci app lint` reports
+`FE_SPACING_UTILITY`). It runs in the counting cohort (`COUNTING` of `src/lib/config.ts`): `starci app check --gate lint` reports
 and counts every finding at warn and fails on none, while `starci app codemod spacing-roles` migrates the app.
 
 The [button intent law](docs/button-intent.md) (CTA-6) requires every app Button and IconButton to

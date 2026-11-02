@@ -1,6 +1,6 @@
 /**
  * Tests for the Sonar way block of the back-end config factory (scripts/lib/sonar-way.mjs): the rules SonarSource's own port of the
- * Sonar way profile carries, at error over the files the scan judges, so `starci app lint` refuses what the scan would raise.
+ * Sonar way profile carries, at error over the files the scan judges, so `starci app check --gate lint` refuses what the scan would raise.
  *
  *   node --test src/sonar-way.spec.ts
  */
