@@ -16,7 +16,7 @@ import { createRequire } from 'node:module';
 import type TypeScript from 'typescript';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
 import { combineHashes, hashFile, hashText } from './hash.mjs';
-import { buildImportGraph, dirtySetOf, posix, type GraphBuild, type ImportGraph, type ImportNode } from './import-graph.mjs';
+import { buildImportGraph, dirtySetOf, posix, type GraphBuild, type GraphHost, type ImportGraph, type ImportNode } from './import-graph.mjs';
 import { canonicalJson, reconcile, sortFindings } from './jsonl.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, Finding, JsonValue } from './types.mjs';
 
@@ -248,6 +248,23 @@ const readText = (file: string): string | null => {
 const isFile = (file: string): boolean => {
   try { return fs.statSync(file).isFile(); } catch { return false; }
 };
+const isDirectory = (folder: string): boolean => {
+  try { return fs.statSync(folder).isDirectory(); } catch { return false; }
+};
+
+/**
+ * What the import graph reads of the disk, remembered for the build: a side's thousands of files probe the same few hundred folders and
+ * candidate paths while resolving their imports, and the tree does not change while the graph is built.
+ */
+function graphHost(ts: Ts, sideRoot: string, hashOf: (file: string) => string | null): GraphHost {
+  const files = new Map<string, boolean>(), folders = new Map<string, boolean>();
+  const remembered = (known: Map<string, boolean>, ask: (path: string) => boolean) => (path: string): boolean => {
+    let answer = known.get(path);
+    if (answer === undefined) { answer = ask(path); known.set(path, answer); }
+    return answer;
+  };
+  return { ts, sideRoot, readText, fileExists: remembered(files, isFile), directoryExists: remembered(folders, isDirectory), hashOf };
+}
 
 /** A record's `data` object, or an empty one. */
 const dataOf = (record: CacheRecord): { readonly [key: string]: JsonValue } => (record.data !== null && typeof record.data === 'object' && !Array.isArray(record.data) ? record.data as { [key: string]: JsonValue } : {});
@@ -355,7 +372,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
           if (kept === undefined || record.hash === hashOf(record.path)) previous.set(record.path, { hash: record.hash, imports, declaresGlobals: data['globals'] === true, api: typeof data['api'] === 'string' ? data['api'] : undefined, open: typeof data['open'] === 'boolean' ? data['open'] : undefined, refs: Array.isArray(data['refs']) ? (data['refs'] as JsonValue[]).filter((value): value is string => typeof value === 'string') : undefined });
         }
         const recordedGraph: ImportGraph | null = previous.size === 0 ? null : previous;
-        build = buildImportGraph({ ts, sideRoot, readText, fileExists: isFile, hashOf: (file) => hashOf(file) ?? null }, scope, recordedGraph, { pathsChanged: metaData['paths'] !== pathsDigest });
+        build = buildImportGraph(graphHost(ts, sideRoot, (file) => hashOf(file) ?? null), scope, recordedGraph, { pathsChanged: metaData['paths'] !== pathsDigest });
         const dirty = dirtySetOf(recordedGraph, build.graph);
         if (dirty.wholeSide !== null) whole = dirty.wholeSide;
         else dirtyEslint = new Set([...dirty.dirty].filter((file) => scopeSet.has(file)));
@@ -472,7 +489,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
     try {
       if (build === null) {
         const ts = input.typescript();
-        build = buildImportGraph({ ts, sideRoot, readText, fileExists: isFile, hashOf: (file) => hashOf(file) ?? null }, scope, null);
+        build = buildImportGraph(graphHost(ts, sideRoot, (file) => hashOf(file) ?? null), scope, null);
       }
       for (const [file, node] of build.graph) {
         if (!moved.has(file)) records.push({ path: file, step: LINT_STEPS.imports, hash: node.hash, findings: [], data: { globals: node.declaresGlobals, imports: node.imports, ...(node.api === undefined ? {} : { api: node.api }), open: node.open !== false, ...(node.refs === undefined ? {} : { refs: node.refs }) } });

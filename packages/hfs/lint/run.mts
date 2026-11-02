@@ -337,8 +337,8 @@ const spawnFailure = (error: unknown) => {
 };
 
 /** Starts the ESLint child of every side that has work and returns one record per side: skipped, a scope error, or the running child. */
-async function launchEslint({ app, repoRoot, opts, changed, existing, workspace, onFe, run = runLinter }: {
-  app: RepoDeclaration; repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; workspace: string | null; onFe: string | null; run?: LinterRunner | undefined;
+async function launchEslint({ app, repoRoot, opts, changed, existing, workspace, onFe, run = runLinter, scopes = {} }: {
+  app: RepoDeclaration; repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; workspace: string | null; onFe: string | null; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>>;
 }): Promise<EslintLaunch[]> {
   const launches: EslintLaunch[] = [];
   for (const side of app ? SIDES.filter((candidate: string) => opts.side === undefined || opts.side === candidate) : []) {
@@ -347,7 +347,9 @@ async function launchEslint({ app, repoRoot, opts, changed, existing, workspace,
     if (changed !== null && !sources.length) { launches.push({ side, skipped: 'no changed source file' }); continue; }
     const cwd = path.join(repoRoot, side);
     let expected: string[];
-    try { expected = changed ? sources : await sourceFiles({ repoRoot, cwd, side, scope: onFe }); }
+    // a caller that enumerated the side's scope already (the cache) hands it over: the canon config is loaded and the folders walked once per run
+    const known = scopes[side];
+    try { expected = changed ? sources : known !== undefined ? known.filter((file) => onFe === null || file.startsWith(`${onFe}/`)) : await sourceFiles({ repoRoot, cwd, side, scope: onFe }); }
     catch (error) { launches.push({ side, scopeError: `eslint source scope is unavailable in ${side}/: ${String((error as Error | undefined)?.message ?? error)}` }); continue; }
     const head = ['--format', 'json', ...(opts.fix ? ['--fix'] : [])];
     // The files of a diff go to ONE child through a file (a diff of hundreds of long paths outgrows the Windows command line, and each extra
@@ -359,13 +361,13 @@ async function launchEslint({ app, repoRoot, opts, changed, existing, workspace,
 }
 
 /** Execute each side's installed ESLint config once; check and lint share scope, coverage and tool-failure judgment. */
-export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loadSlotManifest(), repoRoot), opts = {}, changed = null, existing = [], workspace = null, onFe = null, run }: {
-  repoRoot: string; app?: RepoDeclaration; opts?: { side?: string | undefined; fix?: boolean }; changed?: readonly string[] | null; existing?: readonly string[]; workspace?: string | null; onFe?: string | null; run?: LinterRunner | undefined;
+export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loadSlotManifest(), repoRoot), opts = {}, changed = null, existing = [], workspace = null, onFe = null, run, scopes }: {
+  repoRoot: string; app?: RepoDeclaration; opts?: { side?: string | undefined; fix?: boolean }; changed?: readonly string[] | null; existing?: readonly string[]; workspace?: string | null; onFe?: string | null; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>> | undefined;
 }): Promise<{ findings: LintFinding[]; errors: string[]; raw: Dynamic[]; engine: { sides: Record<string, { files: number; skipped?: string }> } }> {
   const findings: LintFinding[] = [], errors: string[] = [], raw: Dynamic[] = [];
   const engine: { sides: Record<string, { files: number; skipped?: string }> } = { sides: {} };
   if (!app.sides) throw new Error('ESLint runs at the app root, the folder of hfs.json');
-  const launches = await launchEslint({ app, repoRoot, opts, changed, existing, workspace, onFe, run });
+  const launches = await launchEslint({ app, repoRoot, opts, changed, existing, workspace, onFe, run, ...(scopes === undefined ? {} : { scopes }) });
   const settled = await Promise.allSettled(launches.map(launch => launch.run ?? null));
   const rejected = settled.filter((run): run is PromiseRejectedResult => run.status === 'rejected');
   const failed = rejected.find(run => isHostHeld(run.reason)) ?? rejected[0];
@@ -488,7 +490,7 @@ export async function cachedLinters({ repoRoot, app, opts, workspace, onFe, run,
       canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', gitToken, full, write: workspace === null,
       eslint: async (files): Promise<LinterOutcome<EslintResult>> => {
         const listed = files === null ? null : files.map((file) => `${side}/${file}`);
-        const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], workspace: listed === null ? workspace : null, onFe: listed === null ? onFe : null, run });
+        const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], workspace: listed === null ? workspace : null, onFe: listed === null ? onFe : null, run, scopes: { [side]: scope } });
         return { results: sub.raw as EslintResult[], errors: sub.errors };
       },
       stylelint: styled ? async (files): Promise<LinterOutcome<StylelintResult>> => {

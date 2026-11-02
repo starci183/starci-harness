@@ -78,3 +78,18 @@ test('a spawn failure is an eslint error entry, not an escaped rejection', async
   const out = await eslintRepository({ repoRoot: root, app, opts: { side: 'fe' }, changed: [...new Set(existing)], existing, run });
   assert.ok(out.errors.some((e) => /ENAMETOOLONG/.test(e)));
 });
+
+test('a scope the caller enumerated is not enumerated again, and its size is what the eslint budget scales with', async () => {
+  const root = fixture();
+  const scope = Array.from({ length: 5 }, (_, i) => `src/f${i}.ts`);
+  const calls: { args: string[]; files: number | undefined }[] = [];
+  const run: LinterRunner = async ({ cwd, args, files }) => {
+    calls.push({ args, files });
+    return { results: scope.map((f) => ({ filePath: path.join(cwd, f), messages: [] })) };
+  };
+  // the fixture side holds no installed canon: without the handed scope the launch would be a scope error
+  const out = await eslintRepository({ repoRoot: root, app, opts: { side: 'fe' }, run, scopes: { fe: scope } });
+  assert.deepEqual(out.errors, []);
+  assert.deepEqual(calls, [{ args: ['--format', 'json', '.'], files: 5 }]);
+  assert.equal(out.raw.length, 5);
+});

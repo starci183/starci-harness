@@ -234,6 +234,13 @@ every other file of the side's canon scope (enumerated afresh) takes its record,
 dirty, and a record outside the scope is dropped. `app check` and `app lint` call the same cached ESLint and the same
 cached app pass on the same records, so the two verbs never hold two answers for one tree.
 
+A run builds each side's import graph and its project graph at most once: planning builds them for a diff and the record writing reuses
+them, a whole-side run builds them once after ESLint; the side's scope is enumerated once and handed to the ESLint launcher; and the
+graph build remembers the files and folders it probed (a side's thousands of files resolve their imports against the same few hundred
+folders). The installed canon's `projectGraph` runs again in the CLI process after the ESLint child built the same graph for its
+rules: a canon export that reuses the child's graph is the only way to remove that second build, and until it exists the second
+build is the cost of the records (`graph` step) staying the canon's own answer rather than a reconstruction from ESLint messages.
+
 ## Unit coverage
 
 `app check --gate test` runs the unit specs through the app's own Jest and writes the merged report the managed CI uploads. A spec's closure key is the sha256 of the spec, every module Jest resolves from it transitively (its resolver
