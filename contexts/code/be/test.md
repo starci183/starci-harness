@@ -117,7 +117,7 @@ Enforced by: `no-call-only-spec`, `spec-behavior-assertion`, `spec-exact-values`
 Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (lite: the db
 CLI database and the declared Redis), fake only external providers at the network edge, override no provider, guard or
 token, and assert persisted state. Lite proves composition by compiling the real AppModule graph (`starci app check
---wiring`) and each declared pattern in integration specs; full boots the real apps for e2e
+--gate wiring`) and each declared pattern in integration specs; full boots the real apps for e2e
 (`useTestWorld({ apps })`). Configuration is substituted by passing options, never by patching `process.env`. A
 provider whose contract requires TLS (an OIDC issuer and its JWKS) is faked over HTTPS (`defineHttpFake({ https: true })`,
 `@starci/test-world` README "Fakes"), and the app trusts the run's fake CA (`w.fake.<name>.ca`) through its HTTP client's

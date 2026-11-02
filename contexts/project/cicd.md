@@ -72,8 +72,8 @@ plan ──► fast ─┐
 
 **Checks.** The jobs stay the CI standard's shape (`fast`, `lint`, `test`, `coverage`, `build`, `sonar`; ci-standard.yaml
 `jobs`). Under `diff` they run `app check` and `app lint` against the trusted base cache and the test shards run only
-the specs whose closure changed; under `full` (every tag run, every candidate run) they pass `--full`, shard the units
-(`--test --full --shard <i>/<n>`) and the coverage job judges the merged report with `--coverage-from`. Sonar and the
+the specs whose closure changed; under `full` (every tag run, every candidate run) they pass `--no-cache`, shard the units
+(`--gate test --shard <i>/<n>`) and the coverage job judges the merged report with `--coverage-from`. Sonar and the
 Codecov upload run on every `full` run, so a release is analysed before it ships rather than only on tags after the fact,
 and the quality gate's verdict, never the scanner's exit, is the job's result (PROJECT-STACKS-8). The verdicts follow
 `gate-threshold-20`: `app check` and `app lint` are green under 20 error findings with no hard blocker; typecheck, build,
@@ -162,7 +162,7 @@ The migration moves into the deploy, before the services update, under three rul
   defaulted columns, indexes built concurrently, new functions): the previous release keeps working on the expanded
   schema, so a stack rollback after a migration is safe. Destructive DDL already lives only in `*_contract_*`
   migrations after the code stops using the target (BE-PERSISTENCE-19); the deploy applies them in the `contract` phase,
-  after accept, and only when the previous accepted release's code no longer uses the target, which `app check --db`
+  after accept, and only when the previous accepted release's code no longer uses the target, which `app check --gate db`
   proves by refusing a contract migration that lands in the same release as the code change it depends on (a new
   migration finding, so a hard blocker).
 - **No down migration runs by default.** A rollback restores service specs, never data (PROJECT-STACKS-6). Lite has no
@@ -273,7 +273,7 @@ both write a journal; `stack status` reports drift; rollback target images are p
 
 **WP2. Migrations in the deploy (`@starci/hfs` stack and db).** Files: `stack/deploy.mts` phases backup, migrate and
 contract, generalised from `stack/urgent-floor.mts` (shared steps, renamed codes), `db/postgres.mts` (`inContainer` for any
-migrate), the contract-migration finding in the db rules (`app check --db`), `database.target` in the stacks schema.
+migrate), the contract-migration finding in the db rules (`app check --gate db`), `database.target` in the stacks schema.
 Tests: no pending migration means no backup; a red preview refuses before the stack deploy; a contract migration runs only
 after accept; first start chosen automatically with no accepted release and refused on a non-empty database. Done: the
 nivo-lite stack deploys and migrates in a scratch swarm with the db service internal only.

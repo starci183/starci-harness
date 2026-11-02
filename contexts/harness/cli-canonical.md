@@ -30,6 +30,8 @@ behaviour bug).
 | why (justification) | `--reason "<text>"` | `--why` (ticket answer), `--detail` (provider report) | `--note` stays for free content (task result, pkg handoff) |
 | status filter | `--status` | `--state` (ticket list) | `--all` widens a list |
 | list of values | repeatable flag, or comma list, both accepted | `--allow` comma-only (contract new) vs list (supervisor dispatch) | one parser rule |
+| app check gate selection | `--gate <name>`, repeatable | one boolean flag per family | no selector selects all existing families; `sonar` and `codecov` map to the same existing prediction family and execute it once |
+| app check cache refresh | `--no-cache` | `--full` | recomputes selected work through the existing full-run path and writes refreshed cache records; default and `--gate` reuse valid cache |
 
 One parser behaviour for every hfs verb (today 7 parser families): `--x v` and `--x=v`; booleans accept `=true|false`; a
 value may not start with `--`; a repeated single-value flag is refused; a flag the action does not take is refused (today
@@ -73,7 +75,7 @@ longer drift.
 | add | `add <noun> <name>` with nouns api, webhook, realtime, saga, job, reactor, queue, projection, cli, table, app, block, frame, composite, branch, leaf, page, layout, overlay, **service, spec, image** | FOLD `app new service|spec|image` into `app add` (both generate into an existing app and never overwrite); options a noun does not take are refused, not ignored |
 | upgrade | `upgrade [--execute]` | dry by default (today `--plan` is the dry flag and the default applies); FIX unreachable `--edition` refusal |
 | sync | `sync [--execute]` | `--check` = the default dry run (exit 1 on drift), `--write` -> `--execute`; FOLD `app sonar` (one block of one managed file) into it |
-| check | `check [--full] [--hfs] [--format] [--db] [--secrets] [--wiring] [--types] [--lint] [--test] [--sonar] [--staged] [--coverage-from] [--json]` | FOLD `app hygiene` into `app check --staged` (the pre-commit guard); gate per hfs 4.11.22: pass under 20 error findings with no hard blocker |
+| check | `check [--gate <hfs\|format\|db\|secrets\|wiring\|types\|lint\|test\|sonar\|codecov> ...] [--no-cache] [--coverage-from <lcov>] [--json]`; `check --staged` is the separate pre-commit guard | gate selection and cache refresh dispatch to the existing core; the local finding threshold, combined provider predictions and actual CI/release service gates keep their existing owners |
 | lint | `lint [--changed ...|--workspace] [--side] [--fix] [--json] [--out <sonar file>]` | `--format json` -> `--json`; `--sonar <file>` -> `--out` |
 | slot | `slot <path> [--json]` | RENAME `app explain` (it names the slot that owns a path) |
 | emit | `emit` | drop the parsed-and-ignored `--json` |

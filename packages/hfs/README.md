@@ -18,7 +18,7 @@ starci app add spec <file>.service.ts [--cwd <dir>]
 starci app add image [--cwd <dir>]
 starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--fix] [--json] [--out <sonar file>]
 starci app sync [--execute] [--cwd <dir>]
-starci app check [--cwd <dir>] [--json] [--full] [--hfs] [--format] [--db] [--secrets] [--wiring] [--types] [--lint] [--test] [--sonar] [--coverage-from <lcov>] [--quiet]
+starci app check [--cwd <dir>] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov> ...] [--no-cache] [--json] [--coverage-from <lcov>] [--quiet]
 starci app check --staged [--cwd <dir>]
 starci app upgrade [--execute]
 starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
@@ -193,7 +193,7 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 | `FE_NO_TESTS` | error | a front end holds a `*.spec.*`, `*.test.*` or `*-spec.*` file, an `e2e/`, `__tests__/`, `__mocks__/` or `test-support/` directory, a vitest, Playwright, jest or Cypress file, a test script, or a test dependency in a `package.json`; no exception (R97; `scripts/hfs/rules/fe-no-tests.mjs`) |
 | `HFS_GITIGNORE_BLOCK_DRIFT` | error | the managed `.gitignore` block differs from its render (R04; `sync/managed.mjs`) |
 | `HFS_SONAR_CONFIG` | error | `sonar-project.properties` differs from its render: no `sonar.host.url`, the `sonar.exclusions` of the installed jest preset, the be lcov import with the coverage scope the slot manifest derives as the only coverage scope (R11; `sync/managed.mjs`) |
-| `HFS_FORMAT` | error | a tracked file the repository's own prettier would change (R19; `sync/format.mjs`, run in batches by `--format`) |
+| `HFS_FORMAT` | error | a tracked file the repository's own prettier would change (R19; `sync/format.mjs`, run in batches by the format family) |
 | `HFS_FORMAT_TOOL_MISSING` | refusal (exit 2) | prettier is not installed in the repository; the format check is never skipped |
 
 The managed files are judged by `sync/managed.mjs` and `sync/ts-strict.mjs` (the package renders the templates; the runtime copy does not). The list of managed
@@ -209,8 +209,11 @@ finding under the machine's own rule id (`BE_TIER_DIRECTION`, `HFS_UNUSED_EXPORT
 repository without `typescript` installed fails with `ARCH_TYPESCRIPT_MISSING`; the check never passes because it could not run.
 
 With no selector `starci app check` runs every family diff-only against the committed cache `.starcistacks/cache/` (contexts/project/check-cache.md) and
-writes what it judged back; the result equals a full run's. `--full` runs the selected families in full. A selector (`--hfs`, `--format`, `--db`, `--secrets`,
-`--wiring`, `--types`, `--lint`, `--test`, `--sonar`) runs one family; selectors combine. Each family prints `<family>: <full|diff> (<reason>), checked n, reused n;
+writes what it judged back; the result equals a full run's. `--no-cache` runs selected work fresh and writes the refreshed cache records.
+Repeat `--gate <name>` to combine `hfs`, `format`, `db`, `secrets`, `wiring`, `types`, `lint`, `test`, `sonar` and `codecov`.
+The last two names dispatch to the same existing combined prediction family and execute it once, so ten public choices retain nine core families.
+Predictions remain diagnostics; actual Sonar CI/release checks and Codecov CI uploads keep their existing ownership and verdicts.
+`app check --staged` remains the separate pre-commit guard. Each family prints `<family>: <full|diff> (<reason>), checked n, reused n;
 findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). `STARCI_APP_CHECK_CACHE=verify` runs diff then full and exits 2 on any difference;
 `STARCI_APP_CHECK_CACHE=full` never reads the cache (the release gate).
 
