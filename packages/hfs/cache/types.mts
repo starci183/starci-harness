@@ -103,8 +103,12 @@ export interface CheckSession {
   records(folder: string): readonly CacheRecord[];
   /** Replaces every record of a folder with `records`; written on `flush`. `depth` is how many folders of a path name its area file (default 2). */
   replace(folder: string, records: readonly CacheRecord[], options?: { readonly depth?: number }): void;
-  /** True when none of `paths` changed in the work tree since the run began: a scoped step stores nothing keyed on a file edited during the run. */
-  unchanged(paths: readonly string[]): boolean;
+  /**
+   * True when none of `paths` changed in the work tree since the run began: a scoped step stores nothing keyed on a file edited during the run.
+   * A path the content index does not hold (an untracked program input, generated code) is compared with `captured`, the hash the step's key took
+   * of it (`absent` for a missing file); without a captured hash it is compared with the index, so an untracked path is never unchanged.
+   */
+  unchanged(paths: readonly string[], captured?: Readonly<Record<string, string>>): boolean;
   report(report: FamilyReport): void;
   readonly progress: ProgressSink;
   flush(): FlushResult;

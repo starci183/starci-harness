@@ -36,7 +36,7 @@ export async function runWiringFamily(session: CheckSession, { repoRoot, edition
   };
   const step = session.progress.step('wiring', 'boot proof', Math.max(1, key.inputs.length));
   const { value, reused } = await scopedStep(session, records, {
-    path: 'be', step: 'boot-proof', key: key.key, reuse: decision.mode === 'diff', inputs: key.inputs,
+    path: 'be', step: 'boot-proof', key: key.key, reuse: decision.mode === 'diff', inputs: key.inputs, captured: key.hashes,
     compute: async () => JSON.parse(JSON.stringify(await prove())) as JsonValue,
     compact: (found) => (found as unknown as WiringResult).findings.map(compact),
     store: (found) => !(found as unknown as WiringResult).findings.some((finding) => finding.code === BOOT_PROOF_TIMEOUT),

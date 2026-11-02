@@ -86,7 +86,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     const bePrefix = 'be/';
     const key = keys.get('be');
     const emit = await scopedStep(session, records, {
-      path: 'be', step: 'contract-emit', key: key?.key ?? 'none', reuse, inputs: key?.inputs ?? [],
+      path: 'be', step: 'contract-emit', key: key?.key ?? 'none', reuse, inputs: key?.inputs ?? [], captured: key?.hashes ?? {},
       compute: async () => {
         const files = tracked.filter((file) => file.startsWith(bePrefix)).map((file) => file.slice(bePrefix.length));
         const emitted = await contractEmitFindingsAsync({ repoRoot: path.join(repoRoot, 'be'), files, repo: be as never, emit: (request: Parameters<typeof emitContractsAsync>[0]) => emitContractsAsync({ ...request, execute: input.execute }) });
@@ -109,7 +109,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     if (held?.data !== undefined) { reasons[side] = true; reused += 1; return held.data as unknown as MachineReport; }
     const report = baseMachine(call);
     checked += 1;
-    if (session.unchanged(key.inputs)) {
+    if (session.unchanged(key.inputs, key.hashes)) {
       records.put({ path: side, step: 'machine', hash: key.key, findings: [...report.violations, ...report.errors].map((item) => ({ path: item.path ?? side, line: item.line ?? 0, column: item.column ?? 0, rule: item.ruleId, message: item.message })), data: JSON.parse(JSON.stringify(report)) as JsonValue });
     }
     return report;
@@ -124,7 +124,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
       if (held?.data !== undefined) { reused += 1; return held.data as unknown as ReturnType<typeof compute>; }
       const found = compute();
       checked += 1;
-      if (session.unchanged(key.inputs)) {
+      if (session.unchanged(key.inputs, key.hashes)) {
         const list = found as unknown as CheckFinding[];
         records.put({ path: side, step: 'unused-symbol', hash: key.key, findings: list.map(compact), data: JSON.parse(JSON.stringify(found)) as JsonValue });
       }

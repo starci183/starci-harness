@@ -53,11 +53,11 @@ export function keyOfPaths(index: ContentIndex, paths: readonly string[], extra:
 export async function scopedStep<T extends JsonValue>(
   session: CheckSession,
   records: RecordSet,
-  step: { readonly path: string; readonly step: string; readonly key: string; readonly reuse: boolean; readonly inputs: readonly string[]; compute(): T | Promise<T>; compact(value: T): Finding[]; store?(value: T): boolean },
+  step: { readonly path: string; readonly step: string; readonly key: string; readonly reuse: boolean; readonly inputs: readonly string[]; readonly captured?: Readonly<Record<string, string>>; compute(): T | Promise<T>; compact(value: T): Finding[]; store?(value: T): boolean },
 ): Promise<{ value: T; reused: boolean }> {
   const held = step.reuse ? records.matching(step.path, step.step, step.key) : undefined;
   if (held?.data !== undefined) return { value: held.data as T, reused: true };
   const value = await step.compute();
-  if ((step.store?.(value) ?? true) && session.unchanged(step.inputs)) records.put({ path: step.path, step: step.step, hash: step.key, findings: step.compact(value), data: value });
+  if ((step.store?.(value) ?? true) && session.unchanged(step.inputs, step.captured)) records.put({ path: step.path, step: step.step, hash: step.key, findings: step.compact(value), data: value });
   return { value, reused: false };
 }

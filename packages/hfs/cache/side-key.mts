@@ -13,6 +13,8 @@ export interface SideKey {
   readonly key: string;
   /** Every path the key covers: tracked paths of the side and the untracked program inputs. */
   readonly inputs: readonly string[];
+  /** The hash each input had when the key was computed (`absent` for a missing one): the baseline `session.unchanged` compares an edit-during-the-run against. */
+  readonly hashes: Readonly<Record<string, string>>;
 }
 
 /** The untracked files the side's TypeScript program includes (generated code), side-relative paths prefixed with `side/`. */
@@ -46,5 +48,7 @@ export function sideKey(root: string, index: ContentIndex, side: string): SideKe
   parts['staged'] = hashText(staged.stdout);
   const untracked = untrackedProgramInputs(root, side, new Set(index.paths));
   for (const file of untracked) parts[`untracked:${file}`] = hashFile(path.join(root, file)) ?? 'absent';
-  return { key: combineHashes(parts), inputs: [...trackedPaths, ...untracked] };
+  const hashes: Record<string, string> = {};
+  for (const [name, hash] of Object.entries(parts)) if (name.startsWith('tracked:') || name.startsWith('untracked:')) hashes[name.slice(name.indexOf(':') + 1)] = hash;
+  return { key: combineHashes(parts), inputs: [...trackedPaths, ...untracked], hashes };
 }
