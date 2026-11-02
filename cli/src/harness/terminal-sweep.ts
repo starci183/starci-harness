@@ -120,7 +120,10 @@ const verdict = (terminal: ListedTerminal, records: HarnessRecords, lastOutput: 
     const held = records.holders.get(terminal.handle) ?? []
     const titled = harnessTitled(terminal, records.worktrees)
     if (held.length === 0 && !titled) return null
-    if (terminal.orphaned) return `orphaned by an Orca restart${held.length === 0 ? "" : `; recorded by ${held.map((holder) => holder.who).join(", ")}`}`
+    if (terminal.orphaned) {
+        const heldSuffix = held.length === 0 ? "" : `; recorded by ${held.map((holder) => holder.who).join(", ")}`
+        return `orphaned by an Orca restart${heldSuffix}`
+    }
     if (held.some((holder) => holder.live)) return null
     if (held.length > 0) return `its record is closed: ${held.map((holder) => holder.who).join(", ")}`
     return olderThan(lastOutput, graceMinutes) ? `harness-titled with no ledger seat, quiet past ${String(graceMinutes)} min` : null

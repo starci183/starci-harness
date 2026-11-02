@@ -167,16 +167,18 @@ export const hostLoadVerb = defineVerb({
         const runningTable = data.running.length === 0 ? [`running (0): none`] : [`running (${String(data.running.length)}):`, formatTable([["KIND", "LABEL", "PID", "CHILD", "RSS MB", "SINCE"], ...data.running.map((row) => [row.kind, row.label, String(row.pid), row.childPid === null ? "-" : String(row.childPid), row.rssMb === null ? "-" : String(row.rssMb), row.at])])]
         const queueTable = data.queue.length === 0 ? [`queue (0): none`] : [`queue (${String(data.queue.length)}):`, formatTable([["KIND", "LABEL", "PID", "WAITED", "WHY"], ...data.queue.map((row) => [row.kind, row.label, String(row.pid), waited(row.waitedSeconds ?? 0), row.why ?? "-"])])]
         const holdTable = holds.length === 0 ? [] : [`seat holds (${String(holds.length)}):`, formatTable([["TASK", "REPO", "WAITED", "WHY"], ...holds.map((hold) => [hold.task, hold.repo, waited(Math.max(0, Math.round((nowMs - Date.parse(hold.since)) / 1000))), hold.why])])]
+        const groupsSuffix = holders.unmanagedGroups === "" ? "" : ` (${holders.unmanagedGroups})`
         const holderLines =
             holders.unreadable === null
                 ? [
-                      `who holds memory (${String(holders.processes)} processes): managed ${gb(holders.managedMb)}, unmanaged ${gb(holders.unmanagedMb)}${holders.unmanagedGroups === "" ? "" : ` (${holders.unmanagedGroups})`}`,
+                      `who holds memory (${String(holders.processes)} processes): managed ${gb(holders.managedMb)}, unmanaged ${gb(holders.unmanagedMb)}${groupsSuffix}`,
                       formatTable([["PID", "NAME", "WS MB", "MANAGED", "GROUP", "COMMAND"], ...holders.top.map((item) => [String(item.pid), item.name, String(item.workingSetMb), item.managed ? "managed" : "unmanaged", item.group, item.command])]),
                   ]
                 : [`who holds memory: unknown, the process table could not be read (${holders.unreadable})`]
+        const okText = data.seat.ok ? "allowed" : `held: free RAM ${gb(data.seat.freeMb)} below seat floor ${gb(data.seat.floorMb)}`
         const message = [
             `free RAM ${String(load.freeMb)} MB, CPU ${String(load.cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s: ${String(load.admitted)} heavy command(s) admitted now, ${String(load.running)} running, cap ${String(load.cap)} (${load.reason})`,
-            `seat launches: ${data.seat.ok ? "allowed" : `held: free RAM ${gb(data.seat.freeMb)} below seat floor ${gb(data.seat.floorMb)}`} (floor ${String(data.seat.floorMb)} MB)`,
+            `seat launches: ${okText} (floor ${String(data.seat.floorMb)} MB)`,
             ...runningTable,
             ...queueTable,
             ...holdTable,

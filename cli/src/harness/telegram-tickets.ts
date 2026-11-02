@@ -41,7 +41,10 @@ const toneOf = (ticket: Ticket, stage: CardStage): string => {
     return ticket.severity === "blocking" ? "🔴" : "⚪"
 }
 
-const where = (ticket: Ticket): string => `Dự án: ${escapeHtml(ticket.project.name || "harness")}${ticket.workflow === null ? "" : ` · workflow ${escapeHtml(ticket.workflow)}`}`
+const where = (ticket: Ticket): string => {
+    const workflowSuffix = ticket.workflow === null ? "" : ` · workflow ${escapeHtml(ticket.workflow)}`
+    return `Dự án: ${escapeHtml(ticket.project.name || "harness")}${workflowSuffix}`
+}
 
 /**
  * A ticket card's caption, the facts the banner never carries (an HTML caption, at most Telegram's 1024 characters): the id, kind,
@@ -50,29 +53,26 @@ const where = (ticket: Ticket): string => `Dự án: ${escapeHtml(ticket.project
  */
 export const ticketCaption = (ticket: Ticket, stage: CardStage, chars: number): string => {
     const field = Math.min(chars, 260)
-    const head = `${toneOf(ticket, stage)} <b>${isQuestion(ticket.kind) ? "Câu hỏi" : "Ticket"} ${ticket.id}</b> · ${KIND_LABEL[ticket.kind]}${ticket.evidence.topic === undefined ? "" : ` (${escapeHtml(ticket.evidence.topic)})`}${isQuestion(ticket.kind) ? "" : `, ${ticket.severity === "blocking" ? "chặn" : "thường"}`}`
+    const topicSuffix = ticket.evidence.topic === undefined ? "" : ` (${escapeHtml(ticket.evidence.topic)})`
+    const severitySuffix = isQuestion(ticket.kind) ? "" : `, ${ticket.severity === "blocking" ? "chặn" : "thường"}`
+    const head = `${toneOf(ticket, stage)} <b>${isQuestion(ticket.kind) ? "Câu hỏi" : "Ticket"} ${ticket.id}</b> · ${KIND_LABEL[ticket.kind]}${topicSuffix}${severitySuffix}`
     const tried = ticket.tried === null ? [] : [`Đã thử: ${html(ticket.tried, field)}`]
     if (stage === "remind") return [`⏰ <b>Nhắc: câu hỏi ${ticket.id}</b> vẫn chờ câu trả lời.`, `<b>${html(ticket.title, field)}</b>`, where(ticket), `Trả lời: chọn nút, trả lời tin này, hoặc /answer ${ticket.id} &lt;câu trả lời&gt;.`].join("\n").slice(0, 1024)
-    const lines =
-        stage === "ask"
-            ? [
-                  head,
-                  `<b>${html(ticket.title, field)}</b>`,
-                  where(ticket),
-                  ticket.proposedDefault === null ? "Chưa có mặc định đề xuất." : `Mặc định đề xuất: ${html(ticket.proposedDefault, field)}`,
-                  ...tried,
-                  `Trả lời: chọn nút, trả lời tin này, hoặc /answer ${ticket.id} &lt;câu trả lời&gt;.`,
-              ]
-            : stage === "open"
-              ? [
-                    head,
-                    `<b>${html(ticket.title, field)}</b>`,
-                    where(ticket),
-                    `Đã gặp: ${String(ticket.occurrences)} lần${ticket.round > 1 ? ` · mở lại, bản sửa ${escapeHtml(ticket.fixedBy ?? "-")} chưa giữ được` : ""}`,
-                    ...tried,
-                    "Claude Debug xử lý; bạn không cần làm gì.",
-                ]
-              : [head, `<b>${html(ticket.title, field)}</b>`, where(ticket), endLine(ticket, field)]
+    const stageLines = (): string[] => {
+        if (stage === "ask") {
+            return [
+                ticket.proposedDefault === null ? "Chưa có mặc định đề xuất." : `Mặc định đề xuất: ${html(ticket.proposedDefault, field)}`,
+                ...tried,
+                `Trả lời: chọn nút, trả lời tin này, hoặc /answer ${ticket.id} &lt;câu trả lời&gt;.`,
+            ]
+        }
+        if (stage === "open") {
+            const reopenedSuffix = ticket.round > 1 ? ` · mở lại, bản sửa ${escapeHtml(ticket.fixedBy ?? "-")} chưa giữ được` : ""
+            return [`Đã gặp: ${String(ticket.occurrences)} lần${reopenedSuffix}`, ...tried, "Claude Debug xử lý; bạn không cần làm gì."]
+        }
+        return [endLine(ticket, field)]
+    }
+    const lines = [head, `<b>${html(ticket.title, field)}</b>`, where(ticket), ...stageLines()]
     return lines.join("\n").slice(0, 1024)
 }
 
@@ -181,12 +181,13 @@ export const ticketDetails = (ticket: Ticket): string => {
     const evidence = ticket.evidence
     const waiters = waitersOf(ticket.id)
     const tail = evidence.tail === undefined ? "" : redactSecrets(evidence.tail).split("\n").slice(-25).join("\n").slice(-1500)
+    const takenBySuffix = ticket.takenBy === null ? "" : ` · nhận bởi: ${escapeHtml(ticket.takenBy)}`
     return [
         `${toneOf(ticket, isLive(ticket.state) ? (isQuestion(ticket.kind) ? "ask" : "open") : "closed")} <b>${ticket.id}</b> · ${KIND_LABEL[ticket.kind]} · ${escapeHtml(isLive(ticket.state) ? ticket.state : closeLine(ticket))}`,
         `<b>${html(ticket.title, 400)}</b>`,
         where(ticket),
         `Mức: ${ticket.severity === "blocking" ? "chặn" : "thường"} · đã gặp ${String(ticket.occurrences)} lần · vòng ${String(ticket.round)}`,
-        `Mở bởi: ${escapeHtml(ticket.openedBy)} · báo bởi: ${escapeHtml(ticket.reporters.join(", "))}${ticket.takenBy === null ? "" : ` · nhận bởi: ${escapeHtml(ticket.takenBy)}`}`,
+        `Mở bởi: ${escapeHtml(ticket.openedBy)} · báo bởi: ${escapeHtml(ticket.reporters.join(", "))}${takenBySuffix}`,
         ...(["task", "attempt", "seat", "decision"] as const).flatMap((key) => (evidence[key] === undefined ? [] : [`${key}: ${escapeHtml(evidence[key])}`])),
         ...(ticket.tried === null ? [] : [`Đã thử: ${html(ticket.tried, 400)}`]),
         ...(ticket.proposedDefault === null ? [] : [`Mặc định đề xuất: ${html(ticket.proposedDefault, 300)}`]),

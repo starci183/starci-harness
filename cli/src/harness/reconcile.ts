@@ -201,7 +201,9 @@ export const RELAY_COMMITS = "relayCommits"
 /** The key of the relay node of a shared need's round in a waiting workflow. */
 export const relayKeyOf = (need: string, round: number): string => {
     const plain = `${RELAY_PREFIX}${need.toLowerCase().replaceAll(/[^a-z0-9._-]+/g, "-")}.r${String(round)}`
-    return plain.length <= KEY_MAX ? plain : `${RELAY_PREFIX}${sha(`${need}#${String(round)}`).slice(0, 16)}`
+    if (plain.length <= KEY_MAX) return plain
+    const digest = sha(`${need}#${String(round)}`).slice(0, 16)
+    return `${RELAY_PREFIX}${digest}`
 }
 
 /**

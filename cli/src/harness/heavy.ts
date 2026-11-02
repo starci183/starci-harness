@@ -151,9 +151,10 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
     const admits = !cpuHolds && !full && fits
     const fitting = Math.max(0, Math.min(cap - running.length, running.length === 0 && room < own ? (freeMb >= own ? 1 : 0) : Math.floor(room / own)))
     const admitted = running.length + Math.min(cpu.slots, fitting)
+    const maxSlotsSuffix = rules.maxSlots === undefined ? "" : `, maxSlots ${String(rules.maxSlots)}`
     const reasons = [
         ...(cpu.rule === null ? [] : [cpu.rule]),
-        ...(full ? [`${String(running.length)} running reach the cap of ${String(cap)} (floor(cores / 2)${rules.maxSlots === undefined ? "" : `, maxSlots ${String(rules.maxSlots)}`})`] : []),
+        ...(full ? [`${String(running.length)} running reach the cap of ${String(cap)} (floor(cores / 2)${maxSlotsSuffix})`] : []),
         ...(!cpuHolds && !full && room < own ? [`free RAM ${String(freeMb)} MB less the reserve ${String(rules.reserveMb)} MB and the ${String(committedMb)} MB the running commands hold is under the reserve for one more (${String(own)} MB)`] : []),
     ]
     const capacity = `${String(admitted)} of cap ${String(cap)} fit: free ${String(freeMb)} MB - reserve ${String(rules.reserveMb)} MB - running ${String(committedMb)} MB = ${String(room)} MB room`
@@ -727,7 +728,8 @@ export const heldWhy = (rules: HeavyRules, load: Pick<HostLoad, "freeMb" | "cpuP
     if (judged.cpuHolds) {
         const managed = load.managedCpuPercent
         if (managed !== null && managed < rules.managedCpuFloorPercent) return `CPU ${String(load.cpuPercent)}% is foreign (managed ${String(managed)}%) and its ${String(rules.underForeignPressureSlots)} slots under foreign pressure are in use`
-        return `CPU ${String(load.cpuPercent)}% above ${String(rules.maxCpuPercent)}% (managed ${managed === null ? "unknown" : `${String(managed)}%`})`
+        const managedText = managed === null ? "unknown" : `${String(managed)}%`
+        return `CPU ${String(load.cpuPercent)}% above ${String(rules.maxCpuPercent)}% (managed ${managedText})`
     }
     if (running.length >= judged.cap) return `${String(running.length)} running reach the cap of ${String(judged.cap)}`
     if (load.freeMb < rules.reserveMb) return `free RAM ${gb(load.freeMb)} below reserve ${gb(rules.reserveMb)}`

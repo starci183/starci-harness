@@ -689,7 +689,8 @@ const recoverOrphan = async (db: DatabaseSync, callerRoot: string, task: TaskRow
     const attempt = latestAttempt(db, task.id)
     const declared = attempt === undefined ? [] : declaredFiles(resultOf(db, attempt.id)?.output, task.contract.context.allowPaths)
     if (task.settleCommit !== null || declared.length === 0 || attempt === undefined) {
-        throw new Refusal("TASK_NOT_VERIFYING", `task ${task.id} is done${task.settleCommit === null ? " with nothing its result names" : ` at ${task.settleCommit.slice(0, 12)}`}; --recover frees a task stuck in verifying, finishes a preserve reset, or returns a done task whose named files never landed`)
+        const settleCommitText = task.settleCommit === null ? " with nothing its result names" : ` at ${task.settleCommit.slice(0, 12)}`
+        throw new Refusal("TASK_NOT_VERIFYING", `task ${task.id} is done${settleCommitText}; --recover frees a task stuck in verifying, finishes a preserve reset, or returns a done task whose named files never landed`)
     }
     const made = opWorktreeOf(db, task.id)
     const target: LandTarget = made === undefined ? await landTargetOf(db, task, callerRoot) : { checkout: made.target, branch: made.targetBranch, own: false }

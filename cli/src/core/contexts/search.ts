@@ -234,7 +234,10 @@ export const contextsSearchVerb = defineVerb({
         const asked = 1 + flags.also.length
         const data: SearchData = { mode: "search", ...describe(index), ranking: ranking.mode, fallback: ranking.fallback, hits: ranking.hits }
         const head = ranking.fallback === undefined ? `${ranking.mode} ranking; cite the anchor, \`starci contexts anchor <anchor>\` resolves it` : `lexical ranking (BM25 only: ${ranking.fallback})`
-        const body = ranking.hits.map((hit, at) => `${String(at + 1)}. ${hit.anchor}${hit.citable ? "" : " (not a rules-cited id)"}${asked === 1 ? "" : `  found by ${String(hit.phrasings)}/${String(asked)}`}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`)
+        const body = ranking.hits.map((hit, at) => {
+            const askedSuffix = asked === 1 ? "" : `  found by ${String(hit.phrasings)}/${String(asked)}`
+            return `${String(at + 1)}. ${hit.anchor}${hit.citable ? "" : " (not a rules-cited id)"}${askedSuffix}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`
+        })
         return { data, message: [head, ...(body.length === 0 ? ["no hit"] : body)].join("\n") }
     },
 })

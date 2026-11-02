@@ -206,7 +206,8 @@ export const buildWorkspaceDependencies = async (root: string, given: readonly W
         const source = new Set(sources)
         const outputs = [...snapshot(pkg.dir)].filter(([file, stamp]) => !source.has(file) && before.get(file) !== stamp).map(([file]) => file).sort((left, right) => left.localeCompare(right))
         const unstored = store(key, pkg, outputs)
-        steps.push(step(pkg, "green", `${lacking}; built${unstored === undefined ? ` and cached (${shortKey})` : `, not cached: ${unstored}`}`))
+        const unstoredText = unstored === undefined ? ` and cached (${shortKey})` : `, not cached: ${unstored}`
+        steps.push(step(pkg, "green", `${lacking}; built${unstoredText}`))
     }
     const closure = (pkg: WorkspacePackage, met: Set<WorkspacePackage>): WorkspacePackage[] =>
         dependenciesOf(pkg).flatMap((dependency) => {

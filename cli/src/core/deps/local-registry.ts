@@ -107,7 +107,10 @@ export const readInspect = (text: string): ContainerState => {
  */
 export const judgeContainer = (state: ContainerState, port: number): void => {
     const open = state.bindings.filter((one) => !/^127(?:\.\d{1,3}){3}$|^::1$/.test(one.ip))
-    if (open.length > 0) throw new Refusal("LOCAL_REGISTRY_EXPOSED", `${CONTAINER} is published on ${open.map((one) => `${one.ip === "" ? "all interfaces" : one.ip}:${one.port}`).join(", ")}, not on ${LOOPBACK} only; remove it (docker rm -f ${CONTAINER}) and run this again`)
+    if (open.length > 0) {
+        const openText = open.map((one) => `${one.ip === "" ? "all interfaces" : one.ip}:${one.port}`).join(", ")
+        throw new Refusal("LOCAL_REGISTRY_EXPOSED", `${CONTAINER} is published on ${openText}, not on ${LOOPBACK} only; remove it (docker rm -f ${CONTAINER}) and run this again`)
+    }
     if (!state.bindings.some((one) => one.port === String(port))) throw new Refusal("LOCAL_REGISTRY_PORT", `${CONTAINER} listens on ${state.bindings.map((one) => one.port).join(", ") || "no port"}, not ${String(port)}; pass --port to match it, or remove it (docker rm -f ${CONTAINER})`)
 }
 

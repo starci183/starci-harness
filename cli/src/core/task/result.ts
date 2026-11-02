@@ -52,7 +52,11 @@ const recordNeeds = async (db: DatabaseSync, root: string, taskId: string, needs
         const taskKey = db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(taskId)?.plan_key
         const repo = await mainCheckout(root)
         const attached = reportNeeds(needs, { project: project.key, repo, workflow: task.workflowId, task: taskId, taskKey: typeof taskKey === "string" ? taskKey : null })
-        return `; waits on ${attached.map((one) => `${one.need.key} (${one.opened ? "opened" : `${one.need.state}, ${one.attached ? "joined" : "already waiting"}`})`).join(", ")}`
+        const attachedText = attached.map((one) => {
+            const openedText = one.opened ? "opened" : `${one.need.state}, ${one.attached ? "joined" : "already waiting"}`
+            return `${one.need.key} (${openedText})`
+        }).join(", ")
+        return `; waits on ${attachedText}`
     } catch (error: unknown) {
         return `; needs ${needs.map((need) => need.key).join(", ")} kept in the result, not yet in the host store (${error instanceof Error ? error.message : String(error)}); the next step records them`
     }

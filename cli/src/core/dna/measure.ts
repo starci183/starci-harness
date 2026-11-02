@@ -105,7 +105,8 @@ export const installProbe = (judgePart: Judge): void => {
         if (element.id !== "") return `${tag}#${element.id}`
         const parent = element.parentElement
         const twins = parent === null ? [] : list(parent.children).filter((child) => child.tagName === element.tagName)
-        return `${tag}${markerOf(element)}${twins.length > 1 ? `:nth-of-type(${String(twins.indexOf(element) + 1)})` : ""}`
+        const twinsSuffix = twins.length > 1 ? `:nth-of-type(${String(twins.indexOf(element) + 1)})` : ""
+        return `${tag}${markerOf(element)}${twinsSuffix}`
     }
     const pathOf = (element: Element): string => {
         const steps: string[] = []

@@ -115,7 +115,8 @@ export const addToStringArray = (text: string, path: readonly string[], values: 
             edited = `${text.slice(0, array.span.start)}[${items.join(", ")}]${text.slice(array.span.end)}`
         } else {
             const indent = indentAt(text, last.span.start) ?? ""
-            edited = `${text.slice(0, last.span.end)}${quoted.map((item) => `,${eol}${indent}${item}`).join("")}${text.slice(last.span.end)}`
+            const quotedText = quoted.map((item) => `,${eol}${indent}${item}`).join("")
+            edited = `${text.slice(0, last.span.end)}${quotedText}${text.slice(last.span.end)}`
         }
     } else if (parent.kind === "object") {
         const last = parent.members.at(-1)

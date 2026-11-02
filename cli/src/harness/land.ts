@@ -240,7 +240,10 @@ export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: 
     }
     if (existsSync(path) && (await gitLists(repo, path))) {
         const removed = await captureGit(["worktree", "remove", "--force", path], repo)
-        if (removed.exitCode !== 0) refusals.push(`git: ${headline(removed.stderr) || `exit ${String(removed.exitCode)}`}`)
+        if (removed.exitCode !== 0) {
+            const headlineText = headline(removed.stderr) || `exit ${String(removed.exitCode)}`
+            refusals.push(`git: ${headlineText}`)
+        }
     }
     if (existsSync(path) && !(await gitLists(repo, path))) {
         try {
@@ -263,7 +266,8 @@ export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: 
     const detail = refusals.join("; ") || "the folder stayed"
     const busy = isBusyFailure(detail)
     const watching = binary === undefined ? undefined : await worktreeState(binary, path, repo).catch(() => undefined)
-    const orcaHolds = watching?.listed === true ? `Orca still watching: it lists the worktree${watching.removalError === null ? "" : ` (${watching.removalError})`}; ` : ""
+    const removalSuffix = watching?.removalError == null ? "" : ` (${watching.removalError})`
+    const orcaHolds = watching?.listed === true ? `Orca still watching: it lists the worktree${removalSuffix}; ` : ""
     return { removed: false, busy, detail, reap, holders: busy ? `${orcaHolds}${await heldBy(path, reap)}` : null, orca: orca.note }
 }
 

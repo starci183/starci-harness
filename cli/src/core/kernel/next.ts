@@ -38,7 +38,12 @@ export const kernelNextVerb = defineVerb({
             `${data.workflow}: ${head}`,
             `digest: ${data.digest.status}${reason}, graph v${String(data.digest.graphVersion)}, goal v${String(data.digest.goalVersion)}, nodes ${JSON.stringify(data.digest.nodes)}, ${String(data.digest.openDecisions)} open decision(s)`,
             ...(data.decision === null ? [] : [`evidence: ${JSON.stringify(data.decision.evidence)}`]),
-            ...data.rulings.map((ruling) => `ruled by the Supervisor in your place: ${ruling.kind} ${ruling.cmdId} on ${ruling.items.join(", ")}${ruling.route === null ? "" : ` (route ${ruling.route})`}${ruling.escalation === null ? "" : `, escalated as ${ruling.escalation}`}${ruling.note === null ? "" : `: ${ruling.note}`}`),
+            ...data.rulings.map((ruling) => {
+                const routeSuffix = ruling.route === null ? "" : ` (route ${ruling.route})`
+                const escalationSuffix = ruling.escalation === null ? "" : `, escalated as ${ruling.escalation}`
+                const noteSuffix = ruling.note === null ? "" : `: ${ruling.note}`
+                return `ruled by the Supervisor in your place: ${ruling.kind} ${ruling.cmdId} on ${ruling.items.join(", ")}${routeSuffix}${escalationSuffix}${noteSuffix}`
+            }),
             ...data.actions.map((action) => `${action.action}: ${action.key ?? "-"} ${action.detail}`),
         ]
         return { data, message: lines.join("\n") }

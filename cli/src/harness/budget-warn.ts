@@ -146,7 +146,8 @@ export const tickBudgets = async (): Promise<string[]> => {
                     key: nearKey(outlook),
                     waiters: [],
                 })
-                return [`budget near: workflow ${outlook.workflow} (${outlook.near.join(", ")}; ${budgetLine(outlook)}): question ticket ${ticket.id} ${outcome === "opened" ? "opened" : `seen ${String(ticket.occurrences)} times`}, proposing: ${raiseCommand(outlook)}`]
+                const outcomeText = outcome === "opened" ? "opened" : `seen ${String(ticket.occurrences)} times`
+                return [`budget near: workflow ${outlook.workflow} (${outlook.near.join(", ")}; ${budgetLine(outlook)}): question ticket ${ticket.id} ${outcomeText}, proposing: ${raiseCommand(outlook)}`]
             })
         } catch {
             return []

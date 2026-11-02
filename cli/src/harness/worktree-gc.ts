@@ -187,7 +187,9 @@ const busyLeftovers = (root: string, judged: readonly GcEntry[], now: boolean): 
             .filter((record) => !judged.some((entry) => samePath(entry.path, record.path)))
             .map((record) => {
                 const due = now || busyDue(record) || !existsSync(record.path)
-                const reason = `left busy at attempt ${String(record.attempt)}${record.holders === "" ? "" : ` (${record.holders})`}${due ? "" : `; retried from ${record.nextAt}`}`
+                const holdersSuffix = record.holders === "" ? "" : ` (${record.holders})`
+                const dueSuffix = due ? "" : `; retried from ${record.nextAt}`
+                const reason = `left busy at attempt ${String(record.attempt)}${holdersSuffix}${dueSuffix}`
                 return { path: record.path, kind: (WORKTREE_KINDS.has(record.kind as WorktreeKind) ? record.kind : "orphan") as WorktreeKind, owner: record.owner, due, reason, preserved: null, removed: false, busy: true, detail: "", repo: record.repo }
             })
     } finally {
@@ -386,7 +388,10 @@ export const worktreeGc = async (root: string, dryRun: boolean, now = false, sel
                 db?.close()
             }
         })()
-        if (busy !== undefined && !now && !busyDue(busy) && existsSync(entry.path)) return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}${busy.holders === "" ? "" : `; ${busy.holders}`}); retried from ${busy.nextAt}` }
+        if (busy !== undefined && !now && !busyDue(busy) && existsSync(entry.path)) {
+            const holdersSuffix = busy.holders === "" ? "" : `; ${busy.holders}`
+            return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}${holdersSuffix}); retried from ${busy.nextAt}` }
+        }
         if (explicit) {
             const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
             if (fresh?.blocked === true) return reported(fresh)

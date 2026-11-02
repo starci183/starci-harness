@@ -37,7 +37,10 @@ export const appStackVerb = defineVerb({
             } else context.progress(`ci evidence: dry run; run ${ciRun} is judged when --execute deploys`)
         } else if (deploy && argSet(args, "execute") && (argValue(args, "env") ?? "production") === "production" && sha !== undefined) {
             const accepted = await requireCiGreen(context, await repositoryRoot(context.cwd), "deploy.prod", sha, { urgent: argSet(args, "urgent") })
-            if (accepted !== undefined) context.progress(`deploy.prod: ${accepted.verdict === "urgent" ? accepted.detail : `CI of ${accepted.sha.slice(0, 9)} is green`}`)
+            if (accepted !== undefined) {
+                const verdictText = accepted.verdict === "urgent" ? accepted.detail : `CI of ${accepted.sha.slice(0, 9)} is green`
+                context.progress(`deploy.prod: ${verdictText}`)
+            }
         }
         return runHfs(context, "stack", args, true, undefined, { role: callerRole() ?? "owner" })
     },

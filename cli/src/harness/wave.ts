@@ -278,7 +278,12 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
     const scoped: Contract = { ...union, context: { ...union.context, allowPaths: landed.length === 0 ? allowPaths : landed } }
     // The scope decision is written before any command runs (contexts/authority/wave.md): the diff, its files, the commands, what is skipped.
     const changed = base === head ? [] : nulPaths(await git(checkout, ["diff", "--name-only", "-z", base, head]))
-    const commands = [...new Set(tasks.flatMap((each) => each.checks.map((check) => (check.check.kind === "command" ? [check.check.run].flat().join(" ") : check.check.kind === "starci" ? `starci ${check.check.args.join(" ")} --base ${base.slice(0, 12)}${landed.length > 0 ? ` --within -- <${String(landed.length)} landed file(s)>` : ""}` : check.name))))]
+    const commands = [...new Set(tasks.flatMap((each) => each.checks.map((check) => {
+        if (check.check.kind === "command") return [check.check.run].flat().join(" ")
+        if (check.check.kind !== "starci") return check.name
+        const withinSuffix = landed.length > 0 ? ` --within -- <${String(landed.length)} landed file(s)>` : ""
+        return `starci ${check.check.args.join(" ")} --base ${base.slice(0, 12)}${withinSuffix}`
+    })))]
     const scope = {
         diff: `${base}..${head}`,
         changed,

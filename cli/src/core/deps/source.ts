@@ -146,7 +146,10 @@ export const depsSourceVerb = defineVerb({
             for (const one of copied) {
                 warnings.push(...one.warnings)
                 const differing = pins.filter((pin) => pin.name === one.name && pin.spec !== one.version)
-                if (differing.length > 0) warnings.push(`${one.name}: the local folder is ${one.version}, the app pins ${differing.map((pin) => `${pin.spec} (${pin.file})`).join(", ")}; CI installs the pinned version, and a push is refused DEPS_LOCAL_AHEAD while the copy holds code no published version does`)
+                if (differing.length > 0) {
+                    const differingText = differing.map((pin) => `${pin.spec} (${pin.file})`).join(", ")
+                    warnings.push(`${one.name}: the local folder is ${one.version}, the app pins ${differingText}; CI installs the pinned version, and a push is refused DEPS_LOCAL_AHEAD while the copy holds code no published version does`)
+                }
             }
             writeRecord(root, copied.map((one) => ({ name: one.name, folder: one.folder })))
         } else if (flags.sync) {

@@ -378,7 +378,8 @@ export const describeScope = (scope: Scope): string => {
 
 /** The composition part of the scope line: the modules judged in full for their producers, and the rules deferred to a composer. */
 export const describeComposition = (composition: Composition): string => {
-    const judged = composition.obligations.length === 0 ? "" : `; judged in full for their deferred composition: ${composition.obligations.map((each) => `${each.producer} (${each.paths.join(", ")})`).join(", ")}`
+    const producers = composition.obligations.map((each) => `${each.producer} (${each.paths.join(", ")})`).join(", ")
+    const judged = composition.obligations.length === 0 ? "" : `; judged in full for their deferred composition: ${producers}`
     const deferred = composition.deferral === null ? "" : `; ${composition.deferral.rules.join(", ")} on its own allowPaths deferred to ${composition.deferral.to}`
     return judged + deferred
 }

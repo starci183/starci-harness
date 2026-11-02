@@ -522,7 +522,9 @@ const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: stri
             if (getTask(db, task).status === "effect_unknown") setStatus(db, task, "running")
             recordEvent(db, "seat-adopted", task, { seat: seat.id, dispatchId, state: shown.state, printed })
         }); })
-        return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${said}${printed === null ? "" : `, last printed ${printed}`}, adopted${resubmitted === null ? "" : `; ${resubmitted}`}` }
+        const printedSuffix = printed === null ? "" : `, last printed ${printed}`
+        const resubmittedSuffix = resubmitted === null ? "" : `; ${resubmitted}`
+        return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${said}${printedSuffix}, adopted${resubmittedSuffix}` }
     }
     if (verdict === "quiet") {
         const deadline = loadCoordinatorLiveness().effectUnknownDeadlineMinutes

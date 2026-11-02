@@ -79,7 +79,8 @@ const requestNotices = (since: string, chars: number): Notice[] =>
         const project: Project = { key: String(row.project), root, name: basename(root) }
         const id = String(row.id)
         const workflow = textOf(row.workflow_id)
-        const text = [`[StarCi] ${project.name}: request ${id} was taken up by ${String(row.closed_by)}${workflow === null ? "" : ` (workflow ${workflow})`}.`, `"${clip(String(row.text), chars)}"`].join("\n")
+        const workflowSuffix = workflow === null ? "" : ` (workflow ${workflow})`
+        const text = [`[StarCi] ${project.name}: request ${id} was taken up by ${String(row.closed_by)}${workflowSuffix}.`, `"${clip(String(row.text), chars)}"`].join("\n")
         return { key: `request:${id}`, kind: "request", project, workflow, subject: id, text, at: String(row.closed_at) }
     })
 
@@ -318,7 +319,10 @@ const statusMessage = async (chars: number): Promise<string> => {
         const live = STATUS_ORDER.slice(0, 3).flatMap((status) => all.filter((workflow) => workflow.status === status).toSorted((a, b) => a.id.localeCompare(b.id)))
         return [
             `<b>${escapeHtml(name)}</b>: ${counts.join(", ")}`,
-            ...live.map((workflow) => `${workflow.status === "blocked" ? "🔴" : workflow.status === "paused" ? "⏸" : "🟢"} ${escapeHtml(workflow.id)} ${workflow.status}${workflow.status === "blocked" && workflow.reason !== null ? `: ${escapeHtml(clip(workflow.reason, chars))}` : ""}`),
+            ...live.map((workflow) => {
+                const statusSuffix = workflow.status === "blocked" && workflow.reason !== null ? `: ${escapeHtml(clip(workflow.reason, chars))}` : ""
+                return `${workflow.status === "blocked" ? "🔴" : workflow.status === "paused" ? "⏸" : "🟢"} ${escapeHtml(workflow.id)} ${workflow.status}${statusSuffix}`
+            }),
         ]
     })
     const open = [...listTickets({ state: "open" }), ...listTickets({ state: "in-progress" })]
@@ -343,7 +347,10 @@ const statusMessage = async (chars: number): Promise<string> => {
 type Target = { readonly project: Project; readonly text: string; readonly ticket?: string; readonly body?: string } | { readonly reply: string; readonly outcome: string; readonly html?: boolean; readonly keyboard?: Keyboard }
 
 const answerText = (notice: NoticeRow, body: string): string => {
-    if (notice.kind === "decision") return `Owner answer to ${notice.subject}${notice.workflow === null ? "" : ` (workflow ${notice.workflow})`}, via Telegram: ${body}`
+    if (notice.kind === "decision") {
+        const workflowSuffix = notice.workflow === null ? "" : ` (workflow ${notice.workflow})`
+        return `Owner answer to ${notice.subject}${workflowSuffix}, via Telegram: ${body}`
+    }
     return `Owner, via Telegram, about ${notice.kind} ${notice.subject}: ${body}`
 }
 

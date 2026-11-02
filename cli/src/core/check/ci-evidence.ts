@@ -146,7 +146,8 @@ const describe = (job: RunJob): string => `${job.name}: ${job.status === "comple
  * is refused), and an optional job the run has is not red. Returns what was checked, or refuses with the first reason. Pure: the run's facts and jobs are given.
  */
 export const judgeRun = (sha: string, run: RunFacts, jobs: readonly RunJob[], standard: RequiredJobs): CiRunEvidence => {
-    const here = `run ${String(run.id)}${run.url === "" ? "" : ` (${run.url})`}`
+    const urlSuffix = run.url === "" ? "" : ` (${run.url})`
+    const here = `run ${String(run.id)}${urlSuffix}`
     if (run.sha !== sha) throw new Refusal("CI_RUN_SHA_MISMATCH", `${here} is a run of ${run.sha === "" ? "an unknown commit" : run.sha.slice(0, 9)}, not of the commit being deployed (${sha.slice(0, 9)}); only a run of that exact commit is evidence`)
     if (run.path !== CI_WORKFLOW_PATH) throw new Refusal("CI_RUN_WORKFLOW", `${here} is a run of ${run.path === "" ? "an unknown workflow" : run.path}; the evidence is a run of ${CI_WORKFLOW_PATH}`)
     if (!EVIDENCE_EVENTS.includes(run.event)) throw new Refusal("CI_RUN_WORKFLOW", `${here} was started by ${run.event === "" ? "an unknown event" : run.event}; only a ${EVIDENCE_EVENTS.join(" or ")} run is evidence`)

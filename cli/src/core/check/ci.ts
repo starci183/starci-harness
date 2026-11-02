@@ -68,7 +68,8 @@ const readCi = async (cwd: string, sha: string): Promise<CiReading> => {
         const runs = parseRuns(listed.stdout)
         const verdict = verdictOf(runs)
         const table = formatTable(runs.map((run) => [run.name, run.status, run.conclusion === "" ? "-" : run.conclusion]))
-        return { sha, verdict, runs, detail: `${sha.slice(0, 9)}: ${verdict}${runs.length === 0 ? "" : `\n${table}`}` }
+        const runsSuffix = runs.length === 0 ? "" : `\n${table}`
+        return { sha, verdict, runs, detail: `${sha.slice(0, 9)}: ${verdict}${runsSuffix}` }
     } catch (error: unknown) {
         const refusal = asRefusal(error)
         return { sha, verdict: "unreadable", runs: [], detail: `${refusal.code}: ${refusal.message}` }

@@ -276,7 +276,10 @@ export const scopedTests = async (argv: readonly string[], place: TestPlace, all
         why = own.length > 0 ? "the task's own changed spec files" : `every ${projects.join(", ")} spec under ${toSlash(relative(place.root, folder)) || "."}, live-provider specs left out`
     }
     const paths = [...new Set(files.map((file) => toSlash(relative(folder, file))))].sort((left, right) => left.localeCompare(right))
-    if (paths.length === 0) return { problem: `tests: ${named.length > 0 ? `${named.join(", ")} hold no spec file jest can run` : "no spec file to run"} (from ${toSlash(relative(place.root, folder)) || "."}); nothing was run` }
+    if (paths.length === 0) {
+        const namedText = named.length > 0 ? `${named.join(", ")} hold no spec file jest can run` : "no spec file to run"
+        return { problem: `tests: ${namedText} (from ${toSlash(relative(place.root, folder)) || "."}); nothing was run` }
+    }
     const base = separator >= 0 ? argv.slice(0, separator + 1) : argv.slice(0, scriptIndex(argv) + 1)
     const kept = extra.filter((arg) => arg.startsWith("-"))
     const lead = NEEDS_SEPARATOR.has(runner) && separator < 0 ? ["--"] : []

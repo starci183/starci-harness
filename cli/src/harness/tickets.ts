@@ -364,7 +364,10 @@ export const listTickets = (filter: { readonly state?: TicketState; readonly pro
 const liveTicket = (db: DatabaseSync, id: string): Ticket => {
     const ticket = ticketRow(db, id)
     if (ticket === undefined) throw new Refusal("TICKET_UNKNOWN", `no ticket ${id} on this host (starci ticket list)`)
-    if (!isLive(ticket.state)) throw new Refusal("TICKET_CLOSED", `ticket ${ticket.id} is ${ticket.state}${ticket.closedBy === null ? "" : ` (by ${ticket.closedBy})`}; a repeat of it reopens a fixed defect`)
+    if (!isLive(ticket.state)) {
+        const closedBySuffix = ticket.closedBy === null ? "" : ` (by ${ticket.closedBy})`
+        throw new Refusal("TICKET_CLOSED", `ticket ${ticket.id} is ${ticket.state}${closedBySuffix}; a repeat of it reopens a fixed defect`)
+    }
     return ticket
 }
 
@@ -435,7 +438,10 @@ export const closeLine = (ticket: Ticket): string => {
     if (ticket.state === "fixed") return `fixed by ${ticket.fixedBy ?? "-"}`
     if (ticket.state === "wontfix") return `wontfix: ${ticket.reason ?? "-"}`
     if (ticket.state === "duplicate") return `duplicate of ${ticket.duplicateOf ?? "-"}`
-    if (ticket.state === "answered") return `answered by ${ticket.closedBy ?? "-"}: ${ticket.answer ?? "-"}${ticket.reason === null ? "" : ` (why: ${ticket.reason})`}`
+    if (ticket.state === "answered") {
+        const reasonSuffix = ticket.reason === null ? "" : ` (why: ${ticket.reason})`
+        return `answered by ${ticket.closedBy ?? "-"}: ${ticket.answer ?? "-"}${reasonSuffix}`
+    }
     return ticket.state
 }
 
@@ -467,7 +473,10 @@ export const wakeOnClose = async (closed: Closed, by: string, cwd: string): Prom
     if (ticket.openedBy === "supervisor" && !projects.has(ticket.project.key)) projects.set(ticket.project.key, { project: ticket.project, waiters: [] })
     const due = [...projects.values()].filter((entry) => entry.project.key !== "")
     return inOrder(due, async ({ project, waiters }) => {
-        const named = waiters.map((waiter) => `${waiter.subject}${waiter.workflow === null ? "" : ` (workflow ${waiter.workflow})`}`)
+        const named = waiters.map((waiter) => {
+            const workflowSuffix = waiter.workflow === null ? "" : ` (workflow ${waiter.workflow})`
+            return `${waiter.subject}${workflowSuffix}`
+        })
         const text = [
             `Ticket ${ticket.id} (${ticket.kind}) is ${closeLine(ticket)}. Ticket: ${ticket.title}.`,
             named.length === 0 ? "Resume the work you held for it." : `Released: ${named.join(", ")}. Resume them: answer each released escalation with a goal-change or stop naming it and this request.`,
@@ -532,7 +541,8 @@ interface AwaitingTask {
  */
 const ticketAwaitingTask = (repo: string, project: Project, task: AwaitingTask): { readonly ticket: Ticket; readonly outcome: TicketOutcome } | null => {
     if (readMachine((db) => db.prepare("SELECT 1 FROM ticket_waiters WHERE repo = ? AND subject = ?").get(repo, `task:${task.id}`) !== undefined, false)) return null
-    const flat = `task ${task.id} (${task.label}${task.workflow === null ? "" : `, workflow ${task.workflow}`}) is awaiting the owner: ${task.reason}`.replaceAll(/\s+/g, " ").trim()
+    const workflowSuffix = task.workflow === null ? "" : `, workflow ${task.workflow}`
+    const flat = `task ${task.id} (${task.label}${workflowSuffix}) is awaiting the owner: ${task.reason}`.replaceAll(/\s+/g, " ").trim()
     return openTicket({
         kind: task.owner ? "question:business" : task.module !== null ? "harness-defect" : "verify",
         severity: "blocking",

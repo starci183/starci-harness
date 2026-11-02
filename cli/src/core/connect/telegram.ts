@@ -60,7 +60,8 @@ export const connectTelegramVerb = defineVerb({
         const picked = flags.chat ?? (chats.size === 1 ? [...chats.keys()][0] : undefined)
         if (picked === undefined) {
             if (chats.size === 0) throw new Refusal("TELEGRAM_NO_CHAT", "no private chat wrote to the bot since the last read: the owner sends the bot any message (/start), then runs this again")
-            throw new Refusal("TELEGRAM_CHAT_AMBIGUOUS", `several chats wrote to the bot; pick one with --chat: ${[...chats].map(([id, name]) => `${id} (${name})`).join(", ")}`)
+            const chatsText = [...chats].map(([id, name]) => `${id} (${name})`).join(", ")
+            throw new Refusal("TELEGRAM_CHAT_AMBIGUOUS", `several chats wrote to the bot; pick one with --chat: ${chatsText}`)
         }
         const name = chats.get(picked)
         if (name === undefined) throw new Refusal("TELEGRAM_NO_CHAT", `chat ${picked} did not write to the bot since the last read; chats: ${[...chats.keys()].join(", ") || "none"}`)

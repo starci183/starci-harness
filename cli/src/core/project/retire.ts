@@ -88,7 +88,10 @@ export const projectRetireVerb = defineVerb({
         if (binary !== undefined) {
             const live = await terminalList(binary, context.cwd)
             const alive = open.filter((seat) => seat.terminal !== null && (live.truncated || live.handles.has(seat.terminal)))
-            if (alive.length > 0) throw new Refusal("RETIRE_LIVE", `ledger ${ledger} has open seats whose terminal Orca lists: ${alive.map((seat) => `${seat.id} (${seat.terminal ?? "-"})`).join(", ")}; stop them first (starci seat stop)`)
+            if (alive.length > 0) {
+                const aliveText = alive.map((seat) => `${seat.id} (${seat.terminal ?? "-"})`).join(", ")
+                throw new Refusal("RETIRE_LIVE", `ledger ${ledger} has open seats whose terminal Orca lists: ${aliveText}; stop them first (starci seat stop)`)
+            }
         }
         withMachine((db) => {
             db.prepare("UPDATE ledgers SET state = ? WHERE ledger_id = ?").run(state, ledger)
@@ -100,7 +103,10 @@ export const projectRetireVerb = defineVerb({
         if (binary !== undefined) withMachine((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), "ledger-retired-cleanup", ledger, JSON.stringify({ worktrees, orca })))
         const data: ProjectRetireData = { ledger, name, state, openSeats: open.map((seat) => seat.id), worktrees, orca }
         const left = open.length === 0 ? "" : `; its open seats (${data.openSeats.join(", ")}) no longer count`
-        const lines = worktrees.map((entry) => `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"}: ${entry.detail}${entry.preserved === null ? "" : `; its work preserved in ${entry.preserved}`}`)
+        const lines = worktrees.map((entry) => {
+            const preservedSuffix = entry.preserved === null ? "" : `; its work preserved in ${entry.preserved}`
+            return `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"}: ${entry.detail}${preservedSuffix}`
+        })
         return { data, message: [`ledger ${ledger} (${name}) is ${state}${state === "retired" ? left : ""}`, ...lines, ...(state === "retired" ? [`orca: ${orca}`] : [])].join("\n") }
     },
 })

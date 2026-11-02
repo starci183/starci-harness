@@ -171,7 +171,8 @@ export const judgePush = async (root: string, revision = "HEAD"): Promise<PushJu
     }
     const notes = local.flatMap((copy) => {
         const pinned = verdicts.filter((pin) => pin.name === copy.name && pin.spec !== copy.version)
-        return pinned.length === 0 ? [] : [`${copy.name} runs local ${copy.version} (equal to npm) while ${pinned.map((pin) => `${pin.file} pins ${pin.spec}`).join(", ")}; raise the pin if the app needs ${copy.version}`]
+        const pinnedText = pinned.map((pin) => `${pin.file} pins ${pin.spec}`).join(", ")
+        return pinned.length === 0 ? [] : [`${copy.name} runs local ${copy.version} (equal to npm) while ${pinnedText}; raise the pin if the app needs ${copy.version}`]
     })
     return { app: true, revision, pins: verdicts, local, notes }
 }

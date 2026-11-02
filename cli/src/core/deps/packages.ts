@@ -351,7 +351,10 @@ export const reapplyLocal = async (source: string, checkout: string): Promise<Re
         const added = await installMissing(checkout, packages)
         const manifests = await manifestFiles(checkout)
         const copied = await inOrder(packages, (pkg) => copyLocal(checkout, manifests, pkg))
-        const lines = copied.map((one) => `${one.name} ${one.version} from ${one.folder} into ${one.targets.join(", ")}${one.warnings.map((warning) => `\n  warning: ${warning}`).join("")}`)
+        const lines = copied.map((one) => {
+            const warningsText = one.warnings.map((warning) => `\n  warning: ${warning}`).join("")
+            return `${one.name} ${one.version} from ${one.folder} into ${one.targets.join(", ")}${warningsText}`
+        })
         return { status: "green", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), ...(added.length === 0 ? [] : [`installed without saving: ${added.join(", ")}`]), ...lines].join("\n") }
     } catch (error: unknown) {
         // An install the host held in the heavy queue judged nothing: the verify reaches no verdict, never a red copy.

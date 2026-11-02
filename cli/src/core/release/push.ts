@@ -77,7 +77,8 @@ export const releasePushVerb = defineVerb({
         const commits = previous === null ? Number(await git(root, ["rev-list", "--count", head])) : Number(await git(root, ["rev-list", "--count", `${base}..${head}`]))
         if (!dryRun) await git(root, ["push", remote, `HEAD:refs/heads/${branch}`])
         const data: PushData = { remote, branch, head, previous, commits, pushed: !dryRun, dryRun }
-        return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)})${dryRun ? " (dry run; add --execute)" : ""}; CI is the critic: starci check ci --sha ${head}${judged === undefined ? "" : `
-${judged}`}` }
+        const judgedSuffix = judged === undefined ? "" : `
+${judged}`
+        return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)})${dryRun ? " (dry run; add --execute)" : ""}; CI is the critic: starci check ci --sha ${head}${judgedSuffix}` }
     },
 })

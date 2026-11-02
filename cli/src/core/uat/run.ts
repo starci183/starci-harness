@@ -111,8 +111,11 @@ const verdictOf = (data: UatRunData, timeoutMs: number): string => {
 }
 
 /** The line naming what the walk's checkout was given before the run. */
-const workspaceNote = (steps: readonly StepResult[]): string =>
-    steps.length === 0 ? "workspace: every workspace dependency the app imports is built" : `workspace: ${steps.map((one) => `${one.package} ${one.status} (${one.reason})`).join("; ")}`
+const workspaceNote = (steps: readonly StepResult[]): string => {
+    if (steps.length === 0) return "workspace: every workspace dependency the app imports is built"
+    const stepsText = steps.map((one) => `${one.package} ${one.status} (${one.reason})`).join("; ")
+    return `workspace: ${stepsText}`
+}
 
 /** The line naming the pages the walk opened. */
 const pagesNote = (pages: UatRunData["pages"]): string =>
@@ -147,7 +150,13 @@ const prepareApp = async (root: string, timeoutMs: number, progress: (line: stri
     const steps = await prepareWorkspace(root, { timeoutMs })
     for (const one of steps) progress(`workspace: ${one.package} ${one.status} (${one.reason})`)
     const red = steps.filter((one) => one.status !== "green")
-    if (red.length > 0) throw new Refusal("UAT_APP_SETUP_FAILED", `the app's workspace could not be prepared, so the walk would meet no app (an environment failure, not a finding): ${red.map((one) => `${one.package}: ${one.reason}${one.output === "" ? "" : `\n${one.output}`}`).join("\n")}`)
+    if (red.length > 0) {
+        const redText = red.map((one) => {
+            const outputSuffix = one.output === "" ? "" : `\n${one.output}`
+            return `${one.package}: ${one.reason}${outputSuffix}`
+        }).join("\n")
+        throw new Refusal("UAT_APP_SETUP_FAILED", `the app's workspace could not be prepared, so the walk would meet no app (an environment failure, not a finding): ${redText}`)
+    }
     return steps
 }
 

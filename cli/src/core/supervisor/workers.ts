@@ -410,9 +410,10 @@ export const rejectWorker = async (context: VerbContext, project: Project, ref: 
     const worker = findWorker(project, ref)
     if (worker.ended_at !== null) throw new Refusal("WORKER_ENDED", `worker ${worker.id} was ended ${worker.ended_by ?? ""} at ${worker.ended_at}`)
     const status = taskStatusOf(worker)
+    const reasonSuffix = reason === undefined ? "" : `: ${reason}`
     const detail = TERMINAL_STATUSES.includes(status)
         ? `task ${worker.task_id} is ${status}`
-        : (await taskCancelVerb.run({ ...context, cwd: worker.repo }, { task: worker.task_id, reason: `worker ${worker.id} rejected by the Supervisor${reason === undefined ? "" : `: ${reason}`}` })).message
+        : (await taskCancelVerb.run({ ...context, cwd: worker.repo }, { task: worker.task_id, reason: `worker ${worker.id} rejected by the Supervisor${reasonSuffix}` })).message
     endWorker(worker.id, "rejected")
     return { worker: worker.id, task: worker.task_id, ended: "rejected", branch: branchOf(worker), detail: `${detail}${await removeWorkerTree(worker.repo)}` }
 }

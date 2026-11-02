@@ -362,7 +362,8 @@ export const assertKeysHanded = async (output: string, tree: string): Promise<vo
         module: CUSTODY_MODULE,
         waiters: [],
     })
-    throw new Refusal(VERIFY_INFRA, `the run reports ${held.join(", ")} as not declared although custody of ${environment} holds ${held.length === 1 ? "it" : "them"} (${held.map((key) => `${key} in ${holder.get(key) ?? ""}`).join(", ")}): the harness did not hand ${held.length === 1 ? "it" : "them"} to the run (${CUSTODY_KEY_NOT_HANDED}: an infrastructure failure, not the task's; harness-defect ticket ${ticket.id})`)
+    const heldText = held.map((key) => `${key} in ${holder.get(key) ?? ""}`).join(", ")
+    throw new Refusal(VERIFY_INFRA, `the run reports ${held.join(", ")} as not declared although custody of ${environment} holds ${held.length === 1 ? "it" : "them"} (${heldText}): the harness did not hand ${held.length === 1 ? "it" : "them"} to the run (${CUSTODY_KEY_NOT_HANDED}: an infrastructure failure, not the task's; harness-defect ticket ${ticket.id})`)
 }
 
 /** The event that hands a worker's custody-stopped report to the harness's own run (core/task/result.ts), keyed by the attempt it judges. */

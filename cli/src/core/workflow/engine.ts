@@ -261,7 +261,10 @@ const endedWorktreeActions = async (root: string, snapshot: Snapshot): Promise<S
     const entries = await worktreeGc(root, false).catch((error: unknown) => [{ path: "-", removed: false, due: true, kind: "workflow", reason: asRefusal(error).message, preserved: null }])
     return entries
         .filter((entry) => entry.due && entry.kind !== "package")
-        .map((entry) => ({ key: null, task: null, action: removalAction(entry), detail: `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${entry.preserved === null ? "" : `; work preserved in ${entry.preserved}`}` }))
+        .map((entry) => {
+            const preservedSuffix = entry.preserved === null ? "" : `; work preserved in ${entry.preserved}`
+            return { key: null, task: null, action: removalAction(entry), detail: `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${preservedSuffix}` }
+        })
 }
 
 /** Closes a stopped workflow's Kernel terminal (after its ops) and reports it; nothing when it has none or it was closed already. */

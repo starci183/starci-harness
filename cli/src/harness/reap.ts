@@ -287,7 +287,8 @@ export const heldBy = async (folder: string, reap: Reap): Promise<string> => {
     const working = typeof listed === "string" ? [] : listed.filter((item) => insideFolder(folder, item.cwd))
     if (working.length > 0) {
         const own = typeof listed === "string" ? new Set<number>() : selfAndAncestors(new Map(listed.map((item) => [item.pid, item])))
-        return `working in it: ${working.map((item) => `${String(item.pid)} ${item.name}${own.has(item.pid) ? " (this process or its ancestor, never ended)" : ""}`).join(", ")}`
+        const workingText = working.map((item) => `${String(item.pid)} ${item.name}${own.has(item.pid) ? " (this process or its ancestor, never ended)" : ""}`).join(", ")
+        return `working in it: ${workingText}`
     }
     const { lockers, how } = await lockersOf(folder)
     if (lockers !== null) return `held by (${how}): ${lockers.replaceAll(/\s*\n\s*/g, "; ")}`

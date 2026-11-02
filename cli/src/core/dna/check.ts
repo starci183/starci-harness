@@ -215,7 +215,9 @@ export const dnaCheckVerb = defineVerb({
                 const count = (status: LawRow["status"]): number => mine.filter((row) => row.status === status).length
                 lines.push(`${family}: ${String(mine.length)} law(s): ${String(count("green"))} green, ${String(count("red"))} red, ${String(count("not-exercised"))} not exercised, ${String(count("known"))} known (follow-up), ${String(count("not-run"))} not run here`)
                 for (const row of mine.filter((candidate) => candidate.status === "red" || candidate.status === "not-exercised" || candidate.status === "known")) {
-                    lines.push(`${row.status === "known" ? "known" : "red"} ${row.id} [${family}]${row.followUp === null ? "" : ` follow-up ${row.followUp}`} ${row.status === "not-exercised" ? "not exercised" : `${String(row.broken)} element(s) on ${String(row.pages)} page(s)`}: ${row.law}`)
+                    const followUpSuffix = row.followUp === null ? "" : ` follow-up ${row.followUp}`
+                    const statusText = row.status === "not-exercised" ? "not exercised" : `${String(row.broken)} element(s) on ${String(row.pages)} page(s)`
+                    lines.push(`${row.status === "known" ? "known" : "red"} ${row.id} [${family}]${followUpSuffix} ${statusText}: ${row.law}`)
                     if (row.status === "red") for (const example of row.examples.slice(0, SHOWN_EXAMPLES)) lines.push(`    ${example.page}: ${example.path}`, `      ${example.breaks[0]?.metric ?? ""} measured ${example.breaks[0]?.measured ?? ""}, wants ${example.breaks[0]?.want ?? ""}`)
                 }
             }
