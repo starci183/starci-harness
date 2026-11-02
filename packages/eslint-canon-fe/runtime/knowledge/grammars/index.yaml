@@ -69,7 +69,17 @@ families:
       entry: '@starci/grammar/common'
       styleEntry: '@starci/grammar/common.css'
       semanticRoles:
-        page: { export: Page, entries: ['@starci/grammar/common', '@starci/grammar/<family>'], segment: { attribute: header, member: tabs }, bodyContainers: [PaneGrid, Pane] }
+        page:
+          export: Page
+          entries: ['@starci/grammar/common', '@starci/grammar/<family>']
+          segment: { attribute: header, member: tabs }
+          bodyContainers: [PaneGrid, Pane, Stack, PaneSection, Section]
+          # Native body transparency follows the renderer's exact context, status and intrinsic-element API.
+          bodyContainerConstraints:
+            Pane: { providesContext: pane }
+            Stack: { literalProps: { as: [div, header, footer] } }
+            PaneSection: { requiresContext: pane, absentProps: [error], literalProps: { as: [div, header, footer] } }
+            Section: { absentProps: [error], literalProps: { kind: [region] } }
       peers: [react, '@heroui/react', '@xyflow/react', react-aria-components]
     packageSnapshot: common/DNA.yaml
     scope: |
