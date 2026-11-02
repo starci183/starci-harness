@@ -1,6 +1,8 @@
-// The typed surface of the @starci/hfs entries the CLI loads; the package ships JavaScript only.
+// The typed surface of the @starci/hfs entries the CLI loads; shared runtime contracts come from the package.
 
 declare module "@starci/hfs" {
+    import type { HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
+
     /** What `main` reads, writes to and where it runs; the rest of its seams are test doubles the CLI never passes. */
     interface HfsIo {
         readonly cwd: string
@@ -12,7 +14,7 @@ declare module "@starci/hfs" {
         readonly hostIdentity?: { readonly label: string; readonly read: () => string | undefined } | undefined
         readonly stdout: (text: string) => void
         readonly stderr: (text: string) => void
-        readonly runHeavyNode?: import("@starci/hfs/runtime/scripts/api/node/run-node.mjs").HeavyNodeRun | undefined
+        readonly runHeavyNode?: HeavyNodeRun | undefined
     }
 
     /** Runs one `starci app` verb (`argv[0]`) with its arguments; resolves to its exit code. */
