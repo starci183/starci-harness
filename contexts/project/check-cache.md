@@ -1,8 +1,8 @@
 # The committed result cache of an app
 
-Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`,
-`starci app lint` and the unit specs judge only what differs from the cache, on a developer host and in CI
-alike. Ruling `app-check-cache` (live, owner-approved 2026-10-31) decided: `app lint` stays its own verb and shares the cache;
+Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`
+and the unit specs judge only what differs from the cache, on a developer host and in CI
+alike. Ruling `app-check-cache` (live, owner-approved 2026-10-31) decided:
 `HFS_CHECK_CACHE_FORGED` is a hard blocker at any count and `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn; the release is
 always full; branch protection requiring the check is a later follow-up. The code is `packages/hfs/cache/`; the slot is
 `app.starcistacks.cache` (slots 3.15.0). Its one rule
@@ -47,13 +47,14 @@ exports included), and CI derives its trusted base itself. `wiring` is the famil
 <lcov>` stays: it judges a report produced elsewhere (the merge of a sharded full run in CI) and records nothing.
 `--staged` stays the pre-commit guard alone, outside the cache. `--json` stays.
 
-`starci app lint` stays its own verb, since it is the `lint` script of the app and of every fe workspace and the one
-writer of the Sonar import file (`--out`), with `--fix`: it runs the `lint` family and the app findings exactly as
-`app check --gate lint --gate hfs` does, on the same records under the same fingerprint, so the two never disagree. Folding it into
-`app check --gate lint` instead (and moving every script, hook and workflow that calls it in the same change, CONTRIB-15) is
-the alternative for the owner. `lint --side be|fe` reads and writes that side's records (the CI lint matrix runs one side
-per job); `lint --workspace` reads records and writes none, since it judges part of a side; `lint --changed` and
-`lint --fix` neither read nor write.
+`app check` is the one verb for app quality (owner, 2026-11-03); there is no `lint` verb. Three flags carry what the lint
+verb carried. `--side be|fe` limits the lint gate to one side, which reads and writes that side's records (the CI lint
+matrix runs one side per job: `app check --gate lint --side <side> --out reports/lint.<side>.sonar.json`). `--out <file>`
+writes the merged Sonar Generic Issue Import document of every finding the run produced (the repository findings of the
+gates it selected as `starci-hfs`, then ESLint and stylelint), and `--fix` runs ESLint and stylelint with `--fix` before
+the check, which then judges the rewritten files like any change; `--fix` is refused unless `--gate lint` is selected.
+There is no `--changed` and no `--workspace`: the cache makes a whole-app check of an unchanged tree take seconds, and
+the fe workspaces carry no `lint` script, the root `lint` script being `app check --gate lint`.
 
 ## Progress and the run log
 
@@ -214,8 +215,8 @@ that key.
 
 The dirty set is linted in one ESLint run per side through the launcher, chunking and result validation of a full run;
 every other file of the side's canon scope (enumerated afresh) takes its record, a file of the scope with no record is
-dirty, and a record outside the scope is dropped. `app check` and `app lint` call the same cached ESLint and the same
-cached app pass on the same records, so the two verbs never hold two answers for one tree.
+dirty, and a record outside the scope is dropped. `app check --gate lint` and a default `app check` call the same cached ESLint and the same
+cached app pass on the same records, so they never hold two answers for one tree.
 
 ## Unit coverage
 
@@ -240,12 +241,12 @@ The servers stay the judges; a prediction never passes or fails a run.
 
 - **Slot.** `app.starcistacks.cache` (both editions): `.starcistacks/cache/`, tracked, presence optional, admitting
   `fingerprint.jsonl`, `check/**`, `lint/**`, `test-coverage/**`, `sonar-baseline/**` and `codecov-baseline/**` and
-  nothing else. It is app-owned and written only by `app check` and `app lint`; `app sync` never renders,
+  nothing else. It is app-owned and written only by `app check`; `app sync` never renders,
   overwrites or judges its content, and managed-file drift does not cover it. `cache` is a reserved name that
   `.starcistacks/application-stacks.yaml` refuses as an environment.
 - **Templates.** The managed `.gitignore` block re-includes `!.starcistacks/cache/**` after its `.starcistacks/**` deny;
   `.gitattributes` gains the line above; `.prettierignore` skips the folder. The managed CI workflow fetches the trusted
-  base, runs `app check` and `app lint` diff-only against it, uploads the merged lcov, and passes `--no-cache` on the run a
+  base, runs `app check` (the `lint` job: `--gate lint` per side) diff-only against it, uploads the merged lcov, and passes `--no-cache` on the run a
   release waits for (a full unit run there is sharded: `--gate test --shard <i>/<n>` per job records nothing, and the
   merge job judges the merged report with `--coverage-from`). The release gate sets `STARCI_APP_CHECK_CACHE=full` on every gate row.
 - **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full.
@@ -275,9 +276,8 @@ adoption and a forgotten refresh never block a change.
 ## As built
 
 - The quality profile of the policy is not a fingerprint part: the gate threshold only judges the verdict, which is never cached.
-- `app lint` runs the lint family with the `hfs`, `secrets`, `db` and `format` families, the findings `app lint` carried before the cache; `--changed` and
-  `--fix` bypass the cache, `--workspace` reads it and writes none.
-- `--quiet` mutes progress and keeps the diagnosis on stdout for `check` and `lint`; other verbs still mute stdout.
+- `--fix` runs the linters with `--fix` before the check reads the cache, so the rewritten files are the dirty set of that same run.
+- `--quiet` mutes progress and keeps the diagnosis on stdout for `check`; other verbs still mute stdout.
 - The managed CI keeps its triggers (push to main, release candidates, tags); a push to main is trusted against its first parent, a candidate or tag
   run sets `STARCI_APP_CHECK_CACHE=full` and never reads the cache. The `format` step runs `app check --gate format`.
 - Side keys take the untracked program inputs from the side's tsconfig `include` (generated code), not from import resolution of files outside it.
@@ -285,5 +285,5 @@ adoption and a forgotten refresh never block a change.
 ## Read with
 
 [lint.md](lint.md) (which machine judges what and where it runs), [stacks.md](stacks.md) (the `.starcistacks/` shape),
-the `app check` and `app lint` usage of `@starci/hfs`, and [policy/quality.yaml](../../policy/quality.yaml)
+the `app check` usage of `@starci/hfs`, and [policy/quality.yaml](../../policy/quality.yaml)
 for the gate threshold the verdict applies.

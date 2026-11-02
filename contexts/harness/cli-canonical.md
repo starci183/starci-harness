@@ -18,13 +18,13 @@ behaviour bug).
 | meaning | canonical | replaced spellings | notes |
 |---|---|---|---|
 | do it for real (effects are dry by default) | `--execute` | `--publish` (release publish), `--write` (app sync, app sonar, app codemod, contexts anatomy), `--apply` (app db baseline/restamp), `--plan` (app upgrade, inverted), `--dry-run` (release push/cut, seat start, project park, supervisor tick, worktree gc, app ci local), `--dry` (host install/uninstall) | a generator's dry run reports drift and exits 1 on it, so `--check` disappears as a mode flag |
-| machine output | `--json` | `--format json` (app lint, app codemod) | `--format` stays only where a non-JSON second format exists (codemod markdown report) |
+| machine output | `--json` | `--format json` (app codemod) | `--format` stays only where a non-JSON second format exists (codemod markdown report) |
 | seconds to wait | `--timeout <s>` | `--timeout-ms` (task send, seat start, uat run), `--wait` in ms (dna check) | all durations in seconds; `--wait <s>` only for "block until" loops; `--retry <s>` keeps its meaning |
 | exact commit | `--sha <sha>` | `--source-sha` (app stack render/deploy), `--source` (app release gate), `--head` (release affected), `--revision` (deps check) | `--base <ref>` stays the comparison base; `--ref <name>` a ref name |
 | which environment of .starcistacks | `--env <env>` | positional `<env>` (every `app secret` action) | required for every effect verb (today `app stack` silently defaults to production) |
 | DB URL variable | `--db-url-env <NAME>` | `--url-env` (app db *) | one name for app db and app stack deploy --urgent |
 | app / checkout folder | `--cwd <dir>` | `--root` (contexts), `--harness` (pkg), `--from` (deps source), `--cwd-path` (contract new), `--into` (app scaffold), `--repo <dir>` (app upgrade, internal) | `--project <name|key>` stays for a registered project |
-| output path | `--out <path>` | `--report` (codemod), `--sonar <file>` (app lint) | `--backup-out` stays (second output of deploy) |
+| output path | `--out <path>` | `--report` (codemod) | `--backup-out` stays (second output of deploy) |
 | GitHub repository | `--repo <owner/name>` | (`--repo` as a folder) | |
 | git remote | `--remote <name>` | | |
 | why (justification) | `--reason "<text>"` | `--why` (ticket answer), `--detail` (provider report) | `--note` stays for free content (task result, pkg handoff) |
@@ -47,7 +47,7 @@ longer drift.
 | group | canonical verbs | changes |
 |---|---|---|
 | (top) | `version`, `explain [term]`, `doctor`, `ui` | FIX `explain`: `term` positional (today only `--term` works, `starci explain doctor` fails) |
-| check | `run`, `lint`, `secrets`, `loosening`, `shape`, `pins`, `heavy-sites`, `ci` | DROP `check stories` (no caller anywhere); DROP `check typecheck` (only README/CHANGELOG; `check run` runs it). `check *` = judge the harness repository and packages; product apps use `app check`/`app lint` |
+| check | `run`, `lint`, `secrets`, `loosening`, `shape`, `pins`, `heavy-sites`, `ci` | DROP `check stories` (no caller anywhere); DROP `check typecheck` (only README/CHANGELOG; `check run` runs it). `check *` = judge the harness repository and packages; product apps use `app check` |
 | release | `push`, `cut`, `publish`, `affected` | FOLD `release ci-status` into `check ci` (`check ci --json` prints the verdict; same `--sha`); `--dry-run`/`--publish` become dry-by-default + `--execute`; `affected --head` -> `--sha` |
 | contract | `new`, `check` | flags: `--cwd-path` -> `--cwd`, `--details` -> `--note`; `--allow`/`--check` lists by the one list rule |
 | task | `verify`, `send`, `status`, `result`, `cancel` | `--timeout-ms` -> `--timeout` |
@@ -90,7 +90,7 @@ longer drift.
 | codemod | `codemod <name> [--execute] [--json] [--out]` | `--write` -> `--execute`; `--report` -> `--out` |
 
 Overlaps kept on purpose (different object, said once in the help): `release push` (harness repo) vs `app release push`
-(an app); `check lint` (harness) vs `app lint` (app); `stack backup` (volumes) vs `db dump` (database); `stack prune`
+(an app); `check lint` (harness) vs `app check --gate lint` (app); `stack backup` (volumes) vs `db dump` (database); `stack prune`
 (Swarm objects) vs `stack retire` (old compose projects); the five stop verbs (task cancel, seat stop, supervisor reject,
 workflow stop, project park) at five granularities; `secret migrate|recipients|server-key` (three different recipient
 jobs); `doctor` / `host status` / `supervisor status` (three liveness views).

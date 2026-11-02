@@ -114,7 +114,7 @@ rules:
       - {kind: machine, id: e2e-in-automatic-gate}
   - id: R13
     code: HFS_CI_MISSING_CANON
-    law: CI runs the pinned app lint, and every checkout keeps the installed pre-commit hooks active, so no commit lands without the pre-commit gate.
+    law: CI runs the pinned `starci app check --gate lint`, and every checkout keeps the installed pre-commit hooks active, so no commit lands without the pre-commit gate.
     failureCodes:
       - HFS_CI_MISSING_CANON
       - HFS_HOOKS_PATH_REDIRECTED
