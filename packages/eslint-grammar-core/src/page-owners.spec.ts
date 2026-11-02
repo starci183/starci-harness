@@ -6,6 +6,7 @@
  *   node --test src/page-owners.spec.ts
  */
 import assert from "node:assert/strict"
+import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import test from "node:test"
@@ -27,8 +28,8 @@ const GRAMMAR = 'import { Page, SurfaceCard } from "@starci/grammar/common";'
 const owner = (body: string, ...blocks: readonly string[]): string =>
   `${blocks.map((name) => `import { ${name} } from "@/components/blocks/${name}";`).join(" ")} export const OwnerBase = () => ${body}`
 
-const fixture = (t: TestContext, edition: "full" | "lite"): ProjectFixture => {
-  const app = projectFixture({ profile: "fe", edition, files: {
+const fixture = (t: TestContext, edition: "full" | "lite", family = "core"): ProjectFixture => {
+  const app = projectFixture({ profile: "fe", edition, declaration: { grammar: family }, files: {
     // a connected head block whose pure half draws the Page from client data
     [`${BLOCKS}/AgentHead/index.tsx`]: 'import { AgentHeadBase } from "./component"; export const AgentHead = ({ children }) => <AgentHeadBase title={useTitle()}>{children}</AgentHeadBase>',
     [`${BLOCKS}/AgentHead/component.tsx`]: `${GRAMMAR} export const AgentHeadBase = ({ title, children }) => <Page header={{ title }}>{children}</Page>`,
@@ -86,6 +87,20 @@ const verify = (app: ProjectFixture, page: string, code: string) => verifyAt(app
 const ids = (findings: readonly Linter.LintMessage[]): (string | undefined)[] => findings.map((finding) => finding.messageId)
 
 for (const edition of ["full", "lite"] as const) {
+  for (const family of ["core", "offset-pop"])
+    test(`${edition}/${family}: canonical native body layout keeps one connected Page and no sibling or nested Page`, (t) => {
+      const app = fixture(t, edition, family)
+      fs.writeFileSync(app.at(`${BLOCKS}/AgentHead/index.tsx`), 'import { AgentHeadBase } from "./component"; export const AgentHead = (props) => <AgentHeadBase props={{ title: "Subject" }} children={props.children} />;')
+      fs.writeFileSync(app.at(`${BLOCKS}/AgentHead/component.tsx`), `
+        import { Page as Canvas, PaneGrid as Areas, Pane as Cell, PaneSection as Band, Section as Group, Stack as Flow } from "@starci/grammar/common";
+        const Detail = (props) => <Group title="Detail"><Flow gap="row">{props.findings}</Flow></Group>;
+        export const AgentHeadBase = (props) => <Canvas chrome="panes" header={{ title: props.props.title }}><Areas label="Body" areas={["body"]}><Cell area="body"><Band><Detail findings={props.children} /></Band></Cell></Areas></Canvas>;
+      `)
+      assert.deepEqual(ids(verify(app, "AgentProfilePage", owner("<AgentHead><AgentCard /></AgentHead>", "AgentHead", "AgentCard"))), [])
+      assert.deepEqual(ids(verify(app, "AgentProfilePage", owner("<><AgentHead><AgentCard /></AgentHead><AgentCard /></>", "AgentHead", "AgentCard"))), ["sibling"])
+      assert.deepEqual(ids(verify(app, "AgentProfilePage", `${GRAMMAR} ${owner('<AgentHead><Page header={{ title: "Nested" }}><AgentCard /></Page></AgentHead>', "AgentHead", "AgentCard")}`)), ["twice"])
+    })
+
   test(`${edition} the one root block that draws the Page frames the route`, (t) => {
     const app = fixture(t, edition)
     // the head block draws the Page through its pure half; what the owner hands it is the Page body
