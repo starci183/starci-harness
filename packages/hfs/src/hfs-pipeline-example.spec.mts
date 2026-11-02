@@ -36,7 +36,7 @@ for (const edition of ['lite', 'full']) {
       assert.deepEqual(findings(command).map((finding) => finding.code), ['HFS_CI_MISSING_CANON'], command);
     }
     fs.writeFileSync(path.join(directory, 'hfs.json'), JSON.stringify({ kind: 'app' }));
-    assert.deepEqual(findings('npm run lint'), [], 'ordinary app lint remains accepted');
+    assert.deepEqual(findings('npm run lint'), [], 'the ordinary npm run lint remains accepted');
     assert.deepEqual(findings(PREFIX + 'npm run lint').map((finding) => finding.code), ['HFS_CI_MISSING_CANON'], 'ordinary apps gain no example runner exemption');
   });
 }
