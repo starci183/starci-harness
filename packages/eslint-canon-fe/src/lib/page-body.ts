@@ -72,6 +72,8 @@ const returnedCall = (node: Node): TSESTree.CallExpression | null => {
 
 /** Prove the selected SlotView implementation really calls render on loading/ready, and never on refusal. */
 const canonicalRegion = (owner: Owner, readers: BodyReaders): boolean => {
+  const found = hfsOf(owner.context).classify(owner.context.filename)
+  if (found.status !== "owned" || found.slot !== "fe.components" || found.kind !== "composites" || found.role !== "entry") return false
   if (!isFn(owner.value) || owner.value.body.type !== "BlockStatement") return false
   const body = owner.value.body.body
   const active = body.filter((statement) => statement.type !== "VariableDeclaration")

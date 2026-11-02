@@ -28,7 +28,17 @@ interface Variation {
   readonly status?: boolean
   readonly statusSource?: string
   readonly statusRender?: string
+  readonly statusRetarget?: boolean
 }
+
+const STATUS_RECIPE = `export const SlotView = (props) => {
+  const { slot } = props;
+  if ("isLoading" in slot) return <>{props.render(props.placeholder, true)}</>;
+  if ("isForbidden" in slot) return null;
+  if ("isError" in slot) return <div>Error</div>;
+  if ("isEmpty" in slot) return null;
+  return <>{props.render(slot.items, false)}</>;
+};`
 
 const fixture = (t: TestContext, edition: "lite" | "full", variation: Variation = {}): ProjectFixture => {
   const kind = variation.segment ? "layouts" : "pages"
@@ -52,16 +62,12 @@ const fixture = (t: TestContext, edition: "lite" | "full", variation: Variation 
       export const RootBase = (props: RootBaseProps) => ${variation.drawing ?? `<Canvas header={{ title: props.props.title${variation.segment ? ', tabs: { label: "Tabs", items: [{ id: "one", label: "One", href: "/one" }] }' : ""} }}>${variation.status ? '<Areas areas={["body"]}><Cell area="body"><Body body={props.children} /></Cell></Areas>' : "{props.children}"}</Canvas>`};`,
     ...(variation.status
       ? {
-          [`${SOURCE}/components/composites/SlotView/index.tsx`]:
-            variation.statusSource ??
-            `export const SlotView = (props) => {
-      const { slot } = props;
-      if ("isLoading" in slot) return <>{props.render(props.placeholder, true)}</>;
-      if ("isForbidden" in slot) return null;
-      if ("isError" in slot) return <div>Error</div>;
-      if ("isEmpty" in slot) return null;
-      return <>{props.render(slot.items, false)}</>;
-    };`
+          [`${SOURCE}/components/composites/SlotView/index.tsx`]: variation.statusRetarget
+            ? 'export { Equivalent as SlotView } from "@/components/frames/Equivalent";'
+            : (variation.statusSource ?? STATUS_RECIPE),
+          ...(variation.statusRetarget
+            ? { [`${SOURCE}/components/frames/Equivalent/index.tsx`]: STATUS_RECIPE.replace("SlotView", "Equivalent") }
+            : {})
         }
       : {}),
     [`${SOURCE}/features/${kind}/Screen/index.tsx`]:
@@ -153,10 +159,20 @@ for (const edition of ["lite", "full"] as const) {
     assert.deepEqual(ids(app, "component.tsx"), [])
   })
 
+  test(`${edition}: a selected export alias within the real canonical region entry keeps its owner proof`, (t) => {
+    const app = fixture(t, edition, {
+      status: true,
+      statusSource: `${STATUS_RECIPE.replace("export const SlotView", "const Actual")}\nexport { Actual as SlotView };`
+    })
+    assert.deepEqual(ids(app, "index.tsx"), [])
+    assert.deepEqual(ids(app, "component.tsx"), [])
+  })
+
   for (const [name, variation] of Object.entries({
     deadRegionCallback: { status: true, statusRender: "false && props.body" },
     duplicateRegionCallback: { status: true, statusRender: "<>{props.body}{props.body}</>" },
     fakeRegionOwner: { status: true, statusSource: "export const SlotView = () => null;" },
+    canonicalBarrelWrongTier: { status: true, statusRetarget: true },
     deadRegionReady: {
       status: true,
       statusSource:
