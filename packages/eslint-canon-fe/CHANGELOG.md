@@ -2,7 +2,7 @@
 
 ## 9.9.9
 
-- Changed: Refresh the generated canon pins for the governed app-check release.
+- Changed: Preserve mounted RootPage children through selected native body layouts only when their metadata constraints, immutable props and required context are proven. Retain exact body and import identity, and refresh the generated canon pins.
 
 ## 9.9.8
 

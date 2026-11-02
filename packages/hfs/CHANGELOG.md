@@ -2,7 +2,7 @@
 
 ## 5.0.5
 
-- Changed: Govern each app-check linter, compiler, test discovery and coverage, contract emitter and boot child through the CLI execution port with actual worker limits and complete output capture. Preserve cache identities, closure, flush behavior and coverage thresholds.
+- Changed: Govern each app-check linter, compiler, test discovery and coverage, contract emitter and boot child through the CLI execution port with actual worker limits and complete output capture. Preserve cache identities, closure, flush behavior and coverage thresholds. Record source-proven native Page body layouts with their contextual constraints.
 
 ## 5.0.4
 

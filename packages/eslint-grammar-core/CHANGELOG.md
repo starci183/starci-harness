@@ -2,7 +2,7 @@
 
 ## 0.21.9
 
-- Changed: Require FE canon 9.9.9 and refresh the generated canon pins with the shared Grammar family release.
+- Changed: Use the shared source proof for native Page body layouts, require FE canon 9.9.9 and refresh the generated canon pins with the shared Grammar family release.
 
 ## 0.21.8
 
