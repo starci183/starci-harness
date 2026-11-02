@@ -84,9 +84,9 @@ const fixture = (t: TestContext, edition: "lite" | "full", variation: Variation 
   return app
 }
 
-const verify = (app: ProjectFixture, file: string): readonly Linter.LintMessage[] =>
+const verify = (app: ProjectFixture, file: string, unsavedSource?: string): readonly Linter.LintMessage[] =>
   new Linter({ cwd: app.root }).verify(
-    fs.readFileSync(app.at(file), "utf8"),
+    unsavedSource ?? fs.readFileSync(app.at(file), "utf8"),
     [
       {
         files: ["**/*.tsx"],
@@ -103,6 +103,44 @@ const ids = (app: ProjectFixture, file: "index.tsx" | "component.tsx"): readonly
   verify(app, `${BLOCK}/${file}`).map((finding) => finding.messageId)
 
 for (const edition of ["lite", "full"] as const) {
+  test(`${edition}: virtual entry and drawing files refuse children without reading nonexistent source`, (t) => {
+    const app = fixture(t, edition)
+    const entry = `${SOURCE}/components/blocks/Virtual/index.tsx`
+    const drawing = `${SOURCE}/components/blocks/Virtual/component.tsx`
+    assert.equal(fs.existsSync(app.at(entry)), false)
+    assert.equal(fs.existsSync(app.at(drawing)), false)
+    const entryFindings = verify(
+      app,
+      entry,
+      "interface VirtualProps { readonly children: ReactNode }; export const Virtual = (props: VirtualProps) => <section />;"
+    )
+    assert.deepEqual(
+      entryFindings.map((finding) => finding.messageId),
+      ["none"]
+    )
+    const drawingFindings = verify(
+      app,
+      drawing,
+      "interface VirtualBaseProps { readonly children: ReactNode; readonly props: {} }; export const VirtualBase = (props: VirtualBaseProps) => <section />;"
+    )
+    assert.deepEqual(
+      drawingFindings.map((finding) => finding.messageId),
+      ["none", "member"]
+    )
+  })
+
+  test(`${edition}: unsaved source cannot borrow a mounted file's on-disk RootPage proof`, (t) => {
+    const app = fixture(t, edition)
+    for (const name of ["index.tsx", "component.tsx"]) {
+      const file = `${BLOCK}/${name}`
+      const unsaved = `${fs.readFileSync(app.at(file), "utf8")}\n// Unsaved editor contents.\n`
+      const findings = verify(app, file, unsaved)
+      assert.ok(findings.some((finding) => finding.messageId === "none"))
+      if (name === "component.tsx") assert.ok(findings.some((finding) => finding.messageId === "member"))
+      assert.ok(findings.every((finding) => !finding.fatal))
+    }
+  })
+
   for (const family of ["core", "offset-pop"]) {
     for (const segment of [false, true])
       test(`${edition}/${family}: mounted ${segment ? "segment" : "page"} owns children through aliased connected/root Base`, (t) => {

@@ -3,6 +3,7 @@
 ## 9.9.8
 
 - Changed: Enforce the documented one-level connected RootPage children composition with mounted selected-export and actual sibling-Base proof shared with R325. Keep ordinary block/atom restrictions and inspect shape records for rendered trees.
+- Fixed: Virtual RuleTester files refuse the RootPage children capability before disk parsing; unsaved content keeps the on-disk source identity guard.
 
 ## 9.9.7
 

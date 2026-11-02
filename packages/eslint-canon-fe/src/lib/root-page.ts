@@ -327,6 +327,7 @@ export const rootPageChildren = (context: AnyContext, member: TSESTree.TypeEleme
     const found = hfsOf(context).classify(context.filename)
     if (found.status !== "owned" || found.slot !== "fe.components" || found.kind !== "blocks" || !["entry", "drawing"].includes(found.role ?? ""))
       return false
+    if (!fs.existsSync(context.filename)) return false
     const current = parsedSource(context, context.filename)
     if (current.sourceCode.text !== context.sourceCode.text) return false
     const entryFile = found.role === "entry" ? context.filename : path.join(path.dirname(context.filename), "index.tsx")
