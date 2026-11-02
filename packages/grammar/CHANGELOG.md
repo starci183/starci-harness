@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.7
+
+- Changed: Keep the component package and both lint families at the identical release version as bundled canon pins change. Component source, styles and API are unchanged; the build stamp carries this version.
+
 ## 0.21.6
 
 - Changed: Align the component package release with both Grammar lint families. Component source, styles and public API are unchanged; the build stamp carries this release version.

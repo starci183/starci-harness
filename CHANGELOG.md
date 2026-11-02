@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.44
+
+- Changed: Bundled contexts name the builder-provenance canon cohort. Installed CLI dependencies stay on served npm pins until CI follows package publication.
+
 ## 1.1.0-alpha.43
 
 - Changed: Package contexts name the aligned Grammar and canon cohort; installed CLI dependencies remain on served npm pins until CI follows the package publication.
