@@ -363,12 +363,14 @@ test('a partial (workspace) run reads the records, reports only its files and wr
   assert.equal(outside.written, undefined, 'a run that reports part of a side never writes');
 });
 
-test('a file edited while the linter ran gets no record: nothing is stored', async (context) => {
+test('a file edited while the linter ran gets no record, and the records of the other files are kept', async (context) => {
   const world = new World(context);
   seed(world);
   world.onLint = () => world.write('src/d.ts', 'export const d = "edited during the run";\n');
   const first = await world.run([]);
-  assert.equal(first.written, undefined);
+  assert.ok(first.written);
+  assert.equal(first.written.some((record) => record.path === 'src/d.ts'), false);
+  assert.equal(first.written.filter((record) => record.step === 'eslint').length, 4);
 });
 
 test('a linter that cannot complete stores nothing and reports its error', async (context) => {

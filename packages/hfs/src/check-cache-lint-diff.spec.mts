@@ -200,6 +200,19 @@ test('a change to a declared cross-file input lints only the files that declare 
   assert.deepEqual(second.called, [['docs/guide.ts']]);
 });
 
+test('a file edited while the linter ran loses only its own record and is linted again by the next run', async (context) => {
+  const world = new World(context);
+  seed(world);
+  world.onLint = () => world.write('src/solo.ts', 'export const solo: number = 2;\n');
+  const first = await world.run([]);
+  assert.ok(first.written);
+  assert.equal(first.written.some((record) => record.path === 'src/solo.ts'), false);
+  assert.equal(first.written.filter((record) => record.step === 'eslint').length, 7);
+  world.onLint = null;
+  const second = await world.next(first.written);
+  assert.deepEqual(second.called, [['src/solo.ts']]);
+});
+
 test('a file that declares globals makes the whole side', async (context) => {
   const world = new World(context);
   seed(world);

@@ -275,7 +275,10 @@ adoption and a forgotten refresh never block a change.
 ## Edge cases
 
 - **An edit during the run.** The content index is hashed again before writing; a file whose hash changed while the run
-  read it gets no record, and a scoped step or side whose inputs include it is not stored.
+  read it gets no record, and a scoped step or side whose inputs include it is not stored. The ESLint and stylelint
+  records of a side are the exception to "or side": only the files the run judged and whose hash moved lose their records
+  (every step), the other records are written, and the next run finds the edited file without a recorded graph entry,
+  so it and everything that imports it are judged again.
 - **A step that throws or a linter that cannot complete** stores nothing of that step.
 - **Branch switches and merges** are content changes like any edit; a union-merged folder is normalised by the next
   write.

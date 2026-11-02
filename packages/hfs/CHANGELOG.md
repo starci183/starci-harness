@@ -3,6 +3,7 @@
 ## 5.0.8
 
 - Changed: The app-check ESLint cache dirties a file only when the type surface it reads can have changed. Each file records the digest of its isolated declaration emit and whether that surface is open (inferred from other files); a body-only edit lints that file alone, a changed signature its direct importers, an inferred type one more level at a time. Records without a surface are read as changed.
+- Fixed: A file edited while the ESLint of a side ran loses only its own cache records instead of the records of the whole side.
 
 ## 5.0.7
 

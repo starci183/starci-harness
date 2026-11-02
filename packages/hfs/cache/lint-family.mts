@@ -464,27 +464,29 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   let written = false;
   const complete = errors.length === 0 && input.write && input.report === null && !sideUnchanged;
   if (complete) {
-    const stable = [...freshEslint.keys(), ...freshStyle.keys()].every((file) => hashFile(abs(file)) === hashOf(file));
-    if (stable) {
-      const records: CacheRecord[] = [...eslintRecords, ...styleRecords];
-      // without an import graph or a project graph the next run lints the side whole; the results themselves are still stored
-      try {
-        if (build === null) {
-          const ts = input.typescript();
-          build = buildImportGraph({ ts, sideRoot, readText, fileExists: isFile, hashOf: (file) => hashOf(file) ?? null }, scope, null);
-        }
-        for (const [file, node] of build.graph) records.push({ path: file, step: LINT_STEPS.imports, hash: node.hash, findings: [], data: { globals: node.declaresGlobals, imports: node.imports, ...(node.api === undefined ? {} : { api: node.api }), open: node.open !== false } });
-        snapshot ??= mergedSnapshot(sideRoot, input.canons);
-        for (const [file, findings] of Object.entries(snapshot ?? {})) {
-          if (scopeSet.has(file) && findings.length > 0) records.push({ path: file, step: LINT_STEPS.graph, hash: planHash(file), findings: graphRecordFindings(side, file, findings) });
-        }
-      } catch {
-        records.splice(0, records.length, ...records.filter((record) => record.step === LINT_STEPS.eslint || record.step === LINT_STEPS.stylelint));
+    // A file edited while the run read it gets no record of any step, and the others keep theirs: their hashes are those of the tree the run
+    // planned from, so the edited file is then added (no recorded graph entry) and its dependents are judged again, whatever they read of it.
+    const moved = new Set([...freshEslint.keys(), ...freshStyle.keys()].filter((file) => hashFile(abs(file)) !== hashOf(file)));
+    const records: CacheRecord[] = [...eslintRecords, ...styleRecords].filter((record) => !moved.has(record.path));
+    // without an import graph or a project graph the next run lints the side whole; the results themselves are still stored
+    try {
+      if (build === null) {
+        const ts = input.typescript();
+        build = buildImportGraph({ ts, sideRoot, readText, fileExists: isFile, hashOf: (file) => hashOf(file) ?? null }, scope, null);
       }
-      records.push({ path: SIDE_RECORD, step: LINT_STEPS.meta, hash: sideKey, findings: [], data: { extra: input.extraKey, files: scope.length, paths: pathsDigest, stylesheets: stylesheets.length } });
-      session.replace(folder, records);
-      written = true;
+      for (const [file, node] of build.graph) {
+        if (!moved.has(file)) records.push({ path: file, step: LINT_STEPS.imports, hash: node.hash, findings: [], data: { globals: node.declaresGlobals, imports: node.imports, ...(node.api === undefined ? {} : { api: node.api }), open: node.open !== false } });
+      }
+      snapshot ??= mergedSnapshot(sideRoot, input.canons);
+      for (const [file, findings] of Object.entries(snapshot ?? {})) {
+        if (scopeSet.has(file) && !moved.has(file) && findings.length > 0) records.push({ path: file, step: LINT_STEPS.graph, hash: planHash(file), findings: graphRecordFindings(side, file, findings) });
+      }
+    } catch {
+      records.splice(0, records.length, ...records.filter((record) => record.step === LINT_STEPS.eslint || record.step === LINT_STEPS.stylelint));
     }
+    records.push({ path: SIDE_RECORD, step: LINT_STEPS.meta, hash: sideKey, findings: [], data: { extra: input.extraKey, files: scope.length, paths: pathsDigest, stylesheets: stylesheets.length } });
+    session.replace(folder, records);
+    written = true;
   }
 
   const currentKeys = new Set(current.map(keyOf));
