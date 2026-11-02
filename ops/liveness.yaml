@@ -61,7 +61,7 @@ reviveMax: 3
 # maxSlots (optional) caps the count below floor(logical cores / 2). A typecheck and a typed lint of a large app's back end outgrow
 # node's default heap (4 GB), so the memoryMb of tsc and eslint is above it; that memoryMb is a ceiling, and each estimate is what one run typically
 # holds (a whole typed back end peaks near 4 GB), so several checks fit at once; the eslint memory is also the
-# heap of the ESLint child an app lint or app check spawns. bootProofTimeoutSeconds
+# heap of the ESLint child an app check spawns. bootProofTimeoutSeconds
 # is the budget of the lite boot proof's worker, counted from its spawn: one timeout is retried, a second is BOOT_PROOF_TIMEOUT, not a failure.
 # @starci/hfs reads both through the environment the CLI sets (cli/src/harness/heavy.ts hfsLimitsEnv).
 # On Windows `host load` also reads the CPU of Defender's real-time scan (MsMpEng, percent of one core): at scannerCpuPercent or
@@ -95,7 +95,7 @@ heavy:
     tsc: 10
     eslint: 10
   # Liveness, not quality: the longest a child may run before it is ended as hung, never a threshold its result is judged by. A lint that names
-  # the files it judges (an ESLint child of an app check or app lint) gets max(timeoutMinutes, rate x files / 1000), so a large side on a slow
+  # the files it judges (an ESLint child of an app check) gets max(timeoutMinutes, rate x files / 1000), so a large side on a slow
   # two-core runner is not ended for being large (a whole typed back end of 11,000 files outgrew a flat 10 min in CI); a hung child is still ended.
   timeoutMinutesPer1000Files:
     eslint: 5

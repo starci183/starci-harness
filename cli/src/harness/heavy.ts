@@ -488,7 +488,7 @@ const release = (id: string): void => {
 }
 
 /**
- * The limits @starci/hfs reads from its environment, from their one owner here: the heap of the ESLint child an app lint or app check spawns
+ * The limits @starci/hfs reads from its environment, from their one owner here: the heap of the ESLint child an app check spawns
  * (`memoryMb.eslint`, as STARCI_ESLINT_HEAP_MB) and the budget of the lite boot proof's worker from its spawn (`bootProofTimeoutSeconds`, as
  * STARCI_BOOT_PROOF_TIMEOUT_MS).
  */
