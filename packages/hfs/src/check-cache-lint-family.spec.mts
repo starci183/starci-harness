@@ -104,14 +104,14 @@ class World {
   }
 
   /** Runs the family once over this tree against `records` and answers the outcome with the records it wrote. */
-  async run(records: readonly CacheRecord[], options: { full?: string | null; canon?: CanonDeclarations; write?: boolean; report?: ((file: string) => boolean) | null; style?: boolean; styleCanon?: CanonDeclarations; gitToken?: string } = {}): Promise<{ outcome: LintSideOutcome; written: readonly CacheRecord[] | undefined }> {
+  async run(records: readonly CacheRecord[], options: { full?: string | null; canon?: CanonDeclarations; write?: boolean; style?: boolean; styleCanon?: CanonDeclarations; gitToken?: string } = {}): Promise<{ outcome: LintSideOutcome; written: readonly CacheRecord[] | undefined }> {
     const files: Record<string, string> = {};
     for (const file of this.walk()) files[`${SIDE}/${file}`] = this.text(file);
     const session = createFakeSession({ files, records: { [`lint/${SIDE}`]: records } });
     const style = options.style === true;
     const outcome = await lintSide({
       session, side: SIDE, sideRoot: this.root, scope: this.scope, stylesheets: style ? this.stylesheets : [],
-      report: options.report ?? null, canons: [options.canon ?? this.canon()], styleCanon: style ? (options.styleCanon ?? this.styleCanon()) : null,
+      canons: [options.canon ?? this.canon()], styleCanon: style ? (options.styleCanon ?? this.styleCanon()) : null,
       typescript: () => ts, extraKey: '', gitToken: options.gitToken ?? '', full: options.full ?? null, write: options.write ?? true,
       eslint: async (list) => {
         this.eslintCalls.push(list === null ? null : [...list]);
@@ -349,20 +349,6 @@ test('--full ignores the records and rewrites them', async (context) => {
   assert.ok(second.written);
 });
 
-test('a partial (workspace) run reads the records, reports only its files and writes nothing', async (context) => {
-  const world = new World(context);
-  seed(world);
-  const first = await world.run([]);
-  world.eslintCalls.length = 0;
-  world.write('src/c.ts', 'export const c = "BAD";\n');
-  const second = await world.run(first.written as CacheRecord[], { write: false, report: (file) => file.startsWith('src/') });
-  assert.deepEqual(world.eslintCalls, [['src/a.ts', 'src/b.ts', 'src/c.ts']]);
-  assert.equal(second.written, undefined);
-  assert.deepEqual(shape(second.outcome.eslint), shape((await world.full()).eslint.filter((result) => result.filePath.includes(`${path.sep}src${path.sep}`))));
-  const outside = await world.run(first.written as CacheRecord[], { report: (file) => file.startsWith('other/') });
-  assert.equal(outside.written, undefined, 'a run that reports part of a side never writes');
-});
-
 test('a file edited while the linter ran gets no record, and the records of the other files are kept', async (context) => {
   const world = new World(context);
   seed(world);
@@ -378,7 +364,7 @@ test('a linter that cannot complete stores nothing and reports its error', async
   seed(world);
   const session = createFakeSession({ files: Object.fromEntries(world.walk().map((file) => [`${SIDE}/${file}`, world.text(file)])) });
   const outcome = await lintSide({
-    session, side: SIDE, sideRoot: world.root, scope: world.scope, stylesheets: [], report: null, canons: [world.canon()], styleCanon: null,
+    session, side: SIDE, sideRoot: world.root, scope: world.scope, stylesheets: [], canons: [world.canon()], styleCanon: null,
     typescript: () => ts, extraKey: '', full: null, write: true,
     eslint: async () => ({ results: [], errors: ['eslint could not complete'] }), stylelint: null,
   });

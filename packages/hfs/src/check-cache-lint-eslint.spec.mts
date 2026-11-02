@@ -70,7 +70,7 @@ async function run(root: string, records: readonly CacheRecord[], calls: (string
   const scope = Object.keys(files).map((file) => file.slice(3)).filter((file) => file.endsWith('.ts')).sort();
   const session = createFakeSession({ files, records: { 'lint/be': records } });
   const outcome = await lintSide({
-    session, side: 'be', sideRoot: root, scope, stylesheets: [], report: null, extraKey: '', full: options.full ?? null, write: true, typescript: () => ts,
+    session, side: 'be', sideRoot: root, scope, stylesheets: [], extraKey: '', full: options.full ?? null, write: true, typescript: () => ts,
     canons: [{ name: 'fixture', crossFileInputs: [], graphRules: false, projectGraph: null }], styleCanon: null,
     eslint: async (list) => {
       calls.push(list === null ? null : [...list]);

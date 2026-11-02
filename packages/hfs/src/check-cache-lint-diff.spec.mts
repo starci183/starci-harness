@@ -55,7 +55,7 @@ class World {
     for (const file of this.walk()) files[`${SIDE}/${file}`] = fs.readFileSync(path.join(this.root, file), 'utf8');
     const session = createFakeSession({ files, records: { [`lint/${SIDE}`]: records } });
     const outcome = await lintSide({
-      session, side: SIDE, sideRoot: this.root, scope: this.scope, stylesheets: [], report: null, canons: [this.canon()], styleCanon: null,
+      session, side: SIDE, sideRoot: this.root, scope: this.scope, stylesheets: [], canons: [this.canon()], styleCanon: null,
       typescript: () => ts, extraKey: '', gitToken: '', full: null, write: true,
       eslint: async (list) => {
         this.calls.push(list === null ? null : [...list]);

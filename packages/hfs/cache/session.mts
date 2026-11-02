@@ -1,4 +1,4 @@
-// session.mts - the disk-backed CheckSession of `starci app check` and `starci app lint`. It decides per family whether a run is full or diff
+// session.mts - the disk-backed CheckSession of `starci app check`. It decides per family whether a run is full or diff
 // (the rules of contexts/project/check-cache.md "When a run is full"), serves the trusted records of a folder, takes the records a family
 // replaces and writes them once on flush: one JSON Lines file per area, byte-stable, only the files whose bytes changed. In CI it writes
 // nothing and compares the committed cache with what it inherited or computed instead.

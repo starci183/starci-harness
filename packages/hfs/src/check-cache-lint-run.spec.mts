@@ -1,14 +1,15 @@
-// `starci app lint` through the result cache: the flags that read and write it, and that the second run over one tree judges nothing.
+// `cachedLinters`, the ESLint and stylelint entry of `starci app check --gate lint`, through the result cache: the second run over one tree judges nothing, a change sends only its files, `--side` reads and writes its side.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import type { TestContext } from 'node:test';
 import { createFakeSession } from '../cache/fake-session.mjs';
 import type { CacheRecord } from '../cache/types.mjs';
-import { lintRepository, parseLintArgs, runLinter, type LinterRunner } from '../lint/run.mjs';
+import { cachedLinters, runLinter, type LinterRunner } from '../lint/run.mjs';
 
 interface Fixture { root: string; files: Record<string, string[]> }
 interface Call { side: string; files: string[] }
@@ -69,8 +70,6 @@ function treeOf(root: string): Record<string, string> {
   return out;
 }
 
-const cleanCheck = () => ({ findings: [] as Record<string, unknown>[], tracked: 3 });
-
 /** A linter that answers one finding per file named `bad.ts`, and records what it was asked. */
 function linter(calls: Call[]): LinterRunner {
   return async ({ cwd, pkg, args, list }) => {
@@ -83,96 +82,78 @@ function linter(calls: Call[]): LinterRunner {
   };
 }
 
-async function lint(app: Fixture, argv: string[], records: Record<string, readonly CacheRecord[]>, calls: Call[], mode: 'diff' | 'full' = 'diff') {
+/** One cached lint of `app` against `records`, as `app check` makes it; `side` limits it to one side. */
+async function lint(app: Fixture, side: string | undefined, records: Record<string, readonly CacheRecord[]>, calls: Call[], mode: 'diff' | 'full' = 'diff', run: LinterRunner = linter(calls)) {
   const session = createFakeSession({ files: treeOf(app.root), records, mode });
-  const out = await lintRepository({ repoRoot: app.root, opts: parseLintArgs(argv), hfsCheck: cleanCheck, runLinter: linter(calls), cache: { session } });
-  return { ...out, session };
+  const answer = await cachedLinters({ repoRoot: app.root, app: readRepoDeclaration(loadSlotManifest(), app.root), side, run, session });
+  return { ...answer, session };
 }
 
 const recordsOf = (session: { replaced: ReadonlyMap<string, readonly CacheRecord[]> }): Record<string, readonly CacheRecord[]> => Object.fromEntries(session.replaced);
-
-test('--full parses; the lint usage keeps its other flags', () => {
-  assert.equal(parseLintArgs(['--full']).full, true);
-  assert.equal(parseLintArgs(['--json']).full, undefined);
-});
 
 test('the first lint judges both sides and writes their records; the second judges nothing and reports the same findings', async (context) => {
   const app = fixture(context);
   fs.writeFileSync(path.join(app.root, 'fe/src/universal.ts'), 'export const value = "BAD";\n');
   const calls: Call[] = [];
-  const first = await lint(app, [], {}, calls);
+  const first = await lint(app, undefined, {}, calls);
   assert.deepEqual(calls.map((call) => call.side), ['be', 'fe']);
   assert.deepEqual([...first.session.replaced.keys()].sort(), ['lint/be', 'lint/fe']);
-  assert.equal(first.report.counts.error, 1);
+  assert.equal(first.eslint.findings.length, 1);
   assert.equal(first.session.reports.length, 1);
   assert.equal(first.session.reports[0]?.family, 'lint');
   assert.equal(first.session.reports[0]?.checked, 3);
   calls.length = 0;
-  const second = await lint(app, [], recordsOf(first.session), calls);
+  const second = await lint(app, undefined, recordsOf(first.session), calls);
   assert.deepEqual(calls, []);
-  assert.deepEqual(second.report.findings, first.report.findings);
+  assert.deepEqual(second.eslint.findings, first.eslint.findings);
   assert.equal(second.session.reports[0]?.reused, 3);
   assert.equal(second.session.replaced.size, 0, 'nothing to rewrite when nothing changed');
-  assert.equal(second.exit, first.exit);
+  assert.deepEqual(second.eslint.errors, first.eslint.errors);
 });
 
 test('a changed file is the only one sent to the linter, through the same launcher as a full run', async (context) => {
   const app = fixture(context);
   const calls: Call[] = [];
-  const first = await lint(app, [], {}, calls);
+  const first = await lint(app, undefined, {}, calls);
   calls.length = 0;
   fs.writeFileSync(path.join(app.root, 'be/src/backend.ts'), 'export const value = "BAD";\n');
-  const second = await lint(app, [], recordsOf(first.session), calls);
+  const second = await lint(app, undefined, recordsOf(first.session), calls);
   assert.deepEqual(calls, [{ side: 'be', files: ['src/backend.ts'] }]);
-  assert.equal(second.report.counts.error, 1);
-  assert.deepEqual(second.report.findings.map((finding: { path: string }) => finding.path), ['be/src/backend.ts']);
+  assert.deepEqual(second.eslint.findings.map((finding) => finding.path), ['be/src/backend.ts']);
 });
 
-test('--side judges and writes only its side; --changed and --fix neither read nor write', async (context) => {
+test('a side limits the lint to that side and its records', async (context) => {
   const app = fixture(context);
   const calls: Call[] = [];
-  const side = await lint(app, ['--side', 'fe'], {}, calls);
+  const side = await lint(app, 'fe', {}, calls);
   assert.deepEqual(calls.map((call) => call.side), ['fe']);
   assert.deepEqual([...side.session.replaced.keys()], ['lint/fe']);
+  assert.deepEqual(Object.keys(side.eslint.engine.sides), ['fe']);
   calls.length = 0;
-  const changed = await lint(app, ['--changed', 'fe/src/family.tsx'], recordsOf(side.session), calls);
-  assert.deepEqual(calls, [{ side: 'fe', files: ['src/family.tsx'] }]);
-  assert.equal(changed.session.replaced.size, 0);
-  assert.equal(changed.session.reports.length, 0);
-  calls.length = 0;
-  const fixing = await lint(app, ['--fix', '--side', 'be'], {}, calls);
-  assert.equal(fixing.session.replaced.size, 0);
-  assert.equal(fixing.session.reports.length, 0);
-});
-
-test('--full ignores the records and rewrites them', async (context) => {
-  const app = fixture(context);
-  const calls: Call[] = [];
-  const first = await lint(app, [], {}, calls);
-  calls.length = 0;
-  const second = await lint(app, ['--full'], recordsOf(first.session), calls);
-  assert.deepEqual(calls.map((call) => call.side), ['be', 'fe']);
-  assert.deepEqual([...second.session.replaced.keys()].sort(), ['lint/be', 'lint/fe']);
-  assert.equal(second.session.reports[0]?.mode, 'full');
+  fs.writeFileSync(path.join(app.root, 'be/src/backend.ts'), 'export const value = "BAD";\n');
+  const again = await lint(app, 'fe', recordsOf(side.session), calls);
+  assert.deepEqual(calls, [], 'a change on the other side is not judged');
+  assert.equal(again.session.replaced.size, 0);
 });
 
 test('a full decision of the session (fingerprint, no cache) judges everything and writes', async (context) => {
   const app = fixture(context);
   const calls: Call[] = [];
-  const first = await lint(app, [], {}, calls);
+  const first = await lint(app, undefined, {}, calls);
   calls.length = 0;
-  const second = await lint(app, [], recordsOf(first.session), calls, 'full');
+  const second = await lint(app, undefined, recordsOf(first.session), calls, 'full');
   assert.deepEqual(calls.map((call) => call.side), ['be', 'fe']);
   assert.equal(second.session.reports[0]?.mode, 'full');
+  assert.deepEqual([...second.session.replaced.keys()].sort(), ['lint/be', 'lint/fe']);
 });
 
 test('an installed canon without crossFileInputs makes a change a whole-side lint', async (context) => {
   const app = fixture(context, { crossFileInputs: false });
   const calls: Call[] = [];
-  const first = await lint(app, ['--side', 'be'], {}, calls);
+  const first = await lint(app, 'be', {}, calls);
   calls.length = 0;
   fs.writeFileSync(path.join(app.root, 'be/src/backend.ts'), 'export const value = 2;\n');
-  const second = await lint(app, ['--side', 'be'], recordsOf(first.session), calls);
+  const second = await lint(app, 'be', recordsOf(first.session), calls);
   assert.deepEqual(calls, [{ side: 'be', files: ['src/backend.ts'] }]);
   assert.equal(second.session.reports[0]?.mode, 'full');
   assert.match(second.session.reports[0]?.reason ?? '', /declares no crossFileInputs/);
@@ -180,10 +161,9 @@ test('an installed canon without crossFileInputs makes a change a whole-side lin
 
 test('a tool error stores nothing', async (context) => {
   const app = fixture(context);
-  const session = createFakeSession({ files: treeOf(app.root) });
-  const out = await lintRepository({ repoRoot: app.root, opts: parseLintArgs([]), hfsCheck: cleanCheck, runLinter: async () => ({ error: 'eslint did not start' }), cache: { session } });
-  assert.equal(out.exit, 2);
-  assert.equal(session.replaced.size, 0);
+  const out = await lint(app, undefined, {}, [], 'diff', async () => ({ error: 'eslint did not start' }));
+  assert.ok(out.eslint.errors.length > 0);
+  assert.equal(out.session.replaced.size, 0);
 });
 
 test('an eslint child killed during a diff stores no record and the failure is surfaced', async (context) => {
@@ -191,10 +171,10 @@ test('an eslint child killed during a diff stores no record and the failure is s
   installedPackage(app.root, 'eslint', '');
   fs.writeFileSync(path.join(app.root, 'node_modules', 'eslint', 'package.json'), JSON.stringify({ name: 'eslint', version: '0.0.0', bin: { eslint: 'index.mjs' } }));
   const calls: Call[] = [];
-  const first = await lint(app, [], {}, calls);
+  const first = await lint(app, undefined, {}, calls);
   fs.writeFileSync(path.join(app.root, 'be/src/backend.ts'), 'export const value = 2;' + String.fromCharCode(10));
   const session = createFakeSession({ files: treeOf(app.root), records: recordsOf(first.session) });
   const killed = (spec: Parameters<LinterRunner>[0]) => runLinter(spec, async () => ({ status: null, signal: 'SIGKILL' as const, stdout: '[]', stderr: '' }));
-  await assert.rejects(lintRepository({ repoRoot: app.root, opts: parseLintArgs([]), hfsCheck: cleanCheck, runLinter: killed, cache: { session } }), { code: 'HFS_NODE_INCOMPLETE', message: /eslint did not complete/ });
+  await assert.rejects(cachedLinters({ repoRoot: app.root, app: readRepoDeclaration(loadSlotManifest(), app.root), run: killed, session }), { code: 'HFS_NODE_INCOMPLETE', message: /eslint did not complete/ });
   assert.equal(session.replaced.size, 0);
 });

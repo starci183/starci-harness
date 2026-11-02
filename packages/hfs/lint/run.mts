@@ -1,38 +1,22 @@
-// starci app lint - the ONE lint entry and the ONE report of a StarCi app.
+// The linters of `starci app check --gate lint`: ESLint once per side and stylelint over the fe stylesheets, through the app's own install.
 //
-//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--json] [--out <file>]
-//
-// It runs at the app root (the folder of hfs.json), over the app (or over the app-relative files named by --changed):
-//   1. ESLint once per side, from the side folder, through the app's own install and that side's eslint.config.mjs (be/ the be canon,
-//      fe/ the fe canon: the per-file rules and the project-graph rules of the architecture machine, findings on the line of the
-//      offending TypeScript file); each side lints only its own files, so the be rules never see fe/ and the fe rules never see be/;
-//   2. `starci app check` for what has no TypeScript file to sit on (the tree, managed files, pins, CI, contracts, docs, .starciwork), root and sides;
-//   3. stylelint over the fe side's stylesheets (sync STYLE_GLOB), from fe/ with its stylelint.config.mjs.
-// Their findings become one list of one shape (`starci/lint@1`), every path app-relative. `--json` prints that report on stdout;
-// `--out <file>` writes the same findings as THE Sonar Generic Issue Import file (engine ids starci-hfs, eslint, stylelint in one
-// document); the exit code is the land-gate input: 0 no finding, 1 at least one, 2 a tool could not run (never a pass).
-// --changed restricts ESLint and stylelint to the listed files and keeps of the app findings only those on a listed file or on no file.
-// --workspace scopes the same lint to one npm workspace of the fe side (fe/apps/<app> or fe/packages/<pkg>, app-relative): ESLint and
-// stylelint over that folder only, and of the app findings only those inside it. It is the `lint` script of every fe workspace (the
-// turbo `lint` task); the root `npm run lint` stays the whole app. There is no second linter: a workspace lint is this lint, scoped.
-// The result cache (contexts/project/check-cache.md): when the caller hands lintRepository a cache session, ESLint and stylelint judge only what
-// the records of `.starcistacks/cache/lint/<side>/` cannot vouch for (cache/lint-family.mjs) - the same records and fingerprint `app check --lint`
-// uses, so the two verbs never hold two answers. `--side` reads and writes its side's records, `--workspace` reads and writes none, `--changed`
-// and `--fix` bypass the cache, and `--full` judges everything again and rewrites the records.
+//   1. ESLint runs from the side folder with that side's eslint.config.mjs (be/ the be canon, fe/ the fe canon: the per-file rules and the
+//      project-graph rules of the architecture machine, findings on the line of the offending TypeScript file); each side lints only its own
+//      files, so the be rules never see fe/ and the fe rules never see be/;
+//   2. stylelint judges the fe side's stylesheets (sync STYLE_GLOB) from fe/ with its stylelint.config.mjs.
+// `cachedLinters` is the one entry of `app check`: per side it judges only what the records of `.starcistacks/cache/lint/<side>/` cannot
+// vouch for (cache/lint-family.mjs, contexts/project/check-cache.md), and `eslintRepository` is the launcher it and the cacheless run share.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { makeTempDir } from '../runtime/scripts/api/fs/make-temp-dir.mjs';
 import { completedNode, isHostHeld, isNodeExecutionRefusal, runHeavyNode, type HeavyNodeResult, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { linterReport, mergeReports, sonarReport, sourceRootsOf } from '../report/sonar.mjs';
 import { SIDES, appRelativeMessages, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
-import { isSide } from '../runtime/scripts/hfs/slot-manifest-shape.mjs';
 import { STYLE_GLOB } from '../sync/index.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
-import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
 import { mergeBase } from '../runtime/scripts/api/git/merge-base.mjs';
 import { lintFamilyReport, lintSide, loadAppTypeScript, type CanonDeclarations, type EslintResult, type LintSideStats, type LinterOutcome, type StylelintResult } from '../cache/lint-family.mjs';
 import type { CheckSession } from '../cache/types.mjs';
@@ -40,10 +24,6 @@ import type { CheckSession } from '../cache/types.mjs';
 // reason: linter json output (eslint, stylelint), package.json and the installed canon config are parsed or imported from the app's own install; each reader checks the fields it uses
 type Dynamic = any;
 
-/** The parsed arguments of the lint verb. */
-export interface LintOptions { changed: string[] | null; fix: boolean; format: string; out: string | undefined; workspace: string | undefined; side?: string; full?: boolean }
-/** The cache a lint run may use: the session of the check cache. The caller flushes it after the run. */
-export interface LintCache { session: CheckSession }
 /** What a linter run answers: its json results, or why it could not complete (both when the run was partial). */
 export interface LinterRun { results?: Dynamic[]; error?: string }
 /**
@@ -56,67 +36,17 @@ export interface LinterSpec { cwd: string; pkg: string; bin: string; args: strin
 export type LinterRunner = (spec: LinterSpec) => Promise<LinterRun>;
 /** One finding of the lint report. */
 export interface LintFinding {
-  engine: string; rule: string; code: string | null; severity: string; path: string | null; line: number | null; column: number | null; message: string; titleVi?: string; nextStepVi?: string;
+  engine: string; rule: string; code: string | null; severity: string; path: string | null; line: number | null; column: number | null; message: string;
 }
 /** The app declaration the slot machine returns (readRepoDeclaration): sides are present at an app root. */
 type RepoDeclaration = Dynamic;
 /** What an ESLint launch of one side records. */
 interface EslintLaunch { side: string; skipped?: string; scopeError?: string; cwd?: string; expected?: string[]; run?: Promise<LinterRun> }
 
-// --side judges only that side; root HFS findings belong to be, its Sonar report stays on that side.
-export const LINT_SCHEMA = 'starci/lint@1';
 /** The side whose stylesheets stylelint judges. */
 const STYLE_SIDE = 'fe';
 const CODE_PREFIX = /^\[([A-Z][A-Z0-9_]+)\] /;
 const posix = (file: unknown): string => String(file).replace(/\\/g, '/').replace(/^\.\//, '');
-/** An npm workspace of the fe side, app-relative: one folder below fe/apps or fe/packages (the root package.json workspaces). */
-const WORKSPACE = /^fe\/(?:apps|packages)\/[a-z0-9][a-z0-9-]*$/;
-
-/** The app-relative workspace of `opts.workspace` (already app-relative), or a refusal when it is not one folder of fe/apps or fe/packages. */
-export function workspaceOf(workspace: string): string {
-  const rel = posix(workspace).replace(/\/+$/, '');
-  if (!WORKSPACE.test(rel)) throw new Error(`--workspace ${workspace} is not an fe workspace (fe/apps/<app> or fe/packages/<pkg>, from the app root)`);
-  return rel;
-}
-
-/** Side scopes partition the full lint; Sonar reports share that scope and a frontend workspace cannot belong to be. */
-function validateSide(opts: { side?: string | undefined; workspace?: string | undefined }): void {
-  if (opts.side === undefined) return;
-  if (!isSide(opts.side)) throw new Error('LINT_SIDE_INVALID: --side is be or fe');
-  if (opts.side === 'be' && opts.workspace !== undefined) throw new Error('LINT_SIDE_WORKSPACE_CONFLICT: --side be cannot judge a frontend workspace');
-}
-
-/** Side findings stay with their side; findings outside both sides belong to the backend lint. */
-function findingOnSide(finding: { path?: string | null | undefined }, side: string | undefined): boolean {
-  if (side === undefined) return true;
-  const file = posix(finding.path ?? '');
-  const owner = SIDES.find((candidate: string) => file === candidate || file.startsWith(`${candidate}/`));
-  return (owner ?? 'be') === side;
-}
-
-/** The flags of `starci app lint`; `--changed` takes every argument up to the next flag, and a repeated `--changed` adds to the list (the
- *  catalog's list flag, `--changed a --changed b`, as the CLI dispatcher passes it through). */
-export function parseLintArgs(argv: readonly string[]): LintOptions {
-  const opts: LintOptions = { changed: null, fix: false, format: 'text', out: undefined, workspace: undefined };
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i] as string;
-    if (arg === '--changed') {
-      opts.changed ??= [];
-      while (i + 1 < argv.length && !(argv[i + 1] as string).startsWith('--')) opts.changed.push(posix(argv[++i]));
-    } else if (arg === '--fix') opts.fix = true;
-    else if (arg === '--full') opts.full = true;
-    else if (arg === '--json') opts.format = 'json';
-    else if (['--out', '--workspace', '--side'].includes(arg)) {
-      if (arg === '--side' && (argv[i + 1] === undefined || (argv[i + 1] as string).startsWith('--'))) throw new Error('LINT_SIDE_INVALID: --side needs be or fe');
-      if (argv[i + 1] === undefined) throw new Error(`${arg} needs a value`);
-      (opts as unknown as Record<string, unknown>)[arg.slice(2)] = argv[++i];
-    } else throw new Error(`unknown argument ${arg}`);
-  }
-  if (opts.workspace !== undefined && opts.changed !== null) throw new Error('--workspace and --changed do not combine: a workspace lint judges the whole workspace');
-  validateSide(opts);
-  return opts;
-}
-
 /** The typed ESLint run reads nothing above the app root: its TypeScript `sys` is bound by this preload (3.3, bound-sys.cjs). */
 const BOUND_ENV = 'STARCI_LINT_BOUND';
 const linterBoundArgs = () => ['--require', fileURLToPath(new URL('./bound-sys.cjs', import.meta.url))];
@@ -155,7 +85,7 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files
   const count = list?.length ?? files;
   let run: HeavyNodeResult;
   try {
-    run = completedNode(await runHeavyNode(execute, { kind: 'eslint', label: `app lint ${pkg} ${path.basename(cwd)}`, args: [...heap, ...(bound ? linterBoundArgs() : []), ...childArgs], cwd, maxBuffer: 64 * 1024 * 1024, ...(count === undefined || pkg !== 'eslint' ? {} : { files: count }), ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) }), pkg);
+    run = completedNode(await runHeavyNode(execute, { kind: 'eslint', label: `app check ${pkg} ${path.basename(cwd)}`, args: [...heap, ...(bound ? linterBoundArgs() : []), ...childArgs], cwd, maxBuffer: 64 * 1024 * 1024, ...(count === undefined || pkg !== 'eslint' ? {} : { files: count }), ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) }), pkg);
   } finally {
     if (listed !== null) fs.rmSync(listed, { recursive: true, force: true });
   }
@@ -173,13 +103,6 @@ const eslintFindings = (results: readonly Dynamic[], appRoot: string): LintFindi
   engine: 'eslint', rule: message.ruleId ?? 'eslint-error', code: CODE_PREFIX.exec(message.message ?? '')?.[1] ?? null, severity: message.severity === 1 ? 'warning' : 'error',
   path: posix(path.relative(appRoot, result.filePath)), line: message.line ?? null, column: message.column ?? null, message: message.message,
 })));
-
-const stylelintFindings = (results: readonly Dynamic[], appRoot: string): LintFinding[] => results.flatMap((result) => (result.warnings ?? []).map((warning: Dynamic): LintFinding => ({
-  engine: 'stylelint', rule: warning.rule || 'stylelint-error', code: null, severity: 'error',
-  path: posix(path.relative(appRoot, result.source)), line: warning.line ?? null, column: warning.column ?? null, message: warning.text,
-})));
-
-const byLocation = (a: LintFinding, b: LintFinding): number => `${a.path ?? ''}:${String(a.line ?? 0).padStart(7, '0')}:${a.rule}`.localeCompare(`${b.path ?? ''}:${String(b.line ?? 0).padStart(7, '0')}:${b.rule}`);
 
 /** The files of `changed` (app-relative) below `side`/, relative to the side folder. */
 const onSide = (changed: readonly string[], side: string): string[] => changed.filter((file) => file.startsWith(`${side}/`)).map((file) => file.slice(side.length + 1));
@@ -288,7 +211,7 @@ export async function installedLintConfig({ repoRoot, cwd, side }: { repoRoot: s
 }
 
 /** Read both installed canons' source selectors, then enumerate that scope; unavailable selectors cannot prove coverage. */
-async function sourceFiles({ repoRoot, cwd, side, scope: folderScope }: { repoRoot: string; cwd: string; side: string; scope: string | null }): Promise<string[]> {
+async function sourceFiles({ repoRoot, cwd, side }: { repoRoot: string; cwd: string; side: string }): Promise<string[]> {
   const config = await installedLintConfig({ repoRoot, cwd, side });
   const scope = canonScope(config);
   const files: string[] = [];
@@ -302,12 +225,12 @@ async function sourceFiles({ repoRoot, cwd, side, scope: folderScope }: { repoRo
       else if (child.isFile() && scope.source(file)) files.push(file);
     }
   };
-  visit(folderScope ?? '');
+  visit('');
   return files.sort(byCodeUnit);
 }
 
 /** Every requested source needs an explicit, well-formed result; suppressed findings and foreign paths cannot witness a completed lint. */
-function checkedEslintResults({ results, expected, cwd, scope, changed }: { results: readonly Dynamic[]; expected: readonly string[]; cwd: string; scope: string | null; changed: boolean }): { results: Dynamic[]; errors: string[] } {
+function checkedEslintResults({ results, expected, cwd, changed }: { results: readonly Dynamic[]; expected: readonly string[]; cwd: string; changed: boolean }): { results: Dynamic[]; errors: string[] } {
   const required = new Set(expected.map((file) => fileKey(path.join(cwd, file))));
   const seen = new Set<string>(), valid: Dynamic[] = [], errors: string[] = [];
   for (const result of results) {
@@ -317,7 +240,7 @@ function checkedEslintResults({ results, expected, cwd, scope, changed }: { resu
       errors.push('eslint produced a malformed file result'); continue;
     }
     const key = fileKey(result.filePath);
-    if (!inside(cwd, result.filePath) || (scope && !inside(path.join(cwd, scope), result.filePath)) || (changed && !required.has(key))) {
+    if (!inside(cwd, result.filePath) || (changed && !required.has(key))) {
       errors.push(`eslint produced a result outside the requested scope: ${result.filePath}`); continue;
     }
     if (seen.has(key)) errors.push(`eslint produced duplicate results for ${result.filePath}`);
@@ -337,37 +260,36 @@ const spawnFailure = (error: unknown) => {
 };
 
 /** Starts the ESLint child of every side that has work and returns one record per side: skipped, a scope error, or the running child. */
-async function launchEslint({ app, repoRoot, opts, changed, existing, workspace, onFe, run = runLinter, scopes = {} }: {
-  app: RepoDeclaration; repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; workspace: string | null; onFe: string | null; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>>;
+async function launchEslint({ app, repoRoot, opts, changed, existing, run = runLinter, scopes = {} }: {
+  app: RepoDeclaration; repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>>;
 }): Promise<EslintLaunch[]> {
   const launches: EslintLaunch[] = [];
   for (const side of app ? SIDES.filter((candidate: string) => opts.side === undefined || opts.side === candidate) : []) {
-    if (workspace !== null && side !== STYLE_SIDE) { launches.push({ side, skipped: `outside --workspace ${workspace}` }); continue; }
     const sources = onSide(existing, side).filter((file) => /\.(?:[cm]?[jt]sx?)$/.test(file));
     if (changed !== null && !sources.length) { launches.push({ side, skipped: 'no changed source file' }); continue; }
     const cwd = path.join(repoRoot, side);
     let expected: string[];
     // a caller that enumerated the side's scope already (the cache) hands it over: the canon config is loaded and the folders walked once per run
     const known = scopes[side];
-    try { expected = changed ? sources : known !== undefined ? known.filter((file) => onFe === null || file.startsWith(`${onFe}/`)) : await sourceFiles({ repoRoot, cwd, side, scope: onFe }); }
+    try { expected = changed ? sources : known !== undefined ? [...known] : await sourceFiles({ repoRoot, cwd, side }); }
     catch (error) { launches.push({ side, scopeError: `eslint source scope is unavailable in ${side}/: ${String((error as Error | undefined)?.message ?? error)}` }); continue; }
     const head = ['--format', 'json', ...(opts.fix ? ['--fix'] : [])];
     // The files of a diff go to ONE child through a file (a diff of hundreds of long paths outgrows the Windows command line, and each extra
     // child would build the whole TypeScript program again); the whole side is a single directory argument.
-    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, onFe ?? '.'], files: expected.length, bound: repoRoot }));
+    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, '.'], files: expected.length, bound: repoRoot }));
     launches.push({ side, cwd, expected, run: launch.catch(spawnFailure) });
   }
   return launches;
 }
 
-/** Execute each side's installed ESLint config once; check and lint share scope, coverage and tool-failure judgment. */
-export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loadSlotManifest(), repoRoot), opts = {}, changed = null, existing = [], workspace = null, onFe = null, run, scopes }: {
-  repoRoot: string; app?: RepoDeclaration; opts?: { side?: string | undefined; fix?: boolean }; changed?: readonly string[] | null; existing?: readonly string[]; workspace?: string | null; onFe?: string | null; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>> | undefined;
+/** Execute each side's installed ESLint config once, whole or over a named list; the cached and the cacheless run share scope, coverage and tool-failure judgment. */
+export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loadSlotManifest(), repoRoot), opts = {}, changed = null, existing = [], run, scopes }: {
+  repoRoot: string; app?: RepoDeclaration; opts?: { side?: string | undefined; fix?: boolean }; changed?: readonly string[] | null; existing?: readonly string[]; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>> | undefined;
 }): Promise<{ findings: LintFinding[]; errors: string[]; raw: Dynamic[]; engine: { sides: Record<string, { files: number; skipped?: string }> } }> {
   const findings: LintFinding[] = [], errors: string[] = [], raw: Dynamic[] = [];
   const engine: { sides: Record<string, { files: number; skipped?: string }> } = { sides: {} };
   if (!app.sides) throw new Error('ESLint runs at the app root, the folder of hfs.json');
-  const launches = await launchEslint({ app, repoRoot, opts, changed, existing, workspace, onFe, run, ...(scopes === undefined ? {} : { scopes }) });
+  const launches = await launchEslint({ app, repoRoot, opts, changed, existing, run, ...(scopes === undefined ? {} : { scopes }) });
   const settled = await Promise.allSettled(launches.map(launch => launch.run ?? null));
   const rejected = settled.filter((run): run is PromiseRejectedResult => run.status === 'rejected');
   const failed = rejected.find(run => isHostHeld(run.reason)) ?? rejected[0];
@@ -380,7 +302,7 @@ export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loa
     const linted = runs[at] as LinterRun;
     if (linted.error) errors.push(linted.error);
     if (linted.results) {
-      const checked = checkedEslintResults({ results: linted.results, expected: launch.expected as string[], cwd: launch.cwd as string, scope: onFe, changed: changed !== null });
+      const checked = checkedEslintResults({ results: linted.results, expected: launch.expected as string[], cwd: launch.cwd as string, changed: changed !== null });
       errors.push(...checked.errors);
       linted.results = checked.results;
       const appRelative = appRelativeMessages(side, path.join(repoRoot, side));
@@ -468,33 +390,31 @@ export interface CachedLinters {
  * validation of a full run (eslintRepository), the rest take their records. The answer has the shape of eslintRepository's, plus the stylelint
  * results, so the lint report is built the same way from either.
  */
-export async function cachedLinters({ repoRoot, app, opts, workspace, onFe, run, cache }: {
-  repoRoot: string; app: RepoDeclaration; opts: LintOptions; workspace: string | null; onFe: string | null; run?: LinterRunner | undefined; cache: LintCache;
+export async function cachedLinters({ repoRoot, app, side: only, run, session }: {
+  repoRoot: string; app: RepoDeclaration; side?: string | undefined; run?: LinterRunner | undefined; session: CheckSession;
 }): Promise<CachedLinters> {
   const eslint: CachedLinters['eslint'] = { findings: [], errors: [], raw: [], engine: { sides: {} } };
   const style: CachedLinters['stylelint'] = { results: [], errors: [], ran: false };
   const sides: CachedLinters['sides'] = [];
-  const decision = cache.session.decide('lint');
-  const full = opts.full === true ? '--full' : decision.mode === 'full' ? decision.reason : null;
+  const decision = session.decide('lint');
+  const full = decision.mode === 'full' ? decision.reason : null;
   const gitToken = gitBaseToken(repoRoot);
-  for (const side of SIDES.filter((candidate: string) => opts.side === undefined || opts.side === candidate)) {
-    if (workspace !== null && side !== STYLE_SIDE) { eslint.engine.sides[side] = { files: 0, skipped: `outside --workspace ${workspace}` }; continue; }
+  for (const side of SIDES.filter((candidate: string) => only === undefined || only === candidate)) {
     const cwd = path.join(repoRoot, side);
     let scope: string[], canons: CanonDeclarations[];
-    try { scope = await sourceFiles({ repoRoot, cwd, side, scope: null }); canons = await canonDeclarations({ repoRoot, cwd, side }); }
+    try { scope = await sourceFiles({ repoRoot, cwd, side }); canons = await canonDeclarations({ repoRoot, cwd, side }); }
     catch (error) { eslint.errors.push(`eslint source scope is unavailable in ${side}/: ${String((error as Error | undefined)?.message ?? error)}`); eslint.engine.sides[side] = { files: 0 }; continue; }
     const styled = side === STYLE_SIDE;
     const outcome = await lintSide({
-      session: cache.session, side, sideRoot: cwd, scope, stylesheets: styled ? stylesheetsOf(cwd) : [],
-      report: onFe === null ? null : (file: string): boolean => file.startsWith(`${onFe}/`),
-      canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', gitToken, full, write: workspace === null,
+      session, side, sideRoot: cwd, scope, stylesheets: styled ? stylesheetsOf(cwd) : [],
+      canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', gitToken, full, write: true,
       eslint: async (files): Promise<LinterOutcome<EslintResult>> => {
         const listed = files === null ? null : files.map((file) => `${side}/${file}`);
-        const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], workspace: listed === null ? workspace : null, onFe: listed === null ? onFe : null, run, scopes: { [side]: scope } });
+        const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], run, scopes: { [side]: scope } });
         return { results: sub.raw as EslintResult[], errors: sub.errors };
       },
       stylelint: styled ? async (files): Promise<LinterOutcome<StylelintResult>> => {
-        const linted = await (run ?? runLinter)({ cwd, pkg: 'stylelint', bin: 'stylelint', args: [...(files ?? [onFe ? `${onFe}/src/**/*.css` : STYLE_GLOB]), '--formatter', 'json'] });
+        const linted = await (run ?? runLinter)({ cwd, pkg: 'stylelint', bin: 'stylelint', args: [...(files ?? [STYLE_GLOB]), '--formatter', 'json'] });
         const appRelative = appRelativeMessages(STYLE_SIDE, cwd);
         for (const result of linted.results ?? []) for (const warning of result.warnings ?? []) warning.text = appRelative(warning.text);
         return { results: (linted.results ?? []) as StylelintResult[], errors: linted.error ? [linted.error] : [] };
@@ -507,132 +427,6 @@ export async function cachedLinters({ repoRoot, app, opts, workspace, onFe, run,
     eslint.engine.sides[side] = { files: outcome.eslint.length };
     if (styled) { style.results.push(...outcome.stylelint); style.ran = true; }
   }
-  cache.session.report(lintFamilyReport(sides));
+  session.report(lintFamilyReport(sides));
   return { eslint, stylelint: style, sides };
-}
-
-/** Starts stylelint over the fe stylesheets (the running child), or returns null when no stylesheet is in scope. */
-function launchStylelint({ repoRoot, opts, changed, existing, onFe, run }: { repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; onFe: string | null; run?: LinterRunner | undefined }): Promise<LinterRun> | null {
-  if (opts.side === 'be') return null;
-  const styles = onSide(existing, STYLE_SIDE).filter((file) => file.endsWith('.css'));
-  if (changed !== null && !styles.length) return null;
-  return (run ?? runLinter)({ cwd: path.join(repoRoot, STYLE_SIDE), pkg: 'stylelint', bin: 'stylelint', args: [...(changed ? styles : [onFe ? `${onFe}/src/**/*.css` : STYLE_GLOB]), '--formatter', 'json', ...(opts.fix ? ['--fix'] : [])] });
-}
-
-/**
- * Run the whole lint of the app at `repoRoot`. `hfsCheck(repoRoot)` returns the `starci app check` result (`{ findings, tracked }`); the CLI
- * injects it. Returns `{ report, sonar, exit }`; `sonar` is the merged Generic Issue Import document.
- */
-export async function lintRepository({ repoRoot, opts, hfsCheck, trackedFiles = () => [], runLinter: linter, cache }: {
-  repoRoot: string; opts: LintOptions; hfsCheck: (repoRoot: string) => Dynamic; trackedFiles?: (repoRoot: string) => string[]; runLinter?: LinterRunner | undefined; cache?: LintCache | undefined;
-}): Promise<{ report: Dynamic; sonar: Dynamic; exit: number }> {
-  const changed = opts.changed === null ? null : new Set(opts.changed);
-  const errors: string[] = [];
-  let workspace: string | null = null;
-  let validSide = true;
-  try { validateSide(opts); } catch (error) { errors.push(String((error as Error | undefined)?.message ?? error)); validSide = false; }
-  if (opts.workspace !== undefined) {
-    try { workspace = workspaceOf(opts.workspace); } catch (error) { errors.push(String((error as Error | undefined)?.message ?? error)); }
-  }
-  /** Whether an app-relative path lies inside the scoped workspace. */
-  const inWorkspace = (file: string): boolean => posix(file).startsWith(`${workspace}/`);
-  const existing = changed ? [...changed].filter((file) => fs.existsSync(path.join(repoRoot, file))) : [];
-  const findings: LintFinding[] = [];
-  const raw: { eslint: Dynamic[]; stylelint: Dynamic[] } = { eslint: [], stylelint: [] };
-  const engines: Record<string, unknown> = {};
-
-  let app: RepoDeclaration = null;
-  try { app = readRepoDeclaration(loadSlotManifest(), repoRoot); } catch (error) { errors.push(`starci app lint runs at the app root: ${String((error as Error | undefined)?.message ?? error)}`); }
-  if (app && !app.sides) { errors.push(`${repoRoot} is the ${app.side} side of an app; starci app lint runs at the app root, the folder of hfs.json`); app = null; }
-  if (!validSide || (opts.workspace !== undefined && workspace === null)) app = null;
-  if (workspace !== null && !fs.existsSync(path.join(repoRoot, workspace, 'package.json'))) { errors.push(`--workspace ${workspace} holds no package.json; it is not a workspace of this app`); app = null; }
-  /** The workspace folder relative to the fe side folder (apps/<app> or packages/<pkg>). */
-  const onFe = workspace === null ? null : workspace.slice(STYLE_SIDE.length + 1);
-
-  // The linters and the app check are independent: every child starts first, the app check runs while they work, and the results are read in a fixed order.
-  // The cache serves a whole-side lint only: --changed judges named files and --fix rewrites them, so neither reads nor writes a record.
-  const cached = cache !== undefined && changed === null && !opts.fix ? cache : null;
-  const cachedRun = app && cached ? cachedLinters({ app, repoRoot, opts, workspace, onFe, run: linter, cache: cached }) : null;
-  const eslintRun = app ? (cachedRun ? cachedRun.then((answer) => answer.eslint) : eslintRepository({ app, repoRoot, opts, changed: changed ? [...changed] : null, existing, workspace, onFe, run: linter })) : null;
-  const styleLaunch = app && !cachedRun ? launchStylelint({ repoRoot, opts, changed, existing, onFe, run: linter }) : null;
-  const checkRun = app ? Promise.resolve().then(() => hfsCheck(repoRoot)).then((value) => ({ value, error: undefined }), (error: unknown) => ({ value: undefined, error })) : null;
-  // A transport refusal does not abandon a sibling child or let its rejection escape unobserved.
-  const completed = await Promise.allSettled([eslintRun, styleLaunch, checkRun]);
-  const refused = completed.filter((run): run is PromiseRejectedResult => run.status === 'rejected');
-  const failure = refused.find(run => isHostHeld(run.reason)) ?? refused[0];
-  if (failure !== undefined) throw failure.reason;
-
-  // 1. ESLint, once per side, from the side folder with that side's config.
-  const eslint = eslintRun ? await eslintRun : { engine: { sides: {} }, errors: [], raw: [], findings: [] };
-  engines.eslint = eslint.engine;
-  errors.push(...eslint.errors);
-  raw.eslint.push(...eslint.raw);
-  findings.push(...eslint.findings);
-
-  // 3. stylelint over the fe side's stylesheets.
-  if (app) {
-    if (cachedRun) {
-      const answer = (await cachedRun).stylelint;
-      errors.push(...answer.errors);
-      if (answer.ran) raw.stylelint = answer.results;
-      findings.push(...stylelintFindings(answer.results, repoRoot));
-    } else if (styleLaunch) {
-      const linted = await styleLaunch;
-      if (linted.error) errors.push(linted.error);
-      if (linted.results) {
-        const appRelative = appRelativeMessages(STYLE_SIDE, path.join(repoRoot, STYLE_SIDE));
-        for (const result of linted.results) for (const warning of result.warnings ?? []) warning.text = appRelative(warning.text);
-        raw.stylelint = linted.results;
-        findings.push(...stylelintFindings(linted.results, repoRoot));
-      }
-    }
-    engines.stylelint = { side: STYLE_SIDE, files: raw.stylelint.length };
-  }
-
-  // 2. The app check: root and sides.
-  let checked: Dynamic = { findings: [] };
-  if (checkRun) {
-    const settled = await checkRun;
-    if (isNodeExecutionRefusal(settled.error)) throw settled.error;
-    if (settled.error) errors.push(`starci app check could not run: ${String((settled.error as Error | undefined)?.message ?? settled.error)}`);
-    else checked = settled.value;
-  }
-  const repoErrors = checked.findings.filter((finding: Dynamic) => finding.level === 'error' && findingOnSide(finding, opts.side));
-  // A workspace lint keeps only the app findings inside the workspace; the rest belong to the root lint of the whole app.
-  const kept = workspace !== null
-    ? repoErrors.filter((finding: Dynamic) => finding.path && inWorkspace(finding.path))
-    : changed === null ? repoErrors : repoErrors.filter((finding: Dynamic) => !finding.path || changed.has(posix(finding.path)));
-  for (const finding of kept) {
-    findings.push({ engine: 'hfs', rule: finding.code, code: finding.code, severity: 'error', path: finding.path ? posix(finding.path) : null, line: finding.line ?? null, column: finding.column ?? null, message: finding.message, titleVi: finding.titleVi, nextStepVi: finding.nextStepVi });
-  }
-  engines.hfs = { findings: kept.length };
-  findings.sort(byLocation);
-
-  let properties = '';
-  try { properties = fs.readFileSync(path.join(repoRoot, 'sonar-project.properties'), 'utf8'); } catch { /* no properties: every finding keeps its own path */ }
-  const sourceRoots = sourceRootsOf(properties).filter((root: string) => findingOnSide({ path: root }, opts.side));
-  const tracked = sourceRoots.length ? trackedFiles(repoRoot) : [];
-  const sonar = mergeReports([
-    sonarReport(kept, { sourceRoots, tracked }),
-    linterReport('eslint', raw.eslint, { root: repoRoot, sourceRoots, tracked }),
-    linterReport('stylelint', raw.stylelint, { root: repoRoot, sourceRoots, tracked }),
-  ]);
-  // Green under the threshold (gate-threshold.mjs): every finding is still reported, only the verdict changes. A warning is a
-  // rule of the canon's counting cohort (eslint-canon-fe COUNTING): reported and counted per rule, never part of the verdict.
-  const failing = findings.filter((finding) => finding.severity !== 'warning');
-  const counting: Record<string, number> = {};
-  for (const finding of findings) if (finding.severity === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
-  const gate = gateVerdict(failing);
-  const report = { schema: LINT_SCHEMA, ok: gate.pass && errors.length === 0, repoRoot, changed: changed ? [...changed].sort(byCodeUnit) : null, workspace, ...(opts.side === undefined ? {} : { side: opts.side }), counts: { error: failing.length, warning: findings.length - failing.length }, counting, engines, errors, findings, gate };
-  return { report, sonar, exit: errors.length ? 2 : gate.pass ? 0 : 1 };
-}
-
-export function printLintText(report: Dynamic, out: (text: string) => unknown): void {
-  for (const f of report.findings as LintFinding[]) out(`${f.path ?? '-'}${f.line ? `:${f.line}${f.column ? `:${f.column}` : ''}` : ''}  ${f.severity === 'warning' ? 'warn ' : ''}${f.engine}/${f.rule}  ${f.message}\n`);
-  for (const e of report.errors as string[]) out(`ERROR ${e}\n`);
-  const per = Object.keys(report.engines).map((engine) => `${engine} ${report.findings.filter((f: LintFinding) => f.engine === engine && f.severity !== 'warning').length}`).join(', ');
-  out(`\nstarci app lint: ${report.counts.error} finding${report.counts.error === 1 ? '' : 's'} (${per})${report.errors.length ? `, ${report.errors.length} tool error${report.errors.length === 1 ? '' : 's'}` : ''}\n`);
-  const counting = Object.entries((report.counting ?? {}) as Record<string, number>).sort(([a], [b]) => a.localeCompare(b));
-  if (counting.length) out(`counting (warn, not in the verdict): ${counting.map(([rule, count]) => `${rule} ${count}`).join(', ')}\n`);
-  if (report.gate?.line) out(`${report.gate.line}\n`);
 }

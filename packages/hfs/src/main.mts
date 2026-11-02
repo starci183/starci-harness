@@ -505,7 +505,7 @@ async function checkRun({ io, selected, full, use, coverageFrom, side, fix = fal
   if (selected.has('lint')) {
     if (session !== undefined) {
       const app = readRepoDeclaration(loadSlotManifest(), repoRoot);
-      const linted = await cachedLinters({ repoRoot, app, opts: { changed: null, fix: false, format: 'text', out: undefined, workspace: undefined, ...(side === undefined ? {} : { side }) }, workspace: null, onFe: null, run: runLinter, cache: { session } });
+      const linted = await cachedLinters({ repoRoot, app, side, run: runLinter, session });
       eslint = linted.eslint;
       style = linted.stylelint;
     } else eslint = await eslintRepository({ repoRoot, opts: side === undefined ? {} : { side }, changed: null, existing: [], run: runLinter });

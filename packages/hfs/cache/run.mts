@@ -1,4 +1,4 @@
-// run.mts - one `starci app check` / `starci app lint` pass over the selected families, against one session. It owns the order of the families,
+// run.mts - one `starci app check` pass over the selected families, against one session. It owns the order of the families,
 // the judging of their findings (edition and the Vietnamese why of every code) and the merge into the one result the verb prints and the gate
 // judges, so the two verbs never hold two answers for one tree.
 import type { HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
@@ -27,7 +27,7 @@ export interface AppRunInput {
   readonly presets?: Presets | undefined;
   readonly prettier?: Prettier | undefined;
   readonly edition?: string | undefined;
-  /** Limits the formatter to these app-relative files (`app lint --changed`). */
+  /** Limits the formatter to these app-relative files. */
   readonly only?: readonly string[] | undefined;
   /** The ref the baseline database rules compare with, when the caller names one. */
   readonly base?: string | undefined;

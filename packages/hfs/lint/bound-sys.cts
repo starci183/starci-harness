@@ -1,6 +1,6 @@
 // bound-sys.cts - the typed ESLint run never reads types from above the app root.
 //
-// `starci app lint` starts ESLint with `node --require <bound-sys.cjs>` (this file, built in place) and STARCI_LINT_BOUND set to the
+// `starci app check` starts ESLint with `node --require <bound-sys.cjs>` (this file, built in place) and STARCI_LINT_BOUND set to the
 // app root. typescript-eslint's projectService builds its server host from `tsserver.sys` (typescript/lib/tsserverlibrary) and
 // exposes no host through parserOptions, so without a bound a typed rule reads types from an enclosing repository's node_modules
 // and judges the app greener than its own install allows. Here `sys` of the app's own TypeScript is patched, in place and before

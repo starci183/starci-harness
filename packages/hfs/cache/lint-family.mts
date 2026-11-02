@@ -75,8 +75,6 @@ export interface LintSideInput {
   scope: readonly string[];
   /** The stylesheets stylelint judges (fe only): side-relative posix; empty otherwise. */
   stylesheets: readonly string[];
-  /** The files this run reports when it reports part of a side (a workspace lint); null reports the whole side. A partial run never writes. */
-  report: ((file: string) => boolean) | null;
   /** The ESLint canon, its grammar family, in config order. */
   canons: readonly CanonDeclarations[];
   /** The stylelint canon; null when the side has no stylesheet judge. */
@@ -290,7 +288,6 @@ const graphRecordFindings = (side: string, file: string, findings: readonly Grap
  */
 export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const { session, side, sideRoot, scope, stylesheets } = input;
-  const inReport = input.report ?? ((): boolean => true);
   const scopeSet = new Set(scope);
   const styleSet = new Set(stylesheets);
   const folder = `lint/${side}`;
@@ -318,7 +315,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const validStyle = new Map(reconcile(ofStep(LINT_STEPS.stylelint), hashOf).map((record) => [record.path, record]));
   const meta = ofStep(LINT_STEPS.meta).find((record) => record.path === SIDE_RECORD);
   const metaData = meta === undefined ? {} : dataOf(meta);
-  const previousFindings = new Set([...ofStep(LINT_STEPS.eslint), ...ofStep(LINT_STEPS.stylelint)].filter((record) => inReport(record.path)).flatMap((record) => record.findings.map(keyOf)));
+  const previousFindings = new Set([...ofStep(LINT_STEPS.eslint), ...ofStep(LINT_STEPS.stylelint)].flatMap((record) => record.findings.map(keyOf)));
 
   const progress = session.progress.step('lint', `lint ${side}`, scope.length + stylesheets.length);
 
@@ -416,8 +413,8 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   if (whole !== null) { dirtyEslint = new Set(scope); dirtyStyle = new Set(stylesheets); }
 
   // ------------------------------------------------------------------ the run
-  const eslintList = [...dirtyEslint].filter(inReport).sort();
-  const styleList = [...dirtyStyle].filter(inReport).sort();
+  const eslintList = [...dirtyEslint].sort();
+  const styleList = [...dirtyStyle].sort();
   const freshEslint = new Map<string, EslintResult>();
   const freshStyle = new Map<string, StylelintResult>();
   const rootOf = (file: string): string => path.relative(sideRoot, file).replace(/\\/g, '/');
@@ -440,7 +437,6 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const styleRecords: CacheRecord[] = [];
   const planHash = (file: string): string => hashOf(file) ?? 'absent';
   for (const file of scope) {
-    if (!inReport(file)) continue;
     const fresh = freshEslint.get(file);
     const reuse = fresh === undefined ? validEslint.get(file) : undefined;
     if (fresh !== undefined) {
@@ -456,7 +452,6 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
     }
   }
   for (const file of stylesheets) {
-    if (!inReport(file)) continue;
     const fresh = freshStyle.get(file);
     const reuse = fresh === undefined ? validStyle.get(file) : undefined;
     if (fresh !== undefined) {
@@ -472,14 +467,14 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
     }
   }
   const checked = freshEslint.size + freshStyle.size;
-  const units = [...scope, ...stylesheets].filter(inReport).length;
+  const units = scope.length + stylesheets.length;
   const reused = Math.max(0, units - checked);
   progress.tick(units, reused, checked);
   progress.end();
 
   // ------------------------------------------------------------------ the records
   let written = false;
-  const complete = errors.length === 0 && input.write && input.report === null && !sideUnchanged;
+  const complete = errors.length === 0 && input.write && !sideUnchanged;
   if (complete) {
     // A file edited while the run read it gets no record of any step, and the others keep theirs: their hashes are those of the tree the run
     // planned from, so the edited file is then added (no recorded graph entry) and its dependents are judged again, whatever they read of it.
