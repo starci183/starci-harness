@@ -4,7 +4,7 @@ Law module: `surface-rules.mjs`. HFS rule: R318. Canon: ANATOMY-2 and PADDING-0.
 
 ## `starci-fe/no-app-surface-paint`
 
-Finding code: `FE_GRAMMAR_LAYOUT_ONLY`. App classes carry layout. A raw `bg-surface` utility paints a surface and is refused, including conditional classes, class builders, responsive variants, important modifiers and opacity suffixes. Compose a painted Grammar surface such as `SurfaceCard`. Static props spreads keep the same obligations. Typed app lint follows imported colocated class declarations as well as local constants.
+Finding code: `FE_GRAMMAR_LAYOUT_ONLY`. App classes carry layout. A raw `bg-surface` utility paints a surface and is refused, including conditional classes, class builders, responsive variants, important modifiers and opacity suffixes. Compose a painted Grammar surface such as `SurfaceCard`. Static props spreads keep the same obligations. The typed lint of an app follows imported colocated class declarations as well as local constants.
 
 ## `starci-fe/no-list-panel-padding`
 
@@ -26,7 +26,7 @@ const Panel = () => <div className="px-4"><SurfaceCard><ListBox inset="panel" la
 
 ## `starci-fe/no-hand-built-panes`
 
-Finding code: `FE_HAND_BUILT_PANES`. A multi-pane frame is a `PaneGrid` of `Pane`s, which draws the dividers between panes, sizes the columns and collapses a side pane below medium. A vertical `Divider` used as a column seam is a pane frame drawn by hand: a vertical `Divider` (or the plain wrapper element that holds only it) standing among plain column elements (`div`, `aside`, `Region`) of a flex row, or a vertical `Divider` anywhere inside a `SurfaceCard composition="joined"`; and a joined card that holds a plain flex row of two or more columns as one of its own children. `joined` stacks bands divided by horizontal separators. A short vertical separator between controls of a toolbar, a `flex-col` stack, and a row whose classes cannot be read in the file are not judged. Typed app lint follows imported colocated class declarations.
+Finding code: `FE_HAND_BUILT_PANES`. A multi-pane frame is a `PaneGrid` of `Pane`s, which draws the dividers between panes, sizes the columns and collapses a side pane below medium. A vertical `Divider` used as a column seam is a pane frame drawn by hand: a vertical `Divider` (or the plain wrapper element that holds only it) standing among plain column elements (`div`, `aside`, `Region`) of a flex row, or a vertical `Divider` anywhere inside a `SurfaceCard composition="joined"`; and a joined card that holds a plain flex row of two or more columns as one of its own children. `joined` stacks bands divided by horizontal separators. A short vertical separator between controls of a toolbar, a `flex-col` stack, and a row whose classes cannot be read in the file are not judged. The typed lint of an app follows imported colocated class declarations.
 
 Invalid:
 

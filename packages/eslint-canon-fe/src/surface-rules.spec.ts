@@ -127,7 +127,7 @@ for (const edition of ["lite", "full"]) {
   })
 }
 
-test("typed app lint follows imported colocated class declarations for panel padding and surface paint", async () => {
+test("the typed lint of an app follows imported colocated class declarations for panel padding and surface paint", async () => {
   const root = mkdtempSync(join(tmpdir(), "starci-fe-surface-"))
   try {
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { jsx: "preserve", strict: true, target: "ES2022", module: "ESNext", moduleResolution: "Bundler" }, include: ["*.ts", "*.tsx"] }))

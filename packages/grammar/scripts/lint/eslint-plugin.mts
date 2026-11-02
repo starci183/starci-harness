@@ -55,7 +55,7 @@ const isPosition = (value: unknown): value is { readonly line: number; readonly 
 const isRange = (value: unknown): value is readonly [number, number] => Array.isArray(value) && value.length === 2 && typeof value[0] === "number" && typeof value[1] === "number"
 
 const COMPONENT_FILE = /[\\/]src[\\/]core[\\/](leaf|branch|composite|frame)[\\/]([A-Za-z0-9]+)[\\/]index\.tsx$/
-/** The one component whose content is inline (a sentence holds Code, Link and Kbd); the app lint `text-inline-only` refuses a block in it. */
+/** The one component whose content is inline (a sentence holds Code, Link and Kbd); the lint rule `text-inline-only` refuses a block in it. */
 const INLINE_CONTENT = new Set(["Text"])
 /** The one hole, with a stated reason (R341). */
 const CLASS_NAME_HOLE = new Set(["Freestyle"])
