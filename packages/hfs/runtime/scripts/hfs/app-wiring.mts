@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { runNode, runHeavyNode, type HeavyNodeRun } from '../api/node/run-node.mjs';
+import { runNode, runHeavyNode, type HeavyNodeRun, type HeavyNodeResult } from '../api/node/run-node.mjs';
 import { fileURLToPath } from 'node:url';
 import { invocationDir } from '../lib/roots.mjs';
 import { isMain } from '../lib/is-main.mjs';
@@ -32,7 +32,7 @@ const modulePath = (app: string): string => `apps/${app}/src/app.module.ts`;
 export const wiringFixturePath = (app: string): string => `src/tests/fixtures/builders/${app}.builder.ts`;
 
 /** What the proof worker's spawn returns (spawnSync-shaped); `run` seams may return it or nothing. */
-export type WorkerResult = { status?: number | null; signal?: string | null; error?: NodeJS.ErrnoException; stdout?: string } | null | undefined;
+export type WorkerResult = { status?: number | null; signal?: string | null; error?: HeavyNodeResult['error']; stdout?: string } | null | undefined;
 /** The injectable spawn seam of the worker. */
 export type WorkerRun = (command: string, args: string[], options: object) => WorkerResult;
 /** The public fixture contract: what buildWiringProof(AppModule) returns. */
