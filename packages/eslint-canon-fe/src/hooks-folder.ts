@@ -30,6 +30,7 @@ import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type AnyContext, type Context, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { importedReduxHook } from "./lib/redux-hook-origin.ts"
 import { importedOwnHook } from "./lib/own-hook-origin.ts"
+import { builtinHook, isLibrarySource, namedOrigin, OWN_HOOK, type HookOrigin } from "./lib/hook-library-origin.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { walk } from "./lib/ast.ts"
 import { functionOf, isFn, unwrap, variableOf, type Variable } from "./lib/bindings.ts"
@@ -96,58 +97,9 @@ const exportedEntries = (node: ExportNode): ExportEntry[] => {
   return []
 }
 
-/** Actual React hook APIs and SWR public entry points, rather than an arbitrary `use*` spelling. */
-const REACT_HOOKS = new Set([
-  "use", "useState", "useReducer", "useEffect", "useLayoutEffect", "useInsertionEffect", "useRef", "useImperativeHandle",
-  "useMemo", "useCallback", "useContext", "useDebugValue", "useDeferredValue", "useTransition", "useId",
-  "useSyncExternalStore", "useActionState", "useOptimistic",
-])
-const SWR_HOOKS = new Map([
-  ["swr", new Set(["useSWR", "useSWRConfig"])],
-  ["swr/immutable", new Set(["useSWRImmutable"])],
-  ["swr/infinite", new Set(["useSWRInfinite"])],
-  ["swr/mutation", new Set(["useSWRMutation"])],
-  ["swr/subscription", new Set(["useSWRSubscription"])],
-])
-const SWR_DEFAULTS = new Map([["swr", "useSWR"], ["swr/immutable", "useSWRImmutable"], ["swr/infinite", "useSWRInfinite"], ["swr/mutation", "useSWRMutation"], ["swr/subscription", "useSWRSubscription"]])
-/**
- * The canonical library hooks a composite hook may call (R56, FE-THEME): next-intl, next/navigation,
- * next-themes, react-hook-form and zustand's React entry points. A name outside the list is not a hook by its spelling.
- */
-const LIBRARY_HOOKS = new Map([
-  ["next-intl", new Set(["useTranslations", "useLocale", "useFormatter", "useNow", "useTimeZone", "useMessages"])],
-  ["next/navigation", new Set(["useRouter", "usePathname", "useSearchParams", "useParams", "useSelectedLayoutSegment", "useSelectedLayoutSegments"])],
-  ["next-themes", new Set(["useTheme"])],
-  ["react-hook-form", new Set(["useForm", "useFormContext", "useWatch", "useController", "useFieldArray", "useFormState"])],
-  ["zustand", new Set(["useStore"])],
-  ["zustand/react/shallow", new Set(["useShallow"])],
-])
-const OWN_HOOK = "own-hooks"
-
-/** Where a hook comes from: the module and the export it names (null for the module object itself; any key a member reads). */
-interface HookOrigin {
-  readonly source: string
-  readonly name: unknown
-}
-
-/** True when `set` holds `name`. */
-const hasName = (set: ReadonlySet<string> | undefined, name: unknown): boolean => set !== undefined && typeof name === "string" && set.has(name)
-
-const builtinHook = (origin: HookOrigin | null): boolean => {
-  if (origin === null) return false
-  return origin.source === OWN_HOOK || hasName(LIBRARY_HOOKS.get(origin.source), origin.name) || origin.source === "react-redux" || (origin.source === "react" ? hasName(REACT_HOOKS, origin.name) : hasName(SWR_HOOKS.get(origin.source), origin.name))
-}
 const propertyName = (node: TSESTree.MemberExpression): unknown => {
   if (!node.computed && node.property.type === "Identifier") return node.property.name
   return node.property.type === "Literal" ? node.property.value : null
-}
-
-/** SWR request hooks are default exports; its root also names useSWRConfig. */
-const namedOrigin = (source: string, name: unknown): HookOrigin | null => {
-  if (source === "react") return { source, name }
-  if (hasName(LIBRARY_HOOKS.get(source), name)) return { source, name }
-  if (name === "default" && SWR_DEFAULTS.has(source)) return { source, name: SWR_DEFAULTS.get(source) }
-  return source === "swr" && name === "useSWRConfig" ? { source, name } : null
 }
 
 /** A runtime import records whether its value is a hook or its module namespace. */
@@ -156,10 +108,10 @@ const importOrigin = (definition: TSESLint.Scope.Definitions.ImportBindingDefini
   if (definition.parent.type !== "ImportDeclaration") throw new TypeError("Cannot read properties of undefined (reading 'value')")
   const source = String(definition.parent.source.value)
   if (definition.parent.importKind === "type" || ("importKind" in specifier && specifier.importKind === "type")) return null
-  if (source !== "react" && !SWR_HOOKS.has(source) && !LIBRARY_HOOKS.has(source)) return null
+  if (!isLibrarySource(source)) return null
   if (source === "next-themes" && specifier.type === "ImportDefaultSpecifier") return null
   if (specifier.type === "ImportSpecifier") return namedOrigin(source, spelled(specifier.imported))
-  if (specifier.type === "ImportDefaultSpecifier" && SWR_DEFAULTS.has(source)) return { source, name: SWR_DEFAULTS.get(source) }
+  if (specifier.type === "ImportDefaultSpecifier") return source === "react" ? { source, name: null } : namedOrigin(source, "default") ?? { source, name: null }
   return { source, name: null }
 }
 
