@@ -352,7 +352,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
           const data = dataOf(record);
           const imports = Array.isArray(data['imports']) ? (data['imports'] as JsonValue[]).filter((value): value is string => typeof value === 'string') : [];
           const kept = previous.get(record.path);
-          if (kept === undefined || record.hash === hashOf(record.path)) previous.set(record.path, { hash: record.hash, imports, declaresGlobals: data['globals'] === true });
+          if (kept === undefined || record.hash === hashOf(record.path)) previous.set(record.path, { hash: record.hash, imports, declaresGlobals: data['globals'] === true, api: typeof data['api'] === 'string' ? data['api'] : undefined, open: typeof data['open'] === 'boolean' ? data['open'] : undefined });
         }
         const recordedGraph: ImportGraph | null = previous.size === 0 ? null : previous;
         build = buildImportGraph({ ts, sideRoot, readText, fileExists: isFile, hashOf: (file) => hashOf(file) ?? null }, scope, recordedGraph, { pathsChanged: metaData['paths'] !== pathsDigest });
@@ -473,7 +473,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
           const ts = input.typescript();
           build = buildImportGraph({ ts, sideRoot, readText, fileExists: isFile, hashOf: (file) => hashOf(file) ?? null }, scope, null);
         }
-        for (const [file, node] of build.graph) records.push({ path: file, step: LINT_STEPS.imports, hash: node.hash, findings: [], data: { globals: node.declaresGlobals, imports: node.imports } });
+        for (const [file, node] of build.graph) records.push({ path: file, step: LINT_STEPS.imports, hash: node.hash, findings: [], data: { globals: node.declaresGlobals, imports: node.imports, ...(node.api === undefined ? {} : { api: node.api }), open: node.open !== false } });
         snapshot ??= mergedSnapshot(sideRoot, input.canons);
         for (const [file, findings] of Object.entries(snapshot ?? {})) {
           if (scopeSet.has(file) && findings.length > 0) records.push({ path: file, step: LINT_STEPS.graph, hash: planHash(file), findings: graphRecordFindings(side, file, findings) });

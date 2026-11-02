@@ -124,3 +124,24 @@ test('with the real ESLint and a type-aware rule, records plus the dirty set equ
   state = await run(root, state.written ?? [], calls);
   assert.deepEqual(calls, []);
 });
+
+test('with the real ESLint, a body-only edit judges that file alone and a changed type still reaches the importer that reads it', async (context) => {
+  const root = fixture(context);
+  const write = (file: string, text: string): void => fs.writeFileSync(path.join(root, file), text);
+  write('src/f.ts', 'export function f(): number {\n  return 1;\n}\n');
+  write('src/g.ts', "import { f } from './f';\nexport function g(): number {\n  const value = f();\n  return value;\n}\n");
+  const calls: (string[] | null)[] = [];
+  let state = await run(root, [], calls);
+  calls.length = 0;
+  write('src/f.ts', 'export function f(): number {\n  return 2;\n}\n');
+  state = await run(root, state.written as CacheRecord[], calls);
+  assert.deepEqual(calls, [['src/f.ts']]);
+  assert.deepEqual(shape(state.outcome.eslint), shape((await run(root, [], [], { full: 'compare' })).outcome.eslint));
+  // a declared return type that becomes the bad one is read by the importer's own variable
+  calls.length = 0;
+  write('src/f.ts', 'export function f(): "BAD" {\n  return "BAD";\n}\n');
+  state = await run(root, state.written as CacheRecord[], calls);
+  assert.deepEqual(calls, [['src/f.ts', 'src/g.ts']]);
+  assert.ok(shape(state.outcome.eslint).some((line) => line.startsWith('g.ts|fixture/no-bad-type')));
+  assert.deepEqual(shape(state.outcome.eslint), shape((await run(root, [], [], { full: 'compare' })).outcome.eslint));
+});

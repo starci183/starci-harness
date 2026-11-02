@@ -93,7 +93,7 @@ stored.
 |---|---|
 | `fingerprint.jsonl` | one line per fingerprint part: name and sha256 |
 | `check/` | the per-file results of `app check` (formatter) and the input-set results of its scoped steps |
-| `lint/<side>/` | per source file: content hash, resolved local imports, ESLint results; the project-graph findings per file; stylelint results |
+| `lint/<side>/` | per source file: content hash, resolved local imports with the type surface digest, ESLint results; the project-graph findings per file; stylelint results |
 | `test-coverage/` | per unit spec: its closure key, and the lines, branches and functions it covers in each source; per source: what is instrumented |
 | `sonar-baseline/` | reference data only: the new-code base commit, the quality gate's conditions as read from their owner with that owner's digest, the analysis scope settings' digest |
 | `codecov-baseline/` | reference data only: the base commit, the patch and project targets of `codecov.yml` with its digest |
@@ -194,10 +194,20 @@ that key.
 
 1. **Types.** A type-aware rule's result on a file depends on the files whose types it reads. The cache records each
    file's resolved local imports (TypeScript `preProcessFile` and `resolveModuleName` under the side's tsconfig: static,
-   type-only and dynamic imports, re-exports, triple-slash references, JSON). The dirty set holds every changed or added
-   file and every file that reaches one through imports, in the new graph and the cached one. Imports are resolved
-   again for every file when a path of the side was added or removed, since a new file can change where an unchanged
-   import resolves. A changed file that declares globals (a `.d.ts` with no import or export, `declare global`, a module
+   type-only and dynamic imports, re-exports, triple-slash references, JSON) and its **type surface**: the digest of
+   TypeScript's isolated declaration emit of the file (`ts.transpileDeclaration`, which reads the file alone; a script,
+   a declaration file or a JSON file stands for its content hash) and whether the surface is *open*. A surface is open when
+   the emit reports a diagnostic (a type the compiler must infer from other files) or names a local module (a re-export, a
+   type imported from a local file), so what an importer reads of the file can change while the file's own text does not.
+   The dirty set holds every changed, added or removed file, every file whose imports resolve elsewhere than recorded, and
+   every file that imports a file whose surface changed, in the new graph and the cached one (a file that stopped
+   importing it still holds a result from the old types). A file's surface changed when it was added or removed, gained
+   an import, its digest differs from the record, or it is dirty and open. A body-only edit, a comment at the end of a file,
+   therefore lints that file alone; a changed signature, export list or doc comment (`@deprecated` is read by rules) its
+   direct importers; an inferred type carries on one more level at a time. A record from before the surface was kept, or a
+   TypeScript older than 5.5 without `transpileDeclaration`, has no digest and counts as changed and open. Imports are
+   resolved again for every file when a path of the side was added or removed, since a new file can change where an
+   unchanged import resolves. A changed file that declares globals (a `.d.ts` with no import or export, `declare global`, a module
    augmentation) dirties its whole side, and so does a change to the side's untracked program inputs.
 2. **The project-graph rules** (duplicate code, unused exports and files, tier direction and the other `LINT_ENFORCERS`
    of `@starci/hfs` architecture/surface.mjs) report on a file what the whole-program machine found, so an edit to one
